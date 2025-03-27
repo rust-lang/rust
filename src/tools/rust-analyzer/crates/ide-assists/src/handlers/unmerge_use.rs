@@ -1,7 +1,10 @@
 use syntax::{
     AstNode, SyntaxKind,
-    ast::{self, HasVisibility, edit_in_place::Removable, make},
-    ted::{self, Position},
+    ast::{
+        self, HasAttrs, HasVisibility, edit::IndentLevel, edit_in_place::AttrsOwnerEdit, make,
+        syntax_factory::SyntaxFactory,
+    },
+    syntax_editor::{Element, Position, Removable},
 };
 
 use crate::{
@@ -22,7 +25,7 @@ use crate::{
 // use std::fmt::Display;
 // ```
 pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let tree: ast::UseTree = ctx.find_node_at_offset::<ast::UseTree>()?.clone_for_update();
+    let tree = ctx.find_node_at_offset::<ast::UseTree>()?;
 
     let tree_list = tree.syntax().parent().and_then(ast::UseTreeList::cast)?;
     if tree_list.use_trees().count() < 2 {
@@ -30,11 +33,8 @@ pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         return None;
     }
 
-    let use_: ast::Use = tree_list.syntax().ancestors().find_map(ast::Use::cast)?;
+    let use_ = tree_list.syntax().ancestors().find_map(ast::Use::cast)?;
     let path = resolve_full_path(&tree)?;
-
-    let old_parent_range = use_.syntax().parent()?.text_range();
-    let new_parent = use_.syntax().parent()?;
 
     // If possible, explain what is going to be done.
     let label = match tree.path().and_then(|path| path.first_segment()) {
@@ -44,16 +44,30 @@ pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
 
     let target = tree.syntax().text_range();
     acc.add(AssistId::refactor_rewrite("unmerge_use"), label, target, |builder| {
-        let new_use = make::use_(
+        let make = SyntaxFactory::with_mappings();
+        let new_use = make.use_(
             use_.visibility(),
-            make::use_tree(path, tree.use_tree_list(), tree.rename(), tree.star_token().is_some()),
-        )
-        .clone_for_update();
+            make.use_tree(path, tree.use_tree_list(), tree.rename(), tree.star_token().is_some()),
+        );
+        // Add any attributes that are present on the use tree
+        use_.attrs().for_each(|attr| {
+            new_use.add_attr(attr.clone_for_update());
+        });
 
-        tree.remove();
-        ted::insert(Position::after(use_.syntax()), new_use.syntax());
-
-        builder.replace(old_parent_range, new_parent.to_string());
+        let mut editor = builder.make_editor(use_.syntax());
+        // Remove the use tree from the current use item
+        tree.remove(&mut editor);
+        // Insert a newline and indentation, followed by the new use item
+        editor.insert_all(
+            Position::after(use_.syntax()),
+            vec![
+                make.whitespace(&format!("\n{}", IndentLevel::from_node(use_.syntax())))
+                    .syntax_element(),
+                new_use.syntax().syntax_element(),
+            ],
+        );
+        editor.add_mappings(make.finish_with_mappings());
+        builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
 
@@ -228,6 +242,21 @@ pub use std::fmt::Display;
             r"use std::process::{Command, self$0};",
             r"use std::process::{Command};
 use std::process;",
+        );
+    }
+
+    #[test]
+    fn unmerge_use_item_with_attributes() {
+        check_assist(
+            unmerge_use,
+            r"
+#[allow(deprecated)]
+use foo::{bar, baz$0};",
+            r"
+#[allow(deprecated)]
+use foo::{bar};
+#[allow(deprecated)]
+use foo::baz;",
         );
     }
 }

@@ -107,6 +107,20 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn use_(&self, visibility: Option<ast::Visibility>, use_tree: ast::UseTree) -> ast::Use {
+        make::use_(visibility, use_tree).clone_for_update()
+    }
+
+    pub fn use_tree(
+        &self,
+        path: ast::Path,
+        use_tree_list: Option<ast::UseTreeList>,
+        alias: Option<ast::Rename>,
+        add_star: bool,
+    ) -> ast::UseTree {
+        make::use_tree(path, use_tree_list, alias, add_star).clone_for_update()
+    }
+
     pub fn path_unqualified(&self, segment: ast::PathSegment) -> ast::Path {
         let ast = make::path_unqualified(segment.clone()).clone_for_update();
 
