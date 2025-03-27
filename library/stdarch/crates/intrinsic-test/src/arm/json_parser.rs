@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-use std::path::Path;
-
-use serde::Deserialize;
-
 use super::argument::{Argument, ArgumentList};
 use super::intrinsic::Intrinsic;
 use super::types::IntrinsicType;
+use serde::Deserialize;
+use std::collections::HashMap;
+use std::path::Path;
 
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]

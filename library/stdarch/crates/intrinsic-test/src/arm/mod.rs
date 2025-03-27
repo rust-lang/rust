@@ -6,9 +6,9 @@ mod intrinsic;
 mod json_parser;
 mod types;
 
-use crate::common::cli::ProcessedCli;
+use crate::common::SupportedArchitectureTest;
 use crate::common::compare::compare_outputs;
-use crate::common::supporting_test::SupportedArchitectureTest;
+use crate::common::types::ProcessedCli;
 use functions::{build_c, build_rust};
 use intrinsic::Intrinsic;
 use json_parser::get_neon_intrinsics;

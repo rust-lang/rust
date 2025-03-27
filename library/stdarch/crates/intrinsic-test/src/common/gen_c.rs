@@ -83,7 +83,7 @@ pub fn create_c_files(identifiers: &Vec<String>) -> BTreeMap<&String, File> {
     identifiers
         .par_iter()
         .map(|identifier| {
-            let c_filename = format!(r#"c_programs/{}.cpp"#, identifier);
+            let c_filename = format!(r#"c_programs/{identifier}.cpp"#);
             let file = File::create(&c_filename).unwrap();
 
             (identifier, file)

@@ -1,13 +1,12 @@
-use itertools::Itertools;
-use rayon::prelude::*;
-use std::io::Write;
-
 use super::argument::Argument;
 use super::config::{AARCH_CONFIGURATIONS, POLY128_OSTREAM_DEF, build_notices};
 use super::format::Indentation;
 use super::intrinsic::Intrinsic;
 use crate::common::gen_c::{compile_c, create_c_files, generate_c_program};
 use crate::common::gen_rust::{compile_rust, create_rust_files, generate_rust_program};
+use itertools::Itertools;
+use rayon::prelude::*;
+use std::io::Write;
 
 // The number of times each intrinsic will be called.
 const PASSES: u32 = 20;
@@ -156,7 +155,7 @@ fn compile_c_arm(
     cxx_toolchain_dir: Option<&str>,
 ) -> bool {
     let compiler_commands = intrinsics_name_list.iter().map(|intrinsic_name|{
-        let c_filename = format!(r#"c_programs/{}.cpp"#, intrinsic_name);
+        let c_filename = format!(r#"c_programs/{intrinsic_name}.cpp"#);
         let flags = std::env::var("CPPFLAGS").unwrap_or("".into());
         let arch_flags = if target.contains("v7") {
             "-march=armv8.6-a+crypto+crc+dotprod+fp16"

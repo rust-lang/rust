@@ -78,11 +78,7 @@ path = "{binary}/main.rs""#,
     /* If there has been a linker explicitly set from the command line then
      * we want to set it via setting it in the RUSTFLAGS*/
 
-    let cargo_command = format!(
-        "cargo {toolchain} build --target {target} --release",
-        toolchain = toolchain,
-        target = target
-    );
+    let cargo_command = format!("cargo {toolchain} build --target {target} --release");
 
     let mut command = Command::new("sh");
     command

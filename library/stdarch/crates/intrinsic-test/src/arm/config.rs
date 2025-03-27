@@ -8,8 +8,7 @@ pub fn build_notices(line_prefix: &str) -> String {
     )
 }
 
-pub const POLY128_OSTREAM_DEF: &str = 
-r#"std::ostream& operator<<(std::ostream& os, poly128_t value) {
+pub const POLY128_OSTREAM_DEF: &str = r#"std::ostream& operator<<(std::ostream& os, poly128_t value) {
     std::stringstream temp;
     do {
       int n = value % 10;

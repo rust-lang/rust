@@ -1,7 +1,6 @@
+use super::argument::ArgumentList;
 use super::format::Indentation;
 use super::types::{IntrinsicType, TypeKind};
-
-use super::argument::ArgumentList;
 
 /// An intrinsic
 #[derive(Debug, PartialEq, Clone)]
@@ -82,8 +81,6 @@ impl Intrinsic {
                 String::from("")
             },
             close = if self.results.is_simd() { ")" } else { "" },
-            lanes = lanes,
-            additional = additional,
         )
     }
 
@@ -146,7 +143,6 @@ impl Intrinsic {
             intrinsic_call = self.name,
             const = constraints,
             args = self.arguments.as_call_param_rust(),
-            additional = additional,
         )
     }
 }
