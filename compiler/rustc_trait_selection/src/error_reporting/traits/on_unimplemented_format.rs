@@ -1,10 +1,5 @@
-use std::fmt::Write;
-use std::path::PathBuf;
-
 use errors::*;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::span_bug;
-use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_parse_format::{
     Alignment, Argument, Count, FormatSpec, InnerSpan, ParseError, ParseMode, Parser,
     Piece as RpfPiece, Position,
@@ -13,6 +8,7 @@ use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::def_id::DefId;
 use rustc_span::{BytePos, Pos, Span, Symbol, kw, sym};
 
+#[allow(dead_code)]
 pub struct FormatString {
     input: Symbol,
     input_span: Span,
@@ -99,6 +95,24 @@ impl FormatWarning {
     }
 }
 
+#[derive(Debug)]
+pub struct ConditionOptions {
+    pub self_types: Vec<String>,
+    pub from_desugaring: Option<String>,
+    pub cause: Option<String>,
+    pub crate_local: bool,
+    pub direct: bool,
+    pub generic_args: Vec<(Symbol, String)>,
+}
+
+#[derive(Debug)]
+pub struct FormatArgs {
+    pub this: String,
+    pub trait_sugared: String,
+    pub item_context: String,
+    pub generic_args: Vec<(Symbol, String)>,
+}
+
 impl FormatString {
     pub fn parse(input: Symbol, input_span: Span, ctx: &Ctx<'_>) -> Result<Self, Vec<ParseError>> {
         let s = input.as_str();
@@ -126,92 +140,34 @@ impl FormatString {
         }
     }
 
-    pub fn format<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        trait_ref: ty::TraitRef<'tcx>,
-        options: &FxHashMap<Symbol, String>,
-        long_ty_file: &mut Option<PathBuf>,
-    ) -> String {
-        let generics = tcx.generics_of(trait_ref.def_id);
-        let generic_map = generics
-            .own_params
-            .iter()
-            .filter_map(|param| {
-                let value = match param.kind {
-                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                        if let Some(ty) = trait_ref.args[param.index as usize].as_type() {
-                            tcx.short_string(ty, long_ty_file)
-                        } else {
-                            trait_ref.args[param.index as usize].to_string()
-                        }
-                    }
-                    GenericParamDefKind::Lifetime => return None,
-                };
-                let name = param.name;
-                Some((name, value))
-            })
-            .collect::<FxHashMap<Symbol, String>>();
-
+    pub fn format(&self, args: &FormatArgs) -> String {
         let mut ret = String::new();
         for piece in &self.pieces {
             match piece {
                 Piece::Lit(s) | Piece::Arg(FormatArg::AsIs(s)) => ret.push_str(&s),
 
                 // `A` if we have `trait Trait<A> {}` and `note = "i'm the actual type of {A}"`
-                Piece::Arg(FormatArg::GenericParam { generic_param, span }) => {
+                Piece::Arg(FormatArg::GenericParam { generic_param, .. }) => {
                     // Should always be some but we can't raise errors here
-                    if let Some(value) = generic_map.get(&generic_param) {
-                        ret.push_str(value);
-                    } else if cfg!(debug_assertions) {
-                        span_bug!(*span, "invalid generic parameter");
-                    } else {
-                        let _ = ret.write_fmt(format_args!("{{{}}}", generic_param.as_str()));
-                    }
+                    let value = match args.generic_args.iter().find(|(p, _)| p == generic_param) {
+                        Some((_, val)) => val.to_string(),
+                        None => generic_param.to_string(),
+                    };
+                    ret.push_str(&value);
                 }
                 // `{Self}`
                 Piece::Arg(FormatArg::SelfUpper) => {
-                    let Some(slf) = generic_map.get(&kw::SelfUpper) else {
-                        span_bug!(
-                            self.input_span,
-                            "broken format string {:?} for {:?}: \
-                                  no argument matching `Self`",
-                            self.input,
-                            trait_ref,
-                        )
+                    let slf = match args.generic_args.iter().find(|(p, _)| *p == kw::SelfUpper) {
+                        Some((_, val)) => val.to_string(),
+                        None => "Self".to_string(),
                     };
                     ret.push_str(&slf);
                 }
 
                 // It's only `rustc_onunimplemented` from here
-                Piece::Arg(FormatArg::This) => {
-                    let Some(this) = options.get(&sym::This) else {
-                        span_bug!(
-                            self.input_span,
-                            "broken format string {:?} for {:?}: \
-                                      no argument matching This",
-                            self.input,
-                            trait_ref,
-                        )
-                    };
-                    ret.push_str(this);
-                }
-                Piece::Arg(FormatArg::Trait) => {
-                    let Some(this) = options.get(&sym::Trait) else {
-                        span_bug!(
-                            self.input_span,
-                            "broken format string {:?} for {:?}: \
-                                      no argument matching Trait",
-                            self.input,
-                            trait_ref,
-                        )
-                    };
-                    ret.push_str(this);
-                }
-                Piece::Arg(FormatArg::ItemContext) => {
-                    let itemcontext = options.get(&sym::ItemContext);
-                    ret.push_str(itemcontext.unwrap_or(&String::new()));
-                }
+                Piece::Arg(FormatArg::This) => ret.push_str(&args.this),
+                Piece::Arg(FormatArg::Trait) => ret.push_str(&args.trait_sugared),
+                Piece::Arg(FormatArg::ItemContext) => ret.push_str(&args.item_context),
             }
         }
         ret

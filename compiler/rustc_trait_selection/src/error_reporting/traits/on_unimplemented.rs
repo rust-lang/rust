@@ -2,14 +2,13 @@ use std::iter;
 use std::path::PathBuf;
 
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit};
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{AttrArgs, Attribute};
 use rustc_middle::bug;
-use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, TyCtxt};
+use rustc_middle::ty::print::PrintTraitRefExt;
+use rustc_middle::ty::{self, GenericArgsRef, GenericParamDef, GenericParamDefKind, TyCtxt};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, info};
@@ -17,9 +16,9 @@ use {rustc_attr_parsing as attr, rustc_hir as hir};
 
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::error_reporting::TypeErrCtxt;
-use crate::error_reporting::traits::on_unimplemented_condition::Condition;
+use crate::error_reporting::traits::on_unimplemented_condition::{Condition, ConditionOptions};
 use crate::error_reporting::traits::on_unimplemented_format::errors::*;
-use crate::error_reporting::traits::on_unimplemented_format::{Ctx, FormatString};
+use crate::error_reporting::traits::on_unimplemented_format::{Ctx, FormatArgs, FormatString};
 use crate::errors::{
     EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
 };
@@ -107,86 +106,81 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .unwrap_or_else(|| (trait_pred.def_id(), trait_pred.skip_binder().trait_ref.args));
         let trait_pred = trait_pred.skip_binder();
 
-        let mut flags = vec![];
+        let mut self_types = vec![];
+        let mut generic_args: Vec<(Symbol, String)> = vec![];
+        let mut crate_local = false;
         // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): HIR is not present for RPITITs,
         // but I guess we could synthesize one here. We don't see any errors that rely on
         // that yet, though.
-        let enclosure = self.describe_enclosure(obligation.cause.body_id).map(|t| t.to_owned());
-        flags.push((sym::ItemContext, enclosure));
+        let item_context = self
+            .describe_enclosure(obligation.cause.body_id)
+            .map(|t| t.to_owned())
+            .unwrap_or(String::new());
 
-        match obligation.cause.code() {
+        let direct = match obligation.cause.code() {
             ObligationCauseCode::BuiltinDerived(..)
             | ObligationCauseCode::ImplDerived(..)
-            | ObligationCauseCode::WellFormedDerived(..) => {}
+            | ObligationCauseCode::WellFormedDerived(..) => false,
             _ => {
                 // this is a "direct", user-specified, rather than derived,
                 // obligation.
-                flags.push((sym::direct, None));
+                true
             }
-        }
+        };
 
-        if let Some(k) = obligation.cause.span.desugaring_kind() {
-            flags.push((sym::from_desugaring, None));
-            flags.push((sym::from_desugaring, Some(format!("{k:?}"))));
-        }
+        let from_desugaring = obligation.cause.span.desugaring_kind().map(|k| format!("{k:?}"));
 
-        if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
-            flags.push((sym::cause, Some("MainFunctionType".to_string())));
-        }
-
-        flags.push((sym::Trait, Some(trait_pred.trait_ref.print_trait_sugared().to_string())));
+        let cause = if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
+            Some("MainFunctionType".to_string())
+        } else {
+            None
+        };
 
         // Add all types without trimmed paths or visible paths, ensuring they end up with
         // their "canonical" def path.
         ty::print::with_no_trimmed_paths!(ty::print::with_no_visible_paths!({
             let generics = self.tcx.generics_of(def_id);
             let self_ty = trait_pred.self_ty();
-            // This is also included through the generics list as `Self`,
-            // but the parser won't allow you to use it
-            flags.push((sym::_Self, Some(self_ty.to_string())));
+            self_types.push(self_ty.to_string());
             if let Some(def) = self_ty.ty_adt_def() {
                 // We also want to be able to select self's original
                 // signature with no type arguments resolved
-                flags.push((
-                    sym::_Self,
-                    Some(self.tcx.type_of(def.did()).instantiate_identity().to_string()),
-                ));
+                self_types.push(self.tcx.type_of(def.did()).instantiate_identity().to_string());
             }
 
-            for param in generics.own_params.iter() {
-                let value = match param.kind {
+            for GenericParamDef { name, kind, index, .. } in generics.own_params.iter() {
+                let value = match kind {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                        args[param.index as usize].to_string()
+                        args[*index as usize].to_string()
                     }
                     GenericParamDefKind::Lifetime => continue,
                 };
-                let name = param.name;
-                flags.push((name, Some(value)));
+                generic_args.push((*name, value));
 
-                if let GenericParamDefKind::Type { .. } = param.kind {
-                    let param_ty = args[param.index as usize].expect_ty();
+                if let GenericParamDefKind::Type { .. } = kind {
+                    let param_ty = args[*index as usize].expect_ty();
                     if let Some(def) = param_ty.ty_adt_def() {
                         // We also want to be able to select the parameter's
                         // original signature with no type arguments resolved
-                        flags.push((
-                            name,
-                            Some(self.tcx.type_of(def.did()).instantiate_identity().to_string()),
+                        generic_args.push((
+                            *name,
+                            self.tcx.type_of(def.did()).instantiate_identity().to_string(),
                         ));
                     }
                 }
             }
 
             if let Some(true) = self_ty.ty_adt_def().map(|def| def.did().is_local()) {
-                flags.push((sym::crate_local, None));
+                crate_local = true;
             }
 
             // Allow targeting all integers using `{integral}`, even if the exact type was resolved
             if self_ty.is_integral() {
-                flags.push((sym::_Self, Some("{integral}".to_owned())));
+                self_types.push("{integral}".to_owned());
             }
 
             if self_ty.is_array_slice() {
-                flags.push((sym::_Self, Some("&[]".to_owned())));
+                self_types.push("&[]".to_owned());
             }
 
             if self_ty.is_fn() {
@@ -201,53 +195,51 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         hir::Safety::Unsafe => "unsafe fn",
                     }
                 };
-                flags.push((sym::_Self, Some(shortname.to_owned())));
+                self_types.push(shortname.to_owned());
             }
 
             // Slices give us `[]`, `[{ty}]`
             if let ty::Slice(aty) = self_ty.kind() {
-                flags.push((sym::_Self, Some("[]".to_string())));
+                self_types.push("[]".to_owned());
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the slice's type's original
                     // signature with no type arguments resolved
-                    flags.push((
-                        sym::_Self,
-                        Some(format!("[{}]", self.tcx.type_of(def.did()).instantiate_identity())),
-                    ));
+                    self_types
+                        .push(format!("[{}]", self.tcx.type_of(def.did()).instantiate_identity()));
                 }
                 if aty.is_integral() {
-                    flags.push((sym::_Self, Some("[{integral}]".to_string())));
+                    self_types.push("[{integral}]".to_string());
                 }
             }
 
             // Arrays give us `[]`, `[{ty}; _]` and `[{ty}; N]`
             if let ty::Array(aty, len) = self_ty.kind() {
-                flags.push((sym::_Self, Some("[]".to_string())));
+                self_types.push("[]".to_string());
                 let len = len.try_to_target_usize(self.tcx);
-                flags.push((sym::_Self, Some(format!("[{aty}; _]"))));
+                self_types.push(format!("[{aty}; _]"));
                 if let Some(n) = len {
-                    flags.push((sym::_Self, Some(format!("[{aty}; {n}]"))));
+                    self_types.push(format!("[{aty}; {n}]"));
                 }
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the array's type's original
                     // signature with no type arguments resolved
                     let def_ty = self.tcx.type_of(def.did()).instantiate_identity();
-                    flags.push((sym::_Self, Some(format!("[{def_ty}; _]"))));
+                    self_types.push(format!("[{def_ty}; _]"));
                     if let Some(n) = len {
-                        flags.push((sym::_Self, Some(format!("[{def_ty}; {n}]"))));
+                        self_types.push(format!("[{def_ty}; {n}]"));
                     }
                 }
                 if aty.is_integral() {
-                    flags.push((sym::_Self, Some("[{integral}; _]".to_string())));
+                    self_types.push("[{integral}; _]".to_string());
                     if let Some(n) = len {
-                        flags.push((sym::_Self, Some(format!("[{{integral}}; {n}]"))));
+                        self_types.push(format!("[{{integral}}; {n}]"));
                     }
                 }
             }
             if let ty::Dynamic(traits, _, _) = self_ty.kind() {
                 for t in traits.iter() {
                     if let ty::ExistentialPredicate::Trait(trait_ref) = t.skip_binder() {
-                        flags.push((sym::_Self, Some(self.tcx.def_path_str(trait_ref.def_id))))
+                        self_types.push(self.tcx.def_path_str(trait_ref.def_id));
                     }
                 }
             }
@@ -257,14 +249,51 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 && let ty::Slice(sty) = ref_ty.kind()
                 && sty.is_integral()
             {
-                flags.push((sym::_Self, Some("&[{integral}]".to_owned())));
+                self_types.push("&[{integral}]".to_owned());
             }
         }));
 
-        flags.push((sym::This, Some(self.tcx.def_path_str(trait_pred.trait_ref.def_id))));
+        let this = self.tcx.def_path_str(trait_pred.trait_ref.def_id).to_string();
+        let trait_sugared = trait_pred.trait_ref.print_trait_sugared().to_string();
+
+        let condition_options = ConditionOptions {
+            self_types,
+            from_desugaring,
+            cause,
+            crate_local,
+            direct,
+            generic_args,
+        };
+
+        // Unlike the generic_args earlier,
+        // this one is *not* collected under `with_no_trimmed_paths!`
+        // for printing the type to the user
+        let generic_args = self
+            .tcx
+            .generics_of(trait_pred.trait_ref.def_id)
+            .own_params
+            .iter()
+            .filter_map(|param| {
+                let value = match param.kind {
+                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+                        if let Some(ty) = trait_pred.trait_ref.args[param.index as usize].as_type()
+                        {
+                            self.tcx.short_string(ty, long_ty_file)
+                        } else {
+                            trait_pred.trait_ref.args[param.index as usize].to_string()
+                        }
+                    }
+                    GenericParamDefKind::Lifetime => return None,
+                };
+                let name = param.name;
+                Some((name, value))
+            })
+            .collect();
+
+        let format_args = FormatArgs { this, trait_sugared, generic_args, item_context };
 
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, def_id) {
-            command.evaluate(self.tcx, trait_pred.trait_ref, &flags, long_ty_file)
+            command.evaluate(self.tcx, trait_pred.trait_ref, &condition_options, &format_args)
         } else {
             OnUnimplementedNote::default()
         }
@@ -634,23 +663,23 @@ impl<'tcx> OnUnimplementedDirective {
         &self,
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
-        options: &[(Symbol, Option<String>)],
-        long_ty_file: &mut Option<PathBuf>,
+        condition_options: &ConditionOptions,
+        args: &FormatArgs,
     ) -> OnUnimplementedNote {
         let mut message = None;
         let mut label = None;
         let mut notes = Vec::new();
         let mut parent_label = None;
         let mut append_const_msg = None;
-        info!("evaluate({:?}, trait_ref={:?}, options={:?})", self, trait_ref, options);
-
-        let options_map: FxHashMap<Symbol, String> =
-            options.iter().filter_map(|(k, v)| v.clone().map(|v| (*k, v))).collect();
+        info!(
+            "evaluate({:?}, trait_ref={:?}, options={:?}, args ={:?})",
+            self, trait_ref, condition_options, args
+        );
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             debug!(?command);
             if let Some(ref condition) = command.condition
-                && !condition.matches_predicate(tcx, options, &options_map)
+                && !condition.matches_predicate(tcx, condition_options)
             {
                 debug!("evaluate: skipping {:?} due to condition", command);
                 continue;
@@ -674,14 +703,10 @@ impl<'tcx> OnUnimplementedDirective {
         }
 
         OnUnimplementedNote {
-            label: label.map(|l| l.1.format(tcx, trait_ref, &options_map, long_ty_file)),
-            message: message.map(|m| m.1.format(tcx, trait_ref, &options_map, long_ty_file)),
-            notes: notes
-                .into_iter()
-                .map(|n| n.format(tcx, trait_ref, &options_map, long_ty_file))
-                .collect(),
-            parent_label: parent_label
-                .map(|e_s| e_s.format(tcx, trait_ref, &options_map, long_ty_file)),
+            label: label.map(|l| l.1.format(tcx, trait_ref, args)),
+            message: message.map(|m| m.1.format(tcx, trait_ref, args)),
+            notes: notes.into_iter().map(|n| n.format(tcx, trait_ref, args)).collect(),
+            parent_label: parent_label.map(|e_s| e_s.format(tcx, trait_ref, args)),
             append_const_msg,
         }
     }
@@ -759,8 +784,7 @@ impl<'tcx> OnUnimplementedFormatString {
         &self,
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
-        options: &FxHashMap<Symbol, String>,
-        long_ty_file: &mut Option<PathBuf>,
+        args: &FormatArgs,
     ) -> String {
         let trait_def_id = trait_ref.def_id;
         let ctx = if self.is_diagnostic_namespace_variant {
@@ -770,7 +794,7 @@ impl<'tcx> OnUnimplementedFormatString {
         };
 
         if let Ok(s) = FormatString::parse(self.symbol, self.span, &ctx) {
-            s.format(tcx, trait_ref, options, long_ty_file)
+            s.format(args)
         } else {
             // we cannot return errors from processing the format string as hard error here
             // as the diagnostic namespace guarantees that malformed input cannot cause an error
