@@ -5,6 +5,7 @@ mod tests;
 
 use core::ffi::c_void;
 
+use super::env::{CommandEnv, CommandEnvs};
 use crate::collections::BTreeMap;
 use crate::env::consts::{EXE_EXTENSION, EXE_SUFFIX};
 use crate::ffi::{OsStr, OsString};
@@ -24,7 +25,6 @@ use crate::sys::pal::{ensure_no_nuls, fill_utf16_buf};
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::{cvt, path, stdio};
 use crate::sys_common::IntoInner;
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::{cmp, env, fmt, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,11 +388,6 @@ impl Command {
                 pipes,
             ))
         }
-    }
-
-    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
-        let (proc, pipes) = self.spawn(Stdio::MakePipe, false)?;
-        crate::sys_common::process::wait_with_output(proc, pipes)
     }
 }
 
