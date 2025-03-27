@@ -393,6 +393,6 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 138986,
         severity: ChangeSeverity::Info,
-        summary: "You can now use `change_id = \"ignore\"` to suppress `change_id` warnings in the console.",
+        summary: "You can now use `change-id = \"ignore\"` to suppress `change-id ` warnings in the console.",
     },
 ];

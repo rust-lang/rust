@@ -724,7 +724,11 @@ fn deserialize_change_id<'de, D: Deserializer<'de>>(
     Ok(match value {
         toml::Value::String(s) if s == "ignore" => Some(ChangeId::Ignore),
         toml::Value::Integer(i) => Some(ChangeId::Id(i as usize)),
-        _ => return Err(serde::de::Error::custom("expected \"ignore\" or an integer")),
+        _ => {
+            return Err(serde::de::Error::custom(
+                "expected \"ignore\" or an integer for change-id",
+            ));
+        }
     })
 }
 
