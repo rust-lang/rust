@@ -43,6 +43,7 @@
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, stdarch_internal))]
 #![deny(clippy::missing_inline_in_public_items)]
+#![allow(unknown_lints, unnecessary_transmutes)]
 #![allow(
     clippy::identity_op,
     clippy::inline_always,
