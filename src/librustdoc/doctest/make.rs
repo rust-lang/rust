@@ -5,21 +5,35 @@ use std::fmt::{self, Write as _};
 use std::io;
 use std::sync::Arc;
 
-use rustc_ast as ast;
+use rustc_ast::token::{Delimiter, TokenKind};
+use rustc_ast::tokenstream::TokenTree;
+use rustc_ast::{self as ast, AttrStyle, HasAttrs, StmtKind};
+use rustc_errors::ColorConfig;
 use rustc_errors::emitter::stderr_destination;
-use rustc_errors::{ColorConfig, FatalError};
 use rustc_parse::new_parser_from_source_str;
-use rustc_parse::parser::attr::InnerAttrPolicy;
 use rustc_session::parse::ParseSess;
-use rustc_span::FileName;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
+use rustc_span::{FileName, kw};
 use tracing::debug;
 
 use super::GlobalTestOptions;
 use crate::display::Joined as _;
 use crate::html::markdown::LangString;
+
+#[derive(Default)]
+struct ParseSourceInfo {
+    has_main_fn: bool,
+    already_has_extern_crate: bool,
+    supports_color: bool,
+    has_global_allocator: bool,
+    has_macro_def: bool,
+    everything_else: String,
+    crates: String,
+    crate_attrs: String,
+    maybe_crate_attrs: String,
+}
 
 /// This struct contains information about the doctest itself which is then used to generate
 /// doctest source code appropriately.
@@ -34,7 +48,7 @@ pub(crate) struct DocTestBuilder {
     pub(crate) crates: String,
     pub(crate) everything_else: String,
     pub(crate) test_id: Option<String>,
-    pub(crate) failed_ast: bool,
+    pub(crate) invalid_ast: bool,
     pub(crate) can_be_merged: bool,
 }
 
@@ -53,9 +67,26 @@ impl DocTestBuilder {
                 !lang_str.compile_fail && !lang_str.test_harness && !lang_str.standalone_crate
             });
 
-        let Some(SourceInfo { crate_attrs, maybe_crate_attrs, crates, everything_else }) =
-            partition_source(source, edition)
+        let result = rustc_driver::catch_fatal_errors(|| {
+            rustc_span::create_session_if_not_set_then(edition, |_| {
+                parse_source(source, &crate_name)
+            })
+        });
+
+        let Ok(Ok(ParseSourceInfo {
+            has_main_fn,
+            already_has_extern_crate,
+            supports_color,
+            has_global_allocator,
+            has_macro_def,
+            everything_else,
+            crates,
+            crate_attrs,
+            maybe_crate_attrs,
+        })) = result
         else {
+            // If the AST returned an error, we don't want this doctest to be merged with the
+            // others.
             return Self::invalid(
                 String::new(),
                 String::new(),
@@ -65,35 +96,12 @@ impl DocTestBuilder {
             );
         };
 
-        // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
-        // crate already is included.
-        let Ok((
-            ParseSourceInfo {
-                has_main_fn,
-                found_extern_crate,
-                supports_color,
-                has_global_allocator,
-                has_macro_def,
-                ..
-            },
-            failed_ast,
-        )) = check_for_main_and_extern_crate(
-            crate_name,
-            source,
-            &everything_else,
-            &crates,
-            edition,
-            can_merge_doctests,
-        )
-        else {
-            // If the parser panicked due to a fatal error, pass the test code through unchanged.
-            // The error will be reported during compilation.
-            return Self::invalid(crate_attrs, maybe_crate_attrs, crates, everything_else, test_id);
-        };
-        // If the AST returned an error, we don't want this doctest to be merged with the
-        // others. Same if it contains `#[feature]` or `#[no_std]`.
+        debug!("crate_attrs:\n{crate_attrs}{maybe_crate_attrs}");
+        debug!("crates:\n{crates}");
+        debug!("after:\n{everything_else}");
+
+        // If it contains `#[feature]` or `#[no_std]`, we don't want it to be merged either.
         let can_be_merged = can_merge_doctests
-            && !failed_ast
             && !has_global_allocator
             && crate_attrs.is_empty()
             // If this is a merged doctest and a defined macro uses `$crate`, then the path will
@@ -106,9 +114,9 @@ impl DocTestBuilder {
             maybe_crate_attrs,
             crates,
             everything_else,
-            already_has_extern_crate: found_extern_crate,
+            already_has_extern_crate,
             test_id,
-            failed_ast: false,
+            invalid_ast: false,
             can_be_merged,
         }
     }
@@ -129,7 +137,7 @@ impl DocTestBuilder {
             everything_else,
             already_has_extern_crate: false,
             test_id,
-            failed_ast: true,
+            invalid_ast: true,
             can_be_merged: false,
         }
     }
@@ -143,9 +151,10 @@ impl DocTestBuilder {
         opts: &GlobalTestOptions,
         crate_name: Option<&str>,
     ) -> (String, usize) {
-        if self.failed_ast {
+        if self.invalid_ast {
             // If the AST failed to compile, no need to go generate a complete doctest, the error
             // will be better this way.
+            debug!("invalid AST:\n{test_code}");
             return (test_code.to_string(), 0);
         }
         let mut line_offset = 0;
@@ -168,9 +177,24 @@ impl DocTestBuilder {
 
         // Now push any outer attributes from the example, assuming they
         // are intended to be crate attributes.
-        prog.push_str(&self.crate_attrs);
-        prog.push_str(&self.maybe_crate_attrs);
-        prog.push_str(&self.crates);
+        if !self.crate_attrs.is_empty() {
+            prog.push_str(&self.crate_attrs);
+            if !self.crate_attrs.ends_with('\n') {
+                prog.push('\n');
+            }
+        }
+        if !self.maybe_crate_attrs.is_empty() {
+            prog.push_str(&self.maybe_crate_attrs);
+            if !self.maybe_crate_attrs.ends_with('\n') {
+                prog.push('\n');
+            }
+        }
+        if !self.crates.is_empty() {
+            prog.push_str(&self.crates);
+            if !self.crates.ends_with('\n') {
+                prog.push('\n');
+            }
+        }
 
         // Don't inject `extern crate std` because it's already injected by the
         // compiler.
@@ -255,14 +279,7 @@ impl DocTestBuilder {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
-enum ParsingResult {
-    Failed,
-    AstError,
-    Ok,
-}
-
-fn cancel_error_count(psess: &ParseSess) {
+fn reset_error_count(psess: &ParseSess) {
     // Reset errors so that they won't be reported as compiler bugs when dropping the
     // dcx. Any errors in the tests will be reported when the test file is compiled,
     // Note that we still need to cancel the errors above otherwise `Diag` will panic on
@@ -270,17 +287,19 @@ fn cancel_error_count(psess: &ParseSess) {
     psess.dcx().reset_err_count();
 }
 
-fn parse_source(
-    source: String,
-    info: &mut ParseSourceInfo,
-    crate_name: &Option<&str>,
-) -> ParsingResult {
+const DOCTEST_CODE_WRAPPER: &str = "fn f(){";
+
+fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceInfo, ()> {
     use rustc_errors::DiagCtxt;
     use rustc_errors::emitter::{Emitter, HumanEmitter};
-    use rustc_parse::parser::ForceCollect;
     use rustc_span::source_map::FilePathMapping;
 
-    let filename = FileName::anon_source_code(&source);
+    let mut info =
+        ParseSourceInfo { already_has_extern_crate: crate_name.is_none(), ..Default::default() };
+
+    let wrapped_source = format!("{DOCTEST_CODE_WRAPPER}{source}\n}}");
+
+    let filename = FileName::anon_source_code(&wrapped_source);
 
     // Any errors in parsing should also appear when the doctest is compiled for real, so just
     // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
@@ -299,346 +318,163 @@ fn parse_source(
     let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
     let psess = ParseSess::with_dcx(dcx, sm);
 
-    let mut parser = match new_parser_from_source_str(&psess, filename, source) {
+    let mut parser = match new_parser_from_source_str(&psess, filename, wrapped_source) {
         Ok(p) => p,
         Err(errs) => {
             errs.into_iter().for_each(|err| err.cancel());
-            cancel_error_count(&psess);
-            return ParsingResult::Failed;
+            reset_error_count(&psess);
+            return Err(());
         }
     };
-    let mut parsing_result = ParsingResult::Ok;
+
+    fn push_to_s(s: &mut String, source: &str, span: rustc_span::Span, prev_span_hi: &mut usize) {
+        let extra_len = DOCTEST_CODE_WRAPPER.len();
+        // We need to shift by the length of `DOCTEST_CODE_WRAPPER` because we
+        // added it at the beginning of the source we provided to the parser.
+        let mut hi = span.hi().0 as usize - extra_len;
+        if hi > source.len() {
+            hi = source.len();
+        }
+        s.push_str(&source[*prev_span_hi..hi]);
+        *prev_span_hi = hi;
+    }
 
     // Recurse through functions body. It is necessary because the doctest source code is
     // wrapped in a function to limit the number of AST errors. If we don't recurse into
     // functions, we would thing all top-level items (so basically nothing).
-    fn check_item(
-        item: &ast::Item,
-        info: &mut ParseSourceInfo,
-        crate_name: &Option<&str>,
-        is_top_level: bool,
-    ) {
+    fn check_item(item: &ast::Item, info: &mut ParseSourceInfo, crate_name: &Option<&str>) -> bool {
+        let mut is_extern_crate = false;
         if !info.has_global_allocator
             && item.attrs.iter().any(|attr| attr.name_or_empty() == sym::global_allocator)
         {
             info.has_global_allocator = true;
         }
         match item.kind {
-            ast::ItemKind::Fn(ref fn_item) if !info.has_main_fn => {
-                if item.ident.name == sym::main && is_top_level {
+            ast::ItemKind::Fn(_) if !info.has_main_fn => {
+                // We only push if it's the top item because otherwise, we would duplicate
+                // its content since the top-level item was already added.
+                if item.ident.name == sym::main {
                     info.has_main_fn = true;
-                }
-                if let Some(ref body) = fn_item.body {
-                    for stmt in &body.stmts {
-                        match stmt.kind {
-                            ast::StmtKind::Item(ref item) => {
-                                check_item(item, info, crate_name, false)
-                            }
-                            ast::StmtKind::MacCall(..) => info.found_macro = true,
-                            _ => {}
-                        }
-                    }
                 }
             }
             ast::ItemKind::ExternCrate(original) => {
-                if !info.found_extern_crate
+                is_extern_crate = true;
+                if !info.already_has_extern_crate
                     && let Some(crate_name) = crate_name
                 {
-                    info.found_extern_crate = match original {
+                    info.already_has_extern_crate = match original {
                         Some(name) => name.as_str() == *crate_name,
                         None => item.ident.as_str() == *crate_name,
                     };
                 }
             }
-            ast::ItemKind::MacCall(..) => info.found_macro = true,
-            ast::ItemKind::MacroDef(..) => info.has_macro_def = true,
+            ast::ItemKind::MacroDef(..) => {
+                info.has_macro_def = true;
+            }
             _ => {}
         }
+        is_extern_crate
     }
 
-    loop {
-        match parser.parse_item(ForceCollect::No) {
-            Ok(Some(item)) => {
-                check_item(&item, info, crate_name, true);
+    let mut prev_span_hi = 0;
+    let not_crate_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
+    let parsed = parser.parse_item(rustc_parse::parser::ForceCollect::No);
 
-                if info.has_main_fn && info.found_extern_crate {
-                    break;
+    let result = match parsed {
+        Ok(Some(ref item))
+            if let ast::ItemKind::Fn(ref fn_item) = item.kind
+                && let Some(ref body) = fn_item.body =>
+        {
+            for attr in &item.attrs {
+                let attr_name = attr.name_or_empty();
+
+                if attr.style == AttrStyle::Outer || not_crate_attrs.contains(&attr_name) {
+                    // There is one exception to these attributes:
+                    // `#![allow(internal_features)]`. If this attribute is used, we need to
+                    // consider it only as a crate-level attribute.
+                    if attr_name == sym::allow
+                        && let Some(list) = attr.meta_item_list()
+                        && list.iter().any(|sub_attr| {
+                            sub_attr.name_or_empty().as_str() == "internal_features"
+                        })
+                    {
+                        push_to_s(&mut info.crate_attrs, source, attr.span, &mut prev_span_hi);
+                    } else {
+                        push_to_s(
+                            &mut info.maybe_crate_attrs,
+                            source,
+                            attr.span,
+                            &mut prev_span_hi,
+                        );
+                    }
+                } else {
+                    push_to_s(&mut info.crate_attrs, source, attr.span, &mut prev_span_hi);
                 }
             }
-            Ok(None) => break,
-            Err(e) => {
-                parsing_result = ParsingResult::AstError;
-                e.cancel();
-                break;
+            for stmt in &body.stmts {
+                let mut is_extern_crate = false;
+                match stmt.kind {
+                    StmtKind::Item(ref item) => {
+                        is_extern_crate = check_item(&item, &mut info, crate_name);
+                    }
+                    StmtKind::Expr(ref expr) if matches!(expr.kind, ast::ExprKind::Err(_)) => {
+                        reset_error_count(&psess);
+                        return Err(());
+                    }
+                    StmtKind::MacCall(ref mac_call) if !info.has_main_fn => {
+                        let mut iter = mac_call.mac.args.tokens.iter();
+
+                        while let Some(token) = iter.next() {
+                            if let TokenTree::Token(token, _) = token
+                                && let TokenKind::Ident(name, _) = token.kind
+                                && name == kw::Fn
+                                && let Some(TokenTree::Token(fn_token, _)) = iter.peek()
+                                && let TokenKind::Ident(fn_name, _) = fn_token.kind
+                                && fn_name == sym::main
+                                && let Some(TokenTree::Delimited(_, _, Delimiter::Parenthesis, _)) = {
+                                    iter.next();
+                                    iter.peek()
+                                }
+                            {
+                                info.has_main_fn = true;
+                                break;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+
+                // Weirdly enough, the `Stmt` span doesn't include its attributes, so we need to
+                // tweak the span to include the attributes as well.
+                let mut span = stmt.span;
+                if let Some(attr) =
+                    stmt.kind.attrs().iter().find(|attr| attr.style == AttrStyle::Outer)
+                {
+                    span = span.with_lo(attr.span.lo());
+                }
+                if info.everything_else.is_empty()
+                    && (!info.maybe_crate_attrs.is_empty() || !info.crate_attrs.is_empty())
+                {
+                    // To keep the doctest code "as close as possible" to the original, we insert
+                    // all the code located between this new span and the previous span which
+                    // might contain code comments and backlines.
+                    push_to_s(&mut info.crates, source, span.shrink_to_lo(), &mut prev_span_hi);
+                }
+                if !is_extern_crate {
+                    push_to_s(&mut info.everything_else, source, span, &mut prev_span_hi);
+                } else {
+                    push_to_s(&mut info.crates, source, span, &mut prev_span_hi);
+                }
             }
+            Ok(info)
         }
-
-        // The supplied item is only used for diagnostics,
-        // which are swallowed here anyway.
-        parser.maybe_consume_incorrect_semicolon(None);
-    }
-
-    cancel_error_count(&psess);
-    parsing_result
-}
-
-#[derive(Default)]
-struct ParseSourceInfo {
-    has_main_fn: bool,
-    found_extern_crate: bool,
-    found_macro: bool,
-    supports_color: bool,
-    has_global_allocator: bool,
-    has_macro_def: bool,
-}
-
-fn check_for_main_and_extern_crate(
-    crate_name: Option<&str>,
-    original_source_code: &str,
-    everything_else: &str,
-    crates: &str,
-    edition: Edition,
-    can_merge_doctests: bool,
-) -> Result<(ParseSourceInfo, bool), FatalError> {
-    let result = rustc_driver::catch_fatal_errors(|| {
-        rustc_span::create_session_if_not_set_then(edition, |_| {
-            let mut info =
-                ParseSourceInfo { found_extern_crate: crate_name.is_none(), ..Default::default() };
-
-            let mut parsing_result =
-                parse_source(format!("{crates}{everything_else}"), &mut info, &crate_name);
-            // No need to double-check this if the "merged doctests" feature isn't enabled (so
-            // before the 2024 edition).
-            if can_merge_doctests && parsing_result != ParsingResult::Ok {
-                // If we found an AST error, we want to ensure it's because of an expression being
-                // used outside of a function.
-                //
-                // To do so, we wrap in a function in order to make sure that the doctest AST is
-                // correct. For example, if your doctest is `foo::bar()`, if we don't wrap it in a
-                // block, it would emit an AST error, which would be problematic for us since we
-                // want to filter out such errors which aren't "real" errors.
-                //
-                // The end goal is to be able to merge as many doctests as possible as one for much
-                // faster doctests run time.
-                parsing_result = parse_source(
-                    format!("{crates}\nfn __doctest_wrap(){{{everything_else}\n}}"),
-                    &mut info,
-                    &crate_name,
-                );
-            }
-
-            (info, parsing_result)
-        })
-    });
-    let (mut info, parsing_result) = match result {
-        Err(..) | Ok((_, ParsingResult::Failed)) => return Err(FatalError),
-        Ok((info, parsing_result)) => (info, parsing_result),
+        Err(e) => {
+            e.cancel();
+            Err(())
+        }
+        _ => Err(()),
     };
 
-    // If a doctest's `fn main` is being masked by a wrapper macro, the parsing loop above won't
-    // see it. In that case, run the old text-based scan to see if they at least have a main
-    // function written inside a macro invocation. See
-    // https://github.com/rust-lang/rust/issues/56898
-    if info.found_macro
-        && !info.has_main_fn
-        && original_source_code
-            .lines()
-            .map(|line| {
-                let comment = line.find("//");
-                if let Some(comment_begins) = comment { &line[0..comment_begins] } else { line }
-            })
-            .any(|code| code.contains("fn main"))
-    {
-        info.has_main_fn = true;
-    }
-
-    Ok((info, parsing_result != ParsingResult::Ok))
-}
-
-enum AttrKind {
-    CrateAttr,
-    Attr,
-}
-
-/// Returns `Some` if the attribute is complete and `Some(true)` if it is an attribute that can be
-/// placed at the crate root.
-fn check_if_attr_is_complete(source: &str, edition: Edition) -> Option<AttrKind> {
-    if source.is_empty() {
-        // Empty content so nothing to check in here...
-        return None;
-    }
-    let not_crate_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny];
-
-    rustc_driver::catch_fatal_errors(|| {
-        rustc_span::create_session_if_not_set_then(edition, |_| {
-            use rustc_errors::DiagCtxt;
-            use rustc_errors::emitter::HumanEmitter;
-            use rustc_span::source_map::FilePathMapping;
-
-            let filename = FileName::anon_source_code(source);
-            // Any errors in parsing should also appear when the doctest is compiled for real, so just
-            // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
-            let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
-            let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-                rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
-                false,
-            );
-
-            let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
-
-            let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
-            let psess = ParseSess::with_dcx(dcx, sm);
-            let mut parser = match new_parser_from_source_str(&psess, filename, source.to_owned()) {
-                Ok(p) => p,
-                Err(errs) => {
-                    errs.into_iter().for_each(|err| err.cancel());
-                    // If there is an unclosed delimiter, an error will be returned by the
-                    // tokentrees.
-                    return None;
-                }
-            };
-            // If a parsing error happened, it's very likely that the attribute is incomplete.
-            let ret = match parser.parse_attribute(InnerAttrPolicy::Permitted) {
-                Ok(attr) => {
-                    let attr_name = attr.name_or_empty();
-
-                    if not_crate_attrs.contains(&attr_name) {
-                        // There is one exception to these attributes:
-                        // `#![allow(internal_features)]`. If this attribute is used, we need to
-                        // consider it only as a crate-level attribute.
-                        if attr_name == sym::allow
-                            && let Some(list) = attr.meta_item_list()
-                            && list.iter().any(|sub_attr| {
-                                sub_attr.name_or_empty().as_str() == "internal_features"
-                            })
-                        {
-                            Some(AttrKind::CrateAttr)
-                        } else {
-                            Some(AttrKind::Attr)
-                        }
-                    } else {
-                        Some(AttrKind::CrateAttr)
-                    }
-                }
-                Err(e) => {
-                    e.cancel();
-                    None
-                }
-            };
-            ret
-        })
-    })
-    .unwrap_or(None)
-}
-
-fn handle_attr(mod_attr_pending: &mut String, source_info: &mut SourceInfo, edition: Edition) {
-    if let Some(attr_kind) = check_if_attr_is_complete(mod_attr_pending, edition) {
-        let push_to = match attr_kind {
-            AttrKind::CrateAttr => &mut source_info.crate_attrs,
-            AttrKind::Attr => &mut source_info.maybe_crate_attrs,
-        };
-        push_to.push_str(mod_attr_pending);
-        push_to.push('\n');
-        // If it's complete, then we can clear the pending content.
-        mod_attr_pending.clear();
-    } else {
-        mod_attr_pending.push('\n');
-    }
-}
-
-#[derive(Default)]
-struct SourceInfo {
-    crate_attrs: String,
-    maybe_crate_attrs: String,
-    crates: String,
-    everything_else: String,
-}
-
-fn partition_source(s: &str, edition: Edition) -> Option<SourceInfo> {
-    #[derive(Copy, Clone, PartialEq)]
-    enum PartitionState {
-        Attrs,
-        Crates,
-        Other,
-    }
-    let mut source_info = SourceInfo::default();
-    let mut state = PartitionState::Attrs;
-    let mut mod_attr_pending = String::new();
-
-    for line in s.lines() {
-        let trimline = line.trim();
-
-        // FIXME(misdreavus): if a doc comment is placed on an extern crate statement, it will be
-        // shunted into "everything else"
-        match state {
-            PartitionState::Attrs => {
-                state = if trimline.starts_with("#![") {
-                    mod_attr_pending = line.to_owned();
-                    handle_attr(&mut mod_attr_pending, &mut source_info, edition);
-                    continue;
-                } else if trimline.chars().all(|c| c.is_whitespace())
-                    || (trimline.starts_with("//") && !trimline.starts_with("///"))
-                {
-                    PartitionState::Attrs
-                } else if trimline.starts_with("extern crate")
-                    || trimline.starts_with("#[macro_use] extern crate")
-                {
-                    PartitionState::Crates
-                } else {
-                    // First we check if the previous attribute was "complete"...
-                    if !mod_attr_pending.is_empty() {
-                        // If not, then we append the new line into the pending attribute to check
-                        // if this time it's complete...
-                        mod_attr_pending.push_str(line);
-                        if !trimline.is_empty() {
-                            handle_attr(&mut mod_attr_pending, &mut source_info, edition);
-                        }
-                        continue;
-                    } else {
-                        PartitionState::Other
-                    }
-                };
-            }
-            PartitionState::Crates => {
-                state = if trimline.starts_with("extern crate")
-                    || trimline.starts_with("#[macro_use] extern crate")
-                    || trimline.chars().all(|c| c.is_whitespace())
-                    || (trimline.starts_with("//") && !trimline.starts_with("///"))
-                {
-                    PartitionState::Crates
-                } else {
-                    PartitionState::Other
-                };
-            }
-            PartitionState::Other => {}
-        }
-
-        match state {
-            PartitionState::Attrs => {
-                source_info.crate_attrs.push_str(line);
-                source_info.crate_attrs.push('\n');
-            }
-            PartitionState::Crates => {
-                source_info.crates.push_str(line);
-                source_info.crates.push('\n');
-            }
-            PartitionState::Other => {
-                source_info.everything_else.push_str(line);
-                source_info.everything_else.push('\n');
-            }
-        }
-    }
-
-    if !mod_attr_pending.is_empty() {
-        debug!("invalid doctest code: {s:?}");
-        return None;
-    }
-
-    source_info.everything_else = source_info.everything_else.trim().to_string();
-
-    debug!("crate_attrs:\n{}{}", source_info.crate_attrs, source_info.maybe_crate_attrs);
-    debug!("crates:\n{}", source_info.crates);
-    debug!("after:\n{}", source_info.everything_else);
-
-    Some(source_info)
+    reset_error_count(&psess);
+    result
 }
