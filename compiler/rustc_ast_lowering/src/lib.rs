@@ -126,7 +126,7 @@ struct LoweringContext<'a, 'hir> {
     is_in_dyn_type: bool,
 
     current_hir_id_owner: hir::OwnerId,
-    current_ast_id_owner: NodeId,
+    current_ast_id_owner: PerOwnerResolverData,
     item_local_id_counter: hir::ItemLocalId,
     trait_map: ItemLocalMap<Box<[TraitCandidate]>>,
 
@@ -165,7 +165,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             children: Vec::default(),
             contract_ensures: None,
             current_hir_id_owner: hir::CRATE_OWNER_ID,
-            current_ast_id_owner: CRATE_NODE_ID,
+            current_ast_id_owner: PerOwnerResolverData::new(DUMMY_NODE_ID),
             item_local_id_counter: hir::ItemLocalId::ZERO,
             ident_and_label_to_local_id: Default::default(),
             #[cfg(debug_assertions)]
@@ -536,12 +536,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.tcx.at(span).create_def(self.current_hir_id_owner.def_id, name, def_kind).def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
-        self.resolver
-            .owners
-            .get_mut(&self.current_ast_id_owner)
-            .unwrap()
-            .node_id_to_def_id
-            .insert(node_id, def_id);
+        self.current_ast_id_owner.node_id_to_def_id.insert(node_id, def_id);
 
         def_id
     }
@@ -556,7 +551,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
     /// resolver (if any).
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.resolver.owners[&self.current_ast_id_owner].node_id_to_def_id.get(&node).copied()
+        self.current_ast_id_owner.node_id_to_def_id.get(&node).copied()
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
@@ -565,10 +560,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 items.node_id_to_def_id.items().any(|(node_id, def_id)| {
                     if *node_id == node {
                         panic!(
-                            "{def_id:?} ({node_id}) was found in {:?} ({id}) instead of in {:?} ({})",
+                            "{def_id:?} ({node_id}) was found in {:?} ({id})",
                             items.node_id_to_def_id.get(id),
-                            self.resolver.owners[&self.current_ast_id_owner].node_id_to_def_id[&self.current_ast_id_owner],
-                            self.current_ast_id_owner,
                         )
                     }
                     false
@@ -599,7 +592,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_define_opaque = std::mem::take(&mut self.define_opaque);
-        let current_ast_owner = std::mem::replace(&mut self.current_ast_id_owner, owner);
+        let current_ast_owner = std::mem::replace(
+            &mut self.current_ast_id_owner,
+            self.resolver.owners.remove(&owner).unwrap(),
+        );
         let current_ident_and_label_to_local_id =
             std::mem::take(&mut self.ident_and_label_to_local_id);
 

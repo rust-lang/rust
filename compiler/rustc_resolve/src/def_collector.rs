@@ -8,6 +8,7 @@ use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::ty::PerOwnerResolverData;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
@@ -20,10 +21,13 @@ pub(crate) fn collect_definitions(
     expansion: LocalExpnId,
 ) {
     let invocation_parent = resolver.invocation_parents[&expansion];
-    resolver.current_owner = invocation_parent.owner;
+    assert_eq!(resolver.current_owner.id, DUMMY_NODE_ID);
+    resolver.current_owner = resolver.owners.remove(&invocation_parent.owner).unwrap();
     let mut visitor = DefCollector { resolver, expansion, invocation_parent };
     fragment.visit_with(&mut visitor);
-    resolver.current_owner = DUMMY_NODE_ID;
+    let tables =
+        mem::replace(&mut resolver.current_owner, PerOwnerResolverData::new(DUMMY_NODE_ID));
+    assert!(resolver.owners.insert(invocation_parent.owner, tables).is_none());
 }
 
 /// Creates `DefId`s for nodes in the AST.
@@ -68,12 +72,21 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn with_owner<F: FnOnce(&mut Self)>(&mut self, owner: NodeId, f: F) {
-        let orig_owner = mem::replace(&mut self.resolver.current_owner, owner);
-        let orig_invoc_owner = mem::replace(&mut self.invocation_parent.owner, owner);
         assert_ne!(owner, DUMMY_NODE_ID);
-        self.resolver.owners.entry(owner).or_default();
+        if owner == CRATE_NODE_ID {
+            // Special case: we always have an invocation parent of at least the crate root,
+            // even for visiting the crate root, which would then remove the crate root from the tables
+            // list twice and try to insert it twice afterwards.
+            assert_eq!(self.resolver.current_owner.id, CRATE_NODE_ID);
+            return f(self);
+        }
+        let tables =
+            self.resolver.owners.remove(&owner).unwrap_or_else(|| PerOwnerResolverData::new(owner));
+        let orig_owner = mem::replace(&mut self.resolver.current_owner, tables);
+        let orig_invoc_owner = mem::replace(&mut self.invocation_parent.owner, owner);
         f(self);
-        assert_eq!(mem::replace(&mut self.resolver.current_owner, orig_owner), owner);
+        let tables = mem::replace(&mut self.resolver.current_owner, orig_owner);
+        assert!(self.resolver.owners.insert(owner, tables).is_none());
         assert_eq!(mem::replace(&mut self.invocation_parent.owner, orig_invoc_owner), owner);
     }
 

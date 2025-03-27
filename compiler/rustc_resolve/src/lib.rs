@@ -1064,8 +1064,8 @@ pub struct Resolver<'ra, 'tcx> {
     /// Preserves per owner data once the owner is finished resolving.
     owners: NodeMap<PerOwnerResolverData>,
 
-    /// Used to index into [Self::owners]. Refers to the owner of the nodes that are currently processed
-    current_owner: NodeId,
+    /// An entry of `owners` that gets taken out and reinserted whenever an owner is handled.
+    current_owner: PerOwnerResolverData,
 
     /// Resolutions for nodes that have a single resolution.
     partial_res_map: NodeMap<PartialRes>,
@@ -1240,10 +1240,8 @@ pub struct Resolver<'ra, 'tcx> {
 
 impl<'ra, 'tcx> std::ops::DerefMut for Resolver<'ra, 'tcx> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        assert_ne!(self.current_owner, DUMMY_NODE_ID);
-        self.owners
-            .get_mut(&self.current_owner)
-            .unwrap_or_else(|| panic!("no entry for {}", self.current_owner))
+        assert_ne!(self.current_owner.id, DUMMY_NODE_ID);
+        &mut self.current_owner
     }
 }
 
@@ -1251,8 +1249,8 @@ impl<'ra, 'tcx> std::ops::Deref for Resolver<'ra, 'tcx> {
     type Target = PerOwnerResolverData;
 
     fn deref(&self) -> &Self::Target {
-        assert_ne!(self.current_owner, DUMMY_NODE_ID);
-        &self.owners[&self.current_owner]
+        assert_ne!(self.current_owner.id, DUMMY_NODE_ID);
+        &self.current_owner
     }
 }
 
@@ -1445,7 +1443,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut def_id_to_node_id = IndexVec::default();
         assert_eq!(def_id_to_node_id.push(CRATE_NODE_ID), CRATE_DEF_ID);
         let mut feed_for_node_id = NodeMap::default();
-        let mut owner_data = PerOwnerResolverData::default();
+        let mut owner_data = PerOwnerResolverData::new(CRATE_NODE_ID);
         let crate_feed = tcx.create_local_crate_def_id(crate_span);
 
         crate_feed.def_kind(DefKind::Mod);
@@ -1498,7 +1496,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             pat_span_map: Default::default(),
             owners,
-            current_owner: DUMMY_NODE_ID,
+            current_owner: PerOwnerResolverData::new(DUMMY_NODE_ID),
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             import_use_map: Default::default(),
@@ -2291,9 +2289,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     #[instrument(level = "debug", skip(self, work))]
     fn with_owner<T>(&mut self, owner: NodeId, work: impl FnOnce(&mut Self) -> T) -> T {
-        let old_owner = std::mem::replace(&mut self.current_owner, owner);
+        let old_owner =
+            std::mem::replace(&mut self.current_owner, self.owners.remove(&owner).unwrap());
         let ret = work(self);
-        assert_eq!(std::mem::replace(&mut self.current_owner, old_owner), owner);
+        assert!(
+            self.owners
+                .insert(owner, std::mem::replace(&mut self.current_owner, old_owner))
+                .is_none()
+        );
         ret
     }
 }
