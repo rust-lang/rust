@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-/* global addClass, getNakedUrl, getSettingValue, getVar, nonundef */
+/* global addClass, getNakedUrl, getSettingValue, getVar */
 /* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi, exports */
 
 "use strict";
@@ -353,7 +353,8 @@ function getFilteredNextElem(query, parserState, elems, isInGenerics) {
         const typeFilterElem = elems.pop();
         checkExtraTypeFilterCharacters(start, parserState);
         // typeFilterElem is not undefined. If it was, the elems.length check would have fired.
-        parserState.typeFilter = nonundef(typeFilterElem).normalizedPathLast;
+        // @ts-expect-error
+        parserState.typeFilter = typeFilterElem.normalizedPathLast;
         parserState.pos += 1;
         parserState.totalElems -= 1;
         query.literalSearch = false;
