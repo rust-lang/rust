@@ -8,7 +8,8 @@ use pulldown_cmark::{
 use rustc_ast as ast;
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::util::comments::beautify_doc_string;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::unord::UnordSet;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, InnerSpan, Span, Symbol, kw, sym};
@@ -423,7 +424,7 @@ fn parse_links<'md>(doc: &'md str) -> Vec<Box<str>> {
     );
     let mut links = Vec::new();
 
-    let mut refids = FxHashSet::default();
+    let mut refids = UnordSet::default();
 
     while let Some(event) = event_iter.next() {
         match event {
