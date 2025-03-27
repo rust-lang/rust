@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
-use rustc_ast::{self as ast, HasAttrs, StmtKind};
+use rustc_ast::{self as ast, AttrStyle, HasAttrs, StmtKind};
 use rustc_errors::ColorConfig;
 use rustc_errors::emitter::stderr_destination;
 use rustc_parse::new_parser_from_source_str;
@@ -388,7 +388,7 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
             for attr in &item.attrs {
                 let attr_name = attr.name_or_empty();
 
-                if attr.style == ast::AttrStyle::Outer || not_crate_attrs.contains(&attr_name) {
+                if attr.style == AttrStyle::Outer || not_crate_attrs.contains(&attr_name) {
                     // There is one exception to these attributes:
                     // `#![allow(internal_features)]`. If this attribute is used, we need to
                     // consider it only as a crate-level attribute.
@@ -447,7 +447,9 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 // Weirdly enough, the `Stmt` span doesn't include its attributes, so we need to
                 // tweak the span to include the attributes as well.
                 let mut span = stmt.span;
-                if let Some(attr) = stmt.kind.attrs().first() {
+                if let Some(attr) =
+                    stmt.kind.attrs().iter().find(|attr| attr.style == AttrStyle::Outer)
+                {
                     span = span.with_lo(attr.span.lo());
                 }
                 if info.everything_else.is_empty()
