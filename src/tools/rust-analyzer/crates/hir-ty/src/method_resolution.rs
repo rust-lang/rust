@@ -874,21 +874,26 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
         return true;
     }
 
-    let unwrap_fundamental = |ty: Ty| match ty.kind(Interner) {
-        TyKind::Ref(_, _, referenced) => referenced.clone(),
-        &TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), ref subs) => {
-            let struct_data = db.struct_data(s);
-            if struct_data.flags.contains(StructFlags::IS_FUNDAMENTAL) {
-                let next = subs.type_parameters(Interner).next();
-                match next {
-                    Some(ty) => ty,
-                    None => ty,
+    let unwrap_fundamental = |mut ty: Ty| {
+        // Unwrap all layers of fundamental types with a loop.
+        loop {
+            match ty.kind(Interner) {
+                TyKind::Ref(_, _, referenced) => ty = referenced.clone(),
+                &TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), ref subs) => {
+                    let struct_data = db.struct_data(s);
+                    if struct_data.flags.contains(StructFlags::IS_FUNDAMENTAL) {
+                        let next = subs.type_parameters(Interner).next();
+                        match next {
+                            Some(it) => ty = it,
+                            None => break ty,
+                        }
+                    } else {
+                        break ty;
+                    }
                 }
-            } else {
-                ty
+                _ => break ty,
             }
         }
-        _ => ty,
     };
     //   - At least one of the types `T0..=Tn`` must be a local type. Let `Ti`` be the first such type.
     let is_not_orphan = trait_ref.substitution.type_parameters(Interner).any(|ty| {
