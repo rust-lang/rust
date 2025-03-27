@@ -215,33 +215,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let bool_type = context.new_type::<bool>();
 
         let mut functions = FxHashMap::default();
-        let builtins = [
-            "__builtin_unreachable",
-            "abort",
-            "__builtin_expect", /*"__builtin_expect_with_probability",*/
-            "__builtin_constant_p",
-            "__builtin_add_overflow",
-            "__builtin_mul_overflow",
-            "__builtin_saddll_overflow",
-            /*"__builtin_sadd_overflow",*/
-            "__builtin_smulll_overflow", /*"__builtin_smul_overflow",*/
-            "__builtin_ssubll_overflow",
-            /*"__builtin_ssub_overflow",*/ "__builtin_sub_overflow",
-            "__builtin_uaddll_overflow",
-            "__builtin_uadd_overflow",
-            "__builtin_umulll_overflow",
-            "__builtin_umul_overflow",
-            "__builtin_usubll_overflow",
-            "__builtin_usub_overflow",
-            "__builtin_powif",
-            "__builtin_powi",
-            "fabsf",
-            "fabs",
-            "copysignf",
-            "copysign",
-            "nearbyintf",
-            "nearbyint",
-        ];
+        let builtins = ["abort"];
 
         for builtin in builtins.iter() {
             functions.insert(builtin.to_string(), context.get_builtin_function(builtin));
