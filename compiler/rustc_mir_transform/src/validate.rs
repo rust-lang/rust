@@ -12,6 +12,7 @@ use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, CoroutineArgsExt, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Upcast, Variance,
 };
@@ -543,7 +544,13 @@ pub(super) fn validate_types<'tcx>(
     caller_body: &Body<'tcx>,
 ) -> Vec<(Location, String)> {
     let mut type_checker = TypeChecker { body, caller_body, tcx, typing_env, failures: Vec::new() };
-    type_checker.visit_body(body);
+    // The type checker formats a bunch of strings with type names in it, but these strings
+    // are not always going to be encountered on the error path since the inliner also uses
+    // the validator, and there are certain kinds of inlining (even for valid code) that
+    // can cause validation errors (mostly around where clauses and rigid projections).
+    with_no_trimmed_paths!({
+        type_checker.visit_body(body);
+    });
     type_checker.failures
 }
 
