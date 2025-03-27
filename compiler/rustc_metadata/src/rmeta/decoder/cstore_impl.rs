@@ -330,10 +330,7 @@ provide! { tcx, def_id, other, cdata,
 
     visibility => { cdata.get_visibility(def_id.index) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
-    adt_destructor => {
-        let _ = cdata;
-        tcx.calculate_dtor(def_id, |_,_| Ok(()))
-    }
+    adt_destructor => { table }
     adt_async_destructor => {
         let _ = cdata;
         tcx.calculate_async_dtor(def_id, |_,_| Ok(()))

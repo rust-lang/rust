@@ -68,6 +68,7 @@ trivially_parameterized_over_tcx! {
     ty::AssocItemContainer,
     ty::Asyncness,
     ty::DeducedParamAttrs,
+    ty::Destructor,
     ty::Generics,
     ty::ImplPolarity,
     ty::ImplTraitInTraitData,
