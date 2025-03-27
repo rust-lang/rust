@@ -3,7 +3,7 @@
 //@ run-pass
 //@ edition: 2024
 
-#![feature(gen_blocks, coroutines, coroutine_trait, yield_expr)]
+#![feature(gen_blocks, coroutines, coroutine_trait, yield_expr, stmt_expr_attributes)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::pin;
