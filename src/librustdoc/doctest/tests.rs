@@ -405,7 +405,9 @@ fn check_split_args() {
 
 #[test]
 fn comment_in_attrs() {
-    // if input already has a fn main, it should insert a space before it
+    // If there is an inline code comment after attributes, we need to ensure that
+    // a backline will be added to prevent generating code "inside" it (and thus generating)
+    // invalid code.
     let opts = default_global_opts("");
     let input = "\
 #![feature(rustdoc_internals)]
@@ -424,4 +426,24 @@ fn main() {
     .to_string();
     let (output, len) = make_test(input, None, false, &opts, None);
     assert_eq!((output, len), (expected, 2));
+
+    // And same, if there is a `main` function provided by the user, we ensure that it's
+    // correctly separated.
+    let input = "\
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+//! This crate has the Rust(tm) branding on it.
+fn main() {}";
+    let expected = "\
+#![allow(unused)]
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+//! This crate has the Rust(tm) branding on it.
+
+fn main() {}"
+        .to_string();
+    let (output, len) = make_test(input, None, false, &opts, None);
+    assert_eq!((output, len), (expected, 1));
 }

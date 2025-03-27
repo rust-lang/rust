@@ -85,6 +85,8 @@ impl DocTestBuilder {
             maybe_crate_attrs,
         })) = result
         else {
+            // If the AST returned an error, we don't want this doctest to be merged with the
+            // others.
             return Self::invalid(
                 String::new(),
                 String::new(),
@@ -98,8 +100,7 @@ impl DocTestBuilder {
         debug!("crates:\n{crates}");
         debug!("after:\n{everything_else}");
 
-        // If the AST returned an error, we don't want this doctest to be merged with the
-        // others. Same if it contains `#[feature]` or `#[no_std]`.
+        // If it contains `#[feature]` or `#[no_std]`, we don't want it to be merged either.
         let can_be_merged = can_merge_doctests
             && !has_global_allocator
             && crate_attrs.is_empty()
