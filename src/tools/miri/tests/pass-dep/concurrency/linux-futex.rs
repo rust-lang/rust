@@ -64,7 +64,7 @@ fn wait_wrong_val() {
             ),
             -1,
         );
-        assert_eq!(*libc::__errno_location(), libc::EAGAIN);
+        assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::EAGAIN);
     }
 }
 
@@ -85,7 +85,7 @@ fn wait_timeout() {
             ),
             -1,
         );
-        assert_eq!(*libc::__errno_location(), libc::ETIMEDOUT);
+        assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
     }
 
     assert!((200..1000).contains(&start.elapsed().as_millis()));
@@ -124,7 +124,7 @@ fn wait_absolute_timeout() {
             ),
             -1,
         );
-        assert_eq!(*libc::__errno_location(), libc::ETIMEDOUT);
+        assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
     }
 
     assert!((200..1000).contains(&start.elapsed().as_millis()));
