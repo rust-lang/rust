@@ -3,6 +3,7 @@
 #![allow(
     dead_code,
     clippy::borrow_as_ptr,
+    unnecessary_transmutes,
     clippy::needless_lifetimes,
     clippy::missing_transmute_annotations
 )]
