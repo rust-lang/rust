@@ -187,9 +187,17 @@ pub struct ResolverGlobalCtxt {
     pub stripped_cfg_items: Steal<Vec<StrippedCfgItem>>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct PerOwnerResolverData {
     pub node_id_to_def_id: NodeMap<LocalDefId>,
+    /// The id of the owner
+    pub id: ast::NodeId,
+}
+
+impl PerOwnerResolverData {
+    pub fn new(id: ast::NodeId) -> Self {
+        Self { node_id_to_def_id: Default::default(), id }
+    }
 }
 
 /// Resolutions that should only be used for lowering.

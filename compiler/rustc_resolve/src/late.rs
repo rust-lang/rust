@@ -1688,9 +1688,11 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     #[instrument(level = "debug", skip(self, work))]
     fn with_owner<T>(&mut self, owner: NodeId, work: impl FnOnce(&mut Self) -> T) -> T {
-        let old_owner = std::mem::replace(&mut self.r.current_owner, owner);
+        let old_owner =
+            std::mem::replace(&mut self.r.current_owner, self.r.owners.remove(&owner).unwrap());
         let ret = work(self);
-        self.r.current_owner = old_owner;
+        let prev = std::mem::replace(&mut self.r.current_owner, old_owner);
+        self.r.owners.insert(prev.id, prev);
         ret
     }
 
@@ -5239,20 +5241,21 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
-        self.current_owner = CRATE_NODE_ID;
-        visit::walk_crate(&mut ItemInfoCollector { r: self }, krate);
-        let mut late_resolution_visitor = LateResolutionVisitor::new(self);
-        late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
-        visit::walk_crate(&mut late_resolution_visitor, krate);
-        for (id, span) in late_resolution_visitor.diag_metadata.unused_labels.iter() {
-            self.lint_buffer.buffer_lint(
-                lint::builtin::UNUSED_LABELS,
-                *id,
-                *span,
-                BuiltinLintDiag::UnusedLabel,
-            );
-        }
-        self.current_owner = DUMMY_NODE_ID;
+        self.with_owner(CRATE_NODE_ID, |this| {
+            visit::walk_crate(&mut ItemInfoCollector { r: this }, krate);
+            let mut late_resolution_visitor = LateResolutionVisitor::new(this);
+            late_resolution_visitor
+                .resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
+            visit::walk_crate(&mut late_resolution_visitor, krate);
+            for (id, span) in late_resolution_visitor.diag_metadata.unused_labels.iter() {
+                this.lint_buffer.buffer_lint(
+                    lint::builtin::UNUSED_LABELS,
+                    *id,
+                    *span,
+                    BuiltinLintDiag::UnusedLabel,
+                );
+            }
+        })
     }
 }
 
