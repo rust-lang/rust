@@ -2404,8 +2404,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(no_sanitize)]
-    ///
     /// #[inline(always)]
     /// #[no_sanitize(address)]
     /// fn x() {}

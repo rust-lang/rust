@@ -470,10 +470,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(track_caller, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
     ungated!(instruction_set, Normal, template!(List: "set"), ErrorPreceding, EncodeCrossCrate::No),
-    gated!(
+    ungated!(
         no_sanitize, Normal,
         template!(List: "address, kcfi, memory, thread"), DuplicatesOk,
-        EncodeCrossCrate::No, experimental!(no_sanitize)
+        EncodeCrossCrate::No
     ),
     gated!(
         coverage, Normal, template!(OneOf: &[sym::off, sym::on]),
