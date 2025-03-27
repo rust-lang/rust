@@ -15,7 +15,7 @@
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
 #![allow(unreachable_pub, internal_features, clippy::disallowed_types, clippy::print_stderr)]
-#![deny(deprecated_safe)]
+#![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 
 extern crate proc_macro;
 #[cfg(feature = "in-rust-tree")]
