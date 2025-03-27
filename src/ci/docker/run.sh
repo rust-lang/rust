@@ -355,6 +355,8 @@ docker \
   --env GITHUB_ACTIONS \
   --env GITHUB_REF \
   --env GITHUB_STEP_SUMMARY="/checkout/obj/${SUMMARY_FILE}" \
+  --env GITHUB_WORKFLOW_RUN_ID \
+  --env GITHUB_REPOSITORY \
   --env RUST_BACKTRACE \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
   --env TOOLSTATE_REPO \

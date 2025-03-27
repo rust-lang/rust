@@ -1,11 +1,11 @@
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
+use std::time::Duration;
 
 use build_helper::metrics::{
     BuildStep, JsonRoot, TestOutcome, TestSuite, TestSuiteMetadata, escape_step_name,
     format_build_steps,
 };
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::time::Duration;
 
 use crate::metrics;
 use crate::metrics::{JobMetrics, JobName, get_test_suites};

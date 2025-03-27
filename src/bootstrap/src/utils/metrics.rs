@@ -9,9 +9,10 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::time::{Duration, Instant, SystemTime};
 
+use build_helper::ci::CiEnv;
 use build_helper::metrics::{
-    JsonInvocation, JsonInvocationSystemStats, JsonNode, JsonRoot, JsonStepSystemStats, Test,
-    TestOutcome, TestSuite, TestSuiteMetadata,
+    CiMetadata, JsonInvocation, JsonInvocationSystemStats, JsonNode, JsonRoot, JsonStepSystemStats,
+    Test, TestOutcome, TestSuite, TestSuiteMetadata,
 };
 use sysinfo::{CpuRefreshKind, RefreshKind, System};
 
@@ -217,7 +218,12 @@ impl BuildMetrics {
             children: steps.into_iter().map(|step| self.prepare_json_step(step)).collect(),
         });
 
-        let json = JsonRoot { format_version: CURRENT_FORMAT_VERSION, system_stats, invocations };
+        let json = JsonRoot {
+            format_version: CURRENT_FORMAT_VERSION,
+            system_stats,
+            invocations,
+            ci_metadata: get_ci_metadata(CiEnv::current()),
+        };
 
         t!(std::fs::create_dir_all(dest.parent().unwrap()));
         let mut file = BufWriter::new(t!(File::create(&dest)));
@@ -243,6 +249,16 @@ impl BuildMetrics {
             children,
         }
     }
+}
+
+fn get_ci_metadata(ci_env: CiEnv) -> Option<CiMetadata> {
+    if ci_env != CiEnv::GitHubActions {
+        return None;
+    }
+    let workflow_run_id =
+        std::env::var("GITHUB_WORKFLOW_RUN_ID").ok().and_then(|id| id.parse::<u64>().ok())?;
+    let repository = std::env::var("GITHUB_REPOSITORY").ok()?;
+    Some(CiMetadata { workflow_run_id, repository })
 }
 
 struct MetricsState {

@@ -9,6 +9,19 @@ pub struct JsonRoot {
     pub format_version: usize,
     pub system_stats: JsonInvocationSystemStats,
     pub invocations: Vec<JsonInvocation>,
+    #[serde(default)]
+    pub ci_metadata: Option<CiMetadata>,
+}
+
+/// Represents metadata about bootstrap's execution in CI.
+#[derive(Serialize, Deserialize)]
+pub struct CiMetadata {
+    /// GitHub run ID of the workflow where bootstrap was executed.
+    /// Note that the run ID will be shared amongst all jobs executed in that workflow.
+    pub workflow_run_id: u64,
+    /// Full name of a GitHub repository where bootstrap was executed in CI.
+    /// e.g. `rust-lang-ci/rust`.
+    pub repository: String,
 }
 
 #[derive(Serialize, Deserialize)]
