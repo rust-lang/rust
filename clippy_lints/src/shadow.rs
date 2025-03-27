@@ -8,7 +8,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::hir_id::ItemLocalId;
-use rustc_hir::{Block, Body, BodyOwnerKind, Expr, ExprKind, HirId, LetExpr, Node, Pat, PatKind, QPath, UnOp};
+use rustc_hir::{
+    Block, Body, BodyOwnerKind, Expr, ExprKind, HirId, LetExpr, LocalSource, Node, Pat, PatKind, QPath, UnOp,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
@@ -122,6 +124,17 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
         }
 
         if ident.span.from_expansion() || ident.span.is_dummy() {
+            return;
+        }
+
+        // Desugaring of a destructuring assignment may reuse the same identifier internally.
+        // Peel `Pat` and `PatField` nodes and check if we reach a desugared `Let` assignment.
+        if let Some((_, Node::LetStmt(let_stmt))) = cx
+            .tcx
+            .hir_parent_iter(pat.hir_id)
+            .find(|(_, node)| !matches!(node, Node::Pat(_) | Node::PatField(_)))
+            && let LocalSource::AssignDesugar(_) = let_stmt.source
+        {
             return;
         }
 
