@@ -2198,7 +2198,6 @@ symbols! {
         unsafe_extern_blocks,
         unsafe_fields,
         unsafe_no_drop_flag,
-        unsafe_pin_internals,
         unsize,
         unsized_const_param_ty,
         unsized_const_params,
