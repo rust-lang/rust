@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
-use rustc_macros::{Diagnostic, LintDiagnostic};
-use rustc_middle::ty::Ty;
+use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -24,16 +23,6 @@ pub(crate) struct NoOptimizedMir {
     #[note]
     pub span: Span,
     pub crate_name: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_large_assignments)]
-#[note]
-pub(crate) struct LargeAssignmentsLint {
-    #[label]
-    pub span: Span,
-    pub size: u64,
-    pub limit: u64,
 }
 
 #[derive(Diagnostic)]
@@ -67,48 +56,4 @@ pub(crate) struct StartNotFound;
 #[diag(monomorphize_unknown_cgu_collection_mode)]
 pub(crate) struct UnknownCguCollectionMode<'a> {
     pub mode: &'a str,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_abi_error_disabled_vector_type)]
-#[help]
-pub(crate) struct AbiErrorDisabledVectorType<'a> {
-    #[label]
-    pub span: Span,
-    pub required_feature: &'a str,
-    pub ty: Ty<'a>,
-    /// Whether this is a problem at a call site or at a declaration.
-    pub is_call: bool,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_abi_error_unsupported_vector_type)]
-pub(crate) struct AbiErrorUnsupportedVectorType<'a> {
-    #[label]
-    pub span: Span,
-    pub ty: Ty<'a>,
-    /// Whether this is a problem at a call site or at a declaration.
-    pub is_call: bool,
-}
-
-#[derive(Diagnostic)]
-#[diag(monomorphize_abi_required_target_feature)]
-#[help]
-pub(crate) struct AbiRequiredTargetFeature<'a> {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub required_feature: &'a str,
-    pub abi: &'a str,
-    /// Whether this is a problem at a call site or at a declaration.
-    pub is_call: bool,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_wasm_c_abi_transition)]
-#[help]
-pub(crate) struct WasmCAbiTransition<'a> {
-    pub ty: Ty<'a>,
-    /// Whether this is a problem at a call site or at a declaration.
-    pub is_call: bool,
 }
