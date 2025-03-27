@@ -156,6 +156,19 @@ pub fn pre_configure_attrs(sess: &Session, attrs: &[Attribute]) -> ast::AttrVec 
         .collect()
 }
 
+pub(crate) fn attr_into_trace(mut attr: Attribute, trace_name: Symbol) -> Attribute {
+    match &mut attr.kind {
+        AttrKind::Normal(normal) => {
+            let NormalAttr { item, tokens } = &mut **normal;
+            item.path.segments[0].ident.name = trace_name;
+            // This makes the trace attributes unobservable to token-based proc macros.
+            *tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::default()));
+        }
+        AttrKind::DocComment(..) => unreachable!(),
+    }
+    attr
+}
+
 #[macro_export]
 macro_rules! configure {
     ($this:ident, $node:ident) => {
@@ -280,16 +293,7 @@ impl<'a> StripUnconfigured<'a> {
 
         // A trace attribute left in AST in place of the original `cfg_attr` attribute.
         // It can later be used by lints or other diagnostics.
-        let mut trace_attr = cfg_attr.clone();
-        match &mut trace_attr.kind {
-            AttrKind::Normal(normal) => {
-                let NormalAttr { item, tokens } = &mut **normal;
-                item.path.segments[0].ident.name = sym::cfg_attr_trace;
-                // This makes the trace attributes unobservable to token-based proc macros.
-                *tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::default()));
-            }
-            AttrKind::DocComment(..) => unreachable!(),
-        }
+        let trace_attr = attr_into_trace(cfg_attr.clone(), sym::cfg_attr_trace);
 
         let Some((cfg_predicate, expanded_attrs)) =
             rustc_parse::parse_cfg_attr(cfg_attr, &self.sess.psess)

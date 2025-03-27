@@ -3,6 +3,7 @@
 //@ check-pass
 //@ proc-macro: test-macros.rs
 
+#![feature(cfg_boolean_literals)]
 #![feature(cfg_eval)]
 
 #[macro_use]
@@ -10,8 +11,13 @@ extern crate test_macros;
 
 #[cfg_eval]
 #[test_macros::print_attr]
-#[cfg_attr(FALSE, test_macros::print_attr)]
-#[cfg_attr(all(), test_macros::print_attr)]
+#[cfg_attr(false, test_macros::print_attr)]
+#[cfg_attr(true, test_macros::print_attr)]
 struct S;
+
+#[cfg_eval]
+#[test_macros::print_attr]
+#[cfg(true)]
+struct Z;
 
 fn main() {}

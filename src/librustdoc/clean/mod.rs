@@ -2773,7 +2773,7 @@ fn add_without_unwanted_attributes<'hir>(
                 if ident == sym::doc {
                     filter_doc_attr(&mut normal.args, is_inline);
                     attrs.push((Cow::Owned(attr), import_parent));
-                } else if is_inline || ident != sym::cfg {
+                } else if is_inline || ident != sym::cfg_trace {
                     // If it's not a `cfg()` attribute, we keep it.
                     attrs.push((Cow::Owned(attr), import_parent));
                 }

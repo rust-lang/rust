@@ -33,7 +33,7 @@ use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, sym};
 use smallvec::SmallVec;
 
 use crate::base::*;
-use crate::config::StripUnconfigured;
+use crate::config::{StripUnconfigured, attr_into_trace};
 use crate::errors::{
     EmptyDelegationMac, GlobDelegationOutsideImpls, GlobDelegationTraitlessQpath, IncompleteParse,
     RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
@@ -2003,7 +2003,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 let attr_name = attr.ident().unwrap().name;
                 // `#[cfg]` and `#[cfg_attr]` are special - they are
                 // eagerly evaluated.
-                if attr_name != sym::cfg && attr_name != sym::cfg_attr_trace {
+                if attr_name != sym::cfg_trace && attr_name != sym::cfg_attr_trace {
                     self.cx.sess.psess.buffer_lint(
                         UNUSED_ATTRIBUTES,
                         attr.span,
@@ -2027,11 +2027,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     ) -> (bool, Option<ast::MetaItem>) {
         let (res, meta_item) = self.cfg().cfg_true(&attr);
         if res {
-            // FIXME: `cfg(TRUE)` attributes do not currently remove themselves during expansion,
-            // and some tools like rustdoc and clippy rely on that. Find a way to remove them
-            // while keeping the tools working.
-            self.cx.expanded_inert_attrs.mark(&attr);
-            node.visit_attrs(|attrs| attrs.insert(pos, attr));
+            // A trace attribute left in AST in place of the original `cfg` attribute.
+            // It can later be used by lints or other diagnostics.
+            let trace_attr = attr_into_trace(attr, sym::cfg_trace);
+            node.visit_attrs(|attrs| attrs.insert(pos, trace_attr));
         }
 
         (res, meta_item)

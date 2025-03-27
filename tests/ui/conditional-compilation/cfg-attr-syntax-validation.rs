@@ -29,7 +29,6 @@ macro_rules! generate_s10 {
     ($expr: expr) => {
         #[cfg(feature = $expr)]
         //~^ ERROR expected unsuffixed literal, found expression `concat!("nonexistent")`
-        //~| ERROR expected unsuffixed literal, found expression `concat!("nonexistent")`
         struct S10;
     }
 }
