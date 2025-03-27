@@ -5,6 +5,7 @@
 use std::num::NonZero;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
 use rustc_index::Idx;
@@ -24,8 +25,8 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffect, QueryStackFrame,
-    force_query,
+    QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffect,
+    QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra, force_query,
 };
 use rustc_query_system::{QueryOverflow, QueryOverflowNote};
 use rustc_serialize::{Decodable, Encodable};
@@ -65,7 +66,9 @@ impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
     }
 }
 
-impl QueryContext for QueryCtxt<'_> {
+impl<'tcx> QueryContext for QueryCtxt<'tcx> {
+    type QueryInfo = QueryStackDeferred<'tcx>;
+
     #[inline]
     fn next_job_id(self) -> QueryJobId {
         QueryJobId(
@@ -82,7 +85,9 @@ impl QueryContext for QueryCtxt<'_> {
     /// Returns a query map representing active query jobs.
     /// It returns an incomplete map as an error if it fails
     /// to take locks.
-    fn collect_active_jobs(self) -> Result<QueryMap, QueryMap> {
+    fn collect_active_jobs(
+        self,
+    ) -> Result<QueryMap<QueryStackDeferred<'tcx>>, QueryMap<QueryStackDeferred<'tcx>>> {
         let mut jobs = QueryMap::default();
         let mut complete = true;
 
@@ -93,6 +98,13 @@ impl QueryContext for QueryCtxt<'_> {
         }
 
         if complete { Ok(jobs) } else { Err(jobs) }
+    }
+
+    fn lift_query_info(
+        self,
+        info: &QueryStackDeferred<'tcx>,
+    ) -> rustc_query_system::query::QueryStackFrameExtra {
+        info.extract()
     }
 
     // Interactions with on_disk_cache
@@ -159,7 +171,10 @@ impl QueryContext for QueryCtxt<'_> {
 
         self.sess.dcx().emit_fatal(QueryOverflow {
             span: info.job.span,
-            note: QueryOverflowNote { desc: info.query.description, depth },
+            note: QueryOverflowNote {
+                desc: self.lift_query_info(&info.query.info).description,
+                depth,
+            },
             suggested_limit,
             crate_name: self.crate_name(LOCAL_CRATE),
         });
@@ -296,16 +311,17 @@ macro_rules! should_ever_cache_on_disk {
     };
 }
 
-pub(crate) fn create_query_frame<
-    'tcx,
-    K: Copy + Key + for<'a> HashStable<StableHashingContext<'a>>,
->(
-    tcx: TyCtxt<'tcx>,
-    do_describe: fn(TyCtxt<'tcx>, K) -> String,
-    key: K,
-    kind: DepKind,
-    name: &'static str,
-) -> QueryStackFrame {
+fn create_query_frame_extra<'tcx, K: Key + Copy + 'tcx>(
+    (tcx, key, kind, name, do_describe): (
+        TyCtxt<'tcx>,
+        K,
+        DepKind,
+        &'static str,
+        fn(TyCtxt<'tcx>, K) -> String,
+    ),
+) -> QueryStackFrameExtra {
+    let def_id = key.key_as_def_id();
+
     // If reduced queries are requested, we may be printing a query stack due
     // to a panic. Avoid using `default_span` and `def_kind` in that case.
     let reduce_queries = with_reduced_queries();
@@ -324,13 +340,28 @@ pub(crate) fn create_query_frame<
     } else {
         Some(key.default_span(tcx))
     };
-    let def_id = key.key_as_def_id();
+
     let def_kind = if kind == dep_graph::dep_kinds::def_kind || reduce_queries {
         // Try to avoid infinite recursion.
         None
     } else {
         def_id.and_then(|def_id| def_id.as_local()).map(|def_id| tcx.def_kind(def_id))
     };
+    QueryStackFrameExtra::new(description, span, def_kind)
+}
+
+pub(crate) fn create_query_frame<
+    'tcx,
+    K: Copy + DynSend + DynSync + Key + for<'a> HashStable<StableHashingContext<'a>> + 'tcx,
+>(
+    tcx: TyCtxt<'tcx>,
+    do_describe: fn(TyCtxt<'tcx>, K) -> String,
+    key: K,
+    kind: DepKind,
+    name: &'static str,
+) -> QueryStackFrame<QueryStackDeferred<'tcx>> {
+    let def_id = key.key_as_def_id();
+
     let hash = || {
         tcx.with_stable_hashing_context(|mut hcx| {
             let mut hasher = StableHasher::new();
@@ -341,7 +372,10 @@ pub(crate) fn create_query_frame<
     };
     let def_id_for_ty_in_cycle = key.def_id_for_ty_in_cycle();
 
-    QueryStackFrame::new(description, span, def_id, def_kind, kind, def_id_for_ty_in_cycle, hash)
+    let info =
+        QueryStackDeferred::new((tcx, key, kind, name, do_describe), create_query_frame_extra);
+
+    QueryStackFrame::new(info, kind, hash, def_id, def_id_for_ty_in_cycle)
 }
 
 pub(crate) fn encode_query_results<'a, 'tcx, Q>(
@@ -688,7 +722,10 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn try_collect_active_jobs<'tcx>(tcx: TyCtxt<'tcx>, qmap: &mut QueryMap) -> Option<()> {
+            pub(crate) fn try_collect_active_jobs<'tcx>(
+                tcx: TyCtxt<'tcx>,
+                qmap: &mut QueryMap<QueryStackDeferred<'tcx>>,
+            ) -> Option<()> {
                 let make_query = |tcx, key| {
                     let kind = rustc_middle::dep_graph::dep_kinds::$name;
                     let name = stringify!($name);
@@ -768,7 +805,9 @@ macro_rules! define_queries {
 
         // These arrays are used for iteration and can't be indexed by `DepKind`.
 
-        const TRY_COLLECT_ACTIVE_JOBS: &[for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap) -> Option<()>] =
+        const TRY_COLLECT_ACTIVE_JOBS: &[
+            for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<QueryStackDeferred<'tcx>>) -> Option<()>
+        ] =
             &[$(query_impl::$name::try_collect_active_jobs),*];
 
         const ALLOC_SELF_PROFILE_QUERY_STRINGS: &[
