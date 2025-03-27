@@ -3215,7 +3215,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> 
 
     let sdk_name = apple::sdk_name(&sess.target).to_lowercase();
 
-    let sdk_root = match get_apple_sdk_root(&sdk_name) {
+    let sdk_root = match sess.time("get_apple_sdk_root", || get_apple_sdk_root(&sdk_name)) {
         Ok(s) => s,
         Err(e) => {
             sess.dcx().emit_err(e);
