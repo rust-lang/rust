@@ -25,10 +25,16 @@ use tracing::debug;
 struct Context {
     /// The scope that contains any new variables declared, plus its depth in
     /// the scope tree.
-    var_parent: Option<(Scope, ScopeDepth)>,
+    var_parent: Option<Scope>,
 
     /// Region parent of expressions, etc., plus its depth in the scope tree.
     parent: Option<(Scope, ScopeDepth)>,
+}
+
+impl Context {
+    fn set_var_parent(&mut self) {
+        self.var_parent = self.parent.map(|(p, _)| p);
+    }
 }
 
 struct ScopeResolutionVisitor<'tcx> {
@@ -78,7 +84,7 @@ fn record_var_lifetime(visitor: &mut ScopeResolutionVisitor<'_>, var_id: hir::It
             //
             // extern fn isalnum(c: c_int) -> c_int
         }
-        Some((parent_scope, _)) => visitor.scope_tree.record_var_scope(var_id, parent_scope),
+        Some(parent_scope) => visitor.scope_tree.record_var_scope(var_id, parent_scope),
     }
 }
 
@@ -113,7 +119,7 @@ fn resolve_block<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, blk: &'tcx hi
     // itself has returned.
 
     visitor.enter_node_scope_with_dtor(blk.hir_id.local_id);
-    visitor.cx.var_parent = visitor.cx.parent;
+    visitor.cx.set_var_parent();
 
     {
         // This block should be kept approximately in sync with
@@ -132,7 +138,7 @@ fn resolve_block<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, blk: &'tcx hi
                         local_id: blk.hir_id.local_id,
                         data: ScopeData::Remainder(FirstStatementIndex::new(i)),
                     });
-                    visitor.cx.var_parent = visitor.cx.parent;
+                    visitor.cx.set_var_parent();
                     visitor.visit_stmt(statement);
                     // We need to back out temporarily to the last enclosing scope
                     // for the `else` block, so that even the temporaries receiving
@@ -157,7 +163,7 @@ fn resolve_block<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, blk: &'tcx hi
                         local_id: blk.hir_id.local_id,
                         data: ScopeData::Remainder(FirstStatementIndex::new(i)),
                     });
-                    visitor.cx.var_parent = visitor.cx.parent;
+                    visitor.cx.set_var_parent();
                     visitor.visit_stmt(statement)
                 }
                 hir::StmtKind::Item(..) => {
@@ -207,7 +213,7 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
     visitor.terminating_scopes.insert(arm.hir_id.local_id);
 
     visitor.enter_node_scope_with_dtor(arm.hir_id.local_id);
-    visitor.cx.var_parent = visitor.cx.parent;
+    visitor.cx.set_var_parent();
 
     if let Some(expr) = arm.guard
         && !has_let_expr(expr)
@@ -221,8 +227,6 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
 }
 
 fn resolve_pat<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
-    visitor.record_child_scope(Scope { local_id: pat.hir_id.local_id, data: ScopeData::Node });
-
     // If this is a binding then record the lifetime of that binding.
     if let PatKind::Binding(..) = pat.kind {
         record_var_lifetime(visitor, pat.hir_id.local_id);
@@ -486,7 +490,7 @@ fn resolve_expr<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, expr: &'tcx hi
                 ScopeData::IfThen
             };
             visitor.enter_scope(Scope { local_id: then.hir_id.local_id, data });
-            visitor.cx.var_parent = visitor.cx.parent;
+            visitor.cx.set_var_parent();
             visitor.visit_expr(cond);
             visitor.visit_expr(then);
             visitor.cx = expr_cx;
@@ -501,7 +505,7 @@ fn resolve_expr<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, expr: &'tcx hi
                 ScopeData::IfThen
             };
             visitor.enter_scope(Scope { local_id: then.hir_id.local_id, data });
-            visitor.cx.var_parent = visitor.cx.parent;
+            visitor.cx.set_var_parent();
             visitor.visit_expr(cond);
             visitor.visit_expr(then);
             visitor.cx = expr_cx;
@@ -560,7 +564,7 @@ fn resolve_local<'tcx>(
 ) {
     debug!("resolve_local(pat={:?}, init={:?})", pat, init);
 
-    let blk_scope = visitor.cx.var_parent.map(|(p, _)| p);
+    let blk_scope = visitor.cx.var_parent;
 
     // As an exception to the normal rules governing temporary
     // lifetimes, initializers in a let have a temporary lifetime
@@ -625,10 +629,7 @@ fn resolve_local<'tcx>(
             if is_binding_pat(pat) {
                 visitor.scope_tree.record_rvalue_candidate(
                     expr.hir_id,
-                    RvalueCandidateType::Pattern {
-                        target: expr.hir_id.local_id,
-                        lifetime: blk_scope,
-                    },
+                    RvalueCandidate { target: expr.hir_id.local_id, lifetime: blk_scope },
                 );
             }
         }
@@ -733,10 +734,7 @@ fn resolve_local<'tcx>(
                 record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
                 visitor.scope_tree.record_rvalue_candidate(
                     subexpr.hir_id,
-                    RvalueCandidateType::Borrow {
-                        target: subexpr.hir_id.local_id,
-                        lifetime: blk_id,
-                    },
+                    RvalueCandidate { target: subexpr.hir_id.local_id, lifetime: blk_id },
                 );
             }
             hir::ExprKind::Struct(_, fields, _) => {
@@ -857,13 +855,12 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
         self.enter_body(body.value.hir_id, |this| {
             if this.tcx.hir_body_owner_kind(owner_id).is_fn_or_closure() {
                 // The arguments and `self` are parented to the fn.
-                this.cx.var_parent = this.cx.parent.take();
+                this.cx.set_var_parent();
                 for param in body.params {
                     this.visit_pat(param.pat);
                 }
 
                 // The body of the every fn is a root scope.
-                this.cx.parent = this.cx.var_parent;
                 this.visit_expr(body.value)
             } else {
                 // Only functions have an outer terminating (drop) scope, while
