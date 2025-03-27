@@ -395,7 +395,7 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
     }
 
     let mut prev_span_hi = None;
-    let not_crate_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny];
+    let not_crate_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
     let parsed = parser.parse_item(rustc_parse::parser::ForceCollect::No);
 
     let result = match parsed {
