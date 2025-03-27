@@ -1,4 +1,5 @@
 // Regression test for https://github.com/rust-lang/rust/issues/138696
+//@ only-unix
 //@ needs-threads
 //@ run-pass
 
