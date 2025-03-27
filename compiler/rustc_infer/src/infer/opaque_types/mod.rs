@@ -277,8 +277,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         .eq(DefineOpaqueTypes::Yes, hidden_ty, actual)?
                         .obligations
                         .into_iter()
-                        // FIXME: Shuttling between obligations and goals is awkward.
-                        .map(Goal::from),
+                        .map(|obligation| obligation.as_goal()),
                 );
             }
             mode @ (ty::TypingMode::PostBorrowckAnalysis { .. } | ty::TypingMode::PostAnalysis) => {
