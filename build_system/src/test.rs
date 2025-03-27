@@ -678,7 +678,7 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
 fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] libcore");
-    let path = get_sysroot_dir().join("sysroot_src/library/core/tests");
+    let path = get_sysroot_dir().join("sysroot_src/library/coretests");
     let _ = remove_dir_all(path.join("target"));
     run_cargo_command(&[&"test"], Some(&path), env, args)?;
     Ok(())
