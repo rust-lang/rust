@@ -10,7 +10,7 @@ Cygwin is only intended as an emulation layer for Unix-only programs which do no
 
 ## Target maintainers
 
-- [Berrysoft](https://github.com/Berrysoft)
+[@Berrysoft](https://github.com/Berrysoft)
 
 ## Requirements
 

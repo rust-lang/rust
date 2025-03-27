@@ -19,7 +19,7 @@ Target triplets available:
 
 ## Target maintainers
 
-- B I Mohammed Abbas ([@biabbas](https://github.com/biabbas))
+[@biabbas](https://github.com/biabbas)
 
 ## Requirements
 

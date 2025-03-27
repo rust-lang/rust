@@ -7,8 +7,8 @@ including advanced system debugging, next generation filesystem, networking, and
 
 ## Target maintainers
 
-- Joshua M. Clulow ([@jclulow](https://github.com/jclulow))
-- Patrick Mooney ([@pfmooney](https://github.com/pfmooney))
+[@jclulow](https://github.com/jclulow)
+[@pfmooney](https://github.com/pfmooney)
 
 ## Requirements
 

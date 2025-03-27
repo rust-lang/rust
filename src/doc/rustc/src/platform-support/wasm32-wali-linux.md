@@ -10,7 +10,7 @@ From the wider Wasm ecosystem perspective, implementing WALI within engines allo
 
 ## Target maintainers
 
-- Arjun Ramesh [@arjunr2](https://github.com/arjunr2)
+[@arjunr2](https://github.com/arjunr2)
 
 ## Requirements
 

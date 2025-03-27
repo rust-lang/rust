@@ -19,8 +19,8 @@ The target is very similar to [`wasm32-unknown-unknown`](./wasm32-unknown-unknow
 
 ## Target maintainers
 
-- Alex Crichton, https://github.com/alexcrichton
-- Graydon Hoare, https://github.com/graydon
+[@alexcrichton](https://github.com/alexcrichton)
+[@graydon](https://github.com/graydon)
 
 ## Requirements
 

@@ -7,10 +7,10 @@ RISC-V targets using the *RV64I* base instruction set with the *G* collection of
 
 ## Target maintainers
 
-- Kito Cheng, <kito.cheng@gmail.com>, [@kito-cheng](https://github.com/kito-cheng)
-- Michael Maitland, <michaeltmaitland@gmail.com>, [@michaelmaitland](https://github.com/michaelmaitland)
-- Robin Randhawa, <robin.randhawa@sifive.com>, [@robin-randhawa-sifive](https://github.com/robin-randhawa-sifive)
-- Craig Topper, <craig.topper@sifive.com>, [@topperc](https://github.com/topperc)
+[@kito-cheng](https://github.com/kito-cheng)
+[@michaelmaitland](https://github.com/michaelmaitland)
+[@robin-randhawa-sifive](https://github.com/robin-randhawa-sifive)
+[@topperc](https://github.com/topperc)
 
 ## Requirements
 

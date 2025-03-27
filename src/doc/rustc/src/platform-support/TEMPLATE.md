@@ -6,7 +6,8 @@ One-sentence description of the target (e.g. CPU, OS)
 
 ## Target maintainers
 
-- Some Person, https://github.com/...
+[@Ghost](https://github.com/Ghost)
+[@octocat](https://github.com/octocat)
 
 ## Requirements
 

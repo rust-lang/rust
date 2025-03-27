@@ -6,7 +6,7 @@ Xous microkernel, message-based operating system that powers devices such as Pre
 
 ## Target maintainers
 
-- [@xobs](https://github.com/xobs)
+[@xobs](https://github.com/xobs)
 
 ## Requirements
 

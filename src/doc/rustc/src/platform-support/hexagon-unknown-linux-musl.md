@@ -11,7 +11,7 @@ DSP architecture.
 
 ## Target maintainers
 
-- [Brian Cain](https://github.com/androm3da), `bcain@quicinc.com`
+[@androm3da](https://github.com/androm3da)
 
 ## Requirements
 The target is cross-compiled. This target supports `std`.  By default, code

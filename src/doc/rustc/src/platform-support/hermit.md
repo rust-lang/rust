@@ -14,8 +14,8 @@ Target triplets available so far:
 
 ## Target maintainers
 
-- Stefan Lankes ([@stlankes](https://github.com/stlankes))
-- Martin Kröning ([@mkroening](https://github.com/mkroening))
+[@stlankes](https://github.com/stlankes)
+[@mkroening](https://github.com/mkroening)
 
 ## Requirements
 

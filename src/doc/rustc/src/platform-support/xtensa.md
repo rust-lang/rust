@@ -6,8 +6,8 @@ Targets for Xtensa CPUs.
 
 ## Target maintainers
 
-- Scott Mabin [@MabezDev](https://github.com/MabezDev)
-- Sergio Gasquez [@SergioGasquez](https://github.com/SergioGasquez)
+[@MabezDev](https://github.com/MabezDev)
+[@SergioGasquez](https://github.com/SergioGasquez)
 
 ## Requirements
 

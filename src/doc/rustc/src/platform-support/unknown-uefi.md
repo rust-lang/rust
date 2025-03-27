@@ -13,8 +13,8 @@ Available targets:
 
 ## Target maintainers
 
-- David Rheinsberg ([@dvdhrm](https://github.com/dvdhrm))
-- Nicholas Bishop ([@nicholasbishop](https://github.com/nicholasbishop))
+[@dvdhrm](https://github.com/dvdhrm)
+[@nicholasbishop](https://github.com/nicholasbishop)
 
 ## Requirements
 

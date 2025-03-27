@@ -10,7 +10,8 @@ BE8 architecture retains the same little-endian ordered code-stream used by conv
 BE8 architecture is the default big-endian architecture for Arm since [Armv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en). It's predecessor, used for Armv4 and Armv5 devices was [BE32](https://developer.arm.com/documentation/dui0474/j/linker-command-line-options/--be32). On Armv6 architecture, endianness can be configured via [system registers](https://developer.arm.com/documentation/ddi0290/g/unaligned-and-mixed-endian-data-access-support/mixed-endian-access-support/interaction-between-the-bus-protocol-and-the-core-endianness). However, BE32 was withdrawn for [Armv7](https://developer.arm.com/documentation/ddi0406/cb/Appendixes/Deprecated-and-Obsolete-Features/Obsolete-features/Support-for-BE-32-endianness-model) onwards.
 
 ## Target Maintainers
-* [@WorksButNotTested](https://github.com/WorksButNotTested)
+
+[@WorksButNotTested](https://github.com/WorksButNotTested)
 
 ## Requirements
 The target is cross-compiled. This target supports `std` in the normal way (indeed only nominal changes are required from the standard Arm configuration).

@@ -12,7 +12,7 @@ Target triplets available so far:
 
 ## Target maintainers
 
-- Martin Kröning ([@mkroening](https://github.com/mkroening))
+[@mkroening](https://github.com/mkroening)
 
 ## Requirements
 

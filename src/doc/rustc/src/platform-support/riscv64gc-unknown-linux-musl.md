@@ -6,8 +6,8 @@ Target for RISC-V Linux programs using musl libc.
 
 ## Target maintainers
 
-- [@Amanieu](https://github.com/Amanieu)
-- [@kraj](https://github.com/kraj)
+[@Amanieu](https://github.com/Amanieu)
+[@kraj](https://github.com/kraj)
 
 ## Requirements
 

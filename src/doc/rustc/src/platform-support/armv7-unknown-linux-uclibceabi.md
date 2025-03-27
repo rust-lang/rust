@@ -6,7 +6,7 @@ This target supports Armv7-A softfloat CPUs and uses the uclibc-ng standard libr
 
 ## Target maintainers
 
-* [@lancethepants](https://github.com/lancethepants)
+[@lancethepants](https://github.com/lancethepants)
 
 ## Requirements
 

@@ -20,8 +20,8 @@ TEEOS is open source in progress. [MORE about](https://gitee.com/opentrustee-gro
 
 ## Target maintainers
 
-- Petrochenkov Vadim
-- Sword-Destiny
+[@petrochenkov](https://github.com/petrochenkov)
+[@Sword-Destiny](https://github.com/Sword-Destiny)
 
 ## Setup
 We use OpenHarmony SDK for TEEOS.

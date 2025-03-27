@@ -6,8 +6,8 @@ Nintendo Switch with pure-Rust toolchain.
 
 ## Designated Developers
 
-* [@leo60228](https://github.com/leo60228)
-* [@jam1garner](https://github.com/jam1garner)
+[@leo60228](https://github.com/leo60228)
+[@jam1garner](https://github.com/jam1garner)
 
 ## Requirements
 

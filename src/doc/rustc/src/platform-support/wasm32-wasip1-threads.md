@@ -18,10 +18,10 @@ with native multi threading capabilities.
 
 ## Target maintainers
 
-- Georgii Rylov, https://github.com/g0djan
-- Alex Crichton, https://github.com/alexcrichton
-- Andrew Brown, https://github.com/abrown
-- Marcin Kolny, https://github.com/loganek
+[@g0djan](https://github.com/g0djan)
+[@alexcrichton](https://github.com/alexcrichton)
+[@abrown](https://github.com/abrown)
+[@loganek](https://github.com/loganek)
 
 ## Requirements
 

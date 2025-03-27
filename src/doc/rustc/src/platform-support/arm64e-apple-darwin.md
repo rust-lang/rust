@@ -6,7 +6,7 @@ ARM64e macOS (11.0+, Big Sur+)
 
 ## Target maintainers
 
-- Artyom Tetyukhin ([@arttet](https://github.com/arttet))
+[@arttet](https://github.com/arttet)
 
 ## Requirements
 

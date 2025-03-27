@@ -6,9 +6,9 @@ RISC Zero's Zero Knowledge Virtual Machine (zkVM) implementing the RV32IM instru
 
 ## Target maintainers
 
-- Frank Laub, `frank@risczero.com`, https://github.com/flaub
-- Jeremy Bruestle, `jeremy@risczero.com`, https://github.com/jbruestle
-- Erik Kaneda, `erik@risczero.com`, https://github.com/SchmErik
+[@flaub](https://github.com/flaub)
+[@jbruestle](https://github.com/jbruestle)
+[@SchmErik](https://github.com/SchmErik)
 
 ## Background
 

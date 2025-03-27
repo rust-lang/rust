@@ -11,8 +11,8 @@ Target triples available so far:
 
 ## Target maintainers
 
-- [@mati865](https://github.com/mati865)
-- [@thomcc](https://github.com/thomcc)
+[@mati865](https://github.com/mati865)
+[@thomcc](https://github.com/thomcc)
 
 ## Requirements
 
