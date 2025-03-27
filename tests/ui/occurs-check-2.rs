@@ -4,6 +4,6 @@ fn main() {
     let g;
 
     g = f;
-    f = Box::new(g);
     //~^ ERROR overflow assigning `Box<_>` to `_`
+    f = Box::new(g);
 }
