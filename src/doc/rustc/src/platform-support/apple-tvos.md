@@ -10,8 +10,8 @@ Apple tvOS targets.
 
 ## Target maintainers
 
-- [@thomcc](https://github.com/thomcc)
-- [@madsmtm](https://github.com/madsmtm)
+[@thomcc](https://github.com/thomcc)
+[@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 
