@@ -645,6 +645,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(USAGE_OF_QUALIFIED_TY),
             LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
             LintId::of(USAGE_OF_TYPE_IR_INHERENT),
+            LintId::of(USAGE_OF_TYPE_IR_TRAITS),
             LintId::of(BAD_OPT_ACCESS),
             LintId::of(SPAN_USE_EQ_CTXT),
         ],
