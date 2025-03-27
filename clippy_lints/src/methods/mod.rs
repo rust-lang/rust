@@ -478,9 +478,6 @@ declare_clippy_lint! {
     /// Because you usually call `expect()` on the `Result`
     /// directly to get a better error message.
     ///
-    /// ### Known problems
-    /// The error type needs to implement `Debug`
-    ///
     /// ### Example
     /// ```no_run
     /// # let x = Ok::<_, ()>(());
