@@ -342,12 +342,7 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
     // Recurse through functions body. It is necessary because the doctest source code is
     // wrapped in a function to limit the number of AST errors. If we don't recurse into
     // functions, we would thing all top-level items (so basically nothing).
-    fn check_item(
-        item: &ast::Item,
-        info: &mut ParseSourceInfo,
-        crate_name: &Option<&str>,
-        is_top_level: bool,
-    ) -> bool {
+    fn check_item(item: &ast::Item, info: &mut ParseSourceInfo, crate_name: &Option<&str>) -> bool {
         let mut is_extern_crate = false;
         if !info.has_global_allocator
             && item.attrs.iter().any(|attr| attr.name_or_empty() == sym::global_allocator)
@@ -355,18 +350,11 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
             info.has_global_allocator = true;
         }
         match item.kind {
-            ast::ItemKind::Fn(ref fn_item) if !info.has_main_fn => {
+            ast::ItemKind::Fn(_) if !info.has_main_fn => {
                 // We only push if it's the top item because otherwise, we would duplicate
                 // its content since the top-level item was already added.
-                if item.ident.name == sym::main && is_top_level {
+                if item.ident.name == sym::main {
                     info.has_main_fn = true;
-                }
-                if let Some(ref body) = fn_item.body {
-                    for stmt in &body.stmts {
-                        if let StmtKind::Item(ref item) = stmt.kind {
-                            is_extern_crate |= check_item(item, info, crate_name, false);
-                        }
-                    }
                 }
             }
             ast::ItemKind::ExternCrate(original) => {
@@ -427,7 +415,7 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 let mut is_extern_crate = false;
                 match stmt.kind {
                     StmtKind::Item(ref item) => {
-                        is_extern_crate = check_item(&item, &mut info, crate_name, true);
+                        is_extern_crate = check_item(&item, &mut info, crate_name);
                     }
                     StmtKind::Expr(ref expr) if matches!(expr.kind, ast::ExprKind::Err(_)) => {
                         reset_error_count(&psess);
