@@ -2370,7 +2370,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         trait_def_id: DefId,
-        types: ty::Binder<'tcx, Vec<Ty<'tcx>>>,
+        types: Vec<Ty<'tcx>>,
     ) -> PredicateObligations<'tcx> {
         // Because the types were potentially derived from
         // higher-ranked obligations they may reference late-bound
@@ -2387,13 +2387,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // 3. Re-bind the regions back to `for<'a> &'a i32 : Copy`
 
         types
-            .as_ref()
-            .skip_binder() // binder moved -\
-            .iter()
-            .flat_map(|ty| {
-                let ty: ty::Binder<'tcx, Ty<'tcx>> = types.rebind(*ty); // <----/
-
-                let placeholder_ty = self.infcx.enter_forall_and_leak_universe(ty);
+            .into_iter()
+            .flat_map(|placeholder_ty| {
                 let Normalized { value: normalized_ty, mut obligations } =
                     ensure_sufficient_stack(|| {
                         normalize_with_depth(

@@ -266,9 +266,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else {
                 bug!("unexpected builtin trait {:?}", trait_def)
             };
-            let BuiltinImplConditions::Where(nested) = conditions else {
+            let BuiltinImplConditions::Where(types) = conditions else {
                 bug!("obligation {:?} had matched a builtin impl but now doesn't", obligation);
             };
+            let types = self.infcx.enter_forall_and_leak_universe(types);
 
             let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
             self.collect_predicates_for_types(
@@ -276,7 +277,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 cause,
                 obligation.recursion_depth + 1,
                 trait_def,
-                nested,
+                types,
             )
         } else {
             PredicateObligations::new()
@@ -444,37 +445,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        debug!(?obligation, "confirm_auto_impl_candidate");
-
-        let self_ty = obligation.predicate.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
-        let types = self.constituent_types_for_ty(self_ty)?;
-        Ok(self.vtable_auto_impl(obligation, obligation.predicate.def_id(), types))
-    }
-
-    /// See `confirm_auto_impl_candidate`.
-    fn vtable_auto_impl(
-        &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-        trait_def_id: DefId,
-        nested: ty::Binder<'tcx, Vec<Ty<'tcx>>>,
-    ) -> PredicateObligations<'tcx> {
-        debug!(?nested, "vtable_auto_impl");
         ensure_sufficient_stack(|| {
-            let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
-
             assert_eq!(obligation.predicate.polarity(), ty::PredicatePolarity::Positive);
 
+            let self_ty =
+                obligation.predicate.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
+
+            let types = self.constituent_types_for_ty(self_ty)?;
+            let types = self.infcx.enter_forall_and_leak_universe(types);
+
+            let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
             let obligations = self.collect_predicates_for_types(
                 obligation.param_env,
                 cause,
                 obligation.recursion_depth + 1,
-                trait_def_id,
-                nested,
+                obligation.predicate.def_id(),
+                types,
             );
 
-            debug!(?obligations, "vtable_auto_impl");
-
-            obligations
+            Ok(obligations)
         })
     }
 
