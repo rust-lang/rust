@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
+use std::time::Duration;
 
 use build_helper::metrics::{
     BuildStep, JsonRoot, TestOutcome, TestSuite, TestSuiteMetadata, escape_step_name,
@@ -184,9 +185,68 @@ fn render_table(suites: BTreeMap<String, TestSuiteRecord>) -> String {
 }
 
 /// Outputs a report of test differences between the `parent` and `current` commits.
-pub fn output_test_diffs(job_metrics: HashMap<JobName, JobMetrics>) {
+pub fn output_test_diffs(job_metrics: &HashMap<JobName, JobMetrics>) {
     let aggregated_test_diffs = aggregate_test_diffs(&job_metrics);
     report_test_diffs(aggregated_test_diffs);
+}
+
+/// Prints the ten largest differences in bootstrap durations.
+pub fn output_largest_duration_changes(job_metrics: &HashMap<JobName, JobMetrics>) {
+    struct Entry<'a> {
+        job: &'a JobName,
+        before: Duration,
+        after: Duration,
+        change: f64,
+    }
+
+    let mut changes: Vec<Entry> = vec![];
+    for (job, metrics) in job_metrics {
+        if let Some(parent) = &metrics.parent {
+            let duration_before = parent
+                .invocations
+                .iter()
+                .map(|i| BuildStep::from_invocation(i).duration)
+                .sum::<Duration>();
+            let duration_after = metrics
+                .current
+                .invocations
+                .iter()
+                .map(|i| BuildStep::from_invocation(i).duration)
+                .sum::<Duration>();
+            let pct_change = duration_after.as_secs_f64() / duration_before.as_secs_f64();
+            let pct_change = pct_change * 100.0;
+            // Normalize around 100, to get + for regression and - for improvements
+            let pct_change = pct_change - 100.0;
+            changes.push(Entry {
+                job,
+                before: duration_before,
+                after: duration_after,
+                change: pct_change,
+            });
+        }
+    }
+    changes.sort_by(|e1, e2| e1.change.partial_cmp(&e2.change).unwrap().reverse());
+
+    println!("# Job duration changes");
+    for (index, entry) in changes.into_iter().take(10).enumerate() {
+        println!(
+            "{}. `{}`: {:.1}s -> {:.1}s ({:.1}%)",
+            index + 1,
+            entry.job,
+            entry.before.as_secs_f64(),
+            entry.after.as_secs_f64(),
+            entry.change
+        );
+    }
+
+    println!();
+    output_details("How to interpret the job duration changes?", || {
+        println!(
+            r#"Job durations can vary a lot, based on the actual runner instance
+that executed the job, system noise, invalidated caches, etc. The table above is provided
+mostly for t-infra members, for simpler debugging of potential CI slow-downs."#
+        );
+    });
 }
 
 #[derive(Default)]

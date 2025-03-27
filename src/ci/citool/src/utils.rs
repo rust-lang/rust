@@ -23,7 +23,6 @@ where
     println!(
         r"<details>
 <summary>{summary}</summary>
-
 "
     );
     func();
