@@ -646,7 +646,6 @@ pub enum BuiltinLintDiag {
         ident: Ident,
     },
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
-    ElidedLifetimesInPaths(usize, Span, bool, Span),
     UnknownCrateTypes {
         span: Span,
         candidate: Option<Symbol>,
