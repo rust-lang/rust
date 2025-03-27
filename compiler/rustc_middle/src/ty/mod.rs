@@ -457,7 +457,7 @@ impl EarlyParamRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {
-        self.name != kw::UnderscoreLifetime && self.name != kw::Empty
+        self.name != kw::UnderscoreLifetime
     }
 }
 

@@ -15,7 +15,7 @@ use clap::Parser;
 use jobs::JobDatabase;
 use serde_yaml::Value;
 
-use crate::analysis::output_test_diffs;
+use crate::analysis::{output_largest_duration_changes, output_test_diffs};
 use crate::cpu_usage::load_cpu_usage;
 use crate::datadog::upload_datadog_metric;
 use crate::jobs::RunType;
@@ -160,7 +160,7 @@ fn postprocess_metrics(
                     job_name,
                     JobMetrics { parent: Some(parent_metrics), current: metrics },
                 )]);
-                output_test_diffs(job_metrics);
+                output_test_diffs(&job_metrics);
                 return Ok(());
             }
             Err(error) => {
@@ -180,7 +180,8 @@ fn post_merge_report(db: JobDatabase, current: String, parent: String) -> anyhow
     let metrics = download_auto_job_metrics(&db, &parent, &current)?;
 
     println!("\nComparing {parent} (parent) -> {current} (this PR)\n");
-    output_test_diffs(metrics);
+    output_test_diffs(&metrics);
+    output_largest_duration_changes(&metrics);
 
     Ok(())
 }

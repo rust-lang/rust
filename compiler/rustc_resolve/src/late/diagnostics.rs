@@ -1665,41 +1665,81 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         // the struct literal syntax at all, as that will cause a subsequent error.
                         let fields = this.r.field_idents(def_id);
                         let has_fields = fields.as_ref().is_some_and(|f| !f.is_empty());
-                        let (fields, applicability) = match fields {
-                            Some(fields) => {
-                                let fields = if let Some(old_fields) = old_fields {
-                                    fields
-                                        .iter()
-                                        .enumerate()
-                                        .map(|(idx, new)| (new, old_fields.get(idx)))
-                                        .map(|(new, old)| {
-                                            if let Some(Some(old)) = old
-                                                && new.as_str() != old
-                                            {
-                                                format!("{new}: {old}")
-                                            } else {
-                                                new.to_string()
-                                            }
-                                        })
-                                        .collect::<Vec<String>>()
-                                } else {
-                                    fields
-                                        .iter()
-                                        .map(|f| format!("{f}{tail}"))
-                                        .collect::<Vec<String>>()
-                                };
 
-                                (fields.join(", "), applicability)
-                            }
-                            None => ("/* fields */".to_string(), Applicability::HasPlaceholders),
-                        };
-                        let pad = if has_fields { " " } else { "" };
-                        err.span_suggestion(
+                        if let PathSource::Expr(Some(Expr {
+                            kind: ExprKind::Call(path, args),
                             span,
-                            format!("use struct {descr} syntax instead"),
-                            format!("{path_str} {{{pad}{fields}{pad}}}"),
-                            applicability,
-                        );
+                            ..
+                        })) = source
+                            && !args.is_empty()
+                            && let Some(fields) = &fields
+                            && args.len() == fields.len()
+                        // Make sure we have same number of args as fields
+                        {
+                            let path_span = path.span;
+                            let mut parts = Vec::new();
+
+                            // Start with the opening brace
+                            parts.push((
+                                path_span.shrink_to_hi().until(args[0].span),
+                                "{".to_owned(),
+                            ));
+
+                            for (field, arg) in fields.iter().zip(args.iter()) {
+                                // Add the field name before the argument
+                                parts.push((arg.span.shrink_to_lo(), format!("{}: ", field)));
+                            }
+
+                            // Add the closing brace
+                            parts.push((
+                                args.last().unwrap().span.shrink_to_hi().until(span.shrink_to_hi()),
+                                "}".to_owned(),
+                            ));
+
+                            err.multipart_suggestion_verbose(
+                                format!("use struct {descr} syntax instead of calling"),
+                                parts,
+                                applicability,
+                            );
+                        } else {
+                            let (fields, applicability) = match fields {
+                                Some(fields) => {
+                                    let fields = if let Some(old_fields) = old_fields {
+                                        fields
+                                            .iter()
+                                            .enumerate()
+                                            .map(|(idx, new)| (new, old_fields.get(idx)))
+                                            .map(|(new, old)| {
+                                                if let Some(Some(old)) = old
+                                                    && new.as_str() != old
+                                                {
+                                                    format!("{new}: {old}")
+                                                } else {
+                                                    new.to_string()
+                                                }
+                                            })
+                                            .collect::<Vec<String>>()
+                                    } else {
+                                        fields
+                                            .iter()
+                                            .map(|f| format!("{f}{tail}"))
+                                            .collect::<Vec<String>>()
+                                    };
+
+                                    (fields.join(", "), applicability)
+                                }
+                                None => {
+                                    ("/* fields */".to_string(), Applicability::HasPlaceholders)
+                                }
+                            };
+                            let pad = if has_fields { " " } else { "" };
+                            err.span_suggestion(
+                                span,
+                                format!("use struct {descr} syntax instead"),
+                                format!("{path_str} {{{pad}{fields}{pad}}}"),
+                                applicability,
+                            );
+                        }
                     }
                     if let PathSource::Expr(Some(Expr {
                         kind: ExprKind::Call(path, args),

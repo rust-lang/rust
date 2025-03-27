@@ -32,7 +32,7 @@ declare_lint_pass!(CfgNotTest => [CFG_NOT_TEST]);
 
 impl EarlyLintPass for CfgNotTest {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &rustc_ast::Attribute) {
-        if attr.has_name(rustc_span::sym::cfg) && contains_not_test(attr.meta_item_list().as_deref(), false) {
+        if attr.has_name(rustc_span::sym::cfg_trace) && contains_not_test(attr.meta_item_list().as_deref(), false) {
             span_lint_and_then(
                 cx,
                 CFG_NOT_TEST,

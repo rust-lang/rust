@@ -1068,7 +1068,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
             // `doc(cfg())` overrides `cfg()`).
             attrs
                 .clone()
-                .filter(|attr| attr.has_name(sym::cfg))
+                .filter(|attr| attr.has_name(sym::cfg_trace))
                 .filter_map(|attr| single(attr.meta_item_list()?))
                 .filter_map(|attr| Cfg::parse_without(attr.meta_item()?, hidden_cfg).ok().flatten())
                 .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
