@@ -452,12 +452,9 @@ impl<'tcx> SmirCtxt<'tcx> {
     pub fn adt_discr_for_variant(&self, adt: AdtDef, variant: VariantIdx) -> Discr {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
-
-        let discr = adt
-            .internal(&mut *tables, tcx)
-            .discriminant_for_variant(tcx, variant.internal(&mut *tables, tcx));
-
-        Discr { val: discr.val, ty: discr.ty.stable(&mut *tables) }
+        let adt = adt.internal(&mut *tables, tcx);
+        let variant = variant.internal(&mut *tables, tcx);
+        adt.discriminant_for_variant(tcx, variant).stable(&mut *tables)
     }
 
     /// Discriminant for a given variand index and args of a coroutine
@@ -469,14 +466,10 @@ impl<'tcx> SmirCtxt<'tcx> {
     ) -> Discr {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
-
-        let discr = args.internal(&mut *tables, tcx).as_coroutine().discriminant_for_variant(
-            coroutine.def_id().internal(&mut *tables, tcx),
-            tcx,
-            variant.internal(&mut *tables, tcx),
-        );
-
-        Discr { val: discr.val, ty: discr.ty.stable(&mut *tables) }
+        let coroutine = coroutine.def_id().internal(&mut *tables, tcx);
+        let args = args.internal(&mut *tables, tcx);
+        let variant = variant.internal(&mut *tables, tcx);
+        args.as_coroutine().discriminant_for_variant(coroutine, tcx, variant).stable(&mut *tables)
     }
 
     /// The name of a variant.
