@@ -1,4 +1,5 @@
 mod argument;
+mod config;
 mod format;
 mod functions;
 mod intrinsic;
@@ -6,25 +7,15 @@ mod json_parser;
 mod types;
 
 use crate::common::cli::ProcessedCli;
+use crate::common::compare::compare_outputs;
 use crate::common::supporting_test::SupportedArchitectureTest;
-use functions::{build_c, build_rust, compare_outputs};
+use functions::{build_c, build_rust};
 use intrinsic::Intrinsic;
 use json_parser::get_neon_intrinsics;
 use types::TypeKind;
 
-fn build_notices(line_prefix: &str) -> String {
-    format!(
-        "\
-{line_prefix}This is a transient test file, not intended for distribution. Some aspects of the
-{line_prefix}test are derived from a JSON specification, published under the same license as the
-{line_prefix}`intrinsic-test` crate.\n
-"
-    )
-}
-
 pub struct ArmTestProcessor {
     intrinsics: Vec<Intrinsic>,
-    notices: String,
     cli_options: ProcessedCli,
 }
 
@@ -51,18 +42,14 @@ impl SupportedArchitectureTest for ArmTestProcessor {
             .collect::<Vec<_>>();
         intrinsics.dedup();
 
-        let notices = build_notices("// ");
-
         Self {
             intrinsics: intrinsics,
-            notices: notices,
             cli_options: cli_options,
         }
     }
 
     fn build_c_file(&self) -> bool {
         build_c(
-            &self.notices,
             &self.intrinsics,
             self.cli_options.cpp_compiler.as_deref(),
             &self.cli_options.target,
@@ -72,7 +59,6 @@ impl SupportedArchitectureTest for ArmTestProcessor {
 
     fn build_rust_file(&self) -> bool {
         build_rust(
-            &self.notices,
             &self.intrinsics,
             self.cli_options.toolchain.as_deref(),
             &self.cli_options.target,
@@ -82,8 +68,14 @@ impl SupportedArchitectureTest for ArmTestProcessor {
 
     fn compare_outputs(&self) -> bool {
         if let Some(ref toolchain) = self.cli_options.toolchain {
+            let intrinsics_name_list = self
+                .intrinsics
+                .iter()
+                .map(|i| i.name.clone())
+                .collect::<Vec<_>>();
+
             compare_outputs(
-                &self.intrinsics,
+                &intrinsics_name_list,
                 toolchain,
                 &self.cli_options.c_runner,
                 &self.cli_options.target,
