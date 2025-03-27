@@ -389,7 +389,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Calculate the destructor of a given type.
     pub fn calculate_dtor(
         self,
-        adt_did: DefId,
+        adt_did: LocalDefId,
         validate: impl Fn(Self, DefId) -> Result<(), ErrorGuaranteed>,
     ) -> Option<ty::Destructor> {
         let drop_trait = self.lang_items().drop_trait()?;
@@ -426,7 +426,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Calculate the async destructor of a given type.
     pub fn calculate_async_dtor(
         self,
-        adt_did: DefId,
+        adt_did: LocalDefId,
         validate: impl Fn(Self, DefId) -> Result<(), ErrorGuaranteed>,
     ) -> Option<ty::AsyncDestructor> {
         let async_drop_trait = self.lang_items().async_drop_trait()?;
