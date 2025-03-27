@@ -747,12 +747,6 @@ pub(crate) enum AppleDeploymentTarget {
 }
 
 #[derive(Diagnostic)]
-pub(crate) enum AppleSdkRootError<'a> {
-    #[diag(codegen_ssa_apple_sdk_error_sdk_path)]
-    SdkPath { sdk_name: &'a str, error: Error },
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_read_file)]
 pub(crate) struct ReadFileError {
     pub message: std::io::Error,
@@ -1326,4 +1320,27 @@ pub(crate) struct MixedExportNameAndNoMangle {
     pub export_name: Span,
     #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
     pub removal_span: Span,
+}
+
+#[derive(Diagnostic, Debug)]
+pub(crate) enum XcrunError {
+    #[diag(codegen_ssa_xcrun_failed_invoking)]
+    FailedInvoking { sdk_name: &'static str, command_formatted: String, error: std::io::Error },
+
+    #[diag(codegen_ssa_xcrun_unsuccessful)]
+    #[note]
+    Unsuccessful {
+        sdk_name: &'static str,
+        command_formatted: String,
+        stdout: String,
+        stderr: String,
+    },
+}
+
+#[derive(Diagnostic, Debug)]
+#[diag(codegen_ssa_xcrun_sdk_path_warning)]
+#[note]
+pub(crate) struct XcrunSdkPathWarning {
+    pub sdk_name: &'static str,
+    pub stderr: String,
 }
