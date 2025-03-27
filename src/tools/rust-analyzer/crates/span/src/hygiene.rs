@@ -21,16 +21,19 @@
 //! `ExpnData::call_site` in rustc, [`MacroCallLoc::call_site`] in rust-analyzer.
 use std::fmt;
 
-use crate::{Edition, MacroCallId};
+use crate::Edition;
 
 /// A syntax context describes a hierarchy tracking order of macro definitions.
+#[cfg(feature = "salsa")]
 #[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct SyntaxContext(
     salsa::Id,
     std::marker::PhantomData<&'static salsa::plumbing::interned::Value<SyntaxContext>>,
 );
 
+#[cfg(feature = "salsa")]
 const _: () = {
+    use crate::MacroCallId;
     use salsa::plumbing as zalsa_;
     use salsa::plumbing::interned as zalsa_struct_;
 
@@ -291,8 +294,6 @@ const _: () = {
 };
 
 impl SyntaxContext {
-    const MAX_ID: u32 = salsa::Id::MAX_U32 - 1;
-
     pub fn is_root(self) -> bool {
         (SyntaxContext::MAX_ID - Edition::LATEST as u32) <= self.into_u32()
             && self.into_u32() <= (SyntaxContext::MAX_ID - Edition::Edition2015 as u32)
@@ -308,18 +309,41 @@ impl SyntaxContext {
     /// The root context, which is the parent of all other contexts. All [`FileId`]s have this context.
     pub const fn root(edition: Edition) -> Self {
         let edition = edition as u32;
-        SyntaxContext(
-            salsa::Id::from_u32(SyntaxContext::MAX_ID - edition),
-            std::marker::PhantomData,
-        )
+        SyntaxContext::from_u32(SyntaxContext::MAX_ID - edition)
     }
+}
 
-    pub fn into_u32(self) -> u32 {
+#[cfg(feature = "salsa")]
+impl SyntaxContext {
+    const MAX_ID: u32 = salsa::Id::MAX_U32 - 1;
+
+    pub const fn into_u32(self) -> u32 {
         self.0.as_u32()
     }
 
-    pub fn from_u32(u32: u32) -> Self {
+    pub const fn from_u32(u32: u32) -> Self {
         Self(salsa::Id::from_u32(u32), std::marker::PhantomData)
+    }
+}
+#[cfg(not(feature = "salsa"))]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+pub struct SyntaxContext(u32);
+
+#[allow(dead_code)]
+const SALSA_MAX_ID_MIRROR: u32 = u32::MAX - 0xFF;
+#[cfg(feature = "salsa")]
+const _: () = assert!(salsa::Id::MAX_U32 == SALSA_MAX_ID_MIRROR);
+
+#[cfg(not(feature = "salsa"))]
+impl SyntaxContext {
+    const MAX_ID: u32 = SALSA_MAX_ID_MIRROR - 1;
+
+    pub const fn into_u32(self) -> u32 {
+        self.0
+    }
+
+    pub const fn from_u32(u32: u32) -> Self {
+        Self(u32)
     }
 }
 
@@ -354,9 +378,9 @@ impl Transparency {
 impl fmt::Display for SyntaxContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_root() {
-            write!(f, "ROOT{}", Edition::from_u32(SyntaxContext::MAX_ID - self.0.as_u32()).number())
+            write!(f, "ROOT{}", Edition::from_u32(SyntaxContext::MAX_ID - self.into_u32()).number())
         } else {
-            write!(f, "{}", self.0.as_u32())
+            write!(f, "{}", self.into_u32())
         }
     }
 }
