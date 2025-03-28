@@ -1816,9 +1816,10 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         lifetimes_in_scope.extend(rib.bindings.iter().map(|(ident, _)| ident.span));
                         // Consider any anonymous lifetimes, too
                         if let LifetimeRibKind::AnonymousCreateParameter { binder, .. } = rib.kind
-                            && let Some(extra) = self.r.extra_lifetime_params_map.get(&binder)
+                            && let Some(extra) =
+                                self.r.extra_diagnostics_lifetime_params_map.get(&binder)
                         {
-                            lifetimes_in_scope.extend(extra.iter().map(|(ident, _, _)| ident.span));
+                            lifetimes_in_scope.extend(extra.iter());
                         }
                         if let LifetimeRibKind::Item = rib.kind {
                             break;
@@ -1953,6 +1954,11 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             .entry(binder)
             .or_insert_with(Vec::new)
             .push((ident, param, res));
+        self.r
+            .extra_diagnostics_lifetime_params_map
+            .entry(binder)
+            .or_insert_with(Vec::new)
+            .push(ident.span);
         res
     }
 

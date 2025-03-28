@@ -51,9 +51,7 @@ use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{
-    self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS,
-};
+use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::IndexVec;
@@ -1073,8 +1071,8 @@ pub struct Resolver<'ra, 'tcx> {
     import_res_map: NodeMap<PerNS<Option<Res>>>,
     /// An import will be inserted into this map if it has been used.
     import_use_map: FxHashMap<Import<'ra>, Used>,
-    /// Lifetime parameters that lowering will have to introduce.
-    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>>,
+    /// Lifetimes that have no AST that got generated on the fly.
+    extra_diagnostics_lifetime_params_map: NodeMap<Vec<Span>>,
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: UnordMap<LocalDefId, CrateNum>,
@@ -1492,7 +1490,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             import_use_map: Default::default(),
-            extra_lifetime_params_map: Default::default(),
+            extra_diagnostics_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
             module_children: Default::default(),
             underscore_disambiguator: 0,
@@ -1694,7 +1692,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             owners: self.owners,
             partial_res_map: self.partial_res_map,
             import_res_map: self.import_res_map,
-            extra_lifetime_params_map: self.extra_lifetime_params_map,
             next_node_id: self.next_node_id,
             lint_buffer: Steal::new(self.lint_buffer),
             delegation_fn_sigs: self.delegation_fn_sigs,

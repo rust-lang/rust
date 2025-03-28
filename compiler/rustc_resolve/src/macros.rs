@@ -526,6 +526,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                     lifetime_elision_allowed,
                     trait_map,
                     lifetimes_res_map,
+                    extra_lifetime_params_map,
                 } = old;
                 assert!(node_id_to_def_id.is_empty());
                 assert!(legacy_const_generic_args.is_empty());
@@ -533,6 +534,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                 assert!(lifetime_elision_allowed.is_empty());
                 assert!(trait_map.is_empty());
                 assert!(lifetimes_res_map.is_empty());
+                assert!(extra_lifetime_params_map.is_empty());
             }
         } else {
             assert!(self.owners.insert(old.id, old).is_none());

@@ -272,7 +272,16 @@ impl PerOwnerResolver<'_> {
     /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
     /// should appear at the enclosing `PolyTraitRef`.
     fn extra_lifetime_params(&self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
-        self.general.extra_lifetime_params_map.get(&id).cloned().unwrap_or_default()
+        let res = self.item.extra_lifetime_params_map.get(&id).cloned().unwrap_or_default();
+        if res.is_empty() {
+            self.general.owners.items().any(|(_, data)| {
+                if data.extra_lifetime_params_map.contains_key(&id) {
+                    panic!("found {id} in {} instead of {}", data.id, self.item.id);
+                }
+                false
+            });
+        }
+        res
     }
 }
 
@@ -655,7 +664,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.item_local_id_counter = current_local_counter;
         self.impl_trait_defs = current_impl_trait_defs;
         self.impl_trait_bounds = current_impl_trait_bounds;
-        self.resolver.item = current_item_resolver;
+        let reinsert = std::mem::replace(&mut self.resolver.item, current_item_resolver);
+        self.resolver.general.owners.insert(owner, reinsert);
 
         debug_assert!(!self.children.iter().any(|(id, _)| id == &owner_id.def_id));
         self.children.push((owner_id.def_id, hir::MaybeOwner::Owner(info)));
