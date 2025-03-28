@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build the sysroots
         run: |
+          rustup toolchain install nightly
           cargo install -f rustup-toolchain-install-master
           ./miri toolchain -c rust-docs # Docs are the only place targets are separated by tier
           ./miri install

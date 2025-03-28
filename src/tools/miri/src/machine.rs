@@ -611,6 +611,9 @@ pub struct MiriMachine<'tcx> {
     pub(crate) reject_in_isolation_warned: RefCell<FxHashSet<String>>,
     /// Remembers which int2ptr casts we have already warned about.
     pub(crate) int2ptr_warned: RefCell<FxHashSet<Span>>,
+
+    /// Cache for `mangle_internal_symbol`.
+    pub(crate) mangle_internal_symbol_cache: FxHashMap<&'static str, String>,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -757,6 +760,7 @@ impl<'tcx> MiriMachine<'tcx> {
             native_call_mem_warned: Cell::new(false),
             reject_in_isolation_warned: Default::default(),
             int2ptr_warned: Default::default(),
+            mangle_internal_symbol_cache: Default::default(),
         }
     }
 
@@ -930,6 +934,7 @@ impl VisitProvenance for MiriMachine<'_> {
             native_call_mem_warned: _,
             reject_in_isolation_warned: _,
             int2ptr_warned: _,
+            mangle_internal_symbol_cache: _,
         } = self;
 
         threads.visit_provenance(visit);
@@ -1540,7 +1545,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn before_terminator(ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
         ecx.machine.basic_block_count += 1u64; // a u64 that is only incremented by 1 will "never" overflow
         ecx.machine.since_gc += 1;
-        // Possibly report our progress.
+        // Possibly report our progress. This will point at the terminator we are about to execute.
         if let Some(report_progress) = ecx.machine.report_progress {
             if ecx.machine.basic_block_count % u64::from(report_progress) == 0 {
                 ecx.emit_diagnostic(NonHaltingDiagnostic::ProgressReport {
@@ -1559,6 +1564,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
 
         // These are our preemption points.
+        // (This will only take effect after the terminator has been executed.)
         ecx.maybe_preempt_active_thread();
 
         // Make sure some time passes.
