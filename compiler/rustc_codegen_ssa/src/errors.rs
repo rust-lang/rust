@@ -739,24 +739,11 @@ pub enum ExtractBundledLibsError<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_unsupported_arch)]
-pub(crate) struct UnsupportedArch<'a> {
-    pub arch: &'a str,
-    pub os: &'a str,
-}
-
-#[derive(Diagnostic)]
 pub(crate) enum AppleDeploymentTarget {
     #[diag(codegen_ssa_apple_deployment_target_invalid)]
     Invalid { env_var: &'static str, error: ParseIntError },
     #[diag(codegen_ssa_apple_deployment_target_too_low)]
     TooLow { env_var: &'static str, version: String, os_min: String },
-}
-
-#[derive(Diagnostic)]
-pub(crate) enum AppleSdkRootError<'a> {
-    #[diag(codegen_ssa_apple_sdk_error_sdk_path)]
-    SdkPath { sdk_name: &'a str, error: Error },
 }
 
 #[derive(Diagnostic)]
@@ -1333,4 +1320,27 @@ pub(crate) struct MixedExportNameAndNoMangle {
     pub export_name: Span,
     #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
     pub removal_span: Span,
+}
+
+#[derive(Diagnostic, Debug)]
+pub(crate) enum XcrunError {
+    #[diag(codegen_ssa_xcrun_failed_invoking)]
+    FailedInvoking { sdk_name: &'static str, command_formatted: String, error: std::io::Error },
+
+    #[diag(codegen_ssa_xcrun_unsuccessful)]
+    #[note]
+    Unsuccessful {
+        sdk_name: &'static str,
+        command_formatted: String,
+        stdout: String,
+        stderr: String,
+    },
+}
+
+#[derive(Diagnostic, Debug)]
+#[diag(codegen_ssa_xcrun_sdk_path_warning)]
+#[note]
+pub(crate) struct XcrunSdkPathWarning {
+    pub sdk_name: &'static str,
+    pub stderr: String,
 }

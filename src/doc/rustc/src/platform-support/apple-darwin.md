@@ -70,4 +70,5 @@ the `-mmacosx-version-min=...`, `-miphoneos-version-min=...` or similar flags
 to disambiguate.
 
 The path to the SDK can be passed to `rustc` using the common `SDKROOT`
-environment variable.
+environment variable, or will be inferred when compiling on host macOS using
+roughly the same logic as `xcrun --sdk macosx --show-sdk-path`.
