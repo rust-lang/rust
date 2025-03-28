@@ -1057,8 +1057,7 @@ impl Place {
     /// In order to retrieve the correct type, the `locals` argument must match the list of all
     /// locals from the function body where this place originates from.
     pub fn ty(&self, locals: &[LocalDecl]) -> Result<Ty, Error> {
-        let start_ty = locals[self.local].ty;
-        self.projection.iter().fold(Ok(start_ty), |place_ty, elem| elem.ty(place_ty?))
+        self.projection.iter().try_fold(locals[self.local].ty, |place_ty, elem| elem.ty(place_ty))
     }
 }
 
