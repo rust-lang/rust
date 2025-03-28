@@ -207,7 +207,6 @@ struct IfThenScope {
 pub(crate) enum BreakableTarget {
     Continue(region::Scope),
     Break(region::Scope),
-    ConstContinue(region::Scope),
     Return,
 }
 
@@ -752,168 +751,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let break_index = get_scope_index(scope);
                 (break_index, None)
             }
-            BreakableTarget::ConstContinue(scope) => {
-                let Some(value) = value else {
-                    span_bug!(span, "#[const_continue] must break with a value")
-                };
-
-                // A break can only break out of a scope, so the value should be a scope
-                let rustc_middle::thir::ExprKind::Scope { value, .. } = self.thir[value].kind
-                else {
-                    span_bug!(span, "break value must be a scope")
-                };
-
-                let break_index = self
-                    .scopes
-                    .const_continuable_scopes
-                    .iter()
-                    .rposition(|const_continuable_scope| {
-                        const_continuable_scope.region_scope == scope
-                    })
-                    .unwrap_or_else(|| {
-                        span_bug!(span, "no enclosing const-continuable scope found")
-                    });
-
-                let scope = &self.scopes.const_continuable_scopes[break_index];
-
-                let state_ty = self.local_decls[scope.state_place.as_local().unwrap()].ty;
-                let discriminant_ty = match state_ty {
-                    ty if ty.is_enum() => ty.discriminant_ty(self.tcx),
-                    ty if ty.is_integral() => ty,
-                    _ => todo!(),
-                };
-
-                let rvalue = match state_ty {
-                    ty if ty.is_enum() => Rvalue::Discriminant(scope.state_place),
-                    ty if ty.is_integral() => Rvalue::Use(Operand::Copy(scope.state_place)),
-                    _ => todo!(),
-                };
-
-                // the PatCtxt is normally used in pattern exhaustiveness checking, but reused here
-                // because it performs normalization and const evaluation.
-                let dropless_arena = rustc_arena::DroplessArena::default();
-                let typeck_results = self.tcx.typeck(self.def_id);
-                let cx = RustcPatCtxt {
-                    tcx: self.tcx,
-                    typeck_results,
-                    module: self.tcx.parent_module(self.hir_id).to_def_id(),
-                    // FIXME(#132279): We're in a body, should handle opaques.
-                    typing_env: rustc_middle::ty::TypingEnv::non_body_analysis(
-                        self.tcx,
-                        self.def_id,
-                    ),
-                    dropless_arena: &dropless_arena,
-                    match_lint_level: self.hir_id,
-                    whole_match_span: Some(rustc_span::Span::default()),
-                    scrut_span: rustc_span::Span::default(),
-                    refutable: true,
-                    known_valid_scrutinee: true,
-                };
-
-                let Some(real_target) =
-                    self.static_pattern_match(&cx, value, &*scope.arms, &scope.built_match_tree)
-                else {
-                    self.tcx.dcx().emit_fatal(ConstContinueUnknownJumpTarget { span })
-                };
-
-                self.block_context.push(BlockFrame::SubExpr);
-                let state_place = scope.state_place;
-                block = self.expr_into_dest(state_place, block, value).into_block();
-                self.block_context.pop();
-
-                let discr = self.temp(discriminant_ty, source_info.span);
-                let scope_index = self.scopes.scope_index(
-                    self.scopes.const_continuable_scopes[break_index].region_scope,
-                    span,
-                );
-                let scope = &mut self.scopes.const_continuable_scopes[break_index];
-                self.cfg.push_assign(block, source_info, discr, rvalue);
-                let drop_and_continue_block = self.cfg.start_new_block();
-                let imaginary_target = self.cfg.start_new_block();
-                self.cfg.terminate(
-                    block,
-                    source_info,
-                    TerminatorKind::FalseEdge {
-                        real_target: drop_and_continue_block,
-                        imaginary_target,
-                    },
-                );
-
-                let drops = &mut scope.break_drops;
-
-                let drop_idx = self.scopes.scopes[scope_index + 1..]
-                    .iter()
-                    .flat_map(|scope| &scope.drops)
-                    .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
-
-                drops.add_entry_point(imaginary_target, drop_idx);
-
-                self.cfg.terminate(imaginary_target, source_info, TerminatorKind::UnwindResume);
-
-                // FIXME add to drop tree for loop_head
-
-                let region_scope = scope.region_scope;
-                let scope_index = self.scopes.scope_index(region_scope, span);
-                let mut drops = DropTree::new();
-
-                let drop_idx = self.scopes.scopes[scope_index + 1..]
-                    .iter()
-                    .flat_map(|scope| &scope.drops)
-                    .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
-
-                drops.add_entry_point(drop_and_continue_block, drop_idx);
-
-                // `build_drop_trees` doesn't have access to our source_info, so we
-                // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
-                // because MIR type checking will panic if it hasn't been overwritten.
-                // (See `<ExitScopes as DropTreeBuilder>::link_entry_point`.)
-                self.cfg.terminate(
-                    drop_and_continue_block,
-                    source_info,
-                    TerminatorKind::UnwindResume,
-                );
-
-                {
-                    let this = &mut *self;
-                    let blocks = drops.build_mir::<ExitScopes>(&mut this.cfg, Some(real_target));
-                    //let is_coroutine = this.coroutine.is_some();
-
-                    /*// Link the exit drop tree to unwind drop tree.
-                    if drops.drops.iter().any(|drop_node| drop_node.data.kind == DropKind::Value) {
-                        let unwind_target = this.diverge_cleanup_target(region_scope, span);
-                        let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
-                        for (drop_idx, drop_node) in drops.drops.iter_enumerated().skip(1) {
-                            match drop_node.data.kind {
-                                DropKind::Storage | DropKind::ForLint => {
-                                    if is_coroutine {
-                                        let unwind_drop = this.scopes.unwind_drops.add_drop(
-                                            drop_node.data,
-                                            unwind_indices[drop_node.next],
-                                        );
-                                        unwind_indices.push(unwind_drop);
-                                    } else {
-                                        unwind_indices.push(unwind_indices[drop_node.next]);
-                                    }
-                                }
-                                DropKind::Value => {
-                                    let unwind_drop = this
-                                        .scopes
-                                        .unwind_drops
-                                        .add_drop(drop_node.data, unwind_indices[drop_node.next]);
-                                    this.scopes.unwind_drops.add_entry_point(
-                                        blocks[drop_idx].unwrap(),
-                                        unwind_indices[drop_node.next],
-                                    );
-                                    unwind_indices.push(unwind_drop);
-                                }
-                            }
-                        }
-                    }*/
-                    blocks[ROOT_NODE].map(BasicBlock::unit)
-                };
-
-                return self.cfg.start_new_block().unit();
-            }
         };
 
         match (destination, value) {
@@ -973,6 +810,158 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
 
         self.cfg.start_new_block().unit()
+    }
+
+    /// Sets up the drops for jumping from `block` to `scope`.
+    pub(crate) fn break_const_continuable_scope(
+        &mut self,
+        mut block: BasicBlock,
+        value: ExprId,
+        scope: region::Scope,
+        source_info: SourceInfo,
+    ) -> BlockAnd<()> {
+        let span = source_info.span;
+
+        // A break can only break out of a scope, so the value should be a scope.
+        let rustc_middle::thir::ExprKind::Scope { value, .. } = self.thir[value].kind else {
+            span_bug!(span, "break value must be a scope")
+        };
+
+        let break_index = self
+            .scopes
+            .const_continuable_scopes
+            .iter()
+            .rposition(|const_continuable_scope| const_continuable_scope.region_scope == scope)
+            .unwrap_or_else(|| span_bug!(span, "no enclosing const-continuable scope found"));
+
+        let scope = &self.scopes.const_continuable_scopes[break_index];
+
+        let state_ty = self.local_decls[scope.state_place.as_local().unwrap()].ty;
+        let discriminant_ty = match state_ty {
+            ty if ty.is_enum() => ty.discriminant_ty(self.tcx),
+            ty if ty.is_integral() => ty,
+            _ => todo!(),
+        };
+
+        let rvalue = match state_ty {
+            ty if ty.is_enum() => Rvalue::Discriminant(scope.state_place),
+            ty if ty.is_integral() => Rvalue::Use(Operand::Copy(scope.state_place)),
+            _ => todo!(),
+        };
+
+        // the PatCtxt is normally used in pattern exhaustiveness checking, but reused here
+        // because it performs normalization and const evaluation.
+        let dropless_arena = rustc_arena::DroplessArena::default();
+        let typeck_results = self.tcx.typeck(self.def_id);
+        let cx = RustcPatCtxt {
+            tcx: self.tcx,
+            typeck_results,
+            module: self.tcx.parent_module(self.hir_id).to_def_id(),
+            // FIXME(#132279): We're in a body, should handle opaques.
+            typing_env: rustc_middle::ty::TypingEnv::non_body_analysis(self.tcx, self.def_id),
+            dropless_arena: &dropless_arena,
+            match_lint_level: self.hir_id,
+            whole_match_span: Some(rustc_span::Span::default()),
+            scrut_span: rustc_span::Span::default(),
+            refutable: true,
+            known_valid_scrutinee: true,
+        };
+
+        let Some(real_target) =
+            self.static_pattern_match(&cx, value, &*scope.arms, &scope.built_match_tree)
+        else {
+            self.tcx.dcx().emit_fatal(ConstContinueUnknownJumpTarget { span })
+        };
+
+        self.block_context.push(BlockFrame::SubExpr);
+        let state_place = scope.state_place;
+        block = self.expr_into_dest(state_place, block, value).into_block();
+        self.block_context.pop();
+
+        let discr = self.temp(discriminant_ty, source_info.span);
+        let scope_index = self
+            .scopes
+            .scope_index(self.scopes.const_continuable_scopes[break_index].region_scope, span);
+        let scope = &mut self.scopes.const_continuable_scopes[break_index];
+        self.cfg.push_assign(block, source_info, discr, rvalue);
+        let drop_and_continue_block = self.cfg.start_new_block();
+        let imaginary_target = self.cfg.start_new_block();
+        self.cfg.terminate(
+            block,
+            source_info,
+            TerminatorKind::FalseEdge { real_target: drop_and_continue_block, imaginary_target },
+        );
+
+        let drops = &mut scope.break_drops;
+
+        let drop_idx = self.scopes.scopes[scope_index + 1..]
+            .iter()
+            .flat_map(|scope| &scope.drops)
+            .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
+
+        drops.add_entry_point(imaginary_target, drop_idx);
+
+        self.cfg.terminate(imaginary_target, source_info, TerminatorKind::UnwindResume);
+
+        // FIXME add to drop tree for loop_head
+
+        let region_scope = scope.region_scope;
+        let scope_index = self.scopes.scope_index(region_scope, span);
+        let mut drops = DropTree::new();
+
+        let drop_idx = self.scopes.scopes[scope_index + 1..]
+            .iter()
+            .flat_map(|scope| &scope.drops)
+            .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
+
+        drops.add_entry_point(drop_and_continue_block, drop_idx);
+
+        // `build_drop_trees` doesn't have access to our source_info, so we
+        // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
+        // because MIR type checking will panic if it hasn't been overwritten.
+        // (See `<ExitScopes as DropTreeBuilder>::link_entry_point`.)
+        self.cfg.terminate(drop_and_continue_block, source_info, TerminatorKind::UnwindResume);
+
+        {
+            let this = &mut *self;
+            let blocks = drops.build_mir::<ExitScopes>(&mut this.cfg, Some(real_target));
+            //let is_coroutine = this.coroutine.is_some();
+
+            /*// Link the exit drop tree to unwind drop tree.
+            if drops.drops.iter().any(|drop_node| drop_node.data.kind == DropKind::Value) {
+                let unwind_target = this.diverge_cleanup_target(region_scope, span);
+                let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
+                for (drop_idx, drop_node) in drops.drops.iter_enumerated().skip(1) {
+                    match drop_node.data.kind {
+                        DropKind::Storage | DropKind::ForLint => {
+                            if is_coroutine {
+                                let unwind_drop = this.scopes.unwind_drops.add_drop(
+                                    drop_node.data,
+                                    unwind_indices[drop_node.next],
+                                );
+                                unwind_indices.push(unwind_drop);
+                            } else {
+                                unwind_indices.push(unwind_indices[drop_node.next]);
+                            }
+                        }
+                        DropKind::Value => {
+                            let unwind_drop = this
+                                .scopes
+                                .unwind_drops
+                                .add_drop(drop_node.data, unwind_indices[drop_node.next]);
+                            this.scopes.unwind_drops.add_entry_point(
+                                blocks[drop_idx].unwrap(),
+                                unwind_indices[drop_node.next],
+                            );
+                            unwind_indices.push(unwind_drop);
+                        }
+                    }
+                }
+            }*/
+            blocks[ROOT_NODE].map(BasicBlock::unit)
+        };
+
+        return self.cfg.start_new_block().unit();
     }
 
     /// Sets up the drops for breaking from `block` due to an `if` condition
