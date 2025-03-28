@@ -774,7 +774,6 @@ fn resolve_local<'tcx>(
 
 impl<'tcx> ScopeResolutionVisitor<'tcx> {
     /// Records the current parent (if any) as the parent of `child_scope`.
-    /// Returns the depth of `child_scope`.
     fn record_child_scope(&mut self, child_scope: Scope) {
         let parent = self.cx.parent;
         self.scope_tree.record_scope_parent(child_scope, parent);
