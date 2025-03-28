@@ -261,7 +261,7 @@ impl PerOwnerResolver<'_> {
 
     /// Obtains resolution for a lifetime with the given `NodeId`.
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
-        self.general.lifetimes_res_map.get(&id).copied()
+        self.item.lifetimes_res_map.get(&id).copied()
     }
 
     /// Obtain the list of lifetimes parameters to add to an item.

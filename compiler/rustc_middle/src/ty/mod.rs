@@ -195,6 +195,8 @@ pub struct PerOwnerResolverData {
     pub label_res_map: NodeMap<ast::NodeId>,
     /// List functions and methods for which lifetime elision was successful.
     pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
+    /// Resolutions for lifetimes.
+    pub lifetimes_res_map: NodeMap<LifetimeRes>,
 
     pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
     /// The id of the owner
@@ -210,6 +212,7 @@ impl PerOwnerResolverData {
             id,
             lifetime_elision_allowed: Default::default(),
             trait_map: Default::default(),
+            lifetimes_res_map: Default::default(),
         }
     }
 }
@@ -222,8 +225,6 @@ pub struct ResolverAstLowering {
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
     pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
-    /// Resolutions for lifetimes.
-    pub lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
 
