@@ -398,12 +398,12 @@ pub(crate) fn merge_attrs(
             } else {
                 Attributes::from_hir(&both)
             },
-            extract_cfg_from_attrs(both.iter(), cx.tcx, &cx.cache.hidden_cfg),
+            extract_cfg_from_attrs(both.iter(), cx.tcx, &mut cx.cache.cfg_info.borrow_mut()),
         )
     } else {
         (
             Attributes::from_hir(old_attrs),
-            extract_cfg_from_attrs(old_attrs.iter(), cx.tcx, &cx.cache.hidden_cfg),
+            extract_cfg_from_attrs(old_attrs.iter(), cx.tcx, &mut cx.cache.cfg_info.borrow_mut()),
         )
     }
 }

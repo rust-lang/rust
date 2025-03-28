@@ -137,6 +137,16 @@ impl<'tcx> DocContext<'tcx> {
     pub(crate) fn is_json_output(&self) -> bool {
         self.output_format.is_json() && !self.show_coverage
     }
+
+    /// This method allows to prevent children `doc(cfg(...))` attributes to not impact parent
+    /// and siblings.
+    #[allow(dead_code)]
+    pub(crate) fn handle_child_attrs<T, F: FnOnce(&mut Self) -> T>(&mut self, f: F) -> T {
+        let old_cfg_info = self.cache.cfg_info.borrow().clone();
+        let ret = f(self);
+        *self.cache.cfg_info.borrow_mut() = old_cfg_info;
+        ret
+    }
 }
 
 /// Creates a new `DiagCtxt` that can be used to emit warnings and errors.

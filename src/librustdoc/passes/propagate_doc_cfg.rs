@@ -6,7 +6,7 @@ use rustc_hir::def_id::LocalDefId;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::inline::{load_attrs, merge_attrs};
-use crate::clean::{Crate, Item, ItemKind};
+use crate::clean::{Crate, Item};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::Pass;
@@ -31,26 +31,9 @@ impl CfgPropagator<'_, '_> {
     // Some items need to merge their attributes with their parents' otherwise a few of them
     // (mostly `cfg` ones) will be missing.
     fn merge_with_parent_attributes(&mut self, item: &mut Item) {
-        let check_parent = match &item.kind {
-            // impl blocks can be in different modules with different cfg and we need to get them
-            // as well.
-            ItemKind::ImplItem(_) => false,
-            kind if kind.is_non_assoc() => true,
-            _ => return,
-        };
-
         let Some(def_id) = item.item_id.as_def_id().and_then(|def_id| def_id.as_local()) else {
             return;
         };
-
-        if check_parent {
-            let expected_parent = self.cx.tcx.opt_local_parent(def_id);
-            // If parents are different, it means that `item` is a reexport and we need
-            // to compute the actual `cfg` by iterating through its "real" parents.
-            if self.parent.is_some() && self.parent == expected_parent {
-                return;
-            }
-        }
 
         let mut attrs = Vec::new();
         let mut next_def_id = def_id;
@@ -67,6 +50,7 @@ impl CfgPropagator<'_, '_> {
 
 impl DocFolder for CfgPropagator<'_, '_> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
+        let old_cfg_info = self.cx.cache.cfg_info.borrow().clone();
         let old_parent_cfg = self.parent_cfg.clone();
 
         self.merge_with_parent_attributes(&mut item);
@@ -90,6 +74,7 @@ impl DocFolder for CfgPropagator<'_, '_> {
                 self.parent.take()
             };
         let result = self.fold_item_recur(item);
+        *self.cx.cache.cfg_info.borrow_mut() = old_cfg_info;
         self.parent_cfg = old_parent_cfg;
         self.parent = old_parent;
 
