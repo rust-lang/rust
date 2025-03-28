@@ -148,6 +148,20 @@ impl Step for ToolBuild {
             &self.extra_features,
         );
 
+        // The stage0 compiler changes infrequently and does not directly depend on code
+        // in the current working directory. Therefore, caching it with sccache should be
+        // useful.
+        // This is only performed for non-incremental builds, as ccache cannot deal with these.
+        if let Some(ref ccache) = builder.config.ccache {
+            eprintln!(
+                "TOOL SCCACHE CONFIGURED at {}, mode: {:?}, incremental: {}",
+                ccache, self.mode, builder.config.incremental
+            );
+            if matches!(self.mode, Mode::ToolBootstrap) && !builder.config.incremental {
+                cargo.env("RUSTC_WRAPPER", ccache);
+            }
+        }
+
         if path.ends_with("/rustdoc") &&
             // rustdoc is performance sensitive, so apply LTO to it.
             is_lto_stage(&self.compiler)
@@ -330,9 +344,9 @@ pub(crate) fn get_tool_rustc_compiler(
         return target_compiler;
     }
 
-    if builder.download_rustc() && target_compiler.stage > 0 {
-        // We already have the stage N compiler, we don't need to cut the stage.
-        return builder.compiler(target_compiler.stage, builder.config.build);
+    if builder.download_rustc() && target_compiler.stage == 1 {
+        // We shouldn't drop to stage0 compiler when using CI rustc.
+        return builder.compiler(1, builder.config.build);
     }
 
     // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
@@ -814,7 +828,6 @@ impl Step for LldWrapper {
             fields(build_compiler = ?self.build_compiler, target_compiler = ?self.target_compiler),
         ),
     )]
-
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         if builder.config.dry_run() {
             return ToolBuildResult {

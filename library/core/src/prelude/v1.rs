@@ -117,5 +117,4 @@ pub use crate::macros::builtin::deref;
     issue = "63063",
     reason = "`type_alias_impl_trait` has open design concerns"
 )]
-#[cfg(not(bootstrap))]
 pub use crate::macros::builtin::define_opaque;
