@@ -1072,9 +1072,9 @@ fn test_mod_hl_injection() {
     check_highlighting(
         r##"
 //- /foo.rs
-//! [Struct]
+//! [foo::Struct]
 //! This is an intra doc injection test for modules
-//! [Struct]
+//! [foo::Struct]
 //! This is an intra doc injection test for modules
 
 pub struct Struct;
@@ -1097,9 +1097,9 @@ mod foo;
 /// This is an intra doc injection test for modules
 mod foo;
 //- /foo.rs
-//! [Struct]
+//! [foo::Struct]
 //! This is an intra doc injection test for modules
-//! [Struct]
+//! [foo::Struct]
 //! This is an intra doc injection test for modules
 
 pub struct Struct;

@@ -576,6 +576,40 @@ struct S$0(i32);
 }
 
 #[test]
+fn doc_links_module() {
+    check_doc_links(
+        r#"
+/// [`M`]
+/// [`M::f`]
+mod M$0 {
+  //^ M
+  #![doc = "inner_item[`M::S`]"]
+
+    pub fn f() {}
+         //^ M::f
+    pub struct S;
+             //^ M::S
+}
+"#,
+    );
+
+    check_doc_links(
+        r#"
+mod M$0 {
+  //^ super::M
+    //! [`super::M`]
+    //! [`super::M::f`]
+    //! [`super::M::S`]
+    pub fn f() {}
+         //^ super::M::f
+    pub struct S;
+             //^ super::M::S
+}
+"#,
+    );
+}
+
+#[test]
 fn rewrite_html_root_url() {
     check_rewrite(
         r#"
@@ -687,6 +721,29 @@ fn rewrite_intra_doc_link_with_anchor() {
         expect![
             "[PartialEq#derivable](https://doc.rust-lang.org/stable/core/cmp/trait.PartialEq.html#derivable)"
         ],
+    );
+}
+
+#[test]
+fn rewrite_module() {
+    check_rewrite(
+        r#"
+//- /main.rs crate:foo
+/// [Foo]
+pub mod $0Foo{
+};
+"#,
+        expect![[r#"[Foo](https://docs.rs/foo/*/foo/Foo/index.html)"#]],
+    );
+
+    check_rewrite(
+        r#"
+//- /main.rs crate:foo
+pub mod $0Foo{
+    //! [super::Foo]
+};
+"#,
+        expect![[r#"[super::Foo](https://docs.rs/foo/*/foo/Foo/index.html)"#]],
     );
 }
 

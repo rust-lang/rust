@@ -105,11 +105,13 @@ impl HasAttrs for crate::Crate {
 /// Resolves the item `link` points to in the scope of `def`.
 pub fn resolve_doc_path_on(
     db: &dyn HirDatabase,
-    def: impl HasAttrs,
+    def: impl HasAttrs + Copy,
     link: &str,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
-    resolve_doc_path_on_(db, link, def.attr_id(), ns)
+    let is_inner =
+        def.attrs(db).by_key(&intern::sym::doc).attrs().all(|attr| attr.id.is_inner_attr());
+    resolve_doc_path_on_(db, link, def.attr_id(), ns, is_inner)
 }
 
 fn resolve_doc_path_on_(
@@ -117,9 +119,18 @@ fn resolve_doc_path_on_(
     link: &str,
     attr_id: AttrDefId,
     ns: Option<Namespace>,
+    is_inner: bool,
 ) -> Option<DocLinkDef> {
     let resolver = match attr_id {
-        AttrDefId::ModuleId(it) => it.resolver(db),
+        AttrDefId::ModuleId(it) => {
+            if is_inner {
+                it.resolver(db)
+            } else if let Some(parent) = Module::from(it).parent(db) {
+                parent.id.resolver(db)
+            } else {
+                it.resolver(db)
+            }
+        }
         AttrDefId::FieldId(it) => it.parent.resolver(db),
         AttrDefId::AdtId(it) => it.resolver(db),
         AttrDefId::FunctionId(it) => it.resolver(db),
