@@ -442,6 +442,15 @@ struct Foo;
 
 This doctest will not be built for targets such as `x86_64-unknown-linux-gnu`.
 
+Multiple ignore attributes can be specified to ignore multiple targets:
+
+```rust
+/// ```ignore-x86_64,ignore-windows
+/// assert!(2 == 2);
+/// ```
+struct Foo;
+```
+
 If you want to preserve backwards compatibility for older versions of rustdoc,
 you can specify both `ignore` and `ignore-`, such as:
 
