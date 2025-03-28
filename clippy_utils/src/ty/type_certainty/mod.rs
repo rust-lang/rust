@@ -12,6 +12,7 @@
 //! be considered a bug.
 
 use crate::paths::{PathNS, lookup_path};
+use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_qpath, walk_ty};
@@ -24,22 +25,24 @@ mod certainty;
 use certainty::{Certainty, Meet, join, meet};
 
 pub fn expr_type_is_certain(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    expr_type_certainty(cx, expr).is_certain()
+    expr_type_certainty(cx, expr, false).is_certain()
 }
 
-fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>) -> Certainty {
+/// Determine the type certainty of `expr`. `in_arg` indicates that the expression happens within
+/// the evaluation of a function or method call argument.
+fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>, in_arg: bool) -> Certainty {
     let certainty = match &expr.kind {
         ExprKind::Unary(_, expr)
         | ExprKind::Field(expr, _)
         | ExprKind::Index(expr, _, _)
-        | ExprKind::AddrOf(_, _, expr) => expr_type_certainty(cx, expr),
+        | ExprKind::AddrOf(_, _, expr) => expr_type_certainty(cx, expr, in_arg),
 
-        ExprKind::Array(exprs) => join(exprs.iter().map(|expr| expr_type_certainty(cx, expr))),
+        ExprKind::Array(exprs) => join(exprs.iter().map(|expr| expr_type_certainty(cx, expr, in_arg))),
 
         ExprKind::Call(callee, args) => {
-            let lhs = expr_type_certainty(cx, callee);
+            let lhs = expr_type_certainty(cx, callee, false);
             let rhs = if type_is_inferable_from_arguments(cx, expr) {
-                meet(args.iter().map(|arg| expr_type_certainty(cx, arg)))
+                meet(args.iter().map(|arg| expr_type_certainty(cx, arg, true)))
             } else {
                 Certainty::Uncertain
             };
@@ -47,7 +50,7 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>) -> Certainty {
         },
 
         ExprKind::MethodCall(method, receiver, args, _) => {
-            let mut receiver_type_certainty = expr_type_certainty(cx, receiver);
+            let mut receiver_type_certainty = expr_type_certainty(cx, receiver, false);
             // Even if `receiver_type_certainty` is `Certain(Some(..))`, the `Self` type in the method
             // identified by `type_dependent_def_id(..)` can differ. This can happen as a result of a `deref`,
             // for example. So update the `DefId` in `receiver_type_certainty` (if any).
@@ -59,7 +62,8 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>) -> Certainty {
             let lhs = path_segment_certainty(cx, receiver_type_certainty, method, false);
             let rhs = if type_is_inferable_from_arguments(cx, expr) {
                 meet(
-                    std::iter::once(receiver_type_certainty).chain(args.iter().map(|arg| expr_type_certainty(cx, arg))),
+                    std::iter::once(receiver_type_certainty)
+                        .chain(args.iter().map(|arg| expr_type_certainty(cx, arg, true))),
                 )
             } else {
                 Certainty::Uncertain
@@ -67,16 +71,39 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>) -> Certainty {
             lhs.join(rhs)
         },
 
-        ExprKind::Tup(exprs) => meet(exprs.iter().map(|expr| expr_type_certainty(cx, expr))),
+        ExprKind::Tup(exprs) => meet(exprs.iter().map(|expr| expr_type_certainty(cx, expr, in_arg))),
 
-        ExprKind::Binary(_, lhs, rhs) => expr_type_certainty(cx, lhs).meet(expr_type_certainty(cx, rhs)),
+        ExprKind::Binary(_, lhs, rhs) => {
+            // If one of the side of the expression is uncertain, the certainty will come from the other side,
+            // with no information on the type.
+            match (
+                expr_type_certainty(cx, lhs, in_arg),
+                expr_type_certainty(cx, rhs, in_arg),
+            ) {
+                (Certainty::Uncertain, Certainty::Certain(_)) | (Certainty::Certain(_), Certainty::Uncertain) => {
+                    Certainty::Certain(None)
+                },
+                (l, r) => l.meet(r),
+            }
+        },
 
-        ExprKind::Lit(_) => Certainty::Certain(None),
+        ExprKind::Lit(lit) => {
+            if !in_arg
+                && matches!(
+                    lit.node,
+                    LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed)
+                )
+            {
+                Certainty::Uncertain
+            } else {
+                Certainty::Certain(None)
+            }
+        },
 
         ExprKind::Cast(_, ty) => type_certainty(cx, ty),
 
         ExprKind::If(_, if_expr, Some(else_expr)) => {
-            expr_type_certainty(cx, if_expr).join(expr_type_certainty(cx, else_expr))
+            expr_type_certainty(cx, if_expr, in_arg).join(expr_type_certainty(cx, else_expr, in_arg))
         },
 
         ExprKind::Path(qpath) => qpath_certainty(cx, qpath, false),
@@ -248,7 +275,7 @@ fn path_segment_certainty(
                 let lhs = local.ty.map_or(Certainty::Uncertain, |ty| type_certainty(cx, ty));
                 let rhs = local
                     .init
-                    .map_or(Certainty::Uncertain, |init| expr_type_certainty(cx, init));
+                    .map_or(Certainty::Uncertain, |init| expr_type_certainty(cx, init, false));
                 let certainty = lhs.join(rhs);
                 if resolves_to_type {
                     certainty
