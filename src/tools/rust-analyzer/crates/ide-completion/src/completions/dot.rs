@@ -2,7 +2,7 @@
 
 use std::ops::ControlFlow;
 
-use hir::{HasContainer, ItemContainer, MethodCandidateCallback, Name};
+use hir::{Complete, HasContainer, ItemContainer, MethodCandidateCallback, Name};
 use ide_db::FxHashSet;
 use syntax::SmolStr;
 
@@ -259,7 +259,9 @@ fn complete_methods(
             // This needs to come before the `seen_methods` test, so that if we see the same method twice,
             // once as inherent and once not, we will include it.
             if let ItemContainer::Trait(trait_) = func.container(self.ctx.db) {
-                if self.ctx.exclude_traits.contains(&trait_) {
+                if self.ctx.exclude_traits.contains(&trait_)
+                    || trait_.complete(self.ctx.db) == Complete::IgnoreMethods
+                {
                     return ControlFlow::Continue(());
                 }
             }

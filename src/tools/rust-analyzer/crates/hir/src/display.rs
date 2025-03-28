@@ -739,7 +739,7 @@ impl HirDisplay for Static {
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         let data = f.db.static_data(self.id);
         f.write_str("static ")?;
-        if data.mutable {
+        if data.mutable() {
             f.write_str("mut ")?;
         }
         write!(f, "{}: ", data.name.display(f.db.upcast(), f.edition()))?;

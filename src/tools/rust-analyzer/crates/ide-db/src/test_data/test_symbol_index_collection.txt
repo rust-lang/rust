@@ -40,6 +40,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "CONST",
@@ -71,6 +72,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "CONST_WITH_INNER",
@@ -102,6 +104,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "Enum",
@@ -135,6 +138,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "ItemLikeMacro",
@@ -168,6 +172,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "Macro",
@@ -201,6 +206,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "STATIC",
@@ -232,6 +238,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "Struct",
@@ -265,6 +272,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "StructFromMacro",
@@ -295,6 +303,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "StructInFn",
@@ -330,6 +339,7 @@
                 ),
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "StructInNamedConst",
@@ -365,6 +375,7 @@
                 ),
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "StructInUnnamedConst",
@@ -398,6 +409,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "StructT",
@@ -431,6 +443,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "Trait",
@@ -462,6 +475,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "Trait",
@@ -495,6 +509,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "Union",
@@ -528,6 +543,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "a_mod",
@@ -563,6 +579,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "b_mod",
@@ -598,6 +615,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "define_struct",
@@ -631,6 +649,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "generic_impl_fn",
@@ -664,6 +683,7 @@
                 ),
                 is_alias: false,
                 is_assoc: true,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "impl_fn",
@@ -697,6 +717,7 @@
                 ),
                 is_alias: false,
                 is_assoc: true,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "macro_rules_macro",
@@ -730,6 +751,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "main",
@@ -761,6 +783,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "really_define_struct",
@@ -794,6 +817,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "trait_fn",
@@ -827,6 +851,7 @@
                 ),
                 is_alias: false,
                 is_assoc: true,
+                do_not_complete: Yes,
             },
         ],
     ),
@@ -873,6 +898,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
         ],
     ),
@@ -917,6 +943,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "IsThisJustATrait",
@@ -950,6 +977,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "StructInModB",
@@ -983,6 +1011,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "SuperItemLikeMacro",
@@ -1016,6 +1045,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
             FileSymbol {
                 name: "ThisStruct",
@@ -1049,6 +1079,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                do_not_complete: Yes,
             },
         ],
     ),

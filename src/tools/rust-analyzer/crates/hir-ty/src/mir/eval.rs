@@ -2756,7 +2756,7 @@ impl Evaluator<'_> {
             return Ok(*o);
         };
         let static_data = self.db.static_data(st);
-        let result = if !static_data.is_extern {
+        let result = if !static_data.is_extern() {
             let konst = self.db.const_eval_static(st).map_err(|e| {
                 MirEvalError::ConstEvalError(static_data.name.as_str().to_owned(), Box::new(e))
             })?;

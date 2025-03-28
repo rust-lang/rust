@@ -12,7 +12,7 @@ use crate::{
     ConstId, ExternCrateId, FunctionId, HasModule, ImplId, ItemContainerId, ItemLoc, Lookup,
     Macro2Id, MacroRulesId, ProcMacroId, StaticId, TraitAliasId, TraitId, TypeAliasId,
     db::DefDatabase,
-    item_tree::{self, FnFlags, ModItem},
+    item_tree::{self, FnFlags, ModItem, StaticFlags},
     nameres::proc_macro::{ProcMacroKind, parse_macro_name_and_helper_attrs},
     path::ImportAlias,
     type_ref::{TraitRef, TypeBound, TypeRefId, TypesMap},
@@ -27,9 +27,8 @@ pub struct FunctionData {
     pub visibility: RawVisibility,
     pub abi: Option<Symbol>,
     pub legacy_const_generics_indices: Option<Box<Box<[u32]>>>,
-    pub rustc_allow_incoherent_impl: bool,
     pub types_map: Arc<TypesMap>,
-    flags: FnFlags,
+    pub flags: FnFlags,
 }
 
 impl FunctionData {
@@ -72,7 +71,9 @@ impl FunctionData {
         }
 
         let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
-        let rustc_allow_incoherent_impl = attrs.by_key(&sym::rustc_allow_incoherent_impl).exists();
+        if attrs.by_key(&sym::rustc_allow_incoherent_impl).exists() {
+            flags |= FnFlags::RUSTC_ALLOW_INCOHERENT_IMPL;
+        }
         if flags.contains(FnFlags::HAS_UNSAFE_KW)
             && attrs.by_key(&sym::rustc_deprecated_safe_2024).exists()
         {
@@ -101,50 +102,64 @@ impl FunctionData {
             legacy_const_generics_indices: attrs.rustc_legacy_const_generics(),
             types_map: func.types_map.clone(),
             flags,
-            rustc_allow_incoherent_impl,
         })
     }
 
+    #[inline]
     pub fn has_body(&self) -> bool {
         self.flags.contains(FnFlags::HAS_BODY)
     }
 
     /// True if the first param is `self`. This is relevant to decide whether this
     /// can be called as a method.
+    #[inline]
     pub fn has_self_param(&self) -> bool {
         self.flags.contains(FnFlags::HAS_SELF_PARAM)
     }
 
+    #[inline]
     pub fn is_default(&self) -> bool {
         self.flags.contains(FnFlags::HAS_DEFAULT_KW)
     }
 
+    #[inline]
     pub fn is_const(&self) -> bool {
         self.flags.contains(FnFlags::HAS_CONST_KW)
     }
 
+    #[inline]
     pub fn is_async(&self) -> bool {
         self.flags.contains(FnFlags::HAS_ASYNC_KW)
     }
 
+    #[inline]
     pub fn is_unsafe(&self) -> bool {
         self.flags.contains(FnFlags::HAS_UNSAFE_KW)
     }
 
+    #[inline]
     pub fn is_deprecated_safe_2024(&self) -> bool {
         self.flags.contains(FnFlags::DEPRECATED_SAFE_2024)
     }
 
+    #[inline]
     pub fn is_safe(&self) -> bool {
         self.flags.contains(FnFlags::HAS_SAFE_KW)
     }
 
+    #[inline]
     pub fn is_varargs(&self) -> bool {
         self.flags.contains(FnFlags::IS_VARARGS)
     }
 
+    #[inline]
     pub fn has_target_feature(&self) -> bool {
         self.flags.contains(FnFlags::HAS_TARGET_FEATURE)
+    }
+
+    #[inline]
+    pub fn rustc_allow_incoherent_impl(&self) -> bool {
+        self.flags.contains(FnFlags::RUSTC_ALLOW_INCOHERENT_IMPL)
     }
 }
 
@@ -153,15 +168,37 @@ pub struct TypeAliasData {
     pub name: Name,
     pub type_ref: Option<TypeRefId>,
     pub visibility: RawVisibility,
-    pub is_extern: bool,
-    pub rustc_has_incoherent_inherent_impls: bool,
-    pub rustc_allow_incoherent_impl: bool,
+    pub flags: TypeAliasFlags,
     /// Bounds restricting the type alias itself (eg. `type Ty: Bound;` in a trait or impl).
     pub bounds: Box<[TypeBound]>,
     pub types_map: Arc<TypesMap>,
 }
 
+bitflags::bitflags! {
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct TypeAliasFlags: u8 {
+        const IS_EXTERN = 1 << 0;
+        const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS = 1 << 1;
+        const RUSTC_ALLOW_INCOHERENT_IMPL = 1 << 2;
+    }
+}
+
 impl TypeAliasData {
+    #[inline]
+    pub fn is_extern(&self) -> bool {
+        self.flags.contains(TypeAliasFlags::IS_EXTERN)
+    }
+
+    #[inline]
+    pub fn rustc_has_incoherent_inherent_impls(&self) -> bool {
+        self.flags.contains(TypeAliasFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
+    }
+
+    #[inline]
+    pub fn rustc_allow_incoherent_impl(&self) -> bool {
+        self.flags.contains(TypeAliasFlags::RUSTC_ALLOW_INCOHERENT_IMPL)
+    }
+
     pub(crate) fn type_alias_data_query(
         db: &dyn DefDatabase,
         typ: TypeAliasId,
@@ -180,17 +217,24 @@ impl TypeAliasData {
             loc.container.module(db).krate(),
             ModItem::from(loc.id.value).into(),
         );
-        let rustc_has_incoherent_inherent_impls =
-            attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists();
-        let rustc_allow_incoherent_impl = attrs.by_key(&sym::rustc_allow_incoherent_impl).exists();
+
+        let mut flags = TypeAliasFlags::empty();
+
+        if matches!(loc.container, ItemContainerId::ExternBlockId(_)) {
+            flags |= TypeAliasFlags::IS_EXTERN;
+        }
+        if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
+            flags |= TypeAliasFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
+        }
+        if attrs.by_key(&sym::rustc_allow_incoherent_impl).exists() {
+            flags |= TypeAliasFlags::RUSTC_ALLOW_INCOHERENT_IMPL;
+        }
 
         Arc::new(TypeAliasData {
             name: typ.name.clone(),
             type_ref: typ.type_ref,
             visibility,
-            is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
-            rustc_has_incoherent_inherent_impls,
-            rustc_allow_incoherent_impl,
+            flags,
             bounds: typ.bounds.clone(),
             types_map: typ.types_map.clone(),
         })
@@ -199,7 +243,7 @@ impl TypeAliasData {
 
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
-    pub struct TraitFlags: u8 {
+    pub struct TraitFlags: u16 {
         const IS_AUTO = 1 << 0;
         const IS_UNSAFE = 1 << 1;
         const IS_FUNDAMENTAL = 1 << 2;
@@ -332,9 +376,9 @@ impl Macro2Data {
         let loc = makro.lookup(db);
         let item_tree = loc.id.item_tree(db);
         let makro = &item_tree[loc.id.value];
+        let attrs = item_tree.attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into());
 
-        let helpers = item_tree
-            .attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into())
+        let helpers = attrs
             .by_key(&sym::rustc_builtin_macro)
             .tt_values()
             .next()
@@ -362,11 +406,9 @@ impl MacroRulesData {
         let loc = makro.lookup(db);
         let item_tree = loc.id.item_tree(db);
         let makro = &item_tree[loc.id.value];
+        let attrs = item_tree.attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into());
 
-        let macro_export = item_tree
-            .attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into())
-            .by_key(&sym::macro_export)
-            .exists();
+        let macro_export = attrs.by_key(&sym::macro_export).exists();
 
         Arc::new(MacroRulesData { name: makro.name.clone(), macro_export })
     }
@@ -387,11 +429,9 @@ impl ProcMacroData {
         let loc = makro.lookup(db);
         let item_tree = loc.id.item_tree(db);
         let makro = &item_tree[loc.id.value];
+        let attrs = item_tree.attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into());
 
-        let (name, helpers) = if let Some(def) = item_tree
-            .attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into())
-            .parse_proc_macro_decl(&makro.name)
-        {
+        let (name, helpers) = if let Some(def) = attrs.parse_proc_macro_decl(&makro.name) {
             (
                 def.name,
                 match def.kind {
@@ -404,6 +444,7 @@ impl ProcMacroData {
             stdx::never!("proc macro declaration is not a proc macro");
             (makro.name.clone(), None)
         };
+
         Arc::new(ProcMacroData { name, helpers })
     }
 }
@@ -450,9 +491,16 @@ pub struct ConstData {
     pub name: Option<Name>,
     pub type_ref: TypeRefId,
     pub visibility: RawVisibility,
-    pub rustc_allow_incoherent_impl: bool,
-    pub has_body: bool,
     pub types_map: Arc<TypesMap>,
+    pub flags: ConstFlags,
+}
+
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct ConstFlags: u8 {
+        const RUSTC_ALLOW_INCOHERENT_IMPL = 1 << 0;
+        const HAS_BODY = 1 << 1;
+    }
 }
 
 impl ConstData {
@@ -465,20 +513,37 @@ impl ConstData {
         } else {
             item_tree[konst.visibility].clone()
         };
+        let attrs = item_tree.attrs(
+            db,
+            loc.container.module(db).krate(),
+            ModItem::from(loc.id.value).into(),
+        );
 
-        let rustc_allow_incoherent_impl = item_tree
-            .attrs(db, loc.container.module(db).krate(), ModItem::from(loc.id.value).into())
-            .by_key(&sym::rustc_allow_incoherent_impl)
-            .exists();
+        let mut flags = ConstFlags::empty();
+        if attrs.by_key(&sym::rustc_allow_incoherent_impl).exists() {
+            flags |= ConstFlags::RUSTC_ALLOW_INCOHERENT_IMPL;
+        }
+        if konst.has_body {
+            flags |= ConstFlags::HAS_BODY;
+        }
 
         Arc::new(ConstData {
             name: konst.name.clone(),
             type_ref: konst.type_ref,
             visibility,
-            rustc_allow_incoherent_impl,
-            has_body: konst.has_body,
+            flags,
             types_map: konst.types_map.clone(),
         })
+    }
+
+    #[inline]
+    pub fn rustc_allow_incoherent_impl(&self) -> bool {
+        self.flags.contains(ConstFlags::RUSTC_ALLOW_INCOHERENT_IMPL)
+    }
+
+    #[inline]
+    pub fn has_body(&self) -> bool {
+        self.flags.contains(ConstFlags::HAS_BODY)
     }
 }
 
@@ -487,11 +552,8 @@ pub struct StaticData {
     pub name: Name,
     pub type_ref: TypeRefId,
     pub visibility: RawVisibility,
-    pub mutable: bool,
-    pub is_extern: bool,
-    pub has_safe_kw: bool,
-    pub has_unsafe_kw: bool,
     pub types_map: Arc<TypesMap>,
+    pub flags: StaticFlags,
 }
 
 impl StaticData {
@@ -500,16 +562,38 @@ impl StaticData {
         let item_tree = loc.id.item_tree(db);
         let statik = &item_tree[loc.id.value];
 
+        let mut flags = statik.flags;
+        if matches!(loc.container, ItemContainerId::ExternBlockId(_)) {
+            flags |= StaticFlags::IS_EXTERN;
+        }
+
         Arc::new(StaticData {
             name: statik.name.clone(),
             type_ref: statik.type_ref,
             visibility: item_tree[statik.visibility].clone(),
-            mutable: statik.mutable,
-            is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
-            has_safe_kw: statik.has_safe_kw,
-            has_unsafe_kw: statik.has_unsafe_kw,
+            flags,
             types_map: statik.types_map.clone(),
         })
+    }
+
+    #[inline]
+    pub fn is_extern(&self) -> bool {
+        self.flags.contains(StaticFlags::IS_EXTERN)
+    }
+
+    #[inline]
+    pub fn mutable(&self) -> bool {
+        self.flags.contains(StaticFlags::MUTABLE)
+    }
+
+    #[inline]
+    pub fn has_safe_kw(&self) -> bool {
+        self.flags.contains(StaticFlags::HAS_SAFE_KW)
+    }
+
+    #[inline]
+    pub fn has_unsafe_kw(&self) -> bool {
+        self.flags.contains(StaticFlags::HAS_UNSAFE_KW)
     }
 }
 

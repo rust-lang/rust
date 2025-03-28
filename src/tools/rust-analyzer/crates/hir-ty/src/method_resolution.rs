@@ -401,7 +401,7 @@ pub fn def_crates(db: &dyn HirDatabase, ty: &Ty, cur_crate: Crate) -> Option<Sma
         }
         &TyKind::Foreign(id) => {
             let alias = from_foreign_def_id(id);
-            Some(if db.type_alias_data(alias).rustc_has_incoherent_inherent_impls {
+            Some(if db.type_alias_data(alias).rustc_has_incoherent_inherent_impls() {
                 db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::ForeignType(id))
             } else {
                 smallvec![alias.module(db.upcast()).krate()]
@@ -843,9 +843,11 @@ fn is_inherent_impl_coherent(
         rustc_has_incoherent_inherent_impls
             && !items.items.is_empty()
             && items.items.iter().all(|&(_, assoc)| match assoc {
-                AssocItemId::FunctionId(it) => db.function_data(it).rustc_allow_incoherent_impl,
-                AssocItemId::ConstId(it) => db.const_data(it).rustc_allow_incoherent_impl,
-                AssocItemId::TypeAliasId(it) => db.type_alias_data(it).rustc_allow_incoherent_impl,
+                AssocItemId::FunctionId(it) => db.function_data(it).rustc_allow_incoherent_impl(),
+                AssocItemId::ConstId(it) => db.const_data(it).rustc_allow_incoherent_impl(),
+                AssocItemId::TypeAliasId(it) => {
+                    db.type_alias_data(it).rustc_allow_incoherent_impl()
+                }
             })
     }
 }

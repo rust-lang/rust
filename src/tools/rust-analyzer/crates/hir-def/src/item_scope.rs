@@ -358,7 +358,7 @@ impl ItemScope {
     }
 
     /// Get a name from current module scope, legacy macros are not included
-    pub(crate) fn get(&self, name: &Name) -> PerNs {
+    pub fn get(&self, name: &Name) -> PerNs {
         PerNs {
             types: self.types.get(name).copied(),
             values: self.values.get(name).copied(),

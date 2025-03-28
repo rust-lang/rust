@@ -226,6 +226,7 @@ impl StructData {
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
         let mut flags = StructFlags::NO_FLAGS;
+
         if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL;
         }
@@ -290,10 +291,10 @@ impl EnumData {
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
-        let rustc_has_incoherent_inherent_impls = item_tree
-            .attrs(db, loc.container.krate, ModItem::from(loc.id.value).into())
-            .by_key(&sym::rustc_has_incoherent_inherent_impls)
-            .exists();
+        let attrs = item_tree.attrs(db, loc.container.krate, ModItem::from(loc.id.value).into());
+
+        let rustc_has_incoherent_inherent_impls =
+            attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists();
 
         let enum_ = &item_tree[loc.id.value];
 

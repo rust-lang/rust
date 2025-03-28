@@ -53,7 +53,7 @@ pub mod find_path;
 pub mod import_map;
 pub mod visibility;
 
-use intern::Interned;
+use intern::{Interned, sym};
 pub use rustc_abi as layout;
 use triomphe::Arc;
 
@@ -86,6 +86,7 @@ use syntax::{AstNode, ast};
 pub use hir_expand::{Intern, Lookup, tt};
 
 use crate::{
+    attr::Attrs,
     builtin_type::BuiltinType,
     data::adt::VariantData,
     db::DefDatabase,
@@ -1502,3 +1503,81 @@ pub struct UnresolvedMacro {
 
 #[derive(Default, Debug, Eq, PartialEq, Clone, Copy)]
 pub struct SyntheticSyntax;
+
+// Feature: Completions Attribute
+// Crate authors can opt their type out of completions in some cases.
+// This is done with the `#[rust_analyzer::completions(...)]` attribute.
+//
+// All completeable things support `#[rust_analyzer::completions(ignore_flyimport)]`,
+// which causes the thing to get excluded from flyimport completion. It will still
+// be completed when in scope. This is analogous to the setting `rust-analyzer.completion.autoimport.exclude`
+// with `"type": "always"`.
+//
+// In addition, traits support two more modes: `#[rust_analyzer::completions(ignore_flyimport_methods)]`,
+// which means the trait itself may still be flyimported but its methods won't, and
+// `#[rust_analyzer::completions(ignore_methods)]`, which means the methods won't be completed even when
+// the trait is in scope (but the trait itself may still be completed). The methods will still be completed
+// on `dyn Trait`, `impl Trait` or where the trait is specified in bounds. These modes correspond to
+// the settings `rust-analyzer.completion.autoimport.exclude` with `"type": "methods"` and
+// `rust-analyzer.completion.excludeTraits`, respectively.
+//
+// Malformed attributes will be ignored without warnings.
+//
+// Note that users have no way to override this attribute, so be careful and only include things
+// users definitely do not want to be completed!
+
+/// `#[rust_analyzer::completions(...)]` options.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Complete {
+    /// No `#[rust_analyzer::completions(...)]`.
+    Yes,
+    /// `#[rust_analyzer::completions(ignore_flyimport)]`.
+    IgnoreFlyimport,
+    /// `#[rust_analyzer::completions(ignore_flyimport_methods)]` (on a trait only).
+    IgnoreFlyimportMethods,
+    /// `#[rust_analyzer::completions(ignore_methods)]` (on a trait only).
+    IgnoreMethods,
+}
+
+impl Complete {
+    pub fn extract(is_trait: bool, attrs: &Attrs) -> Complete {
+        let mut do_not_complete = Complete::Yes;
+        for ra_attr in attrs.rust_analyzer_tool() {
+            let segments = ra_attr.path.segments();
+            if segments.len() != 2 {
+                continue;
+            }
+            let action = segments[1].symbol();
+            if *action == sym::completions {
+                match ra_attr.token_tree_value().map(|tt| tt.token_trees().flat_tokens()) {
+                    Some([tt::TokenTree::Leaf(tt::Leaf::Ident(ident))]) => {
+                        if ident.sym == sym::ignore_flyimport {
+                            do_not_complete = Complete::IgnoreFlyimport;
+                        } else if is_trait {
+                            if ident.sym == sym::ignore_methods {
+                                do_not_complete = Complete::IgnoreMethods;
+                            } else if ident.sym == sym::ignore_flyimport_methods {
+                                do_not_complete = Complete::IgnoreFlyimportMethods;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        do_not_complete
+    }
+
+    #[inline]
+    pub fn for_trait_item(trait_attr: Complete, item_attr: Complete) -> Complete {
+        match (trait_attr, item_attr) {
+            (
+                Complete::IgnoreFlyimportMethods
+                | Complete::IgnoreFlyimport
+                | Complete::IgnoreMethods,
+                _,
+            ) => Complete::IgnoreFlyimport,
+            _ => item_attr,
+        }
+    }
+}

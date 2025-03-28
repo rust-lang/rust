@@ -1577,7 +1577,7 @@ pub(crate) fn type_for_type_alias_with_diagnostics_query(
     let mut ctx = TyLoweringContext::new(db, &resolver, &type_alias_data.types_map, t.into())
         .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
         .with_type_param_mode(ParamLoweringMode::Variable);
-    let inner = if type_alias_data.is_extern {
+    let inner = if type_alias_data.is_extern() {
         TyKind::Foreign(crate::to_foreign_def_id(t)).intern(Interner)
     } else {
         type_alias_data

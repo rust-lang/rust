@@ -962,7 +962,7 @@ pub struct Param {
 
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
-    pub(crate) struct FnFlags: u16 {
+    pub struct FnFlags: u16 {
         const HAS_SELF_PARAM = 1 << 0;
         const HAS_BODY = 1 << 1;
         const HAS_DEFAULT_KW = 1 << 2;
@@ -977,6 +977,7 @@ bitflags::bitflags! {
         /// it if needed.
         const HAS_TARGET_FEATURE = 1 << 8;
         const DEPRECATED_SAFE_2024 = 1 << 9;
+        const RUSTC_ALLOW_INCOHERENT_IMPL = 1 << 10;
     }
 }
 
@@ -1050,13 +1051,20 @@ pub struct Const {
 pub struct Static {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    // TODO: use bitflags when we have more flags
-    pub mutable: bool,
-    pub has_safe_kw: bool,
-    pub has_unsafe_kw: bool,
+    pub flags: StaticFlags,
     pub type_ref: TypeRefId,
     pub ast_id: FileAstId<ast::Static>,
     pub types_map: Arc<TypesMap>,
+}
+
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct StaticFlags: u8 {
+        const MUTABLE = 1 << 0;
+        const IS_EXTERN = 1 << 1;
+        const HAS_SAFE_KW = 1 << 2;
+        const HAS_UNSAFE_KW = 1 << 3;
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

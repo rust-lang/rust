@@ -362,9 +362,9 @@ impl<'a> UnsafeVisitor<'a> {
             self.resolver.resolve_path_in_value_ns(self.db.upcast(), path, hygiene);
         if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id), _)) = value_or_partial {
             let static_data = self.db.static_data(id);
-            if static_data.mutable {
+            if static_data.mutable() {
                 self.on_unsafe_op(node, UnsafetyReason::MutableStatic);
-            } else if static_data.is_extern && !static_data.has_safe_kw {
+            } else if static_data.is_extern() && !static_data.has_safe_kw() {
                 self.on_unsafe_op(node, UnsafetyReason::ExternStatic);
             }
         }
