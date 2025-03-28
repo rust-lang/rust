@@ -5,7 +5,7 @@ use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::{self as hir, HirId, PredicateOrigin};
+use rustc_hir::{self as hir, HirId, IsAnonInPath, PredicateOrigin};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -1823,7 +1823,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             GenericParamKind::Lifetime => {
                 let lt_id = self.next_node_id();
-                let lifetime = self.new_named_lifetime(id, lt_id, ident);
+                let lifetime = self.new_named_lifetime(id, lt_id, ident, IsAnonInPath::No);
                 hir::WherePredicateKind::RegionPredicate(hir::WhereRegionPredicate {
                     lifetime,
                     bounds,

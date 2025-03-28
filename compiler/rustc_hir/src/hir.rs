@@ -35,20 +35,60 @@ use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::{FnKind, VisitorExt};
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
+pub enum IsAnonInPath {
+    No,
+    Yes,
+}
+
+/// A lifetime. The valid field combinations are non-obvious. The following
+/// example shows some of them. See also the comments on `LifetimeName`.
+/// ```
+/// #[repr(C)]
+/// struct S<'a>(&'a u32);       // res=Param, name='a, IsAnonInPath::No
+/// unsafe extern "C" {
+///     fn f1(s: S);             // res=Param, name='_, IsAnonInPath::Yes
+///     fn f2(s: S<'_>);         // res=Param, name='_, IsAnonInPath::No
+///     fn f3<'a>(s: S<'a>);     // res=Param, name='a, IsAnonInPath::No
+/// }
+///
+/// struct St<'a> { x: &'a u32 } // res=Param, name='a, IsAnonInPath::No
+/// fn f() {
+///     _ = St { x: &0 };        // res=Infer, name='_, IsAnonInPath::Yes
+///     _ = St::<'_> { x: &0 };  // res=Infer, name='_, IsAnonInPath::No
+/// }
+///
+/// struct Name<'a>(&'a str);    // res=Param,  name='a, IsAnonInPath::No
+/// const A: Name = Name("a");   // res=Static, name='_, IsAnonInPath::Yes
+/// const B: &str = "";          // res=Static, name='_, IsAnonInPath::No
+/// static C: &'_ str = "";      // res=Static, name='_, IsAnonInPath::No
+/// static D: &'static str = ""; // res=Static, name='static, IsAnonInPath::No
+///
+/// trait Tr {}
+/// fn tr(_: Box<dyn Tr>) {}     // res=ImplicitObjectLifetimeDefault, name='_, IsAnonInPath::No
+///
+/// // (commented out because these cases trigger errors)
+/// // struct S1<'a>(&'a str);   // res=Param, name='a, IsAnonInPath::No
+/// // struct S2(S1);            // res=Error, name='_, IsAnonInPath::Yes
+/// // struct S3(S1<'_>);        // res=Error, name='_, IsAnonInPath::No
+/// // struct S4(S1<'a>);        // res=Error, name='a, IsAnonInPath::No
+/// ```
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Lifetime {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
 
-    /// Either "`'a`", referring to a named lifetime definition,
-    /// `'_` referring to an anonymous lifetime (either explicitly `'_` or `&type`),
-    /// or "``" (i.e., `kw::Empty`) when appearing in path.
-    ///
-    /// See `Lifetime::suggestion_position` for practical use.
+    /// Either a named lifetime definition (e.g. `'a`, `'static`) or an
+    /// anonymous lifetime (`'_`, either explicitly written, or inserted for
+    /// things like `&type`).
     pub ident: Ident,
 
     /// Semantics of this lifetime.
     pub res: LifetimeName,
+
+    /// Is the lifetime anonymous and in a path? Used only for error
+    /// suggestions. See `Lifetime::suggestion` for example use.
+    pub is_anon_in_path: IsAnonInPath,
 }
 
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
@@ -111,11 +151,12 @@ pub enum LifetimeName {
     /// that was already reported.
     Error,
 
-    /// User wrote an anonymous lifetime, either `'_` or nothing.
-    /// The semantics of this lifetime should be inferred by typechecking code.
+    /// User wrote an anonymous lifetime, either `'_` or nothing (which gets
+    /// converted to `'_`). The semantics of this lifetime should be inferred
+    /// by typechecking code.
     Infer,
 
-    /// User wrote `'static`.
+    /// User wrote `'static` or nothing (which gets converted to `'_`).
     Static,
 }
 
@@ -135,59 +176,57 @@ impl LifetimeName {
 
 impl fmt::Display for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.ident.name != kw::Empty { self.ident.name.fmt(f) } else { "'_".fmt(f) }
+        self.ident.name.fmt(f)
     }
 }
 
-pub enum LifetimeSuggestionPosition {
-    /// The user wrote `'a` or `'_`.
-    Normal,
-    /// The user wrote `&type` or `&mut type`.
-    Ampersand,
-    /// The user wrote `Path` and omitted the `<'_>`.
-    ElidedPath,
-    /// The user wrote `Path<T>`, and omitted the `'_,`.
-    ElidedPathArgument,
-    /// The user wrote `dyn Trait` and omitted the `+ '_`.
-    ObjectDefault,
-}
-
 impl Lifetime {
+    pub fn new(
+        hir_id: HirId,
+        ident: Ident,
+        res: LifetimeName,
+        is_anon_in_path: IsAnonInPath,
+    ) -> Lifetime {
+        let lifetime = Lifetime { hir_id, ident, res, is_anon_in_path };
+
+        // Sanity check: elided lifetimes form a strict subset of anonymous lifetimes.
+        #[cfg(debug_assertions)]
+        match (lifetime.is_elided(), lifetime.is_anonymous()) {
+            (false, false) => {} // e.g. `'a`
+            (false, true) => {}  // e.g. explicit `'_`
+            (true, true) => {}   // e.g. `&x`
+            (true, false) => panic!("bad Lifetime"),
+        }
+
+        lifetime
+    }
+
     pub fn is_elided(&self) -> bool {
         self.res.is_elided()
     }
 
     pub fn is_anonymous(&self) -> bool {
-        self.ident.name == kw::Empty || self.ident.name == kw::UnderscoreLifetime
-    }
-
-    pub fn suggestion_position(&self) -> (LifetimeSuggestionPosition, Span) {
-        if self.ident.name == kw::Empty {
-            if self.ident.span.is_empty() {
-                (LifetimeSuggestionPosition::ElidedPathArgument, self.ident.span)
-            } else {
-                (LifetimeSuggestionPosition::ElidedPath, self.ident.span.shrink_to_hi())
-            }
-        } else if self.res == LifetimeName::ImplicitObjectLifetimeDefault {
-            (LifetimeSuggestionPosition::ObjectDefault, self.ident.span)
-        } else if self.ident.span.is_empty() {
-            (LifetimeSuggestionPosition::Ampersand, self.ident.span)
-        } else {
-            (LifetimeSuggestionPosition::Normal, self.ident.span)
-        }
+        self.ident.name == kw::UnderscoreLifetime
     }
 
     pub fn suggestion(&self, new_lifetime: &str) -> (Span, String) {
         debug_assert!(new_lifetime.starts_with('\''));
-        let (pos, span) = self.suggestion_position();
-        let code = match pos {
-            LifetimeSuggestionPosition::Normal => format!("{new_lifetime}"),
-            LifetimeSuggestionPosition::Ampersand => format!("{new_lifetime} "),
-            LifetimeSuggestionPosition::ElidedPath => format!("<{new_lifetime}>"),
-            LifetimeSuggestionPosition::ElidedPathArgument => format!("{new_lifetime}, "),
-            LifetimeSuggestionPosition::ObjectDefault => format!("+ {new_lifetime}"),
-        };
-        (span, code)
+
+        match (self.is_anon_in_path, self.ident.span.is_empty()) {
+            // The user wrote `Path<T>`, and omitted the `'_,`.
+            (IsAnonInPath::Yes, true) => (self.ident.span, format!("{new_lifetime}, ")),
+
+            // The user wrote `Path` and omitted the `<'_>`.
+            (IsAnonInPath::Yes, false) => {
+                (self.ident.span.shrink_to_hi(), format!("<{new_lifetime}>"))
+            }
+
+            // The user wrote `&type` or `&mut type`.
+            (IsAnonInPath::No, true) => (self.ident.span, format!("{new_lifetime} ")),
+
+            // The user wrote `'a` or `'_`.
+            (IsAnonInPath::No, false) => (self.ident.span, format!("{new_lifetime}")),
+        }
     }
 }
 
