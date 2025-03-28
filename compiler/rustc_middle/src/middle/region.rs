@@ -199,8 +199,6 @@ impl Scope {
     }
 }
 
-pub type ScopeDepth = u32;
-
 /// The region scope tree encodes information about region relationships.
 #[derive(Default, Debug, HashStable)]
 pub struct ScopeTree {
@@ -213,7 +211,7 @@ pub struct ScopeTree {
     /// conditional expression or repeating block. (Note that the
     /// enclosing scope ID for the block associated with a closure is
     /// the closure itself.)
-    pub parent_map: FxIndexMap<Scope, (Scope, ScopeDepth)>,
+    pub parent_map: FxIndexMap<Scope, Scope>,
 
     /// Maps from a variable or binding ID to the block in which that
     /// variable is declared.
@@ -328,7 +326,7 @@ pub struct YieldData {
 }
 
 impl ScopeTree {
-    pub fn record_scope_parent(&mut self, child: Scope, parent: Option<(Scope, ScopeDepth)>) {
+    pub fn record_scope_parent(&mut self, child: Scope, parent: Option<Scope>) {
         debug!("{:?}.parent = {:?}", child, parent);
 
         if let Some(p) = parent {
@@ -353,7 +351,7 @@ impl ScopeTree {
 
     /// Returns the narrowest scope that encloses `id`, if any.
     pub fn opt_encl_scope(&self, id: Scope) -> Option<Scope> {
-        self.parent_map.get(&id).cloned().map(|(p, _)| p)
+        self.parent_map.get(&id).cloned()
     }
 
     /// Returns the lifetime of the local variable `var_id`, if any.
