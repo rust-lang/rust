@@ -35,4 +35,9 @@ fn projection_from_impl_trait_inside_dyn_trait_is_disallowed()
     panic!()
 }
 
+fn parametrized_value_in_anon_const_is_disallowed() -> [(); None::<impl Sized>] {
+    //~^ ERROR `impl Trait` is not allowed in paths
+    loop {}
+}
+
 fn main() {}

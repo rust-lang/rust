@@ -99,6 +99,13 @@ impl<'a> PostExpansionVisitor<'a> {
                 }
                 visit::walk_ty(self, ty);
             }
+
+            fn visit_anon_const(&mut self, _: &ast::AnonConst) -> Self::Result {
+                // We don't walk the anon const because it crosses a conceptual boundary: We're no
+                // longer "inside" the original type.
+                // Brittle: We assume that the callers of `check_impl_trait` will later recurse into
+                // the items found in the AnonConst to look for nested TyAliases.
+            }
         }
         ImplTraitVisitor { vis: self, in_associated_ty }.visit_ty(ty);
     }
