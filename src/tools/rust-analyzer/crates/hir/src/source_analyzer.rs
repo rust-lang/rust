@@ -25,7 +25,7 @@ use hir_def::{
     lower::LowerCtx,
     nameres::MacroSubNs,
     path::{ModPath, Path, PathKind},
-    resolver::{ModuleOrTypeNs, Resolver, TypeNs, ValueNs, resolver_for_scope},
+    resolver::{Resolver, TypeNs, ValueNs, resolver_for_scope},
     type_ref::{Mutability, TypesMap, TypesSourceMap},
 };
 use hir_expand::{
@@ -1384,7 +1384,7 @@ fn resolve_hir_path_(
                     resolver.type_owner(),
                 )
                 .lower_ty_ext(type_ref);
-                res.map(|ty_ns| (ModuleOrTypeNs::TypeNs(ty_ns), path.segments().first()))
+                res.map(|ty_ns| (ty_ns, path.segments().first()))
             }
             None => {
                 let (ty, remaining_idx, _) = resolver.resolve_path_in_type_ns(db.upcast(), path)?;
@@ -1403,30 +1403,26 @@ fn resolve_hir_path_(
 
         // If we are in a TypeNs for a Trait, and we have an unresolved name, try to resolve it as a type
         // within the trait's associated types.
-        if let (Some(unresolved), ModuleOrTypeNs::TypeNs(TypeNs::TraitId(trait_id))) =
-            (&unresolved, &ty)
-        {
+        if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
             if let Some(type_alias_id) =
-                db.trait_items(*trait_id).associated_type_by_name(unresolved.name)
+                db.trait_items(trait_id).associated_type_by_name(unresolved.name)
             {
                 return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
             }
         }
 
         let res = match ty {
-            ModuleOrTypeNs::TypeNs(ty) => match ty {
-                TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
-                TypeNs::GenericParam(id) => PathResolution::TypeParam(id.into()),
-                TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
-                    PathResolution::Def(Adt::from(it).into())
-                }
-                TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
-                TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
-                TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
-                TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
-                TypeNs::TraitAliasId(it) => PathResolution::Def(TraitAlias::from(it).into()),
-            },
-            ModuleOrTypeNs::ModuleNs(it) => PathResolution::Def(ModuleDef::Module(it.into())),
+            TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
+            TypeNs::GenericParam(id) => PathResolution::TypeParam(id.into()),
+            TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
+                PathResolution::Def(Adt::from(it).into())
+            }
+            TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
+            TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
+            TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
+            TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
+            TypeNs::TraitAliasId(it) => PathResolution::Def(TraitAlias::from(it).into()),
+            TypeNs::ModuleId(it) => PathResolution::Def(ModuleDef::Module(it.into())),
         };
         match unresolved {
             Some(unresolved) => resolver
@@ -1522,7 +1518,7 @@ fn resolve_hir_path_qualifier(
                     resolver.type_owner(),
                 )
                 .lower_ty_ext(type_ref);
-                res.map(|ty_ns| (ModuleOrTypeNs::TypeNs(ty_ns), path.segments().first()))
+                res.map(|ty_ns| (ty_ns, path.segments().first()))
             }
             None => {
                 let (ty, remaining_idx, _) = resolver.resolve_path_in_type_ns(db.upcast(), path)?;
@@ -1541,29 +1537,26 @@ fn resolve_hir_path_qualifier(
 
         // If we are in a TypeNs for a Trait, and we have an unresolved name, try to resolve it as a type
         // within the trait's associated types.
-        if let (Some(unresolved), &ModuleOrTypeNs::TypeNs(TypeNs::TraitId(trait_id))) =
-            (&unresolved, &ty)
-        {
+        if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
             if let Some(type_alias_id) =
                 db.trait_items(trait_id).associated_type_by_name(unresolved.name)
             {
                 return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
             }
         }
+
         let res = match ty {
-            ModuleOrTypeNs::TypeNs(ty) => match ty {
-                TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
-                TypeNs::GenericParam(id) => PathResolution::TypeParam(id.into()),
-                TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
-                    PathResolution::Def(Adt::from(it).into())
-                }
-                TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
-                TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
-                TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
-                TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
-                TypeNs::TraitAliasId(it) => PathResolution::Def(TraitAlias::from(it).into()),
-            },
-            ModuleOrTypeNs::ModuleNs(it) => PathResolution::Def(ModuleDef::Module(it.into())),
+            TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
+            TypeNs::GenericParam(id) => PathResolution::TypeParam(id.into()),
+            TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
+                PathResolution::Def(Adt::from(it).into())
+            }
+            TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
+            TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
+            TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
+            TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
+            TypeNs::TraitAliasId(it) => PathResolution::Def(TraitAlias::from(it).into()),
+            TypeNs::ModuleId(it) => PathResolution::Def(ModuleDef::Module(it.into())),
         };
         match unresolved {
             Some(unresolved) => resolver

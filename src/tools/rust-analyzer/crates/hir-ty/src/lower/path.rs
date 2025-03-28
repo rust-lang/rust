@@ -10,7 +10,7 @@ use hir_def::{
     expr_store::HygieneId,
     generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
     path::{GenericArg, GenericArgs, GenericArgsParentheses, Path, PathSegment, PathSegments},
-    resolver::{ModuleOrTypeNs, ResolveValueResult, TypeNs, ValueNs},
+    resolver::{ResolveValueResult, TypeNs, ValueNs},
     type_ref::{TypeBound, TypeRef, TypesMap},
 };
 use smallvec::SmallVec;
@@ -285,7 +285,9 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             TypeNs::BuiltinType(it) => self.lower_path_inner(it.into(), infer_args),
             TypeNs::TypeAliasId(it) => self.lower_path_inner(it.into(), infer_args),
             // FIXME: report error
-            TypeNs::EnumVariantId(_) => return (TyKind::Error.intern(Interner), None),
+            TypeNs::EnumVariantId(_) | TypeNs::ModuleId(_) => {
+                return (TyKind::Error.intern(Interner), None);
+            }
         };
 
         self.skip_resolved_segment();
@@ -316,6 +318,9 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             TypeNs::BuiltinType(_) => {
                 prohibit_generics_on_resolved(GenericArgsProhibitedReason::PrimitiveTy)
             }
+            TypeNs::ModuleId(_) => {
+                prohibit_generics_on_resolved(GenericArgsProhibitedReason::Module)
+            }
             TypeNs::AdtId(_)
             | TypeNs::EnumVariantId(_)
             | TypeNs::TypeAliasId(_)
@@ -337,10 +342,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             .ctx
             .resolver
             .resolve_path_in_type_ns_with_prefix_info(self.ctx.db.upcast(), self.path)?;
-
-        let ModuleOrTypeNs::TypeNs(resolution) = resolution else {
-            return None;
-        };
 
         let segments = self.segments;
         if segments.is_empty() || matches!(self.path, Path::LangItem(..)) {
