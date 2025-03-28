@@ -987,40 +987,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
         );
     }
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
-        self.resolve_doc_links(&foreign_item.attrs, MaybeExported::Ok(foreign_item.id));
-        let def_kind = self.r.local_def_kind(foreign_item.id);
-        match foreign_item.kind {
-            ForeignItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
-                self.with_generic_param_rib(
-                    &generics.params,
-                    RibKind::Item(HasGenericParams::Yes(generics.span), def_kind),
-                    LifetimeRibKind::Generics {
-                        binder: foreign_item.id,
-                        kind: LifetimeBinderKind::Item,
-                        span: generics.span,
-                    },
-                    |this| visit::walk_item(this, foreign_item),
-                );
-            }
-            ForeignItemKind::Fn(box Fn { ref generics, .. }) => {
-                self.with_generic_param_rib(
-                    &generics.params,
-                    RibKind::Item(HasGenericParams::Yes(generics.span), def_kind),
-                    LifetimeRibKind::Generics {
-                        binder: foreign_item.id,
-                        kind: LifetimeBinderKind::Function,
-                        span: generics.span,
-                    },
-                    |this| visit::walk_item(this, foreign_item),
-                );
-            }
-            ForeignItemKind::Static(..) => {
-                self.with_static_rib(def_kind, |this| visit::walk_item(this, foreign_item))
-            }
-            ForeignItemKind::MacCall(..) => {
-                panic!("unexpanded macro in resolve!")
-            }
-        }
+        self.with_owner(foreign_item.id, |this| this.resolve_foreign_item(foreign_item))
     }
     fn visit_fn(&mut self, fn_kind: FnKind<'ast>, sp: Span, fn_id: NodeId) {
         let previous_value = self.diag_metadata.current_function;
@@ -3479,6 +3446,43 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
             }
             AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => {
+                panic!("unexpanded macro in resolve!")
+            }
+        }
+    }
+
+    fn resolve_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
+        self.resolve_doc_links(&foreign_item.attrs, MaybeExported::Ok(foreign_item.id));
+        let def_kind = self.r.local_def_kind(foreign_item.id);
+        match foreign_item.kind {
+            ForeignItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
+                self.with_generic_param_rib(
+                    &generics.params,
+                    RibKind::Item(HasGenericParams::Yes(generics.span), def_kind),
+                    LifetimeRibKind::Generics {
+                        binder: foreign_item.id,
+                        kind: LifetimeBinderKind::Item,
+                        span: generics.span,
+                    },
+                    |this| visit::walk_item(this, foreign_item),
+                );
+            }
+            ForeignItemKind::Fn(box Fn { ref generics, .. }) => {
+                self.with_generic_param_rib(
+                    &generics.params,
+                    RibKind::Item(HasGenericParams::Yes(generics.span), def_kind),
+                    LifetimeRibKind::Generics {
+                        binder: foreign_item.id,
+                        kind: LifetimeBinderKind::Function,
+                        span: generics.span,
+                    },
+                    |this| visit::walk_item(this, foreign_item),
+                );
+            }
+            ForeignItemKind::Static(..) => {
+                self.with_static_rib(def_kind, |this| visit::walk_item(this, foreign_item))
+            }
+            ForeignItemKind::MacCall(..) => {
                 panic!("unexpanded macro in resolve!")
             }
         }
