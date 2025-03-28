@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use Context::*;
+use rustc_ast::Label;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
@@ -11,11 +12,12 @@ use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, sym};
 
 use crate::errors::{
-    BreakInsideClosure, BreakInsideCoroutine, BreakNonLoop, ContinueLabeledBlock, OutsideLoop,
-    OutsideLoopSuggestion, UnlabeledCfInWhileCondition, UnlabeledInLabeledBlock,
+    BreakInsideClosure, BreakInsideCoroutine, BreakNonLoop, ConstContinueBadLabel,
+    ContinueLabeledBlock, LoopMatchBadRhs, LoopMatchBadStatements, LoopMatchMissingAssignment,
+    OutsideLoop, OutsideLoopSuggestion, UnlabeledCfInWhileCondition, UnlabeledInLabeledBlock,
 };
 
 /// The context in which a block is encountered.
@@ -37,6 +39,11 @@ enum Context {
     AnonConst,
     /// E.g. `const { ... }`.
     ConstBlock,
+    /// #[loop_match] loop { state = 'label: { /* ... */ } }
+    LoopMatch {
+        /// The label of the labeled block (so not the loop!)
+        labeled_block: Label,
+    },
 }
 
 #[derive(Clone)]
@@ -160,7 +167,12 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
                 }
             }
             hir::ExprKind::Loop(ref b, _, source, _) => {
-                self.with_context(Loop(source), |v| v.visit_block(b));
+                let cx = match self.is_loop_match(e, b) {
+                    Some(labeled_block) => LoopMatch { labeled_block },
+                    None => Loop(source),
+                };
+
+                self.with_context(cx, |v| v.visit_block(b));
             }
             hir::ExprKind::Closure(&hir::Closure {
                 ref fn_decl, body, fn_decl_span, kind, ..
@@ -215,6 +227,22 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
                     }
                     Err(hir::LoopIdError::UnresolvedLabel) => None,
                 };
+
+                // a #[const_continue] must be to a block that participates in #[loop_match]
+                let attrs = self.tcx.hir_attrs(e.hir_id);
+                if attrs.iter().any(|attr| attr.has_name(sym::const_continue)) {
+                    if let Some(break_label) = break_label.label {
+                        let is_target_label = |cx: &Context| match cx {
+                            Context::LoopMatch { labeled_block } => break_label == *labeled_block,
+                            _ => false,
+                        };
+
+                        if !self.cx_stack.iter().rev().any(is_target_label) {
+                            let span = break_label.ident.span;
+                            self.tcx.dcx().emit_fatal(ConstContinueBadLabel { span });
+                        }
+                    }
+                }
 
                 if let Some(Node::Block(_)) = loop_id.map(|id| self.tcx.hir_node(id)) {
                     return;
@@ -318,7 +346,7 @@ impl<'hir> CheckLoopVisitor<'hir> {
         cx_pos: usize,
     ) {
         match self.cx_stack[cx_pos] {
-            LabeledBlock | Loop(_) => {}
+            LabeledBlock | Loop(_) | LoopMatch { .. } => {}
             Closure(closure_span) => {
                 self.tcx.dcx().emit_err(BreakInsideClosure {
                     span,
@@ -398,5 +426,56 @@ impl<'hir> CheckLoopVisitor<'hir> {
                 }),
             });
         }
+    }
+
+    /// Is this a loop annotated with #[loop_match] that looks syntactically sound?
+    fn is_loop_match(
+        &self,
+        e: &'hir hir::Expr<'hir>,
+        body: &'hir hir::Block<'hir>,
+    ) -> Option<Label> {
+        if !self.tcx.hir_attrs(e.hir_id).iter().any(|attr| attr.has_name(sym::loop_match)) {
+            return None;
+        }
+
+        let dcx = self.tcx.dcx();
+
+        // accept either `state = expr` or `state = expr;`
+        let loop_body_expr = match body.stmts {
+            [] => match body.expr {
+                Some(expr) => expr,
+                None => {
+                    dcx.emit_err(LoopMatchMissingAssignment { span: body.span });
+                    return None;
+                }
+            },
+            [single] if body.expr.is_none() => match single.kind {
+                hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr) => expr,
+                _ => {
+                    dcx.emit_err(LoopMatchMissingAssignment { span: body.span });
+                    return None;
+                }
+            },
+            [first @ last] | [first, .., last] => {
+                dcx.emit_err(LoopMatchBadStatements { span: first.span.to(last.span) });
+                return None;
+            }
+        };
+
+        let hir::ExprKind::Assign(_, rhs_expr, _) = loop_body_expr.kind else {
+            dcx.emit_err(LoopMatchMissingAssignment { span: loop_body_expr.span });
+            return None;
+        };
+
+        let hir::ExprKind::Block(_, label) = rhs_expr.kind else {
+            dcx.emit_err(LoopMatchBadRhs { span: rhs_expr.span });
+            return None;
+        };
+
+        if label.is_none() {
+            todo!()
+        }
+
+        label
     }
 }

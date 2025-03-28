@@ -50,6 +50,13 @@ pub(crate) struct ConstContinueAttr {
     pub node_span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes_const_continue_bad_label)]
+pub(crate) struct ConstContinueBadLabel {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_outer_crate_level_attr)]
 pub(crate) struct OuterCrateLevelAttr;
@@ -1212,6 +1219,27 @@ pub(crate) struct UnlabeledCfInWhileCondition<'a> {
     #[label]
     pub span: Span,
     pub cf_type: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_loop_match_bad_statements)]
+pub(crate) struct LoopMatchBadStatements {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_loop_match_bad_rhs)]
+pub(crate) struct LoopMatchBadRhs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_loop_match_missing_assignment)]
+pub(crate) struct LoopMatchMissingAssignment {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

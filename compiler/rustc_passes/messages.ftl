@@ -103,6 +103,9 @@ passes_const_continue_attr =
     `#[const_continue]` should be applied to a break expression
     .label = not a break expression
 
+passes_const_continue_bad_label =
+    `#[const_continue]` must break to a labeled block that participates in a `#[loop_match]`
+
 passes_const_stable_not_stable =
     attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`
     .label = attribute specified here
@@ -469,6 +472,15 @@ passes_linkage =
 passes_loop_match_attr =
     `#[loop_match]` should be applied to a loop
     .label = not a loop
+
+passes_loop_match_bad_rhs =
+    this expression must be a single `match` wrapped in a labeled block
+
+passes_loop_match_bad_statements =
+    statements are not allowed in this position within a `#[loop_match]`
+
+passes_loop_match_missing_assignment =
+    expected a single assignment expression
 
 passes_macro_export =
     `#[macro_export]` only has an effect on macro definitions
