@@ -17,6 +17,7 @@ use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, MaybeResult, TyAndLayout};
 use rustc_middle::ty::{self, Binder, FloatTy, FnSig, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::{Conv, FnAbi};
 
 use crate::*;
@@ -1257,6 +1258,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })?;
 
         interp_ok(array)
+    }
+
+    fn mangle_internal_symbol<'a>(&'a mut self, name: &'static str) -> &'a str
+    where
+        'tcx: 'a,
+    {
+        let this = self.eval_context_mut();
+        let tcx = *this.tcx;
+        this.machine
+            .mangle_internal_symbol_cache
+            .entry(name)
+            .or_insert_with(|| mangle_internal_symbol(tcx, name))
     }
 }
 
