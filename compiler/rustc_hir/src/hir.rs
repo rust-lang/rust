@@ -36,42 +36,50 @@ pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::{FnKind, VisitorExt};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
-pub enum IsAnonInPath {
-    No,
-    Yes,
+pub enum AngleBrackets {
+    /// E.g. `Path`.
+    Missing,
+    /// E.g. `Path<>`.
+    Empty,
+    /// E.g. `Path<T>`.
+    Full,
 }
+
+pub type IsAnonInPath = Option<AngleBrackets>;
 
 /// A lifetime. The valid field combinations are non-obvious. The following
 /// example shows some of them. See also the comments on `LifetimeName`.
 /// ```
 /// #[repr(C)]
-/// struct S<'a>(&'a u32);       // res=Param, name='a, IsAnonInPath::No
+/// struct S<'a>(&'a u32);          // res=Param, name='a, is_anon_in_path=None
 /// unsafe extern "C" {
-///     fn f1(s: S);             // res=Param, name='_, IsAnonInPath::Yes
-///     fn f2(s: S<'_>);         // res=Param, name='_, IsAnonInPath::No
-///     fn f3<'a>(s: S<'a>);     // res=Param, name='a, IsAnonInPath::No
+///     fn f1(s: S);                // res=Param, name='_, is_anon_in_path=Some(Missing)
+///     fn f2(s: S<>);              // res=Param, name='_, is_anon_in_path=Some(Empty)
+///     fn f3(s: S<'_>);            // res=Param, name='_, is_anon_in_path=None
+///     fn f4<'a>(s: S<'a>);        // res=Param, name='a, is_anon_in_path=None
 /// }
 ///
-/// struct St<'a> { x: &'a u32 } // res=Param, name='a, IsAnonInPath::No
+/// struct St<'a, T> { x: &'a T }   // res=Param, name='a, is_anon_in_path=None
 /// fn f() {
-///     _ = St { x: &0 };        // res=Infer, name='_, IsAnonInPath::Yes
-///     _ = St::<'_> { x: &0 };  // res=Infer, name='_, IsAnonInPath::No
+///     _ = St::<u8> { x: &0 };     // res=Infer, name='_, is_anon_in_path=Some(Full)
+///     _ = St::<'_, u8> { x: &0 }; // res=Infer, name='_, is_anon_in_path=None
 /// }
 ///
-/// struct Name<'a>(&'a str);    // res=Param,  name='a, IsAnonInPath::No
-/// const A: Name = Name("a");   // res=Static, name='_, IsAnonInPath::Yes
-/// const B: &str = "";          // res=Static, name='_, IsAnonInPath::No
-/// static C: &'_ str = "";      // res=Static, name='_, IsAnonInPath::No
-/// static D: &'static str = ""; // res=Static, name='static, IsAnonInPath::No
+/// struct Name<'a>(&'a str);       // res=Param,  name='a, is_anon_in_path=None
+/// const A: Name = Name("a");      // res=Static, name='_, is_anon_in_path=Some(Missing)
+/// const B: &str = "";             // res=Static, name='_, is_anon_in_path=None
+/// static C: &'_ str = "";         // res=Static, name='_, is_anon_in_path=None
+/// static D: &'static str = "";    // res=Static, name='static, is_anon_in_path=None
 ///
 /// trait Tr {}
-/// fn tr(_: Box<dyn Tr>) {}     // res=ImplicitObjectLifetimeDefault, name='_, IsAnonInPath::No
+/// fn tr(_: Box<dyn Tr>) {}        // res=ImplicitObjectLifetimeDefault,
+///                                 //             name='_, is_anon_in_path=None
 ///
 /// // (commented out because these cases trigger errors)
-/// // struct S1<'a>(&'a str);   // res=Param, name='a, IsAnonInPath::No
-/// // struct S2(S1);            // res=Error, name='_, IsAnonInPath::Yes
-/// // struct S3(S1<'_>);        // res=Error, name='_, IsAnonInPath::No
-/// // struct S4(S1<'a>);        // res=Error, name='a, IsAnonInPath::No
+/// // struct S1<'a>(&'a str);      // res=Param, name='a, is_anon_in_path=None
+/// // struct S2(S1<>);             // res=Error, name='_, is_anon_in_path=Some(Empty)
+/// // struct S3(S1<'_>);           // res=Error, name='_, is_anon_in_path=None
+/// // struct S4(S1<'a>);           // res=Error, name='a, is_anon_in_path=None
 /// ```
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Lifetime {
@@ -86,8 +94,9 @@ pub struct Lifetime {
     /// Semantics of this lifetime.
     pub res: LifetimeName,
 
-    /// Is the lifetime anonymous and in a path? Used only for error
-    /// suggestions. See `Lifetime::suggestion` for example use.
+    /// Is the lifetime anonymous and in a path? And if so, what do the path
+    /// generics look like? Used only for error suggestions. See
+    /// `Lifetime::suggestion` for example use.
     pub is_anon_in_path: IsAnonInPath,
 }
 
@@ -212,21 +221,31 @@ impl Lifetime {
     pub fn suggestion(&self, new_lifetime: &str) -> (Span, String) {
         debug_assert!(new_lifetime.starts_with('\''));
 
-        match (self.is_anon_in_path, self.ident.span.is_empty()) {
-            // The user wrote `Path<T>`, and omitted the `'_,`.
-            (IsAnonInPath::Yes, true) => (self.ident.span, format!("{new_lifetime}, ")),
-
-            // The user wrote `Path` and omitted the `<'_>`.
-            (IsAnonInPath::Yes, false) => {
-                (self.ident.span.shrink_to_hi(), format!("<{new_lifetime}>"))
+        let s = match self.is_anon_in_path {
+            Some(AngleBrackets::Missing) => {
+                // `Path`: insert suggestion just after the identifier.
+                format!("<{new_lifetime}>")
             }
-
-            // The user wrote `&type` or `&mut type`.
-            (IsAnonInPath::No, true) => (self.ident.span, format!("{new_lifetime} ")),
-
-            // The user wrote `'a` or `'_`.
-            (IsAnonInPath::No, false) => (self.ident.span, format!("{new_lifetime}")),
-        }
+            Some(AngleBrackets::Empty) => {
+                // `Path<>`: insert suggestion just after the `<`.
+                format!("{new_lifetime}")
+            }
+            Some(AngleBrackets::Full) => {
+                // `Path<T>`: insert suggestion just after the `<`.
+                format!("{new_lifetime}, ")
+            }
+            None => {
+                if self.ident.span.is_empty() {
+                    // The user wrote `&type` or `&mut type`.
+                    // njn: does this get the mut case right? `&mut 'atype`?
+                    format!("{new_lifetime} ")
+                } else {
+                    // The user wrote `'a` or `'_`.
+                    format!("{new_lifetime}")
+                }
+            }
+        };
+        (self.ident.span, s)
     }
 }
 
