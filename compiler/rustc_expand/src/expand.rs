@@ -834,7 +834,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             },
             InvocationKind::GlobDelegation { item, of_trait } => {
                 let AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
-                let suffixes = match &ext.kind {
+                let suffixes = match ext {
                     SyntaxExtensionKind::GlobDelegation(expander) => {
                         match expander.expand(self.cx) {
                             ExpandResult::Ready(suffixes) => suffixes,
