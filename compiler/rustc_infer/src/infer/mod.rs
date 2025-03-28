@@ -1050,6 +1050,10 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().type_variables().root_var(var)
     }
 
+    pub fn root_float_var(&self, var: ty::FloatVid) -> ty::FloatVid {
+        self.inner.borrow_mut().float_unification_table().find(var)
+    }
+
     pub fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {
         self.inner.borrow_mut().const_unification_table().find(var).vid
     }
