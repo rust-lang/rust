@@ -170,20 +170,22 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // This ensures the interpreted program and native code have the same view of memory.
             let base_ptr = match info.kind {
                 AllocKind::LiveData => {
-                    if this.tcx.try_get_global_alloc(alloc_id).is_some() {
+                    if memory_kind == MiriMemoryKind::Global.into() {
                         // For new global allocations, we always pre-allocate the memory to be able use the machine address directly.
                         let prepared_bytes = MiriAllocBytes::zeroed(info.size, info.align)
                             .unwrap_or_else(|| {
                                 panic!("Miri ran out of memory: cannot create allocation of {size:?} bytes", size = info.size)
                             });
                         let ptr = prepared_bytes.as_ptr();
-                        // Store prepared allocation space to be picked up for use later.
+                        // Store prepared allocation to be picked up for use later.
                         global_state
                             .prepared_alloc_bytes
                             .try_insert(alloc_id, prepared_bytes)
                             .unwrap();
                         ptr
                     } else {
+                        // Non-global allocations are already in memory at this point so
+                        // we can just get a pointer to where their data is stored.
                         this.get_alloc_bytes_unchecked_raw(alloc_id)?
                     }
                 }
@@ -381,6 +383,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         align: Align,
     ) -> InterpResult<'tcx, MiriAllocBytes> {
         let this = self.eval_context_ref();
+        assert!(this.tcx.try_get_global_alloc(id).is_some());
         if this.machine.native_lib.is_some() {
             // In native lib mode, MiriAllocBytes for global allocations are handled via `prepared_alloc_bytes`.
             // This additional call ensures that some `MiriAllocBytes` are always prepared, just in case

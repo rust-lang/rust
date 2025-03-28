@@ -467,7 +467,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
                 if let Some(i) = val.iter().position(|&s| s == "link") {
                     emit_link_hack = true;
                     val.remove(i);
-                    if !val.iter().any(|&s| s == "metadata") {
+                    if !val.contains(&"metadata") {
                         val.push("metadata");
                     }
                 }
