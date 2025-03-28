@@ -755,11 +755,14 @@ declare_lint! {
     /// recursively first field (as in "at offset 0") modify the layout of
     /// *subsequent* fields of the associated structs to use an alignment value
     /// where the floating-point type is aligned on a 4-byte boundary.
+    /// This affects nested structs as well.
     ///
-    /// Effectively, subsequent floating-point fields act as-if they are `repr(packed(4))`. This
-    /// would be unsound to do in a `repr(C)` type without all the restrictions that come with
-    /// `repr(packed)`. Rust instead chooses a layout that maintains soundness of Rust code, at the
-    /// expense of incompatibility with C code.
+    /// This means that the layout of a struct can change when it is used as a field in a larger
+    /// struct. That is fundamentally incompatible with Rust: in Rust, you can always take a
+    /// reference or pointer to a field and then use that pointer without knowing the larger struct
+    /// it points inside. For packed structs, you have to worry about alignment, but the distance
+    /// between the fields of the inner struct always remains the same. Not so on AIX, making this
+    /// platform's default layout choices fundamentally incompatible with Rust.
     ///
     /// ### Example
     ///
@@ -767,6 +770,11 @@ declare_lint! {
     /// #[repr(C)]
     /// pub struct Floats {
     ///     a: f64,
+    ///     s: SecondFloat,
+    /// }
+    ///
+    /// #[repr(C)]
+    /// pub struct SecondFloat {
     ///     b: u8,
     ///     c: f64,
     /// }
@@ -776,24 +784,25 @@ declare_lint! {
     ///
     /// ```text
     /// warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-    ///  --> <source>:5:3
+    ///  --> <source>:4:3
     ///   |
-    /// 5 |   c: f64,
-    ///   |   ^^^^^^
+    /// 4 |   s: SecondFloat,
+    ///   |   ^^^^^^^^^^^^^^
     ///   |
     ///   = note: `#[warn(uses_power_alignment)]` on by default
     /// ```
     ///
     /// ### Explanation
     ///
-    /// The power alignment rule specifies that the above struct has the
-    /// following alignment:
-    ///  - offset_of!(Floats, a) == 0
-    ///  - offset_of!(Floats, b) == 8
-    ///  - offset_of!(Floats, c) == 12
+    /// The power alignment rule specifies that the above struct has the following layout:
+    ///  - offset_of!(Floats, s.b) == 8
+    ///  - offset_of!(Floats, s.c) == 12
+    ///  - offset_of!(SecondFloat, b) == 0
+    ///  - offset_of!(SecondFloat, c) == 8
     ///
-    /// However, Rust currently aligns `c` at `offset_of!(Floats, c) == 16`.
-    /// Using offset 12 would be unsound since `f64` generally must be 8-aligned on this target.
+    /// The distance between `b` and `c` changes when `SecondFloat` is used as a field in a struct
+    /// whose first field has a floating-point type. However, in Rust, the `b` and `c` fields must
+    /// always have the same distance (in this case, they will be 8 bytes apart).
     /// Thus, a warning is produced for the above struct.
     USES_POWER_ALIGNMENT,
     Warn,
@@ -1629,9 +1638,6 @@ impl ImproperCTypesDefinitions {
         //   - the first field of the struct is an aggregate whose
         //     recursively first field is a floating-point type greater than
         //     4 bytes.
-        if cx.tcx.sess.target.os != "aix" {
-            return false;
-        }
         if ty.is_floating_point() && ty.primitive_size(cx.tcx).bytes() > 4 {
             return true;
         } else if let Adt(adt_def, _) = ty.kind()
@@ -1668,15 +1674,11 @@ impl ImproperCTypesDefinitions {
                 // power alignment rule, as fields after the first are likely
                 // to be the fields that are misaligned.
                 if index != 0 {
-                    let first_field_def = struct_variant_data.fields()[index];
-                    let def_id = first_field_def.def_id;
+                    let field_def = struct_variant_data.fields()[index];
+                    let def_id = field_def.def_id;
                     let ty = cx.tcx.type_of(def_id).instantiate_identity();
                     if self.check_arg_for_power_alignment(cx, ty) {
-                        cx.emit_span_lint(
-                            USES_POWER_ALIGNMENT,
-                            first_field_def.span,
-                            UsesPowerAlignment,
-                        );
+                        cx.emit_span_lint(USES_POWER_ALIGNMENT, field_def.span, UsesPowerAlignment);
                     }
                 }
             }
