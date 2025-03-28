@@ -75,6 +75,9 @@ hir_typeck_cast_unknown_pointer = cannot cast {$to ->
     .note = the type information given here is insufficient to check whether the pointer cast is valid
     .label_from = the type information given here is insufficient to check whether the pointer cast is valid
 
+hir_typeck_const_continue_bad_label =
+    `#[const_continue]` must break to a labeled block that participates in a `#[loop_match]`
+
 hir_typeck_const_select_must_be_const = this argument must be a `const fn`
     .help = consult the documentation on `const_eval_select` for more information
 
@@ -148,6 +151,15 @@ hir_typeck_invalid_defined = `{$path}` defined here
 hir_typeck_invalid_defined_kind = {$kind} `{$path}` defined here
 hir_typeck_invalid_fn_defined = `{$func}` defined here returns `{$ty}`
 hir_typeck_invalid_local = `{$local_name}` has type `{$ty}`
+
+hir_typeck_loop_match_bad_rhs =
+    this expression must be a single `match` wrapped in a labeled block
+
+hir_typeck_loop_match_bad_statements =
+    statements are not allowed in this position within a `#[loop_match]`
+
+hir_typeck_loop_match_missing_assignment =
+    expected a single assignment expression
 
 hir_typeck_lossy_provenance_int2ptr =
     strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`

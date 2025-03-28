@@ -1163,3 +1163,31 @@ pub(crate) struct NakedFunctionsMustNakedAsm {
     #[label]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_const_continue_bad_label)]
+pub(crate) struct ConstContinueBadLabel {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_loop_match_bad_statements)]
+pub(crate) struct LoopMatchBadStatements {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_loop_match_bad_rhs)]
+pub(crate) struct LoopMatchBadRhs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_loop_match_missing_assignment)]
+pub(crate) struct LoopMatchMissingAssignment {
+    #[primary_span]
+    pub span: Span,
+}

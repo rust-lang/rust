@@ -90,7 +90,6 @@ passes_const_stable_not_stable =
     attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`
     .label = attribute specified here
 
-
 passes_coroutine_on_non_closure =
     attribute should be applied to closures
     .label = not a closure
