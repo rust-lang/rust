@@ -1,0 +1,84 @@
+// MIR for `ergonomic_clone_closure_use_cloned` 0 nll
+
+| Free Region Mapping
+| '?0 | Global | ['?0, '?1]
+| '?1 | Local | ['?1]
+|
+| Inferred Region Values
+| '?0 | U0 | {bb0[0..=6], bb1[0..=6], bb2[0..=7], '?0, '?1}
+| '?1 | U0 | {bb0[0..=6], bb1[0..=6], bb2[0..=7], '?1}
+| '?2 | U0 | {bb0[5..=6]}
+| '?3 | U0 | {bb1[5..=6]}
+| '?4 | U0 | {bb0[6]}
+| '?5 | U0 | {bb1[6]}
+| '?6 | U0 | {bb0[6]}
+| '?7 | U0 | {bb1[6]}
+|
+| Inference Constraints
+| '?0 live at {bb0[0..=6], bb1[0..=6], bb2[0..=7]}
+| '?1 live at {bb0[0..=6], bb1[0..=6], bb2[0..=7]}
+| '?2 live at {bb0[5]}
+| '?3 live at {bb1[5]}
+| '?4 live at {bb0[6]}
+| '?5 live at {bb1[6]}
+| '?6 live at {bb0[6]}
+| '?7 live at {bb1[6]}
+| '?2: '?4 due to Boring at Single(bb0[5]) ($DIR/closure.rs:27:14: 27:22 (#0)
+| '?3: '?5 due to Boring at Single(bb1[5]) ($DIR/closure.rs:29:14: 29:22 (#0)
+| '?4: '?6 due to Boring at Single(bb0[6]) ($DIR/closure.rs:27:14: 27:22 (#0)
+| '?5: '?7 due to Boring at Single(bb1[6]) ($DIR/closure.rs:29:14: 29:22 (#0)
+|
+| Borrows
+| bw0: issued at bb0[5] in '?2
+| bw1: issued at bb1[5] in '?3
+|
+fn ergonomic_clone_closure_use_cloned() -> Foo {
+    let mut _0: Foo;
+    let _1: Foo;
+    let mut _3: Foo;
+    let mut _4: &Foo;
+    let mut _6: Foo;
+    let mut _7: &Foo;
+    scope 1 {
+        debug f => _1;
+        let _2: {closure@$DIR/closure.rs:27:14: 27:20};
+        scope 2 {
+            debug f1 => _2;
+            let _5: {closure@$DIR/closure.rs:29:14: 29:20};
+            scope 3 {
+                debug f2 => _5;
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = Foo;
+        FakeRead(ForLet(None), _1);
+        StorageLive(_2);
+        StorageLive(_3);
+        _4 = &_1;
+        _3 = <Foo as Clone>::clone(move _4) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        _2 = {closure@$DIR/closure.rs:27:14: 27:20} { f: move _3 };
+        StorageDead(_3);
+        FakeRead(ForLet(None), _2);
+        StorageLive(_5);
+        StorageLive(_6);
+        _7 = &_1;
+        _6 = <Foo as Clone>::clone(move _7) -> [return: bb2, unwind unreachable];
+    }
+
+    bb2: {
+        _5 = {closure@$DIR/closure.rs:29:14: 29:20} { f: move _6 };
+        StorageDead(_6);
+        FakeRead(ForLet(None), _5);
+        _0 = move _1;
+        StorageDead(_5);
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+}

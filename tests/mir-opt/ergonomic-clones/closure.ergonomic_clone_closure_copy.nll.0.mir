@@ -1,0 +1,54 @@
+// MIR for `ergonomic_clone_closure_copy` 0 nll
+
+| Free Region Mapping
+| '?0 | Global | ['?0, '?1]
+| '?1 | Local | ['?1]
+|
+| Inferred Region Values
+| '?0 | U0 | {bb0[0..=19], '?0, '?1}
+| '?1 | U0 | {bb0[0..=19], '?1}
+|
+| Inference Constraints
+| '?0 live at {bb0[0..=19]}
+| '?1 live at {bb0[0..=19]}
+|
+fn ergonomic_clone_closure_copy() -> i32 {
+    let mut _0: i32;
+    let _1: i32;
+    let mut _3: i32;
+    let mut _5: i32;
+    scope 1 {
+        debug i => _1;
+        let _2: {closure@$DIR/closure.rs:38:14: 38:20};
+        scope 2 {
+            debug i1 => _2;
+            let _4: {closure@$DIR/closure.rs:40:14: 40:20};
+            scope 3 {
+                debug i2 => _4;
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const 1_i32;
+        FakeRead(ForLet(None), _1);
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = copy _1;
+        _2 = {closure@$DIR/closure.rs:38:14: 38:20} { i: move _3 };
+        StorageDead(_3);
+        FakeRead(ForLet(None), _2);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = copy _1;
+        _4 = {closure@$DIR/closure.rs:40:14: 40:20} { i: move _5 };
+        StorageDead(_5);
+        FakeRead(ForLet(None), _4);
+        _0 = copy _1;
+        StorageDead(_4);
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+}
