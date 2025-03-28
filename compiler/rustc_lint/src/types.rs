@@ -756,10 +756,10 @@ declare_lint! {
     /// *subsequent* fields of the associated structs to use an alignment value
     /// where the floating-point type is aligned on a 4-byte boundary.
     ///
-    /// The power alignment rule for structs needed for C compatibility is
-    /// unimplementable within `repr(C)` in the compiler without building in
-    /// handling of references to packed fields and infectious nested layouts,
-    /// so a warning is produced in these situations.
+    /// Effectively, subsequent floating-point fields act as-if they are `repr(packed(4))`. This
+    /// would be unsound to do in a `repr(C)` type without all the restrictions that come with
+    /// `repr(packed)`. Rust instead chooses a layout that maintains soundness of Rust code, at the
+    /// expense of incompatibility with C code.
     ///
     /// ### Example
     ///
@@ -791,8 +791,10 @@ declare_lint! {
     ///  - offset_of!(Floats, a) == 0
     ///  - offset_of!(Floats, b) == 8
     ///  - offset_of!(Floats, c) == 12
-    /// However, rust currently aligns `c` at offset_of!(Floats, c) == 16.
-    /// Thus, a warning should be produced for the above struct in this case.
+    ///
+    /// However, Rust currently aligns `c` at `offset_of!(Floats, c) == 16`.
+    /// Using offset 12 would be unsound since `f64` generally must be 8-aligned on this target.
+    /// Thus, a warning is produced for the above struct.
     USES_POWER_ALIGNMENT,
     Warn,
     "Structs do not follow the power alignment rule under repr(C)"
