@@ -11,7 +11,7 @@ use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::{self, FloatVid, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
@@ -92,6 +92,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
         let diverging_fallback = self
             .calculate_diverging_fallback(&unresolved_variables, self.diverging_fallback_behavior);
+        let fallback_to_f32 = self.calculate_fallback_to_f32(&unresolved_variables);
 
         // We do fallback in two passes, to try to generate
         // better error messages.
@@ -99,7 +100,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let mut fallback_occurred = false;
         for ty in unresolved_variables {
             debug!("unsolved_variable = {:?}", ty);
-            fallback_occurred |= self.fallback_if_possible(ty, &diverging_fallback);
+            fallback_occurred |=
+                self.fallback_if_possible(ty, &diverging_fallback, &fallback_to_f32);
         }
 
         fallback_occurred
@@ -109,7 +111,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     //
     // - Unconstrained ints are replaced with `i32`.
     //
-    // - Unconstrained floats are replaced with `f64`.
+    // - Unconstrained floats are replaced with `f64`, except when there is a trait predicate
+    //   `f32: From<{float}>`, in which case `f32` is used as the fallback instead.
     //
     // - Non-numerics may get replaced with `()` or `!`, depending on
     //   how they were categorized by `calculate_diverging_fallback`
@@ -124,6 +127,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         diverging_fallback: &UnordMap<Ty<'tcx>, Ty<'tcx>>,
+        fallback_to_f32: &UnordSet<FloatVid>,
     ) -> bool {
         // Careful: we do NOT shallow-resolve `ty`. We know that `ty`
         // is an unsolved variable, and we determine its fallback
@@ -146,6 +150,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let fallback = match ty.kind() {
             _ if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx, e),
             ty::Infer(ty::IntVar(_)) => self.tcx.types.i32,
+            ty::Infer(ty::FloatVar(vid)) if fallback_to_f32.contains(vid) => self.tcx.types.f32,
             ty::Infer(ty::FloatVar(_)) => self.tcx.types.f64,
             _ => match diverging_fallback.get(&ty) {
                 Some(&fallback_ty) => fallback_ty,
@@ -158,6 +163,38 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         self.demand_eqtype(span, ty, fallback);
         self.fallback_has_occurred.set(true);
         true
+    }
+
+    /// Existing code relies on `f32: From<T>` (usually written as `T: Into<f32>`) resolving `T` to
+    /// `f32` when the type of `T` is inferred from an unsuffixed float literal. Using the default
+    /// fallback of `f64`, this would break when adding `impl From<f16> for f32`, as there are now
+    /// two float type which could be `T`, meaning that the fallback of `f64` would be used and
+    /// compilation error would occur as `f32` does not implement `From<f64>`. To avoid breaking
+    /// existing code, we instead fallback `T` to `f32` when there is a trait predicate
+    /// `f32: From<T>`. This means code like the following will continue to compile:
+    ///
+    /// ```rust
+    /// fn foo<T: Into<f32>>(_: T) {}
+    ///
+    /// foo(1.0);
+    /// ```
+    fn calculate_fallback_to_f32(&self, unresolved_variables: &[Ty<'tcx>]) -> UnordSet<FloatVid> {
+        let roots: UnordSet<ty::FloatVid> = self.from_float_for_f32_root_vids();
+        if roots.is_empty() {
+            // Most functions have no `f32: From<{float}>` predicates, so short-circuit and return
+            // an empty set when this is the case.
+            return UnordSet::new();
+        }
+        // Calculate all the unresolved variables that need to fallback to `f32` here. This ensures
+        // we don't need to find root variables in `fallback_if_possible`: see the comment at the
+        // top of that function for details.
+        let fallback_to_f32 = unresolved_variables
+            .iter()
+            .flat_map(|ty| ty.float_vid())
+            .filter(|vid| roots.contains(&self.root_float_var(*vid)))
+            .collect();
+        debug!("calculate_fallback_to_f32: fallback_to_f32={:?}", fallback_to_f32);
+        fallback_to_f32
     }
 
     /// The "diverging fallback" system is rather complicated. This is
@@ -563,6 +600,11 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// If `ty` is an unresolved type variable, returns its root vid.
     fn root_vid(&self, ty: Ty<'tcx>) -> Option<ty::TyVid> {
         Some(self.root_var(self.shallow_resolve(ty).ty_vid()?))
+    }
+
+    /// If `ty` is an unresolved float type variable, returns its root vid.
+    pub(crate) fn root_float_vid(&self, ty: Ty<'tcx>) -> Option<ty::FloatVid> {
+        Some(self.root_float_var(self.shallow_resolve(ty).float_vid()?))
     }
 
     /// Given a set of diverging vids and coercions, walk the HIR to gather a
