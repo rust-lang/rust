@@ -1,4 +1,4 @@
-#![deny(elided_named_lifetimes)]
+#![deny(mismatched_lifetime_syntaxes)]
 
 use std::borrow::Cow;
 
@@ -14,26 +14,26 @@ impl Trait for () {
 }
 
 fn ampersand(x: &'static u8) -> &u8 {
-    //~^ ERROR elided lifetime has a name
+    //~^ ERROR lifetime flowing from input to output with different syntax
     x
 }
 
 struct Brackets<'a>(&'a u8);
 
 fn brackets(x: &'static u8) -> Brackets {
-    //~^ ERROR elided lifetime has a name
+    //~^ ERROR lifetime flowing from input to output with different syntax
     Brackets(x)
 }
 
 struct Comma<'a, T>(&'a T);
 
 fn comma(x: &'static u8) -> Comma<u8> {
-    //~^ ERROR elided lifetime has a name
+    //~^ ERROR lifetime flowing from input to output with different syntax
     Comma(x)
 }
 
 fn underscore(x: &'static u8) -> &'_ u8 {
-    //~^ ERROR elided lifetime has a name
+    //~^ ERROR lifetime flowing from input to output with different syntax
     x
 }
 

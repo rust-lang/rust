@@ -1208,7 +1208,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         self.next_node_id()
                     };
                     let span = self.tcx.sess.source_map().start_point(t.span).shrink_to_hi();
-                    Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
+                    Lifetime { ident: Ident::new(kw::Empty, span), id }
                 });
                 let lifetime = self.lower_lifetime(&region);
                 hir::TyKind::Ref(lifetime, self.lower_mt(mt, itctx))
@@ -1224,7 +1224,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         self.next_node_id()
                     };
                     let span = self.tcx.sess.source_map().start_point(t.span).shrink_to_hi();
-                    Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
+                    Lifetime { ident: Ident::new(kw::Empty, span), id }
                 });
                 let lifetime = self.lower_lifetime(&region);
                 let kind = hir::TyKind::Ref(lifetime, self.lower_mt(mt, itctx));
