@@ -13,6 +13,7 @@
 #![feature(let_chains)]
 #![feature(negative_impls)]
 #![feature(rustdoc_internals)]
+#![feature(string_from_utf8_lossy_owned)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end

@@ -20,7 +20,8 @@ These targets are cross-compiled, and require the corresponding macOS SDK
 iOS-specific headers, as provided by Xcode 11 or higher.
 
 The path to the SDK can be passed to `rustc` using the common `SDKROOT`
-environment variable.
+environment variable, or will be inferred when compiling on host macOS using
+roughly the same logic as `xcrun --sdk macosx --show-sdk-path`.
 
 ### OS version
 
