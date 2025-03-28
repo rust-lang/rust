@@ -2299,6 +2299,29 @@ macro_rules! nop_list_lift {
     };
 }
 
+macro_rules! nop_list_with_cached_type_info_lift {
+    ($set:ident; $ty:ty => $lifted:ty) => {
+        impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for &'a ListWithCachedTypeInfo<$ty> {
+            type Lifted = &'tcx ListWithCachedTypeInfo<$lifted>;
+            fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+                // Assert that the set has the right type.
+                if false {
+                    let _x: &InternedSet<'tcx, ListWithCachedTypeInfo<$lifted>> =
+                        &tcx.interners.$set;
+                }
+
+                if self.is_empty() {
+                    return Some(ListWithCachedTypeInfo::empty());
+                }
+                tcx.interners
+                    .$set
+                    .contains_pointer_to(&InternedInSet(self))
+                    .then(|| unsafe { mem::transmute(self) })
+            }
+        }
+    };
+}
+
 nop_lift! { type_; Ty<'a> => Ty<'tcx> }
 nop_lift! { region; Region<'a> => Region<'tcx> }
 nop_lift! { const_; Const<'a> => Const<'tcx> }
@@ -2314,6 +2337,7 @@ nop_list_lift! {
     poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>
 }
 nop_list_lift! { bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariableKind }
+nop_list_with_cached_type_info_lift! { clauses; Clause<'a> => Clause<'tcx> }
 
 // This is the impl for `&'a GenericArgs<'a>`.
 nop_list_lift! { args; GenericArg<'a> => GenericArg<'tcx> }

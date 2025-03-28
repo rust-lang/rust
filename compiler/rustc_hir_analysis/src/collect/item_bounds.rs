@@ -37,7 +37,14 @@ fn associated_type_bounds<'tcx>(
 
         let icx = ItemCtxt::new(tcx, assoc_item_def_id);
         let mut bounds = Vec::new();
-        icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
+        icx.lowerer().lower_bounds(
+            item_ty,
+            hir_bounds,
+            &mut bounds,
+            ty::List::empty(),
+            ty::ListWithCachedTypeInfo::empty(),
+            filter,
+        );
         // Associated types are implicitly sized unless a `?Sized` bound is found
         match filter {
             PredicateFilter::All
@@ -326,7 +333,14 @@ fn opaque_type_bounds<'tcx>(
     ty::print::with_reduced_queries!({
         let icx = ItemCtxt::new(tcx, opaque_def_id);
         let mut bounds = Vec::new();
-        icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
+        icx.lowerer().lower_bounds(
+            item_ty,
+            hir_bounds,
+            &mut bounds,
+            ty::List::empty(),
+            ty::ListWithCachedTypeInfo::empty(),
+            filter,
+        );
         // Opaque types are implicitly sized unless a `?Sized` bound is found
         match filter {
             PredicateFilter::All

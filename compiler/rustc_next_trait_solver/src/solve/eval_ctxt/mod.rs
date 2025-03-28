@@ -582,8 +582,8 @@ where
                 }
             }
         } else {
-            self.enter_forall(kind, |ecx, kind| {
-                let goal = goal.with(ecx.cx(), ty::Binder::dummy(kind));
+            self.enter_forall_with_assumptions(kind, goal.param_env, |ecx, kind, param_env| {
+                let goal = Goal::new(ecx.cx(), param_env, ty::Binder::dummy(kind));
                 ecx.add_goal(GoalSource::InstantiateHigherRanked, goal);
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
@@ -1007,6 +1007,13 @@ where
         self.delegate.instantiate_binder_with_infer(value)
     }
 
+    pub(super) fn instantiate_binder_with_infer_and_goals<T: TypeFoldable<I> + Copy>(
+        &self,
+        value: ty::Binder<I, T>,
+    ) -> (T, I::Clauses) {
+        self.delegate.instantiate_binder_with_infer_and_goals(value)
+    }
+
     /// `enter_forall`, but takes `&mut self` and passes it back through the
     /// callback since it can't be aliased during the call.
     pub(super) fn enter_forall<T: TypeFoldable<I>, U>(
@@ -1015,6 +1022,18 @@ where
         f: impl FnOnce(&mut Self, T) -> U,
     ) -> U {
         self.delegate.enter_forall(value, |value| f(self, value))
+    }
+
+    /// UwU
+    pub(super) fn enter_forall_with_assumptions<T: TypeFoldable<I>, U>(
+        &mut self,
+        value: ty::Binder<I, T>,
+        param_env: I::ParamEnv,
+        f: impl FnOnce(&mut Self, T, I::ParamEnv) -> U,
+    ) -> U {
+        self.delegate.enter_forall_with_assumptions(value, param_env, |value, param_env| {
+            f(self, value, param_env)
+        })
     }
 
     pub(super) fn resolve_vars_if_possible<T>(&self, value: T) -> T
