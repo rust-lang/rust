@@ -66,10 +66,10 @@ pub struct SyntaxContextData {
     outer_expn: ExpnId,
     outer_transparency: Transparency,
     parent: SyntaxContext,
-    /// This context, but with all transparent and semi-transparent expansions filtered away.
+    /// This context, but with all transparent and semi-opaque expansions filtered away.
     opaque: SyntaxContext,
     /// This context, but with all transparent expansions filtered away.
-    opaque_and_semitransparent: SyntaxContext,
+    opaque_and_semiopaque: SyntaxContext,
     /// Name of the crate to which `$crate` with this context would resolve.
     dollar_crate_name: Symbol,
 }
@@ -81,7 +81,7 @@ impl SyntaxContextData {
             outer_transparency: Transparency::Opaque,
             parent: SyntaxContext::root(),
             opaque: SyntaxContext::root(),
-            opaque_and_semitransparent: SyntaxContext::root(),
+            opaque_and_semiopaque: SyntaxContext::root(),
             dollar_crate_name: kw::DollarCrate,
         }
     }
@@ -192,13 +192,13 @@ pub enum Transparency {
     /// Identifier produced by a transparent expansion is always resolved at call-site.
     /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
     Transparent,
-    /// Identifier produced by a semi-transparent expansion may be resolved
+    /// Identifier produced by a semi-opaque expansion may be resolved
     /// either at call-site or at definition-site.
     /// If it's a local variable, label or `$crate` then it's resolved at def-site.
     /// Otherwise it's resolved at call-site.
     /// `macro_rules` macros behave like this, built-in macros currently behave like this too,
     /// but that's an implementation detail.
-    SemiTransparent,
+    SemiOpaque,
     /// Identifier produced by an opaque expansion is always resolved at definition-site.
     /// Def-site spans in procedural macros, identifiers from `macro` by default use this.
     Opaque,
@@ -206,7 +206,7 @@ pub enum Transparency {
 
 impl Transparency {
     pub fn fallback(macro_rules: bool) -> Self {
-        if macro_rules { Transparency::SemiTransparent } else { Transparency::Opaque }
+        if macro_rules { Transparency::SemiOpaque } else { Transparency::Opaque }
     }
 }
 
@@ -454,7 +454,7 @@ impl HygieneData {
 
     fn normalize_to_macro_rules(&self, ctxt: SyntaxContext) -> SyntaxContext {
         debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
-        self.syntax_context_data[ctxt.0 as usize].opaque_and_semitransparent
+        self.syntax_context_data[ctxt.0 as usize].opaque_and_semiopaque
     }
 
     fn outer_expn(&self, ctxt: SyntaxContext) -> ExpnId {
@@ -547,7 +547,7 @@ impl HygieneData {
         }
 
         let call_site_ctxt = self.expn_data(expn_id).call_site.ctxt();
-        let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
+        let mut call_site_ctxt = if transparency == Transparency::SemiOpaque {
             self.normalize_to_macros_2_0(call_site_ctxt)
         } else {
             self.normalize_to_macro_rules(call_site_ctxt)
@@ -581,8 +581,7 @@ impl HygieneData {
         let syntax_context_data = &mut self.syntax_context_data;
         debug_assert!(!syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
         let mut opaque = syntax_context_data[ctxt.0 as usize].opaque;
-        let mut opaque_and_semitransparent =
-            syntax_context_data[ctxt.0 as usize].opaque_and_semitransparent;
+        let mut opaque_and_semiopaque = syntax_context_data[ctxt.0 as usize].opaque_and_semiopaque;
 
         if transparency >= Transparency::Opaque {
             let parent = opaque;
@@ -596,30 +595,30 @@ impl HygieneData {
                         outer_transparency: transparency,
                         parent,
                         opaque: new_opaque,
-                        opaque_and_semitransparent: new_opaque,
+                        opaque_and_semiopaque: new_opaque,
                         dollar_crate_name: kw::DollarCrate,
                     });
                     new_opaque
                 });
         }
 
-        if transparency >= Transparency::SemiTransparent {
-            let parent = opaque_and_semitransparent;
-            opaque_and_semitransparent = *self
+        if transparency >= Transparency::SemiOpaque {
+            let parent = opaque_and_semiopaque;
+            opaque_and_semiopaque = *self
                 .syntax_context_map
                 .entry((parent, expn_id, transparency))
                 .or_insert_with(|| {
-                    let new_opaque_and_semitransparent =
+                    let new_opaque_and_semiopaque =
                         SyntaxContext::from_usize(syntax_context_data.len());
                     syntax_context_data.push(SyntaxContextData {
                         outer_expn: expn_id,
                         outer_transparency: transparency,
                         parent,
                         opaque,
-                        opaque_and_semitransparent: new_opaque_and_semitransparent,
+                        opaque_and_semiopaque: new_opaque_and_semiopaque,
                         dollar_crate_name: kw::DollarCrate,
                     });
-                    new_opaque_and_semitransparent
+                    new_opaque_and_semiopaque
                 });
         }
 
@@ -630,7 +629,7 @@ impl HygieneData {
                 outer_transparency: transparency,
                 parent,
                 opaque,
-                opaque_and_semitransparent,
+                opaque_and_semiopaque,
                 dollar_crate_name: kw::DollarCrate,
             });
             SyntaxContext::from_usize(syntax_context_data.len() - 1)
