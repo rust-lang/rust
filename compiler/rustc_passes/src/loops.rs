@@ -16,8 +16,8 @@ use rustc_span::{BytePos, Span, sym};
 
 use crate::errors::{
     BreakInsideClosure, BreakInsideCoroutine, BreakNonLoop, ConstContinueBadLabel,
-    ContinueLabeledBlock, LoopMatchBadRhs, LoopMatchBadStatements, LoopMatchMissingAssignment,
-    OutsideLoop, OutsideLoopSuggestion, UnlabeledCfInWhileCondition, UnlabeledInLabeledBlock,
+    ContinueLabeledBlock, OutsideLoop, OutsideLoopSuggestion, UnlabeledCfInWhileCondition,
+    UnlabeledInLabeledBlock,
 };
 
 /// The context in which a block is encountered.
@@ -438,43 +438,24 @@ impl<'hir> CheckLoopVisitor<'hir> {
             return None;
         }
 
-        let dcx = self.tcx.dcx();
+        // NOTE: diagnostics are emitted during MIR construction.
 
         // accept either `state = expr` or `state = expr;`
         let loop_body_expr = match body.stmts {
             [] => match body.expr {
                 Some(expr) => expr,
-                None => {
-                    dcx.emit_err(LoopMatchMissingAssignment { span: body.span });
-                    return None;
-                }
+                None => return None,
             },
             [single] if body.expr.is_none() => match single.kind {
                 hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr) => expr,
-                _ => {
-                    dcx.emit_err(LoopMatchMissingAssignment { span: body.span });
-                    return None;
-                }
+                _ => return None,
             },
-            [first @ last] | [first, .., last] => {
-                dcx.emit_err(LoopMatchBadStatements { span: first.span.to(last.span) });
-                return None;
-            }
+            [..] => return None,
         };
 
-        let hir::ExprKind::Assign(_, rhs_expr, _) = loop_body_expr.kind else {
-            dcx.emit_err(LoopMatchMissingAssignment { span: loop_body_expr.span });
-            return None;
-        };
+        let hir::ExprKind::Assign(_, rhs_expr, _) = loop_body_expr.kind else { return None };
 
-        let hir::ExprKind::Block(_, label) = rhs_expr.kind else {
-            dcx.emit_err(LoopMatchBadRhs { span: rhs_expr.span });
-            return None;
-        };
-
-        if label.is_none() {
-            todo!()
-        }
+        let hir::ExprKind::Block(_, label) = rhs_expr.kind else { return None };
 
         label
     }

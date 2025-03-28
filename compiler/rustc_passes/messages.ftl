@@ -473,15 +473,6 @@ passes_loop_match_attr =
     `#[loop_match]` should be applied to a loop
     .label = not a loop
 
-passes_loop_match_bad_rhs =
-    this expression must be a single `match` wrapped in a labeled block
-
-passes_loop_match_bad_statements =
-    statements are not allowed in this position within a `#[loop_match]`
-
-passes_loop_match_missing_assignment =
-    expected a single assignment expression
-
 passes_macro_export =
     `#[macro_export]` only has an effect on macro definitions
 
