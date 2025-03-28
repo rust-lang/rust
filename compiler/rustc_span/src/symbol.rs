@@ -2036,6 +2036,7 @@ symbols! {
         sub_assign,
         sub_with_overflow,
         suggestion,
+        super_let,
         supertrait_item_shadowing,
         surface_async_drop_in_place,
         sym,
