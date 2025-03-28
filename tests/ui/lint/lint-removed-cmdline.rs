@@ -3,11 +3,14 @@
 
 //@ compile-flags:-D raw_pointer_derive
 
-//@ error-pattern:lint `raw_pointer_derive` has been removed
 //@ error-pattern:`#[warn(renamed_and_removed_lints)]` on by default
 //@ error-pattern:requested on the command line with `-D raw_pointer_derive`
 
 #![warn(unused)]
 
 #[deny(warnings)]
-fn main() { let unused = (); }
+fn main() { let unused = (); } //~ ERROR unused variable: `unused`
+
+//~? WARN lint `raw_pointer_derive` has been removed: using derive with raw pointers is ok
+//~? WARN lint `raw_pointer_derive` has been removed: using derive with raw pointers is ok
+//~? WARN lint `raw_pointer_derive` has been removed: using derive with raw pointers is ok

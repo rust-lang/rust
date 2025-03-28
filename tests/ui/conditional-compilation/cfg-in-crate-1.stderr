@@ -1,5 +1,5 @@
 error[E0601]: `main` function not found in crate `cfg_in_crate_1`
-  --> $DIR/cfg-in-crate-1.rs:3:15
+  --> $DIR/cfg-in-crate-1.rs:1:15
    |
 LL | #![cfg(FALSE)]
    |               ^ consider adding a `main` function to `$DIR/cfg-in-crate-1.rs`

@@ -1,5 +1,5 @@
 error: entry symbol `main` declared multiple times
-  --> $DIR/dupe-symbols-8.rs:8:1
+  --> $DIR/dupe-symbols-8.rs:7:1
    |
 LL | fn main() {
    | ^^^^^^^^^

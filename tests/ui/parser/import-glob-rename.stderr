@@ -1,5 +1,5 @@
 error: expected `;`, found keyword `as`
-  --> $DIR/import-glob-rename.rs:3:12
+  --> $DIR/import-glob-rename.rs:1:12
    |
 LL | use foo::* as baz;
    |            ^^ expected `;`

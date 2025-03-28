@@ -1,7 +1,5 @@
-//@ error-pattern:expected statement
-
 fn f() {
-  #[foo = "bar"]
+  #[foo = "bar"] //~ ERROR expected statement after outer attribute
 }
 
 fn main() {

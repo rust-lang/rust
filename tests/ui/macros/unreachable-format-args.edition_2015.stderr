@@ -1,5 +1,5 @@
 error: there is no argument named `x`
-  --> $DIR/unreachable-format-args.rs:13:5
+  --> $DIR/unreachable-format-args.rs:12:5
    |
 LL |     unreachable!("x is {x} and y is {y}", y = 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

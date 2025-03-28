@@ -1,3 +1,4 @@
+//~ ERROR can't find crate for `std`
 // Tests that compiling for a target which is not installed will result in a helpful
 // error message.
 

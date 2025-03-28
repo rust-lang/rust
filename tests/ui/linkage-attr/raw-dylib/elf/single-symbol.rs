@@ -26,3 +26,5 @@ unsafe extern "C" {
 fn main() {
   meooooooooooooooow();
 }
+
+//[without]~? ERROR linking with `
