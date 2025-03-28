@@ -2918,15 +2918,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ExprKind::Literal { lit, neg } => match &lit.node {
                     LitKind::Int(n, _) => {
                         let n = if pat.ty().is_signed() {
-                            let bits = pat.ty().primitive_size(self.tcx).bits();
+                            let size = pat.ty().primitive_size(self.tcx);
                             MaybeInfiniteInt::new_finite_int(
                                 if *neg {
-                                    (n.get() as i128).overflowing_neg().0 as u128
-                                        & ((1u128 << bits) - 1)
+                                    size.truncate((n.get() as i128).overflowing_neg().0 as u128)
                                 } else {
                                     n.get()
                                 },
-                                bits,
+                                size.bits(),
                             )
                         } else {
                             MaybeInfiniteInt::new_finite_uint(n.get())
