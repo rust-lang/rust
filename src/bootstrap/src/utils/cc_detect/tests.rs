@@ -264,7 +264,7 @@ fn test_find_target_without_config() {
 fn test_find() {
     let mut build = Build::new(Config { ..Config::parse(Flags::parse(&["check".to_owned()])) });
     let target1 = TargetSelection::from_user("x86_64-unknown-linux-gnu");
-    let target2 = TargetSelection::from_user("arm-linux-androideabi");
+    let target2 = TargetSelection::from_user("x86_64-unknown-openbsd");
     build.targets.push(target1.clone());
     build.hosts.push(target2.clone());
     find(&build);
