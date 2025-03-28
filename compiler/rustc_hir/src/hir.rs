@@ -206,7 +206,7 @@ impl ParamName {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub enum LifetimeKind {
     /// User-given names or fresh (synthetic) names.
     Param(LocalDefId),
