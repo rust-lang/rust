@@ -89,7 +89,7 @@ impl ParamName {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub enum LifetimeName {
     /// User-given names or fresh (synthetic) names.
     Param(LocalDefId),
@@ -158,12 +158,26 @@ impl Lifetime {
     }
 
     pub fn is_anonymous(&self) -> bool {
-        self.ident.name == kw::Empty || self.ident.name == kw::UnderscoreLifetime
+        self.is_syntactically_hidden() || self.is_syntactically_anonymous()
     }
 
-    pub fn suggestion_position(&self) -> (LifetimeSuggestionPosition, Span) {
-        if self.ident.name == kw::Empty {
-            if self.ident.span.is_empty() {
+    pub fn is_syntactically_hidden(&self) -> bool {
+        self.ident.name == kw::Empty
+    }
+
+    pub fn is_syntactically_anonymous(&self) -> bool {
+        self.ident.name == kw::UnderscoreLifetime
+    }
+
+    pub fn is_static(&self) -> bool {
+        self.res == LifetimeName::Static
+    }
+
+    pub fn suggestion_position(&self, is_ref: bool) -> (LifetimeSuggestionPosition, Span) {
+        if self.is_syntactically_hidden() {
+            if is_ref {
+                (LifetimeSuggestionPosition::Ampersand, self.ident.span)
+            } else if self.ident.span.is_empty() {
                 (LifetimeSuggestionPosition::ElidedPathArgument, self.ident.span)
             } else {
                 (LifetimeSuggestionPosition::ElidedPath, self.ident.span.shrink_to_hi())
@@ -177,9 +191,9 @@ impl Lifetime {
         }
     }
 
-    pub fn suggestion(&self, new_lifetime: &str) -> (Span, String) {
+    pub fn suggestion(&self, new_lifetime: &str, is_ref: bool) -> (Span, String) {
         debug_assert!(new_lifetime.starts_with('\''));
-        let (pos, span) = self.suggestion_position();
+        let (pos, span) = self.suggestion_position(is_ref);
         let code = match pos {
             LifetimeSuggestionPosition::Normal => format!("{new_lifetime}"),
             LifetimeSuggestionPosition::Ampersand => format!("{new_lifetime} "),
@@ -359,7 +373,12 @@ pub struct InferArg {
 
 impl InferArg {
     pub fn to_ty(&self) -> Ty<'static> {
-        Ty { kind: TyKind::Infer(()), span: self.span, hir_id: self.hir_id }
+        Ty {
+            kind: TyKind::Infer(()),
+            span: self.span,
+            hir_id: self.hir_id,
+            source: TySource::Other,
+        }
     }
 }
 
@@ -3106,6 +3125,12 @@ impl<'hir> AssocItemConstraintKind<'hir> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, HashStable_Generic)]
+pub enum TySource {
+    ImplicitSelf,
+    Other,
+}
+
 /// An uninhabited enum used to make `Infer` variants on [`Ty`] and [`ConstArg`] be
 /// unreachable. Zero-Variant enums are guaranteed to have the same layout as the never
 /// type.
@@ -3125,6 +3150,7 @@ pub struct Ty<'hir, Unambig = ()> {
     pub hir_id: HirId,
     pub span: Span,
     pub kind: TyKind<'hir, Unambig>,
+    pub source: TySource,
 }
 
 impl<'hir> Ty<'hir, AmbigArg> {
@@ -4823,7 +4849,7 @@ mod size_asserts {
     static_assert_size!(StmtKind<'_>, 16);
     static_assert_size!(TraitItem<'_>, 88);
     static_assert_size!(TraitItemKind<'_>, 48);
-    static_assert_size!(Ty<'_>, 48);
+    static_assert_size!(Ty<'_>, 56);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end
 }

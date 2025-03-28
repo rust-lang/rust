@@ -56,6 +56,7 @@ use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{
     self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem, ParamName, TraitCandidate,
+    TySource,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -1167,7 +1168,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 bounds,
                 TaggedRef::new(lifetime_bound, TraitObjectSyntax::None),
             );
-            return hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.next_id() };
+            return hir::Ty {
+                kind,
+                span: self.lower_span(t.span),
+                hir_id: self.next_id(),
+                source: TySource::Other,
+            };
         }
 
         let id = self.lower_node_id(t.id);
@@ -1184,7 +1190,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn ty(&mut self, span: Span, kind: hir::TyKind<'hir>) -> hir::Ty<'hir> {
-        hir::Ty { hir_id: self.next_id(), kind, span: self.lower_span(span) }
+        hir::Ty {
+            hir_id: self.next_id(),
+            kind,
+            span: self.lower_span(span),
+            source: TySource::Other,
+        }
     }
 
     fn ty_tup(&mut self, span: Span, tys: &'hir [hir::Ty<'hir>]) -> hir::Ty<'hir> {
@@ -1208,7 +1219,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         self.next_node_id()
                     };
                     let span = self.tcx.sess.source_map().start_point(t.span).shrink_to_hi();
-                    Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
+                    Lifetime { ident: Ident::new(kw::Empty, span), id }
                 });
                 let lifetime = self.lower_lifetime(&region);
                 hir::TyKind::Ref(lifetime, self.lower_mt(mt, itctx))
@@ -1224,12 +1235,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         self.next_node_id()
                     };
                     let span = self.tcx.sess.source_map().start_point(t.span).shrink_to_hi();
-                    Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
+                    Lifetime { ident: Ident::new(kw::Empty, span), id }
                 });
                 let lifetime = self.lower_lifetime(&region);
                 let kind = hir::TyKind::Ref(lifetime, self.lower_mt(mt, itctx));
                 let span = self.lower_span(t.span);
-                let arg = hir::Ty { kind, span, hir_id: self.next_id() };
+                let arg = hir::Ty { kind, span, hir_id: self.next_id(), source: TySource::Other };
                 let args = self.arena.alloc(hir::GenericArgs {
                     args: self.arena.alloc([hir::GenericArg::Type(self.arena.alloc(arg))]),
                     constraints: &[],
@@ -1390,7 +1401,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Dummy => panic!("`TyKind::Dummy` should never be lowered"),
         };
 
-        hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.lower_node_id(t.id) }
+        hir::Ty {
+            kind,
+            span: self.lower_span(t.span),
+            hir_id: self.lower_node_id(t.id),
+            source: TySource::Other,
+        }
     }
 
     /// Lowers a `ReturnPositionOpaqueTy` (`-> impl Trait`) or a `TypeAliasesOpaqueTy` (`type F =
@@ -2334,7 +2350,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn ty_path(&mut self, mut hir_id: HirId, span: Span, qpath: hir::QPath<'hir>) -> hir::Ty<'hir> {
+    fn ty_path(&mut self, hir_id: HirId, span: Span, qpath: hir::QPath<'hir>) -> hir::Ty<'hir> {
+        self.ty_path_with_source(hir_id, span, qpath, TySource::Other)
+    }
+
+    fn ty_path_with_source(
+        &mut self,
+        mut hir_id: HirId,
+        span: Span,
+        qpath: hir::QPath<'hir>,
+        source: TySource,
+    ) -> hir::Ty<'hir> {
         let kind = match qpath {
             hir::QPath::Resolved(None, path) => {
                 // Turn trait object paths into `TyKind::TraitObject` instead.
@@ -2361,7 +2387,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             _ => hir::TyKind::Path(qpath),
         };
 
-        hir::Ty { hir_id, kind, span: self.lower_span(span) }
+        hir::Ty { hir_id, kind, span: self.lower_span(span), source }
     }
 
     /// Invoked to create the lifetime argument(s) for an elided trait object

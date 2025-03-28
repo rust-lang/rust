@@ -6,9 +6,8 @@ use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir as hir;
-use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{self as hir, HirId, TySource};
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::errors::report_lit_error;
@@ -753,6 +752,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir_id: self.next_id(),
                     kind: hir::TyKind::Path(resume_ty),
                     span: unstable_span,
+                    source: TySource::Other,
                 };
                 let inputs = arena_vec![self; input_ty];
 

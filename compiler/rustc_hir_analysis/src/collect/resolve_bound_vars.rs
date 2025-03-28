@@ -64,6 +64,7 @@ struct BoundVarContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     rbv: &'a mut ResolveBoundVars,
     scope: ScopeRef<'a>,
+    is_ref: bool,
 }
 
 #[derive(Debug)]
@@ -245,8 +246,12 @@ pub(crate) fn provide(providers: &mut Providers) {
 #[instrument(level = "debug", skip(tcx))]
 fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBoundVars {
     let mut rbv = ResolveBoundVars::default();
-    let mut visitor =
-        BoundVarContext { tcx, rbv: &mut rbv, scope: &Scope::Root { opt_parent_item: None } };
+    let mut visitor = BoundVarContext {
+        tcx,
+        rbv: &mut rbv,
+        scope: &Scope::Root { opt_parent_item: None },
+        is_ref: false,
+    };
     match tcx.hir_owner_node(local_def_id) {
         hir::OwnerNode::Item(item) => visitor.visit_item(item),
         hir::OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
@@ -648,7 +653,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         match *arg {
             hir::PreciseCapturingArg::Lifetime(lt) => match lt.res {
                 LifetimeName::Param(def_id) => {
-                    self.resolve_lifetime_ref(def_id, lt);
+                    self.resolve_lifetime_ref(def_id, lt, false);
                 }
                 LifetimeName::Error => {}
                 LifetimeName::ImplicitObjectLifetimeDefault
@@ -701,6 +706,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
+        let old_is_ref = self.is_ref;
+
         match ty.kind {
             hir::TyKind::BareFn(c) => {
                 let (mut bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = c
@@ -797,6 +804,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 }
             }
             hir::TyKind::Ref(lifetime_ref, ref mt) => {
+                self.is_ref = true;
                 self.visit_lifetime(lifetime_ref);
                 let scope = Scope::ObjectLifetimeDefault {
                     lifetime: self.rbv.defs.get(&lifetime_ref.hir_id.local_id).cloned(),
@@ -821,6 +829,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }
             _ => intravisit::walk_ty(self, ty),
         }
+
+        self.is_ref = old_is_ref;
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -878,7 +888,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 self.insert_lifetime(lifetime_ref, ResolvedArg::StaticLifetime)
             }
             hir::LifetimeName::Param(param_def_id) => {
-                self.resolve_lifetime_ref(param_def_id, lifetime_ref)
+                self.resolve_lifetime_ref(param_def_id, lifetime_ref, self.is_ref)
             }
             // If we've already reported an error, just ignore `lifetime_ref`.
             hir::LifetimeName::Error => {}
@@ -888,6 +898,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, hir_id: HirId) {
+        let old_is_ref = self.is_ref;
+        self.is_ref = false;
+
         for (i, segment) in path.segments.iter().enumerate() {
             let depth = path.segments.len() - i - 1;
             if let Some(args) = segment.args {
@@ -897,6 +910,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         if let Res::Def(DefKind::TyParam | DefKind::ConstParam, param_def_id) = path.res {
             self.resolve_type_ref(param_def_id.expect_local(), hir_id);
         }
+
+        self.is_ref = old_is_ref;
     }
 
     fn visit_fn(
@@ -1092,7 +1107,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         F: for<'b> FnOnce(&mut BoundVarContext<'b, 'tcx>),
     {
         let BoundVarContext { tcx, rbv, .. } = self;
-        let mut this = BoundVarContext { tcx: *tcx, rbv, scope: &wrap_scope };
+        let mut this = BoundVarContext { tcx: *tcx, rbv, scope: &wrap_scope, is_ref: false };
         let span = debug_span!("scope", scope = ?this.scope.debug_truncated());
         {
             let _enter = span.enter();
@@ -1201,6 +1216,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         &mut self,
         region_def_id: LocalDefId,
         lifetime_ref: &'tcx hir::Lifetime,
+        is_ref: bool,
     ) {
         // Walk up the scope chain, tracking the number of fn scopes
         // that we pass through, until we find a lifetime with the
@@ -1266,7 +1282,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                                     (generics.span, "<'a>".to_owned())
                                 };
 
-                            let lifetime_sugg = lifetime_ref.suggestion("'a");
+                            let lifetime_sugg = lifetime_ref.suggestion("'a", is_ref);
                             let suggestions = vec![lifetime_sugg, new_param_sugg];
 
                             diag.span_label(
