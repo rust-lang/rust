@@ -143,6 +143,15 @@ passes_doc_attribute_not_attribute =
 passes_doc_cfg_hide_takes_list =
     `#[doc(cfg_hide(...))]` takes a list of attributes
 
+passes_doc_auto_cfg_expects_hide_or_show =
+    `only "hide" or "show" are allowed in "#[doc(auto_cfg(...))]"`
+
+passes_doc_auto_cfg_hide_show_expects_list =
+    `#![doc(auto_cfg({$attr_name}(...)))]` only expects a list of items
+
+passes_doc_auto_cfg_wrong_literal =
+    `expected boolean for #[doc(auto_cfg = ...)]`
+
 passes_doc_expect_str =
     doc {$attr_name} attribute expects a string: #[doc({$attr_name} = "a")]
 

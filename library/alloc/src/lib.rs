@@ -64,14 +64,27 @@
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
     test(no_crate_inject, attr(allow(unused_variables), deny(warnings)))
 )]
-#![doc(cfg_hide(
-    not(test),
-    no_global_oom_handling,
-    not(no_global_oom_handling),
-    not(no_rc),
-    not(no_sync),
-    target_has_atomic = "ptr"
-))]
+#![cfg_attr(
+    bootstrap,
+    doc(cfg_hide(
+        not(test),
+        no_global_oom_handling,
+        not(no_global_oom_handling),
+        not(no_rc),
+        not(no_sync),
+        target_has_atomic = "ptr"
+    ))
+)]
+#![cfg_attr(
+    not(bootstrap),
+    doc(auto_cfg(hide(
+        test,
+        no_global_oom_handling,
+        no_rc,
+        no_sync,
+        target_has_atomic = "ptr"
+    )))
+)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![no_std]
