@@ -611,6 +611,9 @@ pub struct MiriMachine<'tcx> {
     pub(crate) reject_in_isolation_warned: RefCell<FxHashSet<String>>,
     /// Remembers which int2ptr casts we have already warned about.
     pub(crate) int2ptr_warned: RefCell<FxHashSet<Span>>,
+
+    /// Cache for `mangle_internal_symbol`.
+    pub(crate) mangle_internal_symbol_cache: FxHashMap<&'static str, String>,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -757,6 +760,7 @@ impl<'tcx> MiriMachine<'tcx> {
             native_call_mem_warned: Cell::new(false),
             reject_in_isolation_warned: Default::default(),
             int2ptr_warned: Default::default(),
+            mangle_internal_symbol_cache: Default::default(),
         }
     }
 
@@ -930,6 +934,7 @@ impl VisitProvenance for MiriMachine<'_> {
             native_call_mem_warned: _,
             reject_in_isolation_warned: _,
             int2ptr_warned: _,
+            mangle_internal_symbol_cache: _,
         } = self;
 
         threads.visit_provenance(visit);
