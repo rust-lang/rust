@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty::implements_trait;
+use clippy_utils::ty::{implements_trait, is_iter_with_side_effects};
 use clippy_utils::{is_mutable, is_trait_method, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Node, PatKind};
@@ -27,6 +27,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, self_expr: &'_ Exp
         && let Some(last_def) = cx.tcx.provided_trait_methods(item).find(|m| m.name().as_str() == "last")
         // if the resolved method is the same as the provided definition
         && fn_def.def_id() == last_def.def_id
+        && let self_ty = cx.typeck_results().expr_ty(self_expr)
+        && !is_iter_with_side_effects(cx, self_ty)
     {
         let mut sugg = vec![(call_span, String::from("next_back()"))];
         let mut dont_apply = false;

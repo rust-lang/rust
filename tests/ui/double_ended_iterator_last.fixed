@@ -90,3 +90,14 @@ fn drop_order() {
     //~^ ERROR: called `Iterator::last` on a `DoubleEndedIterator`
     println!("Done");
 }
+
+fn issue_14444() {
+    let mut squares = vec![];
+    let last_square = [1, 2, 3]
+        .into_iter()
+        .map(|x| {
+            squares.push(x * x);
+            Some(x * x)
+        })
+        .last();
+}

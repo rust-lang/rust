@@ -1376,3 +1376,34 @@ pub fn option_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
         _ => None,
     }
 }
+
+/// Check if `ty` is an `Iterator` and has side effects when iterated over. Currently, this only
+/// checks if the `ty` contains mutable captures, and thus may be imcomplete.
+pub fn is_iter_with_side_effects<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>) -> bool {
+    let Some(iter_trait) = cx.tcx.lang_items().iterator_trait() else {
+        return false;
+    };
+
+    is_iter_with_side_effects_impl(cx, iter_ty, iter_trait)
+}
+
+fn is_iter_with_side_effects_impl<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, iter_trait: DefId) -> bool {
+    if implements_trait(cx, iter_ty, iter_trait, &[])
+        && let ty::Adt(_, args) = iter_ty.kind()
+    {
+        return args.types().any(|arg_ty| {
+            if let ty::Closure(_, closure_args) = arg_ty.kind()
+                && let Some(captures) = closure_args.types().next_back()
+            {
+                captures
+                    .tuple_fields()
+                    .iter()
+                    .any(|capture_ty| matches!(capture_ty.ref_mutability(), Some(Mutability::Mut)))
+            } else {
+                is_iter_with_side_effects_impl(cx, arg_ty, iter_trait)
+            }
+        });
+    }
+
+    false
+}
