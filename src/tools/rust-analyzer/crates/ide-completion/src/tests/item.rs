@@ -285,7 +285,6 @@ fn bar() {
             kw if let
             kw impl
             kw impl for
-            kw impl<> for <>
             kw let
             kw letm
             kw loop

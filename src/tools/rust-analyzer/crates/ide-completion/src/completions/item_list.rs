@@ -115,7 +115,6 @@ fn add_keywords(acc: &mut Completions, ctx: &CompletionContext<'_>, kind: Option
             if no_vis_qualifiers {
                 add_keyword("impl", "impl $1 {\n    $0\n}");
                 add_keyword("impl for", "impl $1 for $2 {\n    $0\n}");
-                add_keyword("impl<> for <>", "impl<$4> $1 for $2<$3> {\n    $0\n}");
             }
         }
 
@@ -147,7 +146,6 @@ fn add_keywords(acc: &mut Completions, ctx: &CompletionContext<'_>, kind: Option
         if no_vis_qualifiers {
             add_keyword("impl", "impl $1 {\n    $0\n}");
             add_keyword("impl for", "impl $1 for $2 {\n    $0\n}");
-            add_keyword("impl<> for <>", "impl<$4> $1 for $2<$3> {\n    $0\n}");
         }
     }
 
