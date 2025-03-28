@@ -263,10 +263,14 @@ const unsafe fn run_with_error_handling(
 
 /// Walks through `v` checking that it's a valid UTF-8 sequence,
 /// returning `Ok(())` in that case, or, if it is invalid, `Err(err)`.
-#[inline]
+#[cfg_attr(not(feature = "optimize_for_size"), inline)]
 #[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
 pub(super) const fn run_utf8_validation(bytes: &[u8]) -> Result<(), Utf8Error> {
-    const_eval_select((bytes,), run_utf8_validation_const, run_utf8_validation_rt)
+    if cfg!(feature = "optimize_for_size") {
+        run_utf8_validation_const(bytes)
+    } else {
+        const_eval_select((bytes,), run_utf8_validation_const, run_utf8_validation_rt)
+    }
 }
 
 #[inline]
