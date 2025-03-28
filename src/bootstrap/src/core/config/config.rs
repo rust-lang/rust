@@ -193,7 +193,7 @@ pub enum GccCiMode {
 /// `bootstrap.example.toml`.
 #[derive(Default, Clone)]
 pub struct Config {
-    pub change_id: Option<usize>,
+    pub change_id: Option<ChangeId>,
     pub bypass_bootstrap_lock: bool,
     pub ccache: Option<String>,
     /// Call Build::ninja() instead of this.
@@ -700,14 +700,36 @@ pub(crate) struct TomlConfig {
     profile: Option<String>,
 }
 
+/// This enum is used for deserializing change IDs from TOML, allowing both numeric values and the string `"ignore"`.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ChangeId {
+    Ignore,
+    Id(usize),
+}
+
 /// Since we use `#[serde(deny_unknown_fields)]` on `TomlConfig`, we need a wrapper type
 /// for the "change-id" field to parse it even if other fields are invalid. This ensures
 /// that if deserialization fails due to other fields, we can still provide the changelogs
 /// to allow developers to potentially find the reason for the failure in the logs..
 #[derive(Deserialize, Default)]
 pub(crate) struct ChangeIdWrapper {
-    #[serde(alias = "change-id")]
-    pub(crate) inner: Option<usize>,
+    #[serde(alias = "change-id", default, deserialize_with = "deserialize_change_id")]
+    pub(crate) inner: Option<ChangeId>,
+}
+
+fn deserialize_change_id<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<ChangeId>, D::Error> {
+    let value = toml::Value::deserialize(deserializer)?;
+    Ok(match value {
+        toml::Value::String(s) if s == "ignore" => Some(ChangeId::Ignore),
+        toml::Value::Integer(i) => Some(ChangeId::Id(i as usize)),
+        _ => {
+            return Err(serde::de::Error::custom(
+                "expected \"ignore\" or an integer for change-id",
+            ));
+        }
+    })
 }
 
 /// Describes how to handle conflicts in merging two [`TomlConfig`]
@@ -1351,10 +1373,11 @@ impl Config {
         toml::from_str(&contents)
             .and_then(|table: toml::Value| TomlConfig::deserialize(table))
             .inspect_err(|_| {
-                if let Ok(Some(changes)) = toml::from_str(&contents)
-                    .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table))
-                    .map(|change_id| change_id.inner.map(crate::find_recent_config_change_ids))
+                if let Ok(ChangeIdWrapper { inner: Some(ChangeId::Id(id)) }) =
+                    toml::from_str::<toml::Value>(&contents)
+                        .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table))
                 {
+                    let changes = crate::find_recent_config_change_ids(id);
                     if !changes.is_empty() {
                         println!(
                             "WARNING: There have been changes to x.py since you last updated:\n{}",

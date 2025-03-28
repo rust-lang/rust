@@ -10,6 +10,7 @@ use serde::Deserialize;
 
 use super::flags::Flags;
 use super::{ChangeIdWrapper, Config, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
+use crate::ChangeId;
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm;
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
@@ -151,7 +152,7 @@ runner = "x86_64-runner"
             )
         },
     );
-    assert_eq!(config.change_id, Some(1), "setting top-level value");
+    assert_eq!(config.change_id, Some(ChangeId::Id(1)), "setting top-level value");
     assert_eq!(
         config.rust_lto,
         crate::core::config::RustcLto::Fat,
@@ -291,7 +292,7 @@ fn parse_change_id_with_unknown_field() {
     "#;
 
     let change_id_wrapper: ChangeIdWrapper = toml::from_str(config).unwrap();
-    assert_eq!(change_id_wrapper.inner, Some(3461));
+    assert_eq!(change_id_wrapper.inner, Some(ChangeId::Id(3461)));
 }
 
 #[test]

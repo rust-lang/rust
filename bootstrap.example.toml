@@ -28,8 +28,9 @@
 #  - A new option
 #  - A change in the default values
 #
-# If `change-id` does not match the version that is currently running,
-# `x.py` will inform you about the changes made on bootstrap.
+# If the change-id does not match the version currently in use, x.py will 
+# display the changes made to the bootstrap.
+# To suppress these warnings, you can set change-id = "ignore".
 #change-id = <latest change id in src/bootstrap/src/utils/change_tracker.rs>
 
 # =============================================================================

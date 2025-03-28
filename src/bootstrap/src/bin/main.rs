@@ -11,8 +11,8 @@ use std::str::FromStr;
 use std::{env, process};
 
 use bootstrap::{
-    Build, CONFIG_CHANGE_HISTORY, Config, Flags, Subcommand, debug, find_recent_config_change_ids,
-    human_readable_changes, t,
+    Build, CONFIG_CHANGE_HISTORY, ChangeId, Config, Flags, Subcommand, debug,
+    find_recent_config_change_ids, human_readable_changes, t,
 };
 #[cfg(feature = "tracing")]
 use tracing::instrument;
@@ -155,50 +155,52 @@ fn check_version(config: &Config) -> Option<String> {
     let latest_change_id = CONFIG_CHANGE_HISTORY.last().unwrap().change_id;
     let warned_id_path = config.out.join("bootstrap").join(".last-warned-change-id");
 
-    if let Some(mut id) = config.change_id {
-        if id == latest_change_id {
-            return None;
+    let mut id = match config.change_id {
+        Some(ChangeId::Id(id)) if id == latest_change_id => return None,
+        Some(ChangeId::Ignore) => return None,
+        Some(ChangeId::Id(id)) => id,
+        None => {
+            msg.push_str("WARNING: The `change-id` is missing in the `bootstrap.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
+            msg.push_str("NOTE: to silence this warning, ");
+            msg.push_str(&format!(
+                "add `change-id = {latest_change_id}` or change-id = \"ignore\" at the top of `bootstrap.toml`"
+            ));
+            return Some(msg);
         }
-
-        // Always try to use `change-id` from .last-warned-change-id first. If it doesn't exist,
-        // then use the one from the bootstrap.toml. This way we never show the same warnings
-        // more than once.
-        if let Ok(t) = fs::read_to_string(&warned_id_path) {
-            let last_warned_id = usize::from_str(&t)
-                .unwrap_or_else(|_| panic!("{} is corrupted.", warned_id_path.display()));
-
-            // We only use the last_warned_id if it exists in `CONFIG_CHANGE_HISTORY`.
-            // Otherwise, we may retrieve all the changes if it's not the highest value.
-            // For better understanding, refer to `change_tracker::find_recent_config_change_ids`.
-            if CONFIG_CHANGE_HISTORY.iter().any(|config| config.change_id == last_warned_id) {
-                id = last_warned_id;
-            }
-        };
-
-        let changes = find_recent_config_change_ids(id);
-
-        if changes.is_empty() {
-            return None;
-        }
-
-        msg.push_str("There have been changes to x.py since you last updated:\n");
-        msg.push_str(&human_readable_changes(&changes));
-
-        msg.push_str("NOTE: to silence this warning, ");
-        msg.push_str(&format!(
-            "update `bootstrap.toml` to use `change-id = {latest_change_id}` instead"
-        ));
-
-        if io::stdout().is_terminal() {
-            t!(fs::write(warned_id_path, latest_change_id.to_string()));
-        }
-    } else {
-        msg.push_str("WARNING: The `change-id` is missing in the `bootstrap.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
-        msg.push_str("NOTE: to silence this warning, ");
-        msg.push_str(&format!(
-            "add `change-id = {latest_change_id}` at the top of `bootstrap.toml`"
-        ));
     };
+
+    // Always try to use `change-id` from .last-warned-change-id first. If it doesn't exist,
+    // then use the one from the bootstrap.toml. This way we never show the same warnings
+    // more than once.
+    if let Ok(t) = fs::read_to_string(&warned_id_path) {
+        let last_warned_id = usize::from_str(&t)
+            .unwrap_or_else(|_| panic!("{} is corrupted.", warned_id_path.display()));
+
+        // We only use the last_warned_id if it exists in `CONFIG_CHANGE_HISTORY`.
+        // Otherwise, we may retrieve all the changes if it's not the highest value.
+        // For better understanding, refer to `change_tracker::find_recent_config_change_ids`.
+        if CONFIG_CHANGE_HISTORY.iter().any(|config| config.change_id == last_warned_id) {
+            id = last_warned_id;
+        }
+    };
+
+    let changes = find_recent_config_change_ids(id);
+
+    if changes.is_empty() {
+        return None;
+    }
+
+    msg.push_str("There have been changes to x.py since you last updated:\n");
+    msg.push_str(&human_readable_changes(&changes));
+
+    msg.push_str("NOTE: to silence this warning, ");
+    msg.push_str(&format!(
+        "update `bootstrap.toml` to use `change-id = {latest_change_id}` or change-id = \"ignore\" instead"
+    ));
+
+    if io::stdout().is_terminal() {
+        t!(fs::write(warned_id_path, latest_change_id.to_string()));
+    }
 
     Some(msg)
 }
