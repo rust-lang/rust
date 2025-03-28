@@ -1,6 +1,6 @@
 # Codegen backend testing
 
-See also the [Code generation](../../../src/backend/codegen.md) chapter.
+See also the [Code generation](../../backend/codegen.md) chapter.
 
 In addition to the primary LLVM codegen backend, the rust-lang/rust CI also runs tests of the [cranelift][cg_clif] and [GCC][cg_gcc] codegen backends in certain test jobs.
 
