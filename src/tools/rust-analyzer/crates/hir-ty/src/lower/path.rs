@@ -333,15 +333,14 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
     }
 
     pub(crate) fn resolve_path_in_type_ns(&mut self) -> Option<(TypeNs, Option<usize>)> {
-        let (resolution, remaining_index, prefix_info) = self
+        let (resolution, remaining_index, _, prefix_info) = self
             .ctx
             .resolver
-            .resolve_path_in_type_ns_with_prefix_info(self.ctx.db.upcast(), self.path)
-            .filter_map(|(res, remaining_index, _, prefix_info)| match res {
-                ModuleOrTypeNs::TypeNs(type_ns) => Some((type_ns, remaining_index, prefix_info)),
-                ModuleOrTypeNs::ModuleNs(_) => None,
-            })
-            .next()?;
+            .resolve_path_in_type_ns_with_prefix_info(self.ctx.db.upcast(), self.path)?;
+
+        let ModuleOrTypeNs::TypeNs(resolution) = resolution else {
+            return None;
+        };
 
         let segments = self.segments;
         if segments.is_empty() || matches!(self.path, Path::LangItem(..)) {

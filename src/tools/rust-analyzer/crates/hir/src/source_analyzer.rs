@@ -1365,23 +1365,6 @@ pub(crate) fn resolve_hir_path_as_attr_macro(
         .map(Into::into)
 }
 
-fn resolve_path_in_module_or_type_ns(
-    db: &dyn HirDatabase,
-    resolver: &Resolver,
-    path: &Path,
-) -> Option<(ModuleOrTypeNs, Option<usize>)> {
-    let mut types = resolver
-        .resolve_path_in_type_ns(db.upcast(), path)
-        .map(|(ty, remaining_idx, _)| (ty, remaining_idx))
-        .peekable();
-    let (ty, _) = types.peek()?;
-    match ty {
-        ModuleOrTypeNs::ModuleNs(_) => types
-            .find_or_first(|(ty, _)| matches!(ty, ModuleOrTypeNs::TypeNs(TypeNs::BuiltinType(_)))),
-        ModuleOrTypeNs::TypeNs(_) => types.next(),
-    }
-}
-
 fn resolve_hir_path_(
     db: &dyn HirDatabase,
     resolver: &Resolver,
@@ -1404,7 +1387,7 @@ fn resolve_hir_path_(
                 res.map(|ty_ns| (ModuleOrTypeNs::TypeNs(ty_ns), path.segments().first()))
             }
             None => {
-                let (ty, remaining_idx) = resolve_path_in_module_or_type_ns(db, resolver, path)?;
+                let (ty, remaining_idx, _) = resolver.resolve_path_in_type_ns(db.upcast(), path)?;
                 match remaining_idx {
                     Some(remaining_idx) => {
                         if remaining_idx + 1 == path.segments().len() {
@@ -1542,7 +1525,7 @@ fn resolve_hir_path_qualifier(
                 res.map(|ty_ns| (ModuleOrTypeNs::TypeNs(ty_ns), path.segments().first()))
             }
             None => {
-                let (ty, remaining_idx) = resolve_path_in_module_or_type_ns(db, resolver, path)?;
+                let (ty, remaining_idx, _) = resolver.resolve_path_in_type_ns(db.upcast(), path)?;
                 match remaining_idx {
                     Some(remaining_idx) => {
                         if remaining_idx + 1 == path.segments().len() {

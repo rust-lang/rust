@@ -169,33 +169,26 @@ impl Resolver {
         self.resolve_module_path(db, path, BuiltinShadowMode::Module)
     }
 
-    pub fn resolve_path_in_type_ns<'a>(
-        &'a self,
-        db: &'a dyn DefDatabase,
-        path: &'a Path,
-    ) -> impl Iterator<Item = (ModuleOrTypeNs, Option<usize>, Option<ImportOrExternCrate>)> + 'a
-    {
+    pub fn resolve_path_in_type_ns(
+        &self,
+        db: &dyn DefDatabase,
+        path: &Path,
+    ) -> Option<(ModuleOrTypeNs, Option<usize>, Option<ImportOrExternCrate>)> {
         self.resolve_path_in_type_ns_with_prefix_info(db, path).map(
-            move |(resolution, remaining_segments, import, _)| {
-                (resolution, remaining_segments, import)
-            },
+            |(resolution, remaining_segments, import, _)| (resolution, remaining_segments, import),
         )
     }
 
-    pub fn resolve_path_in_type_ns_with_prefix_info<'a>(
-        &'a self,
-        db: &'a dyn DefDatabase,
-        path: &'a Path,
-    ) -> Box<
-        dyn Iterator<
-                Item = (
-                    ModuleOrTypeNs,
-                    Option<usize>,
-                    Option<ImportOrExternCrate>,
-                    ResolvePathResultPrefixInfo,
-                ),
-            > + 'a,
-    > {
+    pub fn resolve_path_in_type_ns_with_prefix_info(
+        &self,
+        db: &dyn DefDatabase,
+        path: &Path,
+    ) -> Option<(
+        ModuleOrTypeNs,
+        Option<usize>,
+        Option<ImportOrExternCrate>,
+        ResolvePathResultPrefixInfo,
+    )> {
         let path = match path {
             Path::BarePath(mod_path) => mod_path,
             Path::Normal(it) => &it.mod_path,
@@ -209,30 +202,29 @@ impl Resolver {
                     LangItemTarget::Trait(it) => TypeNs::TraitId(it),
                     LangItemTarget::Function(_)
                     | LangItemTarget::ImplDef(_)
-                    | LangItemTarget::Static(_) => return Box::new(iter::empty()),
+                    | LangItemTarget::Static(_) => return None,
                 };
-                return Box::new(iter::once((
+                return Some((
                     ModuleOrTypeNs::TypeNs(type_ns),
                     seg.as_ref().map(|_| 1),
                     None,
                     ResolvePathResultPrefixInfo::default(),
-                )));
+                ));
             }
         };
-        let Some(first_name) = path.segments().first() else { return Box::new(iter::empty()) };
+        let first_name = path.segments().first()?;
         let skip_to_mod = path.kind != PathKind::Plain;
         if skip_to_mod {
-            return Box::new(self.module_scope.resolve_path_in_type_ns(db, path).into_iter());
+            return self.module_scope.resolve_path_in_module_or_type_ns(db, path);
         }
 
         let remaining_idx = || {
             if path.segments().len() == 1 { None } else { Some(1) }
         };
 
-        let ns = self
-            .scopes()
-            .filter_map(move |scope| match scope {
-                Scope::ExprScope(_) | Scope::MacroDefScope(_) => None,
+        for scope in self.scopes() {
+            match scope {
+                Scope::ExprScope(_) | Scope::MacroDefScope(_) => continue,
                 Scope::GenericParams { params, def } => {
                     if let Some(id) = params.find_type_by_name(first_name, *def) {
                         return Some((
@@ -242,7 +234,6 @@ impl Resolver {
                             ResolvePathResultPrefixInfo::default(),
                         ));
                     }
-                    None
                 }
                 &Scope::ImplDefScope(impl_) => {
                     if *first_name == sym::Self_.clone() {
@@ -253,7 +244,6 @@ impl Resolver {
                             ResolvePathResultPrefixInfo::default(),
                         ));
                     }
-                    None
                 }
                 &Scope::AdtScope(adt) => {
                     if *first_name == sym::Self_.clone() {
@@ -264,18 +254,33 @@ impl Resolver {
                             ResolvePathResultPrefixInfo::default(),
                         ));
                     }
-                    None
                 }
                 Scope::BlockScope(m) => {
-                    if let Some(res) = m.resolve_path_in_type_ns(db, path) {
+                    if let Some(res) = m.resolve_path_in_module_or_type_ns(db, path) {
+                        let res = match res.0 {
+                            ModuleOrTypeNs::TypeNs(_) => res,
+                            ModuleOrTypeNs::ModuleNs(_) => {
+                                if let Some(ModuleDefId::BuiltinType(builtin)) = BUILTIN_SCOPE
+                                    .get(first_name)
+                                    .and_then(|builtin| builtin.take_types())
+                                {
+                                    (
+                                        ModuleOrTypeNs::TypeNs(TypeNs::BuiltinType(builtin)),
+                                        remaining_idx(),
+                                        None,
+                                        ResolvePathResultPrefixInfo::default(),
+                                    )
+                                } else {
+                                    res
+                                }
+                            }
+                        };
                         return Some(res);
                     }
-                    None
                 }
-            })
-            .chain(self.module_scope.resolve_path_in_type_ns(db, path));
-
-        Box::new(ns)
+            }
+        }
+        self.module_scope.resolve_path_in_module_or_type_ns(db, path)
     }
 
     pub fn resolve_path_in_type_ns_fully(
@@ -283,17 +288,11 @@ impl Resolver {
         db: &dyn DefDatabase,
         path: &Path,
     ) -> Option<TypeNs> {
-        let (res, unresolved) = self
-            .resolve_path_in_type_ns(db, path)
-            .filter_map(|(res, unresolved, _)| match res {
-                ModuleOrTypeNs::TypeNs(it) => Some((it, unresolved)),
-                ModuleOrTypeNs::ModuleNs(_) => None,
-            })
-            .next()?;
-        if unresolved.is_some() {
-            return None;
+        if let (ModuleOrTypeNs::TypeNs(res), None, _) = self.resolve_path_in_type_ns(db, path)? {
+            Some(res)
+        } else {
+            None
         }
-        Some(res)
     }
 
     pub fn resolve_visibility(
@@ -1183,7 +1182,7 @@ impl ModuleItemMap {
         }
     }
 
-    fn resolve_path_in_type_ns(
+    fn resolve_path_in_module_or_type_ns(
         &self,
         db: &dyn DefDatabase,
         path: &ModPath,
