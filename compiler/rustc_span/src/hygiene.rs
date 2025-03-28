@@ -71,7 +71,7 @@ pub struct SyntaxContextData {
     /// This context, but with all transparent expansions filtered away.
     opaque_and_semitransparent: SyntaxContext,
     /// Name of the crate to which `$crate` with this context would resolve.
-    dollar_crate_name: Symbol,
+    dollar_crate_name: Option<Symbol>,
 }
 
 impl SyntaxContextData {
@@ -82,16 +82,16 @@ impl SyntaxContextData {
             parent: SyntaxContext::root(),
             opaque: SyntaxContext::root(),
             opaque_and_semitransparent: SyntaxContext::root(),
-            dollar_crate_name: kw::DollarCrate,
+            dollar_crate_name: Some(kw::DollarCrate),
         }
     }
 
     fn decode_placeholder() -> SyntaxContextData {
-        SyntaxContextData { dollar_crate_name: kw::Empty, ..SyntaxContextData::root() }
+        SyntaxContextData { dollar_crate_name: None, ..SyntaxContextData::root() }
     }
 
     fn is_decode_placeholder(&self) -> bool {
-        self.dollar_crate_name == kw::Empty
+        self.dollar_crate_name.is_none()
     }
 
     fn key(&self) -> SyntaxContextKey {
@@ -597,7 +597,7 @@ impl HygieneData {
                         parent,
                         opaque: new_opaque,
                         opaque_and_semitransparent: new_opaque,
-                        dollar_crate_name: kw::DollarCrate,
+                        dollar_crate_name: Some(kw::DollarCrate),
                     });
                     new_opaque
                 });
@@ -617,7 +617,7 @@ impl HygieneData {
                         parent,
                         opaque,
                         opaque_and_semitransparent: new_opaque_and_semitransparent,
-                        dollar_crate_name: kw::DollarCrate,
+                        dollar_crate_name: Some(kw::DollarCrate),
                     });
                     new_opaque_and_semitransparent
                 });
@@ -631,7 +631,7 @@ impl HygieneData {
                 parent,
                 opaque,
                 opaque_and_semitransparent,
-                dollar_crate_name: kw::DollarCrate,
+                dollar_crate_name: Some(kw::DollarCrate),
             });
             SyntaxContext::from_usize(syntax_context_data.len() - 1)
         })
@@ -657,7 +657,7 @@ pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symb
     let mut to_update = vec![];
     HygieneData::with(|data| {
         for (idx, scdata) in data.syntax_context_data.iter().enumerate().rev() {
-            if scdata.dollar_crate_name == kw::DollarCrate {
+            if scdata.dollar_crate_name == Some(kw::DollarCrate) {
                 to_update.push((idx, kw::DollarCrate));
             } else if !scdata.is_decode_placeholder() {
                 break;
@@ -671,7 +671,7 @@ pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symb
     }
     HygieneData::with(|data| {
         for (idx, name) in to_update {
-            data.syntax_context_data[idx].dollar_crate_name = name;
+            data.syntax_context_data[idx].dollar_crate_name = Some(name);
         }
     })
 }
@@ -927,7 +927,7 @@ impl SyntaxContext {
     pub(crate) fn dollar_crate_name(self) -> Symbol {
         HygieneData::with(|data| {
             debug_assert!(!data.syntax_context_data[self.0 as usize].is_decode_placeholder());
-            data.syntax_context_data[self.0 as usize].dollar_crate_name
+            data.syntax_context_data[self.0 as usize].dollar_crate_name.unwrap()
         })
     }
 
@@ -1478,10 +1478,10 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
                 let ctxt_data_ref =
                     &mut hygiene_data.syntax_context_data[pending_ctxt.as_u32() as usize];
                 let prev_ctxt_data = mem::replace(ctxt_data_ref, ctxt_data);
-                // Reset `dollar_crate_name` so that it will be updated by `update_dollar_crate_names`.
+                // Reset `dollar_crate_name` so it will be updated by `update_dollar_crate_names`.
                 // We don't care what the encoding crate set this to - we want to resolve it
                 // from the perspective of the current compilation session.
-                ctxt_data_ref.dollar_crate_name = kw::DollarCrate;
+                ctxt_data_ref.dollar_crate_name = Some(kw::DollarCrate);
                 // Make sure nothing weird happened while `decode_data` was running.
                 if !prev_ctxt_data.is_decode_placeholder() {
                     // Another thread may have already inserted the decoded data,
