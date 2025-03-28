@@ -1833,13 +1833,16 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 }
                 LifetimeRibKind::StaticIfNoLifetimeInScope { lint_id: node_id, emit_lint } => {
                     let mut lifetimes_in_scope = vec![];
-                    for rib in &self.lifetime_ribs[..i] {
+                    for rib in self.lifetime_ribs[..i].iter().rev() {
                         lifetimes_in_scope.extend(rib.bindings.iter().map(|(ident, _)| ident.span));
                         // Consider any anonymous lifetimes, too
                         if let LifetimeRibKind::AnonymousCreateParameter { binder, .. } = rib.kind
                             && let Some(extra) = self.r.extra_lifetime_params_map.get(&binder)
                         {
                             lifetimes_in_scope.extend(extra.iter().map(|(ident, _, _)| ident.span));
+                        }
+                        if let LifetimeRibKind::Item = rib.kind {
+                            break;
                         }
                     }
                     if lifetimes_in_scope.is_empty() {
