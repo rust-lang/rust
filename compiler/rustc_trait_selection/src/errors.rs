@@ -9,7 +9,7 @@ use rustc_errors::{
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
-use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, IsAnonInPath, Node};
+use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
 use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, GenericArg, Region, Ty, TyCtxt};
@@ -551,19 +551,6 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
 
             impl<'v> Visitor<'v> for ImplicitLifetimeFinder {
                 fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
-                    let make_suggestion = |lifetime: &hir::Lifetime| {
-                        if lifetime.is_anon_in_path == IsAnonInPath::Yes
-                            && lifetime.ident.span.is_empty()
-                        {
-                            format!("{}, ", self.suggestion_param_name)
-                        } else if lifetime.ident.name == kw::UnderscoreLifetime
-                            && lifetime.ident.span.is_empty()
-                        {
-                            format!("{} ", self.suggestion_param_name)
-                        } else {
-                            self.suggestion_param_name.clone()
-                        }
-                    };
                     match ty.kind {
                         hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
                             for segment in path.segments {
@@ -572,7 +559,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                                         matches!(
                                             arg,
                                             hir::GenericArg::Lifetime(lifetime)
-                                                if lifetime.is_anon_in_path == IsAnonInPath::Yes
+                                                if lifetime.is_syntactically_hidden()
                                         )
                                     }) {
                                         self.suggestions.push((
@@ -591,10 +578,10 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                                             if let hir::GenericArg::Lifetime(lifetime) = arg
                                                 && lifetime.is_anonymous()
                                             {
-                                                self.suggestions.push((
-                                                    lifetime.ident.span,
-                                                    make_suggestion(lifetime),
-                                                ));
+                                                self.suggestions.push(
+                                                    lifetime
+                                                        .suggestion(&self.suggestion_param_name),
+                                                );
                                             }
                                         }
                                     }
@@ -602,7 +589,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                             }
                         }
                         hir::TyKind::Ref(lifetime, ..) if lifetime.is_anonymous() => {
-                            self.suggestions.push((lifetime.ident.span, make_suggestion(lifetime)));
+                            self.suggestions.push(lifetime.suggestion(&self.suggestion_param_name));
                         }
                         _ => {}
                     }

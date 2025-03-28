@@ -36,42 +36,94 @@ pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::{FnKind, VisitorExt};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
-pub enum IsAnonInPath {
-    No,
-    Yes,
+pub enum LifetimeSource {
+    /// `&'_ Type`
+    Reference,
+
+    /// `ContainsLifetime<'_>`
+    Path { with_angle_brackets: bool },
+
+    /// impl Trait + '_
+    OutlivesBound,
+
+    /// impl Trait + use<'_>
+    PreciseCapturing,
+
+    /// Details not yet needed. Feel free to give useful
+    /// categorization to these usages.
+    Other,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
+pub enum LifetimeSyntax {
+    /// `&Type`
+    Hidden,
+
+    /// `&'_ Type`
+    Anonymous,
+
+    /// `&'a Type`
+    Named,
+}
+
+impl From<Ident> for LifetimeSyntax {
+    fn from(ident: Ident) -> Self {
+        let name = ident.name;
+
+        if name == kw::Empty {
+            LifetimeSyntax::Hidden
+        } else if name == kw::UnderscoreLifetime {
+            LifetimeSyntax::Anonymous
+        } else {
+            debug_assert!(name.as_str().starts_with('\''));
+            LifetimeSyntax::Named
+        }
+    }
 }
 
 /// A lifetime. The valid field combinations are non-obvious. The following
 /// example shows some of them. See also the comments on `LifetimeName`.
 /// ```
 /// #[repr(C)]
-/// struct S<'a>(&'a u32);       // res=Param, name='a, IsAnonInPath::No
+/// struct S<'a>(&'a u32);       // res=Param, name='a, source=Reference, syntax=Named
 /// unsafe extern "C" {
-///     fn f1(s: S);             // res=Param, name='_, IsAnonInPath::Yes
-///     fn f2(s: S<'_>);         // res=Param, name='_, IsAnonInPath::No
-///     fn f3<'a>(s: S<'a>);     // res=Param, name='a, IsAnonInPath::No
+///     fn f1(s: S);             // res=Param, name='_, source=Path, syntax=Hidden
+///     fn f2(s: S<'_>);         // res=Param, name='_, source=Path, syntax=Anonymous
+///     fn f3<'a>(s: S<'a>);     // res=Param, name='a, source=Path, syntax=Named
 /// }
 ///
-/// struct St<'a> { x: &'a u32 } // res=Param, name='a, IsAnonInPath::No
+/// struct St<'a> { x: &'a u32 } // res=Param, name='a, source=Reference, syntax=Named
 /// fn f() {
-///     _ = St { x: &0 };        // res=Infer, name='_, IsAnonInPath::Yes
-///     _ = St::<'_> { x: &0 };  // res=Infer, name='_, IsAnonInPath::No
+///     _ = St { x: &0 };        // res=Infer, name='_, source=Path, syntax=Hidden
+///     _ = St::<'_> { x: &0 };  // res=Infer, name='_, source=Path, syntax=Anonymous
 /// }
 ///
-/// struct Name<'a>(&'a str);    // res=Param,  name='a, IsAnonInPath::No
-/// const A: Name = Name("a");   // res=Static, name='_, IsAnonInPath::Yes
-/// const B: &str = "";          // res=Static, name='_, IsAnonInPath::No
-/// static C: &'_ str = "";      // res=Static, name='_, IsAnonInPath::No
-/// static D: &'static str = ""; // res=Static, name='static, IsAnonInPath::No
+/// struct Name<'a>(&'a str);    // res=Param,  name='a, source=Reference, syntax=Named
+/// const A: Name = Name("a");   // res=Static, name='_, source=Path, syntax=Hidden
+/// const B: &str = "";          // res=Static, name='_, source=Reference, syntax=Hidden
+/// static C: &'_ str = "";      // res=Static, name='_, source=Reference, syntax=Anonymous
+/// static D: &'static str = ""; // res=Static, name='static, source=Reference, syntax=Named
 ///
 /// trait Tr {}
-/// fn tr(_: Box<dyn Tr>) {}     // res=ImplicitObjectLifetimeDefault, name='_, IsAnonInPath::No
+/// fn tr(_: Box<dyn Tr>) {}     // res=ImplicitObjectLifetimeDefault, name='_, source=Other, syntax=Hidden
+///
+/// fn capture_outlives<'a>() ->
+///     impl FnOnce() + 'a       // res=Param, ident='a, source=OutlivesBound, syntax=Named
+/// {
+///     || {}
+/// }
+///
+/// fn capture_precise<'a>() ->
+///     impl FnOnce() + use<'a>  // res=Param, ident='a, source=PreciseCapturing, syntax=Named
+/// {
+///     || {}
+/// }
 ///
 /// // (commented out because these cases trigger errors)
-/// // struct S1<'a>(&'a str);   // res=Param, name='a, IsAnonInPath::No
-/// // struct S2(S1);            // res=Error, name='_, IsAnonInPath::Yes
-/// // struct S3(S1<'_>);        // res=Error, name='_, IsAnonInPath::No
-/// // struct S4(S1<'a>);        // res=Error, name='a, IsAnonInPath::No
+/// // struct S1<'a>(&'a str);   // res=Param, name='a, source=Reference, syntax=Named
+/// // struct S2(S1);            // res=Error, name='_, source=Path, syntax=Hidden
+/// // struct S3(S1<'_>);        // res=Error, name='_, source=Path, syntax=Anonymous
+/// // struct S4(S1<'a>);        // res=Error, name='a, source=Path, syntax=Named
 /// ```
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Lifetime {
@@ -88,7 +140,8 @@ pub struct Lifetime {
 
     /// Is the lifetime anonymous and in a path? Used only for error
     /// suggestions. See `Lifetime::suggestion` for example use.
-    pub is_anon_in_path: IsAnonInPath,
+    pub source: LifetimeSource,
+    pub syntax: LifetimeSyntax,
 }
 
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
@@ -185,9 +238,10 @@ impl Lifetime {
         hir_id: HirId,
         ident: Ident,
         res: LifetimeName,
-        is_anon_in_path: IsAnonInPath,
+        source: LifetimeSource,
+        syntax: LifetimeSyntax,
     ) -> Lifetime {
-        let lifetime = Lifetime { hir_id, ident, res, is_anon_in_path };
+        let lifetime = Lifetime { hir_id, ident, res, source, syntax };
 
         // Sanity check: elided lifetimes form a strict subset of anonymous lifetimes.
         #[cfg(debug_assertions)]
@@ -209,23 +263,44 @@ impl Lifetime {
         self.ident.name == kw::UnderscoreLifetime
     }
 
+    pub fn is_syntactically_hidden(&self) -> bool {
+        matches!(self.syntax, LifetimeSyntax::Hidden)
+    }
+
+    pub fn is_syntactically_anonymous(&self) -> bool {
+        matches!(self.syntax, LifetimeSyntax::Anonymous)
+    }
+
+    pub fn is_static(&self) -> bool {
+        self.res == LifetimeName::Static
+    }
+
     pub fn suggestion(&self, new_lifetime: &str) -> (Span, String) {
+        use LifetimeSource::*;
+        use LifetimeSyntax::*;
+
         debug_assert!(new_lifetime.starts_with('\''));
 
-        match (self.is_anon_in_path, self.ident.span.is_empty()) {
+        match (self.syntax, self.source) {
+            // The user wrote `'a` or `'_`.
+            (Named | Anonymous, _) => (self.ident.span, format!("{new_lifetime}")),
+
             // The user wrote `Path<T>`, and omitted the `'_,`.
-            (IsAnonInPath::Yes, true) => (self.ident.span, format!("{new_lifetime}, ")),
+            (Hidden, Path { with_angle_brackets: true }) => {
+                (self.ident.span, format!("{new_lifetime}, "))
+            }
 
             // The user wrote `Path` and omitted the `<'_>`.
-            (IsAnonInPath::Yes, false) => {
+            (Hidden, Path { with_angle_brackets: false }) => {
                 (self.ident.span.shrink_to_hi(), format!("<{new_lifetime}>"))
             }
 
             // The user wrote `&type` or `&mut type`.
-            (IsAnonInPath::No, true) => (self.ident.span, format!("{new_lifetime} ")),
+            (Hidden, Reference) => (self.ident.span, format!("{new_lifetime} ")),
 
-            // The user wrote `'a` or `'_`.
-            (IsAnonInPath::No, false) => (self.ident.span, format!("{new_lifetime}")),
+            (Hidden, source) => {
+                unreachable!("can't suggest for a hidden lifetime of {source:?}")
+            }
         }
     }
 }
