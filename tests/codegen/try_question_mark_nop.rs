@@ -16,10 +16,10 @@ use std::ptr::NonNull;
 #[no_mangle]
 pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
-    // TWENTY-NEXT: %[[IS_SOME:.+]] = trunc nuw i32 %0 to i1
-    // TWENTY-NEXT: %[[PAYLOAD:.+]] = select i1 %[[IS_SOME]], i32 %1, i32 undef
-    // CHECK-NEXT: [[REG1:%.*]] = insertvalue { i32, i32 } poison, i32 %0, 0
-    // NINETEEN-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } [[REG1]], i32 %1, 1
+    // TWENTY-NEXT: %[[IS_SOME:.+]] = trunc nuw i32 %x.0 to i1
+    // TWENTY-NEXT: %[[PAYLOAD:.+]] = select i1 %[[IS_SOME]], i32 %x.1, i32 undef
+    // CHECK-NEXT: [[REG1:%.*]] = insertvalue { i32, i32 } poison, i32 %x.0, 0
+    // NINETEEN-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } [[REG1]], i32 %x.1, 1
     // TWENTY-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } [[REG1]], i32 %[[PAYLOAD]], 1
     // CHECK-NEXT: ret { i32, i32 } [[REG2]]
     match x {
@@ -32,8 +32,8 @@ pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
 #[no_mangle]
 pub fn option_nop_traits_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
-    // TWENTY-NEXT: %[[IS_SOME:.+]] = trunc nuw i32 %0 to i1
-    // TWENTY-NEXT: select i1 %[[IS_SOME]], i32 %1, i32 undef
+    // TWENTY-NEXT: %[[IS_SOME:.+]] = trunc nuw i32 %x.0 to i1
+    // TWENTY-NEXT: select i1 %[[IS_SOME]], i32 %x.1, i32 undef
     // CHECK-NEXT: insertvalue { i32, i32 }
     // CHECK-NEXT: insertvalue { i32, i32 }
     // CHECK-NEXT: ret { i32, i32 }
@@ -90,11 +90,11 @@ pub fn control_flow_nop_traits_32(x: ControlFlow<i32, u32>) -> ControlFlow<i32, 
 #[no_mangle]
 pub fn option_nop_match_64(x: Option<u64>) -> Option<u64> {
     // CHECK: start:
-    // TWENTY-NEXT: %[[TRUNC:[0-9]+]] = trunc nuw i64 %0 to i1
-    // TWENTY-NEXT: %[[SEL:\.[0-9]+]] = select i1 %[[TRUNC]], i64 %1, i64 undef
-    // CHECK-NEXT: [[REG1:%[0-9a-zA-Z_.]+]] = insertvalue { i64, i64 } poison, i64 %0, 0
-    // NINETEEN-NEXT: [[REG2:%[0-9a-zA-Z_.]+]] = insertvalue { i64, i64 } [[REG1]], i64 %1, 1
-    // TWENTY-NEXT: [[REG2:%[0-9a-zA-Z_.]+]] = insertvalue { i64, i64 } [[REG1]], i64 %[[SEL]], 1
+    // TWENTY-NEXT: %[[TRUNC:.+]] = trunc nuw i64 %x.0 to i1
+    // TWENTY-NEXT: %[[SEL:.+]] = select i1 %[[TRUNC]], i64 %x.1, i64 undef
+    // CHECK-NEXT: [[REG1:%.+]] = insertvalue { i64, i64 } poison, i64 %x.0, 0
+    // NINETEEN-NEXT: [[REG2:%.+]] = insertvalue { i64, i64 } [[REG1]], i64 %x.1, 1
+    // TWENTY-NEXT: [[REG2:%.+]] = insertvalue { i64, i64 } [[REG1]], i64 %[[SEL]], 1
     // CHECK-NEXT: ret { i64, i64 } [[REG2]]
     match x {
         Some(x) => Some(x),
@@ -106,8 +106,8 @@ pub fn option_nop_match_64(x: Option<u64>) -> Option<u64> {
 #[no_mangle]
 pub fn option_nop_traits_64(x: Option<u64>) -> Option<u64> {
     // CHECK: start:
-    // TWENTY-NEXT: %[[TRUNC:[0-9]+]] = trunc nuw i64 %0 to i1
-    // TWENTY-NEXT: %[[SEL:\.[0-9]+]] = select i1 %[[TRUNC]], i64 %1, i64 undef
+    // TWENTY-NEXT: %[[TRUNC:.+]] = trunc nuw i64 %x.0 to i1
+    // TWENTY-NEXT: %[[SEL:.+]] = select i1 %[[TRUNC]], i64 %x.1, i64 undef
     // CHECK-NEXT: insertvalue { i64, i64 }
     // CHECK-NEXT: insertvalue { i64, i64 }
     // CHECK-NEXT: ret { i64, i64 }

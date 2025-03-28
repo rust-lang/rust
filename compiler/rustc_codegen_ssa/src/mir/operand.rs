@@ -142,7 +142,7 @@ pub struct OperandRef<'tcx, V> {
     pub layout: TyAndLayout<'tcx>,
 }
 
-impl<V: CodegenObject> fmt::Debug for OperandRef<'_, V> {
+impl<V: fmt::Debug> fmt::Debug for OperandRef<'_, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "OperandRef({:?} @ {:?})", self.val, self.layout)
     }
@@ -372,16 +372,22 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 )
             })
         } else {
-            let (in_scalar, imm) = match (self.val, self.layout.backend_repr) {
+            let (imm, in_scalar, in_bty) = match (self.val, self.layout.backend_repr) {
                 // Extract a scalar component from a pair.
                 (OperandValue::Pair(a_llval, b_llval), BackendRepr::ScalarPair(a, b)) => {
-                    if offset.bytes() == 0 {
+                    // This needs to look at `offset`, rather than `i`, because
+                    // for a type like `Option<u32>`, the first thing in the pair
+                    // is the tag, so `(_2 as Some).0` needs to read the *second*
+                    // thing in the pair despite it being "field zero".
+                    if offset == Size::ZERO {
                         assert_eq!(field.size, a.size(bx.cx()));
-                        (Some(a), a_llval)
+                        let bty = bx.scalar_pair_element_backend_type(self.layout, 0, false);
+                        (a_llval, a, bty)
                     } else {
                         assert_eq!(offset, a.size(bx.cx()).align_to(b.align(bx.cx()).abi));
                         assert_eq!(field.size, b.size(bx.cx()));
-                        (Some(b), b_llval)
+                        let bty = bx.scalar_pair_element_backend_type(self.layout, 1, false);
+                        (b_llval, b, bty)
                     }
                 }
 
@@ -392,23 +398,13 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             OperandValue::Immediate(match field.backend_repr {
                 BackendRepr::SimdVector { .. } => imm,
                 BackendRepr::Scalar(out_scalar) => {
-                    let Some(in_scalar) = in_scalar else {
-                        span_bug!(
-                            fx.mir.span,
-                            "OperandRef::extract_field({:?}): missing input scalar for output scalar",
-                            self
-                        )
-                    };
-                    if in_scalar != out_scalar {
-                        // If the backend and backend_immediate types might differ,
-                        // flip back to the backend type then to the new immediate.
-                        // This avoids nop truncations, but still handles things like
-                        // Bools in union fields needs to be truncated.
-                        let backend = bx.from_immediate(imm);
-                        bx.to_immediate_scalar(backend, out_scalar)
-                    } else {
-                        imm
-                    }
+                    // For a type like `Result<usize, &u32>` the layout is `Pair(i64, ptr)`.
+                    // But if we're reading the `Ok` payload, we need to turn that `ptr`
+                    // back into an integer. To avoid repeating logic we do that by
+                    // calling the transmute code, which is legal thanks to the size
+                    // assert we did when pulling it out of the pair.
+                    let out_bty = bx.backend_type(field);
+                    fx.transmute_immediate(bx, imm, in_scalar, in_bty, out_scalar, out_bty)
                 }
                 BackendRepr::ScalarPair(_, _) | BackendRepr::Memory { .. } => bug!(),
             })
@@ -712,7 +708,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::Operand(mut o) => {
                 // Moves out of scalar and scalar pair fields are trivial.
                 for elem in place_ref.projection.iter() {
-                    match elem {
+                    match *elem {
                         mir::ProjectionElem::Field(f, _) => {
                             assert!(
                                 !o.layout.ty.is_any_ptr(),
@@ -720,6 +716,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                  but tried to access field {f:?} of pointer {o:?}",
                             );
                             o = o.extract_field(self, bx, f.index());
+                        }
+                        mir::ProjectionElem::Downcast(_sym, variant_idx) => {
+                            let layout = o.layout.for_variant(bx.cx(), variant_idx);
+                            // The transmute here handles cases like `Result<bool, u8>`
+                            // where the immediate values need to change for
+                            // the specific types in the cast-to variant.
+                            let Some(val) = self.codegen_transmute_operand(bx, o, layout) else {
+                                bug!("Couldn't transmute in downcast to {variant_idx:?} of {o:?}");
+                            };
+                            o = OperandRef { val, layout };
                         }
                         mir::ProjectionElem::Index(_)
                         | mir::ProjectionElem::ConstantIndex { .. } => {
