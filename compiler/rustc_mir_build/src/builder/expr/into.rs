@@ -271,7 +271,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                     this.diverge_from(loop_block);
 
-                    // logic for `match`
+                    // Logic for `match`.
                     let scrutinee_place_builder =
                         unpack!(body_block = this.as_place_builder(body_block, state));
                     let scrutinee_span = this.thir.exprs[state].span;
