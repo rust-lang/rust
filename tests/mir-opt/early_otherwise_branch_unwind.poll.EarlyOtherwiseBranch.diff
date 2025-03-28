@@ -12,6 +12,7 @@
       let mut _7: bool;
       let mut _8: bool;
       let mut _9: isize;
+      let mut _10: isize;
       scope 1 {
           debug _trailers => _5;
       }
@@ -99,12 +100,13 @@
       }
   
       bb15: {
-          goto -> bb14;
+          _9 = discriminant(((((_1 as Ready).0: std::result::Result<std::option::Option<std::vec::Vec<u8>>, u8>) as Ok).0: std::option::Option<std::vec::Vec<u8>>));
+          switchInt(move _9) -> [1: bb14, otherwise: bb14];
       }
   
       bb16: {
-          _9 = discriminant(((_1 as Ready).0: std::result::Result<std::option::Option<std::vec::Vec<u8>>, u8>));
-          switchInt(move _9) -> [0: bb13, otherwise: bb12];
+          _10 = discriminant(((_1 as Ready).0: std::result::Result<std::option::Option<std::vec::Vec<u8>>, u8>));
+          switchInt(move _10) -> [0: bb13, otherwise: bb12];
       }
   
       bb17: {
@@ -116,7 +118,7 @@
       }
   
       bb19 (cleanup): {
-          goto -> bb9;
+          switchInt(copy _2) -> [1: bb9, otherwise: bb9];
       }
   
       bb20 (cleanup): {
