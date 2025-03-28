@@ -254,6 +254,16 @@ trigger_files = [
     "compiler/rustc_attr_data_structures",
 ]
 
+[autolabel."F-autodiff"]
+trigger_files = [
+    "src/tools/enzyme",
+    "src/doc/unstable-book/src/compiler-flags/autodiff.md",
+    "compiler/rustc_ast/src/expand/autodiff_attrs.rs",
+    "compiler/rustc_monomorphize/src/partitioning/autodiff.rs",
+    "compiler/rustc_codegen_llvm/src/builder/autodiff.rs",
+    "compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs",
+]
+
 [autolabel."T-rustdoc-frontend"]
 trigger_labels = [
     "A-rustdoc-search",
@@ -1091,6 +1101,23 @@ cc = ["@jdonszelmann"]
 cc = ["@jdonszelmann"]
 [mentions."compiler/rustc_attr_data_structures"]
 cc = ["@jdonszelmann"]
+
+[mentions."src/tools/enzyme"]
+cc = ["@ZuseZ4"]
+[mentions."src/doc/unstable-book/src/compiler-flags/autodiff.md"]
+cc = ["@ZuseZ4"]
+[mentions."compiler/rustc_ast/src/expand/autodiff_attrs.rs"]
+cc = ["@ZuseZ4"]
+[mentions."compiler/rustc_ast/src/expand/typetree.rs"]
+cc = ["@ZuseZ4"]
+[mentions."compiler/rustc_builtin_macros/src/autodiff.rs"]
+cc = ["@ZuseZ4"]
+[mentions."compiler/rustc_monomorphize/src/partitioning/autodiff.rs"]
+cc = ["@ZuseZ4"]
+[mentions."compiler/rustc_codegen_llvm/src/builder/autodiff.rs"]
+cc = ["@ZuseZ4"]
+[mentions."compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs"]
+cc = ["@ZuseZ4"]
 
 [assign]
 warn_non_default_branch.enable = true
