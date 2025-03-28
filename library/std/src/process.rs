@@ -1836,7 +1836,7 @@ impl crate::sealed::Sealed for ExitStatusError {}
 /// # if cfg!(unix) {
 /// use std::process::{Command, ExitStatusError};
 ///
-/// fn run(cmd: &str) -> Result<(),ExitStatusError> {
+/// fn run(cmd: &str) -> Result<(), ExitStatusError> {
 ///     Command::new(cmd).status().unwrap().exit_ok()?;
 ///     Ok(())
 /// }
