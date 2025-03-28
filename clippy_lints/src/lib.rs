@@ -782,7 +782,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86IntelSyntax));
     store.register_late_pass(|_| Box::new(empty_drop::EmptyDrop));
     store.register_late_pass(|_| Box::new(strings::StrToString));
-    store.register_late_pass(|_| Box::new(strings::StringToString));
     store.register_late_pass(|_| Box::new(zero_sized_map_values::ZeroSizedMapValues));
     store.register_late_pass(|_| Box::<vec_init_then_push::VecInitThenPush>::default());
     store.register_late_pass(|_| Box::new(redundant_slicing::RedundantSlicing));
