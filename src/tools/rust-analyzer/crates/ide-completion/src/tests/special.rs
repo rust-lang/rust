@@ -1431,8 +1431,8 @@ fn foo() {
 "#,
         Some('_'),
         expect![[r#"
-            fn foo()    fn()
-            bt u32       u32
+            fn foo()  fn()
+            bt u32     u32
             kw async
             kw const
             kw crate::

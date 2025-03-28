@@ -237,8 +237,8 @@ fn complete_in_block() {
     }
 "#,
         expect![[r#"
-            fn foo()    fn()
-            bt u32       u32
+            fn foo()  fn()
+            bt u32     u32
             kw async
             kw const
             kw crate::
@@ -287,8 +287,8 @@ fn complete_after_if_expr() {
     }
 "#,
         expect![[r#"
-            fn foo()    fn()
-            bt u32       u32
+            fn foo()  fn()
+            bt u32     u32
             kw async
             kw const
             kw crate::
@@ -363,8 +363,8 @@ fn completes_in_loop_ctx() {
     check(
         r"fn my() { loop { $0 } }",
         expect![[r#"
-            fn my()     fn()
-            bt u32       u32
+            fn my()   fn()
+            bt u32     u32
             kw async
             kw break
             kw const
@@ -950,8 +950,8 @@ fn else_completion_after_if() {
 fn foo() { if foo {} $0 }
 "#,
         expect![[r#"
-            fn foo()    fn()
-            bt u32       u32
+            fn foo()  fn()
+            bt u32     u32
             kw async
             kw const
             kw crate::
@@ -993,8 +993,8 @@ fn foo() { if foo {} $0 }
 fn foo() { if foo {} el$0 }
 "#,
         expect![[r#"
-            fn foo()    fn()
-            bt u32       u32
+            fn foo()  fn()
+            bt u32     u32
             kw async
             kw const
             kw crate::
@@ -1086,8 +1086,8 @@ fn foo() { bar(if foo {} el$0) }
 fn foo() { if foo {} $0 let x = 92; }
 "#,
         expect![[r#"
-            fn foo()    fn()
-            bt u32       u32
+            fn foo()  fn()
+            bt u32     u32
             kw async
             kw const
             kw crate::
@@ -1129,8 +1129,8 @@ fn foo() { if foo {} $0 let x = 92; }
 fn foo() { if foo {} el$0 let x = 92; }
 "#,
         expect![[r#"
-            fn foo()    fn()
-            bt u32       u32
+            fn foo()  fn()
+            bt u32     u32
             kw async
             kw const
             kw crate::
@@ -1172,8 +1172,8 @@ fn foo() { if foo {} el$0 let x = 92; }
 fn foo() { if foo {} el$0 { let x = 92; } }
 "#,
         expect![[r#"
-            fn foo()    fn()
-            bt u32       u32
+            fn foo()  fn()
+            bt u32     u32
             kw async
             kw const
             kw crate::
@@ -1226,9 +1226,9 @@ fn main() {
 pub struct UnstableThisShouldNotBeListed;
 "#,
         expect![[r#"
-            fn main()   fn()
+            fn main() fn()
             md std
-            bt u32       u32
+            bt u32     u32
             kw async
             kw const
             kw crate::
@@ -2057,9 +2057,9 @@ fn foo() {
 }
     "#,
         expect![[r#"
-            fn foo()    fn()
+            fn foo()  fn()
             md proc_macros
-            bt u32       u32
+            bt u32     u32
             kw async
             kw const
             kw crate::
