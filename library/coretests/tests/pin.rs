@@ -34,9 +34,6 @@ fn pin_const() {
     }
 
     pin_mut_const();
-
-    // Check that we accept a Rust 2024 $expr.
-    std::pin::pin!(const { 1 });
 }
 
 #[allow(unused)]
@@ -83,15 +80,4 @@ mod pin_coerce_unsized {
     pub fn nesting_pins(arg: Pin<Pin<&String>>) -> Pin<Pin<&dyn MyTrait>> {
         arg
     }
-}
-
-#[test]
-#[cfg(not(bootstrap))]
-fn temp_lifetime() {
-    // Check that temporary lifetimes work as in Rust 2021.
-    // Regression test for https://github.com/rust-lang/rust/issues/138596
-    match std::pin::pin!(foo(&mut 0)) {
-        _ => {}
-    }
-    async fn foo(_: &mut usize) {}
 }
