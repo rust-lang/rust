@@ -221,6 +221,12 @@ pub(crate) struct CrateHeader {
     /// This is separate from [`ProcMacroData`] to avoid having to update [`METADATA_VERSION`] every
     /// time ProcMacroData changes.
     pub(crate) is_proc_macro_crate: bool,
+    /// Whether this crate metadata section is just a stub.
+    /// Stubs do not contain the full metadata (it will be typically stored
+    /// in a separate rmeta file).
+    ///
+    /// This is used inside rlibs and dylibs when using `-Zembed-metadata=no`.
+    pub(crate) is_stub: bool,
 }
 
 /// Serialized `.rmeta` data for a crate.
