@@ -547,7 +547,7 @@ dependencies = [
  "termize",
  "tokio",
  "toml 0.7.8",
- "ui_test 0.29.2",
+ "ui_test",
  "walkdir",
 ]
 
@@ -2292,7 +2292,7 @@ dependencies = [
  "smallvec",
  "tempfile",
  "tikv-jemalloc-sys",
- "ui_test 0.28.0",
+ "ui_test",
  "windows-sys 0.52.0",
 ]
 
@@ -5484,32 +5484,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c06ff81122fcbf4df4c1660b15f7e3336058e7aec14437c9f85c6b31a0f279b9"
 dependencies = [
  "regex-lite",
-]
-
-[[package]]
-name = "ui_test"
-version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7484683d60d50ca1d1b6433c3dbf6c5ad71d20387acdcfb16fe79573f3fba576"
-dependencies = [
- "annotate-snippets 0.11.5",
- "anyhow",
- "bstr",
- "cargo-platform",
- "cargo_metadata 0.18.1",
- "color-eyre",
- "colored",
- "comma",
- "crossbeam-channel",
- "indicatif",
- "levenshtein",
- "prettydiff",
- "regex",
- "rustc_version",
- "rustfix",
- "serde",
- "serde_json",
- "spanned",
 ]
 
 [[package]]
