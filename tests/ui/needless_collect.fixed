@@ -126,3 +126,32 @@ fn main() {
 fn foo(_: impl IntoIterator<Item = usize>) {}
 fn bar<I: IntoIterator<Item = usize>>(_: Vec<usize>, _: I) {}
 fn baz<I: IntoIterator<Item = usize>>(_: I, _: (), _: impl IntoIterator<Item = char>) {}
+
+mod issue9191 {
+    use std::collections::HashSet;
+
+    fn foo(xs: Vec<i32>, mut ys: HashSet<i32>) {
+        if xs.iter().map(|x| ys.remove(x)).collect::<Vec<_>>().contains(&true) {
+            todo!()
+        }
+    }
+}
+
+pub fn issue8055(v: impl IntoIterator<Item = i32>) -> Result<impl Iterator<Item = i32>, usize> {
+    let mut zeros = 0;
+
+    let res: Vec<_> = v
+        .into_iter()
+        .filter(|i| {
+            if *i == 0 {
+                zeros += 1
+            };
+            *i != 0
+        })
+        .collect();
+
+    if zeros != 0 {
+        return Err(zeros);
+    }
+    Ok(res.into_iter())
+}
