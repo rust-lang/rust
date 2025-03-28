@@ -12,9 +12,9 @@ use crate::{
     assist_context::{AssistContext, Assists},
 };
 
-// Assist: unmerge_use
+// Assist: unmerge_imports
 //
-// Extracts single use item from use list.
+// Extracts a use item from a use list into a standalone use list.
 //
 // ```
 // use std::fmt::{Debug, Display$0};
@@ -24,12 +24,12 @@ use crate::{
 // use std::fmt::{Debug};
 // use std::fmt::Display;
 // ```
-pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn unmerge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let tree = ctx.find_node_at_offset::<ast::UseTree>()?;
 
     let tree_list = tree.syntax().parent().and_then(ast::UseTreeList::cast)?;
     if tree_list.use_trees().count() < 2 {
-        cov_mark::hit!(skip_single_use_item);
+        cov_mark::hit!(skip_single_import);
         return None;
     }
 
@@ -43,7 +43,7 @@ pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     };
 
     let target = tree.syntax().text_range();
-    acc.add(AssistId::refactor_rewrite("unmerge_use"), label, target, |builder| {
+    acc.add(AssistId::refactor_rewrite("unmerge_imports"), label, target, |builder| {
         let make = SyntaxFactory::with_mappings();
         let new_use = make.use_(
             use_.visibility(),
@@ -94,22 +94,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn skip_single_use_item() {
-        cov_mark::check!(skip_single_use_item);
+    fn skip_single_import() {
+        cov_mark::check!(skip_single_import);
         check_assist_not_applicable(
-            unmerge_use,
+            unmerge_imports,
             r"
 use std::fmt::Debug$0;
 ",
         );
         check_assist_not_applicable(
-            unmerge_use,
+            unmerge_imports,
             r"
 use std::fmt::{Debug$0};
 ",
         );
         check_assist_not_applicable(
-            unmerge_use,
+            unmerge_imports,
             r"
 use std::fmt::Debug as Dbg$0;
 ",
@@ -119,7 +119,7 @@ use std::fmt::Debug as Dbg$0;
     #[test]
     fn skip_single_glob_import() {
         check_assist_not_applicable(
-            unmerge_use,
+            unmerge_imports,
             r"
 use std::fmt::*$0;
 ",
@@ -127,9 +127,9 @@ use std::fmt::*$0;
     }
 
     #[test]
-    fn unmerge_use_item() {
+    fn unmerge_import() {
         check_assist(
-            unmerge_use,
+            unmerge_imports,
             r"
 use std::fmt::{Debug, Display$0};
 ",
@@ -140,7 +140,7 @@ use std::fmt::Display;
         );
 
         check_assist(
-            unmerge_use,
+            unmerge_imports,
             r"
 use std::fmt::{Debug, format$0, Display};
 ",
@@ -154,7 +154,7 @@ use std::fmt::format;
     #[test]
     fn unmerge_glob_import() {
         check_assist(
-            unmerge_use,
+            unmerge_imports,
             r"
 use std::fmt::{*$0, Display};
 ",
@@ -166,9 +166,9 @@ use std::fmt::*;
     }
 
     #[test]
-    fn unmerge_renamed_use_item() {
+    fn unmerge_renamed_import() {
         check_assist(
-            unmerge_use,
+            unmerge_imports,
             r"
 use std::fmt::{Debug, Display as Disp$0};
 ",
@@ -180,9 +180,9 @@ use std::fmt::Display as Disp;
     }
 
     #[test]
-    fn unmerge_indented_use_item() {
+    fn unmerge_indented_import() {
         check_assist(
-            unmerge_use,
+            unmerge_imports,
             r"
 mod format {
     use std::fmt::{Debug, Display$0 as Disp, format};
@@ -198,9 +198,9 @@ mod format {
     }
 
     #[test]
-    fn unmerge_nested_use_item() {
+    fn unmerge_nested_import() {
         check_assist(
-            unmerge_use,
+            unmerge_imports,
             r"
 use foo::bar::{baz::{qux$0, foobar}, barbaz};
 ",
@@ -210,7 +210,7 @@ use foo::bar::baz::qux;
 ",
         );
         check_assist(
-            unmerge_use,
+            unmerge_imports,
             r"
 use foo::bar::{baz$0::{qux, foobar}, barbaz};
 ",
@@ -222,9 +222,9 @@ use foo::bar::baz::{qux, foobar};
     }
 
     #[test]
-    fn unmerge_use_item_with_visibility() {
+    fn unmerge_import_with_visibility() {
         check_assist(
-            unmerge_use,
+            unmerge_imports,
             r"
 pub use std::fmt::{Debug, Display$0};
 ",
@@ -236,9 +236,9 @@ pub use std::fmt::Display;
     }
 
     #[test]
-    fn unmerge_use_item_on_self() {
+    fn unmerge_import_on_self() {
         check_assist(
-            unmerge_use,
+            unmerge_imports,
             r"use std::process::{Command, self$0};",
             r"use std::process::{Command};
 use std::process;",
@@ -246,9 +246,9 @@ use std::process;",
     }
 
     #[test]
-    fn unmerge_use_item_with_attributes() {
+    fn unmerge_import_with_attributes() {
         check_assist(
-            unmerge_use,
+            unmerge_imports,
             r"
 #[allow(deprecated)]
 use foo::{bar, baz$0};",
