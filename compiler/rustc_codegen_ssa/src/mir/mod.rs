@@ -3,7 +3,7 @@ use std::iter;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::{Local, UnwindTerminateReason, traversal};
+use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
@@ -173,7 +173,12 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let tcx = cx.tcx();
     let llfn = cx.get_fn(instance);
 
-    let mir = cx.tcx().instance_mir(instance.def);
+    let mir = tcx.instance_mir(instance.def);
+    let mir = instance.instantiate_mir_and_normalize_erasing_regions(
+        tcx,
+        ty::TypingEnv::fully_monomorphized(),
+        ty::EarlyBinder::bind(mir.clone()),
+    );
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
@@ -183,7 +188,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         return;
     }
 
-    let debug_context = cx.create_function_debug_context(instance, fn_abi, llfn, mir);
+    let debug_context = cx.create_function_debug_context(instance, fn_abi, llfn, &mir);
 
     let start_llbb = Bx::append_block(cx, llfn, "start");
     let mut start_bx = Bx::build(cx, start_llbb);
@@ -195,7 +200,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 
     let cleanup_kinds =
-        base::wants_new_eh_instructions(tcx.sess).then(|| analyze::cleanup_kinds(mir));
+        base::wants_new_eh_instructions(tcx.sess).then(|| analyze::cleanup_kinds(&mir));
 
     let cached_llbbs: IndexVec<mir::BasicBlock, CachedLlbb<Bx::BasicBlock>> =
         mir.basic_blocks
@@ -204,6 +209,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 if bb == mir::START_BLOCK { CachedLlbb::Some(start_llbb) } else { CachedLlbb::None }
             })
             .collect();
+
+    let mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, mir));
 
     let mut fx = FunctionCx {
         instance,
@@ -309,6 +316,61 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     for bb in unreached_blocks.iter() {
         fx.codegen_block_as_unreachable(bb);
     }
+}
+
+// FIXME: Move this function to mir::transform when post-mono MIR passes land.
+fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    cx: &'a Bx::CodegenCx,
+    mut mir: Body<'tcx>,
+) -> Body<'tcx> {
+    let tcx = cx.tcx();
+
+    if tcx.features().ergonomic_clones() {
+        for bb in mir.basic_blocks.as_mut() {
+            let mir::TerminatorKind::Call {
+                args,
+                destination,
+                target,
+                call_source: mir::CallSource::Use,
+                ..
+            } = &bb.terminator().kind
+            else {
+                continue;
+            };
+
+            // CallSource::Use calls always use 1 argument.
+            assert_eq!(args.len(), 1);
+            let arg = &args[0];
+
+            // These types are easily available from locals, so check that before
+            // doing DefId lookups to figure out what we're actually calling.
+            let arg_ty = arg.node.ty(&mir.local_decls, tcx);
+
+            let ty::Ref(_region, inner_ty, mir::Mutability::Not) = *arg_ty.kind() else { continue };
+
+            if !tcx.type_is_copy_modulo_regions(cx.typing_env(), inner_ty) {
+                continue;
+            }
+
+            let Some(arg_place) = arg.node.place() else { continue };
+
+            let destination_block = target.unwrap();
+
+            bb.statements.push(mir::Statement {
+                source_info: bb.terminator().source_info,
+                kind: mir::StatementKind::Assign(Box::new((
+                    *destination,
+                    mir::Rvalue::Use(mir::Operand::Copy(
+                        arg_place.project_deeper(&[mir::ProjectionElem::Deref], tcx),
+                    )),
+                ))),
+            });
+
+            bb.terminator_mut().kind = mir::TerminatorKind::Goto { target: destination_block };
+        }
+    }
+
+    mir
 }
 
 /// Produces, for each argument, a `Value` pointing at the
