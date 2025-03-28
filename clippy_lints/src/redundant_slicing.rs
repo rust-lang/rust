@@ -135,25 +135,24 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                     };
                     diag.span_suggestion(expr.span, help_msg, sugg, app);
                 });
-            } else if let Some(target_id) = cx.tcx.lang_items().deref_target() {
-                if let Ok(deref_ty) = cx.tcx.try_normalize_erasing_regions(
+            } else if let Some(target_id) = cx.tcx.lang_items().deref_target()
+                && let Ok(deref_ty) = cx.tcx.try_normalize_erasing_regions(
                     cx.typing_env(),
                     Ty::new_projection_from_args(cx.tcx, target_id, cx.tcx.mk_args(&[GenericArg::from(indexed_ty)])),
-                ) {
-                    if deref_ty == expr_ty {
-                        let (lint, msg) = DEREF_BY_SLICING_LINT;
-                        span_lint_and_then(cx, lint, expr.span, msg, |diag| {
-                            let mut app = Applicability::MachineApplicable;
-                            let snip = snippet_with_context(cx, indexed.span, ctxt, "..", &mut app).0;
-                            let sugg = if needs_parens_for_prefix {
-                                format!("(&{}{}*{snip})", mutability.prefix_str(), "*".repeat(indexed_ref_count))
-                            } else {
-                                format!("&{}{}*{snip}", mutability.prefix_str(), "*".repeat(indexed_ref_count))
-                            };
-                            diag.span_suggestion(expr.span, "dereference the original value instead", sugg, app);
-                        });
-                    }
-                }
+                )
+                && deref_ty == expr_ty
+            {
+                let (lint, msg) = DEREF_BY_SLICING_LINT;
+                span_lint_and_then(cx, lint, expr.span, msg, |diag| {
+                    let mut app = Applicability::MachineApplicable;
+                    let snip = snippet_with_context(cx, indexed.span, ctxt, "..", &mut app).0;
+                    let sugg = if needs_parens_for_prefix {
+                        format!("(&{}{}*{snip})", mutability.prefix_str(), "*".repeat(indexed_ref_count))
+                    } else {
+                        format!("&{}{}*{snip}", mutability.prefix_str(), "*".repeat(indexed_ref_count))
+                    };
+                    diag.span_suggestion(expr.span, "dereference the original value instead", sugg, app);
+                });
             }
         }
     }

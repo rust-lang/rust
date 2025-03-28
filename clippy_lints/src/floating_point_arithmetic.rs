@@ -228,24 +228,24 @@ fn get_integer_from_float_constant(value: &Constant<'_>) -> Option<i32> {
 
 fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
     // Check receiver
-    if let Some(value) = ConstEvalCtxt::new(cx).eval(receiver) {
-        if let Some(method) = if F32(f32_consts::E) == value || F64(f64_consts::E) == value {
+    if let Some(value) = ConstEvalCtxt::new(cx).eval(receiver)
+        && let Some(method) = if F32(f32_consts::E) == value || F64(f64_consts::E) == value {
             Some("exp")
         } else if F32(2.0) == value || F64(2.0) == value {
             Some("exp2")
         } else {
             None
-        } {
-            span_lint_and_sugg(
-                cx,
-                SUBOPTIMAL_FLOPS,
-                expr.span,
-                "exponent for bases 2 and e can be computed more accurately",
-                "consider using",
-                format!("{}.{method}()", prepare_receiver_sugg(cx, &args[0])),
-                Applicability::MachineApplicable,
-            );
         }
+    {
+        span_lint_and_sugg(
+            cx,
+            SUBOPTIMAL_FLOPS,
+            expr.span,
+            "exponent for bases 2 and e can be computed more accurately",
+            "consider using",
+            format!("{}.{method}()", prepare_receiver_sugg(cx, &args[0])),
+            Applicability::MachineApplicable,
+        );
     }
 
     // Check argument
@@ -289,55 +289,53 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
 }
 
 fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
-    if let Some(value) = ConstEvalCtxt::new(cx).eval(&args[0]) {
-        if value == Int(2) {
-            if let Some(parent) = get_parent_expr(cx, expr) {
-                if let Some(grandparent) = get_parent_expr(cx, parent) {
-                    if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, receiver, ..) = grandparent.kind
-                    {
-                        if method_name.as_str() == "sqrt" && detect_hypot(cx, receiver).is_some() {
-                            return;
-                        }
-                    }
+    if let Some(value) = ConstEvalCtxt::new(cx).eval(&args[0])
+        && value == Int(2)
+        && let Some(parent) = get_parent_expr(cx, expr)
+    {
+        if let Some(grandparent) = get_parent_expr(cx, parent)
+            && let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, receiver, ..) = grandparent.kind
+            && method_name.as_str() == "sqrt"
+            && detect_hypot(cx, receiver).is_some()
+        {
+            return;
+        }
+
+        if let ExprKind::Binary(
+            Spanned {
+                node: op @ (BinOpKind::Add | BinOpKind::Sub),
+                ..
+            },
+            lhs,
+            rhs,
+        ) = parent.kind
+        {
+            let other_addend = if lhs.hir_id == expr.hir_id { rhs } else { lhs };
+
+            // Negate expr if original code has subtraction and expr is on the right side
+            let maybe_neg_sugg = |expr, hir_id| {
+                let sugg = Sugg::hir(cx, expr, "..");
+                if matches!(op, BinOpKind::Sub) && hir_id == rhs.hir_id {
+                    -sugg
+                } else {
+                    sugg
                 }
+            };
 
-                if let ExprKind::Binary(
-                    Spanned {
-                        node: op @ (BinOpKind::Add | BinOpKind::Sub),
-                        ..
-                    },
-                    lhs,
-                    rhs,
-                ) = parent.kind
-                {
-                    let other_addend = if lhs.hir_id == expr.hir_id { rhs } else { lhs };
-
-                    // Negate expr if original code has subtraction and expr is on the right side
-                    let maybe_neg_sugg = |expr, hir_id| {
-                        let sugg = Sugg::hir(cx, expr, "..");
-                        if matches!(op, BinOpKind::Sub) && hir_id == rhs.hir_id {
-                            -sugg
-                        } else {
-                            sugg
-                        }
-                    };
-
-                    span_lint_and_sugg(
-                        cx,
-                        SUBOPTIMAL_FLOPS,
-                        parent.span,
-                        "multiply and add expressions can be calculated more efficiently and accurately",
-                        "consider using",
-                        format!(
-                            "{}.mul_add({}, {})",
-                            Sugg::hir(cx, receiver, "..").maybe_paren(),
-                            maybe_neg_sugg(receiver, expr.hir_id),
-                            maybe_neg_sugg(other_addend, other_addend.hir_id),
-                        ),
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
+            span_lint_and_sugg(
+                cx,
+                SUBOPTIMAL_FLOPS,
+                parent.span,
+                "multiply and add expressions can be calculated more efficiently and accurately",
+                "consider using",
+                format!(
+                    "{}.mul_add({}, {})",
+                    Sugg::hir(cx, receiver, "..").maybe_paren(),
+                    maybe_neg_sugg(receiver, expr.hir_id),
+                    maybe_neg_sugg(other_addend, other_addend.hir_id),
+                ),
+                Applicability::MachineApplicable,
+            );
         }
     }
 }
@@ -483,12 +481,12 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
         rhs,
     ) = &expr.kind
     {
-        if let Some(parent) = get_parent_expr(cx, expr) {
-            if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, receiver, ..) = parent.kind {
-                if method_name.as_str() == "sqrt" && detect_hypot(cx, receiver).is_some() {
-                    return;
-                }
-            }
+        if let Some(parent) = get_parent_expr(cx, expr)
+            && let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, receiver, ..) = parent.kind
+            && method_name.as_str() == "sqrt"
+            && detect_hypot(cx, receiver).is_some()
+        {
+            return;
         }
 
         let maybe_neg_sugg = |expr| {
@@ -566,15 +564,15 @@ fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// If the two expressions are not negations of each other, then it
 /// returns None.
 fn are_negated<'a>(cx: &LateContext<'_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a>) -> Option<(bool, &'a Expr<'a>)> {
-    if let ExprKind::Unary(UnOp::Neg, expr1_negated) = &expr1.kind {
-        if eq_expr_value(cx, expr1_negated, expr2) {
-            return Some((false, expr2));
-        }
+    if let ExprKind::Unary(UnOp::Neg, expr1_negated) = &expr1.kind
+        && eq_expr_value(cx, expr1_negated, expr2)
+    {
+        return Some((false, expr2));
     }
-    if let ExprKind::Unary(UnOp::Neg, expr2_negated) = &expr2.kind {
-        if eq_expr_value(cx, expr1, expr2_negated) {
-            return Some((true, expr1));
-        }
+    if let ExprKind::Unary(UnOp::Neg, expr2_negated) = &expr2.kind
+        && eq_expr_value(cx, expr1, expr2_negated)
+    {
+        return Some((true, expr1));
     }
     None
 }

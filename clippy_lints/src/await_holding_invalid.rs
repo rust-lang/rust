@@ -192,10 +192,9 @@ impl<'tcx> LateLintPass<'tcx> for AwaitHolding {
             def_id,
             ..
         }) = expr.kind
+            && let Some(coroutine_layout) = cx.tcx.mir_coroutine_witnesses(*def_id)
         {
-            if let Some(coroutine_layout) = cx.tcx.mir_coroutine_witnesses(*def_id) {
-                self.check_interior_types(cx, coroutine_layout);
-            }
+            self.check_interior_types(cx, coroutine_layout);
         }
     }
 }

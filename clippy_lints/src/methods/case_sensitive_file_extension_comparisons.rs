@@ -19,13 +19,13 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
     msrv: Msrv,
 ) {
-    if let ExprKind::MethodCall(path_segment, ..) = recv.kind {
-        if matches!(
+    if let ExprKind::MethodCall(path_segment, ..) = recv.kind
+        && matches!(
             path_segment.ident.name.as_str(),
             "to_lowercase" | "to_uppercase" | "to_ascii_lowercase" | "to_ascii_uppercase"
-        ) {
-            return;
-        }
+        )
+    {
+        return;
     }
 
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)

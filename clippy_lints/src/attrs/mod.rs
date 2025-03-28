@@ -573,28 +573,27 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
     }
 
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
-        if let Some(items) = &attr.meta_item_list() {
-            if let Some(ident) = attr.ident() {
-                if matches!(ident.name, sym::allow) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
-                    allow_attributes::check(cx, attr);
-                }
-                if matches!(ident.name, sym::allow | sym::expect) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION)
+        if let Some(items) = &attr.meta_item_list()
+            && let Some(ident) = attr.ident()
+        {
+            if matches!(ident.name, sym::allow) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
+                allow_attributes::check(cx, attr);
+            }
+            if matches!(ident.name, sym::allow | sym::expect) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
+                allow_attributes_without_reason::check(cx, ident.name, items, attr);
+            }
+            if is_lint_level(ident.name, attr.id) {
+                blanket_clippy_restriction_lints::check(cx, ident.name, items);
+            }
+            if items.is_empty() || !attr.has_name(sym::deprecated) {
+                return;
+            }
+            for item in items {
+                if let MetaItemInner::MetaItem(mi) = &item
+                    && let MetaItemKind::NameValue(lit) = &mi.kind
+                    && mi.has_name(sym::since)
                 {
-                    allow_attributes_without_reason::check(cx, ident.name, items, attr);
-                }
-                if is_lint_level(ident.name, attr.id) {
-                    blanket_clippy_restriction_lints::check(cx, ident.name, items);
-                }
-                if items.is_empty() || !attr.has_name(sym::deprecated) {
-                    return;
-                }
-                for item in items {
-                    if let MetaItemInner::MetaItem(mi) = &item
-                        && let MetaItemKind::NameValue(lit) = &mi.kind
-                        && mi.has_name(sym::since)
-                    {
-                        deprecated_semver::check(cx, item.span(), lit);
-                    }
+                    deprecated_semver::check(cx, item.span(), lit);
                 }
             }
         }

@@ -72,10 +72,10 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         _: Span,
         fn_def_id: LocalDefId,
     ) {
-        if let Some(header) = fn_kind.header() {
-            if header.abi != ExternAbi::Rust {
-                return;
-            }
+        if let Some(header) = fn_kind.header()
+            && header.abi != ExternAbi::Rust
+        {
+            return;
         }
 
         let parent_id = cx
@@ -141,22 +141,22 @@ fn is_argument(tcx: TyCtxt<'_>, id: HirId) -> bool {
 
 impl<'tcx> Delegate<'tcx> for EscapeDelegate<'_, 'tcx> {
     fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
-        if cmt.place.projections.is_empty() {
-            if let PlaceBase::Local(lid) = cmt.place.base {
-                // FIXME(rust/#120456) - is `swap_remove` correct?
-                self.set.swap_remove(&lid);
-            }
+        if cmt.place.projections.is_empty()
+            && let PlaceBase::Local(lid) = cmt.place.base
+        {
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            self.set.swap_remove(&lid);
         }
     }
 
     fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
-        if cmt.place.projections.is_empty() {
-            if let PlaceBase::Local(lid) = cmt.place.base {
-                // FIXME(rust/#120456) - is `swap_remove` correct?
-                self.set.swap_remove(&lid);
-            }
+        if cmt.place.projections.is_empty()
+            && let PlaceBase::Local(lid) = cmt.place.base
+        {
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            self.set.swap_remove(&lid);
         }
     }
 
@@ -170,10 +170,11 @@ impl<'tcx> Delegate<'tcx> for EscapeDelegate<'_, 'tcx> {
 
             // skip if there is a `self` parameter binding to a type
             // that contains `Self` (i.e.: `self: Box<Self>`), see #4804
-            if let Some(trait_self_ty) = self.trait_self_ty {
-                if self.cx.tcx.hir_name(cmt.hir_id) == kw::SelfLower && cmt.place.ty().contains(trait_self_ty) {
-                    return;
-                }
+            if let Some(trait_self_ty) = self.trait_self_ty
+                && self.cx.tcx.hir_name(cmt.hir_id) == kw::SelfLower
+                && cmt.place.ty().contains(trait_self_ty)
+            {
+                return;
             }
 
             if is_non_trait_box(cmt.place.ty()) && !self.is_large_box(cmt.place.ty()) {

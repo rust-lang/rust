@@ -47,12 +47,11 @@ pub(crate) fn check<'tcx>(
                 let rty = cx.typeck_results().expr_ty(r);
                 let lcpy = is_copy(cx, lty);
                 let rcpy = is_copy(cx, rty);
-                if let Some((self_ty, other_ty)) = in_impl(cx, e, trait_id) {
-                    if (are_equal(cx, rty, self_ty) && are_equal(cx, lty, other_ty))
-                        || (are_equal(cx, rty, other_ty) && are_equal(cx, lty, self_ty))
-                    {
-                        return; // Don't lint
-                    }
+                if let Some((self_ty, other_ty)) = in_impl(cx, e, trait_id)
+                    && ((are_equal(cx, rty, self_ty) && are_equal(cx, lty, other_ty))
+                        || (are_equal(cx, rty, other_ty) && are_equal(cx, lty, self_ty)))
+                {
+                    return; // Don't lint
                 }
                 // either operator autorefs or both args are copyable
                 if (requires_ref || (lcpy && rcpy)) && implements_trait(cx, lty, trait_id, &[rty.into()]) {

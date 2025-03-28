@@ -150,10 +150,10 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
         } = item.kind
         {
             check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv);
-        } else if let ItemKind::Impl(impl_) = item.kind {
-            if !item.span.from_expansion() {
-                report_extra_impl_lifetimes(cx, impl_);
-            }
+        } else if let ItemKind::Impl(impl_) = item.kind
+            && !item.span.from_expansion()
+        {
+            report_extra_impl_lifetimes(cx, impl_);
         }
     }
 

@@ -428,10 +428,10 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> Self::Result {
-        if let ExprKind::Block(block, _) = expr.kind {
-            if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) {
-                return ControlFlow::Break(());
-            }
+        if let ExprKind::Block(block, _) = expr.kind
+            && block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+        {
+            return ControlFlow::Break(());
         }
 
         walk_expr(self, expr)
