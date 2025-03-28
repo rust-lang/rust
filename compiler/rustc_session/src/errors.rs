@@ -1,4 +1,4 @@
-use std::num::NonZero;
+use std::num::{NonZero, ParseIntError};
 
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
@@ -13,6 +13,14 @@ use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTuple};
 
 use crate::config::CrateType;
 use crate::parse::ParseSess;
+
+#[derive(Diagnostic)]
+pub(crate) enum AppleDeploymentTarget {
+    #[diag(session_apple_deployment_target_invalid)]
+    Invalid { env_var: &'static str, error: ParseIntError },
+    #[diag(session_apple_deployment_target_too_low)]
+    TooLow { env_var: &'static str, version: String, os_min: String },
+}
 
 pub(crate) struct FeatureGateError {
     pub(crate) span: MultiSpan,
