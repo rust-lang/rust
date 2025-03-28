@@ -4300,6 +4300,7 @@ name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "itertools",
  "pulldown-cmark 0.11.3",
  "rustc_arena",
  "rustc_ast",
