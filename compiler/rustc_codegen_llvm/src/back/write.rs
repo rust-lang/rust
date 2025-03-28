@@ -827,7 +827,7 @@ pub(crate) unsafe fn codegen(
                         "LLVM_module_codegen_make_bitcode",
                         &*module.name,
                     );
-                    ThinBuffer::new(llmod, config.emit_thin_lto, false)
+                    ThinBuffer::new(llmod, cgcx.lto != Lto::Fat && config.emit_thin_lto, false)
                 };
                 let data = thin.data();
                 let _timer = cgcx
