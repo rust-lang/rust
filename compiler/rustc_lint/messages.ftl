@@ -518,6 +518,28 @@ lint_metavariable_still_repeating = variable `{$name}` is still repeating at thi
 
 lint_metavariable_wrong_operator = meta-variable repeats with different Kleene operator
 
+lint_mismatched_lifetime_syntaxes =
+    lifetime flowing from input to output with different syntax can be confusing
+    .label_mismatched_lifetime_syntaxes_inputs =
+        {$n_inputs ->
+            [one] this lifetime flows
+            *[other] these lifetimes flow
+        } to the output
+    .label_mismatched_lifetime_syntaxes_outputs =
+        the {$n_outputs ->
+            [one] lifetime gets
+            *[other] lifetimes get
+        } resolved as `{$lifetime_name}`
+
+lint_mismatched_lifetime_syntaxes_suggestion_explicit =
+    one option is to consistently use `{$lifetime_name}`
+
+lint_mismatched_lifetime_syntaxes_suggestion_implicit =
+    one option is to consistently remove the lifetime
+
+lint_mismatched_lifetime_syntaxes_suggestion_mixed =
+    one option is to remove the lifetime for references and use the anonymous lifetime for paths
+
 lint_missing_fragment_specifier = missing fragment specifier
 
 lint_missing_unsafe_on_extern = extern blocks should be unsafe
