@@ -18,12 +18,12 @@
 //! from there).
 //!
 //! The fact that we are inferring borrow kinds as we go results in a
-//! semi-hacky interaction with mem-categorization. In particular,
-//! mem-categorization will query the current borrow kind as it
-//! categorizes, and we'll return the *current* value, but this may get
+//! semi-hacky interaction with the way `ExprUseVisitor` is computing
+//! `Place`s. In particular, it will query the current borrow kind as it
+//! goes, and we'll return the *current* value, but this may get
 //! adjusted later. Therefore, in this module, we generally ignore the
-//! borrow kind (and derived mutabilities) that are returned from
-//! mem-categorization, since they may be inaccurate. (Another option
+//! borrow kind (and derived mutabilities) that `ExprUseVisitor` returns
+//! within `Place`s, since they may be inaccurate. (Another option
 //! would be to use a unification scheme, where instead of returning a
 //! concrete borrow kind like `ty::ImmBorrow`, we return a
 //! `ty::InferBorrow(upvar_id)` or something like that, but this would
