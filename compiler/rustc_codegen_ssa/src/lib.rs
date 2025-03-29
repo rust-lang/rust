@@ -301,16 +301,14 @@ impl CodegenResults {
     ) -> Result<(Self, OutputFilenames), CodegenErrors> {
         // The Decodable machinery is not used here because it panics if the input data is invalid
         // and because its internal representation may change.
-        if !data.starts_with(RLINK_MAGIC) {
+        let Some(data) = data.strip_prefix(RLINK_MAGIC) else {
             return Err(CodegenErrors::WrongFileType);
-        }
-        let data = &data[RLINK_MAGIC.len()..];
-        if data.len() < 4 {
-            return Err(CodegenErrors::EmptyVersionNumber);
-        }
+        };
 
-        let mut version_array: [u8; 4] = Default::default();
-        version_array.copy_from_slice(&data[..4]);
+        let Some((&version_array, data)) = data.split_first_chunk() else {
+            return Err(CodegenErrors::EmptyVersionNumber);
+        };
+
         if u32::from_be_bytes(version_array) != RLINK_VERSION {
             return Err(CodegenErrors::EncodingVersionMismatch {
                 version_array: String::from_utf8_lossy(&version_array).to_string(),
@@ -318,7 +316,7 @@ impl CodegenResults {
             });
         }
 
-        let Ok(mut decoder) = MemDecoder::new(&data[4..], 0) else {
+        let Ok(mut decoder) = MemDecoder::new(data, 0) else {
             return Err(CodegenErrors::CorruptFile);
         };
         let rustc_version = decoder.read_str();

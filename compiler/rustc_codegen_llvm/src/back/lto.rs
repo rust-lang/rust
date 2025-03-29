@@ -113,10 +113,7 @@ fn prepare_lto(
                     .extend(exported_symbols[&cnum].iter().filter_map(symbol_filter));
             }
 
-            let archive_data = unsafe {
-                Mmap::map(std::fs::File::open(&path).expect("couldn't open rlib"))
-                    .expect("couldn't map rlib")
-            };
+            let archive_data = Mmap::map(&path).expect("couldn't map rlib");
             let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
             let obj_files = archive
                 .members()
