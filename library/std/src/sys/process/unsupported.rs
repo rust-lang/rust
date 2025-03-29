@@ -1,3 +1,4 @@
+use super::env::{CommandEnv, CommandEnvs};
 pub use crate::ffi::OsString as EnvKey;
 use crate::ffi::{OsStr, OsString};
 use crate::num::NonZero;
@@ -5,7 +6,6 @@ use crate::path::Path;
 use crate::sys::fs::File;
 use crate::sys::pipe::AnonPipe;
 use crate::sys::unsupported;
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::{fmt, io};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,10 +104,10 @@ impl Command {
     ) -> io::Result<(Process, StdioPipes)> {
         unsupported()
     }
+}
 
-    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
-        unsupported()
-    }
+pub fn output(_cmd: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+    unsupported()
 }
 
 impl From<AnonPipe> for Stdio {
