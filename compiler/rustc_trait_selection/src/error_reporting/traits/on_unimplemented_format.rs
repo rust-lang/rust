@@ -1,5 +1,8 @@
+use std::fmt;
+
 use errors::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::print::TraitRefPrintSugared;
 use rustc_parse_format::{
     Alignment, Argument, Count, FormatSpec, InnerSpan, ParseError, ParseMode, Parser,
     Piece as RpfPiece, Position,
@@ -8,28 +11,39 @@ use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::def_id::DefId;
 use rustc_span::{BytePos, Pos, Span, Symbol, kw, sym};
 
-#[allow(dead_code)]
+/// Like [std::fmt::Arguments] this is a string that has been parsed into "pieces",
+/// either as string pieces or dynamic arguments.
+#[derive(Debug)]
 pub struct FormatString {
+    #[allow(dead_code, reason = "Debug impl")]
     input: Symbol,
-    input_span: Span,
+    span: Span,
     pieces: Vec<Piece>,
-    // the formatting string was parsed succesfully but with warnings
+    /// The formatting string was parsed succesfully but with warnings
     pub warnings: Vec<FormatWarning>,
 }
 
+#[derive(Debug)]
 enum Piece {
     Lit(String),
     Arg(FormatArg),
 }
 
-pub enum FormatArg {
+#[derive(Debug)]
+enum FormatArg {
     // A generic parameter, like `{T}` if we're on the `From<T>` trait.
-    GenericParam { generic_param: Symbol, span: Span },
+    GenericParam {
+        generic_param: Symbol,
+    },
     // `{Self}`
     SelfUpper,
+    /// `{This}` or `{TraitName}`
     This,
+    /// The sugared form of the trait
     Trait,
+    /// what we're in, like a function, method, closure etc.
     ItemContext,
+    /// What the user typed, if it doesn't match anything we can use.
     AsIs(String),
 }
 
@@ -40,6 +54,7 @@ pub enum Ctx<'tcx> {
     DiagnosticOnUnimplemented { tcx: TyCtxt<'tcx>, trait_def_id: DefId },
 }
 
+#[derive(Debug)]
 pub enum FormatWarning {
     UnknownParam { argument_name: Symbol, span: Span },
     PositionalArgument { span: Span, help: String },
@@ -95,26 +110,58 @@ impl FormatWarning {
     }
 }
 
+/// Arguments to fill a [FormatString] with.
+///
+/// For example, given a
+/// ```rust,ignore (just an example)
+///
+/// #[rustc_on_unimplemented(
+///     on(all(from_desugaring = "QuestionMark"),
+///         message = "the `?` operator can only be used in {ItemContext} \
+///                     that returns `Result` or `Option` \
+///                     (or another type that implements `{FromResidual}`)",
+///         label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
+///         parent_label = "this function should return `Result` or `Option` to accept `?`"
+///     ),
+/// )]
+/// pub trait FromResidual<R = <Self as Try>::Residual> {
+///    ...
+/// }
+///
+/// async fn an_async_function() -> u32 {
+///     let x: Option<u32> = None;
+///     x?; //~ ERROR the `?` operator
+///     22
+/// }
+///  ```
+/// it will look like this:
+///
+/// ```rust,ignore (just an example)
+/// FormatArgs {
+///     this: "FromResidual",
+///     trait_sugared: "FromResidual<Option<Infallible>>",
+///     item_context: "an async function",
+///     generic_args: [("Self", "u32"), ("R", "Option<Infallible>")],
+/// }
+/// ```
 #[derive(Debug)]
-pub struct ConditionOptions {
-    pub self_types: Vec<String>,
-    pub from_desugaring: Option<String>,
-    pub cause: Option<String>,
-    pub crate_local: bool,
-    pub direct: bool,
-    pub generic_args: Vec<(Symbol, String)>,
-}
-
-#[derive(Debug)]
-pub struct FormatArgs {
+pub struct FormatArgs<'tcx> {
     pub this: String,
-    pub trait_sugared: String,
-    pub item_context: String,
+    pub trait_sugared: TraitRefPrintSugared<'tcx>,
+    pub item_context: &'static str,
     pub generic_args: Vec<(Symbol, String)>,
 }
 
 impl FormatString {
-    pub fn parse(input: Symbol, input_span: Span, ctx: &Ctx<'_>) -> Result<Self, Vec<ParseError>> {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
+    pub fn parse<'tcx>(
+        input: Symbol,
+        span: Span,
+        ctx: &Ctx<'tcx>,
+    ) -> Result<Self, Vec<ParseError>> {
         let s = input.as_str();
         let mut parser = Parser::new(s, None, None, false, ParseMode::Format);
         let mut pieces = Vec::new();
@@ -126,28 +173,28 @@ impl FormatString {
                     pieces.push(Piece::Lit(lit.into()));
                 }
                 RpfPiece::NextArgument(arg) => {
-                    warn_on_format_spec(arg.format, &mut warnings, input_span);
-                    let arg = parse_arg(&arg, ctx, &mut warnings, input_span);
+                    warn_on_format_spec(arg.format, &mut warnings, span);
+                    let arg = parse_arg(&arg, ctx, &mut warnings, span);
                     pieces.push(Piece::Arg(arg));
                 }
             }
         }
 
         if parser.errors.is_empty() {
-            Ok(FormatString { input, input_span, pieces, warnings })
+            Ok(FormatString { input, pieces, span, warnings })
         } else {
             Err(parser.errors)
         }
     }
 
-    pub fn format(&self, args: &FormatArgs) -> String {
+    pub fn format(&self, args: &FormatArgs<'_>) -> String {
         let mut ret = String::new();
         for piece in &self.pieces {
             match piece {
                 Piece::Lit(s) | Piece::Arg(FormatArg::AsIs(s)) => ret.push_str(&s),
 
                 // `A` if we have `trait Trait<A> {}` and `note = "i'm the actual type of {A}"`
-                Piece::Arg(FormatArg::GenericParam { generic_param, .. }) => {
+                Piece::Arg(FormatArg::GenericParam { generic_param }) => {
                     // Should always be some but we can't raise errors here
                     let value = match args.generic_args.iter().find(|(p, _)| p == generic_param) {
                         Some((_, val)) => val.to_string(),
@@ -166,17 +213,19 @@ impl FormatString {
 
                 // It's only `rustc_onunimplemented` from here
                 Piece::Arg(FormatArg::This) => ret.push_str(&args.this),
-                Piece::Arg(FormatArg::Trait) => ret.push_str(&args.trait_sugared),
-                Piece::Arg(FormatArg::ItemContext) => ret.push_str(&args.item_context),
+                Piece::Arg(FormatArg::Trait) => {
+                    let _ = fmt::write(&mut ret, format_args!("{}", &args.trait_sugared));
+                }
+                Piece::Arg(FormatArg::ItemContext) => ret.push_str(args.item_context),
             }
         }
         ret
     }
 }
 
-fn parse_arg(
+fn parse_arg<'tcx>(
     arg: &Argument<'_>,
-    ctx: &Ctx<'_>,
+    ctx: &Ctx<'tcx>,
     warnings: &mut Vec<FormatWarning>,
     input_span: Span,
 ) -> FormatArg {
@@ -233,7 +282,7 @@ fn parse_arg(
                 Ctx::RustcOnUnimplemented { .. } | Ctx::DiagnosticOnUnimplemented { .. },
                 generic_param,
             ) if generics.own_params.iter().any(|param| param.name == generic_param) => {
-                FormatArg::GenericParam { generic_param, span }
+                FormatArg::GenericParam { generic_param }
             }
 
             (_, argument_name) => {
@@ -286,6 +335,7 @@ fn warn_on_format_spec(spec: FormatSpec<'_>, warnings: &mut Vec<FormatWarning>, 
     }
 }
 
+/// Helper function because `Span` and `rustc_parse_format::InnerSpan` don't know about each other
 fn slice_span(input: Span, inner: InnerSpan) -> Span {
     let InnerSpan { start, end } = inner;
     let span = input.data();
@@ -300,8 +350,6 @@ fn slice_span(input: Span, inner: InnerSpan) -> Span {
 
 pub mod errors {
     use rustc_macros::LintDiagnostic;
-    use rustc_middle::ty::TyCtxt;
-    use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
     use rustc_span::Ident;
 
     use super::*;
@@ -323,26 +371,6 @@ pub mod errors {
     #[diag(trait_selection_invalid_format_specifier)]
     #[help]
     pub struct InvalidFormatSpecifier;
-
-    #[derive(LintDiagnostic)]
-    #[diag(trait_selection_wrapped_parser_error)]
-    pub struct WrappedParserError {
-        pub description: String,
-        pub label: String,
-    }
-    #[derive(LintDiagnostic)]
-    #[diag(trait_selection_malformed_on_unimplemented_attr)]
-    #[help]
-    pub struct MalformedOnUnimplementedAttrLint {
-        #[label]
-        pub span: Span,
-    }
-
-    impl MalformedOnUnimplementedAttrLint {
-        pub fn new(span: Span) -> Self {
-            Self { span }
-        }
-    }
 
     #[derive(LintDiagnostic)]
     #[diag(trait_selection_missing_options_for_on_unimplemented_attr)]
