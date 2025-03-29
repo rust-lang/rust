@@ -81,9 +81,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.typeck_results.used_trait_imports = used_trait_imports;
 
-        wbcx.typeck_results.treat_byte_string_as_slice =
-            mem::take(&mut self.typeck_results.borrow_mut().treat_byte_string_as_slice);
-
         debug!("writeback: typeck results for {:?} are {:#?}", item_def_id, wbcx.typeck_results);
 
         self.tcx.arena.alloc(wbcx.typeck_results)

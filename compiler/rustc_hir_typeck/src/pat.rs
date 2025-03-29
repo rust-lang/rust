@@ -632,10 +632,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 let tcx = self.tcx;
                 trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
-                self.typeck_results
-                    .borrow_mut()
-                    .treat_byte_string_as_slice
-                    .insert(lt.hir_id.local_id);
                 pat_ty =
                     Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, Ty::new_slice(tcx, tcx.types.u8));
             }
