@@ -120,10 +120,6 @@ ci-msvc: ci-msvc-py ci-msvc-ps1
 # Set of tests that should represent half of the time of the test suite.
 # Used to split tests across multiple CI runners.
 # Test both x and bootstrap entrypoints.
-ci-mingw-x-1:
-	$(Q)$(CFG_SRC_DIR)/x test --stage 2 $(SKIP_COMPILER) $(TEST_SET2)
-ci-mingw-x-2:
-	$(Q)$(CFG_SRC_DIR)/x test --stage 2 $(SKIP_SRC) $(TEST_SET2)
 ci-mingw-x:
 	$(Q)$(CFG_SRC_DIR)/x test --stage 2 $(TEST_SET1)
 ci-mingw-bootstrap:
