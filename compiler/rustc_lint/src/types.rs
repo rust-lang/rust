@@ -1634,6 +1634,9 @@ impl ImproperCTypesDefinitions {
             return true;
         } else if let Adt(adt_def, _) = ty.kind()
             && adt_def.is_struct()
+            && adt_def.repr().c()
+            && !adt_def.repr().packed()
+            && adt_def.repr().align.is_none()
         {
             let struct_variant = adt_def.variant(VariantIdx::ZERO);
             // Within a nested struct, all fields are examined to correctly
@@ -1655,8 +1658,11 @@ impl ImproperCTypesDefinitions {
         item: &'tcx hir::Item<'tcx>,
     ) {
         let adt_def = cx.tcx.adt_def(item.owner_id.to_def_id());
+        // repr(C) structs also with packed or aligned representation
+        // should be ignored.
         if adt_def.repr().c()
             && !adt_def.repr().packed()
+            && adt_def.repr().align.is_none()
             && cx.tcx.sess.target.os == "aix"
             && !adt_def.all_fields().next().is_none()
         {
