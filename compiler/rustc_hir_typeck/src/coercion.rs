@@ -41,8 +41,8 @@ use rustc_abi::ExternAbi;
 use rustc_attr_parsing::InlineAttr;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
+use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, LangItem};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
@@ -55,7 +55,7 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, AliasTy, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -592,63 +592,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
-        let root_obligation = Obligation::new(
-            self.tcx,
-            cause.clone(),
-            self.fcx.param_env,
-            ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target]),
-        );
-
-        // If the root `Source: CoerceUnsized<Target>` obligation can't possibly hold,
-        // we don't have to assume that this is unsizing coercion (it will always lead to an error)
-        //
-        // However, we don't want to bail early all the time, since the unholdable obligations
-        // may be interesting for diagnostics (such as trying to coerce `&T` to `&dyn Id<This = U>`),
-        // so we only bail if there (likely) is another way to convert the types.
-        if !self.infcx.predicate_may_hold(&root_obligation) {
-            if let Some(dyn_metadata_adt_def_id) = self.tcx.lang_items().get(LangItem::DynMetadata)
-                && let Some(metadata_type_def_id) = self.tcx.lang_items().get(LangItem::Metadata)
-            {
-                self.probe(|_| {
-                    let ocx = ObligationCtxt::new(&self.infcx);
-
-                    // returns `true` if `<ty as Pointee>::Metadata` is `DynMetadata<_>`
-                    let has_dyn_trait_metadata = |ty| {
-                        let metadata_ty: Result<_, _> = ocx.structurally_normalize_ty(
-                            &ObligationCause::dummy(),
-                            self.fcx.param_env,
-                            Ty::new_alias(
-                                self.tcx,
-                                ty::AliasTyKind::Projection,
-                                AliasTy::new(self.tcx, metadata_type_def_id, [ty]),
-                            ),
-                        );
-
-                        metadata_ty.is_ok_and(|metadata_ty| {
-                            metadata_ty
-                                .ty_adt_def()
-                                .is_some_and(|d| d.did() == dyn_metadata_adt_def_id)
-                        })
-                    };
-
-                    // If both types are raw pointers to a (wrapper over a) trait object,
-                    // this might be a cast like `*const W<dyn Trait> -> *const dyn Trait`.
-                    // So it's better to bail and try that. (even if the cast is not possible, for
-                    // example due to vtables not matching, cast diagnostic will likely still be better)
-                    //
-                    // N.B. use `target`, not `coerce_target` (the latter is a var)
-                    if let &ty::RawPtr(source_pointee, _) = coerce_source.kind()
-                        && let &ty::RawPtr(target_pointee, _) = target.kind()
-                        && has_dyn_trait_metadata(source_pointee)
-                        && has_dyn_trait_metadata(target_pointee)
-                    {
-                        return Err(TypeError::Mismatch);
-                    }
-
-                    Ok(())
-                })?;
-            }
-        }
 
         // Use a FIFO queue for this custom fulfillment procedure.
         //
@@ -657,7 +600,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // and almost never more than 3. By using a SmallVec we avoid an
         // allocation, at the (very small) cost of (occasionally) having to
         // shift subsequent elements down when removing the front element.
-        let mut queue: SmallVec<[PredicateObligation<'tcx>; 4]> = smallvec![root_obligation];
+        let mut queue: SmallVec<[PredicateObligation<'tcx>; 4]> = smallvec![Obligation::new(
+            self.tcx,
+            cause,
+            self.fcx.param_env,
+            ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target])
+        )];
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
