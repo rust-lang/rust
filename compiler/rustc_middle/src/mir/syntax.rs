@@ -334,14 +334,19 @@ pub enum StatementKind<'tcx> {
     /// See [`Rvalue`] documentation for details on each of those.
     Assign(Box<(Place<'tcx>, Rvalue<'tcx>)>),
 
-    /// This represents all the reading that a pattern match may do (e.g., inspecting constants and
-    /// discriminant values), and the kind of pattern it comes from. This is in order to adapt
-    /// potential error messages to these specific patterns.
+    /// When executed at runtime, this is a nop.
     ///
-    /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
-    /// never accessed still get some sanity checks for, e.g., `let x: ! = ..;`
+    /// During static analysis, a fake read:
+    /// - requires that the value being read is initialized (or, in the case
+    ///   of closures, that it was fully initialized at some point in the past)
+    /// - constitutes a use of a value for the purposes of NLL (i.e. if the
+    ///   value being fake-read is a reference, the lifetime of that reference
+    ///   will be extended to cover the `FakeRead`)
+    /// - but, unlike an actual read, does *not* invalidate any exclusive
+    ///   borrows.
     ///
-    /// When executed at runtime this is a nop.
+    /// See [`FakeReadCause`] for more details on the situations in which a
+    /// `FakeRead` is emitted.
     ///
     /// Disallowed after drop elaboration.
     FakeRead(Box<(FakeReadCause, Place<'tcx>)>),
@@ -518,28 +523,59 @@ pub enum RetagKind {
 /// The `FakeReadCause` describes the type of pattern why a FakeRead statement exists.
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, Hash, HashStable, PartialEq)]
 pub enum FakeReadCause {
-    /// Inject a fake read of the borrowed input at the end of each guards
-    /// code.
+    /// A fake read injected into a match guard to ensure that the discriminants
+    /// that are being matched on aren't modified while the match guard is being
+    /// evaluated.
+    ///
+    /// At the beginning of each match guard, a [fake borrow][FakeBorrowKind] is
+    /// inserted for each discriminant accessed in the entire `match` statement.
+    ///
+    /// Then, at the end of the match guard, a `FakeRead(ForMatchGuard)` is
+    /// inserted to keep the fake borrows alive until that point.
     ///
     /// This should ensure that you cannot change the variant for an enum while
     /// you are in the midst of matching on it.
     ForMatchGuard,
 
-    /// `let x: !; match x {}` doesn't generate any read of x so we need to
-    /// generate a read of x to check that it is initialized and safe.
+    /// Fake read of the scrutinee of a `match` or destructuring `let`
+    /// (i.e. `let` with non-trivial pattern).
     ///
-    /// If a closure pattern matches a Place starting with an Upvar, then we introduce a
-    /// FakeRead for that Place outside the closure, in such a case this option would be
-    /// Some(closure_def_id).
-    /// Otherwise, the value of the optional LocalDefId will be None.
+    /// In `match x { ... }`, we generate a `FakeRead(ForMatchedPlace, x)`
+    /// and insert it into the `otherwise_block` (which is supposed to be
+    /// unreachable for irrefutable pattern-matches like `match` or `let`).
+    ///
+    /// This is necessary because `let x: !; match x {}` doesn't generate any
+    /// actual read of x, so we need to generate a `FakeRead` to check that it
+    /// is initialized.
+    ///
+    /// If the `FakeRead(ForMatchedPlace)` is being performed with a closure
+    /// that doesn't capture the required upvars, the `FakeRead` within the
+    /// closure is omitted entirely.
+    ///
+    /// To make sure that this is still sound, if a closure matches against
+    /// a Place starting with an Upvar, we hoist the `FakeRead` to the
+    /// definition point of the closure.
+    ///
+    /// If the `FakeRead` comes from being hoisted out of a closure like this,
+    /// we record the `LocalDefId` of the closure. Otherwise, the `Option` will be `None`.
     //
     // We can use LocalDefId here since fake read statements are removed
     // before codegen in the `CleanupNonCodegenStatements` pass.
     ForMatchedPlace(Option<LocalDefId>),
 
-    /// A fake read of the RefWithinGuard version of a bind-by-value variable
-    /// in a match guard to ensure that its value hasn't change by the time
-    /// we create the OutsideGuard version.
+    /// A fake read injected into a match guard to ensure that the places
+    /// bound by the pattern are immutable for the duration of the match guard.
+    ///
+    /// Within a match guard, references are created for each place that the
+    /// pattern creates a binding for — this is known as the `RefWithinGuard`
+    /// version of the variables. To make sure that the references stay
+    /// alive until the end of the match guard, and properly prevent the
+    /// places in question from being modified, a `FakeRead(ForGuardBinding)`
+    /// is inserted at the end of the match guard.
+    ///
+    /// For details on how these references are created, see the extensive
+    /// documentation on `bind_matched_candidate_for_guard` in
+    /// `rustc_mir_build`.
     ForGuardBinding,
 
     /// Officially, the semantics of
@@ -552,22 +588,42 @@ pub enum FakeReadCause {
     /// However, if we see the simple pattern `let var = <expr>`, we optimize this to
     /// evaluate `<expr>` directly into the variable `var`. This is mostly unobservable,
     /// but in some cases it can affect the borrow checker, as in #53695.
-    /// Therefore, we insert a "fake read" here to ensure that we get
-    /// appropriate errors.
     ///
-    /// If a closure pattern matches a Place starting with an Upvar, then we introduce a
-    /// FakeRead for that Place outside the closure, in such a case this option would be
-    /// Some(closure_def_id).
-    /// Otherwise, the value of the optional DefId will be None.
+    /// Therefore, we insert a `FakeRead(ForLet)` immediately after each `let`
+    /// with a trivial pattern.
+    ///
+    /// FIXME: `ExprUseVisitor` has an entirely different opinion on what `FakeRead(ForLet)`
+    /// is supposed to mean. If it was accurate to what MIR lowering does,
+    /// would it even make sense to hoist these out of closures like
+    /// `ForMatchedPlace`?
     ForLet(Option<LocalDefId>),
 
-    /// If we have an index expression like
+    /// Currently, index expressions overloaded through the `Index` trait
+    /// get lowered differently than index expressions with builtin semantics
+    /// for arrays and slices — the latter will emit code to perform
+    /// bound checks, and then return a MIR place that will only perform the
+    /// indexing "for real" when it gets incorporated into an instruction.
     ///
-    /// (*x)[1][{ x = y; 4}]
+    /// This is observable in the fact that the following compiles:
     ///
-    /// then the first bounds check is invalidated when we evaluate the second
-    /// index expression. Thus we create a fake borrow of `x` across the second
-    /// indexer, which will cause a borrow check error.
+    /// ```
+    /// fn f(x: &mut [&mut [u32]], i: usize) {
+    ///     x[i][x[i].len() - 1] += 1;
+    /// }
+    /// ```
+    ///
+    /// However, we need to be careful to not let the user invalidate the
+    /// bound check with an expression like
+    ///
+    /// `(*x)[1][{ x = y; 4}]`
+    ///
+    /// Here, the first bounds check would be invalidated when we evaluate the
+    /// second index expression. To make sure that this doesn't happen, we
+    /// create a fake borrow of `x` and hold it while we evaluate the second
+    /// index.
+    ///
+    /// This borrow is kept alive by a `FakeRead(ForIndex)` at the end of its
+    /// scope.
     ForIndex,
 }
 
