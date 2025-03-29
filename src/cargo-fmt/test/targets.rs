@@ -134,4 +134,32 @@ mod all_targets {
             assert_correct_targets_loaded("ws/a/d/f/Cargo.toml");
         }
     }
+
+    mod cargo_fmt_strategy_root {
+        use super::*;
+
+        #[test]
+        fn assert_correct_targets_loaded_from_root() {
+            let exp_targets = &[
+                ExpTarget {
+                    path: "inner_bin/src/main.rs",
+                    edition: Edition::E2021,
+                    kind: "bin",
+                },
+                ExpTarget {
+                    path: "inner_lib/src/lib.rs",
+                    edition: Edition::E2021,
+                    kind: "lib",
+                },
+            ];
+
+            super::assert_correct_targets_loaded(
+                "Cargo.toml",
+                "issues_6517",
+                exp_targets,
+                2,
+                CargoFmtStrategy::Root,
+            );
+        }
+    }
 }
