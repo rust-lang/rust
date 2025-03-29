@@ -7,8 +7,8 @@ platform.
 
 ## Target maintainers
 
-- Riccardo D'Ambrosio, https://github.com/RDambrosio016
-- Kjetil Kjeka, https://github.com/kjetilkjeka
+[@RDambrosio016](https://github.com/RDambrosio016)
+[@kjetilkjeka](https://github.com/kjetilkjeka)
 
 <!-- FIXME: fill this out
 

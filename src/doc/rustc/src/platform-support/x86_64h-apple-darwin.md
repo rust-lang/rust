@@ -8,7 +8,7 @@ Target for macOS on late-generation `x86_64` Apple chips, usable as the
 
 ## Target maintainers
 
-- Thom Chiovoloni `thom@shift.click` <https://github.com/thomcc>
+[@thomcc](https://github.com/thomcc)
 
 ## Requirements
 

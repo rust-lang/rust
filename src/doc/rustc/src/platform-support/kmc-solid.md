@@ -16,7 +16,7 @@ The target names follow this format: `$ARCH-kmc-solid_$KERNEL-$ABI`, where `$ARC
 
 ## Designated Developers
 
-- [@kawadakk](https://github.com/kawadakk)
+[@kawadakk](https://github.com/kawadakk)
 
 ## Requirements
 

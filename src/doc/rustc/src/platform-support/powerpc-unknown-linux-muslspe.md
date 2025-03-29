@@ -9,7 +9,7 @@ See also [platform support documentation of `powerpc-unknown-linux-gnuspe`](powe
 
 ## Target maintainers
 
-- [@BKPepe](https://github.com/BKPepe)
+[@BKPepe](https://github.com/BKPepe)
 
 ## Requirements
 

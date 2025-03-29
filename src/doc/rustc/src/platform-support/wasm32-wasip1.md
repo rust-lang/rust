@@ -43,7 +43,7 @@ exhaustive and there are more interested parties in this target. That being
 said since when this document was last updated those interested in maintaining
 this target are:
 
-- Alex Crichton, https://github.com/alexcrichton
+[@alexcrichton](https://github.com/alexcrichton)
 
 ## Requirements
 

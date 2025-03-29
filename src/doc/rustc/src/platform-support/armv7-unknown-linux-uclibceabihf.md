@@ -6,7 +6,7 @@ This tier supports the Armv7-A processor running a Linux kernel and uClibc-ng st
 
 ## Designated Developers
 
-* [@skrap](https://github.com/skrap)
+[@skrap](https://github.com/skrap)
 
 ## Requirements
 
