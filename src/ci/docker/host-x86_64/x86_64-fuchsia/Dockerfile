@@ -37,6 +37,8 @@ WORKDIR /tmp
 COPY scripts/shared.sh /tmp/
 COPY scripts/build-fuchsia-toolchain.sh /tmp/
 RUN /tmp/build-fuchsia-toolchain.sh
+COPY scripts/checkout-fuchsia.sh /tmp/
+RUN /tmp/checkout-fuchsia.sh
 
 ENV CARGO_TARGET_X86_64_UNKNOWN_FUCHSIA_AR /usr/local/bin/llvm-ar
 ENV CARGO_TARGET_X86_64_UNKNOWN_FUCHSIA_RUSTFLAGS \
