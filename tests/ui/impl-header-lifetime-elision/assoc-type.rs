@@ -9,12 +9,25 @@ trait MyTrait {
 
 impl MyTrait for &i32 {
     type Output = &i32;
-    //~^ ERROR 11:19: 11:20: in the trait associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+    //~^ ERROR missing lifetime in associated type
 }
 
 impl MyTrait for &u32 {
     type Output = &'_ i32;
     //~^ ERROR `'_` cannot be used here
+}
+
+impl<'a> MyTrait for &f64 {
+    type Output = &f64;
+    //~^ ERROR missing lifetime in associated type
+}
+
+trait OtherTrait<'a> {
+    type Output;
+}
+impl OtherTrait<'_> for f64 {
+    type Output = &f64;
+    //~^ ERROR missing lifetime in associated type
 }
 
 // This is what you have to do:
