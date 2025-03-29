@@ -249,7 +249,6 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
                 }
             } else {
                 self.flush_buf()?;
-                init = 0;
             }
         }
     }
