@@ -482,6 +482,39 @@ const MIPS_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
+const NVPTX_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+    // tidy-alphabetical-start
+    ("sm_20", Unstable(sym::nvptx_target_feature), &[]),
+    ("sm_21", Unstable(sym::nvptx_target_feature), &["sm_20"]),
+    ("sm_30", Unstable(sym::nvptx_target_feature), &["sm_21"]),
+    ("sm_32", Unstable(sym::nvptx_target_feature), &["sm_30"]),
+    ("sm_35", Unstable(sym::nvptx_target_feature), &["sm_32"]),
+    ("sm_37", Unstable(sym::nvptx_target_feature), &["sm_35"]),
+    ("sm_50", Unstable(sym::nvptx_target_feature), &["sm_37"]),
+    ("sm_52", Unstable(sym::nvptx_target_feature), &["sm_50"]),
+    ("sm_53", Unstable(sym::nvptx_target_feature), &["sm_52"]),
+    ("sm_60", Unstable(sym::nvptx_target_feature), &["sm_53"]),
+    ("sm_61", Unstable(sym::nvptx_target_feature), &["sm_60"]),
+    ("sm_62", Unstable(sym::nvptx_target_feature), &["sm_61"]),
+    ("sm_70", Unstable(sym::nvptx_target_feature), &["sm_62"]),
+    ("sm_72", Unstable(sym::nvptx_target_feature), &["sm_70"]),
+    ("sm_75", Unstable(sym::nvptx_target_feature), &["sm_72"]),
+    ("sm_80", Unstable(sym::nvptx_target_feature), &["sm_75"]),
+    ("sm_86", Unstable(sym::nvptx_target_feature), &["sm_80"]),
+    ("sm_87", Unstable(sym::nvptx_target_feature), &["sm_86"]),
+    ("sm_90", Unstable(sym::nvptx_target_feature), &["sm_87"]),
+    ("sm_90a", Unstable(sym::nvptx_target_feature), &["sm_90"]),
+    // tidy-alphabetical-end
+    // tidy-alphabetical-start
+    ("sm_100", Unstable(sym::nvptx_target_feature), &["sm_90a"]),
+    ("sm_100a", Unstable(sym::nvptx_target_feature), &["sm_100"]),
+    ("sm_101", Unstable(sym::nvptx_target_feature), &["sm_100a"]),
+    ("sm_101a", Unstable(sym::nvptx_target_feature), &["sm_101"]),
+    ("sm_120", Unstable(sym::nvptx_target_feature), &["sm_101a"]),
+    ("sm_120a", Unstable(sym::nvptx_target_feature), &["sm_120"]),
+    // tidy-alphabetical-end
+];
+
 static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("a", Stable, &["zaamo", "zalrsc"]),
@@ -679,6 +712,7 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
         .chain(HEXAGON_FEATURES.iter())
         .chain(POWERPC_FEATURES.iter())
         .chain(MIPS_FEATURES.iter())
+        .chain(NVPTX_FEATURES.iter())
         .chain(RISCV_FEATURES.iter())
         .chain(WASM_FEATURES.iter())
         .chain(BPF_FEATURES.iter())
@@ -732,6 +766,7 @@ impl Target {
             "x86" | "x86_64" => X86_FEATURES,
             "hexagon" => HEXAGON_FEATURES,
             "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_FEATURES,
+            "nvptx32" | "nvptx64" => NVPTX_FEATURES,
             "powerpc" | "powerpc64" => POWERPC_FEATURES,
             "riscv32" | "riscv64" => RISCV_FEATURES,
             "wasm32" | "wasm64" => WASM_FEATURES,
@@ -758,6 +793,7 @@ impl Target {
             "sparc" | "sparc64" => SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "hexagon" => HEXAGON_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            "nvptx" => &[],        // no vector ABI
             "bpf" | "m68k" => &[], // no vector ABI
             "csky" => CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI,
             // FIXME: for some tier3 targets, we are overly cautious and always give warnings
