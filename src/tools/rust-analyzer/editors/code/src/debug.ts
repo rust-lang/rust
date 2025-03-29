@@ -225,7 +225,7 @@ async function discoverSourceFileMap(
         const commitHash = rx.exec(data)?.[1];
         if (commitHash) {
             const rustlib = path.normalize(sysroot + "/lib/rustlib/src/rust");
-            return { source: rustlib, destination: rustlib };
+            return { source: "/rustc/" + commitHash, destination: rustlib };
         }
     }
 
