@@ -7,7 +7,7 @@
    LL|       |
    LL|      1|fn main() {
    LL|      1|    assert_ne!(
-   LL|      1|        Foo(5), // Make sure this expression's span isn't lost.
+   LL|      1|        black_box(Foo(5)), // Make sure this expression's span isn't lost.
    LL|      1|        if black_box(false) {
    LL|      0|            Foo(0) //
    LL|       |        } else {

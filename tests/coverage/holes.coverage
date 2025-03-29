@@ -84,18 +84,18 @@
    LL|      1|    // `nested_filter::OnlyBodies` or equivalent.
    LL|      1|    #[rustfmt::skip]
    LL|      1|    let _const_block_inside_anon_const =
-   LL|      1|        [
-   LL|      1|            0
-   LL|      1|            ;
-   LL|      1|            7
-   LL|      1|            +
-   LL|      1|            const
+   LL|       |        [
+   LL|       |            0
+   LL|       |            ;
+   LL|       |            7
+   LL|       |            +
+   LL|       |            const
    LL|       |            {
    LL|       |                3
-   LL|      1|            }
-   LL|      1|        ]
-   LL|      1|        ;
-   LL|      1|
+   LL|       |            }
+   LL|       |        ]
+   LL|       |        ;
+   LL|       |
    LL|      1|    black_box(());
    LL|      1|}
 

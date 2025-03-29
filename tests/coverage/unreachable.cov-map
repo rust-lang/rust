@@ -1,27 +1,27 @@
 Function name: unreachable::UNREACHABLE_CLOSURE::{closure#0} (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 0e, 27, 00, 47]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 0e, 27, 00, 45]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Zero) at (prev + 14, 39) to (start + 0, 71)
+- Code(Zero) at (prev + 14, 39) to (start + 0, 69)
 Highest counter ID seen: (none)
 
 Function name: unreachable::unreachable_function (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 10, 01, 01, 25]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 10, 01, 01, 23]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Zero) at (prev + 16, 1) to (start + 1, 37)
+- Code(Zero) at (prev + 16, 1) to (start + 1, 35)
 Highest counter ID seen: (none)
 
 Function name: unreachable::unreachable_intrinsic (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 15, 01, 01, 2c]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 15, 01, 01, 2a]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Zero) at (prev + 21, 1) to (start + 1, 44)
+- Code(Zero) at (prev + 21, 1) to (start + 1, 42)
 Highest counter ID seen: (none)
 

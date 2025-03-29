@@ -1,5 +1,5 @@
 Function name: unicode::main
-Raw bytes (53): 0x[01, 01, 02, 05, 01, 01, 0d, 09, 01, 0e, 01, 00, 0b, 02, 01, 09, 00, 0c, 05, 00, 10, 00, 1b, 02, 00, 1c, 00, 28, 01, 02, 08, 00, 25, 09, 00, 29, 00, 46, 0d, 00, 47, 02, 06, 06, 02, 05, 00, 06, 01, 02, 05, 01, 02]
+Raw bytes (53): 0x[01, 01, 02, 05, 01, 01, 0d, 09, 01, 0e, 01, 00, 0b, 02, 01, 09, 00, 0c, 05, 00, 10, 00, 1b, 02, 00, 1c, 00, 28, 01, 02, 08, 00, 23, 09, 00, 29, 00, 44, 0d, 00, 47, 02, 06, 06, 02, 05, 00, 06, 01, 02, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 2
@@ -12,8 +12,8 @@ Number of file 0 mappings: 9
 - Code(Counter(1)) at (prev + 0, 16) to (start + 0, 27)
 - Code(Expression(0, Sub)) at (prev + 0, 28) to (start + 0, 40)
     = (c1 - c0)
-- Code(Counter(0)) at (prev + 2, 8) to (start + 0, 37)
-- Code(Counter(2)) at (prev + 0, 41) to (start + 0, 70)
+- Code(Counter(0)) at (prev + 2, 8) to (start + 0, 35)
+- Code(Counter(2)) at (prev + 0, 41) to (start + 0, 68)
 - Code(Counter(3)) at (prev + 0, 71) to (start + 2, 6)
 - Code(Expression(1, Sub)) at (prev + 2, 5) to (start + 0, 6)
     = (c0 - c3)
