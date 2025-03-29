@@ -9,7 +9,7 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = callee_forced() -> [return: bb1, unwind continue];
+-         _1 = callee_forced() -> [return: bb1, unwind unreachable];
 -     }
 - 
 -     bb1: {
