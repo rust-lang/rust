@@ -73,10 +73,24 @@ impl<'a> Parser<'a> {
             });
         }
 
-        let stmt = if self.token.is_keyword(kw::Let) {
+        let stmt = if self.token.is_keyword(kw::Super) && self.is_keyword_ahead(1, &[kw::Let]) {
+            self.collect_tokens(None, attrs, force_collect, |this, attrs| {
+                let super_span = this.token.span;
+                this.expect_keyword(exp!(Super))?;
+                this.expect_keyword(exp!(Let))?;
+                this.psess.gated_spans.gate(sym::super_let, super_span);
+                let local = this.parse_local(Some(super_span), attrs)?;
+                let trailing = Trailing::from(capture_semi && this.token == token::Semi);
+                Ok((
+                    this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
+                    trailing,
+                    UsePreAttrPos::No,
+                ))
+            })?
+        } else if self.token.is_keyword(kw::Let) {
             self.collect_tokens(None, attrs, force_collect, |this, attrs| {
                 this.expect_keyword(exp!(Let))?;
-                let local = this.parse_local(attrs)?;
+                let local = this.parse_local(None, attrs)?;
                 let trailing = Trailing::from(capture_semi && this.token == token::Semi);
                 Ok((
                     this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
@@ -281,7 +295,7 @@ impl<'a> Parser<'a> {
         force_collect: ForceCollect,
     ) -> PResult<'a, Stmt> {
         let stmt = self.collect_tokens(None, attrs, force_collect, |this, attrs| {
-            let local = this.parse_local(attrs)?;
+            let local = this.parse_local(None, attrs)?;
             // FIXME - maybe capture semicolon in recovery?
             Ok((
                 this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
@@ -295,8 +309,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a local variable declaration.
-    fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
-        let lo = self.prev_token.span;
+    fn parse_local(&mut self, super_: Option<Span>, attrs: AttrVec) -> PResult<'a, P<Local>> {
+        let lo = super_.unwrap_or(self.prev_token.span);
 
         if self.token.is_keyword(kw::Const) && self.look_ahead(1, |t| t.is_ident()) {
             self.dcx().emit_err(errors::ConstLetMutuallyExclusive { span: lo.to(self.token.span) });
@@ -398,6 +412,7 @@ impl<'a> Parser<'a> {
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
         Ok(P(ast::Local {
+            super_,
             ty,
             pat,
             kind,
