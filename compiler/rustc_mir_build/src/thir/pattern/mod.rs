@@ -20,7 +20,7 @@ use rustc_middle::thir::{
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::DefId;
 use rustc_span::{ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
 
@@ -124,7 +124,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         expr: Option<&'tcx hir::PatExpr<'tcx>>,
         // Out-parameters collecting extra data to be reapplied by the caller
         ascriptions: &mut Vec<Ascription<'tcx>>,
-        inline_consts: &mut Vec<LocalDefId>,
+        expanded_consts: &mut Vec<DefId>,
     ) -> Result<Option<PatRangeBoundary<'tcx>>, ErrorGuaranteed> {
         let Some(expr) = expr else { return Ok(None) };
 
@@ -139,10 +139,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     ascriptions.push(ascription);
                     kind = subpattern.kind;
                 }
-                PatKind::ExpandedConstant { is_inline, def_id, subpattern } => {
-                    if is_inline {
-                        inline_consts.extend(def_id.as_local());
-                    }
+                PatKind::ExpandedConstant { def_id, subpattern } => {
+                    expanded_consts.push(def_id);
                     kind = subpattern.kind;
                 }
                 _ => break,
@@ -221,10 +219,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         // Collect extra data while lowering the endpoints, to be reapplied later.
         let mut ascriptions = vec![];
-        let mut inline_consts = vec![];
+        let mut expanded_consts = vec![];
 
         let mut lower_endpoint =
-            |expr| self.lower_pattern_range_endpoint(expr, &mut ascriptions, &mut inline_consts);
+            |expr| self.lower_pattern_range_endpoint(expr, &mut ascriptions, &mut expanded_consts);
 
         let lo = lower_endpoint(lo_expr)?.unwrap_or(PatRangeBoundary::NegInfinity);
         let hi = lower_endpoint(hi_expr)?.unwrap_or(PatRangeBoundary::PosInfinity);
@@ -269,17 +267,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
         // constants somewhere. Have them on the range pattern.
         for ascription in ascriptions {
-            kind = PatKind::AscribeUserType {
-                ascription,
-                subpattern: Box::new(Pat { span, ty, kind }),
-            };
+            let subpattern = Box::new(Pat { span, ty, kind });
+            kind = PatKind::AscribeUserType { ascription, subpattern };
         }
-        for def in inline_consts {
-            kind = PatKind::ExpandedConstant {
-                def_id: def.to_def_id(),
-                is_inline: true,
-                subpattern: Box::new(Pat { span, ty, kind }),
-            };
+        for def_id in expanded_consts {
+            let subpattern = Box::new(Pat { span, ty, kind });
+            kind = PatKind::ExpandedConstant { def_id, subpattern };
         }
         Ok(kind)
     }
