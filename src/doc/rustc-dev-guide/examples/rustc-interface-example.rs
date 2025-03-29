@@ -1,4 +1,4 @@
-// Tested with nightly-2025-03-08
+// Tested with nightly-2025-03-28
 
 #![feature(rustc_private)]
 
@@ -67,10 +67,10 @@ fn main() {
             for id in tcx.hir_free_items() {
                 let item = tcx.hir_item(id);
                 match item.kind {
-                    rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn { .. } => {
-                        let name = item.ident;
+                    rustc_hir::ItemKind::Static(ident, ..)
+                    | rustc_hir::ItemKind::Fn { ident, .. } => {
                         let ty = tcx.type_of(item.hir_id().owner.def_id);
-                        println!("{name:?}:\t{ty:?}")
+                        println!("{ident:?}:\t{ty:?}")
                     }
                     _ => (),
                 }
