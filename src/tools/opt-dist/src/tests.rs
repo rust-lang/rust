@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
 
@@ -26,8 +24,6 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     };
     let host_triple = env.host_tuple();
     let version = find_dist_version(&dist_dir)?;
-
-    let channel = version_to_channel(&version);
 
     // Extract rustc, libstd, cargo and src archives to create the optimized sysroot
     let rustc_dir = extract_dist_dir(&format!("rustc-{version}-{host_triple}"))?.join("rustc");
@@ -64,82 +60,98 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
         .join(format!("llvm-config{}", executable_extension()));
     assert!(llvm_config.is_file());
 
-    let config_content = format!(
-        r#"
-profile = "user"
-change-id = 115898
+    //     let config_content = format!(
+    //         r#"
+    // profile = "user"
+    // change-id = 115898
+    //
+    // [rust]
+    // channel = "{channel}"
+    // verbose-tests = true
+    //
+    // [build]
+    // rustc = "{rustc}"
+    // cargo = "{cargo}"
+    // local-rebuild = true
+    //
+    // [target.{host_triple}]
+    // llvm-config = "{llvm_config}"
+    // "#,
+    //         rustc = rustc_path.to_string().replace('\\', "/"),
+    //         cargo = cargo_path.to_string().replace('\\', "/"),
+    //         llvm_config = llvm_config.to_string().replace('\\', "/")
+    //     );
+    //     log::info!("Using following `bootstrap.toml` for running tests:\n{config_content}");
 
-[rust]
-channel = "{channel}"
-verbose-tests = true
-
-[build]
-rustc = "{rustc}"
-cargo = "{cargo}"
-local-rebuild = true
-
-[target.{host_triple}]
-llvm-config = "{llvm_config}"
-"#,
-        rustc = rustc_path.to_string().replace('\\', "/"),
-        cargo = cargo_path.to_string().replace('\\', "/"),
-        llvm_config = llvm_config.to_string().replace('\\', "/")
-    );
-    log::info!("Using following `bootstrap.toml` for running tests:\n{config_content}");
+    let rustc = rustc_path.to_string().replace('\\', "/");
+    let cargo = cargo_path.to_string().replace('\\', "/");
+    let llvm_config = llvm_config.to_string().replace('\\', "/");
 
     // Simulate a stage 0 compiler with the extracted optimized dist artifacts.
-    with_backed_up_file(Path::new("bootstrap.toml"), &config_content, || {
-        let x_py = env.checkout_path().join("x.py");
-        let mut args = vec![
-            env.python_binary(),
-            x_py.as_str(),
-            "test",
-            "--build",
-            env.host_tuple(),
-            "--stage",
-            "0",
-            "tests/assembly",
-            "tests/codegen",
-            "tests/codegen-units",
-            "tests/incremental",
-            "tests/mir-opt",
-            "tests/pretty",
-            "tests/run-make/glibc-symbols-x86_64-unknown-linux-gnu",
-            "tests/ui",
-            "tests/crashes",
-        ];
-        for test_path in env.skipped_tests() {
-            args.extend(["--skip", test_path]);
-        }
-        cmd(&args)
-            .env("COMPILETEST_FORCE_STAGE0", "1")
-            // Also run dist-only tests
-            .env("COMPILETEST_ENABLE_DIST_TESTS", "1")
-            .run()
-            .context("Cannot execute tests")
-    })
-}
+    // with_backed_up_file(Path::new("bootstrap.toml"), &config_content, || {
+    let x_py = env.checkout_path().join("x.py");
+    let mut args = vec![
+        env.python_binary().to_string(),
+        x_py.as_str().to_string(),
+        "test".to_string(),
+        "--build".to_string(),
+        env.host_tuple().to_string(),
+        "--stage".to_string(),
+        "0".to_string(),
+    ];
+    args.push("--set".to_string());
+    args.push(format!("build.rustc={rustc}"));
+    args.push("--set".to_string());
+    args.push(format!("build.cargo={cargo}"));
+    args.push("--set".to_string());
+    args.push("build.local-rebuild=true".to_string());
+    args.push("--set".to_string());
+    args.push(format!("target.{host_triple}.llvm-config={llvm_config}"));
 
-/// Backup `path` (if it exists), then write `contents` into it, and then restore the original
-/// contents of the file.
-fn with_backed_up_file<F>(path: &Path, contents: &str, func: F) -> anyhow::Result<()>
-where
-    F: FnOnce() -> anyhow::Result<()>,
-{
-    let original_contents =
-        if path.is_file() { Some(std::fs::read_to_string(path)?) } else { None };
-
-    // Overwrite it with new contents
-    std::fs::write(path, contents)?;
-
-    let ret = func();
-
-    if let Some(original_contents) = original_contents {
-        std::fs::write(path, original_contents)?;
+    args.extend([
+        "tests/assembly".to_string(),
+        "tests/codegen".to_string(),
+        "tests/codegen-units".to_string(),
+        "tests/incremental".to_string(),
+        "tests/mir-opt".to_string(),
+        "tests/pretty".to_string(),
+        "tests/run-make/glibc-symbols-x86_64-unknown-linux-gnu".to_string(),
+        "tests/ui".to_string(),
+        "tests/crashes".to_string(),
+    ]);
+    for test_path in env.skipped_tests() {
+        args.extend(["--skip".to_string(), test_path.to_string()]);
     }
-
-    ret
+    cmd(&[env.python_binary(), env.checkout_path().join("x.py").as_str(), "clean"]).run().unwrap();
+    cmd(&args)
+        .env("COMPILETEST_FORCE_STAGE0", "1")
+        // Also run dist-only tests
+        .env("COMPILETEST_ENABLE_DIST_TESTS", "1")
+        .run()
+        .context("Cannot execute tests")
+    // })
 }
+//
+// /// Backup `path` (if it exists), then write `contents` into it, and then restore the original
+// /// contents of the file.
+// fn with_backed_up_file<F>(path: &Path, contents: &str, func: F) -> anyhow::Result<()>
+// where
+//     F: FnOnce() -> anyhow::Result<()>,
+// {
+//     let original_contents =
+//         if path.is_file() { Some(std::fs::read_to_string(path)?) } else { None };
+//
+//     // Overwrite it with new contents
+//     std::fs::write(path, contents)?;
+//
+//     let ret = func();
+//
+//     if let Some(original_contents) = original_contents {
+//         std::fs::write(path, original_contents)?;
+//     }
+//
+//     ret
+// }
 
 /// Tries to find the version of the dist artifacts (either nightly, beta, or 1.XY.Z).
 fn find_dist_version(directory: &Utf8Path) -> anyhow::Result<String> {
@@ -153,12 +165,12 @@ fn find_dist_version(directory: &Utf8Path) -> anyhow::Result<String> {
     Ok(version.to_string())
 }
 
-/// Roughly convert a version string (`nightly`, `beta`, or `1.XY.Z`) to channel string (`nightly`,
-/// `beta` or `stable`).
-fn version_to_channel(version_str: &str) -> &'static str {
-    match version_str {
-        "nightly" => "nightly",
-        "beta" => "beta",
-        _ => "stable",
-    }
-}
+// /// Roughly convert a version string (`nightly`, `beta`, or `1.XY.Z`) to channel string (`nightly`,
+// /// `beta` or `stable`).
+// fn version_to_channel(version_str: &str) -> &'static str {
+//     match version_str {
+//         "nightly" => "nightly",
+//         "beta" => "beta",
+//         _ => "stable",
+//     }
+// }
