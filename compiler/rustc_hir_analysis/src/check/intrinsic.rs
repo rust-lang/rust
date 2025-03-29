@@ -265,6 +265,7 @@ pub(crate) fn check_intrinsic_type(
                 vec![Ty::new_imm_ptr(tcx, param(0)), tcx.types.isize],
                 Ty::new_imm_ptr(tcx, param(0)),
             ),
+            sym::slice_get_unchecked => (3, 0, vec![param(1), tcx.types.usize], param(0)),
             sym::ptr_mask => (
                 1,
                 0,
