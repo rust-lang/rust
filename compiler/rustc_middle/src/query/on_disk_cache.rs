@@ -15,9 +15,7 @@ use rustc_query_system::query::QuerySideEffect;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
-use rustc_span::hygiene::{
-    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
-};
+use rustc_span::hygiene::{ExpnId, HygieneEncodeContext, SyntaxContext, SyntaxContextKey};
 use rustc_span::source_map::Spanned;
 use rustc_span::{
     BytePos, CachingSourceMapView, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span,
@@ -75,9 +73,9 @@ pub struct OnDiskCache {
     alloc_decoding_state: AllocDecodingState,
 
     // A map from syntax context ids to the position of their associated
-    // `SyntaxContextData`. We use a `u32` instead of a `SyntaxContext`
+    // `SyntaxContextKey`. We use a `u32` instead of a `SyntaxContext`
     // to represent the fact that we are storing *encoded* ids. When we decode
-    // a `SyntaxContext`, a new id will be allocated from the global `HygieneData`,
+    // a `SyntaxContextKey`, a new id will be allocated from the global `HygieneData`,
     // which will almost certainly be different than the serialized id.
     syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
     // A map from the `DefPathHash` of an `ExpnId` to the position
@@ -90,8 +88,6 @@ pub struct OnDiskCache {
     // we could look up the `ExpnData` from the metadata of foreign crates,
     // but it seemed easier to have `OnDiskCache` be independent of the `CStore`.
     expn_data: UnhashMap<ExpnHash, AbsoluteBytePos>,
-    // Additional information used when decoding hygiene data.
-    hygiene_context: HygieneDecodeContext,
     // Maps `ExpnHash`es to their raw value from the *previous*
     // compilation session. This is used as an initial 'guess' when
     // we try to map an `ExpnHash` to its value in the current
@@ -183,7 +179,6 @@ impl OnDiskCache {
             syntax_contexts: footer.syntax_contexts,
             expn_data: footer.expn_data,
             foreign_expn_data: footer.foreign_expn_data,
-            hygiene_context: Default::default(),
         })
     }
 
@@ -199,7 +194,6 @@ impl OnDiskCache {
             syntax_contexts: FxHashMap::default(),
             expn_data: UnhashMap::default(),
             foreign_expn_data: UnhashMap::default(),
-            hygiene_context: Default::default(),
         }
     }
 
@@ -305,7 +299,7 @@ impl OnDiskCache {
             let mut expn_data = UnhashMap::default();
             let mut foreign_expn_data = UnhashMap::default();
 
-            // Encode all hygiene data (`SyntaxContextData` and `ExpnData`) from the current
+            // Encode all hygiene data (`SyntaxContextKey` and `ExpnData`) from the current
             // session.
 
             hygiene_encode_context.encode(
@@ -428,7 +422,6 @@ impl OnDiskCache {
             syntax_contexts: &self.syntax_contexts,
             expn_data: &self.expn_data,
             foreign_expn_data: &self.foreign_expn_data,
-            hygiene_context: &self.hygiene_context,
         };
         f(&mut decoder)
     }
@@ -448,7 +441,6 @@ pub struct CacheDecoder<'a, 'tcx> {
     syntax_contexts: &'a FxHashMap<u32, AbsoluteBytePos>,
     expn_data: &'a UnhashMap<ExpnHash, AbsoluteBytePos>,
     foreign_expn_data: &'a UnhashMap<ExpnHash, u32>,
-    hygiene_context: &'a HygieneDecodeContext,
 }
 
 impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
@@ -561,12 +553,12 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Vec<u8> {
 impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
     fn decode_syntax_context(&mut self) -> SyntaxContext {
         let syntax_contexts = self.syntax_contexts;
-        rustc_span::hygiene::decode_syntax_context(self, self.hygiene_context, |this, id| {
+        rustc_span::hygiene::decode_syntax_context(self, |this, id| {
             // This closure is invoked if we haven't already decoded the data for the `SyntaxContext` we are deserializing.
             // We look up the position of the associated `SyntaxData` and decode it.
             let pos = syntax_contexts.get(&id).unwrap();
             this.with_position(pos.to_usize(), |decoder| {
-                let data: SyntaxContextData = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
+                let data: SyntaxContextKey = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
                 data
             })
         })

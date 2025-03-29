@@ -24,9 +24,6 @@
 // because getting it wrong can lead to nested `HygieneData::with` calls that
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
-use std::cell::RefCell;
-use std::collections::hash_map::Entry;
-use std::collections::hash_set::Entry as SetEntry;
 use std::hash::Hash;
 use std::sync::Arc;
 use std::{fmt, iter, mem};
@@ -34,7 +31,7 @@ use std::{fmt, iter, mem};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
-use rustc_data_structures::sync::{Lock, WorkerLocal};
+use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
@@ -59,10 +56,10 @@ impl !PartialOrd for SyntaxContext {}
 
 /// If this part of two syntax contexts is equal, then the whole syntax contexts should be equal.
 /// The other fields are only for caching.
-type SyntaxContextKey = (SyntaxContext, ExpnId, Transparency);
+pub type SyntaxContextKey = (SyntaxContext, ExpnId, Transparency);
 
 #[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable)]
-pub struct SyntaxContextData {
+struct SyntaxContextData {
     outer_expn: ExpnId,
     outer_transparency: Transparency,
     parent: SyntaxContext,
@@ -1266,7 +1263,7 @@ impl HygieneEncodeContext {
     pub fn encode<T>(
         &self,
         encoder: &mut T,
-        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextData),
+        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextKey),
         mut encode_expn: impl FnMut(&mut T, ExpnId, &ExpnData, ExpnHash),
     ) {
         // When we serialize a `SyntaxContextData`, we may end up serializing
@@ -1286,9 +1283,9 @@ impl HygieneEncodeContext {
             // of the table that we insert data into doesn't depend on insertion
             // order
             #[allow(rustc::potential_query_instability)]
-            for_all_ctxts_in(latest_ctxts.into_iter(), |index, ctxt, data| {
+            for_all_ctxts_in(latest_ctxts.into_iter(), |index, ctxt, ctxt_key| {
                 if self.serialized_ctxts.lock().insert(ctxt) {
-                    encode_ctxt(encoder, index, data);
+                    encode_ctxt(encoder, index, ctxt_key);
                 }
             });
 
@@ -1304,29 +1301,6 @@ impl HygieneEncodeContext {
         }
         debug!("encode_hygiene: Done serializing SyntaxContextData");
     }
-}
-
-#[derive(Default)]
-/// Additional information used to assist in decoding hygiene data
-struct HygieneDecodeContextInner {
-    // Maps serialized `SyntaxContext` ids to a `SyntaxContext` in the current
-    // global `HygieneData`. When we deserialize a `SyntaxContext`, we need to create
-    // a new id in the global `HygieneData`. This map tracks the ID we end up picking,
-    // so that multiple occurrences of the same serialized id are decoded to the same
-    // `SyntaxContext`. This only stores `SyntaxContext`s which are completely decoded.
-    remapped_ctxts: Vec<Option<SyntaxContext>>,
-
-    /// Maps serialized `SyntaxContext` ids that are currently being decoded to a `SyntaxContext`.
-    decoding: FxHashMap<u32, SyntaxContext>,
-}
-
-#[derive(Default)]
-/// Additional information used to assist in decoding hygiene data
-pub struct HygieneDecodeContext {
-    inner: Lock<HygieneDecodeContextInner>,
-
-    /// A set of serialized `SyntaxContext` ids that are currently being decoded on each thread.
-    local_in_progress: WorkerLocal<RefCell<FxHashSet<u32>>>,
 }
 
 /// Register an expansion which has been decoded from the on-disk-cache for the local crate.
@@ -1393,14 +1367,11 @@ pub fn decode_expn_id(
     register_expn_id(krate, index, expn_data, hash)
 }
 
-// Decodes `SyntaxContext`, using the provided `HygieneDecodeContext`
-// to track which `SyntaxContext`s we have already decoded.
-// The provided closure will be invoked to deserialize a `SyntaxContextData`
-// if we haven't already seen the id of the `SyntaxContext` we are deserializing.
-pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContextData>(
+// Decodes `SyntaxContext`.
+// The provided closure will be invoked to deserialize a `SyntaxContextData`.
+pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContextKey>(
     d: &mut D,
-    context: &HygieneDecodeContext,
-    decode_data: F,
+    decode_ctxt_key: F,
 ) -> SyntaxContext {
     let raw_id: u32 = Decodable::decode(d);
     if raw_id == 0 {
@@ -1409,107 +1380,13 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
         return SyntaxContext::root();
     }
 
-    let pending_ctxt = {
-        let mut inner = context.inner.lock();
-
-        // Reminder: `HygieneDecodeContext` is per-crate, so there are no collisions between
-        // raw ids from different crate metadatas.
-        if let Some(ctxt) = inner.remapped_ctxts.get(raw_id as usize).copied().flatten() {
-            // This has already been decoded.
-            return ctxt;
-        }
-
-        match inner.decoding.entry(raw_id) {
-            Entry::Occupied(ctxt_entry) => {
-                let pending_ctxt = *ctxt_entry.get();
-                match context.local_in_progress.borrow_mut().entry(raw_id) {
-                    // We're decoding this already on the current thread. Return here and let the
-                    // function higher up the stack finish decoding to handle recursive cases.
-                    // Hopefully having a `SyntaxContext` that refers to an incorrect data is ok
-                    // during reminder of the decoding process, it's certainly not ok after the
-                    // top level decoding function returns.
-                    SetEntry::Occupied(..) => return pending_ctxt,
-                    // Some other thread is currently decoding this.
-                    // Race with it (alternatively we could wait here).
-                    // We cannot return this value, unlike in the recursive case above, because it
-                    // may expose a `SyntaxContext` pointing to incorrect data to arbitrary code.
-                    SetEntry::Vacant(entry) => {
-                        entry.insert();
-                        pending_ctxt
-                    }
-                }
-            }
-            Entry::Vacant(entry) => {
-                // We are the first thread to start decoding. Mark the current thread as being
-                // progress.
-                context.local_in_progress.borrow_mut().insert(raw_id);
-
-                // Allocate and store SyntaxContext id *before* calling the decoder function,
-                // as the SyntaxContextData may reference itself.
-                let new_ctxt = HygieneData::with(|hygiene_data| {
-                    // Push a dummy SyntaxContextData to ensure that nobody else can get the
-                    // same ID as us. This will be overwritten after call `decode_data`.
-                    hygiene_data.syntax_context_data.push(SyntaxContextData::decode_placeholder());
-                    SyntaxContext::from_usize(hygiene_data.syntax_context_data.len() - 1)
-                });
-                entry.insert(new_ctxt);
-                new_ctxt
-            }
-        }
-    };
-
     // Don't try to decode data while holding the lock, since we need to
     // be able to recursively decode a SyntaxContext
-    let ctxt_data = decode_data(d, raw_id);
-    let ctxt_key = ctxt_data.key();
-
-    let ctxt = HygieneData::with(|hygiene_data| {
-        match hygiene_data.syntax_context_map.get(&ctxt_key) {
-            // Ensure that syntax contexts are unique.
-            // If syntax contexts with the given key already exists, reuse it instead of
-            // using `pending_ctxt`.
-            // `pending_ctxt` will leave an unused hole in the vector of syntax contexts.
-            // Hopefully its value isn't stored anywhere during decoding and its dummy data
-            // is never accessed later. The `is_decode_placeholder` asserts on all
-            // accesses to syntax context data attempt to ensure it.
-            Some(&ctxt) => ctxt,
-            // This is a completely new context.
-            // Overwrite its placeholder data with our decoded data.
-            None => {
-                let ctxt_data_ref =
-                    &mut hygiene_data.syntax_context_data[pending_ctxt.as_u32() as usize];
-                let prev_ctxt_data = mem::replace(ctxt_data_ref, ctxt_data);
-                // Reset `dollar_crate_name` so that it will be updated by `update_dollar_crate_names`.
-                // We don't care what the encoding crate set this to - we want to resolve it
-                // from the perspective of the current compilation session.
-                ctxt_data_ref.dollar_crate_name = kw::DollarCrate;
-                // Make sure nothing weird happened while `decode_data` was running.
-                if !prev_ctxt_data.is_decode_placeholder() {
-                    // Another thread may have already inserted the decoded data,
-                    // but the decoded data should match.
-                    assert_eq!(prev_ctxt_data, *ctxt_data_ref);
-                }
-                hygiene_data.syntax_context_map.insert(ctxt_key, pending_ctxt);
-                pending_ctxt
-            }
-        }
-    });
-
-    // Mark the context as completed
-    context.local_in_progress.borrow_mut().remove(&raw_id);
-
-    let mut inner = context.inner.lock();
-    let new_len = raw_id as usize + 1;
-    if inner.remapped_ctxts.len() < new_len {
-        inner.remapped_ctxts.resize(new_len, None);
-    }
-    inner.remapped_ctxts[raw_id as usize] = Some(ctxt);
-    inner.decoding.remove(&raw_id);
-
-    ctxt
+    let (parent, expn_id, transparency) = decode_ctxt_key(d, raw_id);
+    HygieneData::with(|hygiene_data| hygiene_data.alloc_ctxt(parent, expn_id, transparency))
 }
 
-fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextData)>(
+fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextKey)>(
     ctxts: impl Iterator<Item = SyntaxContext>,
     mut f: F,
 ) {
@@ -1517,7 +1394,7 @@ fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextData)>(
         ctxts.map(|ctxt| (ctxt, data.syntax_context_data[ctxt.0 as usize].clone())).collect()
     });
     for (ctxt, data) in all_data.into_iter() {
-        f(ctxt.0, ctxt, &data);
+        f(ctxt.0, ctxt, &data.key());
     }
 }
 

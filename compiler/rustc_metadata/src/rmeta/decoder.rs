@@ -31,7 +31,6 @@ use rustc_serialize::{Decodable, Decoder};
 use rustc_session::Session;
 use rustc_session::config::TargetModifier;
 use rustc_session::cstore::{CrateSource, ExternCrate};
-use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext, kw};
 use tracing::debug;
 
@@ -126,13 +125,6 @@ pub(crate) struct CrateMetadata {
     host_hash: Option<Svh>,
     /// The crate was used non-speculatively.
     used: bool,
-
-    /// Additional data used for decoding `HygieneData` (e.g. `SyntaxContext`
-    /// and `ExpnId`).
-    /// Note that we store a `HygieneDecodeContext` for each `CrateMetadata`. This is
-    /// because `SyntaxContext` ids are not globally unique, so we need
-    /// to track which ids we've decoded on a per-crate basis.
-    hygiene_context: HygieneDecodeContext,
 
     // --- Data used only for improving diagnostics ---
     /// Information about the `extern crate` item or path that caused this crate to be loaded.
@@ -470,7 +462,7 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
         };
 
         let cname = cdata.root.name();
-        rustc_span::hygiene::decode_syntax_context(self, &cdata.hygiene_context, |_, id| {
+        rustc_span::hygiene::decode_syntax_context(self, |_, id| {
             debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
             cdata
                 .root
@@ -1864,7 +1856,6 @@ impl CrateMetadata {
             host_hash,
             used: false,
             extern_crate: None,
-            hygiene_context: Default::default(),
             def_key_cache: Default::default(),
         };
 
