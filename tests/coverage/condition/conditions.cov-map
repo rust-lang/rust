@@ -109,15 +109,17 @@ Number of file 0 mappings: 1
 Highest counter ID seen: c0
 
 Function name: conditions::func_call
-Raw bytes (37): 0x[01, 01, 02, 01, 05, 05, 09, 05, 01, 25, 01, 01, 0a, 20, 05, 02, 01, 09, 00, 0a, 05, 00, 0e, 00, 0f, 20, 09, 06, 00, 0e, 00, 0f, 01, 01, 01, 00, 02]
+Raw bytes (47): 0x[01, 01, 02, 01, 05, 05, 09, 07, 01, 25, 01, 00, 20, 01, 01, 05, 00, 08, 01, 00, 09, 00, 0a, 20, 05, 02, 00, 09, 00, 0a, 05, 00, 0e, 00, 0f, 20, 09, 06, 00, 0e, 00, 0f, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(1), rhs = Counter(2)
-Number of file 0 mappings: 5
-- Code(Counter(0)) at (prev + 37, 1) to (start + 1, 10)
-- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 1, 9) to (start + 0, 10)
+Number of file 0 mappings: 7
+- Code(Counter(0)) at (prev + 37, 1) to (start + 0, 32)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 8)
+- Code(Counter(0)) at (prev + 0, 9) to (start + 0, 10)
+- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 0, 9) to (start + 0, 10)
     true  = c1
     false = (c0 - c1)
 - Code(Counter(1)) at (prev + 0, 14) to (start + 0, 15)
