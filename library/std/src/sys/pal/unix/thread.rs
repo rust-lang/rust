@@ -193,11 +193,12 @@ impl Thread {
     // and its metadata from LLVM IR.
     #[no_sanitize(cfi)]
     pub fn set_name(name: &CStr) {
-        weak! {
+        weak!(
             fn pthread_setname_np(
-                libc::pthread_t, *const libc::c_char
-            ) -> libc::c_int
-        }
+                thread: libc::pthread_t,
+                name: *const libc::c_char,
+            ) -> libc::c_int;
+        );
 
         if let Some(f) = pthread_setname_np.get() {
             #[cfg(target_os = "nto")]
@@ -762,7 +763,9 @@ unsafe fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     // We use dlsym to avoid an ELF version dependency on GLIBC_PRIVATE. (#23628)
     // We shouldn't really be using such an internal symbol, but there's currently
     // no other way to account for the TLS size.
-    dlsym!(fn __pthread_get_minstack(*const libc::pthread_attr_t) -> libc::size_t);
+    dlsym!(
+        fn __pthread_get_minstack(attr: *const libc::pthread_attr_t) -> libc::size_t;
+    );
 
     match __pthread_get_minstack.get() {
         None => libc::PTHREAD_STACK_MIN,
