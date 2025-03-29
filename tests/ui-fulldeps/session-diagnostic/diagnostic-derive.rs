@@ -32,8 +32,8 @@ extern crate rustc_session;
 rustc_fluent_macro::fluent_messages! { "./example.ftl" }
 
 // E0123 and E0456 are no longer used, so we define our own constants here just for this test.
-const E0123: ErrCode = ErrCode::from_u32(0123);
-const E0456: ErrCode = ErrCode::from_u32(0456);
+const E0123: ErrCode = ErrCode::from_u32(123);
+const E0456: ErrCode = ErrCode::from_u32(456);
 
 #[derive(Diagnostic)]
 #[diag(no_crate_example, code = E0123)]

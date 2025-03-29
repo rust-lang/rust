@@ -1,3 +1,5 @@
+#![cfg_attr(not(bootstrap), allow(leading_zeros_in_decimal_literals))]
+
 use core::time::Duration;
 
 #[test]
