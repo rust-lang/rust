@@ -6,6 +6,9 @@
 
 // Check each of the 3 cases for `codegen_get_discr`.
 
+// FIXME: once our min-bar LLVM has `range` attributes, update the various
+// tests here to no longer have the `range`s and `nsw`s as optional.
+
 // Case 0: One tagged variant.
 pub enum Enum0 {
     A(bool),
@@ -144,7 +147,7 @@ pub enum MiddleNiche {
 
 // CHECK-LABEL: define noundef{{( range\(i8 -?[0-9]+, -?[0-9]+\))?}} i8 @match4(i8{{.+}}%0)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %[[REL_VAR:.+]] = add nsw i8 %0, -2
+// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
 // CHECK-NEXT: %[[IS_NICHE:.+]] = icmp ult i8 %[[REL_VAR]], 5
 // CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %[[REL_VAR]], 2
 // CHECK-NEXT: call void @llvm.assume(i1 %[[NOT_IMPOSSIBLE]])
@@ -164,7 +167,7 @@ pub fn match4(e: MiddleNiche) -> u8 {
 
 // CHECK-LABEL: define{{.+}}i1 @match4_is_c(i8{{.+}}%e)
 // CHECK-NEXT: start
-// CHECK-NEXT: %[[REL_VAR:.+]] = add nsw i8 %e, -2
+// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %e, -2
 // CHECK-NEXT: %[[NOT_NICHE:.+]] = icmp ugt i8 %[[REL_VAR]], 4
 // CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %[[REL_VAR]], 2
 // CHECK-NEXT: call void @llvm.assume(i1 %[[NOT_IMPOSSIBLE]])
@@ -448,7 +451,7 @@ pub enum HugeVariantIndex {
 
 // CHECK-LABEL: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match5(i8{{.+}}%0)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %[[REL_VAR:.+]] = add nsw i8 %0, -2
+// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
 // CHECK-NEXT: %[[REL_VAR_WIDE:.+]] = zext i8 %[[REL_VAR]] to i64
 // CHECK-NEXT: %[[IS_NICHE:.+]] = icmp ult i8 %[[REL_VAR]], 3
 // CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %[[REL_VAR]], 1
