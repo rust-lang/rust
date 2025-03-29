@@ -213,7 +213,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         // somewhat, and is subject to change in the future (which
                         // is a good thing, because this would ideally be a bit
                         // more firmed up).
-                        let is_like_elf = !(tcx.sess.target.is_like_osx
+                        let is_like_elf = !(tcx.sess.target.is_like_darwin
                             || tcx.sess.target.is_like_windows
                             || tcx.sess.target.is_like_wasm);
                         codegen_fn_attrs.flags |= if is_like_elf {

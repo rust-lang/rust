@@ -641,7 +641,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 .flat_map(|arg_abi| arg_abi.get_abi_param(fx.tcx).into_iter()),
         );
 
-        if fx.tcx.sess.target.is_like_osx && fx.tcx.sess.target.arch == "aarch64" {
+        if fx.tcx.sess.target.is_like_darwin && fx.tcx.sess.target.arch == "aarch64" {
             // Add any padding arguments needed for Apple AArch64.
             // There's no need to pad the argument list unless variadic arguments are actually being
             // passed.

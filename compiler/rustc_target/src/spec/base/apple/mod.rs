@@ -115,7 +115,7 @@ pub(crate) fn base(
         function_sections: false,
         dynamic_linking: true,
         families: cvs!["unix"],
-        is_like_osx: true,
+        is_like_darwin: true,
         binary_format: BinaryFormat::MachO,
         // LLVM notes that macOS 10.11+ and iOS 9+ default
         // to v4, so we do the same.

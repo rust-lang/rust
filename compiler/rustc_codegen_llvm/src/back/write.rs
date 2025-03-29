@@ -1024,7 +1024,7 @@ fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: 
 }
 
 pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) -> &'static CStr {
-    if cgcx.target_is_like_osx {
+    if cgcx.target_is_like_darwin {
         c"__LLVM,__bitcode"
     } else if cgcx.target_is_like_aix {
         c".ipa"
@@ -1077,7 +1077,7 @@ unsafe fn embed_bitcode(
     // and COFF we emit the sections using module level inline assembly for that
     // reason (see issue #90326 for historical background).
     unsafe {
-        if cgcx.target_is_like_osx
+        if cgcx.target_is_like_darwin
             || cgcx.target_is_like_aix
             || cgcx.target_arch == "wasm32"
             || cgcx.target_arch == "wasm64"
@@ -1096,7 +1096,7 @@ unsafe fn embed_bitcode(
             let llglobal =
                 llvm::add_global(llmod, common::val_ty(llconst), c"rustc.embedded.cmdline");
             llvm::set_initializer(llglobal, llconst);
-            let section = if cgcx.target_is_like_osx {
+            let section = if cgcx.target_is_like_darwin {
                 c"__LLVM,__cmdline"
             } else if cgcx.target_is_like_aix {
                 c".info"

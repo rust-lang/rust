@@ -131,7 +131,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             // will use load-unaligned instructions instead, and thus avoiding the crash.
             //
             // We could remove this hack whenever we decide to drop macOS 10.10 support.
-            if self.tcx.sess.target.options.is_like_osx {
+            if self.tcx.sess.target.options.is_like_darwin {
                 // The `inspect` method is okay here because we checked for provenance, and
                 // because we are doing this access to inspect the final interpreter state
                 // (not as part of the interpreter execution).

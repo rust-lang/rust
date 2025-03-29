@@ -73,7 +73,7 @@ pub fn walk_native_lib_search_dirs<R>(
         || sess.target.os == "linux"
         || sess.target.os == "fuchsia"
         || sess.target.is_like_aix
-        || sess.target.is_like_osx && !sess.opts.unstable_opts.sanitizer.is_empty()
+        || sess.target.is_like_darwin && !sess.opts.unstable_opts.sanitizer.is_empty()
     {
         f(&sess.target_tlib_path.dir, false)?;
     }
@@ -257,7 +257,7 @@ impl<'tcx> Collector<'tcx> {
                             "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
                             "dylib" => NativeLibKind::Dylib { as_needed: None },
                             "framework" => {
-                                if !sess.target.is_like_osx {
+                                if !sess.target.is_like_darwin {
                                     sess.dcx().emit_err(errors::LinkFrameworkApple { span });
                                 }
                                 NativeLibKind::Framework { as_needed: None }
@@ -531,7 +531,7 @@ impl<'tcx> Collector<'tcx> {
         let mut renames = FxHashSet::default();
         for lib in &self.tcx.sess.opts.libs {
             if let NativeLibKind::Framework { .. } = lib.kind
-                && !self.tcx.sess.target.is_like_osx
+                && !self.tcx.sess.target.is_like_darwin
             {
                 // Cannot check this when parsing options because the target is not yet available.
                 self.tcx.dcx().emit_err(errors::LibFrameworkApple);

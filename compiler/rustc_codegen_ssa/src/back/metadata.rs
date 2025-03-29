@@ -214,7 +214,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
     file.set_sub_architecture(sub_architecture);
-    if sess.target.is_like_osx {
+    if sess.target.is_like_darwin {
         if macho_is_arm64e(&sess.target) {
             file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
         }
