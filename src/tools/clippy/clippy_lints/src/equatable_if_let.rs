@@ -45,6 +45,7 @@ fn unary_pattern(pat: &Pat<'_>) -> bool {
         pats.iter().all(unary_pattern)
     }
     match &pat.kind {
+        PatKind::Missing => unreachable!(),
         PatKind::Slice(_, _, _)
         | PatKind::Range(_, _, _)
         | PatKind::Binding(..)

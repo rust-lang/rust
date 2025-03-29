@@ -515,6 +515,8 @@ fn test_meta() {
 
 #[test]
 fn test_pat() {
+    // PatKind::Missing: untestable in isolation.
+
     // PatKind::Wild
     c1!(pat, [ _ ], "_");
 

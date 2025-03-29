@@ -118,7 +118,7 @@ impl<'tcx> MatchPairTree<'tcx> {
         let place = place_builder.try_to_place(cx);
         let mut subpairs = Vec::new();
         let test_case = match pattern.kind {
-            PatKind::Wild | PatKind::Error(_) => None,
+            PatKind::Missing | PatKind::Wild | PatKind::Error(_) => None,
 
             PatKind::Or { ref pats } => Some(TestCase::Or {
                 pats: pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect(),

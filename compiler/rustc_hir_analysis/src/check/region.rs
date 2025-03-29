@@ -626,6 +626,7 @@ fn resolve_local<'tcx>(
 
             PatKind::Ref(_, _)
             | PatKind::Binding(hir::BindingMode(hir::ByRef::No, _), ..)
+            | PatKind::Missing
             | PatKind::Wild
             | PatKind::Never
             | PatKind::Expr(_)

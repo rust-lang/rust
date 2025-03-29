@@ -290,6 +290,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let mut span = pat.span;
 
         let kind = match pat.kind {
+            hir::PatKind::Missing => PatKind::Missing,
+
             hir::PatKind::Wild => PatKind::Wild,
 
             hir::PatKind::Never => PatKind::Never,

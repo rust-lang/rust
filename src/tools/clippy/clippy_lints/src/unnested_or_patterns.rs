@@ -224,6 +224,7 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
 
     // We're trying to find whatever kind (~"constructor") we found in `alternatives[start..]`.
     let changed = match &mut focus_kind {
+        Missing => unreachable!(),
         // These pattern forms are "leafs" and do not have sub-patterns.
         // Therefore they are not some form of constructor `C`,
         // with which a pattern `C(p_0)` may be formed,

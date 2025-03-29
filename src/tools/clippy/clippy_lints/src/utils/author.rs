@@ -676,6 +676,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         }
 
         match pat.value.kind {
+            PatKind::Missing => unreachable!(),
             PatKind::Wild => kind!("Wild"),
             PatKind::Never => kind!("Never"),
             PatKind::Binding(ann, _, name, sub) => {

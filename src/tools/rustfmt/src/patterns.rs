@@ -42,6 +42,7 @@ pub(crate) fn is_short_pattern(
 
 fn is_short_pattern_inner(context: &RewriteContext<'_>, pat: &ast::Pat) -> bool {
     match &pat.kind {
+        ast::PatKind::Missing => unreachable!(),
         ast::PatKind::Rest | ast::PatKind::Never | ast::PatKind::Wild | ast::PatKind::Err(_) => {
             true
         }
@@ -100,6 +101,7 @@ impl Rewrite for Pat {
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match self.kind {
+            PatKind::Missing => unreachable!(),
             PatKind::Or(ref pats) => {
                 let pat_strs = pats
                     .iter()
