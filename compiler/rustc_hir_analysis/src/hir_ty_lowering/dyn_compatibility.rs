@@ -6,8 +6,8 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
-    self, BottomUpFolder, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
-    TypeVisitableExt, Upcast,
+    self, BottomUpFolder, DynKind, ExistentialPredicateStableCmpExt as _, Interner as _, Ty,
+    TyCtxt, TypeFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
@@ -112,9 +112,29 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // let _: &dyn Alias<Assoc = u32> = /* ... */;
         // ```
         let mut projection_bounds = FxIndexMap::default();
+        let mut auto_fill_bounds: SmallVec<[_; 4]> = smallvec![];
+        let mut push_auto_fill_receiver_bound = |pred: ty::Binder<'tcx, _>| {
+            let receiver_target_did =
+                tcx.require_lang_item(rustc_hir::LangItem::ReceiverTarget, None);
+            let receiver_trait_ref =
+                tcx.anonymize_bound_vars(pred.map_bound(|proj: ty::ProjectionPredicate<'_>| {
+                    tcx.trait_ref_and_own_args_for_alias(
+                        receiver_target_did,
+                        proj.projection_term.args,
+                    )
+                    .0
+                }));
+            let receiver_pred = pred.map_bound(|mut pred| {
+                pred.projection_term.def_id = receiver_target_did;
+                pred
+            });
+            auto_fill_bounds.push((receiver_target_did, receiver_trait_ref, receiver_pred, span));
+        };
         for (proj, proj_span) in elaborated_projection_bounds {
+            debug!(?proj, "elaborated proj bound");
+            let proj_did = proj.skip_binder().projection_term.def_id;
             let key = (
-                proj.skip_binder().projection_term.def_id,
+                proj_did,
                 tcx.anonymize_bound_vars(
                     proj.map_bound(|proj| proj.projection_term.trait_ref(tcx)),
                 ),
@@ -141,6 +161,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         format!("`{item}` is specified to be `{}` here", proj.term()),
                     )
                     .emit();
+            }
+            if tcx.is_lang_item(proj_did, rustc_hir::LangItem::DerefTarget) {
+                push_auto_fill_receiver_bound(proj);
             }
         }
 
@@ -221,6 +244,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             if !projection_bounds.contains_key(&key) {
                                 projection_bounds.insert(key, (pred, supertrait_span));
                             }
+                            if tcx.is_lang_item(
+                                pred.skip_binder().def_id(),
+                                rustc_hir::LangItem::DerefTarget,
+                            ) {
+                                // We need to fill in a `Receiver<Target = ?>` bound because
+                                // neither `Receiver` nor `Deref` is an auto-trait.
+                                push_auto_fill_receiver_bound(pred);
+                            }
                         }
 
                         self.check_elaborated_projection_mentions_input_lifetimes(
@@ -231,6 +262,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                     _ => (),
                 }
+            }
+        }
+        for (did, trait_ref, pred, span) in auto_fill_bounds {
+            if !projection_bounds.contains_key(&(did, trait_ref)) {
+                projection_bounds.insert((did, trait_ref), (pred, span));
             }
         }
 
@@ -264,6 +300,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             })
             .collect();
+        debug!(?missing_assoc_types, ?projection_bounds);
 
         if let Err(guar) = self.check_for_required_assoc_tys(
             principal_trait.as_ref().map_or(smallvec![], |(_, spans)| spans.clone()),
@@ -378,6 +415,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .collect::<SmallVec<[_; 8]>>();
         v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         let existential_predicates = tcx.mk_poly_existential_predicates(&v);
+        debug!(?existential_predicates);
 
         // Use explicitly-specified region bound, unless the bound is missing.
         let region_bound = if !lifetime.is_elided() {

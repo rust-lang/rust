@@ -1036,90 +1036,108 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
         debug!(?bound);
 
-        if let Some(bound2) = matching_candidates.next() {
-            debug!(?bound2);
+        let Some(bound2) = matching_candidates.next() else { return Ok(bound) };
+        let mut matching_candidates = matching_candidates.peekable();
 
-            let assoc_kind_str = errors::assoc_kind_str(assoc_kind);
-            let qself_str = qself.to_string(tcx);
-            let mut err = self.dcx().create_err(crate::errors::AmbiguousAssocItem {
-                span,
-                assoc_kind: assoc_kind_str,
-                assoc_name,
-                qself: &qself_str,
-            });
-            // Provide a more specific error code index entry for equality bindings.
-            err.code(
-                if let Some(constraint) = constraint
-                    && let hir::AssocItemConstraintKind::Equality { .. } = constraint.kind
-                {
-                    E0222
-                } else {
-                    E0221
-                },
-            );
+        let is_receiver_target = |def_id| tcx.is_lang_item(def_id, rustc_hir::LangItem::Receiver);
+        let is_deref_target = |def_id| tcx.is_lang_item(def_id, rustc_hir::LangItem::Deref);
+        // Since `Deref::Target` and `Receiver::Target` are forced to be the same,
+        // the `Deref::Target` should be taken.
+        if assoc_name.name == sym::Target && matching_candidates.peek().is_none() {
+            if is_deref_target(bound.skip_binder().def_id)
+                && is_receiver_target(bound2.skip_binder().def_id)
+            {
+                return Ok(bound);
+            }
+            if is_receiver_target(bound.skip_binder().def_id)
+                && is_deref_target(bound2.skip_binder().def_id)
+            {
+                return Ok(bound2);
+            }
+        }
 
-            // FIXME(#97583): Print associated item bindings properly (i.e., not as equality predicates!).
-            // FIXME: Turn this into a structured, translateable & more actionable suggestion.
-            let mut where_bounds = vec![];
-            for bound in [bound, bound2].into_iter().chain(matching_candidates) {
-                let bound_id = bound.def_id();
-                let bound_span = tcx
-                    .associated_items(bound_id)
-                    .find_by_name_and_kind(tcx, assoc_name, assoc_kind, bound_id)
-                    .and_then(|item| tcx.hir().span_if_local(item.def_id));
+        debug!(?bound2);
 
-                if let Some(bound_span) = bound_span {
-                    err.span_label(
-                        bound_span,
-                        format!("ambiguous `{assoc_name}` from `{}`", bound.print_trait_sugared(),),
-                    );
-                    if let Some(constraint) = constraint {
-                        match constraint.kind {
-                            hir::AssocItemConstraintKind::Equality { term } => {
-                                let term: ty::Term<'_> = match term {
-                                    hir::Term::Ty(ty) => self.lower_ty(ty).into(),
-                                    hir::Term::Const(ct) => {
-                                        self.lower_const_arg(ct, FeedConstTy::No).into()
-                                    }
-                                };
-                                if term.references_error() {
-                                    continue;
+        let assoc_kind_str = errors::assoc_kind_str(assoc_kind);
+        let qself_str = qself.to_string(tcx);
+        let mut err = self.dcx().create_err(crate::errors::AmbiguousAssocItem {
+            span,
+            assoc_kind: assoc_kind_str,
+            assoc_name,
+            qself: &qself_str,
+        });
+        // Provide a more specific error code index entry for equality bindings.
+        err.code(
+            if let Some(constraint) = constraint
+                && let hir::AssocItemConstraintKind::Equality { .. } = constraint.kind
+            {
+                E0222
+            } else {
+                E0221
+            },
+        );
+
+        // FIXME(#97583): Print associated item bindings properly (i.e., not as equality predicates!).
+        // FIXME: Turn this into a structured, translateable & more actionable suggestion.
+        let mut where_bounds = vec![];
+        for bound in [bound, bound2].into_iter().chain(matching_candidates) {
+            let bound_id = bound.def_id();
+            let bound_span = tcx
+                .associated_items(bound_id)
+                .find_by_name_and_kind(tcx, assoc_name, assoc_kind, bound_id)
+                .and_then(|item| tcx.hir().span_if_local(item.def_id));
+
+            if let Some(bound_span) = bound_span {
+                err.span_label(
+                    bound_span,
+                    format!("ambiguous `{assoc_name}` from `{}`", bound.print_trait_sugared(),),
+                );
+                if let Some(constraint) = constraint {
+                    match constraint.kind {
+                        hir::AssocItemConstraintKind::Equality { term } => {
+                            let term: ty::Term<'_> = match term {
+                                hir::Term::Ty(ty) => self.lower_ty(ty).into(),
+                                hir::Term::Const(ct) => {
+                                    self.lower_const_arg(ct, FeedConstTy::No).into()
                                 }
-                                // FIXME(#97583): This isn't syntactically well-formed!
-                                where_bounds.push(format!(
-                                    "        T: {trait}::{assoc_name} = {term}",
-                                    trait = bound.print_only_trait_path(),
-                                ));
+                            };
+                            if term.references_error() {
+                                continue;
                             }
-                            // FIXME: Provide a suggestion.
-                            hir::AssocItemConstraintKind::Bound { bounds: _ } => {}
+                            // FIXME(#97583): This isn't syntactically well-formed!
+                            where_bounds.push(format!(
+                                "        T: {trait}::{assoc_name} = {term}",
+                                trait = bound.print_only_trait_path(),
+                            ));
                         }
-                    } else {
-                        err.span_suggestion_verbose(
-                            span.with_hi(assoc_name.span.lo()),
-                            "use fully-qualified syntax to disambiguate",
-                            format!("<{qself_str} as {}>::", bound.print_only_trait_path()),
-                            Applicability::MaybeIncorrect,
-                        );
+                        // FIXME: Provide a suggestion.
+                        hir::AssocItemConstraintKind::Bound { bounds: _ } => {}
                     }
                 } else {
-                    err.note(format!(
-                        "associated {assoc_kind_str} `{assoc_name}` could derive from `{}`",
-                        bound.print_only_trait_path(),
-                    ));
+                    err.span_suggestion_verbose(
+                        span.with_hi(assoc_name.span.lo()),
+                        "use fully-qualified syntax to disambiguate",
+                        format!("<{qself_str} as {}>::", bound.print_only_trait_path()),
+                        Applicability::MaybeIncorrect,
+                    );
                 }
-            }
-            if !where_bounds.is_empty() {
-                err.help(format!(
-                    "consider introducing a new type parameter `T` and adding `where` constraints:\
-                     \n    where\n        T: {qself_str},\n{}",
-                    where_bounds.join(",\n"),
+            } else {
+                err.note(format!(
+                    "associated {assoc_kind_str} `{assoc_name}` could derive from `{}`",
+                    bound.print_only_trait_path(),
                 ));
-                let reported = err.emit();
-                return Err(reported);
             }
-            err.emit();
         }
+        if !where_bounds.is_empty() {
+            err.help(format!(
+                "consider introducing a new type parameter `T` and adding `where` constraints:\
+                     \n    where\n        T: {qself_str},\n{}",
+                where_bounds.join(",\n"),
+            ));
+            let reported = err.emit();
+            return Err(reported);
+        }
+        err.emit();
 
         Ok(bound)
     }
