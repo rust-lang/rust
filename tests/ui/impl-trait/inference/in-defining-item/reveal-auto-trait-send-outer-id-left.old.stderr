@@ -1,0 +1,32 @@
+error[E0308]: mismatched types
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:33:26
+   |
+LL |     let _: OnWSendShow = id2(&&W(test(!n)), &&W(())).show();
+   |            -----------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `OnWSendShow`, found `OnWShow`
+   |            |
+   |            expected due to this
+
+error[E0391]: cycle detected when computing type of opaque `test::{opaque#0}`
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:31:21
+   |
+LL | fn test(n: bool) -> impl Sized {
+   |                     ^^^^^^^^^^
+   |
+note: ...which requires type-checking `test`...
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:33:54
+   |
+LL |     let _: OnWSendShow = id2(&&W(test(!n)), &&W(())).show();
+   |                                                      ^^^^
+   = note: ...which requires evaluating trait selection obligation `&'a W<test::{opaque#0}>: OnWSend`...
+   = note: ...which again requires computing type of opaque `test::{opaque#0}`, completing the cycle
+note: cycle used when computing type of `test::{opaque#0}`
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:31:21
+   |
+LL | fn test(n: bool) -> impl Sized {
+   |                     ^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0391.
+For more information about an error, try `rustc --explain E0308`.
