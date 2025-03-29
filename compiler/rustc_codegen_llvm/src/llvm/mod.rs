@@ -414,3 +414,15 @@ pub(crate) fn set_dso_local<'ll>(v: &'ll Value) {
         LLVMRustSetDSOLocal(v, true);
     }
 }
+
+pub(crate) fn get_functions(module: &Module) -> Vec<&Value> {
+    let mut functions = Vec::new();
+    let mut func = unsafe { LLVMGetFirstFunction(module) };
+
+    while let Some(f) = func {
+        functions.push(f);
+        func = unsafe { LLVMGetNextFunction(f) };
+    }
+
+    functions
+}
