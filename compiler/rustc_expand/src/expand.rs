@@ -835,17 +835,18 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             InvocationKind::GlobDelegation { item, of_trait } => {
                 let AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
                 let suffixes = match ext {
-                    SyntaxExtensionKind::GlobDelegation(expander) => match expander.expand(self.cx)
-                    {
-                        ExpandResult::Ready(suffixes) => suffixes,
-                        ExpandResult::Retry(()) => {
-                            // Reassemble the original invocation for retrying.
-                            return ExpandResult::Retry(Invocation {
-                                kind: InvocationKind::GlobDelegation { item, of_trait },
-                                ..invoc
-                            });
+                    SyntaxExtensionKind::GlobDelegation(expander) => {
+                        match expander.expand(self.cx) {
+                            ExpandResult::Ready(suffixes) => suffixes,
+                            ExpandResult::Retry(()) => {
+                                // Reassemble the original invocation for retrying.
+                                return ExpandResult::Retry(Invocation {
+                                    kind: InvocationKind::GlobDelegation { item, of_trait },
+                                    ..invoc
+                                });
+                            }
                         }
-                    },
+                    }
                     SyntaxExtensionKind::LegacyBang(..) => {
                         let msg = "expanded a dummy glob delegation";
                         let guar = self.cx.dcx().span_delayed_bug(span, msg);
