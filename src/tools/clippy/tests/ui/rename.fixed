@@ -119,6 +119,7 @@
 #![warn(invalid_atomic_ordering)] //~ ERROR: lint `clippy::invalid_atomic_ordering`
 #![warn(invalid_value)] //~ ERROR: lint `clippy::invalid_ref`
 #![warn(invalid_from_utf8_unchecked)] //~ ERROR: lint `clippy::invalid_utf8_in_unchecked`
+#![warn(invalid_null_arguments)] //~ ERROR: lint `clippy::invalid_null_ptr_usage`
 #![warn(let_underscore_drop)] //~ ERROR: lint `clippy::let_underscore_drop`
 #![warn(unexpected_cfgs)] //~ ERROR: lint `clippy::maybe_misused_cfg`
 #![warn(enum_intrinsics_non_enums)] //~ ERROR: lint `clippy::mem_discriminant_non_enum`
