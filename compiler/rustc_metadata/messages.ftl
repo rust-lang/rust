@@ -97,6 +97,10 @@ metadata_found_staticlib =
     found staticlib `{$crate_name}` instead of rlib or dylib{$add_info}
     .help = please recompile that crate using --crate-type lib
 
+metadata_full_metadata_not_found =
+    only metadata stub found for `{$flavor}` dependency `{$crate_name}`
+    please provide path to the corresponding .rmeta file with full metadata
+
 metadata_global_alloc_required =
     no global memory allocator found but one is required; link to std or add `#[global_allocator]` to a static item that implements the GlobalAlloc trait
 

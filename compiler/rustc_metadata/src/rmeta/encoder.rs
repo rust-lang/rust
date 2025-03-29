@@ -701,6 +701,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     triple: tcx.sess.opts.target_triple.clone(),
                     hash: tcx.crate_hash(LOCAL_CRATE),
                     is_proc_macro_crate: proc_macro_data.is_some(),
+                    is_stub: false,
                 },
                 extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
                 stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
@@ -2231,8 +2232,12 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
 // generated regardless of trailing bytes that end up in it.
 
 pub struct EncodedMetadata {
-    // The declaration order matters because `mmap` should be dropped before `_temp_dir`.
-    mmap: Option<Mmap>,
+    // The declaration order matters because `full_metadata` should be dropped
+    // before `_temp_dir`.
+    full_metadata: Option<Mmap>,
+    // This is an optional stub metadata containing only the crate header.
+    // The header should be very small, so we load it directly into memory.
+    stub_metadata: Option<Vec<u8>>,
     // We need to carry MaybeTempDir to avoid deleting the temporary
     // directory while accessing the Mmap.
     _temp_dir: Option<MaybeTempDir>,
@@ -2240,33 +2245,50 @@ pub struct EncodedMetadata {
 
 impl EncodedMetadata {
     #[inline]
-    pub fn from_path(path: PathBuf, temp_dir: Option<MaybeTempDir>) -> std::io::Result<Self> {
+    pub fn from_path(
+        path: PathBuf,
+        stub_path: Option<PathBuf>,
+        temp_dir: Option<MaybeTempDir>,
+    ) -> std::io::Result<Self> {
         let file = std::fs::File::open(&path)?;
         let file_metadata = file.metadata()?;
         if file_metadata.len() == 0 {
-            return Ok(Self { mmap: None, _temp_dir: None });
+            return Ok(Self { full_metadata: None, stub_metadata: None, _temp_dir: None });
         }
-        let mmap = unsafe { Some(Mmap::map(file)?) };
-        Ok(Self { mmap, _temp_dir: temp_dir })
+        let full_mmap = unsafe { Some(Mmap::map(file)?) };
+
+        let stub =
+            if let Some(stub_path) = stub_path { Some(std::fs::read(stub_path)?) } else { None };
+
+        Ok(Self { full_metadata: full_mmap, stub_metadata: stub, _temp_dir: temp_dir })
     }
 
     #[inline]
-    pub fn raw_data(&self) -> &[u8] {
-        self.mmap.as_deref().unwrap_or_default()
+    pub fn full(&self) -> &[u8] {
+        &self.full_metadata.as_deref().unwrap_or_default()
+    }
+
+    #[inline]
+    pub fn stub_or_full(&self) -> &[u8] {
+        self.stub_metadata.as_deref().unwrap_or(self.full())
     }
 }
 
 impl<S: Encoder> Encodable<S> for EncodedMetadata {
     fn encode(&self, s: &mut S) {
-        let slice = self.raw_data();
+        self.stub_metadata.encode(s);
+
+        let slice = self.full();
         slice.encode(s)
     }
 }
 
 impl<D: Decoder> Decodable<D> for EncodedMetadata {
     fn decode(d: &mut D) -> Self {
+        let stub = <Option<Vec<u8>>>::decode(d);
+
         let len = d.read_usize();
-        let mmap = if len > 0 {
+        let full_metadata = if len > 0 {
             let mut mmap = MmapMut::map_anon(len).unwrap();
             mmap.copy_from_slice(d.read_raw_bytes(len));
             Some(mmap.make_read_only().unwrap())
@@ -2274,11 +2296,11 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
             None
         };
 
-        Self { mmap, _temp_dir: None }
+        Self { full_metadata, stub_metadata: stub, _temp_dir: None }
     }
 }
 
-pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
+pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
     // Since encoding metadata is not in a query, and nothing is cached,
@@ -2292,6 +2314,42 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
         join(|| prefetch_mir(tcx), || tcx.exported_symbols(LOCAL_CRATE));
     }
 
+    with_encode_metadata_header(tcx, path, |ecx| {
+        // Encode all the entries and extra information in the crate,
+        // culminating in the `CrateRoot` which points to all of it.
+        let root = ecx.encode_crate_root();
+
+        // Flush buffer to ensure backing file has the correct size.
+        ecx.opaque.flush();
+        // Record metadata size for self-profiling
+        tcx.prof.artifact_size(
+            "crate_metadata",
+            "crate_metadata",
+            ecx.opaque.file().metadata().unwrap().len(),
+        );
+
+        root.position.get()
+    });
+
+    if let Some(ref_path) = ref_path {
+        with_encode_metadata_header(tcx, ref_path, |ecx| {
+            let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
+                name: tcx.crate_name(LOCAL_CRATE),
+                triple: tcx.sess.opts.target_triple.clone(),
+                hash: tcx.crate_hash(LOCAL_CRATE),
+                is_proc_macro_crate: false,
+                is_stub: true,
+            });
+            header.position.get()
+        });
+    }
+}
+
+fn with_encode_metadata_header(
+    tcx: TyCtxt<'_>,
+    path: &Path,
+    f: impl FnOnce(&mut EncodeContext<'_, '_>) -> usize,
+) {
     let mut encoder = opaque::FileEncoder::new(path)
         .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailCreateFileEncoder { err }));
     encoder.emit_raw_bytes(METADATA_HEADER);
@@ -2326,9 +2384,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     // Encode the rustc version string in a predictable location.
     rustc_version(tcx.sess.cfg_version).encode(&mut ecx);
 
-    // Encode all the entries and extra information in the crate,
-    // culminating in the `CrateRoot` which points to all of it.
-    let root = ecx.encode_crate_root();
+    let root_position = f(&mut ecx);
 
     // Make sure we report any errors from writing to the file.
     // If we forget this, compilation can succeed with an incomplete rmeta file,
@@ -2338,12 +2394,9 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     }
 
     let file = ecx.opaque.file();
-    if let Err(err) = encode_root_position(file, root.position.get()) {
+    if let Err(err) = encode_root_position(file, root_position) {
         tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
     }
-
-    // Record metadata size for self-profiling
-    tcx.prof.artifact_size("crate_metadata", "crate_metadata", file.metadata().unwrap().len());
 }
 
 fn encode_root_position(mut file: &File, pos: usize) -> Result<(), std::io::Error> {

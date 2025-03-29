@@ -3,7 +3,7 @@ use std::{fs, io};
 
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{OutFileName, OutputType};
+use rustc_session::config::{CrateType, OutFileName, OutputType};
 use rustc_session::output::filename_for_metadata;
 use rustc_session::{MetadataKind, Session};
 use tempfile::Builder as TempFileBuilder;
@@ -50,7 +50,14 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
         .tempdir_in(out_filename.parent().unwrap_or_else(|| Path::new("")))
         .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailedCreateTempdir { err }));
     let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
-    let metadata_filename = metadata_tmpdir.as_ref().join(METADATA_FILENAME);
+    let metadata_filename = metadata_tmpdir.as_ref().join("full.rmeta");
+    let metadata_stub_filename = if !tcx.sess.opts.unstable_opts.embed_metadata
+        && !tcx.crate_types().contains(&CrateType::ProcMacro)
+    {
+        Some(metadata_tmpdir.as_ref().join("stub.rmeta"))
+    } else {
+        None
+    };
 
     // Always create a file at `metadata_filename`, even if we have nothing to write to it.
     // This simplifies the creation of the output `out_filename` when requested.
@@ -60,9 +67,15 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
             std::fs::File::create(&metadata_filename).unwrap_or_else(|err| {
                 tcx.dcx().emit_fatal(FailedCreateFile { filename: &metadata_filename, err });
             });
+            if let Some(metadata_stub_filename) = &metadata_stub_filename {
+                std::fs::File::create(metadata_stub_filename).unwrap_or_else(|err| {
+                    tcx.dcx()
+                        .emit_fatal(FailedCreateFile { filename: &metadata_stub_filename, err });
+                });
+            }
         }
         MetadataKind::Uncompressed | MetadataKind::Compressed => {
-            encode_metadata(tcx, &metadata_filename);
+            encode_metadata(tcx, &metadata_filename, metadata_stub_filename.as_deref())
         }
     };
 
@@ -100,9 +113,10 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
 
     // Load metadata back to memory: codegen may need to include it in object files.
     let metadata =
-        EncodedMetadata::from_path(metadata_filename, metadata_tmpdir).unwrap_or_else(|err| {
-            tcx.dcx().emit_fatal(FailedCreateEncodedMetadata { err });
-        });
+        EncodedMetadata::from_path(metadata_filename, metadata_stub_filename, metadata_tmpdir)
+            .unwrap_or_else(|err| {
+                tcx.dcx().emit_fatal(FailedCreateEncodedMetadata { err });
+            });
 
     let need_metadata_module = metadata_kind == MetadataKind::Compressed;
 
