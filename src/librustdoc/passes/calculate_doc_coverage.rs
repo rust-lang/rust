@@ -5,7 +5,7 @@ use std::ops;
 
 use rustc_hir as hir;
 use rustc_lint::builtin::MISSING_DOCS;
-use rustc_middle::lint::LintLevelSource;
+use rustc_middle::lint::{LevelAndSource, LintLevelSource};
 use rustc_session::lint;
 use rustc_span::FileName;
 use serde::Serialize;
@@ -216,7 +216,8 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
 
                 let has_doc_example = tests.found_tests != 0;
                 let hir_id = DocContext::as_local_hir_id(self.ctx.tcx, i.item_id).unwrap();
-                let (level, source) = self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
+                let LevelAndSource { level, src, .. } =
+                    self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
 
                 // In case we have:
                 //
@@ -251,7 +252,7 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
                 // unless the user had an explicit `allow`.
                 //
                 let should_have_docs = !should_be_ignored
-                    && (level != lint::Level::Allow || matches!(source, LintLevelSource::Default));
+                    && (level != lint::Level::Allow || matches!(src, LintLevelSource::Default));
 
                 if let Some(span) = i.span(self.ctx.tcx) {
                     let filename = span.filename(self.ctx.sess());

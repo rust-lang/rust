@@ -199,7 +199,7 @@ fn check_simplify_not(cx: &LateContext<'_>, msrv: Msrv, expr: &Expr<'_>) {
         && !expr.span.from_expansion()
         && !inner.span.from_expansion()
         && let Some(suggestion) = simplify_not(cx, msrv, inner)
-        && cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
+        && cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).level != Level::Allow
     {
         use clippy_utils::sugg::{Sugg, has_enclosing_paren};
         let maybe_par = if let Some(sug) = Sugg::hir_opt(cx, inner) {
@@ -605,7 +605,7 @@ impl<'tcx> NonminimalBoolVisitor<'_, 'tcx> {
                 }
             }
             let nonminimal_bool_lint = |mut suggestions: Vec<_>| {
-                if self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, e.hir_id).0 != Level::Allow {
+                if self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, e.hir_id).level != Level::Allow {
                     suggestions.sort();
                     span_lint_hir_and_then(
                         self.cx,

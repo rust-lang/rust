@@ -73,8 +73,8 @@ impl_lint_pass!(ModStyle => [MOD_MODULE_FILES, SELF_NAMED_MODULE_FILES]);
 
 impl EarlyLintPass for ModStyle {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
-        if cx.builder.lint_level(MOD_MODULE_FILES).0 == Level::Allow
-            && cx.builder.lint_level(SELF_NAMED_MODULE_FILES).0 == Level::Allow
+        if cx.builder.lint_level(MOD_MODULE_FILES).level == Level::Allow
+            && cx.builder.lint_level(SELF_NAMED_MODULE_FILES).level == Level::Allow
         {
             return;
         }

@@ -8,7 +8,8 @@ use rustc_data_structures::stable_hasher::{
 };
 use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::def::Namespace;
-use rustc_hir::{HashStableContext, HirId, MissingLifetimeKind};
+use rustc_hir::def_id::DefPathHash;
+use rustc_hir::{HashStableContext, HirId, ItemLocalId, MissingLifetimeKind};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::edition::Edition;
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
@@ -102,7 +103,7 @@ pub enum Applicability {
 /// The index values have a type of `u16` to reduce the size of the `LintExpectationId`.
 /// It's reasonable to assume that no user will define 2^16 attributes on one node or
 /// have that amount of lints listed. `u16` values should therefore suffice.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Encodable, Decodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
 pub enum LintExpectationId {
     /// Used for lints emitted during the `EarlyLintPass`. This id is not
     /// hash stable and should not be cached.
@@ -156,13 +157,14 @@ impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
 }
 
 impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
-    type KeyType = (HirId, u16, u16);
+    type KeyType = (DefPathHash, ItemLocalId, u16, u16);
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+    fn to_stable_hash_key(&self, hcx: &HCX) -> Self::KeyType {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                (*hir_id, *attr_index, *lint_index)
+                let (def_path_hash, lint_idx) = hir_id.to_stable_hash_key(hcx);
+                (def_path_hash, lint_idx, *attr_index, *lint_index)
             }
             _ => {
                 unreachable!("HashStable should only be called for a filled `LintExpectationId`")
@@ -199,9 +201,9 @@ pub enum Level {
     ///
     /// See RFC 2383.
     ///
-    /// The [`LintExpectationId`] is used to later link a lint emission to the actual
+    /// Requires a [`LintExpectationId`] to later link a lint emission to the actual
     /// expectation. It can be ignored in most cases.
-    Expect(LintExpectationId),
+    Expect,
     /// The `warn` level will produce a warning if the lint was violated, however the
     /// compiler will continue with its execution.
     Warn,
@@ -209,9 +211,9 @@ pub enum Level {
     /// to ensure that a lint can't be suppressed. This lint level can currently only be set
     /// via the console and is therefore session specific.
     ///
-    /// The [`LintExpectationId`] is intended to fulfill expectations marked via the
+    /// Requires a [`LintExpectationId`] to fulfill expectations marked via the
     /// `#[expect]` attribute, that will still be suppressed due to the level.
-    ForceWarn(Option<LintExpectationId>),
+    ForceWarn,
     /// The `deny` level will produce an error and stop further execution after the lint
     /// pass is complete.
     Deny,
@@ -225,9 +227,9 @@ impl Level {
     pub fn as_str(self) -> &'static str {
         match self {
             Level::Allow => "allow",
-            Level::Expect(_) => "expect",
+            Level::Expect => "expect",
             Level::Warn => "warn",
-            Level::ForceWarn(_) => "force-warn",
+            Level::ForceWarn => "force-warn",
             Level::Deny => "deny",
             Level::Forbid => "forbid",
         }
@@ -246,24 +248,30 @@ impl Level {
     }
 
     /// Converts an `Attribute` to a level.
-    pub fn from_attr(attr: &impl AttributeExt) -> Option<Self> {
+    pub fn from_attr(attr: &impl AttributeExt) -> Option<(Self, Option<LintExpectationId>)> {
         Self::from_symbol(attr.name_or_empty(), || Some(attr.id()))
     }
 
     /// Converts a `Symbol` to a level.
-    pub fn from_symbol(s: Symbol, id: impl FnOnce() -> Option<AttrId>) -> Option<Self> {
+    pub fn from_symbol(
+        s: Symbol,
+        id: impl FnOnce() -> Option<AttrId>,
+    ) -> Option<(Self, Option<LintExpectationId>)> {
         match s {
-            sym::allow => Some(Level::Allow),
+            sym::allow => Some((Level::Allow, None)),
             sym::expect => {
                 if let Some(attr_id) = id() {
-                    Some(Level::Expect(LintExpectationId::Unstable { attr_id, lint_index: None }))
+                    Some((
+                        Level::Expect,
+                        Some(LintExpectationId::Unstable { attr_id, lint_index: None }),
+                    ))
                 } else {
                     None
                 }
             }
-            sym::warn => Some(Level::Warn),
-            sym::deny => Some(Level::Deny),
-            sym::forbid => Some(Level::Forbid),
+            sym::warn => Some((Level::Warn, None)),
+            sym::deny => Some((Level::Deny, None)),
+            sym::forbid => Some((Level::Forbid, None)),
             _ => None,
         }
     }
@@ -274,8 +282,8 @@ impl Level {
             Level::Deny => "-D",
             Level::Forbid => "-F",
             Level::Allow => "-A",
-            Level::ForceWarn(_) => "--force-warn",
-            Level::Expect(_) => {
+            Level::ForceWarn => "--force-warn",
+            Level::Expect => {
                 unreachable!("the expect level does not have a commandline flag")
             }
         }
@@ -283,15 +291,8 @@ impl Level {
 
     pub fn is_error(self) -> bool {
         match self {
-            Level::Allow | Level::Expect(_) | Level::Warn | Level::ForceWarn(_) => false,
+            Level::Allow | Level::Expect | Level::Warn | Level::ForceWarn => false,
             Level::Deny | Level::Forbid => true,
-        }
-    }
-
-    pub fn get_expectation_id(&self) -> Option<LintExpectationId> {
-        match self {
-            Level::Expect(id) | Level::ForceWarn(Some(id)) => Some(*id),
-            _ => None,
         }
     }
 }
