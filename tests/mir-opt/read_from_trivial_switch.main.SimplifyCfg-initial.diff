@@ -1,0 +1,83 @@
+- // MIR for `main` before SimplifyCfg-initial
++ // MIR for `main` after SimplifyCfg-initial
+  
+  | User Type Annotations
+  | 0: user_ty: Canonical { value: Ty(std::mem::MaybeUninit<i32>), max_universe: U0, variables: [] }, span: $DIR/read_from_trivial_switch.rs:7:17: 7:33, inferred_ty: std::mem::MaybeUninit<i32>
+  | 1: user_ty: Canonical { value: TypeOf(DefId(2:2155 ~ core[aaca]::mem::maybe_uninit::{impl#2}::uninit), UserArgs { args: [^0], user_self_ty: Some(UserSelfTy { impl_def_id: DefId(2:2152 ~ core[aaca]::mem::maybe_uninit::{impl#2}), self_ty: std::mem::MaybeUninit<^1> }) }), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }, CanonicalVarInfo { kind: Ty(General(U0)) }] }, span: $DIR/read_from_trivial_switch.rs:7:36: 7:55, inferred_ty: fn() -> std::mem::MaybeUninit<i32> {std::mem::MaybeUninit::<i32>::uninit}
+  | 2: user_ty: Canonical { value: Ty(std::mem::MaybeUninit<i32>), max_universe: U0, variables: [] }, span: $DIR/read_from_trivial_switch.rs:7:17: 7:33, inferred_ty: std::mem::MaybeUninit<i32>
+  | 3: user_ty: Canonical { value: Ty(&i32), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/read_from_trivial_switch.rs:8:18: 8:22, inferred_ty: &i32
+  | 4: user_ty: Canonical { value: Ty(&i32), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/read_from_trivial_switch.rs:8:18: 8:22, inferred_ty: &i32
+  |
+  fn main() -> () {
+      let mut _0: ();
+      let _1: std::mem::MaybeUninit<i32> as UserTypeProjection { base: UserType(0), projs: [] };
+      let _3: &i32;
+      let mut _4: &std::mem::MaybeUninit<i32>;
+      scope 1 {
+          debug uninit => _1;
+          let _2: &i32 as UserTypeProjection { base: UserType(3), projs: [] };
+          scope 2 {
+              debug bad_ref => _2;
+              scope 3 {
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = MaybeUninit::<i32>::uninit() -> [return: bb1, unwind: bb8];
++         _1 = MaybeUninit::<i32>::uninit() -> [return: bb1, unwind: bb4];
+      }
+  
+      bb1: {
+          FakeRead(ForLet(None), _1);
+          AscribeUserType(_1, o, UserTypeProjection { base: UserType(2), projs: [] });
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = &_1;
+-         _3 = MaybeUninit::<i32>::assume_init_ref(move _4) -> [return: bb2, unwind: bb8];
++         _3 = MaybeUninit::<i32>::assume_init_ref(move _4) -> [return: bb2, unwind: bb4];
+      }
+  
+      bb2: {
+          _2 = &(*_3);
+          StorageDead(_4);
+          FakeRead(ForLet(None), _2);
+          AscribeUserType(_2, o, UserTypeProjection { base: UserType(4), projs: [] });
+          StorageDead(_3);
+          PlaceMention(_2);
+-         switchInt(copy (*_2)) -> [0: bb4, otherwise: bb3];
++         switchInt(copy (*_2)) -> [0: bb3, otherwise: bb3];
+      }
+  
+      bb3: {
+-         goto -> bb7;
+-     }
+- 
+-     bb4: {
+-         goto -> bb7;
+-     }
+- 
+-     bb5: {
+-         goto -> bb3;
+-     }
+- 
+-     bb6: {
+-         FakeRead(ForMatchedPlace(None), _2);
+-         unreachable;
+-     }
+- 
+-     bb7: {
+          _0 = const ();
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  
+-     bb8 (cleanup): {
++     bb4 (cleanup): {
+          resume;
+      }
+  }
+  

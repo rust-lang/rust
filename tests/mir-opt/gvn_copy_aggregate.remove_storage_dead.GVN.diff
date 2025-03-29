@@ -39,6 +39,10 @@
 +         _2 = copy _5;
 +         nop;
           _7 = discriminant(_3);
+          switchInt(move _7) -> bb2;
+      }
+  
+      bb2: {
 -         StorageDead(_3);
 +         nop;
           StorageLive(_6);
