@@ -1,5 +1,4 @@
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
-#![allow(unsafe_op_in_unsafe_fn)]
 
 #[cfg(test)]
 mod tests;
@@ -674,6 +673,6 @@ impl IntoRawFd for FileDesc {
 
 impl FromRawFd for FileDesc {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
-        Self(FromRawFd::from_raw_fd(raw_fd))
+        Self(unsafe { FromRawFd::from_raw_fd(raw_fd) })
     }
 }
