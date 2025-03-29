@@ -604,7 +604,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     if let Some((name, _)) = lang_items::extract(attrs)
         && let Some(lang_item) = LangItem::from_name(name)
     {
-        if WEAK_LANG_ITEMS.iter().any(|&l| l == lang_item) {
+        if WEAK_LANG_ITEMS.contains(&lang_item) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
         }
         if let Some(link_name) = lang_item.link_name() {
