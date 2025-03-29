@@ -1,0 +1,10 @@
+warning: struct `Faz` is never constructed
+  --> $DIR/cross_crate_complex.rs:14:8
+   |
+LL | struct Faz<const N: usize>;
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+
