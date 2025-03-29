@@ -1,4 +1,3 @@
-//@ known-bug: #107362
 //@ compile-flags: -Cdebuginfo=2
 
 pub trait Functor
