@@ -244,6 +244,12 @@ impl Analysis {
         // FIXME: cfg options
         // Default to enable test for single file.
         let mut cfg_options = CfgOptions::default();
+
+        // FIXME: This is less than ideal
+        let proc_macro_cwd = Arc::new(
+            TryFrom::try_from(&*std::env::current_dir().unwrap().as_path().to_string_lossy())
+                .unwrap(),
+        );
         cfg_options.insert_atom(sym::test.clone());
         crate_graph.add_crate_root(
             file_id,
@@ -255,7 +261,7 @@ impl Analysis {
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
             false,
-            None,
+            proc_macro_cwd,
             Arc::new(CrateWorkspaceData {
                 data_layout: Err("fixture has no layout".into()),
                 toolchain: None,

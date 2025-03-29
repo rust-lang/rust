@@ -24,7 +24,6 @@ jobs:
       pull-requests: read
     outputs:
       typescript: ${{ steps.filter.outputs.typescript }}
-      proc_macros: ${{ steps.filter.outputs.proc_macros }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@1441771bbfdd59dcd748680ee64ebd8faab1a242
@@ -33,15 +32,10 @@ jobs:
           filters: |
             typescript:
               - 'editors/code/**'
-            proc_macros:
-              - 'crates/tt/**'
-              - 'crates/proc-macro-api/**'
-              - 'crates/proc-macro-srv/**'
-              - 'crates/proc-macro-srv-cli/**'
 
   proc-macro-srv:
     needs: changes
-    if: github.repository == 'rust-lang/rust-analyzer' && needs.changes.outputs.proc_macros == 'true'
+    if: github.repository == 'rust-lang/rust-analyzer'
     name: proc-macro-srv
     runs-on: ubuntu-latest
     env:

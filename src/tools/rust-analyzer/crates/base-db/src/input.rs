@@ -303,9 +303,11 @@ pub struct CrateData<Id> {
     pub dependencies: Vec<Dependency<Id>>,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,
-    /// The working directory to run proc-macros in. This is the workspace root of the cargo workspace
-    /// for workspace members, the crate manifest dir otherwise.
-    pub proc_macro_cwd: Option<AbsPathBuf>,
+    /// The working directory to run proc-macros in invoked in the context of this crate.
+    /// This is the workspace root of the cargo workspace for workspace members, the crate manifest
+    /// dir otherwise.
+    // FIXME: This ought to be a `VfsPath` or something opaque.
+    pub proc_macro_cwd: Arc<AbsPathBuf>,
 }
 
 pub type CrateDataBuilder = CrateData<CrateBuilderId>;
@@ -425,7 +427,7 @@ impl CrateGraphBuilder {
         mut env: Env,
         origin: CrateOrigin,
         is_proc_macro: bool,
-        proc_macro_cwd: Option<AbsPathBuf>,
+        proc_macro_cwd: Arc<AbsPathBuf>,
         ws_data: Arc<CrateWorkspaceData>,
     ) -> CrateBuilderId {
         env.entries.shrink_to_fit();
@@ -861,6 +863,7 @@ impl fmt::Display for CyclicDependenciesError {
 #[cfg(test)]
 mod tests {
     use triomphe::Arc;
+    use vfs::AbsPathBuf;
 
     use crate::{CrateWorkspaceData, DependencyBuilder};
 
@@ -883,7 +886,7 @@ mod tests {
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
             false,
-            None,
+            Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
         );
         let crate2 = graph.add_crate_root(
@@ -896,7 +899,7 @@ mod tests {
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
             false,
-            None,
+            Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
         );
         let crate3 = graph.add_crate_root(
@@ -909,7 +912,7 @@ mod tests {
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
             false,
-            None,
+            Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
         );
         assert!(
@@ -942,7 +945,7 @@ mod tests {
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
             false,
-            None,
+            Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
         );
         let crate2 = graph.add_crate_root(
@@ -955,7 +958,7 @@ mod tests {
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
             false,
-            None,
+            Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
         );
         assert!(
@@ -983,7 +986,7 @@ mod tests {
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
             false,
-            None,
+            Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
         );
         let crate2 = graph.add_crate_root(
@@ -996,7 +999,7 @@ mod tests {
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
             false,
-            None,
+            Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
         );
         let crate3 = graph.add_crate_root(
@@ -1009,7 +1012,7 @@ mod tests {
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
             false,
-            None,
+            Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
         );
         assert!(
@@ -1037,7 +1040,7 @@ mod tests {
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
             false,
-            None,
+            Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
         );
         let crate2 = graph.add_crate_root(
@@ -1050,7 +1053,7 @@ mod tests {
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
             false,
-            None,
+            Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
             empty_ws_data(),
         );
         assert!(

@@ -170,7 +170,7 @@ impl ProcMacro {
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
-        current_dir: Option<String>,
+        current_dir: String,
     ) -> Result<Result<tt::TopSubtree<Span>, PanicMessage>, ServerError> {
         let version = self.process.version();
 
@@ -198,7 +198,7 @@ impl ProcMacro {
             },
             lib: self.dylib_path.to_path_buf().into(),
             env,
-            current_dir,
+            current_dir: Some(current_dir),
         };
 
         let response = self.process.send_task(Request::ExpandMacro(Box::new(task)))?;

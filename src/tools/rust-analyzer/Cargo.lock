@@ -2305,6 +2305,7 @@ dependencies = [
  "cfg",
  "hir-expand",
  "intern",
+ "paths",
  "rustc-hash 2.1.1",
  "span",
  "stdx",
