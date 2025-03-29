@@ -18,6 +18,7 @@ fn test_mul_pow10() {
 fn shortest_sanity_test() {
     f64_shortest_sanity_test(format_shortest);
     f32_shortest_sanity_test(format_shortest);
+    f16_shortest_sanity_test(format_shortest);
     more_shortest_sanity_test(format_shortest);
 }
 
@@ -41,6 +42,9 @@ fn exact_sanity_test() {
         f64_exact_sanity_test(format_exact);
     }
     f32_exact_sanity_test(format_exact);
+
+    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    f16_exact_sanity_test(format_exact);
 }
 
 #[test]
