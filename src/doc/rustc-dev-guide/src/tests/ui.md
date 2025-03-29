@@ -415,6 +415,14 @@ reasons, including:
    can alert the developer so they know that the associated issue has been fixed
    and can possibly be closed.
 
+This directive takes comma-separated issue numbers as arguments, or `"unknown"`:
+
+- `//@ known-bug: #123, #456` (when the issues are on rust-lang/rust)
+- `//@ known-bug: rust-lang/chalk#123456`
+  (allows arbitrary text before the `#`, which is useful when the issue is on another repo)
+- `//@ known-bug: unknown`
+  (when there is no known issue yet; preferrably open one if it does not already exist)
+
 Do not include [error annotations](#error-annotations) in a test with
 `known-bug`. The test should still include other normal directives and
 stdout/stderr files.
