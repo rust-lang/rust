@@ -202,6 +202,9 @@ several ways to match the message with the line (see the examples below):
 * `~|`: Associates the error level and message with the *same* line as the
   *previous comment*. This is more convenient than using multiple carets when
   there are multiple messages associated with the same line.
+* `~v`: Associates the error level and message with the *next* error
+  annotation line. Each symbol (`v`) that you add adds a line to this, so `~vvv`
+  is three lines below the error annotation line.
 * `~?`: Used to match error levels and messages with errors not having line
   information. These can be placed on any line in the test file, but are
   conventionally placed at the end.
@@ -271,6 +274,18 @@ fn main() {
 }
 //~^^^^ ERROR `_x @` is not allowed in a tuple struct
 //~| ERROR this pattern has 1 field, but the corresponding tuple struct has 3 fields [E0023]
+```
+
+#### Positioned above error line
+
+Use the `//~v` idiom with number of v's in the string to indicate the number
+of lines below. This is typically used in lexer or parser tests matching on errors like unclosed
+delimiter or unclosed literal happening at the end of file.
+
+```rust,ignore
+// ignore-tidy-trailing-newlines
+//~v ERROR this file contains an unclosed delimiter
+fn main((ؼ
 ```
 
 #### Error without line information
