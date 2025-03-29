@@ -49,6 +49,7 @@
 #![feature(iter_array_chunks)]
 #![feature(iter_chain)]
 #![feature(iter_collect_into)]
+#![feature(iter_contains)]
 #![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
 #![feature(iter_map_windows)]
