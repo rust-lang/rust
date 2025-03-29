@@ -677,7 +677,7 @@ impl<'a> AstValidator<'a> {
                     self.dcx().emit_err(errors::PatternFnPointer { span });
                 });
                 if let Extern::Implicit(extern_span) = bfty.ext {
-                    self.maybe_lint_missing_abi(extern_span, ty.id);
+                    self.handle_missing_abi(extern_span, ty.id);
                 }
             }
             TyKind::TraitObject(bounds, ..) => {
@@ -710,10 +710,12 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn maybe_lint_missing_abi(&mut self, span: Span, id: NodeId) {
+    fn handle_missing_abi(&mut self, span: Span, id: NodeId) {
         // FIXME(davidtwco): This is a hack to detect macros which produce spans of the
         // call site which do not have a macro backtrace. See #61963.
-        if self
+        if span.edition().at_least_edition_future() && self.features.explicit_extern_abis() {
+            self.dcx().emit_err(errors::MissingAbi { span });
+        } else if self
             .sess
             .source_map()
             .span_to_snippet(span)
@@ -979,7 +981,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
 
                     if abi.is_none() {
-                        this.maybe_lint_missing_abi(*extern_span, item.id);
+                        this.handle_missing_abi(*extern_span, item.id);
                     }
                     visit::walk_item(this, item);
                     this.extern_mod = old_item;
@@ -1360,7 +1362,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             },
         ) = fk
         {
-            self.maybe_lint_missing_abi(*extern_span, id);
+            self.handle_missing_abi(*extern_span, id);
         }
 
         // Functions without bodies cannot have patterns.
