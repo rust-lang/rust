@@ -149,14 +149,15 @@ pub fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
                 arg[a.len()..].to_string()
             };
             let option = content.split_once('=').map(|s| s.0).unwrap_or(&content);
-            if ICE_REPORT_COMPILER_FLAGS_EXCLUDE.iter().any(|exc| option == *exc) {
+            if ICE_REPORT_COMPILER_FLAGS_EXCLUDE.contains(&option) {
                 excluded_cargo_defaults = true;
             } else {
                 result.push(a.to_string());
-                match ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.iter().find(|s| option == **s) {
-                    Some(s) => result.push(format!("{s}=[REDACTED]")),
-                    None => result.push(content),
-                }
+                result.push(if ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.contains(&option) {
+                    format!("{option}=[REDACTED]")
+                } else {
+                    content
+                });
             }
         }
     }
