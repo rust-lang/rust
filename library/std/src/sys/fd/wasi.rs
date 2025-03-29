@@ -1,11 +1,10 @@
-#![forbid(unsafe_op_in_unsafe_fn)]
-#![allow(dead_code)]
+#![expect(dead_code)]
 
-use super::err2io;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
 use crate::net::Shutdown;
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::sys::pal::err2io;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 #[derive(Debug)]

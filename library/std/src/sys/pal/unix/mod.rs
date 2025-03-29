@@ -8,7 +8,6 @@ pub mod weak;
 
 pub mod args;
 pub mod env;
-pub mod fd;
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
 pub mod futex;

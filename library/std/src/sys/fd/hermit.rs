@@ -1,8 +1,8 @@
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
-use super::hermit_abi;
 use crate::cmp;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, SeekFrom};
+use crate::os::hermit::hermit_abi;
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::sys::{cvt, unsupported};
 use crate::sys_common::{AsInner, FromInner, IntoInner};

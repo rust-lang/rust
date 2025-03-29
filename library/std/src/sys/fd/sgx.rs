@@ -1,8 +1,8 @@
 use fortanix_sgx_abi::Fd;
 
-use super::abi::usercalls;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
+use crate::sys::pal::abi::usercalls;
 use crate::sys::{AsInner, FromInner, IntoInner};
 
 #[derive(Debug)]

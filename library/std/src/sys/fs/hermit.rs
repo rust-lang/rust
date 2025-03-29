@@ -9,8 +9,8 @@ use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, Raw
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
+use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::{copy, exists};
-use crate::sys::pal::fd::FileDesc;
 use crate::sys::time::SystemTime;
 use crate::sys::{cvt, unsupported};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};

@@ -10,8 +10,6 @@
 pub mod args;
 #[path = "../wasi/env.rs"]
 pub mod env;
-#[path = "../wasi/fd.rs"]
-pub mod fd;
 #[allow(unused)]
 #[path = "../wasm/atomics/futex.rs"]
 pub mod futex;
@@ -39,7 +37,6 @@ mod helpers;
 // import conflict rules. If we glob export `helpers` and `common` together,
 // then the compiler complains about conflicts.
 
-use helpers::err2io;
-pub use helpers::{abort_internal, decode_error_kind, is_interrupted};
+pub(crate) use helpers::{abort_internal, decode_error_kind, err2io, is_interrupted};
 
 mod cabi_realloc;

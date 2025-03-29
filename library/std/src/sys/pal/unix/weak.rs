@@ -20,6 +20,7 @@
 // each instance of `weak!` and `syscall!`. Rather than trying to unify all of
 // that, we'll just allow that some unix targets don't use this module at all.
 #![allow(dead_code, unused_macros)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::CStr;
 use crate::marker::PhantomData;
@@ -131,11 +132,15 @@ impl<F> DlsymWeak<F> {
     unsafe fn initialize(&self) -> Option<F> {
         assert_eq!(size_of::<F>(), size_of::<*mut libc::c_void>());
 
-        let val = fetch(self.name);
+        let val = unsafe { fetch(self.name) };
         // This synchronizes with the acquire fence in `get`.
         self.func.store(val, Ordering::Release);
 
-        if val.is_null() { None } else { Some(mem::transmute_copy::<*mut libc::c_void, F>(&val)) }
+        if val.is_null() {
+            None
+        } else {
+            Some(unsafe { mem::transmute_copy::<*mut libc::c_void, F>(&val) })
+        }
     }
 }
 
@@ -144,7 +149,7 @@ unsafe fn fetch(name: &str) -> *mut libc::c_void {
         Ok(cstr) => cstr,
         Err(..) => return ptr::null_mut(),
     };
-    libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr())
+    unsafe { libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) }
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
@@ -157,7 +162,7 @@ pub(crate) macro syscall {
             weak!(fn $name($($param: $t),*) -> $ret;);
 
             if let Some(fun) = $name.get() {
-                fun($($param),*)
+                unsafe { fun($($param),*) }
             } else {
                 super::os::set_errno(libc::ENOSYS);
                 -1
@@ -177,9 +182,9 @@ pub(crate) macro syscall {
             // Use a weak symbol from libc when possible, allowing `LD_PRELOAD`
             // interposition, but if it's not found just use a raw syscall.
             if let Some(fun) = $name.get() {
-                fun($($param),*)
+                unsafe { fun($($param),*) }
             } else {
-                libc::syscall(libc::${concat(SYS_, $name)}, $($param),*) as $ret
+                unsafe { libc::syscall(libc::${concat(SYS_, $name)}, $($param),*) as $ret }
             }
         }
     )
@@ -189,7 +194,7 @@ pub(crate) macro syscall {
 pub(crate) macro raw_syscall {
     (fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;) => (
         unsafe fn $name($($param: $t),*) -> $ret {
-            libc::syscall(libc::${concat(SYS_, $name)}, $($param),*) as $ret
+            unsafe { libc::syscall(libc::${concat(SYS_, $name)}, $($param),*) as $ret }
         }
     )
 }

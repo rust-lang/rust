@@ -15,7 +15,6 @@
 
 pub mod args;
 pub mod env;
-pub mod fd;
 #[allow(unused)]
 #[path = "../wasm/atomics/futex.rs"]
 pub mod futex;
