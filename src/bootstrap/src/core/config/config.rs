@@ -1381,7 +1381,7 @@ impl Config {
                     if !changes.is_empty() {
                         println!(
                             "WARNING: There have been changes to x.py since you last updated:\n{}",
-                            crate::human_readable_changes(&changes)
+                            crate::human_readable_changes(changes)
                         );
                     }
                 }
