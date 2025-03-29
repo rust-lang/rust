@@ -63,6 +63,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type GenericArgsSlice = &'tcx [ty::GenericArg<'tcx>];
     type GenericArg = ty::GenericArg<'tcx>;
     type Term = ty::Term<'tcx>;
+
+    type SigBinderRef = ty::SigBinderRef<'tcx>;
+    type TyBinderRef = ty::TyBinderRef<'tcx>;
+
     type BoundVarKinds = &'tcx List<ty::BoundVariableKind<'tcx>>;
 
     type PredefinedOpaques = solve::PredefinedOpaques<'tcx>;

@@ -61,8 +61,8 @@ use rustc_hir::{
     find_attr,
 };
 use rustc_hir::{
-    self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem, ParamName, PredicateOrigin,
-    TraitCandidate,
+    self as hir, ConstArg, GenericArg, HirId, IsAnonInPath, ItemLocalMap, LangItem, ParamName,
+    PredicateOrigin, TraitCandidate,
 };
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::extension;

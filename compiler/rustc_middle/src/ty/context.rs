@@ -70,8 +70,8 @@ use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, FnSigKind, GenericArg,
     GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst,
     Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
-    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    ValTree, ValTreeKind, Visibility,
+    PredicatePolarity, Region, RegionKind, ReprOptions, SigBinderRef, TraitObjectVisitor, Ty,
+    TyBinderRef, TyKind, TyVid, ValTree, ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
@@ -162,6 +162,8 @@ pub struct CtxtInterners<'tcx> {
     valtree: InternedSet<'tcx, ty::ValTreeKind<TyCtxt<'tcx>>>,
     patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
     outlives: InternedSet<'tcx, List<ty::ArgOutlivesPredicate<'tcx>>>,
+    ty_binder: InternedSet<'tcx, ty::Binder<'tcx, Ty<'tcx>>>,
+    sig_binder: InternedSet<'tcx, ty::Binder<'tcx, ty::FnSigTys<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -200,6 +202,8 @@ impl<'tcx> CtxtInterners<'tcx> {
             valtree: InternedSet::with_capacity(N),
             patterns: InternedSet::with_capacity(N),
             outlives: InternedSet::with_capacity(N),
+            ty_binder: InternedSet::with_capacity(N),
+            sig_binder: InternedSet::with_capacity(N),
         }
     }
 
@@ -1705,6 +1709,29 @@ macro_rules! nop_list_lift {
     };
 }
 
+macro_rules! nop_list_with_cached_type_info_lift {
+    ($set:ident; $ty:ty => $lifted:ty) => {
+        impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for &'a ListWithCachedTypeInfo<$ty> {
+            type Lifted = &'tcx ListWithCachedTypeInfo<$lifted>;
+            fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
+                // Assert that the set has the right type.
+                if false {
+                    let _x: &InternedSet<'tcx, ListWithCachedTypeInfo<$lifted>> =
+                        &tcx.interners.$set;
+                }
+
+                if self.is_empty() {
+                    return ListWithCachedTypeInfo::empty();
+                }
+                assert!(tcx.interners.$set.contains_pointer_to(&InternedInSet(&*self)));
+                // SAFETY: we just checked that `self` is interned and therefore is valid for the
+                // entire lifetime of the `TyCtxt`.
+                unsafe { mem::transmute(self) }
+            }
+        }
+    };
+}
+
 nop_lift! { type_; Ty<'a> => Ty<'tcx> }
 nop_lift! { region; Region<'a> => Region<'tcx> }
 nop_lift! { const_; Const<'a> => Const<'tcx> }
@@ -1714,9 +1741,10 @@ nop_lift! { predicate; Predicate<'a> => Predicate<'tcx> }
 nop_lift! { predicate; Clause<'a> => Clause<'tcx> }
 nop_lift! { layout; Layout<'a> => Layout<'tcx> }
 nop_lift! { valtree; ValTree<'a> => ValTree<'tcx> }
+nop_lift! { ty_binder; TyBinderRef<'a> => TyBinderRef<'tcx> }
+nop_lift! { sig_binder; SigBinderRef<'a> => SigBinderRef<'tcx> }
 
 nop_list_lift! { type_lists; Ty<'a> => Ty<'tcx> }
-nop_list_lift! { clauses: ListWithCachedTypeInfo; Clause<'a> => Clause<'tcx> }
 nop_list_lift! {
     poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>
 }
@@ -1983,6 +2011,8 @@ direct_interners! {
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<TyCtxt<'tcx>>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
+    ty_binder: pub mk_ty_binder(ty::Binder<'tcx, Ty<'tcx>>): TyBinderRef -> TyBinderRef<'tcx>,
+    sig_binder: pub mk_sig_binder(ty::Binder<'tcx, ty::FnSigTys<'tcx>>): SigBinderRef -> SigBinderRef<'tcx>,
 }
 
 macro_rules! slice_interners {

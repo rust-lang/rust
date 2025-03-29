@@ -56,12 +56,6 @@ use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
 use rustc_target::callconv::FnAbi;
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
-#[allow(
-    hidden_glob_reexports,
-    rustc::usage_of_type_ir_inherent,
-    rustc::non_glob_import_of_type_ir_inherent
-)]
-use rustc_type_ir::inherent;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::solve::{CandidatePreferenceMode, SizedTraitKind, VisibleForLeakCheck};
 pub use rustc_type_ir::*;
@@ -106,9 +100,9 @@ pub use self::region::{
 pub use self::sty::{
     AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy,
     BoundTyKind, BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt, EarlyBinder, FnSig,
-    FnSigKind, InlineConstArgs, InlineConstArgsParts, ParamConst, ParamTy, PlaceholderConst,
-    PlaceholderRegion, PlaceholderType, PolyFnSig, TyKind, TypeAndMut, TypingMode,
-    TypingModeEqWrapper, Unnormalized, UpvarArgs,
+    FnSigKind, FnSigTys, InlineConstArgs, InlineConstArgsParts, ParamConst, ParamTy,
+    PlaceholderConst, PlaceholderRegion, PlaceholderType, PolyFnSig, SigBinderRef, TyBinderRef,
+    TyKind, TypeAndMut, TypingMode, TypingModeEqWrapper, Unnormalized, UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
