@@ -11,70 +11,70 @@ LL |          in(reg) a,
    |          ^^ the `in` operand is not meaningful for global-scoped inline assembly, remove it
 
 error: the `noreturn` option cannot be used with `naked_asm!`
-  --> $DIR/naked-functions.rs:88:32
+  --> $DIR/naked-functions.rs:88:28
    |
-LL |         naked_asm!("", options(noreturn));
-   |                                ^^^^^^^^ the `noreturn` option is not meaningful for global-scoped inline assembly
+LL |     naked_asm!("", options(noreturn));
+   |                            ^^^^^^^^ the `noreturn` option is not meaningful for global-scoped inline assembly
 
 error: the `nomem` option cannot be used with `naked_asm!`
-  --> $DIR/naked-functions.rs:106:28
+  --> $DIR/naked-functions.rs:105:28
    |
 LL |     naked_asm!("", options(nomem, preserves_flags));
    |                            ^^^^^ the `nomem` option is not meaningful for global-scoped inline assembly
 
 error: the `preserves_flags` option cannot be used with `naked_asm!`
-  --> $DIR/naked-functions.rs:106:35
+  --> $DIR/naked-functions.rs:105:35
    |
 LL |     naked_asm!("", options(nomem, preserves_flags));
    |                                   ^^^^^^^^^^^^^^^ the `preserves_flags` option is not meaningful for global-scoped inline assembly
 
 error: the `readonly` option cannot be used with `naked_asm!`
-  --> $DIR/naked-functions.rs:113:28
+  --> $DIR/naked-functions.rs:112:28
    |
 LL |     naked_asm!("", options(readonly, nostack), options(pure));
    |                            ^^^^^^^^ the `readonly` option is not meaningful for global-scoped inline assembly
 
 error: the `nostack` option cannot be used with `naked_asm!`
-  --> $DIR/naked-functions.rs:113:38
+  --> $DIR/naked-functions.rs:112:38
    |
 LL |     naked_asm!("", options(readonly, nostack), options(pure));
    |                                      ^^^^^^^ the `nostack` option is not meaningful for global-scoped inline assembly
 
 error: the `pure` option cannot be used with `naked_asm!`
-  --> $DIR/naked-functions.rs:113:56
+  --> $DIR/naked-functions.rs:112:56
    |
 LL |     naked_asm!("", options(readonly, nostack), options(pure));
    |                                                        ^^^^ the `pure` option is not meaningful for global-scoped inline assembly
 
 error: the `may_unwind` option cannot be used with `naked_asm!`
-  --> $DIR/naked-functions.rs:121:28
+  --> $DIR/naked-functions.rs:120:28
    |
 LL |     naked_asm!("", options(may_unwind));
    |                            ^^^^^^^^^^ the `may_unwind` option is not meaningful for global-scoped inline assembly
 
 error: this is a user specified error
-  --> $DIR/naked-functions.rs:157:5
+  --> $DIR/naked-functions.rs:151:5
    |
 LL |     compile_error!("this is a user specified error")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this is a user specified error
-  --> $DIR/naked-functions.rs:163:5
+  --> $DIR/naked-functions.rs:157:5
    |
 LL |     compile_error!("this is a user specified error");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: asm template must be a string literal
-  --> $DIR/naked-functions.rs:170:16
+  --> $DIR/naked-functions.rs:164:16
    |
 LL |     naked_asm!(invalid_syntax)
    |                ^^^^^^^^^^^^^^
 
 error[E0787]: the `asm!` macro is not allowed in naked functions
-  --> $DIR/naked-functions.rs:13:5
+  --> $DIR/naked-functions.rs:13:14
    |
-LL |     asm!("", options(raw));
-   |     ^^^^^^^^^^^^^^^^^^^^^^ consider using the `naked_asm!` macro instead
+LL |     unsafe { asm!("", options(raw)) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^ consider using the `naked_asm!` macro instead
 
 error: patterns not allowed in naked function parameters
   --> $DIR/naked-functions.rs:25:5
@@ -111,8 +111,8 @@ LL |     a + 1
 error[E0787]: naked functions must contain a single `naked_asm!` invocation
   --> $DIR/naked-functions.rs:38:1
    |
-LL | pub unsafe extern "C" fn inc(a: u32) -> u32 {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub extern "C" fn inc(a: u32) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |     a + 1
    |     ----- not allowed in naked functions
@@ -120,8 +120,8 @@ LL |     a + 1
 error[E0787]: naked functions must contain a single `naked_asm!` invocation
   --> $DIR/naked-functions.rs:52:1
    |
-LL | pub unsafe extern "C" fn inc_closure(a: u32) -> u32 {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub extern "C" fn inc_closure(a: u32) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |     (|| a + 1)()
    |     ------------ not allowed in naked functions
@@ -129,8 +129,8 @@ LL |     (|| a + 1)()
 error[E0787]: naked functions must contain a single `naked_asm!` invocation
   --> $DIR/naked-functions.rs:58:1
    |
-LL | pub unsafe extern "C" fn unsupported_operands() {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub extern "C" fn unsupported_operands() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |     let mut a = 0usize;
    |     ------------------- not allowed in naked functions
@@ -155,11 +155,11 @@ error[E0787]: naked functions must contain a single `naked_asm!` invocation
 LL | pub extern "C" fn too_many_asm_blocks() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
-LL |         naked_asm!("");
-   |         -------------- multiple `naked_asm!` invocations are not allowed in naked functions
+LL |     naked_asm!("");
+   |     -------------- multiple `naked_asm!` invocations are not allowed in naked functions
 
 error: referencing function parameters is not allowed in naked functions
-  --> $DIR/naked-functions.rs:98:11
+  --> $DIR/naked-functions.rs:97:11
    |
 LL |         *&y
    |           ^
@@ -167,7 +167,7 @@ LL |         *&y
    = help: follow the calling convention in asm block to use parameters
 
 error[E0787]: naked functions must contain a single `naked_asm!` invocation
-  --> $DIR/naked-functions.rs:96:5
+  --> $DIR/naked-functions.rs:95:5
    |
 LL |     pub extern "C" fn inner(y: usize) -> usize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
