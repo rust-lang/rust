@@ -86,10 +86,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // `Pointee` is automatically implemented for every type.
                 candidates.vec.push(BuiltinCandidate { has_nested: false });
             } else if tcx.is_lang_item(def_id, LangItem::Sized) {
-                // Sized is never implementable by end-users, it is
-                // always automatically computed.
-                let sized_conditions = self.sized_conditions(obligation);
-                self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
+                self.assemble_builtin_sized_candidate(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Unsize) {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Destruct) {
@@ -1060,6 +1057,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Assembles the trait which are built-in to the language itself:
     /// `Copy`, `Clone` and `Sized`.
+    #[instrument(level = "debug", skip(self, candidates))]
+    fn assemble_builtin_sized_candidate(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        match self.sized_conditions(obligation) {
+            BuiltinImplConditions::Where(nested) => {
+                candidates
+                    .vec
+                    .push(SizedCandidate { has_nested: !nested.skip_binder().is_empty() });
+            }
+            BuiltinImplConditions::None => {}
+            BuiltinImplConditions::Ambiguous => {
+                candidates.ambiguous = true;
+            }
+        }
+    }
+
+    /// Assembles the trait which are built-in to the language itself:
+    /// e.g. `Copy` and `Clone`.
     #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_builtin_bound_candidates(
         &mut self,
