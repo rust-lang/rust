@@ -35,7 +35,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     return if is_delimited {
                         Ok((open_spacing, TokenStream::new(buf)))
                     } else {
-                        Err(vec![self.close_delim_err(delim)])
+                        Err(self.close_delim_err(delim))
                     };
                 }
                 token::Eof => {
@@ -157,7 +157,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                             candidate = Some(*brace_span);
                         }
                     }
-                    let (_, _) = self.diag_info.open_braces.pop().unwrap();
+                    //let (_, _) = self.diag_info.open_braces.pop().unwrap();
                     self.diag_info.unmatched_delims.push(UnmatchedDelim {
                         found_delim: Some(close_delim),
                         found_span: self.token.span,
@@ -165,7 +165,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         candidate_span: candidate,
                     });
                 } else {
-                    self.diag_info.open_braces.pop();
+                    //self.diag_info.open_braces.pop();
                 }
 
                 // If the incorrect delimiter matches an earlier opening
@@ -242,14 +242,21 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         this_spacing
     }
 
-    fn close_delim_err(&mut self, delim: Delimiter) -> Diag<'psess> {
+    fn close_delim_err(&mut self, delim: Delimiter) -> Vec<Diag<'psess>> {
         // An unexpected closing delimiter (i.e., there is no matching opening delimiter).
+        //println!("open_braces: {:?}", self.diag_info.open_braces);
+        if let Some((last_open_braces, _)) = self.diag_info.open_braces.last()
+            && *last_open_braces == delim
+        {
+            self.diag_info.open_braces.pop();
+            return vec![];
+        }
         let token_str = token_to_string(&self.token);
         let msg = format!("unexpected closing delimiter: `{token_str}`");
         let mut err = self.dcx().struct_span_err(self.token.span, msg);
 
         report_suspicious_mismatch_block(&mut err, &self.diag_info, self.psess.source_map(), delim);
         err.span_label(self.token.span, "unexpected closing delimiter");
-        err
+        vec![err]
     }
 }
