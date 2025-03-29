@@ -19,7 +19,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             code_model: Some(CodeModel::Medium),
             cpu: "generic-rv32".into(),
-            features: "+m,+a,+f,+d,+c".into(),
+            features: "+m,+a,+f,+d,+c,+zicsr,+zifencei".into(),
             llvm_abiname: "ilp32d".into(),
             max_atomic_width: Some(32),
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
