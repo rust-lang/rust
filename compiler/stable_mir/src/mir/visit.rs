@@ -563,7 +563,7 @@ pub struct PlaceRef<'a> {
 impl PlaceRef<'_> {
     /// Get the type of this place.
     pub fn ty(&self, locals: &[LocalDecl]) -> Result<Ty, Error> {
-        self.projection.iter().fold(Ok(locals[self.local].ty), |place_ty, elem| elem.ty(place_ty?))
+        self.projection.iter().try_fold(locals[self.local].ty, |place_ty, elem| elem.ty(place_ty))
     }
 }
 
