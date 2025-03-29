@@ -19,9 +19,7 @@ use rustc_middle::thir::{
     Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt, TypingMode,
-};
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -600,26 +598,19 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let ty = tcx.typeck(def_id).node_type(block.hir_id);
 
         let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id());
-        let parent_args =
-            tcx.erase_regions(ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id));
+        let parent_args = ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id);
         let args = ty::InlineConstArgs::new(tcx, ty::InlineConstArgsParts { parent_args, ty }).args;
-
-        debug_assert!(!args.has_free_regions());
 
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
         let c = ty::Const::new_unevaluated(self.tcx, ct);
         let pattern = self.const_to_pat(c, ty, id, span);
 
         // Apply a type ascription for the inline constant.
-        // FIXME: reusing the `args` above causes an ICE
         let annotation = {
             let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
             let args = ty::InlineConstArgs::new(
                 tcx,
-                ty::InlineConstArgsParts {
-                    parent_args: ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id),
-                    ty: infcx.next_ty_var(span),
-                },
+                ty::InlineConstArgsParts { parent_args, ty: infcx.next_ty_var(span) },
             )
             .args;
             infcx.canonicalize_user_type_annotation(ty::UserType::new(ty::UserTypeKind::TypeOf(
