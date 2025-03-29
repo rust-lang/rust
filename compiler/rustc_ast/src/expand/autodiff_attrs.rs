@@ -77,6 +77,7 @@ pub struct AutoDiffAttrs {
     /// e.g. in the [JAX
     /// Documentation](https://jax.readthedocs.io/en/latest/_tutorials/advanced-autodiff.html#how-it-s-made-two-foundational-autodiff-functions).
     pub mode: DiffMode,
+    pub width: u32,
     pub ret_activity: DiffActivity,
     pub input_activity: Vec<DiffActivity>,
 }
@@ -222,6 +223,7 @@ impl AutoDiffAttrs {
     pub const fn error() -> Self {
         AutoDiffAttrs {
             mode: DiffMode::Error,
+            width: 0,
             ret_activity: DiffActivity::None,
             input_activity: Vec::new(),
         }
@@ -229,6 +231,7 @@ impl AutoDiffAttrs {
     pub fn source() -> Self {
         AutoDiffAttrs {
             mode: DiffMode::Source,
+            width: 0,
             ret_activity: DiffActivity::None,
             input_activity: Vec::new(),
         }
