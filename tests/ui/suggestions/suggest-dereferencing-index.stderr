@@ -4,9 +4,10 @@ error[E0277]: the type `[{integer}]` cannot be indexed by `&usize`
 LL |     let one_item_please: i32 = [1, 2, 3][i];
    |                                          ^ slice indices are of type `usize` or ranges of `usize`
    |
-   = help: the trait `SliceIndex<[{integer}]>` is not implemented for `&_`
-           but it is implemented for `_`
-   = help: for that trait implementation, expected `usize`, found `&usize`
+   = help: the trait `SliceIndex<[{integer}]>` is not implemented for `&usize`
+   = help: the following other types implement trait `SliceIndex<T>`:
+             `usize` implements `SliceIndex<ByteStr>`
+             `usize` implements `SliceIndex<[T]>`
    = note: required for `[{integer}]` to implement `Index<&usize>`
    = note: 1 redundant requirement hidden
    = note: required for `[{integer}; 3]` to implement `Index<&usize>`
