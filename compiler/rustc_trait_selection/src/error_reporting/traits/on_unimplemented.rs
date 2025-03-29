@@ -6,6 +6,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{AttrArgs, Attribute};
+use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, GenericArgsRef, GenericParamDef, GenericParamDefKind, TyCtxt};
@@ -17,7 +18,6 @@ use {rustc_attr_parsing as attr, rustc_hir as hir};
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::traits::on_unimplemented_condition::{Condition, ConditionOptions};
-use crate::error_reporting::traits::on_unimplemented_format::errors::*;
 use crate::error_reporting::traits::on_unimplemented_format::{Ctx, FormatArgs, FormatString};
 use crate::errors::{
     EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
@@ -112,10 +112,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): HIR is not present for RPITITs,
         // but I guess we could synthesize one here. We don't see any errors that rely on
         // that yet, though.
-        let item_context = self
-            .describe_enclosure(obligation.cause.body_id)
-            .map(|t| t.to_owned())
-            .unwrap_or(String::new());
+        let item_context = self.describe_enclosure(obligation.cause.body_id).unwrap_or("");
 
         let direct = match obligation.cause.code() {
             ObligationCauseCode::BuiltinDerived(..)
@@ -128,7 +125,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         };
 
-        let from_desugaring = obligation.cause.span.desugaring_kind().map(|k| format!("{k:?}"));
+        let from_desugaring = obligation.cause.span.desugaring_kind();
 
         let cause = if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
             Some("MainFunctionType".to_string())
@@ -253,8 +250,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }));
 
-        let this = self.tcx.def_path_str(trait_pred.trait_ref.def_id).to_string();
-        let trait_sugared = trait_pred.trait_ref.print_trait_sugared().to_string();
+        let this = self.tcx.def_path_str(trait_pred.trait_ref.def_id);
+        let trait_sugared = trait_pred.trait_ref.print_trait_sugared();
 
         let condition_options = ConditionOptions {
             self_types,
@@ -268,6 +265,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         // Unlike the generic_args earlier,
         // this one is *not* collected under `with_no_trimmed_paths!`
         // for printing the type to the user
+        //
+        // This includes `Self`, as it is the first parameter in `own_params`.
         let generic_args = self
             .tcx
             .generics_of(trait_pred.trait_ref.def_id)
@@ -339,6 +338,63 @@ pub enum AppendConstMessage {
     #[default]
     Default,
     Custom(Symbol, Span),
+}
+
+#[derive(LintDiagnostic)]
+#[diag(trait_selection_malformed_on_unimplemented_attr)]
+#[help]
+pub struct MalformedOnUnimplementedAttrLint {
+    #[label]
+    pub span: Span,
+}
+
+impl MalformedOnUnimplementedAttrLint {
+    pub fn new(span: Span) -> Self {
+        Self { span }
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(trait_selection_missing_options_for_on_unimplemented_attr)]
+#[help]
+pub struct MissingOptionsForOnUnimplementedAttr;
+
+#[derive(LintDiagnostic)]
+#[diag(trait_selection_ignored_diagnostic_option)]
+pub struct IgnoredDiagnosticOption {
+    pub option_name: &'static str,
+    #[label]
+    pub span: Span,
+    #[label(trait_selection_other_label)]
+    pub prev_span: Span,
+}
+
+impl IgnoredDiagnosticOption {
+    pub fn maybe_emit_warning<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        item_def_id: DefId,
+        new: Option<Span>,
+        old: Option<Span>,
+        option_name: &'static str,
+    ) {
+        if let (Some(new_item), Some(old_item)) = (new, old) {
+            if let Some(item_def_id) = item_def_id.as_local() {
+                tcx.emit_node_span_lint(
+                    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                    tcx.local_def_id_to_hir_id(item_def_id),
+                    new_item,
+                    IgnoredDiagnosticOption { span: new_item, prev_span: old_item, option_name },
+                );
+            }
+        }
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(trait_selection_wrapped_parser_error)]
+pub struct WrappedParserError {
+    pub description: String,
+    pub label: String,
 }
 
 impl<'tcx> OnUnimplementedDirective {
@@ -664,7 +720,7 @@ impl<'tcx> OnUnimplementedDirective {
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         condition_options: &ConditionOptions,
-        args: &FormatArgs,
+        args: &FormatArgs<'tcx>,
     ) -> OnUnimplementedNote {
         let mut message = None;
         let mut label = None;
@@ -784,7 +840,7 @@ impl<'tcx> OnUnimplementedFormatString {
         &self,
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
-        args: &FormatArgs,
+        args: &FormatArgs<'tcx>,
     ) -> String {
         let trait_def_id = trait_ref.def_id;
         let ctx = if self.is_diagnostic_namespace_variant {
