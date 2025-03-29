@@ -59,11 +59,14 @@ unsafe extern "C" {
     #[cfg_attr(any(target_os = "freebsd", target_vendor = "apple"), link_name = "__error")]
     #[cfg_attr(target_os = "haiku", link_name = "_errnop")]
     #[cfg_attr(target_os = "aix", link_name = "_Errno")]
+    // SAFETY: this will always return the same pointer on a given thread.
+    #[unsafe(ffi_const)]
     fn errno_location() -> *mut c_int;
 }
 
 /// Returns the platform-specific value of errno
 #[cfg(not(any(target_os = "dragonfly", target_os = "vxworks", target_os = "rtems")))]
+#[inline]
 pub fn errno() -> i32 {
     unsafe { (*errno_location()) as i32 }
 }
@@ -72,16 +75,19 @@ pub fn errno() -> i32 {
 // needed for readdir and syscall!
 #[cfg(all(not(target_os = "dragonfly"), not(target_os = "vxworks"), not(target_os = "rtems")))]
 #[allow(dead_code)] // but not all target cfgs actually end up using it
+#[inline]
 pub fn set_errno(e: i32) {
     unsafe { *errno_location() = e as c_int }
 }
 
 #[cfg(target_os = "vxworks")]
+#[inline]
 pub fn errno() -> i32 {
     unsafe { libc::errnoGet() }
 }
 
 #[cfg(target_os = "rtems")]
+#[inline]
 pub fn errno() -> i32 {
     unsafe extern "C" {
         #[thread_local]
@@ -92,6 +98,7 @@ pub fn errno() -> i32 {
 }
 
 #[cfg(target_os = "dragonfly")]
+#[inline]
 pub fn errno() -> i32 {
     unsafe extern "C" {
         #[thread_local]
@@ -103,6 +110,7 @@ pub fn errno() -> i32 {
 
 #[cfg(target_os = "dragonfly")]
 #[allow(dead_code)]
+#[inline]
 pub fn set_errno(e: i32) {
     unsafe extern "C" {
         #[thread_local]
