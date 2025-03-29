@@ -153,7 +153,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 121976,
         severity: ChangeSeverity::Info,
-        summary: "A new `boostrap-cache-path` option has been introduced which can be utilized to modify the cache path for bootstrap.",
+        summary: "A new `bootstrap-cache-path` option has been introduced which can be utilized to modify the cache path for bootstrap.",
     },
     ChangeInfo {
         change_id: 122108,

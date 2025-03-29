@@ -143,7 +143,7 @@ pub trait RawFloat:
     /// smaller than `10^SMALLEST_POWER_OF_TEN`, which will round to zero.
     ///
     /// The smallest power of ten is represented by `⌊log10(2^-n / (2^64 - 1))⌋`, where `n` is
-    /// the smallest power of two. The `2^64 - 1)` denomenator comes from the number of values
+    /// the smallest power of two. The `2^64 - 1)` denominator comes from the number of values
     /// that are representable by the intermediate storage format. I don't actually know _why_
     /// the storage format is relevant here.
     ///

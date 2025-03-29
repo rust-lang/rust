@@ -150,7 +150,7 @@ pub(crate) struct NullOnExport {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unsupported_instruction_set, code = E0779)]
-pub(crate) struct UnsuportedInstructionSet {
+pub(crate) struct UnsupportedInstructionSet {
     #[primary_span]
     pub span: Span,
 }
