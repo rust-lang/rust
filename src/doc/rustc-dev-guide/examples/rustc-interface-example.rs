@@ -1,4 +1,4 @@
-// Tested with nightly-2025-02-13
+// Tested with nightly-2025-03-08
 
 #![feature(rustc_private)]
 
@@ -64,9 +64,8 @@ fn main() {
         println!("{krate:?}");
         // Analyze the program and inspect the types of definitions.
         rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
-            for id in tcx.hir().items() {
-                let hir = tcx.hir();
-                let item = hir.item(id);
+            for id in tcx.hir_free_items() {
+                let item = tcx.hir_item(id);
                 match item.kind {
                     rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn { .. } => {
                         let name = item.ident;

@@ -1,4 +1,4 @@
-// Tested with nightly-2025-02-13
+// Tested with nightly-2025-03-08
 
 #![feature(rustc_private)]
 
@@ -71,9 +71,8 @@ impl rustc_driver::Callbacks for MyCallbacks {
 
     fn after_analysis(&mut self, _compiler: &Compiler, tcx: TyCtxt<'_>) -> Compilation {
         // Analyze the program and inspect the types of definitions.
-        for id in tcx.hir().items() {
-            let hir = tcx.hir();
-            let item = hir.item(id);
+        for id in tcx.hir_free_items(){
+            let item = &tcx.hir_item(id);
             match item.kind {
                 rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn { .. } => {
                     let name = item.ident;
