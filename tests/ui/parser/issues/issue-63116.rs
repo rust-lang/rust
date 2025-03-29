@@ -1,3 +1,4 @@
 // fixed by #66361
-//@ error-pattern: aborting due to 2 previous errors
+//~vv ERROR mismatched closing delimiter: `]`
+//~v ERROR this file contains an unclosed delimiter
 impl W <s(f;Y(;]

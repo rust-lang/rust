@@ -122,13 +122,17 @@ fn parse_expected(
     //     //~|
     //     //~^
     //     //~^^^^^
+    //     //~v
+    //     //~vvvvv
     //     //~?
     //     //[rev1]~
     //     //[rev1,rev2]~^^
     static RE: OnceLock<Regex> = OnceLock::new();
 
     let captures = RE
-        .get_or_init(|| Regex::new(r"//(?:\[(?P<revs>[\w\-,]+)])?~(?P<adjust>\?|\||\^*)").unwrap())
+        .get_or_init(|| {
+            Regex::new(r"//(?:\[(?P<revs>[\w\-,]+)])?~(?P<adjust>\?|\||[v\^]*)").unwrap()
+        })
         .captures(line)?;
 
     match (test_revision, captures.name("revs")) {
@@ -164,6 +168,8 @@ fn parse_expected(
         (true, Some(last_nonfollow_error.expect("encountered //~| without preceding //~^ line")))
     } else if line_num_adjust == "?" {
         (false, None)
+    } else if line_num_adjust.starts_with('v') {
+        (false, Some(line_num + line_num_adjust.len()))
     } else {
         (false, Some(line_num - line_num_adjust.len()))
     };

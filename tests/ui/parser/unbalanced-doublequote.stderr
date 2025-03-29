@@ -1,5 +1,5 @@
 error[E0765]: unterminated double quote string
-  --> $DIR/unbalanced-doublequote.rs:5:5
+  --> $DIR/unbalanced-doublequote.rs:3:5
    |
 LL | /     "
 LL | | }

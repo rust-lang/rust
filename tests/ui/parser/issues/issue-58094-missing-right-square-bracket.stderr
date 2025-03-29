@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-58094-missing-right-square-bracket.rs:5:4
+  --> $DIR/issue-58094-missing-right-square-bracket.rs:4:4
    |
 LL | #[Ѕ
    |  - ^
