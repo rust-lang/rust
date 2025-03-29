@@ -47,3 +47,14 @@ fn temp_lifetime() {
     }
     async fn foo(_: &mut usize) {}
 }
+
+#[test]
+fn transitive_extension() {
+    async fn temporary() {}
+
+    // `pin!` witnessed in the wild being used like this, even if it yields
+    // a `Pin<&mut &mut impl Unpin>`; it does work because `pin!`
+    // happens to transitively extend the lifespan of `temporary()`.
+    let p = pin!(&mut temporary());
+    let _use = p;
+}

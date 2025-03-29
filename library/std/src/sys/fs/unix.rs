@@ -155,15 +155,15 @@ cfg_has_statx! {{
         enum STATX_STATE{ Unknown = 0, Present, Unavailable }
         static STATX_SAVED_STATE: AtomicU8 = AtomicU8::new(STATX_STATE::Unknown as u8);
 
-        syscall! {
+        syscall!(
             fn statx(
                 fd: c_int,
                 pathname: *const c_char,
                 flags: c_int,
                 mask: libc::c_uint,
-                statxbuf: *mut libc::statx
-            ) -> c_int
-        }
+                statxbuf: *mut libc::statx,
+            ) -> c_int;
+        );
 
         let statx_availability = STATX_SAVED_STATE.load(Ordering::Relaxed);
         if statx_availability == STATX_STATE::Unavailable as u8 {
@@ -1540,7 +1540,9 @@ impl File {
                 let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
                 // futimens requires Android API level 19
                 cvt(unsafe {
-                    weak!(fn futimens(c_int, *const libc::timespec) -> c_int);
+                    weak!(
+                        fn futimens(fd: c_int, times: *const libc::timespec) -> c_int;
+                    );
                     match futimens.get() {
                         Some(futimens) => futimens(self.as_raw_fd(), times.as_ptr()),
                         None => return Err(io::const_error!(
@@ -1556,7 +1558,9 @@ impl File {
                     use crate::sys::{time::__timespec64, weak::weak};
 
                     // Added in glibc 2.34
-                    weak!(fn __futimens64(libc::c_int, *const __timespec64) -> libc::c_int);
+                    weak!(
+                        fn __futimens64(fd: c_int, times: *const __timespec64) -> c_int;
+                    );
 
                     if let Some(futimens64) = __futimens64.get() {
                         let to_timespec = |time: Option<SystemTime>| time.map(|time| time.t.to_timespec64())
