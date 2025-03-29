@@ -28,7 +28,7 @@ use crate::back::write::{
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
-use crate::llvm::{self, build_string};
+use crate::llvm::{self, LLVMCreateStringAttribute, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm};
 
 /// We keep track of the computed LTO cache keys from the previous
@@ -657,6 +657,22 @@ pub(crate) fn run_pass_manager(
     }
 
     if cfg!(llvm_enzyme) && enable_ad {
+        let llmod = module.module_llvm.llmod();
+
+        for function in llvm::get_functions(llmod) {
+            let attr_name = CString::new("alwaysinline").unwrap();
+            unsafe {
+                let attr = LLVMCreateStringAttribute(
+                    llvm::LLVMGetModuleContext(llmod),
+                    attr_name.as_ptr(),
+                    attr_name.as_bytes().len() as u32,
+                    std::ptr::null(),
+                    0,
+                );
+                llvm::LLVMAddAttributeAtIndex(function, llvm::LLVMAttributeFunctionIndex, attr);
+            }
+        }
+
         let opt_stage = llvm::OptStage::FatLTO;
         let stage = write::AutodiffStage::PostAD;
         unsafe {
