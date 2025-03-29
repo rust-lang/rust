@@ -3,7 +3,7 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn wild_before_at_is_bad_syntax() {
     let _ @ a = 0;
     //~^ ERROR pattern on wrong side of `@`

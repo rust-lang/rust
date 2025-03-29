@@ -13,19 +13,19 @@ fn _ok() {
     fn _f(_a @ _b: u8) {} // OK.
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn case_1() {
     let a: u8 @ b = 0;
     //~^ ERROR expected one of `!`
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn case_2() {
     let a @ (b: u8);
     //~^ ERROR expected one of `)`
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn case_3() {
     let a: T1 @ Outer(b: T2);
     //~^ ERROR expected one of `!`

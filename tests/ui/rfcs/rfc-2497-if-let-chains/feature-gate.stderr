@@ -1,7 +1,7 @@
 error: expected expression, found `let` statement
   --> $DIR/feature-gate.rs:54:20
    |
-LL |     #[cfg(FALSE)] (let 0 = 1);
+LL |     #[cfg(false)] (let 0 = 1);
    |                    ^^^
    |
    = note: only supported directly in conditions of `if` and `while` expressions
