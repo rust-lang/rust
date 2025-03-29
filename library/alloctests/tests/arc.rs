@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::iter::TrustedLen;
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, UniqueArc, Weak};
 
 #[test]
 fn uninhabited() {
@@ -261,6 +261,27 @@ fn make_mut_unsized() {
     // Now `data` and `other_data` point to different allocations.
     assert_eq!(*data, [11, 21, 31]);
     assert_eq!(*other_data, [110, 20, 30]);
+}
+
+#[test]
+fn test_unique_arc_weak() {
+    let data = UniqueArc::new(32);
+
+    // Test that `Weak` downgraded from `UniqueArc` cannot be upgraded.
+    let weak = UniqueArc::downgrade(&data);
+    assert_eq!(weak.strong_count(), 0);
+    assert_eq!(weak.weak_count(), 0);
+    assert!(weak.upgrade().is_none());
+
+    // Test that `Weak` can now be upgraded after the `UniqueArc` being converted to `Arc`.
+    let strong = UniqueArc::into_arc(data);
+    assert_eq!(*strong, 32);
+    assert_eq!(weak.strong_count(), 1);
+    assert_eq!(weak.weak_count(), 1);
+    let upgraded = weak.upgrade().unwrap();
+    assert_eq!(*upgraded, 32);
+    assert_eq!(weak.strong_count(), 2);
+    assert_eq!(weak.weak_count(), 1);
 }
 
 #[allow(unused)]
