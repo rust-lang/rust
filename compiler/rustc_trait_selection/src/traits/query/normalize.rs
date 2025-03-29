@@ -214,41 +214,24 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
             ty::Opaque => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.infcx.typing_mode() {
-                    TypingMode::Coherence
-                    | TypingMode::Analysis { .. }
-                    | TypingMode::PostBorrowckAnalysis { .. } => ty.try_super_fold_with(self)?,
-
-                    TypingMode::PostAnalysis => {
-                        let args = data.args.try_fold_with(self)?;
-                        let recursion_limit = self.cx().recursion_limit();
-
-                        if !recursion_limit.value_within_limit(self.anon_depth) {
-                            let guar = self
-                                .infcx
-                                .err_ctxt()
-                                .build_overflow_error(
-                                    OverflowCause::DeeplyNormalize(data.into()),
-                                    self.cause.span,
-                                    true,
-                                )
-                                .delay_as_bug();
-                            return Ok(Ty::new_error(self.cx(), guar));
-                        }
-
-                        let generic_ty = self.cx().type_of(data.def_id);
-                        let mut concrete_ty = generic_ty.instantiate(self.cx(), args);
-                        self.anon_depth += 1;
-                        if concrete_ty == ty {
-                            concrete_ty = Ty::new_error_with_message(
-                                self.cx(),
-                                DUMMY_SP,
-                                "recursive opaque type",
-                            );
-                        }
-                        let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
-                        self.anon_depth -= 1;
-                        folded_ty?
+                    TypingMode::Coherence | TypingMode::Analysis { .. } => {
+                        ty.try_super_fold_with(self)?
                     }
+
+                    TypingMode::PostBorrowckAnalysis { defined_opaque_types } => {
+                        if data
+                            .def_id
+                            .as_local()
+                            .is_some_and(|def_id| defined_opaque_types.contains(&def_id))
+                        {
+                            self.normalize_opaque_ty(ty, data)?
+                        } else {
+                            // Treat non-defining opaques as rigid
+                            ty.try_super_fold_with(self)?
+                        }
+                    }
+
+                    TypingMode::PostAnalysis => self.normalize_opaque_ty(ty, data)?,
                 }
             }
 
@@ -356,5 +339,37 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
         } else {
             Ok(p)
         }
+    }
+}
+
+impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
+    fn normalize_opaque_ty(
+        &mut self,
+        ty: Ty<'tcx>,
+        data: ty::AliasTy<'tcx>,
+    ) -> Result<Ty<'tcx>, NoSolution> {
+        let args = data.args.try_fold_with(self)?;
+        let recursion_limit = self.cx().recursion_limit();
+        if !recursion_limit.value_within_limit(self.anon_depth) {
+            let guar = self
+                .infcx
+                .err_ctxt()
+                .build_overflow_error(
+                    OverflowCause::DeeplyNormalize(data.into()),
+                    self.cause.span,
+                    true,
+                )
+                .delay_as_bug();
+            return Ok(Ty::new_error(self.cx(), guar));
+        }
+        let generic_ty = self.cx().type_of(data.def_id);
+        let mut concrete_ty = generic_ty.instantiate(self.cx(), args);
+        self.anon_depth += 1;
+        if concrete_ty == ty {
+            concrete_ty = Ty::new_error_with_message(self.cx(), DUMMY_SP, "recursive opaque type");
+        }
+        let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
+        self.anon_depth -= 1;
+        Ok(folded_ty?)
     }
 }
