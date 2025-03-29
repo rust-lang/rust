@@ -28,7 +28,7 @@ struct S9;
 macro_rules! generate_s10 {
     ($expr: expr) => {
         #[cfg(feature = $expr)]
-        //~^ ERROR expected unsuffixed literal, found expression `concat!("nonexistent")`
+        //~^ ERROR expected unsuffixed literal, found `expr` metavariable
         struct S10;
     }
 }

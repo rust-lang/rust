@@ -1,4 +1,4 @@
-error: macro expansion ignores expression `2` and any tokens following
+error: macro expansion ignores `expr` metavariable and any tokens following
   --> $DIR/trait-non-item-macros.rs:3:9
    |
 LL |         $a

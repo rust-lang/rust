@@ -12,6 +12,8 @@ macro_rules! abi_from_lit_frag {
             fn _import();
         }
 
+        unsafe extern $abi {}
+
         extern $abi fn _export() {}
 
         type _PTR = extern $abi fn();
@@ -23,6 +25,8 @@ macro_rules! abi_from_expr_frag {
         extern $abi {
             fn _import();
         }
+
+        unsafe extern $abi {}
 
         extern $abi fn _export() {}
 
