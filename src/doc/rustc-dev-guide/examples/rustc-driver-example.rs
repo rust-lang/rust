@@ -1,4 +1,4 @@
-// Tested with nightly-2025-03-08
+// Tested with nightly-2025-03-28
 
 #![feature(rustc_private)]
 
@@ -20,7 +20,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use rustc_ast_pretty::pprust::item_to_string;
-use rustc_driver::{Compilation, run_compiler};
+use rustc_driver::{run_compiler, Compilation};
 use rustc_interface::interface::{Compiler, Config};
 use rustc_middle::ty::TyCtxt;
 
@@ -71,13 +71,12 @@ impl rustc_driver::Callbacks for MyCallbacks {
 
     fn after_analysis(&mut self, _compiler: &Compiler, tcx: TyCtxt<'_>) -> Compilation {
         // Analyze the program and inspect the types of definitions.
-        for id in tcx.hir_free_items(){
+        for id in tcx.hir_free_items() {
             let item = &tcx.hir_item(id);
             match item.kind {
-                rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn { .. } => {
-                    let name = item.ident;
+                rustc_hir::ItemKind::Static(ident, ..) | rustc_hir::ItemKind::Fn { ident, .. } => {
                     let ty = tcx.type_of(item.hir_id().owner.def_id);
-                    println!("{name:?}:\t{ty:?}")
+                    println!("{ident:?}:\t{ty:?}")
                 }
                 _ => (),
             }

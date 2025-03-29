@@ -1,4 +1,4 @@
-// Tested with nightly-2025-03-08
+// Tested with nightly-2025-03-28
 
 #![feature(rustc_private)]
 
