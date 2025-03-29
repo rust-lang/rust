@@ -12,7 +12,6 @@ use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisi
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
     self, BottomUpFolder, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt, TypingMode, Upcast,
@@ -995,6 +994,26 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
     }
 }
 
+/// Gets the string for an explicit self declaration, e.g. "self", "&self",
+/// etc.
+fn get_self_string<'tcx, P>(self_arg_ty: Ty<'tcx>, is_self_ty: P) -> String
+where
+    P: Fn(Ty<'tcx>) -> bool,
+{
+    if is_self_ty(self_arg_ty) {
+        "self".to_owned()
+    } else if let ty::Ref(_, ty, mutbl) = self_arg_ty.kind()
+        && is_self_ty(*ty)
+    {
+        match mutbl {
+            hir::Mutability::Not => "&self".to_owned(),
+            hir::Mutability::Mut => "&mut self".to_owned(),
+        }
+    } else {
+        format!("self: {self_arg_ty}")
+    }
+}
+
 fn report_trait_method_mismatch<'tcx>(
     infcx: &InferCtxt<'tcx>,
     mut cause: ObligationCause<'tcx>,
@@ -1020,12 +1039,7 @@ fn report_trait_method_mismatch<'tcx>(
             if trait_m.fn_has_self_parameter =>
         {
             let ty = trait_sig.inputs()[0];
-            let sugg = match ExplicitSelf::determine(ty, |ty| ty == impl_trait_ref.self_ty()) {
-                ExplicitSelf::ByValue => "self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
-                _ => format!("self: {ty}"),
-            };
+            let sugg = get_self_string(ty, |ty| ty == impl_trait_ref.self_ty());
 
             // When the `impl` receiver is an arbitrary self type, like `self: Box<Self>`, the
             // span points only at the type `Box<Self`>, but we want to cover the whole
@@ -1238,12 +1252,7 @@ fn compare_self_type<'tcx>(
             .build_with_typing_env(ty::TypingEnv::non_body_analysis(tcx, method.def_id));
         let self_arg_ty = tcx.liberate_late_bound_regions(method.def_id, self_arg_ty);
         let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty);
-        match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
-            ExplicitSelf::ByValue => "self".to_owned(),
-            ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
-            ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
-            _ => format!("self: {self_arg_ty}"),
-        }
+        get_self_string(self_arg_ty, can_eq_self)
     };
 
     match (trait_m.fn_has_self_parameter, impl_m.fn_has_self_parameter) {
