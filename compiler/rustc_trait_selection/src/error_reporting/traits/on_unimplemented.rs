@@ -553,6 +553,13 @@ impl<'tcx> OnUnimplementedDirective {
     }
 
     pub fn of_item(tcx: TyCtxt<'tcx>, item_def_id: DefId) -> Result<Option<Self>, ErrorGuaranteed> {
+        if !tcx.is_trait(item_def_id) {
+            // It could be a trait_alias (`trait MyTrait = SomeOtherTrait`)
+            // or an implementation (`impl MyTrait for Foo {}`)
+            //
+            // We don't support those.
+            return Ok(None);
+        }
         if let Some(attr) = tcx.get_attr(item_def_id, sym::rustc_on_unimplemented) {
             return Self::parse_attribute(attr, false, tcx, item_def_id);
         } else {
@@ -782,8 +789,10 @@ impl<'tcx> OnUnimplementedFormatString {
         Ok(result)
     }
 
-    fn verify(&self, tcx: TyCtxt<'tcx>, item_def_id: DefId) -> Result<(), ErrorGuaranteed> {
-        let trait_def_id = if tcx.is_trait(item_def_id) { item_def_id } else { return Ok(()) };
+    fn verify(&self, tcx: TyCtxt<'tcx>, trait_def_id: DefId) -> Result<(), ErrorGuaranteed> {
+        if !tcx.is_trait(trait_def_id) {
+            return Ok(());
+        };
 
         let ctx = if self.is_diagnostic_namespace_variant {
             Ctx::DiagnosticOnUnimplemented { tcx, trait_def_id }
@@ -810,10 +819,10 @@ impl<'tcx> OnUnimplementedFormatString {
                 // so that users are aware that something is not correct
                 for e in errors {
                     if self.is_diagnostic_namespace_variant {
-                        if let Some(item_def_id) = item_def_id.as_local() {
+                        if let Some(trait_def_id) = trait_def_id.as_local() {
                             tcx.emit_node_span_lint(
                                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                                tcx.local_def_id_to_hir_id(item_def_id),
+                                tcx.local_def_id_to_hir_id(trait_def_id),
                                 self.span,
                                 WrappedParserError { description: e.description, label: e.label },
                             );
