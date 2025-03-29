@@ -1,6 +1,4 @@
 //@ revisions: DEBUGINFO NODEBUGINFO
-//@ compile-flags: -Zunsound-mir-opts
-// FIXME: see <https://github.com/rust-lang/rust/issues/132353>
 //@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes
 //@ [DEBUGINFO] compile-flags: -Cdebuginfo=full
 

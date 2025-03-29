@@ -9,6 +9,8 @@ pub type FxIndexSet<V> = indexmap::IndexSet<V, BuildHasherDefault<FxHasher>>;
 pub type IndexEntry<'a, K, V> = indexmap::map::Entry<'a, K, V>;
 pub type IndexOccupiedEntry<'a, K, V> = indexmap::map::OccupiedEntry<'a, K, V>;
 
+pub use indexmap::set::MutableValues;
+
 #[macro_export]
 macro_rules! define_id_collections {
     ($map_name:ident, $set_name:ident, $entry_name:ident, $key:ty) => {

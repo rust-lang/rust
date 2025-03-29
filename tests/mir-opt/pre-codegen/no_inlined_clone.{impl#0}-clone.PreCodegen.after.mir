@@ -3,13 +3,9 @@
 fn <impl at $DIR/no_inlined_clone.rs:9:10: 9:15>::clone(_1: &Foo) -> Foo {
     debug self => _1;
     let mut _0: Foo;
-    let mut _2: i32;
 
     bb0: {
-        StorageLive(_2);
-        _2 = copy ((*_1).0: i32);
-        _0 = Foo { a: move _2 };
-        StorageDead(_2);
+        _0 = copy (*_1);
         return;
     }
 }

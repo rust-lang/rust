@@ -40,7 +40,7 @@
   
       bb1: {
 -         _1 = copy (*_2)[_6];
-+         _1 = copy (*_2)[1 of 2];
++         _1 = const 2_u32;
           StorageDead(_6);
           StorageDead(_4);
           StorageDead(_2);
