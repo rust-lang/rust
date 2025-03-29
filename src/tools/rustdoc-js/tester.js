@@ -451,7 +451,7 @@ function loadSearchJS(doc_folder, resource_suffix) {
                         if (!Object.prototype.hasOwnProperty.call(entry, key)) {
                             continue;
                         }
-                        if (key === "displayTypeSignature") {
+                        if (key === "displayTypeSignature" && entry.displayTypeSignature !== null) {
                             const {type, mappedNames, whereClause} =
                                 await entry.displayTypeSignature;
                             entry.displayType = arrayToCode(type);
