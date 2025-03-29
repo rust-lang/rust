@@ -3,6 +3,14 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a> Trait for Opaque<&'a str> {
    |      ^^ unconstrained lifetime parameter
+   |
+help: either remove the type parameter 'a, or make use of it, for example
+   |
+LL - impl<'a> Trait for Opaque<&'a str> {
+LL + impl Trait for Opaque<&'a str> {
+   |
+LL | impl<'a> Trait for Opaque<&'a str, 'a> {
+   |                                  ++++
 
 error: aborting due to 1 previous error
 
