@@ -613,19 +613,17 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// - Inline const blocks (e.g. `const { 1 + 1 }`)
     /// - Literals, possibly negated (e.g. `-128u8`, `"hello"`)
     fn lower_pat_expr(&mut self, expr: &'tcx hir::PatExpr<'tcx>) -> PatKind<'tcx> {
-        let (lit, neg) = match &expr.kind {
-            hir::PatExprKind::Path(qpath) => {
-                return self.lower_path(qpath, expr.hir_id, expr.span).kind;
-            }
+        match &expr.kind {
+            hir::PatExprKind::Path(qpath) => self.lower_path(qpath, expr.hir_id, expr.span).kind,
             hir::PatExprKind::ConstBlock(anon_const) => {
-                return self.lower_inline_const(anon_const, expr.hir_id, expr.span);
+                self.lower_inline_const(anon_const, expr.hir_id, expr.span)
             }
-            hir::PatExprKind::Lit { lit, negated } => (lit, *negated),
-        };
-
-        let ct_ty = self.typeck_results.node_type(expr.hir_id);
-        let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
-        let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
-        self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
+            hir::PatExprKind::Lit { lit, negated } => {
+                let ct_ty = self.typeck_results.node_type(expr.hir_id);
+                let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg: *negated };
+                let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
+                self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
+            }
+        }
     }
 }
