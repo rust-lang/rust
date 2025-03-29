@@ -1943,9 +1943,7 @@ impl CoroutineKind {
             CoroutineKind::Coroutine(mov) => mov,
         }
     }
-}
 
-impl CoroutineKind {
     pub fn is_fn_like(self) -> bool {
         matches!(self, CoroutineKind::Desugared(_, CoroutineSource::Fn))
     }

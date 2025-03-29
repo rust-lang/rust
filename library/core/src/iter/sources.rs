@@ -1,6 +1,7 @@
 mod empty;
 mod from_coroutine;
 mod from_fn;
+mod generator;
 mod once;
 mod once_with;
 mod repeat;
@@ -18,6 +19,8 @@ pub use self::empty::{Empty, empty};
 pub use self::from_coroutine::{FromCoroutine, from_coroutine};
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
 pub use self::from_fn::{FromFn, from_fn};
+#[unstable(feature = "iter_macro", issue = "none", reason = "generators are unstable")]
+pub use self::generator::iter;
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub use self::once::{Once, once};
 #[stable(feature = "iter_once_with", since = "1.43.0")]
