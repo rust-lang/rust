@@ -1162,6 +1162,37 @@ class RustBuild(object):
         config = self.get_toml("build")
         return config or default_build_triple(self.verbose)
 
+    def is_git_repository(self, repo_path):
+        return os.path.isdir(os.path.join(repo_path, ".git"))
+
+    def get_latest_commit(self, repo_path, author_email):
+        try:
+            if not self.is_git_repository(repo_path):
+                return "<commit>"
+            cmd = [
+                "git",
+                "-C",
+                repo_path,
+                "rev-list",
+                "--author",
+                author_email,
+                "-n1",
+                "HEAD",
+            ]
+            commit = subprocess.check_output(cmd, text=True).strip()
+            return commit if commit else "<commit>"
+        except subprocess.CalledProcessError:
+            return "<commit>"
+
+    def get_value(self):
+        file_path = f"{self.rust_root}/src/stage0"
+        target_key = "git_merge_commit_email"
+        with open(file_path, "r") as file:
+            for line in file:
+                if line.startswith(f"{target_key}="):
+                    return line.split("=", 1)[1].strip()
+        return None
+
     def check_vendored_status(self):
         """Check that vendoring is configured properly"""
         # keep this consistent with the equivalent check in bootstrap:
@@ -1174,7 +1205,10 @@ class RustBuild(object):
                 eprint("      use vendored sources by default.")
 
         cargo_dir = os.path.join(self.rust_root, ".cargo")
-        url = "https://ci-artifacts.rust-lang.org/rustc-builds/<commit>/rustc-nightly-src.tar.xz"
+        repo_path = self.rust_root
+        git_merge_commit_email = self.get_value()
+        commit = self.get_latest_commit(repo_path, git_merge_commit_email)
+        url = f"https://ci-artifacts.rust-lang.org/rustc-builds/{commit}/rustc-nightly-src.tar.xz"
         if self.use_vendored_sources:
             vendor_dir = os.path.join(self.rust_root, "vendor")
             if not os.path.exists(vendor_dir):
