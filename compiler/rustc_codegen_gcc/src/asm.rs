@@ -272,8 +272,16 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     }
                 }
 
-                InlineAsmOperandRef::Const { ref string } => {
+                InlineAsmOperandRef::Interpolate { ref string } => {
                     constants_len += string.len() + att_dialect as usize;
+                }
+
+                InlineAsmOperandRef::Const { value } => {
+                    inputs.push(AsmInOperand {
+                        constraint: Cow::Borrowed("i"),
+                        rust_idx,
+                        val: value.immediate(),
+                    });
                 }
 
                 InlineAsmOperandRef::SymFn { instance } => {
@@ -387,6 +395,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     });
                 }
 
+                InlineAsmOperandRef::Interpolate { .. } => {
+                    // processed in the previous pass
+                }
+
                 InlineAsmOperandRef::Const { .. } => {
                     // processed in the previous pass
                 }
@@ -464,6 +476,15 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             push_to_template(modifier, gcc_index);
                         }
 
+                        InlineAsmOperandRef::Const { .. } => {
+                            let in_gcc_index = inputs
+                                .iter()
+                                .position(|op| operand_idx == op.rust_idx)
+                                .expect("wrong rust index");
+                            let gcc_index = in_gcc_index + outputs.len();
+                            push_to_template(None, gcc_index);
+                        }
+
                         InlineAsmOperandRef::SymFn { instance } => {
                             // TODO(@Amanieu): Additional mangling is needed on
                             // some targets to add a leading underscore (Mach-O)
@@ -480,7 +501,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             template_str.push_str(name);
                         }
 
-                        InlineAsmOperandRef::Const { ref string } => {
+                        InlineAsmOperandRef::Interpolate { ref string } => {
                             template_str.push_str(string);
                         }
 
@@ -830,7 +851,7 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
                     match operands[operand_idx] {
-                        GlobalAsmOperandRef::Const { ref string } => {
+                        GlobalAsmOperandRef::Interpolate { ref string } => {
                             // Const operands get injected directly into the
                             // template. Note that we don't need to escape %
                             // here unlike normal inline assembly.

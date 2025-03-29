@@ -9,7 +9,7 @@
 //@ compile-flags: -C target-feature=+avx512bw
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, repr_simd, f16, f128)]
+#![feature(no_core, repr_simd, f16, f128, asm_const_ptr)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
@@ -90,6 +90,18 @@ extern "C" {
 #[no_mangle]
 pub unsafe fn sym_fn() {
     asm!("call {}", sym extern_func);
+}
+
+// NOTE: this only works for x64, as this test is compiled with PIC,
+// and on x86 PIC symbol can't be constant.
+// x86_64-LABEL: const_ptr:
+// x86_64: #APP
+// x86_64: mov al, byte ptr [{{.*}}anon{{.*}}]
+// x86_64: #NO_APP
+#[cfg(x86_64)]
+#[no_mangle]
+pub unsafe fn const_ptr() {
+    asm!("mov al, byte ptr [{}]", const &1);
 }
 
 // CHECK-LABEL: sym_static:

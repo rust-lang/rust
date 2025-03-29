@@ -15,7 +15,7 @@ use rustc_target::asm::{
     InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType, ModifierInfo,
 };
 
-use crate::errors::RegisterTypeUnstable;
+use crate::errors::{AsmConstPtrUnstable, RegisterTypeUnstable};
 
 pub struct InlineAsmCtxt<'a, 'tcx> {
     typing_env: ty::TypingEnv<'tcx>,
@@ -503,7 +503,36 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     match ty.kind() {
                         ty::Error(_) => {}
                         _ if ty.is_integral() => {}
+                        ty::FnPtr(..) => {
+                            if !self.tcx().features().asm_const_ptr() {
+                                self.tcx()
+                                    .sess
+                                    .create_feature_err(
+                                        AsmConstPtrUnstable { span: op_sp },
+                                        sym::asm_const_ptr,
+                                    )
+                                    .emit();
+                            }
+                        }
+                        ty::RawPtr(pointee, _) | ty::Ref(_, pointee, _)
+                            if self.is_thin_ptr_ty(*pointee) =>
+                        {
+                            if !self.tcx().features().asm_const_ptr() {
+                                self.tcx()
+                                    .sess
+                                    .create_feature_err(
+                                        AsmConstPtrUnstable { span: op_sp },
+                                        sym::asm_const_ptr,
+                                    )
+                                    .emit();
+                            }
+                        }
                         _ => {
+                            let const_possible_ty = if !self.tcx().features().asm_const_ptr() {
+                                "integer"
+                            } else {
+                                "integer or thin pointer"
+                            };
                             self.infcx
                                 .dcx()
                                 .struct_span_err(op_sp, "invalid type for `const` operand")
@@ -511,7 +540,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                     self.tcx().def_span(anon_const.def_id),
                                     format!("is {} `{}`", ty.kind().article(), ty),
                                 )
-                                .with_help("`const` operands must be of an integer type")
+                                .with_help(format!(
+                                    "`const` operands must be of an {const_possible_ty} type"
+                                ))
                                 .emit();
                         }
                     }
