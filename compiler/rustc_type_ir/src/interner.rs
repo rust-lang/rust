@@ -44,6 +44,13 @@ pub trait Interner:
     type BoundVarKinds: Copy + Debug + Hash + Eq + SliceLike<Item = Self::BoundVarKind> + Default;
     type BoundVarKind: Copy + Debug + Hash + Eq;
 
+    type SigBinderRef: Deref<Target = ty::Binder<Self, ty::FnSigTys<Self>>>
+        + Copy
+        + Debug
+        + Hash
+        + Eq;
+    type TyBinderRef: Deref<Target = ty::Binder<Self, Self::Ty>> + Copy + Debug + Hash + Eq;
+
     type PredefinedOpaques: Copy
         + Debug
         + Hash

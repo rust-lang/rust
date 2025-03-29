@@ -828,7 +828,7 @@ where
                 }
 
                 ty::UnsafeBinder(bound_ty) => {
-                    let ty = tcx.instantiate_bound_regions_with_erased(bound_ty.into());
+                    let ty = tcx.instantiate_bound_regions_with_erased(*bound_ty);
                     field_ty_or_layout(TyAndLayout { ty, ..this }, cx, i)
                 }
 

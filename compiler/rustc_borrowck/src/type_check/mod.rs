@@ -1641,7 +1641,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let expected_ty = self.infcx.instantiate_binder_with_fresh_vars(
                     self.body().source_info(location).span,
                     BoundRegionConversionTime::HigherRankedType,
-                    binder_ty.into(),
+                    *binder_ty,
                 );
                 self.sub_types(
                     operand_ty,
@@ -1891,7 +1891,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let found_ty = self.infcx.instantiate_binder_with_fresh_vars(
                     self.body.source_info(location).span,
                     BoundRegionConversionTime::HigherRankedType,
-                    binder_ty.into(),
+                    *binder_ty,
                 );
                 self.relate_types(
                     ty,

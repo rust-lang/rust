@@ -720,3 +720,35 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<PlaceElem<'tcx>> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.mk_place_elems(v))
     }
 }
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::TyBinderRef<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        (**self).visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::TyBinderRef<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        let folded = (*self).try_fold_with(folder)?;
+        Ok(if *self == folded { self } else { folder.cx().mk_ty_binder(folded) })
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::SigBinderRef<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        (**self).visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::SigBinderRef<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        let folded = (*self).try_fold_with(folder)?;
+        Ok(if *self == folded { self } else { folder.cx().mk_sig_binder(folded) })
+    }
+}

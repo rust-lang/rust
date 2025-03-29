@@ -80,8 +80,8 @@ use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
     GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, ParamTy,
     Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
-    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    ValTree, ValTreeKind, Visibility,
+    PredicatePolarity, Region, RegionKind, ReprOptions, SigBinderRef, TraitObjectVisitor, Ty,
+    TyBinderRef, TyKind, TyVid, ValTree, ValTreeKind, Visibility,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -96,6 +96,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type GenericArg = ty::GenericArg<'tcx>;
     type Term = ty::Term<'tcx>;
     type BoundVarKinds = &'tcx List<ty::BoundVariableKind>;
+
+    type SigBinderRef = ty::SigBinderRef<'tcx>;
+    type TyBinderRef = ty::TyBinderRef<'tcx>;
 
     type BoundVarKind = ty::BoundVariableKind;
     type PredefinedOpaques = solve::PredefinedOpaques<'tcx>;
@@ -813,6 +816,8 @@ pub struct CtxtInterners<'tcx> {
     captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
     offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
     valtree: InternedSet<'tcx, ty::ValTreeKind<'tcx>>,
+    ty_binder: InternedSet<'tcx, ty::Binder<'tcx, Ty<'tcx>>>,
+    sig_binder: InternedSet<'tcx, ty::Binder<'tcx, ty::FnSigTys<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -849,6 +854,8 @@ impl<'tcx> CtxtInterners<'tcx> {
             captures: InternedSet::with_capacity(N),
             offset_of: InternedSet::with_capacity(N),
             valtree: InternedSet::with_capacity(N),
+            ty_binder: InternedSet::with_capacity(N),
+            sig_binder: InternedSet::with_capacity(N),
         }
     }
 
@@ -2331,6 +2338,8 @@ nop_lift! { predicate; Predicate<'a> => Predicate<'tcx> }
 nop_lift! { predicate; Clause<'a> => Clause<'tcx> }
 nop_lift! { layout; Layout<'a> => Layout<'tcx> }
 nop_lift! { valtree; ValTree<'a> => ValTree<'tcx> }
+nop_lift! { ty_binder; TyBinderRef<'a> => TyBinderRef<'tcx> }
+nop_lift! { sig_binder; SigBinderRef<'a> => SigBinderRef<'tcx> }
 
 nop_list_lift! { type_lists; Ty<'a> => Ty<'tcx> }
 nop_list_lift! {
@@ -2595,6 +2604,8 @@ direct_interners! {
         ExternalConstraints -> ExternalConstraints<'tcx>,
     predefined_opaques_in_body: pub mk_predefined_opaques_in_body(PredefinedOpaquesData<TyCtxt<'tcx>>):
         PredefinedOpaques -> PredefinedOpaques<'tcx>,
+    ty_binder: pub mk_ty_binder(ty::Binder<'tcx, Ty<'tcx>>): TyBinderRef -> TyBinderRef<'tcx>,
+    sig_binder: pub mk_sig_binder(ty::Binder<'tcx, ty::FnSigTys<'tcx>>): SigBinderRef -> SigBinderRef<'tcx>,
 }
 
 macro_rules! slice_interners {
