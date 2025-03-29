@@ -1758,6 +1758,31 @@ pub const unsafe fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
 #[rustc_intrinsic]
 pub const unsafe fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
+/// Indexes into a slice without performing bounds checks.
+///
+/// Equivalent to `{&, &mut, &raw const, &raw mut} (*slice_ptr)[index]`,
+/// depending on the types involved.
+///
+/// This is exposed via `SliceIndex::get_unchecked(_mut)`,
+/// and isn't intended to be used elsewhere.
+///
+/// # Safety
+///
+/// `index < PtrMetadata(slice_ptr)`, and the resulting offsetting is in-bounds
+#[cfg(not(bootstrap))]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn slice_get_unchecked<SlicePtr: SliceGetUnchecked<ItemPtr>, ItemPtr>(
+    slice_ptr: SlicePtr,
+    index: usize,
+) -> ItemPtr;
+
+pub trait SliceGetUnchecked<T> {}
+impl<T> SliceGetUnchecked<*const T> for *const [T] {}
+impl<T> SliceGetUnchecked<*mut T> for *mut [T] {}
+impl<'a, T> SliceGetUnchecked<&'a T> for &'a [T] {}
+impl<'a, T> SliceGetUnchecked<&'a mut T> for &'a mut [T] {}
+
 /// Masks out bits of the pointer according to a mask.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
