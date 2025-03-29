@@ -1,5 +1,5 @@
 //@ proc-macro: malicious-macro.rs
-#![feature(derive_coerce_pointee, arbitrary_self_types)]
+#![feature(arbitrary_self_types)]
 
 extern crate core;
 extern crate malicious_macro;
