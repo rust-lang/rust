@@ -6,7 +6,7 @@
 mod to_reuse {
     use crate::S;
 
-    pub fn foo<'a>(#[cfg(FALSE)] a: u8, _b: &'a S) -> u32 {
+    pub fn foo<'a>(#[cfg(false)] a: u8, _b: &'a S) -> u32 {
         1
     }
 }

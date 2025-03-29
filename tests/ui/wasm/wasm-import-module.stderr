@@ -31,7 +31,7 @@ LL | #[link(wasm_import_module = "foo", kind = "dylib")]
 error: `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
   --> $DIR/wasm-import-module.rs:18:8
    |
-LL | #[link(wasm_import_module = "foo", cfg(FALSE))]
+LL | #[link(wasm_import_module = "foo", cfg(false))]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors

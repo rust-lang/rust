@@ -32,7 +32,7 @@ impl Foo<[u8; {
     #![cfg_attr(not(FALSE), rustc_dummy(evaluated_attr))]
 
     fn bar() {
-        #[cfg(FALSE)] let a = 1;
+        #[cfg(false)] let a = 1;
     }
 }
 

@@ -1,6 +1,5 @@
 //@ check-pass
 
-#![feature(cfg_boolean_literals)]
 #![feature(doc_cfg)]
 
 #[doc(cfg(false))]

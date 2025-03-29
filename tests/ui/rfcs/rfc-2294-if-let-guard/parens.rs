@@ -3,7 +3,7 @@
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn un_cfged() {
     match () {
         () if let 0 = 1 => {}

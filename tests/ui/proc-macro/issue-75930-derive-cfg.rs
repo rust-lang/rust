@@ -31,7 +31,7 @@ extern crate test_macros;
 //
 // It is because of this code from below:
 // ```
-// struct Foo<#[cfg(FALSE)] A, B>
+// struct Foo<#[cfg(false)] A, B>
 // ```
 // When the token stream is formed during parsing, `<` is followed immediately
 // by `#`, which is punctuation, so it is marked `Joint`. But before being
@@ -51,22 +51,22 @@ extern crate test_macros;
 #[print_attr]
 #[derive(Print)]
 #[print_helper(b)]
-struct Foo<#[cfg(FALSE)] A, B> {
-    #[cfg(FALSE)] first: String,
+struct Foo<#[cfg(false)] A, B> {
+    #[cfg(false)] first: String,
     #[cfg_attr(FALSE, deny(warnings))] second: bool,
     third: [u8; {
-        #[cfg(FALSE)] struct Bar;
+        #[cfg(false)] struct Bar;
         #[cfg(not(FALSE))] struct Inner;
-        #[cfg(FALSE)] let a = 25;
+        #[cfg(false)] let a = 25;
         match true {
-            #[cfg(FALSE)] true => {},
+            #[cfg(false)] true => {},
             #[cfg_attr(not(FALSE), allow(warnings))] false => {},
             _ => {}
         };
 
         #[print_helper(should_be_removed)]
         fn removed_fn() {
-            #![cfg(FALSE)]
+            #![cfg(false)]
         }
 
         #[print_helper(c)] #[cfg(not(FALSE))] fn kept_fn() {
@@ -76,22 +76,22 @@ struct Foo<#[cfg(FALSE)] A, B> {
 
         enum TupleEnum {
             Foo(
-                #[cfg(FALSE)] u8,
-                #[cfg(FALSE)] bool,
+                #[cfg(false)] u8,
+                #[cfg(false)] bool,
                 #[cfg(not(FALSE))] i32,
-                #[cfg(FALSE)] String, u8
+                #[cfg(false)] String, u8
             )
         }
 
         struct TupleStruct(
-            #[cfg(FALSE)] String,
+            #[cfg(false)] String,
             #[cfg(not(FALSE))] i32,
-            #[cfg(FALSE)] bool,
+            #[cfg(false)] bool,
             u8
         );
 
         fn plain_removed_fn() {
-            #![cfg_attr(not(FALSE), cfg(FALSE))]
+            #![cfg_attr(not(FALSE), cfg(false))]
         }
 
         0

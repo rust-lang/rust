@@ -30,7 +30,7 @@ fn other_guards_dont() {
     while let (x if guard(x)) = 0 {}
     //~^ ERROR: guard patterns are experimental
 
-    #[cfg(FALSE)]
+    #[cfg(false)]
     while let (x if guard(x)) = 0 {}
     //~^ ERROR: guard patterns are experimental
 }
