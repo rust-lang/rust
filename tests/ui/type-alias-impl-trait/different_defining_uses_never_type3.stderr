@@ -5,10 +5,10 @@ LL | fn two() -> Tait { Two::<()>(todo!()) }
    |             ^^^^ expected `One`, got `Two<()>`
    |
 note: previous use here
-  --> $DIR/different_defining_uses_never_type3.rs:7:20
+  --> $DIR/different_defining_uses_never_type3.rs:7:13
    |
 LL | fn one() -> Tait { One }
-   |                    ^^^
+   |             ^^^^
 
 error: aborting due to 1 previous error
 

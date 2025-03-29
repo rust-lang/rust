@@ -1,5 +1,5 @@
 error: unused implementer of `Iterator` that must be used
-  --> $DIR/unused-supertrait.rs:9:5
+  --> $DIR/unused-supertrait.rs:12:5
    |
 LL |     it();
    |     ^^^^

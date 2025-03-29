@@ -2,7 +2,9 @@
 use std::fmt::Debug;
 
 fn a() -> impl Fn(&u8) -> impl Debug {
-    |x| x //~ ERROR hidden type for `impl Debug` captures lifetime that does not appear in bounds
+    |x| x
+    //~^ ERROR hidden type for `impl Debug` captures lifetime that does not appear in bounds
+    //~| ERROR hidden type for `impl Debug` captures lifetime that does not appear in bounds
 }
 
 fn main() {}

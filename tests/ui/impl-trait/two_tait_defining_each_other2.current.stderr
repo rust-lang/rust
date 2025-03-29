@@ -1,18 +1,5 @@
-error: item does not constrain `A::{opaque#0}`
-  --> $DIR/two_tait_defining_each_other2.rs:12:4
-   |
-LL | fn muh(x: A) -> B {
-   |    ^^^
-   |
-   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
-note: this opaque type is supposed to be constrained
-  --> $DIR/two_tait_defining_each_other2.rs:6:10
-   |
-LL | type A = impl Foo;
-   |          ^^^^^^^^
-
 error: opaque type's hidden type cannot be another opaque type from the same scope
-  --> $DIR/two_tait_defining_each_other2.rs:15:5
+  --> $DIR/two_tait_defining_each_other2.rs:14:5
    |
 LL |     x // B's hidden type is A (opaquely)
    |     ^ one of the two opaque types used here has to be outside its defining scope
@@ -28,5 +15,5 @@ note: opaque type being used as hidden type
 LL | type A = impl Foo;
    |          ^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

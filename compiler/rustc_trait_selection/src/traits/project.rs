@@ -952,6 +952,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             match selcx.infcx.typing_mode() {
                                 TypingMode::Coherence
                                 | TypingMode::Analysis { .. }
+                                | TypingMode::Borrowck { .. }
                                 | TypingMode::PostBorrowckAnalysis { .. } => {
                                     debug!(
                                         assoc_ty = ?selcx.tcx().def_path_str(node_item.item.def_id),

@@ -1,11 +1,11 @@
 error[E0792]: expected generic type parameter, found `u8`
-  --> $DIR/issue-60564.rs:21:9
+  --> $DIR/issue-60564.rs:20:34
    |
 LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
    |                         - this generic parameter must be used with a generic type parameter
 ...
-LL |         (0u8..n).rev().map(move |shift| ((self >> T::from(shift)) & T::from(1)).try_into().unwrap())
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn iter_bits(self, n: u8) -> Self::BitsIter {
+   |                                  ^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

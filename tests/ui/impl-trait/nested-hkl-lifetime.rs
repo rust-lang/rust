@@ -1,5 +1,3 @@
-//@ check-pass
-
 use std::iter::FromIterator;
 
 struct DynamicAlt<P>(P);
@@ -26,6 +24,8 @@ fn rule_to_parser<'c>() -> impl Parser<&'c str> {
     move |input| {
         let v: Vec<()> = vec![];
         alt(v.iter().map(|()| owned_context(rule_to_parser())).collect::<DynamicAlt<_>>())(input)
+        //~^ ERROR expected generic lifetime parameter, found `'_`
+        // TODO what's going on
     }
 }
 

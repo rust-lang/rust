@@ -1,14 +1,14 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/generic_different_defining_uses.rs:14:5
+  --> $DIR/generic_different_defining_uses.rs:13:25
    |
-LL |     Some(t).into_iter()
-   |     ^^^^^^^^^^^^^^^^^^^ expected `std::iter::Once<T>`, got `std::option::IntoIter<T>`
+LL | fn my_iter2<T>(t: T) -> MyIter<T> {
+   |                         ^^^^^^^^^ expected `std::iter::Once<T>`, got `std::option::IntoIter<T>`
    |
 note: previous use here
-  --> $DIR/generic_different_defining_uses.rs:9:5
+  --> $DIR/generic_different_defining_uses.rs:8:24
    |
-LL |     std::iter::once(t)
-   |     ^^^^^^^^^^^^^^^^^^
+LL | fn my_iter<T>(t: T) -> MyIter<T> {
+   |                        ^^^^^^^^^
 
 error: aborting due to 1 previous error
 

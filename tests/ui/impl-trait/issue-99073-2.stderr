@@ -1,15 +1,3 @@
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/issue-99073-2.rs:9:22
-   |
-LL |         let i: u32 = test::<i32>(-1, false);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^ expected `T`, got `u32`
-   |
-note: previous use here
-  --> $DIR/issue-99073-2.rs:7:45
-   |
-LL | fn test<T: Display>(t: T, recurse: bool) -> impl Display {
-   |                                             ^^^^^^^^^^^^
-
 error[E0792]: expected generic type parameter, found `i32`
   --> $DIR/issue-99073-2.rs:9:22
    |
@@ -19,6 +7,6 @@ LL |     let f = || {
 LL |         let i: u32 = test::<i32>(-1, false);
    |                      ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0792`.

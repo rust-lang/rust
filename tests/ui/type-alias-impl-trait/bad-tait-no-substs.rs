@@ -12,7 +12,6 @@ pub enum UninhabitedVariants {
 
 #[define_opaque(Alias)]
 fn uwu(x: UninhabitedVariants) {
-    //~^ ERROR item does not constrain
     match x {}
     //~^ ERROR non-exhaustive patterns
 }

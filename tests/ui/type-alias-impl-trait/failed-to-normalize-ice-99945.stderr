@@ -24,17 +24,8 @@ note: this opaque type is supposed to be constrained
 LL | type StateWidget<'a> = impl Widget<&'a ()>;
    |                        ^^^^^^^^^^^^^^^^^^^
 
-error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/failed-to-normalize-ice-99945.rs:33:5
-   |
-LL | type StateWidget<'a> = impl Widget<&'a ()>;
-   |                  -- this generic parameter must be used with a generic lifetime parameter
-...
-LL |     StatefulWidget(build)
-   |     ^^^^^^^^^^^^^^^^^^^^^
-
 error[E0308]: mismatched types
-  --> $DIR/failed-to-normalize-ice-99945.rs:38:29
+  --> $DIR/failed-to-normalize-ice-99945.rs:37:29
    |
 LL | type StateWidget<'a> = impl Widget<&'a ()>;
    |                        ------------------- the expected opaque type
@@ -45,7 +36,6 @@ LL |     new_stateful_widget(|_| ()).make_state();
    = note: expected opaque type `StateWidget<'_>`
                 found unit type `()`
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0308, E0792.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0308`.

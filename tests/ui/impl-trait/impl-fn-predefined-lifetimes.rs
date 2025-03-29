@@ -5,6 +5,7 @@ fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
     //~^ WARNING elided lifetime has a name
     |x| x
     //~^ ERROR expected generic lifetime parameter, found `'_`
+    //~| ERROR expected generic lifetime parameter, found `'_`
 }
 
 fn _b<'a>() -> impl Fn(&'a u8) -> (impl Debug + 'a) {

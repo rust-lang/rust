@@ -66,6 +66,10 @@ pub enum TypingMode<I: Interner> {
     /// }
     /// ```
     Analysis { defining_opaque_types: I::DefiningOpaqueTypes },
+    /// The behavior during MIR borrowck is identical to `TypingMode::Analysis` except that
+    /// the initial value for opaque types is the type computed during HIR typeck with unique
+    /// unconstrained region inference variables.
+    Borrowck { defining_opaque_types: I::DefiningOpaqueTypes },
     /// Any analysis after borrowck for a given body should be able to use all the
     /// hidden types defined by borrowck, without being able to define any new ones.
     ///
@@ -93,6 +97,10 @@ impl<I: Interner> TypingMode<I> {
     /// types defined by that body.
     pub fn analysis_in_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
         TypingMode::Analysis { defining_opaque_types: cx.opaque_types_defined_by(body_def_id) }
+    }
+
+    pub fn borrowck(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
+        TypingMode::Borrowck { defining_opaque_types: cx.opaque_types_defined_by(body_def_id) }
     }
 
     pub fn post_borrowck_analysis(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {

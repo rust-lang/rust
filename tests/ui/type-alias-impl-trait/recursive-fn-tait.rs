@@ -12,8 +12,8 @@ pub fn lift() -> Diff {
 pub fn add(
     n: Diff,
     m: Diff,
-) -> Diff {
-    move |x: usize| m(n(x)) //~ ERROR: concrete type differs
+) -> Diff { //~ ERROR: concrete type differs
+    move |x: usize| m(n(x))
 }
 
 fn main() {}

@@ -267,6 +267,8 @@ rustc_queries! {
     ///
     /// This is a specialized instance of [`Self::type_of`] that detects query cycles.
     /// Unless `CyclePlaceholder` needs to be handled separately, call [`Self::type_of`] instead.
+    /// This is used to improve the error message in cases where revealing the hidden type
+    /// for auto-trait leakage cycles.
     ///
     /// # Panics
     ///
@@ -277,6 +279,12 @@ rustc_queries! {
             path = tcx.def_path_str(key),
         }
         cycle_stash
+    }
+    query type_of_opaque_hir_typeck(key: LocalDefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
+        desc { |tcx|
+            "computing type of opaque `{path}` via HIR typeck",
+            path = tcx.def_path_str(key),
+        }
     }
 
     /// Returns whether the type alias given by `DefId` is lazy.
