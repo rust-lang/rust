@@ -18,7 +18,9 @@ use {rustc_attr_parsing as attr, rustc_hir as hir};
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::traits::on_unimplemented_condition::{Condition, ConditionOptions};
-use crate::error_reporting::traits::on_unimplemented_format::{Ctx, FormatArgs, FormatString};
+use crate::error_reporting::traits::on_unimplemented_format::{
+    Ctx, FormatArgs, FormatString, FormatWarning,
+};
 use crate::errors::{
     EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
 };
@@ -806,8 +808,38 @@ impl<'tcx> OnUnimplementedFormatString {
             // Warnings about format specifiers, deprecated parameters, wrong parameters etc.
             // In other words we'd like to let the author know, but we can still try to format the string later
             Ok(FormatString { warnings, .. }) => {
-                for w in warnings {
-                    w.emit_warning(tcx, trait_def_id)
+                if self.is_diagnostic_namespace_variant {
+                    for w in warnings {
+                        w.emit_warning(tcx, trait_def_id)
+                    }
+                } else {
+                    for w in warnings {
+                        match w {
+                            FormatWarning::UnknownParam { argument_name, span } => {
+                                let reported = struct_span_code_err!(
+                                    tcx.dcx(),
+                                    span,
+                                    E0230,
+                                    "cannot find parameter {} on this trait",
+                                    argument_name,
+                                )
+                                .emit();
+                                result = Err(reported);
+                            }
+                            FormatWarning::PositionalArgument { span, .. } => {
+                                let reported = struct_span_code_err!(
+                                    tcx.dcx(),
+                                    span,
+                                    E0231,
+                                    "positional format arguments are not allowed here"
+                                )
+                                .emit();
+                                result = Err(reported);
+                            }
+                            FormatWarning::InvalidSpecifier { .. }
+                            | FormatWarning::FutureIncompat { .. } => {}
+                        }
+                    }
                 }
             }
             // Errors from the underlying `rustc_parse_format::Parser`
