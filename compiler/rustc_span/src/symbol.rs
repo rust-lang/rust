@@ -372,6 +372,7 @@ symbols! {
         SyncUnsafeCell,
         T,
         Target,
+        This,
         ToOwned,
         ToString,
         TokenStream,
@@ -2068,6 +2069,7 @@ symbols! {
         test_removed_feature,
         test_runner,
         test_unstable_lint,
+
         thread,
         thread_local,
         thread_local_macro,
