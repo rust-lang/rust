@@ -5,7 +5,6 @@ use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Diag;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
@@ -185,11 +184,7 @@ impl<'tcx> ConstToPat<'tcx> {
 
         // Wrap the pattern in a marker node to indicate that it is the result of lowering a
         // constant. This is used for diagnostics, and for unsafety checking of inline const blocks.
-        let kind = PatKind::ExpandedConstant {
-            subpattern: inlined_const_as_pat,
-            def_id: uv.def,
-            is_inline: matches!(self.tcx.def_kind(uv.def), DefKind::InlineConst),
-        };
+        let kind = PatKind::ExpandedConstant { subpattern: inlined_const_as_pat, def_id: uv.def };
         Box::new(Pat { kind, ty, span: self.span })
     }
 

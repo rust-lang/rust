@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use rustc_hir::def::DefKind;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -201,15 +202,13 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::ExpandedConstant { subpattern: ref pattern, def_id: _, is_inline: false } => {
-                MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs, extra_data);
-                None
-            }
-            PatKind::ExpandedConstant { subpattern: ref pattern, def_id, is_inline: true } => {
+            PatKind::ExpandedConstant { subpattern: ref pattern, def_id } => {
                 MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs, extra_data);
 
                 // Apply a type ascription for the inline constant to the value at `match_pair.place`
-                if let Some(source) = place {
+                if let Some(source) = place
+                    && matches!(cx.tcx.def_kind(def_id), DefKind::InlineConst)
+                {
                     let span = pattern.span;
                     let parent_id = cx.tcx.typeck_root_def_id(cx.def_id.to_def_id());
                     let args = ty::InlineConstArgs::new(
