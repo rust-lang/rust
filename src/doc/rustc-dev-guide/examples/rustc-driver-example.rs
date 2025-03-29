@@ -34,9 +34,9 @@ impl rustc_span::source_map::FileLoader for MyFileLoader {
     fn read_file(&self, path: &Path) -> io::Result<String> {
         if path == Path::new("main.rs") {
             Ok(r#"
+static MESSAGE: &str = "Hello, World!";
 fn main() {
-    let message = "Hello, World!";
-    println!("{message}");
+    println!("{MESSAGE}");
 }
 "#
             .to_string())
