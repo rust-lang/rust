@@ -41,7 +41,7 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe + AsAny {
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
-        current_dir: Option<String>,
+        current_dir: String,
     ) -> Result<tt::TopSubtree, ProcMacroExpansionError>;
 
     fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool;
@@ -318,8 +318,8 @@ impl CustomProcMacroExpander {
 
                 // Proc macros have access to the environment variables of the invoking crate.
                 let env = calling_crate.env(db);
-                let current_dir =
-                    calling_crate.data(db).proc_macro_cwd.as_deref().map(ToString::to_string);
+                // FIXME: Can we avoid the string allocation here?
+                let current_dir = calling_crate.data(db).proc_macro_cwd.to_string();
 
                 match proc_macro.expander.expand(
                     tt,

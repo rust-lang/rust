@@ -13,7 +13,9 @@
                 ),
             },
             is_proc_macro: false,
-            proc_macro_cwd: None,
+            proc_macro_cwd: AbsPathBuf(
+                "$ROOT$",
+            ),
         },
         extra: ExtraCrateData {
             version: None,
@@ -61,7 +63,9 @@
                 ),
             },
             is_proc_macro: false,
-            proc_macro_cwd: None,
+            proc_macro_cwd: AbsPathBuf(
+                "$ROOT$",
+            ),
         },
         extra: ExtraCrateData {
             version: None,

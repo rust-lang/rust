@@ -988,6 +988,7 @@ fn project_json_to_crate_graph(
     );
 
     let mut cfg_cache: FxHashMap<&str, Vec<CfgAtom>> = FxHashMap::default();
+    let project_root = Arc::new(project.project_root().to_path_buf());
 
     let idx_to_crate_id: FxHashMap<CrateArrayIdx, _> = project
         .crates()
@@ -1067,7 +1068,10 @@ fn project_json_to_crate_graph(
                         CrateOrigin::Local { repo: None, name: None }
                     },
                     *is_proc_macro,
-                    proc_macro_cwd.clone(),
+                    match proc_macro_cwd {
+                        Some(path) => Arc::new(path.clone()),
+                        None => project_root.clone(),
+                    },
                     crate_ws_data.clone(),
                 );
                 debug!(
@@ -1139,6 +1143,7 @@ fn cargo_to_crate_graph(
     let mut pkg_crates = FxHashMap::default();
     // Does any crate signal to rust-analyzer that they need the rustc_private crates?
     let mut has_private = false;
+    let workspace_proc_macro_cwd = Arc::new(cargo.workspace_root().to_path_buf());
 
     // Next, create crates for each package, target pair
     for pkg in cargo.packages() {
@@ -1161,8 +1166,9 @@ fn cargo_to_crate_graph(
 
         let mut lib_tgt = None;
         for &tgt in cargo[pkg].targets.iter() {
+            let pkg_data = &cargo[pkg];
             if !matches!(cargo[tgt].kind, TargetKind::Lib { .. })
-                && (!cargo[pkg].is_member || cargo.is_sysroot())
+                && (!pkg_data.is_member || cargo.is_sysroot())
             {
                 // For non-workspace-members, Cargo does not resolve dev-dependencies, so we don't
                 // add any targets except the library target, since those will not work correctly if
@@ -1176,7 +1182,6 @@ fn cargo_to_crate_graph(
             let Some(file_id) = load(root) else { continue };
 
             let build_data = build_scripts.get_output(pkg);
-            let pkg_data = &cargo[pkg];
             let crate_id = add_target_crate_root(
                 crate_graph,
                 proc_macros,
@@ -1203,6 +1208,11 @@ fn cargo_to_crate_graph(
                     }
                 },
                 crate_ws_data.clone(),
+                if pkg_data.is_member {
+                    workspace_proc_macro_cwd.clone()
+                } else {
+                    Arc::new(pkg_data.manifest.parent().to_path_buf())
+                },
             );
             if let TargetKind::Lib { .. } = kind {
                 lib_tgt = Some((crate_id, name.clone()));
@@ -1364,7 +1374,7 @@ fn detached_file_to_crate_graph(
             name: display_name.map(|n| n.canonical_name().to_owned()),
         },
         false,
-        None,
+        Arc::new(detached_file.parent().to_path_buf()),
         crate_ws_data,
     );
 
@@ -1372,6 +1382,7 @@ fn detached_file_to_crate_graph(
     (crate_graph, FxHashMap::default())
 }
 
+// FIXME: There shouldn't really be a need for duplicating all of this?
 fn handle_rustc_crates(
     crate_graph: &mut CrateGraphBuilder,
     proc_macros: &mut ProcMacroPaths,
@@ -1391,6 +1402,7 @@ fn handle_rustc_crates(
     // The root package of the rustc-dev component is rustc_driver, so we match that
     let root_pkg =
         rustc_workspace.packages().find(|&package| rustc_workspace[package].name == "rustc_driver");
+    let workspace_proc_macro_cwd = Arc::new(cargo.workspace_root().to_path_buf());
     // The rustc workspace might be incomplete (such as if rustc-dev is not
     // installed for the current toolchain) and `rustc_source` is set to discover.
     if let Some(root_pkg) = root_pkg {
@@ -1404,14 +1416,15 @@ fn handle_rustc_crates(
             if rustc_pkg_crates.contains_key(&pkg) {
                 continue;
             }
-            for dep in &rustc_workspace[pkg].dependencies {
+            let pkg_data = &rustc_workspace[pkg];
+            for dep in &pkg_data.dependencies {
                 queue.push_back(dep.pkg);
             }
 
             let mut cfg_options = cfg_options.clone();
-            override_cfg.apply(&mut cfg_options, &rustc_workspace[pkg].name);
+            override_cfg.apply(&mut cfg_options, &pkg_data.name);
 
-            for &tgt in rustc_workspace[pkg].targets.iter() {
+            for &tgt in pkg_data.targets.iter() {
                 let kind @ TargetKind::Lib { is_proc_macro } = rustc_workspace[tgt].kind else {
                     continue;
                 };
@@ -1421,14 +1434,19 @@ fn handle_rustc_crates(
                         crate_graph,
                         proc_macros,
                         rustc_workspace,
-                        &rustc_workspace[pkg],
+                        pkg_data,
                         build_scripts.get_output(pkg).zip(Some(build_scripts.error().is_some())),
                         cfg_options.clone(),
                         file_id,
                         &rustc_workspace[tgt].name,
                         kind,
-                        CrateOrigin::Rustc { name: Symbol::intern(&rustc_workspace[pkg].name) },
+                        CrateOrigin::Rustc { name: Symbol::intern(&pkg_data.name) },
                         crate_ws_data.clone(),
+                        if pkg_data.is_member {
+                            workspace_proc_macro_cwd.clone()
+                        } else {
+                            Arc::new(pkg_data.manifest.parent().to_path_buf())
+                        },
                     );
                     pkg_to_lib_crate.insert(pkg, crate_id);
                     // Add dependencies on core / std / alloc for this crate
@@ -1490,6 +1508,7 @@ fn add_target_crate_root(
     kind: TargetKind,
     origin: CrateOrigin,
     crate_ws_data: Arc<CrateWorkspaceData>,
+    proc_macro_cwd: Arc<AbsPathBuf>,
 ) -> CrateBuilderId {
     let edition = pkg.edition;
     let potential_cfg_options = if pkg.features.is_empty() {
@@ -1531,9 +1550,7 @@ fn add_target_crate_root(
         env,
         origin,
         matches!(kind, TargetKind::Lib { is_proc_macro: true }),
-        matches!(kind, TargetKind::Lib { is_proc_macro: true }).then(|| {
-            if pkg.is_member { cargo.workspace_root() } else { pkg.manifest.parent() }.to_path_buf()
-        }),
+        proc_macro_cwd,
         crate_ws_data,
     );
     if let TargetKind::Lib { is_proc_macro: true } = kind {
@@ -1706,7 +1723,7 @@ fn sysroot_to_crate_graph(
                         Env::default(),
                         CrateOrigin::Lang(LangCrateOrigin::from(&*stitched[krate].name)),
                         false,
-                        None,
+                        Arc::new(stitched[krate].root.parent().to_path_buf()),
                         crate_ws_data.clone(),
                     );
                     Some((krate, crate_id))

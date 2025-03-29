@@ -19,6 +19,7 @@ use hir_expand::{
     tt::{Leaf, TokenTree, TopSubtree, TopSubtreeBuilder, TtElement, TtIter},
 };
 use intern::{Symbol, sym};
+use paths::AbsPathBuf;
 use rustc_hash::FxHashMap;
 use span::{Edition, EditionedFileId, FileId, Span};
 use stdx::itertools::Itertools;
@@ -162,6 +163,9 @@ impl ChangeFixture {
         let crate_ws_data =
             Arc::new(CrateWorkspaceData { data_layout: target_data_layout, toolchain });
 
+        // FIXME: This is less than ideal
+        let proc_macro_cwd = Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()));
+
         for entry in fixture {
             let mut range_or_offset = None;
             let text = if entry.text.contains(CURSOR_MARKER) {
@@ -213,7 +217,7 @@ impl ChangeFixture {
                     meta.env,
                     origin,
                     false,
-                    None,
+                    proc_macro_cwd.clone(),
                     crate_ws_data.clone(),
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
@@ -254,7 +258,7 @@ impl ChangeFixture {
                 default_env,
                 CrateOrigin::Local { repo: None, name: None },
                 false,
-                None,
+                proc_macro_cwd.clone(),
                 crate_ws_data.clone(),
             );
         } else {
@@ -296,7 +300,7 @@ impl ChangeFixture {
                 )]),
                 CrateOrigin::Lang(LangCrateOrigin::Core),
                 false,
-                None,
+                proc_macro_cwd.clone(),
                 crate_ws_data.clone(),
             );
 
@@ -345,7 +349,7 @@ impl ChangeFixture {
                 )]),
                 CrateOrigin::Local { repo: None, name: None },
                 true,
-                None,
+                proc_macro_cwd.clone(),
                 crate_ws_data,
             );
             proc_macros.insert(proc_macros_crate, Ok(proc_macro));
@@ -650,7 +654,7 @@ impl ProcMacroExpander for IdentityProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
@@ -672,7 +676,7 @@ impl ProcMacroExpander for Issue18089ProcMacroExpander {
         _: Span,
         call_site: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         let tt::TokenTree::Leaf(macro_name) = &subtree.0[2] else {
             return Err(ProcMacroExpansionError::Panic("incorrect input".to_owned()));
@@ -707,7 +711,7 @@ impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         attrs
             .cloned()
@@ -730,7 +734,7 @@ impl ProcMacroExpander for Issue18840ProcMacroExpander {
         def_site: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         // Input:
         // ```
@@ -765,7 +769,7 @@ impl ProcMacroExpander for MirrorProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         fn traverse(builder: &mut TopSubtreeBuilder, iter: TtIter<'_>) {
             for tt in iter.collect_vec().into_iter().rev() {
@@ -803,7 +807,7 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         let mut result = input.0.clone();
         for it in &mut result {
@@ -845,7 +849,7 @@ impl ProcMacroExpander for Issue17479ProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         let TokenTree::Leaf(Leaf::Literal(lit)) = &subtree.0[1] else {
             return Err(ProcMacroExpansionError::Panic("incorrect Input".into()));
@@ -874,7 +878,7 @@ impl ProcMacroExpander for Issue18898ProcMacroExpander {
         def_site: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         let span = subtree
             .token_trees()
@@ -929,7 +933,7 @@ impl ProcMacroExpander for DisallowCfgProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         for tt in subtree.token_trees().flat_tokens() {
             if let tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = tt {

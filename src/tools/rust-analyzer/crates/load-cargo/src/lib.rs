@@ -496,7 +496,7 @@ impl ProcMacroExpander for Expander {
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
-        current_dir: Option<String>,
+        current_dir: String,
     ) -> Result<tt::TopSubtree<Span>, ProcMacroExpansionError> {
         match self.0.expand(
             subtree.view(),

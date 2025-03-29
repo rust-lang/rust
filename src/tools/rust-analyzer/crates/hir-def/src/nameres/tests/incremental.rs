@@ -52,6 +52,7 @@ pub const BAZ: u32 = 0;
     {
         // Add a dependency a -> b.
         let mut new_crate_graph = CrateGraphBuilder::default();
+
         let mut add_crate = |crate_name, root_file_idx: usize| {
             new_crate_graph.add_crate_root(
                 files[root_file_idx].file_id(),
@@ -63,7 +64,13 @@ pub const BAZ: u32 = 0;
                 Env::default(),
                 CrateOrigin::Local { repo: None, name: Some(Symbol::intern(crate_name)) },
                 false,
-                None,
+                Arc::new(
+                    // FIXME: This is less than ideal
+                    TryFrom::try_from(
+                        &*std::env::current_dir().unwrap().as_path().to_string_lossy(),
+                    )
+                    .unwrap(),
+                ),
                 Arc::new(CrateWorkspaceData { data_layout: Err("".into()), toolchain: None }),
             )
         };
