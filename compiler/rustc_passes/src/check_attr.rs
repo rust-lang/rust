@@ -1259,16 +1259,43 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Check that the `#![doc(cfg_hide(...))]` attribute only contains a list of attributes.
-    ///
-    fn check_doc_cfg_hide(&self, meta: &MetaItemInner, hir_id: HirId) {
-        if meta.meta_item_list().is_none() {
-            self.tcx.emit_node_span_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                meta.span(),
-                errors::DocCfgHideTakesList,
-            );
+    /// Check that the `#![doc(auto_cfg(..))]` attribute has expected input.
+    fn check_doc_auto_cfg(&self, meta: &MetaItemInner, hir_id: HirId) {
+        let MetaItemInner::MetaItem(meta) = meta else {
+            unreachable!();
+        };
+        match &meta.kind {
+            MetaItemKind::Word => {}
+            MetaItemKind::NameValue(lit) => {
+                if !matches!(lit.kind, LitKind::Bool(_)) {
+                    self.tcx.emit_node_span_lint(
+                        INVALID_DOC_ATTRIBUTES,
+                        hir_id,
+                        meta.span,
+                        errors::DocAutoCfgWrongLiteral,
+                    );
+                }
+            }
+            MetaItemKind::List(list) => {
+                for item in list {
+                    let attr_name = item.name_or_empty();
+                    if attr_name != sym::hide && attr_name != sym::show {
+                        self.tcx.emit_node_span_lint(
+                            INVALID_DOC_ATTRIBUTES,
+                            hir_id,
+                            meta.span,
+                            errors::DocAutoCfgExpectsHideOrShow,
+                        );
+                    } else if item.meta_item_list().is_none() {
+                        self.tcx.emit_node_span_lint(
+                            INVALID_DOC_ATTRIBUTES,
+                            hir_id,
+                            meta.span,
+                            errors::DocAutoCfgHideShowExpectsList { attr_name: attr_name.as_str() },
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -1329,10 +1356,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_attr_crate_level(attr, meta, hir_id);
                         }
 
-                        sym::cfg_hide => {
-                            if self.check_attr_crate_level(attr, meta, hir_id) {
-                                self.check_doc_cfg_hide(meta, hir_id);
-                            }
+                        sym::auto_cfg => {
+                            self.check_doc_auto_cfg(meta, hir_id);
                         }
 
                         sym::inline | sym::no_inline => {

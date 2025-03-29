@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::mem;
 
 use rustc_attr_parsing::StabilityLevel;
@@ -126,7 +127,7 @@ pub(crate) struct Cache {
     /// Links are indexed by the DefId of the item they document.
     pub(crate) intra_doc_links: FxHashMap<ItemId, FxIndexSet<clean::ItemLink>>,
     /// Cfg that have been hidden via #![doc(cfg_hide(...))]
-    pub(crate) hidden_cfg: FxHashSet<clean::cfg::Cfg>,
+    pub(crate) cfg_info: RefCell<crate::clean::CfgInfo>,
 
     /// Contains the list of `DefId`s which have been inlined. It is used when generating files
     /// to check if a stripped item should get its file generated or not: if it's inside a
