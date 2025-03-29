@@ -259,6 +259,10 @@ name = "r-efi"
 version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9e935efc5854715dfc0a4c9ef18dc69dee0ec3bf9cc3ab740db831c0fdd86a3"
+
+[[package]]
+name = "r-efi"
+version = "5.2.0"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
@@ -271,7 +275,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31d6f09fe2b6ad044bc3d2c34ce4979796581afd2f1ebc185837e02421e02fd7"
 dependencies = [
  "compiler_builtins",
- "r-efi",
+ "r-efi 4.5.0",
  "rustc-std-workspace-core",
 ]
 
@@ -358,7 +362,7 @@ dependencies = [
  "object",
  "panic_abort",
  "panic_unwind",
- "r-efi",
+ "r-efi 5.2.0",
  "r-efi-alloc",
  "rand",
  "rand_xorshift",
