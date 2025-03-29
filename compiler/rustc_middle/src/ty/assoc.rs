@@ -8,6 +8,7 @@ use rustc_span::{Ident, Symbol, sym};
 use super::{TyCtxt, Visibility};
 use crate::ty;
 
+/// Indicates whether an associated item is defined in a trait or an impl block.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Hash, Encodable, Decodable)]
 pub enum AssocItemContainer {
     Trait,
@@ -128,6 +129,7 @@ impl AssocItem {
     }
 }
 
+/// Represents the kind of an associated item.
 #[derive(Copy, Clone, PartialEq, Debug, HashStable, Eq, Hash, Encodable, Decodable)]
 pub enum AssocKind {
     Const,

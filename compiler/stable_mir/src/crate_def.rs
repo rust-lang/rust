@@ -4,7 +4,7 @@
 use serde::Serialize;
 
 use crate::ty::{GenericArgs, Span, Ty};
-use crate::{Crate, Symbol, with};
+use crate::{AssocItems, Crate, Symbol, with};
 
 /// A unique identification number for each item accessible for the current compilation unit.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -103,6 +103,14 @@ pub trait CrateDefType: CrateDef {
     }
 }
 
+/// A trait for retrieving all items from a definition within a crate.
+pub trait CrateDefItems: CrateDef {
+    /// Retrieve all associated items from a definition.
+    fn associated_items(&self) -> AssocItems {
+        with(|cx| cx.associated_items(self.def_id()))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Attribute {
     value: String,
@@ -156,5 +164,11 @@ macro_rules! crate_def_with_ty {
         }
 
         impl CrateDefType for $name {}
+    };
+}
+
+macro_rules! impl_crate_def_items {
+    ( $name:ident $(;)? ) => {
+        impl CrateDefItems for $name {}
     };
 }
