@@ -82,7 +82,7 @@ error[E0788]: coverage attribute not allowed here
 LL |         #[coverage(off)]
    |         ^^^^^^^^^^^^^^^^
 LL |         () => (),
-   |         -------- not a function, impl block, or module
+   |         --------- not a function, impl block, or module
    |
    = help: coverage attribute can be applied to a function (with body), impl block, or module
 
