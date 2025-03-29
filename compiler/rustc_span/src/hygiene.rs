@@ -24,9 +24,6 @@
 // because getting it wrong can lead to nested `HygieneData::with` calls that
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
-use std::cell::RefCell;
-use std::collections::hash_map::Entry;
-use std::collections::hash_set::Entry as SetEntry;
 use std::hash::Hash;
 use std::sync::Arc;
 use std::{fmt, iter, mem};
@@ -34,7 +31,7 @@ use std::{fmt, iter, mem};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
-use rustc_data_structures::sync::{Lock, WorkerLocal};
+use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
@@ -59,10 +56,10 @@ impl !PartialOrd for SyntaxContext {}
 
 /// If this part of two syntax contexts is equal, then the whole syntax contexts should be equal.
 /// The other fields are only for caching.
-type SyntaxContextKey = (SyntaxContext, ExpnId, Transparency);
+pub type SyntaxContextKey = (SyntaxContext, ExpnId, Transparency);
 
 #[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable)]
-pub struct SyntaxContextData {
+struct SyntaxContextData {
     outer_expn: ExpnId,
     outer_transparency: Transparency,
     parent: SyntaxContext,
@@ -92,6 +89,21 @@ impl SyntaxContextData {
 
     fn is_decode_placeholder(&self) -> bool {
         self.dollar_crate_name == kw::Empty
+    }
+
+    fn new(
+        (parent, outer_expn, outer_transparency): SyntaxContextKey,
+        opaque: SyntaxContext,
+        opaque_and_semitransparent: SyntaxContext,
+    ) -> Self {
+        SyntaxContextData {
+            parent,
+            outer_expn,
+            outer_transparency,
+            opaque,
+            opaque_and_semitransparent,
+            dollar_crate_name: kw::DollarCrate,
+        }
     }
 
     fn key(&self) -> SyntaxContextKey {
@@ -574,67 +586,49 @@ impl HygieneData {
 
     fn apply_mark_internal(
         &mut self,
-        ctxt: SyntaxContext,
+        parent: SyntaxContext,
         expn_id: ExpnId,
         transparency: Transparency,
     ) -> SyntaxContext {
-        let syntax_context_data = &mut self.syntax_context_data;
-        debug_assert!(!syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
-        let mut opaque = syntax_context_data[ctxt.0 as usize].opaque;
-        let mut opaque_and_semitransparent =
-            syntax_context_data[ctxt.0 as usize].opaque_and_semitransparent;
-
-        if transparency >= Transparency::Opaque {
-            let parent = opaque;
-            opaque = *self
-                .syntax_context_map
-                .entry((parent, expn_id, transparency))
-                .or_insert_with(|| {
-                    let new_opaque = SyntaxContext::from_usize(syntax_context_data.len());
-                    syntax_context_data.push(SyntaxContextData {
-                        outer_expn: expn_id,
-                        outer_transparency: transparency,
-                        parent,
-                        opaque: new_opaque,
-                        opaque_and_semitransparent: new_opaque,
-                        dollar_crate_name: kw::DollarCrate,
-                    });
-                    new_opaque
-                });
+        debug_assert!(!self.syntax_context_data[parent.0 as usize].is_decode_placeholder());
+        // Look into the cache first.
+        let key = (parent, expn_id, transparency);
+        if let Some(ctxt) = self.syntax_context_map.get(&key) {
+            return *ctxt;
         }
+        // Reserve a new syntax context.
+        let ctxt = SyntaxContext::from_usize(self.syntax_context_data.len());
+        self.syntax_context_data.push(SyntaxContextData::decode_placeholder());
+        self.syntax_context_map.insert(key, ctxt);
 
-        if transparency >= Transparency::SemiTransparent {
-            let parent = opaque_and_semitransparent;
-            opaque_and_semitransparent = *self
-                .syntax_context_map
-                .entry((parent, expn_id, transparency))
-                .or_insert_with(|| {
-                    let new_opaque_and_semitransparent =
-                        SyntaxContext::from_usize(syntax_context_data.len());
-                    syntax_context_data.push(SyntaxContextData {
-                        outer_expn: expn_id,
-                        outer_transparency: transparency,
-                        parent,
-                        opaque,
-                        opaque_and_semitransparent: new_opaque_and_semitransparent,
-                        dollar_crate_name: kw::DollarCrate,
-                    });
-                    new_opaque_and_semitransparent
-                });
-        }
+        // Opaque and semi-transparent versions of the parent. Note that they may be equal to the
+        // parent itself. E.g. `parent_opaque` == `parent` if the expn chain contains only opaques,
+        // and `parent_opaque_and_semitransparent` == `parent` if the expn contains only opaques
+        // and semi-transparents.
+        let parent_opaque = self.syntax_context_data[parent.0 as usize].opaque;
+        let parent_opaque_and_semitransparent =
+            self.syntax_context_data[parent.0 as usize].opaque_and_semitransparent;
 
-        let parent = ctxt;
-        *self.syntax_context_map.entry((parent, expn_id, transparency)).or_insert_with(|| {
-            syntax_context_data.push(SyntaxContextData {
-                outer_expn: expn_id,
-                outer_transparency: transparency,
-                parent,
-                opaque,
-                opaque_and_semitransparent,
-                dollar_crate_name: kw::DollarCrate,
-            });
-            SyntaxContext::from_usize(syntax_context_data.len() - 1)
-        })
+        // Evaluate opaque and semi-transparent versions of the new syntax context.
+        let (opaque, opaque_and_semitransparent) = match transparency {
+            Transparency::Transparent => (parent_opaque, parent_opaque_and_semitransparent),
+            Transparency::SemiTransparent => (
+                parent_opaque,
+                // Will be the same as `ctxt` if the expn chain contains only opaques and semi-transparents.
+                self.apply_mark_internal(parent_opaque_and_semitransparent, expn_id, transparency),
+            ),
+            Transparency::Opaque => (
+                // Will be the same as `ctxt` if the expn chain contains only opaques.
+                self.apply_mark_internal(parent_opaque, expn_id, transparency),
+                // Will be the same as `ctxt` if the expn chain contains only opaques and semi-transparents.
+                self.apply_mark_internal(parent_opaque_and_semitransparent, expn_id, transparency),
+            ),
+        };
+
+        // Fill the full data, now that we have it.
+        self.syntax_context_data[ctxt.as_u32() as usize] =
+            SyntaxContextData::new(key, opaque, opaque_and_semitransparent);
+        ctxt
     }
 }
 
@@ -1265,7 +1259,7 @@ impl HygieneEncodeContext {
     pub fn encode<T>(
         &self,
         encoder: &mut T,
-        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextData),
+        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextKey),
         mut encode_expn: impl FnMut(&mut T, ExpnId, &ExpnData, ExpnHash),
     ) {
         // When we serialize a `SyntaxContextData`, we may end up serializing
@@ -1323,9 +1317,6 @@ struct HygieneDecodeContextInner {
 /// Additional information used to assist in decoding hygiene data
 pub struct HygieneDecodeContext {
     inner: Lock<HygieneDecodeContextInner>,
-
-    /// A set of serialized `SyntaxContext` ids that are currently being decoded on each thread.
-    local_in_progress: WorkerLocal<RefCell<FxHashSet<u32>>>,
 }
 
 /// Register an expansion which has been decoded from the on-disk-cache for the local crate.
@@ -1396,10 +1387,10 @@ pub fn decode_expn_id(
 // to track which `SyntaxContext`s we have already decoded.
 // The provided closure will be invoked to deserialize a `SyntaxContextData`
 // if we haven't already seen the id of the `SyntaxContext` we are deserializing.
-pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContextData>(
+pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContextKey>(
     d: &mut D,
     context: &HygieneDecodeContext,
-    decode_data: F,
+    decode_ctxt_key: F,
 ) -> SyntaxContext {
     let raw_id: u32 = Decodable::decode(d);
     if raw_id == 0 {
@@ -1408,58 +1399,9 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
         return SyntaxContext::root();
     }
 
-    let pending_ctxt = {
-        let mut inner = context.inner.lock();
-
-        // Reminder: `HygieneDecodeContext` is per-crate, so there are no collisions between
-        // raw ids from different crate metadatas.
-        if let Some(ctxt) = inner.remapped_ctxts.get(raw_id as usize).copied().flatten() {
-            // This has already been decoded.
-            return ctxt;
-        }
-
-        match inner.decoding.entry(raw_id) {
-            Entry::Occupied(ctxt_entry) => {
-                let pending_ctxt = *ctxt_entry.get();
-                match context.local_in_progress.borrow_mut().entry(raw_id) {
-                    // We're decoding this already on the current thread. Return here and let the
-                    // function higher up the stack finish decoding to handle recursive cases.
-                    // Hopefully having a `SyntaxContext` that refers to an incorrect data is ok
-                    // during reminder of the decoding process, it's certainly not ok after the
-                    // top level decoding function returns.
-                    SetEntry::Occupied(..) => return pending_ctxt,
-                    // Some other thread is currently decoding this.
-                    // Race with it (alternatively we could wait here).
-                    // We cannot return this value, unlike in the recursive case above, because it
-                    // may expose a `SyntaxContext` pointing to incorrect data to arbitrary code.
-                    SetEntry::Vacant(entry) => {
-                        entry.insert();
-                        pending_ctxt
-                    }
-                }
-            }
-            Entry::Vacant(entry) => {
-                // We are the first thread to start decoding. Mark the current thread as being progress.
-                context.local_in_progress.borrow_mut().insert(raw_id);
-
-                // Allocate and store SyntaxContext id *before* calling the decoder function,
-                // as the SyntaxContextData may reference itself.
-                let new_ctxt = HygieneData::with(|hygiene_data| {
-                    // Push a dummy SyntaxContextData to ensure that nobody else can get the
-                    // same ID as us. This will be overwritten after call `decode_data`.
-                    hygiene_data.syntax_context_data.push(SyntaxContextData::decode_placeholder());
-                    SyntaxContext::from_usize(hygiene_data.syntax_context_data.len() - 1)
-                });
-                entry.insert(new_ctxt);
-                new_ctxt
-            }
-        }
-    };
-
     // Don't try to decode data while holding the lock, since we need to
     // be able to recursively decode a SyntaxContext
-    let ctxt_data = decode_data(d, raw_id);
-    let ctxt_key = ctxt_data.key();
+    let ctxt_key = decode_ctxt_key(d, raw_id);
 
     let ctxt = HygieneData::with(|hygiene_data| {
         match hygiene_data.syntax_context_map.get(&ctxt_key) {
@@ -1473,28 +1415,9 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
             Some(&ctxt) => ctxt,
             // This is a completely new context.
             // Overwrite its placeholder data with our decoded data.
-            None => {
-                let ctxt_data_ref =
-                    &mut hygiene_data.syntax_context_data[pending_ctxt.as_u32() as usize];
-                let prev_ctxt_data = mem::replace(ctxt_data_ref, ctxt_data);
-                // Reset `dollar_crate_name` so that it will be updated by `update_dollar_crate_names`.
-                // We don't care what the encoding crate set this to - we want to resolve it
-                // from the perspective of the current compilation session.
-                ctxt_data_ref.dollar_crate_name = kw::DollarCrate;
-                // Make sure nothing weird happened while `decode_data` was running.
-                if !prev_ctxt_data.is_decode_placeholder() {
-                    // Another thread may have already inserted the decoded data,
-                    // but the decoded data should match.
-                    assert_eq!(prev_ctxt_data, *ctxt_data_ref);
-                }
-                hygiene_data.syntax_context_map.insert(ctxt_key, pending_ctxt);
-                pending_ctxt
-            }
+            None => hygiene_data.apply_mark_internal(ctxt_key.0, ctxt_key.1, ctxt_key.2),
         }
     });
-
-    // Mark the context as completed
-    context.local_in_progress.borrow_mut().remove(&raw_id);
 
     let mut inner = context.inner.lock();
     let new_len = raw_id as usize + 1;
@@ -1507,7 +1430,7 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
     ctxt
 }
 
-fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextData)>(
+fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextKey)>(
     ctxts: impl Iterator<Item = SyntaxContext>,
     mut f: F,
 ) {
@@ -1515,7 +1438,7 @@ fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextData)>(
         ctxts.map(|ctxt| (ctxt, data.syntax_context_data[ctxt.0 as usize].clone())).collect()
     });
     for (ctxt, data) in all_data.into_iter() {
-        f(ctxt.0, ctxt, &data);
+        f(ctxt.0, ctxt, &data.key());
     }
 }
 
