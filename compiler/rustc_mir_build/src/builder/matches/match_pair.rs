@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use rustc_hir::def::DefKind;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -202,35 +201,8 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::ExpandedConstant { subpattern: ref pattern, def_id } => {
+            PatKind::ExpandedConstant { subpattern: ref pattern, .. } => {
                 MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs, extra_data);
-
-                // Apply a type ascription for the inline constant to the value at `match_pair.place`
-                if let Some(source) = place
-                    && matches!(cx.tcx.def_kind(def_id), DefKind::InlineConst)
-                {
-                    let span = pattern.span;
-                    let parent_id = cx.tcx.typeck_root_def_id(cx.def_id.to_def_id());
-                    let args = ty::InlineConstArgs::new(
-                        cx.tcx,
-                        ty::InlineConstArgsParts {
-                            parent_args: ty::GenericArgs::identity_for_item(cx.tcx, parent_id),
-                            ty: cx.infcx.next_ty_var(span),
-                        },
-                    )
-                    .args;
-                    let user_ty = cx.infcx.canonicalize_user_type_annotation(ty::UserType::new(
-                        ty::UserTypeKind::TypeOf(def_id, ty::UserArgs { args, user_self_ty: None }),
-                    ));
-                    let annotation = ty::CanonicalUserTypeAnnotation {
-                        inferred_ty: pattern.ty,
-                        span,
-                        user_ty: Box::new(user_ty),
-                    };
-                    let variance = ty::Contravariant;
-                    extra_data.ascriptions.push(super::Ascription { annotation, source, variance });
-                }
-
                 None
             }
 
