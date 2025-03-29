@@ -79,6 +79,7 @@ pub(crate) trait DocFolder: Sized {
             ExternCrateItem { src: _ }
             | ImportItem(_)
             | FunctionItem(_)
+            | TestItem(_)
             | StaticItem(_)
             | ConstantItem(..)
             | TraitAliasItem(_)
