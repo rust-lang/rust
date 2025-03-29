@@ -161,14 +161,6 @@ pub fn abort_internal() -> ! {
     core::intrinsics::abort();
 }
 
-// This function is needed by the panic runtime. The symbol is named in
-// pre-link args for the target specification, so keep that in sync.
-#[cfg(not(test))]
-#[unsafe(no_mangle)]
-pub extern "C" fn __rust_abort() {
-    abort_internal();
-}
-
 /// Disable access to BootServices if `EVT_SIGNAL_EXIT_BOOT_SERVICES` is signaled
 extern "efiapi" fn exit_boot_service_handler(_e: r_efi::efi::Event, _ctx: *mut crate::ffi::c_void) {
     uefi::env::disable_boot_services();
