@@ -10,35 +10,53 @@ error: contract annotations can only be used on functions
 LL | #[core::contracts::ensures(|v| v == 100)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: contract annotations is only supported in functions with bodies
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:16:1
-   |
-LL | #[core::contracts::ensures(|v| v == 100)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: contract annotations is only supported in functions with bodies
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:20:1
+error: contract annotations can only be used on functions
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:15:1
    |
 LL | #[core::contracts::ensures(|v| v == 100)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: contract annotations can only be used on functions
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:24:1
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:19:1
+   |
+LL | #[core::contracts::ensures(|v| v == 100)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations can only be used on functions
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:23:1
    |
 LL | #[core::contracts::requires(true)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: contract annotations can only be used on functions
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:35:1
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:34:1
    |
 LL | #[core::contracts::ensures(|dummy| dummy.0 > 0)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: contract annotations can only be used on functions
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:46:1
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:45:1
    |
 LL | #[core::contracts::requires(true)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations can only be used on functions
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:51:1
+   |
+LL | #[core::contracts::ensures]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations can only be used on functions
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:55:1
+   |
+LL | #[core::contracts::ensures]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations can only be used on functions
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:59:1
+   |
+LL | #[core::contracts::ensures]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/disallow-contract-annotation-on-non-fn.rs:3:12
@@ -49,5 +67,16 @@ LL | #![feature(contracts)]
    = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: aborting due to 7 previous errors; 1 warning emitted
+error[E0277]: expected a `Fn(&'a _)` closure, found `()`
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:63:1
+   |
+LL | #[core::contracts::ensures]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected an `Fn(&'a _)` closure, found `()`
+   |
+   = help: the trait `for<'a> Fn(&'a _)` is not implemented for `()`
+note: required by a bound in `build_check_ensures`
+  --> $SRC_DIR/core/src/contracts.rs:LL:COL
 
+error: aborting due to 11 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

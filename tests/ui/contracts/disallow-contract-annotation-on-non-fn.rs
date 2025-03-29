@@ -12,13 +12,12 @@ struct Dummy(usize);
 //~^ ERROR contract annotations can only be used on functions
 const MAX_VAL: usize = 100;
 
-// FIXME: Improve the error message here. The macro thinks this is a function.
 #[core::contracts::ensures(|v| v == 100)]
-//~^ ERROR contract annotations is only supported in functions with bodies
+//~^ ERROR contract annotations can only be used on functions
 type NewDummy = fn(usize) -> Dummy;
 
 #[core::contracts::ensures(|v| v == 100)]
-//~^ ERROR contract annotations is only supported in functions with bodies
+//~^ ERROR contract annotations can only be used on functions
 const NEW_DUMMY_FN : fn(usize) -> Dummy = || { Dummy(0) };
 
 #[core::contracts::requires(true)]
@@ -48,6 +47,22 @@ impl From<usize> for Dummy {
 pub trait DummyBuilder {
     fn build() -> Dummy;
 }
+
+#[core::contracts::ensures]
+//~^ ERROR contract annotations can only be used on functions
+mod InvalidModule {}
+
+#[core::contracts::ensures]
+//~^ ERROR contract annotations can only be used on functions
+static INVALID_STATIC: usize = 0;
+
+#[core::contracts::ensures]
+//~^ ERROR contract annotations can only be used on functions
+struct InvalidStruct {}
+
+#[core::contracts::ensures]
+//~^ ERROR expected a `Fn(&'a _)` closure, found `()` [E0277]
+fn function() {}
 
 fn main() {
 }
