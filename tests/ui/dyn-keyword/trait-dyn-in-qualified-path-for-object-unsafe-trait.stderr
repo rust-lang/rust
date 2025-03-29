@@ -1,0 +1,68 @@
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/trait-dyn-in-qualified-path-for-object-unsafe-trait.rs:3:6
+   |
+LL | impl dyn Trait {
+   |      ^^^^^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/trait-dyn-in-qualified-path-for-object-unsafe-trait.rs:1:14
+   |
+LL | trait Trait: Sized {}
+   |       -----  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait is not dyn compatible...
+   = help: only type `()` implements `Trait`; consider using it directly instead.
+
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/trait-dyn-in-qualified-path-for-object-unsafe-trait.rs:4:18
+   |
+LL |     fn function(&self) {}
+   |                  ^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/trait-dyn-in-qualified-path-for-object-unsafe-trait.rs:1:14
+   |
+LL | trait Trait: Sized {}
+   |       -----  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait is not dyn compatible...
+   = help: only type `()` implements `Trait`; consider using it directly instead.
+
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/trait-dyn-in-qualified-path-for-object-unsafe-trait.rs:10:27
+   |
+LL |     <dyn Trait>::function(&());
+   |                           ^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/trait-dyn-in-qualified-path-for-object-unsafe-trait.rs:1:14
+   |
+LL | trait Trait: Sized {}
+   |       -----  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait is not dyn compatible...
+   = help: only type `()` implements `Trait`; consider using it directly instead.
+   = note: required for the cast from `&()` to `&(dyn Trait + 'static)`
+
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/trait-dyn-in-qualified-path-for-object-unsafe-trait.rs:10:6
+   |
+LL |     <dyn Trait>::function(&());
+   |      ^^^^^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/trait-dyn-in-qualified-path-for-object-unsafe-trait.rs:1:14
+   |
+LL | trait Trait: Sized {}
+   |       -----  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait is not dyn compatible...
+   = help: only type `()` implements `Trait`; consider using it directly instead.
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0038`.
