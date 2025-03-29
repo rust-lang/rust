@@ -217,3 +217,7 @@ pub(crate) struct MismatchedDataLayout<'a> {
 pub(crate) struct FixedX18InvalidArch<'a> {
     pub arch: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_sanitizer_kcfi_arity_requires_llvm_21_0_0)]
+pub(crate) struct SanitizerKcfiArityRequiresLLVM2100;
