@@ -34,7 +34,7 @@ mod b {
 }
 
 fn main() {
-    // There is no uwu at this path - no diagnostic.
+    // There is no uwu at this path, but there's one in a cgfd out sub-module, so we mention it.
     inner::uwu(); //~ ERROR cannot find function
     //~^ NOTE not found in `inner`
 }
