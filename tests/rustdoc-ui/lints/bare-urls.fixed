@@ -38,6 +38,16 @@
 //~^ ERROR this URL is not a hyperlink
 pub fn c() {}
 
+#[doc = "here's a thing: <https://example.com/>"]
+//~^ ERROR this URL is not a hyperlink
+pub fn f() {}
+
+/// <https://example.com/sugar>
+//~^ ERROR this URL is not a hyperlink
+#[doc = "<https://example.com/raw>"]
+//~^ ERROR this URL is not a hyperlink
+pub fn mixed() {}
+
 /// <https://somewhere.com>
 /// [a](http://a.com)
 /// [b]
