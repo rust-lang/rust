@@ -1086,6 +1086,25 @@ where
         goal: Goal<I, TraitPredicate<I>>,
     ) -> Option<Result<Candidate<I>, NoSolution>> {
         let self_ty = goal.predicate.self_ty();
+        let check_impls = || {
+            let mut disqualifying_impl = None;
+            self.cx().for_each_relevant_impl(
+                goal.predicate.def_id(),
+                goal.predicate.self_ty(),
+                |impl_def_id| {
+                    disqualifying_impl = Some(impl_def_id);
+                },
+            );
+            if let Some(def_id) = disqualifying_impl {
+                trace!(?def_id, ?goal, "disqualified auto-trait implementation");
+                // No need to actually consider the candidate here,
+                // since we do that in `consider_impl_candidate`.
+                return Some(Err(NoSolution));
+            } else {
+                None
+            }
+        };
+
         match self_ty.kind() {
             // Stall int and float vars until they are resolved to a concrete
             // numerical type. That's because the check for impls below treats
@@ -1095,6 +1114,10 @@ where
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
                 Some(self.forced_ambiguity(MaybeCause::Ambiguity))
             }
+
+            // Backward compatibility for default auto traits.
+            // Test: ui/traits/default_auto_traits/extern-types.rs
+            ty::Foreign(..) if self.cx().is_default_trait(goal.predicate.def_id()) => check_impls(),
 
             // These types cannot be structurally decomposed into constituent
             // types, and therefore have no built-in auto impl.
@@ -1156,24 +1179,7 @@ where
             | ty::Never
             | ty::Tuple(_)
             | ty::Adt(_, _)
-            | ty::UnsafeBinder(_) => {
-                let mut disqualifying_impl = None;
-                self.cx().for_each_relevant_impl(
-                    goal.predicate.def_id(),
-                    goal.predicate.self_ty(),
-                    |impl_def_id| {
-                        disqualifying_impl = Some(impl_def_id);
-                    },
-                );
-                if let Some(def_id) = disqualifying_impl {
-                    trace!(?def_id, ?goal, "disqualified auto-trait implementation");
-                    // No need to actually consider the candidate here,
-                    // since we do that in `consider_impl_candidate`.
-                    return Some(Err(NoSolution));
-                } else {
-                    None
-                }
-            }
+            | ty::UnsafeBinder(_) => check_impls(),
             ty::Error(_) => None,
         }
     }

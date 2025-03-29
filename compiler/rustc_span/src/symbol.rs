@@ -800,6 +800,15 @@ symbols! {
         default_fn,
         default_lib_allocator,
         default_method_body_is_const,
+        // --------------------------
+        // Lang items which are used only for experiments with auto traits with default bounds.
+        // These lang items are not actually defined in core/std. Experiment is a part of
+        // `MCP: Low level components for async drop`(https://github.com/rust-lang/compiler-team/issues/727)
+        default_trait1,
+        default_trait2,
+        default_trait3,
+        default_trait4,
+        // --------------------------
         default_type_parameter_fallback,
         default_type_params,
         define_opaque,
