@@ -16,3 +16,10 @@ macro_rules! bind_ref {
         ref $foo
     };
 }
+
+#[macro_export]
+macro_rules! match_ref {
+    ($p:pat) => {
+        &$p
+    };
+}
