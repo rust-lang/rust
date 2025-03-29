@@ -4,7 +4,7 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn syntax() {
     match scrutinee {
         X.. | 0.. | 'a'.. | 0.0f32.. => {}

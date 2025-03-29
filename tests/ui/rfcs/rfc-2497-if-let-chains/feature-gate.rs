@@ -51,7 +51,7 @@ fn _macros() {
             while $e {}
         }
     }
-    #[cfg(FALSE)] (let 0 = 1);
+    #[cfg(false)] (let 0 = 1);
     //~^ ERROR expected expression, found `let` statement
     use_expr!(let 0 = 1);
     //~^ ERROR no rules expected keyword `let`

@@ -15,7 +15,7 @@ extern "C" {}
 #[link(wasm_import_module = "foo", kind = "dylib")] //~ ERROR: `wasm_import_module` is incompatible with other arguments
 extern "C" {}
 
-#[link(wasm_import_module = "foo", cfg(FALSE))] //~ ERROR: `wasm_import_module` is incompatible with other arguments
+#[link(wasm_import_module = "foo", cfg(false))] //~ ERROR: `wasm_import_module` is incompatible with other arguments
 extern "C" {}
 
 fn main() {}

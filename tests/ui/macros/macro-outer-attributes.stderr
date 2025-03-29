@@ -16,7 +16,7 @@ LL |                        $i:item) => (mod $nm { #[$a] $i }); }
    |                                               ^^^^^
 LL |
 LL | / test!(a,
-LL | |       #[cfg(FALSE)],
+LL | |       #[cfg(false)],
 LL | |       pub fn bar() { });
    | |_______________________- in this macro invocation
    = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
