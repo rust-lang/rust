@@ -1,6 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Z validate-mir
-#![feature(let_chains)]
+//@ edition: 2024
 
 fn lambda<T, U>() -> U
 where
