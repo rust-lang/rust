@@ -191,7 +191,7 @@ fn check_version(config: &Config) -> Option<String> {
     }
 
     msg.push_str("There have been changes to x.py since you last updated:\n");
-    msg.push_str(&human_readable_changes(&changes));
+    msg.push_str(&human_readable_changes(changes));
 
     msg.push_str("NOTE: to silence this warning, ");
     msg.push_str(&format!(
