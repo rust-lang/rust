@@ -27,11 +27,11 @@ LL + #[derive(Default)]
 LL | pub struct S;
    |
 
-error: missing mandatory field `bar`
-  --> $DIR/failures.rs:53:21
+error: missing field `bar` in initializer
+  --> $DIR/failures.rs:53:19
    |
 LL |     let _ = Bar { .. };
-   |                     ^
+   |                   ^ fields that do not have a defaulted value must be provided explicitly
 
 error[E0308]: mismatched types
   --> $DIR/failures.rs:57:17
