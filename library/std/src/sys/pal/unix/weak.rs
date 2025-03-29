@@ -29,7 +29,7 @@ use crate::{mem, ptr};
 // We can use true weak linkage on ELF targets.
 #[cfg(all(unix, not(target_vendor = "apple")))]
 pub(crate) macro weak {
-    (fn $name:ident($($t:ty),*) -> $ret:ty) => (
+    (fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;) => (
         let ref $name: ExternWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
             unsafe extern "C" {
                 #[linkage = "extern_weak"]
@@ -62,10 +62,16 @@ impl<F: Copy> ExternWeak<F> {
 }
 
 pub(crate) macro dlsym {
-    (fn $name:ident($($t:ty),*) -> $ret:ty) => (
-         dlsym!(fn $name($($t),*) -> $ret, stringify!($name));
+    (fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;) => (
+         dlsym!(
+            #[link_name = stringify!($name)]
+            fn $name($($param : $t),*) -> $ret;
+        );
     ),
-    (fn $name:ident($($t:ty),*) -> $ret:ty, $sym:expr) => (
+    (
+        #[link_name = $sym:expr]
+        fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;
+    ) => (
         static DLSYM: DlsymWeak<unsafe extern "C" fn($($t),*) -> $ret> =
             DlsymWeak::new(concat!($sym, '\0'));
         let $name = &DLSYM;
@@ -143,15 +149,15 @@ unsafe fn fetch(name: &str) -> *mut libc::c_void {
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
 pub(crate) macro syscall {
-    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
+    (fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;) => (
         // FIXME(#115199): Rust currently omits weak function definitions
         // and its metadata from LLVM IR.
         #[no_sanitize(cfi)]
-        unsafe fn $name($($arg_name: $t),*) -> $ret {
-            weak! { fn $name($($t),*) -> $ret }
+        unsafe fn $name($($param: $t),*) -> $ret {
+            weak!(fn $name($($param: $t),*) -> $ret;);
 
             if let Some(fun) = $name.get() {
-                fun($($arg_name),*)
+                fun($($param),*)
             } else {
                 super::os::set_errno(libc::ENOSYS);
                 -1
@@ -162,16 +168,18 @@ pub(crate) macro syscall {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub(crate) macro syscall {
-    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
-        unsafe fn $name($($arg_name:$t),*) -> $ret {
-            weak! { fn $name($($t),*) -> $ret }
+    (
+        fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;
+    ) => (
+        unsafe fn $name($($param: $t),*) -> $ret {
+            weak!(fn $name($($param: $t),*) -> $ret;);
 
             // Use a weak symbol from libc when possible, allowing `LD_PRELOAD`
             // interposition, but if it's not found just use a raw syscall.
             if let Some(fun) = $name.get() {
-                fun($($arg_name),*)
+                fun($($param),*)
             } else {
-                libc::syscall(libc::${concat(SYS_, $name)}, $($arg_name),*) as $ret
+                libc::syscall(libc::${concat(SYS_, $name)}, $($param),*) as $ret
             }
         }
     )
@@ -179,9 +187,9 @@ pub(crate) macro syscall {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub(crate) macro raw_syscall {
-    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
-        unsafe fn $name($($arg_name:$t),*) -> $ret {
-            libc::syscall(libc::${concat(SYS_, $name)}, $($arg_name),*) as $ret
+    (fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;) => (
+        unsafe fn $name($($param: $t),*) -> $ret {
+            libc::syscall(libc::${concat(SYS_, $name)}, $($param),*) as $ret
         }
     )
 }
