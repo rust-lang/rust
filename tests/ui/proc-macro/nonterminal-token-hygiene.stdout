@@ -5,19 +5,19 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         stream: TokenStream [
             Ident {
                 ident: "struct",
-                span: $DIR/nonterminal-token-hygiene.rs:32:5: 32:11 (#4),
+                span: $DIR/nonterminal-token-hygiene.rs:32:5: 32:11 (#5),
             },
             Ident {
                 ident: "S",
-                span: $DIR/nonterminal-token-hygiene.rs:32:12: 32:13 (#4),
+                span: $DIR/nonterminal-token-hygiene.rs:32:12: 32:13 (#5),
             },
             Punct {
                 ch: ';',
                 spacing: Alone,
-                span: $DIR/nonterminal-token-hygiene.rs:32:13: 32:14 (#4),
+                span: $DIR/nonterminal-token-hygiene.rs:32:13: 32:14 (#5),
             },
         ],
-        span: $DIR/nonterminal-token-hygiene.rs:22:27: 22:32 (#5),
+        span: $DIR/nonterminal-token-hygiene.rs:22:27: 22:32 (#4),
     },
 ]
 #![feature /* 0#0 */(prelude_import)]
@@ -59,7 +59,7 @@ macro_rules! outer
 struct S /* 0#0 */;
 macro inner /* 0#3 */ { () => { print_bang! { struct S; } } }
 
-struct S /* 0#4 */;
+struct S /* 0#5 */;
 // OK, not a duplicate definition of `S`
 
 fn main /* 0#0 */() {}
@@ -70,7 +70,7 @@ crate0::{{expn0}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt:
 crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
 crate0::{{expn2}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "outer")
 crate0::{{expn3}}: parent: crate0::{{expn2}}, call_site_ctxt: #3, def_site_ctxt: #3, kind: Macro(Bang, "inner")
-crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #5, def_site_ctxt: #0, kind: Macro(Bang, "print_bang")
+crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #4, def_site_ctxt: #0, kind: Macro(Bang, "print_bang")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "diagnostic::on_unimplemented")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "diagnostic::on_unimplemented")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "diagnostic::on_unimplemented")
@@ -83,9 +83,9 @@ SyntaxContexts:
 #1: parent: #0, outer_mark: (crate0::{{expn1}}, Opaque)
 #2: parent: #0, outer_mark: (crate0::{{expn1}}, Transparent)
 #3: parent: #0, outer_mark: (crate0::{{expn2}}, SemiTransparent)
-#4: parent: #0, outer_mark: (crate0::{{expn3}}, Opaque)
-#5: parent: #3, outer_mark: (crate0::{{expn3}}, Opaque)
+#4: parent: #3, outer_mark: (crate0::{{expn3}}, Opaque)
+#5: parent: #0, outer_mark: (crate0::{{expn3}}, Opaque)
 #6: parent: #0, outer_mark: (crate0::{{expn4}}, Opaque)
-#7: parent: #5, outer_mark: (crate0::{{expn4}}, Transparent)
-#8: parent: #4, outer_mark: (crate0::{{expn4}}, SemiTransparent)
+#7: parent: #4, outer_mark: (crate0::{{expn4}}, Transparent)
+#8: parent: #5, outer_mark: (crate0::{{expn4}}, SemiTransparent)
 */
