@@ -385,9 +385,6 @@ impl Step for Llvm {
             || target.contains("apple-watchos")
             || target.contains("apple-visionos")
         {
-            // These two defines prevent CMake from automatically trying to add a MacOSX sysroot, which leads to a compiler error.
-            cfg.define("CMAKE_OSX_SYSROOT", "/");
-            cfg.define("CMAKE_OSX_DEPLOYMENT_TARGET", "");
             // Prevent cmake from adding -bundle to CFLAGS automatically, which leads to a compiler error because "-bitcode_bundle" also gets added.
             cfg.define("LLVM_ENABLE_PLUGINS", "OFF");
             // Zlib fails to link properly, leading to a compiler error.
@@ -645,10 +642,17 @@ fn configure_cmake(
     if !builder.is_builder_target(target) {
         cfg.define("CMAKE_CROSSCOMPILING", "True");
 
+        // NOTE: Ideally, we wouldn't have to do this, and `cmake-rs` would just handle it for us.
+        // But it currently determines this based on the `CARGO_CFG_TARGET_OS` environment variable,
+        // which isn't set when compiling outside `build.rs` (like bootstrap is).
+        //
+        // So for now, we define `CMAKE_SYSTEM_NAME` ourselves, to panicking in `cmake-rs`.
         if target.contains("netbsd") {
             cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
         } else if target.contains("dragonfly") {
             cfg.define("CMAKE_SYSTEM_NAME", "DragonFly");
+        } else if target.contains("openbsd") {
+            cfg.define("CMAKE_SYSTEM_NAME", "OpenBSD");
         } else if target.contains("freebsd") {
             cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
         } else if target.is_windows() {
@@ -659,10 +663,27 @@ fn configure_cmake(
             cfg.define("CMAKE_SYSTEM_NAME", "SunOS");
         } else if target.contains("linux") {
             cfg.define("CMAKE_SYSTEM_NAME", "Linux");
+        } else if target.contains("darwin") {
+            // macOS
+            cfg.define("CMAKE_SYSTEM_NAME", "Darwin");
+        } else if target.contains("ios") {
+            cfg.define("CMAKE_SYSTEM_NAME", "iOS");
+        } else if target.contains("tvos") {
+            cfg.define("CMAKE_SYSTEM_NAME", "tvOS");
+        } else if target.contains("visionos") {
+            cfg.define("CMAKE_SYSTEM_NAME", "visionOS");
+        } else if target.contains("watchos") {
+            cfg.define("CMAKE_SYSTEM_NAME", "watchOS");
+        } else if target.contains("none") {
+            // "none" should be the last branch
+            cfg.define("CMAKE_SYSTEM_NAME", "Generic");
         } else {
             builder.info(&format!(
                 "could not determine CMAKE_SYSTEM_NAME from the target `{target}`, build may fail",
             ));
+            // Fallback, set `CMAKE_SYSTEM_NAME` anyhow to avoid the logic `cmake-rs` tries, and
+            // to avoid CMAKE_SYSTEM_NAME being inferred from the host.
+            cfg.define("CMAKE_SYSTEM_NAME", "Generic");
         }
 
         // When cross-compiling we should also set CMAKE_SYSTEM_VERSION, but in
@@ -672,7 +693,19 @@ fn configure_cmake(
         // CMakeFiles (and then only in tests), and so far no issues have been
         // reported, the system version is currently left unset.
 
-        if target.contains("darwin") {
+        if target.contains("apple") {
+            if !target.contains("darwin") {
+                // FIXME(madsmtm): compiler-rt's CMake setup is kinda weird, it seems like they do
+                // version testing etc. for macOS (i.e. Darwin), even while building for iOS?
+                //
+                // So for now we set it to "Darwin" on all Apple platforms.
+                cfg.define("CMAKE_SYSTEM_NAME", "Darwin");
+
+                // These two defines prevent CMake from automatically trying to add a MacOSX sysroot, which leads to a compiler error.
+                cfg.define("CMAKE_OSX_SYSROOT", "/");
+                cfg.define("CMAKE_OSX_DEPLOYMENT_TARGET", "");
+            }
+
             // Make sure that CMake does not build universal binaries on macOS.
             // Explicitly specify the one single target architecture.
             if target.starts_with("aarch64") {
