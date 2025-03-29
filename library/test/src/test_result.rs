@@ -45,6 +45,12 @@ pub(crate) fn calc_result<'a>(
     time_opts: Option<&time::TestTimeOptions>,
     exec_time: Option<&time::TestExecTime>,
 ) -> TestResult {
+    let fn_location = if !desc.source_file.is_empty() {
+        &format!(" at {}:{}:{}", desc.source_file, desc.start_line, desc.start_col)
+    } else {
+        ""
+    };
+
     let result = match (&desc.should_panic, task_result) {
         (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TestResult::TrOk,
         (&ShouldPanic::YesWithMessage(msg), Err(err)) => {
@@ -72,7 +78,7 @@ pub(crate) fn calc_result<'a>(
             }
         }
         (&ShouldPanic::Yes, Ok(())) | (&ShouldPanic::YesWithMessage(_), Ok(())) => {
-            TestResult::TrFailedMsg("test did not panic as expected".to_string())
+            TestResult::TrFailedMsg(format!("test did not panic as expected{}", fn_location))
         }
         _ => TestResult::TrFailed,
     };
