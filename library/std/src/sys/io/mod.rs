@@ -2,7 +2,7 @@
 
 mod io_slice {
     cfg_if::cfg_if! {
-        if #[cfg(any(target_family = "unix", target_os = "hermit", target_os = "solid_asp3"))] {
+        if #[cfg(any(target_family = "unix", target_os = "hermit", target_os = "solid_asp3", target_os = "trusty"))] {
             mod iovec;
             pub use iovec::*;
         } else if #[cfg(target_os = "windows")] {
