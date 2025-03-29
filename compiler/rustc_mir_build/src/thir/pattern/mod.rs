@@ -567,15 +567,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // Lower the named constant to a THIR pattern.
         let args = self.typeck_results.node_args(id);
         let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
-        let subpattern = self.const_to_pat(c, ty, id, span);
-
-        // Wrap the pattern in a marker node to indicate that it is the result
-        // of lowering a named constant. This marker is used for improved
-        // diagnostics in some situations, but has no effect at runtime.
-        let mut pattern = {
-            let kind = PatKind::ExpandedConstant { subpattern, def_id, is_inline: false };
-            Box::new(Pat { span, ty, kind })
-        };
+        let mut pattern = self.const_to_pat(c, ty, id, span);
 
         // If this is an associated constant with an explicit user-written
         // type, add an ascription node (e.g. `<Foo<'a> as MyTrait>::CONST`).
@@ -619,11 +611,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         debug_assert!(!args.has_free_regions());
 
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
-        let subpattern = self.const_to_pat(ty::Const::new_unevaluated(self.tcx, ct), ty, id, span);
-
-        // Wrap the pattern in a marker node to indicate that it is the result
-        // of lowering an inline const block.
-        PatKind::ExpandedConstant { subpattern, def_id: def_id.to_def_id(), is_inline: true }
+        let c = ty::Const::new_unevaluated(self.tcx, ct);
+        self.const_to_pat(c, ty, id, span).kind
     }
 
     /// Lowers the kinds of "expression" that can appear in a HIR pattern:
