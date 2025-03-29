@@ -1,5 +1,6 @@
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
+//@[next] check-pass
 
 // The new trait solver does not return region constraints if the goal
 // is still ambiguous. This should cause the following test to fail with
@@ -28,5 +29,5 @@ impl<V> Trait<u16, V> for () {}
 fn impls_trait<T: Trait<U, V>, U: Id<V>, V>() {}
 fn main() {
     impls_trait::<(), _, _>()
-    //~^ ERROR type annotations needed
+    //[old]~^ ERROR type annotations needed
 }
