@@ -516,6 +516,11 @@ pub fn break_query_cycles<I: Clone + Debug>(
     while jobs.len() > 0 {
         if remove_cycle(&query_map, &mut jobs, &mut wakelist) {
             found_cycle = true;
+
+            // FIXME: Resume all the waiters at once may cause deadlocks,
+            // so we resume one waiter at a call for now.
+            // Remove this when we figure out the real reason.
+            break;
         }
     }
 
