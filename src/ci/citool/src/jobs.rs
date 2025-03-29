@@ -3,9 +3,11 @@ mod tests;
 
 use std::collections::BTreeMap;
 
+use anyhow::Context as _;
 use serde_yaml::Value;
 
 use crate::GitHubContext;
+use crate::utils::load_env_var;
 
 /// Representation of a job loaded from the `src/ci/github-actions/jobs.yml` file.
 #[derive(serde::Deserialize, Debug, Clone)]
@@ -109,6 +111,27 @@ struct GithubActionsJob {
     doc_url: Option<String>,
 }
 
+/// Replace GitHub context variables with environment variables in job configs.
+/// Useful for codebuild jobs like
+/// `codebuild-ubuntu-22-8c-${{ github.run_id }}-${{ github.run_attempt }}`
+fn substitute_github_vars(jobs: Vec<Job>) -> anyhow::Result<Vec<Job>> {
+    let run_id = load_env_var("GITHUB_RUN_ID")?;
+    let run_attempt = load_env_var("GITHUB_RUN_ATTEMPT")?;
+
+    let jobs = jobs
+        .into_iter()
+        .map(|mut job| {
+            job.os = job
+                .os
+                .replace("${{ github.run_id }}", &run_id)
+                .replace("${{ github.run_attempt }}", &run_attempt);
+            job
+        })
+        .collect();
+
+    Ok(jobs)
+}
+
 /// Skip CI jobs that are not supposed to be executed on the given `channel`.
 fn skip_jobs(jobs: Vec<Job>, channel: &str) -> Vec<Job> {
     jobs.into_iter()
@@ -177,6 +200,8 @@ fn calculate_jobs(
         }
         RunType::AutoJob => (db.auto_jobs.clone(), "auto", &db.envs.auto_env),
     };
+    let jobs = substitute_github_vars(jobs.clone())
+        .context("Failed to substitute GitHub context variables in jobs")?;
     let jobs = skip_jobs(jobs, channel);
     let jobs = jobs
         .into_iter()
