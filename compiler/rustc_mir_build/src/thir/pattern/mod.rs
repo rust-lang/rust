@@ -617,43 +617,41 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         expr: &'tcx hir::PatExpr<'tcx>,
         pat_ty: Option<Ty<'tcx>>,
     ) -> PatKind<'tcx> {
-        let (lit, neg) = match &expr.kind {
-            hir::PatExprKind::Path(qpath) => {
-                return self.lower_path(qpath, expr.hir_id, expr.span).kind;
-            }
+        match &expr.kind {
+            hir::PatExprKind::Path(qpath) => self.lower_path(qpath, expr.hir_id, expr.span).kind,
             hir::PatExprKind::ConstBlock(anon_const) => {
-                return self.lower_inline_const(anon_const, expr.hir_id, expr.span);
+                self.lower_inline_const(anon_const, expr.hir_id, expr.span)
             }
-            hir::PatExprKind::Lit { lit, negated } => (lit, *negated),
-        };
-
-        // We handle byte string literal patterns by using the pattern's type instead of the
-        // literal's type in `const_to_pat`: if the literal `b"..."` matches on a slice reference,
-        // the pattern's type will be `&[u8]` whereas the literal's type is `&[u8; 3]`; using the
-        // pattern's type means we'll properly translate it to a slice reference pattern. This works
-        // because slices and arrays have the same valtree representation.
-        // HACK: As an exception, use the literal's type if `pat_ty` is `String`; this can happen if
-        // `string_deref_patterns` is enabled. There's a special case for that when lowering to MIR.
-        // FIXME(deref_patterns): This hack won't be necessary once `string_deref_patterns` is
-        // superseded by a more general implementation of deref patterns.
-        let ct_ty = match pat_ty {
-            Some(pat_ty)
-                if let ty::Adt(def, _) = *pat_ty.kind()
-                    && self.tcx.is_lang_item(def.did(), LangItem::String) =>
-            {
-                if !self.tcx.features().string_deref_patterns() {
-                    span_bug!(
-                        expr.span,
-                        "matching on `String` went through without enabling string_deref_patterns"
-                    );
-                }
-                self.typeck_results.node_type(expr.hir_id)
+            hir::PatExprKind::Lit { lit, negated } => {
+                // We handle byte string literal patterns by using the pattern's type instead of the
+                // literal's type in `const_to_pat`: if the literal `b"..."` matches on a slice reference,
+                // the pattern's type will be `&[u8]` whereas the literal's type is `&[u8; 3]`; using the
+                // pattern's type means we'll properly translate it to a slice reference pattern. This works
+                // because slices and arrays have the same valtree representation.
+                // HACK: As an exception, use the literal's type if `pat_ty` is `String`; this can happen if
+                // `string_deref_patterns` is enabled. There's a special case for that when lowering to MIR.
+                // FIXME(deref_patterns): This hack won't be necessary once `string_deref_patterns` is
+                // superseded by a more general implementation of deref patterns.
+                let ct_ty = match pat_ty {
+                    Some(pat_ty)
+                        if let ty::Adt(def, _) = *pat_ty.kind()
+                            && self.tcx.is_lang_item(def.did(), LangItem::String) =>
+                    {
+                        if !self.tcx.features().string_deref_patterns() {
+                            span_bug!(
+                                expr.span,
+                                "matching on `String` went through without enabling string_deref_patterns"
+                            );
+                        }
+                        self.typeck_results.node_type(expr.hir_id)
+                    }
+                    Some(pat_ty) => pat_ty,
+                    None => self.typeck_results.node_type(expr.hir_id),
+                };
+                let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg: *negated };
+                let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
+                self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
             }
-            Some(pat_ty) => pat_ty,
-            None => self.typeck_results.node_type(expr.hir_id),
-        };
-        let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
-        let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
-        self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
+        }
     }
 }
