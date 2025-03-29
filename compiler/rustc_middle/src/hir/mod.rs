@@ -238,6 +238,8 @@ pub fn provide(providers: &mut Providers) {
         }
     };
     providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
+    providers.local_trait_impls =
+        |tcx, trait_id| tcx.resolutions(()).trait_impls.get(&trait_id).map_or(&[], |xs| &xs[..]);
     providers.expn_that_defined =
         |tcx, id| tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root());
     providers.in_scope_traits_map = |tcx, id| {

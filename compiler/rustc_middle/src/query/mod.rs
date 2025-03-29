@@ -1502,6 +1502,11 @@ rustc_queries! {
         desc { "finding local trait impls" }
     }
 
+    /// Return all `impl` blocks of the given trait in the current crate.
+    query local_trait_impls(trait_id: DefId) -> &'tcx [LocalDefId] {
+        desc { "finding local trait impls of `{}`", tcx.def_path_str(trait_id) }
+    }
+
     /// Given a trait `trait_id`, return all known `impl` blocks.
     query trait_impls_of(trait_id: DefId) -> &'tcx ty::trait_def::TraitImpls {
         arena_cache
