@@ -274,7 +274,9 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
         // In LLVM 18, `unaligned-scalar-mem` was merged with `unaligned-vector-mem` into a single
         // feature called `fast-unaligned-access`. In LLVM 19, it was split back out.
-        ("riscv32" | "riscv64", "unaligned-scalar-mem") if get_version().0 == 18 => {
+        ("riscv32" | "riscv64", "unaligned-scalar-mem" | "unaligned-vector-mem")
+            if get_version().0 == 18 =>
+        {
             Some(LLVMFeature::new("fast-unaligned-access"))
         }
         // Filter out features that are not supported by the current LLVM version
