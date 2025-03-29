@@ -180,6 +180,12 @@ impl<T> FromDyn<T> {
     }
 
     #[inline(always)]
+    pub fn derive<O>(&self, val: O) -> FromDyn<O> {
+        // We already did the check for `sync::is_dyn_thread_safe()` when creating `Self`
+        FromDyn(val)
+    }
+
+    #[inline(always)]
     pub fn into_inner(self) -> T {
         self.0
     }
@@ -197,6 +203,13 @@ impl<T> std::ops::Deref for FromDyn<T> {
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<T> std::ops::DerefMut for FromDyn<T> {
+    #[inline(always)]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
