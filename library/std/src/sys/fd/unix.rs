@@ -108,8 +108,8 @@ impl FileDesc {
         target_os = "vita",
         target_os = "nuttx"
     )))]
-    pub fn read_vectored(&self, mut bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        IoSliceMut::limit_slices(&mut bufs, max_iov());
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        let bufs = io::limit_slices_mut!(bufs, max_iov());
         let ret = cvt(unsafe {
             libc::readv(
                 self.as_raw_fd(),
@@ -199,12 +199,8 @@ impl FileDesc {
         target_os = "netbsd",
         target_os = "openbsd", // OpenBSD 2.7
     ))]
-    pub fn read_vectored_at(
-        &self,
-        mut bufs: &mut [IoSliceMut<'_>],
-        offset: u64,
-    ) -> io::Result<usize> {
-        IoSliceMut::limit_slices(&mut bufs, max_iov());
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        let bufs = io::limit_slices_mut!(bufs, max_iov());
         let ret = cvt(unsafe {
             libc::preadv(
                 self.as_raw_fd(),
@@ -241,11 +237,7 @@ impl FileDesc {
     // passing 64-bits parameters to syscalls, so we fallback to the default
     // implementation if `preadv` is not available.
     #[cfg(all(target_os = "android", target_pointer_width = "64"))]
-    pub fn read_vectored_at(
-        &self,
-        mut bufs: &mut [IoSliceMut<'_>],
-        offset: u64,
-    ) -> io::Result<usize> {
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         syscall!(
             fn preadv(
                 fd: libc::c_int,
@@ -255,7 +247,7 @@ impl FileDesc {
             ) -> isize;
         );
 
-        IoSliceMut::limit_slices(&mut bufs, max_iov());
+        let bufs = io::limit_slices_mut!(bufs, max_iov());
         let ret = cvt(unsafe {
             preadv(
                 self.as_raw_fd(),
@@ -271,11 +263,7 @@ impl FileDesc {
     // FIXME(#115199): Rust currently omits weak function definitions
     // and its metadata from LLVM IR.
     #[no_sanitize(cfi)]
-    pub fn read_vectored_at(
-        &self,
-        mut bufs: &mut [IoSliceMut<'_>],
-        offset: u64,
-    ) -> io::Result<usize> {
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn preadv64(
                 fd: libc::c_int,
@@ -287,7 +275,7 @@ impl FileDesc {
 
         match preadv64.get() {
             Some(preadv) => {
-                IoSliceMut::limit_slices(&mut bufs, max_iov());
+                let bufs = io::limit_slices_mut!(bufs, max_iov());
                 let ret = cvt(unsafe {
                     preadv(
                         self.as_raw_fd(),
@@ -312,11 +300,7 @@ impl FileDesc {
     // These versions may be newer than the minimum supported versions of OS's we support so we must
     // use "weak" linking.
     #[cfg(target_vendor = "apple")]
-    pub fn read_vectored_at(
-        &self,
-        mut bufs: &mut [IoSliceMut<'_>],
-        offset: u64,
-    ) -> io::Result<usize> {
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn preadv(
                 fd: libc::c_int,
@@ -328,7 +312,7 @@ impl FileDesc {
 
         match preadv.get() {
             Some(preadv) => {
-                IoSliceMut::limit_slices(&mut bufs, max_iov());
+                let bufs = io::limit_slices_mut!(bufs, max_iov());
                 let ret = cvt(unsafe {
                     preadv(
                         self.as_raw_fd(),
@@ -360,8 +344,8 @@ impl FileDesc {
         target_os = "vita",
         target_os = "nuttx"
     )))]
-    pub fn write_vectored(&self, mut bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        IoSlice::limit_slices(&mut bufs, max_iov());
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let bufs = io::limit_slices!(bufs, max_iov());
         let ret = cvt(unsafe {
             libc::writev(
                 self.as_raw_fd(),
@@ -430,8 +414,8 @@ impl FileDesc {
         target_os = "netbsd",
         target_os = "openbsd", // OpenBSD 2.7
     ))]
-    pub fn write_vectored_at(&self, mut bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
-        IoSlice::limit_slices(&mut bufs, max_iov());
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        let bufs = io::limit_slices!(bufs, max_iov());
         let ret = cvt(unsafe {
             libc::pwritev(
                 self.as_raw_fd(),
@@ -468,7 +452,7 @@ impl FileDesc {
     // passing 64-bits parameters to syscalls, so we fallback to the default
     // implementation if `pwritev` is not available.
     #[cfg(all(target_os = "android", target_pointer_width = "64"))]
-    pub fn write_vectored_at(&self, mut bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         syscall!(
             fn pwritev(
                 fd: libc::c_int,
@@ -478,7 +462,7 @@ impl FileDesc {
             ) -> isize;
         );
 
-        IoSlice::limit_slices(&mut bufs, max_iov());
+        let bufs = io::limit_slices!(bufs, max_iov());
         let ret = cvt(unsafe {
             pwritev(
                 self.as_raw_fd(),
@@ -491,7 +475,7 @@ impl FileDesc {
     }
 
     #[cfg(all(target_os = "android", target_pointer_width = "32"))]
-    pub fn write_vectored_at(&self, mut bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn pwritev64(
                 fd: libc::c_int,
@@ -503,7 +487,7 @@ impl FileDesc {
 
         match pwritev64.get() {
             Some(pwritev) => {
-                IoSlice::limit_slices(&mut bufs, max_iov());
+                let bufs = io::limit_slices!(bufs, max_iov());
                 let ret = cvt(unsafe {
                     pwritev(
                         self.as_raw_fd(),
@@ -528,7 +512,7 @@ impl FileDesc {
     // These versions may be newer than the minimum supported versions of OS's we support so we must
     // use "weak" linking.
     #[cfg(target_vendor = "apple")]
-    pub fn write_vectored_at(&self, mut bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn pwritev(
                 fd: libc::c_int,
@@ -540,7 +524,7 @@ impl FileDesc {
 
         match pwritev.get() {
             Some(pwritev) => {
-                IoSlice::limit_slices(&mut bufs, max_iov());
+                let bufs = io::limit_slices!(bufs, max_iov());
                 let ret = cvt(unsafe {
                     pwritev(
                         self.as_raw_fd(),

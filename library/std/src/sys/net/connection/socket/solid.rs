@@ -222,8 +222,8 @@ impl Socket {
         self.recv_with_flags(buf, 0)
     }
 
-    pub fn read_vectored(&self, mut bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        IoSliceMut::limit_slices(&mut bufs, max_iov());
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        let bufs = io::limit_slices_mut!(bufs, max_iov());
         let ret = cvt(unsafe {
             netc::readv(self.as_raw_fd(), bufs.as_ptr() as *const netc::iovec, bufs.len() as c_int)
         })?;
@@ -264,8 +264,8 @@ impl Socket {
         self.recv_from_with_flags(buf, MSG_PEEK)
     }
 
-    pub fn write_vectored(&self, mut bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        IoSlice::limit_slices(&mut bufs, max_iov());
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let bufs = io::limit_slices!(bufs, max_iov());
         let ret = cvt(unsafe {
             netc::writev(self.as_raw_fd(), bufs.as_ptr() as *const netc::iovec, bufs.len() as c_int)
         })?;
