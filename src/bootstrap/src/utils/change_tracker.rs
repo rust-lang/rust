@@ -35,29 +35,25 @@ impl Display for ChangeSeverity {
     }
 }
 
-pub fn find_recent_config_change_ids(current_id: usize) -> Vec<ChangeInfo> {
-    if !CONFIG_CHANGE_HISTORY.iter().any(|config| config.change_id == current_id) {
+pub fn find_recent_config_change_ids(current_id: usize) -> &'static [ChangeInfo] {
+    if let Some(index) =
+        CONFIG_CHANGE_HISTORY.iter().position(|config| config.change_id == current_id)
+    {
+        // Skip the current_id and IDs before it
+        &CONFIG_CHANGE_HISTORY[index + 1..]
+    } else {
         // If the current change-id is greater than the most recent one, return
         // an empty list (it may be due to switching from a recent branch to an
         // older one); otherwise, return the full list (assuming the user provided
         // the incorrect change-id by accident).
         if let Some(config) = CONFIG_CHANGE_HISTORY.iter().max_by_key(|config| config.change_id) {
             if current_id > config.change_id {
-                return Vec::new();
+                return &[];
             }
         }
 
-        return CONFIG_CHANGE_HISTORY.to_vec();
+        CONFIG_CHANGE_HISTORY
     }
-
-    let index =
-        CONFIG_CHANGE_HISTORY.iter().position(|config| config.change_id == current_id).unwrap();
-
-    CONFIG_CHANGE_HISTORY
-        .iter()
-        .skip(index + 1) // Skip the current_id and IDs before it
-        .cloned()
-        .collect()
 }
 
 pub fn human_readable_changes(changes: &[ChangeInfo]) -> String {
