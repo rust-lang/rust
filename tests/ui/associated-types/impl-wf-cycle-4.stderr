@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `<T as Filter>::ToMatch == <T as Filter>::ToMatch`
+error[E0391]: cycle detected when computing normalized predicates of `<impl at $DIR/impl-wf-cycle-4.rs:5:1: 7:26>`
   --> $DIR/impl-wf-cycle-4.rs:5:1
    |
 LL | / impl<T> Filter for T
@@ -6,20 +6,23 @@ LL | | where
 LL | |     T: Fn(Self::ToMatch),
    | |_________________________^
    |
-note: required for `T` to implement `Filter`
-  --> $DIR/impl-wf-cycle-4.rs:5:9
+note: ...which requires computing whether `<impl at $DIR/impl-wf-cycle-4.rs:5:1: 7:26>` has a guaranteed unsized self type...
+  --> $DIR/impl-wf-cycle-4.rs:5:1
    |
-LL | impl<T> Filter for T
-   |         ^^^^^^     ^
-LL | where
-LL |     T: Fn(Self::ToMatch),
-   |        ----------------- unsatisfied trait bound introduced here
-note: associated types for the current `impl` cannot be restricted in `where` clauses
-  --> $DIR/impl-wf-cycle-4.rs:7:11
+LL | / impl<T> Filter for T
+LL | | where
+LL | |     T: Fn(Self::ToMatch),
+   | |_________________________^
+   = note: ...which again requires computing normalized predicates of `<impl at $DIR/impl-wf-cycle-4.rs:5:1: 7:26>`, completing the cycle
+note: cycle used when checking that `<impl at $DIR/impl-wf-cycle-4.rs:5:1: 7:26>` is well-formed
+  --> $DIR/impl-wf-cycle-4.rs:5:1
    |
-LL |     T: Fn(Self::ToMatch),
-   |           ^^^^^^^^^^^^^
+LL | / impl<T> Filter for T
+LL | | where
+LL | |     T: Fn(Self::ToMatch),
+   | |_________________________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0275`.
+For more information about this error, try `rustc --explain E0391`.
