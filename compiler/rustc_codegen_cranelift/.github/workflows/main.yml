@@ -53,13 +53,12 @@ jobs:
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: x86_64-unknown-linux-gnu
-          - os: macos-latest
-            env:
-              TARGET_TRIPLE: x86_64-apple-darwin
-          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
             env:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
-            apt_deps: gcc-aarch64-linux-gnu qemu-user
+          - os: macos-13
+            env:
+              TARGET_TRIPLE: x86_64-apple-darwin
           - os: macos-latest
             env:
               TARGET_TRIPLE: aarch64-apple-darwin
@@ -94,10 +93,6 @@ jobs:
     - name: Set MinGW as the default toolchain
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
-
-    - name: Use x86_64 compiler on macOS
-      if: matrix.os == 'macos-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-apple-darwin'
-      run: rustup set default-host x86_64-apple-darwin
 
     - name: Install toolchain and emulator
       if: matrix.apt_deps != null
@@ -170,9 +165,6 @@ jobs:
         sudo apt update
         sudo apt install -y hyperfine
 
-    - name: Prepare dependencies
-      run: ./y.sh prepare
-
     - name: Build
       run: ./y.sh build --sysroot none
 
@@ -192,7 +184,10 @@ jobs:
           - os: ubuntu-22.04
             env:
               TARGET_TRIPLE: x86_64-unknown-linux-gnu
-          - os: macos-latest
+          - os: ubuntu-24.04-arm
+            env:
+              TARGET_TRIPLE: aarch64-unknown-linux-gnu
+          - os: macos-13
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
           - os: macos-latest
@@ -217,13 +212,6 @@ jobs:
     - name: Set MinGW as the default toolchain
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
-
-    - name: Use x86_64 compiler on macOS
-      if: matrix.os == 'macos-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-apple-darwin'
-      run: rustup set default-host x86_64-apple-darwin
-
-    - name: Prepare dependencies
-      run: ./y.sh prepare
 
     - name: Build backend
       run: ./y.sh build --sysroot none
@@ -273,12 +261,9 @@ jobs:
           rmdir artifacts/ # verify all artifacts are represented in release/
           ls -R release/
 
-      - run: npm install --production
-        working-directory: .github/actions/github-release
-
-      - name: Publish Release
-        uses: ./.github/actions/github-release
-        with:
-          files: "release/*"
-          token: ${{ github.token }}
-        continue-on-error: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete --cleanup-tag -y dev || true
+          gh release create --target $GITHUB_SHA --prerelease dev release/*
