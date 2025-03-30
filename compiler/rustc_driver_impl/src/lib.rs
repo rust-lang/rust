@@ -691,6 +691,34 @@ fn print_crate_info(
                 };
                 println_info!("{}", passes::get_crate_name(sess, attrs));
             }
+            CrateRootLintLevels => {
+                let Some(attrs) = attrs.as_ref() else {
+                    // no crate attributes, print out an error and exit
+                    return Compilation::Continue;
+                };
+                let crate_name = passes::get_crate_name(sess, attrs);
+                let lint_store = crate::unerased_lint_store(sess);
+                let registered_tools = rustc_resolve::registered_tools_ast(sess.dcx(), attrs);
+                let features = rustc_expand::config::features(sess, attrs, crate_name);
+                let lint_levels = rustc_lint::LintLevelsBuilder::crate_root(
+                    sess,
+                    &features,
+                    true,
+                    lint_store,
+                    &registered_tools,
+                    attrs,
+                );
+                for lint in lint_store.get_lints() {
+                    if let Some(feature_symbol) = lint.feature_gate
+                        && !features.enabled(feature_symbol)
+                    {
+                        // lint is unstable and feature gate isn't active, don't print
+                        continue;
+                    }
+                    let level = lint_levels.lint_level(lint).0;
+                    println_info!("{}={}", lint.name_lower(), level.as_str());
+                }
+            }
             Cfg => {
                 let mut cfgs = sess
                     .psess
