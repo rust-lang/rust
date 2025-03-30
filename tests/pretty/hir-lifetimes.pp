@@ -30,10 +30,10 @@ impl  Foo<'_> {
 
     // FIXME: impl Traits printed as just `/*impl Trait*/`, ugh
     fn iter1<'a>(&self)
-        -> /*impl Trait*/ { #[lang = "Range"]{ start: 0,  end: 1,} }
+        -> /*impl Trait*/ { #[lang = "Range"] { start: 0, end: 1 } }
 
     fn iter2(&self)
-        -> /*impl Trait*/ { #[lang = "Range"]{ start: 0,  end: 1,} }
+        -> /*impl Trait*/ { #[lang = "Range"] { start: 0, end: 1 } }
 }
 
 fn a(x: Foo<'_>) { }
@@ -82,7 +82,7 @@ struct St<'a> {
     x: &'a u32,
 }
 
-fn f() { { let _ = St{ x: &0,}; }; { let _ = St{ x: &0,}; }; }
+fn f() { { let _ = St { x: &0 }; }; { let _ = St { x: &0 }; }; }
 
 struct Name<'a>(&'a str);
 
