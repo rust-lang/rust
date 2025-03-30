@@ -1,5 +1,9 @@
 //! Emulate AArch64 LLVM intrinsics
 
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_target::asm::*;
+
+use crate::inline_asm::{CInlineAsmOperand, codegen_inline_asm_inner};
 use crate::intrinsics::*;
 use crate::prelude::*;
 
@@ -17,7 +21,7 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             fx.bcx.ins().fence();
         }
 
-        "llvm.aarch64.neon.ld1x4.v16i8.p0i8" => {
+        "llvm.aarch64.neon.ld1x4.v16i8.p0" => {
             intrinsic_args!(fx, args => (ptr); intrinsic);
 
             let ptr = ptr.load_scalar(fx);
@@ -47,6 +51,121 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
                 fx.bcx.ins().bitrev(lane)
             });
+        }
+
+        "llvm.aarch64.neon.fcvtns.v4i32.v4f32" => {
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            // Note: Using inline asm instead of fcvt_to_sint as the latter rounds to zero rather than to nearest
+
+            let a_ptr = a.force_stack(fx).0.get_addr(fx);
+            let res_place = CPlace::new_stack_slot(fx, ret.layout());
+            let res_ptr = res_place.to_ptr().get_addr(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(
+                    "ldr     q0, [x0]
+                     fcvtns  v0.4s, v0.4s
+                     str     q0, [x1]"
+                        .into(),
+                )],
+                &[
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::x0,
+                        )),
+                        value: a_ptr,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::x1,
+                        )),
+                        value: res_ptr,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK,
+            );
+            let res = res_place.to_cvalue(fx);
+            ret.write_cvalue_transmute(fx, res);
+        }
+
+        "llvm.aarch64.neon.frecpe.v4f32" => {
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            let a_ptr = a.force_stack(fx).0.get_addr(fx);
+            let res_place = CPlace::new_stack_slot(fx, ret.layout());
+            let res_ptr = res_place.to_ptr().get_addr(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(
+                    "ldr     q0, [x0]
+                     frecpe  v0.4s, v0.4s
+                     str     q0, [x1]"
+                        .into(),
+                )],
+                &[
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::x0,
+                        )),
+                        value: a_ptr,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::x1,
+                        )),
+                        value: res_ptr,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK,
+            );
+            let res = res_place.to_cvalue(fx);
+            ret.write_cvalue_transmute(fx, res);
+        }
+
+        "llvm.aarch64.neon.frecps.v4f32" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a_ptr = a.force_stack(fx).0.get_addr(fx);
+            let b_ptr = b.force_stack(fx).0.get_addr(fx);
+            let res_place = CPlace::new_stack_slot(fx, ret.layout());
+            let res_ptr = res_place.to_ptr().get_addr(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(
+                    "ldr     q0, [x0]
+                     ldr     q1, [x1]
+                     frecps  v0.4s, v0.4s, v1.4s
+                     str     q0, [x2]"
+                        .into(),
+                )],
+                &[
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::x0,
+                        )),
+                        value: a_ptr,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::x1,
+                        )),
+                        value: b_ptr,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::x2,
+                        )),
+                        value: res_ptr,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK,
+            );
+            let res = res_place.to_cvalue(fx);
+            ret.write_cvalue_transmute(fx, res);
         }
 
         _ if intrinsic.starts_with("llvm.aarch64.neon.sqadd.v")
@@ -134,7 +253,7 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             }
             let res = CValue::by_val(
                 fx.bcx.ins().uextend(types::I32, res_val),
-                fx.layout_of(fx.tcx.types.u32),
+                fx.layout_of(fx.tcx.types.i32),
             );
             ret.write_cvalue(fx, res);
         }

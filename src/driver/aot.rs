@@ -331,7 +331,7 @@ fn produce_final_output_artifacts(
 }
 
 fn make_module(sess: &Session, name: String) -> UnwindModule<ObjectModule> {
-    let isa = crate::build_isa(sess);
+    let isa = crate::build_isa(sess, false);
 
     let mut builder =
         ObjectBuilder::new(isa, name + ".o", cranelift_module::default_libcall_names()).unwrap();
