@@ -16,7 +16,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixed
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
-    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextKey,
+    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{
@@ -75,9 +75,9 @@ pub struct OnDiskCache {
     alloc_decoding_state: AllocDecodingState,
 
     // A map from syntax context ids to the position of their associated
-    // `SyntaxContextKey`. We use a `u32` instead of a `SyntaxContext`
+    // `SyntaxContextData`. We use a `u32` instead of a `SyntaxContext`
     // to represent the fact that we are storing *encoded* ids. When we decode
-    // a `SyntaxContextKey`, a new id will be allocated from the global `HygieneData`,
+    // a `SyntaxContext`, a new id will be allocated from the global `HygieneData`,
     // which will almost certainly be different than the serialized id.
     syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
     // A map from the `DefPathHash` of an `ExpnId` to the position
@@ -305,7 +305,7 @@ impl OnDiskCache {
             let mut expn_data = UnhashMap::default();
             let mut foreign_expn_data = UnhashMap::default();
 
-            // Encode all hygiene data (`SyntaxContextKey` and `ExpnData`) from the current
+            // Encode all hygiene data (`SyntaxContextData` and `ExpnData`) from the current
             // session.
 
             hygiene_encode_context.encode(
@@ -566,7 +566,7 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
             // We look up the position of the associated `SyntaxData` and decode it.
             let pos = syntax_contexts.get(&id).unwrap();
             this.with_position(pos.to_usize(), |decoder| {
-                let data: SyntaxContextKey = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
+                let data: SyntaxContextData = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
                 data
             })
         })
