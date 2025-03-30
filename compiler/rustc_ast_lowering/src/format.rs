@@ -323,14 +323,12 @@ fn make_count<'hir>(
 /// Generates
 ///
 /// ```text
-///     <core::fmt::rt::Placeholder::new(
-///         …usize, // position
-///         '…', // fill
-///         <core::fmt::rt::Alignment>::…, // alignment
-///         …u32, // flags
-///         <core::fmt::rt::Count::…>, // width
-///         <core::fmt::rt::Count::…>, // precision
-///     )
+///     <core::fmt::rt::Placeholder {
+///         position: …usize,
+///         flags: …u32,
+///         precision: <core::fmt::rt::Count::…>,
+///         width: <core::fmt::rt::Count::…>,
+///     }
 /// ```
 fn make_format_spec<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
@@ -384,13 +382,13 @@ fn make_format_spec<'hir>(
     let flags = ctx.expr_u32(sp, flags);
     let precision = make_count(ctx, sp, precision, argmap);
     let width = make_count(ctx, sp, width, argmap);
-    let format_placeholder_new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
-        sp,
-        hir::LangItem::FormatPlaceholder,
-        sym::new,
-    ));
-    let args = ctx.arena.alloc_from_iter([position, flags, precision, width]);
-    ctx.expr_call_mut(sp, format_placeholder_new, args)
+    let position = ctx.expr_field(Ident::new(sym::position, sp), ctx.arena.alloc(position), sp);
+    let flags = ctx.expr_field(Ident::new(sym::flags, sp), ctx.arena.alloc(flags), sp);
+    let precision = ctx.expr_field(Ident::new(sym::precision, sp), ctx.arena.alloc(precision), sp);
+    let width = ctx.expr_field(Ident::new(sym::width, sp), ctx.arena.alloc(width), sp);
+    let placeholder = ctx.arena.alloc(hir::QPath::LangItem(hir::LangItem::FormatPlaceholder, sp));
+    let fields = ctx.arena.alloc_from_iter([position, flags, precision, width]);
+    ctx.expr(sp, hir::ExprKind::Struct(placeholder, fields, hir::StructTailExpr::None))
 }
 
 fn expand_format_args<'hir>(
