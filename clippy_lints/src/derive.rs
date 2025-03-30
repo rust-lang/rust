@@ -206,7 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
         }) = item.kind
         {
             let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
-            let is_automatically_derived = cx.tcx.has_attr(item.owner_id, sym::automatically_derived);
+            let is_automatically_derived = cx.tcx.is_automatically_derived(item.owner_id.to_def_id());
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
             check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -235,7 +235,7 @@ fn check_hash_peq<'tcx>(
     {
         // Look for the PartialEq implementations for `ty`
         cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
-            let peq_is_automatically_derived = cx.tcx.has_attr(impl_id, sym::automatically_derived);
+            let peq_is_automatically_derived = cx.tcx.is_automatically_derived(impl_id);
 
             if !hash_is_automatically_derived || peq_is_automatically_derived {
                 return;
@@ -278,7 +278,7 @@ fn check_ord_partial_ord<'tcx>(
     {
         // Look for the PartialOrd implementations for `ty`
         cx.tcx.for_each_relevant_impl(partial_ord_trait_def_id, ty, |impl_id| {
-            let partial_ord_is_automatically_derived = cx.tcx.has_attr(impl_id, sym::automatically_derived);
+            let partial_ord_is_automatically_derived = cx.tcx.is_automatically_derived(impl_id);
 
             if partial_ord_is_automatically_derived == ord_is_automatically_derived {
                 return;
