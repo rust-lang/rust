@@ -237,7 +237,7 @@ where
                 // has a trivially false `Sized` predicate). If it's the latter, we cannot
                 // delay a bug because we can have trivially false where clauses, so we
                 // treat it as rigid.
-                if goal_trait_ref.self_ty().is_guaranteed_unsized_raw() {
+                if cx.impl_self_is_guaranteed_unsized(impl_def_id) {
                     ecx.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
                     return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 } else {

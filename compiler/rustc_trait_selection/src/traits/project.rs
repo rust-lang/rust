@@ -2007,21 +2007,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             "confirm_impl_candidate: no associated type {:?} for {:?}",
             assoc_ty.item.name, obligation.predicate
         );
-        let tail = selcx.tcx().struct_tail_raw(
-            tcx.type_of(impl_def_id).instantiate(tcx, args),
-            |ty| {
-                normalize_with_depth_to(
-                    selcx,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    ty,
-                    &mut nested,
-                )
-            },
-            || {},
-        );
-        if tail.is_guaranteed_unsized_raw() {
+        if tcx.impl_self_is_guaranteed_unsized(impl_def_id) {
             // We treat this projection as rigid here, which is represented via
             // `Projected::NoProgress`. This will ensure that the projection is
             // checked for well-formedness, and it's either satisfied by a trivial
