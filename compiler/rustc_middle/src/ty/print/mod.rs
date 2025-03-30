@@ -139,8 +139,7 @@ pub trait Printer<'tcx>: Sized {
 
                     match key.disambiguated_data.data {
                         DefPathData::Closure => {
-                            // FIXME(async_closures): This is somewhat ugly.
-                            // We need to additionally print the `kind` field of a closure if
+                            // We need to additionally print the `kind` field of a coroutine if
                             // it is desugared from a coroutine-closure.
                             if let Some(hir::CoroutineKind::Desugared(
                                 _,
@@ -155,6 +154,10 @@ pub trait Printer<'tcx>: Sized {
                             } else {
                                 // Closures' own generics are only captures, don't print them.
                             }
+                        }
+                        DefPathData::SyntheticCoroutineBody => {
+                            // Synthetic coroutine bodies have no distinct generics, since like
+                            // closures they're all just internal state of the coroutine.
                         }
                         // This covers both `DefKind::AnonConst` and `DefKind::InlineConst`.
                         // Anon consts doesn't have their own generics, and inline consts' own

@@ -66,6 +66,7 @@ pub struct MarkFrame<'a> {
     parent: Option<&'a MarkFrame<'a>>,
 }
 
+#[derive(Debug)]
 pub(super) enum DepNodeColor {
     Red,
     Green(DepNodeIndex),
@@ -909,7 +910,7 @@ impl<D: Deps> DepGraphData<D> {
                 self.try_mark_previous_green(qcx, parent_dep_node_index, dep_dep_node, frame);
 
             if node_index.is_some() {
-                debug!("managed to MARK dependency {dep_dep_node:?} as green",);
+                debug!("managed to MARK dependency {dep_dep_node:?} as green");
                 return Some(());
             }
         }
@@ -930,7 +931,7 @@ impl<D: Deps> DepGraphData<D> {
                 return Some(());
             }
             Some(DepNodeColor::Red) => {
-                debug!("dependency {dep_dep_node:?} was red after forcing",);
+                debug!("dependency {dep_dep_node:?} was red after forcing");
                 return None;
             }
             None => {}
@@ -950,7 +951,7 @@ impl<D: Deps> DepGraphData<D> {
         // invalid state will not be persisted to the
         // incremental compilation cache because of
         // compilation errors being present.
-        debug!("dependency {dep_dep_node:?} resulted in compilation error",);
+        debug!("dependency {dep_dep_node:?} resulted in compilation error");
         return None;
     }
 
