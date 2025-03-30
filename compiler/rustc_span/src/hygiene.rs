@@ -67,25 +67,21 @@ pub struct SyntaxContextData {
     outer_transparency: Transparency,
     parent: SyntaxContext,
     /// This context, but with all transparent and semi-transparent expansions filtered away.
-    opaque: SyntaxContext,
+    opaque: Option<SyntaxContext>,
     /// This context, but with all transparent expansions filtered away.
-    opaque_and_semitransparent: SyntaxContext,
+    opaque_and_semitransparent: Option<SyntaxContext>,
     /// Name of the crate to which `$crate` with this context would resolve.
     dollar_crate_name: Symbol,
 }
 
 impl SyntaxContextData {
-    fn new(
-        (parent, outer_expn, outer_transparency): SyntaxContextKey,
-        opaque: SyntaxContext,
-        opaque_and_semitransparent: SyntaxContext,
-    ) -> SyntaxContextData {
+    fn from_key((parent, outer_expn, outer_transparency): SyntaxContextKey) -> SyntaxContextData {
         SyntaxContextData {
             outer_expn,
             outer_transparency,
             parent,
-            opaque,
-            opaque_and_semitransparent,
+            opaque: None,
+            opaque_and_semitransparent: None,
             dollar_crate_name: kw::DollarCrate,
         }
     }
@@ -95,8 +91,8 @@ impl SyntaxContextData {
             outer_expn: ExpnId::root(),
             outer_transparency: Transparency::Opaque,
             parent: SyntaxContext::root(),
-            opaque: SyntaxContext::root(),
-            opaque_and_semitransparent: SyntaxContext::root(),
+            opaque: Some(SyntaxContext::root()),
+            opaque_and_semitransparent: Some(SyntaxContext::root()),
             dollar_crate_name: kw::DollarCrate,
         }
     }
@@ -462,14 +458,43 @@ impl HygieneData {
         }
     }
 
-    fn normalize_to_macros_2_0(&self, ctxt: SyntaxContext) -> SyntaxContext {
+    fn normalize_to_macros_2_0(&mut self, ctxt: SyntaxContext) -> SyntaxContext {
         debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
-        self.syntax_context_data[ctxt.0 as usize].opaque
+        if let Some(opaque) = self.syntax_context_data[ctxt.0 as usize].opaque {
+            return opaque;
+        }
+
+        let SyntaxContextData { outer_expn, outer_transparency, parent, .. } =
+            self.syntax_context_data[ctxt.0 as usize];
+        let parent_opaque = self.normalize_to_macros_2_0(parent);
+        let opaque = match outer_transparency {
+            Transparency::Transparent | Transparency::SemiTransparent => parent_opaque,
+            Transparency::Opaque => self.alloc_ctxt(parent_opaque, outer_expn, outer_transparency),
+        };
+        self.syntax_context_data[ctxt.0 as usize].opaque = Some(opaque);
+        opaque
     }
 
-    fn normalize_to_macro_rules(&self, ctxt: SyntaxContext) -> SyntaxContext {
+    fn normalize_to_macro_rules(&mut self, ctxt: SyntaxContext) -> SyntaxContext {
         debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
-        self.syntax_context_data[ctxt.0 as usize].opaque_and_semitransparent
+        if let Some(opaque_and_semitransparent) =
+            self.syntax_context_data[ctxt.0 as usize].opaque_and_semitransparent
+        {
+            return opaque_and_semitransparent;
+        }
+
+        let SyntaxContextData { outer_expn, outer_transparency, parent, .. } =
+            self.syntax_context_data[ctxt.0 as usize];
+        let parent_opaque_and_semitransparent = self.normalize_to_macro_rules(parent);
+        let opaque_and_semitransparent = match outer_transparency {
+            Transparency::Transparent => parent_opaque_and_semitransparent,
+            Transparency::SemiTransparent | Transparency::Opaque => {
+                self.alloc_ctxt(parent_opaque_and_semitransparent, outer_expn, outer_transparency)
+            }
+        };
+        self.syntax_context_data[ctxt.0 as usize].opaque_and_semitransparent =
+            Some(opaque_and_semitransparent);
+        opaque_and_semitransparent
     }
 
     fn outer_expn(&self, ctxt: SyntaxContext) -> ExpnId {
@@ -597,45 +622,11 @@ impl HygieneData {
     ) -> SyntaxContext {
         debug_assert!(!self.syntax_context_data[parent.0 as usize].is_decode_placeholder());
 
-        // Look into the cache first.
         let key = (parent, expn_id, transparency);
-        if let Some(ctxt) = self.syntax_context_map.get(&key) {
-            return *ctxt;
-        }
-
-        // Reserve a new syntax context.
-        let ctxt = SyntaxContext::from_usize(self.syntax_context_data.len());
-        self.syntax_context_data.push(SyntaxContextData::decode_placeholder());
-        self.syntax_context_map.insert(key, ctxt);
-
-        // Opaque and semi-transparent versions of the parent. Note that they may be equal to the
-        // parent itself. E.g. `parent_opaque` == `parent` if the expn chain contains only opaques,
-        // and `parent_opaque_and_semitransparent` == `parent` if the expn contains only opaques
-        // and semi-transparents.
-        let parent_opaque = self.syntax_context_data[parent.0 as usize].opaque;
-        let parent_opaque_and_semitransparent =
-            self.syntax_context_data[parent.0 as usize].opaque_and_semitransparent;
-
-        // Evaluate opaque and semi-transparent versions of the new syntax context.
-        let (opaque, opaque_and_semitransparent) = match transparency {
-            Transparency::Transparent => (parent_opaque, parent_opaque_and_semitransparent),
-            Transparency::SemiTransparent => (
-                parent_opaque,
-                // Will be the same as `ctxt` if the expn chain contains only opaques and semi-transparents.
-                self.alloc_ctxt(parent_opaque_and_semitransparent, expn_id, transparency),
-            ),
-            Transparency::Opaque => (
-                // Will be the same as `ctxt` if the expn chain contains only opaques.
-                self.alloc_ctxt(parent_opaque, expn_id, transparency),
-                // Will be the same as `ctxt` if the expn chain contains only opaques and semi-transparents.
-                self.alloc_ctxt(parent_opaque_and_semitransparent, expn_id, transparency),
-            ),
-        };
-
-        // Fill the full data, now that we have it.
-        self.syntax_context_data[ctxt.as_u32() as usize] =
-            SyntaxContextData::new(key, opaque, opaque_and_semitransparent);
-        ctxt
+        *self.syntax_context_map.entry(key).or_insert_with(|| {
+            self.syntax_context_data.push(SyntaxContextData::from_key(key));
+            SyntaxContext::from_usize(self.syntax_context_data.len() - 1)
+        })
     }
 }
 
