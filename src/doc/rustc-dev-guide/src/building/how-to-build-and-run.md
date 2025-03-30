@@ -63,7 +63,7 @@ cd rust
 > **NOTE**: A shallow clone limits which `git` commands can be run.
 > If you intend to work on and contribute to the compiler, it is
 > generally recommended to fully clone the repository [as shown above](#get-the-source-code),
-> or to perform a [partial clone](#shallow-clone-the-repository) instead.
+> or to perform a [partial clone](#partial-clone-the-repository) instead.
 >
 > For example, `git bisect` and `git blame` require access to the commit history,
 > so they don't work if the repository was cloned with `--depth 1`.
