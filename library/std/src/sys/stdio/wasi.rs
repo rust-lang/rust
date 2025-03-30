@@ -4,7 +4,7 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
 use crate::os::raw;
 use crate::os::wasi::io::{AsRawFd, FromRawFd};
-use crate::sys::pal::fd::WasiFd;
+use crate::sys::fd::WasiFd;
 
 pub struct Stdin;
 pub struct Stdout;
