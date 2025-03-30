@@ -1,7 +1,6 @@
 use itertools::Itertools;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
-use std::fs::File;
 use std::process::Command;
 
 pub fn generate_c_program(
@@ -79,14 +78,14 @@ pub fn compile_c(compiler_commands: &[String]) -> bool {
         .is_none()
 }
 
-pub fn create_c_files(identifiers: &Vec<String>) -> BTreeMap<&String, File> {
+pub fn create_c_filenames(identifiers: &Vec<String>) -> BTreeMap<&String, String> {
+    let _ = std::fs::create_dir("c_programs");
     identifiers
         .par_iter()
         .map(|identifier| {
             let c_filename = format!(r#"c_programs/{identifier}.cpp"#);
-            let file = File::create(&c_filename).unwrap();
 
-            (identifier, file)
+            (identifier, c_filename)
         })
-        .collect::<BTreeMap<&String, File>>()
+        .collect::<BTreeMap<&String, String>>()
 }

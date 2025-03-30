@@ -115,16 +115,15 @@ path = "{binary}/main.rs""#,
     }
 }
 
-pub fn create_rust_files(identifiers: &Vec<String>) -> BTreeMap<&String, File> {
+pub fn create_rust_filenames(identifiers: &Vec<String>) -> BTreeMap<&String, String> {
     identifiers
         .par_iter()
         .map(|identifier| {
             let rust_dir = format!(r#"rust_programs/{}"#, identifier);
             let _ = std::fs::create_dir_all(&rust_dir);
             let rust_filename = format!(r#"{rust_dir}/main.rs"#);
-            let file = File::create(&rust_filename).unwrap();
 
-            (identifier, file)
+            (identifier, rust_filename)
         })
-        .collect::<BTreeMap<&String, File>>()
+        .collect::<BTreeMap<&String, String>>()
 }

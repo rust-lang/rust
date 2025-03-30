@@ -2,11 +2,12 @@ use super::argument::Argument;
 use super::config::{AARCH_CONFIGURATIONS, POLY128_OSTREAM_DEF, build_notices};
 use super::format::Indentation;
 use super::intrinsic::Intrinsic;
-use crate::common::gen_c::{compile_c, create_c_files, generate_c_program};
-use crate::common::gen_rust::{compile_rust, create_rust_files, generate_rust_program};
+use crate::common::gen_c::{compile_c, create_c_filenames, generate_c_program};
+use crate::common::gen_rust::{compile_rust, create_rust_filenames, generate_rust_program};
+use crate::common::write_file;
 use itertools::Itertools;
 use rayon::prelude::*;
-use std::io::Write;
+use std::collections::BTreeMap;
 
 // The number of times each intrinsic will be called.
 const PASSES: u32 = 20;
@@ -149,13 +150,14 @@ fn generate_rust_program_arm(intrinsic: &Intrinsic, target: &str) -> String {
 }
 
 fn compile_c_arm(
-    intrinsics_name_list: Vec<String>,
+    intrinsics_name_list: &Vec<String>,
+    filename_mapping: BTreeMap<&String, String>,
     compiler: &str,
     target: &str,
     cxx_toolchain_dir: Option<&str>,
 ) -> bool {
-    let compiler_commands = intrinsics_name_list.iter().map(|intrinsic_name|{
-        let c_filename = format!(r#"c_programs/{intrinsic_name}.cpp"#);
+    let compiler_commands = intrinsics_name_list.iter().map(|intrinsic_name| {
+        let c_filename = filename_mapping.get(intrinsic_name).unwrap();
         let flags = std::env::var("CPPFLAGS").unwrap_or("".into());
         let arch_flags = if target.contains("v7") {
             "-march=armv8.6-a+crypto+crc+dotprod+fp16"
@@ -223,24 +225,29 @@ pub fn build_c(
     target: &str,
     cxx_toolchain_dir: Option<&str>,
 ) -> bool {
-    let _ = std::fs::create_dir("c_programs");
     let intrinsics_name_list = intrinsics
         .par_iter()
         .map(|i| i.name.clone())
         .collect::<Vec<_>>();
-    let file_mapping = create_c_files(&intrinsics_name_list);
+    let filename_mapping = create_c_filenames(&intrinsics_name_list);
 
     intrinsics.par_iter().for_each(|i| {
         let c_code = generate_c_program_arm(&["arm_neon.h", "arm_acle.h", "arm_fp16.h"], i, target);
-        match file_mapping.get(&i.name) {
-            Some(mut file) => file.write_all(c_code.into_bytes().as_slice()).unwrap(),
+        match filename_mapping.get(&i.name) {
+            Some(filename) => write_file(filename, c_code),
             None => {}
         };
     });
 
     match compiler {
         None => true,
-        Some(compiler) => compile_c_arm(intrinsics_name_list, compiler, target, cxx_toolchain_dir),
+        Some(compiler) => compile_c_arm(
+            &intrinsics_name_list,
+            filename_mapping,
+            compiler,
+            target,
+            cxx_toolchain_dir,
+        ),
     }
 }
 
@@ -254,12 +261,12 @@ pub fn build_rust(
         .par_iter()
         .map(|i| i.name.clone())
         .collect::<Vec<_>>();
-    let file_mapping = create_rust_files(&intrinsics_name_list);
+    let filename_mapping = create_rust_filenames(&intrinsics_name_list);
 
     intrinsics.par_iter().for_each(|i| {
-        let c_code = generate_rust_program_arm(i, target);
-        match file_mapping.get(&i.name) {
-            Some(mut file) => file.write_all(c_code.into_bytes().as_slice()).unwrap(),
+        let rust_code = generate_rust_program_arm(i, target);
+        match filename_mapping.get(&i.name) {
+            Some(filename) => write_file(filename, rust_code),
             None => {}
         }
     });
