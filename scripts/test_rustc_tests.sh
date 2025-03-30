@@ -27,7 +27,6 @@ done
 git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 git checkout -- tests/ui/proc-macro/pretty-print-hack/
 git checkout -- tests/ui/entry-point/auxiliary/bad_main_functions.rs
-rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 
 # missing features
 # ================
@@ -136,7 +135,6 @@ rm -r tests/run-make/incr-add-rust-src-component
 # ============
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
-rm tests/ui/deprecation/deprecated_inline_threshold.rs # missing deprecation warning for -Cinline-threshold
 
 # bugs in the test suite
 # ======================
