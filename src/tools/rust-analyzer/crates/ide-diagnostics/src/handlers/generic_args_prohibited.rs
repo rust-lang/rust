@@ -36,6 +36,7 @@ fn describe_reason(reason: GenericArgsProhibitedReason) -> String {
         }
         GenericArgsProhibitedReason::Const => "constants",
         GenericArgsProhibitedReason::Static => "statics",
+        GenericArgsProhibitedReason::LocalVariable => "local variables",
     };
     format!("generic arguments are not allowed on {kind}")
 }
@@ -320,7 +321,7 @@ trait E<A: foo::<()>::Trait>
                // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
 }
 
-impl<A: foo::<()>::Trait> E for ()
+impl<A: foo::<()>::Trait> E<()> for ()
         // ^^^^^^ 💡 error: generic arguments are not allowed on modules
     where bool<i32>: foo::Trait
            // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
@@ -518,16 +519,29 @@ fn baz() {
     }
 
     #[test]
-    fn const_and_static() {
+    fn const_param_and_static() {
         check_diagnostics(
             r#"
 const CONST: i32 = 0;
 static STATIC: i32 = 0;
-fn baz() {
-    let _ = CONST::<()>;
-              // ^^^^^^ 💡 error: generic arguments are not allowed on constants
+fn baz<const CONST_PARAM: usize>() {
+    let _ = CONST_PARAM::<()>;
+                    // ^^^^^^ 💡 error: generic arguments are not allowed on constants
     let _ = STATIC::<()>;
                // ^^^^^^ 💡 error: generic arguments are not allowed on statics
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn local_variable() {
+        check_diagnostics(
+            r#"
+fn baz() {
+    let x = 1;
+    let _ = x::<()>;
+          // ^^^^^^ 💡 error: generic arguments are not allowed on local variables
 }
         "#,
         );

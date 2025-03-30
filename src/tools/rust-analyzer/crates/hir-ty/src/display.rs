@@ -1640,7 +1640,7 @@ fn generic_args_sans_defaults<'ga>(
                         Some(default_parameter) => {
                             // !is_err(default_parameter.skip_binders())
                             // &&
-                            arg != &default_parameter.clone().substitute(Interner, &parameters)
+                            arg != &default_parameter.clone().substitute(Interner, &parameters[..i])
                         }
                     }
                 };

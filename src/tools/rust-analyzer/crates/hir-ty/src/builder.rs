@@ -306,29 +306,28 @@ impl TyBuilder<hir_def::AdtId> {
         // Note that we're building ADT, so we never have parent generic parameters.
         let defaults = db.generic_defaults(self.data.into());
 
-        for default_ty in &defaults[self.vec.len()..] {
-            // NOTE(skip_binders): we only check if the arg type is error type.
-            if let Some(x) = default_ty.skip_binders().ty(Interner) {
-                if x.is_unknown() {
-                    self.vec.push(fallback().cast(Interner));
-                    continue;
+        if let Some(defaults) = defaults.get(self.vec.len()..) {
+            for default_ty in defaults {
+                // NOTE(skip_binders): we only check if the arg type is error type.
+                if let Some(x) = default_ty.skip_binders().ty(Interner) {
+                    if x.is_unknown() {
+                        self.vec.push(fallback().cast(Interner));
+                        continue;
+                    }
                 }
+                // Each default can only depend on the previous parameters.
+                self.vec.push(default_ty.clone().substitute(Interner, &*self.vec).cast(Interner));
             }
-            // Each default can only depend on the previous parameters.
-            let subst_so_far = Substitution::from_iter(
-                Interner,
-                self.vec
-                    .iter()
-                    .cloned()
-                    .chain(self.param_kinds[self.vec.len()..].iter().map(|it| match it {
-                        ParamKind::Type => TyKind::Error.intern(Interner).cast(Interner),
-                        ParamKind::Lifetime => error_lifetime().cast(Interner),
-                        ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
-                    }))
-                    .take(self.param_kinds.len()),
-            );
-            self.vec.push(default_ty.clone().substitute(Interner, &subst_so_far).cast(Interner));
         }
+
+        // The defaults may be missing if no param has default, so fill that.
+        let filler = self.param_kinds[self.vec.len()..].iter().map(|x| match x {
+            ParamKind::Type => fallback().cast(Interner),
+            ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            ParamKind::Lifetime => error_lifetime().cast(Interner),
+        });
+        self.vec.extend(filler.casted(Interner));
+
         self
     }
 

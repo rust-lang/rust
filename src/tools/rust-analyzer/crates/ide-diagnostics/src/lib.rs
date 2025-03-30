@@ -32,6 +32,8 @@ mod handlers {
     pub(crate) mod inactive_code;
     pub(crate) mod incoherent_impl;
     pub(crate) mod incorrect_case;
+    pub(crate) mod incorrect_generics_len;
+    pub(crate) mod incorrect_generics_order;
     pub(crate) mod invalid_cast;
     pub(crate) mod invalid_derive_target;
     pub(crate) mod macro_error;
@@ -499,6 +501,8 @@ pub fn semantic_diagnostics(
                 handlers::parenthesized_generic_args_without_fn_trait::parenthesized_generic_args_without_fn_trait(&ctx, &d)
             }
             AnyDiagnostic::BadRtn(d) => handlers::bad_rtn::bad_rtn(&ctx, &d),
+            AnyDiagnostic::IncorrectGenericsLen(d) => handlers::incorrect_generics_len::incorrect_generics_len(&ctx, &d),
+            AnyDiagnostic::IncorrectGenericsOrder(d) => handlers::incorrect_generics_order::incorrect_generics_order(&ctx, &d),
         };
         res.push(d)
     }

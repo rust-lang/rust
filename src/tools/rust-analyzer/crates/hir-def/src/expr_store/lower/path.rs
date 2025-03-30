@@ -152,10 +152,8 @@ pub(super) fn lower_path(
                                 args: iter::once(self_type)
                                     .chain(it.args.iter().cloned())
                                     .collect(),
-
                                 has_self_type: true,
-                                bindings: it.bindings.clone(),
-                                parenthesized: it.parenthesized,
+                                ..it
                             },
                             None => GenericArgs {
                                 args: Box::new([self_type]),

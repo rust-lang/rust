@@ -347,20 +347,24 @@ pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
     generics: &Generics,
     value: T,
 ) -> Binders<T> {
-    Binders::new(
-        VariableKinds::from_iter(
-            Interner,
-            generics.iter_id().map(|x| match x {
-                hir_def::GenericParamId::ConstParamId(id) => {
-                    chalk_ir::VariableKind::Const(db.const_param_ty(id))
-                }
-                hir_def::GenericParamId::TypeParamId(_) => {
-                    chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
-                }
-                hir_def::GenericParamId::LifetimeParamId(_) => chalk_ir::VariableKind::Lifetime,
-            }),
-        ),
-        value,
+    Binders::new(variable_kinds_from_iter(db, generics.iter_id()), value)
+}
+
+pub(crate) fn variable_kinds_from_iter(
+    db: &dyn HirDatabase,
+    iter: impl Iterator<Item = hir_def::GenericParamId>,
+) -> VariableKinds {
+    VariableKinds::from_iter(
+        Interner,
+        iter.map(|x| match x {
+            hir_def::GenericParamId::ConstParamId(id) => {
+                chalk_ir::VariableKind::Const(db.const_param_ty(id))
+            }
+            hir_def::GenericParamId::TypeParamId(_) => {
+                chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
+            }
+            hir_def::GenericParamId::LifetimeParamId(_) => chalk_ir::VariableKind::Lifetime,
+        }),
     )
 }
 

@@ -1,30 +1,33 @@
 //! A wrapper around [`TyLoweringContext`] specifically for lowering paths.
 
-use std::iter;
-
 use chalk_ir::{BoundVar, cast::Cast, fold::Shift};
 use either::Either;
 use hir_def::{
-    GenericDefId, GenericParamId, ItemContainerId, Lookup, TraitId,
+    GenericDefId, GenericParamId, Lookup, TraitId,
     expr_store::{
-        HygieneId,
+        ExpressionStore, HygieneId,
         path::{GenericArg, GenericArgs, GenericArgsParentheses, Path, PathSegment, PathSegments},
+    },
+    hir::generics::{
+        GenericParamDataRef, TypeOrConstParamData, TypeParamData, TypeParamProvenance,
     },
     resolver::{ResolveValueResult, TypeNs, ValueNs},
     signatures::TraitFlags,
-    type_ref::TypeRef,
+    type_ref::{TypeRef, TypeRefId},
 };
 use smallvec::SmallVec;
 use stdx::never;
 
 use crate::{
-    AliasEq, AliasTy, GenericArgsProhibitedReason, ImplTraitLoweringMode, Interner,
-    ParamLoweringMode, PathLoweringDiagnostic, ProjectionTy, QuantifiedWhereClause, Substitution,
-    TraitRef, Ty, TyBuilder, TyDefId, TyKind, TyLoweringContext, ValueTyDefId, WhereClause,
-    consteval::unknown_const_as_generic,
+    AliasEq, AliasTy, GenericArgsProhibitedReason, ImplTraitLoweringMode, IncorrectGenericsLenKind,
+    Interner, ParamLoweringMode, PathGenericsSource, PathLoweringDiagnostic, ProjectionTy,
+    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyDefId, TyKind,
+    TyLoweringContext, ValueTyDefId, WhereClause,
+    consteval::{unknown_const, unknown_const_as_generic},
+    db::HirDatabase,
     error_lifetime,
-    generics::generics,
-    lower::{generic_arg_to_chalk, named_associated_type_shorthand_candidates},
+    generics::{Generics, generics},
+    lower::{GenericArgsPosition, named_associated_type_shorthand_candidates},
     to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::associated_type_by_name_including_super_traits,
 };
@@ -49,6 +52,7 @@ pub(crate) struct PathLoweringContext<'a, 'b> {
     current_segment_idx: usize,
     /// Contains the previous segment if `current_segment_idx == segments.len()`
     current_or_prev_segment: PathSegment<'a>,
+    position: GenericArgsPosition,
 }
 
 impl<'a, 'b> PathLoweringContext<'a, 'b> {
@@ -57,6 +61,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         ctx: &'a mut TyLoweringContext<'b>,
         on_diagnostic: PathDiagnosticCallback<'a>,
         path: &'a Path,
+        position: GenericArgsPosition,
     ) -> Self {
         let segments = path.segments();
         let first_segment = segments.first().unwrap_or(PathSegment::MISSING);
@@ -67,6 +72,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             segments,
             current_segment_idx: 0,
             current_or_prev_segment: first_segment,
+            position,
         }
     }
 
@@ -449,14 +455,19 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                     // and statics can be generic, or just because it was easier for rustc implementors.
                     // That means we'll show the wrong error code. Because of us it's easier to do it
                     // this way :)
-                    ValueNs::GenericParam(_) | ValueNs::ConstId(_) => {
+                    ValueNs::GenericParam(_) => {
                         prohibit_generics_on_resolved(GenericArgsProhibitedReason::Const)
                     }
                     ValueNs::StaticId(_) => {
                         prohibit_generics_on_resolved(GenericArgsProhibitedReason::Static)
                     }
-                    ValueNs::FunctionId(_) | ValueNs::StructId(_) | ValueNs::EnumVariantId(_) => {}
-                    ValueNs::LocalBinding(_) => {}
+                    ValueNs::LocalBinding(_) => {
+                        prohibit_generics_on_resolved(GenericArgsProhibitedReason::LocalVariable)
+                    }
+                    ValueNs::FunctionId(_)
+                    | ValueNs::StructId(_)
+                    | ValueNs::EnumVariantId(_)
+                    | ValueNs::ConstId(_) => {}
                 }
             }
             ResolveValueResult::Partial(resolution, _, _) => {
@@ -615,6 +626,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             def,
             infer_args,
             explicit_self_ty,
+            PathGenericsSource::Segment(self.current_segment_u32()),
         )
     }
 
@@ -624,144 +636,143 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         def: GenericDefId,
         infer_args: bool,
         explicit_self_ty: Option<Ty>,
+        generics_source: PathGenericsSource,
     ) -> Substitution {
-        // Order is
-        // - Parent parameters
-        // - Optional Self parameter
-        // - Lifetime parameters
-        // - Type or Const parameters
-        let def_generics = generics(self.ctx.db, def);
-        let (
-            parent_params,
-            self_param,
-            type_params,
-            const_params,
-            impl_trait_params,
-            lifetime_params,
-        ) = def_generics.provenance_split();
-        let item_len =
-            self_param as usize + type_params + const_params + impl_trait_params + lifetime_params;
-        let total_len = parent_params + item_len;
+        struct LowererCtx<'a, 'b, 'c> {
+            ctx: &'a mut PathLoweringContext<'b, 'c>,
+            generics_source: PathGenericsSource,
+        }
 
-        let ty_error = || TyKind::Error.intern(Interner).cast(Interner);
-        let param_to_err = |id| match id {
-            GenericParamId::ConstParamId(x) => {
-                unknown_const_as_generic(self.ctx.db.const_param_ty(x))
+        impl GenericArgsLowerer for LowererCtx<'_, '_, '_> {
+            fn report_len_mismatch(
+                &mut self,
+                def: GenericDefId,
+                provided_count: u32,
+                expected_count: u32,
+                kind: IncorrectGenericsLenKind,
+            ) {
+                self.ctx.on_diagnostic(PathLoweringDiagnostic::IncorrectGenericsLen {
+                    generics_source: self.generics_source,
+                    provided_count,
+                    expected_count,
+                    kind,
+                    def,
+                });
             }
-            GenericParamId::TypeParamId(_) => ty_error(),
-            GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
-        };
 
-        let mut substs: Vec<_> = def_generics.iter_parent_id().map(param_to_err).collect();
+            fn report_arg_mismatch(
+                &mut self,
+                param_id: GenericParamId,
+                arg_idx: u32,
+                has_self_arg: bool,
+            ) {
+                self.ctx.on_diagnostic(PathLoweringDiagnostic::IncorrectGenericsOrder {
+                    generics_source: self.generics_source,
+                    param_id,
+                    arg_idx,
+                    has_self_arg,
+                });
+            }
 
-        tracing::debug!(?substs, ?parent_params);
-
-        // we need to iterate the lifetime and type/const params separately as our order of them
-        // differs from the supplied syntax
-
-        let mut def_toc_iter = def_generics.iter_self_type_or_consts_id();
-        let fill_self_param = || {
-            if self_param {
-                let self_ty = explicit_self_ty.map(|x| x.cast(Interner)).unwrap_or_else(ty_error);
-
-                if let Some(id) = def_toc_iter.next() {
-                    assert!(matches!(id, GenericParamId::TypeParamId(_)));
-                    substs.push(self_ty);
+            fn provided_kind(
+                &mut self,
+                param_id: GenericParamId,
+                param: GenericParamDataRef<'_>,
+                arg: &GenericArg,
+            ) -> crate::GenericArg {
+                match (param, arg) {
+                    (GenericParamDataRef::LifetimeParamData(_), GenericArg::Lifetime(lifetime)) => {
+                        self.ctx.ctx.lower_lifetime(lifetime).cast(Interner)
+                    }
+                    (GenericParamDataRef::TypeParamData(_), GenericArg::Type(type_ref)) => {
+                        self.ctx.ctx.lower_ty(*type_ref).cast(Interner)
+                    }
+                    (GenericParamDataRef::ConstParamData(_), GenericArg::Const(konst)) => {
+                        let GenericParamId::ConstParamId(const_id) = param_id else {
+                            unreachable!("non-const param ID for const param");
+                        };
+                        self.ctx
+                            .ctx
+                            .lower_const(konst, self.ctx.ctx.db.const_param_ty(const_id))
+                            .cast(Interner)
+                    }
+                    _ => unreachable!("unmatching param kinds were passed to `provided_kind()`"),
                 }
             }
-        };
-        let mut had_explicit_args = false;
 
-        if let Some(&GenericArgs { ref args, has_self_type, .. }) = args_and_bindings {
-            // Fill in the self param first
-            if has_self_type && self_param {
-                had_explicit_args = true;
-                if let Some(id) = def_toc_iter.next() {
-                    assert!(matches!(id, GenericParamId::TypeParamId(_)));
-                    had_explicit_args = true;
-                    if let GenericArg::Type(ty) = &args[0] {
-                        substs.push(self.ctx.lower_ty(*ty).cast(Interner));
+            fn provided_type_like_const(
+                &mut self,
+                const_ty: Ty,
+                arg: TypeLikeConst<'_>,
+            ) -> crate::Const {
+                match arg {
+                    TypeLikeConst::Path(path) => self.ctx.ctx.lower_path_as_const(path, const_ty),
+                    TypeLikeConst::Infer => unknown_const(const_ty),
+                }
+            }
+
+            fn inferred_kind(
+                &mut self,
+                def: GenericDefId,
+                param_id: GenericParamId,
+                param: GenericParamDataRef<'_>,
+                infer_args: bool,
+                preceding_args: &[crate::GenericArg],
+            ) -> crate::GenericArg {
+                let default = || {
+                    self.ctx
+                        .ctx
+                        .db
+                        .generic_defaults(def)
+                        .get(preceding_args.len())
+                        .map(|default| default.clone().substitute(Interner, preceding_args))
+                };
+                match param {
+                    GenericParamDataRef::LifetimeParamData(_) => error_lifetime().cast(Interner),
+                    GenericParamDataRef::TypeParamData(param) => {
+                        if !infer_args && param.default.is_some() {
+                            if let Some(default) = default() {
+                                return default;
+                            }
+                        }
+                        TyKind::Error.intern(Interner).cast(Interner)
+                    }
+                    GenericParamDataRef::ConstParamData(param) => {
+                        if !infer_args && param.default.is_some() {
+                            if let Some(default) = default() {
+                                return default;
+                            }
+                        }
+                        let GenericParamId::ConstParamId(const_id) = param_id else {
+                            unreachable!("non-const param ID for const param");
+                        };
+                        unknown_const_as_generic(self.ctx.ctx.db.const_param_ty(const_id))
+                            .cast(Interner)
                     }
                 }
-            } else {
-                fill_self_param()
-            };
-
-            // Then fill in the supplied lifetime args, or error lifetimes if there are too few
-            // (default lifetimes aren't a thing)
-            for arg in args
-                .iter()
-                .filter_map(|arg| match arg {
-                    GenericArg::Lifetime(arg) => Some(self.ctx.lower_lifetime(arg)),
-                    _ => None,
-                })
-                .chain(iter::repeat(error_lifetime()))
-                .take(lifetime_params)
-            {
-                substs.push(arg.cast(Interner));
             }
 
-            let skip = if has_self_type { 1 } else { 0 };
-            // Fill in supplied type and const args
-            // Note if non-lifetime args are provided, it should be all of them, but we can't rely on that
-            for (arg, id) in args
-                .iter()
-                .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
-                .skip(skip)
-                .take(type_params + const_params)
-                .zip(def_toc_iter)
-            {
-                had_explicit_args = true;
-                let arg = generic_arg_to_chalk(
-                    self.ctx.db,
-                    id,
-                    arg,
-                    self.ctx,
-                    self.ctx.store,
-                    |ctx, type_ref| ctx.lower_ty(type_ref),
-                    |ctx, const_ref, ty| ctx.lower_const(const_ref, ty),
-                    |ctx, path, ty| ctx.lower_path_as_const(path, ty),
-                    |ctx, lifetime_ref| ctx.lower_lifetime(lifetime_ref),
-                );
-                substs.push(arg);
+            fn parent_arg(&mut self, param_id: GenericParamId) -> crate::GenericArg {
+                match param_id {
+                    GenericParamId::TypeParamId(_) => TyKind::Error.intern(Interner).cast(Interner),
+                    GenericParamId::ConstParamId(const_id) => {
+                        unknown_const_as_generic(self.ctx.ctx.db.const_param_ty(const_id))
+                    }
+                    GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
+                }
             }
-        } else {
-            fill_self_param();
         }
 
-        // handle defaults. In expression or pattern path segments without
-        // explicitly specified type arguments, missing type arguments are inferred
-        // (i.e. defaults aren't used).
-        // Generic parameters for associated types are not supposed to have defaults, so we just
-        // ignore them.
-        let is_assoc_ty = || match def {
-            GenericDefId::TypeAliasId(id) => {
-                matches!(id.lookup(self.ctx.db).container, ItemContainerId::TraitId(_))
-            }
-            _ => false,
-        };
-        let fill_defaults = (!infer_args || had_explicit_args) && !is_assoc_ty();
-        if fill_defaults {
-            let defaults = &*self.ctx.db.generic_defaults(def);
-
-            let rem =
-                def_generics.iter_id().skip(substs.len()).map(param_to_err).collect::<Vec<_>>();
-            // Fill in defaults for type/const params
-            for (idx, default_ty) in defaults[substs.len()..].iter().enumerate() {
-                // each default can depend on the previous parameters
-                let substs_so_far = Substitution::from_iter(
-                    Interner,
-                    substs.iter().cloned().chain(rem[idx..].iter().cloned()),
-                );
-                substs.push(default_ty.clone().substitute(Interner, &substs_so_far));
-            }
-        } else {
-            // Fill in remaining def params and parent params
-            substs.extend(def_generics.iter_id().skip(substs.len()).map(param_to_err));
-        }
-
-        assert_eq!(substs.len(), total_len, "expected {} substs, got {}", total_len, substs.len());
-        Substitution::from_iter(Interner, substs)
+        substs_from_args_and_bindings(
+            self.ctx.db,
+            self.ctx.store,
+            args_and_bindings,
+            def,
+            infer_args,
+            self.position,
+            explicit_self_ty,
+            &mut LowererCtx { ctx: self, generics_source },
+        )
     }
 
     pub(crate) fn lower_trait_ref_from_resolved_path(
@@ -786,7 +797,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         trait_ref: TraitRef,
     ) -> Option<impl Iterator<Item = QuantifiedWhereClause> + use<'a, 'b, 'c>> {
         self.current_or_prev_segment.args_and_bindings.map(|args_and_bindings| {
-            args_and_bindings.bindings.iter().flat_map(move |binding| {
+            args_and_bindings.bindings.iter().enumerate().flat_map(move |(binding_idx, binding)| {
                 let found = associated_type_by_name_including_super_traits(
                     self.ctx.db,
                     trait_ref.clone(),
@@ -805,6 +816,10 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                     associated_ty.into(),
                     false, // this is not relevant
                     Some(super_trait_ref.self_type_parameter(Interner)),
+                    PathGenericsSource::AssocType {
+                        segment: self.current_segment_u32(),
+                        assoc_type: binding_idx as u32,
+                    },
                 );
                 let substitution = Substitution::from_iter(
                     Interner,
@@ -843,5 +858,290 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 predicates
             })
         })
+    }
+}
+
+/// A const that were parsed like a type.
+pub(crate) enum TypeLikeConst<'a> {
+    Infer,
+    Path(&'a Path),
+}
+
+pub(crate) trait GenericArgsLowerer {
+    fn report_len_mismatch(
+        &mut self,
+        def: GenericDefId,
+        provided_count: u32,
+        expected_count: u32,
+        kind: IncorrectGenericsLenKind,
+    );
+
+    fn report_arg_mismatch(&mut self, param_id: GenericParamId, arg_idx: u32, has_self_arg: bool);
+
+    fn provided_kind(
+        &mut self,
+        param_id: GenericParamId,
+        param: GenericParamDataRef<'_>,
+        arg: &GenericArg,
+    ) -> crate::GenericArg;
+
+    fn provided_type_like_const(&mut self, const_ty: Ty, arg: TypeLikeConst<'_>) -> crate::Const;
+
+    fn inferred_kind(
+        &mut self,
+        def: GenericDefId,
+        param_id: GenericParamId,
+        param: GenericParamDataRef<'_>,
+        infer_args: bool,
+        preceding_args: &[crate::GenericArg],
+    ) -> crate::GenericArg;
+
+    fn parent_arg(&mut self, param_id: GenericParamId) -> crate::GenericArg;
+}
+
+/// Returns true if there was an error.
+fn check_generic_args_len(
+    args_and_bindings: Option<&GenericArgs>,
+    def: GenericDefId,
+    def_generics: &Generics,
+    infer_args: bool,
+    position: GenericArgsPosition,
+    ctx: &mut impl GenericArgsLowerer,
+) -> bool {
+    let mut had_error = false;
+
+    let (mut provided_lifetimes_count, mut provided_types_and_consts_count) = (0usize, 0usize);
+    if let Some(args_and_bindings) = args_and_bindings {
+        let args_no_self = &args_and_bindings.args[usize::from(args_and_bindings.has_self_type)..];
+        for arg in args_no_self {
+            match arg {
+                GenericArg::Lifetime(_) => provided_lifetimes_count += 1,
+                GenericArg::Type(_) | GenericArg::Const(_) => provided_types_and_consts_count += 1,
+            }
+        }
+    }
+
+    let infer_lifetimes =
+        (position != GenericArgsPosition::Type || infer_args) && provided_lifetimes_count == 0;
+
+    let min_expected_lifetime_args =
+        if infer_lifetimes { 0 } else { def_generics.len_lifetimes_self() };
+    let max_expected_lifetime_args = def_generics.len_lifetimes_self();
+    if !(min_expected_lifetime_args..=max_expected_lifetime_args)
+        .contains(&provided_lifetimes_count)
+    {
+        ctx.report_len_mismatch(
+            def,
+            provided_lifetimes_count as u32,
+            def_generics.len_lifetimes_self() as u32,
+            IncorrectGenericsLenKind::Lifetimes,
+        );
+        had_error = true;
+    }
+
+    let defaults_count =
+        def_generics.iter_self_type_or_consts().filter(|(_, param)| param.has_default()).count();
+    let named_type_and_const_params_count = def_generics
+        .iter_self_type_or_consts()
+        .filter(|(_, param)| match param {
+            TypeOrConstParamData::TypeParamData(param) => {
+                param.provenance == TypeParamProvenance::TypeParamList
+            }
+            TypeOrConstParamData::ConstParamData(_) => true,
+        })
+        .count();
+    let expected_min =
+        if infer_args { 0 } else { named_type_and_const_params_count - defaults_count };
+    let expected_max = named_type_and_const_params_count;
+    if !(expected_min..=expected_max).contains(&provided_types_and_consts_count) {
+        ctx.report_len_mismatch(
+            def,
+            provided_types_and_consts_count as u32,
+            named_type_and_const_params_count as u32,
+            IncorrectGenericsLenKind::TypesAndConsts,
+        );
+        had_error = true;
+    }
+
+    had_error
+}
+
+pub(crate) fn substs_from_args_and_bindings(
+    db: &dyn HirDatabase,
+    store: &ExpressionStore,
+    args_and_bindings: Option<&GenericArgs>,
+    def: GenericDefId,
+    mut infer_args: bool,
+    position: GenericArgsPosition,
+    explicit_self_ty: Option<Ty>,
+    ctx: &mut impl GenericArgsLowerer,
+) -> Substitution {
+    // Order is
+    // - Parent parameters
+    // - Optional Self parameter
+    // - Lifetime parameters
+    // - Type or Const parameters
+    let def_generics = generics(db, def);
+    let args_slice = args_and_bindings.map(|it| &*it.args).unwrap_or_default();
+
+    // We do not allow inference if there are specified args, i.e. we do not allow partial inference.
+    let has_non_lifetime_args =
+        args_slice.iter().any(|arg| !matches!(arg, GenericArg::Lifetime(_)));
+    infer_args &= !has_non_lifetime_args;
+
+    let had_count_error =
+        check_generic_args_len(args_and_bindings, def, &def_generics, infer_args, position, ctx);
+
+    let mut substs = Vec::with_capacity(def_generics.len());
+
+    substs.extend(def_generics.iter_parent_id().map(|id| ctx.parent_arg(id)));
+
+    let mut args = args_slice.iter().enumerate().peekable();
+    let mut params = def_generics.iter_self().peekable();
+
+    // If we encounter a type or const when we expect a lifetime, we infer the lifetimes.
+    // If we later encounter a lifetime, we know that the arguments were provided in the
+    // wrong order. `force_infer_lt` records the type or const that forced lifetimes to be
+    // inferred, so we can use it for diagnostics later.
+    let mut force_infer_lt = None;
+
+    let has_self_arg = args_and_bindings.is_some_and(|it| it.has_self_type);
+    // First, handle `Self` parameter. Consume it from the args if provided, otherwise from `explicit_self_ty`,
+    // and lastly infer it.
+    if let Some(&(
+        self_param_id,
+        self_param @ GenericParamDataRef::TypeParamData(TypeParamData {
+            provenance: TypeParamProvenance::TraitSelf,
+            ..
+        }),
+    )) = params.peek()
+    {
+        let self_ty = if has_self_arg {
+            let (_, self_ty) = args.next().expect("has_self_type=true, should have Self type");
+            ctx.provided_kind(self_param_id, self_param, self_ty)
+        } else {
+            explicit_self_ty.map(|it| it.cast(Interner)).unwrap_or_else(|| {
+                ctx.inferred_kind(def, self_param_id, self_param, infer_args, &substs)
+            })
+        };
+        params.next();
+        substs.push(self_ty);
+    }
+
+    loop {
+        // We're going to iterate through the generic arguments that the user
+        // provided, matching them with the generic parameters we expect.
+        // Mismatches can occur as a result of elided lifetimes, or for malformed
+        // input. We try to handle both sensibly.
+        match (args.peek(), params.peek()) {
+            (Some(&(arg_idx, arg)), Some(&(param_id, param))) => match (arg, param) {
+                (GenericArg::Type(_), GenericParamDataRef::TypeParamData(type_param))
+                    if type_param.provenance == TypeParamProvenance::ArgumentImplTrait =>
+                {
+                    // Do not allow specifying `impl Trait` explicitly. We already err at that, but if we won't handle it here
+                    // we will handle it as if it was specified, instead of inferring it.
+                    substs.push(ctx.inferred_kind(def, param_id, param, infer_args, &substs));
+                    params.next();
+                }
+                (GenericArg::Lifetime(_), GenericParamDataRef::LifetimeParamData(_))
+                | (GenericArg::Type(_), GenericParamDataRef::TypeParamData(_))
+                | (GenericArg::Const(_), GenericParamDataRef::ConstParamData(_)) => {
+                    substs.push(ctx.provided_kind(param_id, param, arg));
+                    args.next();
+                    params.next();
+                }
+                (
+                    GenericArg::Type(_) | GenericArg::Const(_),
+                    GenericParamDataRef::LifetimeParamData(_),
+                ) => {
+                    // We expected a lifetime argument, but got a type or const
+                    // argument. That means we're inferring the lifetime.
+                    substs.push(ctx.inferred_kind(def, param_id, param, infer_args, &substs));
+                    params.next();
+                    force_infer_lt = Some((arg_idx as u32, param_id));
+                }
+                (GenericArg::Type(type_ref), GenericParamDataRef::ConstParamData(_)) => {
+                    if let Some(konst) = type_looks_like_const(store, *type_ref) {
+                        let GenericParamId::ConstParamId(param_id) = param_id else {
+                            panic!("unmatching param kinds");
+                        };
+                        let const_ty = db.const_param_ty(param_id);
+                        substs.push(ctx.provided_type_like_const(const_ty, konst).cast(Interner));
+                        args.next();
+                        params.next();
+                    } else {
+                        // See the `_ => { ... }` branch.
+                        if !had_count_error {
+                            ctx.report_arg_mismatch(param_id, arg_idx as u32, has_self_arg);
+                        }
+                        while args.next().is_some() {}
+                    }
+                }
+                _ => {
+                    // We expected one kind of parameter, but the user provided
+                    // another. This is an error. However, if we already know that
+                    // the arguments don't match up with the parameters, we won't issue
+                    // an additional error, as the user already knows what's wrong.
+                    if !had_count_error {
+                        ctx.report_arg_mismatch(param_id, arg_idx as u32, has_self_arg);
+                    }
+
+                    // We've reported the error, but we want to make sure that this
+                    // problem doesn't bubble down and create additional, irrelevant
+                    // errors. In this case, we're simply going to ignore the argument
+                    // and any following arguments. The rest of the parameters will be
+                    // inferred.
+                    while args.next().is_some() {}
+                }
+            },
+
+            (Some(&(_, arg)), None) => {
+                // We should never be able to reach this point with well-formed input.
+                // There are two situations in which we can encounter this issue.
+                //
+                //  1. The number of arguments is incorrect. In this case, an error
+                //     will already have been emitted, and we can ignore it.
+                //  2. We've inferred some lifetimes, which have been provided later (i.e.
+                //     after a type or const). We want to throw an error in this case.
+                if !had_count_error {
+                    assert!(
+                        matches!(arg, GenericArg::Lifetime(_)),
+                        "the only possible situation here is incorrect lifetime order"
+                    );
+                    let (provided_arg_idx, param_id) =
+                        force_infer_lt.expect("lifetimes ought to have been inferred");
+                    ctx.report_arg_mismatch(param_id, provided_arg_idx, has_self_arg);
+                }
+
+                break;
+            }
+
+            (None, Some(&(param_id, param))) => {
+                // If there are fewer arguments than parameters, it means we're inferring the remaining arguments.
+                substs.push(ctx.inferred_kind(def, param_id, param, infer_args, &substs));
+                params.next();
+            }
+
+            (None, None) => break,
+        }
+    }
+
+    Substitution::from_iter(Interner, substs)
+}
+
+fn type_looks_like_const(
+    store: &ExpressionStore,
+    type_ref: TypeRefId,
+) -> Option<TypeLikeConst<'_>> {
+    // A path/`_` const will be parsed as a type, instead of a const, because when parsing/lowering
+    // in hir-def we don't yet know the expected argument kind. rustc does this a bit differently,
+    // when lowering to HIR it resolves the path, and if it doesn't resolve to the type namespace
+    // it is lowered as a const. Our behavior could deviate from rustc when the value is resolvable
+    // in both the type and value namespaces, but I believe we only allow more code.
+    let type_ref = &store[type_ref];
+    match type_ref {
+        TypeRef::Path(path) => Some(TypeLikeConst::Path(path)),
+        TypeRef::Placeholder => Some(TypeLikeConst::Infer),
+        _ => None,
     }
 }

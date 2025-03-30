@@ -1709,10 +1709,11 @@ impl_from!(Struct, Union, Enum for Adt);
 impl Adt {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
         let subst = db.generic_defaults(self.into());
-        subst.iter().any(|ty| match ty.skip_binders().data(Interner) {
-            GenericArgData::Ty(it) => it.is_unknown(),
-            _ => false,
-        })
+        (subst.is_empty() && db.generic_params(self.into()).len_type_or_consts() != 0)
+            || subst.iter().any(|ty| match ty.skip_binders().data(Interner) {
+                GenericArgData::Ty(it) => it.is_unknown(),
+                _ => false,
+            })
     }
 
     pub fn layout(self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
@@ -3000,10 +3001,11 @@ pub struct TypeAlias {
 impl TypeAlias {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
         let subst = db.generic_defaults(self.id.into());
-        subst.iter().any(|ty| match ty.skip_binders().data(Interner) {
-            GenericArgData::Ty(it) => it.is_unknown(),
-            _ => false,
-        })
+        (subst.is_empty() && db.generic_params(self.id.into()).len_type_or_consts() != 0)
+            || subst.iter().any(|ty| match ty.skip_binders().data(Interner) {
+                GenericArgData::Ty(it) => it.is_unknown(),
+                _ => false,
+            })
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -3732,6 +3734,23 @@ impl GenericDef {
             }
         }
     }
+
+    /// Returns a string describing the kind of this type.
+    #[inline]
+    pub fn description(self) -> &'static str {
+        match self {
+            GenericDef::Function(_) => "function",
+            GenericDef::Adt(Adt::Struct(_)) => "struct",
+            GenericDef::Adt(Adt::Enum(_)) => "enum",
+            GenericDef::Adt(Adt::Union(_)) => "union",
+            GenericDef::Trait(_) => "trait",
+            GenericDef::TraitAlias(_) => "trait alias",
+            GenericDef::TypeAlias(_) => "type alias",
+            GenericDef::Impl(_) => "impl",
+            GenericDef::Const(_) => "constant",
+            GenericDef::Static(_) => "static",
+        }
+    }
 }
 
 // We cannot call this `Substitution` unfortunately...
@@ -4276,7 +4295,8 @@ fn generic_arg_from_param(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Optio
     let local_idx = hir_ty::param_idx(db, id)?;
     let defaults = db.generic_defaults(id.parent);
     let ty = defaults.get(local_idx)?.clone();
-    let subst = TyBuilder::placeholder_subst(db, id.parent);
+    let full_subst = TyBuilder::placeholder_subst(db, id.parent);
+    let subst = &full_subst.as_slice(Interner)[..local_idx];
     Some(ty.substitute(Interner, &subst))
 }
 
