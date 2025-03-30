@@ -421,6 +421,9 @@
 //@ revisions: riscv32im_risc0_zkvm_elf
 //@ [riscv32im_risc0_zkvm_elf] compile-flags: --target riscv32im-risc0-zkvm-elf
 //@ [riscv32im_risc0_zkvm_elf] needs-llvm-components: riscv
+//@ revisions: riscv32im_succinct_elf
+//@ [riscv32im_succinct_elf] compile-flags: --target riscv32im-succinct-elf
+//@ [riscv32im_succinct_elf] needs-llvm-components: riscv
 //@ revisions: riscv32im_unknown_none_elf
 //@ [riscv32im_unknown_none_elf] compile-flags: --target riscv32im-unknown-none-elf
 //@ [riscv32im_unknown_none_elf] needs-llvm-components: riscv
