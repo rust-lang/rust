@@ -66,8 +66,8 @@ impl SimplifyCfg {
     }
 }
 
-pub(super) fn simplify_cfg(body: &mut Body<'_>) {
-    CfgSimplifier::new(body).simplify();
+pub(super) fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    CfgSimplifier::new(tcx, body).simplify();
     remove_dead_blocks(body);
 
     // FIXME: Should probably be moved into some kind of pass manager
@@ -79,9 +79,9 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyCfg {
         self.name()
     }
 
-    fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.name(), body.source);
-        simplify_cfg(body);
+        simplify_cfg(tcx, body);
     }
 
     fn is_required(&self) -> bool {
@@ -90,12 +90,13 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyCfg {
 }
 
 struct CfgSimplifier<'a, 'tcx> {
+    preserve_switch_reads: bool,
     basic_blocks: &'a mut IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
     pred_count: IndexVec<BasicBlock, u32>,
 }
 
 impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
-    fn new(body: &'a mut Body<'tcx>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, body: &'a mut Body<'tcx>) -> Self {
         let mut pred_count = IndexVec::from_elem(0u32, &body.basic_blocks);
 
         // we can't use mir.predecessors() here because that counts
@@ -110,9 +111,13 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             }
         }
 
+        // Preserve `SwitchInt` reads on the phase transition from Built -> Analysis(Initial)
+        // or if `-Zmir-preserve-ub`.
+        let preserve_switch_reads =
+            matches!(body.phase, MirPhase::Built) | tcx.sess.opts.unstable_opts.mir_preserve_ub;
         let basic_blocks = body.basic_blocks_mut();
 
-        CfgSimplifier { basic_blocks, pred_count }
+        CfgSimplifier { preserve_switch_reads, basic_blocks, pred_count }
     }
 
     fn simplify(mut self) {
@@ -253,9 +258,15 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
     // turn a branch with all successors identical to a goto
     fn simplify_branch(&mut self, terminator: &mut Terminator<'tcx>) -> bool {
-        match terminator.kind {
-            TerminatorKind::SwitchInt { .. } => {}
-            _ => return false,
+        // Removing a `SwitchInt` terminator may remove reads that result in UB,
+        // so we must not apply this optimization before borrowck or when
+        // `-Zmir-preserve-ub` is set.
+        if self.preserve_switch_reads {
+            return false;
+        }
+
+        let TerminatorKind::SwitchInt { .. } = terminator.kind else {
+            return false;
         };
 
         let first_succ = {

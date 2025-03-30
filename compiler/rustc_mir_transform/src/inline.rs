@@ -63,7 +63,7 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
         let _guard = span.enter();
         if inline::<NormalInliner<'tcx>>(tcx, body) {
             debug!("running simplify cfg on {:?}", body.source);
-            simplify_cfg(body);
+            simplify_cfg(tcx, body);
             deref_finder(tcx, body);
         }
     }
@@ -99,7 +99,7 @@ impl<'tcx> crate::MirPass<'tcx> for ForceInline {
         let _guard = span.enter();
         if inline::<ForceInliner<'tcx>>(tcx, body) {
             debug!("running simplify cfg on {:?}", body.source);
-            simplify_cfg(body);
+            simplify_cfg(tcx, body);
             deref_finder(tcx, body);
         }
     }
