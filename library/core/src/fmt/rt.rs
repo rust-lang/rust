@@ -20,8 +20,8 @@ pub struct Placeholder {
     pub width: Count,
 }
 
+#[cfg(bootstrap)]
 impl Placeholder {
-    #[cfg(bootstrap)]
     #[inline]
     pub const fn new(
         position: usize,
@@ -32,12 +32,6 @@ impl Placeholder {
         width: Count,
     ) -> Self {
         Self { position, fill, align, flags, precision, width }
-    }
-
-    #[cfg(not(bootstrap))]
-    #[inline]
-    pub const fn new(position: usize, flags: u32, precision: Count, width: Count) -> Self {
-        Self { position, flags, precision, width }
     }
 }
 
