@@ -635,7 +635,7 @@ impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
     #[inline]
-    pub const fn new_v1<const P: usize, const A: usize>(
+    pub fn new_v1<const P: usize, const A: usize>(
         pieces: &'a [&'static str; P],
         args: &'a [rt::Argument<'a>; A],
     ) -> Arguments<'a> {
@@ -650,6 +650,18 @@ impl<'a> Arguments<'a> {
     /// 1. The `pieces` slice must be at least as long as `fmt`.
     /// 2. Every `rt::Placeholder::position` value within `fmt` must be a valid index of `args`.
     /// 3. Every `rt::Count::Param` within `fmt` must contain a valid index of `args`.
+    #[inline]
+    #[cfg(not(bootstrap))]
+    pub unsafe fn new_v1_formatted(
+        pieces: &'a [&'static str],
+        args: &'a [rt::Argument<'a>],
+        fmt: &'a [rt::Placeholder],
+    ) -> Arguments<'a> {
+        Arguments { pieces, fmt: Some(fmt), args }
+    }
+
+    /// Bootstrap only.
+    #[cfg(bootstrap)]
     #[inline]
     pub const fn new_v1_formatted(
         pieces: &'a [&'static str],

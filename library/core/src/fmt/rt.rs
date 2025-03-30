@@ -190,16 +190,8 @@ impl Argument<'_> {
         }
     }
 
-    /// Used by `format_args` when all arguments are gone after inlining,
-    /// when using `&[]` would incorrectly allow for a bigger lifetime.
-    ///
-    /// This fails without format argument inlining, and that shouldn't be different
-    /// when the argument is inlined:
-    ///
-    /// ```compile_fail,E0716
-    /// let f = format_args!("{}", "a");
-    /// println!("{f}");
-    /// ```
+    /// Bootstrap only.
+    #[cfg(bootstrap)]
     #[inline]
     pub const fn none() -> [Self; 0] {
         []
