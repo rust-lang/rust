@@ -107,43 +107,43 @@ impl Argument<'_> {
     }
 
     #[inline]
-    pub fn new_display<T: Display>(x: &T) -> Argument<'_> {
+    pub const fn new_display<T: Display>(x: &T) -> Argument<'_> {
         Self::new(x, Display::fmt)
     }
     #[inline]
-    pub fn new_debug<T: Debug>(x: &T) -> Argument<'_> {
+    pub const fn new_debug<T: Debug>(x: &T) -> Argument<'_> {
         Self::new(x, Debug::fmt)
     }
     #[inline]
-    pub fn new_debug_noop<T: Debug>(x: &T) -> Argument<'_> {
+    pub const fn new_debug_noop<T: Debug>(x: &T) -> Argument<'_> {
         Self::new(x, |_, _| Ok(()))
     }
     #[inline]
-    pub fn new_octal<T: Octal>(x: &T) -> Argument<'_> {
+    pub const fn new_octal<T: Octal>(x: &T) -> Argument<'_> {
         Self::new(x, Octal::fmt)
     }
     #[inline]
-    pub fn new_lower_hex<T: LowerHex>(x: &T) -> Argument<'_> {
+    pub const fn new_lower_hex<T: LowerHex>(x: &T) -> Argument<'_> {
         Self::new(x, LowerHex::fmt)
     }
     #[inline]
-    pub fn new_upper_hex<T: UpperHex>(x: &T) -> Argument<'_> {
+    pub const fn new_upper_hex<T: UpperHex>(x: &T) -> Argument<'_> {
         Self::new(x, UpperHex::fmt)
     }
     #[inline]
-    pub fn new_pointer<T: Pointer>(x: &T) -> Argument<'_> {
+    pub const fn new_pointer<T: Pointer>(x: &T) -> Argument<'_> {
         Self::new(x, Pointer::fmt)
     }
     #[inline]
-    pub fn new_binary<T: Binary>(x: &T) -> Argument<'_> {
+    pub const fn new_binary<T: Binary>(x: &T) -> Argument<'_> {
         Self::new(x, Binary::fmt)
     }
     #[inline]
-    pub fn new_lower_exp<T: LowerExp>(x: &T) -> Argument<'_> {
+    pub const fn new_lower_exp<T: LowerExp>(x: &T) -> Argument<'_> {
         Self::new(x, LowerExp::fmt)
     }
     #[inline]
-    pub fn new_upper_exp<T: UpperExp>(x: &T) -> Argument<'_> {
+    pub const fn new_upper_exp<T: UpperExp>(x: &T) -> Argument<'_> {
         Self::new(x, UpperExp::fmt)
     }
     #[inline]
@@ -189,16 +189,8 @@ impl Argument<'_> {
         }
     }
 
-    /// Used by `format_args` when all arguments are gone after inlining,
-    /// when using `&[]` would incorrectly allow for a bigger lifetime.
-    ///
-    /// This fails without format argument inlining, and that shouldn't be different
-    /// when the argument is inlined:
-    ///
-    /// ```compile_fail,E0716
-    /// let f = format_args!("{}", "a");
-    /// println!("{f}");
-    /// ```
+    /// Bootstrap only.
+    #[cfg(bootstrap)]
     #[inline]
     pub const fn none() -> [Self; 0] {
         []
