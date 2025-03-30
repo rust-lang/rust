@@ -35,6 +35,6 @@ aot.raw-dylib
 
 testsuite.extended_sysroot
 test.rust-random/rand
-test.libcore
+test.sysroot
 test.regex
 test.portable-simd
