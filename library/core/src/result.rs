@@ -655,6 +655,7 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "result_ok_method"]
+    #[must_use]
     pub fn ok(self) -> Option<T> {
         match self {
             Ok(x) => Some(x),
