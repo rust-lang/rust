@@ -47,7 +47,7 @@ fn default_client() -> Client {
     let client = Client::new(32).expect("failed to create jobserver");
 
     // Acquire a token for the main thread which we can release later
-    client.acquire_raw().ok();
+    let _ = client.acquire_raw().ok();
 
     client
 }
@@ -62,7 +62,7 @@ pub fn initialize_checked(report_warning: impl FnOnce(&'static str)) {
             default_client()
         }
     };
-    GLOBAL_CLIENT_CHECKED.set(client_checked).ok();
+    let _ = GLOBAL_CLIENT_CHECKED.set(client_checked);
 }
 
 const ACCESS_ERROR: &str = "jobserver check should have been called earlier";
@@ -72,9 +72,9 @@ pub fn client() -> Client {
 }
 
 pub fn acquire_thread() {
-    GLOBAL_CLIENT_CHECKED.get().expect(ACCESS_ERROR).acquire_raw().ok();
+    let _ = GLOBAL_CLIENT_CHECKED.get().expect(ACCESS_ERROR).acquire_raw();
 }
 
 pub fn release_thread() {
-    GLOBAL_CLIENT_CHECKED.get().expect(ACCESS_ERROR).release_raw().ok();
+    let _ = GLOBAL_CLIENT_CHECKED.get().expect(ACCESS_ERROR).release_raw();
 }

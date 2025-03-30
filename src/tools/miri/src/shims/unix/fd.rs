@@ -88,7 +88,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // If old_fd and new_fd point to the same description, then `dup_fd` ensures we keep the underlying file description alive.
             if let Some(old_new_fd) = this.machine.fds.fds.insert(new_fd_num, fd) {
                 // Ignore close error (not interpreter's) according to dup2() doc.
-                old_new_fd.close_ref(this.machine.communicate(), this)?.ok();
+                let _ = old_new_fd.close_ref(this.machine.communicate(), this)?;
             }
         }
         interp_ok(Scalar::from_i32(new_fd_num))

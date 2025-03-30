@@ -99,7 +99,7 @@ where
 
     #[inline]
     fn complete(&self, _key: (), value: V, index: DepNodeIndex) {
-        self.cache.set((value, index)).ok();
+        let _ = self.cache.set((value, index));
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {

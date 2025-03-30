@@ -322,7 +322,7 @@ fn default_hook(info: &PanicHookInfo<'_>) {
 
     if let Ok(Some(local)) = try_set_output_capture(None) {
         write(&mut *local.lock().unwrap_or_else(|e| e.into_inner()));
-        try_set_output_capture(Some(local)).ok();
+        let _ = try_set_output_capture(Some(local));
     } else if let Some(mut out) = panic_output() {
         write(&mut out);
     }

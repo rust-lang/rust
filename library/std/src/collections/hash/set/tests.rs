@@ -446,14 +446,13 @@ fn test_extract_if_drop_panic_leak() {
 
     let mut set = (0..3).map(|i| D(i)).collect::<HashSet<_>>();
 
-    catch_unwind(move || {
+    let _ = catch_unwind(move || {
         set.extract_if(|_| {
             PREDS.fetch_add(1, Ordering::SeqCst);
             true
         })
         .for_each(drop)
-    })
-    .ok();
+    });
 
     assert_eq!(PREDS.load(Ordering::SeqCst), 2);
     assert_eq!(DROPS.load(Ordering::SeqCst), 3);
@@ -475,14 +474,13 @@ fn test_extract_if_pred_panic_leak() {
 
     let mut set: HashSet<_> = (0..3).map(|_| D).collect();
 
-    catch_unwind(AssertUnwindSafe(|| {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
         set.extract_if(|_| match PREDS.fetch_add(1, Ordering::SeqCst) {
             0 => true,
             _ => panic!(),
         })
         .for_each(drop)
-    }))
-    .ok();
+    }));
 
     assert_eq!(PREDS.load(Ordering::SeqCst), 1);
     assert_eq!(DROPS.load(Ordering::SeqCst), 3);

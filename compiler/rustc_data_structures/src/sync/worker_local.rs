@@ -79,7 +79,7 @@ impl Registry {
                     drop(threads);
                     panic!("Thread already has a registry");
                 }
-                registry.set(self.clone()).ok();
+                let _ = registry.set(self.clone());
                 THREAD_DATA.with(|data| {
                     data.registry_id.set(self.id());
                     data.index.set(*threads);
