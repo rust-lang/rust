@@ -21,3 +21,12 @@ fn limit_vector_count() {
     bufs[IOV_MAX * 2] = IoSlice::new(b"world!");
     assert_eq!(stdout.write_vectored(&bufs).unwrap(), b"hello".len())
 }
+
+#[test]
+fn empty_vector() {
+    let stdin = ManuallyDrop::new(unsafe { FileDesc::from_raw_fd(0) });
+    assert_eq!(stdin.read_vectored(&mut []).unwrap(), 0);
+
+    let stdout = ManuallyDrop::new(unsafe { FileDesc::from_raw_fd(1) });
+    assert_eq!(stdout.write_vectored(&[]).unwrap(), 0);
+}

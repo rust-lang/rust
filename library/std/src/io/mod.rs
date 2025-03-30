@@ -297,7 +297,6 @@
 #[cfg(test)]
 mod tests;
 
-use core::intrinsics;
 #[unstable(feature = "read_buf", issue = "78485")]
 pub use core::io::{BorrowedBuf, BorrowedCursor};
 use core::slice::memchr;
@@ -1429,25 +1428,6 @@ impl<'a> IoSliceMut<'a> {
         }
     }
 
-    /// Limits a slice of buffers to at most `n` buffers.
-    ///
-    /// When the slice contains over `n` buffers, ensure that at least one
-    /// non-empty buffer is in the truncated slice, if there is one.
-    #[allow(dead_code)] // Not used on all platforms
-    #[inline]
-    pub(crate) fn limit_slices(bufs: &mut &mut [IoSliceMut<'a>], n: usize) {
-        if intrinsics::unlikely(bufs.len() > n) {
-            for (i, buf) in bufs.iter().enumerate() {
-                if !buf.is_empty() {
-                    let len = cmp::min(bufs.len() - i, n);
-                    *bufs = &mut take(bufs)[i..i + len];
-                    return;
-                }
-            }
-            *bufs = &mut take(bufs)[..0];
-        }
-    }
-
     /// Get the underlying bytes as a mutable slice with the original lifetime.
     ///
     /// # Examples
@@ -1609,25 +1589,6 @@ impl<'a> IoSlice<'a> {
         }
     }
 
-    /// Limits a slice of buffers to at most `n` buffers.
-    ///
-    /// When the slice contains over `n` buffers, ensure that at least one
-    /// non-empty buffer is in the truncated slice, if there is one.
-    #[allow(dead_code)] // Not used on all platforms
-    #[inline]
-    pub(crate) fn limit_slices(bufs: &mut &[IoSlice<'a>], n: usize) {
-        if intrinsics::unlikely(bufs.len() > n) {
-            for (i, buf) in bufs.iter().enumerate() {
-                if !buf.is_empty() {
-                    let len = cmp::min(bufs.len() - i, n);
-                    *bufs = &bufs[i..i + len];
-                    return;
-                }
-            }
-            *bufs = &bufs[..0];
-        }
-    }
-
     /// Get the underlying bytes as a slice with the original lifetime.
     ///
     /// This doesn't borrow from `self`, so is less restrictive than calling
@@ -1662,6 +1623,60 @@ impl<'a> Deref for IoSlice<'a> {
     #[inline]
     fn deref(&self) -> &[u8] {
         self.0.as_slice()
+    }
+}
+
+/// Limits a slice of buffers to at most `n` buffers and ensures that it has at
+/// least one buffer, even if empty.
+///
+/// When the slice contains over `n` buffers, ensure that at least one non-empty
+/// buffer is in the truncated slice, if there is one.
+#[allow(unused_macros)] // Not used on all platforms
+pub(crate) macro limit_slices($bufs:expr, $n:expr) {
+    'slices: {
+        let bufs: &[IoSlice<'_>] = $bufs;
+        let n: usize = $n;
+        // if bufs.len() > n || bufs.is_empty()
+        if core::intrinsics::unlikely(bufs.len().wrapping_sub(1) >= n) {
+            for (i, buf) in bufs.iter().enumerate() {
+                if !buf.is_empty() {
+                    let len = cmp::min(bufs.len() - i, n);
+                    break 'slices &bufs[i..i + len];
+                }
+            }
+            // All buffers are empty. Since POSIX requires at least one buffer
+            // for [writev], but possibly bufs.is_empty(), return an empty write.
+            // [writev]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/writev.html
+            return Ok(0);
+        }
+        bufs
+    }
+}
+
+/// Limits a slice of buffers to at most `n` buffers and ensures that it has at
+/// least one buffer, even if empty.
+///
+/// When the slice contains over `n` buffers, ensure that at least one non-empty
+/// buffer is in the truncated slice, if there is one.
+#[allow(unused_macros)] // Not used on all platforms
+pub(crate) macro limit_slices_mut($bufs:expr, $n:expr) {
+    'slices: {
+        let bufs: &mut [IoSliceMut<'_>] = $bufs;
+        let n: usize = $n;
+        // if bufs.len() > n || bufs.is_empty()
+        if core::intrinsics::unlikely(bufs.len().wrapping_sub(1) >= n) {
+            for (i, buf) in bufs.iter().enumerate() {
+                if !buf.is_empty() {
+                    let len = cmp::min(bufs.len() - i, n);
+                    break 'slices &mut bufs[i..i + len];
+                }
+            }
+            // All buffers are empty. Since POSIX requires at least one buffer
+            // for [readv], but possibly bufs.is_empty(), return an empty read.
+            // [readv]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/readv.html
+            return Ok(0);
+        }
+        bufs
     }
 }
 
