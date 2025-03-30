@@ -20,7 +20,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use rustc_ast_pretty::pprust::item_to_string;
-use rustc_driver::{run_compiler, Compilation};
+use rustc_driver::{Compilation, run_compiler};
 use rustc_interface::interface::{Compiler, Config};
 use rustc_middle::ty::TyCtxt;
 
