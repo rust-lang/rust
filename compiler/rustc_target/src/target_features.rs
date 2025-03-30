@@ -497,7 +497,8 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("m", Stable, &[]),
     ("relax", Unstable(sym::riscv_target_feature), &[]),
     ("unaligned-scalar-mem", Unstable(sym::riscv_target_feature), &[]),
-    ("v", Unstable(sym::riscv_target_feature), &[]),
+    ("unaligned-vector-mem", Unstable(sym::riscv_target_feature), &[]),
+    ("v", Unstable(sym::riscv_target_feature), &["zvl128b", "zve64d"]),
     ("za128rs", Unstable(sym::riscv_target_feature), &[]),
     ("za64rs", Unstable(sym::riscv_target_feature), &[]),
     ("zaamo", Unstable(sym::riscv_target_feature), &[]),
@@ -529,6 +530,41 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("zksed", Stable, &[]),
     ("zksh", Stable, &[]),
     ("zkt", Stable, &[]),
+    ("zvbb", Unstable(sym::riscv_target_feature), &["zvkb"]),
+    ("zvbc", Unstable(sym::riscv_target_feature), &["zve64x"]),
+    ("zve32f", Unstable(sym::riscv_target_feature), &["zve32x", "f"]),
+    ("zve32x", Unstable(sym::riscv_target_feature), &["zvl32b"]),
+    ("zve64d", Unstable(sym::riscv_target_feature), &["zve64f", "d"]),
+    ("zve64f", Unstable(sym::riscv_target_feature), &["zve32f", "zve64x"]),
+    ("zve64x", Unstable(sym::riscv_target_feature), &["zve32x", "zvl64b"]),
+    ("zvfh", Unstable(sym::riscv_target_feature), &["zvfhmin", "zfhmin"]),
+    ("zvfhmin", Unstable(sym::riscv_target_feature), &["zve32f"]),
+    ("zvkb", Unstable(sym::riscv_target_feature), &["zve32x"]),
+    ("zvkg", Unstable(sym::riscv_target_feature), &["zve32x"]),
+    ("zvkn", Unstable(sym::riscv_target_feature), &["zvkned", "zvknhb", "zvkb", "zvkt"]),
+    ("zvknc", Unstable(sym::riscv_target_feature), &["zvkn", "zvbc"]),
+    ("zvkned", Unstable(sym::riscv_target_feature), &["zve32x"]),
+    ("zvkng", Unstable(sym::riscv_target_feature), &["zvkn", "zvkg"]),
+    ("zvknha", Unstable(sym::riscv_target_feature), &["zve32x"]),
+    ("zvknhb", Unstable(sym::riscv_target_feature), &["zve64x"]),
+    ("zvks", Unstable(sym::riscv_target_feature), &["zvksed", "zvksh", "zvkb", "zvkt"]),
+    ("zvksc", Unstable(sym::riscv_target_feature), &["zvks", "zvbc"]),
+    ("zvksed", Unstable(sym::riscv_target_feature), &["zve32x"]),
+    ("zvksg", Unstable(sym::riscv_target_feature), &["zvks", "zvkg"]),
+    ("zvksh", Unstable(sym::riscv_target_feature), &["zve32x"]),
+    ("zvkt", Unstable(sym::riscv_target_feature), &[]),
+    ("zvl1024b", Unstable(sym::riscv_target_feature), &["zvl512b"]),
+    ("zvl128b", Unstable(sym::riscv_target_feature), &["zvl64b"]),
+    ("zvl16384b", Unstable(sym::riscv_target_feature), &["zvl8192b"]),
+    ("zvl2048b", Unstable(sym::riscv_target_feature), &["zvl1024b"]),
+    ("zvl256b", Unstable(sym::riscv_target_feature), &["zvl128b"]),
+    ("zvl32768b", Unstable(sym::riscv_target_feature), &["zvl16384b"]),
+    ("zvl32b", Unstable(sym::riscv_target_feature), &[]),
+    ("zvl4096b", Unstable(sym::riscv_target_feature), &["zvl2048b"]),
+    ("zvl512b", Unstable(sym::riscv_target_feature), &["zvl256b"]),
+    ("zvl64b", Unstable(sym::riscv_target_feature), &["zvl32b"]),
+    ("zvl65536b", Unstable(sym::riscv_target_feature), &["zvl32768b"]),
+    ("zvl8192b", Unstable(sym::riscv_target_feature), &["zvl4096b"]),
     // tidy-alphabetical-end
 ];
 
@@ -704,8 +740,20 @@ const ARM_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(1
 const POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "altivec")];
 const WASM_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "simd128")];
 const S390X_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "vector")];
-const RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[/*(64, "zvl64b"), */ (128, "v")];
+const RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[
+    (32, "zvl32b"),
+    (64, "zvl64b"),
+    (128, "zvl128b"),
+    (256, "zvl256b"),
+    (512, "zvl512b"),
+    (1024, "zvl1024b"),
+    (2048, "zvl2048b"),
+    (4096, "zvl4096b"),
+    (8192, "zvl8192b"),
+    (16384, "zvl16384b"),
+    (32768, "zvl32768b"),
+    (65536, "zvl65536b"),
+];
 // Always warn on SPARC, as the necessary target features cannot be enabled in Rust at the moment.
 const SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[/*(64, "vis")*/];
 
