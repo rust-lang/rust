@@ -5,7 +5,7 @@ Version 1.86.0 (2025-04-03)
 
 Language
 --------
-- [Stabilize the ability to upcast a trait object to one of its supertraits.](https://github.com/rust-lang/rust/pull/134367)
+- [Stabilize upcasting trait objects to supertraits.](https://github.com/rust-lang/rust/pull/134367)
 - [Allow safe functions to be marked with the `#[target_feature]` attribute.](https://github.com/rust-lang/rust/pull/134090)
 - [The `missing_abi` lint now warns-by-default.](https://github.com/rust-lang/rust/pull/132397)
 - Rust now lints about double negations, to catch cases that might have intended to be a prefix decrement operator (`--x`) as written in other languages. This was previously a clippy lint, `clippy::double_neg`, and is [now available directly in Rust as `double_negations`.](https://github.com/rust-lang/rust/pull/126604)
@@ -104,8 +104,9 @@ Compatibility Notes
 - [The `wasm_c_abi` future compatibility warning is now a hard error.](https://github.com/rust-lang/rust/pull/133951)
   Users of `wasm-bindgen` should upgrade to at least version 0.2.89, otherwise compilation will fail.
 - [Remove long-deprecated no-op attributes `#![no_start]` and `#![crate_id]`.](https://github.com/rust-lang/rust/pull/134300)
-- The future incompatibility lint `cenum_impl_drop_cast` [has been made into a hard error.](https://github.com/rust-lang/rust/pull/135964) This means it is now an error to cast a field-less enum to an integer if the enum implements `Drop`.
+- [The future incompatibility lint `cenum_impl_drop_cast` has been made into a hard error.](https://github.com/rust-lang/rust/pull/135964) This means it is now an error to cast a field-less enum to an integer if the enum implements `Drop`.
 - [SSE2 is now required for "i686" 32-bit x86 hard-float targets; disabling it causes a warning that will become a hard error eventually.](https://github.com/rust-lang/rust/pull/137037)
+  To compile for pre-SSE2 32-bit x86, use a "i586" target instead.
 
 <a id="1.86.0-Internal-Changes"></a>
 
@@ -117,7 +118,7 @@ significant improvements to the performance or internals of rustc and related
 tools.
 
 - [Build the rustc on AArch64 Linux with ThinLTO + PGO.](https://github.com/rust-lang/rust/pull/133807)
-The ARM 64-bit compiler (AArch64) on Linux is now optimized with ThinLTO and PGO, similar to the optimizations we have already performed for the x86-64 compiler on Linux. This should make it up to 30% faster.
+  The ARM 64-bit compiler (AArch64) on Linux is now optimized with ThinLTO and PGO, similar to the optimizations we have already performed for the x86-64 compiler on Linux. This should make it up to 30% faster.
 
 
 Version 1.85.1 (2025-03-18)
