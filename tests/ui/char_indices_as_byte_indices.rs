@@ -54,6 +54,12 @@ fn good(prim: &str, prim2: &str) {
         // str method taking a usize that doesn't represent a byte index
         prim.splitn(idx, prim2);
     }
+
+    let mut string = "äa".to_owned();
+    for (idx, _) in string.clone().chars().enumerate() {
+        // Even though the receiver is the same expression, it should not be treated as the same value.
+        string.clone().remove(idx);
+    }
 }
 
 fn main() {}

@@ -84,6 +84,9 @@ fn check_index_usage<'tcx>(
     let is_string_like = |ty: Ty<'_>| ty.is_str() || is_type_lang_item(cx, ty, LangItem::String);
     let message = match parent_expr.kind {
         ExprKind::MethodCall(segment, recv, ..)
+            // We currently only lint `str` methods (which `String` can deref to), so a `.is_str()` check is sufficient here
+            // (contrary to the `ExprKind::Index` case which needs to handle both with `is_string_like` because `String` implements
+            // `Index` directly and no deref to `str` would happen in that case).
             if cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_str()
                 && BYTE_INDEX_METHODS.contains(&segment.ident.name.as_str())
                 && eq_expr_value(cx, chars_recv, recv) =>
@@ -126,7 +129,7 @@ fn check_index_usage<'tcx>(
 /// but for `.get(..idx)` we want to consider the method call the consuming expression,
 /// which requires skipping past the range expression.
 fn index_consumed_at<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    for (_, node) in cx.tcx.hir().parent_iter(expr.hir_id) {
+    for (_, node) in cx.tcx.hir_parent_iter(expr.hir_id) {
         match node {
             Node::Expr(expr) if higher::Range::hir(expr).is_some() => {},
             Node::ExprField(_) => {},

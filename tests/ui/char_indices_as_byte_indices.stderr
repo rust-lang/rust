@@ -14,8 +14,9 @@ LL |     for (idx, _) in prim.chars().enumerate() {
    = help: to override `-D warnings` add `#[allow(clippy::char_indices_as_byte_indices)]`
 help: consider using `.char_indices()` instead
    |
-LL |     for (idx, _) in prim.char_indices() {
-   |                          ~~~~~~~~~~~~~~
+LL -     for (idx, _) in prim.chars().enumerate() {
+LL +     for (idx, _) in prim.char_indices() {
+   |
 
 error: passing a character position to a method that expects a byte index
   --> tests/ui/char_indices_as_byte_indices.rs:15:23
@@ -31,8 +32,9 @@ LL |     for (idx, _) in prim.chars().enumerate() {
    |          ^^^                     ^^^^^^^^^^^
 help: consider using `.char_indices()` instead
    |
-LL |     for (idx, _) in prim.char_indices() {
-   |                          ~~~~~~~~~~~~~~
+LL -     for (idx, _) in prim.chars().enumerate() {
+LL +     for (idx, _) in prim.char_indices() {
+   |
 
 error: passing a character position to a method that expects a byte index
   --> tests/ui/char_indices_as_byte_indices.rs:19:49
@@ -48,8 +50,9 @@ LL |     for (idx, _) in prim.chars().enumerate() {
    |          ^^^                     ^^^^^^^^^^^
 help: consider using `.char_indices()` instead
    |
-LL |     for (idx, _) in prim.char_indices() {
-   |                          ~~~~~~~~~~~~~~
+LL -     for (idx, _) in prim.chars().enumerate() {
+LL +     for (idx, _) in prim.char_indices() {
+   |
 
 error: indexing into a string with a character position where a byte index is expected
   --> tests/ui/char_indices_as_byte_indices.rs:29:24
@@ -65,8 +68,9 @@ LL |     for c in prim.chars().enumerate() {
    |         ^                 ^^^^^^^^^^^
 help: consider using `.char_indices()` instead
    |
-LL |     for c in prim.char_indices() {
-   |                   ~~~~~~~~~~~~~~
+LL -     for c in prim.chars().enumerate() {
+LL +     for c in prim.char_indices() {
+   |
 
 error: passing a character position to a method that expects a byte index
   --> tests/ui/char_indices_as_byte_indices.rs:31:23
@@ -82,8 +86,9 @@ LL |     for c in prim.chars().enumerate() {
    |         ^                 ^^^^^^^^^^^
 help: consider using `.char_indices()` instead
    |
-LL |     for c in prim.char_indices() {
-   |                   ~~~~~~~~~~~~~~
+LL -     for c in prim.chars().enumerate() {
+LL +     for c in prim.char_indices() {
+   |
 
 error: indexing into a string with a character position where a byte index is expected
   --> tests/ui/char_indices_as_byte_indices.rs:36:26
@@ -99,8 +104,9 @@ LL |     for (idx, _) in string.chars().enumerate() {
    |          ^^^                       ^^^^^^^^^^^
 help: consider using `.char_indices()` instead
    |
-LL |     for (idx, _) in string.char_indices() {
-   |                            ~~~~~~~~~~~~~~
+LL -     for (idx, _) in string.chars().enumerate() {
+LL +     for (idx, _) in string.char_indices() {
+   |
 
 error: passing a character position to a method that expects a byte index
   --> tests/ui/char_indices_as_byte_indices.rs:38:25
@@ -116,8 +122,9 @@ LL |     for (idx, _) in string.chars().enumerate() {
    |          ^^^                       ^^^^^^^^^^^
 help: consider using `.char_indices()` instead
    |
-LL |     for (idx, _) in string.char_indices() {
-   |                            ~~~~~~~~~~~~~~
+LL -     for (idx, _) in string.chars().enumerate() {
+LL +     for (idx, _) in string.char_indices() {
+   |
 
 error: aborting due to 7 previous errors
 
