@@ -645,8 +645,7 @@ impl<'a> Arguments<'a> {
 
     /// Specifies nonstandard formatting parameters.
     ///
-    /// An `rt::UnsafeArg` is required because the following invariants must be held
-    /// in order for this function to be safe:
+    /// Safety:
     /// 1. The `pieces` slice must be at least as long as `fmt`.
     /// 2. Every `rt::Placeholder::position` value within `fmt` must be a valid index of `args`.
     /// 3. Every `rt::Count::Param` within `fmt` must contain a valid index of `args`.

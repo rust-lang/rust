@@ -198,17 +198,16 @@ impl Argument<'_> {
     }
 }
 
-/// This struct represents the unsafety of constructing an `Arguments`.
-/// It exists, rather than an unsafe function, in order to simplify the expansion
-/// of `format_args!(..)` and reduce the scope of the `unsafe` block.
+/// Bootstrap only.
+#[cfg(bootstrap)]
 #[lang = "format_unsafe_arg"]
 pub struct UnsafeArg {
     _private: (),
 }
 
+#[cfg(bootstrap)]
 impl UnsafeArg {
-    /// See documentation where `UnsafeArg` is required to know when it is safe to
-    /// create and use `UnsafeArg`.
+    /// Bootstrap only.
     #[inline]
     pub const unsafe fn new() -> Self {
         Self { _private: () }

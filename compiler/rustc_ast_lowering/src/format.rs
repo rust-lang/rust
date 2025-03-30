@@ -536,34 +536,32 @@ fn expand_format_args<'hir>(
 
     let call = if let Some(format_options) = format_options {
         // Generate:
-        //     <core::fmt::Arguments>::new_v1_formatted(
-        //         lit_pieces,
-        //         args,
-        //         format_options,
-        //         unsafe { ::core::fmt::UnsafeArg::new() }
-        //     )
+        //     unsafe {
+        //         <core::fmt::Arguments>::new_v1_formatted(
+        //             lit_pieces,
+        //             args,
+        //             format_options,
+        //         )
+        //     }
         let new_v1_formatted = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
             macsp,
             hir::LangItem::FormatArguments,
             sym::new_v1_formatted,
         ));
-        let unsafe_arg_new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
-            macsp,
-            hir::LangItem::FormatUnsafeArg,
-            sym::new,
-        ));
-        let unsafe_arg_new_call = ctx.expr_call(macsp, unsafe_arg_new, &[]);
+        let args = ctx.arena.alloc_from_iter([lit_pieces, args, format_options]);
+        let call = ctx.expr_call(macsp, new_v1_formatted, args);
         let hir_id = ctx.next_id();
-        let unsafe_arg = ctx.expr_block(ctx.arena.alloc(hir::Block {
-            stmts: &[],
-            expr: Some(unsafe_arg_new_call),
-            hir_id,
-            rules: hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::CompilerGenerated),
-            span: macsp,
-            targeted_by_break: false,
-        }));
-        let args = ctx.arena.alloc_from_iter([lit_pieces, args, format_options, unsafe_arg]);
-        hir::ExprKind::Call(new_v1_formatted, args)
+        hir::ExprKind::Block(
+            ctx.arena.alloc(hir::Block {
+                stmts: &[],
+                expr: Some(call),
+                hir_id,
+                rules: hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::CompilerGenerated),
+                span: macsp,
+                targeted_by_break: false,
+            }),
+            None,
+        )
     } else {
         // Generate:
         //     <core::fmt::Arguments>::new_v1(
