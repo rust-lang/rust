@@ -1035,7 +1035,6 @@ symbols! {
         format_count,
         format_macro,
         format_placeholder,
-        format_unsafe_arg,
         freeze,
         freeze_impls,
         freg,
