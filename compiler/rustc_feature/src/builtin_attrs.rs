@@ -1087,9 +1087,9 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_error, Normal,
-        template!(Word, List: "delayed_bug_from_inside_query"),
-        WarnFollowingWordOnly, EncodeCrossCrate::Yes
+        TEST, rustc_delayed_bug_from_inside_query, Normal,
+        template!(Word),
+        WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
         TEST, rustc_dump_user_args, Normal, template!(Word),

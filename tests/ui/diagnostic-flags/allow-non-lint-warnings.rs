@@ -13,14 +13,16 @@
 //! - Original impl PR: <https://github.com/rust-lang/rust/pull/21248>.
 //! - RFC 507 "Release channels":
 //!   <https://github.com/rust-lang/rfcs/blob/c017755b9bfa0421570d92ba38082302e0f3ad4f/text/0507-release-channels.md>.
-#![feature(rustc_attrs)]
 
 //@ revisions: without_flag with_flag
 
+//@ check-pass
+//@ compile-flags: -Zunleash-the-miri-inside-of-you
 //@[with_flag] compile-flags: -Awarnings
 
-//@ check-pass
+fn non_constant() {}
+const fn constant() { non_constant() }
 
-#[rustc_error(warn)]
 fn main() {}
-//[without_flag]~^ WARN unexpected annotation used with `#[rustc_error(...)]`!
+
+//[without_flag]~? WARN skipping const checks

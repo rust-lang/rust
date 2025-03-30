@@ -1,8 +1,0 @@
-error: fatal error triggered by #[rustc_error]
-  --> $DIR/issue-75053.rs:47:1
-   |
-LL | fn main() {
-   | ^^^^^^^^^
-
-error: aborting due to 1 previous error
-

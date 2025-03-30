@@ -1,7 +1,6 @@
-#![feature(rustc_attrs)]
 use std::ops::FnMut;
 
-fn main() { #![rustc_error] // rust-lang/rust#49855
+fn main() {
     let mut f;
     {
         let c = 1;

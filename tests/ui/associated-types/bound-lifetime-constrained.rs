@@ -1,7 +1,7 @@
 //@ revisions: func object clause ok
+//@[ok] check-pass
 
 #![allow(dead_code)]
-#![feature(rustc_attrs)]
 
 trait Foo<'a> {
     type Item;
@@ -44,5 +44,4 @@ fn clause2<T>() where T: for<'a> Fn() -> <() as Foo<'a>>::Item {
     //[clause]~^ ERROR `Output` references lifetime `'a`
 }
 
-#[rustc_error]
-fn main() { } //[ok]~ ERROR fatal error triggered by #[rustc_error]
+fn main() { }

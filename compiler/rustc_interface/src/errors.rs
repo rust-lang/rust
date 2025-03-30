@@ -74,20 +74,6 @@ pub struct TempsDirError;
 pub struct OutDirError;
 
 #[derive(Diagnostic)]
-#[diag(interface_rustc_error_fatal)]
-pub struct RustcErrorFatal {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(interface_rustc_error_unexpected_annotation)]
-pub struct RustcErrorUnexpectedAnnotation {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(interface_failed_writing_file)]
 pub struct FailedWritingFile<'a> {
     pub path: &'a Path,
