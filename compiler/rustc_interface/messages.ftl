@@ -50,11 +50,5 @@ interface_out_dir_error =
 interface_proc_macro_crate_panic_abort =
     building proc macro crate with `panic=abort` may crash the compiler should the proc-macro panic
 
-interface_rustc_error_fatal =
-    fatal error triggered by #[rustc_error]
-
-interface_rustc_error_unexpected_annotation =
-    unexpected annotation used with `#[rustc_error(...)]`!
-
 interface_temps_dir_error =
     failed to find or create the directory specified by `--temps-dir`
