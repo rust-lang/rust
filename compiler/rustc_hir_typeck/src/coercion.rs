@@ -605,48 +605,52 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // However, we don't want to bail early all the time, since the unholdable obligations
         // may be interesting for diagnostics (such as trying to coerce `&T` to `&dyn Id<This = U>`),
         // so we only bail if there (likely) is another way to convert the types.
-        if !self.infcx.predicate_may_hold(&root_obligation) {
-            if let Some(dyn_metadata_adt_def_id) = self.tcx.lang_items().get(LangItem::DynMetadata)
-                && let Some(metadata_type_def_id) = self.tcx.lang_items().get(LangItem::Metadata)
-            {
-                self.probe(|_| {
-                    let ocx = ObligationCtxt::new(&self.infcx);
+        if let &ty::RawPtr(source_pointee, _) = coerce_source.kind()
+            && let &ty::RawPtr(target_pointee, _) = target.kind()
+        {
+            if !self.infcx.predicate_may_hold(&root_obligation) {
+                if let Some(dyn_metadata_adt_def_id) =
+                    self.tcx.lang_items().get(LangItem::DynMetadata)
+                    && let Some(metadata_type_def_id) =
+                        self.tcx.lang_items().get(LangItem::Metadata)
+                {
+                    self.probe(|_| {
+                        let ocx = ObligationCtxt::new(&self.infcx);
 
-                    // returns `true` if `<ty as Pointee>::Metadata` is `DynMetadata<_>`
-                    let has_dyn_trait_metadata = |ty| {
-                        let metadata_ty: Result<_, _> = ocx.structurally_normalize_ty(
-                            &ObligationCause::dummy(),
-                            self.fcx.param_env,
-                            Ty::new_alias(
-                                self.tcx,
-                                ty::AliasTyKind::Projection,
-                                AliasTy::new(self.tcx, metadata_type_def_id, [ty]),
-                            ),
-                        );
+                        // returns `true` if `<ty as Pointee>::Metadata` is `DynMetadata<_>`
+                        let has_dyn_trait_metadata = |ty| {
+                            let metadata_ty: Result<_, _> = ocx.structurally_normalize_ty(
+                                &ObligationCause::dummy(),
+                                self.fcx.param_env,
+                                Ty::new_alias(
+                                    self.tcx,
+                                    ty::AliasTyKind::Projection,
+                                    AliasTy::new(self.tcx, metadata_type_def_id, [ty]),
+                                ),
+                            );
 
-                        metadata_ty.is_ok_and(|metadata_ty| {
-                            metadata_ty
-                                .ty_adt_def()
-                                .is_some_and(|d| d.did() == dyn_metadata_adt_def_id)
-                        })
-                    };
+                            metadata_ty.is_ok_and(|metadata_ty| {
+                                metadata_ty
+                                    .ty_adt_def()
+                                    .is_some_and(|d| d.did() == dyn_metadata_adt_def_id)
+                            })
+                        };
 
-                    // If both types are raw pointers to a (wrapper over a) trait object,
-                    // this might be a cast like `*const W<dyn Trait> -> *const dyn Trait`.
-                    // So it's better to bail and try that. (even if the cast is not possible, for
-                    // example due to vtables not matching, cast diagnostic will likely still be better)
-                    //
-                    // N.B. use `target`, not `coerce_target` (the latter is a var)
-                    if let &ty::RawPtr(source_pointee, _) = coerce_source.kind()
-                        && let &ty::RawPtr(target_pointee, _) = target.kind()
-                        && has_dyn_trait_metadata(source_pointee)
-                        && has_dyn_trait_metadata(target_pointee)
-                    {
-                        return Err(TypeError::Mismatch);
-                    }
+                        // If both types are raw pointers to a (wrapper over a) trait object,
+                        // this might be a cast like `*const W<dyn Trait> -> *const dyn Trait`.
+                        // So it's better to bail and try that. (even if the cast is not possible, for
+                        // example due to vtables not matching, cast diagnostic will likely still be better)
+                        //
+                        // N.B. use `target`, not `coerce_target` (the latter is a var)
+                        if has_dyn_trait_metadata(source_pointee)
+                            && has_dyn_trait_metadata(target_pointee)
+                        {
+                            return Err(TypeError::Mismatch);
+                        }
 
-                    Ok(())
-                })?;
+                        Ok(())
+                    })?;
+                }
             }
         }
 
