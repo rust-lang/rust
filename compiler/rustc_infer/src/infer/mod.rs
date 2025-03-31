@@ -21,6 +21,7 @@ use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_index::IndexVec;
 use rustc_macros::extension;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
@@ -110,6 +111,10 @@ pub struct InferCtxtInner<'tcx> {
     /// Map from floating variable to the kind of float it represents.
     float_unification_storage: ut::UnificationTableStorage<ty::FloatVid>,
 
+    /// Map from floating variable to the origin span it came from. This is only used for the FCW
+    /// for the fallback to `f32`, so can be removed once the `f32` fallback is removed.
+    float_origin_span_storage: IndexVec<FloatVid, Span>,
+
     /// Tracks the set of region variables and the constraints between them.
     ///
     /// This is initially `Some(_)` but when
@@ -166,6 +171,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             const_unification_storage: Default::default(),
             int_unification_storage: Default::default(),
             float_unification_storage: Default::default(),
+            float_origin_span_storage: Default::default(),
             region_constraint_storage: Some(Default::default()),
             region_obligations: vec![],
             opaque_type_storage: Default::default(),
@@ -625,6 +631,13 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().type_variables().var_origin(vid)
     }
 
+    /// Returns the origin of the float type variable identified by `vid`.
+    ///
+    /// No attempt is made to resolve `vid` to its root variable.
+    pub fn float_var_origin(&self, vid: FloatVid) -> Span {
+        self.inner.borrow_mut().float_origin_span_storage[vid]
+    }
+
     /// Returns the origin of the const variable identified by `vid`
     // FIXME: We should store origins separately from the unification table
     // so this doesn't need to be optional.
@@ -797,9 +810,11 @@ impl<'tcx> InferCtxt<'tcx> {
         Ty::new_int_var(self.tcx, next_int_var_id)
     }
 
-    pub fn next_float_var(&self) -> Ty<'tcx> {
-        let next_float_var_id =
-            self.inner.borrow_mut().float_unification_table().new_key(ty::FloatVarValue::Unknown);
+    pub fn next_float_var(&self, span: Span) -> Ty<'tcx> {
+        let mut inner = self.inner.borrow_mut();
+        let next_float_var_id = inner.float_unification_table().new_key(ty::FloatVarValue::Unknown);
+        let span_index = inner.float_origin_span_storage.push(span);
+        debug_assert_eq!(next_float_var_id, span_index);
         Ty::new_float_var(self.tcx, next_float_var_id)
     }
 
