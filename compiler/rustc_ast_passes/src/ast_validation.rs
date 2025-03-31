@@ -863,7 +863,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl { of_trait: true });
                 });
                 walk_list!(self, visit_attribute, &item.attrs);
-                return; // Avoid visiting again.
             }
             ItemKind::Impl(box Impl {
                 safety,
@@ -915,7 +914,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl { of_trait: false });
                 });
                 walk_list!(self, visit_attribute, &item.attrs);
-                return; // Avoid visiting again.
             }
             ItemKind::Fn(
                 func @ box Fn {
@@ -960,7 +958,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 let kind = FnKind::Fn(FnCtxt::Free, &item.vis, &*func);
                 self.visit_fn(kind, item.span, item.id);
                 walk_list!(self, visit_attribute, &item.attrs);
-                return; // Avoid visiting again.
             }
             ItemKind::ForeignMod(ForeignMod { extern_span, abi, safety, .. }) => {
                 self.with_in_extern_mod(*safety, |this| {
@@ -991,7 +988,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     visit::walk_item(this, item);
                     this.extern_mod = old_item;
                 });
-                return; // Avoid visiting again.
             }
             ItemKind::Enum(_, def, _) => {
                 for variant in &def.variants {
@@ -1006,6 +1002,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         );
                     }
                 }
+                visit::walk_item(self, item)
             }
             ItemKind::Trait(box Trait { is_auto, generics, ident, bounds, items, .. }) => {
                 let is_const_trait =
@@ -1033,7 +1030,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Trait);
                 });
                 walk_list!(self, visit_attribute, &item.attrs);
-                return; // Avoid visiting again
             }
             ItemKind::Mod(safety, ident, mod_kind) => {
                 if let &Safety::Unsafe(span) = safety {
@@ -1045,6 +1041,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 {
                     self.check_mod_file_item_asciionly(*ident);
                 }
+                visit::walk_item(self, item)
             }
             ItemKind::Struct(ident, vdata, generics) => match vdata {
                 VariantData::Struct { fields, .. } => {
@@ -1054,9 +1051,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     // Permit `Anon{Struct,Union}` as field type.
                     walk_list!(self, visit_struct_field_def, fields);
                     walk_list!(self, visit_attribute, &item.attrs);
-                    return;
                 }
-                _ => {}
+                _ => visit::walk_item(self, item),
             },
             ItemKind::Union(ident, vdata, generics) => {
                 if vdata.fields().is_empty() {
@@ -1070,9 +1066,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         // Permit `Anon{Struct,Union}` as field type.
                         walk_list!(self, visit_struct_field_def, fields);
                         walk_list!(self, visit_attribute, &item.attrs);
-                        return;
                     }
-                    _ => {}
+                    _ => visit::walk_item(self, item),
                 }
             }
             ItemKind::Const(box ConstItem { defaultness, expr, .. }) => {
@@ -1083,6 +1078,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         replace_span: self.ending_semi_or_hi(item.span),
                     });
                 }
+                visit::walk_item(self, item);
             }
             ItemKind::Static(box StaticItem { expr, safety, .. }) => {
                 self.check_item_safety(item.span, *safety);
@@ -1096,6 +1092,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         replace_span: self.ending_semi_or_hi(item.span),
                     });
                 }
+                visit::walk_item(self, item);
             }
             ItemKind::TyAlias(
                 ty_alias @ box TyAlias { defaultness, bounds, where_clauses, ty, .. },
@@ -1119,11 +1116,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         help: self.sess.is_nightly_build(),
                     });
                 }
+                visit::walk_item(self, item);
             }
-            _ => {}
+            _ => visit::walk_item(self, item),
         }
-
-        visit::walk_item(self, item);
     }
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
