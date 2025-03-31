@@ -34,7 +34,6 @@ jobs:
               - 'editors/code/**'
 
   proc-macro-srv:
-    needs: changes
     if: github.repository == 'rust-lang/rust-analyzer'
     name: proc-macro-srv
     runs-on: ubuntu-latest
@@ -72,7 +71,7 @@ jobs:
     name: Rust
     runs-on: ${{ matrix.os }}
     env:
-      RUSTFLAGS: "-D warnings"
+      RUSTFLAGS: "-Dwarnings"
       CC: deny_c
 
     strategy:
@@ -89,7 +88,7 @@ jobs:
         run: |
           rustup update --no-self-update stable
           rustup default stable
-          rustup component add --toolchain stable rust-src
+          rustup component add --toolchain stable rust-src clippy
           # We always use a nightly rustfmt, regardless of channel, because we need
           # --file-lines.
           rustup toolchain install nightly --profile minimal --component rustfmt
@@ -98,24 +97,24 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: echo "::add-matcher::.github/rust.json"
 
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@27b8ea9368cf428f0bfe41b0876b1a7e809d9844
-        with:
-          workspaces: |
-            . -> target
-            crates/proc-macro-srv/proc-macro-test/imp -> target
-
-      - uses: taiki-e/install-action@nextest
-
       - name: Bump opt-level
         if: matrix.os == 'ubuntu-latest'
         run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+        with:
+          workspaces: |
+            . -> target
+            ./crates/proc-macro-srv/proc-macro-test/imp -> target
+
+      - uses: taiki-e/install-action@nextest
 
       - name: Codegen checks (rust-analyzer)
         run: cargo codegen --check
 
       - name: Compile (tests)
-        run: cargo test --no-run --locked
+        run: cargo test --no-run
 
       # It's faster to `test` before `build` ¯\_(ツ)_/¯
       - name: Compile (rust-analyzer)
@@ -126,31 +125,53 @@ jobs:
         if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || github.event_name == 'push'
         run: cargo nextest run --no-fail-fast --hide-progress-bar --status-level fail
 
-      - name: Switch to stable toolchain
-        run: |
-          rustup update --no-self-update stable
-          rustup component add --toolchain stable rust-src clippy
-          rustup default stable
-
-      - name: Run analysis-stats on rust-analyzer
-        if: matrix.os == 'ubuntu-latest'
-        run: target/${{ matrix.target }}/debug/rust-analyzer analysis-stats .
-
-      - name: Run analysis-stats on the rust standard libraries
-        if: matrix.os == 'ubuntu-latest'
-        env:
-          RUSTC_BOOTSTRAP: 1
-        run: target/${{ matrix.target }}/debug/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/
-
       - name: clippy
         if: matrix.os == 'macos-latest'
         run: cargo clippy --all-targets -- -D clippy::disallowed_macros -D clippy::dbg_macro -D clippy::todo -D clippy::print_stdout -D clippy::print_stderr
 
-      - name: rustfmt
-        if: matrix.os == 'ubuntu-latest'
-        run: cargo fmt -- --check
+  analysis-stats:
+    if: github.repository == 'rust-lang/rust-analyzer'
+    name: miri
+    runs-on: ubuntu-latest
 
-  # Weird targets to catch non-portable code
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup default stable
+          rustup component add rustfmt
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+
+      - name: ./rust-analyzer
+        run: cargo run -p rust-analyzer -- analysis-stats . -q
+
+      - name: sysroot/lib/rustlib/src/rust/library/
+        env:
+          RUSTC_BOOTSTRAP: 1
+        run: cargo run -p rust-analyzer -- analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/ -q
+
+  rustfmt:
+    if: github.repository == 'rust-lang/rust-analyzer'
+    name: miri
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup default stable
+          rustup component add rustfmt
+
+      - run: cargo fmt -- --check
+
   miri:
     if: github.repository == 'rust-lang/rust-analyzer'
     name: miri
@@ -163,12 +184,13 @@ jobs:
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update nightly
-          rustup component add miri --toolchain nightly
+          rustup default nightly
+          rustup component add miri
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
 
-      - run: cargo +nightly miri test -p intern --locked
+      - run: cargo miri test -p intern
 
   # Weird targets to catch non-portable code
   rust-cross:
@@ -193,7 +215,7 @@ jobs:
           rustup target add ${{ env.targets }} ${{ env.targets_ide }}
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
 
       - name: Check
         run: |
