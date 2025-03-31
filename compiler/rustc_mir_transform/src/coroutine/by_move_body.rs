@@ -219,6 +219,8 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
         mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));
     dump_mir(tcx, false, "built", &"after", &by_move_body, |_, _| Ok(()));
 
+    // Feed HIR because we try to access this body's attrs in the inliner.
+    body_def.feed_hir();
     // Inherited from the by-ref coroutine.
     body_def.codegen_fn_attrs(tcx.codegen_fn_attrs(coroutine_def_id).clone());
     body_def.coverage_attr_on(tcx.coverage_attr_on(coroutine_def_id));
