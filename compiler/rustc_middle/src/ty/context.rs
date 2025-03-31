@@ -1930,10 +1930,10 @@ impl<'tcx> TyCtxt<'tcx> {
         // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
         // comp. engine itself.
         //
-        // This call also writes to the value of `source_span` and `expn_that_defined` queries.
+        // This call also writes to the value of the `source_span` query.
         // This is fine because:
-        // - those queries are `eval_always` so we won't miss their result changing;
-        // - this write will have happened before these queries are called.
+        // - that query is `eval_always` so we won't miss its result changing;
+        // - this write will have happened before that query is called.
         let def_id = self.untracked.definitions.write().create_def(parent, data);
 
         // This function modifies `self.definitions` using a side-effect.
