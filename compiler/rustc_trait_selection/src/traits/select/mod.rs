@@ -1801,17 +1801,21 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             return Some(candidates.pop().unwrap().candidate);
         }
 
-        // We prefer trivial builtin candidates, i.e. builtin impls without any nested
-        // requirements, over all others. This is a fix for #53123 and prevents winnowing
-        // from accidentally extending the lifetime of a variable.
-        let mut trivial_builtin = candidates
-            .iter()
-            .filter(|c| matches!(c.candidate, BuiltinCandidate { has_nested: false }));
-        if let Some(_trivial) = trivial_builtin.next() {
-            // There should only ever be a single trivial builtin candidate
+        // We prefer `Sized` candidates over everything.
+        let mut sized_candidates =
+            candidates.iter().filter(|c| matches!(c.candidate, SizedCandidate { has_nested: _ }));
+        if let Some(sized_candidate) = sized_candidates.next() {
+            // There should only ever be a single sized candidate
             // as they would otherwise overlap.
-            debug_assert_eq!(trivial_builtin.next(), None);
-            return Some(BuiltinCandidate { has_nested: false });
+            debug_assert_eq!(sized_candidates.next(), None);
+            // Only prefer the built-in `Sized` candidate if its nested goals are certain.
+            // Otherwise, we may encounter failure later on if inference causes this candidate
+            // to not hold, but a where clause would've applied instead.
+            if sized_candidate.evaluation.must_apply_modulo_regions() {
+                return Some(sized_candidate.candidate.clone());
+            } else {
+                return None;
+            }
         }
 
         // Before we consider where-bounds, we have to deduplicate them here and also
@@ -1940,7 +1944,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             // Don't use impl candidates which overlap with other candidates.
             // This should pretty much only ever happen with malformed impls.
             if candidates.iter().all(|c| match c.candidate {
-                BuiltinCandidate { has_nested: _ }
+                SizedCandidate { has_nested: _ }
+                | BuiltinCandidate { has_nested: _ }
                 | TransmutabilityCandidate
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
