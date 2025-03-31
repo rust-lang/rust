@@ -63,7 +63,7 @@ declare_features! (
     /// Allows using `const` operands in inline assembly.
     (accepted, asm_const, "1.82.0", Some(93332)),
     /// Allows using `label` operands in inline assembly.
-    (accepted, asm_goto, "CURRENT_RUSTC_VERSION", Some(119364)),
+    (accepted, asm_goto, "1.87.0", Some(119364)),
     /// Allows using `sym` operands in inline assembly.
     (accepted, asm_sym, "1.66.0", Some(93333)),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
@@ -332,7 +332,7 @@ declare_features! (
     /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
     (accepted, precise_capturing, "1.82.0", Some(123432)),
     /// Allows `use<..>` precise capturign on impl Trait in traits.
-    (accepted, precise_capturing_in_traits, "CURRENT_RUSTC_VERSION", Some(130044)),
+    (accepted, precise_capturing_in_traits, "1.87.0", Some(130044)),
     /// Allows procedural macros in `proc-macro` crates.
     (accepted, proc_macro, "1.29.0", Some(38356)),
     /// Allows multi-segment paths in attributes and derives.
