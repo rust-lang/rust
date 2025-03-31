@@ -117,7 +117,7 @@ LL | |
 LL | |         ptr::NonNull::dangling().as_ptr(),
 LL | |         ptr::null_mut(),
    | |         --------------- null pointer originates from here
-LL | |         0
+LL | |         0,
 LL | |     );
    | |_____^
    |
