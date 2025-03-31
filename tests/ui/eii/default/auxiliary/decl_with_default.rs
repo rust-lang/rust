@@ -6,4 +6,3 @@
 pub fn decl1(x: u64) {
     println!("default {x}");
 }
-

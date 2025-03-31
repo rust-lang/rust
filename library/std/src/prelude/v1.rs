@@ -112,7 +112,7 @@ pub use core::prelude::v1::deref;
 )]
 pub use core::prelude::v1::define_opaque;
 
-#[unstable(feature = "eii", issue = "none")]
+#[unstable(feature = "eii", issue = "125418")]
 #[cfg(not(bootstrap))]
 pub use core::prelude::v1::{eii, unsafe_eii};
 

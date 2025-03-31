@@ -120,7 +120,7 @@ pub use crate::macros::builtin::deref;
 )]
 pub use crate::macros::builtin::define_opaque;
 
-#[unstable(feature = "eii", issue = "none")]
+#[unstable(feature = "eii", issue = "125418")]
 #[cfg(not(bootstrap))]
 pub use crate::macros::builtin::{eii, unsafe_eii};
 

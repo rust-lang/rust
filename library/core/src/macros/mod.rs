@@ -1787,7 +1787,7 @@ pub(crate) mod builtin {
     /// Externally Implementable Item: Defines an attribute macro that can override the item
     /// this is applied to.
     #[cfg(not(bootstrap))]
-    #[unstable(feature = "eii", issue = "none")]
+    #[unstable(feature = "eii", issue = "125418")]
     #[rustc_builtin_macro]
     #[allow_internal_unstable(eii_internals, decl_macro, rustc_attrs)]
     pub macro eii($item:item) {
@@ -1797,7 +1797,7 @@ pub(crate) mod builtin {
     /// Unsafely Externally Implementable Item: Defines an unsafe attribute macro that can override
     /// the item this is applied to.
     #[cfg(not(bootstrap))]
-    #[unstable(feature = "eii", issue = "none")]
+    #[unstable(feature = "eii", issue = "125418")]
     #[rustc_builtin_macro]
     #[allow_internal_unstable(eii_internals, decl_macro, rustc_attrs)]
     pub macro unsafe_eii($item:item) {

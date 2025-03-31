@@ -287,7 +287,7 @@ passes_duplicate_eii_impls =
          *[other] more implementations were also found in the following crates: {$additional_crate_names}
     }
 
-    .help = an "externally implementable item" can only have a single implementation in the final artifact. When multiple implementations are found, also in different crates, they conflict.
+    .help = an "externally implementable item" can only have a single implementation in the final artifact. When multiple implementations are found, also in different crates, they conflict
 
 passes_duplicate_feature_err =
     the feature `{$feature}` has already been enabled
