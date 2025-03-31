@@ -58,6 +58,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, AliasTy, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::EvaluationResult::*;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
@@ -599,18 +600,25 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target]),
         );
 
-        // If the root `Source: CoerceUnsized<Target>` obligation can't possibly hold,
-        // we don't have to assume that this is unsizing coercion (it will always lead to an error)
-        //
-        // However, we don't want to bail early all the time, since the unholdable obligations
-        // may be interesting for diagnostics (such as trying to coerce `&T` to `&dyn Id<This = U>`),
-        // so we only bail if there (likely) is another way to convert the types.
-        if let &ty::RawPtr(source_pointee, _) = coerce_source.kind()
-            && let &ty::RawPtr(target_pointee, _) = target.kind()
-        {
-            if !self.infcx.predicate_may_hold(&root_obligation) {
-                if let Some(dyn_metadata_adt_def_id) =
-                    self.tcx.lang_items().get(LangItem::DynMetadata)
+        match self.infcx.evaluate_obligation_no_overflow(&root_obligation) {
+            // Fast path if we're definitely able to coerce. This allows us to use the
+            // cache of the `FulfillmentContext` and avoids manual calls to select.
+            EvaluatedToOk | EvaluatedToOkModuloRegions | EvaluatedToOkModuloOpaqueTypes => {
+                coercion.obligations.push(root_obligation);
+                return Ok(coercion);
+            }
+            EvaluatedToAmbig | EvaluatedToAmbigStackDependent => {}
+            EvaluatedToErr => {
+                // If the root `Source: CoerceUnsized<Target>` obligation can't possibly hold,
+                // we don't have to assume that this is unsizing coercion (it will always lead to an error)
+                //
+                // However, we don't want to bail early all the time, since the unholdable obligations
+                // may be interesting for diagnostics (such as trying to coerce `&T` to `&dyn Id<This = U>`),
+                // so we only bail if there (likely) is another way to convert the types.
+                if let &ty::RawPtr(source_pointee, _) = coerce_source.kind()
+                    && let &ty::RawPtr(target_pointee, _) = target.kind()
+                    && let Some(dyn_metadata_adt_def_id) =
+                        self.tcx.lang_items().get(LangItem::DynMetadata)
                     && let Some(metadata_type_def_id) =
                         self.tcx.lang_items().get(LangItem::Metadata)
                 {
