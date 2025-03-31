@@ -47,6 +47,7 @@ pub enum ExportedSymbol<'tcx> {
     AsyncDropGlue(DefId, Ty<'tcx>),
     ThreadLocalShim(DefId),
     NoDefId(ty::SymbolName<'tcx>),
+    Alias { original: DefId, alternative_symbol: ty::SymbolName<'tcx> },
 }
 
 impl<'tcx> ExportedSymbol<'tcx> {
@@ -72,6 +73,7 @@ impl<'tcx> ExportedSymbol<'tcx> {
                 args: ty::GenericArgs::empty(),
             }),
             ExportedSymbol::NoDefId(symbol_name) => symbol_name,
+            ExportedSymbol::Alias { original: _, alternative_symbol } => alternative_symbol,
         }
     }
 }

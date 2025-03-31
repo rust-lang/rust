@@ -27,6 +27,10 @@ impl<I: Idx + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for IndexVe
     type Value<'tcx> = IndexVec<I, T::Value<'tcx>>;
 }
 
+impl<T: ParameterizedOverTcx> ParameterizedOverTcx for Vec<T> {
+    type Value<'tcx> = Vec<T::Value<'tcx>>;
+}
+
 impl<I: Hash + Eq + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for UnordMap<I, T> {
     type Value<'tcx> = UnordMap<I, T::Value<'tcx>>;
 }
@@ -87,6 +91,8 @@ trivially_parameterized_over_tcx! {
     rustc_attr_data_structures::DefaultBodyStability,
     rustc_attr_data_structures::Deprecation,
     rustc_attr_data_structures::Stability,
+    rustc_attr_data_structures::EIIDecl,
+    rustc_attr_data_structures::EIIImpl,
     rustc_hir::Constness,
     rustc_hir::Defaultness,
     rustc_hir::Safety,

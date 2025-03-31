@@ -735,7 +735,7 @@ fn walk_mac<T: MutVisitor>(vis: &mut T, mac: &mut MacCall) {
 
 fn walk_macro_def<T: MutVisitor>(vis: &mut T, macro_def: &mut MacroDef) {
     let MacroDef { body, macro_rules: _, eii_macro_for } = macro_def;
-    if let Some(EIIMacroFor { extern_item_path, impl_unsafe: _ }) = eii_macro_for {
+    if let Some(EIIMacroFor { extern_item_path, impl_unsafe: _, span: _ }) = eii_macro_for {
         vis.visit_path(extern_item_path);
     }
     visit_delim_args(vis, body);

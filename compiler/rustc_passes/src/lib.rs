@@ -23,6 +23,7 @@ mod check_export;
 pub mod dead;
 mod debugger_visualizer;
 mod diagnostic_items;
+mod eii;
 pub mod entry;
 mod errors;
 #[cfg(debug_assertions)]
@@ -56,4 +57,5 @@ pub fn provide(providers: &mut Providers) {
     stability::provide(providers);
     upvars::provide(providers);
     check_export::provide(providers);
+    providers.get_externally_implementable_item_impls = eii::get_eii_impls;
 }

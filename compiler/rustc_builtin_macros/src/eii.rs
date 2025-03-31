@@ -63,8 +63,14 @@ fn eii_(
 
     let item = item.into_inner();
 
-    let ast::Item { attrs, id: _, span: item_span, vis, kind: ItemKind::Fn(mut func), tokens: _ } =
-        item
+    let ast::Item {
+        mut attrs,
+        id: _,
+        span: item_span,
+        vis,
+        kind: ItemKind::Fn(mut func),
+        tokens: _,
+    } = item
     else {
         ecx.dcx()
             .emit_err(EIIMacroExpectedFunction { span, name: path_to_string(&meta_item.path) });
@@ -105,8 +111,8 @@ fn eii_(
             id: ast::DUMMY_NODE_ID,
             span,
             vis: ast::Visibility { span, kind: ast::VisibilityKind::Inherited, tokens: None },
-            ident: Ident { name: kw::Underscore, span },
             kind: ast::ItemKind::Const(Box::new(ast::ConstItem {
+                ident: Ident { name: kw::Underscore, span },
                 defaultness: ast::Defaultness::Final,
                 generics: ast::Generics::default(),
                 ty: P(ast::Ty {
@@ -130,7 +136,6 @@ fn eii_(
                                         kind: ast::VisibilityKind::Inherited,
                                         tokens: None
                                     },
-                                    ident: item_name,
                                     kind: ItemKind::Fn(default_func),
                                     tokens: None,
                                 })),
@@ -140,7 +145,6 @@ fn eii_(
                             rules: ast::BlockCheckMode::Default,
                             span,
                             tokens: None,
-                            could_be_bare_literal: false,
                         }),
                         None,
                     ),
@@ -148,6 +152,7 @@ fn eii_(
                     attrs: ThinVec::new(),
                     tokens: None,
                 })),
+                define_opaque: None,
             })),
             tokens: None,
         })))
@@ -179,6 +184,21 @@ fn eii_(
     }
 
     // extern "…" { safe fn item(); }
+    // #[eii_mangle_extern]
+    attrs.push(ast::Attribute {
+        kind: ast::AttrKind::Normal(P(ast::NormalAttr {
+            item: ast::AttrItem {
+                unsafety: ast::Safety::Default,
+                path: ast::Path::from_ident(Ident::new(sym::eii_mangle_extern, span)),
+                args: ast::AttrArgs::Empty,
+                tokens: None,
+            },
+            tokens: None,
+        })),
+        id: ecx.sess.psess.attr_id_generator.mk_attr_id(),
+        style: ast::AttrStyle::Outer,
+        span,
+    });
     let extern_block = Annotatable::Item(P(ast::Item {
         attrs: ast::AttrVec::default(),
         id: ast::DUMMY_NODE_ID,
@@ -258,6 +278,7 @@ fn eii_(
                 eii_macro_for: Some(ast::EIIMacroFor {
                     extern_item_path: ast::Path::from_ident(func.ident),
                     impl_unsafe,
+                    span: decl_span,
                 }),
             },
         ),
@@ -317,7 +338,7 @@ pub(crate) fn eii_macro_for(
         false
     };
 
-    d.eii_macro_for = Some(EIIMacroFor { extern_item_path, impl_unsafe });
+    d.eii_macro_for = Some(EIIMacroFor { extern_item_path, impl_unsafe, span });
 
     // Return the original item and the new methods.
     vec![item]

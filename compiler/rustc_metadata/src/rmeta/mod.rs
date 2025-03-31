@@ -8,6 +8,7 @@ use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
+use rustc_attr_parsing::{EIIDecl, EIIImpl};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir::PreciseCapturingArgKind;
@@ -256,10 +257,13 @@ pub(crate) struct CrateRoot {
     required_panic_strategy: Option<PanicStrategy>,
     panic_in_drop_strategy: PanicStrategy,
     edition: Edition,
+
+    // TODO: these booleans can be replaced by the entries in `externally_implementable_items`
     has_global_allocator: bool,
     has_alloc_error_handler: bool,
     has_panic_handler: bool,
     has_default_lib_allocator: bool,
+    externally_implementable_items: LazyArray<(DefId, (EIIDecl, Vec<(DefId, EIIImpl)>))>,
 
     crate_deps: LazyArray<CrateDep>,
     dylib_dependency_formats: LazyArray<Option<LinkagePreference>>,

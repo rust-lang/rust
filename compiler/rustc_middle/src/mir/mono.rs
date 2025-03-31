@@ -181,6 +181,12 @@ impl<'tcx> MonoItem<'tcx> {
             return opt_incr_drop_glue_mode(tcx, ty);
         }
 
+        // eii shims are only generated in the final crate.
+        // As such, they will be both globally shared and unique.
+        if let InstanceKind::EiiShim { .. } = instance.def {
+            return InstantiationMode::GloballyShared { may_conflict: false };
+        }
+
         // We need to ensure that we do not decide the InstantiationMode of an exported symbol is
         // LocalCopy. Since exported symbols are computed based on the output of
         // cross_crate_inlinable, we are beholden to our previous decisions.
@@ -532,7 +538,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceKind::FnPtrAddrShim(..)
                             | InstanceKind::AsyncDropGlue(..)
                             | InstanceKind::FutureDropPollShim(..)
-                            | InstanceKind::AsyncDropGlueCtorShim(..) => None,
+                            | InstanceKind::AsyncDropGlueCtorShim(..)
+                            | InstanceKind::EiiShim { .. } => None,
                         }
                     }
                     MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),

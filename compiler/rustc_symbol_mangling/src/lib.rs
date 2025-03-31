@@ -240,6 +240,7 @@ fn compute_symbol_name<'tcx>(
     if tcx.is_foreign_item(def_id)
         && (!tcx.sess.target.is_like_wasm
             || !tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id))
+        && !attrs.flags.contains(CodegenFnAttrFlags::EII_MANGLE_EXTERN)
     {
         if let Some(name) = attrs.link_name {
             return name.to_string();
@@ -256,6 +257,18 @@ fn compute_symbol_name<'tcx>(
         // Don't mangle
         return tcx.item_name(def_id).to_string();
     }
+
+    // if this is an EII shim, it has a kind of fake defid. It has one because it has to have one,
+    // but when we generate a symbol for it the name must actually match the name of the extern
+    // generated as part of the declaration of the EII. So, we use an instance of `extern_item` as
+    // the instance used for ocmputing the symbol name.
+    let instance = if let ty::InstanceKind::EiiShim { def_id: _, extern_item, chosen_impl: _ } =
+        instance.def
+    {
+        Instance::mono(tcx, extern_item)
+    } else {
+        instance
+    };
 
     // If we're dealing with an instance of a function that's inlined from
     // another crate but we're marking it as globally shared to our

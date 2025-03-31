@@ -1959,6 +1959,7 @@ pub struct MacroDef {
 pub struct EIIMacroFor {
     pub extern_item_path: Path,
     pub impl_unsafe: bool,
+    pub span: Span,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Copy, Hash, Eq, PartialEq)]

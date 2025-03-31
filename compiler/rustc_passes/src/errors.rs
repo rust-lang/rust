@@ -1974,6 +1974,7 @@ pub(crate) enum UnexportableItem<'a> {
     },
 }
 
+#[derive(Diagnostic)]
 #[diag(passes_eii_impl_not_function)]
 pub(crate) struct EIIImplNotFunction {
     #[primary_span]
@@ -2000,4 +2001,41 @@ pub(crate) struct EIIImplRequiresUnsafeSuggestion {
     pub left: Span,
     #[suggestion_part(code = ")")]
     pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_eii_without_impl)]
+pub(crate) struct EiiWithoutImpl {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub name: Symbol,
+
+    pub current_crate_name: Symbol,
+    #[help]
+    pub help: (),
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_duplicate_eii_impls)]
+pub(crate) struct DuplicateEiiImpls {
+    pub name: Symbol,
+
+    #[primary_span]
+    #[label(passes_first)]
+    pub first_span: Span,
+    pub first_crate: Symbol,
+
+    #[label(passes_second)]
+    pub second_span: Span,
+    pub second_crate: Symbol,
+
+    #[note]
+    pub additional_crates: Option<()>,
+
+    pub num_additional_crates: usize,
+    pub additional_crate_names: String,
+
+    #[help]
+    pub help: (),
 }

@@ -604,6 +604,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // We have already encoded some things. Get their combined size from the current position.
         stats.push(("preamble", self.position()));
 
+        let externally_implementable_items = stat!("externally-implementable-items", || self
+            .encode_externally_implementable_items());
+
         let (crate_deps, dylib_dependency_formats) =
             stat!("dep", || (self.encode_crate_deps(), self.encode_dylib_dependency_formats()));
 
@@ -714,6 +717,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
                 has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
                 has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
+                externally_implementable_items,
+
                 has_default_lib_allocator: ast::attr::contains_name(
                     attrs,
                     sym::default_lib_allocator,
@@ -1868,6 +1873,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let foreign_modules = self.tcx.foreign_modules(LOCAL_CRATE);
         self.lazy_array(foreign_modules.iter().map(|(_, m)| m).cloned())
+    }
+
+    fn encode_externally_implementable_items(
+        &mut self,
+    ) -> LazyArray<(DefId, (EIIDecl, Vec<(DefId, EIIImpl)>))> {
+        empty_proc_macro!(self);
+        let externally_implementable_items = self.tcx.externally_implementable_items(LOCAL_CRATE);
+
+        self.lazy_array(externally_implementable_items.iter().map(|(decl_did, (decl, impls))| {
+            (*decl_did, (decl.clone(), impls.iter().map(|(impl_did, i)| (*impl_did, *i)).collect()))
+        }))
     }
 
     fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable, ExpnHashTable) {

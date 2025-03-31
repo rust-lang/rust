@@ -2,11 +2,11 @@ use rustc_abi::ExternAbi;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_attr_parsing::AttributeKind;
+use rustc_attr_parsing::{AttributeKind, EIIDecl};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_hir::{self as hir, HirId, LifetimeSource, IsAnonInPath, PredicateOrigin};
+use rustc_hir::{self as hir, HirId, LifetimeSource, PredicateOrigin};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -185,13 +185,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::MacroDef(
                 _,
                 MacroDef {
-                    eii_macro_for: Some(EIIMacroFor { extern_item_path, impl_unsafe }), ..
+                    eii_macro_for: Some(EIIMacroFor { extern_item_path, impl_unsafe, span }),
+                    ..
                 },
             ) => {
-                vec![hir::Attribute::Parsed(AttributeKind::EiiMacroFor {
+                vec![hir::Attribute::Parsed(AttributeKind::EiiMacroFor(EIIDecl {
                     eii_extern_item: self.lower_path_simple_eii(id, extern_item_path),
                     impl_unsafe: *impl_unsafe,
-                })]
+                    span: self.lower_span(*span),
+                }))]
             }
             ItemKind::ExternCrate(..)
             | ItemKind::Use(..)

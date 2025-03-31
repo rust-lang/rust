@@ -10,7 +10,7 @@ use std::collections::hash_map::Entry;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, MetaItemLit, ast};
-use rustc_attr_parsing::{AttributeKind, EIIImpl, ReprAttr, find_attr};
+use rustc_attr_parsing::{AttributeKind, EIIDecl, EIIImpl, ReprAttr, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -129,6 +129,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 Attribute::Parsed(AttributeKind::EiiMacroFor { .. }) => {
                     // no checks needed
+                }
+                Attribute::Parsed(AttributeKind::EiiMangleExtern { .. }) => {
+                    // TODO: checks?
                 }
                 Attribute::Parsed(AttributeKind::AllowInternalUnstable(syms)) => self
                     .check_allow_internal_unstable(
@@ -496,7 +499,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
 
-            if find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiMacroFor { impl_unsafe, .. } if *impl_unsafe)
+            if find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiMacroFor(EIIDecl { impl_unsafe, .. }) if *impl_unsafe)
                 && !impl_marked_unsafe
             {
                 self.dcx().emit_err(errors::EIIImplRequiresUnsafe {

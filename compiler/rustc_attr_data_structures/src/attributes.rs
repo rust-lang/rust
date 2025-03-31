@@ -139,13 +139,21 @@ impl Deprecation {
     }
 }
 
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct EIIImpl {
     pub eii_macro: DefId,
     pub impl_marked_unsafe: bool,
     pub span: Span,
     pub inner_span: Span,
     pub is_default: bool,
+}
+
+#[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct EIIDecl {
+    pub eii_extern_item: DefId,
+    /// whether or not it is unsafe to implement this EII
+    pub impl_unsafe: bool,
+    pub span: Span,
 }
 
 /// Represent parsed, *built in*, inert attributes.
@@ -200,11 +208,8 @@ pub enum AttributeKind {
         comment: Symbol,
     },
     EiiImpl(ThinVec<EIIImpl>),
-    EiiMacroFor {
-        eii_extern_item: DefId,
-        /// whether or not it is unsafe to implement this EII
-        impl_unsafe: bool,
-    },
+    EiiMacroFor(EIIDecl),
+    EiiMangleExtern,
     MacroTransparency(Transparency),
     Repr(ThinVec<(ReprAttr, Span)>),
     Stability {

@@ -633,6 +633,9 @@ fn characteristic_def_id_of_mono_item<'tcx>(
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
                 ty::InstanceKind::Item(def) => def,
+                // EII shims have a characteristic defid.
+                // But it's not their own, its the one of the extern item it is implementing.
+                ty::InstanceKind::EiiShim { def_id: _, extern_item, chosen_impl: _ } => extern_item,
                 ty::InstanceKind::VTableShim(..)
                 | ty::InstanceKind::ReifyShim(..)
                 | ty::InstanceKind::FnPtrShim(..)
@@ -802,6 +805,14 @@ fn mono_item_visibility<'tcx>(
         | InstanceKind::AsyncDropGlue(def_id, _)
         | InstanceKind::AsyncDropGlueCtorShim(def_id, _) => def_id,
 
+        InstanceKind::EiiShim { .. } => {
+            // Out of the three visibilities, only Default makes symbols visible outside the current
+            // DSO. For EIIs this is explicitly the intended visibilty. If another DSO is refering
+            // to an extern item, the implementation may be generated downstream. That symbol does
+            // have to be visible to the linker!
+            return Visibility::Default;
+        }
+
         // We match the visibility of statics here
         InstanceKind::ThreadLocalShim(def_id) => {
             return static_visibility(tcx, can_be_internalized, def_id);
@@ -920,6 +931,7 @@ fn mono_item_visibility<'tcx>(
         //   LLVM internalize them as this decision is left up to the linker to
         //   omit them, so prevent them from being internalized.
         let attrs = tcx.codegen_fn_attrs(def_id);
+        // TODO: EII might replace this
         if attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
             *can_be_internalized = false;
         }

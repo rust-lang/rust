@@ -14,6 +14,7 @@ use std::sync::Arc;
 use rustc_arena::TypedArena;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_attr_data_structures::{EIIDecl, EIIImpl};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
@@ -1113,6 +1114,10 @@ rustc_queries! {
         desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
     }
 
+    query get_externally_implementable_item_impls(_: ()) -> &'tcx rustc_data_structures::fx::FxIndexMap<DefId, (DefId, LocalDefId)> {
+        desc { "check externally implementable items" }
+    }
+
     query check_mod_naked_functions(key: LocalModDefId) {
         desc { |tcx| "checking naked functions in {}", describe_as_module(key, tcx) }
     }
@@ -1904,6 +1909,13 @@ rustc_queries! {
     query foreign_modules(_: CrateNum) -> &'tcx FxIndexMap<DefId, ForeignModule> {
         arena_cache
         desc { "looking up the foreign modules of a linked crate" }
+        separate_provide_extern
+    }
+
+    /// Returns a list of all `externally implementable items` crate.
+    query externally_implementable_items(_: CrateNum) -> &'tcx FxIndexMap<DefId, (EIIDecl, FxIndexMap<DefId, EIIImpl>)> {
+        arena_cache
+        desc { "looking up the externally implementable items of a crate" }
         separate_provide_extern
     }
 

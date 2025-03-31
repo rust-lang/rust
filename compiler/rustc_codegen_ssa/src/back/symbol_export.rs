@@ -492,7 +492,8 @@ fn upstream_monomorphizations_provider(
                 ExportedSymbol::AsyncDropGlue(def_id, ty) => (def_id, tcx.mk_args(&[ty.into()])),
                 ExportedSymbol::NonGeneric(..)
                 | ExportedSymbol::ThreadLocalShim(..)
-                | ExportedSymbol::NoDefId(..) => {
+                | ExportedSymbol::NoDefId(..)
+                | ExportedSymbol::Alias { .. } => {
                     // These are no monomorphizations
                     continue;
                 }
@@ -645,6 +646,7 @@ pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
                 instantiating_crate,
             )
         }
+        ExportedSymbol::Alias { original: _, alternative_symbol } => alternative_symbol.to_string(),
         ExportedSymbol::NoDefId(symbol_name) => symbol_name.to_string(),
     }
 }
@@ -672,6 +674,10 @@ fn calling_convention_for_symbol<'tcx>(
         ExportedSymbol::NoDefId(..) => None,
         // ThreadLocalShim always follow the target's default symbol decoration scheme.
         ExportedSymbol::ThreadLocalShim(..) => None,
+        // Aliases have the same calling convention as the thing they alias.
+        ExportedSymbol::Alias { original, alternative_symbol: _ } => {
+            Some(Instance::mono(tcx, original))
+        }
     };
 
     instance

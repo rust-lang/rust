@@ -51,7 +51,7 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
     }
 }
 
-fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
+fn codegen_fn_attrs<'tcx>(tcx: TyCtxt<'tcx>, did: LocalDefId) -> CodegenFnAttrs {
     if cfg!(debug_assertions) {
         let def_kind = tcx.def_kind(did);
         assert!(
@@ -112,17 +112,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
         if let hir::Attribute::Parsed(p) = attr {
             match p {
-                /*
-                AttributeKind::EiiImpl(eii_macro) => {
-                    let Some(eii_extern_item) = find_attr!(
-                        tcx.get_all_attrs(eii_macro),
-                        AttributeKind::EiiMacroFor { eii_extern_item, .. } => *eii_extern_item
-                    ) else {
-                        tcx.dcx().span_delayed_bug(attr.span(), "missing attr on EII macro");
-                        continue;
-                    };
-                    let _ = eii_extern_item; // XXX mangle as this item or something.
-                }*/
+                AttributeKind::EiiMangleExtern => {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::EII_MANGLE_EXTERN;
+                }
                 AttributeKind::Repr(reprs) => {
                     codegen_fn_attrs.alignment = reprs
                         .iter()
@@ -765,8 +757,8 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Option<u16> {
     }
 }
 
-fn check_link_name_xor_ordinal(
-    tcx: TyCtxt<'_>,
+fn check_link_name_xor_ordinal<'tcx>(
+    tcx: TyCtxt<'tcx>,
     codegen_fn_attrs: &CodegenFnAttrs,
     inline_span: Option<Span>,
 ) {

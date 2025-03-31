@@ -1700,7 +1700,7 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(BasicBlockData<'_>, 128);
     static_assert_size!(LocalDecl<'_>, 40);
-    static_assert_size!(SourceScopeData<'_>, 64);
+    static_assert_size!(SourceScopeData<'_>, 72);
     static_assert_size!(Statement<'_>, 32);
     static_assert_size!(Terminator<'_>, 96);
     static_assert_size!(VarDebugInfo<'_>, 88);

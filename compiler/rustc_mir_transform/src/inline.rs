@@ -761,7 +761,8 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         | InstanceKind::DropGlue(..)
         | InstanceKind::CloneShim(..)
         | InstanceKind::ThreadLocalShim(..)
-        | InstanceKind::FnPtrAddrShim(..) => return Ok(()),
+        | InstanceKind::FnPtrAddrShim(..)
+        | InstanceKind::EiiShim { .. } => return Ok(()),
     }
 
     if inliner.tcx().is_constructor(callee_def_id) {

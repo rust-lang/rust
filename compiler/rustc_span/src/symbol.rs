@@ -880,6 +880,7 @@ symbols! {
         eii_internals,
         eii_macro,
         eii_macro_for,
+        eii_mangle_extern,
         emit,
         emit_enum,
         emit_enum_variant,

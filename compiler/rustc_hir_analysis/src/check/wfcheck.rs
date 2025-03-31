@@ -3,7 +3,7 @@ use std::ops::{ControlFlow, Deref};
 
 use hir::intravisit::{self, Visitor};
 use rustc_abi::ExternAbi;
-use rustc_attr_parsing::{AttributeKind, EIIImpl, find_attr};
+use rustc_attr_parsing::{AttributeKind, EIIDecl, EIIImpl, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
@@ -1331,7 +1331,7 @@ fn check_item_fn(
         {
             // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
             // signature that we'd like to compare the function we're currently checking with
-            if let Some(eii_extern_item) = find_attr!(tcx.get_all_attrs(*eii_macro), AttributeKind::EiiMacroFor {eii_extern_item, ..} => *eii_extern_item)
+            if let Some(eii_extern_item) = find_attr!(tcx.get_all_attrs(*eii_macro), AttributeKind::EiiMacroFor(EIIDecl {eii_extern_item, ..}) => *eii_extern_item)
             {
                 let _ = compare_eii_function_types(
                     tcx,

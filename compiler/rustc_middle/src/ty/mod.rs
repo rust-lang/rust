@@ -1731,23 +1731,25 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the possibly-auto-generated MIR of a [`ty::InstanceKind`].
     #[instrument(skip(self), level = "debug")]
     pub fn instance_mir(self, instance: ty::InstanceKind<'tcx>) -> &'tcx Body<'tcx> {
-        match instance {
-            ty::InstanceKind::Item(def) => {
-                debug!("calling def_kind on def: {:?}", def);
-                let def_kind = self.def_kind(def);
-                debug!("returned from def_kind: {:?}", def_kind);
-                match def_kind {
-                    DefKind::Const
-                    | DefKind::Static { .. }
-                    | DefKind::AssocConst
-                    | DefKind::Ctor(..)
-                    | DefKind::AnonConst
-                    | DefKind::InlineConst => self.mir_for_ctfe(def),
-                    // If the caller wants `mir_for_ctfe` of a function they should not be using
-                    // `instance_mir`, so we'll assume const fn also wants the optimized version.
-                    _ => self.optimized_mir(def),
-                }
+        let item_mir = |def| {
+            debug!("calling def_kind on def: {:?}", def);
+            let def_kind = self.def_kind(def);
+            debug!("returned from def_kind: {:?}", def_kind);
+            match def_kind {
+                DefKind::Const
+                | DefKind::Static { .. }
+                | DefKind::AssocConst
+                | DefKind::Ctor(..)
+                | DefKind::AnonConst
+                | DefKind::InlineConst => self.mir_for_ctfe(def),
+                // If the caller wants `mir_for_ctfe` of a function they should not be using
+                // `instance_mir`, so we'll assume const fn also wants the optimized version.
+                _ => self.optimized_mir(def),
             }
+        };
+
+        match instance {
+            ty::InstanceKind::Item(def) => item_mir(def),
             ty::InstanceKind::VTableShim(..)
             | ty::InstanceKind::ReifyShim(..)
             | ty::InstanceKind::Intrinsic(..)
@@ -1761,7 +1763,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceKind::ThreadLocalShim(..)
             | ty::InstanceKind::FnPtrAddrShim(..)
             | ty::InstanceKind::AsyncDropGlueCtorShim(..)
-            | ty::InstanceKind::AsyncDropGlue(..) => self.mir_shims(instance),
+            | ty::InstanceKind::AsyncDropGlue(..)
+            | ty::InstanceKind::EiiShim { .. } => self.mir_shims(instance),
         }
     }
 

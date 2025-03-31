@@ -23,6 +23,7 @@
 //! considering here as at that point, everything is monomorphic.
 
 use hir::def_id::LocalDefIdSet;
+use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::Node;
@@ -184,7 +185,14 @@ impl<'tcx> ReachableContext<'tcx> {
                 CodegenFnAttrs::EMPTY
             };
             let is_extern = codegen_attrs.contains_extern_indicator();
-            if is_extern {
+
+            // Keep all implementation bodies for EIIs. Sometimes we can only decide in the final
+            // crate whether we do or don't need to codegen them so it'd be a shame if they got
+            // filtered out here already.
+            let eii_impl =
+                find_attr!(self.tcx.get_all_attrs(search_item), AttributeKind::EiiImpl(_));
+
+            if is_extern || eii_impl {
                 self.reachable_symbols.insert(search_item);
             }
         } else {
@@ -486,6 +494,15 @@ fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
         for id in crate_items.impl_items() {
             if has_custom_linkage(tcx, id.owner_id.def_id) {
                 reachable_context.worklist.push(id.owner_id.def_id);
+            }
+        }
+
+        // TODO: make a query for getting EIIs, this is probably expensive while we can do easily
+        // add the (relatively few) EIIs to a separate list and make a query for them in another pass somewhere
+        for id in crate_items.definitions() {
+            // if something implements an EII, it's automatically reachable
+            if find_attr!(tcx.get_all_attrs(id), AttributeKind::EiiImpl(..)) {
+                reachable_context.worklist.push(id);
             }
         }
     }

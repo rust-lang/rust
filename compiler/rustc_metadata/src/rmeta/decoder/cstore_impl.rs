@@ -24,7 +24,7 @@ use super::{Decodable, DecodeContext, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
 use crate::rmeta::AttrFlags;
 use crate::rmeta::table::IsDefault;
-use crate::{foreign_modules, native_libs};
+use crate::{eii, foreign_modules, native_libs};
 
 trait ProcessQueryValue<'tcx, T> {
     fn process_decoded(self, _tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> T;
@@ -373,6 +373,13 @@ provide! { tcx, def_id, other, cdata,
     }
     native_libraries => { cdata.get_native_libraries(tcx.sess).collect() }
     foreign_modules => { cdata.get_foreign_modules(tcx.sess).map(|m| (m.def_id, m)).collect() }
+    externally_implementable_items => {
+    cdata.get_externally_implementable_items(tcx.sess)
+        .map(|(decl_did, (decl, impls))| (
+            decl_did,
+            (decl, impls.into_iter().collect())
+        )).collect()
+    }
     crate_hash => { cdata.root.header.hash }
     crate_host_hash => { cdata.host_hash }
     crate_name => { cdata.root.header.name }
@@ -450,6 +457,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         },
         native_libraries: native_libs::collect,
         foreign_modules: foreign_modules::collect,
+        externally_implementable_items: eii::collect,
 
         // Returns a map from a sufficiently visible external item (i.e., an
         // external item that is visible from at least one local module) to a

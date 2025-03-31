@@ -2850,7 +2850,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     self.parent_scope.macro_rules = self.r.macro_rules_scopes[&def_id];
                 }
 
-                if let Some(EIIMacroFor { extern_item_path, impl_unsafe: _ }) =
+                if let Some(EIIMacroFor { extern_item_path, impl_unsafe: _, span: _ }) =
                     &macro_def.eii_macro_for
                 {
                     self.smart_resolve_path(
