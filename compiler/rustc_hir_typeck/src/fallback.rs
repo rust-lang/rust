@@ -6,11 +6,11 @@ use rustc_data_structures::graph::iterate::DepthFirstSearch;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_data_structures::graph::{self};
 use rustc_data_structures::unord::{UnordBag, UnordMap, UnordSet};
-use rustc_hir as hir;
-use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor};
+use rustc_hir::{self as hir, CRATE_HIR_ID, HirId};
+use rustc_lint::builtin::FLOAT_LITERAL_F32_FALLBACK;
 use rustc_middle::ty::{self, FloatVid, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
@@ -192,6 +192,20 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .iter()
             .flat_map(|ty| ty.float_vid())
             .filter(|vid| roots.contains(&self.root_float_var(*vid)))
+            .inspect(|vid| {
+                let span = self.float_var_origin(*vid);
+                // Show the entire literal in the suggestion to make it clearer.
+                let literal = self.tcx.sess.source_map().span_to_snippet(span).ok();
+                self.tcx.emit_node_span_lint(
+                    FLOAT_LITERAL_F32_FALLBACK,
+                    CRATE_HIR_ID,
+                    span,
+                    errors::FloatLiteralF32Fallback {
+                        span: literal.as_ref().map(|_| span),
+                        literal: literal.unwrap_or_default(),
+                    },
+                );
+            })
             .collect();
         debug!("calculate_fallback_to_f32: fallback_to_f32={:?}", fallback_to_f32);
         fallback_to_f32

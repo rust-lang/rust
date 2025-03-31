@@ -1170,3 +1170,11 @@ pub(crate) struct AbiCustomCall {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_float_literal_f32_fallback)]
+pub(crate) struct FloatLiteralF32Fallback {
+    pub literal: String,
+    #[suggestion(code = "{literal}_f32", applicability = "machine-applicable")]
+    pub span: Option<Span>,
+}
