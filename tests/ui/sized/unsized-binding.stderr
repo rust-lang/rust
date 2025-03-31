@@ -13,6 +13,32 @@ LL -     let x = *"";
 LL +     let x = "";
    |
 
-error: aborting due to 1 previous error
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-binding.rs:3:20
+   |
+LL |     println!("{}", x);
+   |               --   ^ doesn't have a size known at compile-time
+   |               |
+   |               required by a bound introduced by this call
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by an implicit `Sized` bound in `core::fmt::rt::Argument::<'_>::new_display`
+  --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-binding.rs:4:20
+   |
+LL |     println!("{}", x);
+   |               --   ^ doesn't have a size known at compile-time
+   |               |
+   |               required by a bound introduced by this call
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by an implicit `Sized` bound in `core::fmt::rt::Argument::<'_>::new_display`
+  --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
