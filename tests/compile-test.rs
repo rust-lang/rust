@@ -147,7 +147,11 @@ impl TestContext {
                 .map(|filters| filters.split(',').map(str::to_string).collect())
                 .unwrap_or_default(),
             target: None,
-            bless_command: Some("cargo uibless".into()),
+            bless_command: Some(if IS_RUSTC_TEST_SUITE {
+                "./x test src/tools/clippy --bless".into()
+            } else {
+                "cargo uibless".into()
+            }),
             out_dir: target_dir.join("ui_test"),
             ..Config::rustc(Path::new("tests").join(test_dir))
         };
