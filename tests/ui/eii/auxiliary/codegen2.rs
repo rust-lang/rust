@@ -4,4 +4,3 @@
 
 #[eii(eii1)]
 pub fn decl1(x: u64);
-

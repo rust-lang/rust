@@ -154,7 +154,7 @@ builtin_macros_eii_macro_expected_function = `#[{$name}]` is only valid on funct
 builtin_macros_eii_macro_for_expected_list = `#[eii_macro_for(...)]` expects a list of one or two elements
 builtin_macros_eii_macro_for_expected_macro = `#[eii_macro_for(...)]` is only valid on macros
 builtin_macros_eii_macro_for_expected_max_one_argument = `#[{$name}]` expected no arguments or a single argument: `#[{$name}(default)]`
-builtin_macros_eii_macro_for_expected_unsafe = expected this argument to be "unsafe".
+builtin_macros_eii_macro_for_expected_unsafe = expected this argument to be "unsafe"
     .note = the second argument is optional
 
 builtin_macros_env_not_defined = environment variable `{$var}` not defined at compile time
