@@ -383,6 +383,10 @@ passes_inline_ignored_constants =
     .warn = {-passes_previously_accepted}
     .note = {-passes_see_issue(issue: "65833")}
 
+passes_inline_ignored_for_exported =
+    `#[inline]` is ignored on externally exported functions
+    .help = externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`
+
 passes_inline_ignored_function_prototype =
     `#[inline]` is ignored on function prototypes
 

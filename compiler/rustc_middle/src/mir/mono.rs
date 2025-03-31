@@ -150,6 +150,7 @@ impl<'tcx> MonoItem<'tcx> {
 
         // If the function is #[naked] or contains any other attribute that requires exactly-once
         // instantiation:
+        // We emit an unused_attributes lint for this case, which should be kept in sync if possible.
         let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
         if codegen_fn_attrs.contains_extern_indicator()
             || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)

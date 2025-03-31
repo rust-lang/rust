@@ -451,6 +451,23 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 });
             }
         }
+
+        // `#[inline]` is ignored if the symbol must be codegened upstream because it's exported.
+        if let Some(did) = hir_id.as_owner()
+            && self.tcx.def_kind(did).has_codegen_attrs()
+            && !matches!(attr.meta_item_list().as_deref(), Some([item]) if item.has_name(sym::never))
+        {
+            let attrs = self.tcx.codegen_fn_attrs(did);
+            // Not checking naked as `#[inline]` is forbidden for naked functions anyways.
+            if attrs.contains_extern_indicator() {
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span(),
+                    errors::InlineIgnoredForExported {},
+                );
+            }
+        }
     }
 
     /// Checks that `#[coverage(..)]` is applied to a function/closure/method,
