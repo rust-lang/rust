@@ -305,13 +305,12 @@ impl Attr {
                 Some(Box::new(AttrInput::TokenTree(tt::TopSubtree::from_subtree(tree))))
             }
             (Some(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '=', .. }))), _) => {
-                let input = match input.flat_tokens().get(1) {
+                match input.flat_tokens().get(1) {
                     Some(tt::TokenTree::Leaf(tt::Leaf::Literal(lit))) => {
                         Some(Box::new(AttrInput::Literal(lit.clone())))
                     }
                     _ => None,
-                };
-                input
+                }
             }
             _ => None,
         };

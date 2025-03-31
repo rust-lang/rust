@@ -363,7 +363,8 @@ impl<'a, S: Copy> TokenTreesView<'a, S> {
     ) -> impl Iterator<Item = TokenTreesView<'a, S>> {
         let mut subtree_iter = self.iter();
         let mut need_to_yield_even_if_empty = true;
-        let result = std::iter::from_fn(move || {
+
+        std::iter::from_fn(move || {
             if subtree_iter.is_empty() && !need_to_yield_even_if_empty {
                 return None;
             };
@@ -379,8 +380,7 @@ impl<'a, S: Copy> TokenTreesView<'a, S> {
                 result = subtree_iter.from_savepoint(savepoint);
             }
             Some(result)
-        });
-        result
+        })
     }
 }
 

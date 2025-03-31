@@ -113,7 +113,8 @@ fn punctuation(
 ) -> Highlight {
     let operator_parent = token.parent();
     let parent_kind = operator_parent.as_ref().map_or(EOF, SyntaxNode::kind);
-    let h = match (kind, parent_kind) {
+
+    match (kind, parent_kind) {
         (T![?], TRY_EXPR) => HlTag::Operator(HlOperator::Other) | HlMod::ControlFlow,
         (T![&], BIN_EXPR) => HlOperator::Bitwise.into(),
         (T![&], REF_EXPR | REF_PAT) => HlTag::Operator(HlOperator::Other).into(),
@@ -240,8 +241,7 @@ fn punctuation(
             _ => HlPunct::Other,
         }
         .into(),
-    };
-    h
+    }
 }
 
 fn keyword(token: SyntaxToken, kind: SyntaxKind) -> Highlight {

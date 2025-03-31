@@ -62,8 +62,7 @@ impl ProcMacroServerProcess {
         let mut srv = create_srv()?;
         tracing::info!("sending proc-macro server version check");
         match srv.version_check() {
-            Ok(v) if v > CURRENT_API_VERSION => Err(io::Error::new(
-                io::ErrorKind::Other,
+            Ok(v) if v > CURRENT_API_VERSION => Err(io::Error::other(
                 format!( "The version of the proc-macro server ({v}) in your Rust toolchain is newer than the version supported by your rust-analyzer ({CURRENT_API_VERSION}).
             This will prevent proc-macro expansion from working. Please consider updating your rust-analyzer to ensure compatibility with your current toolchain."
                 ),
@@ -82,7 +81,7 @@ impl ProcMacroServerProcess {
             Err(e) => {
                 tracing::info!(%e, "proc-macro version check failed");
                 Err(
-                    io::Error::new(io::ErrorKind::Other, format!("proc-macro server version check failed: {e}")),
+                    io::Error::other(format!("proc-macro server version check failed: {e}")),
                 )
             }
         }

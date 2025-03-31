@@ -1027,7 +1027,8 @@ mod resolve {
                     .assert_ty_ref(Interner)
                     .clone();
             }
-            let result = if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
+
+            if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
                 // known_ty may contain other variables that are known by now
                 self.var_stack.push(var);
                 let result = known_ty.fold_with(self, outer_binder);
@@ -1038,8 +1039,7 @@ mod resolve {
                 (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
                     .assert_ty_ref(Interner)
                     .clone()
-            };
-            result
+            }
         }
 
         fn fold_inference_const(

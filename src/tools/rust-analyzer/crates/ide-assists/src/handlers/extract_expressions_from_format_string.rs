@@ -79,11 +79,11 @@ pub(crate) fn extract_expressions_from_format_string(
                             Some((NodeOrToken::Token(t), rest)) if t.kind() == WHITESPACE => rest,
                             _ => arg,
                         };
-                        let arg = match arg.split_last() {
+
+                        match arg.split_last() {
                             Some((NodeOrToken::Token(t), rest)) if t.kind() == WHITESPACE => rest,
                             _ => arg,
-                        };
-                        arg
+                        }
                     });
 
                 args.collect()

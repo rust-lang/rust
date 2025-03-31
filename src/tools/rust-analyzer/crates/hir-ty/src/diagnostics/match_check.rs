@@ -242,7 +242,7 @@ impl<'a> PatCtxt<'a> {
         ty: &Ty,
         subpatterns: Vec<FieldPat>,
     ) -> PatKind {
-        let kind = match self.infer.variant_resolution_for_pat(pat) {
+        match self.infer.variant_resolution_for_pat(pat) {
             Some(variant_id) => {
                 if let VariantId::EnumVariantId(enum_variant) = variant_id {
                     let substs = match ty.kind(Interner) {
@@ -266,8 +266,7 @@ impl<'a> PatCtxt<'a> {
                 self.errors.push(PatternError::UnresolvedVariant);
                 PatKind::Wild
             }
-        };
-        kind
+        }
     }
 
     fn lower_path(&mut self, pat: PatId, _path: &hir_def::path::Path) -> Pat {

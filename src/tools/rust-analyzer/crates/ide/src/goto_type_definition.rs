@@ -71,7 +71,7 @@ pub(crate) fn goto_type_definition(
     sema.descend_into_macros_no_opaque(token)
         .into_iter()
         .filter_map(|token| {
-            let ty = sema
+            sema
                 .token_ancestors_with_macros(token)
                 // When `token` is within a macro call, we can't determine its type. Don't continue
                 // this traversal because otherwise we'll end up returning the type of *that* macro
@@ -103,8 +103,7 @@ pub(crate) fn goto_type_definition(
                     };
 
                     Some(ty)
-                });
-            ty
+                })
         })
         .for_each(process_ty);
     Some(RangeInfo::new(range, res))

@@ -585,7 +585,7 @@ pub(crate) fn iterate_method_candidates<T>(
     mut callback: impl FnMut(ReceiverAdjustments, AssocItemId, bool) -> Option<T>,
 ) -> Option<T> {
     let mut slot = None;
-    iterate_method_candidates_dyn(
+    _ = iterate_method_candidates_dyn(
         ty,
         db,
         env,
@@ -898,7 +898,10 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
         }
     };
     //   - At least one of the types `T0..=Tn`` must be a local type. Let `Ti`` be the first such type.
-    let is_not_orphan = trait_ref.substitution.type_parameters(Interner).any(|ty| {
+
+    // FIXME: param coverage
+    //   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
+    trait_ref.substitution.type_parameters(Interner).any(|ty| {
         match unwrap_fundamental(ty).kind(Interner) {
             &TyKind::Adt(AdtId(id), _) => is_local(id.module(db.upcast()).krate()),
             TyKind::Error => true,
@@ -907,10 +910,7 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
             }),
             _ => false,
         }
-    });
-    // FIXME: param coverage
-    //   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
-    is_not_orphan
+    })
 }
 
 pub fn iterate_path_candidates(

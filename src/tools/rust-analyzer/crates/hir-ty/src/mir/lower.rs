@@ -1635,10 +1635,12 @@ impl<'ctx> MirLowerCtx<'ctx> {
         f: impl FnOnce(&mut MirLowerCtx<'_>, BasicBlockId) -> Result<()>,
     ) -> Result<Option<BasicBlockId>> {
         let begin = self.new_basic_block();
-        let prev = mem::replace(
-            &mut self.current_loop_blocks,
-            Some(LoopBlocks { begin, end: None, place, drop_scope_index: self.drop_scopes.len() }),
-        );
+        let prev = self.current_loop_blocks.replace(LoopBlocks {
+            begin,
+            end: None,
+            place,
+            drop_scope_index: self.drop_scopes.len(),
+        });
         let prev_label = if let Some(label) = label {
             // We should generate the end now, to make sure that it wouldn't change later. It is
             // bad as we may emit end (unnecessary unreachable block) for unterminating loop, but

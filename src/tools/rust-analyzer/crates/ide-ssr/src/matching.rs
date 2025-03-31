@@ -629,7 +629,8 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         let krate = self.sema.scope(expr.syntax()).map(|it| it.krate()).unwrap_or_else(|| {
             hir::Crate::from(*self.sema.db.all_crates().last().expect("no crate graph present"))
         });
-        let res = code_type
+
+        code_type
             .autoderef(self.sema.db)
             .enumerate()
             .find(|(_, deref_code_type)| pattern_type == deref_code_type)
@@ -642,8 +643,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                     pattern_type.display(self.sema.db, display_target),
                     code_type.display(self.sema.db, display_target)
                 )
-            });
-        res
+            })
     }
 
     fn get_placeholder_for_node(&self, node: &SyntaxNode) -> Option<&Placeholder> {

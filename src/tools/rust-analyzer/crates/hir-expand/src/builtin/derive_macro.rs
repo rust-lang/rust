@@ -1314,15 +1314,15 @@ fn coerce_pointee_expand(
                     }
                 })
             });
-        let self_for_traits = make::path_from_segments(
+
+        make::path_from_segments(
             [make::generic_ty_path_segment(
                 make::name_ref(&struct_name.text()),
                 self_params_for_traits,
             )],
             false,
         )
-        .clone_for_update();
-        self_for_traits
+        .clone_for_update()
     };
 
     let mut span_map = span::SpanMap::empty();
