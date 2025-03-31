@@ -112,6 +112,9 @@ struct RegionTracker {
 
     // Metadata about reachable placeholders
     reachable_placeholders: PlaceholderReachability,
+
+    // Track the existential with the smallest universe we reach.
+    min_universe_reachable_existential: Option<(UniverseIndex, RegionVid)>,
 }
 
 impl scc::Annotation for RegionTracker {
@@ -122,14 +125,25 @@ impl scc::Annotation for RegionTracker {
         } else {
             self.min_universe
         };
+
+        let min_universe_reachable_existential = smallest_reachable_existential(
+            self.min_universe_reachable_existential,
+            other.min_universe_reachable_existential,
+        );
         Self {
             reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
             min_universe,
             representative: self.representative.merge_scc(other.representative),
+            min_universe_reachable_existential,
         }
     }
 
     fn merge_reached(mut self, other: Self) -> Self {
+        self.min_universe_reachable_existential = smallest_reachable_existential(
+            self.min_universe_reachable_existential,
+            other.min_universe_reachable_existential,
+        );
+
         // This detail is subtle. We stop early here, because there may be multiple
         // illegally reached universes, but they are not equally good as blame candidates.
         // In general, the ones with the smallest indices of their RegionVids will
@@ -150,14 +164,25 @@ impl scc::Annotation for RegionTracker {
     }
 }
 
+fn smallest_reachable_existential(
+    min_universe_reachable_existential_1: Option<(UniverseIndex, RegionVid)>,
+    min_universe_reachable_existential_2: Option<(UniverseIndex, RegionVid)>,
+) -> Option<(UniverseIndex, RegionVid)> {
+    match (min_universe_reachable_existential_1, min_universe_reachable_existential_2) {
+        (Some(a), Some(b)) => Some(std::cmp::min(a, b)),
+        (a, b) => a.or(b),
+    }
+}
+
 impl RegionTracker {
     fn new(representative: RegionVid, definition: &RegionDefinition<'_>) -> Self {
         let universe_and_rvid = (definition.universe, representative);
-        let (representative, reachable_placeholders) = {
+        let (representative, reachable_placeholders, min_universe_reachable_existential) = {
             match definition.origin {
                 NllRegionVariableOrigin::FreeRegion => (
                     Representative::FreeRegion(representative),
                     PlaceholderReachability::NoPlaceholders,
+                    None,
                 ),
                 NllRegionVariableOrigin::Placeholder(_) => (
                     Representative::Placeholder(representative),
@@ -166,14 +191,21 @@ impl RegionTracker {
                         min_placeholder: representative,
                         max_placeholder: representative,
                     },
+                    None,
                 ),
                 NllRegionVariableOrigin::Existential { .. } => (
                     Representative::Existential(representative),
                     PlaceholderReachability::NoPlaceholders,
+                    Some((definition.universe, representative)),
                 ),
             }
         };
-        Self { representative, min_universe: universe_and_rvid, reachable_placeholders }
+        Self {
+            representative,
+            min_universe: universe_and_rvid,
+            reachable_placeholders,
+            min_universe_reachable_existential,
+        }
     }
 
     /// The smallest-indexed universe reachable from and/or in this SCC.
@@ -237,6 +269,16 @@ impl RegionTracker {
 
         Some((max_u_rvid, max_u))
     }
+
+    /// Check for the second and final type of placeholder leak,
+    /// where an existential `'e` outlives (transitively) a placeholder `p`
+    /// and `e` cannot name `p`.
+    ///
+    /// Returns *a* culprit (though there may be more than one).
+    fn reaches_existential_that_cannot_name_us(&self) -> Option<RegionVid> {
+        let (min_u, min_rvid) = self.min_universe_reachable_existential?;
+        (min_u < self.min_universe()).then_some(min_rvid)
+    }
 }
 
 impl scc::Annotations<RegionVid, ConstraintSccIndex, RegionTracker>
@@ -279,10 +321,19 @@ fn find_placeholder_mismatch_errors<'tcx>(
         };
 
         let scc = sccs.scc(rvid);
+        let annotation = annotations.scc_to_annotation[scc];
 
-        let Some(other_placeholder) =
-            annotations.scc_to_annotation[scc].reaches_other_placeholder(rvid)
-        else {
+        if let Some(existental_that_cannot_name_rvid) =
+            annotation.reaches_existential_that_cannot_name_us()
+        {
+            errors_buffer.push(RegionErrorKind::PlaceholderReachesExistentialThatCannotNameIt {
+                longer_fr: rvid,
+                existental_that_cannot_name_longer: existental_that_cannot_name_rvid,
+                placeholder: origin_a,
+            })
+        }
+
+        let Some(other_placeholder) = annotation.reaches_other_placeholder(rvid) else {
             trace!("{rvid:?} reaches no other placeholders");
             continue;
         };
@@ -486,6 +537,7 @@ fn rewrite_outlives<'tcx>(
     for scc in sccs.all_sccs() {
         let annotation: RegionTracker = annotations.scc_to_annotation[scc];
         if scc == sccs.scc(fr_static) {
+            trace!("Skipping adding 'static: 'static.");
             // No use adding 'static: 'static.
             continue;
         }
@@ -501,7 +553,10 @@ fn rewrite_outlives<'tcx>(
 
         let min_u = annotation.min_universe();
 
-        debug!("Universe {max_u:?} is too large for its SCC!");
+        debug!(
+            "Universe {max_u:?} is too large for its SCC, represented by {:?}",
+            annotation.representative
+        );
         let blame_to = if annotation.representative.rvid() == max_u_rvid {
             // We originally had a large enough universe to fit all our reachable
             // placeholders, but had it lowered because we also absorbed something

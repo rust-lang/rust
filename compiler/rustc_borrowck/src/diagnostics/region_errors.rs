@@ -161,6 +161,19 @@ pub(crate) enum RegionErrorKind<'tcx> {
         /// encountered and leave the rest unreported so as not to overwhelm the user.
         is_reported: bool,
     },
+    /// Indicates that a placeholder has a universe too large for one
+    /// of its member existentials, or, equivalently, that there is
+    /// a path through the outlives constraint graph from a placeholder
+    /// to an existential region that cannot name it.
+    PlaceholderReachesExistentialThatCannotNameIt {
+        /// the placeholder that transitively outlives an
+        /// existential that shouldn't leak into it
+        longer_fr: RegionVid,
+        /// The existential leaking into `longer_fr`.
+        existental_that_cannot_name_longer: RegionVid,
+        // `longer_fr`'s originating placeholder region.
+        placeholder: ty::PlaceholderRegion,
+    },
 }
 
 /// Information about the various region constraints involved in a borrow checker error.
@@ -349,15 +362,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         for (nll_error, _) in nll_errors.into_iter() {
             match nll_error {
-                // A type-test failed and the constraint was rewritten due
-                // to higher-ranked trait bounds.
                 RegionErrorKind::TypeTestError {
                     generic_kind,
                     lower_bound,
                     span,
                     failed_due_to_placeholders: true,
                 } => emit_generic_does_not_live_long_enough(self, generic_kind, span, lower_bound),
-
                 RegionErrorKind::TypeTestError {
                     lower_bound,
                     span,
@@ -396,7 +406,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         lower_bound_region,
                     ));
                 }
-
                 RegionErrorKind::UnexpectedHiddenRegion { span, hidden_ty, key, member_region } => {
                     let named_ty =
                         self.regioncx.name_regions_for_member_constraint(self.infcx.tcx, hidden_ty);
@@ -420,7 +429,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         diag.delay_as_bug();
                     }
                 }
-
                 RegionErrorKind::BoundUniversalRegionError {
                     longer_fr,
                     placeholder,
@@ -428,25 +436,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 } => {
                     let error_vid = self.regioncx.region_from_element(longer_fr, &error_element);
 
-                    // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-                    let (_, cause) = self.regioncx.find_outlives_blame_span(
+                    self.report_erroneous_rvid_reaches_placeholder(
                         longer_fr,
-                        NllRegionVariableOrigin::Placeholder(placeholder),
+                        placeholder,
                         error_vid,
                     );
-
-                    // FIXME these methods should have better names, and also probably not be this generic.
-                    // FIXME note that we *throw away* the error element here! We probably want to
-                    // thread it through the computation further down and use it, but there currently isn't
-                    // anything there to receive it.
-                    self.regioncx.universe_info(placeholder.universe).report_erroneous_element(
-                        self,
-                        placeholder,
-                        cause,
-                        None,
-                    );
                 }
-
                 RegionErrorKind::PlaceholderMismatch { rvid_a, rvid_b, origin_a, origin_b } => {
                     debug!(
                         "Placeholder mismatch: {rvid_a:?} ({origin_a:?}) reaches {rvid_b:?} ({origin_b:?})"
@@ -468,7 +463,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         Some(origin_b),
                     );
                 }
-
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
                     if is_reported {
                         self.report_region_error(
@@ -490,6 +484,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         );
                     }
                 }
+                RegionErrorKind::PlaceholderReachesExistentialThatCannotNameIt {
+                    longer_fr,
+                    existental_that_cannot_name_longer,
+                    placeholder,
+                } => self.report_erroneous_rvid_reaches_placeholder(
+                    longer_fr,
+                    placeholder,
+                    existental_that_cannot_name_longer,
+                ),
             }
         }
 
