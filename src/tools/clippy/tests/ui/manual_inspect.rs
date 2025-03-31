@@ -165,7 +165,6 @@ fn main() {
     });
 
     let _ = [0]
-        //~^ suspicious_map
         .into_iter()
         .map(|x| {
             //~^ manual_inspect
