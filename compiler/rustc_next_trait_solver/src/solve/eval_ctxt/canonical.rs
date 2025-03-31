@@ -425,7 +425,8 @@ where
 
     fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)]) {
         for &(key, ty) in opaque_types {
-            self.delegate.inject_new_hidden_type_unchecked(key, ty, self.origin_span);
+            let prev = self.delegate.register_hidden_type_in_storage(key, ty, self.origin_span);
+            assert_eq!(prev, None);
         }
     }
 }

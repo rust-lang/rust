@@ -497,7 +497,8 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
                 )
             });
 
-            self.inject_new_hidden_type_unchecked(key, hidden_ty);
+            let prev = self.register_hidden_type_in_storage(key, hidden_ty);
+            assert_eq!(prev, None);
         }
     }
 }
