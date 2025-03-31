@@ -11,7 +11,7 @@ use std::ops::ControlFlow;
 use hir::LangItem;
 use hir::def_id::DefId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_hir as hir;
+use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode};
@@ -125,11 +125,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_async_iterator_candidates(obligation, &mut candidates);
                 } else if tcx.is_lang_item(def_id, LangItem::AsyncFnKindHelper) {
                     self.assemble_async_fn_kind_helper_candidates(obligation, &mut candidates);
+                } else if tcx.is_lang_item(def_id, LangItem::AsyncFn)
+                    || tcx.is_lang_item(def_id, LangItem::AsyncFnOnce)
+                    || tcx.is_lang_item(def_id, LangItem::AsyncFnMut)
+                {
+                    self.assemble_async_closure_candidates(obligation, &mut candidates);
                 }
 
                 // FIXME: Put these into `else if` blocks above, since they're built-in.
                 self.assemble_closure_candidates(obligation, &mut candidates);
-                self.assemble_async_closure_candidates(obligation, &mut candidates);
                 self.assemble_fn_pointer_candidates(obligation, &mut candidates);
 
                 self.assemble_candidates_from_impls(obligation, &mut candidates);
@@ -425,6 +429,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_async_closure_candidates(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
@@ -436,15 +441,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         };
 
+        debug!("self_ty = {:?}", obligation.self_ty().skip_binder().kind());
         match *obligation.self_ty().skip_binder().kind() {
-            ty::CoroutineClosure(_, args) => {
+            ty::CoroutineClosure(def_id, args) => {
                 if let Some(closure_kind) =
                     args.as_coroutine_closure().kind_ty().to_opt_closure_kind()
                     && !closure_kind.extends(goal_kind)
                 {
                     return;
                 }
-                candidates.vec.push(AsyncClosureCandidate);
+
+                // Make sure this is actually an async closure.
+                let Some(coroutine_kind) =
+                    self.tcx().coroutine_kind(self.tcx().coroutine_for_closure(def_id))
+                else {
+                    bug!("coroutine with no kind");
+                };
+
+                debug!(?coroutine_kind);
+                match coroutine_kind {
+                    CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
+                        candidates.vec.push(AsyncClosureCandidate);
+                    }
+                    _ => (),
+                }
             }
             // Closures and fn pointers implement `AsyncFn*` if their return types
             // implement `Future`, which is checked later.

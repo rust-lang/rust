@@ -1,4 +1,4 @@
-//@ run-pass
+// This test exercises lending behavior for iterator closures which is not yet supported.
 
 #![feature(iter_macro, yield_expr)]
 
@@ -18,7 +18,7 @@ fn main() {
     assert_eq!(i.next(), Some('o'));
     assert_eq!(i.next(), Some('o'));
     assert_eq!(i.next(), None);
-    let mut i = f();
+    let mut i = f(); //~ ERROR use of moved value: `f`
     assert_eq!(i.next(), Some('f'));
     assert_eq!(i.next(), Some('o'));
     assert_eq!(i.next(), Some('o'));

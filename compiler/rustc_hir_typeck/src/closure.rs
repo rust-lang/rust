@@ -462,7 +462,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if let Some(trait_def_id) = trait_def_id {
                 let found_kind = match closure_kind {
-                    hir::ClosureKind::Closure => self.tcx.fn_trait_kind_from_def_id(trait_def_id),
+                    hir::ClosureKind::Closure
+                    // FIXME(iter_macro): Someday we'll probably want iterator closures instead of
+                    // just using Fn* for iterators.
+                    | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Gen) => {
+                        self.tcx.fn_trait_kind_from_def_id(trait_def_id)
+                    }
                     hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async) => self
                         .tcx
                         .async_fn_trait_kind_from_def_id(trait_def_id)

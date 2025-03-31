@@ -591,7 +591,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
                     && let Some(
                         coroutine_kind @ hir::CoroutineKind::Desugared(
-                            hir::CoroutineDesugaring::Async,
+                            hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::Gen,
                             _,
                         ),
                     ) = self.tcx.coroutine_kind(def_id)
