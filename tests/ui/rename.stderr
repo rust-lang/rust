@@ -343,71 +343,77 @@ error: lint `clippy::invalid_utf8_in_unchecked` has been renamed to `invalid_fro
 LL | #![warn(clippy::invalid_utf8_in_unchecked)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_from_utf8_unchecked`
 
-error: lint `clippy::let_underscore_drop` has been renamed to `let_underscore_drop`
+error: lint `clippy::invalid_null_ptr_usage` has been renamed to `invalid_null_arguments`
   --> tests/ui/rename.rs:122:9
+   |
+LL | #![warn(clippy::invalid_null_ptr_usage)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_null_arguments`
+
+error: lint `clippy::let_underscore_drop` has been renamed to `let_underscore_drop`
+  --> tests/ui/rename.rs:123:9
    |
 LL | #![warn(clippy::let_underscore_drop)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `let_underscore_drop`
 
 error: lint `clippy::maybe_misused_cfg` has been renamed to `unexpected_cfgs`
-  --> tests/ui/rename.rs:123:9
+  --> tests/ui/rename.rs:124:9
    |
 LL | #![warn(clippy::maybe_misused_cfg)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unexpected_cfgs`
 
 error: lint `clippy::mem_discriminant_non_enum` has been renamed to `enum_intrinsics_non_enums`
-  --> tests/ui/rename.rs:124:9
+  --> tests/ui/rename.rs:125:9
    |
 LL | #![warn(clippy::mem_discriminant_non_enum)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `enum_intrinsics_non_enums`
 
 error: lint `clippy::mismatched_target_os` has been renamed to `unexpected_cfgs`
-  --> tests/ui/rename.rs:125:9
+  --> tests/ui/rename.rs:126:9
    |
 LL | #![warn(clippy::mismatched_target_os)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unexpected_cfgs`
 
 error: lint `clippy::panic_params` has been renamed to `non_fmt_panics`
-  --> tests/ui/rename.rs:126:9
+  --> tests/ui/rename.rs:127:9
    |
 LL | #![warn(clippy::panic_params)]
    |         ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `non_fmt_panics`
 
 error: lint `clippy::positional_named_format_parameters` has been renamed to `named_arguments_used_positionally`
-  --> tests/ui/rename.rs:127:9
+  --> tests/ui/rename.rs:128:9
    |
 LL | #![warn(clippy::positional_named_format_parameters)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `named_arguments_used_positionally`
 
 error: lint `clippy::temporary_cstring_as_ptr` has been renamed to `dangling_pointers_from_temporaries`
-  --> tests/ui/rename.rs:128:9
+  --> tests/ui/rename.rs:129:9
    |
 LL | #![warn(clippy::temporary_cstring_as_ptr)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `dangling_pointers_from_temporaries`
 
 error: lint `clippy::undropped_manually_drops` has been renamed to `undropped_manually_drops`
-  --> tests/ui/rename.rs:129:9
+  --> tests/ui/rename.rs:130:9
    |
 LL | #![warn(clippy::undropped_manually_drops)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `undropped_manually_drops`
 
 error: lint `clippy::unknown_clippy_lints` has been renamed to `unknown_lints`
-  --> tests/ui/rename.rs:130:9
+  --> tests/ui/rename.rs:131:9
    |
 LL | #![warn(clippy::unknown_clippy_lints)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unknown_lints`
 
 error: lint `clippy::unused_label` has been renamed to `unused_labels`
-  --> tests/ui/rename.rs:131:9
+  --> tests/ui/rename.rs:132:9
    |
 LL | #![warn(clippy::unused_label)]
    |         ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unused_labels`
 
 error: lint `clippy::vtable_address_comparisons` has been renamed to `ambiguous_wide_pointer_comparisons`
-  --> tests/ui/rename.rs:132:9
+  --> tests/ui/rename.rs:133:9
    |
 LL | #![warn(clippy::vtable_address_comparisons)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `ambiguous_wide_pointer_comparisons`
 
-error: aborting due to 68 previous errors
+error: aborting due to 69 previous errors
 
