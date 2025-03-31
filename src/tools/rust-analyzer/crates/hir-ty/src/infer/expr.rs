@@ -472,8 +472,7 @@ impl InferenceContext<'_> {
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let prev_closure = mem::replace(&mut self.current_closure, id);
                 let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
-                let prev_ret_coercion =
-                    mem::replace(&mut self.return_coercion, Some(CoerceMany::new(ret_ty)));
+                let prev_ret_coercion = self.return_coercion.replace(CoerceMany::new(ret_ty));
                 let prev_resume_yield_tys =
                     mem::replace(&mut self.resume_yield_tys, resume_yield_tys);
 
@@ -1168,8 +1167,7 @@ impl InferenceContext<'_> {
         let ret_ty = self.table.new_type_var();
         let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
         let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
-        let prev_ret_coercion =
-            mem::replace(&mut self.return_coercion, Some(CoerceMany::new(ret_ty.clone())));
+        let prev_ret_coercion = self.return_coercion.replace(CoerceMany::new(ret_ty.clone()));
 
         // FIXME: We should handle async blocks like we handle closures
         let expected = &Expectation::has_type(ret_ty);

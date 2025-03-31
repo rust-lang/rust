@@ -294,15 +294,13 @@ impl Crate {
     }
 
     fn core(db: &dyn HirDatabase) -> Option<Crate> {
-        let result = db
-            .all_crates()
+        db.all_crates()
             .iter()
             .copied()
             .find(|&krate| {
                 matches!(krate.data(db).origin, CrateOrigin::Lang(LangCrateOrigin::Core))
             })
-            .map(Crate::from);
-        result
+            .map(Crate::from)
     }
 }
 

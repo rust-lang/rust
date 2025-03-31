@@ -329,26 +329,30 @@ impl GenericParams {
                     params.clone()
                 } else {
                     Arc::new(GenericParams {
-                        type_or_consts: all_type_or_consts_enabled
-                            .then(|| params.type_or_consts.clone())
-                            .unwrap_or_else(|| {
+                        type_or_consts: if all_type_or_consts_enabled {
+                            params.type_or_consts.clone()
+                        } else {
+                            {
                                 params
                                     .type_or_consts
                                     .iter()
                                     .filter(|&(idx, _)| enabled(attr_owner_ct(idx)))
                                     .map(|(_, param)| param.clone())
                                     .collect()
-                            }),
-                        lifetimes: all_lifetimes_enabled
-                            .then(|| params.lifetimes.clone())
-                            .unwrap_or_else(|| {
+                            }
+                        },
+                        lifetimes: if all_lifetimes_enabled {
+                            params.lifetimes.clone()
+                        } else {
+                            {
                                 params
                                     .lifetimes
                                     .iter()
                                     .filter(|&(idx, _)| enabled(attr_owner_lt(idx)))
                                     .map(|(_, param)| param.clone())
                                     .collect()
-                            }),
+                            }
+                        },
                         where_predicates: params.where_predicates.clone(),
                         types_map: params.types_map.clone(),
                     })

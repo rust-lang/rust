@@ -1360,8 +1360,7 @@ impl ExprCollector<'_> {
                 else {
                     panic!("just expanded a macro, ExpansionSpanMap should be available");
                 };
-                let old_span_map =
-                    mem::replace(&mut self.current_span_map, Some(new_span_map.clone()));
+                let old_span_map = self.current_span_map.replace(new_span_map.clone());
                 let id = collector(self, Some(expansion.tree()));
                 self.current_span_map = old_span_map;
                 self.ast_id_map = prev_ast_id_map;

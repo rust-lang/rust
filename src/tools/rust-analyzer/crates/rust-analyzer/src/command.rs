@@ -166,12 +166,9 @@ impl<T: Sized + Send + 'static> CommandHandle<T> {
         if read_at_least_one_message || exit_status.success() {
             Ok(())
         } else {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!(
-                    "Cargo watcher failed, the command produced no valid metadata (exit code: {exit_status:?}):\n{error}"
-                ),
-            ))
+            Err(io::Error::other(format!(
+                "Cargo watcher failed, the command produced no valid metadata (exit code: {exit_status:?}):\n{error}"
+            )))
         }
     }
 }

@@ -64,11 +64,11 @@ pub(crate) fn render_variant_pat(
         ),
         None => {
             let name = local_name.unwrap_or_else(|| variant.name(ctx.db()));
-            let it = (
+
+            (
                 name.as_str().to_smolstr(),
                 name.display(ctx.db(), ctx.completion.edition).to_smolstr(),
-            );
-            it
+            )
         }
     };
 
