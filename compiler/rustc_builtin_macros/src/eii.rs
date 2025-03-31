@@ -5,6 +5,7 @@ use rustc_ast::{DUMMY_NODE_ID, EIIImpl, EIIMacroFor, ItemKind, ast, token, token
 use rustc_ast_pretty::pprust::path_to_string;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
+use thin_vec::{ThinVec, thin_vec};
 
 // ```rust
 // #[eii]
@@ -84,6 +85,75 @@ fn eii_(
         });
         return vec![Annotatable::Item(orig_item)];
     };
+
+    let mut return_items = Vec::new();
+
+    if func.body.is_some() {
+        let mut default_func = func.clone();
+        func.body = None;
+        default_func.eii_impl.push(ast::EIIImpl {
+            node_id: DUMMY_NODE_ID,
+            eii_macro_path: ast::Path::from_ident(macro_name),
+            impl_safety: if impl_unsafe { ast::Safety::Unsafe(span) } else { ast::Safety::Default },
+            span,
+            inner_span: macro_name.span,
+            is_default: true, // important!
+        });
+
+        return_items.push(Annotatable::Item(P(ast::Item {
+            attrs: ThinVec::new(),
+            id: ast::DUMMY_NODE_ID,
+            span,
+            vis: ast::Visibility { span, kind: ast::VisibilityKind::Inherited, tokens: None },
+            ident: Ident { name: kw::Underscore, span },
+            kind: ast::ItemKind::Const(Box::new(ast::ConstItem {
+                defaultness: ast::Defaultness::Final,
+                generics: ast::Generics::default(),
+                ty: P(ast::Ty {
+                    id: DUMMY_NODE_ID,
+                    kind: ast::TyKind::Tup(ThinVec::new()),
+                    span,
+                    tokens: None,
+                }),
+                expr: Some(P(ast::Expr {
+                    id: DUMMY_NODE_ID,
+                    kind: ast::ExprKind::Block(
+                        P(ast::Block {
+                            stmts: thin_vec![ast::Stmt {
+                                id: DUMMY_NODE_ID,
+                                kind: ast::StmtKind::Item(P(ast::Item {
+                                    attrs: thin_vec![], // TODO: re-add some original attrs
+                                    id: DUMMY_NODE_ID,
+                                    span: item_span,
+                                    vis: ast::Visibility {
+                                        span,
+                                        kind: ast::VisibilityKind::Inherited,
+                                        tokens: None
+                                    },
+                                    ident: item_name,
+                                    kind: ItemKind::Fn(default_func),
+                                    tokens: None,
+                                })),
+                                span
+                            }],
+                            id: DUMMY_NODE_ID,
+                            rules: ast::BlockCheckMode::Default,
+                            span,
+                            tokens: None,
+                            could_be_bare_literal: false,
+                        }),
+                        None,
+                    ),
+                    span,
+                    attrs: ThinVec::new(),
+                    tokens: None,
+                })),
+            })),
+            tokens: None,
+        })))
+    }
+
+    let decl_span = span.to(func.sig.span);
 
     let abi = match func.sig.header.ext {
         // extern "X" fn  =>  extern "X" {}
@@ -194,7 +264,10 @@ fn eii_(
         tokens: None,
     }));
 
-    vec![extern_block, macro_def]
+    return_items.push(extern_block);
+    return_items.push(macro_def);
+
+    return_items
 }
 
 use crate::errors::{
