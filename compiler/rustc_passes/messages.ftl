@@ -278,6 +278,17 @@ passes_duplicate_diagnostic_item_in_crate =
     duplicate diagnostic item in crate `{$crate_name}`: `{$name}`
     .note = the diagnostic item is first defined in crate `{$orig_crate_name}`
 
+passes_duplicate_eii_impls =
+    multiple implementations of `#[{$name}]`
+    .first = first implemented here in crate `{$first_crate}`
+    .second = also implemented here in crate `{$second_crate}`
+    .note = in addition to these two, { $num_additional_crates ->
+         [one] another implementation was found in crate {$additional_crate_names}
+         *[other] more implementations were also found in the following crates: {$additional_crate_names}
+    }
+
+    .help = an "externally implementable item" can only have a single implementation in the final artifact. When multiple implementations are found, also in different crates, they conflict.
+
 passes_duplicate_feature_err =
     the feature `{$feature}` has already been enabled
 
@@ -317,6 +328,11 @@ passes_eii_impl_not_function =
 passes_eii_impl_requires_unsafe =
     `#[{$name}]` is unsafe to implement
 passes_eii_impl_requires_unsafe_suggestion = wrap the attribute in `unsafe(...)`
+
+passes_eii_without_impl =
+    couldn't find an implementation for `#[{$name}]`
+    .label = an implementation was expected by this declaration
+    .help = expected at least one implementation in crate `{$current_crate_name}` or any of its dependencies
 passes_export_name =
     attribute should be applied to a free function, impl method or static
     .label = not a free function, impl method or static

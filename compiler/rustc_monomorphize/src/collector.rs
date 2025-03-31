@@ -207,7 +207,7 @@
 
 use std::path::PathBuf;
 
-use rustc_attr_parsing::InlineAttr;
+use rustc_attr_parsing::{AttributeKind, EIIDecl, InlineAttr, find_attr};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -944,7 +944,8 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceKind::Item(..)
         | ty::InstanceKind::FnPtrShim(..)
         | ty::InstanceKind::CloneShim(..)
-        | ty::InstanceKind::FnPtrAddrShim(..) => {
+        | ty::InstanceKind::FnPtrAddrShim(..)
+        | ty::InstanceKind::EiiShim { .. } => {
             output.push(create_fn_mono_item(tcx, instance, source));
         }
     }
@@ -1386,6 +1387,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
         }
 
         collector.push_extra_entry_roots();
+        collector.push_extra_eii_roots();
     }
 
     // We can only codegen items that are instantiable - items all of
@@ -1528,11 +1530,12 @@ impl<'v> RootCollector<'_, 'v> {
                     !matches!(self.tcx.codegen_fn_attrs(def_id).inline, InlineAttr::Force { .. })
                 }
                 MonoItemCollectionStrategy::Lazy => {
+                    let cfa = self.tcx.codegen_fn_attrs(def_id);
+
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
-                        || self
-                            .tcx
-                            .codegen_fn_attrs(def_id)
+                        // TODO: EII might remove this:
+                        || cfa
                             .flags
                             .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
                 }
@@ -1585,6 +1588,33 @@ impl<'v> RootCollector<'_, 'v> {
         );
 
         self.output.push(create_fn_mono_item(self.tcx, start_instance, DUMMY_SP));
+    }
+
+    /// For each externally implementable item, we should generate an alias MonoItem that
+    /// determines what implementation is called. This could be a default implementation.
+    fn push_extra_eii_roots(&mut self) {
+        for (decl, (chosen_impl, shim_did)) in self.tcx.get_externally_implementable_item_impls(())
+        {
+            let Some((eii_extern_item, span)) = find_attr!(
+                self.tcx.get_all_attrs(*decl),
+                AttributeKind::EiiMacroFor(EIIDecl { eii_extern_item, span, .. }) => (*eii_extern_item, *span)
+            ) else {
+                bug!("missing attr on EII macro");
+            };
+
+            self.output.push(create_fn_mono_item(
+                self.tcx,
+                ty::Instance {
+                    def: ty::InstanceKind::EiiShim {
+                        def_id: (*shim_did).into(),
+                        extern_item: eii_extern_item,
+                        chosen_impl: *chosen_impl,
+                    },
+                    args: ty::GenericArgs::empty(),
+                },
+                span,
+            ));
+        }
     }
 }
 

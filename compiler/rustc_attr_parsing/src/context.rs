@@ -14,6 +14,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
+use crate::attributes::eii::EiiMangleExternParser;
 use crate::attributes::repr::ReprParser;
 use crate::attributes::rustc::RustcMacroEdition2021Parser;
 use crate::attributes::stability::{
@@ -77,6 +78,7 @@ attribute_groups!(
         // tidy-alphabetical-start
         Single<ConstStabilityIndirectParser>,
         Single<DeprecationParser>,
+        Single<EiiMangleExternParser>,
         Single<RustcMacroEdition2021Parser>,
         Single<TransparencyParser>,
         // tidy-alphabetical-end

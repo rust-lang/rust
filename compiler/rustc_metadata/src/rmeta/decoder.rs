@@ -1473,6 +1473,13 @@ impl<'a> CrateMetadataRef<'a> {
         self.root.foreign_modules.decode((self, sess))
     }
 
+    fn get_externally_implementable_items(
+        self,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = (DefId, (EIIDecl, Vec<(DefId, EIIImpl)>))> {
+        self.root.externally_implementable_items.decode((self, sess))
+    }
+
     fn get_dylib_dependency_formats<'tcx>(
         self,
         tcx: TyCtxt<'tcx>,

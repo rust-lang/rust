@@ -90,6 +90,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                 | InstanceKind::ConstructCoroutineInClosureShim { .. }
                 | InstanceKind::ThreadLocalShim { .. }
                 | InstanceKind::CloneShim(..) => {}
+                InstanceKind::EiiShim { .. } => {}
 
                 // This shim does not call any other functions, thus there can be no recursion.
                 InstanceKind::FnPtrAddrShim(..) => {
