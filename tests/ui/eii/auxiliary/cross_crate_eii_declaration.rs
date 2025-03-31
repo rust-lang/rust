@@ -1,3 +1,5 @@
+//@ no-prefer-dynamic
+#![crate_type = "rlib"]
 #![feature(eii)]
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]

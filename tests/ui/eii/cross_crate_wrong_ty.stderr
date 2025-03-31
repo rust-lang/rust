@@ -6,7 +6,7 @@ LL | #[unsafe(cross_crate_eii_declaration::foo)]
 LL | fn other() -> u64 {
    | ^^^^^^^^^^^^^^^^^ expected 1 parameter, found 0
    |
-  ::: $DIR/auxiliary/cross_crate_eii_declaration.rs:13:5
+  ::: $DIR/auxiliary/cross_crate_eii_declaration.rs:15:5
    |
 LL |     pub safe fn bar(x: u64) -> u64;
    |     ------------------------------- requires 1 parameter
