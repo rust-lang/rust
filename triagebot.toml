@@ -1161,7 +1161,6 @@ compiler = [
 ]
 libs = [
     "@Mark-Simulacrum",
-    "@Amanieu",
     "@Noratrieb",
     "@workingjubilee",
     "@joboet",
