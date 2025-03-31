@@ -1384,3 +1384,15 @@ pub(crate) struct ProjectOnNonPinProjectType {
     )]
     pub sugg_span: Option<Span>,
 }
+
+#[derive(Diagnostic)]
+#[diag("falling back to `f32` as the trait bound `f32: From<f64>` is not satisfied")]
+pub(crate) struct FloatLiteralF32Fallback {
+    pub literal: String,
+    #[suggestion(
+        "explicitly specify the type as `f32`",
+        code = "{literal}_f32",
+        applicability = "machine-applicable"
+    )]
+    pub span: Option<Span>,
+}
