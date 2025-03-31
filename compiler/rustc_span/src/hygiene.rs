@@ -75,6 +75,21 @@ pub struct SyntaxContextData {
 }
 
 impl SyntaxContextData {
+    fn new(
+        (parent, outer_expn, outer_transparency): SyntaxContextKey,
+        opaque: SyntaxContext,
+        opaque_and_semitransparent: SyntaxContext,
+    ) -> SyntaxContextData {
+        SyntaxContextData {
+            outer_expn,
+            outer_transparency,
+            parent,
+            opaque,
+            opaque_and_semitransparent,
+            dollar_crate_name: kw::DollarCrate,
+        }
+    }
+
     fn root() -> SyntaxContextData {
         SyntaxContextData {
             outer_expn: ExpnId::root(),
@@ -543,7 +558,7 @@ impl HygieneData {
     ) -> SyntaxContext {
         assert_ne!(expn_id, ExpnId::root());
         if transparency == Transparency::Opaque {
-            return self.apply_mark_internal(ctxt, expn_id, transparency);
+            return self.alloc_ctxt(ctxt, expn_id, transparency);
         }
 
         let call_site_ctxt = self.expn_data(expn_id).call_site.ctxt();
@@ -554,7 +569,7 @@ impl HygieneData {
         };
 
         if call_site_ctxt.is_root() {
-            return self.apply_mark_internal(ctxt, expn_id, transparency);
+            return self.alloc_ctxt(ctxt, expn_id, transparency);
         }
 
         // Otherwise, `expn_id` is a macros 1.0 definition and the call site is in a
@@ -567,74 +582,60 @@ impl HygieneData {
         //
         // See the example at `test/ui/hygiene/legacy_interaction.rs`.
         for (expn_id, transparency) in self.marks(ctxt) {
-            call_site_ctxt = self.apply_mark_internal(call_site_ctxt, expn_id, transparency);
+            call_site_ctxt = self.alloc_ctxt(call_site_ctxt, expn_id, transparency);
         }
-        self.apply_mark_internal(call_site_ctxt, expn_id, transparency)
+        self.alloc_ctxt(call_site_ctxt, expn_id, transparency)
     }
 
-    fn apply_mark_internal(
+    /// Allocate a new context with the given key, or retrieve it from cache if the given key
+    /// already exists. The auxiliary fields are calculated from the key.
+    fn alloc_ctxt(
         &mut self,
-        ctxt: SyntaxContext,
+        parent: SyntaxContext,
         expn_id: ExpnId,
         transparency: Transparency,
     ) -> SyntaxContext {
-        let syntax_context_data = &mut self.syntax_context_data;
-        debug_assert!(!syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
-        let mut opaque = syntax_context_data[ctxt.0 as usize].opaque;
-        let mut opaque_and_semitransparent =
-            syntax_context_data[ctxt.0 as usize].opaque_and_semitransparent;
+        debug_assert!(!self.syntax_context_data[parent.0 as usize].is_decode_placeholder());
 
-        if transparency >= Transparency::Opaque {
-            let parent = opaque;
-            opaque = *self
-                .syntax_context_map
-                .entry((parent, expn_id, transparency))
-                .or_insert_with(|| {
-                    let new_opaque = SyntaxContext::from_usize(syntax_context_data.len());
-                    syntax_context_data.push(SyntaxContextData {
-                        outer_expn: expn_id,
-                        outer_transparency: transparency,
-                        parent,
-                        opaque: new_opaque,
-                        opaque_and_semitransparent: new_opaque,
-                        dollar_crate_name: kw::DollarCrate,
-                    });
-                    new_opaque
-                });
+        // Look into the cache first.
+        let key = (parent, expn_id, transparency);
+        if let Some(ctxt) = self.syntax_context_map.get(&key) {
+            return *ctxt;
         }
 
-        if transparency >= Transparency::SemiTransparent {
-            let parent = opaque_and_semitransparent;
-            opaque_and_semitransparent = *self
-                .syntax_context_map
-                .entry((parent, expn_id, transparency))
-                .or_insert_with(|| {
-                    let new_opaque_and_semitransparent =
-                        SyntaxContext::from_usize(syntax_context_data.len());
-                    syntax_context_data.push(SyntaxContextData {
-                        outer_expn: expn_id,
-                        outer_transparency: transparency,
-                        parent,
-                        opaque,
-                        opaque_and_semitransparent: new_opaque_and_semitransparent,
-                        dollar_crate_name: kw::DollarCrate,
-                    });
-                    new_opaque_and_semitransparent
-                });
-        }
+        // Reserve a new syntax context.
+        let ctxt = SyntaxContext::from_usize(self.syntax_context_data.len());
+        self.syntax_context_data.push(SyntaxContextData::decode_placeholder());
+        self.syntax_context_map.insert(key, ctxt);
 
-        let parent = ctxt;
-        *self.syntax_context_map.entry((parent, expn_id, transparency)).or_insert_with(|| {
-            syntax_context_data.push(SyntaxContextData {
-                outer_expn: expn_id,
-                outer_transparency: transparency,
-                parent,
-                opaque,
-                opaque_and_semitransparent,
-                dollar_crate_name: kw::DollarCrate,
-            });
-            SyntaxContext::from_usize(syntax_context_data.len() - 1)
-        })
+        // Opaque and semi-transparent versions of the parent. Note that they may be equal to the
+        // parent itself. E.g. `parent_opaque` == `parent` if the expn chain contains only opaques,
+        // and `parent_opaque_and_semitransparent` == `parent` if the expn contains only opaques
+        // and semi-transparents.
+        let parent_opaque = self.syntax_context_data[parent.0 as usize].opaque;
+        let parent_opaque_and_semitransparent =
+            self.syntax_context_data[parent.0 as usize].opaque_and_semitransparent;
+
+        // Evaluate opaque and semi-transparent versions of the new syntax context.
+        let (opaque, opaque_and_semitransparent) = match transparency {
+            Transparency::Transparent => (parent_opaque, parent_opaque_and_semitransparent),
+            Transparency::SemiTransparent => (
+                parent_opaque,
+                // Will be the same as `ctxt` if the expn chain contains only opaques and semi-transparents.
+                self.alloc_ctxt(parent_opaque_and_semitransparent, expn_id, transparency),
+            ),
+            Transparency::Opaque => (
+                // Will be the same as `ctxt` if the expn chain contains only opaques.
+                self.alloc_ctxt(parent_opaque, expn_id, transparency),
+                // Will be the same as `ctxt` if the expn chain contains only opaques and semi-transparents.
+                self.alloc_ctxt(parent_opaque_and_semitransparent, expn_id, transparency),
+            ),
+        };
+
+        // Fill the full data, now that we have it.
+        self.syntax_context_data[ctxt.as_u32() as usize] =
+            SyntaxContextData::new(key, opaque, opaque_and_semitransparent);
+        ctxt
     }
 }
 
