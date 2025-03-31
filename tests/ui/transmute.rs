@@ -59,7 +59,7 @@ fn useless() {
         let _: *const usize = std::mem::transmute(5_isize);
         //~^ useless_transmute
 
-        let _ = 5_isize as *const usize;
+        let _ = std::ptr::dangling::<usize>();
 
         let _: *const usize = std::mem::transmute(1 + 1usize);
         //~^ useless_transmute
