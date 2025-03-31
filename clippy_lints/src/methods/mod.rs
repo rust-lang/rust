@@ -4475,7 +4475,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let _ = std::io::Error::other("bad".to_string());
     /// ```
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.87.0"]
     pub IO_OTHER_ERROR,
     style,
     "calling `std::io::Error::new(std::io::ErrorKind::Other, _)`"
