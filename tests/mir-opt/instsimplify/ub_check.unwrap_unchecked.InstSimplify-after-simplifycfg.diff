@@ -25,27 +25,27 @@
           StorageLive(_3);
           StorageLive(_5);
           _3 = discriminant(_2);
-          switchInt(move _3) -> [0: bb2, 1: bb3, otherwise: bb1];
+          switchInt(move _3) -> [0: bb1, 1: bb2, otherwise: bb3];
       }
   
       bb1: {
-          unreachable;
-      }
-  
-      bb2: {
           StorageLive(_4);
 -         _4 = UbChecks();
 +         _4 = const false;
           assume(copy _4);
-          _5 = unreachable_unchecked::precondition_check() -> [return: bb1, unwind unreachable];
+          _5 = unreachable_unchecked::precondition_check() -> [return: bb3, unwind unreachable];
       }
   
-      bb3: {
+      bb2: {
           _0 = move ((_2 as Some).0: i32);
           StorageDead(_5);
           StorageDead(_3);
           StorageDead(_2);
           return;
+      }
+  
+      bb3: {
+          unreachable;
       }
   }
   

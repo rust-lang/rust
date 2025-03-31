@@ -49,7 +49,7 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK-LABEL: fn identity(
     // CHECK: bb0: {
     // CHECK:     [[x:_.*]] = copy _1;
-    // CHECK:     switchInt(move {{_.*}}) -> [0: bb7, 1: bb6, otherwise: bb1];
+    // CHECK:     switchInt(move {{_.*}}) -> [0: bb6, 1: bb7, otherwise: bb1];
     // CHECK: bb1: {
     // CHECK:     unreachable;
     // CHECK: bb2: {
@@ -63,17 +63,17 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK: bb4: {
     // CHECK:     return;
     // CHECK: bb5: {
-    // CHECK:     goto -> bb2;
+    // CHECK:     goto -> bb3;
     // CHECK: bb6: {
-    // CHECK:     {{_.*}} = move (([[x]] as Err).0: i32);
-    // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Break(
-    // CHECK:     goto -> bb8;
-    // CHECK: bb7: {
     // CHECK:     {{_.*}} = move (([[x]] as Ok).0: i32);
     // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Continue(
+    // CHECK:     goto -> bb8;
+    // CHECK: bb7: {
+    // CHECK:     {{_.*}} = move (([[x]] as Err).0: i32);
+    // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Break(
     // CHECK:     goto -> bb5;
     // CHECK: bb8: {
-    // CHECK:     goto -> bb3;
+    // CHECK:     goto -> bb2;
     Ok(x?)
 }
 

@@ -26,8 +26,8 @@ pub fn test_unlikely(x: bool) {
 }
 
 // CHECK-LABEL: @test_unlikely(
-// CHECK: br i1 %x, label %bb2, label %bb4, !prof ![[NUM:[0-9]+]]
-// CHECK: bb4:
+// CHECK: br i1 %x, label %bb2, label %bb1, !prof ![[NUM:[0-9]+]]
+// CHECK: bb1:
 // CHECK: path_b
 // CHECK: bb2:
 // CHECK-NOT: cold_path

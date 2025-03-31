@@ -25,8 +25,8 @@ pub fn test1(x: bool) {
     }
 
     // CHECK-LABEL: @test1(
-    // CHECK: br i1 %x, label %bb2, label %bb4, !prof ![[NUM:[0-9]+]]
-    // CHECK: bb4:
+    // CHECK: br i1 %x, label %bb2, label %bb1, !prof ![[NUM:[0-9]+]]
+    // CHECK: bb1:
     // CHECK: path_b
     // CHECK: bb2:
     // CHECK: path_a
@@ -40,8 +40,8 @@ pub fn test2(x: i32) {
     }
 
     // CHECK-LABEL: @test2(
-    // CHECK: br i1 %_2, label %bb2, label %bb4, !prof ![[NUM]]
-    // CHECK: bb4:
+    // CHECK: br i1 %_2, label %bb2, label %bb1, !prof ![[NUM]]
+    // CHECK: bb1:
     // CHECK: path_b
     // CHECK: bb2:
     // CHECK: path_a
@@ -55,8 +55,8 @@ pub fn test3(x: i8) {
     }
 
     // CHECK-LABEL: @test3(
-    // CHECK: br i1 %_2, label %bb2, label %bb4, !prof ![[NUM]]
-    // CHECK: bb4:
+    // CHECK: br i1 %_2, label %bb2, label %bb1, !prof ![[NUM]]
+    // CHECK: bb1:
     // CHECK: path_b
     // CHECK: bb2:
     // CHECK: path_a
@@ -69,12 +69,16 @@ pub fn test4(x: u64) {
         _ => path_b(),
     }
 
+    // Note that LLVM seems to flip this one, for some reason
+
     // CHECK-LABEL: @test4(
-    // CHECK: br i1 %0, label %bb4, label %bb2, !prof ![[NUM2:[0-9]+]]
-    // CHECK: bb4:
+    // CHECK: %0 = icmp eq i64 %x, 33
+    // CHECK: br i1 %0, label %bb1, label %bb2, !prof ![[NUM2:[0-9]+]]
+    // CHECK: bb1:
     // CHECK: path_a
     // CHECK: bb2:
     // CHECK: path_b
 }
 
 // CHECK: ![[NUM]] = !{!"branch_weights", {{(!"expected", )?}}i32 1, i32 2000}
+// CHECK: ![[NUM2]] = !{!"branch_weights", {{(!"expected", )?}}i32 2000, i32 1}

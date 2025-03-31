@@ -42,7 +42,7 @@
           StorageLive(_7);
           StorageLive(_8);
           _6 = discriminant(_1);
-          switchInt(move _6) -> [0: bb6, 1: bb5, otherwise: bb1];
+          switchInt(move _6) -> [0: bb5, 1: bb6, otherwise: bb1];
       }
   
       bb1: {
@@ -70,22 +70,22 @@
           StorageDead(_6);
           _3 = discriminant(_2);
 -         switchInt(move _3) -> [0: bb2, 1: bb3, otherwise: bb1];
-+         goto -> bb2;
++         goto -> bb3;
       }
   
       bb5: {
-          _8 = copy ((_1 as Err).0: i32);
-          StorageLive(_9);
-          _9 = Result::<Infallible, i32>::Err(copy _8);
-          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _9);
-          StorageDead(_9);
+          _7 = copy ((_1 as Ok).0: i32);
+          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(copy _7);
 -         goto -> bb4;
 +         goto -> bb7;
       }
   
       bb6: {
-          _7 = copy ((_1 as Ok).0: i32);
-          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(copy _7);
+          _8 = copy ((_1 as Err).0: i32);
+          StorageLive(_9);
+          _9 = Result::<Infallible, i32>::Err(copy _8);
+          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _9);
+          StorageDead(_9);
           goto -> bb4;
 +     }
 + 
@@ -94,7 +94,7 @@
 +         StorageDead(_7);
 +         StorageDead(_6);
 +         _3 = discriminant(_2);
-+         goto -> bb3;
++         goto -> bb2;
       }
   }
   

@@ -18,18 +18,18 @@ use rustc_session::Session;
 pub(super) struct ReorderBasicBlocks;
 
 impl<'tcx> crate::MirPass<'tcx> for ReorderBasicBlocks {
-    fn is_enabled(&self, _session: &Session) -> bool {
-        false
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() > 1
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let rpo: IndexVec<BasicBlock, BasicBlock> =
-            body.basic_blocks.reverse_postorder().iter().copied().collect();
-        if rpo.iter().is_sorted() {
+        let rpo = body.basic_blocks.reverse_postorder();
+        if rpo.is_sorted() {
             return;
         }
 
-        let mut updater = BasicBlockUpdater { map: rpo.invert_bijective_mapping(), tcx };
+        let mut updater =
+            BasicBlockUpdater { map: IndexSlice::from_raw(rpo).invert_bijective_mapping(), tcx };
         debug_assert_eq!(updater.map[START_BLOCK], START_BLOCK);
         updater.visit_body(body);
 

@@ -45,11 +45,11 @@ pub fn test(x: Option<u32>) {
     }
 
     // CHECK-LABEL: @test(
-    // CHECK: switch i32 %1, label %bb1 [
-    // CHECK: i32 0, label %bb6
-    // CHECK: i32 1, label %bb5
-    // CHECK: i32 2, label %bb4
-    // CHECK: i32 3, label %bb3
+    // CHECK: switch i32 %1, label %bb8 [
+    // CHECK: i32 0, label %bb2
+    // CHECK: i32 1, label %bb3
+    // CHECK: i32 2, label %bb5
+    // CHECK: i32 3, label %bb6
     // CHECK: ], !prof ![[NUM1:[0-9]+]]
 }
 
@@ -76,10 +76,10 @@ pub fn test2(x: Option<u32>) {
     }
 
     // CHECK-LABEL: @test2(
-    // CHECK: switch i32 %1, label %bb1 [
-    // CHECK: i32 10, label %bb5
-    // CHECK: i32 11, label %bb4
-    // CHECK: i32 13, label %bb3
+    // CHECK: switch i32 %1, label %bb7 [
+    // CHECK: i32 10, label %bb2
+    // CHECK: i32 11, label %bb3
+    // CHECK: i32 13, label %bb5
     // CHECK: ], !prof ![[NUM2:[0-9]+]]
 }
 

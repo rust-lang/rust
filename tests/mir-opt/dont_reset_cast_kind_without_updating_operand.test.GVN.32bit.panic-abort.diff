@@ -84,8 +84,8 @@
           StorageLive(_17);
           StorageLive(_19);
           _19 = const false;
--         switchInt(move _19) -> [0: bb6, otherwise: bb5];
-+         switchInt(const false) -> [0: bb6, otherwise: bb5];
+-         switchInt(move _19) -> [0: bb3, otherwise: bb2];
++         switchInt(const false) -> [0: bb3, otherwise: bb2];
       }
   
       bb1: {
@@ -95,15 +95,29 @@
       }
   
       bb2: {
-          unreachable;
+-         _20 = Layout::from_size_align_unchecked::precondition_check(copy _11, copy _12) -> [return: bb3, unwind unreachable];
++         _20 = Layout::from_size_align_unchecked::precondition_check(const 0_usize, const 1_usize) -> [return: bb3, unwind unreachable];
       }
   
       bb3: {
--         _18 = handle_alloc_error(move _14) -> unwind unreachable;
-+         _18 = handle_alloc_error(const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }}) -> unwind unreachable;
+          StorageDead(_19);
+          StorageLive(_21);
+-         _21 = copy _12 as std::ptr::Alignment (Transmute);
+-         _14 = Layout { size: copy _11, align: move _21 };
++         _21 = const std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0);
++         _14 = const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }};
+          StorageDead(_21);
+          StorageLive(_15);
+-         _15 = std::alloc::Global::alloc_impl(const alloc::alloc::exchange_malloc::promoted[0], copy _14, const false) -> [return: bb4, unwind unreachable];
++         _15 = std::alloc::Global::alloc_impl(const alloc::alloc::exchange_malloc::promoted[0], const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }}, const false) -> [return: bb4, unwind unreachable];
       }
   
       bb4: {
+          _16 = discriminant(_15);
+          switchInt(move _16) -> [0: bb5, 1: bb6, otherwise: bb7];
+      }
+  
+      bb5: {
           _17 = copy ((_15 as Ok).0: std::ptr::NonNull<[u8]>);
           StorageLive(_22);
           _22 = copy _17 as *mut [u8] (Transmute);
@@ -150,27 +164,13 @@
           drop(_3) -> [return: bb1, unwind unreachable];
       }
   
-      bb5: {
--         _20 = Layout::from_size_align_unchecked::precondition_check(copy _11, copy _12) -> [return: bb6, unwind unreachable];
-+         _20 = Layout::from_size_align_unchecked::precondition_check(const 0_usize, const 1_usize) -> [return: bb6, unwind unreachable];
-      }
-  
       bb6: {
-          StorageDead(_19);
-          StorageLive(_21);
--         _21 = copy _12 as std::ptr::Alignment (Transmute);
--         _14 = Layout { size: copy _11, align: move _21 };
-+         _21 = const std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0);
-+         _14 = const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }};
-          StorageDead(_21);
-          StorageLive(_15);
--         _15 = std::alloc::Global::alloc_impl(const alloc::alloc::exchange_malloc::promoted[0], copy _14, const false) -> [return: bb7, unwind unreachable];
-+         _15 = std::alloc::Global::alloc_impl(const alloc::alloc::exchange_malloc::promoted[0], const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }}, const false) -> [return: bb7, unwind unreachable];
+-         _18 = handle_alloc_error(move _14) -> unwind unreachable;
++         _18 = handle_alloc_error(const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }}) -> unwind unreachable;
       }
   
       bb7: {
-          _16 = discriminant(_15);
-          switchInt(move _16) -> [0: bb4, 1: bb3, otherwise: bb2];
+          unreachable;
       }
 + }
 + 
