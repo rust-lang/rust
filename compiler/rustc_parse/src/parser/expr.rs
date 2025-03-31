@@ -1397,7 +1397,9 @@ impl<'a> Parser<'a> {
         } else if let Some(expr) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Expr { .. }),
             |this| {
-                let expr = this.parse_expr();
+                // Force collection (as opposed to just `parse_expr`) is required to avoid the
+                // attribute duplication seen in #138478.
+                let expr = this.parse_expr_force_collect();
                 // FIXME(nnethercote) Sometimes with expressions we get a trailing comma, possibly
                 // related to the FIXME in `collect_tokens_for_expr`. Examples are the multi-line
                 // `assert_eq!` calls involving arguments annotated with `#[rustfmt::skip]` in
