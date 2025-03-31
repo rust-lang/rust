@@ -224,7 +224,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for FindFromFloatForF32RootVids<'_, 'tcx> {
 
     fn config(&self) -> InspectConfig {
         // Avoid hang from exponentially growing proof trees (see `cycle-modulo-ambig-aliases.rs`).
-        // 3 is more than enough for all occurences in practice (a.k.a. `Into`).
+        // 3 is more than enough for all occurrences in practice (a.k.a. `Into`).
         InspectConfig { max_depth: 3 }
     }
 
