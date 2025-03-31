@@ -1561,8 +1561,9 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     ClauseKind::TypeOutlives(..) |
                     ClauseKind::RegionOutlives(..) => "lifetime",
 
+                    ClauseKind::UnstableImpl
                     // `ConstArgHasType` is never global as `ct` is always a param
-                    ClauseKind::ConstArgHasType(..)
+                    | ClauseKind::ConstArgHasType(..)
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
                     | ClauseKind::Projection(..)
@@ -1572,7 +1573,6 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     | ClauseKind::ConstEvaluatable(..)
                     // Users don't write this directly, only via another trait ref.
                     | ty::ClauseKind::HostEffect(..) => continue,
-                    ty::ClauseKind::UnstableImpl => todo!(),
                 };
                 if predicate.is_global() {
                     cx.emit_span_lint(
