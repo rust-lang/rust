@@ -7,7 +7,7 @@ LL |     Bar::foo();
    = help: items from traits can only be used if the trait is in scope
 help: trait `Foo` which provides `foo` is implemented but not in scope; perhaps you want to import it
    |
-LL + use issue_127011_a::Foo;
+LL + use issue_127011_b::Foo;
    |
 
 error: aborting due to 1 previous error

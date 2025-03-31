@@ -63,6 +63,7 @@ thread_local! {
     static FORCE_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static REDUCED_QUERIES: Cell<bool> = const { Cell::new(false) };
     static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
+    static NO_VISIBLE_PATH_IF_DOC_HIDDEN: Cell<bool> = const { Cell::new(false) };
     static RTN_MODE: Cell<RtnMode> = const { Cell::new(RtnMode::ForDiagnostic) };
 }
 
@@ -134,6 +135,7 @@ define_helper!(
     /// Prevent selection of visible paths. `Display` impl of DefId will prefer
     /// visible (public) reexports of types as paths.
     fn with_no_visible_paths(NoVisibleGuard, NO_VISIBLE_PATH);
+    fn with_no_visible_paths_if_doc_hidden(NoVisibleIfDocHiddenGuard, NO_VISIBLE_PATH_IF_DOC_HIDDEN);
 );
 
 #[must_use]
@@ -491,6 +493,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         callers: &mut Vec<DefId>,
     ) -> Result<bool, PrintError> {
         // debug!("try_print_visible_def_path: def_id={:?}", def_id);
+        if self.tcx().is_doc_hidden(def_id) && with_no_visible_paths_if_doc_hidden() {
+            return Ok(false);
+        }
 
         // If `def_id` is a direct or injected extern crate, return the
         // path to the crate followed by the path to the item within the crate.
