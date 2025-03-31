@@ -3721,7 +3721,7 @@ impl<T> [T] {
     #[doc(alias = "memcpy")]
     #[inline]
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_copy_from_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_copy_from_slice", since = "1.87.0")]
     #[track_caller]
     pub const fn copy_from_slice(&mut self, src: &[T])
     where
@@ -4331,7 +4331,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[must_use = "method does not modify the slice if the range is out of bounds"]
-    #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_take", since = "1.87.0")]
     pub fn split_off<'a, R: OneSidedRange<usize>>(
         self: &mut &'a Self,
         range: R,
@@ -4397,7 +4397,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[must_use = "method does not modify the slice if the range is out of bounds"]
-    #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_take", since = "1.87.0")]
     pub fn split_off_mut<'a, R: OneSidedRange<usize>>(
         self: &mut &'a mut Self,
         range: R,
@@ -4434,7 +4434,7 @@ impl<T> [T] {
     /// assert_eq!(first, &'a');
     /// ```
     #[inline]
-    #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_take", since = "1.87.0")]
     #[rustc_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
     pub const fn split_off_first<'a>(self: &mut &'a Self) -> Option<&'a T> {
         // FIXME(const-hack): Use `?` when available in const instead of `let-else`.
@@ -4459,7 +4459,7 @@ impl<T> [T] {
     /// assert_eq!(first, &'d');
     /// ```
     #[inline]
-    #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_take", since = "1.87.0")]
     #[rustc_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
     pub const fn split_off_first_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
         // FIXME(const-hack): Use `mem::take` and `?` when available in const.
@@ -4484,7 +4484,7 @@ impl<T> [T] {
     /// assert_eq!(last, &'c');
     /// ```
     #[inline]
-    #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_take", since = "1.87.0")]
     #[rustc_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
     pub const fn split_off_last<'a>(self: &mut &'a Self) -> Option<&'a T> {
         // FIXME(const-hack): Use `?` when available in const instead of `let-else`.
@@ -4509,7 +4509,7 @@ impl<T> [T] {
     /// assert_eq!(last, &'d');
     /// ```
     #[inline]
-    #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "slice_take", since = "1.87.0")]
     #[rustc_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
     pub const fn split_off_last_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
         // FIXME(const-hack): Use `mem::take` and `?` when available in const.
@@ -4841,7 +4841,7 @@ impl<T, const N: usize> [[T; N]] {
     /// assert!(empty_slice_of_arrays.as_flattened().is_empty());
     /// ```
     #[stable(feature = "slice_flatten", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_slice_flatten", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_slice_flatten", since = "1.87.0")]
     pub const fn as_flattened(&self) -> &[T] {
         let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
@@ -4878,7 +4878,7 @@ impl<T, const N: usize> [[T; N]] {
     /// assert_eq!(array, [[6, 7, 8], [9, 10, 11], [12, 13, 14]]);
     /// ```
     #[stable(feature = "slice_flatten", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_slice_flatten", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_slice_flatten", since = "1.87.0")]
     pub const fn as_flattened_mut(&mut self) -> &mut [T] {
         let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")

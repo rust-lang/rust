@@ -210,7 +210,7 @@ impl SocketAddr {
     /// ```
     #[inline]
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "1.87.0")]
     pub const fn set_ip(&mut self, new_ip: IpAddr) {
         // `match (*self, new_ip)` would have us mutate a copy of self only to throw it away.
         match (self, new_ip) {
@@ -254,7 +254,7 @@ impl SocketAddr {
     /// ```
     #[inline]
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "1.87.0")]
     pub const fn set_port(&mut self, new_port: u16) {
         match *self {
             SocketAddr::V4(ref mut a) => a.set_port(new_port),
@@ -360,7 +360,7 @@ impl SocketAddrV4 {
     /// ```
     #[inline]
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "1.87.0")]
     pub const fn set_ip(&mut self, new_ip: Ipv4Addr) {
         self.ip = new_ip;
     }
@@ -396,7 +396,7 @@ impl SocketAddrV4 {
     /// ```
     #[inline]
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "1.87.0")]
     pub const fn set_port(&mut self, new_port: u16) {
         self.port = new_port;
     }
@@ -458,7 +458,7 @@ impl SocketAddrV6 {
     /// ```
     #[inline]
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "1.87.0")]
     pub const fn set_ip(&mut self, new_ip: Ipv6Addr) {
         self.ip = new_ip;
     }
@@ -494,7 +494,7 @@ impl SocketAddrV6 {
     /// ```
     #[inline]
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "1.87.0")]
     pub const fn set_port(&mut self, new_port: u16) {
         self.port = new_port;
     }
@@ -542,7 +542,7 @@ impl SocketAddrV6 {
     /// ```
     #[inline]
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "1.87.0")]
     pub const fn set_flowinfo(&mut self, new_flowinfo: u32) {
         self.flowinfo = new_flowinfo;
     }
@@ -585,7 +585,7 @@ impl SocketAddrV6 {
     /// ```
     #[inline]
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_sockaddr_setters", since = "1.87.0")]
     pub const fn set_scope_id(&mut self, new_scope_id: u32) {
         self.scope_id = new_scope_id;
     }
