@@ -10,7 +10,7 @@ use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::{AttributeKind, StabilityLevel, find_attr};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{Applicability, StashKey};
+use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
 use rustc_expand::base::{
     DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension, SyntaxExtensionKind,
 };
@@ -124,14 +124,21 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
 }
 
 pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
-    let mut registered_tools = RegisteredTools::default();
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
+    registered_tools_ast(tcx.dcx(), pre_configured_attrs)
+}
+
+pub fn registered_tools_ast(
+    dcx: DiagCtxtHandle<'_>,
+    pre_configured_attrs: &[ast::Attribute],
+) -> RegisteredTools {
+    let mut registered_tools = RegisteredTools::default();
     for attr in attr::filter_by_name(pre_configured_attrs, sym::register_tool) {
         for meta_item_inner in attr.meta_item_list().unwrap_or_default() {
             match meta_item_inner.ident() {
                 Some(ident) => {
                     if let Some(old_ident) = registered_tools.replace(ident) {
-                        tcx.dcx().emit_err(errors::ToolWasAlreadyRegistered {
+                        dcx.emit_err(errors::ToolWasAlreadyRegistered {
                             span: ident.span,
                             tool: ident,
                             old_ident_span: old_ident.span,
@@ -139,7 +146,7 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
                     }
                 }
                 None => {
-                    tcx.dcx().emit_err(errors::ToolOnlyAcceptsIdentifiers {
+                    dcx.emit_err(errors::ToolOnlyAcceptsIdentifiers {
                         span: meta_item_inner.span(),
                         tool: sym::register_tool,
                     });
