@@ -218,42 +218,53 @@ macro_rules! define_Conf {
                 let mut value_spans = HashMap::new();
                 let mut errors = Vec::new();
                 let mut warnings = Vec::new();
+
+                // Declare a local variable for each field field available to a configuration file.
                 $(let mut $name = None;)*
+
                 // could get `Field` here directly, but get `String` first for diagnostics
                 while let Some(name) = map.next_key::<toml::Spanned<String>>()? {
-                    match Field::deserialize(name.get_ref().as_str().into_deserializer()) {
+                    let field = match Field::deserialize(name.get_ref().as_str().into_deserializer()) {
                         Err(e) => {
                             let e: FieldError = e;
                             errors.push(ConfError::spanned(self.0, e.error, e.suggestion, name.span()));
+                            continue;
                         }
-                        $(Ok(Field::$name) => {
+                        Ok(field) => field
+                    };
+
+                    match field {
+                        $(Field::$name => {
+                            // Is this a deprecated field, i.e., is `$dep` set? If so, push a warning.
                             $(warnings.push(ConfError::spanned(self.0, format!("deprecated field `{}`. {}", name.get_ref(), $dep), None, name.span()));)?
                             let raw_value = map.next_value::<toml::Spanned<toml::Value>>()?;
                             let value_span = raw_value.span();
-                            match <$ty>::deserialize(raw_value.into_inner()) {
-                                Err(e) => errors.push(ConfError::spanned(self.0, e.to_string().replace('\n', " ").trim(), None, value_span)),
-                                Ok(value) => match $name {
-                                    Some(_) => {
-                                        errors.push(ConfError::spanned(self.0, format!("duplicate field `{}`", name.get_ref()), None, name.span()));
-                                    }
-                                    None => {
-                                        $name = Some(value);
-                                        value_spans.insert(name.get_ref().as_str().to_string(), value_span);
-                                        // $new_conf is the same as one of the defined `$name`s, so
-                                        // this variable is defined in line 2 of this function.
-                                        $(match $new_conf {
-                                            Some(_) => errors.push(ConfError::spanned(self.0, concat!(
-                                                "duplicate field `", stringify!($new_conf),
-                                                "` (provided as `", stringify!($name), "`)"
-                                            ), None, name.span())),
-                                            None => $new_conf = $name.clone(),
-                                        })?
-                                    },
+                            let value = match <$ty>::deserialize(raw_value.into_inner()) {
+                                Err(e) => {
+                                    errors.push(ConfError::spanned(self.0, e.to_string().replace('\n', " ").trim(), None, value_span));
+                                    continue;
                                 }
+                                Ok(value) => value
+                            };
+                            // Was this field set previously?
+                            if $name.is_some() {
+                                errors.push(ConfError::spanned(self.0, format!("duplicate field `{}`", name.get_ref()), None, name.span()));
+                                continue;
                             }
+                            $name = Some(value);
+                            value_spans.insert(name.get_ref().as_str().to_string(), value_span);
+                            // If this is a deprecated field, was the new field (`$new_conf`) set previously?
+                            // Note that `$new_conf` is one of the defined `$name`s.
+                            $(match $new_conf {
+                                Some(_) => errors.push(ConfError::spanned(self.0, concat!(
+                                    "duplicate field `", stringify!($new_conf),
+                                    "` (provided as `", stringify!($name), "`)"
+                                ), None, name.span())),
+                                None => $new_conf = $name.clone(),
+                            })?
                         })*
                         // ignore contents of the third_party key
-                        Ok(Field::third_party) => drop(map.next_value::<IgnoredAny>())
+                        Field::third_party => drop(map.next_value::<IgnoredAny>())
                     }
                 }
                 let conf = Conf { $($name: $name.unwrap_or_else(defaults::$name),)* };
