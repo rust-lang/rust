@@ -107,7 +107,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
             CanonicalVarKind::Int => self.next_int_var().into(),
 
-            CanonicalVarKind::Float => self.next_float_var().into(),
+            CanonicalVarKind::Float => self.next_float_var(span).into(),
 
             CanonicalVarKind::PlaceholderTy(ty::PlaceholderType { universe, bound, .. }) => {
                 let universe_mapped = universe_map(universe);
