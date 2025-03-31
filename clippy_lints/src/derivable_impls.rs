@@ -188,7 +188,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             self_ty,
             ..
         }) = item.kind
-            && !cx.tcx.has_attr(item.owner_id, sym::automatically_derived)
+            && !cx.tcx.is_automatically_derived(item.owner_id.to_def_id())
             && !item.span.from_expansion()
             && let Some(def_id) = trait_ref.trait_def_id()
             && cx.tcx.is_diagnostic_item(sym::Default, def_id)

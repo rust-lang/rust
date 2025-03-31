@@ -209,7 +209,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
             && let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, self_path_did) = self_path.res
             && cx.tcx.is_diagnostic_item(sym::Debug, trait_def_id)
             // don't trigger if this impl was derived
-            && !cx.tcx.has_attr(item.owner_id, sym::automatically_derived)
+            && !cx.tcx.is_automatically_derived(item.owner_id.to_def_id())
             && !item.span.from_expansion()
             // find `Debug::fmt` function
             && let Some(fmt_item) = items.iter().find(|i| i.ident.name == sym::fmt)
