@@ -127,15 +127,13 @@ mod prim_bool {}
 /// [`Result<String, !>`] which we can unpack like this:
 ///
 /// ```
-/// #![feature(exhaustive_patterns)]
 /// use std::str::FromStr;
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
-/// Since the [`Err`] variant contains a `!`, it can never occur. If the `exhaustive_patterns`
-/// feature is present this means we can exhaustively match on [`Result<T, !>`] by just taking the
-/// [`Ok`] variant. This illustrates another behavior of `!` - it can be used to "delete" certain
-/// enum variants from generic types like `Result`.
+/// Since the [`Err`] variant contains a `!`, it can never occur. This means we can exhaustively
+/// match on [`Result<T, !>`] by just taking the [`Ok`] variant. This illustrates another behavior
+/// of `!` - it can be used to "delete" certain enum variants from generic types like `Result`.
 ///
 /// ## Infinite loops
 ///

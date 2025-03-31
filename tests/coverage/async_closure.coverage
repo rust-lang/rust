@@ -14,7 +14,7 @@
   | async_closure::main::{closure#0}:
   |   LL|      1|    let async_closure = async || {};
   ------------------
-  | async_closure::main::{closure#0}::{closure#1}::<i32>:
+  | async_closure::main::{closure#0}:
   |   LL|      1|    let async_closure = async || {};
   ------------------
    LL|      1|    executor::block_on(async_closure());

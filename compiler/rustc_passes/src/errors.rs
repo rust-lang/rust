@@ -1441,6 +1441,11 @@ pub(crate) struct OnlyHasEffectOn {
     pub target_name: String,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(passes_inline_ignored_for_exported)]
+#[help]
+pub(crate) struct InlineIgnoredForExported {}
+
 #[derive(Diagnostic)]
 #[diag(passes_object_lifetime_err)]
 pub(crate) struct ObjectLifetimeErr {
