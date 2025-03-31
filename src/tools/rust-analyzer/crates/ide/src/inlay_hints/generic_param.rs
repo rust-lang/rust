@@ -1,4 +1,5 @@
 //! Implementation of inlay hints for generic parameters.
+use either::Either;
 use ide_db::{active_parameter::generic_def_for_node, famous_defs::FamousDefs};
 use syntax::{
     AstNode,
@@ -6,7 +7,8 @@ use syntax::{
 };
 
 use crate::{
-    InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind, inlay_hints::GenericParameterHints,
+    InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind,
+    inlay_hints::{GenericParameterHints, param_name},
 };
 
 use super::param_name::is_argument_similar_to_param_name;
@@ -62,8 +64,17 @@ pub(crate) fn hints(
         let param_name = param.name(sema.db);
 
         let should_hide = {
-            let argument = get_string_representation(&arg)?;
-            is_argument_similar_to_param_name(&argument, param_name.as_str())
+            let param_name = param_name.as_str();
+            get_segment_representation(&arg).map_or(false, |seg| match seg {
+                Either::Left(Either::Left(argument)) => {
+                    is_argument_similar_to_param_name(&argument, param_name)
+                }
+                Either::Left(Either::Right(argument)) => argument
+                    .segment()
+                    .and_then(|it| it.name_ref())
+                    .is_some_and(|it| it.text().eq_ignore_ascii_case(param_name)),
+                Either::Right(lifetime) => lifetime.text().eq_ignore_ascii_case(param_name),
+            })
         };
 
         if should_hide {
@@ -111,32 +122,34 @@ pub(crate) fn hints(
     Some(())
 }
 
-fn get_string_representation(arg: &ast::GenericArg) -> Option<String> {
+fn get_segment_representation(
+    arg: &ast::GenericArg,
+) -> Option<Either<Either<Vec<ast::NameRef>, ast::Path>, ast::Lifetime>> {
     return match arg {
         ast::GenericArg::AssocTypeArg(_) => None,
-        ast::GenericArg::ConstArg(const_arg) => Some(const_arg.to_string()),
+        ast::GenericArg::ConstArg(const_arg) => {
+            param_name::get_segment_representation(&const_arg.expr()?).map(Either::Left)
+        }
         ast::GenericArg::LifetimeArg(lifetime_arg) => {
             let lifetime = lifetime_arg.lifetime()?;
-            Some(lifetime.to_string())
+            Some(Either::Right(lifetime))
         }
         ast::GenericArg::TypeArg(type_arg) => {
             let ty = type_arg.ty()?;
-            Some(
-                type_path_segment(&ty)
-                    .map_or_else(|| type_arg.to_string(), |segment| segment.to_string()),
-            )
+            type_path(&ty).map(Either::Right).map(Either::Left)
         }
     };
 
-    fn type_path_segment(ty: &ast::Type) -> Option<ast::PathSegment> {
+    fn type_path(ty: &ast::Type) -> Option<ast::Path> {
         match ty {
-            ast::Type::ArrayType(it) => type_path_segment(&it.ty()?),
-            ast::Type::ForType(it) => type_path_segment(&it.ty()?),
-            ast::Type::ParenType(it) => type_path_segment(&it.ty()?),
-            ast::Type::PathType(path_type) => path_type.path()?.segment(),
-            ast::Type::PtrType(it) => type_path_segment(&it.ty()?),
-            ast::Type::RefType(it) => type_path_segment(&it.ty()?),
-            ast::Type::SliceType(it) => type_path_segment(&it.ty()?),
+            ast::Type::ArrayType(it) => type_path(&it.ty()?),
+            ast::Type::ForType(it) => type_path(&it.ty()?),
+            ast::Type::ParenType(it) => type_path(&it.ty()?),
+            ast::Type::PathType(path_type) => path_type.path(),
+            ast::Type::PtrType(it) => type_path(&it.ty()?),
+            ast::Type::RefType(it) => type_path(&it.ty()?),
+            ast::Type::SliceType(it) => type_path(&it.ty()?),
+            ast::Type::MacroType(macro_type) => macro_type.macro_call()?.path(),
             _ => None,
         }
     }

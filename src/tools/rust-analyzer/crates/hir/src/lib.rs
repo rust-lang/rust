@@ -2922,10 +2922,14 @@ impl Trait {
         db: &dyn HirDatabase,
     ) -> Option<Vec<DynCompatibilityViolation>> {
         let mut violations = vec![];
-        hir_ty::dyn_compatibility::dyn_compatibility_with_callback(db, self.id, &mut |violation| {
-            violations.push(violation);
-            ControlFlow::Continue(())
-        });
+        _ = hir_ty::dyn_compatibility::dyn_compatibility_with_callback(
+            db,
+            self.id,
+            &mut |violation| {
+                violations.push(violation);
+                ControlFlow::Continue(())
+            },
+        );
         violations.is_empty().not().then_some(violations)
     }
 
@@ -5514,7 +5518,7 @@ impl Type {
             .generic_def()
             .map_or_else(|| TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
 
-        method_resolution::iterate_method_candidates_dyn(
+        _ = method_resolution::iterate_method_candidates_dyn(
             &canonical,
             db,
             environment,
@@ -5601,7 +5605,7 @@ impl Type {
             .generic_def()
             .map_or_else(|| TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
 
-        method_resolution::iterate_path_candidates(
+        _ = method_resolution::iterate_path_candidates(
             &canonical,
             db,
             environment,
