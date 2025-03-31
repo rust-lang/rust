@@ -456,6 +456,10 @@ lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be dir
 
 lint_invalid_nan_comparisons_lt_le_gt_ge = incorrect NaN comparison, NaN is not orderable
 
+lint_invalid_null_arguments = calling this function with a null pointer is undefined behavior, even if the result of the function is unused
+    .origin = null pointer originates from here
+    .doc = for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
+
 lint_invalid_reference_casting_assign_to_ref = assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
     .label = casting happened here
 
@@ -679,15 +683,6 @@ lint_private_extern_crate_reexport = extern crate `{$ident}` is private and cann
 
 lint_proc_macro_derive_resolution_fallback = cannot find {$ns} `{$ident}` in this scope
     .label = names from parent modules are not accessible without an explicit import
-
-lint_ptr_null_checks_fn_ptr = function pointers are not nullable, so checking them for null will always return false
-    .help = wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
-    .label = expression has type `{$orig_ty}`
-
-lint_ptr_null_checks_fn_ret = returned pointer of `{$fn_name}` call is never null, so checking it for null will always return false
-
-lint_ptr_null_checks_ref = references are not nullable, so checking them for null will always return false
-    .label = expression has type `{$orig_ty}`
 
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
@@ -980,6 +975,15 @@ lint_unused_op = unused {$op} that must be used
 lint_unused_result = unused result of type `{$ty}`
 
 lint_use_let_underscore_ignore_suggestion = use `let _ = ...` to ignore the expression or result
+
+lint_useless_ptr_null_checks_fn_ptr = function pointers are not nullable, so checking them for null will always return false
+    .help = wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+    .label = expression has type `{$orig_ty}`
+
+lint_useless_ptr_null_checks_fn_ret = returned pointer of `{$fn_name}` call is never null, so checking it for null will always return false
+
+lint_useless_ptr_null_checks_ref = references are not nullable, so checking them for null will always return false
+    .label = expression has type `{$orig_ty}`
 
 lint_uses_power_alignment = repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
 
