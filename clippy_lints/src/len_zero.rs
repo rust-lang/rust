@@ -202,7 +202,11 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
                 expr.span,
                 lhs_expr,
                 peel_ref_operators(cx, rhs_expr),
-                (method.ident.name == sym::ne).then_some("!").unwrap_or_default(),
+                if method.ident.name == sym::ne {
+                    "!"
+                } else {
+                    Default::default()
+                },
             );
         }
 

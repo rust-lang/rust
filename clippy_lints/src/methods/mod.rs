@@ -2426,7 +2426,7 @@ declare_clippy_lint! {
     ///
     /// ### Limitations
     /// This lint currently only looks for usages of
-    /// `.then_some(..).unwrap_or(..)` and `.then(..).unwrap_or(..)`, but will be expanded
+    /// `.{then, then_some}(..).{unwrap_or, unwrap_or_else, unwrap_or_default}(..)`, but will be expanded
     /// to account for similar patterns.
     ///
     /// ### Example
@@ -5419,15 +5419,21 @@ impl Methods {
                             option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, self.msrv);
                         },
                         Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg, then_method, "unwrap_or");
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, Some(u_arg), then_method, "unwrap_or");
                         },
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("unwrap_or_default", []) => {
-                    if let Some(("map", m_recv, [arg], span, _)) = method_call(recv) {
-                        manual_is_variant_and::check(cx, expr, m_recv, arg, span, self.msrv);
+                    match method_call(recv) {
+                        Some(("map", m_recv, [arg], span, _)) => {
+                            manual_is_variant_and::check(cx, expr, m_recv, arg, span, self.msrv);
+                        },
+                        Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, None, then_method, "unwrap_or_default");
+                        },
+                        _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
@@ -5439,7 +5445,15 @@ impl Methods {
                         Some(("map", recv, [map_arg], _, _))
                             if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, self.msrv) => {},
                         Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg, then_method, "unwrap_or_else");
+                            obfuscated_if_else::check(
+                                cx,
+                                expr,
+                                t_recv,
+                                t_arg,
+                                Some(u_arg),
+                                then_method,
+                                "unwrap_or_else",
+                            );
                         },
                         _ => {
                             unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
