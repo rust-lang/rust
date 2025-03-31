@@ -238,8 +238,24 @@ where
                 // delay a bug because we can have trivially false where clauses, so we
                 // treat it as rigid.
                 if cx.impl_self_is_guaranteed_unsized(impl_def_id) {
-                    ecx.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
-                    return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                    match ecx.typing_mode() {
+                        ty::TypingMode::Coherence => {
+                            return ecx.evaluate_added_goals_and_make_canonical_response(
+                                Certainty::AMBIGUOUS,
+                            );
+                        }
+                        ty::TypingMode::Analysis { .. }
+                        | ty::TypingMode::Borrowck { .. }
+                        | ty::TypingMode::PostBorrowckAnalysis { .. }
+                        | ty::TypingMode::PostAnalysis => {
+                            ecx.structurally_instantiate_normalizes_to_term(
+                                goal,
+                                goal.predicate.alias,
+                            );
+                            return ecx
+                                .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                        }
+                    }
                 } else {
                     return error_response(ecx, cx.delay_bug("missing item"));
                 }
