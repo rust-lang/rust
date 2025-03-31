@@ -554,7 +554,7 @@ impl TcpStream {
         self.0.ttl()
     }
 
-    // Sets the value for the `IPV6_UNICAST_HOPS` option on this socket.
+    /// Sets the value for the `IPV6_UNICAST_HOPS` option on this socket.
     ///
     /// This value sets the unicast hop limit field that is used in every packet
     /// sent from this socket.
