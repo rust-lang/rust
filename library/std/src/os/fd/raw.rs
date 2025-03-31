@@ -285,7 +285,7 @@ impl<T: AsRawFd> AsRawFd for Box<T> {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl AsRawFd for io::PipeReader {
     fn as_raw_fd(&self) -> RawFd {
@@ -293,7 +293,7 @@ impl AsRawFd for io::PipeReader {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl FromRawFd for io::PipeReader {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
@@ -301,7 +301,7 @@ impl FromRawFd for io::PipeReader {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl IntoRawFd for io::PipeReader {
     fn into_raw_fd(self) -> RawFd {
@@ -309,7 +309,7 @@ impl IntoRawFd for io::PipeReader {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl AsRawFd for io::PipeWriter {
     fn as_raw_fd(&self) -> RawFd {
@@ -317,7 +317,7 @@ impl AsRawFd for io::PipeWriter {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl FromRawFd for io::PipeWriter {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
@@ -325,7 +325,7 @@ impl FromRawFd for io::PipeWriter {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl IntoRawFd for io::PipeWriter {
     fn into_raw_fd(self) -> RawFd {

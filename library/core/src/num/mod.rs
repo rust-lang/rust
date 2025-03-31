@@ -169,8 +169,8 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-7), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
-        #[stable(feature = "num_midpoint_signed", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "num_midpoint_signed", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "num_midpoint_signed", since = "1.87.0")]
+        #[rustc_const_stable(feature = "num_midpoint_signed", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -221,8 +221,8 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-7), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
-        #[stable(feature = "num_midpoint_signed", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "num_midpoint_signed", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "num_midpoint_signed", since = "1.87.0")]
+        #[rustc_const_stable(feature = "num_midpoint_signed", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

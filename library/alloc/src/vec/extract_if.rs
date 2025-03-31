@@ -15,7 +15,7 @@ use crate::alloc::{Allocator, Global};
 /// let mut v = vec![0, 1, 2];
 /// let iter: std::vec::ExtractIf<'_, _, _> = v.extract_if(.., |x| *x % 2 == 0);
 /// ```
-#[stable(feature = "extract_if", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "extract_if", since = "1.87.0")]
 #[derive(Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ExtractIf<
@@ -57,7 +57,7 @@ impl<'a, T, F, A: Allocator> ExtractIf<'a, T, F, A> {
     }
 }
 
-#[stable(feature = "extract_if", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "extract_if", since = "1.87.0")]
 impl<T, F, A: Allocator> Iterator for ExtractIf<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
@@ -93,7 +93,7 @@ where
     }
 }
 
-#[stable(feature = "extract_if", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "extract_if", since = "1.87.0")]
 impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A> {
     fn drop(&mut self) {
         unsafe {
