@@ -1,14 +1,14 @@
 error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
   --> $DIR/attribute-typos.rs:7:3
    |
-LL | #[rustc_err]
-   |   ^^^^^^^^^
+LL | #[rustc_dumm]
+   |   ^^^^^^^^^^
 
-error: cannot find attribute `rustc_err` in this scope
+error: cannot find attribute `rustc_dumm` in this scope
   --> $DIR/attribute-typos.rs:7:3
    |
-LL | #[rustc_err]
-   |   ^^^^^^^^^ help: a built-in attribute with a similar name exists: `rustc_error`
+LL | #[rustc_dumm]
+   |   ^^^^^^^^^^ help: a built-in attribute with a similar name exists: `rustc_dummy`
 
 error: cannot find attribute `tests` in this scope
   --> $DIR/attribute-typos.rs:4:3
