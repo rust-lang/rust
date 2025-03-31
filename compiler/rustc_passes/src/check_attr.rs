@@ -35,7 +35,7 @@ use rustc_session::lint::builtin::{
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, edition, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -1038,14 +1038,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
             // can remove the `SelfTy` case here, remove `sym::SelfTy`, and update the
             // `#[doc(keyword = "SelfTy")` attribute in `library/std/src/keyword_docs.rs`.
-            s <= kw::Union || s == sym::SelfTy
+            s.is_reserved(|| edition::LATEST_STABLE_EDITION) || s.is_weak() || s == sym::SelfTy
         }
 
-        let doc_keyword = meta.value_str().unwrap_or(kw::Empty);
-        if doc_keyword == kw::Empty {
-            self.doc_attr_str_error(meta, "keyword");
-            return;
-        }
+        let doc_keyword = match meta.value_str() {
+            Some(value) if value != kw::Empty => value,
+            _ => return self.doc_attr_str_error(meta, "keyword"),
+        };
+
         let item_kind = match self.tcx.hir_node(hir_id) {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
