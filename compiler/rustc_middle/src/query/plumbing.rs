@@ -366,11 +366,11 @@ macro_rules! define_callbacks {
 
                 pub type Storage<'tcx> = <$($K)* as keys::Key>::Cache<Erase<$V>>;
 
-                // Ensure that keys grow no larger than 96 bytes by accident.
+                // Ensure that keys grow no larger than 88 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
                 #[cfg(target_pointer_width = "64")]
                 const _: () = {
-                    if size_of::<Key<'static>>() > 96 {
+                    if size_of::<Key<'static>>() > 88 {
                         panic!("{}", concat!(
                             "the query `",
                             stringify!($name),

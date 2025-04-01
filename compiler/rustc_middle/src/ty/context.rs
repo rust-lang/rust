@@ -667,8 +667,15 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.opaque_types_defined_by(defining_anchor)
     }
 
-    fn stalled_generators_within(self, defining_anchor: Self::LocalDefId) -> Self::LocalDefIds {
-        self.stalled_generators_within(defining_anchor)
+    fn opaque_types_and_generators_defined_by(
+        self,
+        defining_anchor: Self::LocalDefId,
+    ) -> Self::LocalDefIds {
+        self.mk_local_def_ids_from_iter(
+            self.opaque_types_defined_by(defining_anchor)
+                .iter()
+                .chain(self.stalled_generators_within(defining_anchor)),
+        )
     }
 }
 
@@ -2875,11 +2882,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.interners.intern_clauses(clauses)
     }
 
-    pub fn mk_local_def_ids(self, clauses: &[LocalDefId]) -> &'tcx List<LocalDefId> {
+    pub fn mk_local_def_ids(self, def_ids: &[LocalDefId]) -> &'tcx List<LocalDefId> {
         // FIXME consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
         // here.
-        self.intern_local_def_ids(clauses)
+        self.intern_local_def_ids(def_ids)
     }
 
     pub fn mk_local_def_ids_from_iter<I, T>(self, iter: I) -> T::Output

@@ -219,8 +219,8 @@ where
     ) -> PredicateObligations<'tcx> {
         self.obligations.drain_pending(|obl| {
             let stalled_generators = match infcx.typing_mode() {
-                TypingMode::Analysis { defining_opaque_types: _, stalled_generators } => {
-                    stalled_generators
+                TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                    defining_opaque_types_and_generators
                 }
                 TypingMode::Coherence
                 | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }

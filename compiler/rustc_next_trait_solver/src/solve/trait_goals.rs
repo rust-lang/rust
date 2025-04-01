@@ -191,9 +191,10 @@ where
 
         if let ty::CoroutineWitness(def_id, _) = goal.predicate.self_ty().kind() {
             match ecx.typing_mode() {
-                TypingMode::Analysis { stalled_generators, defining_opaque_types: _ } => {
-                    if def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
-                    {
+                TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                    if def_id.as_local().is_some_and(|def_id| {
+                        defining_opaque_types_and_generators.contains(&def_id)
+                    }) {
                         return ecx.forced_ambiguity(MaybeCause::Ambiguity);
                     }
                 }
