@@ -154,7 +154,7 @@ impl<'a> MirPrettyCtx<'a> {
     }
 
     fn for_closure(&mut self, closure: ClosureId) {
-        let body = match self.db.mir_body_for_closure(closure) {
+        let body = match self.db.mir_body_for_closure(closure.into()) {
             Ok(it) => it,
             Err(e) => {
                 wln!(self, "// error in {closure:?}: {e:?}");

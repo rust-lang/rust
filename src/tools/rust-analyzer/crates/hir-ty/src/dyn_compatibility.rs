@@ -22,7 +22,7 @@ use crate::{
     from_assoc_type_id, from_chalk_trait_id,
     generics::{generics, trait_self_param_idx},
     lower::callable_item_sig,
-    to_assoc_type_id, to_chalk_trait_id,
+    to_chalk_trait_id,
     utils::elaborate_clause_supertraits,
 };
 
@@ -171,8 +171,7 @@ fn bounds_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
         .iter()
         .filter_map(|(_, it)| match *it {
             AssocItemId::TypeAliasId(id) => {
-                let assoc_ty_id = to_assoc_type_id(id);
-                let assoc_ty_data = db.associated_ty_data(assoc_ty_id);
+                let assoc_ty_data = db.associated_ty_data(id);
                 Some(assoc_ty_data)
             }
             _ => None,
