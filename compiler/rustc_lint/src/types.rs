@@ -1623,15 +1623,13 @@ impl ImproperCTypesDefinitions {
         cx: &LateContext<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
+        assert!(cx.tcx.sess.target.os == "aix");
         // Structs (under repr(C)) follow the power alignment rule if:
         //   - the first field of the struct is a floating-point type that
         //     is greater than 4-bytes, or
         //   - the first field of the struct is an aggregate whose
         //     recursively first field is a floating-point type greater than
         //     4 bytes.
-        if cx.tcx.sess.target.os != "aix" {
-            return false;
-        }
         if ty.is_floating_point() && ty.primitive_size(cx.tcx).bytes() > 4 {
             return true;
         } else if let Adt(adt_def, _) = ty.kind()
@@ -1663,21 +1661,14 @@ impl ImproperCTypesDefinitions {
             && !adt_def.all_fields().next().is_none()
         {
             let struct_variant_data = item.expect_struct().1;
-            for (index, ..) in struct_variant_data.fields().iter().enumerate() {
+            for field_def in struct_variant_data.fields().iter().skip(1) {
                 // Struct fields (after the first field) are checked for the
                 // power alignment rule, as fields after the first are likely
                 // to be the fields that are misaligned.
-                if index != 0 {
-                    let first_field_def = struct_variant_data.fields()[index];
-                    let def_id = first_field_def.def_id;
-                    let ty = cx.tcx.type_of(def_id).instantiate_identity();
-                    if self.check_arg_for_power_alignment(cx, ty) {
-                        cx.emit_span_lint(
-                            USES_POWER_ALIGNMENT,
-                            first_field_def.span,
-                            UsesPowerAlignment,
-                        );
-                    }
+                let def_id = field_def.def_id;
+                let ty = cx.tcx.type_of(def_id).instantiate_identity();
+                if self.check_arg_for_power_alignment(cx, ty) {
+                    cx.emit_span_lint(USES_POWER_ALIGNMENT, field_def.span, UsesPowerAlignment);
                 }
             }
         }
