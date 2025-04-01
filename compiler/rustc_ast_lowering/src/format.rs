@@ -1,7 +1,5 @@
-use core::ops::ControlFlow;
 use std::borrow::Cow;
 
-use rustc_ast::visit::Visitor;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
@@ -476,16 +474,10 @@ fn expand_format_args<'hir>(
         return hir::ExprKind::Call(new, new_args);
     }
 
-    // If the args array contains exactly all the original arguments once,
-    // in order, we can use a simple array instead of a `match` construction.
-    // However, if there's a yield point in any argument except the first one,
-    // we don't do this, because an Argument cannot be kept across yield points.
-    //
-    // This is an optimization, speeding up compilation about 1-2% in some cases.
-    // See https://github.com/rust-lang/rust/pull/106770#issuecomment-1380790609
-    let use_simple_array = argmap.len() == arguments.len()
-        && argmap.iter().enumerate().all(|(i, (&(j, _), _))| i == j)
-        && arguments.iter().skip(1).all(|arg| !may_contain_yield_point(&arg.expr));
+    // If the args array contains just one argument,
+    // we can use a simple array instead of a `match` construction.
+    let use_simple_array =
+        argmap.len() == 1 && arguments.len() == 1 && argmap.first().unwrap().0.0 == 0;
 
     let args = if arguments.is_empty() {
         // Generate:
@@ -514,9 +506,6 @@ fn expand_format_args<'hir>(
         // Generate:
         //     &[
         //         <core::fmt::Argument>::new_display(&arg0),
-        //         <core::fmt::Argument>::new_lower_hex(&arg1),
-        //         <core::fmt::Argument>::new_debug(&arg2),
-        //         …
         //     ]
         let elements = ctx.arena.alloc_from_iter(arguments.iter().zip(argmap).map(
             |(arg, ((_, ty), placeholder_span))| {
@@ -633,34 +622,6 @@ fn expand_format_args<'hir>(
         let new_args = ctx.arena.alloc_from_iter([lit_pieces, args]);
         hir::ExprKind::Call(new_v1, new_args)
     }
-}
-
-fn may_contain_yield_point(e: &ast::Expr) -> bool {
-    struct MayContainYieldPoint;
-
-    impl Visitor<'_> for MayContainYieldPoint {
-        type Result = ControlFlow<()>;
-
-        fn visit_expr(&mut self, e: &ast::Expr) -> ControlFlow<()> {
-            if let ast::ExprKind::Await(_, _) | ast::ExprKind::Yield(_) = e.kind {
-                ControlFlow::Break(())
-            } else {
-                visit::walk_expr(self, e)
-            }
-        }
-
-        fn visit_mac_call(&mut self, _: &ast::MacCall) -> ControlFlow<()> {
-            // Macros should be expanded at this point.
-            unreachable!("unexpanded macro in ast lowering");
-        }
-
-        fn visit_item(&mut self, _: &ast::Item) -> ControlFlow<()> {
-            // Do not recurse into nested items.
-            ControlFlow::Continue(())
-        }
-    }
-
-    MayContainYieldPoint.visit_expr(e).is_break()
 }
 
 fn for_all_argument_indexes(template: &mut [FormatArgsPiece], mut f: impl FnMut(&mut usize)) {
