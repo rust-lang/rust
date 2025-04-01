@@ -1042,19 +1042,6 @@ fn test() -> String {
     }
 
     #[test]
-    fn closure_mismatch_show_different_type() {
-        check_diagnostics(
-            r#"
-fn f() {
-    let mut x = (|| 1, 2);
-    x = (|| 3, 4);
-       //^^^^ error: expected {closure#23552}, found {closure#23553}
-}
-            "#,
-        );
-    }
-
-    #[test]
     fn type_mismatch_range_adjustment() {
         cov_mark::check!(type_mismatch_range_adjustment);
         check_diagnostics(

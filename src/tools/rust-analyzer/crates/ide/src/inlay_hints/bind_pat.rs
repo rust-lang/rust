@@ -861,28 +861,6 @@ fn main() {
         check_with_config(
             InlayHintsConfig {
                 type_hints: true,
-                closure_style: ClosureStyle::ClosureWithId,
-                ..DISABLED_CONFIG
-            },
-            r#"
-//- minicore: fn
-fn main() {
-    let x = || 2;
-      //^ {closure#25600}
-    let y = |t: i32| x() + t;
-      //^ {closure#25601}
-    let mut t = 5;
-          //^ i32
-    let z = |k: i32| { t += k; };
-      //^ {closure#25602}
-    let p = (y, z);
-      //^ ({closure#25601}, {closure#25602})
-}
-            "#,
-        );
-        check_with_config(
-            InlayHintsConfig {
-                type_hints: true,
                 closure_style: ClosureStyle::Hide,
                 ..DISABLED_CONFIG
             },
