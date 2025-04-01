@@ -428,7 +428,7 @@ impl<'hir> CheckLoopVisitor<'hir> {
         }
     }
 
-    /// Is this a loop annotated with #[loop_match] that looks syntactically sound?
+    /// Is this a loop annotated with `#[loop_match]` that looks syntactically sound?
     fn is_loop_match(
         &self,
         e: &'hir hir::Expr<'hir>,
