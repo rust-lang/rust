@@ -995,18 +995,7 @@ impl<'a> Parser<'a> {
     /// See `parse_generic_ty_bound` for the complete grammar of trait bound modifiers.
     fn parse_trait_bound_modifiers(&mut self) -> PResult<'a, TraitBoundModifiers> {
         let modifier_lo = self.token.span;
-        let constness = if self.eat(exp!(Tilde)) {
-            let tilde = self.prev_token.span;
-            self.expect_keyword(exp!(Const))?;
-            let span = tilde.to(self.prev_token.span);
-            self.psess.gated_spans.gate(sym::const_trait_impl, span);
-            BoundConstness::Maybe(span)
-        } else if self.eat_keyword(exp!(Const)) {
-            self.psess.gated_spans.gate(sym::const_trait_impl, self.prev_token.span);
-            BoundConstness::Always(self.prev_token.span)
-        } else {
-            BoundConstness::Never
-        };
+        let constness = self.parse_bound_constness()?;
 
         let asyncness = if self.token_uninterpolated_span().at_least_rust_2018()
             && self.eat_keyword(exp!(Async))
@@ -1066,6 +1055,21 @@ impl<'a> Parser<'a> {
         }
 
         Ok(TraitBoundModifiers { constness, asyncness, polarity })
+    }
+
+    fn parse_bound_constness(&mut self) -> PResult<'a, BoundConstness> {
+        Ok(if self.eat(exp!(Tilde)) {
+            let tilde = self.prev_token.span;
+            self.expect_keyword(exp!(Const))?;
+            let span = tilde.to(self.prev_token.span);
+            self.psess.gated_spans.gate(sym::const_trait_impl, span);
+            BoundConstness::Maybe(span)
+        } else if self.eat_keyword(exp!(Const)) {
+            self.psess.gated_spans.gate(sym::const_trait_impl, self.prev_token.span);
+            BoundConstness::Always(self.prev_token.span)
+        } else {
+            BoundConstness::Never
+        })
     }
 
     /// Parses a type bound according to:
