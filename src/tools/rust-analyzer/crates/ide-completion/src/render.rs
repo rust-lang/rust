@@ -122,10 +122,10 @@ impl<'a> RenderContext<'a> {
 
 pub(crate) fn render_field(
     ctx: RenderContext<'_>,
-    dot_access: &DotAccess,
+    dot_access: &DotAccess<'_>,
     receiver: Option<SmolStr>,
     field: hir::Field,
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
 ) -> CompletionItem {
     let db = ctx.db();
     let is_deprecated = ctx.is_deprecated(field);
@@ -204,7 +204,7 @@ pub(crate) fn render_tuple_field(
     ctx: RenderContext<'_>,
     receiver: Option<SmolStr>,
     field: usize,
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
 ) -> CompletionItem {
     let mut item = CompletionItem::new(
         SymbolKind::Field,
@@ -241,7 +241,7 @@ pub(crate) fn render_type_inference(
 
 pub(crate) fn render_path_resolution(
     ctx: RenderContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    path_ctx: &PathCompletionCtx<'_>,
     local_name: hir::Name,
     resolution: ScopeDef,
 ) -> Builder {
@@ -259,7 +259,7 @@ pub(crate) fn render_pattern_resolution(
 
 pub(crate) fn render_resolution_with_import(
     ctx: RenderContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    path_ctx: &PathCompletionCtx<'_>,
     import_edit: LocatedImport,
 ) -> Option<Builder> {
     let resolution = ScopeDef::from(import_edit.original_item);
@@ -282,10 +282,10 @@ pub(crate) fn render_resolution_with_import_pat(
 
 pub(crate) fn render_expr(
     ctx: &CompletionContext<'_>,
-    expr: &hir::term_search::Expr,
+    expr: &hir::term_search::Expr<'_>,
 ) -> Option<Builder> {
     let mut i = 1;
-    let mut snippet_formatter = |ty: &hir::Type| {
+    let mut snippet_formatter = |ty: &hir::Type<'_>| {
         let arg_name = ty
             .as_adt()
             .map(|adt| stdx::to_lower_snake_case(adt.name(ctx.db).as_str()))
@@ -295,7 +295,7 @@ pub(crate) fn render_expr(
         res
     };
 
-    let mut label_formatter = |ty: &hir::Type| {
+    let mut label_formatter = |ty: &hir::Type<'_>| {
         ty.as_adt()
             .map(|adt| stdx::to_lower_snake_case(adt.name(ctx.db).as_str()))
             .unwrap_or_else(|| String::from("..."))
@@ -391,7 +391,7 @@ fn render_resolution_pat(
 
 fn render_resolution_path(
     ctx: RenderContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    path_ctx: &PathCompletionCtx<'_>,
     local_name: hir::Name,
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
@@ -460,7 +460,7 @@ fn render_resolution_path(
         }
     }
 
-    let mut set_item_relevance = |ty: Type| {
+    let mut set_item_relevance = |ty: Type<'_>| {
         if !ty.is_unknown() {
             item.detail(ty.display(db, krate).to_string());
         }
@@ -593,8 +593,8 @@ fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> boo
 // FIXME: This checks types without possible coercions which some completions might want to do
 fn match_types(
     ctx: &CompletionContext<'_>,
-    ty1: &hir::Type,
-    ty2: &hir::Type,
+    ty1: &hir::Type<'_>,
+    ty2: &hir::Type<'_>,
 ) -> Option<CompletionRelevanceTypeMatch> {
     if ty1 == ty2 {
         Some(CompletionRelevanceTypeMatch::Exact)
@@ -607,7 +607,7 @@ fn match_types(
 
 fn compute_type_match(
     ctx: &CompletionContext<'_>,
-    completion_ty: &hir::Type,
+    completion_ty: &hir::Type<'_>,
 ) -> Option<CompletionRelevanceTypeMatch> {
     let expected_type = ctx.expected_type.as_ref()?;
 
@@ -626,7 +626,7 @@ fn compute_exact_name_match(ctx: &CompletionContext<'_>, completion_name: &str) 
 
 fn compute_ref_match(
     ctx: &CompletionContext<'_>,
-    completion_ty: &hir::Type,
+    completion_ty: &hir::Type<'_>,
 ) -> Option<CompletionItemRefMode> {
     let expected_type = ctx.expected_type.as_ref()?;
     let expected_without_ref = expected_type.remove_ref();
@@ -658,8 +658,8 @@ fn compute_ref_match(
 
 fn path_ref_match(
     completion: &CompletionContext<'_>,
-    path_ctx: &PathCompletionCtx,
-    ty: &hir::Type,
+    path_ctx: &PathCompletionCtx<'_>,
+    ty: &hir::Type<'_>,
     item: &mut Builder,
 ) {
     if let Some(original_path) = &path_ctx.original_path {

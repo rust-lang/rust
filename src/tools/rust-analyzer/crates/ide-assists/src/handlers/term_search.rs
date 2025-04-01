@@ -46,7 +46,7 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         return None;
     }
 
-    let mut formatter = |_: &hir::Type| String::from("todo!()");
+    let mut formatter = |_: &hir::Type<'_>| String::from("todo!()");
 
     let edition = scope.krate().edition(ctx.db());
     let paths = paths

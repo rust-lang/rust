@@ -10,8 +10,8 @@ pub(crate) mod trait_impl;
 pub(crate) fn complete_item_list_in_expr(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx: &PathCompletionCtx,
-    expr_ctx: &PathExprCtx,
+    path_ctx: &PathCompletionCtx<'_>,
+    expr_ctx: &PathExprCtx<'_>,
 ) {
     if !expr_ctx.in_block_expr {
         return;
@@ -25,7 +25,7 @@ pub(crate) fn complete_item_list_in_expr(
 pub(crate) fn complete_item_list(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
     kind: &ItemListKind,
 ) {
     let _p = tracing::info_span!("complete_item_list").entered();

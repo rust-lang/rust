@@ -122,7 +122,7 @@ fn complete_trait_impl_name(
 pub(crate) fn complete_trait_impl_item_by_name(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    path_ctx: &PathCompletionCtx<'_>,
     name_ref: &Option<ast::NameRef>,
     impl_: &Option<ast::Impl>,
 ) {

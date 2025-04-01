@@ -36,15 +36,15 @@ pub use hir_ty::{
 };
 
 macro_rules! diagnostics {
-    ($($diag:ident,)*) => {
+    ($($diag:ident $(<$lt:lifetime>)?,)*) => {
         #[derive(Debug)]
-        pub enum AnyDiagnostic {$(
-            $diag(Box<$diag>),
+        pub enum AnyDiagnostic<'db> {$(
+            $diag(Box<$diag $(<$lt>)?>),
         )*}
 
         $(
-            impl From<$diag> for AnyDiagnostic {
-                fn from(d: $diag) -> AnyDiagnostic {
+            impl<'db> From<$diag $(<$lt>)?> for AnyDiagnostic<'db> {
+                fn from(d: $diag $(<$lt>)?) -> AnyDiagnostic<'db> {
                     AnyDiagnostic::$diag(Box::new(d))
                 }
             }
@@ -69,12 +69,12 @@ macro_rules! diagnostics {
 diagnostics![
     AwaitOutsideOfAsync,
     BreakOutsideOfLoop,
-    CastToUnsized,
-    ExpectedFunction,
+    CastToUnsized<'db>,
+    ExpectedFunction<'db>,
     InactiveCode,
     IncoherentImpl,
     IncorrectCase,
-    InvalidCast,
+    InvalidCast<'db>,
     InvalidDeriveTarget,
     MacroDefError,
     MacroError,
@@ -85,7 +85,7 @@ diagnostics![
     MissingFields,
     MissingMatchArms,
     MissingUnsafe,
-    MovedOutOfRef,
+    MovedOutOfRef<'db>,
     NeedMut,
     NonExhaustiveLet,
     NoSuchField,
@@ -98,17 +98,17 @@ diagnostics![
     TraitImplMissingAssocItems,
     TraitImplOrphan,
     TraitImplRedundantAssocItems,
-    TypedHole,
-    TypeMismatch,
+    TypedHole<'db>,
+    TypeMismatch<'db>,
     UndeclaredLabel,
     UnimplementedBuiltinMacro,
     UnreachableLabel,
     UnresolvedAssocItem,
     UnresolvedExternCrate,
-    UnresolvedField,
+    UnresolvedField<'db>,
     UnresolvedImport,
     UnresolvedMacroCall,
-    UnresolvedMethodCall,
+    UnresolvedMethodCall<'db>,
     UnresolvedModule,
     UnresolvedIdent,
     UnusedMut,
@@ -130,9 +130,9 @@ pub struct BreakOutsideOfLoop {
 }
 
 #[derive(Debug)]
-pub struct TypedHole {
+pub struct TypedHole<'db> {
     pub expr: InFile<ExprOrPatPtr>,
-    pub expected: Type,
+    pub expected: Type<'db>,
 }
 
 #[derive(Debug)]
@@ -242,25 +242,25 @@ pub struct MismatchedTupleStructPatArgCount {
 }
 
 #[derive(Debug)]
-pub struct ExpectedFunction {
+pub struct ExpectedFunction<'db> {
     pub call: InFile<ExprOrPatPtr>,
-    pub found: Type,
+    pub found: Type<'db>,
 }
 
 #[derive(Debug)]
-pub struct UnresolvedField {
+pub struct UnresolvedField<'db> {
     pub expr: InFile<ExprOrPatPtr>,
-    pub receiver: Type,
+    pub receiver: Type<'db>,
     pub name: Name,
     pub method_with_same_name_exists: bool,
 }
 
 #[derive(Debug)]
-pub struct UnresolvedMethodCall {
+pub struct UnresolvedMethodCall<'db> {
     pub expr: InFile<ExprOrPatPtr>,
-    pub receiver: Type,
+    pub receiver: Type<'db>,
     pub name: Name,
-    pub field_with_same_name: Option<Type>,
+    pub field_with_same_name: Option<Type<'db>>,
     pub assoc_func_with_same_name: Option<Function>,
 }
 
@@ -329,10 +329,10 @@ pub struct NonExhaustiveLet {
 }
 
 #[derive(Debug)]
-pub struct TypeMismatch {
+pub struct TypeMismatch<'db> {
     pub expr_or_pat: InFile<ExprOrPatPtr>,
-    pub expected: Type,
-    pub actual: Type,
+    pub expected: Type<'db>,
+    pub actual: Type<'db>,
 }
 
 #[derive(Debug)]
@@ -352,8 +352,8 @@ pub struct UnusedVariable {
 }
 
 #[derive(Debug)]
-pub struct MovedOutOfRef {
-    pub ty: Type,
+pub struct MovedOutOfRef<'db> {
+    pub ty: Type<'db>,
     pub span: InFile<SyntaxNodePtr>,
 }
 
@@ -403,17 +403,17 @@ pub struct RemoveUnnecessaryElse {
 }
 
 #[derive(Debug)]
-pub struct CastToUnsized {
+pub struct CastToUnsized<'db> {
     pub expr: InFile<ExprOrPatPtr>,
-    pub cast_ty: Type,
+    pub cast_ty: Type<'db>,
 }
 
 #[derive(Debug)]
-pub struct InvalidCast {
+pub struct InvalidCast<'db> {
     pub expr: InFile<ExprOrPatPtr>,
     pub error: CastError,
-    pub expr_ty: Type,
-    pub cast_ty: Type,
+    pub expr_ty: Type<'db>,
+    pub cast_ty: Type<'db>,
 }
 
 #[derive(Debug)]
@@ -482,12 +482,12 @@ pub struct IncorrectGenericsOrder {
     pub expected_kind: GenericArgKind,
 }
 
-impl AnyDiagnostic {
+impl<'db> AnyDiagnostic<'db> {
     pub(crate) fn body_validation_diagnostic(
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         diagnostic: BodyValidationDiagnostic,
         source_map: &hir_def::expr_store::BodySourceMap,
-    ) -> Option<AnyDiagnostic> {
+    ) -> Option<AnyDiagnostic<'db>> {
         match diagnostic {
             BodyValidationDiagnostic::RecordMissingFields { record, variant, missed_fields } => {
                 let variant_data = variant.variant_data(db);
@@ -618,12 +618,12 @@ impl AnyDiagnostic {
     }
 
     pub(crate) fn inference_diagnostic(
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         def: DefWithBodyId,
         d: &InferenceDiagnostic,
         source_map: &hir_def::expr_store::BodySourceMap,
         sig_map: &hir_def::expr_store::ExpressionStoreSourceMap,
-    ) -> Option<AnyDiagnostic> {
+    ) -> Option<AnyDiagnostic<'db>> {
         let expr_syntax = |expr| {
             source_map
                 .expr_syntax(expr)
@@ -819,7 +819,7 @@ impl AnyDiagnostic {
     fn path_diagnostic(
         diag: &PathLoweringDiagnostic,
         path: InFile<ast::Path>,
-    ) -> Option<AnyDiagnostic> {
+    ) -> Option<AnyDiagnostic<'db>> {
         Some(match *diag {
             PathLoweringDiagnostic::GenericArgsProhibited { segment, reason } => {
                 let segment = hir_segment_to_ast_segment(&path.value, segment)?;
@@ -912,8 +912,8 @@ impl AnyDiagnostic {
     pub(crate) fn ty_diagnostic(
         diag: &TyLoweringDiagnostic,
         source_map: &ExpressionStoreSourceMap,
-        db: &dyn HirDatabase,
-    ) -> Option<AnyDiagnostic> {
+        db: &'db dyn HirDatabase,
+    ) -> Option<AnyDiagnostic<'db>> {
         let Ok(source) = source_map.type_syntax(diag.source) else {
             stdx::never!("error on synthetic type syntax");
             return None;

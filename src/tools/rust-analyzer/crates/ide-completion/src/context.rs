@@ -65,13 +65,13 @@ impl QualifierCtx {
 
 /// The state of the path we are currently completing.
 #[derive(Debug)]
-pub(crate) struct PathCompletionCtx {
+pub(crate) struct PathCompletionCtx<'db> {
     /// If this is a call with () already there (or {} in case of record patterns)
     pub(crate) has_call_parens: bool,
     /// If this has a macro call bang !
     pub(crate) has_macro_bang: bool,
     /// The qualifier of the current path.
-    pub(crate) qualified: Qualified,
+    pub(crate) qualified: Qualified<'db>,
     /// The parent of the path we are completing.
     pub(crate) parent: Option<ast::Path>,
     #[allow(dead_code)]
@@ -79,14 +79,14 @@ pub(crate) struct PathCompletionCtx {
     pub(crate) path: ast::Path,
     /// The path of which we are completing the segment in the original file
     pub(crate) original_path: Option<ast::Path>,
-    pub(crate) kind: PathKind,
+    pub(crate) kind: PathKind<'db>,
     /// Whether the path segment has type args or not.
     pub(crate) has_type_args: bool,
     /// Whether the qualifier comes from a use tree parent or not
     pub(crate) use_tree_parent: bool,
 }
 
-impl PathCompletionCtx {
+impl PathCompletionCtx<'_> {
     pub(crate) fn is_trivial_path(&self) -> bool {
         matches!(
             self,
@@ -104,9 +104,9 @@ impl PathCompletionCtx {
 
 /// The kind of path we are completing right now.
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum PathKind {
+pub(crate) enum PathKind<'db> {
     Expr {
-        expr_ctx: PathExprCtx,
+        expr_ctx: PathExprCtx<'db>,
     },
     Type {
         location: TypeLocation,
@@ -140,7 +140,7 @@ pub(crate) struct AttrCtx {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct PathExprCtx {
+pub(crate) struct PathExprCtx<'db> {
     pub(crate) in_block_expr: bool,
     pub(crate) in_breakable: BreakableKind,
     pub(crate) after_if_expr: bool,
@@ -152,7 +152,7 @@ pub(crate) struct PathExprCtx {
     /// The surrounding RecordExpression we are completing a functional update
     pub(crate) is_func_update: Option<ast::RecordExpr>,
     pub(crate) self_param: Option<hir::SelfParam>,
-    pub(crate) innermost_ret_ty: Option<hir::Type>,
+    pub(crate) innermost_ret_ty: Option<hir::Type<'db>>,
     pub(crate) impl_: Option<ast::Impl>,
     /// Whether this expression occurs in match arm guard position: before the
     /// fat arrow token
@@ -241,7 +241,7 @@ pub(crate) enum ItemListKind {
 }
 
 #[derive(Debug)]
-pub(crate) enum Qualified {
+pub(crate) enum Qualified<'db> {
     No,
     With {
         path: ast::Path,
@@ -260,7 +260,7 @@ pub(crate) enum Qualified {
     },
     /// <_>::
     TypeAnchor {
-        ty: Option<hir::Type>,
+        ty: Option<hir::Type<'db>>,
         trait_: Option<hir::Trait>,
     },
     /// Whether the path is an absolute path
@@ -341,17 +341,17 @@ pub(crate) enum NameKind {
 
 /// The state of the NameRef we are completing.
 #[derive(Debug)]
-pub(crate) struct NameRefContext {
+pub(crate) struct NameRefContext<'db> {
     /// NameRef syntax in the original file
     pub(crate) nameref: Option<ast::NameRef>,
-    pub(crate) kind: NameRefKind,
+    pub(crate) kind: NameRefKind<'db>,
 }
 
 /// The kind of the NameRef we are completing.
 #[derive(Debug)]
-pub(crate) enum NameRefKind {
-    Path(PathCompletionCtx),
-    DotAccess(DotAccess),
+pub(crate) enum NameRefKind<'db> {
+    Path(PathCompletionCtx<'db>),
+    DotAccess(DotAccess<'db>),
     /// Position where we are only interested in keyword completions
     Keyword(ast::Item),
     /// The record expression this nameref is a field of and whether a dot precedes the completion identifier.
@@ -365,9 +365,9 @@ pub(crate) enum NameRefKind {
 
 /// The identifier we are currently completing.
 #[derive(Debug)]
-pub(crate) enum CompletionAnalysis {
+pub(crate) enum CompletionAnalysis<'db> {
     Name(NameContext),
-    NameRef(NameRefContext),
+    NameRef(NameRefContext<'db>),
     Lifetime(LifetimeContext),
     /// The string the cursor is currently inside
     String {
@@ -386,9 +386,9 @@ pub(crate) enum CompletionAnalysis {
 
 /// Information about the field or method access we are completing.
 #[derive(Debug)]
-pub(crate) struct DotAccess {
+pub(crate) struct DotAccess<'db> {
     pub(crate) receiver: Option<ast::Expr>,
-    pub(crate) receiver_ty: Option<TypeInfo>,
+    pub(crate) receiver_ty: Option<TypeInfo<'db>>,
     pub(crate) kind: DotAccessKind,
     pub(crate) ctx: DotAccessExprCtx,
 }
@@ -457,7 +457,7 @@ pub(crate) struct CompletionContext<'a> {
     /// This is usually the parameter name of the function argument we are completing.
     pub(crate) expected_name: Option<NameOrNameRef>,
     /// The expected type of what we are completing.
-    pub(crate) expected_type: Option<Type>,
+    pub(crate) expected_type: Option<Type<'a>>,
 
     pub(crate) qualifier_ctx: QualifierCtx,
 
@@ -608,7 +608,7 @@ impl CompletionContext<'_> {
 
     pub(crate) fn iterate_path_candidates(
         &self,
-        ty: &hir::Type,
+        ty: &hir::Type<'_>,
         mut cb: impl FnMut(hir::AssocItem),
     ) {
         let mut seen = FxHashSet::default();
@@ -695,12 +695,12 @@ impl CompletionContext<'_> {
 }
 
 // CompletionContext construction
-impl<'a> CompletionContext<'a> {
+impl<'db> CompletionContext<'db> {
     pub(crate) fn new(
-        db: &'a RootDatabase,
+        db: &'db RootDatabase,
         position @ FilePosition { file_id, offset }: FilePosition,
-        config: &'a CompletionConfig<'a>,
-    ) -> Option<(CompletionContext<'a>, CompletionAnalysis)> {
+        config: &'db CompletionConfig<'db>,
+    ) -> Option<(CompletionContext<'db>, CompletionAnalysis<'db>)> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
 
