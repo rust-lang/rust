@@ -1,14 +1,10 @@
 //! Propagates [`#[doc(cfg(...))]`](https://github.com/rust-lang/rust/issues/43781) to child items.
 
-use std::sync::Arc;
-
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{AttrArgs, Attribute};
 use rustc_span::symbol::sym;
 
-use crate::clean::cfg::Cfg;
 use crate::clean::inline::{load_attrs, merge_attrs};
 use crate::clean::{CfgInfo, Crate, Item, ItemKind};
 use crate::core::DocContext;
@@ -22,13 +18,10 @@ pub(crate) const PROPAGATE_DOC_CFG: Pass = Pass {
 };
 
 pub(crate) fn propagate_doc_cfg(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
-    CfgPropagator { parent_cfg: None, parent: None, cx, cfg_info: CfgInfo::default() }
-        .fold_crate(cr)
+    CfgPropagator { cx, cfg_info: CfgInfo::default() }.fold_crate(cr)
 }
 
 struct CfgPropagator<'a, 'tcx> {
-    parent_cfg: Option<Arc<Cfg>>,
-    parent: Option<LocalDefId>,
     cx: &'a mut DocContext<'tcx>,
     cfg_info: CfgInfo,
 }
@@ -131,21 +124,11 @@ impl CfgPropagator<'_, '_> {
 impl DocFolder for CfgPropagator<'_, '_> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         let old_cfg_info = self.cfg_info.clone();
-        let old_parent_cfg = self.parent_cfg.clone();
 
         self.merge_with_parent_attributes(&mut item);
-        self.parent_cfg = item.inner.cfg.clone();
 
-        let old_parent =
-            if let Some(def_id) = item.item_id.as_def_id().and_then(|def_id| def_id.as_local()) {
-                self.parent.replace(def_id)
-            } else {
-                self.parent.take()
-            };
         let result = self.fold_item_recur(item);
         self.cfg_info = old_cfg_info;
-        self.parent_cfg = old_parent_cfg;
-        self.parent = old_parent;
 
         Some(result)
     }
