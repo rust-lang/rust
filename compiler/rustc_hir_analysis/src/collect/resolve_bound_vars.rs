@@ -1529,7 +1529,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             if let ResolvedArg::LateBound(..) = def
                 && let Some(what) = crossed_late_boundary
             {
-                let use_span = self.tcx.hir().span(hir_id);
+                let use_span = self.tcx.hir_span(hir_id);
                 let def_span = self.tcx.def_span(param_def_id);
                 let guar = match self.tcx.def_kind(param_def_id) {
                     DefKind::ConstParam => {
@@ -1576,11 +1576,11 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 } => {
                     let guar = self.tcx.dcx().emit_err(match self.tcx.def_kind(param_def_id) {
                         DefKind::TyParam => errors::LateBoundInApit::Type {
-                            span: self.tcx.hir().span(hir_id),
+                            span: self.tcx.hir_span(hir_id),
                             param_span: self.tcx.def_span(param_def_id),
                         },
                         DefKind::ConstParam => errors::LateBoundInApit::Const {
-                            span: self.tcx.hir().span(hir_id),
+                            span: self.tcx.hir_span(hir_id),
                             param_span: self.tcx.def_span(param_def_id),
                         },
                         kind => {
@@ -1605,7 +1605,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
         self.tcx
             .dcx()
-            .span_bug(self.tcx.hir().span(hir_id), format!("could not resolve {param_def_id:?}"));
+            .span_bug(self.tcx.hir_span(hir_id), format!("could not resolve {param_def_id:?}"));
     }
 
     #[instrument(level = "debug", skip(self))]

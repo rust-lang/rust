@@ -354,7 +354,7 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
 
         let body_owner_kind = cx.tcx.hir_body_owner_kind(body_owner_def_id);
         if let hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_) = body_owner_kind {
-            let body_span = cx.tcx.hir().span_with_body(body_owner);
+            let body_span = cx.tcx.hir_span_with_body(body_owner);
             if let Some(span) = self.const_span
                 && span.contains(body_span)
             {
@@ -366,7 +366,7 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
 
     fn check_body_post(&mut self, cx: &LateContext<'_>, body: &hir::Body<'_>) {
         let body_owner = cx.tcx.hir_body_owner(body.id());
-        let body_span = cx.tcx.hir().span(body_owner);
+        let body_span = cx.tcx.hir_span(body_owner);
         if let Some(span) = self.const_span
             && span.contains(body_span)
         {

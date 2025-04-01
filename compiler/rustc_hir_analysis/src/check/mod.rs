@@ -243,7 +243,7 @@ fn missing_items_err(
             tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity(),
         ));
         let code = format!("{padding}{snippet}\n{padding}");
-        if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
+        if let Some(span) = tcx.hir_span_if_local(trait_item.def_id) {
             missing_trait_item_label
                 .push(errors::MissingTraitItemLabel { span, item: trait_item.name });
             missing_trait_item.push(errors::MissingTraitItemSuggestion {
@@ -534,7 +534,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, d
     let variant_spans: Vec<_> = adt
         .variants()
         .iter()
-        .map(|variant| tcx.hir().span_if_local(variant.def_id).unwrap())
+        .map(|variant| tcx.hir_span_if_local(variant.def_id).unwrap())
         .collect();
     let (mut spans, mut many) = (Vec::new(), None);
     if let [start @ .., end] = &*variant_spans {

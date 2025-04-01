@@ -578,10 +578,8 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                 }
             }
             _ => {
-                tcx.dcx().span_delayed_bug(
-                    tcx.hir().span(hir_id),
-                    "parameter should have been resolved",
-                );
+                tcx.dcx()
+                    .span_delayed_bug(tcx.hir_span(hir_id), "parameter should have been resolved");
             }
         }
     }
@@ -1049,7 +1047,7 @@ fn check_impl_items_against_trait<'tcx>(
                 leaf_def.as_ref().is_some_and(|node_item| !node_item.defining_node.is_from_trait());
 
             if !is_implemented_here {
-                let full_impl_span = tcx.hir().span_with_body(tcx.local_def_id_to_hir_id(impl_id));
+                let full_impl_span = tcx.hir_span_with_body(tcx.local_def_id_to_hir_id(impl_id));
                 match tcx.eval_default_body_stability(trait_item_id, full_impl_span) {
                     EvalResult::Deny { feature, reason, issue, .. } => default_body_is_unstable(
                         tcx,
@@ -1105,7 +1103,7 @@ fn check_impl_items_against_trait<'tcx>(
         }
 
         if !missing_items.is_empty() {
-            let full_impl_span = tcx.hir().span_with_body(tcx.local_def_id_to_hir_id(impl_id));
+            let full_impl_span = tcx.hir_span_with_body(tcx.local_def_id_to_hir_id(impl_id));
             missing_items_err(tcx, impl_id, &missing_items, full_impl_span);
         }
 
@@ -1321,7 +1319,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         let typing_env = ty::TypingEnv::non_body_analysis(tcx, field.did);
         let layout = tcx.layout_of(typing_env.as_query_input(ty));
         // We are currently checking the type this field came from, so it must be local
-        let span = tcx.hir().span_if_local(field.did).unwrap();
+        let span = tcx.hir_span_if_local(field.did).unwrap();
         let trivial = layout.is_ok_and(|layout| layout.is_1zst());
         if !trivial {
             return (span, trivial, None);

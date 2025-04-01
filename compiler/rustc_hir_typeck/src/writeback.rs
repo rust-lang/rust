@@ -491,7 +491,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                 if let ty::UserTypeKind::TypeOf(_, user_args) = c_ty.value.kind {
                     // This is a unit-testing mechanism.
-                    let span = self.tcx().hir().span(hir_id);
+                    let span = self.tcx().hir_span(hir_id);
                     // We need to buffer the errors in order to guarantee a consistent
                     // order when emitting them.
                     let err =
@@ -775,7 +775,7 @@ impl Locatable for Span {
 
 impl Locatable for HirId {
     fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
-        tcx.hir().span(*self)
+        tcx.hir_span(*self)
     }
 }
 

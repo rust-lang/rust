@@ -1403,7 +1403,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             CItemKind::Definition => "fn",
         };
         let span_note = if let ty::Adt(def, _) = ty.kind()
-            && let Some(sp) = self.cx.tcx.hir().span_if_local(def.did())
+            && let Some(sp) = self.cx.tcx.hir_span_if_local(def.did())
         {
             Some(sp)
         } else {

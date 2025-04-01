@@ -457,7 +457,7 @@ fn construct_fn<'tcx>(
 
     // Figure out what primary body this item has.
     let body = tcx.hir_body_owned_by(fn_def);
-    let span_with_body = tcx.hir().span_with_body(fn_id);
+    let span_with_body = tcx.hir_span_with_body(fn_id);
     let return_ty_span = tcx
         .hir_fn_decl_by_hir_id(fn_id)
         .unwrap_or_else(|| span_bug!(span, "can't build MIR for {:?}", fn_def))

@@ -684,7 +684,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return Err(self.dcx().emit_err(crate::errors::ReturnTypeNotationOnNonRpitit {
                 span: path_span,
                 ty: tcx.liberate_late_bound_regions(item_def_id, output),
-                fn_span: tcx.hir().span_if_local(item_def_id),
+                fn_span: tcx.hir_span_if_local(item_def_id),
                 note: (),
             }));
         };

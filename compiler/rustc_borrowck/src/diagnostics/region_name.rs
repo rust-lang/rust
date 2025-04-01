@@ -291,7 +291,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         match *error_region {
             ty::ReEarlyParam(ebr) => ebr.has_name().then(|| {
                 let def_id = tcx.generics_of(self.mir_def_id()).region_param(ebr, tcx).def_id;
-                let span = tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP);
+                let span = tcx.hir_span_if_local(def_id).unwrap_or(DUMMY_SP);
                 RegionName { name: ebr.name, source: RegionNameSource::NamedEarlyParamRegion(span) }
             }),
 
@@ -302,7 +302,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             ty::ReLateParam(late_param) => match late_param.kind {
                 ty::LateParamRegionKind::Named(region_def_id, name) => {
                     // Get the span to point to, even if we don't use the name.
-                    let span = tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
+                    let span = tcx.hir_span_if_local(region_def_id).unwrap_or(DUMMY_SP);
                     debug!(
                         "bound region named: {:?}, is_named: {:?}",
                         name,

@@ -1174,7 +1174,7 @@ fn report_arm_reachability<'p, 'tcx>(
     for (arm, is_useful) in report.arm_usefulness.iter() {
         if let Usefulness::Redundant(explanation) = is_useful {
             let hir_id = arm.arm_data;
-            let arm_span = cx.tcx.hir().span(hir_id);
+            let arm_span = cx.tcx.hir_span(hir_id);
             let whole_arm_span = if is_match_arm {
                 // If the arm is followed by a comma, extend the span to include it.
                 let with_whitespace = sm.span_extend_while_whitespace(arm_span);

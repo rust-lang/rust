@@ -254,7 +254,7 @@ fn check_hash_peq<'tcx>(
                     |diag| {
                         if let Some(local_def_id) = impl_id.as_local() {
                             let hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id);
-                            diag.span_note(cx.tcx.hir().span(hir_id), "`PartialEq` implemented here");
+                            diag.span_note(cx.tcx.hir_span(hir_id), "`PartialEq` implemented here");
                         }
                     },
                 );
@@ -298,7 +298,7 @@ fn check_ord_partial_ord<'tcx>(
                 span_lint_and_then(cx, DERIVE_ORD_XOR_PARTIAL_ORD, span, mess, |diag| {
                     if let Some(local_def_id) = impl_id.as_local() {
                         let hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id);
-                        diag.span_note(cx.tcx.hir().span(hir_id), "`PartialOrd` implemented here");
+                        diag.span_note(cx.tcx.hir_span(hir_id), "`PartialOrd` implemented here");
                     }
                 });
             }

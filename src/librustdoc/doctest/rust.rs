@@ -80,7 +80,7 @@ impl<'tcx> HirCollector<'tcx> {
 
     pub fn collect_crate(mut self) -> Vec<ScrapedDocTest> {
         let tcx = self.tcx;
-        self.visit_testable(None, CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID), |this| {
+        self.visit_testable(None, CRATE_DEF_ID, tcx.hir_span(CRATE_HIR_ID), |this| {
             tcx.hir_walk_toplevel_module(this)
         });
         self.collector.tests
