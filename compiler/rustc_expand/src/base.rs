@@ -1424,12 +1424,11 @@ pub fn parse_macro_name_and_helper_attrs(
 /// See #73345 and #83125 for more details.
 /// FIXME(#73933): Remove this eventually.
 fn pretty_printing_compatibility_hack(item: &Item, psess: &ParseSess) {
-    let name = item.ident.name;
-    if name == sym::ProceduralMasqueradeDummyType
-        && let ast::ItemKind::Enum(enum_def, _) = &item.kind
+    if let ast::ItemKind::Enum(ident, enum_def, _) = &item.kind
+        && ident.name == sym::ProceduralMasqueradeDummyType
         && let [variant] = &*enum_def.variants
         && variant.ident.name == sym::Input
-        && let FileName::Real(real) = psess.source_map().span_to_filename(item.ident.span)
+        && let FileName::Real(real) = psess.source_map().span_to_filename(ident.span)
         && let Some(c) = real
             .local_path()
             .unwrap_or(Path::new(""))

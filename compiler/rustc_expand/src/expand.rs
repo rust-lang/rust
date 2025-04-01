@@ -744,6 +744,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     item_inner.kind,
                                     ItemKind::Mod(
                                         _,
+                                        _,
                                         ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _, _),
                                     )
                                 ) =>
@@ -911,7 +912,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         impl<'ast, 'a> Visitor<'ast> for GateProcMacroInput<'a> {
             fn visit_item(&mut self, item: &'ast ast::Item) {
                 match &item.kind {
-                    ItemKind::Mod(_, mod_kind)
+                    ItemKind::Mod(_, _, mod_kind)
                         if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _, _)) =>
                     {
                         feature_err(
@@ -1221,9 +1222,8 @@ impl InvocationCollectorNode for P<ast::Item> {
         }
 
         // Work around borrow checker not seeing through `P`'s deref.
-        let (ident, span, mut attrs) = (node.ident, node.span, mem::take(&mut node.attrs));
-        let ItemKind::Mod(_, mod_kind) = &mut node.kind else { unreachable!() };
-
+        let (span, mut attrs) = (node.span, mem::take(&mut node.attrs));
+        let ItemKind::Mod(_, ident, ref mut mod_kind) = node.kind else { unreachable!() };
         let ecx = &mut collector.cx;
         let (file_path, dir_path, dir_ownership) = match mod_kind {
             ModKind::Loaded(_, inline, _, _) => {
@@ -1305,6 +1305,7 @@ impl InvocationCollectorNode for P<ast::Item> {
         collector.cx.current_expansion.module = orig_module;
         res
     }
+
     fn declared_names(&self) -> Vec<Ident> {
         if let ItemKind::Use(ut) = &self.kind {
             fn collect_use_tree_leaves(ut: &ast::UseTree, idents: &mut Vec<Ident>) {
@@ -1324,7 +1325,7 @@ impl InvocationCollectorNode for P<ast::Item> {
             return idents;
         }
 
-        vec![self.ident]
+        if let Some(ident) = self.kind.ident() { vec![ident] } else { vec![] }
     }
 }
 
@@ -1844,11 +1845,11 @@ fn build_single_delegations<'a, Node: InvocationCollectorNode>(
             id: ast::DUMMY_NODE_ID,
             span: if from_glob { item_span } else { ident.span },
             vis: item.vis.clone(),
-            ident: rename.unwrap_or(ident),
             kind: Node::delegation_item_kind(Box::new(ast::Delegation {
                 id: ast::DUMMY_NODE_ID,
                 qself: deleg.qself.clone(),
                 path,
+                ident: rename.unwrap_or(ident),
                 rename,
                 body: deleg.body.clone(),
                 from_glob,

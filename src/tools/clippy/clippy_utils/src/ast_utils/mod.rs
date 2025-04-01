@@ -321,17 +321,18 @@ pub fn eq_local_kind(l: &LocalKind, r: &LocalKind) -> bool {
 }
 
 pub fn eq_item<K>(l: &Item<K>, r: &Item<K>, mut eq_kind: impl FnMut(&K, &K) -> bool) -> bool {
-    eq_id(l.ident, r.ident) && over(&l.attrs, &r.attrs, eq_attr) && eq_vis(&l.vis, &r.vis) && eq_kind(&l.kind, &r.kind)
+    over(&l.attrs, &r.attrs, eq_attr) && eq_vis(&l.vis, &r.vis) && eq_kind(&l.kind, &r.kind)
 }
 
 #[expect(clippy::similar_names, clippy::too_many_lines)] // Just a big match statement
 pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
     use ItemKind::*;
     match (l, r) {
-        (ExternCrate(l), ExternCrate(r)) => l == r,
+        (ExternCrate(ls, li), ExternCrate(rs, ri)) => ls == rs && eq_id(*li, *ri),
         (Use(l), Use(r)) => eq_use_tree(l, r),
         (
             Static(box StaticItem {
+                ident: li,
                 ty: lt,
                 mutability: lm,
                 expr: le,
@@ -339,16 +340,22 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 define_opaque: _,
             }),
             Static(box StaticItem {
+                ident: ri,
                 ty: rt,
                 mutability: rm,
                 expr: re,
                 safety: rs,
                 define_opaque: _,
             }),
-        ) => lm == rm && ls == rs && eq_ty(lt, rt) && eq_expr_opt(le.as_ref(), re.as_ref()),
+        ) => eq_id(*li, *ri)
+                && lm == rm
+                && ls == rs
+                && eq_ty(lt, rt)
+                && eq_expr_opt(le.as_ref(), re.as_ref()),
         (
             Const(box ConstItem {
                 defaultness: ld,
+                ident: li,
                 generics: lg,
                 ty: lt,
                 expr: le,
@@ -356,16 +363,22 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
             }),
             Const(box ConstItem {
                 defaultness: rd,
+                ident: ri,
                 generics: rg,
                 ty: rt,
                 expr: re,
                 define_opaque: _,
             }),
-        ) => eq_defaultness(*ld, *rd) && eq_generics(lg, rg) && eq_ty(lt, rt) && eq_expr_opt(le.as_ref(), re.as_ref()),
+        ) => eq_defaultness(*ld, *rd)
+                && eq_id(*li, *ri)
+                && eq_generics(lg, rg)
+                && eq_ty(lt, rt)
+                && eq_expr_opt(le.as_ref(), re.as_ref()),
         (
             Fn(box ast::Fn {
                 defaultness: ld,
                 sig: lf,
+                ident: li,
                 generics: lg,
                 contract: lc,
                 body: lb,
@@ -374,6 +387,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
             Fn(box ast::Fn {
                 defaultness: rd,
                 sig: rf,
+                ident: ri,
                 generics: rg,
                 contract: rc,
                 body: rb,
@@ -382,12 +396,14 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         ) => {
             eq_defaultness(*ld, *rd)
                 && eq_fn_sig(lf, rf)
+                && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_opt_fn_contract(lc, rc)
                 && both(lb.as_ref(), rb.as_ref(), |l, r| eq_block(l, r))
         },
-        (Mod(lu, lmk), Mod(ru, rmk)) => {
-            lu == ru
+        (Mod(ls, li, lmk), Mod(rs, ri, rmk)) => {
+            ls == rs
+                && eq_id(*li, *ri)
                 && match (lmk, rmk) {
                     (ModKind::Loaded(litems, linline, _, _), ModKind::Loaded(ritems, rinline, _, _)) => {
                         linline == rinline && over(litems, ritems, |l, r| eq_item(l, r, eq_item_kind))
@@ -421,33 +437,40 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && over(lb, rb, eq_generic_bound)
                 && both(lt.as_ref(), rt.as_ref(), |l, r| eq_ty(l, r))
         },
-        (Enum(le, lg), Enum(re, rg)) => over(&le.variants, &re.variants, eq_variant) && eq_generics(lg, rg),
-        (Struct(lv, lg), Struct(rv, rg)) | (Union(lv, lg), Union(rv, rg)) => {
-            eq_variant_data(lv, rv) && eq_generics(lg, rg)
+        (Enum(li, le, lg), Enum(ri, re, rg)) => {
+            eq_id(*li, *ri) && over(&le.variants, &re.variants, eq_variant) && eq_generics(lg, rg)
+        }
+        (Struct(li, lv, lg), Struct(ri, rv, rg)) | (Union(li, lv, lg), Union(ri, rv, rg)) => {
+            eq_id(*li, *ri) && eq_variant_data(lv, rv) && eq_generics(lg, rg)
         },
         (
             Trait(box ast::Trait {
                 is_auto: la,
                 safety: lu,
+                ident: li,
                 generics: lg,
                 bounds: lb,
-                items: li,
+                items: lis,
             }),
             Trait(box ast::Trait {
                 is_auto: ra,
                 safety: ru,
+                ident: ri,
                 generics: rg,
                 bounds: rb,
-                items: ri,
+                items: ris,
             }),
         ) => {
             la == ra
                 && matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
+                && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && over(lb, rb, eq_generic_bound)
-                && over(li, ri, |l, r| eq_item(l, r, eq_assoc_item_kind))
+                && over(lis, ris, |l, r| eq_item(l, r, eq_assoc_item_kind))
         },
-        (TraitAlias(lg, lb), TraitAlias(rg, rb)) => eq_generics(lg, rg) && over(lb, rb, eq_generic_bound),
+        (TraitAlias(li, lg, lb), TraitAlias(ri, rg, rb)) => {
+            eq_id(*li, *ri) && eq_generics(lg, rg) && over(lb, rb, eq_generic_bound)
+        }
         (
             Impl(box ast::Impl {
                 safety: lu,
@@ -480,7 +503,9 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && over(li, ri, |l, r| eq_item(l, r, eq_assoc_item_kind))
         },
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
-        (MacroDef(l), MacroDef(r)) => l.macro_rules == r.macro_rules && eq_delim_args(&l.body, &r.body),
+        (MacroDef(li, ld), MacroDef(ri, rd)) => {
+            eq_id(*li, *ri) && ld.macro_rules == rd.macro_rules && eq_delim_args(&ld.body, &rd.body)
+        }
         _ => false,
     }
 }
@@ -490,6 +515,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
     match (l, r) {
         (
             Static(box StaticItem {
+                ident: li,
                 ty: lt,
                 mutability: lm,
                 expr: le,
@@ -497,17 +523,25 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 define_opaque: _,
             }),
             Static(box StaticItem {
+                ident: ri,
                 ty: rt,
                 mutability: rm,
                 expr: re,
                 safety: rs,
                 define_opaque: _,
             }),
-        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le.as_ref(), re.as_ref()) && ls == rs,
+        ) => {
+            eq_id(*li, *ri)
+                && eq_ty(lt, rt)
+                && lm == rm
+                && eq_expr_opt(le.as_ref(), re.as_ref())
+                && ls == rs
+        }
         (
             Fn(box ast::Fn {
                 defaultness: ld,
                 sig: lf,
+                ident: li,
                 generics: lg,
                 contract: lc,
                 body: lb,
@@ -516,6 +550,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
             Fn(box ast::Fn {
                 defaultness: rd,
                 sig: rf,
+                ident: ri,
                 generics: rg,
                 contract: rc,
                 body: rb,
@@ -524,6 +559,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
         ) => {
             eq_defaultness(*ld, *rd)
                 && eq_fn_sig(lf, rf)
+                && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_opt_fn_contract(lc, rc)
                 && both(lb.as_ref(), rb.as_ref(), |l, r| eq_block(l, r))
@@ -531,20 +567,23 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
         (
             TyAlias(box ast::TyAlias {
                 defaultness: ld,
+                ident: li,
                 generics: lg,
+                where_clauses: _,
                 bounds: lb,
                 ty: lt,
-                ..
             }),
             TyAlias(box ast::TyAlias {
                 defaultness: rd,
+                ident: ri,
                 generics: rg,
+                where_clauses: _,
                 bounds: rb,
                 ty: rt,
-                ..
             }),
         ) => {
             eq_defaultness(*ld, *rd)
+                && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && over(lb, rb, eq_generic_bound)
                 && both(lt.as_ref(), rt.as_ref(), |l, r| eq_ty(l, r))
@@ -560,6 +599,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
         (
             Const(box ConstItem {
                 defaultness: ld,
+                ident: li,
                 generics: lg,
                 ty: lt,
                 expr: le,
@@ -567,16 +607,24 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
             }),
             Const(box ConstItem {
                 defaultness: rd,
+                ident: ri,
                 generics: rg,
                 ty: rt,
                 expr: re,
                 define_opaque: _,
             }),
-        ) => eq_defaultness(*ld, *rd) && eq_generics(lg, rg) && eq_ty(lt, rt) && eq_expr_opt(le.as_ref(), re.as_ref()),
+        ) => {
+            eq_defaultness(*ld, *rd)
+                && eq_id(*li, *ri)
+                && eq_generics(lg, rg)
+                && eq_ty(lt, rt)
+                && eq_expr_opt(le.as_ref(), re.as_ref())
+        }
         (
             Fn(box ast::Fn {
                 defaultness: ld,
                 sig: lf,
+                ident: li,
                 generics: lg,
                 contract: lc,
                 body: lb,
@@ -585,6 +633,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
             Fn(box ast::Fn {
                 defaultness: rd,
                 sig: rf,
+                ident: ri,
                 generics: rg,
                 contract: rc,
                 body: rb,
@@ -593,6 +642,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
         ) => {
             eq_defaultness(*ld, *rd)
                 && eq_fn_sig(lf, rf)
+                && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_opt_fn_contract(lc, rc)
                 && both(lb.as_ref(), rb.as_ref(), |l, r| eq_block(l, r))
@@ -600,20 +650,23 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
         (
             Type(box TyAlias {
                 defaultness: ld,
+                ident: li,
                 generics: lg,
+                where_clauses: _,
                 bounds: lb,
                 ty: lt,
-                ..
             }),
             Type(box TyAlias {
                 defaultness: rd,
+                ident: ri,
                 generics: rg,
+                where_clauses: _,
                 bounds: rb,
                 ty: rt,
-                ..
             }),
         ) => {
             eq_defaultness(*ld, *rd)
+                && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && over(lb, rb, eq_generic_bound)
                 && both(lt.as_ref(), rt.as_ref(), |l, r| eq_ty(l, r))

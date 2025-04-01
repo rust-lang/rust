@@ -607,7 +607,7 @@ impl<'a> AstValidator<'a> {
 
     fn deny_items(&self, trait_items: &[P<AssocItem>], ident: Span) {
         if !trait_items.is_empty() {
-            let spans: Vec<_> = trait_items.iter().map(|i| i.ident.span).collect();
+            let spans: Vec<_> = trait_items.iter().map(|i| i.kind.ident().unwrap().span).collect();
             let total = trait_items.first().unwrap().span.to(trait_items.last().unwrap().span);
             self.dcx().emit_err(errors::AutoTraitItems { spans, total, ident });
         }
@@ -817,8 +817,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.has_proc_macro_decls = true;
         }
 
-        if attr::contains_name(&item.attrs, sym::no_mangle) {
-            self.check_nomangle_item_asciionly(item.ident, item.span);
+        if let Some(ident) = item.kind.ident()
+            && attr::contains_name(&item.attrs, sym::no_mangle)
+        {
+            self.check_nomangle_item_asciionly(ident, item.span);
         }
 
         match &item.kind {
@@ -852,7 +854,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
 
                     this.visit_vis(&item.vis);
-                    this.visit_ident(&item.ident);
                     let disallowed = matches!(constness, Const::No)
                         .then(|| TildeConstReason::TraitImpl { span: item.span });
                     this.with_tilde_const(disallowed, |this| this.visit_generics(generics));
@@ -906,7 +907,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
 
                     this.visit_vis(&item.vis);
-                    this.visit_ident(&item.ident);
                     this.with_tilde_const(
                         Some(TildeConstReason::Impl { span: item.span }),
                         |this| this.visit_generics(generics),
@@ -918,8 +918,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 return; // Avoid visiting again.
             }
             ItemKind::Fn(
-                func
-                @ box Fn { defaultness, generics: _, sig, contract: _, body, define_opaque: _ },
+                func @ box Fn {
+                    defaultness,
+                    ident,
+                    generics: _,
+                    sig,
+                    contract: _,
+                    body,
+                    define_opaque: _,
+                },
             ) => {
                 self.check_defaultness(item.span, *defaultness);
 
@@ -949,8 +956,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
 
                 self.visit_vis(&item.vis);
-                self.visit_ident(&item.ident);
-                let kind = FnKind::Fn(FnCtxt::Free, &item.ident, &item.vis, &*func);
+                self.visit_ident(ident);
+                let kind = FnKind::Fn(FnCtxt::Free, &item.vis, &*func);
                 self.visit_fn(kind, item.span, item.id);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
@@ -986,7 +993,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 });
                 return; // Avoid visiting again.
             }
-            ItemKind::Enum(def, _) => {
+            ItemKind::Enum(_, def, _) => {
                 for variant in &def.variants {
                     self.visibility_not_permitted(
                         &variant.vis,
@@ -1000,22 +1007,22 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
             }
-            ItemKind::Trait(box Trait { is_auto, generics, bounds, items, .. }) => {
+            ItemKind::Trait(box Trait { is_auto, generics, ident, bounds, items, .. }) => {
                 let is_const_trait =
                     attr::find_by_name(&item.attrs, sym::const_trait).map(|attr| attr.span);
                 self.with_in_trait(item.span, is_const_trait, |this| {
                     if *is_auto == IsAuto::Yes {
                         // Auto traits cannot have generics, super traits nor contain items.
-                        this.deny_generic_params(generics, item.ident.span);
-                        this.deny_super_traits(bounds, item.ident.span);
-                        this.deny_where_clause(&generics.where_clause, item.ident.span);
-                        this.deny_items(items, item.ident.span);
+                        this.deny_generic_params(generics, ident.span);
+                        this.deny_super_traits(bounds, ident.span);
+                        this.deny_where_clause(&generics.where_clause, ident.span);
+                        this.deny_items(items, ident.span);
                     }
 
                     // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
                     // context for the supertraits.
                     this.visit_vis(&item.vis);
-                    this.visit_ident(&item.ident);
+                    this.visit_ident(ident);
                     let disallowed = is_const_trait
                         .is_none()
                         .then(|| TildeConstReason::Trait { span: item.span });
@@ -1028,7 +1035,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again
             }
-            ItemKind::Mod(safety, mod_kind) => {
+            ItemKind::Mod(safety, ident, mod_kind) => {
                 if let &Safety::Unsafe(span) = safety {
                     self.dcx().emit_err(errors::UnsafeItem { span, kind: "module" });
                 }
@@ -1036,13 +1043,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _, _))
                     && !attr::contains_name(&item.attrs, sym::path)
                 {
-                    self.check_mod_file_item_asciionly(item.ident);
+                    self.check_mod_file_item_asciionly(*ident);
                 }
             }
-            ItemKind::Struct(vdata, generics) => match vdata {
+            ItemKind::Struct(ident, vdata, generics) => match vdata {
                 VariantData::Struct { fields, .. } => {
                     self.visit_vis(&item.vis);
-                    self.visit_ident(&item.ident);
+                    self.visit_ident(ident);
                     self.visit_generics(generics);
                     // Permit `Anon{Struct,Union}` as field type.
                     walk_list!(self, visit_struct_field_def, fields);
@@ -1051,14 +1058,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 _ => {}
             },
-            ItemKind::Union(vdata, generics) => {
+            ItemKind::Union(ident, vdata, generics) => {
                 if vdata.fields().is_empty() {
                     self.dcx().emit_err(errors::FieldlessUnion { span: item.span });
                 }
                 match vdata {
                     VariantData::Struct { fields, .. } => {
                         self.visit_vis(&item.vis);
-                        self.visit_ident(&item.ident);
+                        self.visit_ident(ident);
                         self.visit_generics(generics);
                         // Permit `Anon{Struct,Union}` as field type.
                         walk_list!(self, visit_struct_field_def, fields);
@@ -1121,14 +1128,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match &fi.kind {
-            ForeignItemKind::Fn(box Fn { defaultness, sig, body, .. }) => {
+            ForeignItemKind::Fn(box Fn { defaultness, ident, sig, body, .. }) => {
                 self.check_defaultness(fi.span, *defaultness);
-                self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
+                self.check_foreign_fn_bodyless(*ident, body.as_deref());
                 self.check_foreign_fn_headerless(sig.header);
-                self.check_foreign_item_ascii_only(fi.ident);
+                self.check_foreign_item_ascii_only(*ident);
             }
             ForeignItemKind::TyAlias(box TyAlias {
                 defaultness,
+                ident,
                 generics,
                 where_clauses,
                 bounds,
@@ -1136,15 +1144,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 ..
             }) => {
                 self.check_defaultness(fi.span, *defaultness);
-                self.check_foreign_kind_bodyless(fi.ident, "type", ty.as_ref().map(|b| b.span));
+                self.check_foreign_kind_bodyless(*ident, "type", ty.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
                 self.check_foreign_ty_genericless(generics, where_clauses);
-                self.check_foreign_item_ascii_only(fi.ident);
+                self.check_foreign_item_ascii_only(*ident);
             }
-            ForeignItemKind::Static(box StaticItem { expr, safety, .. }) => {
+            ForeignItemKind::Static(box StaticItem { ident, safety, expr, .. }) => {
                 self.check_item_safety(fi.span, *safety);
-                self.check_foreign_kind_bodyless(fi.ident, "static", expr.as_ref().map(|b| b.span));
-                self.check_foreign_item_ascii_only(fi.ident);
+                self.check_foreign_kind_bodyless(*ident, "static", expr.as_ref().map(|b| b.span));
+                self.check_foreign_item_ascii_only(*ident);
             }
             ForeignItemKind::MacCall(..) => {}
         }
@@ -1353,7 +1361,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let FnKind::Fn(
             _,
             _,
-            _,
             Fn {
                 sig: FnSig { header: FnHeader { ext: Extern::Implicit(extern_span), .. }, .. },
                 ..
@@ -1364,7 +1371,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         // Functions without bodies cannot have patterns.
-        if let FnKind::Fn(ctxt, _, _, Fn { body: None, sig, .. }) = fk {
+        if let FnKind::Fn(ctxt, _, Fn { body: None, sig, .. }) = fk {
             Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
                 if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
                     if let Some(ident) = ident {
@@ -1398,15 +1405,17 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .is_some();
 
         let disallowed = (!tilde_const_allowed).then(|| match fk {
-            FnKind::Fn(_, ident, _, _) => TildeConstReason::Function { ident: ident.span },
+            FnKind::Fn(_, _, f) => TildeConstReason::Function { ident: f.ident.span },
             FnKind::Closure(..) => TildeConstReason::Closure,
         });
         self.with_tilde_const(disallowed, |this| visit::walk_fn(this, fk));
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
-        if attr::contains_name(&item.attrs, sym::no_mangle) {
-            self.check_nomangle_item_asciionly(item.ident, item.span);
+        if let Some(ident) = item.kind.ident()
+            && attr::contains_name(&item.attrs, sym::no_mangle)
+        {
+            self.check_nomangle_item_asciionly(ident, item.span);
         }
 
         if ctxt == AssocCtxt::Trait || self.outer_trait_or_trait_impl.is_none() {
@@ -1466,8 +1475,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
         }
 
-        if let AssocItemKind::Const(..) = item.kind {
-            self.check_item_named(item.ident, "const");
+        if let AssocItemKind::Const(ci) = &item.kind {
+            self.check_item_named(ci.ident, "const");
         }
 
         let parent_is_const =
@@ -1480,8 +1489,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     || matches!(func.sig.header.constness, Const::Yes(_)) =>
             {
                 self.visit_vis(&item.vis);
-                self.visit_ident(&item.ident);
-                let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), &item.ident, &item.vis, &*func);
+                self.visit_ident(&func.ident);
+                let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), &item.vis, &*func);
                 walk_list!(self, visit_attribute, &item.attrs);
                 self.visit_fn(kind, item.span, item.id);
             }

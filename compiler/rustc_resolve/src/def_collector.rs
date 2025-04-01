@@ -122,7 +122,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             },
             ItemKind::Const(..) => DefKind::Const,
             ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
-            ItemKind::MacroDef(def) => {
+            ItemKind::MacroDef(ident, def) => {
                 let edition = i.span.edition();
 
                 // FIXME(jdonszelmann) make one of these in the resolver?
@@ -141,7 +141,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 );
 
                 let macro_data =
-                    self.resolver.compile_macro(def, i.ident, &attrs, i.span, i.id, edition);
+                    self.resolver.compile_macro(def, *ident, &attrs, i.span, i.id, edition);
                 let macro_kind = macro_data.ext.macro_kind();
                 opt_macro_data = Some(macro_data);
                 DefKind::Macro(macro_kind)
@@ -152,7 +152,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 return self.visit_macro_invoc(i.id);
             }
         };
-        let def_id = self.create_def(i.id, Some(i.ident.name), def_kind, i.span);
+        let def_id =
+            self.create_def(i.id, i.kind.ident().map(|ident| ident.name), def_kind, i.span);
 
         if let Some(macro_data) = opt_macro_data {
             self.resolver.macro_map.insert(def_id.to_def_id(), macro_data);
@@ -161,7 +162,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         self.with_parent(def_id, |this| {
             this.with_impl_trait(ImplTraitContext::Existential, |this| {
                 match i.kind {
-                    ItemKind::Struct(ref struct_def, _) | ItemKind::Union(ref struct_def, _) => {
+                    ItemKind::Struct(_, ref struct_def, _)
+                    | ItemKind::Union(_, ref struct_def, _) => {
                         // If this is a unit or tuple-like struct, register the constructor.
                         if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(struct_def) {
                             this.create_def(
@@ -183,10 +185,12 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         match fn_kind {
             FnKind::Fn(
                 _ctxt,
-                _ident,
                 _vis,
-                Fn { sig: FnSig { header, decl, span: _ }, generics, contract, body, .. },
+                Fn {
+                    sig: FnSig { header, decl, span: _ }, ident, generics, contract, body, ..
+                },
             ) if let Some(coroutine_kind) = header.coroutine_kind => {
+                self.visit_ident(ident);
                 self.visit_fn_header(header);
                 self.visit_generics(generics);
                 if let Some(contract) = contract {
@@ -234,8 +238,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
-        let def_kind = match fi.kind {
+        let (ident, def_kind) = match fi.kind {
             ForeignItemKind::Static(box StaticItem {
+                ident,
                 ty: _,
                 mutability,
                 expr: _,
@@ -247,14 +252,14 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     ast::Safety::Safe(_) => hir::Safety::Safe,
                 };
 
-                DefKind::Static { safety, mutability, nested: false }
+                (ident, DefKind::Static { safety, mutability, nested: false })
             }
-            ForeignItemKind::Fn(_) => DefKind::Fn,
-            ForeignItemKind::TyAlias(_) => DefKind::ForeignTy,
+            ForeignItemKind::Fn(box Fn { ident, .. }) => (ident, DefKind::Fn),
+            ForeignItemKind::TyAlias(box TyAlias { ident, .. }) => (ident, DefKind::ForeignTy),
             ForeignItemKind::MacCall(_) => return self.visit_macro_invoc(fi.id),
         };
 
-        let def = self.create_def(fi.id, Some(fi.ident.name), def_kind, fi.span);
+        let def = self.create_def(fi.id, Some(ident.name), def_kind, fi.span);
 
         self.with_parent(def, |this| visit::walk_item(this, fi));
     }
@@ -318,16 +323,17 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
-        let def_kind = match &i.kind {
-            AssocItemKind::Fn(..) | AssocItemKind::Delegation(..) => DefKind::AssocFn,
-            AssocItemKind::Const(..) => DefKind::AssocConst,
-            AssocItemKind::Type(..) => DefKind::AssocTy,
+        let (ident, def_kind) = match &i.kind {
+            AssocItemKind::Fn(box Fn { ident, .. })
+            | AssocItemKind::Delegation(box Delegation { ident, .. }) => (*ident, DefKind::AssocFn),
+            AssocItemKind::Const(box ConstItem { ident, .. }) => (*ident, DefKind::AssocConst),
+            AssocItemKind::Type(box TyAlias { ident, .. }) => (*ident, DefKind::AssocTy),
             AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
                 return self.visit_macro_invoc(i.id);
             }
         };
 
-        let def = self.create_def(i.id, Some(i.ident.name), def_kind, i.span);
+        let def = self.create_def(i.id, Some(ident.name), def_kind, i.span);
         self.with_parent(def, |this| visit::walk_assoc_item(this, i, ctxt));
     }
 

@@ -1032,14 +1032,19 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 
     fn inject_allocator_crate(&mut self, krate: &ast::Crate) {
-        self.cstore.has_global_allocator = match &*global_allocator_spans(krate) {
-            [span1, span2, ..] => {
-                self.dcx().emit_err(errors::NoMultipleGlobalAlloc { span2: *span2, span1: *span1 });
-                true
-            }
-            spans => !spans.is_empty(),
-        };
-        self.cstore.has_alloc_error_handler = match &*alloc_error_handler_spans(krate) {
+        self.cstore.has_global_allocator =
+            match &*fn_spans(krate, Symbol::intern(&global_fn_name(sym::alloc))) {
+                [span1, span2, ..] => {
+                    self.dcx()
+                        .emit_err(errors::NoMultipleGlobalAlloc { span2: *span2, span1: *span1 });
+                    true
+                }
+                spans => !spans.is_empty(),
+            };
+        self.cstore.has_alloc_error_handler = match &*fn_spans(
+            krate,
+            Symbol::intern(alloc_error_handler_name(AllocatorKind::Global)),
+        ) {
             [span1, span2, ..] => {
                 self.dcx()
                     .emit_err(errors::NoMultipleAllocErrorHandler { span2: *span2, span1: *span1 });
@@ -1310,17 +1315,14 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         definitions: &Definitions,
     ) -> Option<CrateNum> {
         match item.kind {
-            ast::ItemKind::ExternCrate(orig_name) => {
-                debug!(
-                    "resolving extern crate stmt. ident: {} orig_name: {:?}",
-                    item.ident, orig_name
-                );
+            ast::ItemKind::ExternCrate(orig_name, ident) => {
+                debug!("resolving extern crate stmt. ident: {} orig_name: {:?}", ident, orig_name);
                 let name = match orig_name {
                     Some(orig_name) => {
                         validate_crate_name(self.sess, orig_name, Some(item.span));
                         orig_name
                     }
-                    None => item.ident.name,
+                    None => ident.name,
                 };
                 let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
                     CrateDepKind::MacrosOnly
@@ -1368,14 +1370,15 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 }
 
-fn global_allocator_spans(krate: &ast::Crate) -> Vec<Span> {
+fn fn_spans(krate: &ast::Crate, name: Symbol) -> Vec<Span> {
     struct Finder {
         name: Symbol,
         spans: Vec<Span>,
     }
     impl<'ast> visit::Visitor<'ast> for Finder {
         fn visit_item(&mut self, item: &'ast ast::Item) {
-            if item.ident.name == self.name
+            if let Some(ident) = item.kind.ident()
+                && ident.name == self.name
                 && attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol)
             {
                 self.spans.push(item.span);
@@ -1384,29 +1387,6 @@ fn global_allocator_spans(krate: &ast::Crate) -> Vec<Span> {
         }
     }
 
-    let name = Symbol::intern(&global_fn_name(sym::alloc));
-    let mut f = Finder { name, spans: Vec::new() };
-    visit::walk_crate(&mut f, krate);
-    f.spans
-}
-
-fn alloc_error_handler_spans(krate: &ast::Crate) -> Vec<Span> {
-    struct Finder {
-        name: Symbol,
-        spans: Vec<Span>,
-    }
-    impl<'ast> visit::Visitor<'ast> for Finder {
-        fn visit_item(&mut self, item: &'ast ast::Item) {
-            if item.ident.name == self.name
-                && attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol)
-            {
-                self.spans.push(item.span);
-            }
-            visit::walk_item(self, item)
-        }
-    }
-
-    let name = Symbol::intern(alloc_error_handler_name(AllocatorKind::Global));
     let mut f = Finder { name, spans: Vec::new() };
     visit::walk_crate(&mut f, krate);
     f.spans

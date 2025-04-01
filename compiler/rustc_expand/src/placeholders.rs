@@ -26,7 +26,7 @@ pub(crate) fn placeholder(
         })
     }
 
-    let ident = Ident::empty();
+    let ident = Ident::dummy();
     let attrs = ast::AttrVec::new();
     let vis = vis.unwrap_or(ast::Visibility {
         span: DUMMY_SP,
@@ -62,7 +62,6 @@ pub(crate) fn placeholder(
         AstFragmentKind::Items => AstFragment::Items(smallvec![P(ast::Item {
             id,
             span,
-            ident,
             vis,
             attrs,
             kind: ast::ItemKind::MacCall(mac_placeholder()),
@@ -71,7 +70,6 @@ pub(crate) fn placeholder(
         AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![P(ast::AssocItem {
             id,
             span,
-            ident,
             vis,
             attrs,
             kind: ast::AssocItemKind::MacCall(mac_placeholder()),
@@ -80,7 +78,6 @@ pub(crate) fn placeholder(
         AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![P(ast::AssocItem {
             id,
             span,
-            ident,
             vis,
             attrs,
             kind: ast::AssocItemKind::MacCall(mac_placeholder()),
@@ -90,7 +87,6 @@ pub(crate) fn placeholder(
             AstFragment::TraitImplItems(smallvec![P(ast::AssocItem {
                 id,
                 span,
-                ident,
                 vis,
                 attrs,
                 kind: ast::AssocItemKind::MacCall(mac_placeholder()),
@@ -101,7 +97,6 @@ pub(crate) fn placeholder(
             AstFragment::ForeignItems(smallvec![P(ast::ForeignItem {
                 id,
                 span,
-                ident,
                 vis,
                 attrs,
                 kind: ast::ForeignItemKind::MacCall(mac_placeholder()),

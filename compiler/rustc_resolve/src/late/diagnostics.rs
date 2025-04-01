@@ -224,12 +224,13 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let suggestion = if self.current_trait_ref.is_none()
                     && let Some((fn_kind, _)) = self.diag_metadata.current_function
                     && let Some(FnCtxt::Assoc(_)) = fn_kind.ctxt()
-                    && let FnKind::Fn(_, _, _, ast::Fn { sig, .. }) = fn_kind
+                    && let FnKind::Fn(_, _, ast::Fn { sig, .. }) = fn_kind
                     && let Some(items) = self.diag_metadata.current_impl_items
                     && let Some(item) = items.iter().find(|i| {
-                        i.ident.name == item_str.name
+                        i.kind.ident().is_some_and(|ident| {
                             // Don't suggest if the item is in Fn signature arguments (#112590).
-                            && !sig.span.contains(item_span)
+                            ident.name == item_str.name && !sig.span.contains(item_span)
+                        })
                     }) {
                     let sp = item_span.shrink_to_lo();
 
@@ -268,14 +269,14 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             // you can't call `fn foo(&self)` from `fn bar()` (#115992).
                             // We also want to mention that the method exists.
                             span_label = Some((
-                                item.ident.span,
+                                fn_.ident.span,
                                 "a method by that name is available on `Self` here",
                             ));
                             None
                         }
                         AssocItemKind::Fn(fn_) if !fn_.sig.decl.has_self() && !is_call => {
                             span_label = Some((
-                                item.ident.span,
+                                fn_.ident.span,
                                 "an associated function by that name is available on `Self` here",
                             ));
                             None
@@ -604,7 +605,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
             if !self.self_value_is_available(path[0].ident.span) {
-                if let Some((FnKind::Fn(_, _, _, ast::Fn { sig, .. }), fn_span)) =
+                if let Some((FnKind::Fn(_, _, ast::Fn { sig, .. }), fn_span)) =
                     &self.diag_metadata.current_function
                 {
                     let (span, sugg) = if let Some(param) = sig.decl.inputs.get(0) {
@@ -1064,15 +1065,11 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
         err.code(E0411);
         err.span_label(span, "`Self` is only available in impls, traits, and type definitions");
-        if let Some(item_kind) = self.diag_metadata.current_item {
-            if !item_kind.ident.span.is_dummy() {
+        if let Some(item) = self.diag_metadata.current_item {
+            if let Some(ident) = item.kind.ident() {
                 err.span_label(
-                    item_kind.ident.span,
-                    format!(
-                        "`Self` not allowed in {} {}",
-                        item_kind.kind.article(),
-                        item_kind.kind.descr()
-                    ),
+                    ident.span,
+                    format!("`Self` not allowed in {} {}", item.kind.article(), item.kind.descr()),
                 );
             }
         }
@@ -1150,17 +1147,14 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     );
                 }
             }
-        } else if let Some(item_kind) = self.diag_metadata.current_item {
-            if matches!(item_kind.kind, ItemKind::Delegation(..)) {
-                err.span_label(item_kind.span, format!("delegation supports {self_from_macro}"));
+        } else if let Some(item) = self.diag_metadata.current_item {
+            if matches!(item.kind, ItemKind::Delegation(..)) {
+                err.span_label(item.span, format!("delegation supports {self_from_macro}"));
             } else {
+                let span = if let Some(ident) = item.kind.ident() { ident.span } else { item.span };
                 err.span_label(
-                    item_kind.ident.span,
-                    format!(
-                        "`self` not allowed in {} {}",
-                        item_kind.kind.article(),
-                        item_kind.kind.descr()
-                    ),
+                    span,
+                    format!("`self` not allowed in {} {}", item.kind.article(), item.kind.descr()),
                 );
             }
         }
@@ -2196,7 +2190,9 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         if let Some(items) = self.diag_metadata.current_trait_assoc_items {
             for assoc_item in items {
-                if assoc_item.ident == ident {
+                if let Some(assoc_ident) = assoc_item.kind.ident()
+                    && assoc_ident == ident
+                {
                     return Some(match &assoc_item.kind {
                         ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
                         ast::AssocItemKind::Fn(box ast::Fn { sig, .. }) if sig.decl.has_self() => {
@@ -2735,7 +2731,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             return None;
         }
         match (self.diag_metadata.current_item, single_uppercase_char, self.diag_metadata.currently_processing_generic_args) {
-            (Some(Item { kind: ItemKind::Fn(..), ident, .. }), _, _) if ident.name == sym::main => {
+            (Some(Item { kind: ItemKind::Fn(fn_), .. }), _, _) if fn_.ident.name == sym::main => {
                 // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
             }
             (
@@ -3400,7 +3396,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     {
                         let pre = if lt.kind == MissingLifetimeKind::Ampersand
                             && let Some((kind, _span)) = self.diag_metadata.current_function
-                            && let FnKind::Fn(_, _, _, ast::Fn { sig, .. }) = kind
+                            && let FnKind::Fn(_, _, ast::Fn { sig, .. }) = kind
                             && !sig.decl.inputs.is_empty()
                             && let sugg = sig
                                 .decl
@@ -3441,7 +3437,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         } else if (lt.kind == MissingLifetimeKind::Ampersand
                             || lt.kind == MissingLifetimeKind::Underscore)
                             && let Some((kind, _span)) = self.diag_metadata.current_function
-                            && let FnKind::Fn(_, _, _, ast::Fn { sig, .. }) = kind
+                            && let FnKind::Fn(_, _, ast::Fn { sig, .. }) = kind
                             && let ast::FnRetTy::Ty(ret_ty) = &sig.decl.output
                             && !sig.decl.inputs.is_empty()
                             && let arg_refs = sig
@@ -3501,7 +3497,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         let mut owned_sugg = lt.kind == MissingLifetimeKind::Ampersand;
                         let mut sugg = vec![(lt.span, String::new())];
                         if let Some((kind, _span)) = self.diag_metadata.current_function
-                            && let FnKind::Fn(_, _, _, ast::Fn { sig, .. }) = kind
+                            && let FnKind::Fn(_, _, ast::Fn { sig, .. }) = kind
                             && let ast::FnRetTy::Ty(ty) = &sig.decl.output
                         {
                             let mut lt_finder =

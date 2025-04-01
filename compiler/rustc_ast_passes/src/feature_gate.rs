@@ -236,7 +236,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate!(&self, trait_alias, i.span, "trait aliases are experimental");
             }
 
-            ast::ItemKind::MacroDef(ast::MacroDef { macro_rules: false, .. }) => {
+            ast::ItemKind::MacroDef(_, ast::MacroDef { macro_rules: false, .. }) => {
                 let msg = "`macro` is experimental";
                 gate!(&self, decl_macro, i.span, msg);
             }

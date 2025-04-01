@@ -172,20 +172,22 @@ impl EarlyLintPass for NonCamelCaseTypes {
         }
 
         match &it.kind {
-            ast::ItemKind::TyAlias(..)
-            | ast::ItemKind::Enum(..)
-            | ast::ItemKind::Struct(..)
-            | ast::ItemKind::Union(..) => self.check_case(cx, "type", &it.ident),
-            ast::ItemKind::Trait(..) => self.check_case(cx, "trait", &it.ident),
-            ast::ItemKind::TraitAlias(..) => self.check_case(cx, "trait alias", &it.ident),
+            ast::ItemKind::TyAlias(box ast::TyAlias { ident, .. })
+            | ast::ItemKind::Enum(ident, ..)
+            | ast::ItemKind::Struct(ident, ..)
+            | ast::ItemKind::Union(ident, ..) => self.check_case(cx, "type", ident),
+            ast::ItemKind::Trait(box ast::Trait { ident, .. }) => {
+                self.check_case(cx, "trait", ident)
+            }
+            ast::ItemKind::TraitAlias(ident, _, _) => self.check_case(cx, "trait alias", ident),
 
             // N.B. This check is only for inherent associated types, so that we don't lint against
             // trait impls where we should have warned for the trait definition already.
             ast::ItemKind::Impl(box ast::Impl { of_trait: None, items, .. }) => {
                 for it in items {
                     // FIXME: this doesn't respect `#[allow(..)]` on the item itself.
-                    if let ast::AssocItemKind::Type(..) = it.kind {
-                        self.check_case(cx, "associated type", &it.ident);
+                    if let ast::AssocItemKind::Type(alias) = &it.kind {
+                        self.check_case(cx, "associated type", &alias.ident);
                     }
                 }
             }
@@ -194,8 +196,8 @@ impl EarlyLintPass for NonCamelCaseTypes {
     }
 
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        if let ast::AssocItemKind::Type(..) = it.kind {
-            self.check_case(cx, "associated type", &it.ident);
+        if let ast::AssocItemKind::Type(alias) = &it.kind {
+            self.check_case(cx, "associated type", &alias.ident);
         }
     }
 
