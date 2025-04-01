@@ -12,7 +12,7 @@ use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
 use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, IsAnonInPath, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
-use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, Region, Ty, TyCtxt};
+use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, GenericArg, Region, Ty, TyCtxt};
 use rustc_span::{BytePos, Ident, Span, Symbol, kw};
 
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
@@ -1921,4 +1921,15 @@ impl Subdiagnostic for AddPreciseCapturingForOvercapture {
             );
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(trait_selection_opaque_type_non_generic_param, code = E0792)]
+pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
+    pub ty: GenericArg<'tcx>,
+    pub kind: &'a str,
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub param_span: Span,
 }

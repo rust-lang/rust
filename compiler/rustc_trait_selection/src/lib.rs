@@ -36,6 +36,7 @@
 pub mod error_reporting;
 pub mod errors;
 pub mod infer;
+pub mod opaque_types;
 pub mod regions;
 pub mod solve;
 pub mod traits;
