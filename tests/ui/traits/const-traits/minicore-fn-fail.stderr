@@ -10,7 +10,7 @@ note: required by a bound in `call_indirect`
   --> $DIR/minicore-fn-fail.rs:11:27
    |
 LL | const fn call_indirect<T: ~const Fn()>(t: &T) { t() }
-   |                           ^^^^^^ required by this bound in `call_indirect`
+   |                           ^^^^^^^^^^^ required by this bound in `call_indirect`
 
 error: aborting due to 1 previous error
 
