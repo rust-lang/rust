@@ -1,5 +1,5 @@
 error[E0599]: no function or associated item named `foo` found for struct `Bar` in the current scope
-  --> $DIR/suggest-trait-reexported-as-not-doc-visible.rs:8:10
+  --> $DIR/suggest-trait-reexported-as-not-doc-visible.rs:9:10
    |
 LL |     Bar::foo();
    |          ^^^ function or associated item not found in `Bar`
@@ -7,7 +7,7 @@ LL |     Bar::foo();
    = help: items from traits can only be used if the trait is in scope
 help: trait `Foo` which provides `foo` is implemented but not in scope; perhaps you want to import it
    |
-LL + use suggest_trait_reexported_as_not_doc_visible_b::__DocHidden::Foo;
+LL + use suggest_trait_reexported_as_not_doc_visible_a::Foo;
    |
 
 error: aborting due to 1 previous error
