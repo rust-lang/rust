@@ -2,7 +2,7 @@ error[E0275]: overflow assigning `_` to `Option<_>`
   --> $DIR/mutual-recursion-issue-75860.rs:9:33
    |
 LL |     let left = |o_a: Option<_>| o_a.unwrap();
-   |                                 ^^^
+   |                                 ^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
