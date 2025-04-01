@@ -734,7 +734,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         &mut diag,
                         Some(err.span),
                         candidates,
-                        DiagMode::Import { append: false },
+                        DiagMode::Import { append: false, unresolved_import: true },
                         (source != target)
                             .then(|| format!(" as {target}"))
                             .as_deref()
