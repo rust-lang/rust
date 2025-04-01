@@ -5,7 +5,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{
-    get_type_diagnostic_name, is_iter_with_side_effects, make_normalized_projection, make_projection,
+    get_type_diagnostic_name, has_non_owning_mutable_access, make_normalized_projection, make_projection,
 };
 use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local,
@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(
     call_span: Span,
 ) {
     let iter_ty = cx.typeck_results().expr_ty(iter_expr);
-    if is_iter_with_side_effects(cx, iter_ty) {
+    if has_non_owning_mutable_access(cx, iter_ty) {
         return; // don't lint if the iterator has side effects
     }
 
