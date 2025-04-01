@@ -6,6 +6,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::{self, Display};
+use std::hash::Hash;
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf, absolute};
 use std::process::Command;
@@ -745,19 +746,25 @@ enum ReplaceOpt {
 }
 
 trait Merge {
-    fn merge(&mut self, other: Self, replace: ReplaceOpt);
+    fn merge(
+        &mut self,
+        included_extensions: &mut HashSet<PathBuf>,
+        other: Self,
+        replace: ReplaceOpt,
+    );
 }
 
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
+        included_extensions: &mut HashSet<PathBuf>,
         TomlConfig { build, install, llvm, gcc, rust, dist, target, profile, change_id, include }: Self,
         replace: ReplaceOpt,
     ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
             if let Some(new) = y {
                 if let Some(original) = x {
-                    original.merge(new, replace);
+                    original.merge(&mut Default::default(), new, replace);
                 } else {
                     *x = Some(new);
                 }
@@ -772,11 +779,20 @@ impl Merge for TomlConfig {
                 );
                 exit!(2);
             });
-            self.merge(included_toml, ReplaceOpt::Override);
+
+            assert!(
+                included_extensions.insert(include_path.clone()),
+                "Cyclic inclusion detected: '{}' is being included again before its previous inclusion was fully processed.",
+                include_path.display()
+            );
+
+            self.merge(included_extensions, included_toml, ReplaceOpt::Override);
+
+            included_extensions.remove(&include_path);
         }
 
-        self.change_id.inner.merge(change_id.inner, replace);
-        self.profile.merge(profile, replace);
+        self.change_id.inner.merge(&mut Default::default(), change_id.inner, replace);
+        self.profile.merge(&mut Default::default(), profile, replace);
 
         do_merge(&mut self.build, build, replace);
         do_merge(&mut self.install, install, replace);
@@ -791,7 +807,7 @@ impl Merge for TomlConfig {
             (Some(original_target), Some(new_target)) => {
                 for (triple, new) in new_target {
                     if let Some(original) = original_target.get_mut(&triple) {
-                        original.merge(new, replace);
+                        original.merge(&mut Default::default(), new, replace);
                     } else {
                         original_target.insert(triple, new);
                     }
@@ -812,7 +828,7 @@ macro_rules! define_config {
         }
 
         impl Merge for $name {
-            fn merge(&mut self, other: Self, replace: ReplaceOpt) {
+            fn merge(&mut self, _included_extensions: &mut HashSet<PathBuf>, other: Self, replace: ReplaceOpt) {
                 $(
                     match replace {
                         ReplaceOpt::IgnoreDuplicate => {
@@ -912,7 +928,12 @@ macro_rules! define_config {
 }
 
 impl<T> Merge for Option<T> {
-    fn merge(&mut self, other: Self, replace: ReplaceOpt) {
+    fn merge(
+        &mut self,
+        _included_extensions: &mut HashSet<PathBuf>,
+        other: Self,
+        replace: ReplaceOpt,
+    ) {
         match replace {
             ReplaceOpt::IgnoreDuplicate => {
                 if self.is_none() {
@@ -1608,7 +1629,7 @@ impl Config {
                 );
                 exit!(2);
             });
-            toml.merge(included_toml, ReplaceOpt::IgnoreDuplicate);
+            toml.merge(&mut Default::default(), included_toml, ReplaceOpt::IgnoreDuplicate);
         }
 
         for include_path in toml.include.clone().unwrap_or_default() {
@@ -1619,7 +1640,7 @@ impl Config {
                 );
                 exit!(2);
             });
-            toml.merge(included_toml, ReplaceOpt::Override);
+            toml.merge(&mut Default::default(), included_toml, ReplaceOpt::Override);
         }
 
         let mut override_toml = TomlConfig::default();
@@ -1630,7 +1651,7 @@ impl Config {
 
             let mut err = match get_table(option) {
                 Ok(v) => {
-                    override_toml.merge(v, ReplaceOpt::ErrorOnDuplicate);
+                    override_toml.merge(&mut Default::default(), v, ReplaceOpt::ErrorOnDuplicate);
                     continue;
                 }
                 Err(e) => e,
@@ -1641,7 +1662,11 @@ impl Config {
                 if !value.contains('"') {
                     match get_table(&format!(r#"{key}="{value}""#)) {
                         Ok(v) => {
-                            override_toml.merge(v, ReplaceOpt::ErrorOnDuplicate);
+                            override_toml.merge(
+                                &mut Default::default(),
+                                v,
+                                ReplaceOpt::ErrorOnDuplicate,
+                            );
                             continue;
                         }
                         Err(e) => err = e,
@@ -1651,7 +1676,7 @@ impl Config {
             eprintln!("failed to parse override `{option}`: `{err}");
             exit!(2)
         }
-        toml.merge(override_toml, ReplaceOpt::Override);
+        toml.merge(&mut Default::default(), override_toml, ReplaceOpt::Override);
 
         config.change_id = toml.change_id.inner;
 
