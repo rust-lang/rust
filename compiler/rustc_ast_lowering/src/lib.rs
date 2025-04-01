@@ -36,6 +36,7 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(closure_track_caller)]
 #![feature(exact_size_is_empty)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
@@ -59,9 +60,8 @@ use rustc_hir::{
     TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_macros::extension;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
+use rustc_middle::ty::{PerOwnerResolverData, ResolverAstLowering, TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
@@ -93,7 +93,7 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
-    resolver: &'a mut ResolverAstLowering,
+    resolver: PerOwnerResolver<'a>,
 
     /// Used to allocate HIR nodes.
     arena: &'hir hir::Arena<'hir>,
@@ -153,7 +153,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         Self {
             // Pseudo-globals.
             tcx,
-            resolver,
+            resolver: PerOwnerResolver {
+                general: resolver,
+                item: PerOwnerResolverData::new(DUMMY_NODE_ID),
+            },
             arena: tcx.hir_arena,
 
             // HirId handling.
@@ -201,8 +204,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 }
 
-#[extension(trait ResolverAstLoweringExt)]
-impl ResolverAstLowering {
+pub(crate) struct PerOwnerResolver<'a> {
+    pub general: &'a mut ResolverAstLowering,
+    pub item: PerOwnerResolverData,
+}
+
+impl<'a> std::ops::Deref for PerOwnerResolver<'a> {
+    type Target = PerOwnerResolverData;
+
+    fn deref(&self) -> &Self::Target {
+        &self.item
+    }
+}
+
+impl PerOwnerResolver<'_> {
     fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
         if let ExprKind::Path(None, path) = &expr.kind {
             // Don't perform legacy const generics rewriting if the path already
@@ -211,7 +226,9 @@ impl ResolverAstLowering {
                 return None;
             }
 
-            if let Res::Def(DefKind::Fn, def_id) = self.partial_res_map.get(&expr.id)?.full_res()? {
+            if let Res::Def(DefKind::Fn, def_id) =
+                self.general.partial_res_map.get(&expr.id)?.full_res()?
+            {
                 // We only support cross-crate argument rewriting. Uses
                 // within the same crate should be updated to use the new
                 // const generics style.
@@ -219,7 +236,7 @@ impl ResolverAstLowering {
                     return None;
                 }
 
-                if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
+                if let Some(v) = self.item.legacy_const_generic_args.get(&def_id) {
                     return v.clone();
                 }
             }
@@ -229,22 +246,22 @@ impl ResolverAstLowering {
     }
 
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
-        self.partial_res_map.get(&id).copied()
+        self.general.partial_res_map.get(&id).copied()
     }
 
     /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
     fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>> {
-        self.import_res_map.get(&id).copied().unwrap_or_default()
+        self.general.import_res_map.get(&id).copied().unwrap_or_default()
     }
 
     /// Obtains resolution for a label with the given `NodeId`.
     fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
-        self.label_res_map.get(&id).copied()
+        self.item.label_res_map.get(&id).copied()
     }
 
     /// Obtains resolution for a lifetime with the given `NodeId`.
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
-        self.lifetimes_res_map.get(&id).copied()
+        self.item.lifetimes_res_map.get(&id).copied()
     }
 
     /// Obtain the list of lifetimes parameters to add to an item.
@@ -254,8 +271,17 @@ impl ResolverAstLowering {
     ///
     /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
     /// should appear at the enclosing `PolyTraitRef`.
-    fn extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
-        self.extra_lifetime_params_map.get(&id).cloned().unwrap_or_default()
+    fn extra_lifetime_params(&self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
+        let res = self.item.extra_lifetime_params_map.get(&id).cloned().unwrap_or_default();
+        if res.is_empty() {
+            self.general.owners.items().any(|(_, data)| {
+                if data.extra_lifetime_params_map.contains_key(&id) {
+                    panic!("found {id} in {} instead of {}", data.id, self.item.id);
+                }
+                false
+            });
+        }
+        res
     }
 }
 
@@ -365,10 +391,14 @@ enum AstOwner<'a> {
 }
 
 fn index_crate<'a>(
-    node_id_to_def_id: &NodeMap<LocalDefId>,
+    owners: &NodeMap<PerOwnerResolverData>,
     krate: &'a Crate,
 ) -> IndexVec<LocalDefId, AstOwner<'a>> {
-    let mut indexer = Indexer { node_id_to_def_id, index: IndexVec::new() };
+    let mut indexer = Indexer {
+        owners,
+        node_id_to_def_id: &owners[&CRATE_NODE_ID].node_id_to_def_id,
+        index: IndexVec::new(),
+    };
     *indexer.index.ensure_contains_elem(CRATE_DEF_ID, || AstOwner::NonOwner) =
         AstOwner::Crate(krate);
     visit::walk_crate(&mut indexer, krate);
@@ -376,6 +406,7 @@ fn index_crate<'a>(
 
     struct Indexer<'s, 'a> {
         node_id_to_def_id: &'s NodeMap<LocalDefId>,
+        owners: &'s NodeMap<PerOwnerResolverData>,
         index: IndexVec<LocalDefId, AstOwner<'a>>,
     }
 
@@ -386,23 +417,38 @@ fn index_crate<'a>(
         }
 
         fn visit_item(&mut self, item: &'a ast::Item) {
+            let old = std::mem::replace(
+                &mut self.node_id_to_def_id,
+                &self.owners[&item.id].node_id_to_def_id,
+            );
             let def_id = self.node_id_to_def_id[&item.id];
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) = AstOwner::Item(item);
-            visit::walk_item(self, item)
+            visit::walk_item(self, item);
+            self.node_id_to_def_id = old;
         }
 
         fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: visit::AssocCtxt) {
+            let old = std::mem::replace(
+                &mut self.node_id_to_def_id,
+                &self.owners[&item.id].node_id_to_def_id,
+            );
             let def_id = self.node_id_to_def_id[&item.id];
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
                 AstOwner::AssocItem(item, ctxt);
             visit::walk_assoc_item(self, item, ctxt);
+            self.node_id_to_def_id = old;
         }
 
         fn visit_foreign_item(&mut self, item: &'a ast::ForeignItem) {
+            let old = std::mem::replace(
+                &mut self.node_id_to_def_id,
+                &self.owners[&item.id].node_id_to_def_id,
+            );
             let def_id = self.node_id_to_def_id[&item.id];
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
                 AstOwner::ForeignItem(item);
             visit::walk_item(self, item);
+            self.node_id_to_def_id = old;
         }
     }
 }
@@ -439,20 +485,21 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     tcx.ensure_done().get_lang_items(());
     let (mut resolver, krate) = tcx.resolver_for_lowering().steal();
 
-    let ast_index = index_crate(&resolver.node_id_to_def_id, &krate);
+    let ast_index = index_crate(&resolver.owners, &krate);
     let mut owners = IndexVec::from_fn_n(
         |_| hir::MaybeOwner::Phantom,
         tcx.definitions_untracked().def_index_count(),
     );
 
+    let mut lowerer = item::ItemLowerer {
+        tcx,
+        resolver: &mut resolver,
+        ast_index: &ast_index,
+        owners: &mut owners,
+    };
+
     for def_id in ast_index.indices() {
-        item::ItemLowerer {
-            tcx,
-            resolver: &mut resolver,
-            ast_index: &ast_index,
-            owners: &mut owners,
-        }
-        .lower_node(def_id);
+        lowerer.lower_node(def_id);
     }
 
     // Drop AST to free memory
@@ -495,7 +542,6 @@ enum GenericArgsMode {
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn create_def(
         &mut self,
-        parent: LocalDefId,
         node_id: ast::NodeId,
         name: Option<Symbol>,
         def_kind: DefKind,
@@ -510,34 +556,48 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.tcx.hir_def_key(self.local_def_id(node_id)),
         );
 
-        let def_id = self.tcx.at(span).create_def(parent, name, def_kind).def_id();
+        let def_id =
+            self.tcx.at(span).create_def(self.current_hir_id_owner.def_id, name, def_kind).def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
-        self.resolver.node_id_to_def_id.insert(node_id, def_id);
+        self.resolver.item.node_id_to_def_id.insert(node_id, def_id);
 
         def_id
     }
 
     fn next_node_id(&mut self) -> NodeId {
-        let start = self.resolver.next_node_id;
+        let start = self.resolver.general.next_node_id;
         let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
-        self.resolver.next_node_id = ast::NodeId::from_u32(next);
+        self.resolver.general.next_node_id = ast::NodeId::from_u32(next);
         start
     }
 
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
     /// resolver (if any).
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.resolver.node_id_to_def_id.get(&node).copied()
+        self.resolver.item.node_id_to_def_id.get(&node).copied()
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
-        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
+        self.opt_local_def_id(node).unwrap_or_else(|| {
+            self.resolver.general.owners.items().any(|(id, items)| {
+                items.node_id_to_def_id.items().any(|(node_id, def_id)| {
+                    if *node_id == node {
+                        panic!(
+                            "{def_id:?} ({node_id}) was found in {:?} ({id})",
+                            items.node_id_to_def_id.get(id),
+                        )
+                    }
+                    false
+                })
+            });
+            panic!("no entry for node id: `{node:?}`");
+        })
     }
 
     /// Given the id of an owner node in the AST, returns the corresponding `OwnerId`.
     fn owner_id(&self, node: NodeId) -> hir::OwnerId {
-        hir::OwnerId { def_id: self.local_def_id(node) }
+        hir::OwnerId { def_id: self.resolver.general.owners[&node].node_id_to_def_id[&node] }
     }
 
     /// Freshen the `LoweringContext` and ready it to lower a nested item.
@@ -556,6 +616,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_define_opaque = std::mem::take(&mut self.define_opaque);
+        let current_item_resolver = std::mem::replace(
+            &mut self.resolver.item,
+            self.resolver.general.owners.remove(&owner).unwrap(),
+        );
         let current_ident_and_label_to_local_id =
             std::mem::take(&mut self.ident_and_label_to_local_id);
 
@@ -600,6 +664,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.item_local_id_counter = current_local_counter;
         self.impl_trait_defs = current_impl_trait_defs;
         self.impl_trait_bounds = current_impl_trait_bounds;
+        let reinsert = std::mem::replace(&mut self.resolver.item, current_item_resolver);
+        self.resolver.general.owners.insert(owner, reinsert);
 
         debug_assert!(!self.children.iter().any(|(id, _)| id == &owner_id.def_id));
         self.children.push((owner_id.def_id, hir::MaybeOwner::Owner(info)));
@@ -652,7 +718,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         }
 
-        if let Some(traits) = self.resolver.trait_map.remove(&ast_node_id) {
+        if let Some(traits) = self.resolver.item.trait_map.remove(&ast_node_id) {
             self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
         }
 
@@ -782,7 +848,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Fresh { param, kind, .. } => {
                 // Late resolution delegates to us the creation of the `LocalDefId`.
                 let _def_id = self.create_def(
-                    self.current_hir_id_owner.def_id,
                     param,
                     Some(kw::UnderscoreLifetime),
                     DefKind::LifetimeParam,
@@ -1605,7 +1670,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             inputs,
             output,
             c_variadic,
-            lifetime_elision_allowed: self.resolver.lifetime_elision_allowed.contains(&fn_node_id),
+            lifetime_elision_allowed: self
+                .resolver
+                .item
+                .lifetime_elision_allowed
+                .contains(&fn_node_id),
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
                 let is_mutable_pat = matches!(
                     arg.pat.kind,
@@ -2089,7 +2158,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             // Construct an AnonConst where the expr is the "ty"'s path.
 
-            let parent_def_id = self.current_hir_id_owner.def_id;
             let node_id = self.next_node_id();
             let span = self.lower_span(span);
 
@@ -2097,7 +2165,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // We're lowering a const argument that was originally thought to be a type argument,
             // so the def collector didn't create the def ahead of time. That's why we have to do
             // it here.
-            let def_id = self.create_def(parent_def_id, node_id, None, DefKind::AnonConst, span);
+            let def_id = self.create_def(node_id, None, DefKind::AnonConst, span);
             let hir_id = self.lower_node_id(node_id);
 
             let path_expr = Expr {

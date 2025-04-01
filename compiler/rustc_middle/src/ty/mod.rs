@@ -187,30 +187,51 @@ pub struct ResolverGlobalCtxt {
     pub stripped_cfg_items: Steal<Vec<StrippedCfgItem>>,
 }
 
-/// Resolutions that should only be used for lowering.
-/// This struct is meant to be consumed by lowering.
 #[derive(Debug)]
-pub struct ResolverAstLowering {
+pub struct PerOwnerResolverData {
     pub legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
-
-    /// Resolutions for nodes that have a single resolution.
-    pub partial_res_map: NodeMap<hir::def::PartialRes>,
-    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
-    pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
+    pub node_id_to_def_id: NodeMap<LocalDefId>,
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
     pub label_res_map: NodeMap<ast::NodeId>,
+    /// List functions and methods for which lifetime elision was successful.
+    pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
     /// Resolutions for lifetimes.
     pub lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
 
-    pub next_node_id: ast::NodeId,
-
-    pub node_id_to_def_id: NodeMap<LocalDefId>,
-
     pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
-    /// List functions and methods for which lifetime elision was successful.
-    pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
+    /// The id of the owner
+    pub id: ast::NodeId,
+}
+
+impl PerOwnerResolverData {
+    pub fn new(id: ast::NodeId) -> Self {
+        Self {
+            node_id_to_def_id: Default::default(),
+            label_res_map: Default::default(),
+            legacy_const_generic_args: Default::default(),
+            id,
+            lifetime_elision_allowed: Default::default(),
+            trait_map: Default::default(),
+            lifetimes_res_map: Default::default(),
+            extra_lifetime_params_map: Default::default(),
+        }
+    }
+}
+
+/// Resolutions that should only be used for lowering.
+/// This struct is meant to be consumed by lowering.
+#[derive(Debug)]
+pub struct ResolverAstLowering {
+    /// Resolutions for nodes that have a single resolution.
+    pub partial_res_map: NodeMap<hir::def::PartialRes>,
+    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
+    pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
+
+    pub owners: NodeMap<PerOwnerResolverData>,
+
+    pub next_node_id: ast::NodeId,
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
