@@ -79,12 +79,11 @@
 #![cfg_attr(
     not(bootstrap),
     doc(auto_cfg(hide(
-        not(test),
-        not(any(test, bootstrap)),
+        bootstrap,
         no_global_oom_handling,
-        not(no_global_oom_handling),
-        not(no_rc),
-        not(no_sync),
+        no_global_oom_handling,
+        no_rc,
+        no_sync,
         target_has_atomic = "ptr"
     )))
 )]
