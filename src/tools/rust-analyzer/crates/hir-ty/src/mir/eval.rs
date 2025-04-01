@@ -2452,7 +2452,7 @@ impl Evaluator<'_> {
         let mir_body = self
             .db
             .monomorphized_mir_body_for_closure(
-                closure,
+                closure.into(),
                 generic_args.clone(),
                 self.trait_env.clone(),
             )

@@ -31,7 +31,7 @@ use crate::{
     DynTyExt, FnAbi, FnPointer, FnSig, Interner, OpaqueTy, ProjectionTyExt, Substitution, Ty,
     TyExt, WhereClause,
     db::{HirDatabase, InternedClosure},
-    error_lifetime, from_chalk_trait_id, from_placeholder_idx,
+    error_lifetime, from_assoc_type_id, from_chalk_trait_id, from_placeholder_idx,
     generics::Generics,
     infer::coerce::CoerceNever,
     make_binders,
@@ -153,7 +153,8 @@ impl InferenceContext<'_> {
             if let WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection), ty }) =
                 bound.skip_binders()
             {
-                let assoc_data = self.db.associated_ty_data(projection.associated_ty_id);
+                let assoc_data =
+                    self.db.associated_ty_data(from_assoc_type_id(projection.associated_ty_id));
                 if !fn_traits.contains(&assoc_data.trait_id) {
                     return None;
                 }

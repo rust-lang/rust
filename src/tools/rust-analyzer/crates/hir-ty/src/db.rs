@@ -17,8 +17,8 @@ use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
-    Binders, ClosureId, Const, FnDefId, ImplTraitId, ImplTraits, InferenceResult, Interner,
-    PolyFnSig, Substitution, TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId, chalk_db,
+    Binders, Const, ImplTraitId, ImplTraits, InferenceResult, Interner, PolyFnSig, Substitution,
+    TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId, chalk_db,
     consteval::ConstEvalError,
     drop::DropGlue,
     dyn_compatibility::DynCompatibilityViolation,
@@ -39,8 +39,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
     #[salsa::cycle(crate::mir::mir_body_recover)]
     fn mir_body(&self, def: DefWithBodyId) -> Result<Arc<MirBody>, MirLowerError>;
 
-    #[salsa::invoke(crate::mir::mir_body_for_closure_query)]
-    fn mir_body_for_closure(&self, def: ClosureId) -> Result<Arc<MirBody>, MirLowerError>;
+    #[salsa::invoke_actual(crate::mir::mir_body_for_closure_query)]
+    fn mir_body_for_closure(&self, def: InternedClosureId) -> Result<Arc<MirBody>, MirLowerError>;
 
     #[salsa::invoke(crate::mir::monomorphized_mir_body_query)]
     #[salsa::cycle(crate::mir::monomorphized_mir_body_recover)]
@@ -54,12 +54,12 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
     #[salsa::invoke(crate::mir::monomorphized_mir_body_for_closure_query)]
     fn monomorphized_mir_body_for_closure(
         &self,
-        def: ClosureId,
+        def: InternedClosureId,
         subst: Substitution,
         env: Arc<TraitEnvironment>,
     ) -> Result<Arc<MirBody>, MirLowerError>;
 
-    #[salsa::invoke(crate::mir::borrowck_query)]
+    #[salsa::invoke_actual(crate::mir::borrowck_query)]
     #[salsa::lru(2024)]
     fn borrowck(&self, def: DefWithBodyId) -> Result<Arc<[BorrowckResult]>, MirLowerError>;
 
@@ -110,9 +110,10 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
     fn dyn_compatibility_of_trait(&self, trait_: TraitId) -> Option<DynCompatibilityViolation>;
 
     #[salsa::invoke(crate::lower::ty_query)]
-    #[salsa::cycle(crate::lower::ty_recover)]
+    #[salsa::transparent]
     fn ty(&self, def: TyDefId) -> Binders<Ty>;
 
+    #[salsa::cycle(crate::lower::type_for_type_alias_with_diagnostics_query_recover)]
     #[salsa::invoke_actual(crate::lower::type_for_type_alias_with_diagnostics_query)]
     fn type_for_type_alias_with_diagnostics(&self, def: TypeAliasId) -> (Binders<Ty>, Diagnostics);
 
@@ -244,11 +245,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
     #[salsa::interned]
     fn intern_coroutine(&self, id: InternedCoroutine) -> InternedCoroutineId;
 
-    #[salsa::invoke(chalk_db::associated_ty_data_query)]
-    fn associated_ty_data(
-        &self,
-        id: chalk_db::AssocTypeId,
-    ) -> sync::Arc<chalk_db::AssociatedTyDatum>;
+    #[salsa::invoke_actual(chalk_db::associated_ty_data_query)]
+    fn associated_ty_data(&self, id: TypeAliasId) -> sync::Arc<chalk_db::AssociatedTyDatum>;
 
     #[salsa::invoke(chalk_db::trait_datum_query)]
     fn trait_datum(
@@ -264,14 +262,14 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
     fn impl_datum(&self, krate: Crate, impl_id: chalk_db::ImplId)
     -> sync::Arc<chalk_db::ImplDatum>;
 
-    #[salsa::invoke(chalk_db::fn_def_datum_query)]
-    fn fn_def_datum(&self, fn_def_id: FnDefId) -> sync::Arc<chalk_db::FnDefDatum>;
+    #[salsa::invoke_actual(chalk_db::fn_def_datum_query)]
+    fn fn_def_datum(&self, fn_def_id: CallableDefId) -> sync::Arc<chalk_db::FnDefDatum>;
 
-    #[salsa::invoke(chalk_db::fn_def_variance_query)]
-    fn fn_def_variance(&self, fn_def_id: FnDefId) -> chalk_db::Variances;
+    #[salsa::invoke_actual(chalk_db::fn_def_variance_query)]
+    fn fn_def_variance(&self, fn_def_id: CallableDefId) -> chalk_db::Variances;
 
-    #[salsa::invoke(chalk_db::adt_variance_query)]
-    fn adt_variance(&self, adt_id: chalk_db::AdtId) -> chalk_db::Variances;
+    #[salsa::invoke_actual(chalk_db::adt_variance_query)]
+    fn adt_variance(&self, adt_id: AdtId) -> chalk_db::Variances;
 
     #[salsa::invoke_actual(crate::variance::variances_of)]
     #[salsa::cycle(crate::variance::variances_of_cycle)]

@@ -21,7 +21,7 @@ use hir_def::{
 };
 
 use crate::{
-    AliasEq, AliasTy, BoundVar, DebruijnIndex, FnDefId, Interner, ProjectionTy, ProjectionTyExt,
+    AliasEq, AliasTy, BoundVar, DebruijnIndex, Interner, ProjectionTy, ProjectionTyExt,
     QuantifiedWhereClause, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
     WhereClause,
     db::{HirDatabase, InternedCoroutine},
@@ -53,7 +53,7 @@ pub(crate) type Variances = chalk_ir::Variances<Interner>;
 
 impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     fn associated_ty_data(&self, id: AssocTypeId) -> Arc<AssociatedTyDatum> {
-        self.db.associated_ty_data(id)
+        self.db.associated_ty_data(from_assoc_type_id(id))
     }
     fn trait_datum(&self, trait_id: TraitId) -> Arc<TraitDatum> {
         self.db.trait_datum(self.krate, trait_id)
@@ -105,7 +105,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         &self,
         fn_def_id: chalk_ir::FnDefId<Interner>,
     ) -> Arc<rust_ir::FnDefDatum<Interner>> {
-        self.db.fn_def_datum(fn_def_id)
+        self.db.fn_def_datum(from_chalk(self.db, fn_def_id))
     }
 
     fn impls_for_trait(
@@ -447,7 +447,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         Arc::new(rust_ir::AdtSizeAlign::from_one_zst(false))
     }
     fn assoc_type_name(&self, assoc_ty_id: chalk_ir::AssocTypeId<Interner>) -> String {
-        let id = self.db.associated_ty_data(assoc_ty_id).name;
+        let id = self.db.associated_ty_data(from_assoc_type_id(assoc_ty_id)).name;
         self.db.type_alias_data(id).name.display(self.db.upcast(), self.edition()).to_string()
     }
     fn opaque_type_name(&self, opaque_ty_id: chalk_ir::OpaqueTyId<Interner>) -> String {
@@ -583,11 +583,11 @@ impl chalk_ir::UnificationDatabase<Interner> for &dyn HirDatabase {
         &self,
         fn_def_id: chalk_ir::FnDefId<Interner>,
     ) -> chalk_ir::Variances<Interner> {
-        HirDatabase::fn_def_variance(*self, fn_def_id)
+        HirDatabase::fn_def_variance(*self, from_chalk(*self, fn_def_id))
     }
 
     fn adt_variance(&self, adt_id: chalk_ir::AdtId<Interner>) -> chalk_ir::Variances<Interner> {
-        HirDatabase::adt_variance(*self, adt_id)
+        HirDatabase::adt_variance(*self, adt_id.0)
     }
 }
 
@@ -602,10 +602,9 @@ pub(crate) fn program_clauses_for_chalk_env_query(
 
 pub(crate) fn associated_ty_data_query(
     db: &dyn HirDatabase,
-    id: AssocTypeId,
+    type_alias: TypeAliasId,
 ) -> Arc<AssociatedTyDatum> {
-    debug!("associated_ty_data {:?}", id);
-    let type_alias: TypeAliasId = from_assoc_type_id(id);
+    debug!("associated_ty_data {:?}", type_alias);
     let trait_ = match type_alias.lookup(db.upcast()).container {
         ItemContainerId::TraitId(t) => t,
         _ => panic!("associated type not in trait"),
@@ -656,7 +655,7 @@ pub(crate) fn associated_ty_data_query(
     let bound_data = rust_ir::AssociatedTyDatumBound { bounds, where_clauses: vec![] };
     let datum = AssociatedTyDatum {
         trait_id: to_chalk_trait_id(trait_),
-        id,
+        id: to_assoc_type_id(type_alias),
         name: type_alias,
         binders: make_binders(db, &generic_params, bound_data),
     };
@@ -923,8 +922,10 @@ fn type_alias_associated_ty_value(
     Arc::new(value)
 }
 
-pub(crate) fn fn_def_datum_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Arc<FnDefDatum> {
-    let callable_def: CallableDefId = from_chalk(db, fn_def_id);
+pub(crate) fn fn_def_datum_query(
+    db: &dyn HirDatabase,
+    callable_def: CallableDefId,
+) -> Arc<FnDefDatum> {
     let generic_def = GenericDefId::from_callable(db.upcast(), callable_def);
     let generic_params = generics(db.upcast(), generic_def);
     let (sig, binders) = db.callable_item_signature(callable_def).into_value_and_skipped_binders();
@@ -943,7 +944,7 @@ pub(crate) fn fn_def_datum_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Ar
         where_clauses,
     };
     let datum = FnDefDatum {
-        id: fn_def_id,
+        id: callable_def.to_chalk(db),
         sig: chalk_ir::FnSig {
             abi: sig.abi,
             safety: chalk_ir::Safety::Safe,
@@ -954,8 +955,10 @@ pub(crate) fn fn_def_datum_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Ar
     Arc::new(datum)
 }
 
-pub(crate) fn fn_def_variance_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Variances {
-    let callable_def: CallableDefId = from_chalk(db, fn_def_id);
+pub(crate) fn fn_def_variance_query(
+    db: &dyn HirDatabase,
+    callable_def: CallableDefId,
+) -> Variances {
     Variances::from_iter(
         Interner,
         db.variances_of(GenericDefId::from_callable(db.upcast(), callable_def))
@@ -971,10 +974,7 @@ pub(crate) fn fn_def_variance_query(db: &dyn HirDatabase, fn_def_id: FnDefId) ->
     )
 }
 
-pub(crate) fn adt_variance_query(
-    db: &dyn HirDatabase,
-    chalk_ir::AdtId(adt_id): AdtId,
-) -> Variances {
+pub(crate) fn adt_variance_query(db: &dyn HirDatabase, adt_id: hir_def::AdtId) -> Variances {
     Variances::from_iter(
         Interner,
         db.variances_of(adt_id.into()).as_deref().unwrap_or_default().iter().map(|v| match v {

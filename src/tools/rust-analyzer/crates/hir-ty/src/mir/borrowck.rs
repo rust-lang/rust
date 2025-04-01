@@ -71,7 +71,7 @@ fn all_mir_bodies(
         c: ClosureId,
         cb: &mut impl FnMut(Arc<MirBody>),
     ) -> Result<(), MirLowerError> {
-        match db.mir_body_for_closure(c) {
+        match db.mir_body_for_closure(c.into()) {
             Ok(body) => {
                 cb(body.clone());
                 body.closures.iter().try_for_each(|&it| for_closure(db, it, cb))

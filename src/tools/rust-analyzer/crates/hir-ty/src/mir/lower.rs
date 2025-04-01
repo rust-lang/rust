@@ -29,7 +29,7 @@ use triomphe::Arc;
 use crate::{
     Adjust, Adjustment, AutoBorrow, CallableDefId, TyBuilder, TyExt,
     consteval::ConstEvalError,
-    db::{HirDatabase, InternedClosure},
+    db::{HirDatabase, InternedClosure, InternedClosureId},
     display::{DisplayTarget, HirDisplay, hir_display_with_types_map},
     error_lifetime,
     generics::generics,
@@ -38,12 +38,12 @@ use crate::{
     layout::LayoutError,
     mapping::ToChalk,
     mir::{
-        AggregateKind, Arena, BasicBlock, BasicBlockId, BinOp, BorrowKind, CastKind, ClosureId,
-        ConstScalar, Either, Expr, FieldId, Idx, InferenceResult, Interner, Local, LocalId,
-        MemoryMap, MirBody, MirSpan, Mutability, Operand, Place, PlaceElem, PointerCast,
-        ProjectionElem, ProjectionStore, RawIdx, Rvalue, Statement, StatementKind, Substitution,
-        SwitchTargets, Terminator, TerminatorKind, TupleFieldId, Ty, UnOp, VariantId,
-        intern_const_scalar, return_slot,
+        AggregateKind, Arena, BasicBlock, BasicBlockId, BinOp, BorrowKind, CastKind, ConstScalar,
+        Either, Expr, FieldId, Idx, InferenceResult, Interner, Local, LocalId, MemoryMap, MirBody,
+        MirSpan, Mutability, Operand, Place, PlaceElem, PointerCast, ProjectionElem,
+        ProjectionStore, RawIdx, Rvalue, Statement, StatementKind, Substitution, SwitchTargets,
+        Terminator, TerminatorKind, TupleFieldId, Ty, UnOp, VariantId, intern_const_scalar,
+        return_slot,
     },
     static_lifetime,
     traits::FnTrait,
@@ -2017,9 +2017,9 @@ fn cast_kind(table: &mut InferenceTable<'_>, source_ty: &Ty, target_ty: &Ty) -> 
 
 pub fn mir_body_for_closure_query(
     db: &dyn HirDatabase,
-    closure: ClosureId,
+    closure: InternedClosureId,
 ) -> Result<Arc<MirBody>> {
-    let InternedClosure(owner, expr) = db.lookup_intern_closure(closure.into());
+    let InternedClosure(owner, expr) = db.lookup_intern_closure(closure);
     let body = db.body(owner);
     let infer = db.infer(owner);
     let Expr::Closure { args, body: root, .. } = &body[expr] else {
@@ -2028,7 +2028,7 @@ pub fn mir_body_for_closure_query(
     let TyKind::Closure(_, substs) = &infer[expr].kind(Interner) else {
         implementation_error!("closure expression is not closure");
     };
-    let (captures, kind) = infer.closure_info(&closure);
+    let (captures, kind) = infer.closure_info(&closure.into());
     let mut ctx = MirLowerCtx::new(db, owner, &body, &infer);
     // 0 is return local
     ctx.result.locals.alloc(Local { ty: infer[*root].clone() });

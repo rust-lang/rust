@@ -1560,6 +1560,20 @@ fn type_for_enum_variant_constructor(
     }
 }
 
+#[salsa::tracked(recovery_fn = type_for_adt_recovery)]
+fn type_for_adt_tracked(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
+    type_for_adt(db, adt)
+}
+
+pub(crate) fn type_for_adt_recovery(
+    db: &dyn HirDatabase,
+    _cycle: &salsa::Cycle,
+    adt: AdtId,
+) -> Binders<Ty> {
+    let generics = generics(db.upcast(), adt.into());
+    make_binders(db, &generics, TyKind::Error.intern(Interner))
+}
+
 fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
     let generics = generics(db.upcast(), adt.into());
     let subst = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
@@ -1587,6 +1601,15 @@ pub(crate) fn type_for_type_alias_with_diagnostics_query(
     };
 
     (make_binders(db, &generics, inner), create_diagnostics(ctx.diagnostics))
+}
+
+pub(crate) fn type_for_type_alias_with_diagnostics_query_recover(
+    db: &dyn HirDatabase,
+    _cycle: &salsa::Cycle,
+    adt: TypeAliasId,
+) -> (Binders<Ty>, Diagnostics) {
+    let generics = generics(db.upcast(), adt.into());
+    (make_binders(db, &generics, TyKind::Error.intern(Interner)), None)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -1628,23 +1651,9 @@ impl ValueTyDefId {
 pub(crate) fn ty_query(db: &dyn HirDatabase, def: TyDefId) -> Binders<Ty> {
     match def {
         TyDefId::BuiltinType(it) => Binders::empty(Interner, TyBuilder::builtin(it)),
-        TyDefId::AdtId(it) => type_for_adt(db, it),
+        TyDefId::AdtId(it) => type_for_adt_tracked(db, it),
         TyDefId::TypeAliasId(it) => db.type_for_type_alias_with_diagnostics(it).0,
     }
-}
-
-pub(crate) fn ty_recover(
-    db: &dyn HirDatabase,
-    _cycle: &salsa::Cycle,
-    _: HirDatabaseData,
-    def: TyDefId,
-) -> Binders<Ty> {
-    let generics = match def {
-        TyDefId::BuiltinType(_) => return Binders::empty(Interner, TyKind::Error.intern(Interner)),
-        TyDefId::AdtId(it) => generics(db.upcast(), it.into()),
-        TyDefId::TypeAliasId(it) => generics(db.upcast(), it.into()),
-    };
-    make_binders(db, &generics, TyKind::Error.intern(Interner))
 }
 
 pub(crate) fn value_ty_query(db: &dyn HirDatabase, def: ValueTyDefId) -> Option<Binders<Ty>> {
