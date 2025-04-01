@@ -31,6 +31,11 @@ LL |     struct NotCopy<T>(T);
 LL |     let mut pointee = NotCopy(PhantomPinned);
 LL |     pin!(*&mut pointee);
    |          ------------- you could clone this value
+help: consider removing the dereference here
+   |
+LL -     pin!(*&mut pointee);
+LL +     pin!(&mut pointee);
+   |
 
 error: aborting due to 2 previous errors
 
