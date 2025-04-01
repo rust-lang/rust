@@ -86,6 +86,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 "expected a type, found a trait"
             );
             if self_ty.span.can_be_used_for_suggestions()
+                && poly_trait_ref.trait_ref.trait_def_id().is_some()
                 && !self.maybe_suggest_impl_trait(self_ty, &mut diag)
                 && !self.maybe_suggest_dyn_trait(self_ty, sugg, &mut diag)
             {

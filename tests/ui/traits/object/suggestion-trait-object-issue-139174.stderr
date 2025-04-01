@@ -21,33 +21,18 @@ error[E0782]: expected a type, found a trait
    |
 LL | fn f<'a>(x: Box<dyn Fn() -> Option<usize + 'a>>) -> usize {
    |                                    ^^^^^^^^^^
-   |
-help: you can add the `dyn` keyword if you want a trait object
-   |
-LL | fn f<'a>(x: Box<dyn Fn() -> Option<dyn usize + 'a>>) -> usize {
-   |                                    +++
 
 error[E0782]: expected a type, found a trait
   --> $DIR/suggestion-trait-object-issue-139174.rs:9:32
    |
 LL | fn create_adder<'a>(x: i32) -> usize + 'a {
    |                                ^^^^^^^^^^
-   |
-help: `usize + 'a` is dyn-incompatible, use `impl usize + 'a` to return an opaque type, as long as you return a single underlying type
-   |
-LL | fn create_adder<'a>(x: i32) -> impl usize + 'a {
-   |                                ++++
 
 error[E0782]: expected a type, found a trait
   --> $DIR/suggestion-trait-object-issue-139174.rs:16:8
    |
 LL |     x: usize + 'a,
    |        ^^^^^^^^^^
-   |
-help: you can add the `dyn` keyword if you want a trait object
-   |
-LL |     x: dyn usize + 'a,
-   |        +++
 
 error: aborting due to 6 previous errors
 
