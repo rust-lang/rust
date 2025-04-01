@@ -54,9 +54,9 @@ pub(crate) fn check_drop_impl(
 
     tcx.ensure_ok().orphan_check_impl(drop_impl_did)?;
 
-    let dtor_impl_trait_ref = tcx.impl_trait_ref(drop_impl_did).unwrap().instantiate_identity();
+    let self_ty = tcx.type_of(drop_impl_did).instantiate_identity();
 
-    match dtor_impl_trait_ref.self_ty().kind() {
+    match self_ty.kind() {
         ty::Adt(adt_def, adt_to_impl_args) => {
             ensure_impl_params_and_item_params_correspond(
                 tcx,
