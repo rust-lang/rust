@@ -592,18 +592,6 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
     }
 }
 
-/// Collect al types that have an implicit `'static` obligation that we could suggest `'_` for.
-pub struct StaticLifetimeVisitor<'tcx>(pub Vec<Span>, pub crate::hir::map::Map<'tcx>);
-
-impl<'v> hir::intravisit::Visitor<'v> for StaticLifetimeVisitor<'v> {
-    fn visit_lifetime(&mut self, lt: &'v hir::Lifetime) {
-        if let hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static = lt.res
-        {
-            self.0.push(lt.ident.span);
-        }
-    }
-}
-
 pub struct IsSuggestableVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     infer_suggestable: bool,
