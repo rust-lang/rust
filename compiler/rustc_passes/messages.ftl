@@ -149,6 +149,9 @@ passes_doc_auto_cfg_expects_hide_or_show =
 passes_doc_auto_cfg_hide_show_expects_list =
     `#![doc(auto_cfg({$attr_name}(...)))]` only expects a list of items
 
+passes_doc_auto_cfg_hide_show_unexpected_item =
+    `#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or key/values items
+
 passes_doc_auto_cfg_wrong_literal =
     `expected boolean for #[doc(auto_cfg = ...)]`
 

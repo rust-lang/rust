@@ -1187,7 +1187,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             meta.span,
                             errors::DocAutoCfgExpectsHideOrShow,
                         );
-                    } else if item.meta_item_list().is_none() {
+                    } else if let Some(list) = item.meta_item_list() {
+                        for item in list {
+                            if item.meta_item_list().is_some() {
+                                self.tcx.emit_node_span_lint(
+                                    INVALID_DOC_ATTRIBUTES,
+                                    hir_id,
+                                    item.span(),
+                                    errors::DocAutoCfgHideShowUnexpectedItem {
+                                        attr_name: attr_name.as_str(),
+                                    },
+                                );
+                            }
+                        }
+                    } else {
                         self.tcx.emit_node_span_lint(
                             INVALID_DOC_ATTRIBUTES,
                             hir_id,
