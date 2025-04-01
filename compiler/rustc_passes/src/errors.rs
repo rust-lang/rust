@@ -323,6 +323,12 @@ pub(crate) struct DocAutoCfgHideShowExpectsList<'a> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(passes_doc_auto_cfg_hide_show_unexpected_item)]
+pub(crate) struct DocAutoCfgHideShowUnexpectedItem<'a> {
+    pub attr_name: &'a str,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(passes_doc_test_unknown_any)]
 pub(crate) struct DocTestUnknownAny {
     pub path: String,
