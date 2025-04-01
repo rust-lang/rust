@@ -196,7 +196,7 @@ pub fn clause_obligations<'tcx>(
         ty::ClauseKind::ConstEvaluatable(ct) => {
             wf.compute(ct.into());
         }
-        ty::ClauseKind::UnstableImpl => todo!(), //TODO: figure out what is the compute about. 
+        ty::ClauseKind::UnstableImpl => {}
     }
 
     wf.normalize(infcx)
