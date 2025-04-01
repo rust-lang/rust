@@ -18,8 +18,8 @@ use crate::ty::{
     TraitDef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef,
 };
 use crate::{
-    Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls, ItemKind,
-    Symbol, TraitDecls, mir,
+    AssocItems, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls,
+    ItemKind, Symbol, TraitDecls, mir,
 };
 
 /// This trait defines the interface between stable_mir and the Rust compiler.
@@ -251,6 +251,9 @@ pub trait Context {
 
     /// Get the resulting type of unary operation.
     fn unop_ty(&self, un_op: UnOp, arg: Ty) -> Ty;
+
+    /// Get all associated items of a definition.
+    fn associated_items(&self, def_id: DefId) -> AssocItems;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt

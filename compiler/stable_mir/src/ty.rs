@@ -6,7 +6,7 @@ use serde::Serialize;
 use super::mir::{Body, Mutability, Safety};
 use super::{DefId, Error, Symbol, with};
 use crate::abi::{FnAbi, Layout};
-use crate::crate_def::{CrateDef, CrateDefType};
+use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType};
 use crate::mir::alloc::{AllocId, read_target_int, read_target_uint};
 use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
@@ -910,6 +910,10 @@ crate_def! {
     pub TraitDef;
 }
 
+impl_crate_def_items! {
+    TraitDef;
+}
+
 impl TraitDef {
     pub fn declaration(trait_def: &TraitDef) -> TraitDecl {
         with(|cx| cx.trait_decl(trait_def))
@@ -930,6 +934,10 @@ crate_def! {
     /// A trait impl definition.
     #[derive(Serialize)]
     pub ImplDef;
+}
+
+impl_crate_def_items! {
+    ImplDef;
 }
 
 impl ImplDef {
@@ -1555,3 +1563,60 @@ index_impl!(Span);
 pub struct VariantIdx(usize);
 
 index_impl!(VariantIdx);
+
+crate_def! {
+    /// Hold infomation about an Opaque definition, particularly useful in `RPITIT`.
+    #[derive(Serialize)]
+    pub OpaqueDef;
+}
+
+crate_def! {
+    #[derive(Serialize)]
+    pub AssocDef;
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct AssocItem {
+    pub def_id: AssocDef,
+    pub name: Symbol,
+    pub kind: AssocKind,
+    pub container: AssocItemContainer,
+
+    /// If this is an item in an impl of a trait then this is the `DefId` of
+    /// the associated item on the trait that this implements.
+    pub trait_item_def_id: Option<AssocDef>,
+
+    /// Whether this is a method with an explicit self
+    /// as its first parameter, allowing method calls.
+    pub fn_has_self_parameter: bool,
+
+    /// `Some` if the associated item (an associated type) comes from the
+    /// return-position `impl Trait` in trait desugaring. The `ImplTraitInTraitData`
+    /// provides additional information about its source.
+    pub opt_rpitit_info: Option<ImplTraitInTraitData>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum AssocKind {
+    Const,
+    Fn,
+    Type,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum AssocItemContainer {
+    Trait,
+    Impl,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize)]
+pub enum ImplTraitInTraitData {
+    Trait { fn_def_id: FnDef, opaque_def_id: OpaqueDef },
+    Impl { fn_def_id: FnDef },
+}
+
+impl AssocItem {
+    pub fn is_impl_trait_in_trait(&self) -> bool {
+        self.opt_rpitit_info.is_some()
+    }
+}
