@@ -2223,11 +2223,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.attrs.insert(hir_id.local_id, a);
         }
         let local = hir::LetStmt {
+            super_: None,
             hir_id,
             init,
             pat,
             els: None,
             source,
+            span: self.lower_span(span),
+            ty: None,
+        };
+        self.stmt(span, hir::StmtKind::Let(self.arena.alloc(local)))
+    }
+
+    fn stmt_super_let_pat(
+        &mut self,
+        span: Span,
+        pat: &'hir hir::Pat<'hir>,
+        init: Option<&'hir hir::Expr<'hir>>,
+    ) -> hir::Stmt<'hir> {
+        let hir_id = self.next_id();
+        let local = hir::LetStmt {
+            super_: Some(span),
+            hir_id,
+            init,
+            pat,
+            els: None,
+            source: hir::LocalSource::Normal,
             span: self.lower_span(span),
             ty: None,
         };
