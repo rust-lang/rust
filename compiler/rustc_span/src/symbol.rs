@@ -131,7 +131,7 @@ symbols! {
         // tidy-alphabetical-end
 
         // Weak keywords, have special meaning only in specific contexts.
-        // Matching predicates: none
+        // Matching predicates: `is_weak`
         // tidy-alphabetical-start
         Auto:               "auto",
         Builtin:            "builtin",
@@ -2723,6 +2723,10 @@ impl Symbol {
             || self.is_unused_keyword_always()
             || self.is_used_keyword_conditional(edition)
             || self.is_unused_keyword_conditional(edition)
+    }
+
+    pub fn is_weak(self) -> bool {
+        self >= kw::Auto && self <= kw::Yeet
     }
 
     /// A keyword or reserved identifier that can be used as a path segment.

@@ -79,10 +79,11 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
             if apa.counter <= 1 || !apa.has_expensive_expr_after_last_attr {
                 continue;
             }
+            let first_bind_ident = apa.first_bind_ident.unwrap();
             span_lint_and_then(
                 cx,
                 SIGNIFICANT_DROP_TIGHTENING,
-                apa.first_bind_ident.span,
+                first_bind_ident.span,
                 "temporary with significant `Drop` can be early dropped",
                 |diag| {
                     match apa.counter {
@@ -91,13 +92,13 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
                             let indent = " ".repeat(indent_of(cx, apa.last_stmt_span).unwrap_or(0));
                             let init_method = snippet(cx, apa.first_method_span, "..");
                             let usage_method = snippet(cx, apa.last_method_span, "..");
-                            let stmt = if apa.last_bind_ident == Ident::empty() {
-                                format!("\n{indent}{init_method}.{usage_method};")
-                            } else {
+                            let stmt = if let Some(last_bind_ident) = apa.last_bind_ident {
                                 format!(
                                     "\n{indent}let {} = {init_method}.{usage_method};",
-                                    snippet(cx, apa.last_bind_ident.span, ".."),
+                                    snippet(cx, last_bind_ident.span, ".."),
                                 )
+                            } else {
+                                format!("\n{indent}{init_method}.{usage_method};")
                             };
 
                             diag.multipart_suggestion_verbose(
@@ -113,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
                                 format!(
                                     "\n{}drop({});",
                                     " ".repeat(indent_of(cx, apa.last_stmt_span).unwrap_or(0)),
-                                    apa.first_bind_ident
+                                    first_bind_ident
                                 ),
                                 Applicability::MaybeIncorrect,
                             );
@@ -124,7 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
                         apa.first_block_span,
                         format!(
                             "temporary `{}` is currently being dropped at the end of its contained scope",
-                            apa.first_bind_ident
+                            first_bind_ident
                         ),
                     );
                 },
@@ -283,7 +284,7 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
                 let mut apa = AuxParamsAttr {
                     first_block_hir_id: self.ap.curr_block_hir_id,
                     first_block_span: self.ap.curr_block_span,
-                    first_bind_ident: ident,
+                    first_bind_ident: Some(ident),
                     first_method_span: {
                         let expr_or_init = expr_or_init(self.cx, expr);
                         if let hir::ExprKind::MethodCall(_, local_expr, _, span) = expr_or_init.kind {
@@ -307,7 +308,7 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
                 match self.ap.curr_stmt.kind {
                     hir::StmtKind::Let(local) => {
                         if let hir::PatKind::Binding(_, _, ident, _) = local.pat.kind {
-                            apa.last_bind_ident = ident;
+                            apa.last_bind_ident = Some(ident);
                         }
                         if let Some(local_init) = local.init
                             && let hir::ExprKind::MethodCall(_, _, _, span) = local_init.kind
@@ -373,7 +374,7 @@ struct AuxParamsAttr {
     first_block_span: Span,
     /// The binding or variable that references the initial construction of the type marked with
     /// `#[has_significant_drop]`.
-    first_bind_ident: Ident,
+    first_bind_ident: Option<Ident>,
     /// Similar to `init_bind_ident` but encompasses the right-hand method call.
     first_method_span: Span,
     /// Similar to `init_bind_ident` but encompasses the whole contained statement.
@@ -381,7 +382,7 @@ struct AuxParamsAttr {
 
     /// The last visited binding or variable span within a block that had any referenced inner type
     /// marked with `#[has_significant_drop]`.
-    last_bind_ident: Ident,
+    last_bind_ident: Option<Ident>,
     /// Similar to `last_bind_span` but encompasses the right-hand method call.
     last_method_span: Span,
     /// Similar to `last_bind_span` but encompasses the whole contained statement.
@@ -395,10 +396,10 @@ impl Default for AuxParamsAttr {
             has_expensive_expr_after_last_attr: false,
             first_block_hir_id: HirId::INVALID,
             first_block_span: DUMMY_SP,
-            first_bind_ident: Ident::empty(),
+            first_bind_ident: None,
             first_method_span: DUMMY_SP,
             first_stmt_span: DUMMY_SP,
-            last_bind_ident: Ident::empty(),
+            last_bind_ident: None,
             last_method_span: DUMMY_SP,
             last_stmt_span: DUMMY_SP,
         }
@@ -413,7 +414,7 @@ fn dummy_stmt_expr<'any>(expr: &'any hir::Expr<'any>) -> hir::Stmt<'any> {
     }
 }
 
-fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Ident, lcx: &LateContext<'_>) -> bool {
+fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Option<Ident>, lcx: &LateContext<'_>) -> bool {
     if let hir::ExprKind::Call(fun, [first_arg]) = expr.kind
         && let hir::ExprKind::Path(hir::QPath::Resolved(_, fun_path)) = &fun.kind
         && let Res::Def(DefKind::Fn, did) = fun_path.res
@@ -422,6 +423,7 @@ fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Ident, lcx: &LateContext<'_
         let has_ident = |local_expr: &hir::Expr<'_>| {
             if let hir::ExprKind::Path(hir::QPath::Resolved(_, arg_path)) = &local_expr.kind
                 && let [first_arg_ps, ..] = arg_path.segments
+                && let Some(first_bind_ident) = first_bind_ident
                 && &first_arg_ps.ident == first_bind_ident
             {
                 true
