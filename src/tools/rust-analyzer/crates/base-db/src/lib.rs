@@ -64,8 +64,7 @@ impl Files {
     }
 
     pub fn set_file_text(&self, db: &mut dyn SourceDatabase, file_id: vfs::FileId, text: &str) {
-        let files = Arc::clone(&self.files);
-        match files.entry(file_id) {
+        match self.files.entry(file_id) {
             Entry::Occupied(mut occupied) => {
                 occupied.get_mut().set_text(db).to(Arc::from(text));
             }
@@ -83,8 +82,7 @@ impl Files {
         text: &str,
         durability: Durability,
     ) {
-        let files = Arc::clone(&self.files);
-        match files.entry(file_id) {
+        match self.files.entry(file_id) {
             Entry::Occupied(mut occupied) => {
                 occupied.get_mut().set_text(db).with_durability(durability).to(Arc::from(text));
             }
@@ -113,8 +111,7 @@ impl Files {
         source_root: Arc<SourceRoot>,
         durability: Durability,
     ) {
-        let source_roots = Arc::clone(&self.source_roots);
-        match source_roots.entry(source_root_id) {
+        match self.source_roots.entry(source_root_id) {
             Entry::Occupied(mut occupied) => {
                 occupied.get_mut().set_source_root(db).with_durability(durability).to(source_root);
             }
@@ -141,9 +138,7 @@ impl Files {
         source_root_id: SourceRootId,
         durability: Durability,
     ) {
-        let file_source_roots = Arc::clone(&self.file_source_roots);
-        // let db = self;
-        match file_source_roots.entry(id) {
+        match self.file_source_roots.entry(id) {
             Entry::Occupied(mut occupied) => {
                 occupied
                     .get_mut()
@@ -203,7 +198,8 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     fn parse(&self, file_id: EditionedFileId) -> Parse<ast::SourceFile>;
 
     /// Returns the set of errors obtained from parsing the file including validation errors.
-    fn parse_errors(&self, file_id: EditionedFileId) -> Option<Arc<[SyntaxError]>>;
+    #[salsa::transparent]
+    fn parse_errors(&self, file_id: EditionedFileId) -> Option<&[SyntaxError]>;
 
     #[salsa::transparent]
     fn toolchain_channel(&self, krate: Crate) -> Option<ReleaseChannel>;
@@ -318,12 +314,16 @@ fn parse(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Parse<ast::SourceFil
     ast::SourceFile::parse(&text, edition)
 }
 
-fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<Arc<[SyntaxError]>> {
-    let errors = db.parse(file_id).errors();
-    match &*errors {
-        [] => None,
-        [..] => Some(errors.into()),
+fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<&[SyntaxError]> {
+    #[salsa::tracked(return_ref)]
+    fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<Box<[SyntaxError]>> {
+        let errors = db.parse(file_id).errors();
+        match &*errors {
+            [] => None,
+            [..] => Some(errors.into()),
+        }
     }
+    parse_errors(db, file_id).as_ref().map(|it| &**it)
 }
 
 fn source_root_crates(db: &dyn RootQueryDb, id: SourceRootId) -> Arc<[Crate]> {

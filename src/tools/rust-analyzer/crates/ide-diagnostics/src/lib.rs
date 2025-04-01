@@ -332,7 +332,6 @@ pub fn syntax_diagnostics(
 
     // [#3434] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
     db.parse_errors(editioned_file_id_wrapper)
-        .as_deref()
         .into_iter()
         .flatten()
         .take(128)
@@ -409,8 +408,7 @@ pub fn semantic_diagnostics(
         // A bunch of parse errors in a file indicate some bigger structural parse changes in the
         // file, so we skip semantic diagnostics so we can show these faster.
         Some(m) => {
-            if db.parse_errors(editioned_file_id_wrapper).as_deref().is_none_or(|es| es.len() < 16)
-            {
+            if db.parse_errors(editioned_file_id_wrapper).is_none_or(|es| es.len() < 16) {
                 m.diagnostics(db, &mut diags, config.style_lints);
             }
         }
