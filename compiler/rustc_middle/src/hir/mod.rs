@@ -116,11 +116,6 @@ impl ModuleItems {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    #[inline(always)]
-    pub fn hir(self) -> map::Map<'tcx> {
-        map::Map { tcx: self }
-    }
-
     pub fn parent_module(self, id: HirId) -> LocalModDefId {
         if !id.is_owner() && self.def_kind(id.owner) == DefKind::Mod {
             LocalModDefId::new_unchecked(id.owner.def_id)

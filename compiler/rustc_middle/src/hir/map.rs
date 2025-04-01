@@ -18,16 +18,6 @@ use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::LocalCrate;
 use crate::ty::TyCtxt;
 
-// FIXME: the structure was necessary in the past but now it
-// only serves as "namespace" for HIR-related methods, and can be
-// removed if all the methods are reasonably renamed and moved to tcx
-// (https://github.com/rust-lang/rust/pull/118256#issuecomment-1826442834).
-#[allow(unused)] // FIXME: temporary
-#[derive(Copy, Clone)]
-pub struct Map<'hir> {
-    pub(super) tcx: TyCtxt<'hir>,
-}
-
 /// An iterator that walks up the ancestor tree of a given `HirId`.
 /// Constructed using `tcx.hir_parent_iter(hir_id)`.
 struct ParentHirIterator<'tcx> {
