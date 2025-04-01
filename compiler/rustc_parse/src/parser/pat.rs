@@ -631,15 +631,6 @@ impl<'a> Parser<'a> {
                             ident,
                             indentation,
                         });
-
-                        // help: wrap the expr in a `const { expr }`
-                        // FIXME(inline_const_pat): once stabilized, remove this check and remove the `(requires #[feature(inline_const_pat)])` note from the message
-                        if self.parser.psess.unstable_features.is_nightly_build() {
-                            err.subdiagnostic(UnexpectedExpressionInPatternSugg::InlineConst {
-                                start_span: expr_span.shrink_to_lo(),
-                                end_span: expr_span.shrink_to_hi(),
-                            });
-                        }
                     },
                 );
             }

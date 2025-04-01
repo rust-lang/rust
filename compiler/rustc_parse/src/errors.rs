@@ -2769,17 +2769,6 @@ pub(crate) enum UnexpectedExpressionInPatternSugg {
         /// The statement's block's indentation.
         indentation: String,
     },
-
-    #[multipart_suggestion(
-        parse_unexpected_expr_in_pat_inline_const_sugg,
-        applicability = "maybe-incorrect"
-    )]
-    InlineConst {
-        #[suggestion_part(code = "const {{ ")]
-        start_span: Span,
-        #[suggestion_part(code = " }}")]
-        end_span: Span,
-    },
 }
 
 #[derive(Diagnostic)]
