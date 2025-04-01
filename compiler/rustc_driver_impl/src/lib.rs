@@ -64,6 +64,7 @@ use rustc_session::lint::{Lint, LintId};
 use rustc_session::output::{CRATE_TYPES, collect_crate_types, invalid_output_for_target};
 use rustc_session::{EarlyDiagCtxt, Session, config, filesearch};
 use rustc_span::FileName;
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use time::OffsetDateTime;
@@ -392,14 +393,10 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 }
 
 fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
-    let output_filenames = tcxt.output_filenames(());
-    let mut metrics_file_name = std::ffi::OsString::from("unstable_feature_usage_metrics-");
-    let mut metrics_path = output_filenames.with_directory_and_extension(metrics_dir, "json");
-    let metrics_file_stem =
-        metrics_path.file_name().expect("there should be a valid default output filename");
-    metrics_file_name.push(metrics_file_stem);
-    metrics_path.pop();
-    metrics_path.push(metrics_file_name);
+    let hash = tcxt.crate_hash(LOCAL_CRATE);
+    let crate_name = tcxt.crate_name(LOCAL_CRATE);
+    let metrics_file_name = format!("unstable_feature_usage_metrics-{crate_name}-{hash}.json");
+    let metrics_path = metrics_dir.join(metrics_file_name);
     if let Err(error) = tcxt.features().dump_feature_usage_metrics(metrics_path) {
         // FIXME(yaahc): once metrics can be enabled by default we will want "failure to emit
         // default metrics" to only produce a warning when metrics are enabled by default and emit
