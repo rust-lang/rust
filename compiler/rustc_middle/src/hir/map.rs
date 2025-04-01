@@ -367,10 +367,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn hir_trait_impls(self, trait_did: DefId) -> &'tcx [LocalDefId] {
-        self.local_trait_impls(trait_did)
-    }
-
     /// Gets the attributes on the crate. This is preferable to
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
