@@ -44,7 +44,11 @@ use crate::{GccCodegenBackend, GccContext, SyncContext, to_gcc_opt_level};
 
 pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
-        CrateType::Executable | CrateType::Dylib | CrateType::Staticlib | CrateType::Cdylib => true,
+        CrateType::Executable
+        | CrateType::Dylib
+        | CrateType::Staticlib
+        | CrateType::Cdylib
+        | CrateType::Sdylib => true,
         CrateType::Rlib | CrateType::ProcMacro => false,
     }
 }

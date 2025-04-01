@@ -435,10 +435,12 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
     let effective_visibilities = &tcx.effective_visibilities(());
 
-    let any_library = tcx
-        .crate_types()
-        .iter()
-        .any(|ty| *ty == CrateType::Rlib || *ty == CrateType::Dylib || *ty == CrateType::ProcMacro);
+    let any_library = tcx.crate_types().iter().any(|ty| {
+        *ty == CrateType::Rlib
+            || *ty == CrateType::Dylib
+            || *ty == CrateType::ProcMacro
+            || *ty == CrateType::Sdylib
+    });
     let mut reachable_context = ReachableContext {
         tcx,
         maybe_typeck_results: None,
