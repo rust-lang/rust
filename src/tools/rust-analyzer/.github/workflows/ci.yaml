@@ -57,9 +57,6 @@ jobs:
 
       # We don't cache this job, as it will be invalidated every day due to nightly usage
 
-      - name: Bump opt-level
-        run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
-
       - name: Test
         run: cargo test --features sysroot-abi -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -- --quiet
 
@@ -97,32 +94,23 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: echo "::add-matcher::.github/rust.json"
 
-      - name: Bump opt-level
-        if: matrix.os == 'ubuntu-latest'
-        run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
-
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
-        with:
-          workspaces: |
-            . -> target
-            ./crates/proc-macro-srv/proc-macro-test/imp -> target
+      # - name: Cache Dependencies
+      #   uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+      #   with:
+      #     workspaces: |
+      #       . -> target
+      #       ./crates/proc-macro-srv/proc-macro-test/imp -> target
 
       - uses: taiki-e/install-action@nextest
 
       - name: Codegen checks (rust-analyzer)
+        if: matrix.os == 'ubuntu-latest'
         run: cargo codegen --check
 
       - name: Compile (tests)
         run: cargo test --no-run
 
-      # It's faster to `test` before `build` ¯\_(ツ)_/¯
-      - name: Compile (rust-analyzer)
-        if: matrix.os == 'ubuntu-latest'
-        run: cargo build --quiet
-
       - name: Test
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || github.event_name == 'push'
         run: cargo nextest run --no-fail-fast --hide-progress-bar --status-level fail
 
       - name: clippy
@@ -131,8 +119,9 @@ jobs:
 
   analysis-stats:
     if: github.repository == 'rust-lang/rust-analyzer'
-    name: miri
     runs-on: ubuntu-latest
+    env:
+      RUSTC_BOOTSTRAP: 1
 
     steps:
       - name: Checkout repository
@@ -144,20 +133,22 @@ jobs:
           rustup default stable
           rustup component add rustfmt
 
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+      # - name: Cache Dependencies
+      #   uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+
+      - name: Bump opt-level
+        run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
+
+      - run: cargo build -p rust-analyzer
 
       - name: ./rust-analyzer
-        run: cargo run -p rust-analyzer -- analysis-stats . -q
+        run: ./target/debug/rust-analyzer analysis-stats . -q
 
       - name: sysroot/lib/rustlib/src/rust/library/
-        env:
-          RUSTC_BOOTSTRAP: 1
-        run: cargo run -p rust-analyzer -- analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/ -q
+        run: ./target/debug/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/ -q
 
   rustfmt:
     if: github.repository == 'rust-lang/rust-analyzer'
-    name: miri
     runs-on: ubuntu-latest
 
     steps:
@@ -174,7 +165,6 @@ jobs:
 
   miri:
     if: github.repository == 'rust-lang/rust-analyzer'
-    name: miri
     runs-on: ubuntu-latest
 
     steps:
@@ -187,8 +177,8 @@ jobs:
           rustup default nightly
           rustup component add miri
 
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+      # - name: Cache Dependencies
+      #   uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
 
       - run: cargo miri test -p intern
 
@@ -214,8 +204,8 @@ jobs:
           rustup update --no-self-update stable
           rustup target add ${{ env.targets }} ${{ env.targets_ide }}
 
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+      # - name: Cache Dependencies
+      #   uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
 
       - name: Check
         run: |
@@ -306,7 +296,7 @@ jobs:
         run: typos
 
   conclusion:
-    needs: [rust, rust-cross, typescript, typo-check, proc-macro-srv, miri]
+    needs: [rust, rust-cross, typescript, typo-check, proc-macro-srv, miri, rustfmt, analysis-stats]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
