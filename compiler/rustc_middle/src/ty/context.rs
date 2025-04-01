@@ -671,11 +671,15 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds {
-        self.mk_local_def_ids_from_iter(
+        if self.next_trait_solver_globally() {
+            self.mk_local_def_ids_from_iter(
+                self.opaque_types_defined_by(defining_anchor)
+                    .iter()
+                    .chain(self.stalled_generators_within(defining_anchor)),
+            )
+        } else {
             self.opaque_types_defined_by(defining_anchor)
-                .iter()
-                .chain(self.stalled_generators_within(defining_anchor)),
-        )
+        }
     }
 }
 
