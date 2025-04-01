@@ -493,9 +493,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         callers: &mut Vec<DefId>,
     ) -> Result<bool, PrintError> {
         // debug!("try_print_visible_def_path: def_id={:?}", def_id);
-        if self.tcx().is_doc_hidden(def_id) && with_no_visible_paths_if_doc_hidden() {
-            return Ok(false);
-        }
 
         // If `def_id` is a direct or injected extern crate, return the
         // path to the crate followed by the path to the item within the crate.
@@ -576,6 +573,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             debug!("try_print_visible_def_path: no visible parent for {:?}", def_id);
             return Ok(false);
         };
+
+        if self.tcx().is_doc_hidden(visible_parent) && with_no_visible_paths_if_doc_hidden() {
+            return Ok(false);
+        }
 
         let actual_parent = self.tcx().opt_parent(def_id);
         // debug!(

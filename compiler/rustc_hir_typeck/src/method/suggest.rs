@@ -3337,11 +3337,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //     trait_did,
                 //     with_crate_prefix!(self.tcx.def_path_str(*trait_did))
                 // );
+                // format!(
+                //     "{prefix}{}{postfix}\n",
+                //     with_no_visible_paths_if_doc_hidden!(with_crate_prefix!(
+                //         self.tcx.def_path_str(*trait_did)
+                //     )),
+                // )
                 format!(
                     "{prefix}{}{postfix}\n",
-                    with_no_visible_paths_if_doc_hidden!(with_crate_prefix!(
-                        self.tcx.def_path_str(*trait_did)
-                    )),
+                    with_crate_prefix!(self.tcx.def_path_str(*trait_did)),
                 )
             });
 
