@@ -1,8 +1,8 @@
 error[E0275]: overflow assigning `Box<_>` to `_`
-  --> $DIR/occurs-check-2.rs:7:9
+  --> $DIR/occurs-check-2.rs:6:9
    |
-LL |     f = Box::new(g);
-   |         ^^^^^^^^^^^
+LL |     g = f;
+   |         ^
 
 error: aborting due to 1 previous error
 
