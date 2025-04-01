@@ -2881,8 +2881,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             if let rustc_pattern_analysis::rustc::Constructor::Or = pat.ctor() {
                 for pat in pat.iter_fields() {
-                    // when the bindings are the same, the sub_branch is only stored once,
-                    // so we must repeat it manually.
+                    // For top-level or-patterns (the only ones we accept right now), when the
+                    // bindings are the same (e.g. there are none), the sub_branch is stored just
+                    // once.
                     let sub_branch = branch
                         .sub_branches
                         .get(pat.idx)

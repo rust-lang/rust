@@ -39,7 +39,7 @@ enum Context {
     AnonConst,
     /// E.g. `const { ... }`.
     ConstBlock,
-    /// #[loop_match] loop { state = 'label: { /* ... */ } }
+    /// `#[loop_match] loop { state = 'label: { /* ... */ } }`
     LoopMatch {
         /// The label of the labeled block (so not the loop!)
         labeled_block: Label,
