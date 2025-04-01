@@ -137,7 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for SingleCallFn {
         for (&def_id, usage) in &self.def_id_to_usage {
             if let CallState::Once { call_site } = *usage
                 && let fn_hir_id = cx.tcx.local_def_id_to_hir_id(def_id)
-                && let fn_span = cx.tcx.hir().span_with_body(fn_hir_id)
+                && let fn_span = cx.tcx.hir_span_with_body(fn_hir_id)
                 && !self.is_function_allowed(cx, def_id, fn_hir_id, fn_span)
             {
                 span_lint_hir_and_then(
