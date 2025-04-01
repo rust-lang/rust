@@ -391,4 +391,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "You can now use `change-id = \"ignore\"` to suppress `change-id ` warnings in the console.",
     },
+    ChangeInfo {
+        change_id: 119899,
+        severity: ChangeSeverity::Warning,
+        summary: "Stage0 library no longer matches the in-tree library, which means stage1 compiler now uses the beta library.",
+    },
 ];
