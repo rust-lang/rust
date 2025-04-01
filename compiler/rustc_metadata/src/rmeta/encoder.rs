@@ -2241,12 +2241,10 @@ pub struct EncodedMetadata {
 impl EncodedMetadata {
     #[inline]
     pub fn from_path(path: PathBuf, temp_dir: Option<MaybeTempDir>) -> std::io::Result<Self> {
-        let file = std::fs::File::open(&path)?;
-        let file_metadata = file.metadata()?;
-        if file_metadata.len() == 0 {
+        if std::fs::metadata(&path)?.len() == 0 {
             return Ok(Self { mmap: None, _temp_dir: None });
         }
-        let mmap = unsafe { Some(Mmap::map(file)?) };
+        let mmap = unsafe { Some(Mmap::map(path)?) };
         Ok(Self { mmap, _temp_dir: temp_dir })
     }
 

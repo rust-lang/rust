@@ -822,13 +822,7 @@ fn get_metadata_section<'p>(
         }
         CrateFlavor::Rmeta => {
             // mmap the file, because only a small fraction of it is read.
-            let file = std::fs::File::open(filename).map_err(|_| {
-                MetadataError::LoadFailure(format!(
-                    "failed to open rmeta metadata: '{}'",
-                    filename.display()
-                ))
-            })?;
-            let mmap = unsafe { Mmap::map(file) };
+            let mmap = unsafe { Mmap::map(filename) };
             let mmap = mmap.map_err(|_| {
                 MetadataError::LoadFailure(format!(
                     "failed to mmap rmeta metadata: '{}'",

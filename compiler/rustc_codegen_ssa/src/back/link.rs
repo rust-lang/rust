@@ -2,7 +2,7 @@ mod raw_dylib;
 
 use std::collections::BTreeSet;
 use std::ffi::OsString;
-use std::fs::{File, OpenOptions, read};
+use std::fs::{OpenOptions, read};
 use std::io::{BufWriter, Write};
 use std::ops::{ControlFlow, Deref};
 use std::path::{Path, PathBuf};
@@ -576,8 +576,7 @@ fn link_dwarf_object(sess: &Session, cg_results: &CodegenResults, executable_out
         }
 
         fn read_input(&self, path: &Path) -> std::io::Result<&[u8]> {
-            let file = File::open(&path)?;
-            let mmap = (unsafe { Mmap::map(file) })?;
+            let mmap = Mmap::map(&path)?;
             Ok(self.alloc_mmap(mmap))
         }
     }
