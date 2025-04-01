@@ -1,10 +1,9 @@
-error: unconstrained opaque type
-  --> $DIR/type-alias-impl-trait-with-cycle-error-1.rs:4:12
+error[E0275]: overflow evaluating the requirement `<Foo as FnOnce<()>>::Output == Foo`
+  --> $DIR/type-alias-impl-trait-with-cycle-error-1.rs:6:21
    |
-LL | type Foo = impl Fn() -> Foo;
-   |            ^^^^^^^^^^^^^^^^
-   |
-   = note: `Foo` must be used in combination with a concrete type within the same crate
+LL | fn crash(x: Foo) -> Foo {
+   |                     ^^^
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0275`.
