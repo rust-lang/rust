@@ -503,7 +503,7 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        let msg = format!("{:#}s are not allowed in {}s", self.0, ccx.const_kind());
+        let msg = format!("{} are not allowed in {}s", self.0.to_plural_string(), ccx.const_kind());
         if let Status::Unstable { gate, .. } = self.status_in_item(ccx) {
             ccx.tcx.sess.create_feature_err(errors::UnallowedOpInConstContext { span, msg }, gate)
         } else {
