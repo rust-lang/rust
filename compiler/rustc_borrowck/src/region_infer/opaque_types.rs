@@ -2,7 +2,8 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_macros::extension;
 use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
+    self, DefiningScopeKind, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, fold_regions,
 };
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::check_opaque_type_parameter_valid;
@@ -266,14 +267,21 @@ impl<'tcx> InferCtxt<'tcx> {
             return Ty::new_error(self.tcx, e);
         }
 
-        if let Err(guar) =
-            check_opaque_type_parameter_valid(self, opaque_type_key, instantiated_ty.span)
-        {
+        if let Err(guar) = check_opaque_type_parameter_valid(
+            self,
+            opaque_type_key,
+            instantiated_ty.span,
+            DefiningScopeKind::MirBorrowck,
+        ) {
             return Ty::new_error(self.tcx, guar);
         }
 
         let definition_ty = instantiated_ty
-            .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false)
+            .remap_generic_params_to_declaration_params(
+                opaque_type_key,
+                self.tcx,
+                DefiningScopeKind::MirBorrowck,
+            )
             .ty;
 
         if let Err(e) = definition_ty.error_reported() {

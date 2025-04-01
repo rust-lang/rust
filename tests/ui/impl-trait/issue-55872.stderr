@@ -1,8 +1,8 @@
 error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-  --> $DIR/issue-55872.rs:13:9
+  --> $DIR/issue-55872.rs:12:20
    |
-LL |         || ()
-   |         ^^^^^
+LL |     fn foo<T>() -> Self::E {
+   |                    ^^^^^^^
 
 error: aborting due to 1 previous error
 

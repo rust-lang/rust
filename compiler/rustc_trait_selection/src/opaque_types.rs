@@ -4,7 +4,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgs, OpaqueTypeKey, TyCtxt, TypeVisitableExt,
+    self, DefiningScopeKind, GenericArgKind, GenericArgs, OpaqueTypeKey, TyCtxt, TypeVisitableExt,
     TypingMode, fold_regions,
 };
 use rustc_span::{ErrorGuaranteed, Span};
@@ -21,19 +21,36 @@ pub fn check_opaque_type_parameter_valid<'tcx>(
     infcx: &InferCtxt<'tcx>,
     opaque_type_key: OpaqueTypeKey<'tcx>,
     span: Span,
+    defining_scope_kind: DefiningScopeKind,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = infcx.tcx;
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
     let opaque_env = LazyOpaqueTyEnv::new(tcx, opaque_type_key.def_id);
     let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
 
+    // Avoid duplicate errors in case the opaque has already been malformed in
+    // HIR typeck.
+    if let DefiningScopeKind::MirBorrowck = defining_scope_kind {
+        if let Err(guar) = infcx
+            .tcx
+            .type_of_opaque_hir_typeck(opaque_type_key.def_id)
+            .instantiate_identity()
+            .error_reported()
+        {
+            return Err(guar);
+        }
+    }
+
     for (i, arg) in opaque_type_key.iter_captured_args(tcx) {
         let arg_is_param = match arg.unpack() {
+            GenericArgKind::Lifetime(lt) => match defining_scope_kind {
+                DefiningScopeKind::HirTypeck => continue,
+                DefiningScopeKind::MirBorrowck => {
+                    matches!(*lt, ty::ReEarlyParam(_) | ty::ReLateParam(_))
+                        || (lt.is_static() && opaque_env.param_equal_static(i))
+                }
+            },
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
-            GenericArgKind::Lifetime(lt) => {
-                matches!(*lt, ty::ReEarlyParam(_) | ty::ReLateParam(_))
-                    || (lt.is_static() && opaque_env.param_equal_static(i))
-            }
             GenericArgKind::Const(ct) => matches!(ct.kind(), ty::ConstKind::Param(_)),
         };
 

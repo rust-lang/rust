@@ -1,3 +1,12 @@
+error[E0792]: expected generic type parameter, found `i32`
+  --> $DIR/issue-77179.rs:8:14
+   |
+LL | type Pointer<T> = impl std::ops::Deref<Target = T>;
+   |              - this generic parameter must be used with a generic type parameter
+...
+LL | fn test() -> Pointer<_> {
+   |              ^^^^^^^^^^
+
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/issue-77179.rs:8:22
    |
@@ -12,15 +21,6 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
    |
 LL |     fn bar() -> Pointer<_>;
    |                         ^ not allowed in type signatures
-
-error[E0792]: expected generic type parameter, found `i32`
-  --> $DIR/issue-77179.rs:10:5
-   |
-LL | type Pointer<T> = impl std::ops::Deref<Target = T>;
-   |              - this generic parameter must be used with a generic type parameter
-...
-LL |     Box::new(1)
-   |     ^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

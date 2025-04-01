@@ -72,6 +72,7 @@ where
             (ty::ImplPolarity::Reservation, _) => match ecx.typing_mode() {
                 TypingMode::Coherence => Certainty::AMBIGUOUS,
                 TypingMode::Analysis { .. }
+                | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => return Err(NoSolution),
             },

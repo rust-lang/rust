@@ -62,6 +62,7 @@ where
                     response_no_constraints(cx, input, Certainty::overflow(false))
                 }
                 TypingMode::Analysis { .. }
+                | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => Err(NoSolution),
             },
