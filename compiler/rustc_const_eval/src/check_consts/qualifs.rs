@@ -103,13 +103,13 @@ impl Qualif for HasMutInterior {
         // FIXME(#132279): Once we've got a typing mode which reveals opaque types using the HIR
         // typeck results without causing query cycles, we should use this here instead of defining
         // opaque types.
-        let typing_env = ty::TypingEnv {
+        let typing_env = cx.tcx.mk_typing_env(ty::TypingEnvInner {
             typing_mode: ty::TypingMode::analysis_in_body(
                 cx.tcx,
                 cx.body.source.def_id().expect_local(),
             ),
             param_env: cx.typing_env.param_env,
-        };
+        });
         let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(typing_env);
         let ocx = ObligationCtxt::new(&infcx);
         let obligation = Obligation::new(

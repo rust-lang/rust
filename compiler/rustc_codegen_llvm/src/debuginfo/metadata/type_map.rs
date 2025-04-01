@@ -49,14 +49,14 @@ pub(super) enum UniqueTypeId<'tcx> {
 
 impl<'tcx> UniqueTypeId<'tcx> {
     pub(crate) fn for_ty(tcx: TyCtxt<'tcx>, t: Ty<'tcx>) -> Self {
-        assert_eq!(t, tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), t));
+        assert_eq!(t, tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(tcx), t));
         UniqueTypeId::Ty(t, private::HiddenZst)
     }
 
     pub(crate) fn for_enum_variant_part(tcx: TyCtxt<'tcx>, enum_ty: Ty<'tcx>) -> Self {
         assert_eq!(
             enum_ty,
-            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), enum_ty)
+            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(tcx), enum_ty)
         );
         UniqueTypeId::VariantPart(enum_ty, private::HiddenZst)
     }
@@ -68,7 +68,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
     ) -> Self {
         assert_eq!(
             enum_ty,
-            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), enum_ty)
+            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(tcx), enum_ty)
         );
         UniqueTypeId::VariantStructType(enum_ty, variant_idx, private::HiddenZst)
     }
@@ -80,7 +80,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
     ) -> Self {
         assert_eq!(
             enum_ty,
-            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), enum_ty)
+            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(tcx), enum_ty)
         );
         UniqueTypeId::VariantStructTypeCppLikeWrapper(enum_ty, variant_idx, private::HiddenZst)
     }
@@ -92,11 +92,14 @@ impl<'tcx> UniqueTypeId<'tcx> {
     ) -> Self {
         assert_eq!(
             self_type,
-            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), self_type)
+            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(tcx), self_type)
         );
         assert_eq!(
             implemented_trait,
-            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), implemented_trait)
+            tcx.normalize_erasing_regions(
+                ty::TypingEnv::fully_monomorphized(tcx),
+                implemented_trait
+            )
         );
         UniqueTypeId::VTableTy(self_type, implemented_trait, private::HiddenZst)
     }

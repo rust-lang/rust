@@ -118,7 +118,7 @@ pub fn typeid_for_instance<'tcx>(
     let instance = transform_instance(tcx, instance, transform_ty_options);
     let fn_abi = tcx
         .fn_abi_of_instance(
-            ty::TypingEnv::fully_monomorphized().as_query_input((instance, ty::List::empty())),
+            ty::TypingEnv::fully_monomorphized(tcx).as_query_input((instance, ty::List::empty())),
         )
         .unwrap_or_else(|error| {
             bug!("typeid_for_instance: couldn't get fn_abi of instance {instance:?}: {error:?}")

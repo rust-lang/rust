@@ -93,7 +93,7 @@ pub(crate) fn find_autodiff_source_functions<'tcx>(
         };
 
         debug!("source_id: {:?}", inst.def_id());
-        let fn_ty = inst.ty(tcx, ty::TypingEnv::fully_monomorphized());
+        let fn_ty = inst.ty(tcx, ty::TypingEnv::fully_monomorphized(tcx));
         assert!(fn_ty.is_fn());
         adjust_activity_to_abi(tcx, fn_ty, &mut input_activities);
         let symb = symbol_name_for_instance_in_crate(tcx, inst.clone(), LOCAL_CRATE);

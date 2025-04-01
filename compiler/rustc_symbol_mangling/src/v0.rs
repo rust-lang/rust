@@ -29,7 +29,8 @@ pub(super) fn mangle<'tcx>(
 ) -> String {
     let def_id = instance.def_id();
     // FIXME(eddyb) this should ideally not be needed.
-    let args = tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), instance.args);
+    let args =
+        tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(tcx), instance.args);
 
     let prefix = "_R";
     let mut cx: SymbolMangler<'_> = SymbolMangler {
@@ -317,7 +318,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 polymorphic instance: {impl_def_id:?} {args:?}"
             );
             (
-                ty::TypingEnv::fully_monomorphized(),
+                ty::TypingEnv::fully_monomorphized(self.tcx),
                 self_ty.instantiate(self.tcx, args),
                 impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate(self.tcx, args)),
             )
@@ -674,7 +675,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 ct_ty.print(self)?;
 
                 let mut bits = cv
-                    .try_to_bits(self.tcx, ty::TypingEnv::fully_monomorphized())
+                    .try_to_bits(self.tcx, ty::TypingEnv::fully_monomorphized(self.tcx))
                     .expect("expected const to be monomorphic");
 
                 // Negative integer values are mangled using `n` as a "sign prefix".

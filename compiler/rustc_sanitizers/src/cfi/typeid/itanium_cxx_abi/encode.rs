@@ -133,7 +133,7 @@ fn encode_const<'tcx>(
             match cv.ty.kind() {
                 ty::Int(ity) => {
                     let bits = cv
-                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
+                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized(tcx))
                         .expect("expected monomorphic const in cfi");
                     let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
                     if val < 0 {
@@ -143,7 +143,7 @@ fn encode_const<'tcx>(
                 }
                 ty::Uint(_) => {
                     let val = cv
-                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
+                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized(tcx))
                         .expect("expected monomorphic const in cfi");
                     let _ = write!(s, "{val}");
                 }

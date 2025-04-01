@@ -71,7 +71,7 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
         },
         ty::FnPtr(..) => pointer_ty(tcx),
         ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) => {
-            if tcx.type_has_metadata(*pointee_ty, ty::TypingEnv::fully_monomorphized()) {
+            if tcx.type_has_metadata(*pointee_ty, ty::TypingEnv::fully_monomorphized(tcx)) {
                 return None;
             } else {
                 pointer_ty(tcx)
@@ -91,7 +91,7 @@ fn clif_pair_type_from_ty<'tcx>(
             (clif_type_from_ty(tcx, types[0])?, clif_type_from_ty(tcx, types[1])?)
         }
         ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) => {
-            if tcx.type_has_metadata(*pointee_ty, ty::TypingEnv::fully_monomorphized()) {
+            if tcx.type_has_metadata(*pointee_ty, ty::TypingEnv::fully_monomorphized(tcx)) {
                 (pointer_ty(tcx), pointer_ty(tcx))
             } else {
                 return None;
@@ -327,7 +327,7 @@ impl<'tcx> rustc_abi::HasDataLayout for FunctionCx<'_, '_, 'tcx> {
 
 impl<'tcx> layout::HasTypingEnv<'tcx> for FunctionCx<'_, '_, 'tcx> {
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        ty::TypingEnv::fully_monomorphized()
+        ty::TypingEnv::fully_monomorphized(self.tcx)
     }
 }
 
@@ -344,7 +344,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     {
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
-            ty::TypingEnv::fully_monomorphized(),
+            ty::TypingEnv::fully_monomorphized(self.tcx),
             ty::EarlyBinder::bind(value),
         )
     }
@@ -490,7 +490,7 @@ impl<'tcx> rustc_abi::HasDataLayout for FullyMonomorphizedLayoutCx<'tcx> {
 
 impl<'tcx> layout::HasTypingEnv<'tcx> for FullyMonomorphizedLayoutCx<'tcx> {
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        ty::TypingEnv::fully_monomorphized()
+        ty::TypingEnv::fully_monomorphized(self.0)
     }
 }
 

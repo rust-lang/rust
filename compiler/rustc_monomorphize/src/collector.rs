@@ -427,7 +427,7 @@ fn collect_items_rec<'tcx>(
                 let DefKind::Static { nested, .. } = tcx.def_kind(def_id) else { bug!() };
                 // Nested statics have no type.
                 if !nested {
-                    let ty = instance.ty(tcx, ty::TypingEnv::fully_monomorphized());
+                    let ty = instance.ty(tcx, ty::TypingEnv::fully_monomorphized(tcx));
                     visit_drop_use(tcx, ty, true, starting_item.span, &mut used_items);
                 }
 
@@ -635,7 +635,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         trace!("monomorphize: self.instance={:?}", self.instance);
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
-            ty::TypingEnv::fully_monomorphized(),
+            ty::TypingEnv::fully_monomorphized(self.tcx),
             ty::EarlyBinder::bind(value),
         )
     }
@@ -650,7 +650,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         // a codegen-time error). rustc stops after collection if there was an error, so this
         // ensures codegen never has to worry about failing consts.
         // (codegen relies on this and ICEs will happen if this is violated.)
-        match const_.eval(self.tcx, ty::TypingEnv::fully_monomorphized(), constant.span) {
+        match const_.eval(self.tcx, ty::TypingEnv::fully_monomorphized(self.tcx), constant.span) {
             Ok(v) => Some(v),
             Err(ErrorHandled::TooGeneric(..)) => span_bug!(
                 constant.span,
@@ -866,7 +866,7 @@ fn visit_fn_use<'tcx>(
         let instance = if is_direct_call {
             ty::Instance::expect_resolve(
                 tcx,
-                ty::TypingEnv::fully_monomorphized(),
+                ty::TypingEnv::fully_monomorphized(tcx),
                 def_id,
                 args,
                 source,
@@ -874,7 +874,7 @@ fn visit_fn_use<'tcx>(
         } else {
             match ty::Instance::resolve_for_fn_ptr(
                 tcx,
-                ty::TypingEnv::fully_monomorphized(),
+                ty::TypingEnv::fully_monomorphized(tcx),
                 def_id,
                 args,
             ) {
@@ -1042,7 +1042,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
     target_ty: Ty<'tcx>,
 ) -> (Ty<'tcx>, Ty<'tcx>) {
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
-        let typing_env = ty::TypingEnv::fully_monomorphized();
+        let typing_env = ty::TypingEnv::fully_monomorphized(*tcx);
         if tcx.type_has_metadata(inner_source, typing_env) {
             (inner_source, inner_target)
         } else {
@@ -1290,7 +1290,7 @@ fn visit_mentioned_item<'tcx>(
             if let ty::FnDef(def_id, args) = *ty.kind() {
                 let instance = Instance::expect_resolve(
                     tcx,
-                    ty::TypingEnv::fully_monomorphized(),
+                    ty::TypingEnv::fully_monomorphized(tcx),
                     def_id,
                     args,
                     span,
@@ -1503,7 +1503,7 @@ impl<'v> RootCollector<'_, 'v> {
                         _ => unreachable!(),
                     };
                     let Ok(instance) = self.tcx.try_normalize_erasing_regions(
-                        ty::TypingEnv::fully_monomorphized(),
+                        ty::TypingEnv::fully_monomorphized(self.tcx),
                         instance,
                     ) else {
                         // Don't ICE on an impossible-to-normalize closure.
@@ -1570,13 +1570,13 @@ impl<'v> RootCollector<'_, 'v> {
         // regions must appear in the argument
         // listing.
         let main_ret_ty = self.tcx.normalize_erasing_regions(
-            ty::TypingEnv::fully_monomorphized(),
+            ty::TypingEnv::fully_monomorphized(self.tcx),
             main_ret_ty.no_bound_vars().unwrap(),
         );
 
         let start_instance = Instance::expect_resolve(
             self.tcx,
-            ty::TypingEnv::fully_monomorphized(),
+            ty::TypingEnv::fully_monomorphized(self.tcx),
             start_def_id,
             self.tcx.mk_args(&[main_ret_ty.into()]),
             DUMMY_SP,
@@ -1634,7 +1634,7 @@ fn create_mono_items_for_default_impls<'tcx>(
         return;
     }
 
-    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let typing_env = ty::TypingEnv::fully_monomorphized(tcx);
     let trait_ref = tcx.normalize_erasing_regions(typing_env, trait_ref);
     let overridden_methods = tcx.impl_item_implementor_ids(item.owner_id);
     for method in tcx.provided_trait_methods(trait_ref.def_id) {

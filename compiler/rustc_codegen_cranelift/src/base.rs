@@ -679,7 +679,7 @@ fn codegen_stmt<'tcx>(
                             let func_ref = fx.get_function_ref(
                                 Instance::resolve_for_fn_ptr(
                                     fx.tcx,
-                                    ty::TypingEnv::fully_monomorphized(),
+                                    ty::TypingEnv::fully_monomorphized(fx.tcx),
                                     def_id,
                                     args,
                                 )
@@ -730,8 +730,10 @@ fn codegen_stmt<'tcx>(
 
                     fn is_wide_ptr<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
                         ty.builtin_deref(true).is_some_and(|pointee_ty| {
-                            fx.tcx
-                                .type_has_metadata(pointee_ty, ty::TypingEnv::fully_monomorphized())
+                            fx.tcx.type_has_metadata(
+                                pointee_ty,
+                                ty::TypingEnv::fully_monomorphized(fx.tcx),
+                            )
                         })
                     }
 
@@ -862,7 +864,7 @@ fn codegen_stmt<'tcx>(
                         NullOp::OffsetOf(fields) => fx
                             .tcx
                             .offset_of_subfield(
-                                ty::TypingEnv::fully_monomorphized(),
+                                ty::TypingEnv::fully_monomorphized(fx.tcx),
                                 layout,
                                 fields.iter(),
                             )

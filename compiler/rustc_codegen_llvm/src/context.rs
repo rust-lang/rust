@@ -1272,7 +1272,7 @@ impl<'tcx> ty::layout::HasTyCtxt<'tcx> for CodegenCx<'_, 'tcx> {
 
 impl<'tcx, 'll> HasTypingEnv<'tcx> for CodegenCx<'ll, 'tcx> {
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        ty::TypingEnv::fully_monomorphized()
+        ty::TypingEnv::fully_monomorphized(self.tcx)
     }
 }
 

@@ -122,7 +122,7 @@ pub fn validate_trivial_unsize<'tcx>(
     match (source_data.principal(), target_data.principal()) {
         (Some(hr_source_principal), Some(hr_target_principal)) => {
             let (infcx, param_env) =
-                tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
+                tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized(tcx));
             let universe = infcx.universe();
             let ocx = ObligationCtxt::new(&infcx);
             infcx.enter_forall(hr_target_principal, |target_principal| {

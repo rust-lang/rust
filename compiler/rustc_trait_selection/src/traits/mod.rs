@@ -702,7 +702,7 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause<'tcx>>) -> bool {
     debug!("impossible_predicates(predicates={:?})", predicates);
     let (infcx, param_env) =
-        tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
+        tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized(tcx));
     let ocx = ObligationCtxt::new(&infcx);
     let predicates = ocx.normalize(&ObligationCause::dummy(), param_env, predicates);
     for predicate in predicates {

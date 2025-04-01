@@ -741,6 +741,8 @@ fn make_thin_self_ptr<'tcx>(
 
         // NOTE(eddyb) using an empty `ParamEnv`, and `unwrap`-ing the `Result`
         // should always work because the type is always `*mut ()`.
-        ..tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(unit_ptr_ty)).unwrap()
+        ..tcx
+            .layout_of(ty::TypingEnv::fully_monomorphized(tcx).as_query_input(unit_ptr_ty))
+            .unwrap()
     }
 }

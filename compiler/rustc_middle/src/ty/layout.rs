@@ -851,7 +851,7 @@ where
                         // NOTE: using an fully monomorphized typing env and `unwrap`-ing
                         // the `Result` should always work because the type is always either
                         // `*mut ()` or `&'static mut ()`.
-                        let typing_env = ty::TypingEnv::fully_monomorphized();
+                        let typing_env = ty::TypingEnv::fully_monomorphized(tcx);
                         return TyMaybeWithLayout::TyAndLayout(TyAndLayout {
                             ty: this.ty,
                             ..tcx.layout_of(typing_env.as_query_input(unit_ptr_ty)).unwrap()

@@ -717,7 +717,7 @@ impl<'tcx> Instance<'tcx> {
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(
             tcx,
-            ty::TypingEnv::fully_monomorphized(),
+            ty::TypingEnv::fully_monomorphized(tcx),
             def_id,
             args,
             ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
@@ -729,7 +729,7 @@ impl<'tcx> Instance<'tcx> {
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(
             tcx,
-            ty::TypingEnv::fully_monomorphized(),
+            ty::TypingEnv::fully_monomorphized(tcx),
             def_id,
             args,
             ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),

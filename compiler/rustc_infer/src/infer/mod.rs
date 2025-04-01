@@ -32,7 +32,7 @@ use rustc_middle::ty::{
     self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
     GenericArgsRef, GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Ty, TyCtxt,
     TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv,
-    TypingMode, fold_regions,
+    TypingEnvInner, TypingMode, fold_regions,
 };
 use rustc_span::{Span, Symbol};
 use snapshot::undo_log::InferCtxtUndoLogs;
@@ -562,8 +562,9 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
 
     pub fn build_with_typing_env(
         mut self,
-        TypingEnv { typing_mode, param_env }: TypingEnv<'tcx>,
+        typing_env: TypingEnv<'tcx>,
     ) -> (InferCtxt<'tcx>, ty::ParamEnv<'tcx>) {
+        let TypingEnvInner { typing_mode, param_env } = *typing_env;
         (self.build(typing_mode), param_env)
     }
 
@@ -1267,7 +1268,7 @@ impl<'tcx> InferCtxt<'tcx> {
             | ty::TypingMode::PostBorrowckAnalysis { .. }
             | ty::TypingMode::PostAnalysis) => mode,
         };
-        ty::TypingEnv { typing_mode, param_env }
+        self.tcx.mk_typing_env(ty::TypingEnvInner { typing_mode, param_env })
     }
 
     /// Similar to [`Self::canonicalize_query`], except that it returns

@@ -56,7 +56,7 @@ pub(crate) fn const_caller_location_provider(
     let mut ecx = mk_eval_cx_to_read_const_val(
         tcx,
         rustc_span::DUMMY_SP, // FIXME: use a proper span here?
-        ty::TypingEnv::fully_monomorphized(),
+        ty::TypingEnv::fully_monomorphized(tcx),
         CanAccessMutGlobal::No,
     );
 

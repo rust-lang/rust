@@ -123,9 +123,10 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
                     );
                     continue;
                 }
-                let Ok(trait_ref) = tcx
-                    .try_normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), trait_ref)
-                else {
+                let Ok(trait_ref) = tcx.try_normalize_erasing_regions(
+                    ty::TypingEnv::fully_monomorphized(tcx),
+                    trait_ref,
+                ) else {
                     tcx.dcx().span_err(
                         attr.span(),
                         "`rustc_dump_vtable` applied to impl header that cannot be normalized",
@@ -144,7 +145,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
                     continue;
                 }
                 let Ok(ty) =
-                    tcx.try_normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
+                    tcx.try_normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(tcx), ty)
                 else {
                     tcx.dcx().span_err(
                         attr.span(),

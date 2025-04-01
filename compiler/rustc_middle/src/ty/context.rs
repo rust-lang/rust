@@ -81,7 +81,7 @@ use crate::ty::{
     GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, ParamTy,
     Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
     PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    ValTree, ValTreeKind, Visibility,
+    TypingEnv, TypingEnvInner, ValTree, ValTreeKind, Visibility,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -813,6 +813,7 @@ pub struct CtxtInterners<'tcx> {
     captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
     offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
     valtree: InternedSet<'tcx, ty::ValTreeKind<'tcx>>,
+    typing_env: InternedSet<'tcx, TypingEnvInner<'tcx>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -849,6 +850,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             captures: InternedSet::with_capacity(N),
             offset_of: InternedSet::with_capacity(N),
             valtree: InternedSet::with_capacity(N),
+            typing_env: InternedSet::with_capacity(N),
         }
     }
 
@@ -1376,6 +1378,9 @@ pub struct GlobalCtxt<'tcx> {
     /// Common consts, pre-interned for your convenience.
     pub consts: CommonConsts<'tcx>,
 
+    /// Pre-interned fully monomorphized typing env.
+    pub fully_monomorphized: TypingEnv<'tcx>,
+
     /// Hooks to be able to register functions in other crates that can then still
     /// be called from rustc_middle.
     pub(crate) hooks: crate::hooks::Providers,
@@ -1390,12 +1395,12 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
-    pub selection_cache: traits::SelectionCache<'tcx, ty::TypingEnv<'tcx>>,
+    pub selection_cache: traits::SelectionCache<'tcx, TypingEnv<'tcx>>,
 
     /// Caches the results of trait evaluation. This cache is used
     /// for things that do not have to do with the parameters in scope.
     /// Merge this with `selection_cache`?
-    pub evaluation_cache: traits::EvaluationCache<'tcx, ty::TypingEnv<'tcx>>,
+    pub evaluation_cache: traits::EvaluationCache<'tcx, TypingEnv<'tcx>>,
 
     /// Caches the results of goal evaluation in the new solver.
     pub new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
@@ -1603,6 +1608,18 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_types = CommonTypes::new(&interners, s, &untracked);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types, s, &untracked);
+        let fully_monomorphized = TypingEnv(Interned::new_unchecked(
+            interners
+                .typing_env
+                .intern(
+                    TypingEnvInner {
+                        typing_mode: ty::TypingMode::PostAnalysis,
+                        param_env: ty::ParamEnv::empty(),
+                    },
+                    |i| InternedInSet(interners.arena.alloc(i)),
+                )
+                .0,
+        ));
 
         let gcx = gcx_cell.get_or_init(|| GlobalCtxt {
             sess: s,
@@ -1617,6 +1634,7 @@ impl<'tcx> TyCtxt<'tcx> {
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
+            fully_monomorphized,
             untracked,
             query_system,
             query_kinds,
@@ -2571,6 +2589,7 @@ direct_interners! {
         ExternalConstraints -> ExternalConstraints<'tcx>,
     predefined_opaques_in_body: pub mk_predefined_opaques_in_body(PredefinedOpaquesData<TyCtxt<'tcx>>):
         PredefinedOpaques -> PredefinedOpaques<'tcx>,
+    typing_env: pub mk_typing_env(TypingEnvInner<'tcx>): TypingEnv -> TypingEnv<'tcx>,
 }
 
 macro_rules! slice_interners {

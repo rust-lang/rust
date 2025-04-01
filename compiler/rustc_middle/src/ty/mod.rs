@@ -16,6 +16,7 @@ use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::num::NonZero;
+use std::ops::Deref;
 use std::ptr::NonNull;
 use std::{fmt, str};
 
@@ -1024,8 +1025,36 @@ impl<'tcx, T> ParamEnvAnd<'tcx, T> {
 /// such an `InferCtxt` with the right `typing_mode`, so they need
 /// to track both.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub struct TypingEnv<'tcx>(Interned<'tcx, TypingEnvInner<'tcx>>);
+
+impl<'tcx> Deref for TypingEnv<'tcx> {
+    type Target = TypingEnvInner<'tcx>;
+
+    fn deref(&self) -> &TypingEnvInner<'tcx> {
+        &self.0
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for TypingEnv<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        let inner = *self;
+        let folded = inner.try_fold_with(folder)?;
+        if inner != folded { Ok(folder.cx().mk_typing_env(folded)) } else { Ok(self) }
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for TypingEnv<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        (**self).visit_with(visitor)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TypeVisitable, TypeFoldable)]
-pub struct TypingEnv<'tcx> {
+pub struct TypingEnvInner<'tcx> {
     pub typing_mode: TypingMode<'tcx>,
     pub param_env: ParamEnv<'tcx>,
 }
@@ -1038,8 +1067,8 @@ impl<'tcx> TypingEnv<'tcx> {
     /// Do not use this for MIR optimizations, as even though they also
     /// use `TypingMode::PostAnalysis`, they may still have where-clauses
     /// in scope.
-    pub fn fully_monomorphized() -> TypingEnv<'tcx> {
-        TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env: ParamEnv::empty() }
+    pub fn fully_monomorphized(tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
+        tcx.fully_monomorphized
     }
 
     /// Create a typing environment for use during analysis outside of a body.
@@ -1051,20 +1080,23 @@ impl<'tcx> TypingEnv<'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: impl IntoQueryParam<DefId>,
     ) -> TypingEnv<'tcx> {
-        TypingEnv { typing_mode: TypingMode::non_body_analysis(), param_env: tcx.param_env(def_id) }
+        tcx.mk_typing_env(TypingEnvInner {
+            typing_mode: TypingMode::non_body_analysis(),
+            param_env: tcx.param_env(def_id),
+        })
     }
 
     pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryParam<DefId>) -> TypingEnv<'tcx> {
-        TypingEnv {
+        tcx.mk_typing_env(TypingEnvInner {
             typing_mode: TypingMode::PostAnalysis,
             param_env: tcx.param_env_normalized_for_post_analysis(def_id),
-        }
+        })
     }
 
     /// Modify the `typing_mode` to `PostAnalysis` and eagerly reveal all
     /// opaque types in the `param_env`.
     pub fn with_post_analysis_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
-        let TypingEnv { typing_mode, param_env } = self;
+        let TypingEnvInner { typing_mode, param_env } = *self;
         if let TypingMode::PostAnalysis = typing_mode {
             return self;
         }
@@ -1076,7 +1108,7 @@ impl<'tcx> TypingEnv<'tcx> {
         } else {
             ParamEnv::new(tcx.reveal_opaque_types_in_bounds(param_env.caller_bounds()))
         };
-        TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env }
+        tcx.mk_typing_env(TypingEnvInner { typing_mode: TypingMode::PostAnalysis, param_env })
     }
 
     /// Combine this typing environment with the given `value` to be used by

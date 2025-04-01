@@ -454,10 +454,9 @@ impl<'tcx> Body<'tcx> {
     pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
         match self.phase {
             // FIXME(#132279): we should reveal the opaques defined in the body during analysis.
-            MirPhase::Built | MirPhase::Analysis(_) => TypingEnv {
-                typing_mode: ty::TypingMode::non_body_analysis(),
-                param_env: tcx.param_env(self.source.def_id()),
-            },
+            MirPhase::Built | MirPhase::Analysis(_) => {
+                TypingEnv::non_body_analysis(tcx, self.source.def_id())
+            }
             MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
         }
     }
@@ -616,7 +615,7 @@ impl<'tcx> Body<'tcx> {
         // There are two places here we need to evaluate a constant.
         let eval_mono_const = |constant: &ConstOperand<'tcx>| {
             // FIXME(#132279): what is this, why are we using an empty environment here.
-            let typing_env = ty::TypingEnv::fully_monomorphized();
+            let typing_env = ty::TypingEnv::fully_monomorphized(tcx);
             let mono_literal = instance.instantiate_mir_and_normalize_erasing_regions(
                 tcx,
                 typing_env,

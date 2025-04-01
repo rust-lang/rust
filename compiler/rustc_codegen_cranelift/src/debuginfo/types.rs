@@ -129,7 +129,7 @@ impl DebugContext {
 
         let name = type_names::compute_debuginfo_type_name(tcx, ptr_type, true);
 
-        if !tcx.type_has_metadata(ptr_type, ty::TypingEnv::fully_monomorphized()) {
+        if !tcx.type_has_metadata(ptr_type, ty::TypingEnv::fully_monomorphized(tcx)) {
             let pointer_type_id =
                 self.dwarf.unit.add(self.dwarf.unit.root(), gimli::DW_TAG_pointer_type);
             let pointer_entry = self.dwarf.unit.get_mut(pointer_type_id);
