@@ -922,44 +922,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // (See `<ExitScopes as DropTreeBuilder>::link_entry_point`.)
         self.cfg.terminate(drop_and_continue_block, source_info, TerminatorKind::UnwindResume);
 
-        {
-            let this = &mut *self;
-            let blocks = drops.build_mir::<ExitScopes>(&mut this.cfg, Some(real_target));
-            //let is_coroutine = this.coroutine.is_some();
-
-            /*// Link the exit drop tree to unwind drop tree.
-            if drops.drops.iter().any(|drop_node| drop_node.data.kind == DropKind::Value) {
-                let unwind_target = this.diverge_cleanup_target(region_scope, span);
-                let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
-                for (drop_idx, drop_node) in drops.drops.iter_enumerated().skip(1) {
-                    match drop_node.data.kind {
-                        DropKind::Storage | DropKind::ForLint => {
-                            if is_coroutine {
-                                let unwind_drop = this.scopes.unwind_drops.add_drop(
-                                    drop_node.data,
-                                    unwind_indices[drop_node.next],
-                                );
-                                unwind_indices.push(unwind_drop);
-                            } else {
-                                unwind_indices.push(unwind_indices[drop_node.next]);
-                            }
-                        }
-                        DropKind::Value => {
-                            let unwind_drop = this
-                                .scopes
-                                .unwind_drops
-                                .add_drop(drop_node.data, unwind_indices[drop_node.next]);
-                            this.scopes.unwind_drops.add_entry_point(
-                                blocks[drop_idx].unwrap(),
-                                unwind_indices[drop_node.next],
-                            );
-                            unwind_indices.push(unwind_drop);
-                        }
-                    }
-                }
-            }*/
-            blocks[ROOT_NODE].map(BasicBlock::unit)
-        };
+        self.build_exit_tree(drops, region_scope, span, Some(real_target));
 
         return self.cfg.start_new_block().unit();
     }
