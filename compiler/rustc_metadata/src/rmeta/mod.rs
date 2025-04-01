@@ -56,7 +56,7 @@ pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 9;
+const METADATA_VERSION: u8 = 10;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
