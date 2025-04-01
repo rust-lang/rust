@@ -679,7 +679,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn stalled_generators_within(self, defining_anchor: Self::LocalDefId) -> Self::LocalDefIds {
-        self.stalled_generators_within(defining_anchor)
+        if self.next_trait_solver_globally() {
+            self.stalled_generators_within(defining_anchor)
+        } else {
+            ty::List::empty()
+        }
     }
 }
 
