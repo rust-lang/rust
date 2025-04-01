@@ -751,6 +751,7 @@ enum ReplaceOpt {
 trait Merge {
     fn merge(
         &mut self,
+        parent_config_path: Option<PathBuf>,
         included_extensions: &mut HashSet<PathBuf>,
         other: Self,
         replace: ReplaceOpt,
@@ -760,6 +761,7 @@ trait Merge {
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
+        parent_config_path: Option<PathBuf>,
         included_extensions: &mut HashSet<PathBuf>,
         TomlConfig { build, install, llvm, gcc, rust, dist, target, profile, change_id, include }: Self,
         replace: ReplaceOpt,
@@ -767,19 +769,27 @@ impl Merge for TomlConfig {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
             if let Some(new) = y {
                 if let Some(original) = x {
-                    original.merge(&mut Default::default(), new, replace);
+                    original.merge(None, &mut Default::default(), new, replace);
                 } else {
                     *x = Some(new);
                 }
             }
         }
 
-        for include_path in include.clone().unwrap_or_default() {
+        let parent_dir = parent_config_path
+            .as_ref()
+            .and_then(|p| p.parent().map(ToOwned::to_owned))
+            .unwrap_or_default();
+
+        for include_path in include.clone().unwrap_or_default().iter().rev() {
+            let include_path = parent_dir.join(include_path);
+            let include_path = include_path.canonicalize().unwrap_or_else(|e| {
+                eprintln!("ERROR: Failed to canonicalize '{}' path: {e}", include_path.display());
+                exit!(2);
+            });
+
             let included_toml = Config::get_toml(&include_path).unwrap_or_else(|e| {
-                eprintln!(
-                    "ERROR: Failed to parse default config profile at '{}': {e}",
-                    include_path.display()
-                );
+                eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
                 exit!(2);
             });
 
@@ -789,13 +799,20 @@ impl Merge for TomlConfig {
                 include_path.display()
             );
 
-            self.merge(included_extensions, included_toml, ReplaceOpt::Override);
+            self.merge(
+                Some(include_path.clone()),
+                included_extensions,
+                included_toml,
+                // Ensures that parent configuration always takes precedence
+                // over child configurations.
+                ReplaceOpt::IgnoreDuplicate,
+            );
 
             included_extensions.remove(&include_path);
         }
 
-        self.change_id.inner.merge(&mut Default::default(), change_id.inner, replace);
-        self.profile.merge(&mut Default::default(), profile, replace);
+        self.change_id.inner.merge(None, &mut Default::default(), change_id.inner, replace);
+        self.profile.merge(None, &mut Default::default(), profile, replace);
 
         do_merge(&mut self.build, build, replace);
         do_merge(&mut self.install, install, replace);
@@ -810,7 +827,7 @@ impl Merge for TomlConfig {
             (Some(original_target), Some(new_target)) => {
                 for (triple, new) in new_target {
                     if let Some(original) = original_target.get_mut(&triple) {
-                        original.merge(&mut Default::default(), new, replace);
+                        original.merge(None, &mut Default::default(), new, replace);
                     } else {
                         original_target.insert(triple, new);
                     }
@@ -831,7 +848,13 @@ macro_rules! define_config {
         }
 
         impl Merge for $name {
-            fn merge(&mut self, _included_extensions: &mut HashSet<PathBuf>, other: Self, replace: ReplaceOpt) {
+            fn merge(
+                &mut self,
+                _parent_config_path: Option<PathBuf>,
+                _included_extensions: &mut HashSet<PathBuf>,
+                other: Self,
+                replace: ReplaceOpt
+            ) {
                 $(
                     match replace {
                         ReplaceOpt::IgnoreDuplicate => {
@@ -933,6 +956,7 @@ macro_rules! define_config {
 impl<T> Merge for Option<T> {
     fn merge(
         &mut self,
+        _parent_config_path: Option<PathBuf>,
         _included_extensions: &mut HashSet<PathBuf>,
         other: Self,
         replace: ReplaceOpt,
@@ -1581,7 +1605,8 @@ impl Config {
         // but not if `bootstrap.toml` hasn't been created.
         let mut toml = if !using_default_path || toml_path.exists() {
             config.config = Some(if cfg!(not(test)) {
-                toml_path.canonicalize().unwrap()
+                toml_path = toml_path.canonicalize().unwrap();
+                toml_path.clone()
             } else {
                 toml_path.clone()
             });
@@ -1609,6 +1634,24 @@ impl Config {
             toml.profile = Some("dist".into());
         }
 
+        // Reverse the list to ensure the last added config extension remains the most dominant.
+        // For example, given ["a.toml", "b.toml"], "b.toml" should take precedence over "a.toml".
+        //
+        // This must be handled before applying the `profile` since `include`s should always take
+        // precedence over `profile`s.
+        for include_path in toml.include.clone().unwrap_or_default().iter().rev() {
+            let included_toml = get_toml(include_path).unwrap_or_else(|e| {
+                eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
+                exit!(2);
+            });
+            toml.merge(
+                Some(toml_path.join(include_path)),
+                &mut Default::default(),
+                included_toml,
+                ReplaceOpt::IgnoreDuplicate,
+            );
+        }
+
         if let Some(include) = &toml.profile {
             // Allows creating alias for profile names, allowing
             // profiles to be renamed while maintaining back compatibility
@@ -1630,18 +1673,12 @@ impl Config {
                 );
                 exit!(2);
             });
-            toml.merge(&mut Default::default(), included_toml, ReplaceOpt::IgnoreDuplicate);
-        }
-
-        for include_path in toml.include.clone().unwrap_or_default() {
-            let included_toml = get_toml(&include_path).unwrap_or_else(|e| {
-                eprintln!(
-                    "ERROR: Failed to parse default config profile at '{}': {e}",
-                    include_path.display()
-                );
-                exit!(2);
-            });
-            toml.merge(&mut Default::default(), included_toml, ReplaceOpt::Override);
+            toml.merge(
+                Some(include_path),
+                &mut Default::default(),
+                included_toml,
+                ReplaceOpt::IgnoreDuplicate,
+            );
         }
 
         let mut override_toml = TomlConfig::default();
@@ -1652,7 +1689,12 @@ impl Config {
 
             let mut err = match get_table(option) {
                 Ok(v) => {
-                    override_toml.merge(&mut Default::default(), v, ReplaceOpt::ErrorOnDuplicate);
+                    override_toml.merge(
+                        None,
+                        &mut Default::default(),
+                        v,
+                        ReplaceOpt::ErrorOnDuplicate,
+                    );
                     continue;
                 }
                 Err(e) => e,
@@ -1664,6 +1706,7 @@ impl Config {
                     match get_table(&format!(r#"{key}="{value}""#)) {
                         Ok(v) => {
                             override_toml.merge(
+                                None,
                                 &mut Default::default(),
                                 v,
                                 ReplaceOpt::ErrorOnDuplicate,
@@ -1677,7 +1720,7 @@ impl Config {
             eprintln!("failed to parse override `{option}`: `{err}");
             exit!(2)
         }
-        toml.merge(&mut Default::default(), override_toml, ReplaceOpt::Override);
+        toml.merge(None, &mut Default::default(), override_toml, ReplaceOpt::Override);
 
         config.change_id = toml.change_id.inner;
 
