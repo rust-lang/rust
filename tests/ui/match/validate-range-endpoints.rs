@@ -1,4 +1,3 @@
-#![feature(inline_const_pat)]
 #![allow(overlapping_range_endpoints)]
 
 fn main() {
@@ -16,8 +15,6 @@ fn main() {
 
         // There isn't really a way to detect these
         1..=TOO_BIG => {}
-        //~^ ERROR lower range bound must be less than or equal to upper
-        1..=const { 256 } => {}
         //~^ ERROR lower range bound must be less than or equal to upper
         _ => {}
     }

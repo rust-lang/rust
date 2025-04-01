@@ -2873,7 +2873,6 @@ ui/macros/rfc-3086-metavar-expr/issue-111904.rs
 ui/malformed/issue-107423-unused-delim-only-one-no-pair.rs
 ui/malformed/issue-69341-malformed-derive-inert.rs
 ui/marker_trait_attr/issue-61651-type-mismatch.rs
-ui/match/issue-112438.rs
 ui/match/issue-113012.rs
 ui/match/issue-11319.rs
 ui/match/issue-114691.rs
