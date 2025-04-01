@@ -131,7 +131,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::TypeOutlives(_))
             | PredicateKind::Clause(ClauseKind::Projection(_))
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
-            | PredicateKind::Clause(ClauseKind::UnstableImpl) // TODO: is this fine...?
+            | PredicateKind::Clause(ClauseKind::UnstableImpl)
             | PredicateKind::DynCompatible(_)
             | PredicateKind::Subtype(_)
             | PredicateKind::Coerce(_)
