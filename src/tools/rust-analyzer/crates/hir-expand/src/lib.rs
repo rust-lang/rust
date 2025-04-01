@@ -208,7 +208,8 @@ impl ExpandErrorKind {
                     },
                     None => RenderedExpandError {
                         message: format!(
-                            "internal error: proc-macro map is missing error entry for crate {def_crate:?}"
+                            "internal error: proc-macro map is missing error entry for crate {:?}",
+                            def_crate
                         ),
                         error: true,
                         kind: RenderedExpandError::GENERAL_KIND,
