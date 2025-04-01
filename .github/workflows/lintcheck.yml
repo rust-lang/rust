@@ -49,6 +49,10 @@ jobs:
         path: target/debug/lintcheck
         key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
 
+    # Install cmake to build aws-lc-sys to build tokio-rustls
+    - name: Install cmake
+      run: sudo apt-get install -y cmake
+
     - name: Build lintcheck
       if: steps.cache-lintcheck-bin.outputs.cache-hit != 'true'
       run: cargo build --manifest-path=lintcheck/Cargo.toml
@@ -91,6 +95,10 @@ jobs:
       with:
         path: target/debug/lintcheck
         key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
+
+    # Install cmake to build aws-lc-sys to build tokio-rustls
+    - name: Install cmake
+      run: sudo apt-get install -y cmake
 
     - name: Build lintcheck
       if: steps.cache-lintcheck-bin.outputs.cache-hit != 'true'
