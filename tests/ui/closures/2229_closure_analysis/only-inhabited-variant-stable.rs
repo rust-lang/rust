@@ -3,7 +3,6 @@
 // depending on whether some types are inhabited goes too far, introducing a
 // bunch of headaches without much benefit.
 //@ edition:2021
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Void {}
 
 pub fn main() {
@@ -19,5 +18,5 @@ pub fn main() {
     };
     f();
     g();
-    assert_eq!(r, Err((1, 2)));
+    assert!(matches!(r, Err((1, 2))));
 }
