@@ -78,7 +78,6 @@
 #![cfg_attr(
     not(bootstrap),
     doc(auto_cfg(hide(
-        test,
         no_global_oom_handling,
         no_rc,
         no_sync,
