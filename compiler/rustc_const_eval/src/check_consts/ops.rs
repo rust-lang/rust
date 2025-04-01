@@ -491,6 +491,8 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
                 hir::CoroutineDesugaring::Async,
                 hir::CoroutineSource::Block,
             )
+            // FIXME(coroutines): eventually we want to gate const coroutine coroutines behind a
+            // different feature.
             | hir::CoroutineKind::Coroutine(_) => Status::Unstable {
                 gate: sym::const_async_blocks,
                 gate_already_checked: false,
