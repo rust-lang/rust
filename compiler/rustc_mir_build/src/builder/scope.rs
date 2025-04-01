@@ -181,10 +181,10 @@ struct BreakableScope<'tcx> {
 
 #[derive(Debug)]
 struct ConstContinuableScope<'tcx> {
-    /// The if-then scope or arm scope
+    /// The if-then scope or arm scope.
     region_scope: region::Scope,
     /// The destination of the loop/block expression itself (i.e., where to put
-    /// the result of a `break` or `return` expression)
+    /// the result of a `break` or `return` expression).
     state_place: Place<'tcx>,
 
     arms: Box<[ArmId]>,
@@ -573,7 +573,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    ///  Start a const-continuable scope, which tracks where `#[const_continue] break` should
+    /// Start a const-continuable scope, which tracks where `#[const_continue] break` should
     /// branch to.
     pub(crate) fn in_const_continuable_scope<F>(
         &mut self,
@@ -849,7 +849,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => todo!(),
         };
 
-        // the PatCtxt is normally used in pattern exhaustiveness checking, but reused here
+        // The PatCtxt is normally used in pattern exhaustiveness checking, but reused here
         // because it performs normalization and const evaluation.
         let dropless_arena = rustc_arena::DroplessArena::default();
         let typeck_results = self.tcx.typeck(self.def_id);
@@ -902,8 +902,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         drops.add_entry_point(imaginary_target, drop_idx);
 
         self.cfg.terminate(imaginary_target, source_info, TerminatorKind::UnwindResume);
-
-        // FIXME add to drop tree for loop_head
 
         let region_scope = scope.region_scope;
         let scope_index = self.scopes.scope_index(region_scope, span);

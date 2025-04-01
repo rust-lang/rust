@@ -259,7 +259,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.goto(block, source_info, loop_block);
 
                 this.in_breakable_scope(Some(loop_block), destination, expr_span, |this| {
-                    // logic for `loop`
+                    // Logic for `loop`.
                     let mut body_block = this.cfg.start_new_block();
                     this.cfg.terminate(
                         loop_block,
@@ -303,12 +303,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let state_place = scrutinee_place_builder.to_place(this);
 
-                    // this is logic for the labeled block: a block is a drop scope, hence
+                    // This is logic for the labeled block: a block is a drop scope, hence
                     // `in_scope`, and a labeled block can be broken out of with a `break 'label`,
                     // hence the `in_breakable_scope`.
                     //
-                    // Inside of that information for #[const_continue] is stored, and the match is
-                    // lowered in the standard way.
+                    // Then `in_const_continuable_scope` stores information for the lowering of
+                    // #[const_continue], and finally the match is lowered in the standard way.
                     unpack!(
                         body_block = this.in_scope(
                             (region_scope, source_info),
