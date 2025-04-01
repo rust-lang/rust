@@ -6,7 +6,10 @@ use std::sync::Arc;
 use arrayvec::ArrayVec;
 use intern::{Symbol, sym};
 use span::{Edition, Span, SyntaxContext};
-use tt::iter::{TtElement, TtIter};
+use tt::{
+    MAX_GLUED_PUNCT_LEN,
+    iter::{TtElement, TtIter},
+};
 
 use crate::ParseError;
 
@@ -96,7 +99,7 @@ pub(crate) enum Op {
         delimiter: tt::Delimiter<Span>,
     },
     Literal(tt::Literal<Span>),
-    Punct(Box<ArrayVec<tt::Punct<Span>, 3>>),
+    Punct(Box<ArrayVec<tt::Punct<Span>, MAX_GLUED_PUNCT_LEN>>),
     Ident(tt::Ident<Span>),
 }
 
@@ -151,7 +154,7 @@ pub(crate) enum MetaVarKind {
 pub(crate) enum Separator {
     Literal(tt::Literal<Span>),
     Ident(tt::Ident<Span>),
-    Puncts(ArrayVec<tt::Punct<Span>, 3>),
+    Puncts(ArrayVec<tt::Punct<Span>, MAX_GLUED_PUNCT_LEN>),
 }
 
 // Note that when we compare a Separator, we just care about its textual value.
