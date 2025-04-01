@@ -76,7 +76,7 @@ pub fn expand_trait_aliases<'tcx>(
             | ty::ClauseKind::ConstArgHasType(_, _)
             | ty::ClauseKind::WellFormed(_)
             | ty::ClauseKind::ConstEvaluatable(_)
-            | ty::ClauseKind::UnstableImpl
+            | ty::ClauseKind::UnstableFeature
             | ty::ClauseKind::HostEffect(..) => {}
         }
     }

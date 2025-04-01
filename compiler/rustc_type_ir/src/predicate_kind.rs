@@ -47,8 +47,8 @@ pub enum ClauseKind<I: Interner> {
     /// implementation.
     HostEffect(ty::HostEffectPredicate<I>),
 
-    /// Support marking impl as unstable. 
-    UnstableImpl,
+    /// Support marking impl as unstable.
+    UnstableFeature,
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
@@ -137,7 +137,7 @@ impl<I: Interner> fmt::Debug for ClauseKind<I> {
             ClauseKind::ConstEvaluatable(ct) => {
                 write!(f, "ConstEvaluatable({ct:?})")
             }
-            ClauseKind::UnstableImpl => write!(f, "UnstableImpl"),
+            ClauseKind::UnstableFeature => write!(f, "UnstableFeature"),
         }
     }
 }

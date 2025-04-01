@@ -821,7 +821,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id(),
                                 span,
-                                errors::IneffectiveUnstableImpl,
+                                errors::IneffectiveUnstableFeature,
                             );
                         }
                     }
