@@ -571,7 +571,7 @@ pub fn suggest_constraining_type_params<'a>(
 }
 
 /// Collect al types that have an implicit `'static` obligation that we could suggest `'_` for.
-pub struct TraitObjectVisitor<'tcx>(pub Vec<&'tcx hir::Ty<'tcx>>, pub crate::hir::map::Map<'tcx>);
+pub(crate) struct TraitObjectVisitor<'tcx>(pub(crate) Vec<&'tcx hir::Ty<'tcx>>);
 
 impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
     fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
