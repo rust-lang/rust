@@ -8,8 +8,7 @@ use rustc_errors::{Applicability, Diag, SuggestionStyle};
 use rustc_lexer::TokenKind;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::kw;
-use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, sym};
+use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, kw};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -375,14 +374,16 @@ impl EmptyLineAfter {
         &mut self,
         cx: &EarlyContext<'_>,
         kind: &ItemKind,
-        ident: &Option<Ident>,
+        ident: Option<Ident>,
         span: Span,
         attrs: &[Attribute],
         id: NodeId,
     ) {
         self.items.push(ItemInfo {
             kind: kind.descr(),
-            name: if let Some(ident) = ident { ident.name } else { sym::dummy },
+            // FIXME: this `sym::empty` can be leaked, see
+            // https://github.com/rust-lang/rust/pull/138740#discussion_r2021979899
+            name: if let Some(ident) = ident { ident.name } else { kw::Empty },
             span: if let Some(ident) = ident {
                 span.with_hi(ident.span.hi())
             } else {
@@ -471,7 +472,7 @@ impl EarlyLintPass for EmptyLineAfter {
         self.check_item_kind(
             cx,
             &item.kind.clone().into(),
-            &item.kind.ident(),
+            item.kind.ident(),
             item.span,
             &item.attrs,
             item.id,
@@ -482,7 +483,7 @@ impl EarlyLintPass for EmptyLineAfter {
         self.check_item_kind(
             cx,
             &item.kind.clone().into(),
-            &item.kind.ident(),
+            item.kind.ident(),
             item.span,
             &item.attrs,
             item.id,
@@ -490,6 +491,6 @@ impl EarlyLintPass for EmptyLineAfter {
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        self.check_item_kind(cx, &item.kind, &item.kind.ident(), item.span, &item.attrs, item.id);
+        self.check_item_kind(cx, &item.kind, item.kind.ident(), item.span, &item.attrs, item.id);
     }
 }
