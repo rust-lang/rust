@@ -170,6 +170,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) {
     assert!(!instance.args.has_infer());
 
+    let tcx = cx.tcx();
     let llfn = cx.get_fn(instance);
 
     let mir = cx.tcx().instance_mir(instance.def);
@@ -177,7 +178,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
 
-    if cx.tcx().codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
+    if tcx.codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
         crate::mir::naked_asm::codegen_naked_asm::<Bx>(cx, &mir, instance);
         return;
     }
@@ -194,7 +195,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 
     let cleanup_kinds =
-        base::wants_new_eh_instructions(cx.tcx().sess).then(|| analyze::cleanup_kinds(mir));
+        base::wants_new_eh_instructions(tcx.sess).then(|| analyze::cleanup_kinds(mir));
 
     let cached_llbbs: IndexVec<mir::BasicBlock, CachedLlbb<Bx::BasicBlock>> =
         mir.basic_blocks
@@ -217,7 +218,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cleanup_kinds,
         landing_pads: IndexVec::from_elem(None, &mir.basic_blocks),
         funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),
-        cold_blocks: find_cold_blocks(cx.tcx(), mir),
+        cold_blocks: find_cold_blocks(tcx, mir),
         locals: locals::Locals::empty(),
         debug_context,
         per_local_var_debug_info: None,
@@ -233,7 +234,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         fx.compute_per_local_var_debug_info(&mut start_bx).unzip();
     fx.per_local_var_debug_info = per_local_var_debug_info;
 
-    let traversal_order = traversal::mono_reachable_reverse_postorder(mir, cx.tcx(), instance);
+    let traversal_order = traversal::mono_reachable_reverse_postorder(mir, tcx, instance);
     let memory_locals = analyze::non_ssa_locals(&fx, &traversal_order);
 
     // Allocate variable and temp allocas
