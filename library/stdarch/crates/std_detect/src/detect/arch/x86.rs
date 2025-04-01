@@ -89,6 +89,11 @@ features! {
     /// * `"amx-bf16"`
     /// * `"amx-fp16"`
     /// * `"amx-complex"`
+    /// * `"amx-avx512"`
+    /// * `"amx-fp8"`
+    /// * `"amx-movrs"`
+    /// * `"amx-tf32"`
+    /// * `"amx-transpose"`
     /// * `"f16c"`
     /// * `"fma"`
     /// * `"bmi1"`
@@ -109,6 +114,8 @@ features! {
     /// * `"rtm"`
     /// * `"movbe"`
     /// * `"ermsb"`
+    /// * `"movrs"`
+    /// * `"xop"`
     ///
     /// [docs]: https://software.intel.com/sites/landingpage/IntrinsicsGuide
     #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -177,8 +184,7 @@ features! {
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vbmi: "avx512vbmi";
     /// AVX-512 VBMI (Vector Byte Manipulation Instructions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vpopcntdq: "avx512vpopcntdq";
-    /// AVX-512 VPOPCNTDQ (Vector Population Count Doubleword and
-    /// Quadword)
+    /// AVX-512 VPOPCNTDQ (Vector Population Count Doubleword and Quadword)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vbmi2: "avx512vbmi2";
     /// AVX-512 VBMI2 (Additional byte, word, dword and qword capabilities)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] gfni: "gfni";
@@ -217,6 +223,16 @@ features! {
     /// AMX-FP16 (Float16 Operations)
     @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_complex: "amx-complex";
     /// AMX-COMPLEX (Complex number Operations)
+    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_avx512: "amx-avx512";
+    /// AMX-AVX512 (AVX512 operations extended to matrices)
+    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_fp8: "amx-fp8";
+    /// AMX-FP8 (Float8 Operations)
+    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_movrs: "amx-movrs";
+    /// AMX-MOVRS (Matrix MOVERS operations)
+    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_tf32: "amx-tf32";
+    /// AMX-TF32 (TensorFloat32 Operations)
+    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_transpose: "amx-transpose";
+    /// AMX-TRANSPOSE (Matrix Transpose Operations)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] f16c: "f16c";
     /// F16C (Conversions between IEEE-754 `binary16` and `binary32` formats)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] fma: "fma";
@@ -253,6 +269,8 @@ features! {
     /// RTM, Intel (Restricted Transactional Memory)
     @FEATURE: #[stable(feature = "movbe_target_feature", since = "1.67.0")] movbe: "movbe";
     /// MOVBE (Move Data After Swapping Bytes)
+    @FEATURE: #[unstable(feature = "movrs_target_feature", issue = "137976")] movrs: "movrs";
+    /// MOVRS (Move data with the read-shared hint)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] ermsb: "ermsb";
     /// ERMSB, Enhanced REP MOVSB and STOSB
     @FEATURE: #[unstable(feature = "xop_target_feature", issue = "127208")] xop: "xop";

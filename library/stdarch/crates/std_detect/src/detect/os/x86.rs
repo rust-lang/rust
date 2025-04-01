@@ -141,6 +141,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
         enable(extended_features_ebx, 9, Feature::ermsb);
 
+        enable(extended_features_eax_leaf_1, 31, Feature::movrs);
+
         // Detect if CPUID.19h available
         if bit::test(extended_features_ecx as usize, 23) {
             let CpuidResult { ebx, .. } = unsafe { __cpuid(0x19) };
@@ -250,14 +252,27 @@ pub(crate) fn detect_features() -> cache::Initializer {
                         enable(extended_features_edx, 8, Feature::avx512vp2intersect);
                         enable(extended_features_edx, 23, Feature::avx512fp16);
                         enable(extended_features_eax_leaf_1, 5, Feature::avx512bf16);
+                    }
+                }
 
-                        if os_amx_support {
-                            enable(extended_features_edx, 24, Feature::amx_tile);
-                            enable(extended_features_edx, 25, Feature::amx_int8);
-                            enable(extended_features_edx, 22, Feature::amx_bf16);
-                            enable(extended_features_eax_leaf_1, 21, Feature::amx_fp16);
-                            enable(extended_features_edx_leaf_1, 8, Feature::amx_complex);
-                        }
+                if os_amx_support {
+                    enable(extended_features_edx, 24, Feature::amx_tile);
+                    enable(extended_features_edx, 25, Feature::amx_int8);
+                    enable(extended_features_edx, 22, Feature::amx_bf16);
+                    enable(extended_features_eax_leaf_1, 21, Feature::amx_fp16);
+                    enable(extended_features_edx_leaf_1, 8, Feature::amx_complex);
+
+                    if max_basic_leaf >= 0x1e {
+                        let CpuidResult {
+                            eax: amx_feature_flags_eax,
+                            ..
+                        } = unsafe { __cpuid_count(0x1e_u32, 1) };
+
+                        enable(amx_feature_flags_eax, 4, Feature::amx_fp8);
+                        enable(amx_feature_flags_eax, 5, Feature::amx_transpose);
+                        enable(amx_feature_flags_eax, 6, Feature::amx_tf32);
+                        enable(amx_feature_flags_eax, 7, Feature::amx_avx512);
+                        enable(amx_feature_flags_eax, 8, Feature::amx_movrs);
                     }
                 }
             }
