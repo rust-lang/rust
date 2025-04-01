@@ -727,6 +727,19 @@ impl<'a> AstValidator<'a> {
             )
         }
     }
+
+    // Used within `visit_item` for item kinds where we don't call `visit::walk_item`.
+    fn visit_attrs_vis(&mut self, attrs: &'a AttrVec, vis: &'a Visibility) {
+        walk_list!(self, visit_attribute, attrs);
+        self.visit_vis(vis);
+    }
+
+    // Used within `visit_item` for item kinds where we don't call `visit::walk_item`.
+    fn visit_attrs_vis_ident(&mut self, attrs: &'a AttrVec, vis: &'a Visibility, ident: &'a Ident) {
+        walk_list!(self, visit_attribute, attrs);
+        self.visit_vis(vis);
+        self.visit_ident(ident);
+    }
 }
 
 /// Checks that generic parameters are in the correct order,
@@ -834,6 +847,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self_ty,
                 items,
             }) => {
+                self.visit_attrs_vis(&item.attrs, &item.vis);
                 self.with_in_trait_impl(Some((*constness, *polarity, t)), |this| {
                     this.visibility_not_permitted(
                         &item.vis,
@@ -853,7 +867,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         });
                     }
 
-                    this.visit_vis(&item.vis);
                     let disallowed = matches!(constness, Const::No)
                         .then(|| TildeConstReason::TraitImpl { span: item.span });
                     this.with_tilde_const(disallowed, |this| this.visit_generics(generics));
@@ -862,7 +875,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl { of_trait: true });
                 });
-                walk_list!(self, visit_attribute, &item.attrs);
             }
             ItemKind::Impl(box Impl {
                 safety,
@@ -882,6 +894,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     only_trait,
                 };
 
+                self.visit_attrs_vis(&item.attrs, &item.vis);
                 self.with_in_trait_impl(None, |this| {
                     this.visibility_not_permitted(
                         &item.vis,
@@ -905,7 +918,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         this.dcx().emit_err(error(span, "`const`", true));
                     }
 
-                    this.visit_vis(&item.vis);
                     this.with_tilde_const(
                         Some(TildeConstReason::Impl { span: item.span }),
                         |this| this.visit_generics(generics),
@@ -913,7 +925,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     this.visit_ty(self_ty);
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl { of_trait: false });
                 });
-                walk_list!(self, visit_attribute, &item.attrs);
             }
             ItemKind::Fn(
                 func @ box Fn {
@@ -926,6 +937,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     define_opaque: _,
                 },
             ) => {
+                self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                 self.check_defaultness(item.span, *defaultness);
 
                 let is_intrinsic =
@@ -953,11 +965,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     });
                 }
 
-                self.visit_vis(&item.vis);
-                self.visit_ident(ident);
                 let kind = FnKind::Fn(FnCtxt::Free, &item.vis, &*func);
                 self.visit_fn(kind, item.span, item.id);
-                walk_list!(self, visit_attribute, &item.attrs);
             }
             ItemKind::ForeignMod(ForeignMod { extern_span, abi, safety, .. }) => {
                 self.with_in_extern_mod(*safety, |this| {
@@ -1005,6 +1014,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 visit::walk_item(self, item)
             }
             ItemKind::Trait(box Trait { is_auto, generics, ident, bounds, items, .. }) => {
+                self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                 let is_const_trait =
                     attr::find_by_name(&item.attrs, sym::const_trait).map(|attr| attr.span);
                 self.with_in_trait(item.span, is_const_trait, |this| {
@@ -1018,8 +1028,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                     // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
                     // context for the supertraits.
-                    this.visit_vis(&item.vis);
-                    this.visit_ident(ident);
                     let disallowed = is_const_trait
                         .is_none()
                         .then(|| TildeConstReason::Trait { span: item.span });
@@ -1029,7 +1037,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     });
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Trait);
                 });
-                walk_list!(self, visit_attribute, &item.attrs);
             }
             ItemKind::Mod(safety, ident, mod_kind) => {
                 if let &Safety::Unsafe(span) = safety {
@@ -1045,12 +1052,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Struct(ident, vdata, generics) => match vdata {
                 VariantData::Struct { fields, .. } => {
-                    self.visit_vis(&item.vis);
-                    self.visit_ident(ident);
+                    self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                     self.visit_generics(generics);
                     // Permit `Anon{Struct,Union}` as field type.
                     walk_list!(self, visit_struct_field_def, fields);
-                    walk_list!(self, visit_attribute, &item.attrs);
                 }
                 _ => visit::walk_item(self, item),
             },
@@ -1060,12 +1065,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 match vdata {
                     VariantData::Struct { fields, .. } => {
-                        self.visit_vis(&item.vis);
-                        self.visit_ident(ident);
+                        self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                         self.visit_generics(generics);
                         // Permit `Anon{Struct,Union}` as field type.
                         walk_list!(self, visit_struct_field_def, fields);
-                        walk_list!(self, visit_attribute, &item.attrs);
                     }
                     _ => visit::walk_item(self, item),
                 }
@@ -1484,10 +1487,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     || ctxt == AssocCtxt::Trait
                     || matches!(func.sig.header.constness, Const::Yes(_)) =>
             {
-                self.visit_vis(&item.vis);
-                self.visit_ident(&func.ident);
+                self.visit_attrs_vis_ident(&item.attrs, &item.vis, &func.ident);
                 let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), &item.vis, &*func);
-                walk_list!(self, visit_attribute, &item.attrs);
                 self.visit_fn(kind, item.span, item.id);
             }
             AssocItemKind::Type(_) => {
