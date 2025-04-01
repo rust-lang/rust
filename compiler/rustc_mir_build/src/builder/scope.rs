@@ -181,17 +181,16 @@ struct BreakableScope<'tcx> {
 
 #[derive(Debug)]
 struct ConstContinuableScope<'tcx> {
-    /// The if-then scope or arm scope.
+    /// The scope for the `#[loop_match]` which its `#[const_continue]`s will jump to.
     region_scope: region::Scope,
-    /// The destination of the loop/block expression itself (i.e., where to put
-    /// the result of a `break` or `return` expression).
+    /// The place of the state of a `#[loop_match]`, which a `#[const_continue]` must update.
     state_place: Place<'tcx>,
 
     arms: Box<[ArmId]>,
     built_match_tree: BuiltMatchTree<'tcx>,
 
-    /// Drops that happen on the `return` path and would have happened on the `break` path.
-    break_drops: DropTree,
+    /// Drops that happen on a `#[const_continue]`
+    const_continue_drops: DropTree,
 }
 
 #[derive(Debug)]
@@ -590,17 +589,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scope = ConstContinuableScope {
             region_scope,
             state_place,
-            break_drops: DropTree::new(),
+            const_continue_drops: DropTree::new(),
             arms,
             built_match_tree,
         };
         self.scopes.const_continuable_scopes.push(scope);
         let normal_exit_block = f(self);
-        let breakable_scope = self.scopes.const_continuable_scopes.pop().unwrap();
-        assert!(breakable_scope.region_scope == region_scope);
+        let const_continue_scope = self.scopes.const_continuable_scopes.pop().unwrap();
+        assert!(const_continue_scope.region_scope == region_scope);
 
-        let break_block =
-            self.build_exit_tree(breakable_scope.break_drops, region_scope, span, None);
+        let break_block = self.build_exit_tree(
+            const_continue_scope.const_continue_drops,
+            region_scope,
+            span,
+            None,
+        );
 
         match (normal_exit_block, break_block) {
             (block, None) => block,
@@ -892,7 +895,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TerminatorKind::FalseEdge { real_target: drop_and_continue_block, imaginary_target },
         );
 
-        let drops = &mut scope.break_drops;
+        let drops = &mut scope.const_continue_drops;
 
         let drop_idx = self.scopes.scopes[scope_index + 1..]
             .iter()
