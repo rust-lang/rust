@@ -243,13 +243,7 @@
         not(no_global_oom_handling)
     ))
 )]
-#![cfg_attr(
-    not(bootstrap),
-    doc(auto_cfg(hide(
-        test,
-        no_global_oom_handling,
-    )))
-)]
+#![cfg_attr(not(bootstrap), doc(auto_cfg(hide(no_global_oom_handling))))]
 // Don't link to std. We are std.
 #![no_std]
 // Tell the compiler to link to either panic_abort or panic_unwind
