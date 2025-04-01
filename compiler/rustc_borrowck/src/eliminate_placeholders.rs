@@ -14,6 +14,7 @@ use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use rustc_infer::infer::relate::TypeRelation;
+use rustc_middle::bug;
 use rustc_middle::ty::relate::{self, Relate, RelateResult};
 use rustc_middle::ty::{self, Region, RegionVid, Ty, TyCtxt, UniverseIndex};
 use rustc_span::Span;
@@ -30,6 +31,8 @@ use crate::ty::VarianceDiagInfo;
 use crate::type_check::Locations;
 use crate::universal_regions::UniversalRegions;
 
+/// A set of outlives constraints after rewriting to remove
+/// higher-kinded constraints.
 pub(crate) struct LoweredConstraints<'tcx> {
     pub(crate) type_tests: Vec<LoweredTypeTest<'tcx>>,
     pub(crate) sccs: Sccs<RegionVid, ConstraintSccIndex>,
@@ -66,6 +69,7 @@ enum PlaceholderReachability {
         max_placeholder: RegionVid,
     },
 }
+
 impl PlaceholderReachability {
     fn merge(self, other: PlaceholderReachability) -> PlaceholderReachability {
         use PlaceholderReachability::*;
@@ -101,7 +105,8 @@ impl PlaceholderReachability {
 }
 
 /// An annotation for region graph SCCs that tracks
-/// the values of its elements.
+/// the values of its elements and properties of
+/// SCCs reached from them.
 #[derive(Copy, Debug, Clone)]
 struct RegionTracker {
     /// The representative Region Variable Id for this SCC.
@@ -113,7 +118,13 @@ struct RegionTracker {
     // Metadata about reachable placeholders
     reachable_placeholders: PlaceholderReachability,
 
-    // Track the existential with the smallest universe we reach.
+    /// Track the existential with the smallest universe we reach.
+    /// For existentials, the assigned universe corresponds to the
+    /// largest universed placeholder they are allowed to end up in.
+    ///
+    /// In other words, this tracks the smallest maximum (hardest constraint)
+    /// of any existential this SCC reaches, and the rvid of the existential
+    /// that brought it.
     min_universe_reachable_existential: Option<(UniverseIndex, RegionVid)>,
 }
 
@@ -148,8 +159,8 @@ impl scc::Annotation for RegionTracker {
         // illegally reached universes, but they are not equally good as blame candidates.
         // In general, the ones with the smallest indices of their RegionVids will
         // be the best ones, and those will also be visited first. This code
-        // then will suptly prefer a universe violation caused by a placeholder
-        // with a small RegionVid over one with a large RegionVid.
+        // then will suptly prefer a universe violation happening close from where the
+        // constraint graph walk started over one that happens later.
         // FIXME: a potential optimisation if this is slow is to reimplement
         // this check as a boolean fuse, since it will idempotently turn
         // true once triggered and never go false again.
@@ -164,10 +175,14 @@ impl scc::Annotation for RegionTracker {
     }
 }
 
+/// Select the worst universe-constrained of two existentials.
 fn smallest_reachable_existential(
     min_universe_reachable_existential_1: Option<(UniverseIndex, RegionVid)>,
     min_universe_reachable_existential_2: Option<(UniverseIndex, RegionVid)>,
 ) -> Option<(UniverseIndex, RegionVid)> {
+    // Note: this will prefer a small region vid over a large one. That's generally
+    // good, but this probably does not affect the outcome. It might affect diagnostics
+    // in the future.
     match (min_universe_reachable_existential_1, min_universe_reachable_existential_2) {
         (Some(a), Some(b)) => Some(std::cmp::min(a, b)),
         (a, b) => a.or(b),
@@ -307,6 +322,17 @@ impl scc::Annotations<RegionVid, ConstraintSccIndex, Representative>
     }
 }
 
+/// Identify errors where placeholders illegally reach other regions, and generate
+/// errors stored into `errors_buffer`.
+///
+/// There are two sources of such errors:
+/// 1. A placeholder reaches (possibly transitively) another placeholder.
+/// 2. A placeholder `p` reaches (possibly transitively) an existential `e`,
+///    where `e` has an allowed maximum universe smaller than `p`'s.
+///
+/// There are other potential placeholder errors, but those are detected after
+/// region inference, since it may apply type tests or member constraints that
+/// alter the contents of SCCs and thus can't be detected at this point.
 #[instrument(skip(definitions, sccs, annotations, errors_buffer), level = "debug")]
 fn find_placeholder_mismatch_errors<'tcx>(
     definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
@@ -395,8 +421,7 @@ fn find_placeholder_mismatch_errors<'tcx>(
 ///
 /// This code is a stop-gap measure in preparation for the future trait solver.
 ///
-/// Every constraint added by this method is an
-/// internal `IllegalUniverse` constraint.
+/// Every constraint added by this method is an internal `IllegalUniverse` constraint.
 #[instrument(skip(tcx, outlives_constraints))]
 pub(crate) fn rewrite_higher_kinded_outlives_as_constraints<'tcx>(
     mut outlives_constraints: OutlivesConstraintSet<'tcx>,
@@ -501,12 +526,17 @@ pub(crate) fn rewrite_higher_kinded_outlives_as_constraints<'tcx>(
         scc_annotations[sccs.scc(r1)].min_universe() != scc_annotations[sccs.scc(r2)].min_universe()
     };
 
+    // Rewrite member constraints to exclude choices of regions that would violate
+    // the respective region's computed (minimum) universe.
     let member_constraints = member_constraints.into_mapped(
         |r| sccs.scc(r),
         |r| scc_annotations[sccs.scc(r)].in_root_universe(),
         different_universes,
     );
 
+    // We strip out the extra information and only keep the `Representative`;
+    // all the information about placeholders and their universes is no longer
+    // needed.
     let scc_representatives = scc_annotations
         .into_iter()
         .map(|rich_annotation| rich_annotation.into_representative())
@@ -529,13 +559,16 @@ fn rewrite_outlives<'tcx>(
     outlives_constraints: &mut OutlivesConstraintSet<'tcx>,
     definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
 ) -> FxHashSet<ConstraintSccIndex> {
-    // Is this SCC already outliving static directly or transitively?
+    // Is this SCC already outliving 'static directly or transitively?
     let mut outlives_static = FxHashSet::default();
 
     let mut memoised_constraint_graph: Option<ConstraintGraph<Normal>> = None;
 
     for scc in sccs.all_sccs() {
         let annotation: RegionTracker = annotations.scc_to_annotation[scc];
+        // you may be tempted to add 'static to `outlives_static`, but
+        // we need it to be empty if no constraints were added for a
+        // later cheap check to see if we did any work.
         if scc == sccs.scc(fr_static) {
             trace!("Skipping adding 'static: 'static.");
             // No use adding 'static: 'static.
@@ -631,7 +664,10 @@ fn find_region<'tcx>(
             }
         }
     }
-    unreachable!("Should have found something!");
+    // since this function is used exclusively in this module, we know
+    // we are only searching for regions we found in the region graph,
+    // so if we don't find what we are looking for there's a bug somwehere.
+    bug!("Should have found something!");
 }
 
 #[derive(Debug, Clone)]
@@ -647,6 +683,7 @@ pub(crate) enum RewrittenVerifyBound<'tcx> {
     Unsatisfied,
 }
 
+/// A type test rewritten to handle higher-kinded concerns.
 #[derive(Debug, Clone)]
 pub(crate) enum LoweredTypeTest<'tcx> {
     Untouched(TypeTest<'tcx>),
@@ -682,6 +719,8 @@ fn rewrite_verify_bound<'t>(
         // are both empty. This bit ensures that whatever comes out of the
         // bound also matches the placeholder reachability of the lower bound.
         VerifyBound::IfEq(verify_if_eq_b) => {
+            // this bit picks out the worst possible candidate that can end up for the match
+            // in terms of its universe.
             let mut m = MatchUniverses::new(tcx, sccs, scc_annotations, universal_regions);
             let verify_if_eq = verify_if_eq_b.skip_binder();
             let what_error = m.relate(verify_if_eq.ty, generic_kind.to_ty(tcx));
@@ -731,41 +770,58 @@ fn rewrite_verify_bound<'t>(
                 Either::Right(RewrittenVerifyBound::Unsatisfied)
             }
         }
-        // Note that this (and below) claims the contents are always rewritten, even if they weren't.
-        // This does not affect correctness, but is surprising.
-        VerifyBound::AnyBound(verify_bounds) => Either::Right(RewrittenVerifyBound::AnyBound(
-            verify_bounds
-                .into_iter()
-                .map(|bound| {
-                    rewrite_verify_bound(
-                        bound,
-                        lower_scc,
-                        sccs,
-                        scc_annotations,
-                        universal_regions,
-                        tcx,
-                        generic_kind,
-                    )
-                })
-                .collect(),
-        )),
-        VerifyBound::AllBounds(verify_bounds) => Either::Right(RewrittenVerifyBound::AllBounds(
-            verify_bounds
-                .into_iter()
-                .map(|bound| {
-                    rewrite_verify_bound(
-                        bound,
-                        lower_scc,
-                        sccs,
-                        scc_annotations,
-                        universal_regions,
-                        tcx,
-                        generic_kind,
-                    )
-                })
-                .collect(),
-        )),
+        // It's tempting to try to rewrite this or the next one to be able to
+        // return the regular bounds if in fact none of them needed rewriting,
+        // but for reasons of "computer is dumb" this is trickier than you may think.
+        VerifyBound::AnyBound(verify_bounds) => {
+            either::Right(RewrittenVerifyBound::AnyBound(rewrite_verify_bounds(
+                verify_bounds,
+                lower_scc,
+                sccs,
+                scc_annotations,
+                universal_regions,
+                tcx,
+                generic_kind,
+            )))
+        }
+        VerifyBound::AllBounds(verify_bounds) => {
+            either::Right(RewrittenVerifyBound::AllBounds(rewrite_verify_bounds(
+                verify_bounds,
+                lower_scc,
+                sccs,
+                scc_annotations,
+                universal_regions,
+                tcx,
+                generic_kind,
+            )))
+        }
     }
+}
+
+// FIXME This is crying out for a TypeTestRewritingContext.
+fn rewrite_verify_bounds<'t>(
+    verify_bounds: Vec<VerifyBound<'t>>,
+    lower_scc: ConstraintSccIndex,
+    sccs: &Sccs<RegionVid, ConstraintSccIndex>,
+    scc_annotations: &IndexVec<ConstraintSccIndex, RegionTracker>,
+    universal_regions: &UniversalRegions<'t>,
+    tcx: TyCtxt<'t>,
+    generic_kind: GenericKind<'t>,
+) -> Vec<Either<VerifyBound<'t>, RewrittenVerifyBound<'t>>> {
+    verify_bounds
+        .into_iter()
+        .map(|bound| {
+            rewrite_verify_bound(
+                bound,
+                lower_scc,
+                sccs,
+                scc_annotations,
+                universal_regions,
+                tcx,
+                generic_kind,
+            )
+        })
+        .collect()
 }
 
 impl<'t> TypeTest<'t> {
@@ -873,6 +929,7 @@ impl<'tcx, 'v> TypeRelation<TyCtxt<'tcx>> for MatchUniverses<'tcx, 'v> {
     }
 }
 
+/// A `TypeRelation` visitor that computes the largest universe.
 struct MatchUniverses<'tcx, 'v> {
     tcx: TyCtxt<'tcx>,
     pattern_depth: ty::DebruijnIndex,
