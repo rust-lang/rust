@@ -56,7 +56,8 @@ fn f8(x: &f32) -> f32 {
 
 // We want to make sure that we can use the macro for functions defined inside of functions
 pub fn f9() {
-    #[autodiff(d_inner, Forward, Dual, DualOnly)]
+    #[autodiff(d_inner_1, Forward, Dual, DualOnly)]
+    #[autodiff(d_inner_2, Forward, Dual, Dual)]
     fn inner(x: f32) -> f32 {
         x * x
     }
