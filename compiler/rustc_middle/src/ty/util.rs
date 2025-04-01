@@ -414,18 +414,18 @@ impl<'tcx> TyCtxt<'tcx> {
                 continue;
             };
 
-            if let Some((old_item_id, _)) = dtor_candidate {
+            if let Some(old_item_id) = dtor_candidate {
                 self.dcx()
                     .struct_span_err(self.def_span(item_id), "multiple drop impls found")
                     .with_span_note(self.def_span(old_item_id), "other impl here")
                     .delay_as_bug();
             }
 
-            dtor_candidate = Some((*item_id, self.impl_trait_header(impl_did).unwrap().constness));
+            dtor_candidate = Some(*item_id);
         }
 
-        let (did, constness) = dtor_candidate?;
-        Some(ty::Destructor { did, constness })
+        let did = dtor_candidate?;
+        Some(ty::Destructor { did })
     }
 
     /// Calculate the async destructor of a given type.
