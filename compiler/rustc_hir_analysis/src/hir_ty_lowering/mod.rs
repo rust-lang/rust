@@ -1730,25 +1730,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .is_accessible_from(self.item_def_id(), tcx)
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
-                            let impl_header = tcx.impl_trait_header(impl_def_id);
-                            impl_header.is_some_and(|header| {
-                                let trait_ref = header.trait_ref.instantiate(
-                                    tcx,
-                                    infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
-                                );
+                            let header = tcx.impl_trait_header(impl_def_id).unwrap();
+                            let trait_ref = header.trait_ref.instantiate(
+                                tcx,
+                                infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
+                            );
 
-                                let value = fold_regions(tcx, qself_ty, |_, _| tcx.lifetimes.re_erased);
-                                // FIXME: Don't bother dealing with non-lifetime binders here...
-                                if value.has_escaping_bound_vars() {
-                                    return false;
-                                }
-                                infcx
-                                    .can_eq(
-                                        ty::ParamEnv::empty(),
-                                        trait_ref.self_ty(),
-                                        value,
-                                    ) && header.polarity != ty::ImplPolarity::Negative
-                            })
+                            let value = fold_regions(tcx, qself_ty, |_, _| tcx.lifetimes.re_erased);
+                            // FIXME: Don't bother dealing with non-lifetime binders here...
+                            if value.has_escaping_bound_vars() {
+                                return false;
+                            }
+                            infcx
+                                .can_eq(
+                                    ty::ParamEnv::empty(),
+                                    trait_ref.self_ty(),
+                                    value,
+                                ) && header.polarity != ty::ImplPolarity::Negative
                         })
             })
             .map(|trait_def_id| tcx.def_path_str(trait_def_id))
