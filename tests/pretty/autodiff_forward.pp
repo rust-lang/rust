@@ -106,9 +106,17 @@ pub fn f6() {
     #[rustc_autodiff]
     #[inline(never)]
     fn inner(x: f32) -> f32 { x * x }
+    #[rustc_autodiff(Forward, Dual, Dual,)]
+    #[inline(never)]
+    fn d_inner_2(x: f32, bx: f32) -> (f32, f32) {
+        unsafe { asm!("NOP", options(pure, nomem)); };
+        ::core::hint::black_box(inner(x));
+        ::core::hint::black_box((bx,));
+        ::core::hint::black_box((inner(x), f32::default()))
+    }
     #[rustc_autodiff(Forward, Dual, DualOnly,)]
     #[inline(never)]
-    fn d_inner(x: f32, bx: f32) -> f32 {
+    fn d_inner_1(x: f32, bx: f32) -> f32 {
         unsafe { asm!("NOP", options(pure, nomem)); };
         ::core::hint::black_box(inner(x));
         ::core::hint::black_box((bx,));
