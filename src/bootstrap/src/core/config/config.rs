@@ -701,6 +701,7 @@ pub(crate) struct TomlConfig {
     target: Option<HashMap<String, TomlTarget>>,
     dist: Option<Dist>,
     profile: Option<String>,
+    include: Option<Vec<PathBuf>>,
 }
 
 /// This enum is used for deserializing change IDs from TOML, allowing both numeric values and the string `"ignore"`.
@@ -753,7 +754,7 @@ trait Merge {
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
-        TomlConfig { build, install, llvm, gcc, rust, dist, target, profile, change_id }: Self,
+        TomlConfig { build, install, llvm, gcc, rust, dist, target, profile, change_id, include }: Self,
         replace: ReplaceOpt,
     ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
@@ -764,6 +765,17 @@ impl Merge for TomlConfig {
                     *x = Some(new);
                 }
             }
+        }
+
+        for include_path in include.clone().unwrap_or_default() {
+            let included_toml = Config::get_toml(&include_path).unwrap_or_else(|e| {
+                eprintln!(
+                    "ERROR: Failed to parse default config profile at '{}': {e}",
+                    include_path.display()
+                );
+                exit!(2);
+            });
+            self.merge(included_toml, ReplaceOpt::Override);
         }
 
         self.change_id.inner.merge(change_id.inner, replace);
@@ -1598,6 +1610,17 @@ impl Config {
                 exit!(2);
             });
             toml.merge(included_toml, ReplaceOpt::IgnoreDuplicate);
+        }
+
+        for include_path in toml.include.clone().unwrap_or_default() {
+            let included_toml = get_toml(&include_path).unwrap_or_else(|e| {
+                eprintln!(
+                    "ERROR: Failed to parse default config profile at '{}': {e}",
+                    include_path.display()
+                );
+                exit!(2);
+            });
+            toml.merge(included_toml, ReplaceOpt::Override);
         }
 
         let mut override_toml = TomlConfig::default();
