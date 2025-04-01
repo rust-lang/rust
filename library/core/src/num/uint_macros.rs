@@ -273,8 +273,8 @@ macro_rules! uint_impl {
         ///
         #[doc = concat!("assert_eq!(n.cast_signed(), -1", stringify!($SignedT), ");")]
         /// ```
-        #[stable(feature = "integer_sign_cast", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "integer_sign_cast", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "integer_sign_cast", since = "1.87.0")]
+        #[rustc_const_stable(feature = "integer_sign_cast", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1616,8 +1616,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(129), 0);")]
         /// ```
-        #[stable(feature = "unbounded_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unbounded_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unbounded_shifts", since = "1.87.0")]
+        #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1737,8 +1737,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(4), 0x1);")]
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(129), 0);")]
         /// ```
-        #[stable(feature = "unbounded_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unbounded_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unbounded_shifts", since = "1.87.0")]
+        #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3331,8 +3331,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert!(0_", stringify!($SelfT), ".is_multiple_of(0));")]
         #[doc = concat!("assert!(!6_", stringify!($SelfT), ".is_multiple_of(0));")]
         /// ```
-        #[stable(feature = "unsigned_is_multiple_of", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unsigned_is_multiple_of", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unsigned_is_multiple_of", since = "1.87.0")]
+        #[rustc_const_stable(feature = "unsigned_is_multiple_of", since = "1.87.0")]
         #[must_use]
         #[inline]
         #[rustc_inherit_overflow_checks]

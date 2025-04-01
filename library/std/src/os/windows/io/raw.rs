@@ -311,42 +311,42 @@ impl IntoRawSocket for net::UdpSocket {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl AsRawHandle for io::PipeReader {
     fn as_raw_handle(&self) -> RawHandle {
         self.0.as_raw_handle()
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl FromRawHandle for io::PipeReader {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
         unsafe { Self::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl IntoRawHandle for io::PipeReader {
     fn into_raw_handle(self) -> RawHandle {
         self.0.into_raw_handle()
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl AsRawHandle for io::PipeWriter {
     fn as_raw_handle(&self) -> RawHandle {
         self.0.as_raw_handle()
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl FromRawHandle for io::PipeWriter {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
         unsafe { Self::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl IntoRawHandle for io::PipeWriter {
     fn into_raw_handle(self) -> RawHandle {
         self.0.into_raw_handle()

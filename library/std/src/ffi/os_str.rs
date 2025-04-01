@@ -1255,7 +1255,7 @@ impl OsStr {
     /// let s = OsStr::new("Hello, world!");
     /// println!("{}", s.display());
     /// ```
-    #[stable(feature = "os_str_display", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "os_str_display", since = "1.87.0")]
     #[must_use = "this does not display the `OsStr`; \
                   it returns an object that can be displayed"]
     #[inline]
@@ -1612,19 +1612,19 @@ impl fmt::Debug for OsStr {
 ///
 /// [`Display`]: fmt::Display
 /// [`format!`]: crate::format
-#[stable(feature = "os_str_display", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "os_str_display", since = "1.87.0")]
 pub struct Display<'a> {
     os_str: &'a OsStr,
 }
 
-#[stable(feature = "os_str_display", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "os_str_display", since = "1.87.0")]
 impl fmt::Debug for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.os_str, f)
     }
 }
 
-#[stable(feature = "os_str_display", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "os_str_display", since = "1.87.0")]
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.os_str.inner, f)
