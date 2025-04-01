@@ -486,19 +486,18 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
 pub(crate) struct Coroutine(pub hir::CoroutineKind);
 impl<'tcx> NonConstOp<'tcx> for Coroutine {
     fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
-        if let hir::CoroutineKind::Desugared(
-            hir::CoroutineDesugaring::Async,
-            hir::CoroutineSource::Block,
-        ) = self.0
-        {
-            Status::Unstable {
+        match self.0 {
+            hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async,
+                hir::CoroutineSource::Block,
+            )
+            | hir::CoroutineKind::Coroutine(_) => Status::Unstable {
                 gate: sym::const_async_blocks,
                 gate_already_checked: false,
                 safe_to_expose_on_stable: false,
                 is_function_call: false,
-            }
-        } else {
-            Status::Forbidden
+            },
+            _ => Status::Forbidden,
         }
     }
 

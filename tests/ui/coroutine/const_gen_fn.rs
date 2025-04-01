@@ -8,5 +8,6 @@ const gen fn a() {}
 
 const async gen fn b() {}
 //~^ ERROR functions cannot be both `const` and `async gen`
+//~^^ ERROR `async gen` fn bodies are not allowed in constant functions
 
 fn main() {}
