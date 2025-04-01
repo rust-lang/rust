@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `r` as mutable more than once at a time
-  --> $DIR/only-inhabited-variant-stable.rs:15:17
+  --> $DIR/only-inhabited-variant-stable.rs:14:17
    |
 LL |     let mut f = || {
    |                 -- first mutable borrow occurs here
