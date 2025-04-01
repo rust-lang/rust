@@ -817,10 +817,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.has_proc_macro_decls = true;
         }
 
-        if attr::contains_name(&item.attrs, sym::no_mangle) {
-            if let Some(ident) = item.kind.ident() {
-                self.check_nomangle_item_asciionly(ident, item.span);
-            }
+        if let Some(ident) = item.kind.ident()
+            && attr::contains_name(&item.attrs, sym::no_mangle)
+        {
+            self.check_nomangle_item_asciionly(ident, item.span);
         }
 
         match &item.kind {
@@ -1412,10 +1412,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
-        if attr::contains_name(&item.attrs, sym::no_mangle) {
-            if let Some(ident) = item.kind.ident() {
-                self.check_nomangle_item_asciionly(ident, item.span);
-            }
+        if let Some(ident) = item.kind.ident()
+            && attr::contains_name(&item.attrs, sym::no_mangle)
+        {
+            self.check_nomangle_item_asciionly(ident, item.span);
         }
 
         if ctxt == AssocCtxt::Trait || self.outer_trait_or_trait_impl.is_none() {

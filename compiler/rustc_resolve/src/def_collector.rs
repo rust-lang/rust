@@ -186,8 +186,11 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             FnKind::Fn(
                 _ctxt,
                 _vis,
-                Fn { sig: FnSig { header, decl, span: _ }, generics, contract, body, .. },
+                Fn {
+                    sig: FnSig { header, decl, span: _ }, ident, generics, contract, body, ..
+                },
             ) if let Some(coroutine_kind) = header.coroutine_kind => {
+                self.visit_ident(ident);
                 self.visit_fn_header(header);
                 self.visit_generics(generics);
                 if let Some(contract) = contract {

@@ -1223,9 +1223,7 @@ impl InvocationCollectorNode for P<ast::Item> {
 
         // Work around borrow checker not seeing through `P`'s deref.
         let (span, mut attrs) = (node.span, mem::take(&mut node.attrs));
-        let ItemKind::Mod(_, ident, mod_kind) = &mut node.kind else { unreachable!() };
-        let ident = *ident;
-
+        let ItemKind::Mod(_, ident, ref mut mod_kind) = node.kind else { unreachable!() };
         let ecx = &mut collector.cx;
         let (file_path, dir_path, dir_ownership) = match mod_kind {
             ModKind::Loaded(_, inline, _, _) => {

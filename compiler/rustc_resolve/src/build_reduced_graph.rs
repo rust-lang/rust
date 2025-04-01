@@ -10,8 +10,8 @@ use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
-    self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, ForeignItem,
-    ForeignItemKind, Impl, Item, ItemKind, MetaItemKind, NodeId, StaticItem, StmtKind,
+    self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
+    ForeignItemKind, Impl, Item, ItemKind, MetaItemKind, NodeId, StaticItem, StmtKind, TyAlias,
 };
 use rustc_attr_parsing as attr;
 use rustc_expand::base::ResolverExpand;
@@ -764,8 +764,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ItemKind::ExternCrate(orig_name, ident) => {
                 self.build_reduced_graph_for_extern_crate(
                     orig_name,
-                    ident,
                     item,
+                    ident,
                     local_def_id,
                     vis,
                     parent,
@@ -797,7 +797,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             | ItemKind::Static(box StaticItem { ident, .. }) => {
                 self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
             }
-            ItemKind::Fn(box ast::Fn { ident, .. }) => {
+            ItemKind::Fn(box Fn { ident, .. }) => {
                 self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
 
                 // Functions introducing procedural macros reserve a slot
@@ -806,7 +806,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(box ast::TyAlias { ident, .. }) | ItemKind::TraitAlias(ident, ..) => {
+            ItemKind::TyAlias(box TyAlias { ident, .. }) | ItemKind::TraitAlias(ident, ..) => {
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
@@ -900,8 +900,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     fn build_reduced_graph_for_extern_crate(
         &mut self,
         orig_name: Option<Symbol>,
-        ident: Ident,
         item: &Item,
+        ident: Ident,
         local_def_id: LocalDefId,
         vis: ty::Visibility,
         parent: Module<'ra>,
@@ -1362,14 +1362,16 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
-        if let ForeignItemKind::MacCall(_) = foreign_item.kind {
-            self.visit_invoc_in_module(foreign_item.id);
-            return;
-        }
+        let ident = match foreign_item.kind {
+            ForeignItemKind::Static(box StaticItem { ident, .. })
+            | ForeignItemKind::Fn(box Fn { ident, .. })
+            | ForeignItemKind::TyAlias(box TyAlias { ident, .. }) => ident,
+            ForeignItemKind::MacCall(_) => {
+                self.visit_invoc_in_module(foreign_item.id);
+                return;
+            }
+        };
 
-        // `unwrap` is safe because `MacCall` has been excluded, and other foreign item kinds have
-        // an ident.
-        let ident = foreign_item.kind.ident().unwrap();
         self.build_reduced_graph_for_foreign_item(foreign_item, ident);
         visit::walk_item(self, foreign_item);
     }
@@ -1384,26 +1386,35 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
-        if let AssocItemKind::MacCall(_) = item.kind {
-            match ctxt {
-                AssocCtxt::Trait => {
-                    self.visit_invoc_in_module(item.id);
-                }
-                AssocCtxt::Impl { .. } => {
-                    let invoc_id = item.id.placeholder_to_expn_id();
-                    if !self.r.glob_delegation_invoc_ids.contains(&invoc_id) {
-                        self.r
-                            .impl_unexpanded_invocations
-                            .entry(self.r.invocation_parent(invoc_id))
-                            .or_default()
-                            .insert(invoc_id);
-                    }
-                    self.visit_invoc(item.id);
-                }
-            }
-            return;
-        }
+        let (ident, ns) = match item.kind {
+            AssocItemKind::Const(box ConstItem { ident, .. })
+            | AssocItemKind::Fn(box Fn { ident, .. })
+            | AssocItemKind::Delegation(box Delegation { ident, .. }) => (ident, ValueNS),
 
+            AssocItemKind::Type(box TyAlias { ident, .. }) => (ident, TypeNS),
+
+            AssocItemKind::MacCall(_) => {
+                match ctxt {
+                    AssocCtxt::Trait => {
+                        self.visit_invoc_in_module(item.id);
+                    }
+                    AssocCtxt::Impl { .. } => {
+                        let invoc_id = item.id.placeholder_to_expn_id();
+                        if !self.r.glob_delegation_invoc_ids.contains(&invoc_id) {
+                            self.r
+                                .impl_unexpanded_invocations
+                                .entry(self.r.invocation_parent(invoc_id))
+                                .or_default()
+                                .insert(invoc_id);
+                        }
+                        self.visit_invoc(item.id);
+                    }
+                }
+                return;
+            }
+
+            AssocItemKind::DelegationMac(..) => bug!(),
+        };
         let vis = self.resolve_visibility(&item.vis);
         let feed = self.r.feed(item.id);
         let local_def_id = feed.key();
@@ -1418,16 +1429,6 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             self.r.feed_visibility(feed, vis);
         }
 
-        let ns = match item.kind {
-            AssocItemKind::Const(..) | AssocItemKind::Delegation(..) | AssocItemKind::Fn(..) => {
-                ValueNS
-            }
-            AssocItemKind::Type(..) => TypeNS,
-            AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => bug!(), // handled above
-        };
-        // `unwrap` is safe because `MacCall`/`DelegationMac` have been excluded, and other foreign
-        // item kinds have an ident.
-        let ident = item.kind.ident().unwrap();
         if ctxt == AssocCtxt::Trait {
             let parent = self.parent_scope.module;
             let expansion = self.parent_scope.expansion;

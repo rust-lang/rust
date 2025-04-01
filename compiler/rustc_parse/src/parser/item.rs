@@ -243,8 +243,7 @@ impl<'a> Parser<'a> {
             // STATIC ITEM
             self.bump(); // `static`
             let mutability = self.parse_mutability();
-            let item = self.parse_static_item(safety, mutability)?;
-            ItemKind::Static(Box::new(item))
+            self.parse_static_item(safety, mutability)?
         } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
@@ -681,7 +680,7 @@ impl<'a> Parser<'a> {
             }
             None => (None, ty_first), // impl Type
         };
-        let item_kind = ItemKind::Impl(Box::new(Impl {
+        Ok(ItemKind::Impl(Box::new(Impl {
             safety,
             polarity,
             defaultness,
@@ -690,9 +689,7 @@ impl<'a> Parser<'a> {
             of_trait,
             self_ty,
             items: impl_items,
-        }));
-
-        Ok(item_kind)
+        })))
     }
 
     fn parse_item_delegation(&mut self) -> PResult<'a, ItemKind> {
@@ -1222,13 +1219,12 @@ impl<'a> Parser<'a> {
             safety = Safety::Unsafe(self.token.span);
             let _ = self.eat_keyword(exp!(Unsafe));
         }
-        let module = ast::ForeignMod {
+        Ok(ItemKind::ForeignMod(ast::ForeignMod {
             extern_span,
             safety,
             abi,
             items: self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?,
-        };
-        Ok(ItemKind::ForeignMod(module))
+        }))
     }
 
     /// Parses a foreign item (one in an `extern { ... }` block).
@@ -1370,7 +1366,8 @@ impl<'a> Parser<'a> {
         Ok(item_kind)
     }
 
-    /// Parse a static item with the prefix `"static" "mut"?` already parsed and stored in `mutability`.
+    /// Parse a static item with the prefix `"static" "mut"?` already parsed and stored in
+    /// `mutability`.
     ///
     /// ```ebnf
     /// Static = "static" "mut"? $ident ":" $ty (= $expr)? ";" ;
@@ -1379,7 +1376,7 @@ impl<'a> Parser<'a> {
         &mut self,
         safety: Safety,
         mutability: Mutability,
-    ) -> PResult<'a, StaticItem> {
+    ) -> PResult<'a, ItemKind> {
         let ident = self.parse_ident()?;
 
         if self.token == TokenKind::Lt && self.may_recover() {
@@ -1391,7 +1388,8 @@ impl<'a> Parser<'a> {
         // FIXME: This could maybe benefit from `.may_recover()`?
         let ty = match (self.eat(exp!(Colon)), self.check(exp!(Eq)) | self.check(exp!(Semi))) {
             (true, false) => self.parse_ty()?,
-            // If there wasn't a `:` or the colon was followed by a `=` or `;`, recover a missing type.
+            // If there wasn't a `:` or the colon was followed by a `=` or `;`, recover a missing
+            // type.
             (colon, _) => self.recover_missing_global_item_type(colon, Some(mutability)),
         };
 
@@ -1399,7 +1397,8 @@ impl<'a> Parser<'a> {
 
         self.expect_semi()?;
 
-        Ok(StaticItem { ident, ty, safety, mutability, expr, define_opaque: None })
+        let item = StaticItem { ident, ty, safety, mutability, expr, define_opaque: None };
+        Ok(ItemKind::Static(Box::new(item)))
     }
 
     /// Parse a constant item with the prefix `"const"` already parsed.
@@ -1537,7 +1536,7 @@ impl<'a> Parser<'a> {
         }
 
         let prev_span = self.prev_token.span;
-        let id = self.parse_ident()?;
+        let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
 
@@ -1548,10 +1547,10 @@ impl<'a> Parser<'a> {
             (thin_vec![], Trailing::No)
         } else {
             self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |p| {
-                p.parse_enum_variant(id.span)
+                p.parse_enum_variant(ident.span)
             })
             .map_err(|mut err| {
-                err.span_label(id.span, "while parsing this enum");
+                err.span_label(ident.span, "while parsing this enum");
                 if self.token == token::Colon {
                     let snapshot = self.create_snapshot_for_diagnostic();
                     self.bump();
@@ -1577,7 +1576,7 @@ impl<'a> Parser<'a> {
         };
 
         let enum_definition = EnumDef { variants: variants.into_iter().flatten().collect() };
-        Ok(ItemKind::Enum(id, enum_definition, generics))
+        Ok(ItemKind::Enum(ident, enum_definition, generics))
     }
 
     fn parse_enum_variant(&mut self, span: Span) -> PResult<'a, Option<Variant>> {

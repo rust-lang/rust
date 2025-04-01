@@ -213,10 +213,8 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             return;
         };
 
-        // First up, make sure we're checking a bare function. If we're not then
-        // we're just not interested in this item.
-        //
-        // If we find one, try to locate a `#[proc_macro_derive]` attribute on it.
+        // Make sure we're checking a bare function. If we're not then we're
+        // just not interested any further in this item.
         let fn_ident = if let ast::ItemKind::Fn(fn_) = &item.kind {
             fn_.ident
         } else {
@@ -243,6 +241,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             return;
         }
 
+        // Try to locate a `#[proc_macro_derive]` attribute.
         if attr.has_name(sym::proc_macro_derive) {
             self.collect_custom_derive(item, fn_ident, attr);
         } else if attr.has_name(sym::proc_macro_attribute) {
