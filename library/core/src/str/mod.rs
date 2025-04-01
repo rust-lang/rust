@@ -78,6 +78,7 @@ const fn slice_error_fail_ct(_: &str, _: usize, _: usize) -> ! {
     panic!("failed to slice string");
 }
 
+#[cfg(not(feature = "panic_immediate_abort"))]
 #[track_caller]
 fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     const MAX_DISPLAY_LENGTH: usize = 256;

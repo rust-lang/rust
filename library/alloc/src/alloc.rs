@@ -400,6 +400,7 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
     }
 
     #[inline]
+    #[cfg(not(feature = "panic_immediate_abort"))]
     fn rt_error(layout: Layout) -> ! {
         unsafe {
             __rust_alloc_error_handler(layout.size(), layout.align());

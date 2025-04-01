@@ -53,6 +53,10 @@ const _: () = assert!(cfg!(panic = "abort"), "panic_immediate_abort requires -C 
 #[rustc_do_not_const_check] // hooked by const-eval
 #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
+    if cfg!(feature = "panic_unreachable_unchecked") {
+        // SAFETY: it's not...
+        unsafe { super::intrinsics::unreachable() }
+    }
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
@@ -94,6 +98,10 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
             // We don't unwind anyway at compile-time so we can call the regular `panic_fmt`.
             panic_fmt(fmt)
         } else #[track_caller] {
+            if cfg!(feature = "panic_unreachable_unchecked") {
+                // SAFETY: it's not...
+                unsafe { super::intrinsics::unreachable() }
+            }
             if cfg!(feature = "panic_immediate_abort") {
                 super::intrinsics::abort()
             }
@@ -266,6 +274,10 @@ pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
 #[track_caller]
 #[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
 fn panic_bounds_check(index: usize, len: usize) -> ! {
+    if cfg!(feature = "panic_unreachable_unchecked") {
+        // SAFETY: it's not...
+        unsafe { super::intrinsics::unreachable() }
+    }
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
@@ -279,6 +291,10 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
 #[rustc_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind
 fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
+    if cfg!(feature = "panic_unreachable_unchecked") {
+        // SAFETY: it's not...
+        unsafe { super::intrinsics::unreachable() }
+    }
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
@@ -297,6 +313,10 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
 #[lang = "panic_null_pointer_dereference"] // needed by codegen for panic on null pointer deref
 #[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
 fn panic_null_pointer_dereference() -> ! {
+    if cfg!(feature = "panic_unreachable_unchecked") {
+        // SAFETY: it's not...
+        unsafe { super::intrinsics::unreachable() }
+    }
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }

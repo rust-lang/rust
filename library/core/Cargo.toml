@@ -18,6 +18,8 @@ bench = false
 [features]
 # Make panics and failed asserts immediately abort without formatting any message
 panic_immediate_abort = []
+# Make the optimizer assume panics are unreachable.
+panic_unreachable_unchecked = ["panic_immediate_abort"]
 # Choose algorithms that are optimized for binary size instead of runtime performance
 optimize_for_size = []
 # Make `RefCell` store additional debugging information, which is printed out when

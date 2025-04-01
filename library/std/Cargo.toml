@@ -107,6 +107,12 @@ panic_immediate_abort = [
     "core/panic_immediate_abort",
     "alloc/panic_immediate_abort",
 ]
+# Make the optimizer assume panics are unreachable.
+panic_unreachable_unchecked = [
+    "panic_immediate_abort",
+    "core/panic_unreachable_unchecked",
+    "alloc/panic_unreachable_unchecked",
+]
 # Choose algorithms that are optimized for binary size instead of runtime performance
 optimize_for_size = ["core/optimize_for_size", "alloc/optimize_for_size"]
 

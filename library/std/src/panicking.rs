@@ -19,13 +19,14 @@ use realstd::io::try_set_output_capture;
 use crate::any::Any;
 #[cfg(not(test))]
 use crate::io::try_set_output_capture;
-use crate::mem::{self, ManuallyDrop};
+#[cfg(not(feature = "panic_immediate_abort"))]
+use crate::mem::ManuallyDrop;
 use crate::panic::{BacktraceStyle, PanicHookInfo};
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{PoisonError, RwLock};
 use crate::sys::backtrace;
 use crate::sys::stdio::panic_output;
-use crate::{fmt, intrinsics, process, thread};
+use crate::{fmt, intrinsics, mem, process, thread};
 
 // This forces codegen of the function called by panic!() inside the std crate, rather than in
 // downstream crates. Primarily this is useful for rustc's codegen tests, which rely on noticing
@@ -341,7 +342,7 @@ pub mod panic_count {
     }
 
     #[inline]
-    pub fn increase(run_panic_hook: bool) -> Option<MustAbort> {
+    pub fn increase(_run_panic_hook: bool) -> Option<MustAbort> {
         None
     }
 
@@ -726,6 +727,10 @@ pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
 #[track_caller]
 #[rustc_do_not_const_check] // hooked by const-eval
 pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
+    if cfg!(feature = "panic_unreachable_unchecked") {
+        // SAFETY: it's not...
+        unsafe { super::intrinsics::unreachable() }
+    }
     if cfg!(feature = "panic_immediate_abort") {
         intrinsics::abort()
     }
@@ -898,7 +903,5 @@ fn rust_panic(msg: &mut dyn PanicPayload) -> ! {
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
 #[cfg(feature = "panic_immediate_abort")]
 fn rust_panic(_: &mut dyn PanicPayload) -> ! {
-    unsafe {
-        crate::intrinsics::abort();
-    }
+    crate::intrinsics::abort();
 }
