@@ -4,19 +4,26 @@
 /* global MAIN_ID, getVar, getSettingsButton, getHelpButton */
 
 // Eventually fix this.
-// @ts-nocheck
 
 "use strict";
 
 (function() {
     const isSettingsPage = window.location.pathname.endsWith("/settings.html");
 
+    /**
+     * @overload {"theme"|"preferred-dark-theme"|"preferred-light-theme"}
+     * @param {string} settingName
+     * @param {string} value
+     * @returns
+     * @param {string} settingName
+     * @param {string|boolean} value
+     */
     function changeSetting(settingName, value) {
         if (settingName === "theme") {
             const useSystem = value === "system preference" ? "true" : "false";
             updateLocalStorage("use-system-theme", useSystem);
         }
-        updateLocalStorage(settingName, value);
+        updateLocalStorage(settingName, "" + value);
 
         switch (settingName) {
             case "theme":
@@ -27,9 +34,15 @@
                 break;
             case "line-numbers":
                 if (value === true) {
-                    window.rustdoc_add_line_numbers_to_examples();
+                    const f = window.rustdoc_add_line_numbers_to_examples;
+                    if (f !== undefined) {
+                        f();
+                    }
                 } else {
-                    window.rustdoc_remove_line_numbers_from_examples();
+                    const f = window.rustdoc_remove_line_numbers_from_examples;
+                    if (f !== undefined) {
+                        f();
+                    }
                 }
                 break;
             case "hide-sidebar":

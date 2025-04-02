@@ -78,6 +78,8 @@ declare global {
         pending_implementors?: rustdoc.Implementors,
         register_type_impls?: function(rustdoc.TypeImpls): void,
         pending_type_impls?: rustdoc.TypeImpls,
+        rustdoc_add_line_numbers_to_examples?: function(),
+        rustdoc_remove_line_numbers_from_examples?: function(),
     }
     interface HTMLElement {
         /** Used by the popover tooltip code. */
