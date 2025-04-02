@@ -31,7 +31,7 @@ fn rustfmt(
     // Avoid the submodule config paths from coming into play. We only allow a single global config
     // for the workspace for now.
     cmd.arg("--config-path").arg(src.canonicalize().unwrap());
-    cmd.arg("--edition").arg("2021");
+    cmd.arg("--edition").arg("2024");
     cmd.arg("--unstable-features");
     cmd.arg("--skip-children");
     if check {
