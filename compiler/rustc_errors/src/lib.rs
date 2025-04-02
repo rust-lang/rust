@@ -905,8 +905,8 @@ impl<'a> DiagCtxtHandle<'a> {
             DelayedBug => {
                 return self.inner.borrow_mut().emit_diagnostic(diag, self.tainted_with_errors);
             }
-            ForceWarning(_) | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
-            | Expect(_) => None,
+            ForceWarning | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
+            | Expect => None,
         };
 
         // FIXME(Centril, #69537): Consider reintroducing panic on overwriting a stashed diagnostic
@@ -1045,7 +1045,7 @@ impl<'a> DiagCtxtHandle<'a> {
                 // Use `ForceWarning` rather than `Warning` to guarantee emission, e.g. with a
                 // configuration like `--cap-lints allow --force-warn bare_trait_objects`.
                 inner.emit_diagnostic(
-                    DiagInner::new(ForceWarning(None), DiagMessage::Str(warnings)),
+                    DiagInner::new(ForceWarning, DiagMessage::Str(warnings)),
                     None,
                 );
             }
@@ -1450,7 +1450,7 @@ impl<'a> DiagCtxtHandle<'a> {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_expect(self, msg: impl Into<DiagMessage>, id: LintExpectationId) -> Diag<'a, ()> {
-        Diag::new(self, Expect(id), msg)
+        Diag::new(self, Expect, msg).with_lint_id(id)
     }
 }
 
@@ -1510,7 +1510,7 @@ impl DiagCtxtInner {
             // Future breakages aren't emitted if they're `Level::Allow` or
             // `Level::Expect`, but they still need to be constructed and
             // stashed below, so they'll trigger the must_produce_diag check.
-            assert_matches!(diagnostic.level, Error | Warning | Allow | Expect(_));
+            assert_matches!(diagnostic.level, Error | Warning | Allow | Expect);
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
@@ -1558,7 +1558,7 @@ impl DiagCtxtInner {
                     };
                 }
             }
-            ForceWarning(None) => {} // `ForceWarning(Some(...))` is below, with `Expect`
+            ForceWarning if diagnostic.lint_id.is_none() => {} // `ForceWarning(Some(...))` is below, with `Expect`
             Warning => {
                 if !self.flags.can_emit_warnings {
                     // We are not emitting warnings.
@@ -1580,9 +1580,9 @@ impl DiagCtxtInner {
                 }
                 return None;
             }
-            Expect(expect_id) | ForceWarning(Some(expect_id)) => {
-                self.fulfilled_expectations.insert(expect_id);
-                if let Expect(_) = diagnostic.level {
+            Expect | ForceWarning => {
+                self.fulfilled_expectations.insert(diagnostic.lint_id.unwrap());
+                if let Expect = diagnostic.level {
                     // Nothing emitted here for expected lints.
                     TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
                     self.suppressed_expected_diag = true;
@@ -1631,7 +1631,7 @@ impl DiagCtxtInner {
 
                 if is_error {
                     self.deduplicated_err_count += 1;
-                } else if matches!(diagnostic.level, ForceWarning(_) | Warning) {
+                } else if matches!(diagnostic.level, ForceWarning | Warning) {
                     self.deduplicated_warn_count += 1;
                 }
                 self.has_printed = true;
@@ -1899,9 +1899,9 @@ pub enum Level {
     /// A `force-warn` lint warning about the code being compiled. Does not prevent compilation
     /// from finishing.
     ///
-    /// The [`LintExpectationId`] is used for expected lint diagnostics. In all other cases this
+    /// Requires a [`LintExpectationId`] for expected lint diagnostics. In all other cases this
     /// should be `None`.
-    ForceWarning(Option<LintExpectationId>),
+    ForceWarning,
 
     /// A warning about the code being compiled. Does not prevent compilation from finishing.
     /// Will be skipped if `can_emit_warnings` is false.
@@ -1926,8 +1926,8 @@ pub enum Level {
     /// Only used for lints.
     Allow,
 
-    /// Only used for lints.
-    Expect(LintExpectationId),
+    /// Only used for lints. Requires a [`LintExpectationId`] for silencing the lints.
+    Expect,
 }
 
 impl fmt::Display for Level {
@@ -1943,7 +1943,7 @@ impl Level {
             Bug | Fatal | Error | DelayedBug => {
                 spec.set_fg(Some(Color::Red)).set_intense(true);
             }
-            ForceWarning(_) | Warning => {
+            ForceWarning | Warning => {
                 spec.set_fg(Some(Color::Yellow)).set_intense(cfg!(windows));
             }
             Note | OnceNote => {
@@ -1953,7 +1953,7 @@ impl Level {
                 spec.set_fg(Some(Color::Cyan)).set_intense(true);
             }
             FailureNote => {}
-            Allow | Expect(_) => unreachable!(),
+            Allow | Expect => unreachable!(),
         }
         spec
     }
@@ -1962,11 +1962,11 @@ impl Level {
         match self {
             Bug | DelayedBug => "error: internal compiler error",
             Fatal | Error => "error",
-            ForceWarning(_) | Warning => "warning",
+            ForceWarning | Warning => "warning",
             Note | OnceNote => "note",
             Help | OnceHelp => "help",
             FailureNote => "failure-note",
-            Allow | Expect(_) => unreachable!(),
+            Allow | Expect => unreachable!(),
         }
     }
 
@@ -1977,8 +1977,7 @@ impl Level {
     // Can this level be used in a subdiagnostic message?
     fn can_be_subdiag(&self) -> bool {
         match self {
-            Bug | DelayedBug | Fatal | Error | ForceWarning(_) | FailureNote | Allow
-            | Expect(_) => false,
+            Bug | DelayedBug | Fatal | Error | ForceWarning | FailureNote | Allow | Expect => false,
 
             Warning | Note | Help | OnceNote | OnceHelp => true,
         }

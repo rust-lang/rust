@@ -959,9 +959,9 @@ fn link_natively(
                 }
             }
 
-            let (level, src) = codegen_results.crate_info.lint_levels.linker_messages;
+            let level = codegen_results.crate_info.lint_levels.linker_messages;
             let lint = |msg| {
-                lint_level(sess, LINKER_MESSAGES, level, src, None, |diag| {
+                lint_level(sess, LINKER_MESSAGES, level, None, |diag| {
                     LinkerOutput { inner: msg }.decorate_lint(diag)
                 })
             };
