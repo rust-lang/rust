@@ -1,15 +1,15 @@
 Function name: closure::main
-Raw bytes (126): 0x[01, 01, 01, 01, 05, 18, 01, 09, 01, 0f, 0d, 01, 16, 0e, 06, 0a, 01, 10, 05, 13, 0d, 01, 1a, 0e, 06, 0a, 01, 10, 05, 0c, 16, 01, 16, 05, 0d, 18, 01, 19, 09, 01, 1e, 01, 04, 09, 00, 29, 01, 01, 09, 00, 2d, 01, 01, 09, 00, 24, 01, 05, 09, 00, 24, 01, 02, 09, 00, 21, 01, 04, 09, 00, 21, 01, 04, 09, 00, 28, 01, 09, 09, 00, 32, 01, 04, 09, 00, 33, 01, 07, 09, 00, 4b, 01, 08, 09, 00, 48, 01, 0a, 09, 00, 47, 01, 08, 09, 00, 44, 01, 0a, 08, 00, 10, 05, 00, 11, 04, 06, 02, 04, 05, 00, 06, 01, 01, 05, 03, 02]
+Raw bytes (126): 0x[01, 01, 01, 01, 05, 18, 01, 09, 01, 0d, 1b, 01, 1a, 05, 02, 0a, 01, 0c, 05, 11, 1b, 01, 1e, 05, 02, 0a, 01, 0c, 05, 0c, 16, 01, 16, 05, 0d, 18, 01, 19, 09, 01, 1e, 01, 04, 09, 00, 29, 01, 01, 09, 00, 2d, 01, 01, 09, 00, 24, 01, 05, 09, 00, 24, 01, 02, 09, 00, 21, 01, 04, 09, 00, 21, 01, 04, 09, 00, 28, 01, 09, 09, 00, 32, 01, 04, 09, 00, 33, 01, 07, 09, 00, 4b, 01, 08, 09, 00, 48, 01, 0a, 09, 00, 47, 01, 08, 09, 00, 44, 01, 0a, 08, 00, 10, 05, 00, 11, 04, 06, 02, 04, 05, 00, 06, 01, 01, 05, 03, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 24
-- Code(Counter(0)) at (prev + 9, 1) to (start + 15, 13)
-- Code(Counter(0)) at (prev + 22, 14) to (start + 6, 10)
-- Code(Counter(0)) at (prev + 16, 5) to (start + 19, 13)
-- Code(Counter(0)) at (prev + 26, 14) to (start + 6, 10)
-- Code(Counter(0)) at (prev + 16, 5) to (start + 12, 22)
+- Code(Counter(0)) at (prev + 9, 1) to (start + 13, 27)
+- Code(Counter(0)) at (prev + 26, 5) to (start + 2, 10)
+- Code(Counter(0)) at (prev + 12, 5) to (start + 17, 27)
+- Code(Counter(0)) at (prev + 30, 5) to (start + 2, 10)
+- Code(Counter(0)) at (prev + 12, 5) to (start + 12, 22)
 - Code(Counter(0)) at (prev + 22, 5) to (start + 13, 24)
 - Code(Counter(0)) at (prev + 25, 9) to (start + 1, 30)
 - Code(Counter(0)) at (prev + 4, 9) to (start + 0, 41)

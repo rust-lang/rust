@@ -1,5 +1,5 @@
 Function name: async_block::main
-Raw bytes (36): 0x[01, 01, 01, 05, 01, 06, 01, 07, 01, 00, 0b, 02, 01, 09, 00, 0a, 05, 00, 0e, 00, 13, 02, 00, 14, 01, 16, 02, 07, 0a, 02, 06, 01, 03, 01, 00, 02]
+Raw bytes (36): 0x[01, 01, 01, 05, 01, 06, 01, 07, 01, 00, 0b, 02, 01, 09, 00, 0a, 05, 00, 0e, 00, 13, 02, 01, 0d, 00, 13, 02, 07, 09, 00, 22, 01, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
@@ -9,11 +9,11 @@ Number of file 0 mappings: 6
 - Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 10)
     = (c1 - c0)
 - Code(Counter(1)) at (prev + 0, 14) to (start + 0, 19)
-- Code(Expression(0, Sub)) at (prev + 0, 20) to (start + 1, 22)
+- Code(Expression(0, Sub)) at (prev + 1, 13) to (start + 0, 19)
     = (c1 - c0)
-- Code(Expression(0, Sub)) at (prev + 7, 10) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 7, 9) to (start + 0, 34)
     = (c1 - c0)
-- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 2)
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
 Highest counter ID seen: c1
 
 Function name: async_block::main::{closure#0}

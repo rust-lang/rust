@@ -26,6 +26,12 @@ LL | use food::baz;
    |     |     |
    |     |     help: a similar name exists in the module: `bag`
    |     no `baz` in `food`
+   |
+note: module `food::zug::baz` exists but is inaccessible
+  --> $DIR/unresolved-import.rs:33:9
+   |
+LL |         pub mod baz {
+   |         ^^^^^^^^^^^ not accessible
 
 error[E0432]: unresolved import `food::beens`
   --> $DIR/unresolved-import.rs:19:12
@@ -37,13 +43,13 @@ LL | use food::{beens as Foo};
    |            help: a similar name exists in the module: `beans`
 
 error[E0432]: unresolved import `MyEnum`
-  --> $DIR/unresolved-import.rs:44:9
+  --> $DIR/unresolved-import.rs:46:9
    |
 LL |     use MyEnum::*;
    |         ^^^^^^ help: a similar path exists: `self::MyEnum`
 
 error[E0432]: unresolved import `Enum`
-  --> $DIR/unresolved-import.rs:55:9
+  --> $DIR/unresolved-import.rs:57:9
    |
 LL |     use Enum::*;
    |         ^^^^ help: a similar path exists: `self::Enum`

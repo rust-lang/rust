@@ -58,6 +58,11 @@ error[E0425]: cannot find function `import` in this scope
 LL |     import();
    |     ^^^^^^ not found in this scope
    |
+note: function `bar::import` exists but is inaccessible
+  --> $DIR/glob-resolve1.rs:7:5
+   |
+LL |     fn fpriv() {}
+   |     ^^^^^^^^^^ not accessible
 help: consider importing this function
    |
 LL + use other::import;

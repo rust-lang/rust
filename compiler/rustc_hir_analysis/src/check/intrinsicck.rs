@@ -29,6 +29,7 @@ enum NonAsmTypeReason<'tcx> {
     Invalid(Ty<'tcx>),
     InvalidElement(DefId, Ty<'tcx>),
     NotSizedPtr(Ty<'tcx>),
+    EmptySIMDArray(Ty<'tcx>),
 }
 
 impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
@@ -102,6 +103,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             }
             ty::Adt(adt, args) if adt.repr().simd() => {
                 let fields = &adt.non_enum_variant().fields;
+                if fields.is_empty() {
+                    return Err(NonAsmTypeReason::EmptySIMDArray(ty));
+                }
                 let field = &fields[FieldIdx::ZERO];
                 let elem_ty = field.ty(self.tcx(), args);
 
@@ -225,6 +229,10 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             "only integers, floats, SIMD vectors, pointers and function pointers \
                             can be used as arguments for inline assembly",
                         ).emit();
+                    }
+                    NonAsmTypeReason::EmptySIMDArray(ty) => {
+                        let msg = format!("use of empty SIMD vector `{ty}`");
+                        self.infcx.dcx().struct_span_err(expr.span, msg).emit();
                     }
                 }
                 return None;

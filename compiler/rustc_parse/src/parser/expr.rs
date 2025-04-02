@@ -4,10 +4,10 @@ use core::mem;
 use core::ops::{Bound, ControlFlow};
 
 use ast::mut_visit::{self, MutVisitor};
-use ast::token::{IdentIsRaw, MetaVarKind};
+use ast::token::IdentIsRaw;
 use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment, Recovered};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, Token, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
@@ -19,7 +19,6 @@ use rustc_ast::{
     MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind,
     YieldKind,
 };
-use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
 use rustc_lexer::unescape::unescape_char;
@@ -605,7 +604,7 @@ impl<'a> Parser<'a> {
             // can't continue an expression after an ident
             token::Ident(name, is_raw) => token::ident_can_begin_expr(name, t.span, is_raw),
             token::Literal(..) | token::Pound => true,
-            _ => t.is_whole_expr(),
+            _ => t.is_metavar_expr(),
         };
         self.token.is_ident_named(sym::not) && self.look_ahead(1, token_cannot_continue_expr)
     }
@@ -639,6 +638,13 @@ impl<'a> Parser<'a> {
     fn interpolated_or_expr_span(&self, expr: &Expr) -> Span {
         match self.prev_token.kind {
             TokenKind::NtIdent(..) | TokenKind::NtLifetime(..) | TokenKind::Interpolated(..) => {
+                self.prev_token.span
+            }
+            TokenKind::CloseDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => {
+                // `expr.span` is the interpolated span, because invisible open
+                // and close delims both get marked with the same span, one
+                // that covers the entire thing between them. (See
+                // `rustc_expand::mbe::transcribe::transcribe`.)
                 self.prev_token.span
             }
             _ => expr.span,
@@ -979,12 +985,30 @@ impl<'a> Parser<'a> {
     }
 
     fn error_unexpected_after_dot(&self) {
-        let actual = pprust::token_to_string(&self.token);
+        let actual = super::token_descr(&self.token);
         let span = self.token.span;
         let sm = self.psess.source_map();
         let (span, actual) = match (&self.token.kind, self.subparser_name) {
-            (token::Eof, Some(_)) if let Ok(actual) = sm.span_to_snippet(sm.next_point(span)) => {
-                (span.shrink_to_hi(), actual.into())
+            (token::Eof, Some(_)) if let Ok(snippet) = sm.span_to_snippet(sm.next_point(span)) => {
+                (span.shrink_to_hi(), format!("`{}`", snippet))
+            }
+            (token::CloseDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))), _) => {
+                // No need to report an error. This case will only occur when parsing a pasted
+                // metavariable, and we should have emitted an error when parsing the macro call in
+                // the first place. E.g. in this code:
+                // ```
+                // macro_rules! m { ($e:expr) => { $e }; }
+                //
+                // fn main() {
+                //     let f = 1;
+                //     m!(f.);
+                // }
+                // ```
+                // we'll get an error "unexpected token: `)` when parsing the `m!(f.)`, so we don't
+                // want to issue a second error when parsing the expansion `«f.»` (where `«`/`»`
+                // represent the invisible delimiters).
+                self.dcx().span_delayed_bug(span, "bad dot expr in metavariable");
+                return;
             }
             _ => (span, actual),
         };
@@ -1294,7 +1318,7 @@ impl<'a> Parser<'a> {
 
     /// Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
-        if self.token.uninterpolated_span().at_least_rust_2018() && self.eat_keyword(exp!(Await)) {
+        if self.token_uninterpolated_span().at_least_rust_2018() && self.eat_keyword(exp!(Await)) {
             return Ok(self.mk_await_expr(self_arg, lo));
         }
 
@@ -1364,17 +1388,33 @@ impl<'a> Parser<'a> {
         let span = self.token.span;
         if let token::Interpolated(nt) = &self.token.kind {
             match &**nt {
-                token::NtExpr(e) | token::NtLiteral(e) => {
-                    let e = e.clone();
-                    self.bump();
-                    return Ok(e);
-                }
                 token::NtBlock(block) => {
                     let block = block.clone();
                     self.bump();
                     return Ok(self.mk_expr(self.prev_token.span, ExprKind::Block(block, None)));
                 }
             };
+        } else if let Some(expr) = self.eat_metavar_seq_with_matcher(
+            |mv_kind| matches!(mv_kind, MetaVarKind::Expr { .. }),
+            |this| {
+                // Force collection (as opposed to just `parse_expr`) is required to avoid the
+                // attribute duplication seen in #138478.
+                let expr = this.parse_expr_force_collect();
+                // FIXME(nnethercote) Sometimes with expressions we get a trailing comma, possibly
+                // related to the FIXME in `collect_tokens_for_expr`. Examples are the multi-line
+                // `assert_eq!` calls involving arguments annotated with `#[rustfmt::skip]` in
+                // `compiler/rustc_index/src/bit_set/tests.rs`.
+                if this.token.kind == token::Comma {
+                    this.bump();
+                }
+                expr
+            },
+        ) {
+            return Ok(expr);
+        } else if let Some(lit) =
+            self.eat_metavar_seq(MetaVarKind::Literal, |this| this.parse_literal_maybe_minus())
+        {
+            return Ok(lit);
         } else if let Some(path) = self.eat_metavar_seq(MetaVarKind::Path, |this| {
             this.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))
         }) {
@@ -1471,9 +1511,9 @@ impl<'a> Parser<'a> {
                 this.parse_expr_let(restrictions)
             } else if this.eat_keyword(exp!(Underscore)) {
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
-            } else if this.token.uninterpolated_span().at_least_rust_2018() {
+            } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
-                if this.token.uninterpolated_span().at_least_rust_2024()
+                if this.token_uninterpolated_span().at_least_rust_2024()
                     // check for `gen {}` and `gen move {}`
                     // or `async gen {}` and `async gen move {}`
                     && (this.is_gen_block(kw::Gen, 0)
@@ -2062,87 +2102,107 @@ impl<'a> Parser<'a> {
             .or_else(|()| self.handle_missing_lit(Parser::mk_meta_item_lit_char))
     }
 
-    fn recover_after_dot(&mut self) -> Option<Token> {
-        let mut recovered = None;
+    fn recover_after_dot(&mut self) {
         if self.token == token::Dot {
             // Attempt to recover `.4` as `0.4`. We don't currently have any syntax where
             // dot would follow an optional literal, so we do this unconditionally.
-            recovered = self.look_ahead(1, |next_token| {
+            let recovered = self.look_ahead(1, |next_token| {
+                // If it's an integer that looks like a float, then recover as such.
+                //
+                // We will never encounter the exponent part of a floating
+                // point literal here, since there's no use of the exponent
+                // syntax that also constitutes a valid integer, so we need
+                // not check for that.
                 if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) =
                     next_token.kind
+                    && suffix.is_none_or(|s| s == sym::f32 || s == sym::f64)
+                    && symbol.as_str().chars().all(|c| c.is_numeric() || c == '_')
+                    && self.token.span.hi() == next_token.span.lo()
                 {
-                    // If this integer looks like a float, then recover as such.
-                    //
-                    // We will never encounter the exponent part of a floating
-                    // point literal here, since there's no use of the exponent
-                    // syntax that also constitutes a valid integer, so we need
-                    // not check for that.
-                    if suffix.is_none_or(|s| s == sym::f32 || s == sym::f64)
-                        && symbol.as_str().chars().all(|c| c.is_numeric() || c == '_')
-                        && self.token.span.hi() == next_token.span.lo()
-                    {
-                        let s = String::from("0.") + symbol.as_str();
-                        let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
-                        return Some(Token::new(kind, self.token.span.to(next_token.span)));
-                    }
+                    let s = String::from("0.") + symbol.as_str();
+                    let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
+                    Some(Token::new(kind, self.token.span.to(next_token.span)))
+                } else {
+                    None
                 }
-                None
             });
-            if let Some(token) = &recovered {
-                self.bump();
+            if let Some(recovered) = recovered {
                 self.dcx().emit_err(errors::FloatLiteralRequiresIntegerPart {
-                    span: token.span,
-                    suggestion: token.span.shrink_to_lo(),
+                    span: recovered.span,
+                    suggestion: recovered.span.shrink_to_lo(),
                 });
+                self.bump();
+                self.token = recovered;
             }
         }
+    }
 
-        recovered
+    /// Keep this in sync with `Token::can_begin_literal_maybe_minus` and
+    /// `Lit::from_token` (excluding unary negation).
+    fn eat_token_lit(&mut self) -> Option<token::Lit> {
+        match self.token.uninterpolate().kind {
+            token::Ident(name, IdentIsRaw::No) if name.is_bool_lit() => {
+                self.bump();
+                Some(token::Lit::new(token::Bool, name, None))
+            }
+            token::Literal(token_lit) => {
+                self.bump();
+                Some(token_lit)
+            }
+            token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
+                MetaVarKind::Literal,
+            ))) => {
+                let lit = self
+                    .eat_metavar_seq(MetaVarKind::Literal, |this| this.parse_literal_maybe_minus())
+                    .expect("metavar seq literal");
+                let ast::ExprKind::Lit(token_lit) = lit.kind else {
+                    panic!("didn't reparse a literal");
+                };
+                Some(token_lit)
+            }
+            token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
+                mv_kind @ MetaVarKind::Expr { can_begin_literal_maybe_minus: true, .. },
+            ))) => {
+                let expr = self
+                    .eat_metavar_seq(mv_kind, |this| this.parse_expr())
+                    .expect("metavar seq expr");
+                let ast::ExprKind::Lit(token_lit) = expr.kind else {
+                    panic!("didn't reparse an expr");
+                };
+                Some(token_lit)
+            }
+            _ => None,
+        }
     }
 
     /// Matches `lit = true | false | token_lit`.
     /// Returns `None` if the next token is not a literal.
-    pub(super) fn parse_opt_token_lit(&mut self) -> Option<(token::Lit, Span)> {
-        let recovered = self.recover_after_dot();
-        let token = recovered.as_ref().unwrap_or(&self.token);
-        let span = token.span;
-
-        token::Lit::from_token(token).map(|token_lit| {
-            self.bump();
-            (token_lit, span)
-        })
+    fn parse_opt_token_lit(&mut self) -> Option<(token::Lit, Span)> {
+        self.recover_after_dot();
+        let span = self.token.span;
+        self.eat_token_lit().map(|token_lit| (token_lit, span))
     }
 
     /// Matches `lit = true | false | token_lit`.
     /// Returns `None` if the next token is not a literal.
-    pub(super) fn parse_opt_meta_item_lit(&mut self) -> Option<MetaItemLit> {
-        let recovered = self.recover_after_dot();
-        let token = recovered.as_ref().unwrap_or(&self.token);
-        match token::Lit::from_token(token) {
-            Some(lit) => {
-                match MetaItemLit::from_token_lit(lit, token.span) {
-                    Ok(lit) => {
-                        self.bump();
-                        Some(lit)
-                    }
-                    Err(err) => {
-                        let span = token.uninterpolated_span();
-                        self.bump();
-                        let guar = report_lit_error(self.psess, err, lit, span);
-                        // Pack possible quotes and prefixes from the original literal into
-                        // the error literal's symbol so they can be pretty-printed faithfully.
-                        let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
-                        let symbol = Symbol::intern(&suffixless_lit.to_string());
-                        let lit = token::Lit::new(token::Err(guar), symbol, lit.suffix);
-                        Some(
-                            MetaItemLit::from_token_lit(lit, span)
-                                .unwrap_or_else(|_| unreachable!()),
-                        )
-                    }
+    fn parse_opt_meta_item_lit(&mut self) -> Option<MetaItemLit> {
+        self.recover_after_dot();
+        let span = self.token.span;
+        let uninterpolated_span = self.token_uninterpolated_span();
+        self.eat_token_lit().map(|token_lit| {
+            match MetaItemLit::from_token_lit(token_lit, span) {
+                Ok(lit) => lit,
+                Err(err) => {
+                    let guar = report_lit_error(&self.psess, err, token_lit, uninterpolated_span);
+                    // Pack possible quotes and prefixes from the original literal into
+                    // the error literal's symbol so they can be pretty-printed faithfully.
+                    let suffixless_lit = token::Lit::new(token_lit.kind, token_lit.symbol, None);
+                    let symbol = Symbol::intern(&suffixless_lit.to_string());
+                    let token_lit = token::Lit::new(token::Err(guar), symbol, token_lit.suffix);
+                    MetaItemLit::from_token_lit(token_lit, uninterpolated_span).unwrap()
                 }
             }
-            None => None,
-        }
+        })
     }
 
     pub(super) fn expect_no_tuple_index_suffix(&self, span: Span, suffix: Symbol) {
@@ -2166,9 +2226,10 @@ impl<'a> Parser<'a> {
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
     /// Keep this in sync with `Token::can_begin_literal_maybe_minus`.
     pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
-        if let token::Interpolated(nt) = &self.token.kind {
-            match &**nt {
-                // FIXME(nnethercote) The `NtExpr` case should only match if
+        if let Some(expr) = self.eat_metavar_seq_with_matcher(
+            |mv_kind| matches!(mv_kind, MetaVarKind::Expr { .. }),
+            |this| {
+                // FIXME(nnethercote) The `expr` case should only match if
                 // `e` is an `ExprKind::Lit` or an `ExprKind::Unary` containing
                 // an `UnOp::Neg` and an `ExprKind::Lit`, like how
                 // `can_begin_literal_maybe_minus` works. But this method has
@@ -2178,13 +2239,14 @@ impl<'a> Parser<'a> {
                 // `ExprKind::Path` must be accepted when parsing range
                 // patterns. That requires some care. So for now, we continue
                 // being less strict here than we should be.
-                token::NtExpr(e) | token::NtLiteral(e) => {
-                    let e = e.clone();
-                    self.bump();
-                    return Ok(e);
-                }
-                _ => {}
-            };
+                this.parse_expr()
+            },
+        ) {
+            return Ok(expr);
+        } else if let Some(lit) =
+            self.eat_metavar_seq(MetaVarKind::Literal, |this| this.parse_literal_maybe_minus())
+        {
+            return Ok(lit);
         }
 
         let lo = self.token.span;
@@ -2330,7 +2392,7 @@ impl<'a> Parser<'a> {
         let movability =
             if self.eat_keyword(exp!(Static)) { Movability::Static } else { Movability::Movable };
 
-        let coroutine_kind = if self.token.uninterpolated_span().at_least_rust_2018() {
+        let coroutine_kind = if self.token_uninterpolated_span().at_least_rust_2018() {
             self.parse_coroutine_kind(Case::Sensitive)
         } else {
             None
@@ -2879,7 +2941,7 @@ impl<'a> Parser<'a> {
     /// Parses `for await? <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
     fn parse_expr_for(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
         let is_await =
-            self.token.uninterpolated_span().at_least_rust_2018() && self.eat_keyword(exp!(Await));
+            self.token_uninterpolated_span().at_least_rust_2018() && self.eat_keyword(exp!(Await));
 
         if is_await {
             self.psess.gated_spans.gate(sym::async_for_loop, self.prev_token.span);
@@ -3469,7 +3531,7 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Try)
             && self
                 .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
-            && self.token.uninterpolated_span().at_least_rust_2018()
+            && self.token_uninterpolated_span().at_least_rust_2018()
     }
 
     /// Parses an `async move? {...}` or `gen move? {...}` expression.

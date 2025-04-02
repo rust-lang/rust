@@ -1162,6 +1162,30 @@ class RustBuild(object):
         config = self.get_toml("build")
         return config or default_build_triple(self.verbose)
 
+    def is_git_repository(self, repo_path):
+        return os.path.isdir(os.path.join(repo_path, ".git"))
+
+    def get_latest_commit(self):
+        repo_path = self.rust_root
+        author_email = self.stage0_data.get("git_merge_commit_email")
+        if not self.is_git_repository(repo_path):
+            return "<commit>"
+        cmd = [
+            "git",
+            "-C",
+            repo_path,
+            "rev-list",
+            "--author",
+            author_email,
+            "-n1",
+            "HEAD",
+        ]
+        try:
+            commit = subprocess.check_output(cmd, universal_newlines=True).strip()
+            return commit or "<commit>"
+        except subprocess.CalledProcessError:
+            return "<commit>"
+
     def check_vendored_status(self):
         """Check that vendoring is configured properly"""
         # keep this consistent with the equivalent check in bootstrap:
@@ -1174,7 +1198,8 @@ class RustBuild(object):
                 eprint("      use vendored sources by default.")
 
         cargo_dir = os.path.join(self.rust_root, ".cargo")
-        url = "https://ci-artifacts.rust-lang.org/rustc-builds/<commit>/rustc-nightly-src.tar.xz"
+        commit = self.get_latest_commit()
+        url = f"https://ci-artifacts.rust-lang.org/rustc-builds/{commit}/rustc-nightly-src.tar.xz"
         if self.use_vendored_sources:
             vendor_dir = os.path.join(self.rust_root, "vendor")
             if not os.path.exists(vendor_dir):

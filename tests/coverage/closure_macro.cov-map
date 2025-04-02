@@ -8,16 +8,16 @@ Number of file 0 mappings: 1
 Highest counter ID seen: c0
 
 Function name: closure_macro::main
-Raw bytes (36): 0x[01, 01, 01, 01, 05, 06, 01, 21, 01, 01, 21, 02, 02, 09, 00, 0f, 01, 00, 12, 00, 54, 05, 00, 54, 00, 55, 02, 02, 09, 02, 0b, 01, 03, 01, 00, 02]
+Raw bytes (36): 0x[01, 01, 01, 01, 05, 06, 01, 21, 01, 01, 20, 02, 02, 09, 00, 0f, 01, 00, 12, 00, 34, 05, 00, 54, 00, 55, 02, 02, 09, 02, 0b, 01, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 6
-- Code(Counter(0)) at (prev + 33, 1) to (start + 1, 33)
+- Code(Counter(0)) at (prev + 33, 1) to (start + 1, 32)
 - Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 0, 15)
     = (c0 - c1)
-- Code(Counter(0)) at (prev + 0, 18) to (start + 0, 84)
+- Code(Counter(0)) at (prev + 0, 18) to (start + 0, 52)
 - Code(Counter(1)) at (prev + 0, 84) to (start + 0, 85)
 - Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 2, 11)
     = (c0 - c1)

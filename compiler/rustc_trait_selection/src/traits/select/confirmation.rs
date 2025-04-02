@@ -39,7 +39,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidate: SelectionCandidate<'tcx>,
     ) -> Result<Selection<'tcx>, SelectionError<'tcx>> {
-        let mut impl_src = match candidate {
+        Ok(match candidate {
             SizedCandidate { has_nested } => {
                 let data = self.confirm_builtin_candidate(obligation, has_nested);
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
@@ -139,15 +139,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             BikeshedGuaranteedNoDropCandidate => {
                 self.confirm_bikeshed_guaranteed_no_drop_candidate(obligation)
             }
-        };
-
-        // The obligations returned by confirmation are recursively evaluated
-        // so we need to make sure they have the correct depth.
-        for subobligation in impl_src.borrow_nested_obligations_mut() {
-            subobligation.set_depth_from_parent(obligation.recursion_depth);
-        }
-
-        Ok(impl_src)
+        })
     }
 
     fn confirm_projection_candidate(

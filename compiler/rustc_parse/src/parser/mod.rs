@@ -24,8 +24,8 @@ pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use path::PathStyle;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{
-    self, Delimiter, IdentIsRaw, InvisibleOrigin, MetaVarKind, Nonterminal, NtPatKind, Token,
-    TokenKind,
+    self, Delimiter, IdentIsRaw, InvisibleOrigin, MetaVarKind, Nonterminal, NtExprKind, NtPatKind,
+    Token, TokenKind,
 };
 use rustc_ast::tokenstream::{AttrsTarget, Spacing, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
@@ -101,6 +101,7 @@ pub enum ForceCollect {
 #[macro_export]
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
+        #[allow(irrefutable_let_patterns)] // FIXME: temporary
         if let token::Interpolated(nt) = &$p.token.kind
             && let token::$constructor(x) = &**nt
         {
@@ -297,6 +298,10 @@ impl TokenTreeCursor {
     #[inline]
     fn curr(&self) -> Option<&TokenTree> {
         self.stream.get(self.index)
+    }
+
+    fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
+        self.stream.get(self.index + n)
     }
 
     #[inline]
@@ -1290,6 +1295,17 @@ impl<'a> Parser<'a> {
         looker(&token)
     }
 
+    /// Like `lookahead`, but skips over token trees rather than tokens. Useful
+    /// when looking past possible metavariable pasting sites.
+    pub fn tree_look_ahead<R>(
+        &self,
+        dist: usize,
+        looker: impl FnOnce(&TokenTree) -> R,
+    ) -> Option<R> {
+        assert_ne!(dist, 0);
+        self.token_cursor.curr.look_ahead(dist - 1).map(looker)
+    }
+
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
     pub(crate) fn is_keyword_ahead(&self, dist: usize, kws: &[Symbol]) -> bool {
         self.look_ahead(dist, |t| kws.iter().any(|&kw| t.is_keyword(kw)))
@@ -1297,14 +1313,14 @@ impl<'a> Parser<'a> {
 
     /// Parses asyncness: `async` or nothing.
     fn parse_coroutine_kind(&mut self, case: Case) -> Option<CoroutineKind> {
-        let span = self.token.uninterpolated_span();
+        let span = self.token_uninterpolated_span();
         if self.eat_keyword_case(exp!(Async), case) {
             // FIXME(gen_blocks): Do we want to unconditionally parse `gen` and then
             // error if edition <= 2024, like we do with async and edition <= 2018?
-            if self.token.uninterpolated_span().at_least_rust_2024()
+            if self.token_uninterpolated_span().at_least_rust_2024()
                 && self.eat_keyword_case(exp!(Gen), case)
             {
-                let gen_span = self.prev_token.uninterpolated_span();
+                let gen_span = self.prev_token_uninterpolated_span();
                 Some(CoroutineKind::AsyncGen {
                     span: span.to(gen_span),
                     closure_id: DUMMY_NODE_ID,
@@ -1317,7 +1333,7 @@ impl<'a> Parser<'a> {
                     return_impl_trait_id: DUMMY_NODE_ID,
                 })
             }
-        } else if self.token.uninterpolated_span().at_least_rust_2024()
+        } else if self.token_uninterpolated_span().at_least_rust_2024()
             && self.eat_keyword_case(exp!(Gen), case)
         {
             Some(CoroutineKind::Gen {
@@ -1333,9 +1349,9 @@ impl<'a> Parser<'a> {
     /// Parses fn unsafety: `unsafe`, `safe` or nothing.
     fn parse_safety(&mut self, case: Case) -> Safety {
         if self.eat_keyword_case(exp!(Unsafe), case) {
-            Safety::Unsafe(self.prev_token.uninterpolated_span())
+            Safety::Unsafe(self.prev_token_uninterpolated_span())
         } else if self.eat_keyword_case(exp!(Safe), case) {
-            Safety::Safe(self.prev_token.uninterpolated_span())
+            Safety::Safe(self.prev_token_uninterpolated_span())
         } else {
             Safety::Default
         }
@@ -1362,7 +1378,7 @@ impl<'a> Parser<'a> {
                 .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
             && self.eat_keyword_case(exp!(Const), case)
         {
-            Const::Yes(self.prev_token.uninterpolated_span())
+            Const::Yes(self.prev_token_uninterpolated_span())
         } else {
             Const::No
         }
@@ -1370,9 +1386,6 @@ impl<'a> Parser<'a> {
 
     /// Parses inline const expressions.
     fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, P<Expr>> {
-        if pat {
-            self.psess.gated_spans.gate(sym::inline_const_pat, span);
-        }
         self.expect_keyword(exp!(Const))?;
         let (attrs, blk) = self.parse_inner_attrs_and_block(None)?;
         let anon_const = AnonConst {
@@ -1380,7 +1393,17 @@ impl<'a> Parser<'a> {
             value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
         };
         let blk_span = anon_const.value.span;
-        Ok(self.mk_expr_with_attrs(span.to(blk_span), ExprKind::ConstBlock(anon_const), attrs))
+        let kind = if pat {
+            let guar = self
+                .dcx()
+                .struct_span_err(blk_span, "`inline_const_pat` has been removed")
+                .with_help("use a named `const`-item or an `if`-guard instead")
+                .emit();
+            ExprKind::Err(guar)
+        } else {
+            ExprKind::ConstBlock(anon_const)
+        };
+        Ok(self.mk_expr_with_attrs(span.to(blk_span), kind, attrs))
     }
 
     /// Parses mutability (`mut` or nothing).
@@ -1699,6 +1722,35 @@ impl<'a> Parser<'a> {
     pub fn approx_token_stream_pos(&self) -> u32 {
         self.num_bump_calls
     }
+
+    /// For interpolated `self.token`, returns a span of the fragment to which
+    /// the interpolated token refers. For all other tokens this is just a
+    /// regular span. It is particularly important to use this for identifiers
+    /// and lifetimes for which spans affect name resolution and edition
+    /// checks. Note that keywords are also identifiers, so they should use
+    /// this if they keep spans or perform edition checks.
+    pub fn token_uninterpolated_span(&self) -> Span {
+        match &self.token.kind {
+            token::NtIdent(ident, _) | token::NtLifetime(ident, _) => ident.span,
+            token::Interpolated(nt) => nt.use_span(),
+            token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => {
+                self.look_ahead(1, |t| t.span)
+            }
+            _ => self.token.span,
+        }
+    }
+
+    /// Like `token_uninterpolated_span`, but works on `self.prev_token`.
+    pub fn prev_token_uninterpolated_span(&self) -> Span {
+        match &self.prev_token.kind {
+            token::NtIdent(ident, _) | token::NtLifetime(ident, _) => ident.span,
+            token::Interpolated(nt) => nt.use_span(),
+            token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => {
+                self.look_ahead(0, |t| t.span)
+            }
+            _ => self.prev_token.span,
+        }
+    }
 }
 
 pub(crate) fn make_unclosed_delims_error(
@@ -1751,6 +1803,8 @@ pub enum ParseNtResult {
     Item(P<ast::Item>),
     Stmt(P<ast::Stmt>),
     Pat(P<ast::Pat>, NtPatKind),
+    Expr(P<ast::Expr>, NtExprKind),
+    Literal(P<ast::Expr>),
     Ty(P<ast::Ty>),
     Meta(P<ast::AttrItem>),
     Path(P<ast::Path>),

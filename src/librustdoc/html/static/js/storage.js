@@ -44,6 +44,28 @@ function nonnull(x, msg) {
 }
 
 /**
+ * Assert that the passed value is not undefined, then return it.
+ *
+ * Takes an optional error message argument.
+ *
+ * Must be defined in this file, as it is loaded before all others.
+ *
+ * @template T
+ * @param {T|undefined} x
+ * @param {string=} msg
+ * @returns T
+ */
+// used in other files, not yet used in this one.
+// eslint-disable-next-line no-unused-vars
+function nonundef(x, msg) {
+    if (x === undefined) {
+        throw (msg || "unexpected null value!");
+    } else {
+        return x;
+    }
+}
+
+/**
  * Get a configuration value. If it's not set, get the default.
  *
  * @param {string} settingName

@@ -54,7 +54,7 @@ LL | #[cfg(a = b"hi")]
    |           |
    |           help: consider removing the prefix
 
-error: expected unsuffixed literal, found expression `concat!("nonexistent")`
+error: expected unsuffixed literal, found `expr` metavariable
   --> $DIR/cfg-attr-syntax-validation.rs:30:25
    |
 LL |         #[cfg(feature = $expr)]

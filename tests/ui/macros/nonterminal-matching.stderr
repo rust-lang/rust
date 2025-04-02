@@ -23,7 +23,7 @@ LL | complex_nonterminal!(enum E {});
    = help: try using `:tt` instead in the macro definition
    = note: this error originates in the macro `complex_nonterminal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: no rules expected expression `3`
+error: no rules expected `expr` metavariable
   --> $DIR/nonterminal-matching.rs:32:35
    |
 LL |     (expr $x:expr) => { bar!(expr $x); };
@@ -45,7 +45,7 @@ LL |     (expr 3) => {};
    = help: try using `:tt` instead in the macro definition
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: no rules expected literal `4`
+error: no rules expected `literal` metavariable
   --> $DIR/nonterminal-matching.rs:33:44
    |
 LL |     (literal $x:literal) => { bar!(literal $x); };

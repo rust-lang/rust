@@ -33,7 +33,7 @@ pub enum ValTreeKind<'tcx> {
     /// The fields of any kind of aggregate. Structs, tuples and arrays are represented by
     /// listing their fields' values in order.
     ///
-    /// Enums are represented by storing their discriminant as a field, followed by all
+    /// Enums are represented by storing their variant index as a u32 field, followed by all
     /// the fields of the variant.
     ///
     /// ZST types are represented as an empty slice.

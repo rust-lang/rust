@@ -9,12 +9,14 @@
    LL|       |
    LL|      1|pub fn main() {
    LL|      2|    let async_closure = async || {};
-                                               ^1
   ------------------
   | async_closure::main::{closure#0}:
   |   LL|      1|    let async_closure = async || {};
   ------------------
   | async_closure::main::{closure#0}:
+  |   LL|      1|    let async_closure = async || {};
+  ------------------
+  | async_closure::main::{closure#0}::{closure#0}::<i16>:
   |   LL|      1|    let async_closure = async || {};
   ------------------
    LL|      1|    executor::block_on(async_closure());

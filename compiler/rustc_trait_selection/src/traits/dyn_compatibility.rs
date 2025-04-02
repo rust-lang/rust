@@ -583,27 +583,36 @@ fn receiver_is_dispatchable<'tcx>(
     // create a modified param env, with `Self: Unsize<U>` and `U: Trait` (and all of
     // its supertraits) added to caller bounds. `U: ?Sized` is already implied here.
     let param_env = {
-        let param_env = tcx.param_env(method.def_id);
+        // N.B. We generally want to emulate the construction of the `unnormalized_param_env`
+        // in the param-env query here. The fact that we don't just start with the clauses
+        // in the param-env of the method is because those are already normalized, and mixing
+        // normalized and unnormalized copies of predicates in `normalize_param_env_or_error`
+        // will cause ambiguity that the user can't really avoid.
+        //
+        // We leave out certain complexities of the param-env query here. Specifically, we:
+        // 1. Do not add `~const` bounds since there are no `dyn const Trait`s.
+        // 2. Do not add RPITIT self projection bounds for defaulted methods, since we
+        //    are not constructing a param-env for "inside" of the body of the defaulted
+        //    method, so we don't really care about projecting to a specific RPIT type,
+        //    and because RPITITs are not dyn compatible (yet).
+        let mut predicates = tcx.predicates_of(method.def_id).instantiate_identity(tcx).predicates;
 
         // Self: Unsize<U>
         let unsize_predicate =
-            ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty]).upcast(tcx);
+            ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty]);
+        predicates.push(unsize_predicate.upcast(tcx));
 
         // U: Trait<Arg1, ..., ArgN>
-        let trait_predicate = {
-            let trait_def_id = method.trait_container(tcx).unwrap();
-            let args = GenericArgs::for_item(tcx, trait_def_id, |param, _| {
-                if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
-            });
-
-            ty::TraitRef::new_from_args(tcx, trait_def_id, args).upcast(tcx)
-        };
+        let trait_def_id = method.trait_container(tcx).unwrap();
+        let args = GenericArgs::for_item(tcx, trait_def_id, |param, _| {
+            if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
+        });
+        let trait_predicate = ty::TraitRef::new_from_args(tcx, trait_def_id, args);
+        predicates.push(trait_predicate.upcast(tcx));
 
         normalize_param_env_or_error(
             tcx,
-            ty::ParamEnv::new(tcx.mk_clauses_from_iter(
-                param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]),
-            )),
+            ty::ParamEnv::new(tcx.mk_clauses(&predicates)),
             ObligationCause::dummy_with_span(tcx.def_span(method.def_id)),
         )
     };

@@ -1,7 +1,7 @@
 //@ add-core-stubs
 //@ revisions: linux apple
 //@ min-llvm-version: 19
-//@ compile-flags: -Copt-level=0 -Cno-prepopulate-passes -Zlint-llvm-ir -Cllvm-args=-lint-abort-on-error
+//@ compile-flags: -Copt-level=0 -Cno-prepopulate-passes -Zlint-llvm-ir
 
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu
 //@[linux] needs-llvm-components: x86

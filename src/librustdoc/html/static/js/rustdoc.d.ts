@@ -6,8 +6,10 @@
 declare global {
     /** Map from crate name to directory structure, for source view */
     declare var srcIndex: Map<string, rustdoc.Dir>;
-    /** Defined and documented in `main.js` */
+    /** Defined and documented in `storage.js` */
     declare function nonnull(x: T|null, msg: string|undefined);
+    /** Defined and documented in `storage.js` */
+    declare function nonundef(x: T|undefined, msg: string|undefined);
     interface Window {
         /** Make the current theme easy to find */
         currentTheme: HTMLLinkElement|null;
@@ -255,10 +257,18 @@ declare namespace rustdoc {
         ty: number,
         type?: FunctionSearchType,
         paramNames?: string[],
-        displayType: Promise<Array<Array<string>>>|null,
-        displayTypeMappedNames: Promise<Array<[string, Array<string>]>>|null,
+        displayTypeSignature: Promise<rustdoc.DisplayTypeSignature> | null,
         item: Row,
         dontValidate?: boolean,
+    }
+
+    /**
+     * output of `formatDisplayTypeSignature`
+     */
+    interface DisplayTypeSignature {
+        type: Array<string>,
+        mappedNames: Map<string, string>,
+        whereClause: Map<string, Array<string>>,
     }
 
     /**

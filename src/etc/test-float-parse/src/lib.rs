@@ -17,7 +17,7 @@ use traits::{Float, Generator, Int};
 use validate::CheckError;
 
 /// Test generators.
-mod gen {
+mod gen_ {
     pub mod exhaustive;
     pub mod exponents;
     pub mod fuzz;
@@ -136,24 +136,24 @@ where
 {
     if F::BITS <= MAX_BITS_FOR_EXHAUUSTIVE {
         // Only run exhaustive tests if there is a chance of completion.
-        TestInfo::register::<F, gen::exhaustive::Exhaustive<F>>(tests);
+        TestInfo::register::<F, gen_::exhaustive::Exhaustive<F>>(tests);
     }
 
-    gen::fuzz::Fuzz::<F>::set_iterations(cfg.fuzz_count);
+    gen_::fuzz::Fuzz::<F>::set_iterations(cfg.fuzz_count);
 
-    TestInfo::register::<F, gen::exponents::LargeExponents<F>>(tests);
-    TestInfo::register::<F, gen::exponents::SmallExponents<F>>(tests);
-    TestInfo::register::<F, gen::fuzz::Fuzz<F>>(tests);
-    TestInfo::register::<F, gen::integers::LargeInt<F>>(tests);
-    TestInfo::register::<F, gen::integers::SmallInt>(tests);
-    TestInfo::register::<F, gen::long_fractions::RepeatingDecimal>(tests);
-    TestInfo::register::<F, gen::many_digits::RandDigits<F>>(tests);
-    TestInfo::register::<F, gen::sparse::FewOnesFloat<F>>(tests);
-    TestInfo::register::<F, gen::sparse::FewOnesInt<F>>(tests);
-    TestInfo::register::<F, gen::spot_checks::RegressionCheck>(tests);
-    TestInfo::register::<F, gen::spot_checks::Special>(tests);
-    TestInfo::register::<F, gen::subnorm::SubnormComplete<F>>(tests);
-    TestInfo::register::<F, gen::subnorm::SubnormEdgeCases<F>>(tests);
+    TestInfo::register::<F, gen_::exponents::LargeExponents<F>>(tests);
+    TestInfo::register::<F, gen_::exponents::SmallExponents<F>>(tests);
+    TestInfo::register::<F, gen_::fuzz::Fuzz<F>>(tests);
+    TestInfo::register::<F, gen_::integers::LargeInt<F>>(tests);
+    TestInfo::register::<F, gen_::integers::SmallInt>(tests);
+    TestInfo::register::<F, gen_::long_fractions::RepeatingDecimal>(tests);
+    TestInfo::register::<F, gen_::many_digits::RandDigits<F>>(tests);
+    TestInfo::register::<F, gen_::sparse::FewOnesFloat<F>>(tests);
+    TestInfo::register::<F, gen_::sparse::FewOnesInt<F>>(tests);
+    TestInfo::register::<F, gen_::spot_checks::RegressionCheck>(tests);
+    TestInfo::register::<F, gen_::spot_checks::Special>(tests);
+    TestInfo::register::<F, gen_::subnorm::SubnormComplete<F>>(tests);
+    TestInfo::register::<F, gen_::subnorm::SubnormEdgeCases<F>>(tests);
 }
 
 /// Configuration for a single test.
@@ -343,7 +343,7 @@ fn launch_tests(tests: &mut [TestInfo], cfg: &Config) -> Duration {
 ///
 /// This calls the generator's iterator multiple times (in parallel) and validates each output.
 fn test_runner<F: Float, G: Generator<F>>(test: &TestInfo, cfg: &Config) {
-    let gen = G::new();
+    let gen_ = G::new();
     let executed = AtomicU64::new(0);
     let failures = AtomicU64::new(0);
 
@@ -387,7 +387,7 @@ fn test_runner<F: Float, G: Generator<F>>(test: &TestInfo, cfg: &Config) {
 
     // Run the test iterations in parallel. Each thread gets a string buffer to write
     // its check values to.
-    let res = gen.par_bridge().try_for_each_init(String::new, check_one);
+    let res = gen_.par_bridge().try_for_each_init(String::new, check_one);
 
     let elapsed = started.elapsed();
     let executed = executed.into_inner();

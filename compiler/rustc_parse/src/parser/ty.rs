@@ -775,7 +775,7 @@ impl<'a> Parser<'a> {
     /// Is a `dyn B0 + ... + Bn` type allowed here?
     fn is_explicit_dyn_type(&mut self) -> bool {
         self.check_keyword(exp!(Dyn))
-            && (self.token.uninterpolated_span().at_least_rust_2018()
+            && (self.token_uninterpolated_span().at_least_rust_2018()
                 || self.look_ahead(1, |t| {
                     (can_begin_dyn_bound_in_edition_2015(t) || *t == TokenKind::Star)
                         && !can_continue_type_after_non_fn_ident(t)
@@ -998,13 +998,13 @@ impl<'a> Parser<'a> {
             BoundConstness::Never
         };
 
-        let asyncness = if self.token.uninterpolated_span().at_least_rust_2018()
+        let asyncness = if self.token_uninterpolated_span().at_least_rust_2018()
             && self.eat_keyword(exp!(Async))
         {
             self.psess.gated_spans.gate(sym::async_trait_bounds, self.prev_token.span);
             BoundAsyncness::Async(self.prev_token.span)
         } else if self.may_recover()
-            && self.token.uninterpolated_span().is_rust_2015()
+            && self.token_uninterpolated_span().is_rust_2015()
             && self.is_kw_followed_by_ident(kw::Async)
         {
             self.bump(); // eat `async`

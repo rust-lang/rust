@@ -198,13 +198,12 @@ impl<'tcx> InferCtxt<'tcx> {
     /// it hasn't previously been defined. This does not emit any
     /// constraints and it's the responsibility of the caller to make
     /// sure that the item bounds of the opaque are checked.
-    pub fn inject_new_hidden_type_unchecked(
+    pub fn register_hidden_type_in_storage(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         hidden_ty: OpaqueHiddenType<'tcx>,
-    ) {
-        let prev = self.inner.borrow_mut().opaque_types().register(opaque_type_key, hidden_ty);
-        assert_eq!(prev, None);
+    ) -> Option<Ty<'tcx>> {
+        self.inner.borrow_mut().opaque_types().register(opaque_type_key, hidden_ty)
     }
 
     /// Insert a hidden type into the opaque type storage, equating it

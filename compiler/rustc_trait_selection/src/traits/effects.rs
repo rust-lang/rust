@@ -106,10 +106,6 @@ fn match_candidate<'tcx>(
 
     more_nested(selcx, &mut nested);
 
-    for nested in &mut nested {
-        nested.set_depth_from_parent(obligation.recursion_depth);
-    }
-
     Ok(nested)
 }
 
@@ -377,10 +373,6 @@ fn evaluate_host_effect_from_selection_candiate<'tcx>(
                                 )
                             }),
                     );
-
-                    for nested in &mut nested {
-                        nested.set_depth_from_parent(obligation.recursion_depth);
-                    }
 
                     Ok(nested)
                 }

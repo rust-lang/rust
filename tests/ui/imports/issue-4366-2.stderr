@@ -16,6 +16,11 @@ error[E0423]: expected function, found module `foo`
 LL |     foo();
    |     ^^^ not a function
    |
+note: function `m1::foo` exists but is inaccessible
+  --> $DIR/issue-4366-2.rs:21:5
+   |
+LL |     fn foo() {}
+   |     ^^^^^^^^ not accessible
 help: consider importing this function instead
    |
 LL + use foo::foo;

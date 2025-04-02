@@ -1,12 +1,12 @@
 Function name: loop_break::main
-Raw bytes (31): 0x[01, 01, 01, 05, 01, 05, 01, 03, 01, 00, 0b, 05, 02, 0c, 00, 27, 01, 01, 0d, 00, 12, 02, 01, 09, 00, 0a, 01, 02, 01, 00, 02]
+Raw bytes (31): 0x[01, 01, 01, 05, 01, 05, 01, 03, 01, 00, 0b, 05, 02, 0c, 00, 21, 01, 01, 0d, 00, 12, 02, 01, 09, 00, 0a, 01, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(1), rhs = Counter(0)
 Number of file 0 mappings: 5
 - Code(Counter(0)) at (prev + 3, 1) to (start + 0, 11)
-- Code(Counter(1)) at (prev + 2, 12) to (start + 0, 39)
+- Code(Counter(1)) at (prev + 2, 12) to (start + 0, 33)
 - Code(Counter(0)) at (prev + 1, 13) to (start + 0, 18)
 - Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 10)
     = (c1 - c0)
