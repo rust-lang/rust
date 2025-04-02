@@ -1593,7 +1593,7 @@ function preLoadCss(cssUrl) {
     /**
      * Hide popover menus, clickable tooltips, and the sidebar (if applicable).
      *
-     * Pass "true" to reset focus for tooltip popovers.
+     * Pass `true` to reset focus for tooltip popovers.
      */
     window.hideAllModals = switchFocus => {
         hideSidebar();
