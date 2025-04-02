@@ -1,5 +1,3 @@
-use std::{cmp, iter};
-
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
@@ -20,6 +18,7 @@ use rustc_middle::ty::{self, RegionKind, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
+use std::iter;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -33,10 +32,8 @@ declare_clippy_lint! {
     /// registers.
     ///
     /// ### Known problems
-    /// This lint is target register size dependent, it is
-    /// limited to 32-bit to try and reduce portability problems between 32 and
-    /// 64-bit, but if you are compiling for 8 or 16-bit targets then the limit
-    /// will be different.
+    /// This lint is target dependent, some cases will lint on 64-bit targets but
+    /// not 32-bit or lower targets.
     ///
     /// The configuration option `trivial_copy_size_limit` can be set to override
     /// this limit for a project.
@@ -112,16 +109,9 @@ pub struct PassByRefOrValue {
 
 impl PassByRefOrValue {
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
-        let ref_min_size = conf.trivial_copy_size_limit.unwrap_or_else(|| {
-            let bit_width = u64::from(tcx.sess.target.pointer_width);
-            // Cap the calculated bit width at 32-bits to reduce
-            // portability problems between 32 and 64-bit targets
-            let bit_width = cmp::min(bit_width, 32);
-            #[expect(clippy::integer_division)]
-            let byte_width = bit_width / 8;
-            // Use a limit of 2 times the register byte width
-            byte_width * 2
-        });
+        let ref_min_size = conf
+            .trivial_copy_size_limit
+            .unwrap_or_else(|| u64::from(tcx.sess.target.pointer_width / 8));
 
         Self {
             ref_min_size,
