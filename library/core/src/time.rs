@@ -308,6 +308,29 @@ impl Duration {
         Duration { secs, nanos: subsec_nanos }
     }
 
+
+    /// creates a new Duration from the specified number of nano seconds. 
+    /// Use this function if you need to specify time greater than what can fit in u64 
+    /// which is around 584 years and above 584.94 years to be a little more precise. 
+    /// 
+    /// # Examples 
+    /// 
+    /// ```
+    /// use std::time::Duration;
+    /// let time_in_nanos = 2.pow(64);
+    /// let duration = Duration::from_nanos_u128(time_in_nanos);
+    /// 
+    /// ```
+    pub const fn from_nanos_u128(nanos: u128) -> Duration {
+        const NANOS_PER_SEC: u128 = self::NANOS_PER_SEC as u128;
+        let secs = nanos / NANOS_PER_SEC;
+        let subsec_nanos = (nanos % NANOS_PER_SEC) as u32;
+        // SAFETY: x % 1_000_000_000 < 1_000_000_000
+        let subsec_nanos = unsafe { Nanoseconds::new_unchecked(subsec_nanos) };
+
+        Duration { secs, nanos: subsec_nanos }
+    }
+
     /// Creates a new `Duration` from the specified number of weeks.
     ///
     /// # Panics
