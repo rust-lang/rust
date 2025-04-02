@@ -660,20 +660,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Erases regions from `ty` to yield a new type.
-    /// Normally you would just use `tcx.erase_regions(value)`,
-    /// however, which uses this query as a kind of cache.
-    query erase_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
-        // This query is not expected to have input -- as a result, it
-        // is not a good candidates for "replay" because it is essentially a
-        // pure function of its input (and hence the expectation is that
-        // no caller would be green **apart** from just these
-        // queries). Making it anonymous avoids hashing the result, which
-        // may save a bit of time.
-        anon
-        desc { "erasing regions from `{}`", ty }
-    }
-
     query wasm_import_module_map(_: CrateNum) -> &'tcx DefIdMap<String> {
         arena_cache
         desc { "getting wasm import module map" }

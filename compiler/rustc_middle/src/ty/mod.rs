@@ -2129,7 +2129,6 @@ pub fn ast_uint_ty(uty: UintTy) -> ast::UintTy {
 pub fn provide(providers: &mut Providers) {
     closure::provide(providers);
     context::provide(providers);
-    erase_regions::provide(providers);
     inhabitedness::provide(providers);
     util::provide(providers);
     print::provide(providers);
