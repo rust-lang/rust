@@ -713,8 +713,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for id in self.tcx.hir_free_items() {
                 if let Some(node) = self.tcx.hir_get_if_local(id.owner_id.into())
                     && let hir::Node::Item(item) = node
-                    && let hir::ItemKind::Fn { .. } = item.kind
-                    && item.ident.name == segment.ident.name
+                    && let hir::ItemKind::Fn { ident, .. } = item.kind
+                    && ident.name == segment.ident.name
                 {
                     err.span_label(
                         self.tcx.def_span(id.owner_id),

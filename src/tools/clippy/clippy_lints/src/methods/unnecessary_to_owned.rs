@@ -6,7 +6,8 @@ use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{
-    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, peel_middle_ty_refs, return_ty,
+    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, is_expr_temporary_value, peel_middle_ty_refs,
+    return_ty,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -219,6 +220,8 @@ fn check_into_iter_call_arg(
         && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
         // If the receiver is a `Cow`, we can't remove the `into_owned` generally, see https://github.com/rust-lang/rust-clippy/issues/13624.
         && !is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver), sym::Cow)
+        // Calling `iter()` on a temporary object can lead to false positives. #14242
+        && !is_expr_temporary_value(cx, receiver)
     {
         if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
             return true;

@@ -43,9 +43,8 @@ pub fn inject(
 
     let item = cx.item(
         span,
-        Ident::new(name, ident_span),
         thin_vec![cx.attr_word(sym::macro_use, span)],
-        ast::ItemKind::ExternCrate(None),
+        ast::ItemKind::ExternCrate(None, Ident::new(name, ident_span)),
     );
 
     krate.items.insert(0, item);
@@ -68,7 +67,6 @@ pub fn inject(
     // Inject the relevant crate's prelude.
     let use_item = cx.item(
         span,
-        Ident::empty(),
         thin_vec![cx.attr_word(sym::prelude_import, span)],
         ast::ItemKind::Use(ast::UseTree {
             prefix: cx.path(span, import_path),

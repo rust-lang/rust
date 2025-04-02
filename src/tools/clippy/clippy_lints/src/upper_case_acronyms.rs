@@ -131,11 +131,11 @@ impl LateLintPass<'_> for UpperCaseAcronyms {
             return;
         }
         match it.kind {
-            ItemKind::TyAlias(..) | ItemKind::Struct(..) | ItemKind::Trait(..) => {
-                check_ident(cx, &it.ident, it.hir_id(), self.upper_case_acronyms_aggressive);
+            ItemKind::TyAlias(ident, ..) | ItemKind::Struct(ident, ..) | ItemKind::Trait(_, _, ident, ..) => {
+                check_ident(cx, &ident, it.hir_id(), self.upper_case_acronyms_aggressive);
             },
-            ItemKind::Enum(ref enumdef, _) => {
-                check_ident(cx, &it.ident, it.hir_id(), self.upper_case_acronyms_aggressive);
+            ItemKind::Enum(ident, ref enumdef, _) => {
+                check_ident(cx, &ident, it.hir_id(), self.upper_case_acronyms_aggressive);
                 // check enum variants separately because again we only want to lint on private enums and
                 // the fn check_variant does not know about the vis of the enum of its variants
                 enumdef.variants.iter().for_each(|variant| {

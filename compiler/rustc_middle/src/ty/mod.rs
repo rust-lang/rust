@@ -149,7 +149,6 @@ mod opaque_types;
 mod parameterized;
 mod predicate;
 mod region;
-mod return_position_impl_trait_in_trait;
 mod rvalue_scopes;
 mod structural_impls;
 #[allow(hidden_glob_reexports)]
@@ -458,7 +457,7 @@ impl EarlyParamRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {
-        self.name != kw::UnderscoreLifetime && self.name != kw::Empty
+        self.name != kw::UnderscoreLifetime
     }
 }
 
@@ -954,7 +953,7 @@ impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
 /// environment. `ParamEnv` is the type that represents this information. See the
 /// [dev guide chapter][param_env_guide] for more information.
 ///
-/// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
+/// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 #[derive(HashStable, TypeVisitable, TypeFoldable)]
 pub struct ParamEnv<'tcx> {
@@ -978,7 +977,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// to use an empty environment. See the [dev guide section][param_env_guide]
     /// for information on what a `ParamEnv` is and how to acquire one.
     ///
-    /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
+    /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
     #[inline]
     pub fn empty() -> Self {
         Self::new(ListWithCachedTypeInfo::empty())
@@ -1120,8 +1119,6 @@ pub struct PseudoCanonicalInput<'tcx, T> {
 pub struct Destructor {
     /// The `DefId` of the destructor method
     pub did: DefId,
-    /// The constness of the destructor method
-    pub constness: hir::Constness,
 }
 
 // FIXME: consider combining this definition with regular `Destructor`
@@ -1209,10 +1206,21 @@ impl VariantDef {
         }
     }
 
-    /// Is this field list non-exhaustive?
+    /// Returns `true` if the field list of this variant is `#[non_exhaustive]`.
+    ///
+    /// Note that this function will return `true` even if the type has been
+    /// defined in the crate currently being compiled. If that's not what you
+    /// want, see [`Self::field_list_has_applicable_non_exhaustive`].
     #[inline]
     pub fn is_field_list_non_exhaustive(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE)
+    }
+
+    /// Returns `true` if the field list of this variant is `#[non_exhaustive]`
+    /// and the type has been defined in another crate.
+    #[inline]
+    pub fn field_list_has_applicable_non_exhaustive(&self) -> bool {
+        self.is_field_list_non_exhaustive() && !self.def_id.is_local()
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`

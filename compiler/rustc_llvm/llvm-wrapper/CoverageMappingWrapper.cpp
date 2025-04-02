@@ -78,6 +78,13 @@ struct LLVMRustCoverageCodeRegion {
 };
 
 // Must match the layout of
+// `rustc_codegen_llvm::coverageinfo::ffi::ExpansionRegion`.
+struct LLVMRustCoverageExpansionRegion {
+  LLVMRustCoverageSpan Span;
+  uint32_t ExpandedFileID;
+};
+
+// Must match the layout of
 // `rustc_codegen_llvm::coverageinfo::ffi::BranchRegion`.
 struct LLVMRustCoverageBranchRegion {
   LLVMRustCoverageSpan Span;
@@ -151,6 +158,8 @@ extern "C" void LLVMRustCoverageWriteFunctionMappingsToBuffer(
     const unsigned *VirtualFileMappingIDs, size_t NumVirtualFileMappingIDs,
     const LLVMRustCounterExpression *RustExpressions, size_t NumExpressions,
     const LLVMRustCoverageCodeRegion *CodeRegions, size_t NumCodeRegions,
+    const LLVMRustCoverageExpansionRegion *ExpansionRegions,
+    size_t NumExpansionRegions,
     const LLVMRustCoverageBranchRegion *BranchRegions, size_t NumBranchRegions,
     const LLVMRustCoverageMCDCBranchRegion *MCDCBranchRegions,
     size_t NumMCDCBranchRegions,
@@ -176,6 +185,13 @@ extern "C" void LLVMRustCoverageWriteFunctionMappingsToBuffer(
   for (const auto &Region : ArrayRef(CodeRegions, NumCodeRegions)) {
     MappingRegions.push_back(coverage::CounterMappingRegion::makeRegion(
         fromRust(Region.Count), Region.Span.FileID, Region.Span.LineStart,
+        Region.Span.ColumnStart, Region.Span.LineEnd, Region.Span.ColumnEnd));
+  }
+
+  // Expansion regions:
+  for (const auto &Region : ArrayRef(ExpansionRegions, NumExpansionRegions)) {
+    MappingRegions.push_back(coverage::CounterMappingRegion::makeExpansion(
+        Region.Span.FileID, Region.ExpandedFileID, Region.Span.LineStart,
         Region.Span.ColumnStart, Region.Span.LineEnd, Region.Span.ColumnEnd));
   }
 

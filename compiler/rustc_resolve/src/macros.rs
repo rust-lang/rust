@@ -8,7 +8,7 @@ use std::sync::Arc;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::StabilityLevel;
+use rustc_attr_parsing::{AttributeKind, StabilityLevel, find_attr};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{
@@ -28,7 +28,7 @@ use rustc_session::lint::builtin::{
     UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::edit_distance::edit_distance;
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -40,9 +40,9 @@ use crate::errors::{
 };
 use crate::imports::Import;
 use crate::{
-    BindingKey, BuiltinMacroState, DeriveData, Determinacy, Finalize, InvocationParent, MacroData,
-    ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
-    ResolutionError, Resolver, ScopeSet, Segment, ToNameBinding, Used,
+    BindingKey, DeriveData, Determinacy, Finalize, InvocationParent, MacroData, ModuleKind,
+    ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError,
+    Resolver, ScopeSet, Segment, ToNameBinding, Used,
 };
 
 type Res = def::Res<NodeId>;
@@ -168,7 +168,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
             match self.resolve_crate_root(ident).kind {
-                ModuleKind::Def(.., name) if name != kw::Empty => name,
+                ModuleKind::Def(.., name) if let Some(name) = name => name,
                 _ => kw::Crate,
             }
         });
@@ -194,7 +194,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn register_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind) {
-        if self.builtin_macros.insert(name, BuiltinMacroState::NotYetSeen(ext)).is_some() {
+        if self.builtin_macros.insert(name, ext).is_some() {
             self.dcx().bug(format!("built-in macro `{name}` was already registered"));
         }
     }
@@ -264,7 +264,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             }
             InvocationKind::Bang { ref mac, .. } => (&mac.path, MacroKind::Bang),
             InvocationKind::Derive { ref path, .. } => (path, MacroKind::Derive),
-            InvocationKind::GlobDelegation { ref item } => {
+            InvocationKind::GlobDelegation { ref item, .. } => {
                 let ast::AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
                 deleg_impl = Some(self.invocation_parent(invoc_id));
                 // It is sufficient to consider glob delegation a bang macro for now.
@@ -323,7 +323,6 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn check_unused_macros(&mut self) {
-        #[allow(rustc::potential_query_instability)] // FIXME
         for (_, &(node_id, ident)) in self.unused_macros.iter() {
             self.lint_buffer.buffer_lint(
                 UNUSED_MACROS,
@@ -576,7 +575,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         match res {
             Res::Def(DefKind::Macro(_), def_id) => {
                 if let Some(def_id) = def_id.as_local() {
-                    self.unused_macros.remove(&def_id);
+                    self.unused_macros.swap_remove(&def_id);
                     if self.proc_macro_stubs.contains(&def_id) {
                         self.dcx().emit_err(errors::ProcMacroSameCrate {
                             span: path.span,
@@ -652,13 +651,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && let [namespace, attribute, ..] = &*path.segments
             && namespace.ident.name == sym::diagnostic
-            && !(attribute.ident.name == sym::on_unimplemented
-                || attribute.ident.name == sym::do_not_recommend)
+            && ![sym::on_unimplemented, sym::do_not_recommend].contains(&attribute.ident.name)
         {
-            let distance =
-                edit_distance(attribute.ident.name.as_str(), sym::on_unimplemented.as_str(), 5);
-
-            let typo_name = distance.map(|_| sym::on_unimplemented);
+            let typo_name = find_best_match_for_name(
+                &[sym::on_unimplemented, sym::do_not_recommend],
+                attribute.ident.name,
+                Some(5),
+            );
 
             self.tcx.sess.psess.buffer_lint(
                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
@@ -1068,11 +1067,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             );
             if fallback_binding.ok().and_then(|b| b.res().opt_def_id()) != Some(def_id) {
                 let location = match parent_scope.module.kind {
-                    ModuleKind::Def(_, _, name) if name == kw::Empty => {
-                        "the crate root".to_string()
-                    }
                     ModuleKind::Def(kind, def_id, name) => {
-                        format!("{} `{name}`", kind.descr(def_id))
+                        if let Some(name) = name {
+                            format!("{} `{name}`", kind.descr(def_id))
+                        } else {
+                            "the crate root".to_string()
+                        }
                     }
                     ModuleKind::Block => "this scope".to_string(),
                 };
@@ -1125,22 +1125,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             edition,
         );
 
+        // The #[rustc_macro_edition_2021] attribute is used by the pin!() macro
+        // as a temporary workaround for a regression in expressiveness in Rust 2024.
+        // See https://github.com/rust-lang/rust/issues/138718.
+        if find_attr!(attrs.iter(), AttributeKind::RustcMacroEdition2021) {
+            ext.edition = Edition::Edition2021;
+        }
+
         if let Some(builtin_name) = ext.builtin_name {
             // The macro was marked with `#[rustc_builtin_macro]`.
-            if let Some(builtin_macro) = self.builtin_macros.get_mut(&builtin_name) {
+            if let Some(builtin_ext_kind) = self.builtin_macros.get(&builtin_name) {
                 // The macro is a built-in, replace its expander function
                 // while still taking everything else from the source code.
-                // If we already loaded this builtin macro, give a better error message than 'no such builtin macro'.
-                match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(span)) {
-                    BuiltinMacroState::NotYetSeen(builtin_ext) => {
-                        ext.kind = builtin_ext;
-                        rule_spans = Vec::new();
-                    }
-                    BuiltinMacroState::AlreadySeen(note_span) => {
-                        self.dcx()
-                            .emit_err(errors::AttemptToDefineBuiltinMacroTwice { span, note_span });
-                    }
-                }
+                ext.kind = builtin_ext_kind.clone();
+                rule_spans = Vec::new();
             } else {
                 self.dcx().emit_err(errors::CannotFindBuiltinMacroWithName { span, ident });
             }

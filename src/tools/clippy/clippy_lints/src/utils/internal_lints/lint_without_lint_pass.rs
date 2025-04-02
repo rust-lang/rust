@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
             return;
         }
 
-        if let hir::ItemKind::Static(ty, Mutability::Not, body_id) = item.kind {
+        if let hir::ItemKind::Static(ident, ty, Mutability::Not, body_id) = item.kind {
             if is_lint_ref_type(cx, ty) {
                 check_invalid_clippy_version_attribute(cx, item);
 
@@ -133,10 +133,10 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                             cx,
                             DEFAULT_LINT,
                             item.span,
-                            format!("the lint `{}` has the default lint description", item.ident.name),
+                            format!("the lint `{}` has the default lint description", ident.name),
                         );
                     }
-                    self.declared_lints.insert(item.ident.name, item.span);
+                    self.declared_lints.insert(ident.name, item.span);
                 }
             }
         } else if let Some(macro_call) = root_macro_call_first_node(cx, item) {

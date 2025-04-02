@@ -157,7 +157,7 @@ pub fn set_panic_hook(drop_bars: &[ProgressBar]) {
     }));
 }
 
-/// Allow non-Debug items in a `derive(Debug)` struct`.
+/// Allow non-Debug items in a `derive(Debug)` struct.
 #[derive(Clone)]
 struct NoDebug<T>(T);
 

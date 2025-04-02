@@ -1,5 +1,5 @@
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:17:13
+  --> tests/ui/single_match_else.rs:18:13
    |
 LL |       let _ = match ExprNode::Butterflies {
    |  _____________^
@@ -22,7 +22,7 @@ LL ~     };
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:83:5
+  --> tests/ui/single_match_else.rs:84:5
    |
 LL | /     match Some(1) {
 LL | |         Some(a) => println!("${:?}", a),
@@ -42,7 +42,7 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:93:5
+  --> tests/ui/single_match_else.rs:94:5
    |
 LL | /     match Some(1) {
 LL | |         Some(a) => println!("${:?}", a),
@@ -62,7 +62,28 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:104:5
+  --> tests/ui/single_match_else.rs:103:5
+   |
+LL | /     match Some(1) {
+LL | |         Some(a) => println!("${:?}", a),
+LL | |         // This is an inner comment
+LL | |         None => {
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+   = note: you might want to preserve the comments from inside the `match`
+help: try
+   |
+LL ~     if let Some(a) = Some(1) { println!("${:?}", a) } else {
+LL +         println!("else block");
+LL +         return;
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:116:5
    |
 LL | /     match Result::<i32, &Infallible>::Ok(1) {
 LL | |         Ok(a) => println!("${:?}", a),
@@ -81,7 +102,7 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:114:5
+  --> tests/ui/single_match_else.rs:126:5
    |
 LL | /     match Cow::from("moo") {
 LL | |         Cow::Owned(a) => println!("${:?}", a),
@@ -100,7 +121,7 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:125:5
+  --> tests/ui/single_match_else.rs:137:5
    |
 LL | /     match bar {
 LL | |         Some(v) => unsafe {
@@ -123,7 +144,7 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:137:5
+  --> tests/ui/single_match_else.rs:149:5
    |
 LL | /     match bar {
 LL | |         Some(v) => {
@@ -147,7 +168,7 @@ LL +     } }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:150:5
+  --> tests/ui/single_match_else.rs:162:5
    |
 LL | /     match bar {
 LL | |         Some(v) => unsafe {
@@ -171,7 +192,7 @@ LL +     } }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:163:5
+  --> tests/ui/single_match_else.rs:175:5
    |
 LL | /     match bar {
 LL | |         #[rustfmt::skip]
@@ -196,7 +217,7 @@ LL +     }
    |
 
 error: this pattern is irrefutable, `match` is useless
-  --> tests/ui/single_match_else.rs:213:5
+  --> tests/ui/single_match_else.rs:225:5
    |
 LL | /     match ExprNode::Butterflies {
 LL | |         ExprNode::Butterflies => Some(&NODE),
@@ -207,5 +228,5 @@ LL | |         },
 LL | |     }
    | |_____^ help: try: `Some(&NODE)`
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 

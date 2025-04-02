@@ -33,7 +33,7 @@ msrv_aliases! {
     1,76,0 { PTR_FROM_REF, OPTION_RESULT_INSPECT }
     1,75,0 { OPTION_AS_SLICE }
     1,74,0 { REPR_RUST, IO_ERROR_OTHER }
-    1,73,0 { MANUAL_DIV_CEIL }
+    1,73,0 { DIV_CEIL }
     1,71,0 { TUPLE_ARRAY_CONVERSIONS, BUILD_HASHER_HASH_ONE }
     1,70,0 { OPTION_RESULT_IS_VARIANT_AND, BINARY_HEAP_RETAIN }
     1,68,0 { PATH_MAIN_SEPARATOR_STR }
@@ -74,6 +74,7 @@ msrv_aliases! {
     1,17,0 { FIELD_INIT_SHORTHAND, STATIC_IN_CONST, EXPECT_ERR }
     1,16,0 { STR_REPEAT }
     1,15,0 { MAYBE_BOUND_IN_WHERE }
+    1,13,0 { QUESTION_MARK_OPERATOR }
 }
 
 /// `#[clippy::msrv]` attributes are rarely used outside of Clippy's test suite, as a basic

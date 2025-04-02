@@ -59,7 +59,7 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
 
     pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, HirId)>>,
 
-    pub(super) deferred_coroutine_interiors: RefCell<Vec<(LocalDefId, hir::BodyId, Ty<'tcx>)>>,
+    pub(super) deferred_coroutine_interiors: RefCell<Vec<(LocalDefId, Ty<'tcx>)>>,
 
     pub(super) deferred_repeat_expr_checks:
         RefCell<Vec<(&'tcx hir::Expr<'tcx>, Ty<'tcx>, ty::Const<'tcx>)>>,

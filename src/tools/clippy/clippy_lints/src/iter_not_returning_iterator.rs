@@ -28,9 +28,9 @@ declare_clippy_lint! {
     /// use std::str::Chars;
     /// struct Data {}
     /// impl Data {
-    ///    fn iter(&self) -> Chars<'static> {
-    ///        todo!()
-    ///    }
+    ///     fn iter(&self) -> Chars<'static> {
+    ///         todo!()
+    ///     }
     /// }
     /// ```
     #[clippy::version = "1.57.0"]

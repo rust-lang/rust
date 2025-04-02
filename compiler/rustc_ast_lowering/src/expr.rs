@@ -351,7 +351,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         rest,
                     )
                 }
-                ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
+                ExprKind::Yield(kind) => self.lower_expr_yield(e.span, kind.expr().map(|x| &**x)),
                 ExprKind::Err(guar) => hir::ExprKind::Err(*guar),
 
                 ExprKind::UnsafeBinderCast(kind, expr, ty) => hir::ExprKind::UnsafeBinderCast(
@@ -2148,11 +2148,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn expr_u16(&mut self, sp: Span, value: u16) -> hir::Expr<'hir> {
         self.expr_uint(sp, ast::UintTy::U16, value as u128)
-    }
-
-    pub(super) fn expr_char(&mut self, sp: Span, value: char) -> hir::Expr<'hir> {
-        let lit = self.arena.alloc(hir::Lit { span: sp, node: ast::LitKind::Char(value) });
-        self.expr(sp, hir::ExprKind::Lit(lit))
     }
 
     pub(super) fn expr_str(&mut self, sp: Span, value: Symbol) -> hir::Expr<'hir> {

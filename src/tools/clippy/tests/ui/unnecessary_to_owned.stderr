@@ -1,11 +1,11 @@
 error: redundant clone
-  --> tests/ui/unnecessary_to_owned.rs:225:64
+  --> tests/ui/unnecessary_to_owned.rs:217:64
    |
 LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
    |                                                                ^^^^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/unnecessary_to_owned.rs:225:20
+  --> tests/ui/unnecessary_to_owned.rs:217:20
    |
 LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,49 +13,49 @@ LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned())
    = help: to override `-D warnings` add `#[allow(clippy::redundant_clone)]`
 
 error: redundant clone
-  --> tests/ui/unnecessary_to_owned.rs:227:40
+  --> tests/ui/unnecessary_to_owned.rs:219:40
    |
 LL |     require_os_str(&OsString::from("x").to_os_string());
    |                                        ^^^^^^^^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/unnecessary_to_owned.rs:227:21
+  --> tests/ui/unnecessary_to_owned.rs:219:21
    |
 LL |     require_os_str(&OsString::from("x").to_os_string());
    |                     ^^^^^^^^^^^^^^^^^^^
 
 error: redundant clone
-  --> tests/ui/unnecessary_to_owned.rs:229:48
+  --> tests/ui/unnecessary_to_owned.rs:221:48
    |
 LL |     require_path(&std::path::PathBuf::from("x").to_path_buf());
    |                                                ^^^^^^^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/unnecessary_to_owned.rs:229:19
+  --> tests/ui/unnecessary_to_owned.rs:221:19
    |
 LL |     require_path(&std::path::PathBuf::from("x").to_path_buf());
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant clone
-  --> tests/ui/unnecessary_to_owned.rs:231:35
+  --> tests/ui/unnecessary_to_owned.rs:223:35
    |
 LL |     require_str(&String::from("x").to_string());
    |                                   ^^^^^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/unnecessary_to_owned.rs:231:18
+  --> tests/ui/unnecessary_to_owned.rs:223:18
    |
 LL |     require_str(&String::from("x").to_string());
    |                  ^^^^^^^^^^^^^^^^^
 
 error: redundant clone
-  --> tests/ui/unnecessary_to_owned.rs:233:39
+  --> tests/ui/unnecessary_to_owned.rs:225:39
    |
 LL |     require_slice(&[String::from("x")].to_owned());
    |                                       ^^^^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/unnecessary_to_owned.rs:233:20
+  --> tests/ui/unnecessary_to_owned.rs:225:20
    |
 LL |     require_slice(&[String::from("x")].to_owned());
    |                    ^^^^^^^^^^^^^^^^^^^
@@ -442,43 +442,19 @@ LL |     let _ = slice.to_owned().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `slice.iter().copied()`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:198:13
-   |
-LL |     let _ = [std::path::PathBuf::new()][..].to_vec().into_iter();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[std::path::PathBuf::new()][..].iter().cloned()`
-
-error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:200:13
-   |
-LL |     let _ = [std::path::PathBuf::new()][..].to_owned().into_iter();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[std::path::PathBuf::new()][..].iter().cloned()`
-
-error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:203:13
+  --> tests/ui/unnecessary_to_owned.rs:199:13
    |
 LL |     let _ = IntoIterator::into_iter(slice.to_vec());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `slice.iter().copied()`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:205:13
+  --> tests/ui/unnecessary_to_owned.rs:201:13
    |
 LL |     let _ = IntoIterator::into_iter(slice.to_owned());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `slice.iter().copied()`
 
-error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:207:13
-   |
-LL |     let _ = IntoIterator::into_iter([std::path::PathBuf::new()][..].to_vec());
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[std::path::PathBuf::new()][..].iter().cloned()`
-
-error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:209:13
-   |
-LL |     let _ = IntoIterator::into_iter([std::path::PathBuf::new()][..].to_owned());
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[std::path::PathBuf::new()][..].iter().cloned()`
-
 error: allocating a new `String` only to create a temporary `&str` from it
-  --> tests/ui/unnecessary_to_owned.rs:237:26
+  --> tests/ui/unnecessary_to_owned.rs:229:26
    |
 LL |     let _ref_str: &str = &String::from_utf8(slice.to_vec()).expect("not UTF-8");
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -490,7 +466,7 @@ LL +     let _ref_str: &str = core::str::from_utf8(&slice).expect("not UTF-8");
    |
 
 error: allocating a new `String` only to create a temporary `&str` from it
-  --> tests/ui/unnecessary_to_owned.rs:239:26
+  --> tests/ui/unnecessary_to_owned.rs:231:26
    |
 LL |     let _ref_str: &str = &String::from_utf8(b"foo".to_vec()).unwrap();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -502,7 +478,7 @@ LL +     let _ref_str: &str = core::str::from_utf8(b"foo").unwrap();
    |
 
 error: allocating a new `String` only to create a temporary `&str` from it
-  --> tests/ui/unnecessary_to_owned.rs:241:26
+  --> tests/ui/unnecessary_to_owned.rs:233:26
    |
 LL |     let _ref_str: &str = &String::from_utf8(b"foo".as_slice().to_owned()).unwrap();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -514,7 +490,7 @@ LL +     let _ref_str: &str = core::str::from_utf8(b"foo".as_slice()).unwrap();
    |
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:299:14
+  --> tests/ui/unnecessary_to_owned.rs:291:14
    |
 LL |     for t in file_types.to_vec() {
    |              ^^^^^^^^^^^^^^^^^^^
@@ -526,65 +502,53 @@ LL |
 LL ~         let path = match get_file_path(t) {
    |
 
-error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:323:14
-   |
-LL |     let _ = &["x"][..].to_vec().into_iter();
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `["x"][..].iter().cloned()`
-
-error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:329:14
-   |
-LL |     let _ = &["x"][..].to_vec().into_iter();
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `["x"][..].iter().copied()`
-
 error: unnecessary use of `to_string`
-  --> tests/ui/unnecessary_to_owned.rs:378:24
+  --> tests/ui/unnecessary_to_owned.rs:357:24
    |
 LL |         Box::new(build(y.to_string()))
    |                        ^^^^^^^^^^^^^ help: use: `y`
 
 error: unnecessary use of `to_string`
-  --> tests/ui/unnecessary_to_owned.rs:488:12
+  --> tests/ui/unnecessary_to_owned.rs:467:12
    |
 LL |         id("abc".to_string())
    |            ^^^^^^^^^^^^^^^^^ help: use: `"abc"`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:632:37
+  --> tests/ui/unnecessary_to_owned.rs:611:37
    |
 LL |         IntoFuture::into_future(foo([].to_vec(), &0));
    |                                     ^^^^^^^^^^^ help: use: `[]`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:643:18
+  --> tests/ui/unnecessary_to_owned.rs:622:18
    |
 LL |         s.remove(&a.to_vec());
    |                  ^^^^^^^^^^^ help: replace it with: `a`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:648:14
+  --> tests/ui/unnecessary_to_owned.rs:627:14
    |
 LL |     s.remove(&"b".to_owned());
    |              ^^^^^^^^^^^^^^^ help: replace it with: `"b"`
 
 error: unnecessary use of `to_string`
-  --> tests/ui/unnecessary_to_owned.rs:650:14
+  --> tests/ui/unnecessary_to_owned.rs:629:14
    |
 LL |     s.remove(&"b".to_string());
    |              ^^^^^^^^^^^^^^^^ help: replace it with: `"b"`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:656:14
+  --> tests/ui/unnecessary_to_owned.rs:635:14
    |
 LL |     s.remove(&["b"].to_vec());
    |              ^^^^^^^^^^^^^^^ help: replace it with: `["b"].as_slice()`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:658:14
+  --> tests/ui/unnecessary_to_owned.rs:637:14
    |
 LL |     s.remove(&(&["b"]).to_vec());
    |              ^^^^^^^^^^^^^^^^^^ help: replace it with: `(&["b"]).as_slice()`
 
-error: aborting due to 88 previous errors
+error: aborting due to 82 previous errors
 

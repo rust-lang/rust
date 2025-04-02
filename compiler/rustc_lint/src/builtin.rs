@@ -330,7 +330,6 @@ impl EarlyLintPass for UnsafeCode {
         if let FnKind::Fn(
             ctxt,
             _,
-            _,
             ast::Fn {
                 sig: ast::FnSig { header: ast::FnHeader { safety: ast::Safety::Unsafe(_), .. }, .. },
                 body,
@@ -441,7 +440,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         // so we will continue to exclude them for compatibility.
         //
         // The documentation on `ExternCrate` is not used at the moment so no need to warn for it.
-        if let hir::ItemKind::Impl(..) | hir::ItemKind::Use(..) | hir::ItemKind::ExternCrate(_) =
+        if let hir::ItemKind::Impl(..) | hir::ItemKind::Use(..) | hir::ItemKind::ExternCrate(..) =
             it.kind
         {
             return;
@@ -545,21 +544,21 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
             return;
         }
         let (def, ty) = match item.kind {
-            hir::ItemKind::Struct(_, ast_generics) => {
+            hir::ItemKind::Struct(_, _, ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
                 (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
             }
-            hir::ItemKind::Union(_, ast_generics) => {
+            hir::ItemKind::Union(_, _, ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
                 (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
             }
-            hir::ItemKind::Enum(_, ast_generics) => {
+            hir::ItemKind::Enum(_, _, ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
@@ -1416,7 +1415,7 @@ impl TypeAliasBounds {
 
 impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        let hir::ItemKind::TyAlias(hir_ty, generics) = item.kind else { return };
+        let hir::ItemKind::TyAlias(_, hir_ty, generics) = item.kind else { return };
 
         // There must not be a where clause.
         if generics.predicates.is_empty() {
@@ -2119,9 +2118,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
         use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 
         let def_id = item.owner_id.def_id;
-        if let hir::ItemKind::Struct(_, hir_generics)
-        | hir::ItemKind::Enum(_, hir_generics)
-        | hir::ItemKind::Union(_, hir_generics) = item.kind
+        if let hir::ItemKind::Struct(_, _, hir_generics)
+        | hir::ItemKind::Enum(_, _, hir_generics)
+        | hir::ItemKind::Union(_, _, hir_generics) = item.kind
         {
             let inferred_outlives = cx.tcx.inferred_outlives_of(def_id);
             if inferred_outlives.is_empty() {
@@ -2257,7 +2256,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                 // generics, except for tuple struct, which have the `where`
                 // after the fields of the struct.
                 let full_where_span =
-                    if let hir::ItemKind::Struct(hir::VariantData::Tuple(..), _) = item.kind {
+                    if let hir::ItemKind::Struct(_, hir::VariantData::Tuple(..), _) = item.kind {
                         where_span
                     } else {
                         hir_generics.span.shrink_to_hi().to(where_span)
@@ -3116,6 +3115,7 @@ impl EarlyLintPass for SpecialModuleName {
         for item in &krate.items {
             if let ast::ItemKind::Mod(
                 _,
+                ident,
                 ast::ModKind::Unloaded | ast::ModKind::Loaded(_, ast::Inline::No, _, _),
             ) = item.kind
             {
@@ -3123,7 +3123,7 @@ impl EarlyLintPass for SpecialModuleName {
                     continue;
                 }
 
-                match item.ident.name.as_str() {
+                match ident.name.as_str() {
                     "lib" => cx.emit_span_lint(
                         SPECIAL_MODULE_NAME,
                         item.span,

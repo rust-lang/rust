@@ -107,5 +107,21 @@ LL |
 LL ~         fn from(val: Hello) {}
    |
 
-error: aborting due to 7 previous errors
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> tests/ui/from_over_into.rs:111:5
+   |
+LL |     impl Into<i64> for MyInt {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `impl From<Local> for Foreign` is allowed by the orphan rules, for more information see
+           https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
+help: replace the `Into` implementation with `From<issue_112502::MyInt>`
+   |
+LL ~     impl From<MyInt> for i64 {
+LL |
+LL ~         fn from(val: MyInt) -> Self {
+LL ~             val.0
+   |
+
+error: aborting due to 8 previous errors
 

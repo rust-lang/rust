@@ -1,11 +1,10 @@
 // ignore-tidy-linelength
 
-use proc_macro::{ConversionErrorKind, Literal};
+use proc_macro::Literal;
 
 pub fn test() {
     test_display_literal();
     test_parse_literal();
-    test_str_value_methods();
 }
 
 fn test_display_literal() {
@@ -81,54 +80,4 @@ fn test_parse_literal() {
     assert!("0// comment".parse::<Literal>().is_err());
     assert!("- 10".parse::<Literal>().is_err());
     assert!("-'x'".parse::<Literal>().is_err());
-}
-
-fn test_str_value_methods() {
-    // Testing `str_value`
-    let lit = "\"\n\"".parse::<Literal>().unwrap();
-    assert_eq!(lit.str_value(), Ok("\n".to_string()));
-
-    let lit = "r#\"\n\"#".parse::<Literal>().unwrap();
-    assert_eq!(lit.str_value(), Ok("\n".to_string()));
-
-    let lit = "1".parse::<Literal>().unwrap();
-    assert_eq!(lit.str_value(), Err(ConversionErrorKind::InvalidLiteralKind));
-
-    let lit = "b\"\n\"".parse::<Literal>().unwrap();
-    assert_eq!(lit.str_value(), Err(ConversionErrorKind::InvalidLiteralKind));
-
-    let lit = "c\"\n\"".parse::<Literal>().unwrap();
-    assert_eq!(lit.str_value(), Err(ConversionErrorKind::InvalidLiteralKind));
-
-    // Testing `cstr_value`
-    let lit = "\"\n\"".parse::<Literal>().unwrap();
-    assert_eq!(lit.cstr_value(), Err(ConversionErrorKind::InvalidLiteralKind));
-
-    let lit = "r#\"\n\"#".parse::<Literal>().unwrap();
-    assert_eq!(lit.cstr_value(), Err(ConversionErrorKind::InvalidLiteralKind));
-
-    let lit = "1".parse::<Literal>().unwrap();
-    assert_eq!(lit.cstr_value(), Err(ConversionErrorKind::InvalidLiteralKind));
-
-    let lit = "b\"\n\"".parse::<Literal>().unwrap();
-    assert_eq!(lit.cstr_value(), Err(ConversionErrorKind::InvalidLiteralKind));
-
-    let lit = "c\"\n\"".parse::<Literal>().unwrap();
-    assert_eq!(lit.cstr_value(), Ok(vec![b'\n', 0]));
-
-    // Testing `byte_str_value`
-    let lit = "\"\n\"".parse::<Literal>().unwrap();
-    assert_eq!(lit.byte_str_value(), Err(ConversionErrorKind::InvalidLiteralKind));
-
-    let lit = "r#\"\n\"#".parse::<Literal>().unwrap();
-    assert_eq!(lit.byte_str_value(), Err(ConversionErrorKind::InvalidLiteralKind));
-
-    let lit = "1".parse::<Literal>().unwrap();
-    assert_eq!(lit.byte_str_value(), Err(ConversionErrorKind::InvalidLiteralKind));
-
-    let lit = "b\"\n\"".parse::<Literal>().unwrap();
-    assert_eq!(lit.byte_str_value(), Ok(vec![b'\n']));
-
-    let lit = "c\"\n\"".parse::<Literal>().unwrap();
-    assert_eq!(lit.byte_str_value(), Err(ConversionErrorKind::InvalidLiteralKind));
 }

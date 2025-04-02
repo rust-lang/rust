@@ -258,9 +258,6 @@ impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
         self.tcx
     }
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        if let hir::ExprKind::Closure(closure) = ex.kind {
-            self.check(closure.def_id);
-        }
         intravisit::walk_expr(self, ex);
     }
     fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
@@ -371,14 +368,8 @@ impl RpitConstraintChecker<'_> {
         // Use borrowck to get the type with unerased regions.
         let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
         debug!(?concrete_opaque_types);
-        for (&def_id, &concrete_type) in concrete_opaque_types {
-            if def_id != self.def_id {
-                // Ignore constraints for other opaque types.
-                continue;
-            }
-
+        if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
             debug!(?concrete_type, "found constraint");
-
             if concrete_type.ty != self.found.ty {
                 if let Ok(d) = self.found.build_mismatch_error(&concrete_type, self.tcx) {
                     d.emit();
@@ -395,9 +386,6 @@ impl<'tcx> intravisit::Visitor<'tcx> for RpitConstraintChecker<'tcx> {
         self.tcx
     }
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        if let hir::ExprKind::Closure(closure) = ex.kind {
-            self.check(closure.def_id);
-        }
         intravisit::walk_expr(self, ex);
     }
     fn visit_item(&mut self, it: &'tcx Item<'tcx>) {

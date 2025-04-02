@@ -256,7 +256,7 @@ impl<K: Eq + Hash + Copy + IntoPointer> ShardedHashMap<K, ()> {
 }
 
 #[inline]
-fn make_hash<K: Hash + ?Sized>(val: &K) -> u64 {
+pub fn make_hash<K: Hash + ?Sized>(val: &K) -> u64 {
     let mut state = FxHasher::default();
     val.hash(&mut state);
     state.finish()

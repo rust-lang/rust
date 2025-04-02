@@ -125,7 +125,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     items.extend(doc.items.values().flat_map(|(item, renamed, _)| {
         // Now we actually lower the imports, skipping everything else.
         if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
-            let name = renamed.unwrap_or_else(|| cx.tcx.hir_name(item.hir_id()));
+            let name = renamed.unwrap_or(kw::Empty); // using kw::Empty is a bit of a hack
             clean_use_statement(item, name, path, hir::UseKind::Glob, cx, &mut inserted)
         } else {
             // skip everything else
@@ -210,7 +210,7 @@ fn generate_item_with_correct_attrs(
 
     let name = renamed.or(Some(name));
     let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, cfg);
-    item.inline_stmt_id = import_id;
+    item.inner.inline_stmt_id = import_id;
     item
 }
 
@@ -1088,7 +1088,7 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attrib
 
 enum FunctionArgs<'tcx> {
     Body(hir::BodyId),
-    Names(&'tcx [Ident]),
+    Names(&'tcx [Option<Ident>]),
 }
 
 fn clean_function<'tcx>(
@@ -1117,13 +1117,15 @@ fn clean_function<'tcx>(
 fn clean_args_from_types_and_names<'tcx>(
     cx: &mut DocContext<'tcx>,
     types: &[hir::Ty<'tcx>],
-    names: &[Ident],
+    names: &[Option<Ident>],
 ) -> Arguments {
-    fn nonempty_name(ident: &Ident) -> Option<Symbol> {
-        if ident.name == kw::Underscore || ident.name == kw::Empty {
-            None
-        } else {
+    fn nonempty_name(ident: &Option<Ident>) -> Option<Symbol> {
+        if let Some(ident) = ident
+            && ident.name != kw::Underscore
+        {
             Some(ident.name)
+        } else {
+            None
         }
     }
 
@@ -1216,11 +1218,11 @@ fn clean_poly_fn_sig<'tcx>(
                 .iter()
                 .map(|t| Argument {
                     type_: clean_middle_ty(t.map_bound(|t| *t), cx, None, None),
-                    name: names
-                        .next()
-                        .map(|i| i.name)
-                        .filter(|i| !i.is_empty())
-                        .unwrap_or(kw::Underscore),
+                    name: if let Some(Some(ident)) = names.next() {
+                        ident.name
+                    } else {
+                        kw::Underscore
+                    },
                     is_const: false,
                 })
                 .collect(),
@@ -1629,8 +1631,7 @@ fn first_non_private<'tcx>(
                 if let Some(use_def_id) = reexp.id()
                     && let Some(local_use_def_id) = use_def_id.as_local()
                     && let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(local_use_def_id)
-                    && !item.ident.name.is_empty()
-                    && let hir::ItemKind::Use(path, _) = item.kind
+                    && let hir::ItemKind::Use(path, hir::UseKind::Single(_)) = item.kind
                 {
                     for res in &path.res {
                         if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
@@ -1775,7 +1776,7 @@ fn maybe_expand_private_type_alias<'tcx>(
     } else {
         return None;
     };
-    let hir::ItemKind::TyAlias(ty, generics) = alias else { return None };
+    let hir::ItemKind::TyAlias(_, ty, generics) = alias else { return None };
 
     let final_seg = &path.segments.last().expect("segments were empty");
     let mut args = DefIdMap::default();
@@ -1942,14 +1943,11 @@ fn clean_trait_object_lifetime_bound<'tcx>(
     // latter contrary to `clean_middle_region`.
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
-        ty::ReEarlyParam(region) if region.name != kw::Empty => Some(Lifetime(region.name)),
-        ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(_, name), .. })
-            if name != kw::Empty =>
-        {
+        ty::ReEarlyParam(region) => Some(Lifetime(region.name)),
+        ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(_, name), .. }) => {
             Some(Lifetime(name))
         }
-        ty::ReEarlyParam(_)
-        | ty::ReBound(..)
+        ty::ReBound(..)
         | ty::ReLateParam(_)
         | ty::ReVar(_)
         | ty::RePlaceholder(_)
@@ -2772,7 +2770,7 @@ fn add_without_unwanted_attributes<'hir>(
                 if ident == sym::doc {
                     filter_doc_attr(&mut normal.args, is_inline);
                     attrs.push((Cow::Owned(attr), import_parent));
-                } else if is_inline || ident != sym::cfg {
+                } else if is_inline || ident != sym::cfg_trace {
                     // If it's not a `cfg()` attribute, we keep it.
                     attrs.push((Cow::Owned(attr), import_parent));
                 }
@@ -2794,20 +2792,24 @@ fn clean_maybe_renamed_item<'tcx>(
     use hir::ItemKind;
 
     let def_id = item.owner_id.to_def_id();
-    let mut name = renamed.unwrap_or_else(|| cx.tcx.hir_name(item.hir_id()));
+    let mut name = renamed.unwrap_or_else(|| {
+        // FIXME: using kw::Empty is a bit of a hack
+        cx.tcx.hir_opt_name(item.hir_id()).unwrap_or(kw::Empty)
+    });
+
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            ItemKind::Static(ty, mutability, body_id) => StaticItem(Static {
+            ItemKind::Static(_, ty, mutability, body_id) => StaticItem(Static {
                 type_: Box::new(clean_ty(ty, cx)),
                 mutability,
                 expr: Some(body_id),
             }),
-            ItemKind::Const(ty, generics, body_id) => ConstantItem(Box::new(Constant {
+            ItemKind::Const(_, ty, generics, body_id) => ConstantItem(Box::new(Constant {
                 generics: clean_generics(generics, cx),
                 type_: clean_ty(ty, cx),
                 kind: ConstantKind::Local { body: body_id, def_id },
             })),
-            ItemKind::TyAlias(hir_ty, generics) => {
+            ItemKind::TyAlias(_, hir_ty, generics) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
                 let rustdoc_ty = clean_ty(hir_ty, cx);
                 let type_ =
@@ -2840,34 +2842,34 @@ fn clean_maybe_renamed_item<'tcx>(
                 ));
                 return ret;
             }
-            ItemKind::Enum(ref def, generics) => EnumItem(Enum {
+            ItemKind::Enum(_, ref def, generics) => EnumItem(Enum {
                 variants: def.variants.iter().map(|v| clean_variant(v, cx)).collect(),
                 generics: clean_generics(generics, cx),
             }),
-            ItemKind::TraitAlias(generics, bounds) => TraitAliasItem(TraitAlias {
+            ItemKind::TraitAlias(_, generics, bounds) => TraitAliasItem(TraitAlias {
                 generics: clean_generics(generics, cx),
                 bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
             }),
-            ItemKind::Union(ref variant_data, generics) => UnionItem(Union {
+            ItemKind::Union(_, ref variant_data, generics) => UnionItem(Union {
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            ItemKind::Struct(ref variant_data, generics) => StructItem(Struct {
+            ItemKind::Struct(_, ref variant_data, generics) => StructItem(Struct {
                 ctor_kind: variant_data.ctor_kind(),
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
-            ItemKind::Macro(macro_def, MacroKind::Bang) => MacroItem(Macro {
+            ItemKind::Macro(_, macro_def, MacroKind::Bang) => MacroItem(Macro {
                 source: display_macro_source(cx, name, macro_def),
                 macro_rules: macro_def.macro_rules,
             }),
-            ItemKind::Macro(_, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
+            ItemKind::Macro(_, _, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
             // proc macros can have a name set by attributes
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
-            ItemKind::Trait(_, _, generics, bounds, item_ids) => {
+            ItemKind::Trait(_, _, _, generics, bounds, item_ids) => {
                 let items = item_ids
                     .iter()
                     .map(|ti| clean_trait_item(cx.tcx.hir_trait_item(ti.id), cx))
@@ -2880,7 +2882,7 @@ fn clean_maybe_renamed_item<'tcx>(
                     bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
                 }))
             }
-            ItemKind::ExternCrate(orig_name) => {
+            ItemKind::ExternCrate(orig_name, _) => {
                 return clean_extern_crate(item, name, orig_name, cx);
             }
             ItemKind::Use(path, kind) => {

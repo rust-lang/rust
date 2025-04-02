@@ -8,7 +8,6 @@ bitflags = "2.5.0"
 tracing = "0.1"
 twox-hash = "1.6.3"
 rustc_abi = { path = "../rustc_abi" }
-rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_middle = { path = "../rustc_middle" }

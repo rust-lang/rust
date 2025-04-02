@@ -28,6 +28,7 @@ use tracing::instrument;
 use crate::middle::region;
 use crate::mir::interpret::AllocId;
 use crate::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
+use crate::thir::visit::for_each_immediate_subpat;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
@@ -672,27 +673,7 @@ impl<'tcx> Pat<'tcx> {
             return;
         }
 
-        use PatKind::*;
-        match &self.kind {
-            Wild
-            | Never
-            | Range(..)
-            | Binding { subpattern: None, .. }
-            | Constant { .. }
-            | Error(_) => {}
-            AscribeUserType { subpattern, .. }
-            | Binding { subpattern: Some(subpattern), .. }
-            | Deref { subpattern }
-            | DerefPattern { subpattern, .. }
-            | ExpandedConstant { subpattern, .. } => subpattern.walk_(it),
-            Leaf { subpatterns } | Variant { subpatterns, .. } => {
-                subpatterns.iter().for_each(|field| field.pattern.walk_(it))
-            }
-            Or { pats } => pats.iter().for_each(|p| p.walk_(it)),
-            Array { box prefix, slice, box suffix } | Slice { box prefix, slice, box suffix } => {
-                prefix.iter().chain(slice.as_deref()).chain(suffix.iter()).for_each(|p| p.walk_(it))
-            }
-        }
+        for_each_immediate_subpat(self, |p| p.walk_(it));
     }
 
     /// Whether the pattern has a `PatKind::Error` nested within.
@@ -819,9 +800,9 @@ pub enum PatKind<'tcx> {
     },
 
     /// One of the following:
-    /// * `&str`/`&[u8]` (represented as a valtree), which will be handled as a string/slice pattern
-    ///   and thus exhaustiveness checking will detect if you use the same string/slice twice in
-    ///   different patterns.
+    /// * `&str` (represented as a valtree), which will be handled as a string pattern and thus
+    ///   exhaustiveness checking will detect if you use the same string twice in different
+    ///   patterns.
     /// * integer, bool, char or float (represented as a valtree), which will be handled by
     ///   exhaustiveness to cover exactly its own value, similar to `&str`, but these values are
     ///   much simpler.

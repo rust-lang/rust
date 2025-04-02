@@ -3,9 +3,7 @@ use hermit_abi::{EBADF, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 #[cfg(target_family = "unix")]
 use libc::{EBADF, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 
-#[cfg(target_family = "unix")]
-use crate::io::BorrowedCursor;
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
 #[cfg(target_os = "hermit")]
 use crate::os::hermit::io::FromRawFd;
@@ -13,13 +11,13 @@ use crate::os::hermit::io::FromRawFd;
 use crate::os::unix::io::FromRawFd;
 use crate::sys::fd::FileDesc;
 
-pub struct Stdin(());
-pub struct Stdout(());
-pub struct Stderr(());
+pub struct Stdin;
+pub struct Stdout;
+pub struct Stderr;
 
 impl Stdin {
     pub const fn new() -> Stdin {
-        Stdin(())
+        Stdin
     }
 }
 
@@ -28,7 +26,6 @@ impl io::Read for Stdin {
         unsafe { ManuallyDrop::new(FileDesc::from_raw_fd(STDIN_FILENO)).read(buf) }
     }
 
-    #[cfg(not(target_os = "hermit"))]
     fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
         unsafe { ManuallyDrop::new(FileDesc::from_raw_fd(STDIN_FILENO)).read_buf(buf) }
     }
@@ -45,7 +42,7 @@ impl io::Read for Stdin {
 
 impl Stdout {
     pub const fn new() -> Stdout {
-        Stdout(())
+        Stdout
     }
 }
 
@@ -71,7 +68,7 @@ impl io::Write for Stdout {
 
 impl Stderr {
     pub const fn new() -> Stderr {
-        Stderr(())
+        Stderr
     }
 }
 

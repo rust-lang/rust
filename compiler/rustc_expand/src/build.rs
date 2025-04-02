@@ -286,7 +286,6 @@ impl<'a> ExtCtxt<'a> {
             rules: BlockCheckMode::Default,
             span,
             tokens: None,
-            could_be_bare_literal: false,
         })
     }
 
@@ -663,15 +662,8 @@ impl<'a> ExtCtxt<'a> {
         P(ast::FnDecl { inputs, output })
     }
 
-    pub fn item(
-        &self,
-        span: Span,
-        name: Ident,
-        attrs: ast::AttrVec,
-        kind: ast::ItemKind,
-    ) -> P<ast::Item> {
+    pub fn item(&self, span: Span, attrs: ast::AttrVec, kind: ast::ItemKind) -> P<ast::Item> {
         P(ast::Item {
-            ident: name,
             attrs,
             id: ast::DUMMY_NODE_ID,
             kind,
@@ -688,18 +680,24 @@ impl<'a> ExtCtxt<'a> {
     pub fn item_static(
         &self,
         span: Span,
-        name: Ident,
+        ident: Ident,
         ty: P<ast::Ty>,
         mutability: ast::Mutability,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
         self.item(
             span,
-            name,
             AttrVec::new(),
             ast::ItemKind::Static(
-                ast::StaticItem { ty, safety: ast::Safety::Default, mutability, expr: Some(expr) }
-                    .into(),
+                ast::StaticItem {
+                    ident,
+                    ty,
+                    safety: ast::Safety::Default,
+                    mutability,
+                    expr: Some(expr),
+                    define_opaque: None,
+                }
+                .into(),
             ),
         )
     }
@@ -707,22 +705,23 @@ impl<'a> ExtCtxt<'a> {
     pub fn item_const(
         &self,
         span: Span,
-        name: Ident,
+        ident: Ident,
         ty: P<ast::Ty>,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
         let defaultness = ast::Defaultness::Final;
         self.item(
             span,
-            name,
             AttrVec::new(),
             ast::ItemKind::Const(
                 ast::ConstItem {
                     defaultness,
+                    ident,
                     // FIXME(generic_const_items): Pass the generics as a parameter.
                     generics: ast::Generics::default(),
                     ty,
                     expr: Some(expr),
+                    define_opaque: None,
                 }
                 .into(),
             ),

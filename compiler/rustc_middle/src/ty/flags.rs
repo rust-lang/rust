@@ -101,63 +101,13 @@ impl FlagComputation {
 
             &ty::Param(_) => {
                 self.add_flags(TypeFlags::HAS_TY_PARAM);
-                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
-            ty::Coroutine(_, args) => {
-                let args = args.as_coroutine();
-                let should_remove_further_specializable =
-                    !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
-                self.add_args(args.parent_args());
-                if should_remove_further_specializable {
-                    self.flags -= TypeFlags::STILL_FURTHER_SPECIALIZABLE;
-                }
-
-                self.add_ty(args.resume_ty());
-                self.add_ty(args.return_ty());
-                self.add_ty(args.witness());
-                self.add_ty(args.yield_ty());
-                self.add_ty(args.tupled_upvars_ty());
-            }
-
-            ty::CoroutineWitness(_, args) => {
-                let should_remove_further_specializable =
-                    !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
+            &ty::Closure(_, args)
+            | &ty::Coroutine(_, args)
+            | &ty::CoroutineClosure(_, args)
+            | &ty::CoroutineWitness(_, args) => {
                 self.add_args(args);
-                if should_remove_further_specializable {
-                    self.flags -= TypeFlags::STILL_FURTHER_SPECIALIZABLE;
-                }
-                self.add_flags(TypeFlags::HAS_TY_COROUTINE);
-            }
-
-            &ty::Closure(_, args) => {
-                let args = args.as_closure();
-                let should_remove_further_specializable =
-                    !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
-                self.add_args(args.parent_args());
-                if should_remove_further_specializable {
-                    self.flags -= TypeFlags::STILL_FURTHER_SPECIALIZABLE;
-                }
-
-                self.add_ty(args.sig_as_fn_ptr_ty());
-                self.add_ty(args.kind_ty());
-                self.add_ty(args.tupled_upvars_ty());
-            }
-
-            &ty::CoroutineClosure(_, args) => {
-                let args = args.as_coroutine_closure();
-                let should_remove_further_specializable =
-                    !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
-                self.add_args(args.parent_args());
-                if should_remove_further_specializable {
-                    self.flags -= TypeFlags::STILL_FURTHER_SPECIALIZABLE;
-                }
-
-                self.add_ty(args.kind_ty());
-                self.add_ty(args.signature_parts_ty());
-                self.add_ty(args.tupled_upvars_ty());
-                self.add_ty(args.coroutine_captures_by_ref_ty());
-                self.add_ty(args.coroutine_witness_ty());
             }
 
             &ty::Bound(debruijn, _) => {
@@ -167,21 +117,17 @@ impl FlagComputation {
 
             &ty::Placeholder(..) => {
                 self.add_flags(TypeFlags::HAS_TY_PLACEHOLDER);
-                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
-            &ty::Infer(infer) => {
-                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
-                match infer {
-                    ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
-                        self.add_flags(TypeFlags::HAS_TY_FRESH)
-                    }
-
-                    ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => {
-                        self.add_flags(TypeFlags::HAS_TY_INFER)
-                    }
+            &ty::Infer(infer) => match infer {
+                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
+                    self.add_flags(TypeFlags::HAS_TY_FRESH)
                 }
-            }
+
+                ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => {
+                    self.add_flags(TypeFlags::HAS_TY_INFER)
+                }
+            },
 
             &ty::Adt(_, args) => {
                 self.add_args(args);
@@ -358,24 +304,19 @@ impl FlagComputation {
                 self.add_args(uv.args);
                 self.add_flags(TypeFlags::HAS_CT_PROJECTION);
             }
-            ty::ConstKind::Infer(infer) => {
-                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
-                match infer {
-                    InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
-                    InferConst::Var(_) => self.add_flags(TypeFlags::HAS_CT_INFER),
-                }
-            }
+            ty::ConstKind::Infer(infer) => match infer {
+                InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
+                InferConst::Var(_) => self.add_flags(TypeFlags::HAS_CT_INFER),
+            },
             ty::ConstKind::Bound(debruijn, _) => {
                 self.add_bound_var(debruijn);
                 self.add_flags(TypeFlags::HAS_CT_BOUND);
             }
             ty::ConstKind::Param(_) => {
                 self.add_flags(TypeFlags::HAS_CT_PARAM);
-                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
             ty::ConstKind::Placeholder(_) => {
                 self.add_flags(TypeFlags::HAS_CT_PLACEHOLDER);
-                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
             ty::ConstKind::Value(cv) => self.add_ty(cv.ty),
             ty::ConstKind::Expr(e) => self.add_args(e.args()),

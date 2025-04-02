@@ -38,7 +38,7 @@ impl RvalueScopes {
         let mut id = Scope { local_id: expr_id, data: ScopeData::Node };
         let mut backwards_incompatible = None;
 
-        while let Some(&(p, _)) = region_scope_tree.parent_map.get(&id) {
+        while let Some(&p) = region_scope_tree.parent_map.get(&id) {
             match p.data {
                 ScopeData::Destruction => {
                     debug!("temporary_scope({expr_id:?}) = {id:?} [enclosing]");

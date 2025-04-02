@@ -16,7 +16,7 @@ use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
-use rustc_type_ir::{Interner, elaborate};
+use rustc_type_ir::elaborate;
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
@@ -86,10 +86,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // `Pointee` is automatically implemented for every type.
                 candidates.vec.push(BuiltinCandidate { has_nested: false });
             } else if tcx.is_lang_item(def_id, LangItem::Sized) {
-                // Sized is never implementable by end-users, it is
-                // always automatically computed.
-                let sized_conditions = self.sized_conditions(obligation);
-                self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
+                self.assemble_builtin_sized_candidate(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Unsize) {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Destruct) {
@@ -802,7 +799,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::UnsafeBinder(_) => {
                     // Only consider auto impls of unsafe traits when there are
                     // no unsafe fields.
-                    if self.tcx().trait_is_unsafe(def_id) && self_ty.has_unsafe_fields() {
+                    if self.tcx().trait_def(def_id).safety.is_unsafe()
+                        && self_ty.has_unsafe_fields()
+                    {
                         return;
                     }
 
@@ -1058,6 +1057,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Assembles the trait which are built-in to the language itself:
     /// `Copy`, `Clone` and `Sized`.
+    #[instrument(level = "debug", skip(self, candidates))]
+    fn assemble_builtin_sized_candidate(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        match self.sized_conditions(obligation) {
+            BuiltinImplConditions::Where(nested) => {
+                candidates
+                    .vec
+                    .push(SizedCandidate { has_nested: !nested.skip_binder().is_empty() });
+            }
+            BuiltinImplConditions::None => {}
+            BuiltinImplConditions::Ambiguous => {
+                candidates.ambiguous = true;
+            }
+        }
+    }
+
+    /// Assembles the trait which are built-in to the language itself:
+    /// e.g. `Copy` and `Clone`.
     #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_builtin_bound_candidates(
         &mut self,

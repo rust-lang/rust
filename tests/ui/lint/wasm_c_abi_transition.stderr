@@ -1,0 +1,85 @@
+error: this function definition involves an argument of type `MyType` which is affected by the wasm ABI transition
+  --> $DIR/wasm_c_abi_transition.rs:18:1
+   |
+LL | pub extern "C" fn my_fun(_x: MyType) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
+   = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
+note: the lint level is defined here
+  --> $DIR/wasm_c_abi_transition.rs:9:9
+   |
+LL | #![deny(wasm_c_abi)]
+   |         ^^^^^^^^^^
+
+error: this function definition involves an argument of type `MyAlignedType` which is affected by the wasm ABI transition
+  --> $DIR/wasm_c_abi_transition.rs:30:1
+   |
+LL | pub extern "C" fn my_fun_aligned(_x: MyAlignedType) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
+   = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
+
+error: this function call involves an argument of type `MyType` which is affected by the wasm ABI transition
+  --> $DIR/wasm_c_abi_transition.rs:39:14
+   |
+LL |     unsafe { other_fun(x) }
+   |              ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
+   = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
+
+error: aborting due to 3 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+error: this function definition involves an argument of type `MyType` which is affected by the wasm ABI transition
+  --> $DIR/wasm_c_abi_transition.rs:18:1
+   |
+LL | pub extern "C" fn my_fun(_x: MyType) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
+   = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
+note: the lint level is defined here
+  --> $DIR/wasm_c_abi_transition.rs:9:9
+   |
+LL | #![deny(wasm_c_abi)]
+   |         ^^^^^^^^^^
+
+Future breakage diagnostic:
+error: this function definition involves an argument of type `MyAlignedType` which is affected by the wasm ABI transition
+  --> $DIR/wasm_c_abi_transition.rs:30:1
+   |
+LL | pub extern "C" fn my_fun_aligned(_x: MyAlignedType) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
+   = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
+note: the lint level is defined here
+  --> $DIR/wasm_c_abi_transition.rs:9:9
+   |
+LL | #![deny(wasm_c_abi)]
+   |         ^^^^^^^^^^
+
+Future breakage diagnostic:
+error: this function call involves an argument of type `MyType` which is affected by the wasm ABI transition
+  --> $DIR/wasm_c_abi_transition.rs:39:14
+   |
+LL |     unsafe { other_fun(x) }
+   |              ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
+   = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
+note: the lint level is defined here
+  --> $DIR/wasm_c_abi_transition.rs:9:9
+   |
+LL | #![deny(wasm_c_abi)]
+   |         ^^^^^^^^^^
+

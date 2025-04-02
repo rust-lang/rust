@@ -59,3 +59,5 @@ fn ice() {
 
 // use `start`
 fn main() {}
+
+//~? ERROR requires `copy` lang_item

@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 use crate::ci::CiEnv;
@@ -121,7 +121,7 @@ fn git_upstream_merge_base(
 pub fn get_closest_merge_commit(
     git_dir: Option<&Path>,
     config: &GitConfig<'_>,
-    target_paths: &[PathBuf],
+    target_paths: &[&str],
 ) -> Result<String, String> {
     let mut git = Command::new("git");
 
@@ -173,7 +173,7 @@ pub fn get_git_modified_files(
     config: &GitConfig<'_>,
     git_dir: Option<&Path>,
     extensions: &[&str],
-) -> Result<Option<Vec<String>>, String> {
+) -> Result<Vec<String>, String> {
     let merge_base = get_closest_merge_commit(git_dir, config, &[])?;
 
     let mut git = Command::new("git");
@@ -186,7 +186,10 @@ pub fn get_git_modified_files(
             let (status, name) = f.trim().split_once(char::is_whitespace).unwrap();
             if status == "D" {
                 None
-            } else if Path::new(name).extension().map_or(false, |ext| {
+            } else if Path::new(name).extension().map_or(extensions.is_empty(), |ext| {
+                // If there is no extension, we allow the path if `extensions` is empty
+                // If there is an extension, we allow it if `extension` is empty or it contains the
+                // extension.
                 extensions.is_empty() || extensions.contains(&ext.to_str().unwrap())
             }) {
                 Some(name.to_owned())
@@ -195,7 +198,7 @@ pub fn get_git_modified_files(
             }
         })
         .collect();
-    Ok(Some(files))
+    Ok(files)
 }
 
 /// Returns the files that haven't been added to git yet.

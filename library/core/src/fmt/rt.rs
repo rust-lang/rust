@@ -11,13 +11,16 @@ use crate::ptr::NonNull;
 #[derive(Copy, Clone)]
 pub struct Placeholder {
     pub position: usize,
+    #[cfg(bootstrap)]
     pub fill: char,
+    #[cfg(bootstrap)]
     pub align: Alignment,
     pub flags: u32,
     pub precision: Count,
     pub width: Count,
 }
 
+#[cfg(bootstrap)]
 impl Placeholder {
     #[inline]
     pub const fn new(
@@ -32,6 +35,7 @@ impl Placeholder {
     }
 }
 
+#[cfg(bootstrap)]
 #[lang = "format_alignment"]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Alignment {
@@ -56,17 +60,6 @@ pub enum Count {
     Param(usize),
     /// Not specified
     Implied,
-}
-
-// This needs to match the order of flags in compiler/rustc_ast_lowering/src/format.rs.
-#[derive(Copy, Clone)]
-pub(super) enum Flag {
-    SignPlus,
-    SignMinus,
-    Alternate,
-    SignAwareZeroPad,
-    DebugLowerHex,
-    DebugUpperHex,
 }
 
 #[derive(Copy, Clone)]

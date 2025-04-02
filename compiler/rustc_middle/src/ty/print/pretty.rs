@@ -2591,11 +2591,9 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         // to fit that into a short string. Hence the recommendation to use
         // `explain_region()` or `note_and_explain_region()`.
         match *region {
-            ty::ReEarlyParam(ref data) => {
-                if data.name != kw::Empty {
-                    p!(write("{}", data.name));
-                    return Ok(());
-                }
+            ty::ReEarlyParam(data) => {
+                p!(write("{}", data.name));
+                return Ok(());
             }
             ty::ReLateParam(ty::LateParamRegion { kind, .. }) => {
                 if let Some(name) = kind.get_name() {
@@ -2834,7 +2832,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
                         (name, ty::BoundRegionKind::Named(CRATE_DEF_ID.to_def_id(), name))
                     }
-                    ty::BoundRegionKind::Named(def_id, kw::UnderscoreLifetime | kw::Empty) => {
+                    ty::BoundRegionKind::Named(def_id, kw::UnderscoreLifetime) => {
                         let name = next_name(self);
 
                         if let Some(lt_idx) = lifetime_idx {
@@ -3406,20 +3404,18 @@ define_print_and_forward_display! {
 }
 
 fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, Namespace, DefId)) {
-    // Iterate all local crate items no matter where they are defined.
+    // Iterate all (non-anonymous) local crate items no matter where they are defined.
     for id in tcx.hir_free_items() {
         if matches!(tcx.def_kind(id.owner_id), DefKind::Use) {
             continue;
         }
 
         let item = tcx.hir_item(id);
-        if item.ident.name == kw::Empty {
-            continue;
-        }
+        let Some(ident) = item.kind.ident() else { continue };
 
         let def_id = item.owner_id.to_def_id();
         let ns = tcx.def_kind(def_id).ns().unwrap_or(Namespace::TypeNS);
-        collect_fn(&item.ident, ns, def_id);
+        collect_fn(&ident, ns, def_id);
     }
 
     // Now take care of extern crate items.

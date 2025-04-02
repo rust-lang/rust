@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-use crate::{DebugContext, FullyMonomorphizedLayoutCx, has_ptr_meta};
+use crate::{DebugContext, FullyMonomorphizedLayoutCx};
 
 #[derive(Default)]
 pub(crate) struct TypeDebugContext<'tcx> {
@@ -129,7 +129,7 @@ impl DebugContext {
 
         let name = type_names::compute_debuginfo_type_name(tcx, ptr_type, true);
 
-        if !has_ptr_meta(tcx, ptr_type) {
+        if !tcx.type_has_metadata(ptr_type, ty::TypingEnv::fully_monomorphized()) {
             let pointer_type_id =
                 self.dwarf.unit.add(self.dwarf.unit.root(), gimli::DW_TAG_pointer_type);
             let pointer_entry = self.dwarf.unit.get_mut(pointer_type_id);

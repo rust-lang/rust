@@ -9,7 +9,7 @@ use clippy_utils::macros::{
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
-use clippy_utils::{is_diag_trait_item, is_from_proc_macro};
+use clippy_utils::{is_diag_trait_item, is_from_proc_macro, is_in_test};
 use itertools::Itertools;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
@@ -484,7 +484,8 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
 
     fn check_unnecessary_debug_formatting(&self, name: Symbol, value: &Expr<'tcx>) {
         let cx = self.cx;
-        if !value.span.from_expansion()
+        if !is_in_test(cx.tcx, value.hir_id)
+            && !value.span.from_expansion()
             && !is_from_proc_macro(cx, value)
             && let ty = cx.typeck_results().expr_ty(value)
             && self.can_display_format(ty)

@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
-use build_helper::ci::CiEnv;
 use xz2::bufread::XzDecoder;
 
 use crate::core::config::BUILDER_CONFIG_FILENAME;
@@ -262,7 +261,7 @@ impl Config {
             "--fail",
         ]);
         // Don't print progress in CI; the \r wrapping looks bad and downloads don't take long enough for progress to be useful.
-        if CiEnv::is_ci() {
+        if self.is_running_on_ci {
             curl.arg("--silent");
         } else {
             curl.arg("--progress-bar");

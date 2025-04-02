@@ -230,13 +230,6 @@ pub unsafe extern "C" fn compatible_codegen_attributes() {
     naked_asm!("", options(raw));
 }
 
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "sse2")]
-#[naked]
-pub unsafe extern "C" fn compatible_target_feature() {
-    naked_asm!("");
-}
-
 #[doc = "foo bar baz"]
 /// a doc comment
 // a normal comment

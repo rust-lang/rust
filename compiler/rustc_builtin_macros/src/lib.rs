@@ -23,6 +23,8 @@
 
 extern crate proc_macro;
 
+use std::sync::Arc;
+
 use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
 use rustc_span::sym;
@@ -67,13 +69,13 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);
     macro register_bang($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyBang(Box::new($f as MacroExpanderFn)));)*
+        $(register(sym::$name, SyntaxExtensionKind::LegacyBang(Arc::new($f as MacroExpanderFn)));)*
     }
     macro register_attr($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyAttr(Box::new($f)));)*
+        $(register(sym::$name, SyntaxExtensionKind::LegacyAttr(Arc::new($f)));)*
     }
     macro register_derive($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyDerive(Box::new(BuiltinDerive($f))));)*
+        $(register(sym::$name, SyntaxExtensionKind::LegacyDerive(Arc::new(BuiltinDerive($f))));)*
     }
 
     register_bang! {
@@ -139,9 +141,9 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     }
 
     let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
-    register(sym::quote, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })));
-    let requires = SyntaxExtensionKind::Attr(Box::new(contracts::ExpandRequires));
+    register(sym::quote, SyntaxExtensionKind::Bang(Arc::new(BangProcMacro { client })));
+    let requires = SyntaxExtensionKind::Attr(Arc::new(contracts::ExpandRequires));
     register(sym::contracts_requires, requires);
-    let ensures = SyntaxExtensionKind::Attr(Box::new(contracts::ExpandEnsures));
+    let ensures = SyntaxExtensionKind::Attr(Arc::new(contracts::ExpandEnsures));
     register(sym::contracts_ensures, ensures);
 }

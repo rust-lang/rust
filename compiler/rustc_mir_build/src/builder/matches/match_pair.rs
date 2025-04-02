@@ -115,7 +115,6 @@ impl<'tcx> MatchPairTree<'tcx> {
             place_builder = place_builder.project(ProjectionElem::OpaqueCast(pattern.ty));
         }
 
-        // Place can be none if the pattern refers to a non-captured place in a closure.
         let place = place_builder.try_to_place(cx);
         let mut subpairs = Vec::new();
         let test_case = match pattern.kind {
@@ -273,12 +272,12 @@ impl<'tcx> MatchPairTree<'tcx> {
 
                 let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index
-                        || !v
-                            .inhabited_predicate(cx.tcx, adt_def)
-                            .instantiate(cx.tcx, args)
-                            .apply_ignore_module(cx.tcx, cx.infcx.typing_env(cx.param_env))
-                }) && (adt_def.did().is_local()
-                    || !adt_def.is_variant_list_non_exhaustive());
+                        || !v.inhabited_predicate(cx.tcx, adt_def).instantiate(cx.tcx, args).apply(
+                            cx.tcx,
+                            cx.infcx.typing_env(cx.param_env),
+                            cx.def_id.into(),
+                        )
+                }) && !adt_def.variant_list_has_applicable_non_exhaustive();
                 if irrefutable { None } else { Some(TestCase::Variant { adt_def, variant_index }) }
             }
 
@@ -321,7 +320,7 @@ impl<'tcx> MatchPairTree<'tcx> {
         if let Some(test_case) = test_case {
             // This pattern is refutable, so push a new match-pair node.
             match_pairs.push(MatchPairTree {
-                place: place.expect("refutable patterns should always have a place to inspect"),
+                place,
                 test_case,
                 subpairs,
                 pattern_ty: pattern.ty,

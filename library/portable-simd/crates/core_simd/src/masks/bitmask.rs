@@ -5,7 +5,7 @@ use core::marker::PhantomData;
 
 /// A mask where each lane is represented by a single bit.
 #[repr(transparent)]
-pub struct Mask<T, const N: usize>(
+pub(crate) struct Mask<T, const N: usize>(
     <LaneCount<N> as SupportedLaneCount>::BitMask,
     PhantomData<T>,
 )
@@ -78,7 +78,7 @@ where
 {
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn splat(value: bool) -> Self {
+    pub(crate) fn splat(value: bool) -> Self {
         let mut mask = <LaneCount<N> as SupportedLaneCount>::BitMask::default();
         if value {
             mask.as_mut().fill(u8::MAX)
@@ -93,12 +93,12 @@ where
 
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
-    pub unsafe fn test_unchecked(&self, lane: usize) -> bool {
+    pub(crate) unsafe fn test_unchecked(&self, lane: usize) -> bool {
         (self.0.as_ref()[lane / 8] >> (lane % 8)) & 0x1 > 0
     }
 
     #[inline]
-    pub unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
+    pub(crate) unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
         unsafe {
             self.0.as_mut()[lane / 8] ^= ((value ^ self.test_unchecked(lane)) as u8) << (lane % 8)
         }
@@ -106,7 +106,7 @@ where
 
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
-    pub fn to_int(self) -> Simd<T, N> {
+    pub(crate) fn to_int(self) -> Simd<T, N> {
         unsafe {
             core::intrinsics::simd::simd_select_bitmask(
                 self.0,
@@ -118,19 +118,19 @@ where
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
+    pub(crate) unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
         unsafe { Self(core::intrinsics::simd::simd_bitmask(value), PhantomData) }
     }
 
     #[inline]
-    pub fn to_bitmask_integer(self) -> u64 {
+    pub(crate) fn to_bitmask_integer(self) -> u64 {
         let mut bitmask = [0u8; 8];
         bitmask[..self.0.as_ref().len()].copy_from_slice(self.0.as_ref());
         u64::from_ne_bytes(bitmask)
     }
 
     #[inline]
-    pub fn from_bitmask_integer(bitmask: u64) -> Self {
+    pub(crate) fn from_bitmask_integer(bitmask: u64) -> Self {
         let mut bytes = <LaneCount<N> as SupportedLaneCount>::BitMask::default();
         let len = bytes.as_mut().len();
         bytes
@@ -141,7 +141,7 @@ where
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn convert<U>(self) -> Mask<U, N>
+    pub(crate) fn convert<U>(self) -> Mask<U, N>
     where
         U: MaskElement,
     {
@@ -151,13 +151,13 @@ where
 
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
-    pub fn any(self) -> bool {
+    pub(crate) fn any(self) -> bool {
         self != Self::splat(false)
     }
 
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
-    pub fn all(self) -> bool {
+    pub(crate) fn all(self) -> bool {
         self == Self::splat(true)
     }
 }

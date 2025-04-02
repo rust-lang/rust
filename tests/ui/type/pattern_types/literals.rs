@@ -134,3 +134,6 @@ fn lit_at_wraparound_range_start() -> pattern_type!(u32 is 2..1) {
 }
 
 fn main() {}
+
+//~? ERROR pattern type ranges cannot wrap: 1..=0
+//~? ERROR pattern type ranges cannot wrap: 2..=0

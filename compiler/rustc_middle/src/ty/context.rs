@@ -7,6 +7,8 @@ pub mod tls;
 use std::assert_matches::{assert_matches, debug_assert_matches};
 use std::borrow::Borrow;
 use std::cmp::Ordering;
+use std::env::VarError;
+use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Bound, Deref};
@@ -1288,7 +1290,8 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
         let bodies = Default::default();
         let attrs = hir::AttributeMap::EMPTY;
 
-        let (opt_hash_including_bodies, _) = self.tcx.hash_owner_nodes(node, &bodies, &attrs.map);
+        let (opt_hash_including_bodies, _) =
+            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, attrs.define_opaque);
         let node = node.into();
         self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes {
             opt_hash_including_bodies,
@@ -1882,6 +1885,15 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         None
     }
+
+    /// Helper to get a tracked environment variable via. [`TyCtxt::env_var_os`] and converting to
+    /// UTF-8 like [`std::env::var`].
+    pub fn env_var<K: ?Sized + AsRef<OsStr>>(self, key: &'tcx K) -> Result<&'tcx str, VarError> {
+        match self.env_var_os(key.as_ref()) {
+            Some(value) => value.to_str().ok_or_else(|| VarError::NotUnicode(value.to_os_string())),
+            None => Err(VarError::NotPresent),
+        }
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {
@@ -1918,10 +1930,10 @@ impl<'tcx> TyCtxt<'tcx> {
         // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
         // comp. engine itself.
         //
-        // This call also writes to the value of `source_span` and `expn_that_defined` queries.
+        // This call also writes to the value of the `source_span` query.
         // This is fine because:
-        // - those queries are `eval_always` so we won't miss their result changing;
-        // - this write will have happened before these queries are called.
+        // - that query is `eval_always` so we won't miss its result changing;
+        // - this write will have happened before that query is called.
         let def_id = self.untracked.definitions.write().create_def(parent, data);
 
         // This function modifies `self.definitions` using a side-effect.

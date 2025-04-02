@@ -14,6 +14,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -1072,6 +1073,35 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn fcmp(&mut self, op: RealPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         let op = llvm::RealPredicate::from_generic(op);
         unsafe { llvm::LLVMBuildFCmp(self.llbuilder, op as c_uint, lhs, rhs, UNNAMED) }
+    }
+
+    fn three_way_compare(
+        &mut self,
+        ty: Ty<'tcx>,
+        lhs: Self::Value,
+        rhs: Self::Value,
+    ) -> Option<Self::Value> {
+        // FIXME: See comment on the definition of `three_way_compare`.
+        if crate::llvm_util::get_version() < (20, 0, 0) {
+            return None;
+        }
+
+        let name = match (ty.is_signed(), ty.primitive_size(self.tcx).bits()) {
+            (true, 8) => "llvm.scmp.i8.i8",
+            (true, 16) => "llvm.scmp.i8.i16",
+            (true, 32) => "llvm.scmp.i8.i32",
+            (true, 64) => "llvm.scmp.i8.i64",
+            (true, 128) => "llvm.scmp.i8.i128",
+
+            (false, 8) => "llvm.ucmp.i8.i8",
+            (false, 16) => "llvm.ucmp.i8.i16",
+            (false, 32) => "llvm.ucmp.i8.i32",
+            (false, 64) => "llvm.ucmp.i8.i64",
+            (false, 128) => "llvm.ucmp.i8.i128",
+
+            _ => bug!("three-way compare unsupported for type {ty:?}"),
+        };
+        Some(self.call_intrinsic(name, &[lhs, rhs]))
     }
 
     /* Miscellaneous instructions */

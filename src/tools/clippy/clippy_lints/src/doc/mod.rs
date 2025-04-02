@@ -1,12 +1,10 @@
 #![allow(clippy::lint_without_lint_pass)]
 
-mod lazy_continuation;
-mod too_long_first_doc_paragraph;
-
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
+use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::Visitable;
 use clippy_utils::{is_entrypoint_fn, is_trait_impl_item, method_chain_args};
@@ -33,12 +31,15 @@ use rustc_span::{Span, sym};
 use std::ops::Range;
 use url::Url;
 
+mod doc_comment_double_space_linebreaks;
 mod include_in_doc_without_cfg;
+mod lazy_continuation;
 mod link_with_quotes;
 mod markdown;
 mod missing_headers;
 mod needless_doctest_main;
 mod suspicious_doc_comments;
+mod too_long_first_doc_paragraph;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -567,6 +568,39 @@ declare_clippy_lint! {
     "link reference defined in list item or quote"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects doc comment linebreaks that use double spaces to separate lines, instead of back-slash (`\`).
+    ///
+    /// ### Why is this bad?
+    /// Double spaces, when used as doc comment linebreaks, can be difficult to see, and may
+    /// accidentally be removed during automatic formatting or manual refactoring. The use of a back-slash (`\`)
+    /// is clearer in this regard.
+    ///
+    /// ### Example
+    /// The two replacement dots in this example represent a double space.
+    /// ```no_run
+    /// /// This command takes two numbers as inputs and··
+    /// /// adds them together, and then returns the result.
+    /// fn add(l: i32, r: i32) -> i32 {
+    ///     l + r
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// /// This command takes two numbers as inputs and\
+    /// /// adds them together, and then returns the result.
+    /// fn add(l: i32, r: i32) -> i32 {
+    ///     l + r
+    /// }
+    /// ```
+    #[clippy::version = "1.87.0"]
+    pub DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS,
+    pedantic,
+    "double-space used for doc comment linebreak instead of `\\`"
+}
+
 pub struct Documentation {
     valid_idents: FxHashSet<String>,
     check_private_items: bool,
@@ -598,6 +632,7 @@ impl_lint_pass!(Documentation => [
     DOC_OVERINDENTED_LIST_ITEMS,
     TOO_LONG_FIRST_DOC_PARAGRAPH,
     DOC_INCLUDE_WITHOUT_CFG,
+    DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS
 ]);
 
 impl EarlyLintPass for Documentation {
@@ -894,6 +929,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut paragraph_range = 0..0;
     let mut code_level = 0;
     let mut blockquote_level = 0;
+    let mut collected_breaks: Vec<Span> = Vec::new();
     let mut is_first_paragraph = true;
 
     let mut containers = Vec::new();
@@ -1010,11 +1046,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                                 start -= 1;
                             }
 
-                            if start > range.start {
-                                start - range.start
-                            } else {
-                                0
-                            }
+                            start.saturating_sub(range.start)
                         }
                     } else {
                         0
@@ -1073,6 +1105,14 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         &containers[..],
                     );
                 }
+
+                if let Some(span) = fragments.span(cx, range.clone())
+                    && !span.from_expansion()
+                    && let Some(snippet) = snippet_opt(cx, span)
+                    && !snippet.trim().starts_with('\\')
+                    && event == HardBreak {
+                    collected_breaks.push(span);
+                }
             },
             Text(text) => {
                 paragraph_range.end = range.end;
@@ -1123,6 +1163,9 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             FootnoteReference(_) => {}
         }
     }
+
+    doc_comment_double_space_linebreaks::check(cx, &collected_breaks);
+
     headers
 }
 

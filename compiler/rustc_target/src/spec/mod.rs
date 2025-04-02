@@ -2234,7 +2234,10 @@ pub enum WasmCAbi {
     /// Spec-compliant C ABI.
     Spec,
     /// Legacy ABI. Which is non-spec-compliant.
-    Legacy,
+    Legacy {
+        /// Indicates whether the `wasm_c_abi` lint should be emitted.
+        with_lint: bool,
+    },
 }
 
 pub trait HasWasmCAbiOpt {
@@ -3342,7 +3345,10 @@ impl Target {
                 );
             }
             "arm" => {
-                check!(self.llvm_floatabi.is_some(), "ARM targets must specify their float ABI",)
+                check!(
+                    self.llvm_floatabi.is_some(),
+                    "ARM targets must set `llvm-floatabi` to `hard` or `soft`",
+                )
             }
             _ => {}
         }

@@ -430,7 +430,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                 kind = AnnotationKind::DeprecationProhibited;
                 const_stab_inherit = InheritConstStability::Yes;
             }
-            hir::ItemKind::Struct(ref sd, _) => {
+            hir::ItemKind::Struct(_, ref sd, _) => {
                 if let Some(ctor_def_id) = sd.ctor_def_id() {
                     self.annotate(
                         ctor_def_id,
@@ -773,10 +773,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
-            hir::ItemKind::ExternCrate(_) => {
+            hir::ItemKind::ExternCrate(_, ident) => {
                 // compiler-generated `extern crate` items have a dummy span.
                 // `std` is still checked for the `restricted-std` feature.
-                if item.span.is_dummy() && item.ident.name != sym::std {
+                if item.span.is_dummy() && ident.name != sym::std {
                     return;
                 }
 

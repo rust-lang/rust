@@ -632,4 +632,95 @@ mod issue_11246 {
 // Safety: Another safety comment
 const FOO: () = unsafe {};
 
+// trait items and impl items
+mod issue_11709 {
+    trait MyTrait {
+        const NO_SAFETY_IN_TRAIT_BUT_IN_IMPL: u8 = unsafe { 0 };
+        //~^ ERROR: unsafe block missing a safety comment
+
+        // SAFETY: safe
+        const HAS_SAFETY_IN_TRAIT: i32 = unsafe { 1 };
+
+        // SAFETY: unrelated
+        unsafe fn unsafe_fn() {}
+
+        const NO_SAFETY_IN_TRAIT: i32 = unsafe { 1 };
+        //~^ ERROR: unsafe block missing a safety comment
+    }
+
+    struct UnsafeStruct;
+
+    impl MyTrait for UnsafeStruct {
+        // SAFETY: safe in this impl
+        const NO_SAFETY_IN_TRAIT_BUT_IN_IMPL: u8 = unsafe { 2 };
+
+        const HAS_SAFETY_IN_TRAIT: i32 = unsafe { 3 };
+        //~^ ERROR: unsafe block missing a safety comment
+    }
+
+    impl UnsafeStruct {
+        const NO_SAFETY_IN_IMPL: i32 = unsafe { 1 };
+        //~^ ERROR: unsafe block missing a safety comment
+    }
+}
+
+fn issue_13024() {
+    let mut just_a_simple_variable_with_a_very_long_name_that_has_seventy_eight_characters = 0;
+    let here_is_another_variable_with_long_name = 100;
+
+    // SAFETY: fail ONLY if `accept-comment-above-statement = false`
+    just_a_simple_variable_with_a_very_long_name_that_has_seventy_eight_characters =
+        unsafe { here_is_another_variable_with_long_name };
+    //~[disabled]^ undocumented_unsafe_blocks
+}
+
+// https://docs.rs/time/0.3.36/src/time/offset_date_time.rs.html#35
+mod issue_11709_regression {
+    use std::num::NonZeroI32;
+
+    struct Date {
+        value: NonZeroI32,
+    }
+
+    impl Date {
+        const unsafe fn __from_ordinal_date_unchecked(year: i32, ordinal: u16) -> Self {
+            Self {
+                // Safety: The caller must guarantee that `ordinal` is not zero.
+                value: unsafe { NonZeroI32::new_unchecked((year << 9) | ordinal as i32) },
+            }
+        }
+
+        const fn into_julian_day_just_make_this_line_longer(self) -> i32 {
+            42
+        }
+    }
+
+    /// The Julian day of the Unix epoch.
+    // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
+    #[allow(unsafe_code)]
+    const UNIX_EPOCH_JULIAN_DAY: i32 =
+        unsafe { Date::__from_ordinal_date_unchecked(1970, 1) }.into_julian_day_just_make_this_line_longer();
+    //~[disabled]^ undocumented_unsafe_blocks
+}
+
+fn issue_13039() {
+    unsafe fn foo() -> usize {
+        1234
+    }
+
+    fn bar() -> usize {
+        1234
+    }
+
+    // SAFETY: unnecessary_safety_comment should not trigger here
+    _ = unsafe { foo() };
+
+    // SAFETY: unnecessary_safety_comment triggers here
+    _ = bar();
+    //~^ unnecessary_safety_comment
+
+    // SAFETY: unnecessary_safety_comment should not trigger here
+    _ = unsafe { foo() }
+}
+
 fn main() {}

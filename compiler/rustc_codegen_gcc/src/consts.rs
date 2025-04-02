@@ -364,6 +364,7 @@ pub fn const_alloc_to_gcc<'gcc>(
         llvals.push(cx.const_bytes(bytes));
     }
 
+    // FIXME(bjorn3) avoid wrapping in a struct when there is only a single element.
     cx.const_struct(&llvals, true)
 }
 

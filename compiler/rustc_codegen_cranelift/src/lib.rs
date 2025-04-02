@@ -42,7 +42,6 @@ use std::sync::Arc;
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::CodegenResults;
-use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -214,15 +213,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
                 .unwrap_or_else(|err| tcx.sess.dcx().fatal(err))
         });
-        match config.codegen_mode {
-            CodegenMode::Aot => driver::aot::run_aot(tcx, metadata, need_metadata_module),
-            CodegenMode::Jit | CodegenMode::JitLazy => {
-                #[cfg(feature = "jit")]
-                driver::jit::run_jit(tcx, config.codegen_mode, config.jit_args);
+        if config.jit_mode {
+            #[cfg(feature = "jit")]
+            driver::jit::run_jit(tcx, config.jit_args);
 
-                #[cfg(not(feature = "jit"))]
-                tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
-            }
+            #[cfg(not(feature = "jit"))]
+            tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
+        } else {
+            driver::aot::run_aot(tcx, metadata, need_metadata_module)
         }
     }
 
@@ -247,21 +245,19 @@ fn enable_verifier(sess: &Session) -> bool {
 }
 
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
-    // FIXME(madsmtm): Use `sess.target.llvm_target` once target-lexicon supports unversioned macOS.
-    // See <https://github.com/bytecodealliance/target-lexicon/pull/113>
-    match versioned_llvm_target(sess).parse() {
+    match sess.target.llvm_target.parse() {
         Ok(triple) => triple,
         Err(err) => sess.dcx().fatal(format!("target not recognized: {}", err)),
     }
 }
 
-fn build_isa(sess: &Session) -> Arc<dyn TargetIsa + 'static> {
+fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
     let target_triple = crate::target_triple(sess);
 
     let mut flags_builder = settings::builder();
-    flags_builder.enable("is_pic").unwrap();
+    flags_builder.set("is_pic", if jit { "false" } else { "true" }).unwrap();
     let enable_verifier = if enable_verifier(sess) { "true" } else { "false" };
     flags_builder.set("enable_verifier", enable_verifier).unwrap();
     flags_builder.set("regalloc_checker", enable_verifier).unwrap();

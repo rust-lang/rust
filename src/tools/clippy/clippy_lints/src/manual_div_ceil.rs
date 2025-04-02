@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualDivCeil {
             && check_int_ty_and_feature(cx, div_lhs)
             && check_int_ty_and_feature(cx, div_rhs)
             && let ExprKind::Binary(inner_op, inner_lhs, inner_rhs) = div_lhs.kind
-            && self.msrv.meets(cx, msrvs::MANUAL_DIV_CEIL)
+            && self.msrv.meets(cx, msrvs::DIV_CEIL)
         {
             // (x + (y - 1)) / y
             if let ExprKind::Binary(sub_op, sub_lhs, sub_rhs) = inner_rhs.kind

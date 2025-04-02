@@ -129,7 +129,12 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
         append_chunks_of_init_and_uninit_bytes(&mut llvals, cx, alloc, range);
     }
 
-    cx.const_struct(&llvals, true)
+    // Avoid wrapping in a struct if there is only a single value. This ensures
+    // that LLVM is able to perform the string merging optimization if the constant
+    // is a valid C string. LLVM only considers bare arrays for this optimization,
+    // not arrays wrapped in a struct. LLVM handles this at:
+    // https://github.com/rust-lang/llvm-project/blob/acaea3d2bb8f351b740db7ebce7d7a40b9e21488/llvm/lib/Target/TargetLoweringObjectFile.cpp#L249-L280
+    if let &[data] = &*llvals { data } else { cx.const_struct(&llvals, true) }
 }
 
 fn codegen_static_initializer<'ll, 'tcx>(

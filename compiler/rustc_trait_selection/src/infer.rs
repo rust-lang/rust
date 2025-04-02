@@ -15,7 +15,7 @@ use tracing::instrument;
 
 use crate::infer::at::ToTrace;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::{self, Obligation, ObligationCause, ObligationCtxt, SelectionContext};
+use crate::traits::{self, Obligation, ObligationCause, ObligationCtxt};
 
 #[extension(pub trait InferCtxtExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
@@ -122,9 +122,6 @@ impl<'tcx> InferCtxt<'tcx> {
     /// - If this returns `Some([errors..])`, then the trait has an impl for
     /// the self type, but some nested obligations do not hold.
     /// - If this returns `None`, no implementation that applies could be found.
-    ///
-    /// FIXME(-Znext-solver): Due to the recursive nature of the new solver,
-    /// this will probably only ever return `Some([])` or `None`.
     fn type_implements_trait_shallow(
         &self,
         trait_def_id: DefId,
@@ -132,20 +129,29 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<Vec<traits::FulfillmentError<'tcx>>> {
         self.probe(|_snapshot| {
-            let mut selcx = SelectionContext::new(self);
-            match selcx.select(&Obligation::new(
+            let ocx = ObligationCtxt::new_with_diagnostics(self);
+            ocx.register_obligation(Obligation::new(
                 self.tcx,
                 ObligationCause::dummy(),
                 param_env,
                 ty::TraitRef::new(self.tcx, trait_def_id, [ty]),
-            )) {
-                Ok(Some(selection)) => {
-                    let ocx = ObligationCtxt::new_with_diagnostics(self);
-                    ocx.register_obligations(selection.nested_obligations());
-                    Some(ocx.select_all_or_error())
+            ));
+            let errors = ocx.select_where_possible();
+            // Find the original predicate in the list of predicates that could definitely not be fulfilled.
+            // If it is in that list, then we know this doesn't even shallowly implement the trait.
+            // If it is not in that list, it was fulfilled, but there may be nested obligations, which we don't care about here.
+            for error in &errors {
+                let Some(trait_clause) = error.obligation.predicate.as_trait_clause() else {
+                    continue;
+                };
+                let Some(bound_ty) = trait_clause.self_ty().no_bound_vars() else { continue };
+                if trait_clause.def_id() == trait_def_id
+                    && ocx.eq(&ObligationCause::dummy(), param_env, bound_ty, ty).is_ok()
+                {
+                    return None;
                 }
-                Ok(None) | Err(_) => None,
             }
+            Some(errors)
         })
     }
 }

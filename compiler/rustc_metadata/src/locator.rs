@@ -654,7 +654,24 @@ impl<'a> CrateLocator<'a> {
                     continue;
                 }
             }
-            *slot = Some((hash, metadata, lib.clone()));
+
+            // We error eagerly here. If we're locating a rlib, then in theory the full metadata
+            // could still be in a (later resolved) dylib. In practice, if the rlib and dylib
+            // were produced in a way where one has full metadata and the other hasn't, it would
+            // mean that they were compiled using different compiler flags and probably also have
+            // a different SVH value.
+            if metadata.get_header().is_stub {
+                // `is_stub` should never be true for .rmeta files.
+                assert_ne!(flavor, CrateFlavor::Rmeta);
+
+                // Because rmeta files are resolved before rlib/dylib files, if this is a stub and
+                // we haven't found a slot already, it means that the full metadata is missing.
+                if slot.is_none() {
+                    return Err(CrateError::FullMetadataNotFound(self.crate_name, flavor));
+                }
+            } else {
+                *slot = Some((hash, metadata, lib.clone()));
+            }
             ret = Some((lib, kind));
         }
 
@@ -728,37 +745,25 @@ impl<'a> CrateLocator<'a> {
             let Some(file) = loc_orig.file_name().and_then(|s| s.to_str()) else {
                 return Err(CrateError::ExternLocationNotFile(self.crate_name, loc_orig.clone()));
             };
-            // FnMut cannot return reference to captured value, so references
-            // must be taken outside the closure.
-            let rlibs = &mut rlibs;
-            let rmetas = &mut rmetas;
-            let dylibs = &mut dylibs;
-            let type_via_filename = (|| {
-                if file.starts_with("lib") {
-                    if file.ends_with(".rlib") {
-                        return Some(rlibs);
-                    }
-                    if file.ends_with(".rmeta") {
-                        return Some(rmetas);
-                    }
+            if file.starts_with("lib") {
+                if file.ends_with(".rlib") {
+                    rlibs.insert(loc_canon.clone(), PathKind::ExternFlag);
+                    continue;
                 }
-                let dll_prefix = self.target.dll_prefix.as_ref();
-                let dll_suffix = self.target.dll_suffix.as_ref();
-                if file.starts_with(dll_prefix) && file.ends_with(dll_suffix) {
-                    return Some(dylibs);
-                }
-                None
-            })();
-            match type_via_filename {
-                Some(type_via_filename) => {
-                    type_via_filename.insert(loc_canon.clone(), PathKind::ExternFlag);
-                }
-                None => {
-                    self.crate_rejections
-                        .via_filename
-                        .push(CrateMismatch { path: loc_orig.clone(), got: String::new() });
+                if file.ends_with(".rmeta") {
+                    rmetas.insert(loc_canon.clone(), PathKind::ExternFlag);
+                    continue;
                 }
             }
+            let dll_prefix = self.target.dll_prefix.as_ref();
+            let dll_suffix = self.target.dll_suffix.as_ref();
+            if file.starts_with(dll_prefix) && file.ends_with(dll_suffix) {
+                dylibs.insert(loc_canon.clone(), PathKind::ExternFlag);
+                continue;
+            }
+            self.crate_rejections
+                .via_filename
+                .push(CrateMismatch { path: loc_orig.clone(), got: String::new() });
         }
 
         // Extract the dylib/rlib/rmeta triple.
@@ -928,6 +933,7 @@ pub(crate) enum CrateError {
     ExternLocationNotExist(Symbol, PathBuf),
     ExternLocationNotFile(Symbol, PathBuf),
     MultipleCandidates(Symbol, CrateFlavor, Vec<PathBuf>),
+    FullMetadataNotFound(Symbol, CrateFlavor),
     SymbolConflictsCurrent(Symbol),
     StableCrateIdCollision(Symbol, Symbol),
     DlOpen(String, String),
@@ -977,6 +983,9 @@ impl CrateError {
             }
             CrateError::MultipleCandidates(crate_name, flavor, candidates) => {
                 dcx.emit_err(errors::MultipleCandidates { span, crate_name, flavor, candidates });
+            }
+            CrateError::FullMetadataNotFound(crate_name, flavor) => {
+                dcx.emit_err(errors::FullMetadataNotFound { span, crate_name, flavor });
             }
             CrateError::SymbolConflictsCurrent(root_name) => {
                 dcx.emit_err(errors::SymbolConflictsCurrent { span, crate_name: root_name });

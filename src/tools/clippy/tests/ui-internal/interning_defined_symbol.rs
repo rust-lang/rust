@@ -15,15 +15,19 @@ macro_rules! sym {
 fn main() {
     // Direct use of Symbol::intern
     let _ = Symbol::intern("f32");
+    //~^ interning_defined_symbol
 
     // Using a sym macro
     let _ = sym!(f32);
+    //~^ interning_defined_symbol
 
     // Correct suggestion when symbol isn't stringified constant name
     let _ = Symbol::intern("proc-macro");
+    //~^ interning_defined_symbol
 
     // interning a keyword
     let _ = Symbol::intern("self");
+    //~^ interning_defined_symbol
 
     // Interning a symbol that is not defined
     let _ = Symbol::intern("xyz123");

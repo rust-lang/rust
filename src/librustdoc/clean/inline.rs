@@ -151,7 +151,7 @@ pub(crate) fn try_inline(
     let mut item =
         crate::clean::generate_item_with_correct_attrs(cx, kind, did, name, import_def_id, None);
     // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
-    item.inline_stmt_id = import_def_id;
+    item.inner.inline_stmt_id = import_def_id;
     ret.push(item);
     Some(ret)
 }
@@ -211,17 +211,7 @@ pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir [hir:
 }
 
 pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> {
-    tcx.def_path(def_id)
-        .data
-        .into_iter()
-        .filter_map(|elem| {
-            // extern blocks (and a few others things) have an empty name.
-            match elem.data.get_opt_name() {
-                Some(s) if !s.is_empty() => Some(s),
-                _ => None,
-            }
-        })
-        .collect()
+    tcx.def_path(def_id).data.into_iter().filter_map(|elem| elem.data.get_opt_name()).collect()
 }
 
 /// Record an external fully qualified name in the external_paths cache.
@@ -665,11 +655,11 @@ fn build_module_items(
                 // Primitive types can't be inlined so generate an import instead.
                 let prim_ty = clean::PrimitiveType::from(p);
                 items.push(clean::Item {
-                    name: None,
-                    // We can use the item's `DefId` directly since the only information ever used
-                    // from it is `DefId.krate`.
-                    item_id: ItemId::DefId(did),
                     inner: Box::new(clean::ItemInner {
+                        name: None,
+                        // We can use the item's `DefId` directly since the only information ever
+                        // used from it is `DefId.krate`.
+                        item_id: ItemId::DefId(did),
                         attrs: Default::default(),
                         stability: None,
                         kind: clean::ImportItem(clean::Import::new_simple(
@@ -689,9 +679,9 @@ fn build_module_items(
                             },
                             true,
                         )),
+                        cfg: None,
+                        inline_stmt_id: None,
                     }),
-                    cfg: None,
-                    inline_stmt_id: None,
                 });
             } else if let Some(i) = try_inline(cx, res, item.ident.name, attrs, visited) {
                 items.extend(i)

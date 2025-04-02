@@ -1,6 +1,7 @@
 //@ only-x86_64
 //@ build-pass
 //@ ignore-pass (test emits codegen-time warnings)
+//@ compile-flags: -C target-feature=-avx
 
 #![feature(avx512_target_feature)]
 #![feature(portable_simd)]

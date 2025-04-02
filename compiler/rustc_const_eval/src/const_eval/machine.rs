@@ -22,7 +22,7 @@ use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, RangeSet, Scalar,
+    GlobalAlloc, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, RangeSet, Scalar,
     compile_time_machine, interp_ok, throw_exhaust, throw_inval, throw_ub, throw_ub_custom,
     throw_unsup, throw_unsup_format,
 };
@@ -688,6 +688,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         _tcx: TyCtxtAt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
+        _ptr: Pointer<Option<Self::Provenance>>,
         (_alloc_id, immutable): (AllocId, bool),
         range: AllocRange,
     ) -> InterpResult<'tcx> {

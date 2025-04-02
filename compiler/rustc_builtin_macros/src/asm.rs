@@ -10,7 +10,7 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::exp;
 use rustc_parse::parser::{ExpKeywordPair, Parser};
 use rustc_session::lint;
-use rustc_span::{ErrorGuaranteed, Ident, InnerSpan, Span, Symbol, kw};
+use rustc_span::{ErrorGuaranteed, InnerSpan, Span, Symbol, kw};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
 use {rustc_ast as ast, rustc_parse_format as parse};
@@ -888,7 +888,6 @@ pub(super) fn expand_global_asm<'cx>(
             };
             match mac {
                 Ok(inline_asm) => MacEager::items(smallvec![P(ast::Item {
-                    ident: Ident::empty(),
                     attrs: ast::AttrVec::new(),
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),

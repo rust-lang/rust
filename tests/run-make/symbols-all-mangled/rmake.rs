@@ -41,7 +41,13 @@ fn symbols_check_archive(path: &str) {
             continue; // Unfortunately LLVM doesn't allow us to mangle this symbol
         }
 
-        panic!("Unmangled symbol found: {name}");
+        if name.contains(".llvm.") {
+            // Starting in LLVM 21 we get various implementation-detail functions which
+            // contain .llvm. that are not a problem.
+            continue;
+        }
+
+        panic!("Unmangled symbol found in {path}: {name}");
     }
 }
 
@@ -75,7 +81,13 @@ fn symbols_check(path: &str) {
             continue; // Unfortunately LLVM doesn't allow us to mangle this symbol
         }
 
-        panic!("Unmangled symbol found: {name}");
+        if name.contains(".llvm.") {
+            // Starting in LLVM 21 we get various implementation-detail functions which
+            // contain .llvm. that are not a problem.
+            continue;
+        }
+
+        panic!("Unmangled symbol found in {path}: {name}");
     }
 }
 

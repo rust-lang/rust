@@ -4,7 +4,6 @@ version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-literal-escaper = { path = "../literal-escaper", features = ["rustc-dep-of-std"] }
 std = { path = "../std" }
 # Workaround: when documenting this crate rustdoc will try to load crate named
 # `core` when resolving doc links. Without this line a different `core` will be

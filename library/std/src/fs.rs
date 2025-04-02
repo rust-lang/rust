@@ -665,6 +665,7 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -673,7 +674,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "file_lock", issue = "130994")]
     pub fn lock(&self) -> io::Result<()> {
         self.inner.lock()
     }
@@ -717,6 +718,7 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -725,7 +727,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "file_lock", issue = "130994")]
     pub fn lock_shared(&self) -> io::Result<()> {
         self.inner.lock_shared()
     }
@@ -774,6 +776,7 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -782,7 +785,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "file_lock", issue = "130994")]
     pub fn try_lock(&self) -> io::Result<bool> {
         self.inner.try_lock()
     }
@@ -830,6 +833,7 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -838,7 +842,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "file_lock", issue = "130994")]
     pub fn try_lock_shared(&self) -> io::Result<bool> {
         self.inner.try_lock_shared()
     }
@@ -866,6 +870,7 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -875,7 +880,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "file_lock", issue = "130994")]
     pub fn unlock(&self) -> io::Result<()> {
         self.inner.unlock()
     }
@@ -1342,6 +1347,9 @@ impl Write for Arc<File> {
 impl Seek for Arc<File> {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         (&**self).seek(pos)
+    }
+    fn stream_position(&mut self) -> io::Result<u64> {
+        (&**self).stream_position()
     }
 }
 
@@ -2362,7 +2370,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 #[doc(alias = "rm", alias = "unlink", alias = "DeleteFile")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    fs_imp::unlink(path.as_ref())
+    fs_imp::remove_file(path.as_ref())
 }
 
 /// Given a path, queries the file system to get information about a file,
@@ -2401,7 +2409,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 #[doc(alias = "stat")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
-    fs_imp::stat(path.as_ref()).map(Metadata)
+    fs_imp::metadata(path.as_ref()).map(Metadata)
 }
 
 /// Queries the metadata about a file without following symlinks.
@@ -2436,7 +2444,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 #[doc(alias = "lstat")]
 #[stable(feature = "symlink_metadata", since = "1.1.0")]
 pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
-    fs_imp::lstat(path.as_ref()).map(Metadata)
+    fs_imp::symlink_metadata(path.as_ref()).map(Metadata)
 }
 
 /// Renames a file or directory to a new name, replacing the original file if
@@ -2590,7 +2598,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 #[doc(alias = "CreateHardLink", alias = "linkat")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
-    fs_imp::link(original.as_ref(), link.as_ref())
+    fs_imp::hard_link(original.as_ref(), link.as_ref())
 }
 
 /// Creates a new symbolic link on the filesystem.
@@ -2656,7 +2664,7 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Re
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
-    fs_imp::readlink(path.as_ref())
+    fs_imp::read_link(path.as_ref())
 }
 
 /// Returns the canonical, absolute form of a path with all intermediate
@@ -2832,7 +2840,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 #[doc(alias = "rmdir", alias = "RemoveDirectory")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    fs_imp::rmdir(path.as_ref())
+    fs_imp::remove_dir(path.as_ref())
 }
 
 /// Removes a directory at this path, after removing all its contents. Use
@@ -2959,7 +2967,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 #[doc(alias = "ls", alias = "opendir", alias = "FindFirstFile", alias = "FindNextFile")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
-    fs_imp::readdir(path.as_ref()).map(ReadDir)
+    fs_imp::read_dir(path.as_ref()).map(ReadDir)
 }
 
 /// Changes the permissions found on a file or a directory.
@@ -2995,7 +3003,7 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 #[doc(alias = "chmod", alias = "SetFileAttributes")]
 #[stable(feature = "set_permissions", since = "1.1.0")]
 pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result<()> {
-    fs_imp::set_perm(path.as_ref(), perm.0)
+    fs_imp::set_permissions(path.as_ref(), perm.0)
 }
 
 impl DirBuilder {

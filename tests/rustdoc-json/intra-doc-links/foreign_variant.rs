@@ -8,6 +8,6 @@ pub struct Local;
 /// local impl
 impl enum_variant_in_trait_method::Trait for Local {}
 
-//@ !has "$.index[*][?(@.name == 'Trait')]"
-//@ !has "$.index[*][?(@.name == 'method')]"
-//@ count "$.index[*][?(@.docs == 'local impl')].inner.items[*]" 0
+//@ !has "$.index[?(@.name == 'Trait')]"
+//@ !has "$.index[?(@.name == 'method')]"
+//@ count "$.index[?(@.docs == 'local impl')].inner.items[*]" 0

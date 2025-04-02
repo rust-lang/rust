@@ -35,28 +35,43 @@ const RESULT: &[&str] = &["core", "result", "Result"];
 
 fn _f<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, did: DefId, expr: &Expr<'_>) {
     let _ = is_type_diagnostic_item(cx, ty, sym::Option);
+    //~^ unnecessary_def_path
     let _ = is_type_diagnostic_item(cx, ty, sym::Result);
+    //~^ unnecessary_def_path
     let _ = is_type_diagnostic_item(cx, ty, sym::Result);
+    //~^ unnecessary_def_path
 
     #[allow(unused, clippy::unnecessary_def_path)]
     let rc_path = &["alloc", "rc", "Rc"];
     let _ = is_type_diagnostic_item(cx, ty, sym::Rc);
+    //~^ unnecessary_def_path
 
     let _ = is_type_diagnostic_item(cx, ty, sym::Option);
+    //~^ unnecessary_def_path
     let _ = is_type_diagnostic_item(cx, ty, sym::Result);
+    //~^ unnecessary_def_path
 
     let _ = is_type_lang_item(cx, ty, LangItem::OwnedBox);
+    //~^ unnecessary_def_path
     let _ = is_type_diagnostic_item(cx, ty, sym::maybe_uninit_uninit);
+    //~^ unnecessary_def_path
 
     let _ = cx.tcx.lang_items().get(LangItem::OwnedBox) == Some(did);
+    //~^ unnecessary_def_path
     let _ = cx.tcx.is_diagnostic_item(sym::Option, did);
+    //~^ unnecessary_def_path
     let _ = cx.tcx.lang_items().get(LangItem::OptionSome) == Some(did);
+    //~^ unnecessary_def_path
 
     let _ = is_trait_method(cx, expr, sym::AsRef);
+    //~^ unnecessary_def_path
 
     let _ = is_path_diagnostic_item(cx, expr, sym::Option);
+    //~^ unnecessary_def_path
     let _ = path_res(cx, expr).opt_def_id().map_or(false, |id| cx.tcx.lang_items().get(LangItem::IteratorNext) == Some(id));
+    //~^ unnecessary_def_path
     let _ = is_res_lang_ctor(cx, path_res(cx, expr), LangItem::OptionSome);
+    //~^ unnecessary_def_path
 }
 
 fn main() {}

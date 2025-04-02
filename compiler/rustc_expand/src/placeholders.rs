@@ -26,7 +26,7 @@ pub(crate) fn placeholder(
         })
     }
 
-    let ident = Ident::empty();
+    let ident = Ident::dummy();
     let attrs = ast::AttrVec::new();
     let vis = vis.unwrap_or(ast::Visibility {
         span: DUMMY_SP,
@@ -62,7 +62,6 @@ pub(crate) fn placeholder(
         AstFragmentKind::Items => AstFragment::Items(smallvec![P(ast::Item {
             id,
             span,
-            ident,
             vis,
             attrs,
             kind: ast::ItemKind::MacCall(mac_placeholder()),
@@ -71,7 +70,6 @@ pub(crate) fn placeholder(
         AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![P(ast::AssocItem {
             id,
             span,
-            ident,
             vis,
             attrs,
             kind: ast::AssocItemKind::MacCall(mac_placeholder()),
@@ -80,17 +78,25 @@ pub(crate) fn placeholder(
         AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![P(ast::AssocItem {
             id,
             span,
-            ident,
             vis,
             attrs,
             kind: ast::AssocItemKind::MacCall(mac_placeholder()),
             tokens: None,
         })]),
+        AstFragmentKind::TraitImplItems => {
+            AstFragment::TraitImplItems(smallvec![P(ast::AssocItem {
+                id,
+                span,
+                vis,
+                attrs,
+                kind: ast::AssocItemKind::MacCall(mac_placeholder()),
+                tokens: None,
+            })])
+        }
         AstFragmentKind::ForeignItems => {
             AstFragment::ForeignItems(smallvec![P(ast::ForeignItem {
                 id,
                 span,
-                ident,
                 vis,
                 attrs,
                 kind: ast::ForeignItemKind::MacCall(mac_placeholder()),
@@ -308,7 +314,8 @@ impl MutVisitor for PlaceholderExpander {
                 let it = self.remove(item.id);
                 match ctxt {
                     AssocCtxt::Trait => it.make_trait_items(),
-                    AssocCtxt::Impl => it.make_impl_items(),
+                    AssocCtxt::Impl { of_trait: false } => it.make_impl_items(),
+                    AssocCtxt::Impl { of_trait: true } => it.make_trait_impl_items(),
                 }
             }
             _ => walk_flat_map_assoc_item(self, item, ctxt),

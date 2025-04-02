@@ -21,15 +21,15 @@ pub(crate) fn expand(
 
     // Allow using `#[alloc_error_handler]` on an item statement
     // FIXME - if we get deref patterns, use them to reduce duplication here
-    let (item, is_stmt, sig_span) = if let Annotatable::Item(item) = &item
+    let (item, ident, is_stmt, sig_span) = if let Annotatable::Item(item) = &item
         && let ItemKind::Fn(fn_kind) = &item.kind
     {
-        (item, false, ecx.with_def_site_ctxt(fn_kind.sig.span))
+        (item, fn_kind.ident, false, ecx.with_def_site_ctxt(fn_kind.sig.span))
     } else if let Annotatable::Stmt(stmt) = &item
         && let StmtKind::Item(item) = &stmt.kind
         && let ItemKind::Fn(fn_kind) = &item.kind
     {
-        (item, true, ecx.with_def_site_ctxt(fn_kind.sig.span))
+        (item, fn_kind.ident, true, ecx.with_def_site_ctxt(fn_kind.sig.span))
     } else {
         ecx.dcx().emit_err(errors::AllocErrorMustBeFn { span: item.span() });
         return vec![orig_item];
@@ -39,7 +39,7 @@ pub(crate) fn expand(
     let span = ecx.with_def_site_ctxt(item.span);
 
     // Generate item statements for the allocator methods.
-    let stmts = thin_vec![generate_handler(ecx, item.ident, span, sig_span)];
+    let stmts = thin_vec![generate_handler(ecx, ident, span, sig_span)];
 
     // Generate anonymous constant serving as container for the allocator methods.
     let const_ty = ecx.ty(sig_span, TyKind::Tup(ThinVec::new()));
@@ -85,6 +85,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
     let kind = ItemKind::Fn(Box::new(Fn {
         defaultness: ast::Defaultness::Final,
         sig,
+        ident: Ident::from_str_and_span("__rg_oom", span),
         generics: Generics::default(),
         contract: None,
         body,
@@ -93,6 +94,6 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
 
     let attrs = thin_vec![cx.attr_word(sym::rustc_std_internal_symbol, span)];
 
-    let item = cx.item(span, Ident::from_str_and_span("__rg_oom", span), attrs, kind);
+    let item = cx.item(span, attrs, kind);
     cx.stmt_item(sig_span, item)
 }

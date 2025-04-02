@@ -11,7 +11,7 @@ test = false
 bitflags = "2.4.1"
 # To avoid duplicate dependencies, this should match the version of gimli used
 # by `rustc_codegen_ssa` via its `thorin-dwp` dependency.
-gimli = "0.30"
+gimli = "0.31"
 itertools = "0.12"
 libc = "0.2"
 measureme = "12.0.1"

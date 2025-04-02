@@ -1,5 +1,5 @@
 use super::sealed::Sealed;
-use crate::simd::{cmp::SimdOrd, LaneCount, Simd, SimdCast, SimdElement, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SimdCast, SimdElement, SupportedLaneCount, cmp::SimdOrd};
 
 /// Operations on SIMD vectors of unsigned integers.
 pub trait SimdUint: Copy + Sealed {

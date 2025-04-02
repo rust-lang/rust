@@ -153,7 +153,7 @@ impl Annotatable {
 
     pub fn expect_impl_item(self) -> P<ast::AssocItem> {
         match self {
-            Annotatable::AssocItem(i, AssocCtxt::Impl) => i,
+            Annotatable::AssocItem(i, AssocCtxt::Impl { .. }) => i,
             _ => panic!("expected Item"),
         }
     }
@@ -403,6 +403,11 @@ pub trait MacResult {
         None
     }
 
+    /// Creates zero or more impl items.
+    fn make_trait_impl_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+        None
+    }
+
     /// Creates zero or more trait items.
     fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
         None
@@ -516,6 +521,10 @@ impl MacResult for MacEager {
         self.impl_items
     }
 
+    fn make_trait_impl_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+        self.impl_items
+    }
+
     fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
         self.trait_items
     }
@@ -613,6 +622,10 @@ impl MacResult for DummyResult {
         Some(SmallVec::new())
     }
 
+    fn make_trait_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+        Some(SmallVec::new())
+    }
+
     fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
         Some(SmallVec::new())
     }
@@ -681,17 +694,18 @@ impl MacResult for DummyResult {
 }
 
 /// A syntax extension kind.
+#[derive(Clone)]
 pub enum SyntaxExtensionKind {
     /// A token-based function-like macro.
     Bang(
         /// An expander with signature TokenStream -> TokenStream.
-        Box<dyn BangProcMacro + sync::DynSync + sync::DynSend>,
+        Arc<dyn BangProcMacro + sync::DynSync + sync::DynSend>,
     ),
 
     /// An AST-based function-like macro.
     LegacyBang(
         /// An expander with signature TokenStream -> AST.
-        Box<dyn TTMacroExpander + sync::DynSync + sync::DynSend>,
+        Arc<dyn TTMacroExpander + sync::DynSync + sync::DynSend>,
     ),
 
     /// A token-based attribute macro.
@@ -699,7 +713,7 @@ pub enum SyntaxExtensionKind {
         /// An expander with signature (TokenStream, TokenStream) -> TokenStream.
         /// The first TokenStream is the attribute itself, the second is the annotated item.
         /// The produced TokenStream replaces the input TokenStream.
-        Box<dyn AttrProcMacro + sync::DynSync + sync::DynSend>,
+        Arc<dyn AttrProcMacro + sync::DynSync + sync::DynSend>,
     ),
 
     /// An AST-based attribute macro.
@@ -707,7 +721,7 @@ pub enum SyntaxExtensionKind {
         /// An expander with signature (AST, AST) -> AST.
         /// The first AST fragment is the attribute itself, the second is the annotated item.
         /// The produced AST fragment replaces the input AST fragment.
-        Box<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
+        Arc<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
     ),
 
     /// A trivial attribute "macro" that does nothing,
@@ -724,18 +738,18 @@ pub enum SyntaxExtensionKind {
         /// is handled identically to `LegacyDerive`. It should be migrated to
         /// a token-based representation like `Bang` and `Attr`, instead of
         /// using `MultiItemModifier`.
-        Box<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
+        Arc<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
     ),
 
     /// An AST-based derive macro.
     LegacyDerive(
         /// An expander with signature AST -> AST.
         /// The produced AST fragment is appended to the input AST fragment.
-        Box<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
+        Arc<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
     ),
 
     /// A glob delegation.
-    GlobDelegation(Box<dyn GlobDelegationExpander + sync::DynSync + sync::DynSend>),
+    GlobDelegation(Arc<dyn GlobDelegationExpander + sync::DynSync + sync::DynSend>),
 }
 
 /// A struct representing a macro definition in "lowered" form ready for expansion.
@@ -937,7 +951,7 @@ impl SyntaxExtension {
                 cx.dcx().span_delayed_bug(span, "expanded a dummy bang macro"),
             ))
         }
-        SyntaxExtension::default(SyntaxExtensionKind::LegacyBang(Box::new(expander)), edition)
+        SyntaxExtension::default(SyntaxExtensionKind::LegacyBang(Arc::new(expander)), edition)
     }
 
     /// A dummy derive macro `#[derive(Foo)]`.
@@ -950,7 +964,7 @@ impl SyntaxExtension {
         ) -> Vec<Annotatable> {
             Vec::new()
         }
-        SyntaxExtension::default(SyntaxExtensionKind::Derive(Box::new(expander)), edition)
+        SyntaxExtension::default(SyntaxExtensionKind::Derive(Arc::new(expander)), edition)
     }
 
     pub fn non_macro_attr(edition: Edition) -> SyntaxExtension {
@@ -980,7 +994,7 @@ impl SyntaxExtension {
         }
 
         let expander = GlobDelegationExpanderImpl { trait_def_id, impl_def_id };
-        SyntaxExtension::default(SyntaxExtensionKind::GlobDelegation(Box::new(expander)), edition)
+        SyntaxExtension::default(SyntaxExtensionKind::GlobDelegation(Arc::new(expander)), edition)
     }
 
     pub fn expn_data(
@@ -1410,12 +1424,11 @@ pub fn parse_macro_name_and_helper_attrs(
 /// See #73345 and #83125 for more details.
 /// FIXME(#73933): Remove this eventually.
 fn pretty_printing_compatibility_hack(item: &Item, psess: &ParseSess) {
-    let name = item.ident.name;
-    if name == sym::ProceduralMasqueradeDummyType
-        && let ast::ItemKind::Enum(enum_def, _) = &item.kind
+    if let ast::ItemKind::Enum(ident, enum_def, _) = &item.kind
+        && ident.name == sym::ProceduralMasqueradeDummyType
         && let [variant] = &*enum_def.variants
         && variant.ident.name == sym::Input
-        && let FileName::Real(real) = psess.source_map().span_to_filename(item.ident.span)
+        && let FileName::Real(real) = psess.source_map().span_to_filename(ident.span)
         && let Some(c) = real
             .local_path()
             .unwrap_or(Path::new(""))

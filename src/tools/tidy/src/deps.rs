@@ -181,6 +181,8 @@ const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
 
 const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     // tidy-alphabetical-start
+    ("cranelift-assembler-x64", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-assembler-x64-meta", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-bforest", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-bitset", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
@@ -240,7 +242,6 @@ const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "adler2",
-    "ahash",
     "aho-corasick",
     "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "annotate-snippets",
@@ -253,7 +254,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "blake3",
     "block-buffer",
     "bstr",
-    "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
     "cfg-if",
     "cfg_aliases",
@@ -318,7 +318,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "libloading",
     "linux-raw-sys",
     "litemap",
-    "literal-escaper",
     "lock_api",
     "log",
     "matchers",
@@ -351,6 +350,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "pulldown-cmark-escape",
     "punycode",
     "quote",
+    "r-efi",
     "rand",
     "rand_chacha",
     "rand_core",
@@ -364,7 +364,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc-rayon",
     "rustc-rayon-core",
     "rustc-stable-hash",
-    "rustc-std-workspace-std",
     "rustc_apfloat",
     "rustix",
     "ruzstd", // via object in thorin-dwp
@@ -435,6 +434,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "windows-core",
     "windows-implement",
     "windows-interface",
+    "windows-link",
     "windows-result",
     "windows-strings",
     "windows-sys",
@@ -447,7 +447,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
-    "wit-bindgen-rt@0.33.0", // via wasi
+    "wit-bindgen-rt@0.39.0", // pinned to a specific version due to using a binary blob: <https://github.com/rust-lang/rust/pull/136395#issuecomment-2692769062>
     "writeable",
     "yoke",
     "yoke-derive",
@@ -515,6 +515,8 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "bitflags",
     "bumpalo",
     "cfg-if",
+    "cranelift-assembler-x64",
+    "cranelift-assembler-x64-meta",
     "cranelift-bforest",
     "cranelift-bitset",
     "cranelift-codegen",

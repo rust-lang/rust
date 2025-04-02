@@ -202,35 +202,35 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         },
 
         Node::Item(item) => match item.kind {
-            ItemKind::Static(ty, .., body_id) => {
+            ItemKind::Static(ident, ty, .., body_id) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
                         body_id,
                         ty.span,
-                        item.ident,
+                        ident,
                         "static variable",
                     )
                 } else {
                     icx.lower_ty(ty)
                 }
             }
-            ItemKind::Const(ty, _, body_id) => {
+            ItemKind::Const(ident, ty, _, body_id) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
                         body_id,
                         ty.span,
-                        item.ident,
+                        ident,
                         "constant",
                     )
                 } else {
                     icx.lower_ty(ty)
                 }
             }
-            ItemKind::TyAlias(self_ty, _) => icx.lower_ty(self_ty),
+            ItemKind::TyAlias(_, self_ty, _) => icx.lower_ty(self_ty),
             ItemKind::Impl(hir::Impl { self_ty, .. }) => match self_ty.find_self_aliases() {
                 spans if spans.len() > 0 => {
                     let guar = tcx
@@ -479,5 +479,5 @@ pub(crate) fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) ->
             }
         }
     }
-    HasTait.visit_ty_unambig(tcx.hir_expect_item(def_id).expect_ty_alias().0).is_break()
+    HasTait.visit_ty_unambig(tcx.hir_expect_item(def_id).expect_ty_alias().1).is_break()
 }

@@ -2,12 +2,12 @@
 
 #[cfg(not(any(feature = "optimize_for_size", target_pointer_width = "16")))]
 use crate::cmp;
-use crate::intrinsics;
 use crate::mem::{MaybeUninit, SizedTypeProperties};
 #[cfg(not(any(feature = "optimize_for_size", target_pointer_width = "16")))]
 use crate::slice::sort::shared::smallsort::{
     SMALL_SORT_GENERAL_SCRATCH_LEN, StableSmallSortTypeImpl, insertion_sort_shift_left,
 };
+use crate::{cfg_match, intrinsics};
 
 pub(crate) mod merge;
 
@@ -39,17 +39,18 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less
         return;
     }
 
-    cfg_if! {
-        if #[cfg(any(feature = "optimize_for_size", target_pointer_width = "16"))] {
+    cfg_match! {
+        any(feature = "optimize_for_size", target_pointer_width = "16") => {
             // Unlike driftsort, mergesort only requires len / 2,
             // not len - len / 2.
             let alloc_len = len / 2;
 
-            cfg_if! {
-                if #[cfg(target_pointer_width = "16")] {
+            cfg_match! {
+                target_pointer_width = "16" => {
                     let mut heap_buf = BufT::with_capacity(alloc_len);
                     let scratch = heap_buf.as_uninit_slice_mut();
-                } else {
+                }
+                _ => {
                     // For small inputs 4KiB of stack storage suffices, which allows us to avoid
                     // calling the (de-)allocator. Benchmarks showed this was quite beneficial.
                     let mut stack_buf = AlignedStorage::<T, 4096>::new();
@@ -65,7 +66,8 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less
             }
 
             tiny::mergesort(v, scratch, is_less);
-        } else {
+        }
+        _ => {
             // More advanced sorting methods than insertion sort are faster if called in
             // a hot loop for small inputs, but for general-purpose code the small
             // binary size of insertion sort is more important. The instruction cache in

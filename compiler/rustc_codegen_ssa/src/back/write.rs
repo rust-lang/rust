@@ -546,9 +546,12 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         if let Some(path) = &module.bytecode {
             files.push((OutputType::Bitcode.extension(), path.as_path()));
         }
-        if let Some((id, product)) =
-            copy_cgu_workproduct_to_incr_comp_cache_dir(sess, &module.name, files.as_slice())
-        {
+        if let Some((id, product)) = copy_cgu_workproduct_to_incr_comp_cache_dir(
+            sess,
+            &module.name,
+            files.as_slice(),
+            &module.links_from_incr_cache,
+        ) {
             work_products.insert(id, product);
         }
     }
@@ -566,16 +569,13 @@ fn produce_final_output_artifacts(
 
     // Produce final compile outputs.
     let copy_gracefully = |from: &Path, to: &OutFileName| match to {
-        OutFileName::Stdout => {
-            if let Err(e) = copy_to_stdout(from) {
-                sess.dcx().emit_err(errors::CopyPath::new(from, to.as_path(), e));
-            }
+        OutFileName::Stdout if let Err(e) = copy_to_stdout(from) => {
+            sess.dcx().emit_err(errors::CopyPath::new(from, to.as_path(), e));
         }
-        OutFileName::Real(path) => {
-            if let Err(e) = fs::copy(from, path) {
-                sess.dcx().emit_err(errors::CopyPath::new(from, path, e));
-            }
+        OutFileName::Real(path) if let Err(e) = fs::copy(from, path) => {
+            sess.dcx().emit_err(errors::CopyPath::new(from, path, e));
         }
+        _ => {}
     };
 
     let copy_if_one_unit = |output_type: OutputType, keep_numbered: bool| {
@@ -685,14 +685,12 @@ fn produce_final_output_artifacts(
             needs_crate_object || (user_wants_objects && sess.codegen_units().as_usize() > 1);
 
         for module in compiled_modules.modules.iter() {
-            if let Some(ref path) = module.object {
-                if !keep_numbered_objects {
+            if !keep_numbered_objects {
+                if let Some(ref path) = module.object {
                     ensure_removed(sess.dcx(), path);
                 }
-            }
 
-            if let Some(ref path) = module.dwarf_object {
-                if !keep_numbered_objects {
+                if let Some(ref path) = module.dwarf_object {
                     ensure_removed(sess.dcx(), path);
                 }
             }
@@ -704,12 +702,11 @@ fn produce_final_output_artifacts(
             }
         }
 
-        if !user_wants_bitcode {
-            if let Some(ref allocator_module) = compiled_modules.allocator_module {
-                if let Some(ref path) = allocator_module.bytecode {
-                    ensure_removed(sess.dcx(), path);
-                }
-            }
+        if !user_wants_bitcode
+            && let Some(ref allocator_module) = compiled_modules.allocator_module
+            && let Some(ref path) = allocator_module.bytecode
+        {
+            ensure_removed(sess.dcx(), path);
         }
     }
 
@@ -940,7 +937,9 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 ) -> WorkItemResult<B> {
     let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
 
-    let load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
+    let mut links_from_incr_cache = Vec::new();
+
+    let mut load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
         let source_file = in_incr_comp_dir(incr_comp_session_dir, saved_path);
         debug!(
             "copying preexisting module `{}` from {:?} to {}",
@@ -949,7 +948,10 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
             output_path.display()
         );
         match link_or_copy(&source_file, &output_path) {
-            Ok(_) => Some(output_path),
+            Ok(_) => {
+                links_from_incr_cache.push(source_file);
+                Some(output_path)
+            }
             Err(error) => {
                 cgcx.create_dcx().handle().emit_err(errors::CopyPathBuf {
                     source_file,
@@ -972,7 +974,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
             load_from_incr_comp_dir(dwarf_obj_out, saved_dwarf_object_file)
         });
 
-    let load_from_incr_cache = |perform, output_type: OutputType| {
+    let mut load_from_incr_cache = |perform, output_type: OutputType| {
         if perform {
             let saved_file = module.source.saved_files.get(output_type.extension())?;
             let output_path = cgcx.output_filenames.temp_path(output_type, Some(&module.name));
@@ -992,6 +994,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     }
 
     WorkItemResult::Finished(CompiledModule {
+        links_from_incr_cache,
         name: module.name,
         kind: ModuleKind::Regular,
         object,
@@ -2183,7 +2186,7 @@ fn msvc_imps_needed(tcx: TyCtxt<'_>) -> bool {
     // indirectly from ThinLTO. In theory these are not needed as ThinLTO could resolve
     // these, but it currently does not do so.
     let can_have_static_objects =
-        tcx.sess.lto() == Lto::Thin || tcx.crate_types().iter().any(|ct| *ct == CrateType::Rlib);
+        tcx.sess.lto() == Lto::Thin || tcx.crate_types().contains(&CrateType::Rlib);
 
     tcx.sess.target.is_like_windows &&
     can_have_static_objects   &&

@@ -1053,15 +1053,15 @@ impl<'a> CrateMetadataRef<'a> {
                     attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
                 (
                     trait_name,
-                    SyntaxExtensionKind::Derive(Box::new(DeriveProcMacro { client })),
+                    SyntaxExtensionKind::Derive(Arc::new(DeriveProcMacro { client })),
                     helper_attrs,
                 )
             }
             ProcMacro::Attr { name, client } => {
-                (name, SyntaxExtensionKind::Attr(Box::new(AttrProcMacro { client })), Vec::new())
+                (name, SyntaxExtensionKind::Attr(Arc::new(AttrProcMacro { client })), Vec::new())
             }
             ProcMacro::Bang { name, client } => {
-                (name, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })), Vec::new())
+                (name, SyntaxExtensionKind::Bang(Arc::new(BangProcMacro { client })), Vec::new())
             }
         };
 
@@ -1318,7 +1318,7 @@ impl<'a> CrateMetadataRef<'a> {
             .expect("argument names not encoded for a function")
             .decode((self, sess))
             .nth(0)
-            .is_some_and(|ident| ident.name == kw::SelfLower)
+            .is_some_and(|ident| matches!(ident, Some(Ident { name: kw::SelfLower, .. })))
     }
 
     fn get_associated_item_or_field_def_ids(self, id: DefIndex) -> impl Iterator<Item = DefId> {

@@ -691,7 +691,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             true,
             td.is_local(),
             td.as_local().and_then(|tld| match self.infcx.tcx.hir_node_by_def_id(tld) {
-                Node::Item(hir::Item { kind: hir::ItemKind::Trait(_, _, _, _, items), .. }) => {
+                Node::Item(hir::Item {
+                    kind: hir::ItemKind::Trait(_, _, _, _, _, items), ..
+                }) => {
                     let mut f_in_trait_opt = None;
                     for hir::TraitItemRef { id: fi, kind: k, .. } in *items {
                         let hi = fi.hir_id();
@@ -980,7 +982,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let arg = match tcx.hir_get_if_local(callee_def_id) {
                 Some(
                     hir::Node::Item(hir::Item {
-                        ident, kind: hir::ItemKind::Fn { sig, .. }, ..
+                        kind: hir::ItemKind::Fn { ident, sig, .. }, ..
                     })
                     | hir::Node::TraitItem(hir::TraitItem {
                         ident,
@@ -1021,7 +1023,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             // return type.
             match tcx.hir_node_by_def_id(tcx.hir_get_parent_item(fn_call_id).def_id) {
                 hir::Node::Item(hir::Item {
-                    ident, kind: hir::ItemKind::Fn { sig, .. }, ..
+                    kind: hir::ItemKind::Fn { ident, sig, .. }, ..
                 })
                 | hir::Node::TraitItem(hir::TraitItem {
                     ident,

@@ -77,6 +77,22 @@ impl Body {
         &self.locals[self.arg_count + 1..]
     }
 
+    /// Returns a mutable reference to the local that holds this function's return value.
+    pub(crate) fn ret_local_mut(&mut self) -> &mut LocalDecl {
+        &mut self.locals[RETURN_LOCAL]
+    }
+
+    /// Returns a mutable slice of locals corresponding to this function's arguments.
+    pub(crate) fn arg_locals_mut(&mut self) -> &mut [LocalDecl] {
+        &mut self.locals[1..][..self.arg_count]
+    }
+
+    /// Returns a mutable slice of inner locals for this function.
+    /// Inner locals are those that are neither the return local nor the argument locals.
+    pub(crate) fn inner_locals_mut(&mut self) -> &mut [LocalDecl] {
+        &mut self.locals[self.arg_count + 1..]
+    }
+
     /// Convenience function to get all the locals in this function.
     ///
     /// Locals are typically accessed via the more specific methods `ret_local`,
@@ -1041,8 +1057,7 @@ impl Place {
     /// In order to retrieve the correct type, the `locals` argument must match the list of all
     /// locals from the function body where this place originates from.
     pub fn ty(&self, locals: &[LocalDecl]) -> Result<Ty, Error> {
-        let start_ty = locals[self.local].ty;
-        self.projection.iter().fold(Ok(start_ty), |place_ty, elem| elem.ty(place_ty?))
+        self.projection.iter().try_fold(locals[self.local].ty, |place_ty, elem| elem.ty(place_ty))
     }
 }
 

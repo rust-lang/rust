@@ -118,7 +118,7 @@ pub fn edit_distance_with_substrings(a: &str, b: &str, limit: usize) -> Option<u
     // Check one isn't less than half the length of the other. If this is true then there is a
     // big difference in length.
     let big_len_diff = (n * 2) < m || (m * 2) < n;
-    let len_diff = if n < m { m - n } else { n - m };
+    let len_diff = m.abs_diff(n);
     let distance = edit_distance(a, b, limit + len_diff)?;
 
     // This is the crux, subtracting length difference means exact substring matches will now be 0

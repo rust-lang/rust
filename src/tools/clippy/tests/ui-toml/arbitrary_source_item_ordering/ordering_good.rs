@@ -1,15 +1,21 @@
 //@aux-build:../../ui/auxiliary/proc_macros.rs
-//@revisions: default default_exp bad_conf_1 bad_conf_2 bad_conf_3
+//@revisions: default default_exp bad_conf_1 bad_conf_2 bad_conf_3 bad_conf_4 bad_conf_5 bad_conf_6
 //@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default
 //@[default_exp] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default_exp
 //@[bad_conf_1] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_1
 //@[bad_conf_2] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_2
 //@[bad_conf_3] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_3
+//@[bad_conf_4] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_4
+//@[bad_conf_5] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_5
+//@[bad_conf_6] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_6
 //@[default] check-pass
 //@[default_exp] check-pass
 //@[bad_conf_1] error-in-other-file:
 //@[bad_conf_2] error-in-other-file:
 //@[bad_conf_3] error-in-other-file:
+//@[bad_conf_4] error-in-other-file:
+//@[bad_conf_5] error-in-other-file:
+//@[bad_conf_6] error-in-other-file:
 
 #![allow(dead_code)]
 #![warn(clippy::arbitrary_source_item_ordering)]

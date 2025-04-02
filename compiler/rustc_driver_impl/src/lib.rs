@@ -20,7 +20,7 @@
 // tidy-alphabetical-end
 
 use std::cmp::max;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs::{self, File};
@@ -44,6 +44,10 @@ use rustc_errors::emitter::stderr_destination;
 use rustc_errors::registry::Registry;
 use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
 use rustc_feature::find_gated_cfg;
+// This avoids a false positive with `-Wunused_crate_dependencies`.
+// `rust_index` isn't used in this crate's code, but it must be named in the
+// `Cargo.toml` for the `rustc_randomized_layouts` feature.
+use rustc_index as _;
 use rustc_interface::util::{self, get_codegen_backend};
 use rustc_interface::{Linker, create_and_enter_global_ctxt, interface, passes};
 use rustc_lint::unerased_lint_store;
@@ -57,7 +61,7 @@ use rustc_session::config::{
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
-use rustc_session::output::collect_crate_types;
+use rustc_session::output::{CRATE_TYPES, collect_crate_types, invalid_output_for_target};
 use rustc_session::{EarlyDiagCtxt, Session, config, filesearch};
 use rustc_span::FileName;
 use rustc_target::json::ToJson;
@@ -89,6 +93,10 @@ pub mod pretty;
 #[macro_use]
 mod print;
 mod session_diagnostics;
+
+// Keep the OS parts of this `cfg` in sync with the `cfg` on the `libc`
+// dependency in `compiler/rustc_driver/Cargo.toml`, to keep
+// `-Wunused-crated-dependencies` satisfied.
 #[cfg(all(not(miri), unix, any(target_env = "gnu", target_os = "macos")))]
 mod signal_handler;
 
@@ -100,7 +108,7 @@ mod signal_handler {
 }
 
 use crate::session_diagnostics::{
-    RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
+    CantEmitMIR, RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
     RLinkWrongFileType, RlinkCorruptFile, RlinkNotAFile, RlinkUnableToRead, UnstableFeatureUsage,
 };
 
@@ -235,12 +243,17 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         return;
     }
 
+    let input = make_input(&default_early_dcx, &matches.free);
+    let has_input = input.is_some();
     let (odir, ofile) = make_output(&matches);
+
+    drop(default_early_dcx);
+
     let mut config = interface::Config {
         opts: sopts,
         crate_cfg: matches.opt_strs("cfg"),
         crate_check_cfg: matches.opt_strs("check-cfg"),
-        input: Input::File(PathBuf::new()),
+        input: input.unwrap_or(Input::File(PathBuf::new())),
         output_file: ofile,
         output_dir: odir,
         ice_file,
@@ -256,16 +269,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         using_internal_features: &USING_INTERNAL_FEATURES,
         expanded_args: args,
     };
-
-    let has_input = match make_input(&default_early_dcx, &matches.free) {
-        Some(input) => {
-            config.input = input;
-            true // has input: normal compilation
-        }
-        None => false, // no input: we will exit early
-    };
-
-    drop(default_early_dcx);
 
     callbacks.config(&mut config);
 
@@ -371,6 +374,12 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
                 return early_exit();
             }
 
+            if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
+                if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
+                    tcx.dcx().emit_fatal(CantEmitMIR { error });
+                }
+            }
+
             Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
         });
 
@@ -399,7 +408,7 @@ fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
     }
 }
 
-// Extract output directory and file from matches.
+/// Extract output directory and file from matches.
 fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<OutFileName>) {
     let odir = matches.opt_str("out-dir").map(|o| PathBuf::from(&o));
     let ofile = matches.opt_str("o").map(|o| match o.as_str() {
@@ -779,6 +788,16 @@ fn print_crate_info(
                 } else {
                     #[allow(rustc::diagnostic_outside_of_impl)]
                     sess.dcx().fatal("only Apple targets currently support deployment version info")
+                }
+            }
+            SupportedCrateTypes => {
+                let supported_crate_types = CRATE_TYPES
+                    .iter()
+                    .filter(|(_, crate_type)| !invalid_output_for_target(&sess, *crate_type))
+                    .map(|(crate_type_sym, _)| *crate_type_sym)
+                    .collect::<BTreeSet<_>>();
+                for supported_crate_type in supported_crate_types {
+                    println_info!("{}", supported_crate_type.as_str());
                 }
             }
         }

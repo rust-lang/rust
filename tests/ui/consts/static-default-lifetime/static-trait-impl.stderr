@@ -21,25 +21,15 @@ help: use the `'static` lifetime
 LL |     const STATIC: &'static str = "";
    |                    +++++++
 
-error[E0308]: const not compatible with trait
-  --> $DIR/static-trait-impl.rs:9:5
+error[E0195]: lifetime parameters or bounds on const `STATIC` do not match the trait declaration
+  --> $DIR/static-trait-impl.rs:9:17
    |
+LL |     const STATIC: &'a str;
+   |                 - lifetimes in impl do not match this const in trait
+...
 LL |     const STATIC: &str = "";
-   |     ^^^^^^^^^^^^^^^^^^ lifetime mismatch
-   |
-   = note: expected reference `&_`
-              found reference `&_`
-note: the anonymous lifetime as defined here...
-  --> $DIR/static-trait-impl.rs:9:19
-   |
-LL |     const STATIC: &str = "";
-   |                   ^
-note: ...does not necessarily outlive the anonymous lifetime as defined here
-  --> $DIR/static-trait-impl.rs:8:10
-   |
-LL | impl Bar<'_> for A {
-   |          ^^
+   |                 ^ lifetimes do not match const in trait
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0195`.

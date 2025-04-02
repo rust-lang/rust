@@ -1,5 +1,5 @@
 Function name: <loops_branches::DebugTest as core::fmt::Debug>::fmt
-Raw bytes (112): 0x[01, 01, 04, 07, 0b, 01, 0d, 05, 09, 09, 0d, 14, 01, 09, 05, 01, 10, 01, 02, 10, 00, 15, 00, 01, 17, 00, 1b, 00, 00, 1c, 00, 1e, 01, 01, 0d, 00, 0e, 01, 01, 0d, 00, 1e, 05, 00, 1e, 00, 1f, 00, 01, 10, 01, 0a, 0d, 03, 0d, 00, 0e, 09, 00, 12, 00, 17, 0d, 01, 10, 00, 14, 0d, 01, 14, 00, 19, 00, 01, 1b, 00, 1f, 00, 00, 20, 00, 22, 0d, 01, 11, 00, 12, 0d, 01, 11, 00, 22, 02, 00, 22, 00, 23, 00, 01, 14, 01, 0e, 0e, 03, 09, 00, 0f, 01, 01, 05, 00, 06]
+Raw bytes (112): 0x[01, 01, 04, 07, 0b, 01, 0d, 05, 09, 09, 0d, 14, 01, 09, 05, 01, 10, 01, 02, 10, 00, 15, 00, 01, 17, 00, 1b, 00, 00, 1c, 00, 1e, 01, 01, 0d, 00, 0e, 01, 01, 0d, 00, 1d, 05, 00, 1e, 00, 1f, 00, 01, 10, 01, 0a, 0d, 03, 0d, 00, 0e, 09, 00, 12, 00, 17, 0d, 01, 10, 00, 14, 0d, 01, 14, 00, 19, 00, 01, 1b, 00, 1f, 00, 00, 20, 00, 22, 0d, 01, 11, 00, 12, 0d, 01, 11, 00, 21, 02, 00, 22, 00, 23, 00, 01, 14, 01, 0e, 0e, 03, 09, 00, 0f, 01, 01, 05, 00, 06]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 4
@@ -13,7 +13,7 @@ Number of file 0 mappings: 20
 - Code(Zero) at (prev + 1, 23) to (start + 0, 27)
 - Code(Zero) at (prev + 0, 28) to (start + 0, 30)
 - Code(Counter(0)) at (prev + 1, 13) to (start + 0, 14)
-- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 30)
+- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 29)
 - Code(Counter(1)) at (prev + 0, 30) to (start + 0, 31)
 - Code(Zero) at (prev + 1, 16) to (start + 1, 10)
 - Code(Counter(3)) at (prev + 3, 13) to (start + 0, 14)
@@ -23,7 +23,7 @@ Number of file 0 mappings: 20
 - Code(Zero) at (prev + 1, 27) to (start + 0, 31)
 - Code(Zero) at (prev + 0, 32) to (start + 0, 34)
 - Code(Counter(3)) at (prev + 1, 17) to (start + 0, 18)
-- Code(Counter(3)) at (prev + 1, 17) to (start + 0, 34)
+- Code(Counter(3)) at (prev + 1, 17) to (start + 0, 33)
 - Code(Expression(0, Sub)) at (prev + 0, 34) to (start + 0, 35)
     = ((c0 + c3) - (c1 + c2))
 - Code(Zero) at (prev + 1, 20) to (start + 1, 14)
@@ -33,7 +33,7 @@ Number of file 0 mappings: 20
 Highest counter ID seen: c3
 
 Function name: <loops_branches::DisplayTest as core::fmt::Display>::fmt
-Raw bytes (112): 0x[01, 01, 04, 07, 0b, 01, 09, 05, 0d, 05, 09, 14, 01, 22, 05, 01, 11, 00, 01, 12, 01, 0a, 01, 02, 10, 00, 15, 00, 01, 17, 00, 1b, 00, 00, 1c, 00, 1e, 01, 01, 0d, 00, 0e, 01, 01, 0d, 00, 1e, 0d, 00, 1e, 00, 1f, 09, 02, 0d, 00, 0e, 05, 00, 12, 00, 17, 09, 01, 10, 00, 15, 00, 00, 16, 01, 0e, 09, 02, 14, 00, 19, 00, 01, 1b, 00, 1f, 00, 00, 20, 00, 22, 09, 01, 11, 00, 12, 09, 01, 11, 00, 22, 02, 00, 22, 00, 23, 0e, 03, 09, 00, 0f, 01, 01, 05, 00, 06]
+Raw bytes (112): 0x[01, 01, 04, 07, 0b, 01, 09, 05, 0d, 05, 09, 14, 01, 22, 05, 01, 11, 00, 01, 12, 01, 0a, 01, 02, 10, 00, 15, 00, 01, 17, 00, 1b, 00, 00, 1c, 00, 1e, 01, 01, 0d, 00, 0e, 01, 01, 0d, 00, 1d, 0d, 00, 1e, 00, 1f, 09, 02, 0d, 00, 0e, 05, 00, 12, 00, 17, 09, 01, 10, 00, 15, 00, 00, 16, 01, 0e, 09, 02, 14, 00, 19, 00, 01, 1b, 00, 1f, 00, 00, 20, 00, 22, 09, 01, 11, 00, 12, 09, 01, 11, 00, 21, 02, 00, 22, 00, 23, 0e, 03, 09, 00, 0f, 01, 01, 05, 00, 06]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 4
@@ -48,7 +48,7 @@ Number of file 0 mappings: 20
 - Code(Zero) at (prev + 1, 23) to (start + 0, 27)
 - Code(Zero) at (prev + 0, 28) to (start + 0, 30)
 - Code(Counter(0)) at (prev + 1, 13) to (start + 0, 14)
-- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 30)
+- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 29)
 - Code(Counter(3)) at (prev + 0, 30) to (start + 0, 31)
 - Code(Counter(2)) at (prev + 2, 13) to (start + 0, 14)
 - Code(Counter(1)) at (prev + 0, 18) to (start + 0, 23)
@@ -58,7 +58,7 @@ Number of file 0 mappings: 20
 - Code(Zero) at (prev + 1, 27) to (start + 0, 31)
 - Code(Zero) at (prev + 0, 32) to (start + 0, 34)
 - Code(Counter(2)) at (prev + 1, 17) to (start + 0, 18)
-- Code(Counter(2)) at (prev + 1, 17) to (start + 0, 34)
+- Code(Counter(2)) at (prev + 1, 17) to (start + 0, 33)
 - Code(Expression(0, Sub)) at (prev + 0, 34) to (start + 0, 35)
     = ((c0 + c2) - (c1 + c3))
 - Code(Expression(3, Sub)) at (prev + 3, 9) to (start + 0, 15)

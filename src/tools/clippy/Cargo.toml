@@ -33,7 +33,7 @@ anstream = "0.6.18"
 
 [dev-dependencies]
 cargo_metadata = "0.18.1"
-ui_test = "0.26.4"
+ui_test = "0.29.2"
 regex = "1.5.5"
 serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.122"

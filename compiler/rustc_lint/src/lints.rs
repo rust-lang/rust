@@ -591,22 +591,38 @@ pub(crate) struct ExpectationNote {
 
 // ptr_nulls.rs
 #[derive(LintDiagnostic)]
-pub(crate) enum PtrNullChecksDiag<'a> {
-    #[diag(lint_ptr_null_checks_fn_ptr)]
-    #[help(lint_help)]
+pub(crate) enum UselessPtrNullChecksDiag<'a> {
+    #[diag(lint_useless_ptr_null_checks_fn_ptr)]
+    #[help]
     FnPtr {
         orig_ty: Ty<'a>,
         #[label]
         label: Span,
     },
-    #[diag(lint_ptr_null_checks_ref)]
+    #[diag(lint_useless_ptr_null_checks_ref)]
     Ref {
         orig_ty: Ty<'a>,
         #[label]
         label: Span,
     },
-    #[diag(lint_ptr_null_checks_fn_ret)]
+    #[diag(lint_useless_ptr_null_checks_fn_ret)]
     FnRet { fn_name: Ident },
+}
+
+#[derive(LintDiagnostic)]
+pub(crate) enum InvalidNullArgumentsDiag {
+    #[diag(lint_invalid_null_arguments)]
+    #[help(lint_doc)]
+    NullPtrInline {
+        #[label(lint_origin)]
+        null_span: Span,
+    },
+    #[diag(lint_invalid_null_arguments)]
+    #[help(lint_doc)]
+    NullPtrThroughBinding {
+        #[note(lint_origin)]
+        null_span: Span,
+    },
 }
 
 // for_loops_over_fallibles.rs
@@ -942,6 +958,11 @@ pub(crate) struct TyQualified {
 #[diag(lint_type_ir_inherent_usage)]
 #[note]
 pub(crate) struct TypeIrInherentUsage;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_type_ir_trait_usage)]
+#[note]
+pub(crate) struct TypeIrTraitUsage;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_non_glob_import_type_ir_inherent)]

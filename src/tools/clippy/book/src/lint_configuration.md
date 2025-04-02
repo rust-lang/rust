@@ -744,6 +744,19 @@ The named groupings of different source item kinds within modules.
 * [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
 
 
+## `module-items-ordered-within-groupings`
+Whether the items within module groups should be ordered alphabetically or not.
+
+This option can be configured to "all", "none", or a list of specific grouping names that should be checked
+(e.g. only "enums").
+
+**Default Value:** `"none"`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
+
+
 ## `msrv`
 The minimum rust version that the project supports. Defaults to the `rust-version` field in `Cargo.toml`
 
@@ -806,6 +819,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`option_as_ref_deref`](https://rust-lang.github.io/rust-clippy/master/index.html#option_as_ref_deref)
 * [`option_map_unwrap_or`](https://rust-lang.github.io/rust-clippy/master/index.html#option_map_unwrap_or)
 * [`ptr_as_ptr`](https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr)
+* [`question_mark`](https://rust-lang.github.io/rust-clippy/master/index.html#question_mark)
 * [`redundant_field_names`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names)
 * [`redundant_static_lifetimes`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_static_lifetimes)
 * [`repeat_vec_with_capacity`](https://rust-lang.github.io/rust-clippy/master/index.html#repeat_vec_with_capacity)

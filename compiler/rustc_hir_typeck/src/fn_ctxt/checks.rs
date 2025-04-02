@@ -1135,7 +1135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && self.tcx.def_kind(fn_def_id).is_fn_like()
                 && let self_implicit =
                     matches!(call_expr.kind, hir::ExprKind::MethodCall(..)) as usize
-                && let Some(arg) =
+                && let Some(Some(arg)) =
                     self.tcx.fn_arg_names(fn_def_id).get(expected_idx.as_usize() + self_implicit)
                 && arg.name != kw::SelfLower
             {
@@ -2678,7 +2678,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     params.get(is_method as usize..params.len() - sig.decl.c_variadic as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
                 Some((
-                    fn_inputs.zip(params.iter().map(|&param| FnParam::Name(param))).collect(),
+                    fn_inputs.zip(params.iter().map(|&ident| FnParam::Name(ident))).collect(),
                     generics,
                 ))
             }
@@ -2709,14 +2709,20 @@ impl<'tcx> Visitor<'tcx> for FindClosureArg<'tcx> {
 #[derive(Clone, Copy)]
 enum FnParam<'hir> {
     Param(&'hir hir::Param<'hir>),
-    Name(Ident),
+    Name(Option<Ident>),
 }
 
 impl FnParam<'_> {
     fn span(&self) -> Span {
         match self {
             Self::Param(param) => param.span,
-            Self::Name(ident) => ident.span,
+            Self::Name(ident) => {
+                if let Some(ident) = ident {
+                    ident.span
+                } else {
+                    DUMMY_SP
+                }
+            }
         }
     }
 
@@ -2733,7 +2739,8 @@ impl FnParam<'_> {
                         Some(ident.name)
                     }
                     FnParam::Name(ident)
-                        if ident.name != kw::Empty && ident.name != kw::Underscore =>
+                        if let Some(ident) = ident
+                            && ident.name != kw::Underscore =>
                     {
                         Some(ident.name)
                     }

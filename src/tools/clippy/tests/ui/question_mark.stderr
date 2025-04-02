@@ -215,5 +215,65 @@ LL | |         return None;
 LL | |     };
    | |______^ help: replace it with: `let v = bar.foo.owned.clone()?;`
 
-error: aborting due to 22 previous errors
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:464:5
+   |
+LL | /     let Some(ref x) = foo.opt_x else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let x = foo.opt_x.as_ref()?;`
+
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:474:5
+   |
+LL | /     let Some(ref mut x) = foo.opt_x else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let x = foo.opt_x.as_mut()?;`
+
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:485:5
+   |
+LL | /     let Some(ref x @ ref y) = foo.opt_x else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let x @ y = foo.opt_x.as_ref()?;`
+
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:489:5
+   |
+LL | /     let Some(ref x @ WrapperStructWithString(_)) = bar else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let x @ &WrapperStructWithString(_) = bar.as_ref()?;`
+
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:493:5
+   |
+LL | /     let Some(ref mut x @ WrapperStructWithString(_)) = bar else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let x @ &mut WrapperStructWithString(_) = bar.as_mut()?;`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:515:5
+   |
+LL | /     if arg.is_none() {
+LL | |
+LL | |         return None;
+LL | |     }
+   | |_____^ help: replace it with: `arg?;`
+
+error: this `match` expression can be replaced with `?`
+  --> tests/ui/question_mark.rs:519:15
+   |
+LL |       let val = match arg {
+   |  _______________^
+LL | |
+LL | |         Some(val) => val,
+LL | |         None => return None,
+LL | |     };
+   | |_____^ help: try instead: `arg?`
+
+error: aborting due to 29 previous errors
 

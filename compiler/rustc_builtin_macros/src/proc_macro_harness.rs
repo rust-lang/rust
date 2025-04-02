@@ -92,7 +92,12 @@ impl<'a> CollectProcMacros<'a> {
         }
     }
 
-    fn collect_custom_derive(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
+    fn collect_custom_derive(
+        &mut self,
+        item: &'a ast::Item,
+        function_name: Ident,
+        attr: &'a ast::Attribute,
+    ) {
         let Some((trait_name, proc_attrs)) =
             parse_macro_name_and_helper_attrs(self.dcx, attr, "derive")
         else {
@@ -104,7 +109,7 @@ impl<'a> CollectProcMacros<'a> {
                 id: item.id,
                 span: item.span,
                 trait_name,
-                function_name: item.ident,
+                function_name,
                 attrs: proc_attrs,
             }));
         } else {
@@ -118,12 +123,12 @@ impl<'a> CollectProcMacros<'a> {
         }
     }
 
-    fn collect_attr_proc_macro(&mut self, item: &'a ast::Item) {
+    fn collect_attr_proc_macro(&mut self, item: &'a ast::Item, function_name: Ident) {
         if self.in_root && item.vis.kind.is_pub() {
             self.macros.push(ProcMacro::Attr(ProcMacroDef {
                 id: item.id,
                 span: item.span,
-                function_name: item.ident,
+                function_name,
             }));
         } else {
             let msg = if !self.in_root {
@@ -136,12 +141,12 @@ impl<'a> CollectProcMacros<'a> {
         }
     }
 
-    fn collect_bang_proc_macro(&mut self, item: &'a ast::Item) {
+    fn collect_bang_proc_macro(&mut self, item: &'a ast::Item, function_name: Ident) {
         if self.in_root && item.vis.kind.is_pub() {
             self.macros.push(ProcMacro::Bang(ProcMacroDef {
                 id: item.id,
                 span: item.span,
-                function_name: item.ident,
+                function_name,
             }));
         } else {
             let msg = if !self.in_root {
@@ -164,12 +169,6 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                 });
             }
         }
-
-        // First up, make sure we're checking a bare function. If we're not then
-        // we're just not interested in this item.
-        //
-        // If we find one, try to locate a `#[proc_macro_derive]` attribute on it.
-        let is_fn = matches!(item.kind, ast::ItemKind::Fn(..));
 
         let mut found_attr: Option<&'a ast::Attribute> = None;
 
@@ -214,7 +213,11 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             return;
         };
 
-        if !is_fn {
+        // Make sure we're checking a bare function. If we're not then we're
+        // just not interested any further in this item.
+        let fn_ident = if let ast::ItemKind::Fn(fn_) = &item.kind {
+            fn_.ident
+        } else {
             self.dcx
                 .create_err(errors::AttributeOnlyBeUsedOnBareFunctions {
                     span: attr.span,
@@ -222,7 +225,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                 })
                 .emit();
             return;
-        }
+        };
 
         if self.is_test_crate {
             return;
@@ -238,12 +241,13 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             return;
         }
 
+        // Try to locate a `#[proc_macro_derive]` attribute.
         if attr.has_name(sym::proc_macro_derive) {
-            self.collect_custom_derive(item, attr);
+            self.collect_custom_derive(item, fn_ident, attr);
         } else if attr.has_name(sym::proc_macro_attribute) {
-            self.collect_attr_proc_macro(item);
+            self.collect_attr_proc_macro(item, fn_ident);
         } else if attr.has_name(sym::proc_macro) {
-            self.collect_bang_proc_macro(item);
+            self.collect_bang_proc_macro(item, fn_ident);
         };
 
         let prev_in_root = mem::replace(&mut self.in_root, false);
@@ -278,7 +282,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
     let span = DUMMY_SP.with_def_site_ctxt(expn_id.to_expn_id());
 
     let proc_macro = Ident::new(sym::proc_macro, span);
-    let krate = cx.item(span, proc_macro, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None));
+    let krate = cx.item(span, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None, proc_macro));
 
     let bridge = Ident::new(sym::bridge, span);
     let client = Ident::new(sym::client, span);
