@@ -495,13 +495,19 @@ fn resolve_expr<'tcx>(
     visitor.cx = prev_cx;
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum LetKind {
+    Regular,
+    Super,
+}
+
 fn resolve_local<'tcx>(
     visitor: &mut ScopeResolutionVisitor<'tcx>,
     pat: Option<&'tcx hir::Pat<'tcx>>,
     init: Option<&'tcx hir::Expr<'tcx>>,
-    super_let: bool,
+    let_kind: LetKind,
 ) {
-    debug!("resolve_local(pat={:?}, init={:?}, super_let={:?})", pat, init, super_let);
+    debug!("resolve_local(pat={:?}, init={:?}, let_kind={:?})", pat, init, let_kind);
 
     // As an exception to the normal rules governing temporary
     // lifetimes, initializers in a let have a temporary lifetime
@@ -559,7 +565,7 @@ fn resolve_local<'tcx>(
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
 
-    if super_let {
+    if let_kind == LetKind::Super {
         if let Some(scope) = visitor.extended_super_lets.remove(&pat.unwrap().hir_id.local_id) {
             // This expression was lifetime-extended by a parent let binding. E.g.
             //
@@ -861,7 +867,7 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
                     local_id: body.value.hir_id.local_id,
                     data: ScopeData::Destruction,
                 });
-                resolve_local(this, None, Some(body.value), false);
+                resolve_local(this, None, Some(body.value), LetKind::Regular);
             }
         })
     }
@@ -879,7 +885,11 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
         resolve_expr(self, ex, false);
     }
     fn visit_local(&mut self, l: &'tcx LetStmt<'tcx>) {
-        resolve_local(self, Some(l.pat), l.init, l.super_.is_some());
+        let let_kind = match l.super_ {
+            Some(_) => LetKind::Super,
+            None => LetKind::Regular,
+        };
+        resolve_local(self, Some(l.pat), l.init, let_kind);
     }
     fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
         let body = self.tcx.hir_body(c.body);
