@@ -19,7 +19,6 @@
 
 //@ revisions: crate_root_lint_levels
 //@[crate_root_lint_levels] compile-flags: --print=crate-root-lint-levels
-//@[crate_root_lint_levels] error-pattern: the `-Z unstable-options` flag must also be passed
 
 //@ revisions: check_cfg
 //@[check_cfg] compile-flags: --print=check-cfg
@@ -107,6 +106,7 @@
 fn main() {}
 
 //[all_target_specs_json]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `all-target-specs-json` print option
+//[crate_root_lint_levels]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `crate-root-lint-levels` print option
 //[check_cfg]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `check-cfg` print option
 //[supported_crate_types]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `supported-crate-types` print option
 //[target_spec_json]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `target-spec-json` print option
