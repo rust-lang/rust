@@ -1753,7 +1753,6 @@ pub(crate) mod builtin {
         reason = "`type_alias_impl_trait` has open design concerns"
     )]
     #[rustc_builtin_macro]
-    #[cfg(not(bootstrap))]
     pub macro define_opaque($($tt:tt)*) {
         /* compiler built-in */
     }

@@ -1943,7 +1943,7 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 #[stable(feature = "pin_macro", since = "1.68.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(unsafe_pin_internals)]
-#[cfg_attr(not(bootstrap), rustc_macro_edition_2021)]
+#[rustc_macro_edition_2021]
 pub macro pin($value:expr $(,)?) {
     // This is `Pin::new_unchecked(&mut { $value })`, so, for starters, let's
     // review such a hypothetical macro (that any user-code could define):

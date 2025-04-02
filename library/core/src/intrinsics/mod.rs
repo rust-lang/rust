@@ -2304,19 +2304,7 @@ pub unsafe fn truncf128(x: f128) -> f128;
 /// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn round_ties_even_f16(x: f16) -> f16;
-
-/// To be removed on next bootstrap bump.
-#[cfg(bootstrap)]
-pub fn round_ties_even_f16(x: f16) -> f16 {
-    #[rustc_intrinsic]
-    #[rustc_nounwind]
-    unsafe fn rintf16(x: f16) -> f16;
-
-    // SAFETY: this intrinsic isn't actually unsafe
-    unsafe { rintf16(x) }
-}
 
 /// Returns the nearest integer to an `f32`. Rounds half-way cases to the number with an even
 /// least significant digit.
@@ -2325,19 +2313,7 @@ pub fn round_ties_even_f16(x: f16) -> f16 {
 /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn round_ties_even_f32(x: f32) -> f32;
-
-/// To be removed on next bootstrap bump.
-#[cfg(bootstrap)]
-pub fn round_ties_even_f32(x: f32) -> f32 {
-    #[rustc_intrinsic]
-    #[rustc_nounwind]
-    unsafe fn rintf32(x: f32) -> f32;
-
-    // SAFETY: this intrinsic isn't actually unsafe
-    unsafe { rintf32(x) }
-}
 
 /// Provided for compatibility with stdarch. DO NOT USE.
 #[inline(always)]
@@ -2352,19 +2328,7 @@ pub unsafe fn rintf32(x: f32) -> f32 {
 /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn round_ties_even_f64(x: f64) -> f64;
-
-/// To be removed on next bootstrap bump.
-#[cfg(bootstrap)]
-pub fn round_ties_even_f64(x: f64) -> f64 {
-    #[rustc_intrinsic]
-    #[rustc_nounwind]
-    unsafe fn rintf64(x: f64) -> f64;
-
-    // SAFETY: this intrinsic isn't actually unsafe
-    unsafe { rintf64(x) }
-}
 
 /// Provided for compatibility with stdarch. DO NOT USE.
 #[inline(always)]
@@ -2379,19 +2343,7 @@ pub unsafe fn rintf64(x: f64) -> f64 {
 /// [`f128::round_ties_even`](../../std/primitive.f128.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn round_ties_even_f128(x: f128) -> f128;
-
-/// To be removed on next bootstrap bump.
-#[cfg(bootstrap)]
-pub fn round_ties_even_f128(x: f128) -> f128 {
-    #[rustc_intrinsic]
-    #[rustc_nounwind]
-    unsafe fn rintf128(x: f128) -> f128;
-
-    // SAFETY: this intrinsic isn't actually unsafe
-    unsafe { rintf128(x) }
-}
 
 /// Returns the nearest integer to an `f16`. Rounds half-way cases away from zero.
 ///
