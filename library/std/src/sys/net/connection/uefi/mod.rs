@@ -4,11 +4,14 @@ use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::sys::unsupported;
 use crate::time::Duration;
 
-pub struct TcpStream(!);
+mod tcp;
+pub(crate) mod tcp4;
+
+pub struct TcpStream(#[expect(dead_code)] tcp::Tcp);
 
 impl TcpStream {
-    pub fn connect(_: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
-        unsupported()
+    pub fn connect(addr: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
+        tcp::Tcp::connect(addr?).map(Self)
     }
 
     pub fn connect_timeout(_: &SocketAddr, _: Duration) -> io::Result<TcpStream> {
@@ -16,105 +19,105 @@ impl TcpStream {
     }
 
     pub fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 
     pub fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        self.0
+        unsupported()
     }
 
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        self.0
+        unsupported()
     }
 
     pub fn peek(&self, _: &mut [u8]) -> io::Result<usize> {
-        self.0
+        unsupported()
     }
 
     pub fn read(&self, _: &mut [u8]) -> io::Result<usize> {
-        self.0
+        unsupported()
     }
 
     pub fn read_buf(&self, _buf: BorrowedCursor<'_>) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 
     pub fn read_vectored(&self, _: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        self.0
+        unsupported()
     }
 
     pub fn is_read_vectored(&self) -> bool {
-        self.0
+        false
     }
 
     pub fn write(&self, _: &[u8]) -> io::Result<usize> {
-        self.0
+        unsupported()
     }
 
     pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
-        self.0
+        unsupported()
     }
 
     pub fn is_write_vectored(&self) -> bool {
-        self.0
+        false
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        self.0
+        unsupported()
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        self.0
+        unsupported()
     }
 
     pub fn shutdown(&self, _: Shutdown) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 
     pub fn duplicate(&self) -> io::Result<TcpStream> {
-        self.0
+        unsupported()
     }
 
     pub fn set_linger(&self, _: Option<Duration>) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
-        self.0
+        unsupported()
     }
 
     pub fn set_nodelay(&self, _: bool) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        self.0
+        unsupported()
     }
 
     pub fn set_ttl(&self, _: u32) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        self.0
+        unsupported()
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        self.0
+        unsupported()
     }
 
     pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
-        self.0
+        unsupported()
     }
 }
 
 impl fmt::Debug for TcpStream {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
+        todo!()
     }
 }
 
