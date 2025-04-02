@@ -1392,6 +1392,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         if let Some(bound_principal) = predicates.principal() {
             self.wrap_binder(&bound_principal, WrapBinderMode::ForAll, |principal, cx| {
                 define_scoped_cx!(cx);
+                let principal_deref_trait =
+                    cx.tcx().is_lang_item(principal.def_id, LangItem::Deref);
                 p!(print_def_path(principal.def_id, &[]));
 
                 let mut resugared = false;
@@ -1451,7 +1453,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                 let super_proj = cx.tcx().anonymize_bound_vars(super_proj);
 
                                 proj == super_proj
-                            });
+                            }) || (principal_deref_trait
+                                && cx.tcx().is_lang_item(
+                                    proj.skip_binder().def_id,
+                                    LangItem::ReceiverTarget,
+                                ));
                             !proj_is_implied
                         })
                         .map(|proj| {
