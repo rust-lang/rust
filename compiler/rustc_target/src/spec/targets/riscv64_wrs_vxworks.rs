@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
             cpu: "generic-rv64".into(),
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
-            features: "+m,+a,+f,+d,+c".into(),
+            features: "+m,+a,+f,+d,+c,+zicsr,+zifencei".into(),
             stack_probes: StackProbeType::Inline,
             ..base::vxworks::opts()
         },

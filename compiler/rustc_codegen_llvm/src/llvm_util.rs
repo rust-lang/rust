@@ -300,6 +300,13 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("sparc", "v8plus") if get_version().0 == 19 => Some(LLVMFeature::new("v9")),
         ("sparc", "v8plus") if get_version().0 < 19 => None,
         ("powerpc", "power8-crypto") => Some(LLVMFeature::new("crypto")),
+        // These new `amx` variants and `movrs` were introduced in LLVM20
+        ("x86", "amx-avx512" | "amx-fp8" | "amx-movrs" | "amx-tf32" | "amx-transpose")
+            if get_version().0 < 20 =>
+        {
+            None
+        }
+        ("x86", "movrs") if get_version().0 < 20 => None,
         (_, s) => Some(LLVMFeature::new(s)),
     }
 }

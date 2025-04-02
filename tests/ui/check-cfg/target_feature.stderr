@@ -17,11 +17,16 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `aes`
 `altivec`
 `alu32`
+`amx-avx512`
 `amx-bf16`
 `amx-complex`
 `amx-fp16`
+`amx-fp8`
 `amx-int8`
+`amx-movrs`
+`amx-tf32`
 `amx-tile`
+`amx-transpose`
 `atomics`
 `avx`
 `avx2`
@@ -152,6 +157,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `mclass`
 `mops`
 `movbe`
+`movrs`
 `mp`
 `mp1e2`
 `msa`
@@ -318,6 +324,11 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `zfinx`
 `zhinx`
 `zhinxmin`
+`zicntr`
+`zicsr`
+`zifencei`
+`zihintpause`
+`zihpm`
 `zk`
 `zkn`
 `zknd`

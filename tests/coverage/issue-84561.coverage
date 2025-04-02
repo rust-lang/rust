@@ -47,32 +47,32 @@
    LL|      1|    let is_true = std::env::args().len() == 1;
    LL|      1|
    LL|      1|    assert_eq!(
-   LL|      1|        Foo(1),
-   LL|      1|        Foo(1)
-   LL|      1|    );
+   LL|       |        Foo(1),
+   LL|       |        Foo(1)
+   LL|       |    );
    LL|      1|    assert_ne!(
-   LL|      1|        Foo(0),
-   LL|      1|        Foo(1)
-   LL|      1|    );
+   LL|       |        Foo(0),
+   LL|       |        Foo(1)
+   LL|       |    );
    LL|      1|    assert_eq!(
-   LL|      1|        Foo(2),
-   LL|      1|        Foo(2)
-   LL|      1|    );
+   LL|       |        Foo(2),
+   LL|       |        Foo(2)
+   LL|       |    );
    LL|      1|    let bar = Foo(1);
    LL|      1|    assert_ne!(
-   LL|      1|        bar,
-   LL|      1|        Foo(3)
-   LL|      1|    );
+   LL|       |        bar,
+   LL|       |        Foo(3)
+   LL|       |    );
    LL|      1|    if is_true {
    LL|      1|        assert_ne!(
-   LL|      1|            Foo(0),
-   LL|      1|            Foo(4)
-   LL|      1|        );
+   LL|       |            Foo(0),
+   LL|       |            Foo(4)
+   LL|       |        );
    LL|       |    } else {
    LL|      0|        assert_eq!(
-   LL|      0|            Foo(3),
-   LL|      0|            Foo(3)
-   LL|      0|        );
+   LL|       |            Foo(3),
+   LL|       |            Foo(3)
+   LL|       |        );
    LL|       |    }
    LL|      1|    if is_true {
    LL|      1|        assert_ne!(
@@ -106,9 +106,9 @@
    LL|      1|    assert_ne!(
    LL|      1|        if is_true {
    LL|      1|            assert_eq!(
-   LL|      1|                Foo(3),
-   LL|      1|                Foo(3)
-   LL|      1|            );
+   LL|       |                Foo(3),
+   LL|       |                Foo(3)
+   LL|       |            );
    LL|      1|            Foo(0)
    LL|       |        } else {
    LL|      0|            assert_ne!(

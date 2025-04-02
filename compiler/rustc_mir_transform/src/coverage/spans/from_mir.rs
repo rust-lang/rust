@@ -120,22 +120,20 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
         // an `if condition { block }` has a span that includes the executed block, if true,
         // but for coverage, the code region executed, up to *and* through the SwitchInt,
         // actually stops before the if's block.)
-        TerminatorKind::Unreachable // Unreachable blocks are not connected to the MIR CFG
+        TerminatorKind::Unreachable
         | TerminatorKind::Assert { .. }
         | TerminatorKind::Drop { .. }
         | TerminatorKind::SwitchInt { .. }
-        // For `FalseEdge`, only the `real` branch is taken, so it is similar to a `Goto`.
         | TerminatorKind::FalseEdge { .. }
         | TerminatorKind::Goto { .. } => None,
 
         // Call `func` operand can have a more specific span when part of a chain of calls
-        TerminatorKind::Call { ref func, .. }
-        | TerminatorKind::TailCall { ref func, .. } => {
+        TerminatorKind::Call { ref func, .. } | TerminatorKind::TailCall { ref func, .. } => {
             let mut span = terminator.source_info.span;
-            if let mir::Operand::Constant(box constant) = func {
-                if constant.span.lo() > span.lo() {
-                    span = span.with_lo(constant.span.lo());
-                }
+            if let mir::Operand::Constant(constant) = func
+                && span.contains(constant.span)
+            {
+                span = constant.span;
             }
             Some(span)
         }
@@ -147,9 +145,7 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
         | TerminatorKind::Yield { .. }
         | TerminatorKind::CoroutineDrop
         | TerminatorKind::FalseUnwind { .. }
-        | TerminatorKind::InlineAsm { .. } => {
-            Some(terminator.source_info.span)
-        }
+        | TerminatorKind::InlineAsm { .. } => Some(terminator.source_info.span),
     }
 }
 
