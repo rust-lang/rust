@@ -311,6 +311,7 @@ trivial! {
     rustc_middle::ty::Asyncness,
     rustc_middle::ty::AsyncDestructor,
     rustc_middle::ty::BoundVariableKind,
+    rustc_middle::ty::AnonConstKind,
     rustc_middle::ty::DeducedParamAttrs,
     rustc_middle::ty::Destructor,
     rustc_middle::ty::fast_reject::SimplifiedType,
