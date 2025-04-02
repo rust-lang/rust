@@ -1,5 +1,5 @@
 error: Argument to option 'print' missing
        Usage:
-           --print [all-target-specs-json|calling-conventions|cfg|check-cfg|code-models|crate-name|deployment-target|file-names|host-tuple|link-args|native-static-libs|relocation-models|split-debuginfo|stack-protector-strategies|supported-crate-types|sysroot|target-cpus|target-features|target-libdir|target-list|target-spec-json|tls-models]
+           --print [all-target-specs-json|calling-conventions|cfg|check-cfg|code-models|crate-name|crate-root-lint-levels|deployment-target|file-names|host-tuple|link-args|native-static-libs|relocation-models|split-debuginfo|stack-protector-strategies|supported-crate-types|sysroot|target-cpus|target-features|target-libdir|target-list|target-spec-json|tls-models]
                                Compiler information to print on stdout
 

@@ -150,9 +150,9 @@ impl<'tcx> CapturedPlace<'tcx> {
     /// Return span pointing to use that resulted in selecting the captured path
     pub fn get_path_span(&self, tcx: TyCtxt<'tcx>) -> Span {
         if let Some(path_expr_id) = self.info.path_expr_id {
-            tcx.hir().span(path_expr_id)
+            tcx.hir_span(path_expr_id)
         } else if let Some(capture_kind_expr_id) = self.info.capture_kind_expr_id {
-            tcx.hir().span(capture_kind_expr_id)
+            tcx.hir_span(capture_kind_expr_id)
         } else {
             // Fallback on upvars mentioned if neither path or capture expr id is captured
 
@@ -166,9 +166,9 @@ impl<'tcx> CapturedPlace<'tcx> {
     /// Return span pointing to use that resulted in selecting the current capture kind
     pub fn get_capture_kind_span(&self, tcx: TyCtxt<'tcx>) -> Span {
         if let Some(capture_kind_expr_id) = self.info.capture_kind_expr_id {
-            tcx.hir().span(capture_kind_expr_id)
+            tcx.hir_span(capture_kind_expr_id)
         } else if let Some(path_expr_id) = self.info.path_expr_id {
-            tcx.hir().span(path_expr_id)
+            tcx.hir_span(path_expr_id)
         } else {
             // Fallback on upvars mentioned if neither path or capture expr id is captured
 

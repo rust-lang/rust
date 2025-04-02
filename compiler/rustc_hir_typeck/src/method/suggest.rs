@@ -254,11 +254,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     item_name
                 );
                 err.span_label(item_name.span, format!("private {kind}"));
-                let sp = self
-                    .tcx
-                    .hir()
-                    .span_if_local(def_id)
-                    .unwrap_or_else(|| self.tcx.def_span(def_id));
+                let sp =
+                    self.tcx.hir_span_if_local(def_id).unwrap_or_else(|| self.tcx.def_span(def_id));
                 err.span_label(sp, format!("private {kind} defined here"));
                 if let Some(within_macro_span) = within_macro_span {
                     err.span_label(within_macro_span, "due to this macro variable");
@@ -566,7 +563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span.push_span_label(sugg_let.span,
                             format!("`{rcvr_name}` of type `{self_ty}` that has method `{method_name}` defined earlier here"));
                     span.push_span_label(
-                        self.tcx.hir().span(recv_id),
+                        self.tcx.hir_span(recv_id),
                         format!(
                             "earlier `{rcvr_name}` shadowed here with type `{ty_str_reported}`"
                         ),
@@ -2561,7 +2558,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ExprKind::Path(QPath::Resolved(_, path)) => {
                     // local binding
                     if let hir::def::Res::Local(hir_id) = path.res {
-                        let span = tcx.hir().span(hir_id);
+                        let span = tcx.hir_span(hir_id);
                         let filename = tcx.sess.source_map().span_to_filename(span);
 
                         let parent_node = self.tcx.parent_hir_node(hir_id);

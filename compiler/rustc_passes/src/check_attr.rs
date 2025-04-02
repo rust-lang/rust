@@ -1157,7 +1157,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     errors::DocInlineOnlyUse {
                         attr_span: meta.span(),
                         item_span: (attr.style() == AttrStyle::Outer)
-                            .then(|| self.tcx.hir().span(hir_id)),
+                            .then(|| self.tcx.hir_span(hir_id)),
                     },
                 );
             }
@@ -1179,7 +1179,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 errors::DocMaskedOnlyExternCrate {
                     attr_span: meta.span(),
                     item_span: (attr.style() == AttrStyle::Outer)
-                        .then(|| self.tcx.hir().span(hir_id)),
+                        .then(|| self.tcx.hir_span(hir_id)),
                 },
             );
             return;
@@ -1193,7 +1193,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 errors::DocMaskedNotExternCrateSelf {
                     attr_span: meta.span(),
                     item_span: (attr.style() == AttrStyle::Outer)
-                        .then(|| self.tcx.hir().span(hir_id)),
+                        .then(|| self.tcx.hir_span(hir_id)),
                 },
             );
         }

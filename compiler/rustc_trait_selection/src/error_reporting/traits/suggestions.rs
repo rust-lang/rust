@@ -1193,7 +1193,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // FIXME(compiler-errors): This is kind of a mess, but required for obligations
             // that come from a path expr to affect the *call* expr.
             c @ ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, _)
-                if self.tcx.hir().span(*hir_id).lo() == span.lo() =>
+                if self.tcx.hir_span(*hir_id).lo() == span.lo() =>
             {
                 c
             }
@@ -4481,7 +4481,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             Obligation::new(self.tcx, obligation.cause.clone(), obligation.param_env, trait_ref);
 
         if self.predicate_must_hold_modulo_regions(&obligation) {
-            let arg_span = self.tcx.hir().span(*arg_hir_id);
+            let arg_span = self.tcx.hir_span(*arg_hir_id);
             err.multipart_suggestion_verbose(
                 format!("use a unary tuple instead"),
                 vec![(arg_span.shrink_to_lo(), "(".into()), (arg_span.shrink_to_hi(), ",)".into())],
@@ -4521,7 +4521,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     parent_code: _,
                 } = cause.code()
                 {
-                    let arg_span = self.tcx.hir().span(*arg_hir_id);
+                    let arg_span = self.tcx.hir_span(*arg_hir_id);
                     let mut sp: MultiSpan = arg_span.into();
 
                     sp.push_span_label(
@@ -4530,7 +4530,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         generic types that should be inferred from this argument",
                     );
                     sp.push_span_label(
-                        self.tcx.hir().span(*call_hir_id),
+                        self.tcx.hir_span(*call_hir_id),
                         "add turbofish arguments to this call to \
                         specify the types manually, even if it's redundant",
                     );
@@ -4939,7 +4939,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .type_implements_trait(pred.def_id(), [rhs_ty, lhs_ty], param_env)
                         .must_apply_modulo_regions()
                 {
-                    let lhs_span = tcx.hir().span(lhs_hir_id);
+                    let lhs_span = tcx.hir_span(lhs_hir_id);
                     let sm = tcx.sess.source_map();
                     if let Ok(rhs_snippet) = sm.span_to_snippet(rhs_span)
                         && let Ok(lhs_snippet) = sm.span_to_snippet(lhs_span)

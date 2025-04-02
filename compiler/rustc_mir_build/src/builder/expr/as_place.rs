@@ -258,7 +258,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
                 self.projection
             ),
             PlaceBase::Upvar { var_hir_id, closure_def_id: _ } => span_bug!(
-                cx.tcx.hir().span(var_hir_id.0),
+                cx.tcx.hir_span(var_hir_id.0),
                 "could not resolve upvar: {var_hir_id:?} + {:?}",
                 self.projection
             ),

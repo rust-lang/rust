@@ -3239,7 +3239,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(x) => self.tcx.local_def_id_to_hir_id(x),
             None => return,
         };
-        let param_span = self.tcx.hir().span(param_hir_id);
+        let param_span = self.tcx.hir_span(param_hir_id);
         let param_name = self.tcx.hir_ty_param_name(param_def_id.expect_local());
 
         err.span_label(param_span, format!("type parameter '{param_name}' declared here"));

@@ -68,7 +68,7 @@ pub use llvm::{
     LlvmFilecheck, LlvmNm, LlvmObjcopy, LlvmObjdump, LlvmProfdata, LlvmReadobj,
 };
 pub use python::python_command;
-pub use rustc::{aux_build, bare_rustc, rustc, rustc_path, Rustc};
+pub use rustc::{bare_rustc, rustc, rustc_path, Rustc};
 pub use rustdoc::{rustdoc, Rustdoc};
 
 /// [`diff`][mod@diff] is implemented in terms of the [similar] library.

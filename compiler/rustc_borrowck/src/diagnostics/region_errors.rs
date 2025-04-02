@@ -628,7 +628,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             if let Some(def_hir) = defined_hir {
                 let upvars_map = self.infcx.tcx.upvars_mentioned(def_id).unwrap();
-                let upvar_def_span = self.infcx.tcx.hir().span(def_hir);
+                let upvar_def_span = self.infcx.tcx.hir_span(def_hir);
                 let upvar_span = upvars_map.get(&def_hir).unwrap().span;
                 diag.subdiagnostic(VarHereDenote::Defined { span: upvar_def_span });
                 diag.subdiagnostic(VarHereDenote::Captured { span: upvar_span });

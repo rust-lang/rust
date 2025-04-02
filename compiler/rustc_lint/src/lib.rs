@@ -130,6 +130,7 @@ pub use context::{
 };
 pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
+pub use levels::LintLevelsBuilder;
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{

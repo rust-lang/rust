@@ -116,8 +116,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 {
                     // enum variant discriminants are not allowed to use any kind of generics
                     None
-                } else if let Some(param_id) =
-                    tcx.hir().opt_const_param_default_param_def_id(hir_id)
+                } else if let Some(param_id) = tcx.hir_opt_const_param_default_param_def_id(hir_id)
                 {
                     // If the def_id we are calling generics_of on is an anon ct default i.e:
                     //

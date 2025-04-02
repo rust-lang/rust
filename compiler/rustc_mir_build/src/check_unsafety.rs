@@ -943,7 +943,7 @@ impl UnsafeOpKind {
             }
         });
         let unsafe_not_inherited_note = if let Some((id, _)) = note_non_inherited {
-            let span = tcx.hir().span(id);
+            let span = tcx.hir_span(id);
             let span = tcx.sess.source_map().guess_head_span(span);
             Some(UnsafeNotInheritedNote { span })
         } else {
