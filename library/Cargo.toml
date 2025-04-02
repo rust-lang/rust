@@ -38,8 +38,11 @@ adler2.debug = 0
 gimli.debug = 0
 gimli.opt-level = "s"
 miniz_oxide.debug = 0
+miniz_oxide.opt-level = "s"
+# `opt-level = "s"` for `object` led to a size regression when tried previously
 object.debug = 0
 rustc-demangle.debug = 0
+rustc-demangle.opt-level = "s"
 
 [patch.crates-io]
 # See comments in `library/rustc-std-workspace-core/README.md` for what's going on
