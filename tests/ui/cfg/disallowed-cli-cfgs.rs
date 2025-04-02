@@ -37,3 +37,5 @@
 //@ [emscripten_wasm_eh_]compile-flags: --cfg emscripten_wasm_eh
 
 fn main() {}
+
+//~? ERROR unexpected `--cfg

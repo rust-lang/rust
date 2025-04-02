@@ -1,0 +1,10 @@
+error: `inline_const_pat` has been removed
+  --> $DIR/in-pat-recovery.rs:6:15
+   |
+LL |         const { 1 + 7 } => {}
+   |               ^^^^^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard instead
+
+error: aborting due to 1 previous error
+

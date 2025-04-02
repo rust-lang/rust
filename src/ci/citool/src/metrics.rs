@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use build_helper::metrics::{JsonNode, JsonRoot, TestSuite};
@@ -74,6 +74,17 @@ Maybe it was newly added?"#,
 }
 
 pub fn download_job_metrics(job_name: &str, sha: &str) -> anyhow::Result<JsonRoot> {
+    // Best effort cache to speed-up local re-executions of citool
+    let cache_path = PathBuf::from(".citool-cache").join(sha).join(format!("{job_name}.json"));
+    if cache_path.is_file() {
+        if let Ok(metrics) = std::fs::read_to_string(&cache_path)
+            .map_err(|err| err.into())
+            .and_then(|data| anyhow::Ok::<JsonRoot>(serde_json::from_str::<JsonRoot>(&data)?))
+        {
+            return Ok(metrics);
+        }
+    }
+
     let url = get_metrics_url(job_name, sha);
     let mut response = ureq::get(&url).call()?;
     if !response.status().is_success() {
@@ -87,6 +98,13 @@ pub fn download_job_metrics(job_name: &str, sha: &str) -> anyhow::Result<JsonRoo
         .body_mut()
         .read_json()
         .with_context(|| anyhow::anyhow!("cannot deserialize metrics from {url}"))?;
+
+    if let Ok(_) = std::fs::create_dir_all(cache_path.parent().unwrap()) {
+        if let Ok(data) = serde_json::to_string(&data) {
+            let _ = std::fs::write(cache_path, data);
+        }
+    }
+
     Ok(data)
 }
 

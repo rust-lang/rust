@@ -114,3 +114,5 @@ fn main() {
     }
     *OH_YES = 99; //~ ERROR cannot assign to `*OH_YES`, as `OH_YES` is an immutable static item
 }
+
+//~? WARN skipping const checks

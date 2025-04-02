@@ -91,7 +91,10 @@ fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
     work_product::delete_workproduct_files(sess, &swp.work_product);
 }
 
-fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkProductMap)> {
+fn load_dep_graph(
+    sess: &Session,
+    deps: &DepsType,
+) -> LoadResult<(Arc<SerializedDepGraph>, WorkProductMap)> {
     let prof = sess.prof.clone();
 
     if sess.opts.incremental.is_none() {
@@ -171,7 +174,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
                 return LoadResult::DataOutOfDate;
             }
 
-            let dep_graph = SerializedDepGraph::decode::<DepsType>(&mut decoder);
+            let dep_graph = SerializedDepGraph::decode::<DepsType>(&mut decoder, deps);
 
             LoadResult::Ok { data: (dep_graph, prev_work_products) }
         }
@@ -205,11 +208,11 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache> {
 
 /// Setups the dependency graph by loading an existing graph from disk and set up streaming of a
 /// new graph to an incremental session directory.
-pub fn setup_dep_graph(sess: &Session, crate_name: Symbol) -> DepGraph {
+pub fn setup_dep_graph(sess: &Session, crate_name: Symbol, deps: &DepsType) -> DepGraph {
     // `load_dep_graph` can only be called after `prepare_session_directory`.
     prepare_session_directory(sess, crate_name);
 
-    let res = sess.opts.build_dep_graph().then(|| load_dep_graph(sess));
+    let res = sess.opts.build_dep_graph().then(|| load_dep_graph(sess, deps));
 
     if sess.opts.incremental.is_some() {
         sess.time("incr_comp_garbage_collect_session_directories", || {

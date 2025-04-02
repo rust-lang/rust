@@ -102,6 +102,7 @@ impl<I: Interner> TypingMode<I> {
     }
 }
 
+#[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_infer_ctxt_like")]
 pub trait InferCtxtLike: Sized {
     type Interner: Interner;
     fn cx(&self) -> Self::Interner;

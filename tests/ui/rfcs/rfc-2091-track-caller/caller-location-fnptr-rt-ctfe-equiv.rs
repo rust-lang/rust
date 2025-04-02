@@ -30,3 +30,5 @@ fn main() {
         (CONSTANT.file(), CONSTANT.line(), CONSTANT.column()),
     );
 }
+
+//~? WARN skipping const checks

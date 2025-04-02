@@ -110,7 +110,7 @@ pub fn read_version(obj: &object::File<'_>) -> io::Result<String> {
         ));
     }
     let version = u32::from_be_bytes([dot_rustc[4], dot_rustc[5], dot_rustc[6], dot_rustc[7]]);
-    // Last supported version is:
+    // Last breaking version change is:
     // https://github.com/rust-lang/rust/commit/b94cfefc860715fb2adf72a6955423d384c69318
     let (mut metadata_portion, bytes_before_version) = match version {
         8 => {
@@ -118,7 +118,7 @@ pub fn read_version(obj: &object::File<'_>) -> io::Result<String> {
             let data_len = u32::from_be_bytes(len_bytes.try_into().unwrap()) as usize;
             (&dot_rustc[12..data_len + 12], 13)
         }
-        9 => {
+        9 | 10 => {
             let len_bytes = &dot_rustc[8..16];
             let data_len = u64::from_le_bytes(len_bytes.try_into().unwrap()) as usize;
             (&dot_rustc[16..data_len + 12], 17)

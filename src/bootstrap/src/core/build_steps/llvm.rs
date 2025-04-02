@@ -14,7 +14,6 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs};
 
-use build_helper::ci::CiEnv;
 use build_helper::git::get_closest_merge_commit;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
@@ -174,20 +173,19 @@ pub fn prebuilt_llvm_config(
     LlvmBuildStatus::ShouldBuild(Meta { stamp, res, out_dir, root: root.into() })
 }
 
+/// Paths whose changes invalidate LLVM downloads.
+pub const LLVM_INVALIDATION_PATHS: &[&str] = &[
+    "src/llvm-project",
+    "src/bootstrap/download-ci-llvm-stamp",
+    // the LLVM shared object file is named `LLVM-<LLVM-version>-rust-{version}-nightly`
+    "src/version",
+];
+
 /// This retrieves the LLVM sha we *want* to use, according to git history.
 pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
     let llvm_sha = if is_git {
-        get_closest_merge_commit(
-            Some(&config.src),
-            &config.git_config(),
-            &[
-                config.src.join("src/llvm-project"),
-                config.src.join("src/bootstrap/download-ci-llvm-stamp"),
-                // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
-                config.src.join("src/version"),
-            ],
-        )
-        .unwrap()
+        get_closest_merge_commit(Some(&config.src), &config.git_config(), LLVM_INVALIDATION_PATHS)
+            .unwrap()
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
         info.sha.trim().to_owned()
     } else {
@@ -207,10 +205,9 @@ pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
 
 /// Returns whether the CI-found LLVM is currently usable.
 ///
-/// This checks both the build triple platform to confirm we're usable at all,
-/// and then verifies if the current HEAD matches the detected LLVM SHA head,
-/// in which case LLVM is indicated as not available.
-pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
+/// This checks the build triple platform to confirm we're usable at all, and if LLVM
+/// with/without assertions is available.
+pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) -> bool {
     // This is currently all tier 1 targets and tier 2 targets with host tools
     // (since others may not have CI artifacts)
     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
@@ -255,39 +252,7 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
         return false;
     }
 
-    if is_ci_llvm_modified(config) {
-        eprintln!("Detected LLVM as non-available: running in CI and modified LLVM in this change");
-        return false;
-    }
-
     true
-}
-
-/// Returns true if we're running in CI with modified LLVM (and thus can't download it)
-pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
-    // If not running in a CI environment, return false.
-    if !config.is_running_on_ci {
-        return false;
-    }
-
-    // In rust-lang/rust managed CI, assert the existence of the LLVM submodule.
-    if CiEnv::is_rust_lang_managed_ci_job() {
-        assert!(
-            config.in_tree_llvm_info.is_managed_git_subrepository(),
-            "LLVM submodule must be fetched in rust-lang/rust managed CI builders."
-        );
-    }
-    // If LLVM submodule isn't present, skip the change check as it won't work.
-    else if !config.in_tree_llvm_info.is_managed_git_subrepository() {
-        return false;
-    }
-
-    let llvm_sha = detect_llvm_sha(config, true);
-    let head_sha = crate::output(
-        helpers::git(Some(&config.src)).arg("rev-parse").arg("HEAD").as_command_mut(),
-    );
-    let head_sha = head_sha.trim();
-    llvm_sha == head_sha
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -420,9 +385,6 @@ impl Step for Llvm {
             || target.contains("apple-watchos")
             || target.contains("apple-visionos")
         {
-            // These two defines prevent CMake from automatically trying to add a MacOSX sysroot, which leads to a compiler error.
-            cfg.define("CMAKE_OSX_SYSROOT", "/");
-            cfg.define("CMAKE_OSX_DEPLOYMENT_TARGET", "");
             // Prevent cmake from adding -bundle to CFLAGS automatically, which leads to a compiler error because "-bitcode_bundle" also gets added.
             cfg.define("LLVM_ENABLE_PLUGINS", "OFF");
             // Zlib fails to link properly, leading to a compiler error.
@@ -479,7 +441,6 @@ impl Step for Llvm {
 
         if helpers::forcing_clang_based_tests() {
             enabled_llvm_projects.push("clang");
-            enabled_llvm_projects.push("compiler-rt");
         }
 
         if builder.config.llvm_polly {
@@ -501,6 +462,10 @@ impl Step for Llvm {
         }
 
         let mut enabled_llvm_runtimes = Vec::new();
+
+        if helpers::forcing_clang_based_tests() {
+            enabled_llvm_runtimes.push("compiler-rt");
+        }
 
         if builder.config.llvm_offload {
             enabled_llvm_runtimes.push("offload");
@@ -677,10 +642,17 @@ fn configure_cmake(
     if !builder.is_builder_target(target) {
         cfg.define("CMAKE_CROSSCOMPILING", "True");
 
+        // NOTE: Ideally, we wouldn't have to do this, and `cmake-rs` would just handle it for us.
+        // But it currently determines this based on the `CARGO_CFG_TARGET_OS` environment variable,
+        // which isn't set when compiling outside `build.rs` (like bootstrap is).
+        //
+        // So for now, we define `CMAKE_SYSTEM_NAME` ourselves, to panicking in `cmake-rs`.
         if target.contains("netbsd") {
             cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
         } else if target.contains("dragonfly") {
             cfg.define("CMAKE_SYSTEM_NAME", "DragonFly");
+        } else if target.contains("openbsd") {
+            cfg.define("CMAKE_SYSTEM_NAME", "OpenBSD");
         } else if target.contains("freebsd") {
             cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
         } else if target.is_windows() {
@@ -691,10 +663,27 @@ fn configure_cmake(
             cfg.define("CMAKE_SYSTEM_NAME", "SunOS");
         } else if target.contains("linux") {
             cfg.define("CMAKE_SYSTEM_NAME", "Linux");
+        } else if target.contains("darwin") {
+            // macOS
+            cfg.define("CMAKE_SYSTEM_NAME", "Darwin");
+        } else if target.contains("ios") {
+            cfg.define("CMAKE_SYSTEM_NAME", "iOS");
+        } else if target.contains("tvos") {
+            cfg.define("CMAKE_SYSTEM_NAME", "tvOS");
+        } else if target.contains("visionos") {
+            cfg.define("CMAKE_SYSTEM_NAME", "visionOS");
+        } else if target.contains("watchos") {
+            cfg.define("CMAKE_SYSTEM_NAME", "watchOS");
+        } else if target.contains("none") {
+            // "none" should be the last branch
+            cfg.define("CMAKE_SYSTEM_NAME", "Generic");
         } else {
             builder.info(&format!(
                 "could not determine CMAKE_SYSTEM_NAME from the target `{target}`, build may fail",
             ));
+            // Fallback, set `CMAKE_SYSTEM_NAME` anyhow to avoid the logic `cmake-rs` tries, and
+            // to avoid CMAKE_SYSTEM_NAME being inferred from the host.
+            cfg.define("CMAKE_SYSTEM_NAME", "Generic");
         }
 
         // When cross-compiling we should also set CMAKE_SYSTEM_VERSION, but in
@@ -704,7 +693,19 @@ fn configure_cmake(
         // CMakeFiles (and then only in tests), and so far no issues have been
         // reported, the system version is currently left unset.
 
-        if target.contains("darwin") {
+        if target.contains("apple") {
+            if !target.contains("darwin") {
+                // FIXME(madsmtm): compiler-rt's CMake setup is kinda weird, it seems like they do
+                // version testing etc. for macOS (i.e. Darwin), even while building for iOS?
+                //
+                // So for now we set it to "Darwin" on all Apple platforms.
+                cfg.define("CMAKE_SYSTEM_NAME", "Darwin");
+
+                // These two defines prevent CMake from automatically trying to add a MacOSX sysroot, which leads to a compiler error.
+                cfg.define("CMAKE_OSX_SYSROOT", "/");
+                cfg.define("CMAKE_OSX_DEPLOYMENT_TARGET", "");
+            }
+
             // Make sure that CMake does not build universal binaries on macOS.
             // Explicitly specify the one single target architecture.
             if target.starts_with("aarch64") {

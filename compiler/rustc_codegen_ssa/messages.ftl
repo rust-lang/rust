@@ -10,8 +10,6 @@ codegen_ssa_apple_deployment_target_invalid =
 codegen_ssa_apple_deployment_target_too_low =
     deployment target in {$env_var} was set to {$version}, but the minimum supported by `rustc` is {$os_min}
 
-codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {$error}
-
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
 
 codegen_ssa_atomic_compare_exchange = Atomic compare-exchange intrinsic missing failure memory ordering
@@ -391,8 +389,6 @@ codegen_ssa_unknown_atomic_ordering = unknown ordering in atomic intrinsic
 
 codegen_ssa_unknown_reuse_kind = unknown cgu-reuse-kind `{$kind}` specified
 
-codegen_ssa_unsupported_arch = unsupported arch `{$arch}` for os `{$os}`
-
 codegen_ssa_unsupported_instruction_set = target does not support `#[instruction_set]`
 
 codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is not supported on this target
@@ -402,3 +398,20 @@ codegen_ssa_use_cargo_directive = use the `cargo:rustc-link-lib` directive to sp
 codegen_ssa_version_script_write_failure = failed to write version script: {$error}
 
 codegen_ssa_visual_studio_not_installed = you may need to install Visual Studio build tools with the "C++ build tools" workload
+
+codegen_ssa_xcrun_command_line_tools_insufficient =
+    when compiling for iOS, tvOS, visionOS or watchOS, you need a full installation of Xcode
+
+codegen_ssa_xcrun_failed_invoking = invoking `{$command_formatted}` to find {$sdk_name}.sdk failed: {$error}
+
+codegen_ssa_xcrun_found_developer_dir = found active developer directory at "{$developer_dir}"
+
+# `xcrun` already outputs a message about missing Xcode installation, so we only augment it with details about env vars.
+codegen_ssa_xcrun_no_developer_dir =
+    pass the path of an Xcode installation via the DEVELOPER_DIR environment variable, or an SDK with the SDKROOT environment variable
+
+codegen_ssa_xcrun_sdk_path_warning = output of `xcrun` while finding {$sdk_name}.sdk
+    .note = {$stderr}
+
+codegen_ssa_xcrun_unsuccessful = failed running `{$command_formatted}` to find {$sdk_name}.sdk
+    .note = {$stdout}{$stderr}

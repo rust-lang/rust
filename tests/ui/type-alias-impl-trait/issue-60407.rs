@@ -1,4 +1,6 @@
-#![feature(type_alias_impl_trait, rustc_attrs)]
+//@ check-pass
+
+#![feature(type_alias_impl_trait)]
 
 pub type Debuggable = impl core::fmt::Debug;
 
@@ -9,8 +11,6 @@ pub fn foo() -> Debuggable {
 
 static mut TEST: Option<Debuggable> = None;
 
-#[rustc_error]
 fn main() {
-    //~^ ERROR
     unsafe { TEST = Some(foo()) }
 }

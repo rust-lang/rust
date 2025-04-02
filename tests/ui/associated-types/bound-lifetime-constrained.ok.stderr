@@ -1,8 +1,0 @@
-error: fatal error triggered by #[rustc_error]
-  --> $DIR/bound-lifetime-constrained.rs:48:1
-   |
-LL | fn main() { }
-   | ^^^^^^^^^
-
-error: aborting due to 1 previous error
-

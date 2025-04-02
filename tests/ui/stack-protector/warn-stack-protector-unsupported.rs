@@ -17,3 +17,7 @@ trait Sized {}
 trait Copy {}
 
 pub fn main(){}
+
+//[all]~? WARN `-Z stack-protector=all` is not supported for target nvptx64-nvidia-cuda and will be ignored
+//[strong]~? WARN `-Z stack-protector=strong` is not supported for target nvptx64-nvidia-cuda and will be ignored
+//[basic]~? WARN `-Z stack-protector=basic` is not supported for target nvptx64-nvidia-cuda and will be ignored

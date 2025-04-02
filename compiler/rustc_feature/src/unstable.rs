@@ -324,6 +324,7 @@ declare_features! (
     (unstable, loongarch_target_feature, "1.73.0", Some(44839)),
     (unstable, m68k_target_feature, "1.85.0", Some(134328)),
     (unstable, mips_target_feature, "1.27.0", Some(44839)),
+    (unstable, movrs_target_feature, "CURRENT_RUSTC_VERSION", Some(137976)),
     (unstable, powerpc_target_feature, "1.27.0", Some(44839)),
     (unstable, prfchw_target_feature, "1.78.0", Some(44839)),
     (unstable, riscv_target_feature, "1.45.0", Some(44839)),
@@ -531,8 +532,6 @@ declare_features! (
     (unstable, import_trait_associated_functions, "1.86.0", Some(134691)),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
-    /// Allow anonymous constants from an inline `const` block in pattern position
-    (unstable, inline_const_pat, "1.58.0", Some(76001)),
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
     // Allows using the `kl` and `widekl` target features and the associated intrinsics
@@ -566,6 +565,8 @@ declare_features! (
     (incomplete, mut_ref, "1.79.0", Some(123076)),
     /// Allows using `#[naked]` on functions.
     (unstable, naked_functions, "1.9.0", Some(90957)),
+    /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
+    (unstable, naked_functions_target_feature, "1.86.0", Some(138568)),
     /// Allows specifying the as-needed link modifier
     (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
     /// Allow negative trait implementations.
@@ -598,8 +599,6 @@ declare_features! (
     (incomplete, pin_ergonomics, "1.83.0", Some(130494)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
-    /// Allows `use<..>` precise capturign on impl Trait in traits.
-    (unstable, precise_capturing_in_traits, "1.83.0", Some(130044)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows the use of raw-dylibs on ELF platforms

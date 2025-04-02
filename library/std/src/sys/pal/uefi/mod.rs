@@ -19,7 +19,6 @@ pub mod helpers;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-pub mod process;
 pub mod thread;
 pub mod time;
 
@@ -47,17 +46,17 @@ pub(crate) unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     unsafe { uefi::env::init_globals(image_handle, system_table) };
 
     // Register exit boot services handler
-    match helpers::create_event(
+    match helpers::OwnedEvent::new(
         r_efi::efi::EVT_SIGNAL_EXIT_BOOT_SERVICES,
         r_efi::efi::TPL_NOTIFY,
         Some(exit_boot_service_handler),
-        crate::ptr::null_mut(),
+        None,
     ) {
         Ok(x) => {
             if EXIT_BOOT_SERVICE_EVENT
                 .compare_exchange(
                     crate::ptr::null_mut(),
-                    x.as_ptr(),
+                    x.into_raw(),
                     Ordering::Release,
                     Ordering::Acquire,
                 )
@@ -77,7 +76,7 @@ pub unsafe fn cleanup() {
     if let Some(exit_boot_service_event) =
         NonNull::new(EXIT_BOOT_SERVICE_EVENT.swap(crate::ptr::null_mut(), Ordering::Acquire))
     {
-        let _ = unsafe { helpers::close_event(exit_boot_service_event) };
+        let _ = unsafe { helpers::OwnedEvent::from_raw(exit_boot_service_event.as_ptr()) };
     }
 }
 
@@ -143,7 +142,7 @@ pub fn abort_internal() -> ! {
     if let Some(exit_boot_service_event) =
         NonNull::new(EXIT_BOOT_SERVICE_EVENT.load(Ordering::Acquire))
     {
-        let _ = unsafe { helpers::close_event(exit_boot_service_event) };
+        let _ = unsafe { helpers::OwnedEvent::from_raw(exit_boot_service_event.as_ptr()) };
     }
 
     if let (Some(boot_services), Some(handle)) =

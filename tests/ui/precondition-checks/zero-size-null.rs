@@ -7,8 +7,10 @@ use std::ptr;
 
 fn main() {
     unsafe {
+        #[expect(invalid_null_arguments)] // false-positive, copy of 0
         ptr::copy_nonoverlapping::<u8>(ptr::null(), ptr::null_mut(), 0);
         ptr::copy_nonoverlapping::<()>(ptr::null(), ptr::null_mut(), 123);
+        #[expect(invalid_null_arguments)] // false-positive, copy of 0
         ptr::copy::<u8>(ptr::null(), ptr::null_mut(), 0);
         ptr::copy::<()>(ptr::null(), ptr::null_mut(), 123);
         ptr::swap::<()>(ptr::null_mut(), ptr::null_mut());

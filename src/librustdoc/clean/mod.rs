@@ -210,7 +210,7 @@ fn generate_item_with_correct_attrs(
 
     let name = renamed.or(Some(name));
     let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, cfg);
-    item.inline_stmt_id = import_id;
+    item.inner.inline_stmt_id = import_id;
     item
 }
 
@@ -1943,14 +1943,11 @@ fn clean_trait_object_lifetime_bound<'tcx>(
     // latter contrary to `clean_middle_region`.
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
-        ty::ReEarlyParam(region) if region.name != kw::Empty => Some(Lifetime(region.name)),
-        ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(_, name), .. })
-            if name != kw::Empty =>
-        {
+        ty::ReEarlyParam(region) => Some(Lifetime(region.name)),
+        ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(_, name), .. }) => {
             Some(Lifetime(name))
         }
-        ty::ReEarlyParam(_)
-        | ty::ReBound(..)
+        ty::ReBound(..)
         | ty::ReLateParam(_)
         | ty::ReVar(_)
         | ty::RePlaceholder(_)
@@ -2773,7 +2770,7 @@ fn add_without_unwanted_attributes<'hir>(
                 if ident == sym::doc {
                     filter_doc_attr(&mut normal.args, is_inline);
                     attrs.push((Cow::Owned(attr), import_parent));
-                } else if is_inline || ident != sym::cfg {
+                } else if is_inline || ident != sym::cfg_trace {
                     // If it's not a `cfg()` attribute, we keep it.
                     attrs.push((Cow::Owned(attr), import_parent));
                 }

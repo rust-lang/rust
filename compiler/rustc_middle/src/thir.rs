@@ -800,9 +800,9 @@ pub enum PatKind<'tcx> {
     },
 
     /// One of the following:
-    /// * `&str`/`&[u8]` (represented as a valtree), which will be handled as a string/slice pattern
-    ///   and thus exhaustiveness checking will detect if you use the same string/slice twice in
-    ///   different patterns.
+    /// * `&str` (represented as a valtree), which will be handled as a string pattern and thus
+    ///   exhaustiveness checking will detect if you use the same string twice in different
+    ///   patterns.
     /// * integer, bool, char or float (represented as a valtree), which will be handled by
     ///   exhaustiveness to cover exactly its own value, similar to `&str`, but these values are
     ///   much simpler.

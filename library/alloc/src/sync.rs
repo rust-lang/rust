@@ -20,7 +20,7 @@ use core::iter;
 use core::marker::{PhantomData, Unsize};
 use core::mem::{self, ManuallyDrop, align_of_val_raw};
 use core::num::NonZeroUsize;
-use core::ops::{CoerceUnsized, Deref, DerefPure, DispatchFromDyn, LegacyReceiver};
+use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use core::pin::{Pin, PinCoerceUnsized};
 use core::ptr::{self, NonNull};
@@ -4064,5 +4064,415 @@ impl<T: core::error::Error + ?Sized> core::error::Error for Arc<T> {
 
     fn provide<'a>(&'a self, req: &mut core::error::Request<'a>) {
         core::error::Error::provide(&**self, req);
+    }
+}
+
+/// A uniquely owned [`Arc`].
+///
+/// This represents an `Arc` that is known to be uniquely owned -- that is, have exactly one strong
+/// reference. Multiple weak pointers can be created, but attempts to upgrade those to strong
+/// references will fail unless the `UniqueArc` they point to has been converted into a regular `Arc`.
+///
+/// Because it is uniquely owned, the contents of a `UniqueArc` can be freely mutated. A common
+/// use case is to have an object be mutable during its initialization phase but then have it become
+/// immutable and converted to a normal `Arc`.
+///
+/// This can be used as a flexible way to create cyclic data structures, as in the example below.
+///
+/// ```
+/// #![feature(unique_rc_arc)]
+/// use std::sync::{Arc, Weak, UniqueArc};
+///
+/// struct Gadget {
+///     me: Weak<Gadget>,
+/// }
+///
+/// fn create_gadget() -> Option<Arc<Gadget>> {
+///     let mut rc = UniqueArc::new(Gadget {
+///         me: Weak::new(),
+///     });
+///     rc.me = UniqueArc::downgrade(&rc);
+///     Some(UniqueArc::into_arc(rc))
+/// }
+///
+/// create_gadget().unwrap();
+/// ```
+///
+/// An advantage of using `UniqueArc` over [`Arc::new_cyclic`] to build cyclic data structures is that
+/// [`Arc::new_cyclic`]'s `data_fn` parameter cannot be async or return a [`Result`]. As shown in the
+/// previous example, `UniqueArc` allows for more flexibility in the construction of cyclic data,
+/// including fallible or async constructors.
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+pub struct UniqueArc<
+    T: ?Sized,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    ptr: NonNull<ArcInner<T>>,
+    // Define the ownership of `ArcInner<T>` for drop-check
+    _marker: PhantomData<ArcInner<T>>,
+    // Invariance is necessary for soundness: once other `Weak`
+    // references exist, we already have a form of shared mutability!
+    _marker2: PhantomData<*mut T>,
+    alloc: A,
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send> Send for UniqueArc<T, A> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Sync> Sync for UniqueArc<T, A> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+// #[unstable(feature = "coerce_unsized", issue = "18598")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<UniqueArc<U, A>>
+    for UniqueArc<T, A>
+{
+}
+
+//#[unstable(feature = "unique_rc_arc", issue = "112566")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<UniqueArc<U>> for UniqueArc<T> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + fmt::Display, A: Allocator> fmt::Display for UniqueArc<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&**self, f)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + fmt::Debug, A: Allocator> fmt::Debug for UniqueArc<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&**self, f)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> fmt::Pointer for UniqueArc<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Pointer::fmt(&(&raw const **self), f)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> borrow::Borrow<T> for UniqueArc<T, A> {
+    fn borrow(&self) -> &T {
+        &**self
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> borrow::BorrowMut<T> for UniqueArc<T, A> {
+    fn borrow_mut(&mut self) -> &mut T {
+        &mut **self
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> AsRef<T> for UniqueArc<T, A> {
+    fn as_ref(&self) -> &T {
+        &**self
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> AsMut<T> for UniqueArc<T, A> {
+    fn as_mut(&mut self) -> &mut T {
+        &mut **self
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> Unpin for UniqueArc<T, A> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for UniqueArc<T, A> {
+    /// Equality for two `UniqueArc`s.
+    ///
+    /// Two `UniqueArc`s are equal if their inner values are equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::sync::UniqueArc;
+    ///
+    /// let five = UniqueArc::new(5);
+    ///
+    /// assert!(five == UniqueArc::new(5));
+    /// ```
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        PartialEq::eq(&**self, &**other)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for UniqueArc<T, A> {
+    /// Partial comparison for two `UniqueArc`s.
+    ///
+    /// The two are compared by calling `partial_cmp()` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::sync::UniqueArc;
+    /// use std::cmp::Ordering;
+    ///
+    /// let five = UniqueArc::new(5);
+    ///
+    /// assert_eq!(Some(Ordering::Less), five.partial_cmp(&UniqueArc::new(6)));
+    /// ```
+    #[inline(always)]
+    fn partial_cmp(&self, other: &UniqueArc<T, A>) -> Option<Ordering> {
+        (**self).partial_cmp(&**other)
+    }
+
+    /// Less-than comparison for two `UniqueArc`s.
+    ///
+    /// The two are compared by calling `<` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::sync::UniqueArc;
+    ///
+    /// let five = UniqueArc::new(5);
+    ///
+    /// assert!(five < UniqueArc::new(6));
+    /// ```
+    #[inline(always)]
+    fn lt(&self, other: &UniqueArc<T, A>) -> bool {
+        **self < **other
+    }
+
+    /// 'Less than or equal to' comparison for two `UniqueArc`s.
+    ///
+    /// The two are compared by calling `<=` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::sync::UniqueArc;
+    ///
+    /// let five = UniqueArc::new(5);
+    ///
+    /// assert!(five <= UniqueArc::new(5));
+    /// ```
+    #[inline(always)]
+    fn le(&self, other: &UniqueArc<T, A>) -> bool {
+        **self <= **other
+    }
+
+    /// Greater-than comparison for two `UniqueArc`s.
+    ///
+    /// The two are compared by calling `>` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::sync::UniqueArc;
+    ///
+    /// let five = UniqueArc::new(5);
+    ///
+    /// assert!(five > UniqueArc::new(4));
+    /// ```
+    #[inline(always)]
+    fn gt(&self, other: &UniqueArc<T, A>) -> bool {
+        **self > **other
+    }
+
+    /// 'Greater than or equal to' comparison for two `UniqueArc`s.
+    ///
+    /// The two are compared by calling `>=` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::sync::UniqueArc;
+    ///
+    /// let five = UniqueArc::new(5);
+    ///
+    /// assert!(five >= UniqueArc::new(5));
+    /// ```
+    #[inline(always)]
+    fn ge(&self, other: &UniqueArc<T, A>) -> bool {
+        **self >= **other
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Ord, A: Allocator> Ord for UniqueArc<T, A> {
+    /// Comparison for two `UniqueArc`s.
+    ///
+    /// The two are compared by calling `cmp()` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::sync::UniqueArc;
+    /// use std::cmp::Ordering;
+    ///
+    /// let five = UniqueArc::new(5);
+    ///
+    /// assert_eq!(Ordering::Less, five.cmp(&UniqueArc::new(6)));
+    /// ```
+    #[inline]
+    fn cmp(&self, other: &UniqueArc<T, A>) -> Ordering {
+        (**self).cmp(&**other)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Eq, A: Allocator> Eq for UniqueArc<T, A> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Hash, A: Allocator> Hash for UniqueArc<T, A> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (**self).hash(state);
+    }
+}
+
+impl<T> UniqueArc<T, Global> {
+    /// Creates a new `UniqueArc`.
+    ///
+    /// Weak references to this `UniqueArc` can be created with [`UniqueArc::downgrade`]. Upgrading
+    /// these weak references will fail before the `UniqueArc` has been converted into an [`Arc`].
+    /// After converting the `UniqueArc` into an [`Arc`], any weak references created beforehand will
+    /// point to the new [`Arc`].
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    #[must_use]
+    pub fn new(value: T) -> Self {
+        Self::new_in(value, Global)
+    }
+}
+
+impl<T, A: Allocator> UniqueArc<T, A> {
+    /// Creates a new `UniqueArc` in the provided allocator.
+    ///
+    /// Weak references to this `UniqueArc` can be created with [`UniqueArc::downgrade`]. Upgrading
+    /// these weak references will fail before the `UniqueArc` has been converted into an [`Arc`].
+    /// After converting the `UniqueArc` into an [`Arc`], any weak references created beforehand will
+    /// point to the new [`Arc`].
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    #[must_use]
+    // #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn new_in(data: T, alloc: A) -> Self {
+        let (ptr, alloc) = Box::into_unique(Box::new_in(
+            ArcInner {
+                strong: atomic::AtomicUsize::new(0),
+                // keep one weak reference so if all the weak pointers that are created are dropped
+                // the UniqueArc still stays valid.
+                weak: atomic::AtomicUsize::new(1),
+                data,
+            },
+            alloc,
+        ));
+        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
+    }
+}
+
+impl<T: ?Sized, A: Allocator> UniqueArc<T, A> {
+    /// Converts the `UniqueArc` into a regular [`Arc`].
+    ///
+    /// This consumes the `UniqueArc` and returns a regular [`Arc`] that contains the `value` that
+    /// is passed to `into_arc`.
+    ///
+    /// Any weak references created before this method is called can now be upgraded to strong
+    /// references.
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    #[must_use]
+    pub fn into_arc(this: Self) -> Arc<T, A> {
+        let this = ManuallyDrop::new(this);
+
+        // Move the allocator out.
+        // SAFETY: `this.alloc` will not be accessed again, nor dropped because it is in
+        // a `ManuallyDrop`.
+        let alloc: A = unsafe { ptr::read(&this.alloc) };
+
+        // SAFETY: This pointer was allocated at creation time so we know it is valid.
+        unsafe {
+            // Convert our weak reference into a strong reference
+            (*this.ptr.as_ptr()).strong.store(1, Release);
+            Arc::from_inner_in(this.ptr, alloc)
+        }
+    }
+}
+
+impl<T: ?Sized, A: Allocator + Clone> UniqueArc<T, A> {
+    /// Creates a new weak reference to the `UniqueArc`.
+    ///
+    /// Attempting to upgrade this weak reference will fail before the `UniqueArc` has been converted
+    /// to a [`Arc`] using [`UniqueArc::into_arc`].
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    #[must_use]
+    pub fn downgrade(this: &Self) -> Weak<T, A> {
+        // Using a relaxed ordering is alright here, as knowledge of the
+        // original reference prevents other threads from erroneously deleting
+        // the object or converting the object to a normal `Arc<T, A>`.
+        //
+        // Note that we don't need to test if the weak counter is locked because there
+        // are no such operations like `Arc::get_mut` or `Arc::make_mut` that will lock
+        // the weak counter.
+        //
+        // SAFETY: This pointer was allocated at creation time so we know it is valid.
+        let old_size = unsafe { (*this.ptr.as_ptr()).weak.fetch_add(1, Relaxed) };
+
+        // See comments in Arc::clone() for why we do this (for mem::forget).
+        if old_size > MAX_REFCOUNT {
+            abort();
+        }
+
+        Weak { ptr: this.ptr, alloc: this.alloc.clone() }
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> Deref for UniqueArc<T, A> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        // SAFETY: This pointer was allocated at creation time so we know it is valid.
+        unsafe { &self.ptr.as_ref().data }
+    }
+}
+
+// #[unstable(feature = "unique_rc_arc", issue = "112566")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for UniqueArc<T> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> DerefMut for UniqueArc<T, A> {
+    fn deref_mut(&mut self) -> &mut T {
+        // SAFETY: This pointer was allocated at creation time so we know it is valid. We know we
+        // have unique ownership and therefore it's safe to make a mutable reference because
+        // `UniqueArc` owns the only strong reference to itself.
+        // We also need to be careful to only create a mutable reference to the `data` field,
+        // as a mutable reference to the entire `ArcInner` would assert uniqueness over the
+        // ref count fields too, invalidating any attempt by `Weak`s to access the ref count.
+        unsafe { &mut (*self.ptr.as_ptr()).data }
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+// #[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T: ?Sized, A: Allocator> DerefPure for UniqueArc<T, A> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueArc<T, A> {
+    fn drop(&mut self) {
+        // See `Arc::drop_slow` which drops an `Arc` with a strong count of 0.
+        // SAFETY: This pointer was allocated at creation time so we know it is valid.
+        let _weak = Weak { ptr: self.ptr, alloc: &self.alloc };
+
+        unsafe { ptr::drop_in_place(&mut (*self.ptr.as_ptr()).data) };
     }
 }

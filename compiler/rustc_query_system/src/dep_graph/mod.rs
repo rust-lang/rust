@@ -100,6 +100,8 @@ pub trait Deps {
     where
         OP: for<'a> FnOnce(TaskDepsRef<'a>);
 
+    fn name(&self, dep_kind: DepKind) -> &'static str;
+
     /// We use this for most things when incr. comp. is turned off.
     const DEP_KIND_NULL: DepKind;
 
@@ -108,6 +110,9 @@ pub trait Deps {
 
     /// We use this to create a side effect node.
     const DEP_KIND_SIDE_EFFECT: DepKind;
+
+    /// We use this to create the anon node with zero dependencies.
+    const DEP_KIND_ANON_ZERO_DEPS: DepKind;
 
     /// This is the highest value a `DepKind` can have. It's used during encoding to
     /// pack information into the unused bits.
@@ -154,7 +159,7 @@ pub enum FingerprintStyle {
 
 impl FingerprintStyle {
     #[inline]
-    pub fn reconstructible(self) -> bool {
+    pub const fn reconstructible(self) -> bool {
         match self {
             FingerprintStyle::DefPathHash | FingerprintStyle::Unit | FingerprintStyle::HirId => {
                 true

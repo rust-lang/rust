@@ -15,9 +15,8 @@ use crate::mem::ManuallyDrop;
     target_os = "trusty"
 )))]
 use crate::sys::cvt;
-use crate::sys_common::FromInner;
 #[cfg(not(target_os = "trusty"))]
-use crate::sys_common::{AsInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{fmt, io};
 
 type ValidRawFd = core::num::niche_types::NotAllOnes<RawFd>;
@@ -507,6 +506,7 @@ impl<'a> AsFd for io::StderrLock<'a> {
 }
 
 #[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[cfg(not(target_os = "trusty"))]
 impl AsFd for io::PipeReader {
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_fd()
@@ -514,6 +514,7 @@ impl AsFd for io::PipeReader {
 }
 
 #[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[cfg(not(target_os = "trusty"))]
 impl From<io::PipeReader> for OwnedFd {
     fn from(pipe: io::PipeReader) -> Self {
         pipe.0.into_inner()
@@ -521,6 +522,7 @@ impl From<io::PipeReader> for OwnedFd {
 }
 
 #[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[cfg(not(target_os = "trusty"))]
 impl AsFd for io::PipeWriter {
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_fd()
@@ -528,6 +530,7 @@ impl AsFd for io::PipeWriter {
 }
 
 #[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[cfg(not(target_os = "trusty"))]
 impl From<io::PipeWriter> for OwnedFd {
     fn from(pipe: io::PipeWriter) -> Self {
         pipe.0.into_inner()
@@ -535,6 +538,7 @@ impl From<io::PipeWriter> for OwnedFd {
 }
 
 #[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for io::PipeReader {
     fn from(owned_fd: OwnedFd) -> Self {
         Self(FromInner::from_inner(owned_fd))
@@ -542,6 +546,7 @@ impl From<OwnedFd> for io::PipeReader {
 }
 
 #[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for io::PipeWriter {
     fn from(owned_fd: OwnedFd) -> Self {
         Self(FromInner::from_inner(owned_fd))

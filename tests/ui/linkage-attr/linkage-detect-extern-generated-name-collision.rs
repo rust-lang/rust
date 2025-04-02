@@ -22,3 +22,5 @@ fn main() {
        println!("{:p}", &dep1::collision);
     }
 }
+
+//~? ERROR symbol `collision` is already defined

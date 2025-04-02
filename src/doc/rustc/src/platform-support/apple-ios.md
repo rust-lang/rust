@@ -26,7 +26,8 @@ These targets are cross-compiled, and require the corresponding iOS SDK
 ARM64 targets, Xcode 12 or higher is required.
 
 The path to the SDK can be passed to `rustc` using the common `SDKROOT`
-environment variable.
+environment variable, or will be inferred when compiling on host macOS using
+roughly the same logic as `xcrun --sdk iphoneos --show-sdk-path`.
 
 ### OS version
 

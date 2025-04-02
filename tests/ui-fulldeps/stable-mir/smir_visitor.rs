@@ -18,6 +18,7 @@ extern crate stable_mir;
 
 use rustc_smir::rustc_internal;
 use stable_mir::mir::MirVisitor;
+use stable_mir::mir::MutMirVisitor;
 use stable_mir::*;
 use std::collections::HashSet;
 use std::io::Write;
@@ -99,6 +100,83 @@ impl<'a> mir::MirVisitor for TestVisitor<'a> {
     }
 }
 
+fn test_mut_visitor() -> ControlFlow<()> {
+    let main_fn = stable_mir::entry_fn();
+    let mut main_body = main_fn.unwrap().expect_body();
+    let locals = main_body.locals().to_vec();
+    let mut main_visitor = TestMutVisitor::collect(locals);
+    main_visitor.visit_body(&mut main_body);
+    assert!(main_visitor.ret_val.is_some());
+    assert!(main_visitor.args.is_empty());
+    assert!(main_visitor.tys.contains(&main_visitor.ret_val.unwrap().ty));
+    assert!(!main_visitor.calls.is_empty());
+
+    let exit_fn = main_visitor.calls.last().unwrap();
+    assert!(exit_fn.mangled_name().contains("exit_fn"), "Unexpected last function: {exit_fn:?}");
+
+    let mut exit_body = exit_fn.body().unwrap();
+    let locals = exit_body.locals().to_vec();
+    let mut exit_visitor = TestMutVisitor::collect(locals);
+    exit_visitor.visit_body(&mut exit_body);
+    assert!(exit_visitor.ret_val.is_some());
+    assert_eq!(exit_visitor.args.len(), 1);
+    assert!(exit_visitor.tys.contains(&exit_visitor.ret_val.unwrap().ty));
+    assert!(exit_visitor.tys.contains(&exit_visitor.args[0].ty));
+    ControlFlow::Continue(())
+}
+
+struct TestMutVisitor {
+    locals: Vec<mir::LocalDecl>,
+    pub tys: HashSet<ty::Ty>,
+    pub ret_val: Option<mir::LocalDecl>,
+    pub args: Vec<mir::LocalDecl>,
+    pub calls: Vec<mir::mono::Instance>,
+}
+
+impl TestMutVisitor {
+    fn collect(locals: Vec<mir::LocalDecl>) -> TestMutVisitor {
+        let visitor = TestMutVisitor {
+            locals: locals,
+            tys: Default::default(),
+            ret_val: None,
+            args: vec![],
+            calls: vec![],
+        };
+        visitor
+    }
+}
+
+impl mir::MutMirVisitor for TestMutVisitor {
+    fn visit_ty(&mut self, ty: &mut ty::Ty, _location: mir::visit::Location) {
+        self.tys.insert(*ty);
+        self.super_ty(ty)
+    }
+
+    fn visit_ret_decl(&mut self, local: mir::Local, decl: &mut mir::LocalDecl) {
+        assert!(local == mir::RETURN_LOCAL);
+        assert!(self.ret_val.is_none());
+        self.ret_val = Some(decl.clone());
+        self.super_ret_decl(local, decl);
+    }
+
+    fn visit_arg_decl(&mut self, local: mir::Local, decl: &mut mir::LocalDecl) {
+        self.args.push(decl.clone());
+        assert_eq!(local, self.args.len());
+        self.super_arg_decl(local, decl);
+    }
+
+    fn visit_terminator(&mut self, term: &mut mir::Terminator, location: mir::visit::Location) {
+        if let mir::TerminatorKind::Call { func, .. } = &mut term.kind {
+            let ty::TyKind::RigidTy(ty) = func.ty(&self.locals).unwrap().kind() else {
+                unreachable!()
+            };
+            let ty::RigidTy::FnDef(def, args) = ty else { unreachable!() };
+            self.calls.push(mir::mono::Instance::resolve(def, &args).unwrap());
+        }
+        self.super_terminator(term, location);
+    }
+}
+
 /// This test will generate and analyze a dummy crate using the stable mir.
 /// For that, it will first write the dummy crate into a file.
 /// Then it will create a `StableMir` using custom arguments and then
@@ -113,7 +191,8 @@ fn main() {
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    run!(args, test_visitor).unwrap();
+    run!(args.clone(), test_visitor).unwrap();
+    run!(args, test_mut_visitor).unwrap();
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {

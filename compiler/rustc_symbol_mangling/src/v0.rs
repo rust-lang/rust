@@ -850,6 +850,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             DefPathData::Ctor => 'c',
             DefPathData::AnonConst => 'k',
             DefPathData::OpaqueTy => 'i',
+            DefPathData::SyntheticCoroutineBody => 's',
 
             // These should never show up as `path_append` arguments.
             DefPathData::CrateRoot

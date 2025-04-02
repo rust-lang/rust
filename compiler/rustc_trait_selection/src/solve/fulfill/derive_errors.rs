@@ -10,7 +10,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
-use rustc_type_ir::solve::{Goal, NoSolution};
+use rustc_type_ir::solve::NoSolution;
 use tracing::{instrument, trace};
 
 use crate::solve::Certainty;
@@ -89,7 +89,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
     let (code, refine_obligation) = infcx.probe(|_| {
         match <&SolverDelegate<'tcx>>::from(infcx)
             .evaluate_root_goal(
-                root_obligation.clone().into(),
+                root_obligation.as_goal(),
                 GenerateProofTree::No,
                 root_obligation.cause.span,
             )
@@ -155,7 +155,7 @@ fn find_best_leaf_obligation<'tcx>(
         .fudge_inference_if_ok(|| {
             infcx
                 .visit_proof_tree(
-                    obligation.clone().into(),
+                    obligation.as_goal(),
                     &mut BestObligation { obligation: obligation.clone(), consider_ambiguities },
                 )
                 .break_value()
@@ -245,7 +245,7 @@ impl<'tcx> BestObligation<'tcx> {
         {
             let nested_goal = candidate.instantiate_proof_tree_for_nested_goal(
                 GoalSource::Misc,
-                Goal::new(infcx.tcx, obligation.param_env, obligation.predicate),
+                obligation.as_goal(),
                 self.span(),
             );
             // Skip nested goals that aren't the *reason* for our goal's failure.

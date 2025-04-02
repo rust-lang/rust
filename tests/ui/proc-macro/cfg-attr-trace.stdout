@@ -4,59 +4,75 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
         spacing: Alone,
-        span: #0 bytes(271..272),
+        span: #0 bytes(305..306),
     },
     Group {
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
                 ident: "test_macros",
-                span: #0 bytes(289..300),
+                span: #0 bytes(322..333),
             },
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: #0 bytes(300..301),
+                span: #0 bytes(333..334),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: #0 bytes(301..302),
+                span: #0 bytes(334..335),
             },
             Ident {
                 ident: "print_attr",
-                span: #0 bytes(302..312),
+                span: #0 bytes(335..345),
             },
         ],
-        span: #0 bytes(272..314),
+        span: #0 bytes(306..347),
     },
     Ident {
         ident: "struct",
-        span: #0 bytes(315..321),
+        span: #0 bytes(348..354),
     },
     Ident {
         ident: "S",
-        span: #0 bytes(322..323),
+        span: #0 bytes(355..356),
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: #0 bytes(323..324),
+        span: #0 bytes(356..357),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): struct S;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
-        span: #0 bytes(315..321),
+        span: #0 bytes(348..354),
     },
     Ident {
         ident: "S",
-        span: #0 bytes(322..323),
+        span: #0 bytes(355..356),
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: #0 bytes(323..324),
+        span: #0 bytes(356..357),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): struct Z;
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: #0 bytes(411..417),
+    },
+    Ident {
+        ident: "Z",
+        span: #0 bytes(418..419),
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: #0 bytes(419..420),
     },
 ]

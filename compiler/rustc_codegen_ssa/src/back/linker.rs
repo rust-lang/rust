@@ -450,9 +450,10 @@ impl<'a> GccLinker<'a> {
                     // The output filename already contains `dll_suffix` so
                     // the resulting import library will have a name in the
                     // form of libfoo.dll.a
-                    let mut implib_name = OsString::from(&*self.sess.target.staticlib_prefix);
+                    let (prefix, suffix) = self.sess.staticlib_components(false);
+                    let mut implib_name = OsString::from(prefix);
                     implib_name.push(name);
-                    implib_name.push(&*self.sess.target.staticlib_suffix);
+                    implib_name.push(suffix);
                     let mut out_implib = OsString::from("--out-implib=");
                     out_implib.push(out_filename.with_file_name(implib_name));
                     self.link_arg(out_implib);
@@ -958,9 +959,9 @@ impl<'a> Linker for MsvcLinker<'a> {
         if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
             self.link_staticlib_by_path(&path, whole_archive);
         } else {
-            let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
-            let suffix = if verbatim { "" } else { ".lib" };
-            self.link_arg(format!("{prefix}{name}{suffix}"));
+            let opts = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
+            let (prefix, suffix) = self.sess.staticlib_components(verbatim);
+            self.link_arg(format!("{opts}{prefix}{name}{suffix}"));
         }
     }
 
@@ -1782,7 +1783,10 @@ fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -
     let mut symbols = Vec::new();
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) {
+        // Do not export mangled symbols from cdylibs and don't attempt to export compiler-builtins
+        // from any cdylib. The latter doesn't work anyway as we use hidden visibility for
+        // compiler-builtins. Most linkers silently ignore it, but ld64 gives a warning.
+        if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum) {
             symbols.push(symbol_export::exporting_symbol_name_for_instance_in_crate(
                 tcx, symbol, cnum,
             ));
@@ -1821,7 +1825,9 @@ pub(crate) fn linked_symbols(
 
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
+        if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum)
+            || info.used
+        {
             symbols.push((
                 symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
                 info.kind,

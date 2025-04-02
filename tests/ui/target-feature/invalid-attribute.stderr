@@ -98,6 +98,12 @@ LL |
 LL | trait Baz {}
    | ------------ not a function definition
 
+error: cannot use `#[inline(always)]` with `#[target_feature]`
+  --> $DIR/invalid-attribute.rs:69:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+
 error: attribute should be applied to a function definition
   --> $DIR/invalid-attribute.rs:74:1
    |
@@ -162,12 +168,6 @@ error: malformed `target_feature` attribute input
    |
 LL | #[target_feature(disable = "baz")]
    |                  ^^^^^^^^^^^^^^^ help: must be of the form: `enable = ".."`
-
-error: cannot use `#[inline(always)]` with `#[target_feature]`
-  --> $DIR/invalid-attribute.rs:69:1
-   |
-LL | #[inline(always)]
-   | ^^^^^^^^^^^^^^^^^
 
 error[E0046]: not all trait items implemented, missing: `foo`
   --> $DIR/invalid-attribute.rs:81:1

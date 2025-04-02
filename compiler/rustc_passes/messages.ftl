@@ -383,6 +383,10 @@ passes_inline_ignored_constants =
     .warn = {-passes_previously_accepted}
     .note = {-passes_see_issue(issue: "65833")}
 
+passes_inline_ignored_for_exported =
+    `#[inline]` is ignored on externally exported functions
+    .help = externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`
+
 passes_inline_ignored_function_prototype =
     `#[inline]` is ignored on function prototypes
 
@@ -811,8 +815,8 @@ passes_unused_duplicate =
 passes_unused_empty_lints_note =
     attribute `{$name}` with an empty list has no effect
 
-passes_unused_linker_warnings_note =
-    the `linker_warnings` lint can only be controlled at the root of a crate that needs to be linked
+passes_unused_linker_messages_note =
+    the `linker_messages` lint can only be controlled at the root of a crate that needs to be linked
 
 passes_unused_multiple =
     multiple `{$name}` attributes

@@ -117,7 +117,7 @@ fn typeck_with_inspect<'tcx>(
 
     let id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(id);
-    let span = tcx.hir().span(id);
+    let span = tcx.hir_span(id);
 
     // Figure out what primary body this item has.
     let body_id = node.body_id().unwrap_or_else(|| {

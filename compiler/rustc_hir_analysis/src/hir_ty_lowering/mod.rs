@@ -1066,7 +1066,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let bound_span = tcx
                     .associated_items(bound_id)
                     .find_by_name_and_kind(tcx, assoc_name, assoc_kind, bound_id)
-                    .and_then(|item| tcx.hir().span_if_local(item.def_id));
+                    .and_then(|item| tcx.hir_span_if_local(item.def_id));
 
                 if let Some(bound_span) = bound_span {
                     err.span_label(
@@ -1400,7 +1400,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         );
                     }
 
-                    if let Some(sp) = tcx.hir().span_if_local(adt_def.did()) {
+                    if let Some(sp) = tcx.hir_span_if_local(adt_def.did()) {
                         err.span_label(sp, format!("variant `{assoc_ident}` not found here"));
                     }
 
@@ -1730,25 +1730,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .is_accessible_from(self.item_def_id(), tcx)
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
-                            let impl_header = tcx.impl_trait_header(impl_def_id);
-                            impl_header.is_some_and(|header| {
-                                let trait_ref = header.trait_ref.instantiate(
-                                    tcx,
-                                    infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
-                                );
+                            let header = tcx.impl_trait_header(impl_def_id).unwrap();
+                            let trait_ref = header.trait_ref.instantiate(
+                                tcx,
+                                infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
+                            );
 
-                                let value = fold_regions(tcx, qself_ty, |_, _| tcx.lifetimes.re_erased);
-                                // FIXME: Don't bother dealing with non-lifetime binders here...
-                                if value.has_escaping_bound_vars() {
-                                    return false;
-                                }
-                                infcx
-                                    .can_eq(
-                                        ty::ParamEnv::empty(),
-                                        trait_ref.self_ty(),
-                                        value,
-                                    ) && header.polarity != ty::ImplPolarity::Negative
-                            })
+                            let value = fold_regions(tcx, qself_ty, |_, _| tcx.lifetimes.re_erased);
+                            // FIXME: Don't bother dealing with non-lifetime binders here...
+                            if value.has_escaping_bound_vars() {
+                                return false;
+                            }
+                            infcx
+                                .can_eq(
+                                    ty::ParamEnv::empty(),
+                                    trait_ref.self_ty(),
+                                    value,
+                                ) && header.polarity != ty::ImplPolarity::Negative
                         })
             })
             .map(|trait_def_id| tcx.def_path_str(trait_def_id))

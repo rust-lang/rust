@@ -7,3 +7,5 @@
 
 #[lang = "sized"]
 pub trait Sized {}
+
+//~? WARN unstable feature specified for `-Ctarget-feature`: `x87`

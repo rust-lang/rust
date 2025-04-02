@@ -1,11 +1,11 @@
 //! This module contains the entry points for `slice::sort_unstable`.
 
-use crate::intrinsics;
 use crate::mem::SizedTypeProperties;
 #[cfg(not(any(feature = "optimize_for_size", target_pointer_width = "16")))]
 use crate::slice::sort::shared::find_existing_run;
 #[cfg(not(any(feature = "optimize_for_size", target_pointer_width = "16")))]
 use crate::slice::sort::shared::smallsort::insertion_sort_shift_left;
+use crate::{cfg_match, intrinsics};
 
 pub(crate) mod heapsort;
 pub(crate) mod quicksort;
@@ -30,10 +30,11 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F) {
         return;
     }
 
-    cfg_if! {
-        if #[cfg(any(feature = "optimize_for_size", target_pointer_width = "16"))] {
+    cfg_match! {
+        any(feature = "optimize_for_size", target_pointer_width = "16") => {
             heapsort::heapsort(v, is_less);
-        } else {
+        }
+        _ => {
             // More advanced sorting methods than insertion sort are faster if called in
             // a hot loop for small inputs, but for general-purpose code the small
             // binary size of insertion sort is more important. The instruction cache in

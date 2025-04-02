@@ -15,7 +15,7 @@ use clap::Parser;
 use jobs::JobDatabase;
 use serde_yaml::Value;
 
-use crate::analysis::output_test_diffs;
+use crate::analysis::{output_largest_duration_changes, output_test_diffs};
 use crate::cpu_usage::load_cpu_usage;
 use crate::datadog::upload_datadog_metric;
 use crate::jobs::RunType;
@@ -144,30 +144,34 @@ fn postprocess_metrics(
     job_name: Option<String>,
 ) -> anyhow::Result<()> {
     let metrics = load_metrics(&metrics_path)?;
-    output_bootstrap_stats(&metrics);
 
-    let (Some(parent), Some(job_name)) = (parent, job_name) else {
-        return Ok(());
-    };
+    if let (Some(parent), Some(job_name)) = (parent, job_name) {
+        // This command is executed also on PR builds, which might not have parent metrics
+        // available, because some PR jobs don't run on auto builds, and PR jobs do not upload metrics
+        // due to missing permissions.
+        // To avoid having to detect if this is a PR job, and to avoid having failed steps in PR jobs,
+        // we simply print an error if the parent metrics were not found, but otherwise exit
+        // successfully.
+        match download_job_metrics(&job_name, &parent).context("cannot download parent metrics") {
+            Ok(parent_metrics) => {
+                output_bootstrap_stats(&metrics, Some(&parent_metrics));
 
-    // This command is executed also on PR builds, which might not have parent metrics
-    // available, because some PR jobs don't run on auto builds, and PR jobs do not upload metrics
-    // due to missing permissions.
-    // To avoid having to detect if this is a PR job, and to avoid having failed steps in PR jobs,
-    // we simply print an error if the parent metrics were not found, but otherwise exit
-    // successfully.
-    match download_job_metrics(&job_name, &parent).context("cannot download parent metrics") {
-        Ok(parent_metrics) => {
-            let job_metrics = HashMap::from([(
-                job_name,
-                JobMetrics { parent: Some(parent_metrics), current: metrics },
-            )]);
-            output_test_diffs(job_metrics);
-        }
-        Err(error) => {
-            eprintln!("Metrics for job `{job_name}` and commit `{parent}` not found: {error:?}");
+                let job_metrics = HashMap::from([(
+                    job_name,
+                    JobMetrics { parent: Some(parent_metrics), current: metrics },
+                )]);
+                output_test_diffs(&job_metrics);
+                return Ok(());
+            }
+            Err(error) => {
+                eprintln!(
+                    "Metrics for job `{job_name}` and commit `{parent}` not found: {error:?}"
+                );
+            }
         }
     }
+
+    output_bootstrap_stats(&metrics, None);
 
     Ok(())
 }
@@ -176,7 +180,8 @@ fn post_merge_report(db: JobDatabase, current: String, parent: String) -> anyhow
     let metrics = download_auto_job_metrics(&db, &parent, &current)?;
 
     println!("\nComparing {parent} (parent) -> {current} (this PR)\n");
-    output_test_diffs(metrics);
+    output_test_diffs(&metrics);
+    output_largest_duration_changes(&metrics);
 
     Ok(())
 }

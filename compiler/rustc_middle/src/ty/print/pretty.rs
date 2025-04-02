@@ -2591,11 +2591,9 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         // to fit that into a short string. Hence the recommendation to use
         // `explain_region()` or `note_and_explain_region()`.
         match *region {
-            ty::ReEarlyParam(ref data) => {
-                if data.name != kw::Empty {
-                    p!(write("{}", data.name));
-                    return Ok(());
-                }
+            ty::ReEarlyParam(data) => {
+                p!(write("{}", data.name));
+                return Ok(());
             }
             ty::ReLateParam(ty::LateParamRegion { kind, .. }) => {
                 if let Some(name) = kind.get_name() {
@@ -2834,7 +2832,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
                         (name, ty::BoundRegionKind::Named(CRATE_DEF_ID.to_def_id(), name))
                     }
-                    ty::BoundRegionKind::Named(def_id, kw::UnderscoreLifetime | kw::Empty) => {
+                    ty::BoundRegionKind::Named(def_id, kw::UnderscoreLifetime) => {
                         let name = next_name(self);
 
                         if let Some(lt_idx) = lifetime_idx {

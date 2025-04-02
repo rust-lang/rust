@@ -143,8 +143,8 @@ impl Thread {
     pub fn set_name(name: &CStr) {
         unsafe {
             cfg_if::cfg_if! {
-                if #[cfg(target_os = "linux")] {
-                    // Linux limits the allowed length of the name.
+                if #[cfg(any(target_os = "linux", target_os = "cygwin"))] {
+                    // Linux and Cygwin limits the allowed length of the name.
                     const TASK_COMM_LEN: usize = 16;
                     let name = truncate_cstr::<{ TASK_COMM_LEN }>(name);
                 } else {
@@ -193,11 +193,12 @@ impl Thread {
     // and its metadata from LLVM IR.
     #[no_sanitize(cfi)]
     pub fn set_name(name: &CStr) {
-        weak! {
+        weak!(
             fn pthread_setname_np(
-                libc::pthread_t, *const libc::c_char
-            ) -> libc::c_int
-        }
+                thread: libc::pthread_t,
+                name: *const libc::c_char,
+            ) -> libc::c_int;
+        );
 
         if let Some(f) = pthread_setname_np.get() {
             #[cfg(target_os = "nto")]
@@ -346,6 +347,7 @@ impl Drop for Thread {
     target_os = "solaris",
     target_os = "illumos",
     target_os = "vxworks",
+    target_os = "cygwin",
     target_vendor = "apple",
 ))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
@@ -761,7 +763,9 @@ unsafe fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     // We use dlsym to avoid an ELF version dependency on GLIBC_PRIVATE. (#23628)
     // We shouldn't really be using such an internal symbol, but there's currently
     // no other way to account for the TLS size.
-    dlsym!(fn __pthread_get_minstack(*const libc::pthread_attr_t) -> libc::size_t);
+    dlsym!(
+        fn __pthread_get_minstack(attr: *const libc::pthread_attr_t) -> libc::size_t;
+    );
 
     match __pthread_get_minstack.get() {
         None => libc::PTHREAD_STACK_MIN,

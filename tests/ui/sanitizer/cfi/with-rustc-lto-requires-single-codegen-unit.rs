@@ -6,3 +6,5 @@
 #![feature(no_core)]
 #![no_core]
 #![no_main]
+
+//~? ERROR `-Zsanitizer=cfi` with `-Clto` requires `-Ccodegen-units=1`

@@ -457,7 +457,7 @@ impl EarlyParamRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {
-        self.name != kw::UnderscoreLifetime && self.name != kw::Empty
+        self.name != kw::UnderscoreLifetime
     }
 }
 
@@ -953,7 +953,7 @@ impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
 /// environment. `ParamEnv` is the type that represents this information. See the
 /// [dev guide chapter][param_env_guide] for more information.
 ///
-/// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
+/// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 #[derive(HashStable, TypeVisitable, TypeFoldable)]
 pub struct ParamEnv<'tcx> {
@@ -977,7 +977,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// to use an empty environment. See the [dev guide section][param_env_guide]
     /// for information on what a `ParamEnv` is and how to acquire one.
     ///
-    /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
+    /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
     #[inline]
     pub fn empty() -> Self {
         Self::new(ListWithCachedTypeInfo::empty())
@@ -1119,8 +1119,6 @@ pub struct PseudoCanonicalInput<'tcx, T> {
 pub struct Destructor {
     /// The `DefId` of the destructor method
     pub did: DefId,
-    /// The constness of the destructor method
-    pub constness: hir::Constness,
 }
 
 // FIXME: consider combining this definition with regular `Destructor`

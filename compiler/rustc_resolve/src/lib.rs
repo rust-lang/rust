@@ -88,6 +88,8 @@ mod late;
 mod macros;
 pub mod rustdoc;
 
+pub use macros::registered_tools_ast;
+
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 #[derive(Debug)]
@@ -503,18 +505,18 @@ enum ModuleKind {
     ///
     /// * A normal module – either `mod from_file;` or `mod from_block { }` –
     ///   or the crate root (which is conceptually a top-level module).
-    ///   Note that the crate root's [name][Self::name] will be [`kw::Empty`].
+    ///   The crate root will have `None` for the symbol.
     /// * A trait or an enum (it implicitly contains associated types, methods and variant
     ///   constructors).
-    Def(DefKind, DefId, Symbol),
+    Def(DefKind, DefId, Option<Symbol>),
 }
 
 impl ModuleKind {
     /// Get name of the module.
     fn name(&self) -> Option<Symbol> {
-        match self {
+        match *self {
             ModuleKind::Block => None,
-            ModuleKind::Def(.., name) => Some(*name),
+            ModuleKind::Def(.., name) => name,
         }
     }
 }
@@ -1137,7 +1139,7 @@ pub struct Resolver<'ra, 'tcx> {
     non_macro_attr: MacroData,
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'ra>>,
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
-    unused_macros: FxHashMap<LocalDefId, (NodeId, Ident)>,
+    unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)>,
     /// A map from the macro to all its potentially unused arms.
     unused_macro_rules: FxIndexMap<LocalDefId, UnordMap<usize, (Ident, Span)>>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
@@ -1190,10 +1192,6 @@ pub struct Resolver<'ra, 'tcx> {
     /// we know what parent node that fragment should be attached to thanks to this table,
     /// and how the `impl Trait` fragments were introduced.
     invocation_parents: FxHashMap<LocalExpnId, InvocationParent>,
-
-    /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
-    /// FIXME: Replace with a more general AST map (together with some other fields).
-    trait_impl_items: FxHashSet<LocalDefId>,
 
     legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
     /// Amount of lifetime parameters for each item in the crate.
@@ -1402,7 +1400,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut module_self_bindings = FxHashMap::default();
         let graph_root = arenas.new_module(
             None,
-            ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
+            ModuleKind::Def(DefKind::Mod, root_def_id, None),
             ExpnId::root(),
             crate_span,
             attr::contains_name(attrs, sym::no_implicit_prelude),
@@ -1411,7 +1409,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         );
         let empty_module = arenas.new_module(
             None,
-            ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
+            ModuleKind::Def(DefKind::Mod, root_def_id, None),
             ExpnId::root(),
             DUMMY_SP,
             true,
@@ -1558,7 +1556,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             def_id_to_node_id,
             placeholder_field_indices: Default::default(),
             invocation_parents,
-            trait_impl_items: Default::default(),
             legacy_const_generic_args: Default::default(),
             item_generics_num_lifetimes: Default::default(),
             main_def: Default::default(),
@@ -2286,7 +2283,8 @@ fn module_to_string(mut module: Module<'_>) -> Option<String> {
     loop {
         if let ModuleKind::Def(.., name) = module.kind {
             if let Some(parent) = module.parent {
-                names.push(name);
+                // `unwrap` is safe: the presence of a parent means it's not the crate root.
+                names.push(name.unwrap());
                 module = parent
             } else {
                 break;

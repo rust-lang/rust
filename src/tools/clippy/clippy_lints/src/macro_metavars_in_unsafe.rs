@@ -253,7 +253,7 @@ impl<'tcx> LateLintPass<'tcx> for ExprMetavarsInUnsafe {
                 // Remove the syntax context to hide "in this macro invocation" in the diagnostic.
                 // The invocation doesn't matter. Also we want to dedupe by the unsafe block and not by anything
                 // related to the callsite.
-                let span = cx.tcx.hir().span(id);
+                let span = cx.tcx.hir_span(id);
 
                 (id, Span::new(span.lo(), span.hi(), SyntaxContext::root(), None))
             })

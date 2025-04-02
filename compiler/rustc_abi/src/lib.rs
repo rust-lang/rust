@@ -1462,7 +1462,8 @@ impl BackendRepr {
         !self.is_unsized()
     }
 
-    /// Returns `true` if this is a single signed integer scalar
+    /// Returns `true` if this is a single signed integer scalar.
+    /// Sanity check: panics if this is not a scalar type (see PR #70189).
     #[inline]
     pub fn is_signed(&self) -> bool {
         match self {

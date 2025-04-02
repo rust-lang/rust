@@ -14,7 +14,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
 use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_span::{ErrorGuaranteed, ExpnId};
+use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
 use crate::query::Providers;
 use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
@@ -157,6 +157,7 @@ impl<'tcx> TyCtxt<'tcx> {
         node: OwnerNode<'_>,
         bodies: &SortedMap<ItemLocalId, &Body<'_>>,
         attrs: &SortedMap<ItemLocalId, &[Attribute]>,
+        define_opaque: Option<&[(Span, LocalDefId)]>,
     ) -> (Option<Fingerprint>, Option<Fingerprint>) {
         if self.needs_crate_hash() {
             self.with_stable_hashing_context(|mut hcx| {
@@ -168,6 +169,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
                 let mut stable_hasher = StableHasher::new();
                 attrs.hash_stable(&mut hcx, &mut stable_hasher);
+
+                // Hash the defined opaque types, which are not present in the attrs.
+                define_opaque.hash_stable(&mut hcx, &mut stable_hasher);
+
                 let h2 = stable_hasher.finish();
                 (Some(h1), Some(h2))
             })
@@ -205,13 +210,12 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_attr_map = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
-    providers.def_span = |tcx, def_id| tcx.hir().span(tcx.local_def_id_to_hir_id(def_id));
+    providers.def_span = |tcx, def_id| tcx.hir_span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
         tcx.hir_opt_ident_span(hir_id)
     };
     providers.fn_arg_names = |tcx, def_id| {
-        let hir = tcx.hir();
         if let Some(body_id) = tcx.hir_node_by_def_id(def_id).body_id() {
             tcx.arena.alloc_from_iter(tcx.hir_body_param_names(body_id))
         } else if let Node::TraitItem(&TraitItem {
@@ -226,13 +230,15 @@ pub fn provide(providers: &mut Providers) {
             idents
         } else {
             span_bug!(
-                hir.span(tcx.local_def_id_to_hir_id(def_id)),
+                tcx.hir_span(tcx.local_def_id_to_hir_id(def_id)),
                 "fn_arg_names: unexpected item {:?}",
                 def_id
             );
         }
     };
     providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
+    providers.local_trait_impls =
+        |tcx, trait_id| tcx.resolutions(()).trait_impls.get(&trait_id).map_or(&[], |xs| &xs[..]);
     providers.expn_that_defined =
         |tcx, id| tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root());
     providers.in_scope_traits_map = |tcx, id| {

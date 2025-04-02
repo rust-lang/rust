@@ -1,4 +1,5 @@
-#![feature(rustc_attrs)]
+//@ check-pass
+
 #![feature(type_alias_impl_trait)]
 
 pub type Foo = impl Fn() -> usize;
@@ -8,5 +9,4 @@ pub const fn bar() -> Foo {
 }
 const BAZR: Foo = bar();
 
-#[rustc_error]
-fn main() {} //~ ERROR
+fn main() {}

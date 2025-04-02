@@ -250,6 +250,11 @@ v(
     "mips64el-unknown-linux-muslabi64 install directory",
 )
 v(
+    "musl-root-powerpc64",
+    "target.powerpc64-unknown-linux-musl.musl-root",
+    "powerpc64-unknown-linux-musl install directory",
+)
+v(
     "musl-root-powerpc64le",
     "target.powerpc64le-unknown-linux-musl.musl-root",
     "powerpc64le-unknown-linux-musl install directory",

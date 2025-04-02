@@ -197,12 +197,6 @@ pub struct TypeckResults<'tcx> {
     /// formatting modified file tests/ui/coroutine/retain-resume-ref.rs
     pub coroutine_stalled_predicates: FxIndexSet<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>,
 
-    /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
-    /// as `&[u8]`, depending on the pattern in which they are used.
-    /// This hashset records all instances where we behave
-    /// like this to allow `const_to_pat` to reliably handle this situation.
-    pub treat_byte_string_as_slice: ItemLocalSet,
-
     /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
     /// on closure size.
     pub closure_size_eval: LocalDefIdMap<ClosureSizeProfileData<'tcx>>,
@@ -237,7 +231,6 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),
             coroutine_stalled_predicates: Default::default(),
-            treat_byte_string_as_slice: Default::default(),
             closure_size_eval: Default::default(),
             offset_of_data: Default::default(),
         }
