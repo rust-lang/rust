@@ -324,6 +324,11 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `zfinx`
 `zhinx`
 `zhinxmin`
+`zicntr`
+`zicsr`
+`zifencei`
+`zihintpause`
+`zihpm`
 `zk`
 `zkn`
 `zknd`
