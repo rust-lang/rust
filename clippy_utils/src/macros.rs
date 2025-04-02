@@ -178,7 +178,6 @@ pub fn first_node_in_macro(cx: &LateContext<'_>, node: &impl HirNode) -> Option<
 
     // get the parent node, possibly skipping over a statement
     // if the parent is not found, it is sensible to return `Some(root)`
-    let hir = cx.tcx.hir();
     let mut parent_iter = cx.tcx.hir_parent_iter(node.hir_id());
     let (parent_id, _) = match parent_iter.next() {
         None => return Some(ExpnId::root()),
@@ -190,7 +189,7 @@ pub fn first_node_in_macro(cx: &LateContext<'_>, node: &impl HirNode) -> Option<
     };
 
     // get the macro expansion of the parent node
-    let parent_span = hir.span(parent_id);
+    let parent_span = cx.tcx.hir_span(parent_id);
     let Some(parent_macro_call) = macro_backtrace(parent_span).next() else {
         // the parent node is not in a macro
         return Some(ExpnId::root());

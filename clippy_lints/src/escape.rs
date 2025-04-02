@@ -120,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
                 cx,
                 BOXED_LOCAL,
                 node,
-                cx.tcx.hir().span(node),
+                cx.tcx.hir_span(node),
                 "local variable doesn't need to be boxed here",
             );
         }
