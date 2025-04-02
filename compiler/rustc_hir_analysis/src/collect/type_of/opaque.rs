@@ -318,20 +318,6 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
 
     let mir_opaque_ty = tcx.mir_borrowck(owner_def_id).concrete_opaque_types.get(&def_id).copied();
     if let Some(mir_opaque_ty) = mir_opaque_ty {
-        if mir_opaque_ty.references_error() {
-            return mir_opaque_ty.ty;
-        }
-
-        debug!(?owner_def_id);
-        let mut locator = RpitConstraintChecker { def_id, tcx, found: mir_opaque_ty };
-
-        match tcx.hir_node_by_def_id(owner_def_id) {
-            Node::Item(it) => intravisit::walk_item(&mut locator, it),
-            Node::ImplItem(it) => intravisit::walk_impl_item(&mut locator, it),
-            Node::TraitItem(it) => intravisit::walk_trait_item(&mut locator, it),
-            other => bug!("{:?} is not a valid scope for an opaque type item", other),
-        }
-
         mir_opaque_ty.ty
     } else if let Some(guar) = tables.tainted_by_errors {
         // Some error in the owner fn prevented us from populating
@@ -350,63 +336,5 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
             // `()` until we the diverging default is changed.
             Ty::new_diverging_default(tcx)
         }
-    }
-}
-
-struct RpitConstraintChecker<'tcx> {
-    tcx: TyCtxt<'tcx>,
-
-    /// def_id of the opaque type whose defining uses are being checked
-    def_id: LocalDefId,
-
-    found: ty::OpaqueHiddenType<'tcx>,
-}
-
-impl RpitConstraintChecker<'_> {
-    #[instrument(skip(self), level = "debug")]
-    fn check(&self, def_id: LocalDefId) {
-        // Use borrowck to get the type with unerased regions.
-        let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
-        debug!(?concrete_opaque_types);
-        if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
-            debug!(?concrete_type, "found constraint");
-            if concrete_type.ty != self.found.ty {
-                if let Ok(d) = self.found.build_mismatch_error(&concrete_type, self.tcx) {
-                    d.emit();
-                }
-            }
-        }
-    }
-}
-
-impl<'tcx> intravisit::Visitor<'tcx> for RpitConstraintChecker<'tcx> {
-    type NestedFilter = nested_filter::OnlyBodies;
-
-    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
-        self.tcx
-    }
-    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        intravisit::walk_expr(self, ex);
-    }
-    fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
-        trace!(?it.owner_id);
-        // The opaque type itself or its children are not within its reveal scope.
-        if it.owner_id.def_id != self.def_id {
-            self.check(it.owner_id.def_id);
-            intravisit::walk_item(self, it);
-        }
-    }
-    fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
-        trace!(?it.owner_id);
-        // The opaque type itself or its children are not within its reveal scope.
-        if it.owner_id.def_id != self.def_id {
-            self.check(it.owner_id.def_id);
-            intravisit::walk_impl_item(self, it);
-        }
-    }
-    fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
-        trace!(?it.owner_id);
-        self.check(it.owner_id.def_id);
-        intravisit::walk_trait_item(self, it);
     }
 }
