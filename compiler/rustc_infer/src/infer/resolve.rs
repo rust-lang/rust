@@ -107,6 +107,10 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticRegionResolver<'a, 'tcx
             ct.super_fold_with(self)
         }
     }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if !p.has_infer_regions() { p } else { p.super_fold_with(self) }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
