@@ -10,9 +10,6 @@ allow-unauthenticated = [
 [shortcut]
 
 [merge-conflicts]
-add = ['S-waiting-on-author']
-remove = ['S-waiting-on-review']
-unless = ['S-blocked', 'S-final-comment-period']
 
 # Have rustbot inform users about the *No Merge Policy*
 [no-merges]
