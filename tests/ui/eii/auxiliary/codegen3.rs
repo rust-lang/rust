@@ -6,11 +6,11 @@
 #[eii(eii1)]
 fn decl1(x: u64);
 
-#[eii(eii2)] //~ ERROR couldn't find an implementation for `#[eii2]`
+#[eii(eii2)]
 pub fn decl2(x: u64);
 
 mod private {
-    #[eii(eii3)] //~ ERROR couldn't find an implementation for `#[eii3]`
+    #[eii(eii3)]
     pub fn decl3(x: u64);
 }
 
