@@ -357,7 +357,7 @@ fn copy_link_tool_bin(
     bin
 }
 
-macro_rules! bootstrap_tool {
+macro_rules! tool_bootstrap_or_std {
     ($(
         $name:ident, $path:expr, $tool_name:expr
         $(,is_external_tool = $external:expr)*
@@ -377,10 +377,11 @@ macro_rules! bootstrap_tool {
 
         impl<'a> Builder<'a> {
             pub fn tool_exe(&self, tool: Tool) -> PathBuf {
+                let stage = $(if false $(|| $unstable)* { self.top_stage } else { 0 };)+
                 match tool {
                     $(Tool::$name =>
                         self.ensure($name {
-                            compiler: self.compiler(0, self.config.build),
+                            compiler: self.compiler(stage, self.config.build),
                             target: self.config.build,
                         }).tool_path,
                     )+
@@ -403,9 +404,9 @@ macro_rules! bootstrap_tool {
             }
 
             fn make_run(run: RunConfig<'_>) {
+                let stage = if false $(|| $unstable)* { run.builder.top_stage } else { 0 };
                 run.builder.ensure($name {
-                    // snapshot compiler
-                    compiler: run.builder.compiler(0, run.builder.config.build),
+                    compiler: run.builder.compiler(stage, run.builder.config.build),
                     target: run.target,
                 });
             }
@@ -456,7 +457,7 @@ macro_rules! bootstrap_tool {
     }
 }
 
-bootstrap_tool!(
+tool_bootstrap_or_std!(
     // This is marked as an external tool because it includes dependencies
     // from submodules. Trying to keep the lints in sync between all the repos
     // is a bit of a pain. Unfortunately it means the rustbook source itself
