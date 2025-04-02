@@ -27,6 +27,7 @@ use tracing::{debug, instrument};
 
 use crate::builder::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::builder::expr::as_place::PlaceBuilder;
+use crate::builder::interpret::ErrorHandled;
 use crate::builder::matches::user_ty::ProjectedUserTypesNode;
 use crate::builder::scope::DropKind;
 use crate::builder::{
@@ -2904,6 +2905,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         None
     }
 
+    /// Based on `FunctionCx::eval_unevaluated_mir_constant_to_valtree`.
+    fn eval_unevaluated_mir_constant_to_valtree(
+        &self,
+        constant: ConstOperand<'tcx>,
+    ) -> Result<(ty::ValTree<'tcx>, Ty<'tcx>), ErrorHandled> {
+        assert!(!constant.const_.ty().has_param());
+        let (uv, ty) = match constant.const_ {
+            mir::Const::Unevaluated(uv, ty) => (uv.shrink(), ty),
+            mir::Const::Ty(_, c) => match c.kind() {
+                // A constant that came from a const generic but was then used as an argument to
+                // old-style simd_shuffle (passing as argument instead of as a generic param).
+                ty::ConstKind::Value(cv) => return Ok((cv.valtree, cv.ty)),
+                other => span_bug!(constant.span, "{other:#?}"),
+            },
+            mir::Const::Val(mir::ConstValue::Scalar(mir::interpret::Scalar::Int(val)), ty) => {
+                return Ok((ValTree::from_scalar_int(self.tcx, val), ty));
+            }
+            // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
+            // a constant and write that value back into `Operand`s. This could happen, but is
+            // unlikely. Also: all users of `simd_shuffle` are on unstable and already need to take
+            // a lot of care around intrinsics. For an issue to happen here, it would require a
+            // macro expanding to a `simd_shuffle` call without wrapping the constant argument in a
+            // `const {}` block, but the user pass through arbitrary expressions.
+            // FIXME(oli-obk): replace the magic const generic argument of `simd_shuffle` with a
+            // real const generic, and get rid of this entire function.
+            other => span_bug!(constant.span, "{other:#?}"),
+        };
+
+        match self.tcx.const_eval_resolve_for_typeck(self.typing_env(), uv, constant.span)? {
+            Ok(valtree) => Ok((valtree, ty)),
+            Err(ty) => bug!("could not convert {ty:?} to a valtree"),
+        }
+    }
+
     fn static_pattern_match_help(
         &self,
         constant: ConstOperand<'tcx>,
@@ -2912,48 +2947,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         use rustc_pattern_analysis::constructor::{IntRange, MaybeInfiniteInt};
         use rustc_pattern_analysis::rustc::Constructor;
 
-        // Based on eval_unevaluated_mir_constant_to_valtree
-        let (valtree, ty) = 'a: {
-            assert!(!constant.const_.ty().has_param());
-            let (uv, ty) = match constant.const_ {
-                mir::Const::Unevaluated(uv, ty) => (uv.shrink(), ty),
-                mir::Const::Ty(_, c) => match c.kind() {
-                    // A constant that came from a const generic but was then used as an argument to
-                    // old-style simd_shuffle (passing as argument instead of as a generic param).
-                    ty::ConstKind::Value(cv) => break 'a (cv.valtree, cv.ty),
-                    other => span_bug!(constant.span, "{other:#?}"),
-                },
-                mir::Const::Val(mir::ConstValue::Scalar(mir::interpret::Scalar::Int(val)), ty) => {
-                    break 'a (ValTree::from_scalar_int(self.tcx, val), ty);
-                }
-                // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
-                // a constant and write that value back into `Operand`s. This could happen, but is
-                // unlikely. Also: all users of `simd_shuffle` are on unstable and already need to take
-                // a lot of care around intrinsics. For an issue to happen here, it would require a
-                // macro expanding to a `simd_shuffle` call without wrapping the constant argument in a
-                // `const {}` block, but the user pass through arbitrary expressions.
-                // FIXME(oli-obk): replace the magic const generic argument of `simd_shuffle` with a
-                // real const generic, and get rid of this entire function.
-                other => span_bug!(constant.span, "{other:#?}"),
-            };
-            (
-                self.tcx
-                    .const_eval_resolve_for_typeck(self.typing_env(), uv, constant.span)
-                    .unwrap()
-                    .unwrap(),
-                ty,
-            )
-        };
+        let (valtree, ty) = self.eval_unevaluated_mir_constant_to_valtree(constant).unwrap();
         assert!(!ty.has_param());
 
         match pat.ctor() {
-            Constructor::Variant(variant_index) => match *valtree {
-                ValTreeKind::Branch(box [actual_variant_idx]) => {
-                    *variant_index
-                        == VariantIdx::from_u32(actual_variant_idx.unwrap_leaf().to_u32())
-                }
-                other => todo!("{other:?}"),
-            },
+            Constructor::Variant(variant_index) => {
+                let ValTreeKind::Branch(box [actual_variant_idx]) = *valtree else {
+                    bug!("malformed valtree for an enum")
+                };
+
+                let ValTreeKind::Leaf(actual_variant_idx) = ***actual_variant_idx else {
+                    bug!("malformed valtree for an enum")
+                };
+
+                *variant_index == VariantIdx::from_u32(actual_variant_idx.to_u32())
+            }
             Constructor::IntRange(int_range) => {
                 let size = pat.ty().primitive_size(self.tcx);
                 let actual_int = valtree.unwrap_leaf().to_bits(size);
