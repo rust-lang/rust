@@ -1190,8 +1190,8 @@ docs = [
     "@ehuss",
     "@GuillaumeGomez",
 ]
-
 codegen = [
+    "@dianqk",
     "@saethlin",
     "@workingjubilee",
 ]

@@ -870,6 +870,17 @@ macro_rules! define_queries {
                 }
             }
 
+            pub(crate) fn AnonZeroDeps<'tcx>() -> DepKindStruct<'tcx> {
+                DepKindStruct {
+                    is_anon: true,
+                    is_eval_always: false,
+                    fingerprint_style: FingerprintStyle::Opaque,
+                    force_from_dep_node: Some(|_, _, _| bug!("cannot force an anon node")),
+                    try_load_from_on_disk_cache: None,
+                    name: &"AnonZeroDeps",
+                }
+            }
+
             pub(crate) fn TraitSelect<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: true,
