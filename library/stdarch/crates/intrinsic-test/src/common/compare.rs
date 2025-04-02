@@ -2,6 +2,8 @@ use super::types::FailureReason;
 use rayon::prelude::*;
 use std::process::Command;
 
+static SPECIAL_TARGETS: [&str; 1] = ["aarch64_be-unknown-linux-gnu"];
+
 pub fn compare_outputs(
     intrinsic_name_list: &Vec<String>,
     toolchain: &str,
@@ -16,7 +18,18 @@ pub fn compare_outputs(
                 .arg(format!("{runner} ./c_programs/{intrinsic_name}"))
                 .output();
 
-            let rust = if target != "aarch64_be-unknown-linux-gnu" {
+            let rust = if SPECIAL_TARGETS
+                .into_iter()
+                .find(|&special_target| special_target == target)
+                .is_some()
+            {
+                Command::new("sh")
+                    .arg("-c")
+                    .arg(format!(
+                        "{runner} ./rust_programs/target/{target}/release/{intrinsic_name}",
+                    ))
+                    .output()
+            } else {
                 Command::new("sh")
                     .current_dir("rust_programs")
                     .arg("-c")
@@ -24,13 +37,6 @@ pub fn compare_outputs(
                         "cargo {toolchain} run --target {target} --bin {intrinsic_name} --release",
                     ))
                     .env("RUSTFLAGS", "-Cdebuginfo=0")
-                    .output()
-            } else {
-                Command::new("sh")
-                    .arg("-c")
-                    .arg(format!(
-                        "{runner} ./rust_programs/target/{target}/release/{intrinsic_name}",
-                    ))
                     .output()
             };
 
