@@ -63,7 +63,12 @@ impl<'tcx> TyCtxt<'tcx> {
                     },
                     _ => c,
                 };
-                ct.super_fold_with(self)
+
+                if ct.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
+                    ct.super_fold_with(self)
+                } else {
+                    ct
+                }
             }
         }
         ac.fold_with(&mut Expander { tcx: self })

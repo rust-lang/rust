@@ -376,6 +376,22 @@ pub fn normalize_param_env_or_error<'tcx>(
 
                     c
                 }
+
+                fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                    if t.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
+                        t.super_fold_with(self)
+                    } else {
+                        t
+                    }
+                }
+
+                fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+                    if p.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
+                        p.super_fold_with(self)
+                    } else {
+                        p
+                    }
+                }
             }
 
             // This whole normalization step is a hack to work around the fact that
