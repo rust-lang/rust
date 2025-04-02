@@ -1,3 +1,4 @@
+use rustc_abi::Align;
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::PlaceContext;
@@ -11,8 +12,7 @@ pub(super) struct CheckAlignment;
 
 impl<'tcx> crate::MirPass<'tcx> for CheckAlignment {
     fn is_enabled(&self, sess: &Session) -> bool {
-        // FIXME(#112480) MSVC and rustc disagree on minimum stack alignment on x86 Windows
-        if sess.target.llvm_target == "i686-pc-windows-msvc" {
+        if sess.target.max_reliable_alignment() < Align::MAX {
             return false;
         }
         sess.ub_checks()
