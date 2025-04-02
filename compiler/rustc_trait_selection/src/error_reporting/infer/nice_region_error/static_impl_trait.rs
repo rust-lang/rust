@@ -365,7 +365,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 // obligation comes from the `impl`. Find that `impl` so that we can point
                 // at it in the suggestion.
                 let trait_did = trait_id.to_def_id();
-                tcx.hir_trait_impls(trait_did).iter().find_map(|&impl_did| {
+                tcx.local_trait_impls(trait_did).iter().find_map(|&impl_did| {
                     if let Node::Item(Item {
                         kind: ItemKind::Impl(hir::Impl { self_ty, .. }), ..
                     }) = tcx.hir_node_by_def_id(impl_did)

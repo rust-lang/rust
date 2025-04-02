@@ -989,6 +989,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> 
         tcx.dcx().emit_fatal(NoOptimizedMir {
             span: tcx.def_span(def_id),
             crate_name: tcx.crate_name(def_id.krate),
+            instance: instance.to_string(),
         });
     }
 

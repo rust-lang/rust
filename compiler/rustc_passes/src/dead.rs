@@ -421,10 +421,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 }
                 hir::ItemKind::ForeignMod { .. } => {}
                 hir::ItemKind::Trait(..) => {
-                    for impl_def_id in self.tcx.all_impls(item.owner_id.to_def_id()) {
-                        if let Some(local_def_id) = impl_def_id.as_local()
-                            && let ItemKind::Impl(impl_ref) =
-                                self.tcx.hir_expect_item(local_def_id).kind
+                    for &impl_def_id in self.tcx.local_trait_impls(item.owner_id.def_id) {
+                        if let ItemKind::Impl(impl_ref) = self.tcx.hir_expect_item(impl_def_id).kind
                         {
                             // skip items
                             // mark dependent traits live

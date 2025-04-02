@@ -389,55 +389,65 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Calculate the destructor of a given type.
     pub fn calculate_dtor(
         self,
-        adt_did: DefId,
-        validate: impl Fn(Self, DefId) -> Result<(), ErrorGuaranteed>,
+        adt_did: LocalDefId,
+        validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
     ) -> Option<ty::Destructor> {
         let drop_trait = self.lang_items().drop_trait()?;
         self.ensure_ok().coherent_trait(drop_trait).ok()?;
 
-        let ty = self.type_of(adt_did).instantiate_identity();
         let mut dtor_candidate = None;
-        self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
+        // `Drop` impls can only be written in the same crate as the adt, and cannot be blanket impls
+        for &impl_did in self.local_trait_impls(drop_trait) {
+            let Some(adt_def) = self.type_of(impl_did).skip_binder().ty_adt_def() else { continue };
+            if adt_def.did() != adt_did.to_def_id() {
+                continue;
+            }
+
             if validate(self, impl_did).is_err() {
                 // Already `ErrorGuaranteed`, no need to delay a span bug here.
-                return;
+                continue;
             }
 
             let Some(item_id) = self.associated_item_def_ids(impl_did).first() else {
                 self.dcx()
                     .span_delayed_bug(self.def_span(impl_did), "Drop impl without drop function");
-                return;
+                continue;
             };
 
-            if let Some((old_item_id, _)) = dtor_candidate {
+            if let Some(old_item_id) = dtor_candidate {
                 self.dcx()
                     .struct_span_err(self.def_span(item_id), "multiple drop impls found")
                     .with_span_note(self.def_span(old_item_id), "other impl here")
                     .delay_as_bug();
             }
 
-            dtor_candidate = Some((*item_id, self.impl_trait_header(impl_did).unwrap().constness));
-        });
+            dtor_candidate = Some(*item_id);
+        }
 
-        let (did, constness) = dtor_candidate?;
-        Some(ty::Destructor { did, constness })
+        let did = dtor_candidate?;
+        Some(ty::Destructor { did })
     }
 
     /// Calculate the async destructor of a given type.
     pub fn calculate_async_dtor(
         self,
-        adt_did: DefId,
-        validate: impl Fn(Self, DefId) -> Result<(), ErrorGuaranteed>,
+        adt_did: LocalDefId,
+        validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
     ) -> Option<ty::AsyncDestructor> {
         let async_drop_trait = self.lang_items().async_drop_trait()?;
         self.ensure_ok().coherent_trait(async_drop_trait).ok()?;
 
-        let ty = self.type_of(adt_did).instantiate_identity();
         let mut dtor_candidate = None;
-        self.for_each_relevant_impl(async_drop_trait, ty, |impl_did| {
+        // `AsyncDrop` impls can only be written in the same crate as the adt, and cannot be blanket impls
+        for &impl_did in self.local_trait_impls(async_drop_trait) {
+            let Some(adt_def) = self.type_of(impl_did).skip_binder().ty_adt_def() else { continue };
+            if adt_def.did() != adt_did.to_def_id() {
+                continue;
+            }
+
             if validate(self, impl_did).is_err() {
                 // Already `ErrorGuaranteed`, no need to delay a span bug here.
-                return;
+                continue;
             }
 
             let [future, ctor] = self.associated_item_def_ids(impl_did) else {
@@ -445,7 +455,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     self.def_span(impl_did),
                     "AsyncDrop impl without async_drop function or Dropper type",
                 );
-                return;
+                continue;
             };
 
             if let Some((_, _, old_impl_did)) = dtor_candidate {
@@ -456,7 +466,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
 
             dtor_candidate = Some((*future, *ctor, impl_did));
-        });
+        }
 
         let (future, ctor, _) = dtor_candidate?;
         Some(ty::AsyncDestructor { future, ctor })

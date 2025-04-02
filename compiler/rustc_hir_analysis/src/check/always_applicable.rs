@@ -36,10 +36,8 @@ use crate::hir::def_id::{DefId, LocalDefId};
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 pub(crate) fn check_drop_impl(
     tcx: TyCtxt<'_>,
-    drop_impl_did: DefId,
+    drop_impl_did: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let drop_impl_did = drop_impl_did.expect_local();
-
     match tcx.impl_polarity(drop_impl_did) {
         ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
@@ -56,9 +54,9 @@ pub(crate) fn check_drop_impl(
 
     tcx.ensure_ok().orphan_check_impl(drop_impl_did)?;
 
-    let dtor_impl_trait_ref = tcx.impl_trait_ref(drop_impl_did).unwrap().instantiate_identity();
+    let self_ty = tcx.type_of(drop_impl_did).instantiate_identity();
 
-    match dtor_impl_trait_ref.self_ty().kind() {
+    match self_ty.kind() {
         ty::Adt(adt_def, adt_to_impl_args) => {
             ensure_impl_params_and_item_params_correspond(
                 tcx,
