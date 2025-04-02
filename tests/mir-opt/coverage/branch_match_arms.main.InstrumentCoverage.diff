@@ -27,10 +27,10 @@
       }
   
 +     coverage Code { bcb: bcb0 } => $DIR/branch_match_arms.rs:14:1: 15:21 (#0);
-+     coverage Code { bcb: bcb1 } => $DIR/branch_match_arms.rs:16:17: 16:33 (#0);
-+     coverage Code { bcb: bcb3 } => $DIR/branch_match_arms.rs:17:17: 17:33 (#0);
-+     coverage Code { bcb: bcb4 } => $DIR/branch_match_arms.rs:18:17: 18:33 (#0);
-+     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:17: 19:33 (#0);
++     coverage Code { bcb: bcb1 } => $DIR/branch_match_arms.rs:16:17: 16:32 (#0);
++     coverage Code { bcb: bcb3 } => $DIR/branch_match_arms.rs:17:17: 17:32 (#0);
++     coverage Code { bcb: bcb4 } => $DIR/branch_match_arms.rs:18:17: 18:32 (#0);
++     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:17: 19:32 (#0);
 +     coverage Code { bcb: bcb2 } => $DIR/branch_match_arms.rs:21:2: 21:2 (#0);
 + 
       bb0: {
