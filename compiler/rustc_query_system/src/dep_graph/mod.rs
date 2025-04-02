@@ -111,6 +111,9 @@ pub trait Deps {
     /// We use this to create a side effect node.
     const DEP_KIND_SIDE_EFFECT: DepKind;
 
+    /// We use this to create the anon node with zero dependencies.
+    const DEP_KIND_ANON_ZERO_DEPS: DepKind;
+
     /// This is the highest value a `DepKind` can have. It's used during encoding to
     /// pack information into the unused bits.
     const DEP_KIND_MAX: u16;
