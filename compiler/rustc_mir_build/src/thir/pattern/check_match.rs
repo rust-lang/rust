@@ -676,7 +676,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             unpeeled_pat = subpattern;
         }
 
-        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. } = unpeeled_pat.kind
+        if let PatKind::ExpandedConstant { def_id, .. } = unpeeled_pat.kind
             && let DefKind::Const = self.tcx.def_kind(def_id)
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
             // We filter out paths with multiple path::segments.
@@ -1296,7 +1296,8 @@ fn report_non_exhaustive_match<'p, 'tcx>(
 
     for &arm in arms {
         let arm = &thir.arms[arm];
-        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. } = arm.pattern.kind
+        if let PatKind::ExpandedConstant { def_id, .. } = arm.pattern.kind
+            && !matches!(cx.tcx.def_kind(def_id), DefKind::InlineConst)
             && let Ok(snippet) = cx.tcx.sess.source_map().span_to_snippet(arm.pattern.span)
             // We filter out paths with multiple path::segments.
             && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
