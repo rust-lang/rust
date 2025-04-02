@@ -5,6 +5,7 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![allow(unused_crate_dependencies)]
 #![cfg_attr(feature = "rustc", feature(let_chains))]
 // tidy-alphabetical-end
 

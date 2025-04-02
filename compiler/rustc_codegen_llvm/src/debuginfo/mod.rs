@@ -2,10 +2,11 @@
 
 use std::cell::{OnceCell, RefCell};
 use std::ops::Range;
+use std::ptr;
 use std::sync::Arc;
-use std::{iter, ptr};
 
 use libc::c_uint;
+use metadata::create_subroutine_type;
 use rustc_abi::Size;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
@@ -34,8 +35,8 @@ use crate::builder::Builder;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;
 use crate::llvm::debuginfo::{
-    DIArray, DIBuilderBox, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope, DIType,
-    DIVariable,
+    DIArray, DIBuilderBox, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope,
+    DITemplateTypeParameter, DIType, DIVariable,
 };
 use crate::value::Value;
 
@@ -251,7 +252,7 @@ struct DebugLoc {
     col: u32,
 }
 
-impl CodegenCx<'_, '_> {
+impl<'ll> CodegenCx<'ll, '_> {
     /// Looks up debug source information about a `BytePos`.
     // FIXME(eddyb) rename this to better indicate it's a duplicate of
     // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
@@ -277,6 +278,22 @@ impl CodegenCx<'_, '_> {
             DebugLoc { file, line, col: UNKNOWN_COLUMN_NUMBER }
         } else {
             DebugLoc { file, line, col }
+        }
+    }
+
+    fn create_template_type_parameter(
+        &self,
+        name: &str,
+        actual_type_metadata: &'ll DIType,
+    ) -> &'ll DITemplateTypeParameter {
+        unsafe {
+            llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
+                DIB(self),
+                None,
+                name.as_c_char_ptr(),
+                name.len(),
+                actual_type_metadata,
+            )
         }
     }
 }
@@ -325,10 +342,8 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
-        let function_type_metadata = unsafe {
-            let fn_signature = get_function_signature(self, fn_abi);
-            llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
-        };
+        let function_type_metadata =
+            create_subroutine_type(self, get_function_signature(self, fn_abi));
 
         let mut name = String::with_capacity(64);
         type_names::push_item_name(tcx, def_id, false, &mut name);
@@ -471,44 +486,8 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             generics: &ty::Generics,
             args: GenericArgsRef<'tcx>,
         ) -> &'ll DIArray {
-            if args.types().next().is_none() {
-                return create_DIArray(DIB(cx), &[]);
-            }
-
-            // Again, only create type information if full debuginfo is enabled
-            let template_params: Vec<_> = if cx.sess().opts.debuginfo == DebugInfo::Full {
-                let names = get_parameter_names(cx, generics);
-                iter::zip(args, names)
-                    .filter_map(|(kind, name)| {
-                        kind.as_type().map(|ty| {
-                            let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
-                            let actual_type_metadata = type_di_node(cx, actual_type);
-                            let name = name.as_str();
-                            unsafe {
-                                Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
-                                    DIB(cx),
-                                    None,
-                                    name.as_c_char_ptr(),
-                                    name.len(),
-                                    actual_type_metadata,
-                                ))
-                            }
-                        })
-                    })
-                    .collect()
-            } else {
-                vec![]
-            };
-
+            let template_params = metadata::get_template_parameters(cx, generics, args);
             create_DIArray(DIB(cx), &template_params)
-        }
-
-        fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
-            let mut names = generics.parent.map_or_else(Vec::new, |def_id| {
-                get_parameter_names(cx, cx.tcx.generics_of(def_id))
-            });
-            names.extend(generics.own_params.iter().map(|param| param.name));
-            names
         }
 
         /// Returns a scope, plus `true` if that's a type scope for "class" methods,

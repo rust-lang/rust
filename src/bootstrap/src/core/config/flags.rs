@@ -179,6 +179,9 @@ pub struct Flags {
     /// arguments passed to subcommands
     #[arg(global = true, last(true), value_name = "ARGS")]
     pub free_args: Vec<String>,
+    /// Make bootstrap to behave as it's running on the CI environment or not.
+    #[arg(global = true, long, value_name = "bool")]
+    pub ci: Option<bool>,
 }
 
 impl Flags {

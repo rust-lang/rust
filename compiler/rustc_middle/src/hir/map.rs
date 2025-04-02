@@ -280,11 +280,11 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn hir_body_param_names(self, id: BodyId) -> impl Iterator<Item = Ident> {
+    pub fn hir_body_param_names(self, id: BodyId) -> impl Iterator<Item = Option<Ident>> {
         self.hir_body(id).params.iter().map(|param| match param.pat.kind {
-            PatKind::Binding(_, _, ident, _) => ident,
-            PatKind::Wild => Ident::new(kw::Underscore, param.pat.span),
-            _ => Ident::empty(),
+            PatKind::Binding(_, _, ident, _) => Some(ident),
+            PatKind::Wild => Some(Ident::new(kw::Underscore, param.pat.span)),
+            _ => None,
         })
     }
 
@@ -367,10 +367,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn hir_trait_impls(self, trait_did: DefId) -> &'tcx [LocalDefId] {
-        self.all_local_trait_impls(()).get(&trait_did).map_or(&[], |xs| &xs[..])
-    }
-
     /// Gets the attributes on the crate. This is preferable to
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
@@ -385,7 +381,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hir_get_module(self, module: LocalModDefId) -> (&'tcx Mod<'tcx>, Span, HirId) {
         let hir_id = HirId::make_owner(module.to_local_def_id());
         match self.hir_owner_node(hir_id.owner) {
-            OwnerNode::Item(&Item { span, kind: ItemKind::Mod(m), .. }) => (m, span, hir_id),
+            OwnerNode::Item(&Item { span, kind: ItemKind::Mod(_, m), .. }) => (m, span, hir_id),
             OwnerNode::Crate(item) => (item, item.spans.inner_span, hir_id),
             node => panic!("not a module: {node:?}"),
         }
@@ -847,7 +843,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // A `Ctor` doesn't have an identifier itself, but its parent
             // struct/variant does. Compare with `hir::Map::span`.
             Node::Ctor(..) => match self.parent_hir_node(id) {
-                Node::Item(item) => Some(item.ident),
+                Node::Item(item) => Some(item.kind.ident().unwrap()),
                 Node::Variant(variant) => Some(variant.ident),
                 _ => unreachable!(),
             },
@@ -894,18 +890,14 @@ impl<'hir> Map<'hir> {
         }
 
         fn named_span(item_span: Span, ident: Ident, generics: Option<&Generics<'_>>) -> Span {
-            if ident.name != kw::Empty {
-                let mut span = until_within(item_span, ident.span);
-                if let Some(g) = generics
-                    && !g.span.is_dummy()
-                    && let Some(g_span) = g.span.find_ancestor_inside(item_span)
-                {
-                    span = span.to(g_span);
-                }
-                span
-            } else {
-                item_span
+            let mut span = until_within(item_span, ident.span);
+            if let Some(g) = generics
+                && !g.span.is_dummy()
+                && let Some(g_span) = g.span.find_ancestor_inside(item_span)
+            {
+                span = span.to(g_span);
             }
+            span
         }
 
         let span = match self.tcx.hir_node(hir_id) {
@@ -936,7 +928,7 @@ impl<'hir> Map<'hir> {
             }) => until_within(*outer_span, generics.where_clause_span),
             // Constants and Statics.
             Node::Item(Item {
-                kind: ItemKind::Const(ty, ..) | ItemKind::Static(ty, ..),
+                kind: ItemKind::Const(_, ty, ..) | ItemKind::Static(_, ty, ..),
                 span: outer_span,
                 ..
             })
@@ -957,7 +949,7 @@ impl<'hir> Map<'hir> {
             }) => until_within(*outer_span, ty.span),
             // With generics and bounds.
             Node::Item(Item {
-                kind: ItemKind::Trait(_, _, generics, bounds, _),
+                kind: ItemKind::Trait(_, _, _, generics, bounds, _),
                 span: outer_span,
                 ..
             })
@@ -977,7 +969,13 @@ impl<'hir> Map<'hir> {
                     // SyntaxContext of the path.
                     path.span.find_ancestor_in_same_ctxt(item.span).unwrap_or(item.span)
                 }
-                _ => named_span(item.span, item.ident, item.kind.generics()),
+                _ => {
+                    if let Some(ident) = item.kind.ident() {
+                        named_span(item.span, ident, item.kind.generics())
+                    } else {
+                        item.span
+                    }
+                }
             },
             Node::Variant(variant) => named_span(variant.span, variant.ident, None),
             Node::ImplItem(item) => named_span(item.span, item.ident, Some(item.generics)),
@@ -1174,15 +1172,14 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         debugger_visualizers.hash_stable(&mut hcx, &mut stable_hasher);
         if tcx.sess.opts.incremental.is_some() {
             let definitions = tcx.untracked().definitions.freeze();
-            let mut owner_spans: Vec<_> = krate
-                .owners
-                .iter_enumerated()
-                .filter_map(|(def_id, info)| {
-                    let _ = info.as_owner()?;
+            let mut owner_spans: Vec<_> = tcx
+                .hir_crate_items(())
+                .definitions()
+                .map(|def_id| {
                     let def_path_hash = definitions.def_path_hash(def_id);
                     let span = tcx.source_span(def_id);
                     debug_assert_eq!(span.parent(), None);
-                    Some((def_path_hash, span))
+                    (def_path_hash, span)
                 })
                 .collect();
             owner_spans.sort_unstable_by_key(|bn| bn.0);
@@ -1327,7 +1324,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         self.items.push(item.item_id());
 
         // Items that are modules are handled here instead of in visit_mod.
-        if let ItemKind::Mod(module) = &item.kind {
+        if let ItemKind::Mod(_, module) = &item.kind {
             self.submodules.push(item.owner_id);
             // A module collector does not recurse inside nested modules.
             if self.crate_collector {

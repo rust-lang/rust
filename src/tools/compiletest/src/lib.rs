@@ -22,6 +22,7 @@ pub mod util;
 use core::panic;
 use std::collections::HashSet;
 use std::ffi::OsString;
+use std::fmt::Write;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -570,18 +571,22 @@ pub fn run_tests(config: Arc<Config>) {
             // easy to miss which tests failed, and as such fail to reproduce
             // the failure locally.
 
-            println!(
-                "Some tests failed in compiletest suite={}{} mode={} host={} target={}",
-                config.suite,
-                config
-                    .compare_mode
-                    .as_ref()
-                    .map(|c| format!(" compare_mode={:?}", c))
-                    .unwrap_or_default(),
-                config.mode,
-                config.host,
-                config.target
-            );
+            let mut msg = String::from("Some tests failed in compiletest");
+            write!(msg, " suite={}", config.suite).unwrap();
+
+            if let Some(compare_mode) = config.compare_mode.as_ref() {
+                write!(msg, " compare_mode={}", compare_mode).unwrap();
+            }
+
+            if let Some(pass_mode) = config.force_pass_mode.as_ref() {
+                write!(msg, " pass_mode={}", pass_mode).unwrap();
+            }
+
+            write!(msg, " mode={}", config.mode).unwrap();
+            write!(msg, " host={}", config.host).unwrap();
+            write!(msg, " target={}", config.target).unwrap();
+
+            println!("{msg}");
 
             std::process::exit(1);
         }
@@ -747,8 +752,7 @@ fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
     }
 
     let files =
-        get_git_modified_files(&config.git_config(), Some(dir), &vec!["rs", "stderr", "fixed"])?
-            .unwrap_or(vec![]);
+        get_git_modified_files(&config.git_config(), Some(dir), &vec!["rs", "stderr", "fixed"])?;
     // Add new test cases to the list, it will be convenient in daily development.
     let untracked_files = get_git_untracked_files(&config.git_config(), None)?.unwrap_or(vec![]);
 

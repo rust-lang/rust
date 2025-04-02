@@ -18,7 +18,6 @@ mod modulo_one;
 mod needless_bitwise_bool;
 mod numeric_arithmetic;
 mod op_ref;
-mod ptr_eq;
 mod self_assignment;
 mod verbose_bit_mask;
 
@@ -770,35 +769,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Use `std::ptr::eq` when applicable
-    ///
-    /// ### Why is this bad?
-    /// `ptr::eq` can be used to compare `&T` references
-    /// (which coerce to `*const T` implicitly) by their address rather than
-    /// comparing the values they point to.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let a = &[1, 2, 3];
-    /// let b = &[1, 2, 3];
-    ///
-    /// assert!(a as *const _ as usize == b as *const _ as usize);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let a = &[1, 2, 3];
-    /// let b = &[1, 2, 3];
-    ///
-    /// assert!(std::ptr::eq(a, b));
-    /// ```
-    #[clippy::version = "1.49.0"]
-    pub PTR_EQ,
-    style,
-    "use `std::ptr::eq` when comparing raw pointers"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for explicit self-assignments.
     ///
     /// ### Why is this bad?
@@ -902,7 +872,6 @@ impl_lint_pass!(Operators => [
     MODULO_ONE,
     MODULO_ARITHMETIC,
     NEEDLESS_BITWISE_BOOL,
-    PTR_EQ,
     SELF_ASSIGNMENT,
     MANUAL_MIDPOINT,
 ]);
@@ -921,7 +890,6 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                     erasing_op::check(cx, e, op.node, lhs, rhs);
                     identity_op::check(cx, e, op.node, lhs, rhs);
                     needless_bitwise_bool::check(cx, e, op.node, lhs, rhs);
-                    ptr_eq::check(cx, e, op.node, lhs, rhs);
                     manual_midpoint::check(cx, e, op.node, lhs, rhs, self.msrv);
                 }
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);

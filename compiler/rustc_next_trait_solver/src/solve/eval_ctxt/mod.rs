@@ -387,7 +387,8 @@ where
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
-            ecx.delegate.inject_new_hidden_type_unchecked(key, ty, ecx.origin_span);
+            let prev = ecx.delegate.register_hidden_type_in_storage(key, ty, ecx.origin_span);
+            assert_eq!(prev, None);
         }
 
         if !ecx.nested_goals.is_empty() {
@@ -971,15 +972,17 @@ where
         rhs: T,
     ) -> Result<(), NoSolution> {
         let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
-        if cfg!(debug_assertions) {
-            for g in goals.iter() {
-                match g.predicate.kind().skip_binder() {
-                    ty::PredicateKind::Subtype { .. } | ty::PredicateKind::AliasRelate(..) => {}
-                    p => unreachable!("unexpected nested goal in `relate`: {p:?}"),
+        for &goal in goals.iter() {
+            let source = match goal.predicate.kind().skip_binder() {
+                ty::PredicateKind::Subtype { .. } | ty::PredicateKind::AliasRelate(..) => {
+                    GoalSource::TypeRelating
                 }
-            }
+                // FIXME(-Znext-solver=coinductive): should these WF goals also be unproductive?
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => GoalSource::Misc,
+                p => unreachable!("unexpected nested goal in `relate`: {p:?}"),
+            };
+            self.add_goal(source, goal);
         }
-        self.add_goals(GoalSource::TypeRelating, goals);
         Ok(())
     }
 
@@ -1068,16 +1071,12 @@ where
         self.delegate.fetch_eligible_assoc_item(goal_trait_ref, trait_assoc_def_id, impl_def_id)
     }
 
-    pub(super) fn insert_hidden_type(
+    pub(super) fn register_hidden_type_in_storage(
         &mut self,
         opaque_type_key: ty::OpaqueTypeKey<I>,
-        param_env: I::ParamEnv,
         hidden_ty: I::Ty,
-    ) -> Result<(), NoSolution> {
-        let mut goals = Vec::new();
-        self.delegate.insert_hidden_type(opaque_type_key, param_env, hidden_ty, &mut goals)?;
-        self.add_goals(GoalSource::Misc, goals);
-        Ok(())
+    ) -> Option<I::Ty> {
+        self.delegate.register_hidden_type_in_storage(opaque_type_key, hidden_ty, self.origin_span)
     }
 
     pub(super) fn add_item_bounds_for_hidden_type(

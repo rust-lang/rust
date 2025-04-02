@@ -95,14 +95,14 @@ pub fn try_find_native_static_library(
     name: &str,
     verbatim: bool,
 ) -> Option<PathBuf> {
+    let default = sess.staticlib_components(verbatim);
     let formats = if verbatim {
-        vec![("".into(), "".into())]
+        vec![default]
     } else {
-        let os = (sess.target.staticlib_prefix.clone(), sess.target.staticlib_suffix.clone());
         // On Windows, static libraries sometimes show up as libfoo.a and other
         // times show up as foo.lib
-        let unix = ("lib".into(), ".a".into());
-        if os == unix { vec![os] } else { vec![os, unix] }
+        let unix = ("lib", ".a");
+        if default == unix { vec![default] } else { vec![default, unix] }
     };
 
     walk_native_lib_search_dirs(sess, None, |dir, is_framework| {
@@ -124,18 +124,17 @@ pub fn try_find_native_dynamic_library(
     name: &str,
     verbatim: bool,
 ) -> Option<PathBuf> {
+    let default = sess.staticlib_components(verbatim);
     let formats = if verbatim {
-        vec![("".into(), "".into())]
+        vec![default]
     } else {
         // While the official naming convention for MSVC import libraries
-        // is foo.lib...
-        let os = (sess.target.staticlib_prefix.clone(), sess.target.staticlib_suffix.clone());
-        // ... Meson follows the libfoo.dll.a convention to
+        // is foo.lib, Meson follows the libfoo.dll.a convention to
         // disambiguate .a for static libraries
-        let meson = ("lib".into(), ".dll.a".into());
+        let meson = ("lib", ".dll.a");
         // and MinGW uses .a altogether
-        let mingw = ("lib".into(), ".a".into());
-        vec![os, meson, mingw]
+        let mingw = ("lib", ".a");
+        vec![default, meson, mingw]
     };
 
     walk_native_lib_search_dirs(sess, None, |dir, is_framework| {

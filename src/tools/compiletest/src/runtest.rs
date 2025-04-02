@@ -747,7 +747,7 @@ impl<'test> TestCx<'test> {
                         self.error(&format!(
                             "{}:{}: unexpected {}: '{}'",
                             file_name,
-                            actual_error.line_num,
+                            actual_error.line_num_str(),
                             actual_error
                                 .kind
                                 .as_ref()
@@ -767,7 +767,7 @@ impl<'test> TestCx<'test> {
                 self.error(&format!(
                     "{}:{}: expected {} not found: {}",
                     file_name,
-                    expected_error.line_num,
+                    expected_error.line_num_str(),
                     expected_error.kind.as_ref().map_or("message".into(), |k| k.to_string()),
                     expected_error.msg
                 ));

@@ -105,4 +105,15 @@ fn issue_12138() {
     }
 }
 
+fn issue_112502() {
+    struct MyInt(i64);
+
+    impl Into<i64> for MyInt {
+        //~^ from_over_into
+        fn into(self: MyInt) -> i64 {
+            self.0
+        }
+    }
+}
+
 fn main() {}

@@ -111,24 +111,22 @@ pub(crate) fn get_linker<'a>(
     // PATH for the child.
     let mut new_path = sess.get_tools_search_paths(self_contained);
     let mut msvc_changed_path = false;
-    if sess.target.is_like_msvc {
-        if let Some(ref tool) = msvc_tool {
-            cmd.args(tool.args());
-            for (k, v) in tool.env() {
-                if k == "PATH" {
-                    new_path.extend(env::split_paths(v));
-                    msvc_changed_path = true;
-                } else {
-                    cmd.env(k, v);
-                }
+    if sess.target.is_like_msvc
+        && let Some(ref tool) = msvc_tool
+    {
+        cmd.args(tool.args());
+        for (k, v) in tool.env() {
+            if k == "PATH" {
+                new_path.extend(env::split_paths(v));
+                msvc_changed_path = true;
+            } else {
+                cmd.env(k, v);
             }
         }
     }
 
-    if !msvc_changed_path {
-        if let Some(path) = env::var_os("PATH") {
-            new_path.extend(env::split_paths(&path));
-        }
+    if !msvc_changed_path && let Some(path) = env::var_os("PATH") {
+        new_path.extend(env::split_paths(&path));
     }
     cmd.env("PATH", env::join_paths(new_path).unwrap());
 
@@ -452,9 +450,10 @@ impl<'a> GccLinker<'a> {
                     // The output filename already contains `dll_suffix` so
                     // the resulting import library will have a name in the
                     // form of libfoo.dll.a
-                    let mut implib_name = OsString::from(&*self.sess.target.staticlib_prefix);
+                    let (prefix, suffix) = self.sess.staticlib_components(false);
+                    let mut implib_name = OsString::from(prefix);
                     implib_name.push(name);
-                    implib_name.push(&*self.sess.target.staticlib_suffix);
+                    implib_name.push(suffix);
                     let mut out_implib = OsString::from("--out-implib=");
                     out_implib.push(out_filename.with_file_name(implib_name));
                     self.link_arg(out_implib);
@@ -960,9 +959,9 @@ impl<'a> Linker for MsvcLinker<'a> {
         if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
             self.link_staticlib_by_path(&path, whole_archive);
         } else {
-            let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
-            let suffix = if verbatim { "" } else { ".lib" };
-            self.link_arg(format!("{prefix}{name}{suffix}"));
+            let opts = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
+            let (prefix, suffix) = self.sess.staticlib_components(verbatim);
+            self.link_arg(format!("{opts}{prefix}{name}{suffix}"));
         }
     }
 
@@ -1784,7 +1783,10 @@ fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -
     let mut symbols = Vec::new();
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) {
+        // Do not export mangled symbols from cdylibs and don't attempt to export compiler-builtins
+        // from any cdylib. The latter doesn't work anyway as we use hidden visibility for
+        // compiler-builtins. Most linkers silently ignore it, but ld64 gives a warning.
+        if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum) {
             symbols.push(symbol_export::exporting_symbol_name_for_instance_in_crate(
                 tcx, symbol, cnum,
             ));
@@ -1823,7 +1825,9 @@ pub(crate) fn linked_symbols(
 
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
+        if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum)
+            || info.used
+        {
             symbols.push((
                 symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
                 info.kind,

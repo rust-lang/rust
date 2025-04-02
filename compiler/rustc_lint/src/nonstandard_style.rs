@@ -172,20 +172,22 @@ impl EarlyLintPass for NonCamelCaseTypes {
         }
 
         match &it.kind {
-            ast::ItemKind::TyAlias(..)
-            | ast::ItemKind::Enum(..)
-            | ast::ItemKind::Struct(..)
-            | ast::ItemKind::Union(..) => self.check_case(cx, "type", &it.ident),
-            ast::ItemKind::Trait(..) => self.check_case(cx, "trait", &it.ident),
-            ast::ItemKind::TraitAlias(..) => self.check_case(cx, "trait alias", &it.ident),
+            ast::ItemKind::TyAlias(box ast::TyAlias { ident, .. })
+            | ast::ItemKind::Enum(ident, ..)
+            | ast::ItemKind::Struct(ident, ..)
+            | ast::ItemKind::Union(ident, ..) => self.check_case(cx, "type", ident),
+            ast::ItemKind::Trait(box ast::Trait { ident, .. }) => {
+                self.check_case(cx, "trait", ident)
+            }
+            ast::ItemKind::TraitAlias(ident, _, _) => self.check_case(cx, "trait alias", ident),
 
             // N.B. This check is only for inherent associated types, so that we don't lint against
             // trait impls where we should have warned for the trait definition already.
             ast::ItemKind::Impl(box ast::Impl { of_trait: None, items, .. }) => {
                 for it in items {
                     // FIXME: this doesn't respect `#[allow(..)]` on the item itself.
-                    if let ast::AssocItemKind::Type(..) = it.kind {
-                        self.check_case(cx, "associated type", &it.ident);
+                    if let ast::AssocItemKind::Type(alias) = &it.kind {
+                        self.check_case(cx, "associated type", &alias.ident);
                     }
                 }
             }
@@ -194,8 +196,8 @@ impl EarlyLintPass for NonCamelCaseTypes {
     }
 
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        if let ast::AssocItemKind::Type(..) = it.kind {
-            self.check_case(cx, "associated type", &it.ident);
+        if let ast::AssocItemKind::Type(alias) = &it.kind {
+            self.check_case(cx, "associated type", &alias.ident);
         }
     }
 
@@ -415,8 +417,8 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
-        if let hir::ItemKind::Mod(_) = it.kind {
-            self.check_snake_case(cx, "module", &it.ident);
+        if let hir::ItemKind::Mod(ident, _) = it.kind {
+            self.check_snake_case(cx, "module", &ident);
         }
     }
 
@@ -424,7 +426,9 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         if let hir::TraitItemKind::Fn(_, hir::TraitFn::Required(pnames)) = item.kind {
             self.check_snake_case(cx, "trait method", &item.ident);
             for param_name in pnames {
-                self.check_snake_case(cx, "variable", param_name);
+                if let Some(param_name) = param_name {
+                    self.check_snake_case(cx, "variable", param_name);
+                }
             }
         }
     }
@@ -498,11 +502,13 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
         match it.kind {
-            hir::ItemKind::Static(..) if !ast::attr::contains_name(attrs, sym::no_mangle) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "static variable", &it.ident);
+            hir::ItemKind::Static(ident, ..)
+                if !ast::attr::contains_name(attrs, sym::no_mangle) =>
+            {
+                NonUpperCaseGlobals::check_upper_case(cx, "static variable", &ident);
             }
-            hir::ItemKind::Const(..) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "constant", &it.ident);
+            hir::ItemKind::Const(ident, ..) => {
+                NonUpperCaseGlobals::check_upper_case(cx, "constant", &ident);
             }
             _ => {}
         }

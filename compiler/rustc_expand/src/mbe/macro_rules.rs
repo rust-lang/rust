@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
+use std::sync::Arc;
 use std::{mem, slice};
 
 use ast::token::IdentIsRaw;
@@ -388,7 +389,7 @@ pub fn compile_declarative_macro(
             node_id != DUMMY_NODE_ID,
         )
     };
-    let dummy_syn_ext = |guar| (mk_syn_ext(Box::new(DummyExpander(guar))), Vec::new());
+    let dummy_syn_ext = |guar| (mk_syn_ext(Arc::new(DummyExpander(guar))), Vec::new());
 
     let lhs_nm = Ident::new(sym::lhs, span);
     let rhs_nm = Ident::new(sym::rhs, span);
@@ -582,7 +583,7 @@ pub fn compile_declarative_macro(
         })
         .collect();
 
-    let expander = Box::new(MacroRulesMacroExpander {
+    let expander = Arc::new(MacroRulesMacroExpander {
         name: ident,
         span,
         node_id,

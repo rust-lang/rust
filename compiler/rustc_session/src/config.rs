@@ -58,6 +58,7 @@ pub const PRINT_KINDS: &[(&str, PrintKind)] = &[
     ("relocation-models", PrintKind::RelocationModels),
     ("split-debuginfo", PrintKind::SplitDebuginfo),
     ("stack-protector-strategies", PrintKind::StackProtectorStrategies),
+    ("supported-crate-types", PrintKind::SupportedCrateTypes),
     ("sysroot", PrintKind::Sysroot),
     ("target-cpus", PrintKind::TargetCPUs),
     ("target-features", PrintKind::TargetFeatures),
@@ -888,6 +889,7 @@ pub enum PrintKind {
     RelocationModels,
     SplitDebuginfo,
     StackProtectorStrategies,
+    SupportedCrateTypes,
     Sysroot,
     TargetCPUs,
     TargetFeatures,
@@ -2063,7 +2065,10 @@ fn check_print_request_stability(
     (print_name, print_kind): (&str, PrintKind),
 ) {
     match print_kind {
-        PrintKind::AllTargetSpecsJson | PrintKind::CheckCfg | PrintKind::TargetSpecJson
+        PrintKind::AllTargetSpecsJson
+        | PrintKind::CheckCfg
+        | PrintKind::SupportedCrateTypes
+        | PrintKind::TargetSpecJson
             if !unstable_opts.unstable_options =>
         {
             early_dcx.early_fatal(format!(
@@ -2082,6 +2087,12 @@ fn emit_unknown_print_request_help(early_dcx: &EarlyDiagCtxt, req: &str) -> ! {
     let mut diag = early_dcx.early_struct_fatal(format!("unknown print request: `{req}`"));
     #[allow(rustc::diagnostic_outside_of_impl)]
     diag.help(format!("valid print requests are: {prints}"));
+
+    if req == "lints" {
+        diag.help(format!("use `-Whelp` to print a list of lints"));
+    }
+
+    diag.help(format!("for more information, see the rustc book: https://doc.rust-lang.org/rustc/command-line-arguments.html#--print-print-compiler-information"));
     diag.emit()
 }
 

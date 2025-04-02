@@ -3360,10 +3360,6 @@ impl<T: Hash, A: Allocator> Hash for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
-    message = "vector indices are of type `usize` or ranges of `usize`",
-    label = "vector indices are of type `usize` or ranges of `usize`"
-)]
 impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
     type Output = I::Output;
 
@@ -3374,10 +3370,6 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
-    message = "vector indices are of type `usize` or ranges of `usize`",
-    label = "vector indices are of type `usize` or ranges of `usize`"
-)]
 impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {

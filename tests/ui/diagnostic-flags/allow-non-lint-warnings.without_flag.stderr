@@ -1,8 +1,10 @@
-warning: unexpected annotation used with `#[rustc_error(...)]`!
-  --> $DIR/allow-non-lint-warnings.rs:25:1
+warning: skipping const checks
    |
-LL | fn main() {}
-   | ^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/allow-non-lint-warnings.rs:24:23
+   |
+LL | const fn constant() { non_constant() }
+   |                       ^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
 

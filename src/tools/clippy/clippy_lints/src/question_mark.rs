@@ -3,7 +3,7 @@ use crate::question_mark_used::QUESTION_MARK_USED;
 use clippy_config::Conf;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::Msrv;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{
@@ -145,8 +145,47 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     {
         let mut applicability = Applicability::MaybeIncorrect;
         let init_expr_str = snippet_with_applicability(cx, init_expr.span, "..", &mut applicability);
-        let receiver_str = snippet_with_applicability(cx, inner_pat.span, "..", &mut applicability);
-        let sugg = format!("let {receiver_str} = {init_expr_str}?;",);
+        // Take care when binding is `ref`
+        let sugg = if let PatKind::Binding(
+            BindingMode(ByRef::Yes(ref_mutability), binding_mutability),
+            _hir_id,
+            ident,
+            subpattern,
+        ) = inner_pat.kind
+        {
+            let (from_method, replace_to) = match ref_mutability {
+                Mutability::Mut => (".as_mut()", "&mut "),
+                Mutability::Not => (".as_ref()", "&"),
+            };
+
+            let mutability_str = match binding_mutability {
+                Mutability::Mut => "mut ",
+                Mutability::Not => "",
+            };
+
+            // Handle subpattern (@ subpattern)
+            let maybe_subpattern = match subpattern {
+                Some(Pat {
+                    kind: PatKind::Binding(BindingMode(ByRef::Yes(_), _), _, subident, None),
+                    ..
+                }) => {
+                    // avoid `&ref`
+                    // note that, because you can't have aliased, mutable references, we don't have to worry about
+                    // the outer and inner mutability being different
+                    format!(" @ {subident}")
+                },
+                Some(subpattern) => {
+                    let substr = snippet_with_applicability(cx, subpattern.span, "..", &mut applicability);
+                    format!(" @ {replace_to}{substr}")
+                },
+                None => String::new(),
+            };
+
+            format!("let {mutability_str}{ident}{maybe_subpattern} = {init_expr_str}{from_method}?;")
+        } else {
+            let receiver_str = snippet_with_applicability(cx, inner_pat.span, "..", &mut applicability);
+            format!("let {receiver_str} = {init_expr_str}?;")
+        };
         span_lint_and_sugg(
             cx,
             QUESTION_MARK,
@@ -230,7 +269,7 @@ fn expr_return_none_or_err(
 ///
 /// ```ignore
 /// if option.is_none() {
-///    return None;
+///     return None;
 /// }
 /// ```
 ///
@@ -485,7 +524,8 @@ fn is_inferred_ret_closure(expr: &Expr<'_>) -> bool {
 
 impl<'tcx> LateLintPass<'tcx> for QuestionMark {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if !is_lint_allowed(cx, QUESTION_MARK_USED, stmt.hir_id) {
+        if !is_lint_allowed(cx, QUESTION_MARK_USED, stmt.hir_id) || !self.msrv.meets(cx, msrvs::QUESTION_MARK_OPERATOR)
+        {
             return;
         }
 
@@ -501,7 +541,10 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
             return;
         }
 
-        if !self.inside_try_block() && !is_in_const_context(cx) && is_lint_allowed(cx, QUESTION_MARK_USED, expr.hir_id)
+        if !self.inside_try_block()
+            && !is_in_const_context(cx)
+            && is_lint_allowed(cx, QUESTION_MARK_USED, expr.hir_id)
+            && self.msrv.meets(cx, msrvs::QUESTION_MARK_OPERATOR)
         {
             check_is_none_or_err_and_early_return(cx, expr);
             check_if_let_some_or_err_and_early_return(cx, expr);

@@ -166,7 +166,7 @@ case $HOST_TARGET in
     UNIX="hello panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
     TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC $UNIX time hashmap random threadname pthread fs libc-pipe
     TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC $UNIX time hashmap random threadname pthread fs libc-pipe
-    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX time hashmap random sync threadname pthread epoll eventfd
+    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX time hashmap random sync concurrency thread epoll eventfd
     TEST_TARGET=wasm32-wasip2          run_tests_minimal $BASIC wasm
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
     TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std

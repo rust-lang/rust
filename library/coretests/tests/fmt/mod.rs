@@ -22,32 +22,24 @@ fn test_pointer_formats_data_pointer() {
 #[test]
 fn test_fmt_debug_of_raw_pointers() {
     use core::fmt::Debug;
+    use core::ptr;
 
-    fn check_fmt<T: Debug>(t: T, expected: &str) {
-        use std::sync::LazyLock;
-
-        use regex::Regex;
-
-        static ADDR_REGEX: LazyLock<Regex> =
-            LazyLock::new(|| Regex::new(r"0x[0-9a-fA-F]+").unwrap());
-
+    fn check_fmt<T: Debug>(t: T, start: &str, contains: &str) {
         let formatted = format!("{:?}", t);
-        let normalized = ADDR_REGEX.replace_all(&formatted, "$$HEX");
-
-        assert_eq!(normalized, expected);
+        assert!(formatted.starts_with(start), "{formatted:?} doesn't start with {start:?}");
+        assert!(formatted.contains(contains), "{formatted:?} doesn't contain {contains:?}");
     }
 
-    let plain = &mut 100;
-    check_fmt(plain as *mut i32, "$HEX");
-    check_fmt(plain as *const i32, "$HEX");
+    assert_eq!(format!("{:?}", ptr::without_provenance_mut::<i32>(0x100)), "0x100");
+    assert_eq!(format!("{:?}", ptr::without_provenance::<i32>(0x100)), "0x100");
 
-    let slice = &mut [200, 300, 400][..];
-    check_fmt(slice as *mut [i32], "Pointer { addr: $HEX, metadata: 3 }");
-    check_fmt(slice as *const [i32], "Pointer { addr: $HEX, metadata: 3 }");
+    let slice = ptr::slice_from_raw_parts(ptr::without_provenance::<i32>(0x100), 3);
+    assert_eq!(format!("{:?}", slice as *mut [i32]), "Pointer { addr: 0x100, metadata: 3 }");
+    assert_eq!(format!("{:?}", slice as *const [i32]), "Pointer { addr: 0x100, metadata: 3 }");
 
     let vtable = &mut 500 as &mut dyn Debug;
-    check_fmt(vtable as *mut dyn Debug, "Pointer { addr: $HEX, metadata: DynMetadata($HEX) }");
-    check_fmt(vtable as *const dyn Debug, "Pointer { addr: $HEX, metadata: DynMetadata($HEX) }");
+    check_fmt(vtable as *mut dyn Debug, "Pointer { addr: ", ", metadata: DynMetadata(");
+    check_fmt(vtable as *const dyn Debug, "Pointer { addr: ", ", metadata: DynMetadata(");
 }
 
 #[test]
@@ -89,6 +81,7 @@ fn formatting_options_ctor() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn formatting_options_flags() {
     use core::fmt::*;
     for sign in [None, Some(Sign::Plus), Some(Sign::Minus)] {
@@ -106,6 +99,25 @@ fn formatting_options_flags() {
                     assert_eq!(formatting_options.get_alternate(), alternate);
                     assert_eq!(formatting_options.get_sign_aware_zero_pad(), sign_aware_zero_pad);
                     assert_eq!(formatting_options.get_debug_as_hex(), debug_as_hex);
+
+                    let mut output = String::new();
+                    let fmt = Formatter::new(&mut output, formatting_options);
+                    assert_eq!(fmt.options(), formatting_options);
+
+                    assert_eq!(fmt.sign_minus(), sign == Some(Sign::Minus));
+                    assert_eq!(fmt.sign_plus(), sign == Some(Sign::Plus));
+                    assert_eq!(fmt.alternate(), alternate);
+                    assert_eq!(fmt.sign_aware_zero_pad(), sign_aware_zero_pad);
+
+                    // The flags method is deprecated.
+                    // This checks compatibility with older versions of Rust.
+                    assert_eq!(fmt.flags() & 1 != 0, sign == Some(Sign::Plus));
+                    assert_eq!(fmt.flags() & 2 != 0, sign == Some(Sign::Minus));
+                    assert_eq!(fmt.flags() & 4 != 0, alternate);
+                    assert_eq!(fmt.flags() & 8 != 0, sign_aware_zero_pad);
+                    assert_eq!(fmt.flags() & 16 != 0, debug_as_hex == Some(DebugAsHex::Lower));
+                    assert_eq!(fmt.flags() & 32 != 0, debug_as_hex == Some(DebugAsHex::Upper));
+                    assert_eq!(fmt.flags() & 0xFFFF_FFC0, 0);
                 }
             }
         }

@@ -241,7 +241,7 @@ impl<'ast, 'ecx, 'tcx, T: EarlyLintPass> ast_visit::Visitor<'ast>
                 ast_visit::AssocCtxt::Trait => {
                     lint_callback!(cx, check_trait_item, item);
                 }
-                ast_visit::AssocCtxt::Impl => {
+                ast_visit::AssocCtxt::Impl { .. } => {
                     lint_callback!(cx, check_impl_item, item);
                 }
             }
@@ -250,7 +250,7 @@ impl<'ast, 'ecx, 'tcx, T: EarlyLintPass> ast_visit::Visitor<'ast>
                 ast_visit::AssocCtxt::Trait => {
                     lint_callback!(cx, check_trait_item_post, item);
                 }
-                ast_visit::AssocCtxt::Impl => {
+                ast_visit::AssocCtxt::Impl { .. } => {
                     lint_callback!(cx, check_impl_item_post, item);
                 }
             }

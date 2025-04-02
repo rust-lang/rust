@@ -35,7 +35,7 @@ use rustc_session::lint::builtin::{
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, edition, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -272,6 +272,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::forbid
                             | sym::cfg
                             | sym::cfg_attr
+                            | sym::cfg_trace
+                            | sym::cfg_attr_trace
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::pointee // FIXME(derive_coerce_pointee)
@@ -449,6 +451,23 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 });
             }
         }
+
+        // `#[inline]` is ignored if the symbol must be codegened upstream because it's exported.
+        if let Some(did) = hir_id.as_owner()
+            && self.tcx.def_kind(did).has_codegen_attrs()
+            && !matches!(attr.meta_item_list().as_deref(), Some([item]) if item.has_name(sym::never))
+        {
+            let attrs = self.tcx.codegen_fn_attrs(did);
+            // Not checking naked as `#[inline]` is forbidden for naked functions anyways.
+            if attrs.contains_extern_indicator() {
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span(),
+                    errors::InlineIgnoredForExported {},
+                );
+            }
+        }
     }
 
     /// Checks that `#[coverage(..)]` is applied to a function/closure/method,
@@ -573,8 +592,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // NOTE: when making changes to this list, check that `error_codes/E0736.md` remains accurate
         const ALLOW_LIST: &[rustc_span::Symbol] = &[
             // conditional compilation
-            sym::cfg,
-            sym::cfg_attr,
+            sym::cfg_trace,
+            sym::cfg_attr_trace,
             // testing (allowed here so better errors can be generated in `rustc_builtin_macros::test`)
             sym::test,
             sym::ignore,
@@ -598,7 +617,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             sym::repr,
             // code generation
             sym::cold,
-            sym::target_feature,
             // documentation
             sym::doc,
         ];
@@ -622,6 +640,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             continue;
                         }
                         _ => {}
+                    }
+
+                    if other_attr.has_name(sym::target_feature) {
+                        if !self.tcx.features().naked_functions_target_feature() {
+                            feature_err(
+                                &self.tcx.sess,
+                                sym::naked_functions_target_feature,
+                                other_attr.span(),
+                                "`#[target_feature(/* ... */)]` is currently unstable on `#[naked]` functions",
+                            ).emit();
+
+                            return;
+                        } else {
+                            continue;
+                        }
                     }
 
                     if !ALLOW_LIST.iter().any(|name| other_attr.has_name(*name)) {
@@ -743,7 +776,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Struct => {
                 if let Some(ItemLike::Item(hir::Item {
-                    kind: hir::ItemKind::Struct(hir::VariantData::Struct { fields, .. }, _),
+                    kind: hir::ItemKind::Struct(_, hir::VariantData::Struct { fields, .. }, _),
                     ..
                 })) = item
                     && !fields.is_empty()
@@ -952,8 +985,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             tcx.dcx().emit_err(errors::DocAliasBadLocation { span, attr_str, location });
             return;
         }
-        let item_name = self.tcx.hir_name(hir_id);
-        if item_name == doc_alias {
+        if self.tcx.hir_opt_name(hir_id) == Some(doc_alias) {
             tcx.dcx().emit_err(errors::DocAliasNotAnAlias { span, attr_str });
             return;
         }
@@ -1006,20 +1038,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
             // can remove the `SelfTy` case here, remove `sym::SelfTy`, and update the
             // `#[doc(keyword = "SelfTy")` attribute in `library/std/src/keyword_docs.rs`.
-            s <= kw::Union || s == sym::SelfTy
+            s.is_reserved(|| edition::LATEST_STABLE_EDITION) || s.is_weak() || s == sym::SelfTy
         }
 
-        let doc_keyword = meta.value_str().unwrap_or(kw::Empty);
-        if doc_keyword == kw::Empty {
-            self.doc_attr_str_error(meta, "keyword");
-            return;
-        }
+        let doc_keyword = match meta.value_str() {
+            Some(value) if value != kw::Empty => value,
+            _ => return self.doc_attr_str_error(meta, "keyword"),
+        };
+
         let item_kind = match self.tcx.hir_node(hir_id) {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
         };
         match item_kind {
-            Some(ItemKind::Mod(module)) => {
+            Some(ItemKind::Mod(_, module)) => {
                 if !module.item_ids.is_empty() {
                     self.dcx().emit_err(errors::DocKeywordEmptyMod { span: meta.span() });
                     return;
@@ -1072,9 +1104,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         };
         match item.kind {
-            ItemKind::Enum(_, generics) | ItemKind::Struct(_, generics)
+            ItemKind::Enum(_, _, generics) | ItemKind::Struct(_, _, generics)
                 if generics.params.len() != 0 => {}
-            ItemKind::Trait(_, _, generics, _, items)
+            ItemKind::Trait(_, _, _, generics, _, items)
                 if generics.params.len() != 0
                     || items.iter().any(|item| matches!(item.kind, AssocItemKind::Type)) => {}
             _ => {
@@ -2293,7 +2325,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         } else {
             // special case when `#[macro_export]` is applied to a macro 2.0
-            let (macro_definition, _) = self.tcx.hir_node(hir_id).expect_item().expect_macro();
+            let (_, macro_definition, _) = self.tcx.hir_node(hir_id).expect_item().expect_macro();
             let is_decl_macro = !macro_definition.macro_rules;
 
             if is_decl_macro {
@@ -2387,7 +2419,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     .iter()
                     .all(|kind| matches!(kind, CrateType::Rlib | CrateType::Staticlib));
                 if never_needs_link {
-                    errors::UnusedNote::LinkerWarningsBinaryCrateOnly
+                    errors::UnusedNote::LinkerMessagesBinaryCrateOnly
                 } else {
                     return;
                 }
@@ -2624,7 +2656,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // Historically we've run more checks on non-exported than exported macros,
         // so this lets us continue to run them while maintaining backwards compatibility.
         // In the long run, the checks should be harmonized.
-        if let ItemKind::Macro(macro_def, _) = item.kind {
+        if let ItemKind::Macro(_, macro_def, _) = item.kind {
             let def_id = item.owner_id.to_def_id();
             if macro_def.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
                 check_non_exported_macro_for_invalid_attrs(self.tcx, item);
@@ -2641,7 +2673,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
         // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
         // in where clauses. After that, only `self.check_attributes` should be enough.
-        const ATTRS_ALLOWED: &[Symbol] = &[sym::cfg, sym::cfg_attr];
+        const ATTRS_ALLOWED: &[Symbol] = &[sym::cfg_trace, sym::cfg_attr_trace];
         let spans = self
             .tcx
             .hir_attrs(where_predicate.hir_id)
@@ -2736,7 +2768,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 }
 
 fn is_c_like_enum(item: &Item<'_>) -> bool {
-    if let ItemKind::Enum(ref def, _) = item.kind {
+    if let ItemKind::Enum(_, ref def, _) = item.kind {
         for variant in def.variants {
             match variant.data {
                 hir::VariantData::Unit(..) => { /* continue */ }
@@ -2784,7 +2816,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             .map(|id| tcx.hir_item(id))
             .find(|item| !item.span.is_dummy()) // Skip prelude `use`s
             .map(|item| errors::ItemFollowingInnerAttr {
-                span: item.ident.span,
+                span: if let Some(ident) = item.kind.ident() { ident.span } else { item.span },
                 kind: item.kind.descr(),
             });
         let err = tcx.dcx().create_err(errors::InvalidAttrAtCrateLevel {

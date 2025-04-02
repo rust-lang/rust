@@ -1,5 +1,6 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::{reindent_multiline, snippet_indent, snippet_with_applicability, snippet_with_context};
+use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
     SpanlessEq, can_move_expr_to_closure_no_visit, higher, is_expr_final_block_expr, is_expr_used_or_unified,
@@ -84,13 +85,20 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
             return;
         };
 
+        let lint_msg = format!("usage of `contains_key` followed by `insert` on a `{}`", map_ty.name());
         let mut app = Applicability::MachineApplicable;
         let map_str = snippet_with_context(cx, contains_expr.map.span, contains_expr.call_ctxt, "..", &mut app).0;
         let key_str = snippet_with_context(cx, contains_expr.key.span, contains_expr.call_ctxt, "..", &mut app).0;
+
         let sugg = if let Some(else_expr) = else_expr {
             let Some(else_search) = find_insert_calls(cx, &contains_expr, else_expr) else {
                 return;
             };
+
+            if then_search.is_key_used_and_no_copy || else_search.is_key_used_and_no_copy {
+                span_lint(cx, MAP_ENTRY, expr.span, lint_msg);
+                return;
+            }
 
             if then_search.edits.is_empty() && else_search.edits.is_empty() {
                 // No insertions
@@ -184,15 +192,7 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
             }
         };
 
-        span_lint_and_sugg(
-            cx,
-            MAP_ENTRY,
-            expr.span,
-            format!("usage of `contains_key` followed by `insert` on a `{}`", map_ty.name()),
-            "try",
-            sugg,
-            app,
-        );
+        span_lint_and_sugg(cx, MAP_ENTRY, expr.span, lint_msg, "try", sugg, app);
     }
 }
 
@@ -354,6 +354,8 @@ struct InsertSearcher<'cx, 'tcx> {
     key: &'tcx Expr<'tcx>,
     /// The context of the top level block. All insert calls must be in the same context.
     ctxt: SyntaxContext,
+    /// The spanless equality utility used to compare expressions.
+    spanless_eq: SpanlessEq<'cx, 'tcx>,
     /// Whether this expression can be safely moved into a closure.
     allow_insert_closure: bool,
     /// Whether this expression can use the entry api.
@@ -364,6 +366,8 @@ struct InsertSearcher<'cx, 'tcx> {
     is_single_insert: bool,
     /// If the visitor has seen the map being used.
     is_map_used: bool,
+    /// If the visitor has seen the key being used.
+    is_key_used: bool,
     /// The locations where changes need to be made for the suggestion.
     edits: Vec<Edit<'tcx>>,
     /// A stack of loops the visitor is currently in.
@@ -479,11 +483,11 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
         }
 
         match try_parse_insert(self.cx, expr) {
-            Some(insert_expr) if SpanlessEq::new(self.cx).eq_expr(self.map, insert_expr.map) => {
+            Some(insert_expr) if self.spanless_eq.eq_expr(self.map, insert_expr.map) => {
                 self.visit_insert_expr_arguments(&insert_expr);
                 // Multiple inserts, inserts with a different key, and inserts from a macro can't use the entry api.
                 if self.is_map_used
-                    || !SpanlessEq::new(self.cx).eq_expr(self.key, insert_expr.key)
+                    || !self.spanless_eq.eq_expr(self.key, insert_expr.key)
                     || expr.span.ctxt() != self.ctxt
                 {
                     self.can_use_entry = false;
@@ -502,8 +506,11 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 self.visit_non_tail_expr(insert_expr.value);
                 self.is_single_insert = is_single_insert;
             },
-            _ if is_any_expr_in_map_used(self.cx, self.map, expr) => {
+            _ if is_any_expr_in_map_used(self.cx, &mut self.spanless_eq, self.map, expr) => {
                 self.is_map_used = true;
+            },
+            _ if self.spanless_eq.eq_expr(self.key, expr) => {
+                self.is_key_used = true;
             },
             _ => match expr.kind {
                 ExprKind::If(cond_expr, then_expr, Some(else_expr)) => {
@@ -568,9 +575,14 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
 /// Check if the given expression is used for each sub-expression in the given map.
 /// For example, in map `a.b.c.my_map`, The expression `a.b.c.my_map`, `a.b.c`, `a.b`, and `a` are
 /// all checked.
-fn is_any_expr_in_map_used<'tcx>(cx: &LateContext<'tcx>, map: &'tcx Expr<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+fn is_any_expr_in_map_used<'tcx>(
+    cx: &LateContext<'tcx>,
+    spanless_eq: &mut SpanlessEq<'_, 'tcx>,
+    map: &'tcx Expr<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+) -> bool {
     for_each_expr(cx, map, |e| {
-        if SpanlessEq::new(cx).eq_expr(e, expr) {
+        if spanless_eq.eq_expr(e, expr) {
             return ControlFlow::Break(());
         }
         ControlFlow::Continue(())
@@ -582,6 +594,7 @@ struct InsertSearchResults<'tcx> {
     edits: Vec<Edit<'tcx>>,
     allow_insert_closure: bool,
     is_single_insert: bool,
+    is_key_used_and_no_copy: bool,
 }
 impl<'tcx> InsertSearchResults<'tcx> {
     fn as_single_insertion(&self) -> Option<Insertion<'tcx>> {
@@ -694,11 +707,13 @@ fn find_insert_calls<'tcx>(
         map: contains_expr.map,
         key: contains_expr.key,
         ctxt: expr.span.ctxt(),
+        spanless_eq: SpanlessEq::new(cx),
         allow_insert_closure: true,
         can_use_entry: true,
         in_tail_pos: true,
         is_single_insert: true,
         is_map_used: false,
+        is_key_used: false,
         edits: Vec::new(),
         loops: Vec::new(),
         locals: HirIdSet::default(),
@@ -706,10 +721,12 @@ fn find_insert_calls<'tcx>(
     s.visit_expr(expr);
     let allow_insert_closure = s.allow_insert_closure;
     let is_single_insert = s.is_single_insert;
+    let is_key_used_and_no_copy = s.is_key_used && !is_copy(cx, cx.typeck_results().expr_ty(contains_expr.key));
     let edits = s.edits;
     s.can_use_entry.then_some(InsertSearchResults {
         edits,
         allow_insert_closure,
         is_single_insert,
+        is_key_used_and_no_copy,
     })
 }

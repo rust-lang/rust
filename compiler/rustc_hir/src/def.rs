@@ -294,7 +294,7 @@ impl DefKind {
             DefKind::GlobalAsm => DefPathData::GlobalAsm,
             DefKind::Impl { .. } => DefPathData::Impl,
             DefKind::Closure => DefPathData::Closure,
-            DefKind::SyntheticCoroutineBody => DefPathData::Closure,
+            DefKind::SyntheticCoroutineBody => DefPathData::SyntheticCoroutineBody,
         }
     }
 

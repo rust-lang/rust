@@ -274,7 +274,9 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
         // In LLVM 18, `unaligned-scalar-mem` was merged with `unaligned-vector-mem` into a single
         // feature called `fast-unaligned-access`. In LLVM 19, it was split back out.
-        ("riscv32" | "riscv64", "unaligned-scalar-mem") if get_version().0 == 18 => {
+        ("riscv32" | "riscv64", "unaligned-scalar-mem" | "unaligned-vector-mem")
+            if get_version().0 == 18 =>
+        {
             Some(LLVMFeature::new("fast-unaligned-access"))
         }
         // Filter out features that are not supported by the current LLVM version
@@ -298,6 +300,13 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("sparc", "v8plus") if get_version().0 == 19 => Some(LLVMFeature::new("v9")),
         ("sparc", "v8plus") if get_version().0 < 19 => None,
         ("powerpc", "power8-crypto") => Some(LLVMFeature::new("crypto")),
+        // These new `amx` variants and `movrs` were introduced in LLVM20
+        ("x86", "amx-avx512" | "amx-fp8" | "amx-movrs" | "amx-tf32" | "amx-transpose")
+            if get_version().0 < 20 =>
+        {
+            None
+        }
+        ("x86", "movrs") if get_version().0 < 20 => None,
         (_, s) => Some(LLVMFeature::new(s)),
     }
 }

@@ -15,7 +15,7 @@
 
 // Make sure that vtables don't have the unnamed_addr attribute when debuginfo is enabled.
 // This helps debuggers more reliably map from dyn pointer to concrete type.
-// CHECK: @vtable.2 = private constant <{
+// CHECK: @vtable.2 = private constant [
 // CHECK: @vtable.3 = private constant <{
 // CHECK: @vtable.4 = private constant <{
 

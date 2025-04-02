@@ -620,9 +620,8 @@ fn write_function_coverage_info(
     function_coverage_info: &coverage::FunctionCoverageInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::FunctionCoverageInfo { body_span, mappings, .. } = function_coverage_info;
+    let coverage::FunctionCoverageInfo { mappings, .. } = function_coverage_info;
 
-    writeln!(w, "{INDENT}coverage body span: {body_span:?}")?;
     for coverage::Mapping { kind, span } in mappings {
         writeln!(w, "{INDENT}coverage {kind:?} => {span:?};")?;
     }

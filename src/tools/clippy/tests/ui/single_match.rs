@@ -1,3 +1,4 @@
+//@require-annotations-for-level: WARN
 #![warn(clippy::single_match)]
 #![allow(
     unused,
@@ -28,6 +29,8 @@ fn single_match() {
         Some(y) => println!("{:?}", y),
         _ => (),
     }
+    //~^^^^^^^ single_match
+    //~| NOTE: you might want to preserve the comments from inside the `match`
 
     let z = (1u8, 1u8);
     match z {
@@ -437,14 +440,15 @@ fn irrefutable_match() {
 
     let mut x = vec![1i8];
 
-    // Should not lint.
     match x.pop() {
         // bla
         Some(u) => println!("{u}"),
         // more comments!
         None => {},
     }
-    // Should not lint.
+    //~^^^^^^ single_match
+    //~| NOTE: you might want to preserve the comments from inside the `match`
+
     match x.pop() {
         // bla
         Some(u) => {
@@ -454,4 +458,6 @@ fn irrefutable_match() {
         // bla
         None => {},
     }
+    //~^^^^^^^^^ single_match
+    //~| NOTE: you might want to preserve the comments from inside the `match`
 }

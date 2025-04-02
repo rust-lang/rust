@@ -5,4 +5,4 @@ pub mod pretty;
 pub mod visit;
 
 pub use body::*;
-pub use visit::MirVisitor;
+pub use visit::{MirVisitor, MutMirVisitor};

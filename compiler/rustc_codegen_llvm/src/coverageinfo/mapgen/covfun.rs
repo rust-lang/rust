@@ -105,9 +105,14 @@ fn fill_region_tables<'tcx>(
     ids_info: &'tcx CoverageIdsInfo,
     covfun: &mut CovfunRecord<'tcx>,
 ) {
-    // Currently a function's mappings must all be in the same file as its body span.
+    // Currently a function's mappings must all be in the same file, so use the
+    // first mapping's span to determine the file.
     let source_map = tcx.sess.source_map();
-    let source_file = source_map.lookup_source_file(fn_cov_info.body_span.lo());
+    let Some(first_span) = (try { fn_cov_info.mappings.first()?.span }) else {
+        debug_assert!(false, "function has no mappings: {:?}", covfun.mangled_function_name);
+        return;
+    };
+    let source_file = source_map.lookup_source_file(first_span.lo());
 
     // Look up the global file ID for that file.
     let global_file_id = global_file_table.global_file_id_for_file(&source_file);
@@ -115,13 +120,22 @@ fn fill_region_tables<'tcx>(
     // Associate that global file ID with a local file ID for this function.
     let local_file_id = covfun.virtual_file_mapping.local_id_for_global(global_file_id);
 
-    let ffi::Regions { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
-        &mut covfun.regions;
-
-    let make_cov_span = |span: Span| {
-        spans::make_coverage_span(local_file_id, source_map, fn_cov_info, &source_file, span)
-    };
+    // In rare cases, _all_ of a function's spans are discarded, and coverage
+    // codegen needs to handle that gracefully to avoid #133606.
+    // It's hard for tests to trigger this organically, so instead we set
+    // `-Zcoverage-options=discard-all-spans-in-codegen` to force it to occur.
     let discard_all = tcx.sess.coverage_discard_all_spans_in_codegen();
+    let make_coords = |span: Span| {
+        if discard_all { None } else { spans::make_coords(source_map, &source_file, span) }
+    };
+
+    let ffi::Regions {
+        code_regions,
+        expansion_regions: _, // FIXME(Zalathar): Fill out support for expansion regions
+        branch_regions,
+        mcdc_branch_regions,
+        mcdc_decision_regions,
+    } = &mut covfun.regions;
 
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
@@ -136,17 +150,8 @@ fn fill_region_tables<'tcx>(
             ffi::Counter::from_term(term)
         };
 
-        // Convert the `Span` into coordinates that we can pass to LLVM, or
-        // discard the span if conversion fails. In rare, cases _all_ of a
-        // function's spans are discarded, and the rest of coverage codegen
-        // needs to handle that gracefully to avoid a repeat of #133606.
-        // We don't have a good test case for triggering that organically, so
-        // instead we set `-Zcoverage-options=discard-all-spans-in-codegen`
-        // to force it to occur.
-        let Some(cov_span) = make_cov_span(span) else { continue };
-        if discard_all {
-            continue;
-        }
+        let Some(coords) = make_coords(span) else { continue };
+        let cov_span = coords.make_coverage_span(local_file_id);
 
         match *kind {
             MappingKind::Code { bcb } => {

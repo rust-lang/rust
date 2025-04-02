@@ -7,6 +7,7 @@ edition = "2021"
 anyhow = "1"
 clap = { version = "4.5", features = ["derive"] }
 csv = "1"
+diff = "0.1"
 glob-match = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"

@@ -2,11 +2,10 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::{is_lint_allowed, msrvs, std_or_core};
+use clippy_utils::{is_expr_temporary_value, is_lint_allowed, msrvs, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Ty, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::BytePos;
 
 use super::BORROW_AS_PTR;
@@ -25,12 +24,7 @@ pub(super) fn check<'tcx>(
         let mut app = Applicability::MachineApplicable;
         let snip = snippet_with_context(cx, e.span, cast_expr.span.ctxt(), "..", &mut app).0;
         // Fix #9884
-        if !e.is_place_expr(|base| {
-            cx.typeck_results()
-                .adjustments()
-                .get(base.hir_id)
-                .is_some_and(|x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
-        }) {
+        if is_expr_temporary_value(cx, e) {
             return false;
         }
 

@@ -24,7 +24,7 @@ pub(crate) fn target() -> Target {
             llvm_abiname: "lp64d".into(),
             cpu: "generic-rv64".into(),
             max_atomic_width: Some(64),
-            features: "+m,+a,+f,+d,+c".into(),
+            features: "+m,+a,+f,+d,+c,+zicsr,+zifencei".into(),
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
             code_model: Some(CodeModel::Medium),

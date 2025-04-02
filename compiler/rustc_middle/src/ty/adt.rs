@@ -236,7 +236,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
     }
 
     fn destructor(self, tcx: TyCtxt<'tcx>) -> Option<AdtDestructorKind> {
-        Some(match self.destructor(tcx)?.constness {
+        Some(match tcx.constness(self.destructor(tcx)?.did) {
             hir::Constness::Const => AdtDestructorKind::Const,
             hir::Constness::NotConst => AdtDestructorKind::NotConst,
         })
@@ -327,9 +327,20 @@ impl<'tcx> AdtDef<'tcx> {
     }
 
     /// Returns `true` if the variant list of this ADT is `#[non_exhaustive]`.
+    ///
+    /// Note that this function will return `true` even if the ADT has been
+    /// defined in the crate currently being compiled. If that's not what you
+    /// want, see [`Self::variant_list_has_applicable_non_exhaustive`].
     #[inline]
     pub fn is_variant_list_non_exhaustive(self) -> bool {
         self.flags().contains(AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE)
+    }
+
+    /// Returns `true` if the variant list of this ADT is `#[non_exhaustive]`
+    /// and has been defined in another crate.
+    #[inline]
+    pub fn variant_list_has_applicable_non_exhaustive(self) -> bool {
+        self.is_variant_list_non_exhaustive() && !self.did().is_local()
     }
 
     /// Returns the kind of the ADT.

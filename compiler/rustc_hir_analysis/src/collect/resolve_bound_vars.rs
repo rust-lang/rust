@@ -617,7 +617,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 });
             }
 
-            hir::ItemKind::ExternCrate(_)
+            hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Use(..)
             | hir::ItemKind::Macro(..)
             | hir::ItemKind::Mod(..)
@@ -627,13 +627,13 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }
-            hir::ItemKind::TyAlias(_, generics)
-            | hir::ItemKind::Const(_, generics, _)
-            | hir::ItemKind::Enum(_, generics)
-            | hir::ItemKind::Struct(_, generics)
-            | hir::ItemKind::Union(_, generics)
-            | hir::ItemKind::Trait(_, _, generics, ..)
-            | hir::ItemKind::TraitAlias(generics, ..)
+            hir::ItemKind::TyAlias(_, _, generics)
+            | hir::ItemKind::Const(_, _, generics, _)
+            | hir::ItemKind::Enum(_, _, generics)
+            | hir::ItemKind::Struct(_, _, generics)
+            | hir::ItemKind::Union(_, _, generics)
+            | hir::ItemKind::Trait(_, _, _, generics, ..)
+            | hir::ItemKind::TraitAlias(_, generics, ..)
             | hir::ItemKind::Impl(&hir::Impl { generics, .. }) => {
                 // These kinds of items have only early-bound lifetime parameters.
                 self.visit_early(item.hir_id(), generics, |this| intravisit::walk_item(this, item));

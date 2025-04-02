@@ -26,13 +26,11 @@
 // tidy-alphabetical-end
 
 mod cursor;
+pub mod unescape;
 
 #[cfg(test)]
 mod tests;
 
-// FIXME: This is needed for rust-analyzer. Remove this dependency once rust-analyzer uses
-// `literal-escaper`.
-pub use literal_escaper as unescape;
 use unicode_properties::UnicodeEmoji;
 pub use unicode_xid::UNICODE_VERSION as UNICODE_XID_VERSION;
 

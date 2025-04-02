@@ -257,7 +257,7 @@ pub(super) fn build_type_with_children<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     stub_info: StubInfo<'ll, 'tcx>,
     members: impl FnOnce(&CodegenCx<'ll, 'tcx>, &'ll DIType) -> SmallVec<&'ll DIType>,
-    generics: impl FnOnce(&CodegenCx<'ll, 'tcx>) -> SmallVec<&'ll DIType>,
+    generics: impl FnOnce(&CodegenCx<'ll, 'tcx>) -> SmallVec<Option<&'ll DIType>>,
 ) -> DINodeCreationResult<'ll> {
     assert_eq!(debug_context(cx).type_map.di_node_for_unique_id(stub_info.unique_type_id), None);
 
@@ -265,8 +265,7 @@ pub(super) fn build_type_with_children<'ll, 'tcx>(
 
     let members: SmallVec<_> =
         members(cx, stub_info.metadata).into_iter().map(|node| Some(node)).collect();
-    let generics: SmallVec<Option<&'ll DIType>> =
-        generics(cx).into_iter().map(|node| Some(node)).collect();
+    let generics = generics(cx);
 
     if !(members.is_empty() && generics.is_empty()) {
         unsafe {

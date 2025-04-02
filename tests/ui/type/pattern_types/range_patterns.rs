@@ -40,3 +40,7 @@ type SignedWrap = pattern_type!(i8 is 120..=-120); //~ ERROR unknown layout
 fn main() {
     let x: pattern_type!(u32 is 1..) = unsafe { std::mem::transmute(42_u32) };
 }
+
+//~? ERROR pattern type ranges cannot wrap: 1..=0
+//~? ERROR pattern type ranges cannot wrap: 5..=1
+//~? ERROR pattern type ranges cannot wrap: 120..=-120

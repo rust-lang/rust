@@ -305,6 +305,7 @@ impl SourceItemOrderingModuleItemKind {
 pub struct SourceItemOrderingModuleItemGroupings {
     groups: Vec<(String, Vec<SourceItemOrderingModuleItemKind>)>,
     lut: HashMap<SourceItemOrderingModuleItemKind, usize>,
+    back_lut: HashMap<SourceItemOrderingModuleItemKind, String>,
 }
 
 impl SourceItemOrderingModuleItemGroupings {
@@ -320,6 +321,30 @@ impl SourceItemOrderingModuleItemGroupings {
         lut
     }
 
+    fn build_back_lut(
+        groups: &[(String, Vec<SourceItemOrderingModuleItemKind>)],
+    ) -> HashMap<SourceItemOrderingModuleItemKind, String> {
+        let mut lut = HashMap::new();
+        for (group_name, items) in groups {
+            for item in items {
+                lut.insert(item.clone(), group_name.clone());
+            }
+        }
+        lut
+    }
+
+    pub fn grouping_name_of(&self, item: &SourceItemOrderingModuleItemKind) -> Option<&String> {
+        self.back_lut.get(item)
+    }
+
+    pub fn grouping_names(&self) -> Vec<String> {
+        self.groups.iter().map(|(name, _)| name.clone()).collect()
+    }
+
+    pub fn is_grouping(&self, grouping: &str) -> bool {
+        self.groups.iter().any(|(g, _)| g == grouping)
+    }
+
     pub fn module_level_order_of(&self, item: &SourceItemOrderingModuleItemKind) -> Option<usize> {
         self.lut.get(item).copied()
     }
@@ -330,7 +355,8 @@ impl From<&[(&str, &[SourceItemOrderingModuleItemKind])]> for SourceItemOrdering
         let groups: Vec<(String, Vec<SourceItemOrderingModuleItemKind>)> =
             value.iter().map(|item| (item.0.to_string(), item.1.to_vec())).collect();
         let lut = Self::build_lut(&groups);
-        Self { groups, lut }
+        let back_lut = Self::build_back_lut(&groups);
+        Self { groups, lut, back_lut }
     }
 }
 
@@ -348,6 +374,7 @@ impl<'de> Deserialize<'de> for SourceItemOrderingModuleItemGroupings {
         let groups = Vec::<(String, Vec<SourceItemOrderingModuleItemKind>)>::deserialize(deserializer)?;
         let items_total: usize = groups.iter().map(|(_, v)| v.len()).sum();
         let lut = Self::build_lut(&groups);
+        let back_lut = Self::build_back_lut(&groups);
 
         let mut expected_items = SourceItemOrderingModuleItemKind::all_variants();
         for item in lut.keys() {
@@ -370,7 +397,7 @@ impl<'de> Deserialize<'de> for SourceItemOrderingModuleItemGroupings {
                 ));
             }
 
-            Ok(Self { groups, lut })
+            Ok(Self { groups, lut, back_lut })
         } else if items_total != all_items.len() {
             Err(de::Error::custom(format!(
                 "Some module item kinds were configured more than once, or were missing, in the source ordering configuration. \
@@ -479,6 +506,83 @@ impl Serialize for SourceItemOrderingTraitAssocItemKinds {
         S: ser::Serializer,
     {
         self.0.serialize(serializer)
+    }
+}
+
+/// Describes which specific groupings should have their items ordered
+/// alphabetically.
+///
+/// This is separate from defining and enforcing groupings. For example,
+/// defining enums are grouped before structs still allows for an enum B to be
+/// placed before an enum A. Only when enforcing ordering within the grouping,
+/// will it be checked if A is placed before B.
+#[derive(Clone, Debug)]
+pub enum SourceItemOrderingWithinModuleItemGroupings {
+    /// All groupings should have their items ordered.
+    All,
+
+    /// None of the groupings should have their order checked.
+    None,
+
+    /// Only the specified groupings should have their order checked.
+    Custom(Vec<String>),
+}
+
+impl SourceItemOrderingWithinModuleItemGroupings {
+    pub fn ordered_within(&self, grouping_name: &String) -> bool {
+        match self {
+            SourceItemOrderingWithinModuleItemGroupings::All => true,
+            SourceItemOrderingWithinModuleItemGroupings::None => false,
+            SourceItemOrderingWithinModuleItemGroupings::Custom(groups) => groups.contains(grouping_name),
+        }
+    }
+}
+
+/// Helper struct for deserializing the [`SourceItemOrderingWithinModuleItemGroupings`].
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum StringOrVecOfString {
+    String(String),
+    Vec(Vec<String>),
+}
+
+impl<'de> Deserialize<'de> for SourceItemOrderingWithinModuleItemGroupings {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let description = "The available options for configuring an ordering within module item groups are: \
+                    \"all\", \"none\", or a list of module item group names \
+                    (as configured with the `module-item-order-groupings` configuration option).";
+
+        match StringOrVecOfString::deserialize(deserializer) {
+            Ok(StringOrVecOfString::String(preset)) if preset == "all" => {
+                Ok(SourceItemOrderingWithinModuleItemGroupings::All)
+            },
+            Ok(StringOrVecOfString::String(preset)) if preset == "none" => {
+                Ok(SourceItemOrderingWithinModuleItemGroupings::None)
+            },
+            Ok(StringOrVecOfString::String(preset)) => Err(de::Error::custom(format!(
+                "Unknown configuration option: {preset}.\n{description}"
+            ))),
+            Ok(StringOrVecOfString::Vec(groupings)) => {
+                Ok(SourceItemOrderingWithinModuleItemGroupings::Custom(groupings))
+            },
+            Err(e) => Err(de::Error::custom(format!("{e}\n{description}"))),
+        }
+    }
+}
+
+impl Serialize for SourceItemOrderingWithinModuleItemGroupings {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ser::Serializer,
+    {
+        match self {
+            SourceItemOrderingWithinModuleItemGroupings::All => serializer.serialize_str("all"),
+            SourceItemOrderingWithinModuleItemGroupings::None => serializer.serialize_str("none"),
+            SourceItemOrderingWithinModuleItemGroupings::Custom(vec) => vec.serialize(serializer),
+        }
     }
 }
 

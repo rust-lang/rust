@@ -1034,7 +1034,13 @@ fn report_trait_method_mismatch<'tcx>(
             let span = tcx
                 .hir_body_param_names(body)
                 .zip(sig.decl.inputs.iter())
-                .map(|(param, ty)| param.span.to(ty.span))
+                .map(|(param_name, ty)| {
+                    if let Some(param_name) = param_name {
+                        param_name.span.to(ty.span)
+                    } else {
+                        ty.span
+                    }
+                })
                 .next()
                 .unwrap_or(impl_err_span);
 

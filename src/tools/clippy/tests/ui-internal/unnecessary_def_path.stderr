@@ -12,61 +12,61 @@ LL | #![deny(clippy::internal)]
    = note: `#[deny(clippy::unnecessary_def_path)]` implied by `#[deny(clippy::internal)]`
 
 error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:38:13
+  --> tests/ui-internal/unnecessary_def_path.rs:39:13
    |
 LL |     let _ = match_type(cx, ty, RESULT);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Result)`
 
 error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:39:13
+  --> tests/ui-internal/unnecessary_def_path.rs:41:13
    |
 LL |     let _ = match_type(cx, ty, &["core", "result", "Result"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Result)`
 
 error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:43:13
+  --> tests/ui-internal/unnecessary_def_path.rs:46:13
    |
 LL |     let _ = clippy_utils::ty::match_type(cx, ty, rc_path);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Rc)`
 
 error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:45:13
+  --> tests/ui-internal/unnecessary_def_path.rs:49:13
    |
 LL |     let _ = match_type(cx, ty, &paths::OPTION);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Option)`
 
 error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:46:13
+  --> tests/ui-internal/unnecessary_def_path.rs:51:13
    |
 LL |     let _ = match_type(cx, ty, paths::RESULT);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Result)`
 
 error: use of a def path to a `LangItem`
-  --> tests/ui-internal/unnecessary_def_path.rs:48:13
+  --> tests/ui-internal/unnecessary_def_path.rs:54:13
    |
 LL |     let _ = match_type(cx, ty, &["alloc", "boxed", "Box"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_lang_item(cx, ty, LangItem::OwnedBox)`
 
 error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:49:13
+  --> tests/ui-internal/unnecessary_def_path.rs:56:13
    |
 LL |     let _ = match_type(cx, ty, &["core", "mem", "maybe_uninit", "MaybeUninit", "uninit"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::maybe_uninit_uninit)`
 
 error: use of a def path to a `LangItem`
-  --> tests/ui-internal/unnecessary_def_path.rs:51:13
+  --> tests/ui-internal/unnecessary_def_path.rs:59:13
    |
 LL |     let _ = match_def_path(cx, did, &["alloc", "boxed", "Box"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.lang_items().get(LangItem::OwnedBox) == Some(did)`
 
 error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:52:13
+  --> tests/ui-internal/unnecessary_def_path.rs:61:13
    |
 LL |     let _ = match_def_path(cx, did, &["core", "option", "Option"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.is_diagnostic_item(sym::Option, did)`
 
 error: use of a def path to a `LangItem`
-  --> tests/ui-internal/unnecessary_def_path.rs:53:13
+  --> tests/ui-internal/unnecessary_def_path.rs:63:13
    |
 LL |     let _ = match_def_path(cx, did, &["core", "option", "Option", "Some"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.lang_items().get(LangItem::OptionSome) == Some(did)`
@@ -74,25 +74,25 @@ LL |     let _ = match_def_path(cx, did, &["core", "option", "Option", "Some"]);
    = help: if this `DefId` came from a constructor expression or pattern then the parent `DefId` should be used instead
 
 error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:55:13
+  --> tests/ui-internal/unnecessary_def_path.rs:66:13
    |
 LL |     let _ = match_trait_method(cx, expr, &["core", "convert", "AsRef"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_trait_method(cx, expr, sym::AsRef)`
 
 error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:57:13
+  --> tests/ui-internal/unnecessary_def_path.rs:69:13
    |
 LL |     let _ = is_expr_path_def_path(cx, expr, &["core", "option", "Option"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_path_diagnostic_item(cx, expr, sym::Option)`
 
 error: use of a def path to a `LangItem`
-  --> tests/ui-internal/unnecessary_def_path.rs:58:13
+  --> tests/ui-internal/unnecessary_def_path.rs:71:13
    |
 LL |     let _ = is_expr_path_def_path(cx, expr, &["core", "iter", "traits", "Iterator", "next"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `path_res(cx, expr).opt_def_id().map_or(false, |id| cx.tcx.lang_items().get(LangItem::IteratorNext) == Some(id))`
 
 error: use of a def path to a `LangItem`
-  --> tests/ui-internal/unnecessary_def_path.rs:59:13
+  --> tests/ui-internal/unnecessary_def_path.rs:73:13
    |
 LL |     let _ = is_expr_path_def_path(cx, expr, &["core", "option", "Option", "Some"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_res_lang_ctor(cx, path_res(cx, expr), LangItem::OptionSome)`

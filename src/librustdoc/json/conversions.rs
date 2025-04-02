@@ -43,7 +43,7 @@ impl JsonRenderer<'_> {
         let attrs = item.attributes(self.tcx, self.cache(), true);
         let span = item.span(self.tcx);
         let visibility = item.visibility(self.tcx);
-        let clean::Item { name, item_id, .. } = item;
+        let clean::ItemInner { name, item_id, .. } = *item.inner;
         let id = self.id_from_item(&item);
         let inner = match item.kind {
             clean::KeywordItem => return None,

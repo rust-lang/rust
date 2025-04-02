@@ -98,10 +98,6 @@ LL |         0..=1 => (),
 LL |
 LL ~         ..=VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         ..=const { 1 + 2 } => (),
-   |            +++++++       +
 
 error: expected a pattern range bound, found an expression
   --> $DIR/recover-pat-ranges.rs:15:10
@@ -119,10 +115,6 @@ LL |         0..=1 => (),
 LL |
 LL ~         (VAL).. => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         (const { -4 + 0 }).. => (),
-   |          +++++++        +
 
 error: expected a pattern range bound, found an expression
   --> $DIR/recover-pat-ranges.rs:18:10
@@ -140,10 +132,6 @@ LL |         0..=1 => (),
 LL |
 LL ~         (VAL)...1 * 2 => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         (const { 1 + 4 })...1 * 2 => (),
-   |          +++++++       +
 
 error: expected a pattern range bound, found an expression
   --> $DIR/recover-pat-ranges.rs:18:19
@@ -161,10 +149,6 @@ LL |         0..=1 => (),
 LL |
 LL ~         (1 + 4)...VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         (1 + 4)...const { 1 * 2 } => (),
-   |                   +++++++       +
 
 error: expected a pattern range bound, found an expression
   --> $DIR/recover-pat-ranges.rs:24:9
@@ -182,10 +166,6 @@ LL |         0..=1 => (),
 LL |
 LL ~         VAL..="y".z() => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { 0.x() }..="y".z() => (),
-   |         +++++++       +
 
 error: expected a pattern range bound, found an expression
   --> $DIR/recover-pat-ranges.rs:24:17
@@ -203,10 +183,6 @@ LL |         0..=1 => (),
 LL |
 LL ~         0.x()..=VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         0.x()..=const { "y".z() } => (),
-   |                 +++++++         +
 
 warning: `...` range patterns are deprecated
   --> $DIR/recover-pat-ranges.rs:18:16

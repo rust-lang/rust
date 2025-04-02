@@ -24,3 +24,5 @@ fn main() {
     assert_eq!(Y, 4);
     assert_eq!(Z, 4);
 }
+
+//~? WARN skipping const checks

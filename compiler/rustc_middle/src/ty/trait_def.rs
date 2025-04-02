@@ -129,21 +129,6 @@ impl<'tcx> TraitDef {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn for_each_impl<F: FnMut(DefId)>(self, trait_def_id: DefId, mut f: F) {
-        let impls = self.trait_impls_of(trait_def_id);
-
-        for &impl_def_id in impls.blanket_impls.iter() {
-            f(impl_def_id);
-        }
-
-        for v in impls.non_blanket_impls.values() {
-            for &impl_def_id in v {
-                f(impl_def_id);
-            }
-        }
-    }
-
     /// Iterate over every impl that could possibly match the self type `self_ty`.
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
@@ -235,7 +220,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         }
     }
 
-    for &impl_def_id in tcx.hir_trait_impls(trait_id) {
+    for &impl_def_id in tcx.local_trait_impls(trait_id) {
         let impl_def_id = impl_def_id.to_def_id();
 
         let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();

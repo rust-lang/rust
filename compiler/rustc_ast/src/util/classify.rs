@@ -182,11 +182,14 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             | Range(_, Some(e), _)
             | Ret(Some(e))
             | Unary(_, e)
-            | Yield(Some(e))
             | Yeet(Some(e))
             | Become(e) => {
                 expr = e;
             }
+            Yield(kind) => match kind.expr() {
+                Some(e) => expr = e,
+                None => break None,
+            },
             Closure(closure) => {
                 expr = &closure.body;
             }
@@ -217,7 +220,6 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             Break(_, None)
             | Range(_, None, _)
             | Ret(None)
-            | Yield(None)
             | Array(_)
             | Call(_, _)
             | MethodCall(_)
@@ -237,7 +239,9 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             | Yeet(None)
             | UnsafeBinderCast(..)
             | Err(_)
-            | Dummy => break None,
+            | Dummy => {
+                break None;
+            }
         }
     }
 }

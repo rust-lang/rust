@@ -1,4 +1,4 @@
-error: unexpected token: `1.1`
+error: unexpected token: `literal` metavariable
   --> $DIR/float-field-interpolated.rs:8:13
    |
 LL |         { s.$b; }
@@ -9,7 +9,7 @@ LL |     generate_field_accesses!(1.1, 1.1, 1.1);
    |
    = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: expected one of `.`, `;`, `?`, `}`, or an operator, found literal `1.1`
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `literal` metavariable
   --> $DIR/float-field-interpolated.rs:8:13
    |
 LL |         { s.$b; }
@@ -20,7 +20,7 @@ LL |     generate_field_accesses!(1.1, 1.1, 1.1);
    |
    = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: unexpected token: `1.1`
+error: unexpected token: `expr` metavariable
   --> $DIR/float-field-interpolated.rs:10:13
    |
 LL |         { s.$c; }
@@ -31,7 +31,7 @@ LL |     generate_field_accesses!(1.1, 1.1, 1.1);
    |
    = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: expected one of `.`, `;`, `?`, `}`, or an operator, found expression `1.1`
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `expr` metavariable
   --> $DIR/float-field-interpolated.rs:10:13
    |
 LL |         { s.$c; }

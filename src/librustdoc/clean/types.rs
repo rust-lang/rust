@@ -226,7 +226,7 @@ impl ExternalCrate {
                 .filter_map(|&id| {
                     let item = tcx.hir_item(id);
                     match item.kind {
-                        hir::ItemKind::Mod(_) => {
+                        hir::ItemKind::Mod(..) => {
                             as_keyword(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
                         }
                         _ => None,
@@ -282,7 +282,7 @@ impl ExternalCrate {
                 .filter_map(|&id| {
                     let item = tcx.hir_item(id);
                     match item.kind {
-                        hir::ItemKind::Mod(_) => {
+                        hir::ItemKind::Mod(..) => {
                             as_primitive(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
                         }
                         _ => None,
@@ -311,26 +311,31 @@ pub(crate) enum ExternalLocation {
 /// directly to the AST's concept of an item; it's a strict superset.
 #[derive(Clone)]
 pub(crate) struct Item {
+    pub(crate) inner: Box<ItemInner>,
+}
+
+// Why does the `Item`/`ItemInner` split exist? `Vec<Item>`s are common, and
+// without the split `Item` would be a large type (100+ bytes) which results in
+// lots of wasted space in the unused parts of a `Vec<Item>`. With the split,
+// `Item` is just 8 bytes, and the wasted space is avoided, at the cost of an
+// extra allocation per item. This is a performance win.
+#[derive(Clone)]
+pub(crate) struct ItemInner {
     /// The name of this item.
     /// Optional because not every item has a name, e.g. impls.
     pub(crate) name: Option<Symbol>,
-    pub(crate) inner: Box<ItemInner>,
-    pub(crate) item_id: ItemId,
-    /// This is the `LocalDefId` of the `use` statement if the item was inlined.
-    /// The crate metadata doesn't hold this information, so the `use` statement
-    /// always belongs to the current crate.
-    pub(crate) inline_stmt_id: Option<LocalDefId>,
-    pub(crate) cfg: Option<Arc<Cfg>>,
-}
-
-#[derive(Clone)]
-pub(crate) struct ItemInner {
     /// Information about this item that is specific to what kind of item it is.
     /// E.g., struct vs enum vs function.
     pub(crate) kind: ItemKind,
     pub(crate) attrs: Attributes,
     /// The effective stability, filled out by the `propagate-stability` pass.
     pub(crate) stability: Option<Stability>,
+    pub(crate) item_id: ItemId,
+    /// This is the `LocalDefId` of the `use` statement if the item was inlined.
+    /// The crate metadata doesn't hold this information, so the `use` statement
+    /// always belongs to the current crate.
+    pub(crate) inline_stmt_id: Option<LocalDefId>,
+    pub(crate) cfg: Option<Arc<Cfg>>,
 }
 
 impl std::ops::Deref for Item {
@@ -488,11 +493,15 @@ impl Item {
         trace!("name={name:?}, def_id={def_id:?} cfg={cfg:?}");
 
         Item {
-            item_id: def_id.into(),
-            inner: Box::new(ItemInner { kind, attrs, stability: None }),
-            name,
-            cfg,
-            inline_stmt_id: None,
+            inner: Box::new(ItemInner {
+                item_id: def_id.into(),
+                kind,
+                attrs,
+                stability: None,
+                name,
+                cfg,
+                inline_stmt_id: None,
+            }),
         }
     }
 
@@ -768,12 +777,22 @@ impl Item {
             .iter()
             .filter_map(|attr| {
                 if is_json {
-                    if matches!(attr, hir::Attribute::Parsed(AttributeKind::Deprecation { .. })) {
-                        // rustdoc-json stores this in `Item::deprecation`, so we
-                        // don't want it it `Item::attrs`.
-                        None
-                    } else {
-                        Some(rustc_hir_pretty::attribute_to_string(&tcx, attr))
+                    match attr {
+                        hir::Attribute::Parsed(AttributeKind::Deprecation { .. }) => {
+                            // rustdoc-json stores this in `Item::deprecation`, so we
+                            // don't want it it `Item::attrs`.
+                            None
+                        }
+                        rustc_hir::Attribute::Parsed(rustc_attr_parsing::AttributeKind::Repr(
+                            ..,
+                        )) => {
+                            // We have separate pretty-printing logic for `#[repr(..)]` attributes.
+                            // For example, there are circumstances where `#[repr(transparent)]`
+                            // is applied but should not be publicly shown in rustdoc
+                            // because it isn't public API.
+                            None
+                        }
+                        _ => Some(rustc_hir_pretty::attribute_to_string(&tcx, attr)),
                     }
                 } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
                     Some(
@@ -789,8 +808,7 @@ impl Item {
             .collect();
 
         // Add #[repr(...)]
-        if !is_json
-            && let Some(def_id) = self.def_id()
+        if let Some(def_id) = self.def_id()
             && let ItemType::Struct | ItemType::Enum | ItemType::Union = self.type_()
         {
             let adt = tcx.adt_def(def_id);
@@ -1004,7 +1022,6 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
     tcx: TyCtxt<'_>,
     hidden_cfg: &FxHashSet<Cfg>,
 ) -> Option<Arc<Cfg>> {
-    let sess = tcx.sess;
     let doc_cfg_active = tcx.features().doc_cfg();
     let doc_auto_cfg_active = tcx.features().doc_auto_cfg();
 
@@ -1025,15 +1042,33 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
             .filter(|attr| attr.has_name(sym::cfg))
             .peekable();
         if doc_cfg.peek().is_some() && doc_cfg_active {
-            doc_cfg
-                .filter_map(|attr| Cfg::parse(&attr).ok())
-                .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+            let sess = tcx.sess;
+            doc_cfg.fold(Cfg::True, |mut cfg, item| {
+                if let Some(cfg_mi) =
+                    item.meta_item().and_then(|item| rustc_expand::config::parse_cfg(item, sess))
+                {
+                    // The result is unused here but we can gate unstable predicates
+                    rustc_attr_parsing::cfg_matches(
+                        cfg_mi,
+                        tcx.sess,
+                        rustc_ast::CRATE_NODE_ID,
+                        Some(tcx.features()),
+                    );
+                    match Cfg::parse(cfg_mi) {
+                        Ok(new_cfg) => cfg &= new_cfg,
+                        Err(e) => {
+                            sess.dcx().span_err(e.span, e.msg);
+                        }
+                    }
+                }
+                cfg
+            })
         } else if doc_auto_cfg_active {
             // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
             // `doc(cfg())` overrides `cfg()`).
             attrs
                 .clone()
-                .filter(|attr| attr.has_name(sym::cfg))
+                .filter(|attr| attr.has_name(sym::cfg_trace))
                 .filter_map(|attr| single(attr.meta_item_list()?))
                 .filter_map(|attr| Cfg::parse_without(attr.meta_item()?, hidden_cfg).ok().flatten())
                 .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
@@ -1043,33 +1078,6 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
     } else {
         Cfg::True
     };
-
-    for attr in attrs.clone() {
-        // #[doc]
-        if attr.doc_str().is_none() && attr.has_name(sym::doc) {
-            // #[doc(...)]
-            if let Some(list) = attr.meta_item_list() {
-                for item in list {
-                    // #[doc(hidden)]
-                    if !item.has_name(sym::cfg) {
-                        continue;
-                    }
-                    // #[doc(cfg(...))]
-                    if let Some(cfg_mi) = item
-                        .meta_item()
-                        .and_then(|item| rustc_expand::config::parse_cfg(item, sess))
-                    {
-                        match Cfg::parse(cfg_mi) {
-                            Ok(new_cfg) => cfg &= new_cfg,
-                            Err(e) => {
-                                sess.dcx().span_err(e.span, e.msg);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     // treat #[target_feature(enable = "feat")] attributes as if they were
     // #[doc(cfg(target_feature = "feat"))] attributes as well
@@ -1536,6 +1544,10 @@ impl Type {
         matches!(self, Type::BorrowedRef { .. })
     }
 
+    fn is_type_alias(&self) -> bool {
+        matches!(self, Type::Path { path: Path { res: Res::Def(DefKind::TyAlias, _), .. } })
+    }
+
     /// Check if two types are "the same" for documentation purposes.
     ///
     /// This is different from `Eq`, because it knows that things like
@@ -1564,6 +1576,16 @@ impl Type {
         } else {
             (self, other)
         };
+
+        // FIXME: `Cache` does not have the data required to unwrap type aliases,
+        // so we just assume they are equal.
+        // This is only remotely acceptable because we were previously
+        // assuming all types were equal when used
+        // as a generic parameter of a type in `Deref::Target`.
+        if self_cleared.is_type_alias() || other_cleared.is_type_alias() {
+            return true;
+        }
+
         match (self_cleared, other_cleared) {
             // Recursive cases.
             (Type::Tuple(a), Type::Tuple(b)) => {
@@ -2609,13 +2631,14 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(Crate, 56); // frequently moved by-value
+    static_assert_size!(Crate, 16); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
     static_assert_size!(GenericArg, 32);
     static_assert_size!(GenericArgs, 24);
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
-    static_assert_size!(Item, 48);
+    static_assert_size!(Item, 8);
+    static_assert_size!(ItemInner, 136);
     static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 32);
     static_assert_size!(Type, 32);

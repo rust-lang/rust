@@ -151,17 +151,17 @@ pub fn link_binary(
                 sess.dcx().emit_artifact_notification(&out_filename, "link");
             }
 
-            if sess.prof.enabled() {
-                if let Some(artifact_name) = out_filename.file_name() {
-                    // Record size for self-profiling
-                    let file_size = std::fs::metadata(&out_filename).map(|m| m.len()).unwrap_or(0);
+            if sess.prof.enabled()
+                && let Some(artifact_name) = out_filename.file_name()
+            {
+                // Record size for self-profiling
+                let file_size = std::fs::metadata(&out_filename).map(|m| m.len()).unwrap_or(0);
 
-                    sess.prof.artifact_size(
-                        "linked_artifact",
-                        artifact_name.to_string_lossy(),
-                        file_size,
-                    );
-                }
+                sess.prof.artifact_size(
+                    "linked_artifact",
+                    artifact_name.to_string_lossy(),
+                    file_size,
+                );
             }
 
             if output.is_stdout() {
@@ -186,16 +186,12 @@ pub fn link_binary(
 
         let maybe_remove_temps_from_module =
             |preserve_objects: bool, preserve_dwarf_objects: bool, module: &CompiledModule| {
-                if !preserve_objects {
-                    if let Some(ref obj) = module.object {
-                        ensure_removed(sess.dcx(), obj);
-                    }
+                if !preserve_objects && let Some(ref obj) = module.object {
+                    ensure_removed(sess.dcx(), obj);
                 }
 
-                if !preserve_dwarf_objects {
-                    if let Some(ref dwo_obj) = module.dwarf_object {
-                        ensure_removed(sess.dcx(), dwo_obj);
-                    }
+                if !preserve_dwarf_objects && let Some(ref dwo_obj) = module.dwarf_object {
+                    ensure_removed(sess.dcx(), dwo_obj);
                 }
             };
 
@@ -298,7 +294,7 @@ fn link_rlib<'a>(
             let (metadata, metadata_position) = create_wrapper_file(
                 sess,
                 ".rmeta".to_string(),
-                codegen_results.metadata.raw_data(),
+                codegen_results.metadata.stub_or_full(),
             );
             let metadata = emit_wrapper_file(sess, &metadata, tmpdir, METADATA_FILENAME);
             match metadata_position {
@@ -674,7 +670,7 @@ fn link_natively(
 ) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
-    let self_contained_components = self_contained_components(sess, crate_type);
+    let self_contained_components = self_contained_components(sess, crate_type, &linker_path);
 
     // On AIX, we ship all libraries as .a big_af archive
     // the expected format is lib<name>.a(libname.so) for the actual
@@ -1498,7 +1494,8 @@ fn print_native_static_libs(
                 | NativeLibKind::Unspecified => {
                     let verbatim = lib.verbatim;
                     if sess.target.is_like_msvc {
-                        Some(format!("{}{}", name, if verbatim { "" } else { ".lib" }))
+                        let (prefix, suffix) = sess.staticlib_components(verbatim);
+                        Some(format!("{prefix}{name}{suffix}"))
                     } else if sess.target.linker_flavor.is_gnu() {
                         Some(format!("-l{}{}", if verbatim { ":" } else { "" }, name))
                     } else {
@@ -1563,17 +1560,13 @@ fn print_native_static_libs(
     match out {
         OutFileName::Real(path) => {
             out.overwrite(&lib_args.join(" "), sess);
-            if !lib_args.is_empty() {
-                sess.dcx().emit_note(errors::StaticLibraryNativeArtifactsToFile { path });
-            }
+            sess.dcx().emit_note(errors::StaticLibraryNativeArtifactsToFile { path });
         }
         OutFileName::Stdout => {
-            if !lib_args.is_empty() {
-                sess.dcx().emit_note(errors::StaticLibraryNativeArtifacts);
-                // Prefix for greppability
-                // Note: This must not be translated as tools are allowed to depend on this exact string.
-                sess.dcx().note(format!("native-static-libs: {}", lib_args.join(" ")));
-            }
+            sess.dcx().emit_note(errors::StaticLibraryNativeArtifacts);
+            // Prefix for greppability
+            // Note: This must not be translated as tools are allowed to depend on this exact string.
+            sess.dcx().note(format!("native-static-libs: {}", lib_args.join(" ")));
         }
     }
 }
@@ -1787,8 +1780,7 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
 }
 
 // Returns true if linker is located within sysroot
-fn detect_self_contained_mingw(sess: &Session) -> bool {
-    let (linker, _) = linker_and_flavor(sess);
+fn detect_self_contained_mingw(sess: &Session, linker: &Path) -> bool {
     // Assume `-C linker=rust-lld` as self-contained mode
     if linker == Path::new("rust-lld") {
         return true;
@@ -1796,7 +1788,7 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
     let linker_with_extension = if cfg!(windows) && linker.extension().is_none() {
         linker.with_extension("exe")
     } else {
-        linker
+        linker.to_path_buf()
     };
     for dir in env::split_paths(&env::var_os("PATH").unwrap_or_default()) {
         let full_path = dir.join(&linker_with_extension);
@@ -1811,7 +1803,11 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
 /// Various toolchain components used during linking are used from rustc distribution
 /// instead of being found somewhere on the host system.
 /// We only provide such support for a very limited number of targets.
-fn self_contained_components(sess: &Session, crate_type: CrateType) -> LinkSelfContainedComponents {
+fn self_contained_components(
+    sess: &Session,
+    crate_type: CrateType,
+    linker: &Path,
+) -> LinkSelfContainedComponents {
     // Turn the backwards compatible bool values for `self_contained` into fully inferred
     // `LinkSelfContainedComponents`.
     let self_contained =
@@ -1840,7 +1836,7 @@ fn self_contained_components(sess: &Session, crate_type: CrateType) -> LinkSelfC
                 LinkSelfContainedDefault::InferredForMingw => {
                     sess.host == sess.target
                         && sess.target.vendor != "uwp"
-                        && detect_self_contained_mingw(sess)
+                        && detect_self_contained_mingw(sess, linker)
                 }
             }
         };
@@ -2116,11 +2112,11 @@ fn add_local_crate_metadata_objects(
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.
-    if crate_type == CrateType::Dylib || crate_type == CrateType::ProcMacro {
-        if let Some(obj) = codegen_results.metadata_module.as_ref().and_then(|m| m.object.as_ref())
-        {
-            cmd.add_object(obj);
-        }
+    if matches!(crate_type, CrateType::Dylib | CrateType::ProcMacro)
+        && let Some(m) = &codegen_results.metadata_module
+        && let Some(obj) = &m.object
+    {
+        cmd.add_object(obj);
     }
 }
 
@@ -2540,10 +2536,11 @@ fn add_order_independent_options(
 
     cmd.output_filename(out_filename);
 
-    if crate_type == CrateType::Executable && sess.target.is_like_windows {
-        if let Some(ref s) = codegen_results.crate_info.windows_subsystem {
-            cmd.subsystem(s);
-        }
+    if crate_type == CrateType::Executable
+        && sess.target.is_like_windows
+        && let Some(s) = &codegen_results.crate_info.windows_subsystem
+    {
+        cmd.subsystem(s);
     }
 
     // Try to strip as much out of the generated object by removing unused
@@ -3204,9 +3201,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
 }
 
 fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> Option<PathBuf> {
-    let arch = &sess.target.arch;
     let os = &sess.target.os;
-    let llvm_target = &sess.target.llvm_target;
     if sess.target.vendor != "apple"
         || !matches!(os.as_ref(), "ios" | "tvos" | "watchos" | "visionos" | "macos")
         || !matches!(flavor, LinkerFlavor::Darwin(..))
@@ -3218,37 +3213,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> 
         return None;
     }
 
-    let sdk_name = match (arch.as_ref(), os.as_ref()) {
-        ("aarch64", "tvos") if llvm_target.ends_with("-simulator") => "appletvsimulator",
-        ("aarch64", "tvos") => "appletvos",
-        ("x86_64", "tvos") => "appletvsimulator",
-        ("arm", "ios") => "iphoneos",
-        ("aarch64", "ios") if llvm_target.contains("macabi") => "macosx",
-        ("aarch64", "ios") if llvm_target.ends_with("-simulator") => "iphonesimulator",
-        ("aarch64", "ios") => "iphoneos",
-        ("x86", "ios") => "iphonesimulator",
-        ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx",
-        ("x86_64", "ios") => "iphonesimulator",
-        ("x86_64", "watchos") => "watchsimulator",
-        ("arm64_32", "watchos") => "watchos",
-        ("aarch64", "watchos") if llvm_target.ends_with("-simulator") => "watchsimulator",
-        ("aarch64", "watchos") => "watchos",
-        ("aarch64", "visionos") if llvm_target.ends_with("-simulator") => "xrsimulator",
-        ("aarch64", "visionos") => "xros",
-        ("arm", "watchos") => "watchos",
-        (_, "macos") => "macosx",
-        _ => {
-            sess.dcx().emit_err(errors::UnsupportedArch { arch, os });
-            return None;
-        }
-    };
-    let sdk_root = match get_apple_sdk_root(sdk_name) {
-        Ok(s) => s,
-        Err(e) => {
-            sess.dcx().emit_err(e);
-            return None;
-        }
-    };
+    let sdk_root = sess.time("get_apple_sdk_root", || get_apple_sdk_root(sess))?;
 
     match flavor {
         LinkerFlavor::Darwin(Cc::Yes, _) => {
@@ -3258,28 +3223,32 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> 
             // This is admittedly a bit strange, as on most targets
             // `-isysroot` only applies to include header files, but on Apple
             // targets this also applies to libraries and frameworks.
-            cmd.cc_args(&["-isysroot", &sdk_root]);
+            cmd.cc_arg("-isysroot");
+            cmd.cc_arg(&sdk_root);
         }
         LinkerFlavor::Darwin(Cc::No, _) => {
-            cmd.link_args(&["-syslibroot", &sdk_root]);
+            cmd.link_arg("-syslibroot");
+            cmd.link_arg(&sdk_root);
         }
         _ => unreachable!(),
     }
 
-    Some(sdk_root.into())
+    Some(sdk_root)
 }
 
-fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootError<'_>> {
-    // Following what clang does
-    // (https://github.com/llvm/llvm-project/blob/
-    // 296a80102a9b72c3eda80558fb78a3ed8849b341/clang/lib/Driver/ToolChains/Darwin.cpp#L1661-L1678)
-    // to allow the SDK path to be set. (For clang, xcrun sets
-    // SDKROOT; for rustc, the user or build system can set it, or we
-    // can fall back to checking for xcrun on PATH.)
+fn get_apple_sdk_root(sess: &Session) -> Option<PathBuf> {
     if let Ok(sdkroot) = env::var("SDKROOT") {
-        let p = Path::new(&sdkroot);
-        match sdk_name {
-            // Ignore `SDKROOT` if it's clearly set for the wrong platform.
+        let p = PathBuf::from(&sdkroot);
+
+        // Ignore invalid SDKs, similar to what clang does:
+        // https://github.com/llvm/llvm-project/blob/llvmorg-19.1.6/clang/lib/Driver/ToolChains/Darwin.cpp#L2212-L2229
+        //
+        // NOTE: Things are complicated here by the fact that `rustc` can be run by Cargo to compile
+        // build scripts and proc-macros for the host, and thus we need to ignore SDKROOT if it's
+        // clearly set for the wrong platform.
+        //
+        // FIXME(madsmtm): Make this more robust (maybe read `SDKSettings.json` like Clang does?).
+        match &*apple::sdk_name(&sess.target).to_lowercase() {
             "appletvos"
                 if sdkroot.contains("TVSimulator.platform")
                     || sdkroot.contains("MacOSX.platform") => {}
@@ -3306,26 +3275,11 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootErro
                 if sdkroot.contains("XROS.platform") || sdkroot.contains("MacOSX.platform") => {}
             // Ignore `SDKROOT` if it's not a valid path.
             _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}
-            _ => return Ok(sdkroot),
+            _ => return Some(p),
         }
     }
-    let res =
-        Command::new("xcrun").arg("--show-sdk-path").arg("-sdk").arg(sdk_name).output().and_then(
-            |output| {
-                if output.status.success() {
-                    Ok(String::from_utf8(output.stdout).unwrap())
-                } else {
-                    let error = String::from_utf8(output.stderr);
-                    let error = format!("process exit with error: {}", error.unwrap());
-                    Err(io::Error::new(io::ErrorKind::Other, &error[..]))
-                }
-            },
-        );
 
-    match res {
-        Ok(output) => Ok(output.trim().to_string()),
-        Err(error) => Err(errors::AppleSdkRootError::SdkPath { sdk_name, error }),
-    }
+    apple::get_sdk_root(sess)
 }
 
 /// When using the linker flavors opting in to `lld`, add the necessary paths and arguments to

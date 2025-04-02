@@ -21,6 +21,7 @@ declare_lint_pass!(Pass => [TEST_LINT]);
 impl<'tcx> LateLintPass<'tcx> for Pass {
     fn check_expr(&mut self, _cx: &LateContext<'tcx>, expr: &'tcx Expr) {
         let _ = expr.span.ctxt().outer_expn().expn_data();
+        //~^ outer_expn_expn_data
     }
 }
 

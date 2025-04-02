@@ -35,28 +35,43 @@ const RESULT: &[&str] = &["core", "result", "Result"];
 
 fn _f<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, did: DefId, expr: &Expr<'_>) {
     let _ = match_type(cx, ty, &OPTION);
+    //~^ unnecessary_def_path
     let _ = match_type(cx, ty, RESULT);
+    //~^ unnecessary_def_path
     let _ = match_type(cx, ty, &["core", "result", "Result"]);
+    //~^ unnecessary_def_path
 
     #[allow(unused, clippy::unnecessary_def_path)]
     let rc_path = &["alloc", "rc", "Rc"];
     let _ = clippy_utils::ty::match_type(cx, ty, rc_path);
+    //~^ unnecessary_def_path
 
     let _ = match_type(cx, ty, &paths::OPTION);
+    //~^ unnecessary_def_path
     let _ = match_type(cx, ty, paths::RESULT);
+    //~^ unnecessary_def_path
 
     let _ = match_type(cx, ty, &["alloc", "boxed", "Box"]);
+    //~^ unnecessary_def_path
     let _ = match_type(cx, ty, &["core", "mem", "maybe_uninit", "MaybeUninit", "uninit"]);
+    //~^ unnecessary_def_path
 
     let _ = match_def_path(cx, did, &["alloc", "boxed", "Box"]);
+    //~^ unnecessary_def_path
     let _ = match_def_path(cx, did, &["core", "option", "Option"]);
+    //~^ unnecessary_def_path
     let _ = match_def_path(cx, did, &["core", "option", "Option", "Some"]);
+    //~^ unnecessary_def_path
 
     let _ = match_trait_method(cx, expr, &["core", "convert", "AsRef"]);
+    //~^ unnecessary_def_path
 
     let _ = is_expr_path_def_path(cx, expr, &["core", "option", "Option"]);
+    //~^ unnecessary_def_path
     let _ = is_expr_path_def_path(cx, expr, &["core", "iter", "traits", "Iterator", "next"]);
+    //~^ unnecessary_def_path
     let _ = is_expr_path_def_path(cx, expr, &["core", "option", "Option", "Some"]);
+    //~^ unnecessary_def_path
 }
 
 fn main() {}

@@ -452,3 +452,75 @@ fn issue12412(foo: &Foo, bar: &Bar) -> Option<()> {
     //~^^^ question_mark
     Some(())
 }
+
+struct StructWithOptionString {
+    opt_x: Option<String>,
+}
+
+struct WrapperStructWithString(String);
+
+#[allow(clippy::disallowed_names)]
+fn issue_13417(foo: &mut StructWithOptionString) -> Option<String> {
+    let Some(ref x) = foo.opt_x else {
+        return None;
+    };
+    //~^^^ question_mark
+    let opt_y = Some(x.clone());
+    std::mem::replace(&mut foo.opt_x, opt_y)
+}
+
+#[allow(clippy::disallowed_names)]
+fn issue_13417_mut(foo: &mut StructWithOptionString) -> Option<String> {
+    let Some(ref mut x) = foo.opt_x else {
+        return None;
+    };
+    //~^^^ question_mark
+    let opt_y = Some(x.clone());
+    std::mem::replace(&mut foo.opt_x, opt_y)
+}
+
+#[allow(clippy::disallowed_names)]
+#[allow(unused)]
+fn issue_13417_weirder(foo: &mut StructWithOptionString, mut bar: Option<WrapperStructWithString>) -> Option<()> {
+    let Some(ref x @ ref y) = foo.opt_x else {
+        return None;
+    };
+    //~^^^ question_mark
+    let Some(ref x @ WrapperStructWithString(_)) = bar else {
+        return None;
+    };
+    //~^^^ question_mark
+    let Some(ref mut x @ WrapperStructWithString(_)) = bar else {
+        return None;
+    };
+    //~^^^ question_mark
+    Some(())
+}
+
+#[clippy::msrv = "1.12"]
+fn msrv_1_12(arg: Option<i32>) -> Option<i32> {
+    if arg.is_none() {
+        return None;
+    }
+    let val = match arg {
+        Some(val) => val,
+        None => return None,
+    };
+    println!("{}", val);
+    Some(val)
+}
+
+#[clippy::msrv = "1.13"]
+fn msrv_1_13(arg: Option<i32>) -> Option<i32> {
+    if arg.is_none() {
+        //~^ question_mark
+        return None;
+    }
+    let val = match arg {
+        //~^ question_mark
+        Some(val) => val,
+        None => return None,
+    };
+    println!("{}", val);
+    Some(val)
+}

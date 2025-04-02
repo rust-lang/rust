@@ -1,14 +1,14 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::sugg::{Sugg, make_binop};
 use clippy_utils::{
-    SpanlessEq, higher, is_in_const_context, is_integer_literal, path_to_local, peel_blocks, peel_blocks_with_stmt,
+    SpanlessEq, eq_expr_value, higher, is_in_const_context, is_integer_literal, peel_blocks, peel_blocks_with_stmt,
 };
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind, HirId, QPath};
+use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -170,22 +170,20 @@ fn check_gt(
     cx: &LateContext<'_>,
     condition_span: Span,
     expr_span: Span,
-    big_var: &Expr<'_>,
-    little_var: &Expr<'_>,
+    big_expr: &Expr<'_>,
+    little_expr: &Expr<'_>,
     if_block: &Expr<'_>,
     else_block: &Expr<'_>,
     msrv: Msrv,
     is_composited: bool,
 ) {
-    if let Some(big_var) = Var::new(big_var)
-        && let Some(little_var) = Var::new(little_var)
-    {
+    if is_side_effect_free(cx, big_expr) && is_side_effect_free(cx, little_expr) {
         check_subtraction(
             cx,
             condition_span,
             expr_span,
-            big_var,
-            little_var,
+            big_expr,
+            little_expr,
             if_block,
             else_block,
             msrv,
@@ -194,18 +192,8 @@ fn check_gt(
     }
 }
 
-struct Var {
-    span: Span,
-    hir_id: HirId,
-}
-
-impl Var {
-    fn new(expr: &Expr<'_>) -> Option<Self> {
-        path_to_local(expr).map(|hir_id| Self {
-            span: expr.span,
-            hir_id,
-        })
-    }
+fn is_side_effect_free(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    eq_expr_value(cx, expr, expr)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -213,8 +201,8 @@ fn check_subtraction(
     cx: &LateContext<'_>,
     condition_span: Span,
     expr_span: Span,
-    big_var: Var,
-    little_var: Var,
+    big_expr: &Expr<'_>,
+    little_expr: &Expr<'_>,
     if_block: &Expr<'_>,
     else_block: &Expr<'_>,
     msrv: Msrv,
@@ -234,8 +222,8 @@ fn check_subtraction(
             cx,
             condition_span,
             expr_span,
-            little_var,
-            big_var,
+            little_expr,
+            big_expr,
             else_block,
             if_block,
             msrv,
@@ -247,17 +235,15 @@ fn check_subtraction(
         && let ExprKind::Binary(op, left, right) = if_block.kind
         && let BinOpKind::Sub = op.node
     {
-        let local_left = path_to_local(left);
-        let local_right = path_to_local(right);
-        if Some(big_var.hir_id) == local_left && Some(little_var.hir_id) == local_right {
+        if eq_expr_value(cx, left, big_expr) && eq_expr_value(cx, right, little_expr) {
             // This part of the condition is voluntarily split from the one before to ensure that
             // if `snippet_opt` fails, it won't try the next conditions.
-            if let Some(big_var_snippet) = snippet_opt(cx, big_var.span)
-                && let Some(little_var_snippet) = snippet_opt(cx, little_var.span)
-                && (!is_in_const_context(cx) || msrv.meets(cx, msrvs::SATURATING_SUB_CONST))
+            if (!is_in_const_context(cx) || msrv.meets(cx, msrvs::SATURATING_SUB_CONST))
+                && let Some(big_expr_sugg) = Sugg::hir_opt(cx, big_expr).map(Sugg::maybe_par)
+                && let Some(little_expr_sugg) = Sugg::hir_opt(cx, little_expr)
             {
                 let sugg = format!(
-                    "{}{big_var_snippet}.saturating_sub({little_var_snippet}){}",
+                    "{}{big_expr_sugg}.saturating_sub({little_expr_sugg}){}",
                     if is_composited { "{ " } else { "" },
                     if is_composited { " }" } else { "" }
                 );
@@ -271,11 +257,12 @@ fn check_subtraction(
                     Applicability::MachineApplicable,
                 );
             }
-        } else if Some(little_var.hir_id) == local_left
-            && Some(big_var.hir_id) == local_right
-            && let Some(big_var_snippet) = snippet_opt(cx, big_var.span)
-            && let Some(little_var_snippet) = snippet_opt(cx, little_var.span)
+        } else if eq_expr_value(cx, left, little_expr)
+            && eq_expr_value(cx, right, big_expr)
+            && let Some(big_expr_sugg) = Sugg::hir_opt(cx, big_expr)
+            && let Some(little_expr_sugg) = Sugg::hir_opt(cx, little_expr)
         {
+            let sugg = make_binop(BinOpKind::Sub, &big_expr_sugg, &little_expr_sugg);
             span_lint_and_then(
                 cx,
                 INVERTED_SATURATING_SUB,
@@ -284,12 +271,12 @@ fn check_subtraction(
                 |diag| {
                     diag.span_note(
                         if_block.span,
-                        format!("this subtraction underflows when `{little_var_snippet} < {big_var_snippet}`"),
+                        format!("this subtraction underflows when `{little_expr_sugg} < {big_expr_sugg}`"),
                     );
                     diag.span_suggestion(
                         if_block.span,
                         "try replacing it with",
-                        format!("{big_var_snippet} - {little_var_snippet}"),
+                        format!("{sugg}"),
                         Applicability::MaybeIncorrect,
                     );
                 },

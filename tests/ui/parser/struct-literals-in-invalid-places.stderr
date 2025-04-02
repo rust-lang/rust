@@ -1,0 +1,234 @@
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:2:8
+   |
+LL |     if Foo { x: 3 }.hi() {
+   |        ^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     if (Foo { x: 3 }).hi() {
+   |        +            +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:5:19
+   |
+LL |     if let true = Foo { x: 3 }.hi() {
+   |                   ^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     if let true = (Foo { x: 3 }).hi() {
+   |                   +            +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:9:14
+   |
+LL |     for x in Foo { x: 3 }.hi() {
+   |              ^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     for x in (Foo { x: 3 }).hi() {
+   |              +            +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:14:11
+   |
+LL |     while Foo { x: 3 }.hi() {
+   |           ^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     while (Foo { x: 3 }).hi() {
+   |           +            +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:17:22
+   |
+LL |     while let true = Foo { x: 3 }.hi() {
+   |                      ^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     while let true = (Foo { x: 3 }).hi() {
+   |                      +            +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:21:11
+   |
+LL |     match Foo { x: 3 } {
+   |           ^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     match (Foo { x: 3 }) {
+   |           +            +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:30:17
+   |
+LL |         if x == E::I { field1: true, field2: 42 } {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |         if x == (E::I { field1: true, field2: 42 }) {}
+   |                 +                                 +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:32:17
+   |
+LL |         if x == E::V { field: false } {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |         if x == (E::V { field: false }) {}
+   |                 +                     +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:34:17
+   |
+LL |         if x == E::J { field: -42 } {}
+   |                 ^^^^^^^^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |         if x == (E::J { field: -42 }) {}
+   |                 +                   +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:36:17
+   |
+LL |         if x == E::K { field: "" } {}
+   |                 ^^^^^^^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |         if x == (E::K { field: "" }) {}
+   |                 +                  +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:43:14
+   |
+LL |     while || Foo { x: 3 }.hi() {
+   |              ^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     while || (Foo { x: 3 }).hi() {
+   |              +            +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:53:8
+   |
+LL |     if Foo { x: one(), }.hi() {
+   |        ^^^^^^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     if (Foo { x: one(), }).hi() {
+   |        +                 +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:61:15
+   |
+LL |     if FOO == self::Foo { x: one() } {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     if FOO == (self::Foo { x: one() }) {}
+   |               +                      +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:63:15
+   |
+LL |     if FOO == Foo::<> { x: one() } {}
+   |               ^^^^^^^^^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     if FOO == (Foo::<> { x: one() }) {}
+   |               +                    +
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literals-in-invalid-places.rs:66:19
+   |
+LL |         if FOO == <T as Trait>::Out { x: one() } {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |         if FOO == (<T as Trait>::Out { x: one() }) {}
+   |                   +                              +
+
+error[E0658]: usage of qualified paths in this context is experimental
+  --> $DIR/struct-literals-in-invalid-places.rs:66:19
+   |
+LL |         if FOO == <T as Trait>::Out { x: one() } {}
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #86935 <https://github.com/rust-lang/rust/issues/86935> for more information
+   = help: add `#![feature(more_qualified_paths)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0277]: `bool` is not an iterator
+  --> $DIR/struct-literals-in-invalid-places.rs:9:14
+   |
+LL |     for x in Foo { x: 3 }.hi() {
+   |              ^^^^^^^^^^^^^^^^^ `bool` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `bool`
+   = note: required for `bool` to implement `IntoIterator`
+
+error[E0533]: expected value, found struct variant `E::V`
+  --> $DIR/struct-literals-in-invalid-places.rs:27:17
+   |
+LL |         if x == E::V { field } {}
+   |                 ^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+LL |         if x == (E::V { field }) {}
+   |                 +              +
+
+error[E0308]: mismatched types
+  --> $DIR/struct-literals-in-invalid-places.rs:27:24
+   |
+LL |         if x == E::V { field } {}
+   |         ---------------^^^^^--
+   |         |              |
+   |         |              expected `()`, found `bool`
+   |         expected this to be `()`
+   |
+help: you might have meant to return this value
+   |
+LL |         if x == E::V { return field; } {}
+   |                        ++++++      +
+
+error[E0308]: mismatched types
+  --> $DIR/struct-literals-in-invalid-places.rs:38:24
+   |
+LL |         let y: usize = ();
+   |                -----   ^^ expected `usize`, found `()`
+   |                |
+   |                expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/struct-literals-in-invalid-places.rs:43:11
+   |
+LL |     while || Foo { x: 3 }.hi() {
+   |           ^^^^^^^^^^^^^^^^^^^^ expected `bool`, found closure
+   |
+   = note: expected type `bool`
+           found closure `{closure@$DIR/struct-literals-in-invalid-places.rs:43:11: 43:13}`
+help: use parentheses to call this closure
+   |
+LL |     while (|| Foo { x: 3 }.hi())() {
+   |           +                    +++
+
+error: aborting due to 21 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0533, E0658.
+For more information about an error, try `rustc --explain E0277`.

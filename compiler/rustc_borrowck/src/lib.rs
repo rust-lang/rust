@@ -73,6 +73,7 @@ mod def_use;
 mod diagnostics;
 mod member_constraints;
 mod nll;
+mod opaque_types;
 mod path_utils;
 mod place_ext;
 mod places_conflict;
@@ -102,11 +103,8 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
-    let (input_body, promoted) = tcx.mir_promoted(def);
-    debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
-
+    let (input_body, _) = tcx.mir_promoted(def);
     let input_body: &Body<'_> = &input_body.borrow();
-
     if input_body.should_skip() || input_body.tainted_by_errors.is_some() {
         debug!("Skipping borrowck because of injected body or tainted body");
         // Let's make up a borrowck result! Fun times!
@@ -119,7 +117,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
         return tcx.arena.alloc(result);
     }
 
-    let borrowck_result = do_mir_borrowck(tcx, input_body, &*promoted.borrow(), None).0;
+    let borrowck_result = do_mir_borrowck(tcx, def, None).0;
     debug!("mir_borrowck done");
 
     tcx.arena.alloc(borrowck_result)
@@ -130,15 +128,16 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
 /// Use `consumer_options: None` for the default behavior of returning
 /// [`BorrowCheckResult`] only. Otherwise, return [`BodyWithBorrowckFacts`] according
 /// to the given [`ConsumerOptions`].
-#[instrument(skip(tcx, input_body, input_promoted), fields(id=?input_body.source.def_id()), level = "debug")]
+#[instrument(skip(tcx), level = "debug")]
 fn do_mir_borrowck<'tcx>(
     tcx: TyCtxt<'tcx>,
-    input_body: &Body<'tcx>,
-    input_promoted: &IndexSlice<Promoted, Body<'tcx>>,
+    def: LocalDefId,
     consumer_options: Option<ConsumerOptions>,
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
-    let def = input_body.source.def_id().expect_local();
     let infcx = BorrowckInferCtxt::new(tcx, def);
+    let (input_body, promoted) = tcx.mir_promoted(def);
+    let input_body: &Body<'_> = &input_body.borrow();
+    let input_promoted: &IndexSlice<_, _> = &promoted.borrow();
     if let Some(e) = input_body.tainted_by_errors {
         infcx.set_tainted_by_errors(e);
     }
@@ -192,7 +191,7 @@ fn do_mir_borrowck<'tcx>(
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
         regioncx,
-        opaque_type_values,
+        concrete_opaque_types,
         polonius_input,
         polonius_output,
         opt_closure_req,
@@ -222,7 +221,7 @@ fn do_mir_borrowck<'tcx>(
         body,
         &regioncx,
         &opt_closure_req,
-        &opaque_type_values,
+        &concrete_opaque_types,
         diags_buffer,
     );
 
@@ -357,7 +356,7 @@ fn do_mir_borrowck<'tcx>(
     let tainted_by_errors = mbcx.emit_errors();
 
     let result = BorrowCheckResult {
-        concrete_opaque_types: opaque_type_values,
+        concrete_opaque_types: concrete_opaque_types.into_inner(),
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
         tainted_by_errors,
@@ -498,7 +497,8 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
                 )
             });
 
-            self.inject_new_hidden_type_unchecked(key, hidden_ty);
+            let prev = self.register_hidden_type_in_storage(key, hidden_ty);
+            assert_eq!(prev, None);
         }
     }
 }

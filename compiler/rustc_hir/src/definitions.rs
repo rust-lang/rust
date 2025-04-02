@@ -291,6 +291,8 @@ pub enum DefPathData {
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
+    /// A synthetic body for a coroutine's by-move body.
+    SyntheticCoroutineBody,
 }
 
 impl Definitions {
@@ -415,8 +417,16 @@ impl DefPathData {
 
             ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
-            Impl | ForeignMod | CrateRoot | Use | GlobalAsm | Closure | Ctor | AnonConst
-            | OpaqueTy => None,
+            Impl
+            | ForeignMod
+            | CrateRoot
+            | Use
+            | GlobalAsm
+            | Closure
+            | Ctor
+            | AnonConst
+            | OpaqueTy
+            | SyntheticCoroutineBody => None,
         }
     }
 
@@ -441,6 +451,7 @@ impl DefPathData {
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
+            SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },
         }
     }
 }

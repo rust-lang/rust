@@ -74,7 +74,6 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         let ours;
         let mut name;
         let mut tries = 0;
-        let mut reject_remote_clients_flag = c::PIPE_REJECT_REMOTE_CLIENTS;
         loop {
             tries += 1;
             name = format!(
@@ -96,7 +95,7 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
                 c::PIPE_TYPE_BYTE
                     | c::PIPE_READMODE_BYTE
                     | c::PIPE_WAIT
-                    | reject_remote_clients_flag,
+                    | c::PIPE_REJECT_REMOTE_CLIENTS,
                 1,
                 PIPE_BUFFER_CAPACITY,
                 PIPE_BUFFER_CAPACITY,
@@ -112,30 +111,15 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
             //
             // Don't try again too much though as this could also perhaps be a
             // legit error.
-            // If `ERROR_INVALID_PARAMETER` is returned, this probably means we're
-            // running on pre-Vista version where `PIPE_REJECT_REMOTE_CLIENTS` is
-            // not supported, so we continue retrying without it. This implies
-            // reduced security on Windows versions older than Vista by allowing
-            // connections to this pipe from remote machines.
-            // Proper fix would increase the number of FFI imports and introduce
-            // significant amount of Windows XP specific code with no clean
-            // testing strategy
-            // For more info, see https://github.com/rust-lang/rust/pull/37677.
             if handle == c::INVALID_HANDLE_VALUE {
                 let error = api::get_last_error();
-                if tries < 10 {
-                    if error == WinError::ACCESS_DENIED {
-                        continue;
-                    } else if reject_remote_clients_flag != 0
-                        && error == WinError::INVALID_PARAMETER
-                    {
-                        reject_remote_clients_flag = 0;
-                        tries -= 1;
-                        continue;
-                    }
+                if tries < 10 && error == WinError::ACCESS_DENIED {
+                    continue;
+                } else {
+                    return Err(io::Error::from_raw_os_error(error.code as i32));
                 }
-                return Err(io::Error::from_raw_os_error(error.code as i32));
             }
+
             ours = Handle::from_raw_handle(handle);
             break;
         }

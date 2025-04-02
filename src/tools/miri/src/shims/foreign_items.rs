@@ -9,10 +9,9 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::AllocInit;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
-use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::{Conv, FnAbi};
 
 use self::helpers::{ToHost, ToSoft};
@@ -52,7 +51,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Some shims forward to other MIR bodies.
         match link_name.as_str() {
-            name if name == mangle_internal_symbol(*this.tcx, "__rust_alloc_error_handler") => {
+            name if name == this.mangle_internal_symbol("__rust_alloc_error_handler") => {
                 // Forward to the right symbol that implements this function.
                 let Some(handler_kind) = this.tcx.alloc_error_handler_kind(()) else {
                     // in real code, this symbol does not exist without an allocator
@@ -60,11 +59,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "`__rust_alloc_error_handler` cannot be called when no alloc error handler is set"
                     );
                 };
-                let name =
-                    mangle_internal_symbol(*this.tcx, alloc_error_handler_name(handler_kind));
-                let handler = this
-                    .lookup_exported_symbol(Symbol::intern(&name))?
-                    .expect("missing alloc error handler symbol");
+                let name = Symbol::intern(
+                    this.mangle_internal_symbol(alloc_error_handler_name(handler_kind)),
+                );
+                let handler =
+                    this.lookup_exported_symbol(name)?.expect("missing alloc error handler symbol");
                 return interp_ok(Some(handler));
             }
             _ => {}
@@ -138,30 +137,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Find it if it was not cached.
                 let mut instance_and_crate: Option<(ty::Instance<'_>, CrateNum)> = None;
                 helpers::iter_exported_symbols(tcx, |cnum, def_id| {
+                    let attrs = tcx.codegen_fn_attrs(def_id);
+                    // Skip over imports of items.
                     if tcx.is_foreign_item(def_id) {
-                        // Skip over imports of items
+                        return interp_ok(());
+                    }
+                    // Skip over items without an explicitly defined symbol name.
+                    if !(attrs.export_name.is_some()
+                        || attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
+                        || attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL))
+                    {
                         return interp_ok(());
                     }
 
-                    let attrs = tcx.codegen_fn_attrs(def_id);
-                    // FIXME use tcx.symbol_name(instance) instead
-                    let symbol_name = if let Some(export_name) = attrs.export_name {
-                        export_name
-                    } else if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
-                        || attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-                    {
-                        tcx.item_name(def_id)
-                    } else {
-                        // Skip over items without an explicitly defined symbol name.
-                        return interp_ok(());
-                    };
-                    let symbol_name =
-                        if attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
-                            Symbol::intern(&mangle_internal_symbol(tcx, symbol_name.as_str()))
-                        } else {
-                            symbol_name
-                        };
-                    if symbol_name == link_name {
+                    let instance = Instance::mono(tcx, def_id);
+                    let symbol_name = tcx.symbol_name(instance).name;
+                    if symbol_name == link_name.as_str() {
                         if let Some((original_instance, original_cnum)) = instance_and_crate {
                             // Make sure we are consistent wrt what is 'first' and 'second'.
                             let original_span = tcx.def_span(original_instance.def_id()).data();
@@ -505,9 +496,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Rust allocation
-            name if name == mangle_internal_symbol(*this.tcx, "__rust_alloc")
-                || name == "miri_alloc" =>
-            {
+            name if name == this.mangle_internal_symbol("__rust_alloc") || name == "miri_alloc" => {
                 let default = |ecx: &mut MiriInterpCx<'tcx>| {
                     // Only call `check_shim` when `#[global_allocator]` isn't used. When that
                     // macro is used, we act like no shim exists, so that the exported function can run.
@@ -540,7 +529,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => return this.emulate_allocator(default),
                 }
             }
-            name if name == mangle_internal_symbol(*this.tcx, "__rust_alloc_zeroed") => {
+            name if name == this.mangle_internal_symbol("__rust_alloc_zeroed") => {
                 return this.emulate_allocator(|this| {
                     // See the comment for `__rust_alloc` why `check_shim` is only called in the
                     // default case.
@@ -559,7 +548,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_pointer(ptr, dest)
                 });
             }
-            name if name == mangle_internal_symbol(*this.tcx, "__rust_dealloc")
+            name if name == this.mangle_internal_symbol("__rust_dealloc")
                 || name == "miri_dealloc" =>
             {
                 let default = |ecx: &mut MiriInterpCx<'tcx>| {
@@ -592,7 +581,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => return this.emulate_allocator(default),
                 }
             }
-            name if name == mangle_internal_symbol(*this.tcx, "__rust_realloc") => {
+            name if name == this.mangle_internal_symbol("__rust_realloc") => {
                 return this.emulate_allocator(|this| {
                     // See the comment for `__rust_alloc` why `check_shim` is only called in the
                     // default case.

@@ -264,7 +264,7 @@ fn ci_rustc_if_unchanged_logic() {
         let mut paths = vec!["compiler"];
 
         // Handle library tree the same way as in `Config::download_ci_rustc_commit`.
-        if build_helper::ci::CiEnv::is_ci() {
+        if builder.config.is_running_on_ci {
             paths.push("library");
         }
 
@@ -655,7 +655,7 @@ mod dist {
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(
             &Builder::get_step_descriptions(Kind::Build),
-            &["compiler/rustc".into(), "std".into()],
+            &["compiler/rustc".into(), "library".into()],
         );
 
         assert_eq!(builder.config.stage, 2);
@@ -1074,7 +1074,7 @@ fn test_prebuilt_llvm_config_path_resolution() {
     let config = configure(
         r#"
             [llvm]
-            download-ci-llvm = true
+            download-ci-llvm = "if-unchanged"
         "#,
     );
 

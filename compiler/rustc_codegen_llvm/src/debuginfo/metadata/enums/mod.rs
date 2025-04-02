@@ -249,7 +249,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                         cx,
                         struct_type_di_node,
                         &field_name,
-                        (field_layout.size, field_layout.align.abi),
+                        field_layout,
                         variant_layout.fields.offset(field_index),
                         di_flags,
                         type_di_node(cx, field_layout.ty),
@@ -332,7 +332,7 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
                         cx,
                         variant_struct_type_di_node,
                         &field_name,
-                        cx.size_and_align_of(field_type),
+                        cx.layout_of(field_type),
                         variant_layout.fields.offset(field_index),
                         DIFlags::FlagZero,
                         type_di_node(cx, field_type),
@@ -352,7 +352,7 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
                         cx,
                         variant_struct_type_di_node,
                         upvar_name.as_str(),
-                        cx.size_and_align_of(upvar_ty),
+                        cx.layout_of(upvar_ty),
                         coroutine_type_and_layout.fields.offset(index),
                         DIFlags::FlagZero,
                         type_di_node(cx, upvar_ty),
@@ -363,6 +363,7 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
 
             state_specific_fields.into_iter().chain(common_fields).collect()
         },
+        // FIXME: this is a no-op. `build_generic_type_param_di_nodes` only works for Adts.
         |cx| build_generic_type_param_di_nodes(cx, coroutine_type_and_layout.ty),
     )
     .di_node

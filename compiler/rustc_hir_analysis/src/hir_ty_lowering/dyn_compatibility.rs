@@ -176,7 +176,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 .in_definition_order()
                                 // We only care about associated types.
                                 .filter(|item| item.kind == ty::AssocKind::Type)
-                                // No RPITITs -- even with `async_fn_in_dyn_trait`, they are implicit.
+                                // No RPITITs -- they're not dyn-compatible for now.
                                 .filter(|item| !item.is_impl_trait_in_trait())
                                 // If the associated type has a `where Self: Sized` bound,
                                 // we do not need to constrain the associated type.

@@ -90,8 +90,12 @@ fn _macros() {
     }
     use_expr!((let 0 = 1 && 0 == 0));
     //[feature,no_feature]~^ ERROR expected expression, found `let` statement
+    //[feature,no_feature]~| ERROR expected expression, found `let` statement
+    //[feature,no_feature]~| ERROR expected expression, found `let` statement
     use_expr!((let 0 = 1));
     //[feature,no_feature]~^ ERROR expected expression, found `let` statement
+    //[feature,no_feature]~| ERROR expected expression, found `let` statement
+    //[feature,no_feature]~| ERROR expected expression, found `let` statement
 }
 
 #[cfg(not(nothing))]

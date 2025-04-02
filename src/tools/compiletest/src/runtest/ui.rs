@@ -182,7 +182,7 @@ impl TestCx<'_> {
         } else if explicit && !expected_errors.is_empty() {
             let msg = format!(
                 "line {}: cannot combine `--error-format` with {} annotations; use `error-pattern` instead",
-                expected_errors[0].line_num,
+                expected_errors[0].line_num_str(),
                 expected_errors[0].kind.unwrap_or(ErrorKind::Error),
             );
             self.fatal(&msg);

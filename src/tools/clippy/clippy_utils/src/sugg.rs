@@ -4,8 +4,8 @@
 use crate::source::{snippet, snippet_opt, snippet_with_applicability, snippet_with_context};
 use crate::ty::expr_sig;
 use crate::{get_parent_expr_for_hir, higher};
-use rustc_ast::util::parser::AssocOp;
 use rustc_ast::ast;
+use rustc_ast::util::parser::AssocOp;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{Closure, ExprKind, HirId, MutTy, TyKind};
@@ -444,7 +444,7 @@ impl<'a> Not for Sugg<'a> {
     type Output = Sugg<'a>;
     fn not(self) -> Sugg<'a> {
         use AssocOp::Binary;
-        use ast::BinOpKind::{Eq, Gt, Ge, Lt, Le, Ne};
+        use ast::BinOpKind::{Eq, Ge, Gt, Le, Lt, Ne};
 
         if let Sugg::BinOp(op, lhs, rhs) = self {
             let to_op = match op {
@@ -515,10 +515,10 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
             op,
             AssocOp::Binary(
                 ast::BinOpKind::Add
-                | ast::BinOpKind::Sub
-                | ast::BinOpKind::Mul
-                | ast::BinOpKind::Div
-                | ast::BinOpKind::Rem
+                    | ast::BinOpKind::Sub
+                    | ast::BinOpKind::Mul
+                    | ast::BinOpKind::Div
+                    | ast::BinOpKind::Rem
             )
         )
     }
@@ -578,10 +578,8 @@ enum Associativity {
 /// associative.
 #[must_use]
 fn associativity(op: AssocOp) -> Associativity {
+    use ast::BinOpKind::{Add, And, BitAnd, BitOr, BitXor, Div, Eq, Ge, Gt, Le, Lt, Mul, Ne, Or, Rem, Shl, Shr, Sub};
     use rustc_ast::util::parser::AssocOp::{Assign, AssignOp, Binary, Cast, Range};
-    use ast::BinOpKind::{
-        Add, BitAnd, BitOr, BitXor, Div, Eq, Gt, Ge, And, Or, Lt, Le, Rem, Mul, Ne, Shl, Shr, Sub,
-    };
 
     match op {
         Assign | AssignOp(_) => Associativity::Right,
@@ -994,6 +992,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 mod test {
     use super::Sugg;
 
+    use rustc_ast as ast;
     use rustc_ast::util::parser::AssocOp;
     use std::borrow::Cow;
 
@@ -1011,15 +1010,15 @@ mod test {
 
     #[test]
     fn binop_maybe_par() {
-        let sugg = Sugg::BinOp(AssocOp::Add, "1".into(), "1".into());
+        let sugg = Sugg::BinOp(AssocOp::Binary(ast::BinOpKind::Add), "1".into(), "1".into());
         assert_eq!("(1 + 1)", sugg.maybe_par().to_string());
 
-        let sugg = Sugg::BinOp(AssocOp::Add, "(1 + 1)".into(), "(1 + 1)".into());
+        let sugg = Sugg::BinOp(AssocOp::Binary(ast::BinOpKind::Add), "(1 + 1)".into(), "(1 + 1)".into());
         assert_eq!("((1 + 1) + (1 + 1))", sugg.maybe_par().to_string());
     }
     #[test]
     fn not_op() {
-        use AssocOp::{Add, Equal, Greater, GreaterEqual, LAnd, LOr, Less, LessEqual, NotEqual};
+        use ast::BinOpKind::{Add, And, Eq, Ge, Gt, Le, Lt, Ne, Or};
 
         fn test_not(op: AssocOp, correct: &str) {
             let sugg = Sugg::BinOp(op, "x".into(), "y".into());
@@ -1027,16 +1026,16 @@ mod test {
         }
 
         // Invert the comparison operator.
-        test_not(Equal, "x != y");
-        test_not(NotEqual, "x == y");
-        test_not(Less, "x >= y");
-        test_not(LessEqual, "x > y");
-        test_not(Greater, "x <= y");
-        test_not(GreaterEqual, "x < y");
+        test_not(AssocOp::Binary(Eq), "x != y");
+        test_not(AssocOp::Binary(Ne), "x == y");
+        test_not(AssocOp::Binary(Lt), "x >= y");
+        test_not(AssocOp::Binary(Le), "x > y");
+        test_not(AssocOp::Binary(Gt), "x <= y");
+        test_not(AssocOp::Binary(Ge), "x < y");
 
         // Other operators are inverted like !(..).
-        test_not(Add, "!(x + y)");
-        test_not(LAnd, "!(x && y)");
-        test_not(LOr, "!(x || y)");
+        test_not(AssocOp::Binary(Add), "!(x + y)");
+        test_not(AssocOp::Binary(And), "!(x && y)");
+        test_not(AssocOp::Binary(Or), "!(x || y)");
     }
 }

@@ -513,14 +513,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             ty::VarianceDiagInfo::Invariant { ty, param_index } => {
                 let (desc, note) = match ty.kind() {
                     ty::RawPtr(ty, mutbl) => {
-                        assert_eq!(*mutbl, rustc_hir::Mutability::Mut);
+                        assert_eq!(*mutbl, hir::Mutability::Mut);
                         (
                             format!("a mutable pointer to `{}`", ty),
                             "mutable pointers are invariant over their type parameter".to_string(),
                         )
                     }
                     ty::Ref(_, inner_ty, mutbl) => {
-                        assert_eq!(*mutbl, rustc_hir::Mutability::Mut);
+                        assert_eq!(*mutbl, hir::Mutability::Mut);
                         (
                             format!("a mutable reference to `{inner_ty}`"),
                             "mutable references are invariant over their type parameter"
@@ -887,7 +887,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // Skip `async` desugaring `impl Future`.
                 }
                 if let TyKind::TraitObject(_, lt) = alias_ty.kind {
-                    if lt.ident.name == kw::Empty {
+                    if lt.res == hir::LifetimeName::ImplicitObjectLifetimeDefault {
                         spans_suggs.push((lt.ident.span.shrink_to_hi(), " + 'a".to_string()));
                     } else {
                         spans_suggs.push((lt.ident.span, "'a".to_string()));

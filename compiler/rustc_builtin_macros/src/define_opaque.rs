@@ -11,15 +11,20 @@ pub(crate) fn expand(
     let define_opaque = match &mut item {
         Annotatable::Item(p) => match &mut p.kind {
             ast::ItemKind::Fn(f) => Some(&mut f.define_opaque),
+            ast::ItemKind::Const(ct) => Some(&mut ct.define_opaque),
+            ast::ItemKind::Static(si) => Some(&mut si.define_opaque),
             _ => None,
         },
         Annotatable::AssocItem(i, _assoc_ctxt) => match &mut i.kind {
             ast::AssocItemKind::Fn(func) => Some(&mut func.define_opaque),
+            ast::AssocItemKind::Const(ct) => Some(&mut ct.define_opaque),
             _ => None,
         },
         Annotatable::Stmt(s) => match &mut s.kind {
             ast::StmtKind::Item(p) => match &mut p.kind {
                 ast::ItemKind::Fn(f) => Some(&mut f.define_opaque),
+                ast::ItemKind::Const(ct) => Some(&mut ct.define_opaque),
+                ast::ItemKind::Static(si) => Some(&mut si.define_opaque),
                 _ => None,
             },
             _ => None,
@@ -47,7 +52,10 @@ pub(crate) fn expand(
                 .collect(),
         );
     } else {
-        ecx.dcx().span_err(meta_item.span, "only functions and methods can define opaque types");
+        ecx.dcx().span_err(
+            meta_item.span,
+            "only functions, statics, and consts can define opaque types",
+        );
     }
 
     vec![item]

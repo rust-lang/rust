@@ -19,7 +19,7 @@ pub fn f2(x: &[f64], y: f64) -> f64 {
     unimplemented!()
 }
 
-#[autodiff(df3, ForwardFirst, Dual, Const, Const)]
+#[autodiff(df3, Forward, Dual, Const, Const)]
 pub fn f3(x: &[f64], y: f64) -> f64 {
     unimplemented!()
 }

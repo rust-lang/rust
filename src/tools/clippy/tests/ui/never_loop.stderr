@@ -164,5 +164,73 @@ LL | |         unimplemented!("not yet");
 LL | |     }
    | |_____^
 
-error: aborting due to 16 previous errors
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:426:5
+   |
+LL | /     for v in 0..10 {
+LL | |
+LL | |         break;
+LL | |         println!("{v}");
+LL | |     }
+   | |_____^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL -     for v in 0..10 {
+LL +     if let Some(v) = (0..10).next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:434:5
+   |
+LL | /     'outer: for v in 0..10 {
+LL | |
+LL | |         loop {
+...  |
+LL | |         return;
+LL | |     }
+   | |_____^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL -     'outer: for v in 0..10 {
+LL +     if let Some(v) = (0..10).next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:436:9
+   |
+LL | /         loop {
+LL | |
+LL | |             break 'outer;
+LL | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:443:5
+   |
+LL | /     for v in 0..10 {
+LL | |
+LL | |         'inner: loop {
+...  |
+LL | |         return;
+LL | |     }
+   | |_____^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL -     for v in 0..10 {
+LL +     if let Some(v) = (0..10).next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:445:9
+   |
+LL | /         'inner: loop {
+LL | |
+LL | |             break 'inner;
+LL | |         }
+   | |_________^
+
+error: aborting due to 21 previous errors
 

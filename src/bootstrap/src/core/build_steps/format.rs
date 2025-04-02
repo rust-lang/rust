@@ -6,7 +6,6 @@ use std::process::Command;
 use std::sync::Mutex;
 use std::sync::mpsc::SyncSender;
 
-use build_helper::ci::CiEnv;
 use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
 
@@ -32,7 +31,7 @@ fn rustfmt(
     // Avoid the submodule config paths from coming into play. We only allow a single global config
     // for the workspace for now.
     cmd.arg("--config-path").arg(src.canonicalize().unwrap());
-    cmd.arg("--edition").arg("2021");
+    cmd.arg("--edition").arg("2024");
     cmd.arg("--unstable-features");
     cmd.arg("--skip-children");
     if check {
@@ -94,7 +93,7 @@ fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, Str
         return Ok(None);
     }
 
-    get_git_modified_files(&build.config.git_config(), Some(&build.config.src), &["rs"])
+    get_git_modified_files(&build.config.git_config(), Some(&build.config.src), &["rs"]).map(Some)
 }
 
 #[derive(serde_derive::Deserialize)]
@@ -104,7 +103,7 @@ struct RustfmtConfig {
 
 // Prints output describing a collection of paths, with lines such as "formatted modified file
 // foo/bar/baz" or "skipped 20 untracked files".
-fn print_paths(verb: &str, adjective: Option<&str>, paths: &[String]) {
+fn print_paths(build: &Builder<'_>, verb: &str, adjective: Option<&str>, paths: &[String]) {
     let len = paths.len();
     let adjective =
         if let Some(adjective) = adjective { format!("{adjective} ") } else { String::new() };
@@ -115,7 +114,7 @@ fn print_paths(verb: &str, adjective: Option<&str>, paths: &[String]) {
     } else {
         println!("fmt: {verb} {len} {adjective}files");
     }
-    if len > 1000 && !CiEnv::is_ci() {
+    if len > 1000 && !build.config.is_running_on_ci {
         println!("hint: if this number seems too high, try running `git fetch origin master`");
     }
 }
@@ -135,7 +134,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
     // `--all` is specified or we are in CI. We check all files in CI to avoid bugs in
     // `get_modified_rs_files` letting regressions slip through; we also care about CI time less
     // since this is still very fast compared to building the compiler.
-    let all = all || CiEnv::is_ci();
+    let all = all || build.config.is_running_on_ci;
 
     let mut builder = ignore::types::TypesBuilder::new();
     builder.add_defaults();
@@ -190,7 +189,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                 )
                 .map(|x| x.to_string())
                 .collect();
-            print_paths("skipped", Some("untracked"), &untracked_paths);
+            print_paths(build, "skipped", Some("untracked"), &untracked_paths);
 
             for untracked_path in untracked_paths {
                 // The leading `/` makes it an exact match against the
@@ -319,7 +318,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
     });
     let mut paths = formatted_paths.into_inner().unwrap();
     paths.sort();
-    print_paths(if check { "checked" } else { "formatted" }, adjective, &paths);
+    print_paths(build, if check { "checked" } else { "formatted" }, adjective, &paths);
 
     drop(tx);
 

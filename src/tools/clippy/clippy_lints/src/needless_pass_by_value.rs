@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_self;
 use clippy_utils::ptr::get_spans;
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
 };
+use clippy_utils::{is_self, peel_hir_ty_options};
 use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::FnKind;
@@ -279,10 +279,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         }
                     }
 
-                    diag.span_suggestion(
-                        input.span,
+                    diag.span_suggestion_verbose(
+                        peel_hir_ty_options(cx, input).span.shrink_to_lo(),
                         "consider taking a reference instead",
-                        format!("&{}", snippet(cx, input.span, "_")),
+                        '&',
                         Applicability::MaybeIncorrect,
                     );
                 };

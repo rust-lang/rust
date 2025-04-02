@@ -195,18 +195,10 @@ fn main() {
     //~^ unnecessary_to_owned
     let _ = slice.to_owned().into_iter();
     //~^ unnecessary_to_owned
-    let _ = [std::path::PathBuf::new()][..].to_vec().into_iter();
-    //~^ unnecessary_to_owned
-    let _ = [std::path::PathBuf::new()][..].to_owned().into_iter();
-    //~^ unnecessary_to_owned
 
     let _ = IntoIterator::into_iter(slice.to_vec());
     //~^ unnecessary_to_owned
     let _ = IntoIterator::into_iter(slice.to_owned());
-    //~^ unnecessary_to_owned
-    let _ = IntoIterator::into_iter([std::path::PathBuf::new()][..].to_vec());
-    //~^ unnecessary_to_owned
-    let _ = IntoIterator::into_iter([std::path::PathBuf::new()][..].to_owned());
     //~^ unnecessary_to_owned
 
     let _ = check_files(&[FileType::Account]);
@@ -316,19 +308,6 @@ fn get_file_path(_file_type: &FileType) -> Result<std::path::PathBuf, std::io::E
 }
 
 fn require_string(_: &String) {}
-
-#[clippy::msrv = "1.35"]
-fn _msrv_1_35() {
-    // `copied` was stabilized in 1.36, so clippy should use `cloned`.
-    let _ = &["x"][..].to_vec().into_iter();
-    //~^ unnecessary_to_owned
-}
-
-#[clippy::msrv = "1.36"]
-fn _msrv_1_36() {
-    let _ = &["x"][..].to_vec().into_iter();
-    //~^ unnecessary_to_owned
-}
 
 // https://github.com/rust-lang/rust-clippy/issues/8507
 mod issue_8507 {
@@ -679,4 +658,19 @@ fn issue13624() -> impl IntoIterator {
     let cow: Cow<'_, Vec<String>> = Cow::Owned(vec![String::from("foo")]);
 
     cow.into_owned().into_iter()
+}
+
+mod issue_14242 {
+    use std::rc::Rc;
+
+    #[derive(Copy, Clone)]
+    struct Foo;
+
+    fn rc_slice_provider() -> Rc<[Foo]> {
+        Rc::from([Foo])
+    }
+
+    fn iterator_provider() -> impl Iterator<Item = Foo> {
+        rc_slice_provider().to_vec().into_iter()
+    }
 }

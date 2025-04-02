@@ -395,8 +395,12 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
 ) -> CValue<'tcx> {
-    let is_thin_ptr =
-        in_lhs.layout().ty.builtin_deref(true).map(|ty| !has_ptr_meta(fx.tcx, ty)).unwrap_or(true);
+    let is_thin_ptr = in_lhs
+        .layout()
+        .ty
+        .builtin_deref(true)
+        .map(|ty| !fx.tcx.type_has_metadata(ty, ty::TypingEnv::fully_monomorphized()))
+        .unwrap_or(true);
 
     if is_thin_ptr {
         match bin_op {

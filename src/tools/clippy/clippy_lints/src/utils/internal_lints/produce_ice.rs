@@ -1,6 +1,6 @@
 use rustc_ast::ast::NodeId;
 use rustc_ast::visit::FnKind;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -24,8 +24,12 @@ declare_clippy_lint! {
 declare_lint_pass!(ProduceIce => [PRODUCE_ICE]);
 
 impl EarlyLintPass for ProduceIce {
-    fn check_fn(&mut self, _: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: Span, _: NodeId) {
-        assert!(!is_trigger_fn(fn_kind), "Would you like some help with that?");
+    fn check_fn(&mut self, ctx: &EarlyContext<'_>, fn_kind: FnKind<'_>, span: Span, _: NodeId) {
+        if is_trigger_fn(fn_kind) {
+            ctx.sess()
+                .dcx()
+                .span_delayed_bug(span, "Would you like some help with that?");
+        }
     }
 }
 

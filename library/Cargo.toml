@@ -8,7 +8,6 @@ members = [
 ]
 
 exclude = [
-  "literal-escaper",
   # stdarch has its own Cargo workspace
   "stdarch",
   "windows_targets"

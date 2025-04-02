@@ -625,7 +625,7 @@ fn compute_intercrate_ambiguity_causes<'tcx>(
     let mut causes: FxIndexSet<IntercrateAmbiguityCause<'tcx>> = Default::default();
 
     for obligation in obligations {
-        search_ambiguity_causes(infcx, obligation.clone().into(), &mut causes);
+        search_ambiguity_causes(infcx, obligation.as_goal(), &mut causes);
     }
 
     causes

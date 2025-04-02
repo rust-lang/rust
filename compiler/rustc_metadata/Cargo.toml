@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 bitflags = "2.4.1"
-libc = "0.2"
 libloading = "0.8.0"
 odht = { version = "0.3.1", features = ["nightly"] }
 rustc_abi = { path = "../rustc_abi" }
@@ -29,4 +28,9 @@ rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 tempfile = "3.2"
 tracing = "0.1"
+# tidy-alphabetical-end
+
+[target.'cfg(target_os = "aix")'.dependencies]
+# tidy-alphabetical-start
+libc = "0.2"
 # tidy-alphabetical-end

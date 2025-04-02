@@ -9,14 +9,6 @@ LL |     fn bar<'a: 'a>()
 LL |             let _: Self::Assoc<'a> = x;
    |                    ^^^^^^^^^^^^^^^
 
-error: unconstrained opaque type
-  --> $DIR/in-assoc-ty-early-bound2.rs:9:22
-   |
-LL |     type Assoc<'a> = impl Sized;
-   |                      ^^^^^^^^^^
-   |
-   = note: `Assoc` must be used in combination with a concrete type within the same impl
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0700`.

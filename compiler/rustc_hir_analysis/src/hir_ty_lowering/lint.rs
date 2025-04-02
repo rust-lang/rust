@@ -86,6 +86,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 "expected a type, found a trait"
             );
             if self_ty.span.can_be_used_for_suggestions()
+                && poly_trait_ref.trait_ref.trait_def_id().is_some()
                 && !self.maybe_suggest_impl_trait(self_ty, &mut diag)
                 && !self.maybe_suggest_dyn_trait(self_ty, sugg, &mut diag)
             {
@@ -140,14 +141,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let generics = match tcx.hir_node_by_def_id(parent_item) {
             hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Struct(variant, generics), ..
+                kind: hir::ItemKind::Struct(_, variant, generics),
+                ..
             }) => {
                 if !variant.fields().iter().any(|field| field.hir_id == parent_hir_id) {
                     return false;
                 }
                 generics
             }
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(def, generics), .. }) => {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(_, def, generics), .. }) => {
                 if !def
                     .variants
                     .iter()
@@ -267,7 +269,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::Node::Field(field) => {
                 // Enums can't have unsized fields, fields can only have an unsized tail field.
                 if let hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Struct(variant, _), ..
+                    kind: hir::ItemKind::Struct(_, variant, _), ..
                 }) = tcx.parent_hir_node(field.hir_id)
                     && variant
                         .fields()

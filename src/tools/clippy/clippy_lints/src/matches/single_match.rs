@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{SpanRangeExt, expr_block, snippet, snippet_block_with_context};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{
@@ -6,7 +6,7 @@ use clippy_utils::{
 };
 use core::ops::ControlFlow;
 use rustc_arena::DroplessArena;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_pat};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, StmtKind};
@@ -32,7 +32,7 @@ fn empty_arm_has_comment(cx: &LateContext<'_>, span: Span) -> bool {
 }
 
 #[rustfmt::skip]
-pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>], expr: &'tcx Expr<'_>) {
+pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>], expr: &'tcx Expr<'_>, contains_comments: bool) {
     if let [arm1, arm2] = arms
         && arm1.guard.is_none()
         && arm2.guard.is_none()
@@ -77,15 +77,31 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tc
                 }
             }
 
-            report_single_pattern(cx, ex, arm1, expr, els);
+            report_single_pattern(cx, ex, arm1, expr, els, contains_comments);
         }
     }
 }
 
-fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, expr: &Expr<'_>, els: Option<&Expr<'_>>) {
+fn report_single_pattern(
+    cx: &LateContext<'_>,
+    ex: &Expr<'_>,
+    arm: &Arm<'_>,
+    expr: &Expr<'_>,
+    els: Option<&Expr<'_>>,
+    contains_comments: bool,
+) {
     let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
     let ctxt = expr.span.ctxt();
-    let mut app = Applicability::MachineApplicable;
+    let note = |diag: &mut Diag<'_, ()>| {
+        if contains_comments {
+            diag.note("you might want to preserve the comments from inside the `match`");
+        }
+    };
+    let mut app = if contains_comments {
+        Applicability::MaybeIncorrect
+    } else {
+        Applicability::MachineApplicable
+    };
     let els_str = els.map_or(String::new(), |els| {
         format!(" else {}", expr_block(cx, els, ctxt, "..", Some(expr.span), &mut app))
     });
@@ -109,7 +125,10 @@ fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, exp
             }
             (sugg, "try")
         };
-        span_lint_and_sugg(cx, lint, expr.span, msg, help, sugg.to_string(), app);
+        span_lint_and_then(cx, lint, expr.span, msg, |diag| {
+            diag.span_suggestion(expr.span, help, sugg.to_string(), app);
+            note(diag);
+        });
         return;
     }
 
@@ -162,7 +181,10 @@ fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, exp
         (msg, sugg)
     };
 
-    span_lint_and_sugg(cx, lint, expr.span, msg, "try", sugg, app);
+    span_lint_and_then(cx, lint, expr.span, msg, |diag| {
+        diag.span_suggestion(expr.span, "try", sugg.to_string(), app);
+        note(diag);
+    });
 }
 
 struct PatVisitor<'tcx> {
