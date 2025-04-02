@@ -479,4 +479,14 @@ declare namespace rustdoc {
      * is a tuple of (filename, subdirs, filenames).
      */
     type Dir = [string, rustdoc.Dir[], string[]]
+
+    /**
+     * Indivitual setting object, used in `settings.js`
+     */
+    interface Setting {
+        js_name: string,
+        name: string,
+        options?: string[],
+        default: string | boolean,
+    }
 }

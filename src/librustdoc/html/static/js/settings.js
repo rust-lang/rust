@@ -102,6 +102,9 @@
         }
     }
 
+    /**
+     * @param {HTMLElement} settingsElement
+     */
     function setEvents(settingsElement) {
         updateLightAndDark();
         onEachLazy(settingsElement.querySelectorAll("input[type=\"checkbox\"]"), toggle => {
@@ -114,23 +117,27 @@
                 changeSetting(toggle.id, toggle.checked);
             };
         });
-        onEachLazy(settingsElement.querySelectorAll("input[type=\"radio\"]"), elem => {
-            const settingId = elem.name;
-            let settingValue = getSettingValue(settingId);
-            if (settingId === "theme") {
-                const useSystem = getSettingValue("use-system-theme");
-                if (useSystem === "true" || settingValue === null) {
-                    // "light" is the default theme
-                    settingValue = useSystem === "false" ? "light" : "system preference";
+        onEachLazy(
+            settingsElement.querySelectorAll("input[type=\"radio\"]"),
+            /** @param {HTMLInputElement} elem */
+            elem => {
+                const settingId = elem.name;
+                let settingValue = getSettingValue(settingId);
+                if (settingId === "theme") {
+                    const useSystem = getSettingValue("use-system-theme");
+                    if (useSystem === "true" || settingValue === null) {
+                        // "light" is the default theme
+                        settingValue = useSystem === "false" ? "light" : "system preference";
+                    }
                 }
+                if (settingValue !== null && settingValue !== "null") {
+                    elem.checked = settingValue === elem.value;
+                }
+                elem.addEventListener("change", ev => {
+                    changeSetting(elem.name, elem.value);
+                });
             }
-            if (settingValue !== null && settingValue !== "null") {
-                elem.checked = settingValue === elem.value;
-            }
-            elem.addEventListener("change", ev => {
-                changeSetting(ev.target.name, ev.target.value);
-            });
-        });
+        );
     }
 
     /**
@@ -138,7 +145,7 @@
      * as argument which describes each setting and how to render it. It returns a string
      * representing the raw HTML.
      *
-     * @param {Array<Object>} settings
+     * @param {Array<rustdoc.Setting>} settings
      *
      * @return {string}
      */
@@ -195,7 +202,9 @@
      * @return {HTMLElement}
      */
     function buildSettingsPage() {
-        const theme_names = getVar("themes").split(",").filter(t => t);
+        const theme_list = getVar("themes")
+        const theme_names = (theme_list === null ? "" : theme_list)
+              .split(",").filter(t => t);
         theme_names.push("light", "dark", "ayu");
 
         const settings = [
