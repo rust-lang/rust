@@ -321,6 +321,7 @@ impl Duration {
     /// let duration = Duration::from_nanos_u128(time_in_nanos);
     /// 
     /// ```
+    #[unstable(feature = "duration_from_nanos_u128", issue = "139201")]
     pub const fn from_nanos_u128(nanos: u128) -> Duration {
         const NANOS_PER_SEC: u128 = self::NANOS_PER_SEC as u128;
         let secs = nanos / NANOS_PER_SEC;
