@@ -30,6 +30,7 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::abi::FnAbiLlvmExt;
+use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
@@ -38,7 +39,6 @@ use crate::llvm::{
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
-use crate::{attributes, llvm_util};
 
 #[must_use]
 pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SCx<'ll>>> {
@@ -927,11 +927,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug_assert_ne!(self.val_ty(val), dest_ty);
 
         let trunc = self.trunc(val, dest_ty);
-        if llvm_util::get_version() >= (19, 0, 0) {
-            unsafe {
-                if llvm::LLVMIsAInstruction(trunc).is_some() {
-                    llvm::LLVMSetNUW(trunc, True);
-                }
+        unsafe {
+            if llvm::LLVMIsAInstruction(trunc).is_some() {
+                llvm::LLVMSetNUW(trunc, True);
             }
         }
         trunc
@@ -941,11 +939,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug_assert_ne!(self.val_ty(val), dest_ty);
 
         let trunc = self.trunc(val, dest_ty);
-        if llvm_util::get_version() >= (19, 0, 0) {
-            unsafe {
-                if llvm::LLVMIsAInstruction(trunc).is_some() {
-                    llvm::LLVMSetNSW(trunc, True);
-                }
+        unsafe {
+            if llvm::LLVMIsAInstruction(trunc).is_some() {
+                llvm::LLVMSetNSW(trunc, True);
             }
         }
         trunc
@@ -1899,10 +1895,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         hash: &'ll Value,
         bitmap_bits: &'ll Value,
     ) {
-        assert!(
-            crate::llvm_util::get_version() >= (19, 0, 0),
-            "MCDC intrinsics require LLVM 19 or later"
-        );
         self.call_intrinsic("llvm.instrprof.mcdc.parameters", &[fn_name, hash, bitmap_bits]);
     }
 
@@ -1914,10 +1906,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         bitmap_index: &'ll Value,
         mcdc_temp: &'ll Value,
     ) {
-        assert!(
-            crate::llvm_util::get_version() >= (19, 0, 0),
-            "MCDC intrinsics require LLVM 19 or later"
-        );
         let args = &[fn_name, hash, bitmap_index, mcdc_temp];
         self.call_intrinsic("llvm.instrprof.mcdc.tvbitmap.update", args);
     }
@@ -1929,10 +1917,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn mcdc_condbitmap_update(&mut self, cond_index: &'ll Value, mcdc_temp: &'ll Value) {
-        assert!(
-            crate::llvm_util::get_version() >= (19, 0, 0),
-            "MCDC intrinsics require LLVM 19 or later"
-        );
         let align = self.tcx.data_layout.i32_align.abi;
         let current_tv_index = self.load(self.cx.type_i32(), mcdc_temp, align);
         let new_tv_index = self.add(current_tv_index, cond_index);
