@@ -73,7 +73,7 @@ impl Context {
 
         match cx.tcx.hir_body_owner_kind(body_owner_def_id) {
             hir::BodyOwnerKind::Static(_) | hir::BodyOwnerKind::Const { .. } => {
-                let body_span = cx.tcx.hir().span_with_body(body_owner);
+                let body_span = cx.tcx.hir_span_with_body(body_owner);
 
                 if let Some(span) = self.const_span {
                     if span.contains(body_span) {
@@ -88,7 +88,7 @@ impl Context {
 
     pub fn body_post(&mut self, cx: &LateContext<'_>, body: &hir::Body<'_>) {
         let body_owner = cx.tcx.hir_body_owner(body.id());
-        let body_span = cx.tcx.hir().span_with_body(body_owner);
+        let body_span = cx.tcx.hir_span_with_body(body_owner);
 
         if let Some(span) = self.const_span {
             if span.contains(body_span) {

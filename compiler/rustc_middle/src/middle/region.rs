@@ -175,7 +175,7 @@ impl Scope {
         let Some(hir_id) = self.hir_id(scope_tree) else {
             return DUMMY_SP;
         };
-        let span = tcx.hir().span(hir_id);
+        let span = tcx.hir_span(hir_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
             if let Node::Block(blk) = tcx.hir_node(hir_id) {
                 // Want span for scope starting after the

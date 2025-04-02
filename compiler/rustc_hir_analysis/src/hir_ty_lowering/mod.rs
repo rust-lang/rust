@@ -1066,7 +1066,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let bound_span = tcx
                     .associated_items(bound_id)
                     .find_by_name_and_kind(tcx, assoc_name, assoc_kind, bound_id)
-                    .and_then(|item| tcx.hir().span_if_local(item.def_id));
+                    .and_then(|item| tcx.hir_span_if_local(item.def_id));
 
                 if let Some(bound_span) = bound_span {
                     err.span_label(
@@ -1400,7 +1400,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         );
                     }
 
-                    if let Some(sp) = tcx.hir().span_if_local(adt_def.did()) {
+                    if let Some(sp) = tcx.hir_span_if_local(adt_def.did()) {
                         err.span_label(sp, format!("variant `{assoc_ident}` not found here"));
                     }
 

@@ -398,7 +398,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
 
         if !self.tcx.is_impl_trait_in_trait(trait_item_def_id) {
-            if let Some(span) = self.tcx.hir().span_if_local(trait_item_def_id) {
+            if let Some(span) = self.tcx.hir_span_if_local(trait_item_def_id) {
                 let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
                 err.span_label(span, format!("definition of `{item_name}` from trait"));
             }

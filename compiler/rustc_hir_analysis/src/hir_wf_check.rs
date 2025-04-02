@@ -170,7 +170,7 @@ fn diagnostic_hir_wf_check<'tcx>(
                 ..
             }) => vec![*ty],
             hir::Node::AnonConst(_) => {
-                if let Some(const_param_id) = tcx.hir().opt_const_param_default_param_def_id(hir_id)
+                if let Some(const_param_id) = tcx.hir_opt_const_param_default_param_def_id(hir_id)
                     && let hir::Node::GenericParam(hir::GenericParam {
                         kind: hir::GenericParamKind::Const { ty, .. },
                         ..

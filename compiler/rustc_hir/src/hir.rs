@@ -2123,7 +2123,7 @@ pub type Lit = Spanned<LitKind>;
 /// explicit discriminant values for enum variants.
 ///
 /// You can check if this anon const is a default in a const param
-/// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_def_id(..)`
+/// `const N: usize = { ... }` with `tcx.hir_opt_const_param_default_param_def_id(..)`
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct AnonConst {
     #[stable_hasher(ignore)]

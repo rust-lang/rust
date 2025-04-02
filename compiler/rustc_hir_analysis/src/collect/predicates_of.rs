@@ -508,7 +508,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
         if matches!(def_kind, DefKind::AnonConst)
             && tcx.features().generic_const_exprs()
             && let Some(defaulted_param_def_id) =
-                tcx.hir().opt_const_param_default_param_def_id(tcx.local_def_id_to_hir_id(def_id))
+                tcx.hir_opt_const_param_default_param_def_id(tcx.local_def_id_to_hir_id(def_id))
         {
             // In `generics_of` we set the generics' parent to be our parent's parent which means that
             // we lose out on the predicates of our actual parent if we dont return those predicates here.

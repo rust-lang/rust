@@ -218,7 +218,7 @@ fn lint_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, shadowed: HirId, span: Span)
         },
     };
     span_lint_and_then(cx, lint, span, msg, |diag| {
-        diag.span_note(cx.tcx.hir().span(shadowed), "previous binding is here");
+        diag.span_note(cx.tcx.hir_span(shadowed), "previous binding is here");
     });
 }
 
