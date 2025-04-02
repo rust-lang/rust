@@ -1,6 +1,6 @@
 //@ check-pass
+//@ edition:2024
 
-#![feature(let_chains)]
 #![allow(irrefutable_let_patterns)]
 fn main() {
     let _a = 0..1;

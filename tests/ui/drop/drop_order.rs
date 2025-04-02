@@ -2,9 +2,10 @@
 //@ compile-flags: -Z validate-mir
 //@ revisions: edition2021 edition2024
 //@ [edition2021] edition: 2021
+//@ [edition2024] compile-flags: -Z lint-mir
 //@ [edition2024] edition: 2024
 
-#![feature(let_chains)]
+#![cfg_attr(edition2021, feature(let_chains))]
 
 use std::cell::RefCell;
 use std::convert::TryInto;
