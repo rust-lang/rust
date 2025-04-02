@@ -1602,7 +1602,6 @@ rustc_queries! {
     /// `Err(AlwaysRequiresDrop)` is returned.
     query adt_significant_drop_tys(def_id: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
         desc { |tcx| "computing when `{}` has a significant destructor", tcx.def_path_str(def_id) }
-        cache_on_disk_if { false }
     }
 
     /// Returns a list of types which (a) have a potentially significant destructor
@@ -1624,7 +1623,6 @@ rustc_queries! {
     /// Otherwise, there is a risk of query cycles.
     query list_significant_drop_tys(ty: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> &'tcx ty::List<Ty<'tcx>> {
         desc { |tcx| "computing when `{}` has a significant destructor", ty.value }
-        cache_on_disk_if { false }
     }
 
     /// Computes the layout of a type. Note that this implicitly
