@@ -544,7 +544,7 @@ impl<T: Copy> Cell<T> {
         unsafe { *self.value.get() }
     }
 
-    /// Updates the contained value using a function and returns the new value.
+    /// Updates the contained value using a function.
     ///
     /// # Examples
     ///
@@ -554,21 +554,14 @@ impl<T: Copy> Cell<T> {
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);
-    /// let new = c.update(|x| x + 1);
-    ///
-    /// assert_eq!(new, 6);
+    /// c.update(|x| x + 1);
     /// assert_eq!(c.get(), 6);
     /// ```
     #[inline]
     #[unstable(feature = "cell_update", issue = "50186")]
-    pub fn update<F>(&self, f: F) -> T
-    where
-        F: FnOnce(T) -> T,
-    {
+    pub fn update(&self, f: impl FnOnce(T) -> T) {
         let old = self.get();
-        let new = f(old);
-        self.set(new);
-        new
+        self.set(f(old));
     }
 }
 
