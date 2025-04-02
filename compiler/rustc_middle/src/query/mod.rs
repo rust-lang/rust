@@ -612,6 +612,7 @@ rustc_queries! {
 
     query check_coroutine_obligations(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "verify auto trait bounds for coroutine interior type `{}`", tcx.def_path_str(key) }
+        return_result_from_ensure_ok
     }
 
     /// MIR after our optimization passes have run. This is MIR that is ready
@@ -1039,7 +1040,7 @@ rustc_queries! {
     /// Checks well-formedness of tail calls (`become f()`).
     query check_tail_calls(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
         desc { |tcx| "tail-call-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { true }
+        return_result_from_ensure_ok
     }
 
     /// Returns the types assumed to be well formed while "inside" of the given item.
@@ -1308,7 +1309,7 @@ rustc_queries! {
 
     query check_match(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
         desc { |tcx| "match-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { true }
+        return_result_from_ensure_ok
     }
 
     /// Performs part of the privacy check and computes effective visibilities.

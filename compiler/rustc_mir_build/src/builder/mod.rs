@@ -48,11 +48,11 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
 /// this directly; instead use the cached version via `mir_built`.
 pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
     tcx.ensure_done().thir_abstract_const(def);
-    if let Err(e) = tcx.check_match(def) {
+    if let Err(e) = tcx.ensure_ok().check_match(def) {
         return construct_error(tcx, def, e);
     }
 
-    if let Err(err) = tcx.check_tail_calls(def) {
+    if let Err(err) = tcx.ensure_ok().check_tail_calls(def) {
         return construct_error(tcx, def, err);
     }
 
