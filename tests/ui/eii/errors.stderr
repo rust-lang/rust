@@ -22,7 +22,7 @@ error: `#[eii_macro_for(...)]` expects a list of one or two elements
 LL | #[eii_macro_for()]
    | ^^^^^^^^^^^^^^^^^^
 
-error: expected this argument to be "unsafe".
+error: expected this argument to be "unsafe"
   --> $DIR/errors.rs:15:22
    |
 LL | #[eii_macro_for(bar, hello)]
