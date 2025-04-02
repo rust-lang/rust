@@ -855,31 +855,30 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 items,
             }) => {
                 self.visit_attrs_vis(&item.attrs, &item.vis);
+                self.visibility_not_permitted(
+                    &item.vis,
+                    errors::VisibilityNotPermittedNote::TraitImpl,
+                );
+                if let TyKind::Dummy = self_ty.kind {
+                    // Abort immediately otherwise the `TyKind::Dummy` will reach HIR lowering,
+                    // which isn't allowed. Not a problem for this obscure, obsolete syntax.
+                    self.dcx().emit_fatal(errors::ObsoleteAuto { span: item.span });
+                }
+                if let (&Safety::Unsafe(span), &ImplPolarity::Negative(sp)) = (safety, polarity) {
+                    self.dcx().emit_err(errors::UnsafeNegativeImpl {
+                        span: sp.to(t.path.span),
+                        negative: sp,
+                        r#unsafe: span,
+                    });
+                }
+
+                let disallowed = matches!(constness, Const::No)
+                    .then(|| TildeConstReason::TraitImpl { span: item.span });
+                self.with_tilde_const(disallowed, |this| this.visit_generics(generics));
+                self.visit_trait_ref(t);
+                self.visit_ty(self_ty);
+
                 self.with_in_trait_impl(Some((*constness, *polarity, t)), |this| {
-                    this.visibility_not_permitted(
-                        &item.vis,
-                        errors::VisibilityNotPermittedNote::TraitImpl,
-                    );
-                    if let TyKind::Dummy = self_ty.kind {
-                        // Abort immediately otherwise the `TyKind::Dummy` will reach HIR lowering,
-                        // which isn't allowed. Not a problem for this obscure, obsolete syntax.
-                        this.dcx().emit_fatal(errors::ObsoleteAuto { span: item.span });
-                    }
-                    if let (&Safety::Unsafe(span), &ImplPolarity::Negative(sp)) = (safety, polarity)
-                    {
-                        this.dcx().emit_err(errors::UnsafeNegativeImpl {
-                            span: sp.to(t.path.span),
-                            negative: sp,
-                            r#unsafe: span,
-                        });
-                    }
-
-                    let disallowed = matches!(constness, Const::No)
-                        .then(|| TildeConstReason::TraitImpl { span: item.span });
-                    this.with_tilde_const(disallowed, |this| this.visit_generics(generics));
-                    this.visit_trait_ref(t);
-                    this.visit_ty(self_ty);
-
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl { of_trait: true });
                 });
             }
@@ -902,34 +901,33 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 };
 
                 self.visit_attrs_vis(&item.attrs, &item.vis);
-                self.with_in_trait_impl(None, |this| {
-                    this.visibility_not_permitted(
-                        &item.vis,
-                        errors::VisibilityNotPermittedNote::IndividualImplItems,
-                    );
-                    if let &Safety::Unsafe(span) = safety {
-                        this.dcx().emit_err(errors::InherentImplCannotUnsafe {
-                            span: self_ty.span,
-                            annotation_span: span,
-                            annotation: "unsafe",
-                            self_ty: self_ty.span,
-                        });
-                    }
-                    if let &ImplPolarity::Negative(span) = polarity {
-                        this.dcx().emit_err(error(span, "negative", false));
-                    }
-                    if let &Defaultness::Default(def_span) = defaultness {
-                        this.dcx().emit_err(error(def_span, "`default`", true));
-                    }
-                    if let &Const::Yes(span) = constness {
-                        this.dcx().emit_err(error(span, "`const`", true));
-                    }
+                self.visibility_not_permitted(
+                    &item.vis,
+                    errors::VisibilityNotPermittedNote::IndividualImplItems,
+                );
+                if let &Safety::Unsafe(span) = safety {
+                    self.dcx().emit_err(errors::InherentImplCannotUnsafe {
+                        span: self_ty.span,
+                        annotation_span: span,
+                        annotation: "unsafe",
+                        self_ty: self_ty.span,
+                    });
+                }
+                if let &ImplPolarity::Negative(span) = polarity {
+                    self.dcx().emit_err(error(span, "negative", false));
+                }
+                if let &Defaultness::Default(def_span) = defaultness {
+                    self.dcx().emit_err(error(def_span, "`default`", true));
+                }
+                if let &Const::Yes(span) = constness {
+                    self.dcx().emit_err(error(span, "`const`", true));
+                }
 
-                    this.with_tilde_const(
-                        Some(TildeConstReason::Impl { span: item.span }),
-                        |this| this.visit_generics(generics),
-                    );
-                    this.visit_ty(self_ty);
+                self.with_tilde_const(Some(TildeConstReason::Impl { span: item.span }), |this| {
+                    this.visit_generics(generics)
+                });
+                self.visit_ty(self_ty);
+                self.with_in_trait_impl(None, |this| {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl { of_trait: false });
                 });
             }
@@ -976,34 +974,34 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.visit_fn(kind, item.span, item.id);
             }
             ItemKind::ForeignMod(ForeignMod { extern_span, abi, safety, .. }) => {
+                let old_item = mem::replace(&mut self.extern_mod_span, Some(item.span));
+                self.visibility_not_permitted(
+                    &item.vis,
+                    errors::VisibilityNotPermittedNote::IndividualForeignItems,
+                );
+
+                if &Safety::Default == safety {
+                    if item.span.at_least_rust_2024() {
+                        self.dcx().emit_err(errors::MissingUnsafeOnExtern { span: item.span });
+                    } else {
+                        self.lint_buffer.buffer_lint(
+                            MISSING_UNSAFE_ON_EXTERN,
+                            item.id,
+                            item.span,
+                            BuiltinLintDiag::MissingUnsafeOnExtern {
+                                suggestion: item.span.shrink_to_lo(),
+                            },
+                        );
+                    }
+                }
+
+                if abi.is_none() {
+                    self.maybe_lint_missing_abi(*extern_span, item.id);
+                }
                 self.with_in_extern_mod(*safety, |this| {
-                    let old_item = mem::replace(&mut this.extern_mod_span, Some(item.span));
-                    this.visibility_not_permitted(
-                        &item.vis,
-                        errors::VisibilityNotPermittedNote::IndividualForeignItems,
-                    );
-
-                    if &Safety::Default == safety {
-                        if item.span.at_least_rust_2024() {
-                            this.dcx().emit_err(errors::MissingUnsafeOnExtern { span: item.span });
-                        } else {
-                            this.lint_buffer.buffer_lint(
-                                MISSING_UNSAFE_ON_EXTERN,
-                                item.id,
-                                item.span,
-                                BuiltinLintDiag::MissingUnsafeOnExtern {
-                                    suggestion: item.span.shrink_to_lo(),
-                                },
-                            );
-                        }
-                    }
-
-                    if abi.is_none() {
-                        this.maybe_lint_missing_abi(*extern_span, item.id);
-                    }
                     visit::walk_item(this, item);
-                    this.extern_mod_span = old_item;
                 });
+                self.extern_mod_span = old_item;
             }
             ItemKind::Enum(_, def, _) => {
                 for variant in &def.variants {
@@ -1024,24 +1022,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                 let is_const_trait =
                     attr::find_by_name(&item.attrs, sym::const_trait).map(|attr| attr.span);
-                self.with_in_trait(item.span, is_const_trait, |this| {
-                    if *is_auto == IsAuto::Yes {
-                        // Auto traits cannot have generics, super traits nor contain items.
-                        this.deny_generic_params(generics, ident.span);
-                        this.deny_super_traits(bounds, ident.span);
-                        this.deny_where_clause(&generics.where_clause, ident.span);
-                        this.deny_items(items, ident.span);
-                    }
+                if *is_auto == IsAuto::Yes {
+                    // Auto traits cannot have generics, super traits nor contain items.
+                    self.deny_generic_params(generics, ident.span);
+                    self.deny_super_traits(bounds, ident.span);
+                    self.deny_where_clause(&generics.where_clause, ident.span);
+                    self.deny_items(items, ident.span);
+                }
 
-                    // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
-                    // context for the supertraits.
-                    let disallowed = is_const_trait
-                        .is_none()
-                        .then(|| TildeConstReason::Trait { span: item.span });
-                    this.with_tilde_const(disallowed, |this| {
-                        this.visit_generics(generics);
-                        walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
-                    });
+                // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
+                // context for the supertraits.
+                let disallowed =
+                    is_const_trait.is_none().then(|| TildeConstReason::Trait { span: item.span });
+                self.with_tilde_const(disallowed, |this| {
+                    this.visit_generics(generics);
+                    walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
+                });
+                self.with_in_trait(item.span, is_const_trait, |this| {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Trait);
                 });
             }
