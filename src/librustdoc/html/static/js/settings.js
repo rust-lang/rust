@@ -310,12 +310,21 @@
         });
     }
 
+    /**
+     * @param {MouseEvent} event
+     */
     function settingsBlurHandler(event) {
-        if (!getHelpButton().contains(document.activeElement) &&
-            !getHelpButton().contains(event.relatedTarget) &&
-            !getSettingsButton().contains(document.activeElement) &&
-            !getSettingsButton().contains(event.relatedTarget)
-        ) {
+        const helpBtn = getHelpButton();
+        const settingsBtn = getSettingsButton();
+        const helpUnfocused = helpBtn === null ||
+              (!helpBtn.contains(document.activeElement) &&
+               // @ts-expect-error
+               !helpBtn.contains(event.relatedTarget));
+        const settingsUnfocused = settingsBtn === null ||
+              (!settingsBtn.contains(document.activeElement) &&
+               // @ts-expect-error
+               !settingsBtn.contains(event.relatedTarget));
+        if (helpUnfocused && settingsUnfocused) {
             window.hidePopoverMenus();
         }
     }
