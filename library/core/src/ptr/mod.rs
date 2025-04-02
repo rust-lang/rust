@@ -425,9 +425,12 @@ pub use non_null::NonNull;
 mod unique;
 #[unstable(feature = "ptr_internals", issue = "none")]
 pub use unique::Unique;
+#[stable(feature = "volatile", since = "1.9.0")]
+pub use volatile::read_volatile;
 
 mod const_ptr;
 mod mut_ptr;
+mod volatile;
 
 /// Executes the destructor (if any) of the pointed-to value.
 ///
@@ -1666,86 +1669,6 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
         copy_nonoverlapping((&raw const src) as *const u8, dst as *mut u8, size_of::<T>());
         // We are calling the intrinsic directly to avoid function calls in the generated code.
         intrinsics::forget(src);
-    }
-}
-
-/// Performs a volatile read of the value from `src` without moving it. This
-/// leaves the memory in `src` unchanged.
-///
-/// Volatile operations are intended to act on I/O memory, and are guaranteed
-/// to not be elided or reordered by the compiler across other volatile
-/// operations.
-///
-/// # Notes
-///
-/// Rust does not currently have a rigorously and formally defined memory model,
-/// so the precise semantics of what "volatile" means here is subject to change
-/// over time. That being said, the semantics will almost always end up pretty
-/// similar to [C11's definition of volatile][c11].
-///
-/// The compiler shouldn't change the relative order or number of volatile
-/// memory operations. However, volatile memory operations on zero-sized types
-/// (e.g., if a zero-sized type is passed to `read_volatile`) are noops
-/// and may be ignored.
-///
-/// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
-///
-/// # Safety
-///
-/// Behavior is undefined if any of the following conditions are violated:
-///
-/// * `src` must be [valid] for reads.
-///
-/// * `src` must be properly aligned.
-///
-/// * `src` must point to a properly initialized value of type `T`.
-///
-/// Like [`read`], `read_volatile` creates a bitwise copy of `T`, regardless of
-/// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
-/// value and the value at `*src` can [violate memory safety][read-ownership].
-/// However, storing non-[`Copy`] types in volatile memory is almost certainly
-/// incorrect.
-///
-/// Note that even if `T` has size `0`, the pointer must be properly aligned.
-///
-/// [valid]: self#safety
-/// [read-ownership]: read#ownership-of-the-returned-value
-///
-/// Just like in C, whether an operation is volatile has no bearing whatsoever
-/// on questions involving concurrent access from multiple threads. Volatile
-/// accesses behave exactly like non-atomic accesses in that regard. In particular,
-/// a race between a `read_volatile` and any write operation to the same location
-/// is undefined behavior.
-///
-/// # Examples
-///
-/// Basic usage:
-///
-/// ```
-/// let x = 12;
-/// let y = &x as *const i32;
-///
-/// unsafe {
-///     assert_eq!(std::ptr::read_volatile(y), 12);
-/// }
-/// ```
-#[inline]
-#[stable(feature = "volatile", since = "1.9.0")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[rustc_diagnostic_item = "ptr_read_volatile"]
-pub unsafe fn read_volatile<T>(src: *const T) -> T {
-    // SAFETY: the caller must uphold the safety contract for `volatile_load`.
-    unsafe {
-        ub_checks::assert_unsafe_precondition!(
-            check_language_ub,
-            "ptr::read_volatile requires that the pointer argument is aligned and non-null",
-            (
-                addr: *const () = src as *const (),
-                align: usize = align_of::<T>(),
-                is_zst: bool = T::IS_ZST,
-            ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
-        );
-        intrinsics::volatile_load(src)
     }
 }
 
