@@ -377,6 +377,7 @@ rustc_queries! {
             |tcx| "computing the opaque types defined by `{}`",
             tcx.def_path_str(key.to_def_id())
         }
+        cache_on_disk_if { true }
     }
 
     /// Returns the explicitly user-written *bounds* on the associated or opaque type given by `DefId`
