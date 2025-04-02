@@ -3516,7 +3516,7 @@ impl Target {
                     Err("the `i586-pc-windows-msvc` target has been removed. Use the `i686-pc-windows-msvc` target instead.\n\
                         Windows 10 (the minimum required OS version) requires a CPU baseline of at least i686 so you can safely switch".into())
                 } else {
-                    Err(format!("Could not find specification for target {target_tuple:?}"))
+                    Err(format!("could not find specification for target {target_tuple:?}"))
                 }
             }
             TargetTuple::TargetJson { ref contents, .. } => {

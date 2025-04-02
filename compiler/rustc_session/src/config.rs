@@ -1424,8 +1424,8 @@ pub fn build_target_config(
             target
         }
         Err(e) => early_dcx.early_fatal(format!(
-            "Error loading target specification: {e}. \
-                     Run `rustc --print target-list` for a list of built-in targets"
+            "error loading target specification: {e}; \
+                     run `rustc --print target-list` for a list of built-in targets"
         )),
     }
 }
