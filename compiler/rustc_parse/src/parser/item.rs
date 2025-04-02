@@ -591,7 +591,7 @@ impl<'a> Parser<'a> {
         }
 
         // Parse stray `impl async Trait`
-        if (self.token.uninterpolated_span().at_least_rust_2018()
+        if (self.token_uninterpolated_span().at_least_rust_2018()
             && self.token.is_keyword(kw::Async))
             || self.is_kw_followed_by_ident(kw::Async)
         {
@@ -877,7 +877,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| t.is_non_raw_ident_where(|i| i.name != kw::As))
         {
             self.bump(); // `default`
-            Defaultness::Default(self.prev_token.uninterpolated_span())
+            Defaultness::Default(self.prev_token_uninterpolated_span())
         } else {
             Defaultness::Final
         }
@@ -1208,7 +1208,7 @@ impl<'a> Parser<'a> {
         attrs: &mut AttrVec,
         mut safety: Safety,
     ) -> PResult<'a, ItemKind> {
-        let extern_span = self.prev_token.uninterpolated_span();
+        let extern_span = self.prev_token_uninterpolated_span();
         let abi = self.parse_abi(); // ABI?
         // FIXME: This recovery should be tested better.
         if safety == Safety::Default
@@ -1290,12 +1290,24 @@ impl<'a> Parser<'a> {
     }
 
     fn is_unsafe_foreign_mod(&self) -> bool {
-        self.token.is_keyword(kw::Unsafe)
-            && self.is_keyword_ahead(1, &[kw::Extern])
-            && self.look_ahead(
-                2 + self.look_ahead(2, |t| t.can_begin_string_literal() as usize),
-                |t| *t == token::OpenDelim(Delimiter::Brace),
-            )
+        // Look for `unsafe`.
+        if !self.token.is_keyword(kw::Unsafe) {
+            return false;
+        }
+        // Look for `extern`.
+        if !self.is_keyword_ahead(1, &[kw::Extern]) {
+            return false;
+        }
+
+        // Look for the optional ABI string literal.
+        let n = if self.look_ahead(2, |t| t.can_begin_string_literal()) { 3 } else { 2 };
+
+        // Look for the `{`. Use `tree_look_ahead` because the ABI (if present)
+        // might be a metavariable i.e. an invisible-delimited sequence, and
+        // `tree_look_ahead` will consider that a single element when looking
+        // ahead.
+        self.tree_look_ahead(n, |t| matches!(t, TokenTree::Delimited(_, _, Delimiter::Brace, _)))
+            == Some(true)
     }
 
     fn is_static_global(&mut self) -> bool {
@@ -2604,13 +2616,36 @@ impl<'a> Parser<'a> {
                 })
             // `extern ABI fn`
             || self.check_keyword_case(exp!(Extern), case)
+                // Use `tree_look_ahead` because `ABI` might be a metavariable,
+                // i.e. an invisible-delimited sequence, and `tree_look_ahead`
+                // will consider that a single element when looking ahead.
                 && self.look_ahead(1, |t| t.can_begin_string_literal())
-                && (self.look_ahead(2, |t| t.is_keyword_case(kw::Fn, case)) ||
+                && (self.tree_look_ahead(2, |tt| {
+                    match tt {
+                        TokenTree::Token(t, _) => t.is_keyword_case(kw::Fn, case),
+                        TokenTree::Delimited(..) => false,
+                    }
+                }) == Some(true) ||
                     // This branch is only for better diagnostics; `pub`, `unsafe`, etc. are not
                     // allowed here.
                     (self.may_recover()
-                        && self.look_ahead(2, |t| ALL_QUALS.iter().any(|exp| t.is_keyword(exp.kw)))
-                        && self.look_ahead(3, |t| t.is_keyword_case(kw::Fn, case))))
+                        && self.tree_look_ahead(2, |tt| {
+                            match tt {
+                                TokenTree::Token(t, _) =>
+                                    ALL_QUALS.iter().any(|exp| {
+                                        t.is_keyword(exp.kw)
+                                    }),
+                                TokenTree::Delimited(..) => false,
+                            }
+                        }) == Some(true)
+                        && self.tree_look_ahead(3, |tt| {
+                            match tt {
+                                TokenTree::Token(t, _) => t.is_keyword_case(kw::Fn, case),
+                                TokenTree::Delimited(..) => false,
+                            }
+                        }) == Some(true)
+                    )
+                )
     }
 
     /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,
@@ -2746,7 +2781,7 @@ impl<'a> Parser<'a> {
                             .expect("Span extracted directly from keyword should always work");
 
                         err.span_suggestion(
-                            self.token.uninterpolated_span(),
+                            self.token_uninterpolated_span(),
                             format!("`{original_kw}` already used earlier, remove this one"),
                             "",
                             Applicability::MachineApplicable,
@@ -2757,7 +2792,7 @@ impl<'a> Parser<'a> {
                     else if let Some(WrongKw::Misplaced(correct_pos_sp)) = wrong_kw {
                         let correct_pos_sp = correct_pos_sp.to(self.prev_token.span);
                         if let Ok(current_qual) = self.span_to_snippet(correct_pos_sp) {
-                            let misplaced_qual_sp = self.token.uninterpolated_span();
+                            let misplaced_qual_sp = self.token_uninterpolated_span();
                             let misplaced_qual = self.span_to_snippet(misplaced_qual_sp).unwrap();
 
                             err.span_suggestion(
