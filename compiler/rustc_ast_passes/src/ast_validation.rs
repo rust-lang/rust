@@ -47,14 +47,14 @@ enum SelfSemantic {
 }
 
 enum TraitOrTraitImpl {
-    Trait { span: Span, constness: Option<Span> },
-    TraitImpl { constness: Const, polarity: ImplPolarity, trait_ref: Span },
+    Trait { span: Span, constness_span: Option<Span> },
+    TraitImpl { constness: Const, polarity: ImplPolarity, trait_ref_span: Span },
 }
 
 impl TraitOrTraitImpl {
     fn constness(&self) -> Option<Span> {
         match self {
-            Self::Trait { constness: Some(span), .. }
+            Self::Trait { constness_span: Some(span), .. }
             | Self::TraitImpl { constness: Const::Yes(span), .. } => Some(*span),
             _ => None,
         }
@@ -66,7 +66,7 @@ struct AstValidator<'a> {
     features: &'a Features,
 
     /// The span of the `extern` in an `extern { ... }` block, if any.
-    extern_mod: Option<Span>,
+    extern_mod_span: Option<Span>,
 
     outer_trait_or_trait_impl: Option<TraitOrTraitImpl>,
 
@@ -75,7 +75,7 @@ struct AstValidator<'a> {
     /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
     /// Nested `impl Trait` _is_ allowed in associated type position,
     /// e.g., `impl Iterator<Item = impl Debug>`.
-    outer_impl_trait: Option<Span>,
+    outer_impl_trait_span: Option<Span>,
 
     disallow_tilde_const: Option<TildeConstReason>,
 
@@ -96,17 +96,22 @@ impl<'a> AstValidator<'a> {
             trait_.map(|(constness, polarity, trait_ref)| TraitOrTraitImpl::TraitImpl {
                 constness,
                 polarity,
-                trait_ref: trait_ref.path.span,
+                trait_ref_span: trait_ref.path.span,
             }),
         );
         f(self);
         self.outer_trait_or_trait_impl = old;
     }
 
-    fn with_in_trait(&mut self, span: Span, constness: Option<Span>, f: impl FnOnce(&mut Self)) {
+    fn with_in_trait(
+        &mut self,
+        span: Span,
+        constness_span: Option<Span>,
+        f: impl FnOnce(&mut Self),
+    ) {
         let old = mem::replace(
             &mut self.outer_trait_or_trait_impl,
-            Some(TraitOrTraitImpl::Trait { span, constness }),
+            Some(TraitOrTraitImpl::Trait { span, constness_span }),
         );
         f(self);
         self.outer_trait_or_trait_impl = old;
@@ -170,10 +175,10 @@ impl<'a> AstValidator<'a> {
         Err(errors::WhereClauseBeforeTypeAlias { span, sugg })
     }
 
-    fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.outer_impl_trait, outer);
+    fn with_impl_trait(&mut self, outer_span: Option<Span>, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.outer_impl_trait_span, outer_span);
         f(self);
-        self.outer_impl_trait = old;
+        self.outer_impl_trait_span = old;
     }
 
     // Mirrors `visit::walk_ty`, but tracks relevant state.
@@ -258,21 +263,22 @@ impl<'a> AstValidator<'a> {
             && let TraitOrTraitImpl::TraitImpl {
                 constness: Const::No,
                 polarity: ImplPolarity::Positive,
-                trait_ref,
+                trait_ref_span,
                 ..
             } = parent
         {
-            Some(trait_ref.shrink_to_lo())
+            Some(trait_ref_span.shrink_to_lo())
         } else {
             None
         };
 
-        let make_trait_const_sugg =
-            if const_trait_impl && let TraitOrTraitImpl::Trait { span, constness: None } = parent {
-                Some(span.shrink_to_lo())
-            } else {
-                None
-            };
+        let make_trait_const_sugg = if const_trait_impl
+            && let TraitOrTraitImpl::Trait { span, constness_span: None } = parent
+        {
+            Some(span.shrink_to_lo())
+        } else {
+            None
+        };
 
         let parent_constness = parent.constness();
         self.dcx().emit_err(errors::TraitFnConst {
@@ -448,13 +454,13 @@ impl<'a> AstValidator<'a> {
         check_where_clause(where_clauses.after);
     }
 
-    fn check_foreign_kind_bodyless(&self, ident: Ident, kind: &str, body: Option<Span>) {
-        let Some(body) = body else {
+    fn check_foreign_kind_bodyless(&self, ident: Ident, kind: &str, body_span: Option<Span>) {
+        let Some(body_span) = body_span else {
             return;
         };
         self.dcx().emit_err(errors::BodyInExtern {
             span: ident.span,
-            body,
+            body: body_span,
             block: self.current_extern_span(),
             kind,
         });
@@ -473,7 +479,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn current_extern_span(&self) -> Span {
-        self.sess.source_map().guess_head_span(self.extern_mod.unwrap())
+        self.sess.source_map().guess_head_span(self.extern_mod_span.unwrap())
     }
 
     /// An `fn` in `extern { ... }` cannot have qualifiers, e.g. `async fn`.
@@ -583,9 +589,10 @@ impl<'a> AstValidator<'a> {
         self.dcx().emit_err(errors::ModuleNonAscii { span: ident.span, name: ident.name });
     }
 
-    fn deny_generic_params(&self, generics: &Generics, ident: Span) {
+    fn deny_generic_params(&self, generics: &Generics, ident_span: Span) {
         if !generics.params.is_empty() {
-            self.dcx().emit_err(errors::AutoTraitGeneric { span: generics.span, ident });
+            self.dcx()
+                .emit_err(errors::AutoTraitGeneric { span: generics.span, ident: ident_span });
         }
     }
 
@@ -605,11 +612,11 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn deny_items(&self, trait_items: &[P<AssocItem>], ident: Span) {
+    fn deny_items(&self, trait_items: &[P<AssocItem>], ident_span: Span) {
         if !trait_items.is_empty() {
             let spans: Vec<_> = trait_items.iter().map(|i| i.kind.ident().unwrap().span).collect();
             let total = trait_items.first().unwrap().span.to(trait_items.last().unwrap().span);
-            self.dcx().emit_err(errors::AutoTraitItems { spans, total, ident });
+            self.dcx().emit_err(errors::AutoTraitItems { spans, total, ident: ident_span });
         }
     }
 
@@ -694,7 +701,7 @@ impl<'a> AstValidator<'a> {
                 }
             }
             TyKind::ImplTrait(_, bounds) => {
-                if let Some(outer_impl_trait_sp) = self.outer_impl_trait {
+                if let Some(outer_impl_trait_sp) = self.outer_impl_trait_span {
                     self.dcx().emit_err(errors::NestedImplTrait {
                         span: ty.span,
                         outer: outer_impl_trait_sp,
@@ -970,7 +977,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::ForeignMod(ForeignMod { extern_span, abi, safety, .. }) => {
                 self.with_in_extern_mod(*safety, |this| {
-                    let old_item = mem::replace(&mut this.extern_mod, Some(item.span));
+                    let old_item = mem::replace(&mut this.extern_mod_span, Some(item.span));
                     this.visibility_not_permitted(
                         &item.vis,
                         errors::VisibilityNotPermittedNote::IndividualForeignItems,
@@ -995,7 +1002,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         this.maybe_lint_missing_abi(*extern_span, item.id);
                     }
                     visit::walk_item(this, item);
-                    this.extern_mod = old_item;
+                    this.extern_mod_span = old_item;
                 });
             }
             ItemKind::Enum(_, def, _) => {
@@ -1593,7 +1600,7 @@ fn deny_equality_constraints(
                     generics.where_clause.span
                 } else {
                     let mut span = predicate_span;
-                    let mut prev: Option<Span> = None;
+                    let mut prev_span: Option<Span> = None;
                     let mut preds = generics.where_clause.predicates.iter().peekable();
                     // Find the predicate that shouldn't have been in the where bound list.
                     while let Some(pred) = preds.next() {
@@ -1603,12 +1610,12 @@ fn deny_equality_constraints(
                             if let Some(next) = preds.peek() {
                                 // This is the first predicate, remove the trailing comma as well.
                                 span = span.with_hi(next.span.lo());
-                            } else if let Some(prev) = prev {
+                            } else if let Some(prev_span) = prev_span {
                                 // Remove the previous comma as well.
-                                span = span.with_lo(prev.hi());
+                                span = span.with_lo(prev_span.hi());
                             }
                         }
-                        prev = Some(pred.span);
+                        prev_span = Some(pred.span);
                     }
                     span
                 };
@@ -1683,10 +1690,10 @@ pub fn check_crate(
     let mut validator = AstValidator {
         sess,
         features,
-        extern_mod: None,
+        extern_mod_span: None,
         outer_trait_or_trait_impl: None,
         has_proc_macro_decls: false,
-        outer_impl_trait: None,
+        outer_impl_trait_span: None,
         disallow_tilde_const: Some(TildeConstReason::Item),
         extern_mod_safety: None,
         lint_buffer: lints,
