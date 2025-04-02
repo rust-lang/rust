@@ -504,9 +504,12 @@ pub fn span_of_fragments(fragments: &[DocFragment]) -> Option<Span> {
 /// This method will return `Some` only if one of the following is true:
 ///
 /// - The doc is made entirely from sugared doc comments, which cannot contain escapes
-/// - The doc is entirely from a single doc fragment, with a string literal, exactly equal
+/// - The doc is entirely from a single doc fragment with a string literal exactly equal to `markdown`.
 /// - The doc comes from `include_str!`
 /// - The doc includes exactly one substring matching `markdown[md_range]` which is contained in a single doc fragment.
+///
+/// This function is defined in the compiler so it can be used by
+/// both `rustdoc` and `clippy`.
 pub fn source_span_for_markdown_range(
     tcx: TyCtxt<'_>,
     markdown: &str,

@@ -23,7 +23,7 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         cx.tcx.node_span_lint(crate::lint::BARE_URLS, hir_id, sp, |lint| {
             lint.primary_message(msg)
                 .note("bare URLs are not automatically turned into clickable links");
-            // the fallback of using the item span is suitible for
+            // the fallback of using the attribute span is suitable for
             // highlighting where the error is, but not for placing the < and >
             if let Some(sp) = maybe_sp {
                 lint.multipart_suggestion(

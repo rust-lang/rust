@@ -4,7 +4,7 @@
 
 // examples of bare urls that are beyond our ability to generate suggestions for
 
-// this falls through every heirustic in `source_span_for_markdown_range`,
+// this falls through every heuristic in `source_span_for_markdown_range`,
 // and thus does not get any suggestion.
 #[doc = "good: <https://example.com/> \n\n"]
 //~^ ERROR this URL is not a hyperlink
