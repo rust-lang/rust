@@ -862,17 +862,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let scope = &self.scopes.const_continuable_scopes[break_index];
 
-        let state_ty = self.local_decls[scope.state_place.as_local().unwrap()].ty;
+        let state_decl = &self.local_decls[scope.state_place.as_local().unwrap()];
+        let state_ty = state_decl.ty;
         let discriminant_ty = match state_ty {
             ty if ty.is_enum() => ty.discriminant_ty(self.tcx),
             ty if ty.is_integral() => ty,
-            _ => todo!(),
+            _ => span_bug!(state_decl.source_info.span, "unsupported #[loop_match] state"),
         };
 
         let rvalue = match state_ty {
             ty if ty.is_enum() => Rvalue::Discriminant(scope.state_place),
             ty if ty.is_integral() => Rvalue::Use(Operand::Copy(scope.state_place)),
-            _ => todo!(),
+            _ => span_bug!(state_decl.source_info.span, "unsupported #[loop_match] state"),
         };
 
         // The PatCtxt is normally used in pattern exhaustiveness checking, but reused here
