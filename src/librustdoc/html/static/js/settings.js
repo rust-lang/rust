@@ -19,7 +19,7 @@
             return false;
         }
     }
-    
+
     /**
      * @overload {"theme"|"preferred-dark-theme"|"preferred-light-theme"}
      * @param {string} settingName
