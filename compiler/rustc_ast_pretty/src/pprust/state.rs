@@ -1337,7 +1337,7 @@ impl<'a> State<'a> {
                 self.space_if_not_bol();
                 self.ibox(INDENT_UNIT);
                 if loc.super_.is_some() {
-                    self.word_nbsp("let");
+                    self.word_nbsp("super");
                 }
                 self.word_nbsp("let");
 
