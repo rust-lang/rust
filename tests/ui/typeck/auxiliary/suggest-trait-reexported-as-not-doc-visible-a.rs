@@ -1,5 +1,13 @@
 //@ edition: 2021
 
-pub trait Foo {
-    fn foo();
+pub trait TraitA {
+    fn a();
+}
+
+pub trait TraitB {
+    fn b();
+}
+
+pub trait TraitC {
+    fn c();
 }
