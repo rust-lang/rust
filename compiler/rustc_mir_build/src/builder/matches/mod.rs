@@ -27,7 +27,6 @@ use tracing::{debug, instrument};
 
 use crate::builder::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::builder::expr::as_place::PlaceBuilder;
-use crate::builder::interpret::ErrorHandled;
 use crate::builder::matches::user_ty::ProjectedUserTypesNode;
 use crate::builder::scope::DropKind;
 use crate::builder::{
@@ -2909,18 +2908,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn eval_unevaluated_mir_constant_to_valtree(
         &self,
         constant: ConstOperand<'tcx>,
-    ) -> Result<(ty::ValTree<'tcx>, Ty<'tcx>), ErrorHandled> {
+    ) -> (ty::ValTree<'tcx>, Ty<'tcx>) {
         assert!(!constant.const_.ty().has_param());
         let (uv, ty) = match constant.const_ {
             mir::Const::Unevaluated(uv, ty) => (uv.shrink(), ty),
             mir::Const::Ty(_, c) => match c.kind() {
                 // A constant that came from a const generic but was then used as an argument to
                 // old-style simd_shuffle (passing as argument instead of as a generic param).
-                ty::ConstKind::Value(cv) => return Ok((cv.valtree, cv.ty)),
+                ty::ConstKind::Value(cv) => return (cv.valtree, cv.ty),
                 other => span_bug!(constant.span, "{other:#?}"),
             },
             mir::Const::Val(mir::ConstValue::Scalar(mir::interpret::Scalar::Int(val)), ty) => {
-                return Ok((ValTree::from_scalar_int(self.tcx, val), ty));
+                return (ValTree::from_scalar_int(self.tcx, val), ty);
             }
             // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
             // a constant and write that value back into `Operand`s. This could happen, but is
@@ -2933,9 +2932,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             other => span_bug!(constant.span, "{other:#?}"),
         };
 
-        match self.tcx.const_eval_resolve_for_typeck(self.typing_env(), uv, constant.span)? {
-            Ok(valtree) => Ok((valtree, ty)),
-            Err(ty) => bug!("could not convert {ty:?} to a valtree"),
+        match self.tcx.const_eval_resolve_for_typeck(self.typing_env(), uv, constant.span) {
+            Ok(Ok(valtree)) => (valtree, ty),
+            Ok(Err(ty)) => span_bug!(constant.span, "could not convert {ty:?} to a valtree"),
+            Err(_) => span_bug!(constant.span, "unable to evaluate this constant"),
         }
     }
 
@@ -2947,7 +2947,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         use rustc_pattern_analysis::constructor::{IntRange, MaybeInfiniteInt};
         use rustc_pattern_analysis::rustc::Constructor;
 
-        let (valtree, ty) = self.eval_unevaluated_mir_constant_to_valtree(constant).unwrap();
+        let (valtree, ty) = self.eval_unevaluated_mir_constant_to_valtree(constant);
         assert!(!ty.has_param());
 
         match pat.ctor() {
