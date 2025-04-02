@@ -1034,7 +1034,6 @@ rustc_queries! {
     /// Unsafety-check this `LocalDefId`.
     query check_unsafety(key: LocalDefId) {
         desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { true }
     }
 
     /// Checks well-formedness of tail calls (`become f()`).
@@ -2511,7 +2510,6 @@ rustc_queries! {
     /// monomorphized.
     query check_mono_item(key: ty::Instance<'tcx>) {
         desc { "monomorphization-time checking" }
-        cache_on_disk_if { true }
     }
 
     /// Builds the set of functions that should be skipped for the move-size check.
