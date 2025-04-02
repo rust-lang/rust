@@ -1557,7 +1557,7 @@ Executed at: {executed_at}"#,
         !self.config.full_bootstrap
             && !self.config.download_rustc()
             && stage >= 2
-            && (self.hosts.iter().any(|h| *h == target) || target == self.build)
+            && (self.hosts.contains(&target) || target == self.build)
     }
 
     /// Checks whether the `compiler` compiling for `target` should be forced to
