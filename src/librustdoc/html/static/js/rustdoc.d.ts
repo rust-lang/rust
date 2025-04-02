@@ -30,6 +30,8 @@ declare global {
         currentCrate: string|null;
         /**
          * Hide popovers, tooltips, or the mobile sidebar.
+         *
+         * Pass `true` to reset focus for tooltip popovers.
          */
         hideAllModals: function(boolean),
         /**

@@ -1,9 +1,7 @@
 // Local js definitions:
 /* global getSettingValue, updateLocalStorage, updateTheme */
 /* global addClass, removeClass, onEach, onEachLazy */
-/* global MAIN_ID, getVar, getSettingsButton, getHelpButton */
-
-// Eventually fix this.
+/* global MAIN_ID, getVar, getSettingsButton, getHelpButton, nonnull */
 
 "use strict";
 
@@ -317,7 +315,7 @@
     }
 
     /**
-     * @param {MouseEvent} event
+     * @param {FocusEvent} event
      */
     function settingsBlurHandler(event) {
         const helpBtn = getHelpButton();
@@ -337,22 +335,26 @@
 
     if (!isSettingsPage) {
         // We replace the existing "onclick" callback.
-        const settingsButton = getSettingsButton();
-        const settingsMenu = document.getElementById("settings");
+        // These elements must exist, as (outside of the settings page)
+        // `settings.js` is only loaded after the settings button is clicked.
+        const settingsButton = nonnull(getSettingsButton());
+        const settingsMenu = nonnull(document.getElementById("settings"));
         settingsButton.onclick = event => {
+            // @ts-expect-error
             if (settingsMenu.contains(event.target)) {
                 return;
             }
             event.preventDefault();
             const shouldDisplaySettings = settingsMenu.style.display === "none";
 
-            window.hideAllModals();
+            window.hideAllModals(false);
             if (shouldDisplaySettings) {
                 displaySettings();
             }
         };
         settingsButton.onblur = settingsBlurHandler;
-        settingsButton.querySelector("a").onblur = settingsBlurHandler;
+        // the settings button should always have a link in it
+        nonnull(settingsButton.querySelector("a")).onblur = settingsBlurHandler;
         onEachLazy(settingsMenu.querySelectorAll("input"), el => {
             el.onblur = settingsBlurHandler;
         });
