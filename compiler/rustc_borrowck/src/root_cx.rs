@@ -2,12 +2,11 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
-use rustc_middle::mir::{ClosureRegionRequirements, ConcreteOpaqueTypes};
 use rustc_middle::ty::{OpaqueHiddenType, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::ErrorGuaranteed;
 use smallvec::SmallVec;
 
-use crate::PropagatedBorrowCheckResults;
+use crate::{ClosureRegionRequirements, ConcreteOpaqueTypes, PropagatedBorrowCheckResults};
 
 /// The shared context used by both the root as well as all its nested
 /// items.
