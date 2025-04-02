@@ -153,11 +153,6 @@
         let output = "";
 
         for (const setting of settings) {
-            if (setting === "hr") {
-                output += "<hr>";
-                continue;
-            }
-
             const js_data_name = setting["js_name"];
             const setting_name = setting["name"];
 
