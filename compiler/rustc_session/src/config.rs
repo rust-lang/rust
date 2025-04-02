@@ -50,6 +50,7 @@ pub const PRINT_KINDS: &[(&str, PrintKind)] = &[
     ("check-cfg", PrintKind::CheckCfg),
     ("code-models", PrintKind::CodeModels),
     ("crate-name", PrintKind::CrateName),
+    ("crate-root-lint-levels", PrintKind::CrateRootLintLevels),
     ("deployment-target", PrintKind::DeploymentTarget),
     ("file-names", PrintKind::FileNames),
     ("host-tuple", PrintKind::HostTuple),
@@ -881,6 +882,7 @@ pub enum PrintKind {
     CheckCfg,
     CodeModels,
     CrateName,
+    CrateRootLintLevels,
     DeploymentTarget,
     FileNames,
     HostTuple,
@@ -2067,6 +2069,7 @@ fn check_print_request_stability(
     match print_kind {
         PrintKind::AllTargetSpecsJson
         | PrintKind::CheckCfg
+        | PrintKind::CrateRootLintLevels
         | PrintKind::SupportedCrateTypes
         | PrintKind::TargetSpecJson
             if !unstable_opts.unstable_options =>

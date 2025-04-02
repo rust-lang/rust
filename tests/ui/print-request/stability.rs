@@ -18,6 +18,10 @@
 //@[all_target_specs_json] compile-flags: --print=all-target-specs-json
 //@[all_target_specs_json] error-pattern: the `-Z unstable-options` flag must also be passed
 
+//@ revisions: crate_root_lint_levels
+//@[crate_root_lint_levels] compile-flags: --print=crate-root-lint-levels
+//@[crate_root_lint_levels] error-pattern: the `-Z unstable-options` flag must also be passed
+
 //@ revisions: check_cfg
 //@[check_cfg] compile-flags: --print=check-cfg
 //@[check_cfg] error-pattern: the `-Z unstable-options` flag must also be passed
