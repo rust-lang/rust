@@ -1168,6 +1168,15 @@ pub(crate) struct LoopMatchInvalidMatch {
 }
 
 #[derive(Diagnostic)]
+#[diag(mir_build_loop_match_unsupported_type)]
+#[note]
+pub(crate) struct LoopMatchUnsupportedType<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
 #[diag(mir_build_loop_match_bad_statements)]
 pub(crate) struct LoopMatchBadStatements {
     #[primary_span]

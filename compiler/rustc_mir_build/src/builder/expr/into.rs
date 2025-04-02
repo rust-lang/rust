@@ -8,7 +8,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{CanonicalUserTypeAnnotation, Ty};
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_span::source_map::Spanned;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -17,7 +17,7 @@ use tracing::{debug, instrument};
 use crate::builder::expr::category::{Category, RvalueFunc};
 use crate::builder::matches::{DeclareLetBindings, HasMatchGuard};
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
-use crate::errors::LoopMatchArmWithGuard;
+use crate::errors::{LoopMatchArmWithGuard, LoopMatchUnsupportedType};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -252,6 +252,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // The only new bit here is that the lowering of the match is wrapped in a
                 // `in_const_continuable_scope`, which makes the match arms and their target basic
                 // block available to the lowering of `#[const_continue]`.
+
+                fn is_supported_loop_match_type(ty: Ty<'_>) -> bool {
+                    if ty.is_integral() {
+                        return true;
+                    }
+
+                    if let Some(adt_def) = ty.ty_adt_def() {
+                        if adt_def.adt_kind() != ty::AdtKind::Enum {
+                            return false;
+                        }
+
+                        for variant in adt_def.variants() {
+                            if !variant.fields.is_empty() {
+                                return false;
+                            }
+                        }
+
+                        return true;
+                    }
+
+                    false
+                }
+
+                let state_ty = this.thir.exprs[state].ty;
+                if !is_supported_loop_match_type(state_ty) {
+                    let span = this.thir.exprs[state].span;
+                    this.tcx.dcx().emit_fatal(LoopMatchUnsupportedType { span, ty: state_ty })
+                }
 
                 let loop_block = this.cfg.start_new_block();
 
