@@ -1,0 +1,30 @@
+// This test differs from other feature gate tests.
+// Instead of verifying that an error occurs when the feature gate is missing,
+// it ensures that only a warning is emitted, not an error.
+
+//@ revisions: current current_feature future future_feature
+
+//@ [current] run-rustfix
+//@ [current] check-pass
+
+//@ [current_feature] run-rustfix
+//@ [current_feature] check-pass
+
+//@ [future] edition: future
+//@ [future] compile-flags: -Z unstable-options
+//@ [future] run-rustfix
+//@ [future] check-pass
+
+//@ [future_feature] edition: future
+//@ [future_feature] compile-flags: -Z unstable-options
+
+#![cfg_attr(future_feature, feature(explicit_extern_abis))]
+#![cfg_attr(current_feature, feature(explicit_extern_abis))]
+
+extern fn _foo() {}
+//[current]~^ WARN extern declarations without an explicit ABI are deprecated
+//[current_feature]~^^ WARN extern declarations without an explicit ABI are deprecated
+//[future]~^^^ WARN extern declarations without an explicit ABI are deprecated
+//[future_feature]~^^^^ ERROR extern declarations without an explicit ABI are disallowed
+
+fn main() {}
