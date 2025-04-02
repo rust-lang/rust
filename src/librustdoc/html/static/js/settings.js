@@ -9,6 +9,18 @@
     const isSettingsPage = window.location.pathname.endsWith("/settings.html");
 
     /**
+     * @param {Element} elem
+     * @param {EventTarget|null} target
+     */
+    function elemContainsTarget(elem, target) {
+        if (target instanceof Node) {
+            return elem.contains(target);
+        } else {
+            return false;
+        }
+    }
+    
+    /**
      * @overload {"theme"|"preferred-dark-theme"|"preferred-light-theme"}
      * @param {string} settingName
      * @param {string} value
@@ -322,12 +334,10 @@
         const settingsBtn = getSettingsButton();
         const helpUnfocused = helpBtn === null ||
               (!helpBtn.contains(document.activeElement) &&
-               // @ts-expect-error
-               !helpBtn.contains(event.relatedTarget));
+               !elemContainsTarget(helpBtn, event.relatedTarget));
         const settingsUnfocused = settingsBtn === null ||
               (!settingsBtn.contains(document.activeElement) &&
-               // @ts-expect-error
-               !settingsBtn.contains(event.relatedTarget));
+               !elemContainsTarget(settingsBtn, event.relatedTarget));
         if (helpUnfocused && settingsUnfocused) {
             window.hidePopoverMenus();
         }
@@ -340,8 +350,7 @@
         const settingsButton = nonnull(getSettingsButton());
         const settingsMenu = nonnull(document.getElementById("settings"));
         settingsButton.onclick = event => {
-            // @ts-expect-error
-            if (settingsMenu.contains(event.target)) {
+            if (elemContainsTarget(settingsMenu, event.target)) {
                 return;
             }
             event.preventDefault();
