@@ -79,11 +79,11 @@ cfg_if::cfg_if! {
 unsafe extern "C" {
     /// Handler in std called when a panic object is dropped outside of
     /// `catch_unwind`.
-    #[cfg_attr(not(bootstrap), rustc_std_internal_symbol)]
+    #[rustc_std_internal_symbol]
     fn __rust_drop_panic() -> !;
 
     /// Handler in std called when a foreign exception is caught.
-    #[cfg_attr(not(bootstrap), rustc_std_internal_symbol)]
+    #[rustc_std_internal_symbol]
     fn __rust_foreign_exception() -> !;
 }
 

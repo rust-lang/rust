@@ -348,7 +348,7 @@ fn default_alloc_error_hook(layout: Layout) {
     unsafe extern "Rust" {
         // This symbol is emitted by rustc next to __rust_alloc_error_handler.
         // Its value depends on the -Zoom={panic,abort} compiler option.
-        #[cfg_attr(not(bootstrap), rustc_std_internal_symbol)]
+        #[rustc_std_internal_symbol]
         static __rust_alloc_error_handler_should_panic: u8;
     }
 

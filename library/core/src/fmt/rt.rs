@@ -11,10 +11,6 @@ use crate::ptr::NonNull;
 #[derive(Copy, Clone)]
 pub struct Placeholder {
     pub position: usize,
-    #[cfg(bootstrap)]
-    pub fill: char,
-    #[cfg(bootstrap)]
-    pub align: Alignment,
     pub flags: u32,
     pub precision: Count,
     pub width: Count,
@@ -23,26 +19,9 @@ pub struct Placeholder {
 #[cfg(bootstrap)]
 impl Placeholder {
     #[inline]
-    pub const fn new(
-        position: usize,
-        fill: char,
-        align: Alignment,
-        flags: u32,
-        precision: Count,
-        width: Count,
-    ) -> Self {
-        Self { position, fill, align, flags, precision, width }
+    pub const fn new(position: usize, flags: u32, precision: Count, width: Count) -> Self {
+        Self { position, flags, precision, width }
     }
-}
-
-#[cfg(bootstrap)]
-#[lang = "format_alignment"]
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum Alignment {
-    Left,
-    Right,
-    Center,
-    Unknown,
 }
 
 /// Used by [width](https://doc.rust-lang.org/std/fmt/#width)
@@ -51,10 +30,6 @@ pub enum Alignment {
 #[derive(Copy, Clone)]
 pub enum Count {
     /// Specified with a literal number, stores the value
-    #[cfg(bootstrap)]
-    Is(usize),
-    /// Specified with a literal number, stores the value
-    #[cfg(not(bootstrap))]
     Is(u16),
     /// Specified using `$` and `*` syntaxes, stores the index into `args`
     Param(usize),
