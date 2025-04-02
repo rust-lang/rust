@@ -1882,8 +1882,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let is_proc_macro = self.tcx.crate_types().contains(&CrateType::ProcMacro);
         if is_proc_macro {
             let tcx = self.tcx;
-            let hir = tcx.hir();
-
             let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
             let stability = tcx.lookup_stability(CRATE_DEF_ID);
             let macros =
@@ -1916,7 +1914,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let id = proc_macro;
                 let proc_macro = tcx.local_def_id_to_hir_id(proc_macro);
                 let mut name = tcx.hir_name(proc_macro);
-                let span = hir.span(proc_macro);
+                let span = tcx.hir_span(proc_macro);
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = tcx.hir_attrs(proc_macro);

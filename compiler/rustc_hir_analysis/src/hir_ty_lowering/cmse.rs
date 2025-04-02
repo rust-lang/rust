@@ -32,7 +32,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                         span,
                         ..
                     }) => *span,
-                    _ => tcx.hir().span(hir_id),
+                    _ => tcx.hir_span(hir_id),
                 };
                 struct_span_code_err!(
                     tcx.dcx(),

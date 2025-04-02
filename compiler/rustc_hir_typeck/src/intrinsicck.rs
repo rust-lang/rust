@@ -45,7 +45,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn check_transmute(&self, from: Ty<'tcx>, to: Ty<'tcx>, hir_id: HirId) {
         let tcx = self.tcx;
         let dl = &tcx.data_layout;
-        let span = tcx.hir().span(hir_id);
+        let span = tcx.hir_span(hir_id);
         let normalize = |ty| {
             let ty = self.resolve_vars_if_possible(ty);
             if let Ok(ty) =

@@ -51,7 +51,6 @@ pub fn find_param_with_region<'tcx>(
         _ => return None, // not a free region
     };
 
-    let hir = &tcx.hir();
     let def_id = id.as_local()?;
 
     // FIXME: use def_kind
@@ -93,7 +92,7 @@ pub fn find_param_with_region<'tcx>(
             });
             found_anon_region.then(|| {
                 let ty_hir_id = fn_decl.inputs[index].hir_id;
-                let param_ty_span = hir.span(ty_hir_id);
+                let param_ty_span = tcx.hir_span(ty_hir_id);
                 let is_first = index == 0;
                 AnonymousParamInfo { param, param_ty: new_param_ty, param_ty_span, kind, is_first }
             })

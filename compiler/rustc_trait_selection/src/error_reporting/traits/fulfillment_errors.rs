@@ -1236,7 +1236,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 // Only suggest derive if this isn't a derived obligation,
                 // and the struct is local.
-                if let Some(span) = self.tcx.hir().span_if_local(def.did())
+                if let Some(span) = self.tcx.hir_span_if_local(def.did())
                     && obligation.cause.code().parent().is_none()
                 {
                     if ty.is_structural_eq_shallow(self.tcx) {
@@ -2943,7 +2943,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let found_node = found_did.and_then(|did| self.tcx.hir_get_if_local(did));
-        let found_span = found_did.and_then(|did| self.tcx.hir().span_if_local(did));
+        let found_span = found_did.and_then(|did| self.tcx.hir_span_if_local(did));
 
         if !self.reported_signature_mismatch.borrow_mut().insert((span, found_span)) {
             // We check closures twice, with obligations flowing in different directions,
@@ -3030,7 +3030,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         node: Node<'_>,
     ) -> Option<(Span, Option<Span>, Vec<ArgKind>)> {
         let sm = self.tcx.sess.source_map();
-        let hir = self.tcx.hir();
         Some(match node {
             Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, fn_arg_span, .. }),
@@ -3086,7 +3085,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .collect::<Vec<ArgKind>>(),
             ),
             Node::Ctor(variant_data) => {
-                let span = variant_data.ctor_hir_id().map_or(DUMMY_SP, |id| hir.span(id));
+                let span = variant_data.ctor_hir_id().map_or(DUMMY_SP, |id| self.tcx.hir_span(id));
                 (span, None, vec![ArgKind::empty(); variant_data.fields().len()])
             }
             _ => panic!("non-FnLike node found: {node:?}"),

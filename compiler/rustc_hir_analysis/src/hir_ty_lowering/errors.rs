@@ -882,7 +882,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             let rename_message = if is_shadowed { ", consider renaming it" } else { "" };
 
-            if let Some(sp) = tcx.hir().span_if_local(item.def_id) {
+            if let Some(sp) = tcx.hir_span_if_local(item.def_id) {
                 err.span_label(
                     sp,
                     format!("`{}{}` defined here{}", prefix, item.name, rename_message),
@@ -1381,7 +1381,7 @@ pub(crate) fn fn_trait_to_string(
         .find_map(|c| {
             if c.ident.name == sym::Output
                 && let Some(ty) = c.ty()
-                && ty.span != tcx.hir().span(trait_segment.hir_id)
+                && ty.span != tcx.hir_span(trait_segment.hir_id)
             {
                 tcx.sess.source_map().span_to_snippet(ty.span).ok()
             } else {

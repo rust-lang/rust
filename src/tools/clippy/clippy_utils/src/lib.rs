@@ -2990,7 +2990,7 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> ExprU
         {
             adjustments = cx.typeck_results().expr_adjustments(e);
         }
-        same_ctxt &= cx.tcx.hir().span(parent_id).ctxt() == ctxt;
+        same_ctxt &= cx.tcx.hir_span(parent_id).ctxt() == ctxt;
         if let Node::Expr(e) = parent {
             match e.kind {
                 ExprKind::If(e, _, _) | ExprKind::Match(e, _, _) if e.hir_id != child_id => {
