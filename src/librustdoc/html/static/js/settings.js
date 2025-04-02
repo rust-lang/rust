@@ -289,10 +289,16 @@
         el.innerHTML = innerHTML;
 
         if (isSettingsPage) {
-            document.getElementById(MAIN_ID).appendChild(el);
+            const mainElem = document.getElementById(MAIN_ID);
+            if (mainElem !== null) {
+                mainElem.appendChild(el);
+            }
         } else {
             el.setAttribute("tabindex", "-1");
-            getSettingsButton().appendChild(el);
+            const settingsBtn = getSettingsButton();
+            if (settingsBtn !== null) {
+                settingsBtn.appendChild(el);
+            }
         }
         return el;
     }
