@@ -594,7 +594,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align) -> &'ll Value {
         unsafe {
             let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
-            llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
+            if !self.cx().tcx.sess.target.has_unreliable_alignment() {
+                llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
+            }
             load
         }
     }
@@ -809,7 +811,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
             let align =
                 if flags.contains(MemFlags::UNALIGNED) { 1 } else { align.bytes() as c_uint };
-            llvm::LLVMSetAlignment(store, align);
+            if !self.cx().tcx.sess.target.has_unreliable_alignment() {
+                llvm::LLVMSetAlignment(store, align);
+            }
             if flags.contains(MemFlags::VOLATILE) {
                 llvm::LLVMSetVolatile(store, llvm::True);
             }

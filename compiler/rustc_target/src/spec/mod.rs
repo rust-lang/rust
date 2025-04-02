@@ -3602,6 +3602,20 @@ impl Target {
             _ => return None,
         })
     }
+
+    /// Returns whether this target is known to have unreliable alignment:
+    /// native C code for the target fails to align some data to the degree
+    /// required by the C standard. We can't *really* do anything about that
+    /// since unsafe Rust code may assume alignment any time, but we can at least
+    /// inhibit some optimizations, and we suppress the alignment checks that
+    /// would detect this unsoundness.
+    ///
+    /// Every target that returns `true` here is still has a soundness bug.
+    pub fn has_unreliable_alignment(&self) -> bool {
+        // FIXME(#112480) MSVC on x86-32 is unsound and fails to properly align many types with
+        // more-than-4-byte-alignment on the stack.
+        self.is_like_msvc && self.arch == "x86"
+    }
 }
 
 /// Either a target tuple string or a path to a JSON file.

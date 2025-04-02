@@ -347,7 +347,9 @@ fn adjust_for_rust_scalar<'tcx>(
             None
         };
         if let Some(kind) = kind {
-            attrs.pointee_align = Some(pointee.align);
+            if !cx.tcx().sess.target.has_unreliable_alignment() {
+                attrs.pointee_align = Some(pointee.align);
+            }
 
             // `Box` are not necessarily dereferenceable for the entire duration of the function as
             // they can be deallocated at any time. Same for non-frozen shared references (see
