@@ -143,10 +143,10 @@
                 if (settingValue !== null && settingValue !== "null") {
                     elem.checked = settingValue === elem.value;
                 }
-                elem.addEventListener("change", ev => {
+                elem.addEventListener("change", () => {
                     changeSetting(elem.name, elem.value);
                 });
-            }
+            },
         );
     }
 
@@ -207,7 +207,7 @@
      * @return {HTMLElement}
      */
     function buildSettingsPage() {
-        const theme_list = getVar("themes")
+        const theme_list = getVar("themes");
         const theme_names = (theme_list === null ? "" : theme_list)
               .split(",").filter(t => t);
         theme_names.push("light", "dark", "ayu");
