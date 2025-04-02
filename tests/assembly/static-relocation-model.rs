@@ -25,8 +25,7 @@ extern "C" {
 }
 
 // CHECK-LABEL: banana:
-// On the next line LLVM 14 produces a `movb`, whereas LLVM 15+ produces a `movzbl`.
-// x64: {{movb|movzbl}}   chaenomeles{{(\(%[a-z0-9]+\))?}}, %{{[a-z0-9]+}}
+// x64:      movzbl  chaenomeles{{(\(%[a-z0-9]+\))?}}, %{{[a-z0-9]+}}
 // A64:      adrp    [[REG:[a-z0-9]+]], chaenomeles
 // A64-NEXT: ldrb    {{[a-z0-9]+}}, {{\[}}[[REG]], :lo12:chaenomeles]
 #[no_mangle]
@@ -35,7 +34,7 @@ pub fn banana() -> u8 {
 }
 
 // CHECK-LABEL: peach:
-// x64: {{movb|movzbl}}    banana{{(\(%[a-z0-9]+\))?}}, %{{[a-z0-9]+}}
+// x64:      movzbl  banana{{(\(%[a-z0-9]+\))?}}, %{{[a-z0-9]+}}
 // A64:      adrp    [[REG2:[a-z0-9]+]], banana
 // A64-NEXT: ldrb    {{[a-z0-9]+}}, {{\[}}[[REG2]], :lo12:banana]
 #[no_mangle]
@@ -45,7 +44,7 @@ pub fn peach() -> u8 {
 
 // CHECK-LABEL: mango:
 // x64:      movq    EXOCHORDA{{(\(%[a-z0-9]+\))?}}, %[[REG:[a-z0-9]+]]
-// x64-NEXT: {{movb|movzbl}}   (%[[REG]]), %{{[a-z0-9]+}}
+// x64-NEXT: movzbl  (%[[REG]]), %{{[a-z0-9]+}}
 // A64:      adrp    [[REG2:[a-z0-9]+]], EXOCHORDA
 // A64-NEXT: ldr     {{[a-z0-9]+}}, {{\[}}[[REG2]], :lo12:EXOCHORDA]
 #[no_mangle]

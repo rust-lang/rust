@@ -1,5 +1,4 @@
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
-//@ min-llvm-version: 19 (for trunc nuw)
 //@ only-x86_64 (because these discriminants are isize)
 
 #![crate_type = "lib"]

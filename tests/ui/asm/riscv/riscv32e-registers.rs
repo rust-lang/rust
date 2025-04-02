@@ -2,27 +2,15 @@
 //
 //@ add-core-stubs
 //@ build-fail
-//@ revisions: riscv32e riscv32em riscv32emc riscv32e_llvm_18 riscv32em_llvm_18 riscv32emc_llvm_18
+//@ revisions: riscv32e riscv32em riscv32emc
 //
 //@ compile-flags: --crate-type=rlib
 //@ [riscv32e] needs-llvm-components: riscv
 //@ [riscv32e] compile-flags: --target=riscv32e-unknown-none-elf
-//@ [riscv32e] min-llvm-version: 19
 //@ [riscv32em] needs-llvm-components: riscv
 //@ [riscv32em] compile-flags: --target=riscv32em-unknown-none-elf
-//@ [riscv32em] min-llvm-version: 19
 //@ [riscv32emc] needs-llvm-components: riscv
 //@ [riscv32emc] compile-flags: --target=riscv32emc-unknown-none-elf
-//@ [riscv32emc] min-llvm-version: 19
-//@ [riscv32e_llvm_18] needs-llvm-components: riscv
-//@ [riscv32e_llvm_18] compile-flags: --target=riscv32e-unknown-none-elf
-//@ [riscv32e_llvm_18] ignore-llvm-version: 19 - 99
-//@ [riscv32em_llvm_18] needs-llvm-components: riscv
-//@ [riscv32em_llvm_18] compile-flags: --target=riscv32em-unknown-none-elf
-//@ [riscv32em_llvm_18] ignore-llvm-version: 19 - 99
-//@ [riscv32emc_llvm_18] needs-llvm-components: riscv
-//@ [riscv32emc_llvm_18] compile-flags: --target=riscv32emc-unknown-none-elf
-//@ [riscv32emc_llvm_18] ignore-llvm-version: 19 - 99
 
 // Unlike bad-reg.rs, this tests if the assembler can reject invalid registers
 // usage in assembly code.
