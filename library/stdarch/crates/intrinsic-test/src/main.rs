@@ -5,7 +5,7 @@ extern crate log;
 mod arm;
 mod common;
 
-use arm::ArmTestProcessor;
+use arm::ArmArchitectureTest;
 use common::SupportedArchitectureTest;
 use common::types::{Cli, ProcessedCli};
 
@@ -17,7 +17,9 @@ fn main() {
     let test_environment_result = match processed_cli_options.target.as_str() {
         "aarch64-unknown-linux-gnu"
         | "armv7-unknown-linux-gnueabihf"
-        | "aarch64_be-unknown-linux-gnu" => Some(ArmTestProcessor::create(processed_cli_options)),
+        | "aarch64_be-unknown-linux-gnu" => {
+            Some(ArmArchitectureTest::create(processed_cli_options))
+        }
 
         _ => None,
     };

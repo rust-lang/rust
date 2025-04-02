@@ -14,12 +14,12 @@ use intrinsic::Intrinsic;
 use json_parser::get_neon_intrinsics;
 use types::TypeKind;
 
-pub struct ArmTestProcessor {
+pub struct ArmArchitectureTest {
     intrinsics: Vec<Intrinsic>,
     cli_options: ProcessedCli,
 }
 
-impl SupportedArchitectureTest for ArmTestProcessor {
+impl SupportedArchitectureTest for ArmArchitectureTest {
     fn create(cli_options: ProcessedCli) -> Self {
         let a32 = cli_options.target.contains("v7");
         let mut intrinsics =
