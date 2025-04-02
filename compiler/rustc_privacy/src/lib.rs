@@ -72,7 +72,9 @@ impl<'tcx> fmt::Display for LazyDefPathStr<'tcx> {
 pub trait DefIdVisitor<'tcx> {
     type Result: VisitorResult = ();
     const SHALLOW: bool = false;
-    const SKIP_ASSOC_TYS: bool = false;
+    fn skip_assoc_tys(&self) -> bool {
+        false
+    }
 
     fn tcx(&self) -> TyCtxt<'tcx>;
     fn visit_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display)
@@ -213,7 +215,7 @@ where
                 }
             }
             ty::Alias(kind @ (ty::Inherent | ty::Weak | ty::Projection), data) => {
-                if V::SKIP_ASSOC_TYS {
+                if self.def_id_visitor.skip_assoc_tys() {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
                     // as visible/reachable even if `Type` is private.
@@ -324,7 +326,9 @@ impl<'a, 'tcx, VL: VisibilityLike, const SHALLOW: bool> DefIdVisitor<'tcx>
     for FindMin<'a, 'tcx, VL, SHALLOW>
 {
     const SHALLOW: bool = SHALLOW;
-    const SKIP_ASSOC_TYS: bool = true;
+    fn skip_assoc_tys(&self) -> bool {
+        true
+    }
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -342,7 +346,7 @@ trait VisibilityLike: Sized {
         def_id: LocalDefId,
     ) -> Self;
 
-    // Returns an over-approximation (`SKIP_ASSOC_TYS` = true) of visibility due to
+    // Returns an over-approximation (`skip_assoc_tys()` = true) of visibility due to
     // associated types for which we can't determine visibility precisely.
     fn of_impl<const SHALLOW: bool>(
         def_id: LocalDefId,
@@ -1352,6 +1356,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
     required_effective_vis: Option<EffectiveVisibility>,
     in_assoc_ty: bool,
     in_primary_interface: bool,
+    skip_assoc_tys: bool,
 }
 
 impl SearchInterfaceForPrivateItemsVisitor<'_> {
@@ -1395,6 +1400,14 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     fn ty(&mut self) -> &mut Self {
         self.in_primary_interface = true;
         let _ = self.visit(self.tcx.type_of(self.item_def_id).instantiate_identity());
+        self
+    }
+
+    fn trait_ref(&mut self) -> &mut Self {
+        self.in_primary_interface = true;
+        if let Some(trait_ref) = self.tcx.impl_trait_ref(self.item_def_id) {
+            let _ = self.visit_trait(trait_ref.instantiate_identity());
+        }
         self
     }
 
@@ -1495,6 +1508,9 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
 impl<'tcx> DefIdVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'tcx> {
     type Result = ControlFlow<()>;
+    fn skip_assoc_tys(&self) -> bool {
+        self.skip_assoc_tys
+    }
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -1531,6 +1547,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             required_effective_vis,
             in_assoc_ty: false,
             in_primary_interface: true,
+            skip_assoc_tys: false,
         }
     }
 
@@ -1726,13 +1743,18 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                         self.effective_visibilities,
                     );
 
-                    // check that private components do not appear in the generics or predicates of inherent impls
-                    // this check is intentionally NOT performed for impls of traits, per #90586
+                    let mut check = self.check(item.owner_id.def_id, impl_vis, Some(impl_ev));
+                    // Generics and predicates of trait impls are intentionally not checked
+                    // for private components (#90586).
                     if impl_.of_trait.is_none() {
-                        self.check(item.owner_id.def_id, impl_vis, Some(impl_ev))
-                            .generics()
-                            .predicates();
+                        check.generics().predicates();
                     }
+                    // Skip checking private components in associated types, due to lack of full
+                    // normalization they produce very ridiculous false positives.
+                    // FIXME: Remove this when full normalization is implemented.
+                    check.skip_assoc_tys = true;
+                    check.ty().trait_ref();
+
                     for impl_item_ref in impl_.items {
                         let impl_item_vis = if impl_.of_trait.is_none() {
                             min(

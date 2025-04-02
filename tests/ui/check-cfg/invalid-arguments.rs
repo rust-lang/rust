@@ -36,3 +36,5 @@
 //@ [unsafe_attr]compile-flags: --check-cfg=unsafe(cfg(foo))
 
 fn main() {}
+
+//~? ERROR invalid `--check-cfg` argument

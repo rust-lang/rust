@@ -392,7 +392,7 @@ where
                         }
                         _ => {
                             self.tcx.dcx().span_delayed_bug(
-                                self.tcx.hir().span(arg.hir_id()),
+                                self.tcx.hir_span(arg.hir_id()),
                                 "no valid for captured arg",
                             );
                         }

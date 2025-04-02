@@ -94,45 +94,49 @@ fn tmod_push_impl(
     tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
     tmods: &mut Vec<TargetModifier>,
 ) {
-    tmods.push(TargetModifier { opt, value_name: tmod_vals.get(&opt).cloned().unwrap_or_default() })
+    if let Some(v) = tmod_vals.get(&opt) {
+        tmods.push(TargetModifier { opt, value_name: v.clone() })
+    }
 }
 
 macro_rules! tmod_push {
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $mods:expr, $tmod_vals:expr) => {
-        tmod_push_impl(
-            OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt_name),
-            $tmod_vals,
-            $mods,
-        );
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr) => {
+        if *$opt_expr != $init {
+            tmod_push_impl(
+                OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt_name),
+                $tmod_vals,
+                $mods,
+            );
+        }
     };
 }
 
 macro_rules! gather_tmods {
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [SUBSTRUCT], [TARGET_MODIFIER]) => {
         compile_error!("SUBSTRUCT can't be target modifier");
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [UNTRACKED], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $mods, $tmod_vals)
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $mods, $tmod_vals)
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED_NO_CRATE_HASH], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $mods, $tmod_vals)
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [SUBSTRUCT], []) => {
         $opt_expr.gather_target_modifiers($mods, $tmod_vals);
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [UNTRACKED], []) => {{}};
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED], []) => {{}};
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED_NO_CRATE_HASH], []) => {{}};
 }
 
@@ -474,7 +478,8 @@ macro_rules! tmod_enum {
                 $($pout)*
                 Self::$opt => {
                     let mut parsed : $t = Default::default();
-                    parse::$parse(&mut parsed, Some($puser_value));
+                    let val = if $puser_value.is_empty() { None } else { Some($puser_value) };
+                    parse::$parse(&mut parsed, val);
                     ExtendedTargetModifierInfo {
                         prefix: $prefix.to_string(),
                         name: stringify!($opt).to_string().replace('_', "-"),
@@ -569,7 +574,7 @@ macro_rules! options {
             _tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
         ) {
             $({
-                gather_tmods!($struct_name, $tmod_enum_name, $opt, &self.$opt, _mods, _tmod_vals,
+                gather_tmods!($struct_name, $tmod_enum_name, $opt, &self.$opt, $init, _mods, _tmod_vals,
                     [$dep_tracking_marker], [$($tmod),*]);
             })*
         }
@@ -681,10 +686,9 @@ fn build_options<O: Default>(
                         ),
                     }
                 }
-                if let Some(tmod) = *tmod
-                    && let Some(value) = value
-                {
-                    target_modifiers.insert(tmod, value.to_string());
+                if let Some(tmod) = *tmod {
+                    let v = value.map_or(String::new(), ToOwned::to_owned);
+                    target_modifiers.insert(tmod, v);
                 }
             }
             None => early_dcx.early_fatal(format!("unknown {outputname} option: `{key}`")),
@@ -1886,7 +1890,8 @@ pub mod parse {
     pub(crate) fn parse_wasm_c_abi(slot: &mut WasmCAbi, v: Option<&str>) -> bool {
         match v {
             Some("spec") => *slot = WasmCAbi::Spec,
-            Some("legacy") => *slot = WasmCAbi::Legacy,
+            // Explicitly setting the `-Z` flag suppresses the lint.
+            Some("legacy") => *slot = WasmCAbi::Legacy { with_lint: false },
             _ => return false,
         }
         true
@@ -2170,6 +2175,8 @@ options! {
         them only if an error has not been emitted"),
     ehcont_guard: bool = (false, parse_bool, [TRACKED],
         "generate Windows EHCont Guard tables"),
+    embed_metadata: bool = (true, parse_bool, [TRACKED],
+        "embed metadata in rlibs and dylibs (default: yes)"),
     embed_source: bool = (false, parse_bool, [TRACKED],
         "embed source text in DWARF debug sections (default: no)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
@@ -2227,7 +2234,8 @@ options! {
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],
         "verify extended properties for incr. comp. (default: no):
         - hashes of green query instances
-        - hash collisions of query keys"),
+        - hash collisions of query keys
+        - hash collisions when creating dep-nodes"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2599,7 +2607,7 @@ written to standard error output)"),
         Requires `-Clto[=[fat,yes]]`"),
     wasi_exec_model: Option<WasiExecModel> = (None, parse_wasi_exec_model, [TRACKED],
         "whether to build a wasi command or reactor"),
-    wasm_c_abi: WasmCAbi = (WasmCAbi::Legacy, parse_wasm_c_abi, [TRACKED],
+    wasm_c_abi: WasmCAbi = (WasmCAbi::Legacy { with_lint: true }, parse_wasm_c_abi, [TRACKED],
         "use spec-compliant C ABI for `wasm32-unknown-unknown` (default: legacy)"),
     write_long_types_to_disk: bool = (true, parse_bool, [UNTRACKED],
         "whether long type names should be written to files instead of being printed in errors"),

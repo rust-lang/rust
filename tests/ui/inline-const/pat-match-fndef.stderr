@@ -1,8 +1,0 @@
-error: fn item `fn() {uwu}` cannot be used in patterns
-  --> $DIR/pat-match-fndef.rs:8:9
-   |
-LL |         const { uwu } => {}
-   |         ^^^^^^^^^^^^^ fn item can't be used in patterns
-
-error: aborting due to 1 previous error
-

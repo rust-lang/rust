@@ -18,7 +18,8 @@ These targets are cross-compiled, and require the corresponding visionOS SDK
 (`XROS.sdk` or `XRSimulator.sdk`), as provided by Xcode 15 or newer.
 
 The path to the SDK can be passed to `rustc` using the common `SDKROOT`
-environment variable.
+environment variable, or will be inferred when compiling on host macOS using
+roughly the same logic as `xcrun --sdk xros --show-sdk-path`.
 
 ### OS version
 

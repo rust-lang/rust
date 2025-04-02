@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-62524.rs:6:3
+  --> $DIR/issue-62524.rs:7:3
    |
 LL | y![
    |   - unclosed delimiter

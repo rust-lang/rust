@@ -729,8 +729,10 @@ fn codegen_stmt<'tcx>(
                     let to_ty = fx.monomorphize(to_ty);
 
                     fn is_wide_ptr<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
-                        ty.builtin_deref(true)
-                            .is_some_and(|pointee_ty| has_ptr_meta(fx.tcx, pointee_ty))
+                        ty.builtin_deref(true).is_some_and(|pointee_ty| {
+                            fx.tcx
+                                .type_has_metadata(pointee_ty, ty::TypingEnv::fully_monomorphized())
+                        })
                     }
 
                     if is_wide_ptr(fx, from_ty) {

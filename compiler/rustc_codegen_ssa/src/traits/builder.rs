@@ -397,6 +397,18 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn icmp(&mut self, op: IntPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fcmp(&mut self, op: RealPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
 
+    /// Returns `-1` if `lhs < rhs`, `0` if `lhs == rhs`, and `1` if `lhs > rhs`.
+    // FIXME: Move the default implementation from `codegen_scalar_binop` into this method and
+    // remove the `Option` return once LLVM 20 is the minimum version.
+    fn three_way_compare(
+        &mut self,
+        _ty: Ty<'tcx>,
+        _lhs: Self::Value,
+        _rhs: Self::Value,
+    ) -> Option<Self::Value> {
+        None
+    }
+
     fn memcpy(
         &mut self,
         dst: Self::Value,

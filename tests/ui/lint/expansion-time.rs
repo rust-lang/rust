@@ -31,3 +31,5 @@ fn main() {
     // WARN see in the stderr file, the warning points to the included file.
     include!("expansion-time-include.rs");
 }
+
+//~? WARN include macro expected single expression in source

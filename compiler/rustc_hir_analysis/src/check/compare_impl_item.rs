@@ -1208,7 +1208,7 @@ fn extract_spans_for_error_reporting<'tcx>(
         TypeError::ArgumentMutability(i) | TypeError::ArgumentSorts(ExpectedFound { .. }, i) => {
             (impl_args.nth(i).unwrap(), trait_args.and_then(|mut args| args.nth(i)))
         }
-        _ => (cause.span, tcx.hir().span_if_local(trait_m.def_id)),
+        _ => (cause.span, tcx.hir_span_if_local(trait_m.def_id)),
     }
 }
 
@@ -1261,7 +1261,7 @@ fn compare_self_type<'tcx>(
                 self_descr
             );
             err.span_label(impl_m_span, format!("`{self_descr}` used in impl"));
-            if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
+            if let Some(span) = tcx.hir_span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("trait method declared without `{self_descr}`"));
             } else {
                 err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
@@ -1281,7 +1281,7 @@ fn compare_self_type<'tcx>(
                 self_descr
             );
             err.span_label(impl_m_span, format!("expected `{self_descr}` in impl"));
-            if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
+            if let Some(span) = tcx.hir_span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("`{self_descr}` used in trait"));
             } else {
                 err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
@@ -1389,7 +1389,7 @@ fn compare_number_of_generics<'tcx>(
                     .collect();
                 (Some(arg_spans), impl_trait_spans)
             } else {
-                let trait_span = tcx.hir().span_if_local(trait_.def_id);
+                let trait_span = tcx.hir_span_if_local(trait_.def_id);
                 (trait_span.map(|s| vec![s]), vec![])
             };
 
@@ -1481,7 +1481,7 @@ fn compare_number_of_method_arguments<'tcx>(
                     }
                 })
             })
-            .or_else(|| tcx.hir().span_if_local(trait_m.def_id));
+            .or_else(|| tcx.hir_span_if_local(trait_m.def_id));
 
         let (impl_m_sig, _) = &tcx.hir_expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
         let pos = impl_number_args.saturating_sub(1);
@@ -2366,7 +2366,7 @@ fn try_report_async_mismatch<'tcx>(
             return Err(tcx.sess.dcx().emit_err(MethodShouldReturnFuture {
                 span: tcx.def_span(impl_m.def_id),
                 method_name: tcx.item_ident(impl_m.def_id),
-                trait_item_span: tcx.hir().span_if_local(trait_m.def_id),
+                trait_item_span: tcx.hir_span_if_local(trait_m.def_id),
             }));
         }
     }

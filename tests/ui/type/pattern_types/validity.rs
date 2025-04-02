@@ -1,4 +1,6 @@
 //! Check that pattern types have their validity checked
+// Strip out raw byte dumps to make tests platform-independent:
+//@ normalize-stderr: "([[:xdigit:]]{2}\s){4,8}\s+│\s.{4,8}" -> "HEX_DUMP"
 
 #![feature(pattern_types, const_trait_impl, pattern_type_range_trait)]
 #![feature(pattern_type_macro)]

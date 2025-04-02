@@ -188,10 +188,10 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
 /// definition itself. For example, this definition would be illegal:
 ///
 /// ```rust
-/// struct Ref<'a, T> { x: &'a T }
+/// struct StaticRef<T> { x: &'static T }
 /// ```
 ///
-/// because the type did not declare that `T:'a`.
+/// because the type did not declare that `T: 'static`.
 ///
 /// We do this check as a pre-pass before checking fn bodies because if these constraints are
 /// not included it frequently leads to confusing errors in fn bodies. So it's better to check

@@ -49,7 +49,7 @@ fn opt_span_bug_fmt<S: Into<MultiSpan>>(
 pub fn trigger_delayed_bug(tcx: TyCtxt<'_>, key: rustc_hir::def_id::DefId) {
     tcx.dcx().span_delayed_bug(
         tcx.def_span(key),
-        "delayed bug triggered by #[rustc_error(delayed_bug_from_inside_query)]",
+        "delayed bug triggered by #[rustc_delayed_bug_from_inside_query]",
     );
 }
 

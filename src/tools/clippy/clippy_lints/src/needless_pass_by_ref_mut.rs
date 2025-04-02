@@ -280,7 +280,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                             diag.span_suggestion(
                                 sp,
                                 "consider changing to".to_string(),
-                                format!("&{}", snippet(cx, cx.tcx.hir().span(inner_ty.ty.hir_id), "_"),),
+                                format!("&{}", snippet(cx, cx.tcx.hir_span(inner_ty.ty.hir_id), "_"),),
                                 Applicability::Unspecified,
                             );
                             if cx.effective_visibilities.is_exported(*fn_def_id) {

@@ -450,6 +450,19 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
         builder
     }
 
+    pub fn crate_root(
+        sess: &'s Session,
+        features: &'s Features,
+        lint_added_lints: bool,
+        store: &'s LintStore,
+        registered_tools: &'s RegisteredTools,
+        crate_attrs: &[ast::Attribute],
+    ) -> Self {
+        let mut builder = Self::new(sess, features, lint_added_lints, store, registered_tools);
+        builder.add(crate_attrs, true, None);
+        builder
+    }
+
     fn process_command_line(&mut self) {
         self.provider.cur = self
             .provider

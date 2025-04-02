@@ -8,7 +8,7 @@
       let mut _3: !;
   
 +     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage.rs:13:1: 13:11 (#0);
-+     coverage Code { bcb: bcb1 } => $DIR/instrument_coverage.rs:15:12: 15:17 (#0);
++     coverage Code { bcb: bcb1 } => $DIR/instrument_coverage.rs:15:12: 15:15 (#0);
 +     coverage Code { bcb: bcb2 } => $DIR/instrument_coverage.rs:16:13: 16:18 (#0);
 +     coverage Code { bcb: bcb3 } => $DIR/instrument_coverage.rs:17:10: 17:10 (#0);
 +     coverage Code { bcb: bcb2 } => $DIR/instrument_coverage.rs:19:2: 19:2 (#0);

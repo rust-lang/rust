@@ -1364,7 +1364,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
         // Try to find predicates on *generic params* that would allow copying `ty`
         let mut suggestion =
-            if let Some(symbol) = tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+            if let Some(symbol) = tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
                 format!(": {symbol}.clone()")
             } else {
                 ".clone()".to_owned()

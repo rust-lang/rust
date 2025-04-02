@@ -1,7 +1,7 @@
 //! A utility module to inspect currently ambiguous obligations in the current context.
 
 use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
-use rustc_middle::traits::solve::{Goal, GoalSource};
+use rustc_middle::traits::solve::GoalSource;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_trait_selection::solve::inspect::{
@@ -85,7 +85,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 root_cause: &obligation.cause,
             };
 
-            let goal = Goal::new(self.tcx, obligation.param_env, obligation.predicate);
+            let goal = obligation.as_goal();
             self.visit_proof_tree(goal, &mut visitor);
         }
 

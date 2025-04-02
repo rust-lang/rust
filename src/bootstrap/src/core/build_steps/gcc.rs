@@ -273,7 +273,7 @@ fn detect_gcc_sha(config: &crate::Config, is_git: bool) -> String {
         get_closest_merge_commit(
             Some(&config.src),
             &config.git_config(),
-            &[config.src.join("src/gcc"), config.src.join("src/bootstrap/download-ci-gcc-stamp")],
+            &["src/gcc", "src/bootstrap/download-ci-gcc-stamp"],
         )
         .unwrap()
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {

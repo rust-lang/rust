@@ -5,3 +5,5 @@
 //@ check-pass
 
 pub fn f() {}
+
+//~? WARN `--generate-link-to-definition` option can only be used with HTML output format

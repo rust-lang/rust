@@ -1,0 +1,29 @@
+//@ run-rustfix
+
+#![deny(unused_imports)]
+#![allow(unreachable_code)]
+
+use std::collections::{self as coll};
+//~^ ERROR unused import: `HashMap`
+
+//~^ ERROR unused import: `self as std_io`
+
+use std::sync::Mutex;
+//~^ ERROR unused import: `self as std_sync`
+
+use std::sync::mpsc::Sender;
+//~^ ERROR unused import: `self as std_sync_mpsc`
+
+use std::collections::hash_map::{self as std_coll_hm};
+//~^ ERROR unused import: `Keys`
+
+use std::borrow::Cow;
+//~^ ERROR unused import: `self`
+
+fn main() {
+    let _ = coll::BTreeSet::<String>::default();
+    let _ = Mutex::new(String::new());
+    let _: Cow<'static, str> = "foo".into();
+    let _: Sender<u32> = todo!();
+    let _: std_coll_hm::Entry<'static, u32, u32> = todo!();
+}

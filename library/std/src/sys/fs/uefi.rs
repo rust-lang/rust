@@ -1,3 +1,5 @@
+use r_efi::protocols::file;
+
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::hash::Hash;
@@ -22,7 +24,12 @@ pub struct ReadDir(!);
 pub struct DirEntry(!);
 
 #[derive(Clone, Debug)]
-pub struct OpenOptions {}
+pub struct OpenOptions {
+    mode: u64,
+    append: bool,
+    truncate: bool,
+    create_new: bool,
+}
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct FileTimes {}
@@ -36,7 +43,7 @@ pub struct FilePermissions(bool);
 pub struct FileType(bool);
 
 #[derive(Debug)]
-pub struct DirBuilder {}
+pub struct DirBuilder;
 
 impl FileAttr {
     pub fn size(&self) -> u64 {
@@ -141,15 +148,58 @@ impl DirEntry {
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        OpenOptions {}
+        OpenOptions { mode: 0, append: false, create_new: false, truncate: false }
     }
 
-    pub fn read(&mut self, _read: bool) {}
-    pub fn write(&mut self, _write: bool) {}
-    pub fn append(&mut self, _append: bool) {}
-    pub fn truncate(&mut self, _truncate: bool) {}
-    pub fn create(&mut self, _create: bool) {}
-    pub fn create_new(&mut self, _create_new: bool) {}
+    pub fn read(&mut self, read: bool) {
+        if read {
+            self.mode |= file::MODE_READ;
+        } else {
+            self.mode &= !file::MODE_READ;
+        }
+    }
+
+    pub fn write(&mut self, write: bool) {
+        if write {
+            // Valid Combinations: Read, Read/Write, Read/Write/Create
+            self.read(true);
+            self.mode |= file::MODE_WRITE;
+        } else {
+            self.mode &= !file::MODE_WRITE;
+        }
+    }
+
+    pub fn append(&mut self, append: bool) {
+        // Docs state that `.write(true).append(true)` has the same effect as `.append(true)`
+        if append {
+            self.write(true);
+        }
+        self.append = append;
+    }
+
+    pub fn truncate(&mut self, truncate: bool) {
+        self.truncate = truncate;
+    }
+
+    pub fn create(&mut self, create: bool) {
+        if create {
+            self.mode |= file::MODE_CREATE;
+        } else {
+            self.mode &= !file::MODE_CREATE;
+        }
+    }
+
+    pub fn create_new(&mut self, create_new: bool) {
+        self.create_new = create_new;
+    }
+
+    #[expect(dead_code)]
+    const fn is_mode_valid(&self) -> bool {
+        // Valid Combinations: Read, Read/Write, Read/Write/Create
+        self.mode == file::MODE_READ
+            || self.mode == (file::MODE_READ | file::MODE_WRITE)
+            || self.mode == (file::MODE_READ | file::MODE_WRITE | file::MODE_CREATE)
+    }
 }
 
 impl File {
@@ -248,11 +298,11 @@ impl File {
 
 impl DirBuilder {
     pub fn new() -> DirBuilder {
-        DirBuilder {}
+        DirBuilder
     }
 
-    pub fn mkdir(&self, _p: &Path) -> io::Result<()> {
-        unsupported()
+    pub fn mkdir(&self, p: &Path) -> io::Result<()> {
+        uefi_fs::mkdir(p)
     }
 }
 
@@ -311,12 +361,12 @@ pub fn stat(_p: &Path) -> io::Result<FileAttr> {
     unsupported()
 }
 
-pub fn lstat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
+pub fn lstat(p: &Path) -> io::Result<FileAttr> {
+    stat(p)
 }
 
-pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
-    unsupported()
+pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
+    crate::path::absolute(p)
 }
 
 pub fn copy(_from: &Path, _to: &Path) -> io::Result<u64> {
@@ -451,5 +501,31 @@ mod uefi_fs {
                 _ => return None,
             }
         }
+    }
+
+    /// An implementation of mkdir to allow creating new directory without having to open the
+    /// volume twice (once for checking and once for creating)
+    pub(crate) fn mkdir(path: &Path) -> io::Result<()> {
+        let absolute = crate::path::absolute(path)?;
+
+        let p = helpers::OwnedDevicePath::from_text(absolute.as_os_str())?;
+        let (vol, mut path_remaining) = File::open_volume_from_device_path(p.borrow())?;
+
+        // Check if file exists
+        match vol.open(&mut path_remaining, file::MODE_READ, 0) {
+            Ok(_) => {
+                return Err(io::Error::new(io::ErrorKind::AlreadyExists, "Path already exists"));
+            }
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e),
+        }
+
+        let _ = vol.open(
+            &mut path_remaining,
+            file::MODE_READ | file::MODE_WRITE | file::MODE_CREATE,
+            file::DIRECTORY,
+        )?;
+
+        Ok(())
     }
 }

@@ -86,8 +86,8 @@ where
                 }
 
                 // Otherwise, define a new opaque type
-                // FIXME: should we use `inject_hidden_type_unchecked` here?
-                self.insert_hidden_type(opaque_type_key, goal.param_env, expected)?;
+                let prev = self.register_hidden_type_in_storage(opaque_type_key, expected);
+                assert_eq!(prev, None);
                 self.add_item_bounds_for_hidden_type(
                     def_id.into(),
                     opaque_ty.args,

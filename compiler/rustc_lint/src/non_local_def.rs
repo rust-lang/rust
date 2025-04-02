@@ -104,8 +104,10 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
         // determining if we are in a doctest context can't currently be determined
         // by the code itself (there are no specific attributes), but fortunately rustdoc
         // sets a perma-unstable env var for libtest so we just reuse that for now
-        let is_at_toplevel_doctest =
-            || self.body_depth == 2 && std::env::var("UNSTABLE_RUSTDOC_TEST_PATH").is_ok();
+        let is_at_toplevel_doctest = || {
+            self.body_depth == 2
+                && cx.tcx.env_var_os("UNSTABLE_RUSTDOC_TEST_PATH".as_ref()).is_some()
+        };
 
         match item.kind {
             ItemKind::Impl(impl_) => {

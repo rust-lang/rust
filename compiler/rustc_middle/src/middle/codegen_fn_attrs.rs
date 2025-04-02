@@ -172,6 +172,8 @@ impl CodegenFnAttrs {
     /// * `#[no_mangle]` is present
     /// * `#[export_name(...)]` is present
     /// * `#[linkage]` is present
+    ///
+    /// Keep this in sync with the logic for the unused_attributes for `#[inline]` lint.
     pub fn contains_extern_indicator(&self) -> bool {
         self.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
             || self.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)

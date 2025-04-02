@@ -103,7 +103,7 @@ pub fn filename_for_input(
             OutFileName::Real(outputs.out_directory.join(&format!("{prefix}{libname}{suffix}")))
         }
         CrateType::Staticlib => {
-            let (prefix, suffix) = (&sess.target.staticlib_prefix, &sess.target.staticlib_suffix);
+            let (prefix, suffix) = sess.staticlib_components(false);
             OutFileName::Real(outputs.out_directory.join(&format!("{prefix}{libname}{suffix}")))
         }
         CrateType::Executable => {

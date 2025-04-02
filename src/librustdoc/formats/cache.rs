@@ -288,7 +288,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
 
         // Keep track of the fully qualified path for this item.
         let pushed = match item.name {
-            Some(n) if !n.is_empty() => {
+            Some(n) => {
                 self.cache.stack.push(n);
                 true
             }
@@ -385,7 +385,6 @@ impl DocFolder for CacheBuilder<'_, '_> {
         // implementations elsewhere.
         let ret = if let clean::Item {
             inner: box clean::ItemInner { kind: clean::ImplItem(ref i), .. },
-            ..
         } = item
         {
             // Figure out the id of this impl. This may map to a

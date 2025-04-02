@@ -400,9 +400,7 @@ impl LateParamRegionKind {
 
     pub fn is_named(&self) -> bool {
         match *self {
-            LateParamRegionKind::Named(_, name) => {
-                name != kw::UnderscoreLifetime && name != kw::Empty
-            }
+            LateParamRegionKind::Named(_, name) => name != kw::UnderscoreLifetime,
             _ => false,
         }
     }
@@ -475,7 +473,7 @@ impl core::fmt::Debug for BoundRegion {
 impl BoundRegionKind {
     pub fn is_named(&self) -> bool {
         match *self {
-            BoundRegionKind::Named(_, name) => name != kw::UnderscoreLifetime && name != kw::Empty,
+            BoundRegionKind::Named(_, name) => name != kw::UnderscoreLifetime,
             _ => false,
         }
     }

@@ -1,15 +1,39 @@
 use std::env;
+use std::ffi::OsString;
 use std::fmt::{Display, from_fn};
 use std::num::ParseIntError;
+use std::path::PathBuf;
+use std::process::Command;
 
+use itertools::Itertools;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::Session;
 use rustc_target::spec::Target;
+use tracing::debug;
 
-use crate::errors::AppleDeploymentTarget;
+use crate::errors::{AppleDeploymentTarget, XcrunError, XcrunSdkPathWarning};
+use crate::fluent_generated as fluent;
 
 #[cfg(test)]
 mod tests;
+
+/// The canonical name of the desired SDK for a given target.
+pub(super) fn sdk_name(target: &Target) -> &'static str {
+    match (&*target.os, &*target.abi) {
+        ("macos", "") => "MacOSX",
+        ("ios", "") => "iPhoneOS",
+        ("ios", "sim") => "iPhoneSimulator",
+        // Mac Catalyst uses the macOS SDK
+        ("ios", "macabi") => "MacOSX",
+        ("tvos", "") => "AppleTVOS",
+        ("tvos", "sim") => "AppleTVSimulator",
+        ("visionos", "") => "XROS",
+        ("visionos", "sim") => "XRSimulator",
+        ("watchos", "") => "WatchOS",
+        ("watchos", "sim") => "WatchSimulator",
+        (os, abi) => unreachable!("invalid os '{os}' / abi '{abi}' combination for Apple target"),
+    }
+}
 
 pub(super) fn macho_platform(target: &Target) -> u32 {
     match (&*target.os, &*target.abi) {
@@ -252,4 +276,132 @@ pub(super) fn add_version_to_llvm_target(
     } else {
         format!("{arch}-{vendor}-{os}{major}.{minor}.{patch}")
     }
+}
+
+pub(super) fn get_sdk_root(sess: &Session) -> Option<PathBuf> {
+    let sdk_name = sdk_name(&sess.target);
+
+    match xcrun_show_sdk_path(sdk_name, sess.verbose_internals()) {
+        Ok((path, stderr)) => {
+            // Emit extra stderr, such as if `-verbose` was passed, or if `xcrun` emitted a warning.
+            if !stderr.is_empty() {
+                sess.dcx().emit_warn(XcrunSdkPathWarning { sdk_name, stderr });
+            }
+            Some(path)
+        }
+        Err(err) => {
+            let mut diag = sess.dcx().create_err(err);
+
+            // Recognize common error cases, and give more Rust-specific error messages for those.
+            if let Some(developer_dir) = xcode_select_developer_dir() {
+                diag.arg("developer_dir", &developer_dir);
+                diag.note(fluent::codegen_ssa_xcrun_found_developer_dir);
+                if developer_dir.as_os_str().to_string_lossy().contains("CommandLineTools") {
+                    if sdk_name != "MacOSX" {
+                        diag.help(fluent::codegen_ssa_xcrun_command_line_tools_insufficient);
+                    }
+                }
+            } else {
+                diag.help(fluent::codegen_ssa_xcrun_no_developer_dir);
+            }
+
+            diag.emit();
+            None
+        }
+    }
+}
+
+/// Invoke `xcrun --sdk $sdk_name --show-sdk-path` to get the SDK path.
+///
+/// The exact logic that `xcrun` uses is unspecified (see `man xcrun` for a few details), and may
+/// change between macOS and Xcode versions, but it roughly boils down to finding the active
+/// developer directory, and then invoking `xcodebuild -sdk $sdk_name -version` to get the SDK
+/// details.
+///
+/// Finding the developer directory is roughly done by looking at, in order:
+/// - The `DEVELOPER_DIR` environment variable.
+/// - The `/var/db/xcode_select_link` symlink (set by `xcode-select --switch`).
+/// - `/Applications/Xcode.app` (hardcoded fallback path).
+/// - `/Library/Developer/CommandLineTools` (hardcoded fallback path).
+///
+/// Note that `xcrun` caches its result, but with a cold cache this whole operation can be quite
+/// slow, especially so the first time it's run after a reboot.
+fn xcrun_show_sdk_path(
+    sdk_name: &'static str,
+    verbose: bool,
+) -> Result<(PathBuf, String), XcrunError> {
+    let mut cmd = Command::new("xcrun");
+    if verbose {
+        cmd.arg("--verbose");
+    }
+    // The `--sdk` parameter is the same as in xcodebuild, namely either an absolute path to an SDK,
+    // or the (lowercase) canonical name of an SDK.
+    cmd.arg("--sdk");
+    cmd.arg(&sdk_name.to_lowercase());
+    cmd.arg("--show-sdk-path");
+
+    // We do not stream stdout/stderr lines directly to the user, since whether they are warnings or
+    // errors depends on the status code at the end.
+    let output = cmd.output().map_err(|error| XcrunError::FailedInvoking {
+        sdk_name,
+        command_formatted: format!("{cmd:?}"),
+        error,
+    })?;
+
+    // It is fine to do lossy conversion here, non-UTF-8 paths are quite rare on macOS nowadays
+    // (only possible with the HFS+ file system), and we only use it for error messages.
+    let stderr = String::from_utf8_lossy_owned(output.stderr);
+    if !stderr.is_empty() {
+        debug!(stderr, "original xcrun stderr");
+    }
+
+    // Some versions of `xcodebuild` output beefy errors when invoked via `xcrun`,
+    // but these are usually red herrings.
+    let stderr = stderr
+        .lines()
+        .filter(|line| {
+            !line.contains("Writing error result bundle")
+                && !line.contains("Requested but did not find extension point with identifier")
+        })
+        .join("\n");
+
+    if output.status.success() {
+        Ok((stdout_to_path(output.stdout), stderr))
+    } else {
+        // Output both stdout and stderr, since shims of `xcrun` (such as the one provided by
+        // nixpkgs), do not always use stderr for errors.
+        let stdout = String::from_utf8_lossy_owned(output.stdout).trim().to_string();
+        Err(XcrunError::Unsuccessful {
+            sdk_name,
+            command_formatted: format!("{cmd:?}"),
+            stdout,
+            stderr,
+        })
+    }
+}
+
+/// Invoke `xcode-select --print-path`, and return the current developer directory.
+///
+/// NOTE: We don't do any error handling here, this is only used as a canary in diagnostics (`xcrun`
+/// will have already emitted the relevant error information).
+fn xcode_select_developer_dir() -> Option<PathBuf> {
+    let mut cmd = Command::new("xcode-select");
+    cmd.arg("--print-path");
+    let output = cmd.output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    Some(stdout_to_path(output.stdout))
+}
+
+fn stdout_to_path(mut stdout: Vec<u8>) -> PathBuf {
+    // Remove trailing newline.
+    if let Some(b'\n') = stdout.last() {
+        let _ = stdout.pop().unwrap();
+    }
+    #[cfg(unix)]
+    let path = <OsString as std::os::unix::ffi::OsStringExt>::from_vec(stdout);
+    #[cfg(not(unix))] // Unimportant, this is only used on macOS
+    let path = OsString::from(String::from_utf8(stdout).unwrap());
+    PathBuf::from(path)
 }

@@ -330,7 +330,6 @@ impl EarlyLintPass for UnsafeCode {
         if let FnKind::Fn(
             ctxt,
             _,
-            _,
             ast::Fn {
                 sig: ast::FnSig { header: ast::FnHeader { safety: ast::Safety::Unsafe(_), .. }, .. },
                 body,
@@ -3116,6 +3115,7 @@ impl EarlyLintPass for SpecialModuleName {
         for item in &krate.items {
             if let ast::ItemKind::Mod(
                 _,
+                ident,
                 ast::ModKind::Unloaded | ast::ModKind::Loaded(_, ast::Inline::No, _, _),
             ) = item.kind
             {
@@ -3123,7 +3123,7 @@ impl EarlyLintPass for SpecialModuleName {
                     continue;
                 }
 
-                match item.ident.name.as_str() {
+                match ident.name.as_str() {
                     "lib" => cx.emit_span_lint(
                         SPECIAL_MODULE_NAME,
                         item.span,

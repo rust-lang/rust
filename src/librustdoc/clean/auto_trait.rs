@@ -114,8 +114,8 @@ fn synthesize_auto_trait_impl<'tcx>(
     };
 
     Some(clean::Item {
-        name: None,
         inner: Box::new(clean::ItemInner {
+            name: None,
             attrs: Default::default(),
             stability: None,
             kind: clean::ImplItem(Box::new(clean::Impl {
@@ -127,10 +127,10 @@ fn synthesize_auto_trait_impl<'tcx>(
                 polarity,
                 kind: clean::ImplKind::Auto,
             })),
+            item_id: clean::ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
+            cfg: None,
+            inline_stmt_id: None,
         }),
-        item_id: clean::ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
-        cfg: None,
-        inline_stmt_id: None,
     })
 }
 

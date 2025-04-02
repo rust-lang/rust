@@ -40,9 +40,8 @@ use crate::errors::{
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
     IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, PatternMethodParamWithoutBody,
     QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
-    StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens, StructLiteralNeedingParensSugg,
-    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
-    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
+    TernaryOperator, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
     UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 use crate::parser::attr::InnerAttrPolicy;
@@ -949,7 +948,6 @@ impl<'a> Parser<'a> {
         lo: Span,
         s: BlockCheckMode,
         maybe_struct_name: token::Token,
-        can_be_struct_literal: bool,
     ) -> Option<PResult<'a, P<Block>>> {
         if self.token.is_ident() && self.look_ahead(1, |t| t == &token::Colon) {
             // We might be having a struct literal where people forgot to include the path:
@@ -975,47 +973,23 @@ impl<'a> Parser<'a> {
                     // fn foo() -> Foo { Path {
                     //     field: value,
                     // } }
-                    let guar = err.delay_as_bug();
+                    err.cancel();
                     self.restore_snapshot(snapshot);
-                    let mut tail = self.mk_block(
+                    let guar = self.dcx().emit_err(StructLiteralBodyWithoutPath {
+                        span: expr.span,
+                        sugg: StructLiteralBodyWithoutPathSugg {
+                            before: expr.span.shrink_to_lo(),
+                            after: expr.span.shrink_to_hi(),
+                        },
+                    });
+                    Ok(self.mk_block(
                         thin_vec![self.mk_stmt_err(expr.span, guar)],
                         s,
                         lo.to(self.prev_token.span),
-                    );
-                    tail.could_be_bare_literal = true;
-                    if maybe_struct_name.is_ident() && can_be_struct_literal {
-                        // Account for `if Example { a: one(), }.is_pos() {}`.
-                        // expand `before` so that we take care of module path such as:
-                        // `foo::Bar { ... } `
-                        // we expect to suggest `(foo::Bar { ... })` instead of `foo::(Bar { ... })`
-                        let sm = self.psess.source_map();
-                        let before = maybe_struct_name.span.shrink_to_lo();
-                        if let Ok(extend_before) = sm.span_extend_prev_while(before, |t| {
-                            t.is_alphanumeric() || t == ':' || t == '_'
-                        }) {
-                            Err(self.dcx().create_err(StructLiteralNeedingParens {
-                                span: maybe_struct_name.span.to(expr.span),
-                                sugg: StructLiteralNeedingParensSugg {
-                                    before: extend_before.shrink_to_lo(),
-                                    after: expr.span.shrink_to_hi(),
-                                },
-                            }))
-                        } else {
-                            return None;
-                        }
-                    } else {
-                        self.dcx().emit_err(StructLiteralBodyWithoutPath {
-                            span: expr.span,
-                            sugg: StructLiteralBodyWithoutPathSugg {
-                                before: expr.span.shrink_to_lo(),
-                                after: expr.span.shrink_to_hi(),
-                            },
-                        });
-                        Ok(tail)
-                    }
+                    ))
                 }
                 (Err(err), Ok(tail)) => {
-                    // We have a block tail that contains a somehow valid type ascription expr.
+                    // We have a block tail that contains a somehow valid expr.
                     err.cancel();
                     Ok(tail)
                 }
@@ -1025,10 +999,7 @@ impl<'a> Parser<'a> {
                     self.consume_block(exp!(OpenBrace), exp!(CloseBrace), ConsumeClosingDelim::Yes);
                     Err(err)
                 }
-                (Ok(_), Ok(mut tail)) => {
-                    tail.could_be_bare_literal = true;
-                    Ok(tail)
-                }
+                (Ok(_), Ok(tail)) => Ok(tail),
             });
         }
         None

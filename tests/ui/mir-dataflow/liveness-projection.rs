@@ -30,3 +30,5 @@ fn foo() {
 }
 
 fn main() {}
+
+//~? ERROR stop_after_dataflow ended compilation

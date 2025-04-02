@@ -1,6 +1,6 @@
 #![no_std]
 
-//@ is "$.index[*][?(@.name=='Aligned')].attrs" '["#[attr = Repr([ReprAlign(Align(4 bytes))])]\n"]'
+//@ is "$.index[?(@.name=='Aligned')].attrs" '["#[repr(align(4))]"]'
 #[repr(align(4))]
 pub struct Aligned {
     a: i8,

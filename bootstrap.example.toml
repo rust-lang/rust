@@ -1,7 +1,7 @@
 # Sample TOML configuration file for building Rust.
 #
 # To configure bootstrap, run `./configure` or `./x.py setup`.
-# See https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html#create-a-configtoml for more information.
+# See https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html#create-a-bootstraptoml for more information.
 #
 # All options are commented out by default in this file, and they're commented
 # out with their default values. The build system by default looks for
@@ -28,8 +28,9 @@
 #  - A new option
 #  - A change in the default values
 #
-# If `change-id` does not match the version that is currently running,
-# `x.py` will inform you about the changes made on bootstrap.
+# If the change-id does not match the version currently in use, x.py will 
+# display the changes made to the bootstrap.
+# To suppress these warnings, you can set change-id = "ignore".
 #change-id = <latest change id in src/bootstrap/src/utils/change_tracker.rs>
 
 # =============================================================================
@@ -446,7 +447,7 @@
 # a specific version.
 #ccache = false
 
-# List of paths to exclude from the build and test processes. 
+# List of paths to exclude from the build and test processes.
 # For example, exclude = ["tests/ui", "src/tools/tidy"].
 #exclude = []
 

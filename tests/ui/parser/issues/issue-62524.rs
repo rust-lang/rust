@@ -1,6 +1,7 @@
 // ignore-tidy-trailing-newlines
-//@ error-pattern: aborting due to 1 previous error
+
 #![allow(uncommon_codepoints)]
 
+//~vv ERROR this file contains an unclosed delimiter
 y![
 Ϥ,

@@ -7,3 +7,5 @@
 extern "C" {}
 
 fn main() {}
+
+//[in_flag]~? ERROR unknown linking modifier `link-arg`

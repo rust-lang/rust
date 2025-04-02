@@ -19,3 +19,6 @@
 //@[mixed] error-pattern: warning: MIR pass `ThisPassDoesNotExist` is unknown and will be ignored
 
 fn main() {}
+
+//[empty]~? ERROR incorrect value `` for unstable option `mir-enable-passes`
+//[unprefixed]~? ERROR incorrect value `CheckAlignment` for unstable option `mir-enable-passes`

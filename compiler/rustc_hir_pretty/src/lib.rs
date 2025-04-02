@@ -1193,7 +1193,8 @@ impl<'a> State<'a> {
         wth: hir::StructTailExpr<'_>,
     ) {
         self.print_qpath(qpath, true);
-        self.word("{");
+        self.nbsp();
+        self.word_space("{");
         self.commasep_cmnt(Consistent, fields, |s, field| s.print_expr_field(field), |f| f.span);
         match wth {
             hir::StructTailExpr::Base(expr) => {
@@ -1215,20 +1216,13 @@ impl<'a> State<'a> {
                 self.word("..");
                 self.end();
             }
-            hir::StructTailExpr::None => {
-                if !fields.is_empty() {
-                    self.word(",");
-                }
-            }
+            hir::StructTailExpr::None => {}
         }
-
+        self.space();
         self.word("}");
     }
 
     fn print_expr_field(&mut self, field: &hir::ExprField<'_>) {
-        if self.attrs(field.hir_id).is_empty() {
-            self.space();
-        }
         self.cbox(INDENT_UNIT);
         self.print_attrs_as_outer(self.attrs(field.hir_id));
         if !field.is_shorthand {

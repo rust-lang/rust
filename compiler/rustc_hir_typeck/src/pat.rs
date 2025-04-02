@@ -632,10 +632,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 let tcx = self.tcx;
                 trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
-                self.typeck_results
-                    .borrow_mut()
-                    .treat_byte_string_as_slice
-                    .insert(lt.hir_id.local_id);
                 pat_ty =
                     Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, Ty::new_slice(tcx, tcx.types.u8));
             }
@@ -944,10 +940,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let var_ty = self.local_ty(span, var_id);
         if let Err(mut err) = self.demand_eqtype_pat_diag(span, var_ty, ty, ti) {
-            let hir = self.tcx.hir();
             let var_ty = self.resolve_vars_if_possible(var_ty);
             let msg = format!("first introduced with type `{var_ty}` here");
-            err.span_label(hir.span(var_id), msg);
+            err.span_label(self.tcx.hir_span(var_id), msg);
             let in_match = self.tcx.hir_parent_iter(var_id).any(|(_, n)| {
                 matches!(
                     n,
@@ -1255,7 +1250,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })) => match self.tcx.hir_node(body_id.hir_id) {
                     hir::Node::Expr(expr) => {
                         if hir::is_range_literal(expr) {
-                            let span = self.tcx.hir().span(body_id.hir_id);
+                            let span = self.tcx.hir_span(body_id.hir_id);
                             if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span) {
                                 e.span_suggestion_verbose(
                                     ident.span,
@@ -1286,7 +1281,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_ty: Ty<'tcx>,
         segments: &'tcx [hir::PathSegment<'tcx>],
     ) {
-        if let Some(span) = self.tcx.hir().res_span(pat_res) {
+        if let Some(span) = self.tcx.hir_res_span(pat_res) {
             e.span_label(span, format!("{} defined here", res.descr()));
             if let [hir::PathSegment { ident, .. }] = &*segments {
                 e.span_label(

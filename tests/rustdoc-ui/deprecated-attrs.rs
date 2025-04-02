@@ -19,3 +19,7 @@
 //~| NOTE see issue #44136
 //~| NOTE no longer functions
 //~| NOTE `doc(plugins)` is now a no-op
+
+//~? WARN the `passes` flag no longer functions
+//~? NOTE see issue #44136
+//~? HELP you may want to use --document-private-items

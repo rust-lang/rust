@@ -41,8 +41,8 @@ fn report_duplicate_item(
     original_def_id: DefId,
     item_def_id: DefId,
 ) {
-    let orig_span = tcx.hir().span_if_local(original_def_id);
-    let duplicate_span = tcx.hir().span_if_local(item_def_id);
+    let orig_span = tcx.hir_span_if_local(original_def_id);
+    let duplicate_span = tcx.hir_span_if_local(item_def_id);
     tcx.dcx().emit_err(DuplicateDiagnosticItemInCrate {
         duplicate_span,
         orig_span,

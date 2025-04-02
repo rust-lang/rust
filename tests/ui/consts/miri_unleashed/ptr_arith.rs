@@ -21,3 +21,5 @@ static PTR_INT_TRANSMUTE: () = unsafe {
 // their `PartialEq` impl is non-`const`.
 
 fn main() {}
+
+//~? WARN skipping const checks

@@ -50,6 +50,7 @@ pub const PRINT_KINDS: &[(&str, PrintKind)] = &[
     ("check-cfg", PrintKind::CheckCfg),
     ("code-models", PrintKind::CodeModels),
     ("crate-name", PrintKind::CrateName),
+    ("crate-root-lint-levels", PrintKind::CrateRootLintLevels),
     ("deployment-target", PrintKind::DeploymentTarget),
     ("file-names", PrintKind::FileNames),
     ("host-tuple", PrintKind::HostTuple),
@@ -58,6 +59,7 @@ pub const PRINT_KINDS: &[(&str, PrintKind)] = &[
     ("relocation-models", PrintKind::RelocationModels),
     ("split-debuginfo", PrintKind::SplitDebuginfo),
     ("stack-protector-strategies", PrintKind::StackProtectorStrategies),
+    ("supported-crate-types", PrintKind::SupportedCrateTypes),
     ("sysroot", PrintKind::Sysroot),
     ("target-cpus", PrintKind::TargetCPUs),
     ("target-features", PrintKind::TargetFeatures),
@@ -880,6 +882,7 @@ pub enum PrintKind {
     CheckCfg,
     CodeModels,
     CrateName,
+    CrateRootLintLevels,
     DeploymentTarget,
     FileNames,
     HostTuple,
@@ -888,6 +891,7 @@ pub enum PrintKind {
     RelocationModels,
     SplitDebuginfo,
     StackProtectorStrategies,
+    SupportedCrateTypes,
     Sysroot,
     TargetCPUs,
     TargetFeatures,
@@ -2063,7 +2067,11 @@ fn check_print_request_stability(
     (print_name, print_kind): (&str, PrintKind),
 ) {
     match print_kind {
-        PrintKind::AllTargetSpecsJson | PrintKind::CheckCfg | PrintKind::TargetSpecJson
+        PrintKind::AllTargetSpecsJson
+        | PrintKind::CheckCfg
+        | PrintKind::CrateRootLintLevels
+        | PrintKind::SupportedCrateTypes
+        | PrintKind::TargetSpecJson
             if !unstable_opts.unstable_options =>
         {
             early_dcx.early_fatal(format!(

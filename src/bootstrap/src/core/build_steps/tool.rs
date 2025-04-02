@@ -26,7 +26,7 @@ use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{add_dylib_path, exe, t};
-use crate::{Compiler, Kind, Mode, gha};
+use crate::{Compiler, FileType, Kind, Mode, gha};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -353,7 +353,7 @@ fn copy_link_tool_bin(
 ) -> PathBuf {
     let cargo_out = builder.cargo_out(compiler, mode, target).join(exe(name, target));
     let bin = builder.tools_dir(compiler).join(exe(name, target));
-    builder.copy_link(&cargo_out, &bin);
+    builder.copy_link(&cargo_out, &bin, FileType::Executable);
     bin
 }
 
@@ -696,7 +696,7 @@ impl Step for Rustdoc {
                     .join(exe("rustdoc", target_compiler.host));
 
                 let bin_rustdoc = bin_rustdoc();
-                builder.copy_link(&precompiled_rustdoc, &bin_rustdoc);
+                builder.copy_link(&precompiled_rustdoc, &bin_rustdoc, FileType::Executable);
 
                 return ToolBuildResult {
                     tool_path: bin_rustdoc,
@@ -743,7 +743,7 @@ impl Step for Rustdoc {
                 compile::strip_debug(builder, target, &tool_path);
             }
             let bin_rustdoc = bin_rustdoc();
-            builder.copy_link(&tool_path, &bin_rustdoc);
+            builder.copy_link(&tool_path, &bin_rustdoc, FileType::Executable);
             ToolBuildResult { tool_path: bin_rustdoc, build_compiler, target_compiler }
         } else {
             ToolBuildResult { tool_path, build_compiler, target_compiler }
@@ -846,13 +846,20 @@ impl Step for LldWrapper {
         let src_exe = exe("lld", target);
         let dst_exe = exe("rust-lld", target);
 
-        builder.copy_link(&lld_install.join("bin").join(src_exe), &libdir_bin.join(dst_exe));
+        builder.copy_link(
+            &lld_install.join("bin").join(src_exe),
+            &libdir_bin.join(dst_exe),
+            FileType::Executable,
+        );
         let self_contained_lld_dir = libdir_bin.join("gcc-ld");
         t!(fs::create_dir_all(&self_contained_lld_dir));
 
         for name in crate::LLD_FILE_NAMES {
-            builder
-                .copy_link(&tool_result.tool_path, &self_contained_lld_dir.join(exe(name, target)));
+            builder.copy_link(
+                &tool_result.tool_path,
+                &self_contained_lld_dir.join(exe(name, target)),
+                FileType::Executable,
+            );
         }
 
         tool_result
@@ -949,8 +956,11 @@ impl Step for RustAnalyzerProcMacroSrv {
         // so that r-a can use it.
         let libexec_path = builder.sysroot(self.compiler).join("libexec");
         t!(fs::create_dir_all(&libexec_path));
-        builder
-            .copy_link(&tool_result.tool_path, &libexec_path.join("rust-analyzer-proc-macro-srv"));
+        builder.copy_link(
+            &tool_result.tool_path,
+            &libexec_path.join("rust-analyzer-proc-macro-srv"),
+            FileType::Executable,
+        );
 
         Some(tool_result)
     }
@@ -1007,7 +1017,7 @@ impl Step for LlvmBitcodeLinker {
             t!(fs::create_dir_all(&bindir_self_contained));
             let bin_destination = bindir_self_contained
                 .join(exe("llvm-bitcode-linker", tool_result.target_compiler.host));
-            builder.copy_link(&tool_result.tool_path, &bin_destination);
+            builder.copy_link(&tool_result.tool_path, &bin_destination, FileType::Executable);
             ToolBuildResult {
                 tool_path: bin_destination,
                 build_compiler: tool_result.build_compiler,
@@ -1189,7 +1199,7 @@ fn run_tool_build_step(
 
         for add_bin in add_bins_to_sysroot {
             let bin_destination = bindir.join(exe(add_bin, target_compiler.host));
-            builder.copy_link(&tool_path, &bin_destination);
+            builder.copy_link(&tool_path, &bin_destination, FileType::Executable);
         }
 
         // Return a path into the bin dir.

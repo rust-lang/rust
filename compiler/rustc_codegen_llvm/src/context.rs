@@ -1127,6 +1127,18 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.usub.sat.i64", fn(t_i64, t_i64) -> t_i64);
         ifn!("llvm.usub.sat.i128", fn(t_i128, t_i128) -> t_i128);
 
+        ifn!("llvm.scmp.i8.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.scmp.i8.i16", fn(t_i16, t_i16) -> t_i8);
+        ifn!("llvm.scmp.i8.i32", fn(t_i32, t_i32) -> t_i8);
+        ifn!("llvm.scmp.i8.i64", fn(t_i64, t_i64) -> t_i8);
+        ifn!("llvm.scmp.i8.i128", fn(t_i128, t_i128) -> t_i8);
+
+        ifn!("llvm.ucmp.i8.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.ucmp.i8.i16", fn(t_i16, t_i16) -> t_i8);
+        ifn!("llvm.ucmp.i8.i32", fn(t_i32, t_i32) -> t_i8);
+        ifn!("llvm.ucmp.i8.i64", fn(t_i64, t_i64) -> t_i8);
+        ifn!("llvm.ucmp.i8.i128", fn(t_i128, t_i128) -> t_i8);
+
         ifn!("llvm.lifetime.start.p0i8", fn(t_i64, ptr) -> void);
         ifn!("llvm.lifetime.end.p0i8", fn(t_i64, ptr) -> void);
 

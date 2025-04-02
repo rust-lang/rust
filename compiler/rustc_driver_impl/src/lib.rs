@@ -20,7 +20,7 @@
 // tidy-alphabetical-end
 
 use std::cmp::max;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs::{self, File};
@@ -61,7 +61,7 @@ use rustc_session::config::{
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
-use rustc_session::output::collect_crate_types;
+use rustc_session::output::{CRATE_TYPES, collect_crate_types, invalid_output_for_target};
 use rustc_session::{EarlyDiagCtxt, Session, config, filesearch};
 use rustc_span::FileName;
 use rustc_target::json::ToJson;
@@ -108,7 +108,7 @@ mod signal_handler {
 }
 
 use crate::session_diagnostics::{
-    RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
+    CantEmitMIR, RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
     RLinkWrongFileType, RlinkCorruptFile, RlinkNotAFile, RlinkUnableToRead, UnstableFeatureUsage,
 };
 
@@ -243,12 +243,17 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         return;
     }
 
+    let input = make_input(&default_early_dcx, &matches.free);
+    let has_input = input.is_some();
     let (odir, ofile) = make_output(&matches);
+
+    drop(default_early_dcx);
+
     let mut config = interface::Config {
         opts: sopts,
         crate_cfg: matches.opt_strs("cfg"),
         crate_check_cfg: matches.opt_strs("check-cfg"),
-        input: Input::File(PathBuf::new()),
+        input: input.unwrap_or(Input::File(PathBuf::new())),
         output_file: ofile,
         output_dir: odir,
         ice_file,
@@ -264,16 +269,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         using_internal_features: &USING_INTERNAL_FEATURES,
         expanded_args: args,
     };
-
-    let has_input = match make_input(&default_early_dcx, &matches.free) {
-        Some(input) => {
-            config.input = input;
-            true // has input: normal compilation
-        }
-        None => false, // no input: we will exit early
-    };
-
-    drop(default_early_dcx);
 
     callbacks.config(&mut config);
 
@@ -379,6 +374,12 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
                 return early_exit();
             }
 
+            if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
+                if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
+                    tcx.dcx().emit_fatal(CantEmitMIR { error });
+                }
+            }
+
             Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
         });
 
@@ -407,7 +408,7 @@ fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
     }
 }
 
-// Extract output directory and file from matches.
+/// Extract output directory and file from matches.
 fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<OutFileName>) {
     let odir = matches.opt_str("out-dir").map(|o| PathBuf::from(&o));
     let ofile = matches.opt_str("o").map(|o| match o.as_str() {
@@ -690,6 +691,34 @@ fn print_crate_info(
                 };
                 println_info!("{}", passes::get_crate_name(sess, attrs));
             }
+            CrateRootLintLevels => {
+                let Some(attrs) = attrs.as_ref() else {
+                    // no crate attributes, print out an error and exit
+                    return Compilation::Continue;
+                };
+                let crate_name = passes::get_crate_name(sess, attrs);
+                let lint_store = crate::unerased_lint_store(sess);
+                let registered_tools = rustc_resolve::registered_tools_ast(sess.dcx(), attrs);
+                let features = rustc_expand::config::features(sess, attrs, crate_name);
+                let lint_levels = rustc_lint::LintLevelsBuilder::crate_root(
+                    sess,
+                    &features,
+                    true,
+                    lint_store,
+                    &registered_tools,
+                    attrs,
+                );
+                for lint in lint_store.get_lints() {
+                    if let Some(feature_symbol) = lint.feature_gate
+                        && !features.enabled(feature_symbol)
+                    {
+                        // lint is unstable and feature gate isn't active, don't print
+                        continue;
+                    }
+                    let level = lint_levels.lint_level(lint).0;
+                    println_info!("{}={}", lint.name_lower(), level.as_str());
+                }
+            }
             Cfg => {
                 let mut cfgs = sess
                     .psess
@@ -787,6 +816,16 @@ fn print_crate_info(
                 } else {
                     #[allow(rustc::diagnostic_outside_of_impl)]
                     sess.dcx().fatal("only Apple targets currently support deployment version info")
+                }
+            }
+            SupportedCrateTypes => {
+                let supported_crate_types = CRATE_TYPES
+                    .iter()
+                    .filter(|(_, crate_type)| !invalid_output_for_target(&sess, *crate_type))
+                    .map(|(crate_type_sym, _)| *crate_type_sym)
+                    .collect::<BTreeSet<_>>();
+                for supported_crate_type in supported_crate_types {
+                    println_info!("{}", supported_crate_type.as_str());
                 }
             }
         }

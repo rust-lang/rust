@@ -8,5 +8,7 @@ edition = "2024"
 rustc_lexer = { path = "../rustc_lexer" }
 # tidy-alphabetical-end
 
-[target.'cfg(target_pointer_width = "64")'.dependencies]
+[target.'cfg(target_pointer_width = "64")'.dev-dependencies]
+# tidy-alphabetical-start
 rustc_index = { path = "../rustc_index", default-features = false }
+# tidy-alphabetical-end

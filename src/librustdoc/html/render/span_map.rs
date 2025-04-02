@@ -95,7 +95,7 @@ impl SpanMapVisitor<'_> {
                     .unwrap_or(path.span);
                 self.matches.insert(span, link);
             }
-            Res::Local(_) if let Some(span) = self.tcx.hir().res_span(path.res) => {
+            Res::Local(_) if let Some(span) = self.tcx.hir_res_span(path.res) => {
                 self.matches.insert(path.span, LinkFromSrc::Local(clean::Span::new(span)));
             }
             Res::PrimTy(p) => {
