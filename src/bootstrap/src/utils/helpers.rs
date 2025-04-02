@@ -432,9 +432,7 @@ pub fn dir_is_empty(dir: &Path) -> bool {
 /// the "y" part from the string.
 pub fn extract_beta_rev(version: &str) -> Option<String> {
     let parts = version.splitn(2, "-beta.").collect::<Vec<_>>();
-    let count = parts.get(1).and_then(|s| s.find(' ').map(|p| s[..p].to_string()));
-
-    count
+    parts.get(1).and_then(|s| s.find(' ').map(|p| s[..p].to_string()))
 }
 
 pub enum LldThreads {
