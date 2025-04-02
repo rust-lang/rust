@@ -8,10 +8,7 @@ use std::str::FromStr;
 use polonius_engine::{Algorithm, Output};
 use rustc_index::IndexSlice;
 use rustc_middle::mir::pretty::{PrettyPrintMirOptions, dump_mir_with_options};
-use rustc_middle::mir::{
-    Body, ClosureOutlivesSubject, ClosureRegionRequirements, PassWhere, Promoted, create_dump_file,
-    dump_enabled, dump_mir,
-};
+use rustc_middle::mir::{Body, PassWhere, Promoted, create_dump_file, dump_enabled, dump_mir};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::ResultsCursor;
@@ -32,7 +29,10 @@ use crate::polonius::legacy::{
 use crate::region_infer::RegionInferenceContext;
 use crate::type_check::{self, MirTypeckResults};
 use crate::universal_regions::UniversalRegions;
-use crate::{BorrowCheckRootCtxt, BorrowckInferCtxt, polonius, renumber};
+use crate::{
+    BorrowCheckRootCtxt, BorrowckInferCtxt, ClosureOutlivesSubject, ClosureRegionRequirements,
+    polonius, renumber,
+};
 
 /// The output of `nll::compute_regions`. This includes the computed `RegionInferenceContext`, any
 /// closure requirements to propagate, and any generated errors.
