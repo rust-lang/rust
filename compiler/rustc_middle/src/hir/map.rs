@@ -1,3 +1,7 @@
+//! This module used to contain a type called `Map`. That type has since been
+//! eliminated, and all its methods are now on `TyCtxt`. But the module name
+//! stays as `map` because there isn't an obviously better name for it.
+
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -325,7 +329,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns an iterator of the `DefId`s for all body-owners in this
     /// crate. If you would prefer to iterate over the bodies
-    /// themselves, you can do `self.hir().krate().body_ids.iter()`.
+    /// themselves, you can do `self.hir_crate(()).body_ids.iter()`.
     #[inline]
     pub fn hir_body_owners(self) -> impl Iterator<Item = LocalDefId> {
         self.hir_crate_items(()).body_owners.iter().copied()
