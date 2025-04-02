@@ -2973,8 +2973,29 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 IntRange::from_singleton(actual_int).is_subrange(int_range)
             }
             Constructor::Wildcard => true,
-            // FIXME error out before static_pattern_match gets run and replace this with bug!()
-            _ => false,
+
+            // these we may eventually support
+            Constructor::Struct
+            | Constructor::Ref
+            | Constructor::Slice(_)
+            | Constructor::UnionField
+            | Constructor::Or
+            | Constructor::Bool(_)
+            | Constructor::F16Range(..)
+            | Constructor::F32Range(..)
+            | Constructor::F64Range(..)
+            | Constructor::F128Range(..)
+            | Constructor::Str(_) => bug!("unsupported pattern constructor {:?}", pat.ctor()),
+
+            // these should never occur here
+            Constructor::Opaque(_)
+            | Constructor::Never
+            | Constructor::NonExhaustive
+            | Constructor::Hidden
+            | Constructor::Missing
+            | Constructor::PrivateUninhabited => {
+                bug!("unsupported pattern constructor {:?}", pat.ctor())
+            }
         }
     }
 }
