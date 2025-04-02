@@ -2960,13 +2960,30 @@ impl<'a> Parser<'a> {
                 let parser_snapshot_before_ty = this.create_snapshot_for_diagnostic();
                 this.eat_incorrect_doc_comment_for_param_type();
                 let mut ty = this.parse_ty_for_param();
-                if ty.is_ok()
-                    && this.token != token::Comma
-                    && this.token != token::CloseDelim(Delimiter::Parenthesis)
-                {
-                    // This wasn't actually a type, but a pattern looking like a type,
-                    // so we are going to rollback and re-parse for recovery.
-                    ty = this.unexpected_any();
+
+                if let Ok(t) = &ty {
+                    // Check for trailing angle brackets
+                    if let TyKind::Path(_, Path { segments, .. }) = &t.kind {
+                        if let Some(segment) = segments.last() {
+                            if let Some(guar) =
+                                this.check_trailing_angle_brackets(segment, &[exp!(CloseParen)])
+                            {
+                                return Ok((
+                                    dummy_arg(segment.ident, guar),
+                                    Trailing::No,
+                                    UsePreAttrPos::No,
+                                ));
+                            }
+                        }
+                    }
+
+                    if this.token != token::Comma
+                        && this.token != token::CloseDelim(Delimiter::Parenthesis)
+                    {
+                        // This wasn't actually a type, but a pattern looking like a type,
+                        // so we are going to rollback and re-parse for recovery.
+                        ty = this.unexpected_any();
+                    }
                 }
                 match ty {
                     Ok(ty) => {
@@ -2977,6 +2994,7 @@ impl<'a> Parser<'a> {
                     }
                     // If this is a C-variadic argument and we hit an error, return the error.
                     Err(err) if this.token == token::DotDotDot => return Err(err),
+                    Err(err) if this.unmatched_angle_bracket_count > 0 => return Err(err),
                     // Recover from attempting to parse the argument as a type without pattern.
                     Err(err) => {
                         err.cancel();
