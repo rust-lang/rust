@@ -9,9 +9,9 @@ use std::{fmt, iter};
 use build_helper::git::GitConfig;
 use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
-use test::{ColorConfig, OutputFormat};
 
 pub use self::Mode::*;
+use crate::executor::{ColorConfig, OutputFormat};
 use crate::util::{PathBufExt, add_dylib_path};
 
 macro_rules! string_enum {
