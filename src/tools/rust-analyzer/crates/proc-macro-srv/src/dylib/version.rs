@@ -27,7 +27,7 @@ pub fn read_dylib_info(obj: &object::File<'_>) -> io::Result<RustCInfo> {
     let mut items = ver_str.split_whitespace();
     let tag = items.next().ok_or_else(|| err!("version format error"))?;
     if tag != "rustc" {
-        return Err(err!("version format error (No rustc tag)"));
+        return Err(err!("no rustc tag"));
     }
 
     let version_part = items.next().ok_or_else(|| err!("no version string"))?;
@@ -83,7 +83,7 @@ fn read_section<'a>(obj: &object::File<'a>, section_name: &str) -> io::Result<&'
 /// A proc macro crate binary's ".rustc" section has following byte layout:
 /// * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes
 /// * ff060000 734e6150 is followed, it's the snappy format magic bytes,
-///   means bytes from here(including this sequence) are compressed in
+///   means bytes from here (including this sequence) are compressed in
 ///   snappy compression format. Version info is inside here, so decompress
 ///   this.
 ///
@@ -110,7 +110,7 @@ pub fn read_version(obj: &object::File<'_>) -> io::Result<String> {
         ));
     }
     let version = u32::from_be_bytes([dot_rustc[4], dot_rustc[5], dot_rustc[6], dot_rustc[7]]);
-    // Last supported version is:
+    // Last version with breaking changes is:
     // https://github.com/rust-lang/rust/commit/b94cfefc860715fb2adf72a6955423d384c69318
     let (mut metadata_portion, bytes_before_version) = match version {
         8 => {
@@ -118,7 +118,7 @@ pub fn read_version(obj: &object::File<'_>) -> io::Result<String> {
             let data_len = u32::from_be_bytes(len_bytes.try_into().unwrap()) as usize;
             (&dot_rustc[12..data_len + 12], 13)
         }
-        9 => {
+        9 | 10 => {
             let len_bytes = &dot_rustc[8..16];
             let data_len = u64::from_le_bytes(len_bytes.try_into().unwrap()) as usize;
             (&dot_rustc[16..data_len + 12], 17)
