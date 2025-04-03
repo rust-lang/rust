@@ -425,7 +425,6 @@ pub use non_null::NonNull;
 mod unique;
 #[unstable(feature = "ptr_internals", issue = "none")]
 pub use unique::Unique;
-
 #[stable(feature = "volatile", since = "1.9.0")]
 pub use volatile::{read_volatile, write_volatile};
 
