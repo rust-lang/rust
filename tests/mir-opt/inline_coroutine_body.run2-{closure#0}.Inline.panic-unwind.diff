@@ -246,7 +246,6 @@
 +         StorageDead(_24);
 +         StorageLive(_47);
 +         StorageLive(_48);
-+         StorageLive(_51);
 +         StorageLive(_53);
 +         StorageLive(_44);
 +         StorageLive(_45);
@@ -260,9 +259,11 @@
 +         _49 = Pin::<&mut std::future::Ready<()>> { __pointer: copy _47 };
 +         StorageDead(_49);
 +         _46 = &mut ((*_47).0: std::option::Option<()>);
++         StorageLive(_51);
 +         _51 = Option::<()>::None;
 +         _45 = copy ((*_47).0: std::option::Option<()>);
 +         ((*_47).0: std::option::Option<()>) = copy _51;
++         StorageDead(_51);
 +         StorageDead(_46);
 +         StorageLive(_52);
 +         _52 = discriminant(_45);
@@ -363,7 +364,6 @@
 +         _18 = Poll::<()>::Ready(move _44);
 +         StorageDead(_44);
 +         StorageDead(_53);
-+         StorageDead(_51);
 +         StorageDead(_48);
 +         StorageDead(_47);
 +         StorageDead(_22);
