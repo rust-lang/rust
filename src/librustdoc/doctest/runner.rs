@@ -131,7 +131,7 @@ mod __doctest_mod {{
             .output()
             .expect(\"failed to run command\");
         if !out.status.success() {{
-            eprintln!(\"{{}}\", String::from_utf8_lossy(&out.stderr));
+            eprint!(\"{{}}\", String::from_utf8_lossy(&out.stderr));
             ExitCode::FAILURE
         }} else {{
             ExitCode::SUCCESS

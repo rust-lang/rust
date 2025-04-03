@@ -4,7 +4,9 @@
 //@ edition: 2024
 //@ compile-flags: --test
 //@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
+//@ normalize-stdout: "panicked at .+rs:" -> "panicked at $$TMP:"
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ rustc-env:RUST_BACKTRACE=0
 //@ failure-status: 101
 
 //! ```rust
