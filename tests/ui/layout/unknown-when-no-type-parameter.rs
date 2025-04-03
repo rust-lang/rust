@@ -1,6 +1,5 @@
 #![feature(trivial_bounds)]
 
-//@ error-pattern: error[E0080]: evaluation of constant value failed
 //@ error-pattern: the type `<() as Project>::Assoc` has an unknown layout
 
 trait Project {
@@ -8,7 +7,7 @@ trait Project {
 }
 
 fn foo() where (): Project {
-    [(); size_of::<<() as Project>::Assoc>()];
+    [(); size_of::<<() as Project>::Assoc>()]; //~ ERROR evaluation of constant value failed
 }
 
 fn main() {}

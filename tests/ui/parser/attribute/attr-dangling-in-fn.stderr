@@ -1,5 +1,5 @@
 error: expected statement after outer attribute
-  --> $DIR/attr-dangling-in-fn.rs:4:3
+  --> $DIR/attr-dangling-in-fn.rs:2:3
    |
 LL |   #[foo = "bar"]
    |   ^^^^^^^^^^^^^^

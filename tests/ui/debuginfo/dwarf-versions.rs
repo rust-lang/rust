@@ -4,7 +4,6 @@
 //@ revisions: zero one two three four five six
 
 //@[zero] compile-flags: -Zdwarf-version=0
-//@[zero] error-pattern: requested DWARF version 0 is not supported
 
 //@[one] compile-flags: -Zdwarf-version=1
 //@[one] error-pattern: requested DWARF version 1 is not supported
@@ -22,7 +21,6 @@
 //@[five] check-pass
 
 //@[six] compile-flags: -Zdwarf-version=6
-//@[six] error-pattern: requested DWARF version 6 is not supported
 
 //@ compile-flags: -g --target x86_64-unknown-linux-gnu --crate-type cdylib
 //@ needs-llvm-components: x86
@@ -36,3 +34,7 @@
 pub trait Sized {}
 
 pub fn foo() {}
+
+//[zero]~? ERROR requested DWARF version 0 is not supported
+//[one]~? ERROR requested DWARF version 1 is not supported
+//[six]~? ERROR requested DWARF version 6 is not supported
