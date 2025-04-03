@@ -109,10 +109,12 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
 
         SYSROOT_TESTS.clean(&runner.dirs);
 
+        let mut target_compiler = runner.target_compiler.clone();
         // coretests and alloctests produce a bunch of warnings. When running
         // in rust's CI warnings are denied, so we have to override that here.
-        let mut target_compiler = runner.target_compiler.clone();
         target_compiler.rustflags.push("--cap-lints=allow".to_owned());
+        // The standard library may have been compiled with -Zrandomize-layout.
+        target_compiler.rustflags.extend(["--cfg".to_owned(), "randomized_layouts".to_owned()]);
 
         if runner.is_native {
             let mut test_cmd = SYSROOT_TESTS.test(&target_compiler, &runner.dirs);
