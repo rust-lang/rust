@@ -317,6 +317,7 @@ impl Duration {
     /// # Examples 
     /// 
     /// ```
+    /// #![feature(duration_from_nanos_u128)]
     /// use std::time::Duration;
     /// let time_in_nanos = 2.pow(64);
     /// let duration = Duration::from_nanos_u128(time_in_nanos);
