@@ -1,5 +1,4 @@
 #![stable(feature = "duration_core", since = "1.25.0")]
-#![feature(duration_from_nanos_u128)]
 //! Temporal quantification.
 //!
 //! # Examples:
