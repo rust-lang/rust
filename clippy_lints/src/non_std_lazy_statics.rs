@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// static FOO: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "FOO".to_lowercase());
     /// static BAR: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "BAR".to_lowercase());
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.86.0"]
     pub NON_STD_LAZY_STATICS,
     pedantic,
     "lazy static that could be replaced by `std::sync::LazyLock`"
