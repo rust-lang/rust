@@ -1,5 +1,5 @@
 error: `#[const_continue]` must break to a labeled block that participates in a `#[loop_match]`
-  --> $DIR/const-continue-to-block.rs:17:27
+  --> $DIR/const-continue-to-block.rs:20:27
    |
 LL |                     break 'b 2;
    |                           ^^
