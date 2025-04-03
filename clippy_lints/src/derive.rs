@@ -481,7 +481,7 @@ fn ty_implements_eq_trait<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, eq_trait_id: De
     tcx.non_blanket_impls_for_ty(eq_trait_id, ty).next().is_some()
 }
 
-/// Creates the `ParamEnv` used for the give type's derived `Eq` impl.
+/// Creates the `ParamEnv` used for the given type's derived `Eq` impl.
 fn typing_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> ty::TypingEnv<'_> {
     // Initial map from generic index to param def.
     // Vec<(param_def, needs_eq)>
