@@ -1,3 +1,5 @@
+// A #[const_continue] to a labeled loop should error.
+
 enum State {
     A,
     B,

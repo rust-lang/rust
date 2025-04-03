@@ -1,3 +1,6 @@
+// A #[const_continue] to a normal labeled block (that does is not part of a #[loop_match]) should
+// error.
+
 #![allow(incomplete_features)]
 #![feature(loop_match)]
 #![crate_type = "lib"]

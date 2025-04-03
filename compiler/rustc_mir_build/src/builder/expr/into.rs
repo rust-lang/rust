@@ -254,25 +254,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // block available to the lowering of `#[const_continue]`.
 
                 fn is_supported_loop_match_type(ty: Ty<'_>) -> bool {
-                    if ty.is_integral() {
-                        return true;
-                    }
-
-                    if let Some(adt_def) = ty.ty_adt_def() {
-                        if adt_def.adt_kind() != ty::AdtKind::Enum {
-                            return false;
-                        }
-
-                        for variant in adt_def.variants() {
-                            if !variant.fields.is_empty() {
-                                return false;
+                    match ty.kind() {
+                        ty::Uint(_) | ty::Int(_) => true,
+                        ty::Adt(adt_def, _) => match adt_def.adt_kind() {
+                            ty::AdtKind::Struct | ty::AdtKind::Union => false,
+                            ty::AdtKind::Enum => {
+                                adt_def.variants().iter().all(|v| v.fields.is_empty())
                             }
-                        }
-
-                        return true;
+                        },
+                        _ => false,
                     }
-
-                    false
                 }
 
                 let state_ty = this.thir.exprs[state].ty;
