@@ -4283,7 +4283,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let last_arg = "echo hello world".split(' ').next_back();
     /// ```
-    #[clippy::version = "1.85.0"]
+    #[clippy::version = "1.86.0"]
     pub DOUBLE_ENDED_ITERATOR_LAST,
     perf,
     "using `Iterator::last` on a `DoubleEndedIterator`"
