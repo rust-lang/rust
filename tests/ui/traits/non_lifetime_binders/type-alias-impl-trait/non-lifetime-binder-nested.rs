@@ -5,7 +5,7 @@ trait Trait<T> {}
 
 fn f() -> impl for<T> Trait<impl Trait<T>> {
     //~^ ERROR nested `impl Trait` is not allowed
-    //~| ERROR cannot capture late-bound type parameter in nested `impl Trait`
+    //~| ERROR the trait bound `(): Trait<impl Trait<T>>` is not satisfied
     ()
 }
 

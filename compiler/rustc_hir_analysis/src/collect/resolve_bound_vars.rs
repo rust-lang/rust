@@ -1312,8 +1312,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     deny_late_types_and_consts,
                 } => {
                     // For debugging purposes
-                    println!(
-                        "DEBUG: LateBoundary in resolve_type_ref - what: {}, deny_late_types_and_consts: {}",
+                    debug!(
+                        "LateBoundary in resolve_type_ref - what: {}, deny_late_types_and_consts: {}",
                         what, deny_late_types_and_consts
                     );
                     if deny_late_types_and_consts {
@@ -1542,8 +1542,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     deny_late_types_and_consts,
                 } => {
                     // For debugging purposes
-                    println!(
-                        "DEBUG: LateBoundary in resolve_type_ref - what: {}, deny_late_types_and_consts: {}",
+                    debug!(
+                        "LateBoundary in resolve_type_ref - what: {}, deny_late_types_and_consts: {}",
                         what, deny_late_types_and_consts
                     );
                     if deny_late_types_and_consts {

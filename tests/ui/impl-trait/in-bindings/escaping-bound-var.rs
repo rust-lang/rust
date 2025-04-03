@@ -10,5 +10,5 @@ impl<'a> Foo<'a> for () {
 
 fn main() {
     let x: &dyn for<'a> Foo<'a, Out = impl Sized + 'a> = &();
-    //~^ ERROR cannot capture late-bound lifetime in `impl Trait` in binding
+    //~^ ERROR cannot capture late-bound lifetime in nested `impl Trait`
 }
