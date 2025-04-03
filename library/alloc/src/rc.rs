@@ -3656,20 +3656,6 @@ impl<T: ?Sized, A: Allocator> AsRef<T> for Rc<T, A> {
 }
 
 #[stable(feature = "smart_ptr_as_ref_str", since = "CURRENT_RUSTC_VERSION")]
-impl<A: Allocator> AsRef<str> for Rc<String, A> {
-    fn as_ref(&self) -> &str {
-        (&**self).as_ref()
-    }
-}
-
-#[stable(feature = "smart_ptr_as_ref_str", since = "CURRENT_RUSTC_VERSION")]
-impl<A: Allocator> AsRef<[u8]> for Rc<String, A> {
-    fn as_ref(&self) -> &[u8] {
-        (&**self).as_ref()
-    }
-}
-
-#[stable(feature = "smart_ptr_as_ref_str", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Allocator> AsRef<[u8]> for Rc<str, A> {
     fn as_ref(&self) -> &[u8] {
         (&**self).as_ref()
