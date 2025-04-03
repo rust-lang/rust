@@ -4,6 +4,14 @@
 million lines of Rust code.[^loc] It has caught a large number of [regressions]
 in the past and was subsequently included in CI.
 
+## What to do if the Fuchsia job breaks?
+
+Please contact the [fuchsia][fuchsia-ping] ping group and ask them for help.
+
+```text
+@rustbot ping fuchsia
+```
+
 ## Building Fuchsia in CI
 
 Fuchsia builds as part of the suite of bors tests that run before a pull request
@@ -32,7 +40,7 @@ using your local Rust toolchain.
 src/ci/docker/run.sh x86_64-fuchsia
 ```
 
-See the [Testing with Docker](docker.md) chapter for more details on how to run
+See the [Testing with Docker](../docker.md) chapter for more details on how to run
 and debug jobs with Docker.
 
 Note that a Fuchsia checkout is *large* – as of this writing, a checkout and
@@ -162,6 +170,7 @@ rustc book][platform-support].
 [`public_configs`]: https://gn.googlesource.com/gn/+/main/docs/reference.md#var_public_configs
 [`//build/config:compiler`]: https://cs.opensource.google/fuchsia/fuchsia/+/main:build/config/BUILD.gn;l=121;drc=c26c473bef93b33117ae417893118907a026fec7
 [build system]: https://fuchsia.dev/fuchsia-src/development/build/build_system
+[fuchsia-ping]: ../../notification-groups/fuchsia.md
 
 [^loc]: As of June 2024, Fuchsia had about 2 million lines of first-party Rust
 code and a roughly equal amount of third-party code, as counted by tokei
