@@ -1,0 +1,80 @@
+error[E0277]: the trait bound `Map<T, {closure@$DIR/issue-139314-option-unwrap-none-regression.rs:10:19: 10:22}>: Copy` is not satisfied
+  --> $DIR/issue-139314-option-unwrap-none-regression.rs:10:10
+   |
+LL |     func(iter.map(|x| x + 1))
+   |     ---- ^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Copy` is not implemented for `Map<T, {closure@$DIR/issue-139314-option-unwrap-none-regression.rs:10:19: 10:22}>`
+note: required by a bound in `func`
+  --> $DIR/issue-139314-option-unwrap-none-regression.rs:9:40
+   |
+LL | async fn func<T: Iterator<Item = u8> + Copy, const N: usize>(iter: T) -> impl for<'a1> Clone {
+   |                                        ^^^^ required by this bound in `func`
+help: consider removing this method call, as the receiver has type `T` and `T: Copy` trivially holds
+   |
+LL -     func(iter.map(|x| x + 1))
+LL +     func(iter)
+   |
+
+error[E0277]: the trait bound `Map<T, {closure@$DIR/issue-139314-option-unwrap-none-regression.rs:10:19: 10:22}>: Copy` is not satisfied
+  --> $DIR/issue-139314-option-unwrap-none-regression.rs:10:5
+   |
+LL |     func(iter.map(|x| x + 1))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the trait `Copy` is not implemented for `Map<T, {closure@$DIR/issue-139314-option-unwrap-none-regression.rs:10:19: 10:22}>`
+note: required by a bound in `func`
+  --> $DIR/issue-139314-option-unwrap-none-regression.rs:9:40
+   |
+LL | async fn func<T: Iterator<Item = u8> + Copy, const N: usize>(iter: T) -> impl for<'a1> Clone {
+   |                                        ^^^^ required by this bound in `func`
+
+error[E0277]: the trait bound `impl Future<Output = impl Clone>: Clone` is not satisfied
+  --> $DIR/issue-139314-option-unwrap-none-regression.rs:9:94
+   |
+LL |   async fn func<T: Iterator<Item = u8> + Copy, const N: usize>(iter: T) -> impl for<'a1> Clone {
+   |  ______________________________________________________________________________________________^
+LL | |     func(iter.map(|x| x + 1))
+LL | | }
+   | |_^ the trait `Clone` is not implemented for `impl Future<Output = impl Clone>`
+
+error[E0277]: the trait bound `Map<T, {closure@$DIR/issue-139314-option-unwrap-none-regression.rs:10:19: 10:22}>: Copy` is not satisfied
+  --> $DIR/issue-139314-option-unwrap-none-regression.rs:9:94
+   |
+LL |   async fn func<T: Iterator<Item = u8> + Copy, const N: usize>(iter: T) -> impl for<'a1> Clone {
+   |  ______________________________________________________________________________________________^
+LL | |     func(iter.map(|x| x + 1))
+LL | | }
+   | |_^ unsatisfied trait bound
+   |
+   = help: the trait `Copy` is not implemented for `Map<T, {closure@$DIR/issue-139314-option-unwrap-none-regression.rs:10:19: 10:22}>`
+note: required by a bound in `func`
+  --> $DIR/issue-139314-option-unwrap-none-regression.rs:9:40
+   |
+LL | async fn func<T: Iterator<Item = u8> + Copy, const N: usize>(iter: T) -> impl for<'a1> Clone {
+   |                                        ^^^^ required by this bound in `func`
+
+error[E0277]: the trait bound `Map<T, {closure@$DIR/issue-139314-option-unwrap-none-regression.rs:10:19: 10:22}>: Copy` is not satisfied
+  --> $DIR/issue-139314-option-unwrap-none-regression.rs:9:1
+   |
+LL | async fn func<T: Iterator<Item = u8> + Copy, const N: usize>(iter: T) -> impl for<'a1> Clone {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the trait `Copy` is not implemented for `Map<T, {closure@$DIR/issue-139314-option-unwrap-none-regression.rs:10:19: 10:22}>`
+note: required by a bound in `func`
+  --> $DIR/issue-139314-option-unwrap-none-regression.rs:9:40
+   |
+LL | async fn func<T: Iterator<Item = u8> + Copy, const N: usize>(iter: T) -> impl for<'a1> Clone {
+   |                                        ^^^^ required by this bound in `func`
+
+error[E0277]: the trait bound `impl Future<Output = impl Clone>: Clone` is not satisfied
+  --> $DIR/issue-139314-option-unwrap-none-regression.rs:9:74
+   |
+LL | async fn func<T: Iterator<Item = u8> + Copy, const N: usize>(iter: T) -> impl for<'a1> Clone {
+   |                                                                          ^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `impl Future<Output = impl Clone>`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

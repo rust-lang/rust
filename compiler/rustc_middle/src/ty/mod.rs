@@ -846,7 +846,7 @@ pub struct Placeholder<T> {
     pub bound: T,
 }
 impl Placeholder<BoundVar> {
-    pub fn find_const_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
+    pub fn find_const_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Option<Ty<'tcx>> {
         let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
             match clause.kind().skip_binder() {
@@ -864,9 +864,17 @@ impl Placeholder<BoundVar> {
             }
         });
 
-        let ty = candidates.next().unwrap();
-        assert!(candidates.next().is_none());
+        let ty = candidates.next();
+        if ty.is_some() {
+            assert!(candidates.next().is_none());
+        }
         ty
+    }
+
+    /// Same as `find_const_ty_from_env` but unwraps the result.
+    /// This will panic if no type is found for the const parameter.
+    pub fn find_const_ty_from_env_unwrap<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
+        self.find_const_ty_from_env(env).unwrap()
     }
 }
 

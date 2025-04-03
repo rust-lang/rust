@@ -653,7 +653,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         placeholder: Self::PlaceholderConst,
     ) -> Ty<'tcx> {
-        placeholder.find_const_ty_from_env(param_env)
+        placeholder.find_const_ty_from_env_unwrap(param_env)
     }
 
     fn anonymize_bound_vars<T: TypeFoldable<TyCtxt<'tcx>>>(
