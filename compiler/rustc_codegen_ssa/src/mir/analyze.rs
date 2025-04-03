@@ -5,8 +5,8 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{self, DefLocation, Location, TerminatorKind, traversal};
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::mir::{self, DefLocation, Location, PlaceElem, TerminatorKind, traversal};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{bug, span_bug};
 use tracing::debug;
 
@@ -96,65 +96,92 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
     fn process_place(
         &mut self,
         place_ref: &mir::PlaceRef<'tcx>,
-        context: PlaceContext,
+        mut context: PlaceContext,
         location: Location,
     ) {
-        let cx = self.fx.cx;
-
-        if let Some((place_base, elem)) = place_ref.last_projection() {
-            let mut base_context = if context.is_mutating_use() {
-                PlaceContext::MutatingUse(MutatingUseContext::Projection)
-            } else {
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
-            };
-
-            // Allow uses of projections that are ZSTs or from scalar fields.
-            let is_consume = matches!(
-                context,
-                PlaceContext::NonMutatingUse(
-                    NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
-                )
+        let maybe_local = if place_ref.is_indirect_first_projection() {
+            // After we deref a pointer, the local *of that pointer* is no
+            // longer interesting for the rest of the projection chain.
+            self.visit_local(
+                place_ref.local,
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                location,
             );
-            if is_consume {
-                let base_ty = place_base.ty(self.fx.mir, cx.tcx());
-                let base_ty = self.fx.monomorphize(base_ty);
+            None
+        } else {
+            Some(place_ref.local)
+        };
 
-                // ZSTs don't require any actual memory access.
-                let elem_ty = base_ty.projection_ty(cx.tcx(), self.fx.monomorphize(elem)).ty;
-                let span = self.fx.mir.local_decls[place_ref.local].source_info.span;
-                if cx.spanned_layout_of(elem_ty, span).is_zst() {
-                    return;
-                }
-
-                if let mir::ProjectionElem::Field(..) = elem {
-                    let layout = cx.spanned_layout_of(base_ty.ty, span);
-                    if cx.is_backend_immediate(layout) || cx.is_backend_scalar_pair(layout) {
-                        // Recurse with the same context, instead of `Projection`,
-                        // potentially stopping at non-operand projections,
-                        // which would trigger `not_ssa` on locals.
-                        base_context = context;
-                    }
-                }
-            }
-
-            if let mir::ProjectionElem::Deref = elem {
-                // Deref projections typically only read the pointer.
-                base_context = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
-            }
-
-            self.process_place(&place_base, base_context, location);
-            // HACK(eddyb) this emulates the old `visit_projection_elem`, this
-            // entire `visit_place`-like `process_place` method should be rewritten,
-            // now that we have moved to the "slice of projections" representation.
-            if let mir::ProjectionElem::Index(local) = elem {
+        let mut projection: &[PlaceElem<'tcx>] = place_ref.projection;
+        loop {
+            // Index projections are the only ones with another local, so handle
+            // that special case before the normal projection match.
+            if let [PlaceElem::Index(index_local), ..] = *projection {
                 self.visit_local(
-                    local,
+                    index_local,
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                     location,
                 );
             }
-        } else {
-            self.visit_local(place_ref.local, context, location);
+
+            projection = match projection {
+                // No more projections means we're done looping.
+                [] => break,
+                // The only deref allowed in a Runtime-phase place is at the
+                // beginning, which we checked before the loop.
+                [PlaceElem::Deref, rest @ ..] => {
+                    assert_eq!(maybe_local, None);
+                    rest
+                }
+                // Making SSA locals useful for non-primitives heavily depends on
+                // not forcing stack allocation for basic newtypes and simple
+                // enums like `Option<u32>` or `Result<bool, Box<MyError>>`.
+                [PlaceElem::Downcast { .. }, PlaceElem::Field { .. }, rest @ ..]
+                | [PlaceElem::Field { .. }, rest @ ..] => {
+                    if let PlaceContext::NonMutatingUse(
+                        NonMutatingUseContext::Copy
+                        | NonMutatingUseContext::Move
+                        | NonMutatingUseContext::Inspect,
+                    ) = context
+                    {
+                        // Reading fields (or pseudo-fields) in operands can stay SSA
+                    } else {
+                        // But storing into a projection needs memory, especially for function returns
+                        context = PlaceContext::MutatingUse(MutatingUseContext::Projection);
+                    }
+                    rest
+                }
+                [PlaceElem::Downcast { .. }, ..] => {
+                    span_bug!(self.fx.mir.span, "Non-field downcast in {place_ref:?}");
+                }
+                // FIXME: These are type-changing, but not layout-affecting, so
+                // they probably needn't force memory, but for now they do since
+                // `maybe_codegen_consume_direct` doesn't handle them.
+                [
+                    PlaceElem::OpaqueCast { .. }
+                    | PlaceElem::UnwrapUnsafeBinder { .. }
+                    | PlaceElem::Subtype { .. },
+                    rest @ ..,
+                ] => {
+                    context = PlaceContext::MutatingUse(MutatingUseContext::Projection);
+                    rest
+                }
+                // The various types of indexing use address arithmetic, so we
+                // need to force the local to Memory like a borrow would.
+                [
+                    PlaceElem::Index { .. }
+                    | PlaceElem::ConstantIndex { .. }
+                    | PlaceElem::Subslice { .. },
+                    rest @ ..,
+                ] => {
+                    context = PlaceContext::MutatingUse(MutatingUseContext::Projection);
+                    rest
+                }
+            };
+        }
+
+        if let Some(local) = maybe_local {
+            self.visit_local(local, context, location);
         }
     }
 }
