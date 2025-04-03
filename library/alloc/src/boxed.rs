@@ -2046,7 +2046,7 @@ impl<T: ?Sized, A: Allocator> AsRef<T> for Box<T, A> {
 #[stable(feature = "smart_ptr_as_ref_str", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Allocator> AsRef<[u8]> for Box<str, A> {
     fn as_ref(&self) -> &[u8] {
-        self.deref().as_ref()
+        (&**self).as_ref()
     }
 }
 
