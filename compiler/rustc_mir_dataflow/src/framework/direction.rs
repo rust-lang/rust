@@ -222,17 +222,18 @@ impl Direction for Backward {
 
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
-        results.analysis.apply_early_terminator_effect(state, term, loc);
-        vis.visit_after_early_terminator_effect(results, state, term, loc);
-        results.analysis.apply_primary_terminator_effect(state, term, loc);
-        vis.visit_after_primary_terminator_effect(results, state, term, loc);
+        let analysis = &mut results.analysis;
+        analysis.apply_early_terminator_effect(state, term, loc);
+        vis.visit_after_early_terminator_effect(analysis, state, term, loc);
+        analysis.apply_primary_terminator_effect(state, term, loc);
+        vis.visit_after_primary_terminator_effect(analysis, state, term, loc);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
             let loc = Location { block, statement_index };
-            results.analysis.apply_early_statement_effect(state, stmt, loc);
-            vis.visit_after_early_statement_effect(results, state, stmt, loc);
-            results.analysis.apply_primary_statement_effect(state, stmt, loc);
-            vis.visit_after_primary_statement_effect(results, state, stmt, loc);
+            analysis.apply_early_statement_effect(state, stmt, loc);
+            vis.visit_after_early_statement_effect(analysis, state, stmt, loc);
+            analysis.apply_primary_statement_effect(state, stmt, loc);
+            vis.visit_after_primary_statement_effect(analysis, state, stmt, loc);
         }
 
         vis.visit_block_start(state);
@@ -402,20 +403,21 @@ impl Direction for Forward {
 
         vis.visit_block_start(state);
 
+        let analysis = &mut results.analysis;
         for (statement_index, stmt) in block_data.statements.iter().enumerate() {
             let loc = Location { block, statement_index };
-            results.analysis.apply_early_statement_effect(state, stmt, loc);
-            vis.visit_after_early_statement_effect(results, state, stmt, loc);
-            results.analysis.apply_primary_statement_effect(state, stmt, loc);
-            vis.visit_after_primary_statement_effect(results, state, stmt, loc);
+            analysis.apply_early_statement_effect(state, stmt, loc);
+            vis.visit_after_early_statement_effect(analysis, state, stmt, loc);
+            analysis.apply_primary_statement_effect(state, stmt, loc);
+            vis.visit_after_primary_statement_effect(analysis, state, stmt, loc);
         }
 
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
-        results.analysis.apply_early_terminator_effect(state, term, loc);
-        vis.visit_after_early_terminator_effect(results, state, term, loc);
-        results.analysis.apply_primary_terminator_effect(state, term, loc);
-        vis.visit_after_primary_terminator_effect(results, state, term, loc);
+        analysis.apply_early_terminator_effect(state, term, loc);
+        vis.visit_after_early_terminator_effect(analysis, state, term, loc);
+        analysis.apply_primary_terminator_effect(state, term, loc);
+        vis.visit_after_primary_terminator_effect(analysis, state, term, loc);
 
         vis.visit_block_end(state);
     }

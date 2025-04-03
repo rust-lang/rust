@@ -729,49 +729,49 @@ where
 
     fn visit_after_early_statement_effect(
         &mut self,
-        results: &mut Results<'tcx, A>,
+        analysis: &mut A,
         state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
         if let Some(before) = self.before.as_mut() {
-            before.push(diff_pretty(state, &self.prev_state, &results.analysis));
+            before.push(diff_pretty(state, &self.prev_state, analysis));
             self.prev_state.clone_from(state)
         }
     }
 
     fn visit_after_primary_statement_effect(
         &mut self,
-        results: &mut Results<'tcx, A>,
+        analysis: &mut A,
         state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
-        self.after.push(diff_pretty(state, &self.prev_state, &results.analysis));
+        self.after.push(diff_pretty(state, &self.prev_state, analysis));
         self.prev_state.clone_from(state)
     }
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        results: &mut Results<'tcx, A>,
+        analysis: &mut A,
         state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
         if let Some(before) = self.before.as_mut() {
-            before.push(diff_pretty(state, &self.prev_state, &results.analysis));
+            before.push(diff_pretty(state, &self.prev_state, analysis));
             self.prev_state.clone_from(state)
         }
     }
 
     fn visit_after_primary_terminator_effect(
         &mut self,
-        results: &mut Results<'tcx, A>,
+        analysis: &mut A,
         state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
-        self.after.push(diff_pretty(state, &self.prev_state, &results.analysis));
+        self.after.push(diff_pretty(state, &self.prev_state, analysis));
         self.prev_state.clone_from(state)
     }
 }

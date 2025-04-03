@@ -23,7 +23,7 @@ use rustc_mir_dataflow::lattice::{FlatSet, HasBottom};
 use rustc_mir_dataflow::value_analysis::{
     Map, PlaceIndex, State, TrackElem, ValueOrPlace, debug_with_context,
 };
-use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
+use rustc_mir_dataflow::{Analysis, ResultsVisitor};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, debug_span, instrument};
 
@@ -959,10 +959,10 @@ fn try_write_constant<'tcx>(
 }
 
 impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx> {
-    #[instrument(level = "trace", skip(self, results, statement))]
+    #[instrument(level = "trace", skip(self, analysis, statement))]
     fn visit_after_early_statement_effect(
         &mut self,
-        results: &mut Results<'tcx, ConstAnalysis<'_, 'tcx>>,
+        analysis: &mut ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         statement: &Statement<'tcx>,
         location: Location,
@@ -972,8 +972,8 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
                 OperandCollector {
                     state,
                     visitor: self,
-                    ecx: &mut results.analysis.ecx,
-                    map: &results.analysis.map,
+                    ecx: &mut analysis.ecx,
+                    map: &analysis.map,
                 }
                 .visit_rvalue(rvalue, location);
             }
@@ -981,10 +981,10 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
         }
     }
 
-    #[instrument(level = "trace", skip(self, results, statement))]
+    #[instrument(level = "trace", skip(self, analysis, statement))]
     fn visit_after_primary_statement_effect(
         &mut self,
-        results: &mut Results<'tcx, ConstAnalysis<'_, 'tcx>>,
+        analysis: &mut ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         statement: &Statement<'tcx>,
         location: Location,
@@ -994,12 +994,9 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
                 // Don't overwrite the assignment if it already uses a constant (to keep the span).
             }
             StatementKind::Assign(box (place, _)) => {
-                if let Some(value) = self.try_make_constant(
-                    &mut results.analysis.ecx,
-                    place,
-                    state,
-                    &results.analysis.map,
-                ) {
+                if let Some(value) =
+                    self.try_make_constant(&mut analysis.ecx, place, state, &analysis.map)
+                {
                     self.patch.assignments.insert(location, value);
                 }
             }
@@ -1009,18 +1006,13 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        results: &mut Results<'tcx, ConstAnalysis<'_, 'tcx>>,
+        analysis: &mut ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         terminator: &Terminator<'tcx>,
         location: Location,
     ) {
-        OperandCollector {
-            state,
-            visitor: self,
-            ecx: &mut results.analysis.ecx,
-            map: &results.analysis.map,
-        }
-        .visit_terminator(terminator, location);
+        OperandCollector { state, visitor: self, ecx: &mut analysis.ecx, map: &analysis.map }
+            .visit_terminator(terminator, location);
     }
 }
 

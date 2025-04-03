@@ -127,7 +127,7 @@ where
 {
     fn visit_after_primary_statement_effect<'mir>(
         &mut self,
-        _results: &mut Results<'tcx, A>,
+        _analysis: &mut A,
         state: &A::Domain,
         _statement: &'mir mir::Statement<'tcx>,
         location: Location,
@@ -141,7 +141,7 @@ where
 
     fn visit_after_primary_terminator_effect<'mir>(
         &mut self,
-        _results: &mut Results<'tcx, A>,
+        _analysis: &mut A,
         state: &A::Domain,
         _terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
