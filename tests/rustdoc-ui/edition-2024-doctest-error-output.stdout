@@ -1,0 +1,32 @@
+
+running 1 test
+test tests/rustdoc-ui/edition-2024-doctest-error-output.rs - (line 10) ... FAILED
+
+failures:
+
+---- tests/rustdoc-ui/edition-2024-doctest-error-output.rs - (line 10) stdout ----
+
+thread 'main' panicked at /tmp/rustdoctestSZq9aS/doctest_bundle_2024.rs:6:1:
+assertion `left == right` failed
+  left: 4
+ right: 5
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed
+   4: doctest_bundle_2024::__doctest_0::main
+   5: doctest_bundle_2024::__doctest_0::__main_fn
+   6: doctest_runner_2024::__doctest_0::TEST::{{closure}}
+   7: core::ops::function::FnOnce::call_once
+   8: doctest_runner_2024::main
+   9: core::ops::function::FnOnce::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+
+failures:
+    tests/rustdoc-ui/edition-2024-doctest-error-output.rs - (line 10)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
