@@ -6,11 +6,68 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[609cd310...master](https://github.com/rust-lang/rust-clippy/compare/609cd310...master)
+[3e3715c3...master](https://github.com/rust-lang/rust-clippy/compare/3e3715c3...master)
+
+## Rust 1.86
+
+Current stable, released 2025-04-03
+
+[View all 108 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2024-12-27T15%3A11%3A38Z..2025-02-06T13%3A57%3A58Z+base%3Amaster)
+
+### New Lints
+
+* Added [`unneeded_struct_pattern`] to `style` [#13465](https://github.com/rust-lang/rust-clippy/pull/13465)
+* Added [`doc_overindented_list_items`] to `style` [#13711](https://github.com/rust-lang/rust-clippy/pull/13711)
+* Added [`manual_ok_err`] to `complexity` [#13740](https://github.com/rust-lang/rust-clippy/pull/13740)
+* Added [`non_std_lazy_statics`] to `pedantic` [#13770](https://github.com/rust-lang/rust-clippy/pull/13770)
+* Added [`manual_repeat_n`] to `style` [#13858](https://github.com/rust-lang/rust-clippy/pull/13858)
+* Added [`manual_option_as_slice`] to `complexity` [#13901](https://github.com/rust-lang/rust-clippy/pull/13901)
+* Added [`double_ended_iterator_last`] to `perf` [#13922](https://github.com/rust-lang/rust-clippy/pull/13922)
+* Added [`useless_nonzero_new_unchecked`] to `complexity` [#13993](https://github.com/rust-lang/rust-clippy/pull/13993)
+* Added [`sliced_string_as_bytes`] to `perf` [#14002](https://github.com/rust-lang/rust-clippy/pull/14002)
+* Added [`unnecessary_semicolon`] to `pedantic` [#14032](https://github.com/rust-lang/rust-clippy/pull/14032)
+* Added [`return_and_then`] to `restriction` [#14051](https://github.com/rust-lang/rust-clippy/pull/14051)
+* Added [`manual_slice_fill`] to `style` [#14082](https://github.com/rust-lang/rust-clippy/pull/14082)
+* Added [`precedence_bits`] to `restriction` [#14115](https://github.com/rust-lang/rust-clippy/pull/14115)
+
+### Moves and Deprecations
+
+* Moved [`redundant_locals`] to `suspicious` (from `correctness`, now warn-by-default)
+  [#13747](https://github.com/rust-lang/rust-clippy/pull/13747)
+* Moved [`format_push_string`] to `pedantic` (from `restriction`)
+  [#13894](https://github.com/rust-lang/rust-clippy/pull/13894)
+* Moved [`format_collect`] to `pedantic` (from `perf`, now allow-by-default)
+  [#13894](https://github.com/rust-lang/rust-clippy/pull/13894)
+* Moved [`mutex_integer`] to `restriction` (from `nursery`) [#14110](https://github.com/rust-lang/rust-clippy/pull/14110)
+
+### Enhancements
+
+* Add `lint-inconsistent-struct-field-initializers` configuration option to [`inconsistent_struct_constructor`]
+  [#13737](https://github.com/rust-lang/rust-clippy/pull/13737)
+* [`len_zero`] now also triggers if deref target implements `is_empty()`
+  [#13871](https://github.com/rust-lang/rust-clippy/pull/13871)
+* [`obfuscated_if_else`] now also triggers for the `.then(..).unwrap_or(..)` pattern
+  [#14021](https://github.com/rust-lang/rust-clippy/pull/14021)
+
+### False Positive Fixes
+
+* [`trailing_empty_array`] no longer triggers in tests [#13844](https://github.com/rust-lang/rust-clippy/pull/13844)
+* [`missing_const_for_fn`] no longer triggers in tests [#13945](https://github.com/rust-lang/rust-clippy/pull/13945)
+* [`significant_drop_in_scrutinee`]: do not falsely warn for temporaries created by `.await` expansion
+  [#13985](https://github.com/rust-lang/rust-clippy/pull/13985)
+
+### ICE Fixes
+
+* [`borrow_interior_mutable_const`] Fix an ICE that can occur when taking a reference to a tuple/`struct` field of an
+  interior mutable `const` [#13877](https://github.com/rust-lang/rust-clippy/pull/13877)
+
+### Others
+
+* Clippy now uses Rust edition 2024 [#13751](https://github.com/rust-lang/rust-clippy/pull/13751)
 
 ## Rust 1.85
 
-Current stable, released 2025-02-20
+Released 2025-02-20
 
 [View all 72 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2024-11-15T19%3A31%3A08Z..2024-12-26T13%3A59%3A48Z+base%3Amaster)
 
