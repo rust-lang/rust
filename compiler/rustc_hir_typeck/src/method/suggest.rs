@@ -23,10 +23,9 @@ use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath};
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
-#[allow(unused_imports)]
 use rustc_middle::ty::print::{
-    PrintTraitRefExt as _, with_crate_prefix, with_forced_trimmed_paths, with_no_trimmed_paths,
-    with_no_visible_paths, with_no_visible_paths_if_doc_hidden,
+    PrintTraitRefExt as _, with_crate_prefix, with_forced_trimmed_paths,
+    with_no_visible_paths_if_doc_hidden,
 };
 use rustc_middle::ty::{self, GenericArgKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
