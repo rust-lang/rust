@@ -2043,6 +2043,13 @@ impl<T: ?Sized, A: Allocator> AsRef<T> for Box<T, A> {
     }
 }
 
+#[stable(feature = "smart_ptr_as_ref_str", since = "CURRENT_RUSTC_VERSION")]
+impl<A: Allocator> AsRef<[u8]> for Box<str, A> {
+    fn as_ref(&self) -> &[u8] {
+        self.deref().as_ref()
+    }
+}
+
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized, A: Allocator> AsMut<T> for Box<T, A> {
     fn as_mut(&mut self) -> &mut T {
