@@ -382,16 +382,11 @@ impl<T> [T] {
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
     #[rustc_const_stable(feature = "slice_first_last_chunk", since = "1.77.0")]
     pub const fn split_first_chunk<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
-        if self.len() < N {
-            None
-        } else {
-            // SAFETY: We manually verified the bounds of the split.
-            let (first, tail) = unsafe { self.split_at_unchecked(N) };
+        let Some((first, tail)) = self.split_at_checked(N) else { return None };
 
-            // SAFETY: We explicitly check for the correct number of elements,
-            //   and do not let the references outlive the slice.
-            Some((unsafe { &*(first.as_ptr().cast::<[T; N]>()) }, tail))
-        }
+        // SAFETY: We explicitly check for the correct number of elements,
+        //   and do not let the references outlive the slice.
+        Some((unsafe { &*(first.as_ptr().cast::<[T; N]>()) }, tail))
     }
 
     /// Returns a mutable array reference to the first `N` items in the slice and the remaining
@@ -419,17 +414,12 @@ impl<T> [T] {
     pub const fn split_first_chunk_mut<const N: usize>(
         &mut self,
     ) -> Option<(&mut [T; N], &mut [T])> {
-        if self.len() < N {
-            None
-        } else {
-            // SAFETY: We manually verified the bounds of the split.
-            let (first, tail) = unsafe { self.split_at_mut_unchecked(N) };
+        let Some((first, tail)) = self.split_at_mut_checked(N) else { return None };
 
-            // SAFETY: We explicitly check for the correct number of elements,
-            //   do not let the reference outlive the slice,
-            //   and enforce exclusive mutability of the chunk by the split.
-            Some((unsafe { &mut *(first.as_mut_ptr().cast::<[T; N]>()) }, tail))
-        }
+        // SAFETY: We explicitly check for the correct number of elements,
+        //   do not let the reference outlive the slice,
+        //   and enforce exclusive mutability of the chunk by the split.
+        Some((unsafe { &mut *(first.as_mut_ptr().cast::<[T; N]>()) }, tail))
     }
 
     /// Returns an array reference to the last `N` items in the slice and the remaining slice.
@@ -452,16 +442,12 @@ impl<T> [T] {
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
     #[rustc_const_stable(feature = "slice_first_last_chunk", since = "1.77.0")]
     pub const fn split_last_chunk<const N: usize>(&self) -> Option<(&[T], &[T; N])> {
-        if self.len() < N {
-            None
-        } else {
-            // SAFETY: We manually verified the bounds of the split.
-            let (init, last) = unsafe { self.split_at_unchecked(self.len() - N) };
+        let Some(index) = self.len().checked_sub(N) else { return None };
+        let (init, last) = self.split_at(index);
 
-            // SAFETY: We explicitly check for the correct number of elements,
-            //   and do not let the references outlive the slice.
-            Some((init, unsafe { &*(last.as_ptr().cast::<[T; N]>()) }))
-        }
+        // SAFETY: We explicitly check for the correct number of elements,
+        //   and do not let the references outlive the slice.
+        Some((init, unsafe { &*(last.as_ptr().cast::<[T; N]>()) }))
     }
 
     /// Returns a mutable array reference to the last `N` items in the slice and the remaining
@@ -489,17 +475,13 @@ impl<T> [T] {
     pub const fn split_last_chunk_mut<const N: usize>(
         &mut self,
     ) -> Option<(&mut [T], &mut [T; N])> {
-        if self.len() < N {
-            None
-        } else {
-            // SAFETY: We manually verified the bounds of the split.
-            let (init, last) = unsafe { self.split_at_mut_unchecked(self.len() - N) };
+        let Some(index) = self.len().checked_sub(N) else { return None };
+        let (init, last) = self.split_at_mut(index);
 
-            // SAFETY: We explicitly check for the correct number of elements,
-            //   do not let the reference outlive the slice,
-            //   and enforce exclusive mutability of the chunk by the split.
-            Some((init, unsafe { &mut *(last.as_mut_ptr().cast::<[T; N]>()) }))
-        }
+        // SAFETY: We explicitly check for the correct number of elements,
+        //   do not let the reference outlive the slice,
+        //   and enforce exclusive mutability of the chunk by the split.
+        Some((init, unsafe { &mut *(last.as_mut_ptr().cast::<[T; N]>()) }))
     }
 
     /// Returns an array reference to the last `N` items in the slice.
@@ -522,17 +504,13 @@ impl<T> [T] {
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
     #[rustc_const_stable(feature = "const_slice_last_chunk", since = "1.80.0")]
     pub const fn last_chunk<const N: usize>(&self) -> Option<&[T; N]> {
-        if self.len() < N {
-            None
-        } else {
-            // SAFETY: We manually verified the bounds of the slice.
-            // FIXME(const-hack): Without const traits, we need this instead of `get_unchecked`.
-            let last = unsafe { self.split_at_unchecked(self.len() - N).1 };
+        // FIXME(const-hack): Without const traits, we need this instead of `get`.
+        let Some(index) = self.len().checked_sub(N) else { return None };
+        let (_, last) = self.split_at(index);
 
-            // SAFETY: We explicitly check for the correct number of elements,
-            //   and do not let the references outlive the slice.
-            Some(unsafe { &*(last.as_ptr().cast::<[T; N]>()) })
-        }
+        // SAFETY: We explicitly check for the correct number of elements,
+        //   and do not let the references outlive the slice.
+        Some(unsafe { &*(last.as_ptr().cast::<[T; N]>()) })
     }
 
     /// Returns a mutable array reference to the last `N` items in the slice.
@@ -556,18 +534,14 @@ impl<T> [T] {
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
     #[rustc_const_stable(feature = "const_slice_first_last_chunk", since = "1.83.0")]
     pub const fn last_chunk_mut<const N: usize>(&mut self) -> Option<&mut [T; N]> {
-        if self.len() < N {
-            None
-        } else {
-            // SAFETY: We manually verified the bounds of the slice.
-            // FIXME(const-hack): Without const traits, we need this instead of `get_unchecked`.
-            let last = unsafe { self.split_at_mut_unchecked(self.len() - N).1 };
+        // FIXME(const-hack): Without const traits, we need this instead of `get`.
+        let Some(index) = self.len().checked_sub(N) else { return None };
+        let (_, last) = self.split_at_mut(index);
 
-            // SAFETY: We explicitly check for the correct number of elements,
-            //   do not let the reference outlive the slice,
-            //   and require exclusive access to the entire slice to mutate the chunk.
-            Some(unsafe { &mut *(last.as_mut_ptr().cast::<[T; N]>()) })
-        }
+        // SAFETY: We explicitly check for the correct number of elements,
+        //   do not let the reference outlive the slice,
+        //   and require exclusive access to the entire slice to mutate the chunk.
+        Some(unsafe { &mut *(last.as_mut_ptr().cast::<[T; N]>()) })
     }
 
     /// Returns a reference to an element or subslice depending on the type of

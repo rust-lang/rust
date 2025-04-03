@@ -1,4 +1,4 @@
-// Tested with nightly-2025-02-13
+// Tested with nightly-2025-03-28
 
 #![feature(rustc_private)]
 
@@ -20,7 +20,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use rustc_ast_pretty::pprust::item_to_string;
-use rustc_driver::{run_compiler, Compilation};
+use rustc_driver::{Compilation, run_compiler};
 use rustc_interface::interface::{Compiler, Config};
 use rustc_middle::ty::TyCtxt;
 
@@ -70,11 +70,9 @@ impl rustc_driver::Callbacks for MyCallbacks {
     }
 
     fn after_analysis(&mut self, _compiler: &Compiler, tcx: TyCtxt<'_>) -> Compilation {
-        // Every compilation contains a single crate.
-        let hir_krate = tcx.hir();
         // Iterate over the top-level items in the crate, looking for the main function.
-        for id in hir_krate.items() {
-            let item = hir_krate.item(id);
+        for id in tcx.hir_free_items() {
+            let item = &tcx.hir_item(id);
             // Use pattern-matching to find a specific node inside the main function.
             if let rustc_hir::ItemKind::Fn { body, .. } = item.kind {
                 let expr = &tcx.hir_body(body).value;

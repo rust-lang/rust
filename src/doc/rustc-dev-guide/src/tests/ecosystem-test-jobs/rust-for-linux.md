@@ -3,26 +3,7 @@
 [Rust for Linux](https://rust-for-linux.com/) (RfL) is an effort for adding
 support for the Rust programming language into the Linux kernel.
 
-## Building Rust for Linux in CI
-
-Rust for Linux builds as part of the suite of bors tests that run before a pull
-request is merged.
-
-The workflow builds a stage1 sysroot of the Rust compiler, downloads the Linux
-kernel, and tries to compile several Rust for Linux drivers and examples using
-this sysroot. RfL uses several unstable compiler/language features, therefore
-this workflow notifies us if a given compiler change would break it.
-
-If you are worried that a pull request might break the Rust for Linux builder
-and want to test it out before submitting it to the bors queue, simply add this
-line to your PR description:
-
-> try-job: x86_64-rust-for-linux
-
-Then when you `@bors try` it will pick the job that builds the Rust for Linux
-integration.
-
-## What to do in case of failure
+## What to do if the Rust for Linux job breaks?
 
 If a PR breaks the Rust for Linux CI job, then:
 
@@ -48,4 +29,23 @@ ping group to ask for help:
 @rustbot ping rfl
 ```
 
-[rfl-ping]: ../notification-groups/rust-for-linux.md
+## Building Rust for Linux in CI
+
+Rust for Linux builds as part of the suite of bors tests that run before a pull
+request is merged.
+
+The workflow builds a stage1 sysroot of the Rust compiler, downloads the Linux
+kernel, and tries to compile several Rust for Linux drivers and examples using
+this sysroot. RfL uses several unstable compiler/language features, therefore
+this workflow notifies us if a given compiler change would break it.
+
+If you are worried that a pull request might break the Rust for Linux builder
+and want to test it out before submitting it to the bors queue, simply add this
+line to your PR description:
+
+> try-job: x86_64-rust-for-linux
+
+Then when you `@bors try` it will pick the job that builds the Rust for Linux
+integration.
+
+[rfl-ping]: ../../notification-groups/rust-for-linux.md

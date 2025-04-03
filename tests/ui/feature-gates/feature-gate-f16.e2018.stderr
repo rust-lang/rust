@@ -19,7 +19,7 @@ LL |     let a: f16 = 100.0;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:15:11
+  --> $DIR/feature-gate-f16.rs:16:11
    |
 LL | fn foo(a: f16) {}
    |           ^^^
@@ -29,7 +29,7 @@ LL | fn foo(a: f16) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:18:8
+  --> $DIR/feature-gate-f16.rs:19:8
    |
 LL |     a: f16,
    |        ^^^
@@ -48,6 +48,16 @@ LL |     let b = 0.0f16;
    = help: add `#![feature(f16)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 5 previous errors
+error[E0658]: the type `f16` is unstable
+  --> $DIR/feature-gate-f16.rs:12:13
+   |
+LL |     let c = 0f16;
+   |             ^^^^
+   |
+   = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
+   = help: add `#![feature(f16)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
