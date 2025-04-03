@@ -16,11 +16,11 @@ Target triplets available so far:
 
 ## Requirements
 
-These targets only support cross-compilation. The targets will[^1] support libstd, although support of some platform features (filesystem, networking) may be limited.
+These targets only support cross-compilation. The targets will[^helenos-libstd-pending] support libstd, although support of some platform features (filesystem, networking) may be limited.
 
 You need to have a local clone of the HelenOS repository and the HelenOS toolchain set up, no HelenOS-Rust development artifacts are available.
 
-[^1]: libstd is not yet available, because it needs to be done in a separate PR, because compiler support needs to be merged first to allow creating libc bindings
+[^helenos-libstd-pending]: libstd is not yet available, because it needs to be done in a separate PR, because compiler support needs to be merged first to allow creating libc bindings
 
 ## Building
 
