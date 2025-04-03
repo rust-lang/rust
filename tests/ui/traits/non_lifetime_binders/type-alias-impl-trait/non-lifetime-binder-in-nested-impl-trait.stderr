@@ -1,0 +1,52 @@
+error[E0107]: missing generics for associated type `Trait::Assoc`
+  --> $DIR/non-lifetime-binder-in-nested-impl-trait.rs:10:39
+   |
+LL | fn produce() -> impl for<T> Trait<(), Assoc = impl Trait<T>> {
+   |                                       ^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/non-lifetime-binder-in-nested-impl-trait.rs:7:10
+   |
+LL |     type Assoc<'a> = i32;
+   |          ^^^^^ --
+help: add missing lifetime argument
+   |
+LL | fn produce() -> impl for<T> Trait<(), Assoc<'a> = impl Trait<T>> {
+   |                                            ++++
+
+error[E0107]: missing generics for associated type `Trait::Assoc`
+  --> $DIR/non-lifetime-binder-in-nested-impl-trait.rs:10:39
+   |
+LL | fn produce() -> impl for<T> Trait<(), Assoc = impl Trait<T>> {
+   |                                       ^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/non-lifetime-binder-in-nested-impl-trait.rs:7:10
+   |
+LL |     type Assoc<'a> = i32;
+   |          ^^^^^ --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing lifetime argument
+   |
+LL | fn produce() -> impl for<T> Trait<(), Assoc<'a> = impl Trait<T>> {
+   |                                            ++++
+
+error[E0277]: the trait bound `{integer}: Trait<()>` is not satisfied
+  --> $DIR/non-lifetime-binder-in-nested-impl-trait.rs:10:17
+   |
+LL | fn produce() -> impl for<T> Trait<(), Assoc = impl Trait<T>> {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<()>` is not implemented for `{integer}`
+...
+LL |     16
+   |     -- return type was inferred to be `{integer}` here
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/non-lifetime-binder-in-nested-impl-trait.rs:6:1
+   |
+LL | trait Trait<T: ?Sized> {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0277.
+For more information about an error, try `rustc --explain E0107`.

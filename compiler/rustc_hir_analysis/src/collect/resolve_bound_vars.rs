@@ -151,6 +151,7 @@ enum Scope<'a> {
         s: ScopeRef<'a>,
         what: &'static str,
         deny_late_regions: bool,
+        deny_late_types_and_consts: bool,
     },
 
     Root {
@@ -190,10 +191,11 @@ impl<'a> Scope<'a> {
                 .field("s", &"..")
                 .finish(),
             Self::TraitRefBoundary { s: _ } => f.debug_struct("TraitRefBoundary").finish(),
-            Self::LateBoundary { s: _, what, deny_late_regions } => f
+            Self::LateBoundary { s: _, what, deny_late_regions, deny_late_types_and_consts } => f
                 .debug_struct("LateBoundary")
                 .field("what", what)
                 .field("deny_late_regions", deny_late_regions)
+                .field("deny_late_types_and_consts", deny_late_types_and_consts)
                 .finish(),
             Self::Root { opt_parent_item } => {
                 f.debug_struct("Root").field("opt_parent_item", &opt_parent_item).finish()
@@ -586,10 +588,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             this.with(scope, |this| {
                 let scope = Scope::LateBoundary {
                     s: this.scope,
-                    what: "nested `impl Trait`",
-                    // We can capture late-bound regions; we just don't duplicate
-                    // lifetime or const params, so we can't allow those.
+                    what: "associated type bounds",
                     deny_late_regions: false,
+                    deny_late_types_and_consts: false,
                 };
                 this.with(scope, |this| intravisit::walk_opaque_ty(this, opaque))
             })
@@ -809,8 +810,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 self.with(scope, |this| {
                     let scope = Scope::LateBoundary {
                         s: this.scope,
-                        what: "`impl Trait` in binding",
-                        deny_late_regions: true,
+                        what: "nested `impl Trait`",
+                        deny_late_regions: false,
+                        deny_late_types_and_consts: true,
                     };
                     this.with(scope, |this| {
                         for bound in bounds {
@@ -999,7 +1001,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
     fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
         self.with(
-            Scope::LateBoundary { s: self.scope, what: "constant", deny_late_regions: true },
+            Scope::LateBoundary {
+                s: self.scope,
+                what: "constant",
+                deny_late_regions: true,
+                deny_late_types_and_consts: true,
+            },
             |this| {
                 intravisit::walk_anon_const(this, c);
             },
@@ -1298,8 +1305,18 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     scope = s;
                 }
 
-                Scope::LateBoundary { s, what, deny_late_regions } => {
-                    if deny_late_regions {
+                Scope::LateBoundary {
+                    s,
+                    what,
+                    deny_late_regions: _,
+                    deny_late_types_and_consts,
+                } => {
+                    // For debugging purposes
+                    println!(
+                        "DEBUG: LateBoundary in resolve_type_ref - what: {}, deny_late_types_and_consts: {}",
+                        what, deny_late_types_and_consts
+                    );
+                    if deny_late_types_and_consts {
                         crossed_late_boundary = Some(what);
                     }
                     scope = s;
@@ -1518,8 +1535,20 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     scope = s;
                 }
 
-                Scope::LateBoundary { s, what, deny_late_regions: _ } => {
-                    crossed_late_boundary = Some(what);
+                Scope::LateBoundary {
+                    s,
+                    what,
+                    deny_late_regions: _,
+                    deny_late_types_and_consts,
+                } => {
+                    // For debugging purposes
+                    println!(
+                        "DEBUG: LateBoundary in resolve_type_ref - what: {}, deny_late_types_and_consts: {}",
+                        what, deny_late_types_and_consts
+                    );
+                    if deny_late_types_and_consts {
+                        crossed_late_boundary = Some(what);
+                    }
                     scope = s;
                 }
             }
@@ -1763,8 +1792,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // trait Foo<'a> {
         //   type Item: 'a;
         // }
-        // ```
-        //
+        //         //
+        //```
         // but if we just have `type Item;`, then it would be
         // `'static`. However, we don't get all of this logic correct.
         //
