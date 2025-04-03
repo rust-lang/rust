@@ -32,7 +32,7 @@ use crate::{cfg_match, intrinsics};
 ///
 /// * `src` must point to a properly initialized value of type `T`.
 ///
-/// Like [`read`], `read_volatile` creates a bitwise copy of `T`, regardless of
+/// Like [read], `read_volatile` creates a bitwise copy of `T`, regardless of
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
 /// value and the value at `*src` can [violate memory safety][read-ownership].
 /// However, storing non-[`Copy`] types in volatile memory is almost certainly
@@ -40,8 +40,9 @@ use crate::{cfg_match, intrinsics};
 ///
 /// Note that even if `T` has size `0`, the pointer must be properly aligned.
 ///
-/// [valid]: self#safety
-/// [read-ownership]: read#ownership-of-the-returned-value
+/// [valid]: crate::ptr#safety
+/// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
+/// [read]: crate::ptr::read
 ///
 /// Just like in C, whether an operation is volatile has no bearing whatsoever
 /// on questions involving concurrent access from multiple threads. Volatile
@@ -165,7 +166,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// Note that even if `T` has size `0`, the pointer must be properly aligned.
 ///
-/// [valid]: self#safety
+/// [valid]: crate::ptr#safety
 ///
 /// Just like in C, whether an operation is volatile has no bearing whatsoever
 /// on questions involving concurrent access from multiple threads. Volatile
