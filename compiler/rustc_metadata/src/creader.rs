@@ -340,7 +340,7 @@ impl CStore {
         }
         let level = tcx
             .lint_level_at_node(lint::builtin::UNUSED_CRATE_DEPENDENCIES, rustc_hir::CRATE_HIR_ID)
-            .0;
+            .level;
         if level != lint::Level::Allow {
             let unused_externs =
                 self.unused_externs.iter().map(|ident| ident.to_ident_string()).collect::<Vec<_>>();

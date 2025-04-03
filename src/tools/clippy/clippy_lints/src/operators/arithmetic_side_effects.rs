@@ -335,8 +335,11 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
             return;
         }
         match &expr.kind {
-            hir::ExprKind::AssignOp(op, lhs, rhs) | hir::ExprKind::Binary(op, lhs, rhs) => {
+            hir::ExprKind::Binary(op, lhs, rhs) => {
                 self.manage_bin_ops(cx, expr, op.node, lhs, rhs);
+            },
+            hir::ExprKind::AssignOp(op, lhs, rhs) => {
+                self.manage_bin_ops(cx, expr, op.node.into(), lhs, rhs);
             },
             hir::ExprKind::MethodCall(ps, receiver, args, _) => {
                 self.manage_method_call(args, cx, expr, ps, receiver);

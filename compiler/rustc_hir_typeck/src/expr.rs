@@ -512,7 +512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_assign(expr, expected, lhs, rhs, span)
             }
             ExprKind::AssignOp(op, lhs, rhs) => {
-                self.check_expr_binop_assign(expr, op, lhs, rhs, expected)
+                self.check_expr_assign_op(expr, op, lhs, rhs, expected)
             }
             ExprKind::Unary(unop, oprnd) => self.check_expr_unop(unop, oprnd, expected, expr),
             ExprKind::AddrOf(kind, mutbl, oprnd) => {

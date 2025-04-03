@@ -4,15 +4,15 @@ use rustc_data_structures::packed::Pu128;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
 use rustc_infer::traits::ObligationCauseCode;
+use rustc_middle::bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, span_bug};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, Obligation, ObligationCtxt};
 use tracing::debug;
@@ -24,24 +24,27 @@ use crate::Expectation;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
-    pub(crate) fn check_expr_binop_assign(
+    pub(crate) fn check_expr_assign_op(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
-        op: hir::BinOp,
+        op: hir::AssignOp,
         lhs: &'tcx hir::Expr<'tcx>,
         rhs: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let (lhs_ty, rhs_ty, return_ty) =
-            self.check_overloaded_binop(expr, lhs, rhs, op, IsAssign::Yes, expected);
+            self.check_overloaded_binop(expr, lhs, rhs, Op::AssignOp(op), expected);
 
-        let ty =
-            if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
-                self.enforce_builtin_binop_types(lhs.span, lhs_ty, rhs.span, rhs_ty, op);
-                self.tcx.types.unit
-            } else {
-                return_ty
-            };
+        let category = BinOpCategory::from(op.node);
+        let ty = if !lhs_ty.is_ty_var()
+            && !rhs_ty.is_ty_var()
+            && is_builtin_binop(lhs_ty, rhs_ty, category)
+        {
+            self.enforce_builtin_binop_types(lhs.span, lhs_ty, rhs.span, rhs_ty, category);
+            self.tcx.types.unit
+        } else {
+            return_ty
+        };
 
         self.check_lhs_assignable(lhs, E0067, op.span, |err| {
             if let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
@@ -49,7 +52,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .lookup_op_method(
                         (lhs, lhs_deref_ty),
                         Some((rhs, rhs_ty)),
-                        Op::Binary(op, IsAssign::Yes),
+                        lang_item_for_binop(self.tcx, Op::AssignOp(op)),
+                        op.span,
                         expected,
                     )
                     .is_ok()
@@ -60,7 +64,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .lookup_op_method(
                             (lhs, lhs_ty),
                             Some((rhs, rhs_ty)),
-                            Op::Binary(op, IsAssign::Yes),
+                            lang_item_for_binop(self.tcx, Op::AssignOp(op)),
+                            op.span,
                             expected,
                         )
                         .is_err()
@@ -98,7 +103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr.hir_id, expr, op, lhs_expr, rhs_expr
         );
 
-        match BinOpCategory::from(op) {
+        match BinOpCategory::from(op.node) {
             BinOpCategory::Shortcircuit => {
                 // && and || are a simple case.
                 self.check_expr_coercible_to_type(lhs_expr, tcx.types.bool, None);
@@ -114,14 +119,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Otherwise, we always treat operators as if they are
                 // overloaded. This is the way to be most flexible w/r/t
                 // types that get inferred.
-                let (lhs_ty, rhs_ty, return_ty) = self.check_overloaded_binop(
-                    expr,
-                    lhs_expr,
-                    rhs_expr,
-                    op,
-                    IsAssign::No,
-                    expected,
-                );
+                let (lhs_ty, rhs_ty, return_ty) =
+                    self.check_overloaded_binop(expr, lhs_expr, rhs_expr, Op::BinOp(op), expected);
 
                 // Supply type inference hints if relevant. Probably these
                 // hints should be enforced during select as part of the
@@ -135,16 +134,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // deduce that the result type should be `u32`, even
                 // though we don't know yet what type 2 has and hence
                 // can't pin this down to a specific impl.
+                let category = BinOpCategory::from(op.node);
                 if !lhs_ty.is_ty_var()
                     && !rhs_ty.is_ty_var()
-                    && is_builtin_binop(lhs_ty, rhs_ty, op)
+                    && is_builtin_binop(lhs_ty, rhs_ty, category)
                 {
                     let builtin_return_ty = self.enforce_builtin_binop_types(
                         lhs_expr.span,
                         lhs_ty,
                         rhs_expr.span,
                         rhs_ty,
-                        op,
+                        category,
                     );
                     self.demand_eqtype(expr.span, builtin_return_ty, return_ty);
                     builtin_return_ty
@@ -161,16 +161,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs_ty: Ty<'tcx>,
         rhs_span: Span,
         rhs_ty: Ty<'tcx>,
-        op: hir::BinOp,
+        category: BinOpCategory,
     ) -> Ty<'tcx> {
-        debug_assert!(is_builtin_binop(lhs_ty, rhs_ty, op));
+        debug_assert!(is_builtin_binop(lhs_ty, rhs_ty, category));
 
         // Special-case a single layer of referencing, so that things like `5.0 + &6.0f32` work.
         // (See https://github.com/rust-lang/rust/issues/57447.)
         let (lhs_ty, rhs_ty) = (deref_ty_if_possible(lhs_ty), deref_ty_if_possible(rhs_ty));
 
         let tcx = self.tcx;
-        match BinOpCategory::from(op) {
+        match category {
             BinOpCategory::Shortcircuit => {
                 self.demand_suptype(lhs_span, tcx.types.bool, lhs_ty);
                 self.demand_suptype(rhs_span, tcx.types.bool, rhs_ty);
@@ -201,17 +201,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         lhs_expr: &'tcx hir::Expr<'tcx>,
         rhs_expr: &'tcx hir::Expr<'tcx>,
-        op: hir::BinOp,
-        is_assign: IsAssign,
+        op: Op,
         expected: Expectation<'tcx>,
     ) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
-        debug!(
-            "check_overloaded_binop(expr.hir_id={}, op={:?}, is_assign={:?})",
-            expr.hir_id, op, is_assign
-        );
+        debug!("check_overloaded_binop(expr.hir_id={}, op={:?})", expr.hir_id, op);
 
-        let lhs_ty = match is_assign {
-            IsAssign::No => {
+        let lhs_ty = match op {
+            Op::BinOp(_) => {
                 // Find a suitable supertype of the LHS expression's type, by coercing to
                 // a type variable, to pass as the `Self` to the trait, avoiding invariant
                 // trait matching creating lifetime constraints that are too strict.
@@ -221,7 +217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let fresh_var = self.next_ty_var(lhs_expr.span);
                 self.demand_coerce(lhs_expr, lhs_ty, fresh_var, Some(rhs_expr), AllowTwoPhase::No)
             }
-            IsAssign::Yes => {
+            Op::AssignOp(_) => {
                 // rust-lang/rust#52126: We have to use strict
                 // equivalence on the LHS of an assign-op like `+=`;
                 // overwritten or mutably-borrowed places cannot be
@@ -242,7 +238,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result = self.lookup_op_method(
             (lhs_expr, lhs_ty),
             Some((rhs_expr, rhs_ty_var)),
-            Op::Binary(op, is_assign),
+            lang_item_for_binop(self.tcx, op),
+            op.span(),
             expected,
         );
 
@@ -252,15 +249,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rhs_ty_var,
             Some(lhs_expr),
             |err, ty| {
-                self.suggest_swapping_lhs_and_rhs(err, ty, lhs_ty, rhs_expr, lhs_expr, op);
+                if let Op::BinOp(binop) = op
+                    && binop.node == hir::BinOpKind::Eq
+                {
+                    self.suggest_swapping_lhs_and_rhs(err, ty, lhs_ty, rhs_expr, lhs_expr);
+                }
             },
         );
         let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
 
         let return_ty = match result {
             Ok(method) => {
-                let by_ref_binop = !op.node.is_by_value();
-                if is_assign == IsAssign::Yes || by_ref_binop {
+                let by_ref_binop = !op.is_by_value();
+                if matches!(op, Op::AssignOp(_)) || by_ref_binop {
                     if let ty::Ref(_, _, mutbl) = method.sig.inputs()[0].kind() {
                         let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
                         let autoref = Adjustment {
@@ -301,32 +302,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_misc_error(self.tcx)
             }
             Err(errors) => {
-                let (_, trait_def_id) =
-                    lang_item_for_op(self.tcx, Op::Binary(op, is_assign), op.span);
+                let (_, trait_def_id) = lang_item_for_binop(self.tcx, op);
                 let missing_trait = trait_def_id
                     .map(|def_id| with_no_trimmed_paths!(self.tcx.def_path_str(def_id)));
                 let mut path = None;
                 let lhs_ty_str = self.tcx.short_string(lhs_ty, &mut path);
                 let rhs_ty_str = self.tcx.short_string(rhs_ty, &mut path);
-                let (mut err, output_def_id) = match is_assign {
-                    IsAssign::Yes => {
+                let (mut err, output_def_id) = match op {
+                    Op::AssignOp(assign_op) => {
+                        let s = assign_op.node.as_str();
                         let mut err = struct_span_code_err!(
                             self.dcx(),
                             expr.span,
                             E0368,
-                            "binary assignment operation `{}=` cannot be applied to type `{}`",
-                            op.node.as_str(),
+                            "binary assignment operation `{}` cannot be applied to type `{}`",
+                            s,
                             lhs_ty_str,
                         );
                         err.span_label(
                             lhs_expr.span,
-                            format!("cannot use `{}=` on type `{}`", op.node.as_str(), lhs_ty_str),
+                            format!("cannot use `{}` on type `{}`", s, lhs_ty_str),
                         );
                         self.note_unmet_impls_on_type(&mut err, errors, false);
                         (err, None)
                     }
-                    IsAssign::No => {
-                        let message = match op.node {
+                    Op::BinOp(bin_op) => {
+                        let message = match bin_op.node {
                             hir::BinOpKind::Add => {
                                 format!("cannot add `{rhs_ty_str}` to `{lhs_ty_str}`")
                             }
@@ -362,8 +363,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                             _ => format!(
                                 "binary operation `{}` cannot be applied to type `{}`",
-                                op.node.as_str(),
-                                lhs_ty_str,
+                                bin_op.node.as_str(),
+                                lhs_ty_str
                             ),
                         };
                         let output_def_id = trait_def_id.and_then(|def_id| {
@@ -376,7 +377,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .cloned()
                         });
                         let mut err =
-                            struct_span_code_err!(self.dcx(), op.span, E0369, "{message}");
+                            struct_span_code_err!(self.dcx(), bin_op.span, E0369, "{message}");
                         if !lhs_expr.span.eq(&rhs_expr.span) {
                             err.span_label(lhs_expr.span, lhs_ty_str.clone());
                             err.span_label(rhs_expr.span, rhs_ty_str);
@@ -409,18 +410,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .lookup_op_method(
                             (lhs_expr, lhs_deref_ty),
                             Some((rhs_expr, rhs_ty)),
-                            Op::Binary(op, is_assign),
+                            lang_item_for_binop(self.tcx, op),
+                            op.span(),
                             expected,
                         )
                         .is_ok()
                     {
                         let msg = format!(
-                            "`{}{}` can be used on `{}` if you dereference the left-hand side",
-                            op.node.as_str(),
-                            match is_assign {
-                                IsAssign::Yes => "=",
-                                IsAssign::No => "",
-                            },
+                            "`{}` can be used on `{}` if you dereference the left-hand side",
+                            op.as_str(),
                             self.tcx.short_string(lhs_deref_ty, err.long_ty_path()),
                         );
                         err.span_suggestion_verbose(
@@ -442,14 +440,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .lookup_op_method(
                                 (lhs_expr, lhs_adjusted_ty),
                                 Some((rhs_expr, rhs_adjusted_ty)),
-                                Op::Binary(op, is_assign),
+                                lang_item_for_binop(self.tcx, op),
+                                op.span(),
                                 expected,
                             )
                             .is_ok()
                         {
                             let lhs = self.tcx.short_string(lhs_adjusted_ty, err.long_ty_path());
                             let rhs = self.tcx.short_string(rhs_adjusted_ty, err.long_ty_path());
-                            let op = op.node.as_str();
+                            let op = op.as_str();
                             err.note(format!("an implementation for `{lhs} {op} {rhs}` exists"));
 
                             if let Some(lhs_new_mutbl) = lhs_new_mutbl
@@ -499,7 +498,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.lookup_op_method(
                         (lhs_expr, lhs_ty),
                         Some((rhs_expr, rhs_ty)),
-                        Op::Binary(op, is_assign),
+                        lang_item_for_binop(self.tcx, op),
+                        op.span(),
                         expected,
                     )
                     .is_ok()
@@ -511,13 +511,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // We should suggest `a + b` => `*a + b` if `a` is copy, and suggest
                 // `a += b` => `*a += b` if a is a mut ref.
-                if !op.span.can_be_used_for_suggestions() {
+                if !op.span().can_be_used_for_suggestions() {
                     // Suppress suggestions when lhs and rhs are not in the same span as the error
-                } else if is_assign == IsAssign::Yes
+                } else if let Op::AssignOp(_) = op
                     && let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty)
                 {
                     suggest_deref_binop(&mut err, lhs_deref_ty);
-                } else if is_assign == IsAssign::No
+                } else if let Op::BinOp(_) = op
                     && let ty::Ref(region, lhs_deref_ty, mutbl) = lhs_ty.kind()
                 {
                     if self.type_is_copy_modulo_regions(self.param_env, *lhs_deref_ty) {
@@ -572,10 +572,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if let Some(missing_trait) = missing_trait {
-                    if op.node == hir::BinOpKind::Add
-                        && self.check_str_addition(
-                            lhs_expr, rhs_expr, lhs_ty, rhs_ty, &mut err, is_assign, op,
-                        )
+                    if matches!(
+                        op,
+                        Op::BinOp(Spanned { node: hir::BinOpKind::Add, .. })
+                            | Op::AssignOp(Spanned { node: hir::AssignOpKind::AddAssign, .. })
+                    ) && self
+                        .check_str_addition(lhs_expr, rhs_expr, lhs_ty, rhs_ty, &mut err, op)
                     {
                         // This has nothing here because it means we did string
                         // concatenation (e.g., "Hello " + "World!"). This means
@@ -592,7 +594,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .lookup_op_method(
                                 (lhs_expr, lhs_ty),
                                 Some((rhs_expr, rhs_ty)),
-                                Op::Binary(op, is_assign),
+                                lang_item_for_binop(self.tcx, op),
+                                op.span(),
                                 expected,
                             )
                             .unwrap_err();
@@ -642,9 +645,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Suggest using `add`, `offset` or `offset_from` for pointer - {integer},
                 // pointer + {integer} or pointer - pointer.
-                if op.span.can_be_used_for_suggestions() {
-                    match op.node {
-                        hir::BinOpKind::Add if lhs_ty.is_raw_ptr() && rhs_ty.is_integral() => {
+                if op.span().can_be_used_for_suggestions() {
+                    match op {
+                        Op::BinOp(Spanned { node: hir::BinOpKind::Add, .. })
+                            if lhs_ty.is_raw_ptr() && rhs_ty.is_integral() =>
+                        {
                             err.multipart_suggestion(
                                 "consider using `wrapping_add` or `add` for pointer + {integer}",
                                 vec![
@@ -657,7 +662,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Applicability::MaybeIncorrect,
                             );
                         }
-                        hir::BinOpKind::Sub => {
+                        Op::BinOp(Spanned { node: hir::BinOpKind::Sub, .. }) => {
                             if lhs_ty.is_raw_ptr() && rhs_ty.is_integral() {
                                 err.multipart_suggestion(
                                     "consider using `wrapping_sub` or `sub` for \
@@ -713,8 +718,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs_ty: Ty<'tcx>,
         rhs_ty: Ty<'tcx>,
         err: &mut Diag<'_>,
-        is_assign: IsAssign,
-        op: hir::BinOp,
+        op: Op,
     ) -> bool {
         let str_concat_note = "string concatenation requires an owned `String` on the left";
         let rm_borrow_msg = "remove the borrow to obtain an owned `String`";
@@ -733,8 +737,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             r_ty.kind(), ty::Ref(_, inner_ty, _) if *inner_ty.kind() == ty::Str
                         )) =>
             {
-                if let IsAssign::No = is_assign { // Do not supply this message if `&str += &str`
-                    err.span_label(op.span, "`+` cannot be used to concatenate two `&str` strings");
+                if let Op::BinOp(_) = op { // Do not supply this message if `&str += &str`
+                    err.span_label(
+                        op.span(),
+                        "`+` cannot be used to concatenate two `&str` strings"
+                    );
                     err.note(str_concat_note);
                     if let hir::ExprKind::AddrOf(_, _, lhs_inner_expr) = lhs_expr.kind {
                         err.span_suggestion_verbose(
@@ -758,11 +765,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if (*l_ty.kind() == ty::Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
             {
                 err.span_label(
-                    op.span,
+                    op.span(),
                     "`+` cannot be used to concatenate a `&str` with a `String`",
                 );
-                match is_assign {
-                    IsAssign::No => {
+                match op {
+                    Op::BinOp(_) => {
                         let sugg_msg;
                         let lhs_sugg = if let hir::ExprKind::AddrOf(_, _, lhs_inner_expr) = lhs_expr.kind {
                             sugg_msg = "remove the borrow on the left and add one on the right";
@@ -781,7 +788,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Applicability::MachineApplicable,
                         );
                     }
-                    IsAssign::Yes => {
+                    Op::AssignOp(_) => {
                         err.note(str_concat_note);
                     }
                 }
@@ -799,7 +806,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         assert!(op.is_by_value());
-        match self.lookup_op_method((ex, operand_ty), None, Op::Unary(op, ex.span), expected) {
+        match self.lookup_op_method(
+            (ex, operand_ty),
+            None,
+            lang_item_for_unop(self.tcx, op),
+            ex.span,
+            expected,
+        ) {
             Ok(method) => {
                 self.write_method_call_and_enforce_effects(ex.hir_id, ex.span, method);
                 method.sig.output()
@@ -898,21 +911,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         (lhs_expr, lhs_ty): (&'tcx hir::Expr<'tcx>, Ty<'tcx>),
         opt_rhs: Option<(&'tcx hir::Expr<'tcx>, Ty<'tcx>)>,
-        op: Op,
+        (opname, trait_did): (Symbol, Option<hir::def_id::DefId>),
+        span: Span,
         expected: Expectation<'tcx>,
     ) -> Result<MethodCallee<'tcx>, Vec<FulfillmentError<'tcx>>> {
-        let span = match op {
-            Op::Binary(op, _) => op.span,
-            Op::Unary(_, span) => span,
-        };
-        let (opname, Some(trait_did)) = lang_item_for_op(self.tcx, op, span) else {
+        let Some(trait_did) = trait_did else {
             // Bail if the operator trait is not defined.
             return Err(vec![]);
         };
 
         debug!(
-            "lookup_op_method(lhs_ty={:?}, op={:?}, opname={:?}, trait_did={:?})",
-            lhs_ty, op, opname, trait_did
+            "lookup_op_method(lhs_ty={:?}, opname={:?}, trait_did={:?})",
+            lhs_ty, opname, trait_did
         );
 
         let opname = Ident::with_dummy_span(opname);
@@ -980,37 +990,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-fn lang_item_for_op(
-    tcx: TyCtxt<'_>,
-    op: Op,
-    span: Span,
-) -> (rustc_span::Symbol, Option<hir::def_id::DefId>) {
+fn lang_item_for_binop(tcx: TyCtxt<'_>, op: Op) -> (Symbol, Option<hir::def_id::DefId>) {
     let lang = tcx.lang_items();
-    if let Op::Binary(op, IsAssign::Yes) = op {
-        match op.node {
-            hir::BinOpKind::Add => (sym::add_assign, lang.add_assign_trait()),
-            hir::BinOpKind::Sub => (sym::sub_assign, lang.sub_assign_trait()),
-            hir::BinOpKind::Mul => (sym::mul_assign, lang.mul_assign_trait()),
-            hir::BinOpKind::Div => (sym::div_assign, lang.div_assign_trait()),
-            hir::BinOpKind::Rem => (sym::rem_assign, lang.rem_assign_trait()),
-            hir::BinOpKind::BitXor => (sym::bitxor_assign, lang.bitxor_assign_trait()),
-            hir::BinOpKind::BitAnd => (sym::bitand_assign, lang.bitand_assign_trait()),
-            hir::BinOpKind::BitOr => (sym::bitor_assign, lang.bitor_assign_trait()),
-            hir::BinOpKind::Shl => (sym::shl_assign, lang.shl_assign_trait()),
-            hir::BinOpKind::Shr => (sym::shr_assign, lang.shr_assign_trait()),
-            hir::BinOpKind::Lt
-            | hir::BinOpKind::Le
-            | hir::BinOpKind::Ge
-            | hir::BinOpKind::Gt
-            | hir::BinOpKind::Eq
-            | hir::BinOpKind::Ne
-            | hir::BinOpKind::And
-            | hir::BinOpKind::Or => {
-                span_bug!(span, "impossible assignment operation: {}=", op.node.as_str())
-            }
-        }
-    } else if let Op::Binary(op, IsAssign::No) = op {
-        match op.node {
+    match op {
+        Op::AssignOp(op) => match op.node {
+            hir::AssignOpKind::AddAssign => (sym::add_assign, lang.add_assign_trait()),
+            hir::AssignOpKind::SubAssign => (sym::sub_assign, lang.sub_assign_trait()),
+            hir::AssignOpKind::MulAssign => (sym::mul_assign, lang.mul_assign_trait()),
+            hir::AssignOpKind::DivAssign => (sym::div_assign, lang.div_assign_trait()),
+            hir::AssignOpKind::RemAssign => (sym::rem_assign, lang.rem_assign_trait()),
+            hir::AssignOpKind::BitXorAssign => (sym::bitxor_assign, lang.bitxor_assign_trait()),
+            hir::AssignOpKind::BitAndAssign => (sym::bitand_assign, lang.bitand_assign_trait()),
+            hir::AssignOpKind::BitOrAssign => (sym::bitor_assign, lang.bitor_assign_trait()),
+            hir::AssignOpKind::ShlAssign => (sym::shl_assign, lang.shl_assign_trait()),
+            hir::AssignOpKind::ShrAssign => (sym::shr_assign, lang.shr_assign_trait()),
+        },
+        Op::BinOp(op) => match op.node {
             hir::BinOpKind::Add => (sym::add, lang.add_trait()),
             hir::BinOpKind::Sub => (sym::sub, lang.sub_trait()),
             hir::BinOpKind::Mul => (sym::mul, lang.mul_trait()),
@@ -1028,20 +1023,24 @@ fn lang_item_for_op(
             hir::BinOpKind::Eq => (sym::eq, lang.eq_trait()),
             hir::BinOpKind::Ne => (sym::ne, lang.eq_trait()),
             hir::BinOpKind::And | hir::BinOpKind::Or => {
-                span_bug!(span, "&& and || are not overloadable")
+                bug!("&& and || are not overloadable")
             }
-        }
-    } else if let Op::Unary(hir::UnOp::Not, _) = op {
-        (sym::not, lang.not_trait())
-    } else if let Op::Unary(hir::UnOp::Neg, _) = op {
-        (sym::neg, lang.neg_trait())
-    } else {
-        bug!("lookup_op_method: op not supported: {:?}", op)
+        },
+    }
+}
+
+fn lang_item_for_unop(tcx: TyCtxt<'_>, op: hir::UnOp) -> (Symbol, Option<hir::def_id::DefId>) {
+    let lang = tcx.lang_items();
+    match op {
+        hir::UnOp::Not => (sym::not, lang.not_trait()),
+        hir::UnOp::Neg => (sym::neg, lang.neg_trait()),
+        hir::UnOp::Deref => bug!("Deref is not overloadable"),
     }
 }
 
 // Binary operator categories. These categories summarize the behavior
 // with respect to the builtin operations supported.
+#[derive(Clone, Copy)]
 enum BinOpCategory {
     /// &&, || -- cannot be overridden
     Shortcircuit,
@@ -1063,44 +1062,58 @@ enum BinOpCategory {
     Comparison,
 }
 
-impl BinOpCategory {
-    fn from(op: hir::BinOp) -> BinOpCategory {
-        match op.node {
-            hir::BinOpKind::Shl | hir::BinOpKind::Shr => BinOpCategory::Shift,
-
-            hir::BinOpKind::Add
-            | hir::BinOpKind::Sub
-            | hir::BinOpKind::Mul
-            | hir::BinOpKind::Div
-            | hir::BinOpKind::Rem => BinOpCategory::Math,
-
-            hir::BinOpKind::BitXor | hir::BinOpKind::BitAnd | hir::BinOpKind::BitOr => {
-                BinOpCategory::Bitwise
-            }
-
-            hir::BinOpKind::Eq
-            | hir::BinOpKind::Ne
-            | hir::BinOpKind::Lt
-            | hir::BinOpKind::Le
-            | hir::BinOpKind::Ge
-            | hir::BinOpKind::Gt => BinOpCategory::Comparison,
-
-            hir::BinOpKind::And | hir::BinOpKind::Or => BinOpCategory::Shortcircuit,
+impl From<hir::BinOpKind> for BinOpCategory {
+    fn from(op: hir::BinOpKind) -> BinOpCategory {
+        use hir::BinOpKind::*;
+        match op {
+            Shl | Shr => BinOpCategory::Shift,
+            Add | Sub | Mul | Div | Rem => BinOpCategory::Math,
+            BitXor | BitAnd | BitOr => BinOpCategory::Bitwise,
+            Eq | Ne | Lt | Le | Ge | Gt => BinOpCategory::Comparison,
+            And | Or => BinOpCategory::Shortcircuit,
         }
     }
 }
 
-/// Whether the binary operation is an assignment (`a += b`), or not (`a + b`)
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum IsAssign {
-    No,
-    Yes,
+impl From<hir::AssignOpKind> for BinOpCategory {
+    fn from(op: hir::AssignOpKind) -> BinOpCategory {
+        use hir::AssignOpKind::*;
+        match op {
+            ShlAssign | ShrAssign => BinOpCategory::Shift,
+            AddAssign | SubAssign | MulAssign | DivAssign | RemAssign => BinOpCategory::Math,
+            BitXorAssign | BitAndAssign | BitOrAssign => BinOpCategory::Bitwise,
+        }
+    }
 }
 
-#[derive(Clone, Copy, Debug)]
+/// An assignment op (e.g. `a += b`), or a binary op (e.g. `a + b`).
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Op {
-    Binary(hir::BinOp, IsAssign),
-    Unary(hir::UnOp, Span),
+    BinOp(hir::BinOp),
+    AssignOp(hir::AssignOp),
+}
+
+impl Op {
+    fn span(&self) -> Span {
+        match self {
+            Op::BinOp(op) => op.span,
+            Op::AssignOp(op) => op.span,
+        }
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            Op::BinOp(op) => op.node.as_str(),
+            Op::AssignOp(op) => op.node.as_str(),
+        }
+    }
+
+    fn is_by_value(&self) -> bool {
+        match self {
+            Op::BinOp(op) => op.node.is_by_value(),
+            Op::AssignOp(op) => op.node.is_by_value(),
+        }
+    }
 }
 
 /// Dereferences a single level of immutable referencing.
@@ -1127,27 +1140,24 @@ fn deref_ty_if_possible(ty: Ty<'_>) -> Ty<'_> {
 /// Reason #2 is the killer. I tried for a while to always use
 /// overloaded logic and just check the types in constants/codegen after
 /// the fact, and it worked fine, except for SIMD types. -nmatsakis
-fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool {
+fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, category: BinOpCategory) -> bool {
     // Special-case a single layer of referencing, so that things like `5.0 + &6.0f32` work.
     // (See https://github.com/rust-lang/rust/issues/57447.)
     let (lhs, rhs) = (deref_ty_if_possible(lhs), deref_ty_if_possible(rhs));
 
-    match BinOpCategory::from(op) {
+    match category.into() {
         BinOpCategory::Shortcircuit => true,
-
         BinOpCategory::Shift => {
             lhs.references_error()
                 || rhs.references_error()
                 || lhs.is_integral() && rhs.is_integral()
         }
-
         BinOpCategory::Math => {
             lhs.references_error()
                 || rhs.references_error()
                 || lhs.is_integral() && rhs.is_integral()
                 || lhs.is_floating_point() && rhs.is_floating_point()
         }
-
         BinOpCategory::Bitwise => {
             lhs.references_error()
                 || rhs.references_error()
@@ -1155,7 +1165,6 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
                 || lhs.is_floating_point() && rhs.is_floating_point()
                 || lhs.is_bool() && rhs.is_bool()
         }
-
         BinOpCategory::Comparison => {
             lhs.references_error() || rhs.references_error() || lhs.is_scalar() && rhs.is_scalar()
         }

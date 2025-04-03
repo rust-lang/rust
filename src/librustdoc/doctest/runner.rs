@@ -144,7 +144,6 @@ let tests = {{
     {ids}
     tests
 }};
-let test_marker = std::ffi::OsStr::new(__doctest_mod::RUN_OPTION);
 let test_args = &[{test_args}];
 const ENV_BIN: &'static str = \"RUSTDOC_DOCTEST_BIN_PATH\";
 
