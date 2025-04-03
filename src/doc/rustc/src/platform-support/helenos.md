@@ -20,7 +20,7 @@ These targets only support cross-compilation. The targets will[^1] support libst
 
 You need to have a local clone of the HelenOS repository and the HelenOS toolchain set up, no HelenOS-Rust development artifacts are available.
 
-[^1]: The support is not yet available, because it needs to be done in a separate PR, because compiler support needs to be merged first to allow creating libc bindings
+[^1]: libstd is not yet available, because it needs to be done in a separate PR, because compiler support needs to be merged first to allow creating libc bindings
 
 ## Building
 
@@ -35,18 +35,20 @@ touch /tmp/test.c
 i686-helenos-gcc -v -c /tmp/test.c 2>&1 | grep LIBRARY_PATH
 ```
 
-## Building the target
+### Building the target
 
 When you have the HelenOS toolchain set up and installed in your path, you can build the Rust toolchain using the standard procedure. See [rustc dev guide](https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html).
 
-## Building Rust programs
+### Building Rust programs
 
-No special setup is needed. Simply use the toolchain you built above and run `cargo build --target <arch>-unknown-helenos`.
+Use the toolchain that you have built above and run `cargo build --target <arch>-unknown-helenos`.
 
 ## Testing
 
-Running the Rust test suite has not been attempted yet.
+After you build a Rust program for HelenOS, you can put it into the `dist` directory of the HelenOS build, build the ISO image, and then run it either in an emulator, or on real hardware. See HelenOS wiki for further instructions on running the OS.
+
+Running the Rust testsuite has not been attempted yet due to missing host tools and networking code.
 
 ## Cross-compilation toolchains and C code
 
-You should be able to cross-compile and link any needed C code using `<arch>-helenos-gcc` that you built above. However, note that clang support is highly lacking. Therefore, to run tools such as `bindgen`, you will need to provide flag `-nostdinc` and manually specify the include paths to HelenOS headers, which you will find in the `export-dev` + in the cross-compilation toolchain (e.g. `~/.local/share/HelenOS/cross/lib/gcc/i686-helenos/14.2.0/include`).
+You should be able to cross-compile and link any needed C code using `<arch>-helenos-gcc` that you built above. However, note that clang support is highly lacking. Therefore, to run tools such as `bindgen`, you will need to provide flag `-nostdinc` and manually specify the include paths to HelenOS headers, which you will find in the `export-dev` folder + in the cross-compilation toolchain (e.g. `~/.local/share/HelenOS/cross/lib/gcc/i686-helenos/14.2.0/include`).
