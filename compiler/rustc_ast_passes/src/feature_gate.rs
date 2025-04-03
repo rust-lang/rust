@@ -332,17 +332,19 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::TryBlock(_) => {
                 gate!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
-            ast::ExprKind::Lit(token::Lit { kind: token::LitKind::Float, suffix, .. }) => {
-                match suffix {
-                    Some(sym::f16) => {
-                        gate!(&self, f16, e.span, "the type `f16` is unstable")
-                    }
-                    Some(sym::f128) => {
-                        gate!(&self, f128, e.span, "the type `f128` is unstable")
-                    }
-                    _ => (),
+            ast::ExprKind::Lit(token::Lit {
+                kind: token::LitKind::Float | token::LitKind::Integer,
+                suffix,
+                ..
+            }) => match suffix {
+                Some(sym::f16) => {
+                    gate!(&self, f16, e.span, "the type `f16` is unstable")
                 }
-            }
+                Some(sym::f128) => {
+                    gate!(&self, f128, e.span, "the type `f128` is unstable")
+                }
+                _ => (),
+            },
             _ => {}
         }
         visit::walk_expr(self, e)
