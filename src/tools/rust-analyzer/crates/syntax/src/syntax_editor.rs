@@ -385,7 +385,7 @@ mod tests {
     use expect_test::expect;
 
     use crate::{
-        AstNode, SyntaxKind,
+        AstNode,
         ast::{self, make, syntax_factory::SyntaxFactory},
     };
 
@@ -631,20 +631,12 @@ mod tests {
         }
 
         if let Some(tail) = parent_fn.body().unwrap().tail_expr() {
-            // FIXME: We do this because `xtask tidy` will not allow us to have trailing whitespace in the expect string.
-            if let Some(SyntaxElement::Token(token)) = tail.syntax().prev_sibling_or_token() {
-                if let SyntaxKind::WHITESPACE = token.kind() {
-                    editor.delete(token);
-                }
-            }
             editor.delete(tail.syntax().clone());
         }
 
         let edit = editor.finish();
 
-        let expect = expect![[r#"
-fn it() {
-}"#]];
+        let expect = expect![["fn it() {\n    \n}"]];
         expect.assert_eq(&edit.new_root.to_string());
     }
 }

@@ -126,31 +126,28 @@ fn check_cargo_toml(path: &Path, text: String) {
 }
 
 fn check_licenses(sh: &Shell) {
-    let expected = "
-(MIT OR Apache-2.0) AND Unicode-3.0
-0BSD OR MIT OR Apache-2.0
-Apache-2.0
-Apache-2.0 OR BSL-1.0
-Apache-2.0 OR MIT
-Apache-2.0 WITH LLVM-exception
-Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
-Apache-2.0/MIT
-CC0-1.0
-ISC
-MIT
-MIT / Apache-2.0
-MIT OR Apache-2.0
-MIT OR Zlib OR Apache-2.0
-MIT/Apache-2.0
-MPL-2.0
-Unicode-3.0
-Unlicense OR MIT
-Unlicense/MIT
-Zlib
-"
-    .lines()
-    .filter(|it| !it.is_empty())
-    .collect::<Vec<_>>();
+    const EXPECTED: [&str; 20] = [
+        "(MIT OR Apache-2.0) AND Unicode-3.0",
+        "0BSD OR MIT OR Apache-2.0",
+        "Apache-2.0",
+        "Apache-2.0 OR BSL-1.0",
+        "Apache-2.0 OR MIT",
+        "Apache-2.0 WITH LLVM-exception",
+        "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
+        "Apache-2.0/MIT",
+        "CC0-1.0",
+        "ISC",
+        "MIT",
+        "MIT / Apache-2.0",
+        "MIT OR Apache-2.0",
+        "MIT OR Zlib OR Apache-2.0",
+        "MIT/Apache-2.0",
+        "MPL-2.0",
+        "Unicode-3.0",
+        "Unlicense OR MIT",
+        "Unlicense/MIT",
+        "Zlib",
+    ];
 
     let meta = cmd!(sh, "cargo metadata --format-version 1").read().unwrap();
     let mut licenses = meta
@@ -161,18 +158,18 @@ Zlib
         .collect::<Vec<_>>();
     licenses.sort_unstable();
     licenses.dedup();
-    if licenses != expected {
+    if licenses != EXPECTED {
         let mut diff = String::new();
 
         diff.push_str("New Licenses:\n");
         for &l in licenses.iter() {
-            if !expected.contains(&l) {
+            if !EXPECTED.contains(&l) {
                 diff += &format!("  {l}\n")
             }
         }
 
         diff.push_str("\nMissing Licenses:\n");
-        for &l in expected.iter() {
+        for l in EXPECTED {
             if !licenses.contains(&l) {
                 diff += &format!("  {l}\n")
             }
@@ -180,7 +177,7 @@ Zlib
 
         panic!("different set of licenses!\n{diff}");
     }
-    assert_eq!(licenses, expected);
+    assert_eq!(licenses, EXPECTED);
 }
 
 fn check_test_attrs(path: &Path, text: &str) {

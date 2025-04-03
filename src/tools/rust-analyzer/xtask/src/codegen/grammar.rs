@@ -414,9 +414,8 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
         .map(|kind| to_pascal_case(kind))
         .filter(|name| !defined_nodes.iter().any(|&it| it == name))
     {
-        drop(node)
-        // FIXME: restore this
-        // eprintln!("Warning: node {} not defined in ast source", node);
+        eprintln!("Warning: node {} not defined in AST source", node);
+        drop(node);
     }
 
     let ast = quote! {
