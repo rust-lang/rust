@@ -178,6 +178,10 @@ pub struct Config {
     /// `true` to overwrite stderr/stdout files instead of complaining about changes in output.
     pub bless: bool,
 
+    /// Stop as soon as possible after any test fails.
+    /// May run a few more tests before stopping, due to threading.
+    pub fail_fast: bool,
+
     /// The library paths required for running the compiler.
     pub compile_lib_path: PathBuf,
 

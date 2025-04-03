@@ -50,6 +50,12 @@ use crate::util::logv;
 /// some code here that inspects environment variables or even runs executables
 /// (e.g. when discovering debugger versions).
 pub fn parse_config(args: Vec<String>) -> Config {
+    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
+        eprintln!(
+            "WARNING: RUST_TEST_NOCAPTURE is not supported. Use the `--no-capture` flag instead."
+        );
+    }
+
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
@@ -128,6 +134,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "bless",
             "overwrite stderr/stdout files instead of complaining about a mismatch",
         )
+        .optflag("", "fail-fast", "stop as soon as possible after any test fails")
         .optflag("", "quiet", "print one character per test instead of one line")
         .optopt("", "color", "coloring: auto, always, never", "WHEN")
         .optflag("", "json", "emit json output instead of plaintext output")
@@ -319,6 +326,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     Config {
         bless: matches.opt_present("bless"),
+        fail_fast: matches.opt_present("fail-fast")
+            || env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
+
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
@@ -603,13 +613,6 @@ pub fn run_tests(config: Arc<Config>) {
 }
 
 pub fn test_opts(config: &Config) -> test::TestOpts {
-    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
-        eprintln!(
-            "WARNING: RUST_TEST_NOCAPTURE is no longer used. \
-                   Use the `--nocapture` flag instead."
-        );
-    }
-
     test::TestOpts {
         exclude_should_panic: false,
         filters: config.filters.clone(),
@@ -629,7 +632,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         options: test::Options::new(),
         time_options: None,
         force_run_in_process: false,
-        fail_fast: std::env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
+        fail_fast: config.fail_fast,
     }
 }
 
