@@ -30,7 +30,7 @@ pub(super) fn check(cx: &LateContext<'_>, item_span: Span, attrs: &[Attribute], 
                     diag.warn(
                         "unqualified `#[repr(packed)]` defaults to `#[repr(Rust, packed)]`, which has no stable ABI",
                     )
-                    .help("qualify the desired ABI explicity via `#[repr(C, packed)]` or `#[repr(Rust, packed)]`")
+                    .help("qualify the desired ABI explicitly via `#[repr(C, packed)]` or `#[repr(Rust, packed)]`")
                     .span_label(packed_span, "`packed` representation set here");
                 },
             );

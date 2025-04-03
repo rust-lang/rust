@@ -92,10 +92,10 @@ fn check_into_iter(
         && let [filter_params] = filter_body.params
     {
         if match_map_type(cx, left_expr) {
-            if let hir::PatKind::Tuple([key_pat, value_pat], _) = filter_params.pat.kind {
-                if let Some(sugg) = make_sugg(cx, key_pat, value_pat, left_expr, filter_body) {
-                    make_span_lint_and_sugg(cx, parent_expr_span, sugg);
-                }
+            if let hir::PatKind::Tuple([key_pat, value_pat], _) = filter_params.pat.kind
+                && let Some(sugg) = make_sugg(cx, key_pat, value_pat, left_expr, filter_body)
+            {
+                make_span_lint_and_sugg(cx, parent_expr_span, sugg);
             }
             // Cannot lint other cases because `retain` requires two parameters
         } else {
@@ -196,22 +196,21 @@ fn check_to_owned(
         && let filter_body = cx.tcx.hir_body(closure.body)
         && let [filter_params] = filter_body.params
         && msrv.meets(cx, msrvs::STRING_RETAIN)
+        && let hir::PatKind::Ref(pat, _) = filter_params.pat.kind
     {
-        if let hir::PatKind::Ref(pat, _) = filter_params.pat.kind {
-            make_span_lint_and_sugg(
-                cx,
-                parent_expr_span,
-                format!(
-                    "{}.retain(|{}| {})",
-                    snippet(cx, left_expr.span, ".."),
-                    snippet(cx, pat.span, ".."),
-                    snippet(cx, filter_body.value.span, "..")
-                ),
-            );
-        }
-        // Be conservative now. Do nothing for the `Binding` case.
-        // TODO: Ideally, we can rewrite the lambda by stripping one level of reference
+        make_span_lint_and_sugg(
+            cx,
+            parent_expr_span,
+            format!(
+                "{}.retain(|{}| {})",
+                snippet(cx, left_expr.span, ".."),
+                snippet(cx, pat.span, ".."),
+                snippet(cx, filter_body.value.span, "..")
+            ),
+        );
     }
+    // Be conservative now. Do nothing for the `Binding` case.
+    // TODO: Ideally, we can rewrite the lambda by stripping one level of reference
 }
 
 fn make_sugg(

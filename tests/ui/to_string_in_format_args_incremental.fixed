@@ -1,0 +1,11 @@
+//@compile-flags: -C incremental=target/debug/test/incr
+
+#![allow(clippy::uninlined_format_args)]
+
+// see https://github.com/rust-lang/rust-clippy/issues/10969
+
+fn main() {
+    let s = "Hello, world!";
+    println!("{}", s);
+    //~^ to_string_in_format_args
+}

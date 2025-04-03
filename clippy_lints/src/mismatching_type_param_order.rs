@@ -111,10 +111,10 @@ impl<'tcx> LateLintPass<'tcx> for TypeParamMismatch {
 // Checks if impl_param_name is the same as one of type_param_names,
 // and is in a different position
 fn mismatch_param_name(i: usize, impl_param_name: &String, type_param_names: &FxHashMap<&String, usize>) -> bool {
-    if let Some(j) = type_param_names.get(impl_param_name) {
-        if i != *j {
-            return true;
-        }
+    if let Some(j) = type_param_names.get(impl_param_name)
+        && i != *j
+    {
+        return true;
     }
     false
 }

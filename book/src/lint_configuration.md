@@ -425,6 +425,33 @@ Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
 * [`incompatible_msrv`](https://rust-lang.github.io/rust-clippy/master/index.html#incompatible_msrv)
 
 
+## `check-inconsistent-struct-field-initializers`
+Whether to suggest reordering constructor fields when initializers are present.
+
+Warnings produced by this configuration aren't necessarily fixed by just reordering the fields. Even if the
+suggested code would compile, it can change semantics if the initializer expressions have side effects. The
+following example [from rust-clippy#11846] shows how the suggestion can run into borrow check errors:
+
+```rust
+struct MyStruct {
+    vector: Vec<u32>,
+    length: usize
+}
+fn main() {
+    let vector = vec![1,2,3];
+    MyStruct { length: vector.len(), vector};
+}
+```
+
+[from rust-clippy#11846]: https://github.com/rust-lang/rust-clippy/issues/11846#issuecomment-1820747924
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`inconsistent_struct_constructor`](https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_struct_constructor)
+
+
 ## `check-private-items`
 Whether to also run the listed lints on private items.
 
@@ -613,31 +640,15 @@ The maximum size of the `Err`-variant in a `Result` returned from a function
 * [`result_large_err`](https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err)
 
 
-## `lint-inconsistent-struct-field-initializers`
-Whether to suggest reordering constructor fields when initializers are present.
-
-Warnings produced by this configuration aren't necessarily fixed by just reordering the fields. Even if the
-suggested code would compile, it can change semantics if the initializer expressions have side effects. The
-following example [from rust-clippy#11846] shows how the suggestion can run into borrow check errors:
-
-```rust
-struct MyStruct {
-    vector: Vec<u32>,
-    length: usize
-}
-fn main() {
-    let vector = vec![1,2,3];
-    MyStruct { length: vector.len(), vector};
-}
-```
-
-[from rust-clippy#11846]: https://github.com/rust-lang/rust-clippy/issues/11846#issuecomment-1820747924
+## `lint-commented-code`
+Whether collapsible `if` chains are linted if they contain comments inside the parts
+that would be collapsed.
 
 **Default Value:** `false`
 
 ---
 **Affected lints:**
-* [`inconsistent_struct_constructor`](https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_struct_constructor)
+* [`collapsible_if`](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if)
 
 
 ## `literal-representation-threshold`
@@ -1059,7 +1070,8 @@ The maximum allowed size of a bit mask before suggesting to use 'trailing_zeros'
 
 
 ## `warn-on-all-wildcard-imports`
-Whether to allow certain wildcard imports (prelude, super in tests).
+Whether to emit warnings on all wildcard imports, including those from `prelude`, from `super` in tests,
+or for `pub use` reexports.
 
 **Default Value:** `false`
 

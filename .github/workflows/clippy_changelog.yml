@@ -24,7 +24,7 @@ jobs:
     - name: Check Changelog
       if: ${{ github.event_name == 'pull_request' }}
       run: |
-        body=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s "https://api.github.com/repos/rust-lang/rust-clippy/pulls/$PR_NUMBER" | \
+        body=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" | \
           python -c "import sys, json; print(json.load(sys.stdin)['body'])")
         output=$(awk '/^changelog:\s*\S/ && !/changelog: \[.*\]: your change/' <<< "$body" | sed "s/changelog:\s*//g")
         if [ -z "$output" ]; then

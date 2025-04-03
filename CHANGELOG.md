@@ -5516,6 +5516,7 @@ Released 2018-09-13
 [`cast_slice_different_sizes`]: https://rust-lang.github.io/rust-clippy/master/index.html#cast_slice_different_sizes
 [`cast_slice_from_raw_parts`]: https://rust-lang.github.io/rust-clippy/master/index.html#cast_slice_from_raw_parts
 [`cfg_not_test`]: https://rust-lang.github.io/rust-clippy/master/index.html#cfg_not_test
+[`char_indices_as_byte_indices`]: https://rust-lang.github.io/rust-clippy/master/index.html#char_indices_as_byte_indices
 [`char_lit_as_u8`]: https://rust-lang.github.io/rust-clippy/master/index.html#char_lit_as_u8
 [`chars_last_cmp`]: https://rust-lang.github.io/rust-clippy/master/index.html#chars_last_cmp
 [`chars_next_cmp`]: https://rust-lang.github.io/rust-clippy/master/index.html#chars_next_cmp
@@ -5681,6 +5682,7 @@ Released 2018-09-13
 [`if_same_then_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_same_then_else
 [`if_then_some_else_none`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_then_some_else_none
 [`ifs_same_cond`]: https://rust-lang.github.io/rust-clippy/master/index.html#ifs_same_cond
+[`ignore_without_reason`]: https://rust-lang.github.io/rust-clippy/master/index.html#ignore_without_reason
 [`ignored_unit_patterns`]: https://rust-lang.github.io/rust-clippy/master/index.html#ignored_unit_patterns
 [`impl_hash_borrow_with_str_and_bytes`]: https://rust-lang.github.io/rust-clippy/master/index.html#impl_hash_borrow_with_str_and_bytes
 [`impl_trait_in_params`]: https://rust-lang.github.io/rust-clippy/master/index.html#impl_trait_in_params
@@ -5789,6 +5791,7 @@ Released 2018-09-13
 [`manual_c_str_literals`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_c_str_literals
 [`manual_clamp`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_clamp
 [`manual_contains`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_contains
+[`manual_dangling_ptr`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_dangling_ptr
 [`manual_div_ceil`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_div_ceil
 [`manual_filter`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_filter
 [`manual_filter_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_filter_map
@@ -6346,6 +6349,7 @@ Released 2018-09-13
 [`await-holding-invalid-types`]: https://doc.rust-lang.org/clippy/lint_configuration.html#await-holding-invalid-types
 [`cargo-ignore-publish`]: https://doc.rust-lang.org/clippy/lint_configuration.html#cargo-ignore-publish
 [`check-incompatible-msrv-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#check-incompatible-msrv-in-tests
+[`check-inconsistent-struct-field-initializers`]: https://doc.rust-lang.org/clippy/lint_configuration.html#check-inconsistent-struct-field-initializers
 [`check-private-items`]: https://doc.rust-lang.org/clippy/lint_configuration.html#check-private-items
 [`cognitive-complexity-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#cognitive-complexity-threshold
 [`disallowed-macros`]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-macros
@@ -6362,7 +6366,7 @@ Released 2018-09-13
 [`future-size-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#future-size-threshold
 [`ignore-interior-mutability`]: https://doc.rust-lang.org/clippy/lint_configuration.html#ignore-interior-mutability
 [`large-error-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#large-error-threshold
-[`lint-inconsistent-struct-field-initializers`]: https://doc.rust-lang.org/clippy/lint_configuration.html#lint-inconsistent-struct-field-initializers
+[`lint-commented-code`]: https://doc.rust-lang.org/clippy/lint_configuration.html#lint-commented-code
 [`literal-representation-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#literal-representation-threshold
 [`matches-for-let-else`]: https://doc.rust-lang.org/clippy/lint_configuration.html#matches-for-let-else
 [`max-fn-params-bools`]: https://doc.rust-lang.org/clippy/lint_configuration.html#max-fn-params-bools

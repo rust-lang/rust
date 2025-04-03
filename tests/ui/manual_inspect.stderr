@@ -98,7 +98,7 @@ LL |         if x.is_empty() {
 LL |             let _ = || {
 LL ~                 let _x = x;
 LL |             };
-LL ~             return;
+LL ~             return ;
 LL |         }
 LL ~         println!("test");
    |
@@ -187,5 +187,18 @@ LL |
 LL ~             println!("{}", x);
    |
 
-error: aborting due to 13 previous errors
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:203:30
+   |
+LL |     if let Some(x) = Some(1).map(|x| { println!("{x}");
+   |                              ^^^
+   |
+help: try
+   |
+LL ~     if let Some(x) = Some(1).inspect(|&x| { println!("{x}");
+LL |         // Do not collapse code into this comment
+LL ~          }) {
+   |
+
+error: aborting due to 14 previous errors
 

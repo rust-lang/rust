@@ -122,7 +122,8 @@ winnow = { name = 'winnow', version = '0.6.13' }
 cpufeatures = { name = 'cpufeatures', version = '0.2.12' }
 nix = { name = 'nix', version = '0.29.0' }
 fnv = { name = 'fnv', version = '1.0.7' }
-tokio-rustls = { name = 'tokio-rustls', version = '0.26.0' }
+# As of 2025-04-01, one dependency doesn't build because of cmake version discrepancy
+# tokio-rustls = { name = 'tokio-rustls', version = '0.26.0' }
 iana-time-zone = { name = 'iana-time-zone', version = '0.1.60' }
 rustls-webpki = { name = 'rustls-webpki', version = '0.102.5' }
 crc32fast = { name = 'crc32fast', version = '1.4.2' }

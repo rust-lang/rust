@@ -81,15 +81,15 @@ fn check_local(cx: &LateContext<'_>, stmt: &Stmt<'_>, is_empty_recv: &Expr<'_>, 
 }
 
 fn check_call_arguments(cx: &LateContext<'_>, stmt: &Stmt<'_>, is_empty_recv: &Expr<'_>, loop_span: Span) {
-    if let StmtKind::Semi(expr) | StmtKind::Expr(expr) = stmt.kind {
-        if let ExprKind::MethodCall(.., args, _) | ExprKind::Call(_, args) = expr.kind {
-            let offending_arg = args
-                .iter()
-                .find_map(|arg| is_vec_pop_unwrap(cx, arg, is_empty_recv).then_some(arg.span));
+    if let StmtKind::Semi(expr) | StmtKind::Expr(expr) = stmt.kind
+        && let ExprKind::MethodCall(.., args, _) | ExprKind::Call(_, args) = expr.kind
+    {
+        let offending_arg = args
+            .iter()
+            .find_map(|arg| is_vec_pop_unwrap(cx, arg, is_empty_recv).then_some(arg.span));
 
-            if let Some(offending_arg) = offending_arg {
-                report_lint(cx, offending_arg, PopStmt::Anonymous, loop_span, is_empty_recv.span);
-            }
+        if let Some(offending_arg) = offending_arg {
+            report_lint(cx, offending_arg, PopStmt::Anonymous, loop_span, is_empty_recv.span);
         }
     }
 }

@@ -204,5 +204,41 @@ LL -     if let [1] | [53] = [0] {}
 LL +     if let [1 | 53] = [0] {}
    |
 
-error: aborting due to 17 previous errors
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:70:13
+   |
+LL |         let (0 | (1 | _)) = 0;
+   |             ^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -         let (0 | (1 | _)) = 0;
+LL +         let (0 | 1 | _) = 0;
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:73:16
+   |
+LL |         if let (0 | (1 | _)) = 0 {}
+   |                ^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -         if let (0 | (1 | _)) = 0 {}
+LL +         if let (0 | 1 | _) = 0 {}
+   |
+
+error: unnested or-patterns
+  --> tests/ui/unnested_or_patterns.rs:77:20
+   |
+LL |     fn or_in_param((x | (x | x)): i32) {}
+   |                    ^^^^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL -     fn or_in_param((x | (x | x)): i32) {}
+LL +     fn or_in_param((x | x | x): i32) {}
+   |
+
+error: aborting due to 20 previous errors
 

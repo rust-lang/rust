@@ -226,7 +226,6 @@ mod manual_rotate;
 mod manual_slice_size_calculation;
 mod manual_string_new;
 mod manual_strip;
-mod manual_unwrap_or_default;
 mod map_unit_fn;
 mod match_result_ok;
 mod matches;
@@ -408,9 +407,9 @@ mod zombie_processes;
 
 use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
-use utils::attr_collector::{AttrCollector, AttrStorage};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
+use utils::attr_collector::{AttrCollector, AttrStorage};
 
 /// Register all pre expansion lints
 ///
@@ -772,7 +771,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(redundant_closure_call::RedundantClosureCall));
     store.register_early_pass(|| Box::new(unused_unit::UnusedUnit));
     store.register_late_pass(|_| Box::new(returns::Return));
-    store.register_early_pass(|| Box::new(collapsible_if::CollapsibleIf));
+    store.register_late_pass(move |tcx| Box::new(collapsible_if::CollapsibleIf::new(tcx, conf)));
     store.register_late_pass(|_| Box::new(items_after_statements::ItemsAfterStatements));
     store.register_early_pass(|| Box::new(precedence::Precedence));
     store.register_late_pass(|_| Box::new(needless_parens_on_range_literals::NeedlessParensOnRangeLiterals));
@@ -960,7 +959,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_early_pass(|| Box::new(multiple_bound_locations::MultipleBoundLocations));
     store.register_late_pass(move |_| Box::new(assigning_clones::AssigningClones::new(conf)));
     store.register_late_pass(|_| Box::new(zero_repeat_side_effects::ZeroRepeatSideEffects));
-    store.register_late_pass(|_| Box::new(manual_unwrap_or_default::ManualUnwrapOrDefault));
     store.register_late_pass(|_| Box::new(integer_division_remainder_used::IntegerDivisionRemainderUsed));
     store.register_late_pass(move |_| Box::new(macro_metavars_in_unsafe::ExprMetavarsInUnsafe::new(conf)));
     store.register_late_pass(move |_| Box::new(string_patterns::StringPatterns::new(conf)));

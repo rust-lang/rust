@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
                 |diag| {
                     let mut app = Applicability::MachineApplicable;
                     let cond_snip = Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "[condition]", &mut app)
-                        .maybe_par()
+                        .maybe_paren()
                         .to_string();
                     let arg_snip = snippet_with_context(cx, then_arg.span, ctxt, "[body]", &mut app).0;
                     let method_body = if let Some(first_stmt) = then_block.stmts.first() {

@@ -132,7 +132,7 @@ fn apply_lint(cx: &LateContext<'_>, expr: &Expr<'_>, scrutinee: &Expr<'_>, is_ok
     } else {
         Applicability::MachineApplicable
     };
-    let scrut = Sugg::hir_with_applicability(cx, scrutinee, "..", &mut app).maybe_par();
+    let scrut = Sugg::hir_with_applicability(cx, scrutinee, "..", &mut app).maybe_paren();
     let sugg = format!("{scrut}.{method}()");
     // If the expression being expanded is the `if …` part of an `else if …`, it must be blockified.
     let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr)

@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![warn(clippy::transmute_null_to_fn)]
 #![allow(clippy::zero_ptr, clippy::missing_transmute_annotations)]
+#![allow(clippy::manual_dangling_ptr)]
 
 // Easy to lint because these only span one line.
 fn one_liners() {
