@@ -3374,14 +3374,6 @@ impl AsRef<Path> for Rc<str> {
     }
 }
 
-#[stable(feature = "smart_ptr_as_ref_str", since = "CURRENT_RUSTC_VERSION")]
-impl AsRef<Path> for Arc<str> {
-    #[inline]
-    fn as_ref(&self) -> &Path {
-        Path::new(self)
-    }
-}
-
 #[stable(feature = "path_into_iter", since = "1.6.0")]
 impl<'a> IntoIterator for &'a PathBuf {
     type Item = &'a OsStr;
