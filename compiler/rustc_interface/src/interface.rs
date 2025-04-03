@@ -204,6 +204,14 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
                     error!("`cfg()` names cannot be after values");
                 }
                 names.push(ident);
+            } else if let Some(boolean) = arg.boolean_literal() {
+                if values_specified {
+                    error!("`cfg()` names cannot be after values");
+                }
+                names.push(rustc_span::Ident::new(
+                    if boolean { rustc_span::kw::True } else { rustc_span::kw::False },
+                    arg.span(),
+                ));
             } else if arg.has_name(sym::any)
                 && let Some(args) = arg.meta_item_list()
             {
