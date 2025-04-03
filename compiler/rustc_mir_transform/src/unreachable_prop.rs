@@ -14,9 +14,9 @@ use crate::patch::MirPatch;
 pub(super) struct UnreachablePropagation;
 
 impl crate::MirPass<'_> for UnreachablePropagation {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+    fn is_enabled(&self, tcx: TyCtxt<'_>) -> bool {
         // Enable only under -Zmir-opt-level=2 as this can make programs less debuggable.
-        sess.mir_opt_level() >= 2
+        tcx.sess.mir_opt_level() >= 2
     }
 
     fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
