@@ -676,12 +676,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ty =
                     self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
                 let safety = self.lower_safety(*safety, hir::Safety::Unsafe);
-
-                // njn: where for this?
                 if define_opaque.is_some() {
                     self.dcx().span_err(i.span, "foreign statics cannot define opaque types");
                 }
-
                 (ident, hir::ForeignItemKind::Static(ty, *mutability, safety))
             }
             ForeignItemKind::TyAlias(box TyAlias { ident, .. }) => {
