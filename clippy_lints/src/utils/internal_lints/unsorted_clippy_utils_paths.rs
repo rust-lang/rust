@@ -21,14 +21,19 @@ declare_lint_pass!(UnsortedClippyUtilsPaths => [UNSORTED_CLIPPY_UTILS_PATHS]);
 
 impl EarlyLintPass for UnsortedClippyUtilsPaths {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
-        if let Some(utils) = krate.items.iter().find(|item| item.ident.name.as_str() == "utils")
-            && let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = utils.kind
-            && let Some(paths) = items.iter().find(|item| item.ident.name.as_str() == "paths")
-            && let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = paths.kind
+        if let Some(utils) = krate
+            .items
+            .iter()
+            .find(|item| item.kind.ident().is_some_and(|i| i.name.as_str() == "utils"))
+            && let ItemKind::Mod(_, _, ModKind::Loaded(ref items, ..)) = utils.kind
+            && let Some(paths) = items
+                .iter()
+                .find(|item| item.kind.ident().is_some_and(|i| i.name.as_str() == "paths"))
+            && let ItemKind::Mod(_, _, ModKind::Loaded(ref items, ..)) = paths.kind
         {
-            let mut last_name: Option<&str> = None;
+            let mut last_name: Option<String> = None;
             for item in items {
-                let name = item.ident.as_str();
+                let name = item.kind.ident().expect("const items have idents").to_string();
                 if let Some(last_name) = last_name
                     && *last_name > *name
                 {

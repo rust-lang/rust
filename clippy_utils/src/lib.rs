@@ -2691,7 +2691,7 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
 /// use [`is_in_cfg_test`]
 pub fn is_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
     tcx.hir_attrs(id).iter().any(|attr| {
-        if attr.has_name(sym::cfg)
+        if attr.has_name(sym::cfg_trace)
             && let Some(items) = attr.meta_item_list()
             && let [item] = &*items
             && item.has_name(sym::test)
@@ -2715,11 +2715,11 @@ pub fn is_in_test(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
 
 /// Checks if the item of any of its parents has `#[cfg(...)]` attribute applied.
 pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    tcx.has_attr(def_id, sym::cfg)
+    tcx.has_attr(def_id, sym::cfg_trace)
         || tcx
             .hir_parent_iter(tcx.local_def_id_to_hir_id(def_id))
             .flat_map(|(parent_id, _)| tcx.hir_attrs(parent_id))
-            .any(|attr| attr.has_name(sym::cfg))
+            .any(|attr| attr.has_name(sym::cfg_trace))
 }
 
 /// Walks up the HIR tree from the given expression in an attempt to find where the value is
@@ -2982,7 +2982,7 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> ExprU
         {
             adjustments = cx.typeck_results().expr_adjustments(e);
         }
-        same_ctxt &= cx.tcx.hir().span(parent_id).ctxt() == ctxt;
+        same_ctxt &= cx.tcx.hir_span(parent_id).ctxt() == ctxt;
         if let Node::Expr(e) = parent {
             match e.kind {
                 ExprKind::If(e, _, _) | ExprKind::Match(e, _, _) if e.hir_id != child_id => {

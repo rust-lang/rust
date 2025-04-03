@@ -198,7 +198,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 // Dereference suggestion
                 let sugg = |diag: &mut Diag<'_, ()>| {
                     if let ty::Adt(def, ..) = ty.kind()
-                        && let Some(span) = cx.tcx.hir().span_if_local(def.did())
+                        && let Some(span) = cx.tcx.hir_span_if_local(def.did())
                         && type_allowed_to_implement_copy(
                             cx.tcx,
                             cx.param_env,

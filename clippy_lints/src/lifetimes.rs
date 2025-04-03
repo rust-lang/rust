@@ -189,7 +189,7 @@ fn check_fn_inner<'tcx>(
     cx: &LateContext<'tcx>,
     sig: &'tcx FnSig<'_>,
     body: Option<BodyId>,
-    trait_sig: Option<&[Ident]>,
+    trait_sig: Option<&[Option<Ident>]>,
     generics: &'tcx Generics<'_>,
     span: Span,
     report_extra_lifetimes: bool,
@@ -264,7 +264,7 @@ fn could_use_elision<'tcx>(
     cx: &LateContext<'tcx>,
     func: &'tcx FnDecl<'_>,
     body: Option<BodyId>,
-    trait_sig: Option<&[Ident]>,
+    trait_sig: Option<&[Option<Ident>]>,
     named_generics: &'tcx [GenericParam<'_>],
     msrv: Msrv,
 ) -> Option<(Vec<LocalDefId>, Vec<Lifetime>)> {
@@ -300,8 +300,8 @@ fn could_use_elision<'tcx>(
     let input_lts = input_visitor.lts;
     let output_lts = output_visitor.lts;
 
-    if let Some(trait_sig) = trait_sig
-        && non_elidable_self_type(cx, func, trait_sig.first().copied(), msrv)
+    if let Some(&[trait_sig]) = trait_sig
+        && non_elidable_self_type(cx, func, trait_sig, msrv)
     {
         return None;
     }

@@ -86,10 +86,10 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
             && let PlaceBase::Local(id) = cmt.place.base
         {
             if Some(id) == self.hir_id_low && !BreakAfterExprVisitor::is_found(self.cx, diag_expr_id) {
-                self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id));
+                self.span_low = Some(self.cx.tcx.hir_span(diag_expr_id));
             }
             if Some(id) == self.hir_id_high && !BreakAfterExprVisitor::is_found(self.cx, diag_expr_id) {
-                self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id));
+                self.span_high = Some(self.cx.tcx.hir_span(diag_expr_id));
             }
         }
     }
@@ -97,10 +97,10 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
     fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         if let PlaceBase::Local(id) = cmt.place.base {
             if Some(id) == self.hir_id_low && !BreakAfterExprVisitor::is_found(self.cx, diag_expr_id) {
-                self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id));
+                self.span_low = Some(self.cx.tcx.hir_span(diag_expr_id));
             }
             if Some(id) == self.hir_id_high && !BreakAfterExprVisitor::is_found(self.cx, diag_expr_id) {
-                self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id));
+                self.span_high = Some(self.cx.tcx.hir_span(diag_expr_id));
             }
         }
     }

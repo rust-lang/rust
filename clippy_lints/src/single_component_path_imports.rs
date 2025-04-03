@@ -174,11 +174,11 @@ impl SingleComponentPathImports {
         }
 
         match &item.kind {
-            ItemKind::Mod(_, ModKind::Loaded(items, ..)) => {
+            ItemKind::Mod(_, _, ModKind::Loaded(items, ..)) => {
                 self.check_mod(items);
             },
-            ItemKind::MacroDef(MacroDef { macro_rules: true, .. }) => {
-                macros.push(item.ident.name);
+            ItemKind::MacroDef(ident, MacroDef { macro_rules: true, .. }) => {
+                macros.push(ident.name);
             },
             ItemKind::Use(use_tree) => {
                 let segments = &use_tree.prefix.segments;
