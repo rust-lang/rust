@@ -324,7 +324,7 @@ impl Duration {
     #[unstable(feature = "duration_from_nanos_u128", issue = "139201")]
     pub const fn from_nanos_u128(nanos: u128) -> Duration {
         const NANOS_PER_SEC: u128 = self::NANOS_PER_SEC as u128;
-        let secs = nanos / NANOS_PER_SEC;
+        let secs = u64::try_from(nanos / NANOS_PER_SEC).unwrap_or(u64::MAX);
         let subsec_nanos = (nanos % NANOS_PER_SEC) as u32;
         // SAFETY: x % 1_000_000_000 < 1_000_000_000
         let subsec_nanos = unsafe { Nanoseconds::new_unchecked(subsec_nanos) };
