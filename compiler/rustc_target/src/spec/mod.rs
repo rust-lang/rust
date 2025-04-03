@@ -1838,6 +1838,9 @@ supported_targets! {
     ("i686-unknown-haiku", i686_unknown_haiku),
     ("x86_64-unknown-haiku", x86_64_unknown_haiku),
 
+    ("i686-unknown-helenos", i686_unknown_helenos),
+    ("x86_64-unknown-helenos", x86_64_unknown_helenos),
+
     ("i686-unknown-hurd-gnu", i686_unknown_hurd_gnu),
     ("x86_64-unknown-hurd-gnu", x86_64_unknown_hurd_gnu),
 
