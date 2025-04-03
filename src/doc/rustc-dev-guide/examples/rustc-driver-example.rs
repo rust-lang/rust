@@ -1,4 +1,4 @@
-// Tested with nightly-2025-02-13
+// Tested with nightly-2025-03-28
 
 #![feature(rustc_private)]
 
@@ -34,9 +34,9 @@ impl rustc_span::source_map::FileLoader for MyFileLoader {
     fn read_file(&self, path: &Path) -> io::Result<String> {
         if path == Path::new("main.rs") {
             Ok(r#"
+static MESSAGE: &str = "Hello, World!";
 fn main() {
-    let message = "Hello, World!";
-    println!("{message}");
+    println!("{MESSAGE}");
 }
 "#
             .to_string())
@@ -71,14 +71,12 @@ impl rustc_driver::Callbacks for MyCallbacks {
 
     fn after_analysis(&mut self, _compiler: &Compiler, tcx: TyCtxt<'_>) -> Compilation {
         // Analyze the program and inspect the types of definitions.
-        for id in tcx.hir().items() {
-            let hir = tcx.hir();
-            let item = hir.item(id);
+        for id in tcx.hir_free_items() {
+            let item = &tcx.hir_item(id);
             match item.kind {
-                rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn { .. } => {
-                    let name = item.ident;
+                rustc_hir::ItemKind::Static(ident, ..) | rustc_hir::ItemKind::Fn { ident, .. } => {
                     let ty = tcx.type_of(item.hir_id().owner.def_id);
-                    println!("{name:?}:\t{ty:?}")
+                    println!("{ident:?}:\t{ty:?}")
                 }
                 _ => (),
             }
