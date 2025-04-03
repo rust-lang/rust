@@ -1477,7 +1477,7 @@ pub(crate) fn call_hierarchy_item(
 
 pub(crate) fn code_action_kind(kind: AssistKind) -> lsp_types::CodeActionKind {
     match kind {
-        AssistKind::None | AssistKind::Generate => lsp_types::CodeActionKind::EMPTY,
+        AssistKind::Generate => lsp_types::CodeActionKind::EMPTY,
         AssistKind::QuickFix => lsp_types::CodeActionKind::QUICKFIX,
         AssistKind::Refactor => lsp_types::CodeActionKind::REFACTOR,
         AssistKind::RefactorExtract => lsp_types::CodeActionKind::REFACTOR_EXTRACT,
