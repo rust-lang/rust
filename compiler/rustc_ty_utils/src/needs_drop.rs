@@ -203,7 +203,7 @@ where
                     }
 
                     ty::UnsafeBinder(bound_ty) => {
-                        let ty = self.tcx.instantiate_bound_regions_with_erased(bound_ty.into());
+                        let ty = self.tcx.instantiate_bound_regions_with_erased(*bound_ty);
                         queue_type(self, ty);
                     }
 

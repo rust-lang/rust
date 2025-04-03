@@ -621,3 +621,27 @@ macro_rules! implement_ty_decoder {
         }
     }
 }
+
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::TyBinderRef<'tcx> {
+    fn encode(&self, encoder: &mut E) {
+        (**self).encode(encoder)
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::TyBinderRef<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        decoder.interner().mk_ty_binder(Decodable::decode(decoder))
+    }
+}
+
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::SigBinderRef<'tcx> {
+    fn encode(&self, encoder: &mut E) {
+        (**self).encode(encoder)
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::SigBinderRef<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        decoder.interner().mk_sig_binder(Decodable::decode(decoder))
+    }
+}

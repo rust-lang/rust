@@ -2114,7 +2114,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         }
         ty::UnsafeBinder(inner) => {
             let generic_params = clean_bound_vars(inner.bound_vars());
-            let ty = clean_middle_ty(inner.into(), cx, None, None);
+            let ty = clean_middle_ty(*inner, cx, None, None);
             UnsafeBinder(Box::new(UnsafeBinderTy { generic_params, ty }))
         }
         ty::Adt(def, args) => {

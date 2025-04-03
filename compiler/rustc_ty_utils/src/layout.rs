@@ -606,7 +606,7 @@ fn layout_of_uncached<'tcx>(
         }
 
         ty::UnsafeBinder(bound_ty) => {
-            let ty = tcx.instantiate_bound_regions_with_erased(bound_ty.into());
+            let ty = tcx.instantiate_bound_regions_with_erased(*bound_ty);
             cx.layout_of(ty)?.layout
         }
 

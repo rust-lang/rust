@@ -91,8 +91,9 @@ pub use self::region::{
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::{
     AliasTy, Article, Binder, BoundTy, BoundTyKind, BoundVariableKind, CanonicalPolyFnSig,
-    CoroutineArgsExt, EarlyBinder, FnSig, InlineConstArgs, InlineConstArgsParts, ParamConst,
-    ParamTy, PolyFnSig, TyKind, TypeAndMut, TypingMode, UpvarArgs,
+    CoroutineArgsExt, EarlyBinder, FnSig, FnSigTys, InlineConstArgs, InlineConstArgsParts,
+    ParamConst, ParamTy, PolyFnSig, SigBinderRef, TyBinderRef, TyKind, TypeAndMut, TypingMode,
+    UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -966,7 +967,7 @@ pub struct ParamEnv<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn caller_bounds(self) -> impl inherent::SliceLike<Item = ty::Clause<'tcx>> {
+    fn caller_bounds(self) -> Clauses<'tcx> {
         self.caller_bounds()
     }
 }
@@ -997,6 +998,23 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Creates a pair of param-env and value for use in queries.
     pub fn and<T: TypeVisitable<TyCtxt<'tcx>>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         ParamEnvAnd { param_env: self, value }
+    }
+
+    /// Creates a new param-env by augmenting the previous param-env with more predicates.
+    ///
+    /// N.B. this method does not elaborate the assumptions, and you probably should do that.
+    // FIXME(non_lifetime_binders): We should elaborate these predicates somewhere.
+    pub fn extend(self, tcx: TyCtxt<'tcx>, assumptions: ty::Clauses<'tcx>) -> Self {
+        if assumptions.is_empty() {
+            self
+        } else if self.caller_bounds.is_empty() {
+            ParamEnv { caller_bounds: assumptions }
+        } else {
+            ParamEnv {
+                caller_bounds: tcx
+                    .mk_clauses_from_iter(self.caller_bounds.iter().chain(assumptions)),
+            }
+        }
     }
 }
 

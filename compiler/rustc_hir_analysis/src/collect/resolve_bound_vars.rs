@@ -403,6 +403,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         };
         self.with(scope, |this| {
             walk_list!(this, visit_generic_param, trait_ref.bound_generic_params);
+            walk_list!(this, visit_where_predicate, trait_ref.bound_assumptions);
             this.visit_trait_ref(&trait_ref.trait_ref);
         });
     }
@@ -939,6 +940,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 bounded_ty,
                 bounds,
                 bound_generic_params,
+                bound_assumptions,
                 origin,
                 ..
             }) => {
@@ -973,6 +975,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 self.with(scope, |this| {
                     walk_list!(this, visit_generic_param, bound_generic_params);
                     this.visit_ty_unambig(bounded_ty);
+                    walk_list!(this, visit_where_predicate, bound_assumptions);
                     walk_list!(this, visit_param_bound, bounds);
                 })
             }
