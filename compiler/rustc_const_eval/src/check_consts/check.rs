@@ -335,7 +335,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             self.tcx.dcx().span_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
         }
         if let Some(def_id) = def_id.as_local()
-            && let Err(guar) = self.tcx.at(span).check_well_formed(hir::OwnerId { def_id })
+            && let Err(guar) = self.tcx.ensure_ok().check_well_formed(hir::OwnerId { def_id })
         {
             self.error_emitted = Some(guar);
         }

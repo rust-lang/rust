@@ -612,6 +612,7 @@ rustc_queries! {
 
     query check_coroutine_obligations(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "verify auto trait bounds for coroutine interior type `{}`", tcx.def_path_str(key) }
+        return_result_from_ensure_ok
     }
 
     /// MIR after our optimization passes have run. This is MIR that is ready
@@ -1033,13 +1034,12 @@ rustc_queries! {
     /// Unsafety-check this `LocalDefId`.
     query check_unsafety(key: LocalDefId) {
         desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { true }
     }
 
     /// Checks well-formedness of tail calls (`become f()`).
     query check_tail_calls(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
         desc { |tcx| "tail-call-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { true }
+        return_result_from_ensure_ok
     }
 
     /// Returns the types assumed to be well formed while "inside" of the given item.
@@ -1308,7 +1308,7 @@ rustc_queries! {
 
     query check_match(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
         desc { |tcx| "match-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { true }
+        return_result_from_ensure_ok
     }
 
     /// Performs part of the privacy check and computes effective visibilities.
@@ -1607,7 +1607,6 @@ rustc_queries! {
     /// `Err(AlwaysRequiresDrop)` is returned.
     query adt_significant_drop_tys(def_id: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
         desc { |tcx| "computing when `{}` has a significant destructor", tcx.def_path_str(def_id) }
-        cache_on_disk_if { false }
     }
 
     /// Returns a list of types which (a) have a potentially significant destructor
@@ -1629,7 +1628,6 @@ rustc_queries! {
     /// Otherwise, there is a risk of query cycles.
     query list_significant_drop_tys(ty: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> &'tcx ty::List<Ty<'tcx>> {
         desc { |tcx| "computing when `{}` has a significant destructor", ty.value }
-        cache_on_disk_if { false }
     }
 
     /// Computes the layout of a type. Note that this implicitly
@@ -2517,7 +2515,6 @@ rustc_queries! {
     /// monomorphized.
     query check_mono_item(key: ty::Instance<'tcx>) {
         desc { "monomorphization-time checking" }
-        cache_on_disk_if { true }
     }
 
     /// Builds the set of functions that should be skipped for the move-size check.
