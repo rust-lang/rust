@@ -153,7 +153,7 @@ take_impl(x);
 Note that the user cannot use `#[define_opaque(Alias)]` to reify the opaque type because only the crate where the type alias is declared may do so. But if this happened in the same crate and the opaque type was reified, they'd get a familiar error: "expected `MyType`, got `UserType`".
 
 [#63063]: https://github.com/rust-lang/rust/issues/63063
-[#110237]: (https://github.com/rust-lang/rust/pull/110237)
-[reference]: (https://doc.rust-lang.org/stable/reference/types/impl-trait.html#abstract-return-types)
-[`trait_alias`]: (./trait-alias.md)
-[`impl_trait_in_assoc_type`]: (./impl-trait-in-assoc-type.md)
+[#110237]: https://github.com/rust-lang/rust/pull/110237
+[reference]: https://doc.rust-lang.org/stable/reference/types/impl-trait.html#abstract-return-types
+[`trait_alias`]: ./trait-alias.md
+[`impl_trait_in_assoc_type`]: ./impl-trait-in-assoc-type.md
