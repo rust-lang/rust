@@ -205,12 +205,10 @@ pub(super) fn is_lint_ref_type(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
             mutbl: Mutability::Not,
         },
     ) = ty.kind
+        && let TyKind::Path(ref path) = inner.kind
+        && let Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, inner.hir_id)
     {
-        if let TyKind::Path(ref path) = inner.kind {
-            if let Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, inner.hir_id) {
-                return match_def_path(cx, def_id, &paths::LINT);
-            }
-        }
+        return match_def_path(cx, def_id, &paths::LINT);
     }
 
     false

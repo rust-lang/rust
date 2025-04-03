@@ -37,5 +37,17 @@ error: this creates an owned instance just for comparison
 LL |     "abc".chars().filter(|c| c.to_owned() != 'X');
    |                              ^^^^^^^^^^^^ help: try: `*c`
 
-error: aborting due to 6 previous errors
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:80:21
+   |
+LL |     let _ = foo1 == "foo".to_owned();
+   |                     ^^^^^^^^^^^^^^^^ help: try: `"foo"`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:83:21
+   |
+LL |     let _ = foo1 == foo2.to_owned();
+   |                     ^^^^^^^^^^^^^^^ help: try: `foo2`
+
+error: aborting due to 8 previous errors
 

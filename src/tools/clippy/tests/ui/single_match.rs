@@ -461,3 +461,45 @@ fn irrefutable_match() {
     //~^^^^^^^^^ single_match
     //~| NOTE: you might want to preserve the comments from inside the `match`
 }
+
+fn issue_14493() {
+    macro_rules! mac {
+        (some) => {
+            Some(42)
+        };
+        (any) => {
+            _
+        };
+        (str) => {
+            "foo"
+        };
+    }
+
+    match mac!(some) {
+        Some(u) => println!("{u}"),
+        _ => (),
+    }
+    //~^^^^ single_match
+
+    // When scrutinee comes from macro, do not tell that arm will always match
+    // and suggest an equality check instead.
+    match mac!(str) {
+        "foo" => println!("eq"),
+        _ => (),
+    }
+    //~^^^^ ERROR: for an equality check
+
+    // Do not lint if any match arm come from expansion
+    match Some(0) {
+        mac!(some) => println!("eq"),
+        mac!(any) => println!("neq"),
+    }
+    match Some(0) {
+        Some(42) => println!("eq"),
+        mac!(any) => println!("neq"),
+    }
+    match Some(0) {
+        mac!(some) => println!("eq"),
+        _ => println!("neq"),
+    }
+}

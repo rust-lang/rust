@@ -59,9 +59,7 @@ impl RenamedFnArgs {
         let mut renamed: Vec<(Span, String)> = vec![];
 
         debug_assert!(default_idents.size_hint() == current_idents.size_hint());
-        while let (Some(default_ident), Some(current_ident)) =
-            (default_idents.next(), current_idents.next())
-        {
+        while let (Some(default_ident), Some(current_ident)) = (default_idents.next(), current_idents.next()) {
             let has_name_to_check = |ident: Option<Ident>| {
                 if let Some(ident) = ident
                     && ident.name != kw::Underscore

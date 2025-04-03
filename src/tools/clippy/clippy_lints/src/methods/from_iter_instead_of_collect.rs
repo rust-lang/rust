@@ -18,7 +18,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
         && implements_trait(cx, arg_ty, iter_id, &[])
     {
         // `expr` implements `FromIterator` trait
-        let iter_expr = sugg::Sugg::hir(cx, &args[0], "..").maybe_par();
+        let iter_expr = sugg::Sugg::hir(cx, &args[0], "..").maybe_paren();
         let turbofish = extract_turbofish(cx, expr, ty);
         let sugg = format!("{iter_expr}.collect::<{turbofish}>()");
         span_lint_and_sugg(

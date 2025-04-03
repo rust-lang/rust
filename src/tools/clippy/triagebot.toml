@@ -9,6 +9,8 @@ allow-unauthenticated = [
 # See https://forge.rust-lang.org/triagebot/shortcuts.html
 [shortcut]
 
+[merge-conflicts]
+
 # Have rustbot inform users about the *No Merge Policy*
 [no-merges]
 exclude_titles = ["Rustup"] # exclude syncs from rust-lang/rust
@@ -34,4 +36,5 @@ users_on_vacation = [
     "@Jarcho",
     "@blyxyas",
     "@y21",
+    "@samueltardieu",
 ]

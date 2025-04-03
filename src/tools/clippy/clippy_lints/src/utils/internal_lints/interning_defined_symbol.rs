@@ -107,48 +107,48 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
                 Applicability::MachineApplicable,
             );
         }
-        if let ExprKind::Binary(op, left, right) = expr.kind {
-            if matches!(op.node, BinOpKind::Eq | BinOpKind::Ne) {
-                let data = [
-                    (left, self.symbol_str_expr(left, cx)),
-                    (right, self.symbol_str_expr(right, cx)),
-                ];
-                match data {
-                    // both operands are a symbol string
-                    [(_, Some(left)), (_, Some(right))] => {
+        if let ExprKind::Binary(op, left, right) = expr.kind
+            && matches!(op.node, BinOpKind::Eq | BinOpKind::Ne)
+        {
+            let data = [
+                (left, self.symbol_str_expr(left, cx)),
+                (right, self.symbol_str_expr(right, cx)),
+            ];
+            match data {
+                // both operands are a symbol string
+                [(_, Some(left)), (_, Some(right))] => {
+                    span_lint_and_sugg(
+                        cx,
+                        UNNECESSARY_SYMBOL_STR,
+                        expr.span,
+                        "unnecessary `Symbol` to string conversion",
+                        "try",
+                        format!(
+                            "{} {} {}",
+                            left.as_symbol_snippet(cx),
+                            op.node.as_str(),
+                            right.as_symbol_snippet(cx),
+                        ),
+                        Applicability::MachineApplicable,
+                    );
+                },
+                // one of the operands is a symbol string
+                [(expr, Some(symbol)), _] | [_, (expr, Some(symbol))] => {
+                    // creating an owned string for comparison
+                    if matches!(symbol, SymbolStrExpr::Expr { is_to_owned: true, .. }) {
                         span_lint_and_sugg(
                             cx,
                             UNNECESSARY_SYMBOL_STR,
                             expr.span,
-                            "unnecessary `Symbol` to string conversion",
+                            "unnecessary string allocation",
                             "try",
-                            format!(
-                                "{} {} {}",
-                                left.as_symbol_snippet(cx),
-                                op.node.as_str(),
-                                right.as_symbol_snippet(cx),
-                            ),
+                            format!("{}.as_str()", symbol.as_symbol_snippet(cx)),
                             Applicability::MachineApplicable,
                         );
-                    },
-                    // one of the operands is a symbol string
-                    [(expr, Some(symbol)), _] | [_, (expr, Some(symbol))] => {
-                        // creating an owned string for comparison
-                        if matches!(symbol, SymbolStrExpr::Expr { is_to_owned: true, .. }) {
-                            span_lint_and_sugg(
-                                cx,
-                                UNNECESSARY_SYMBOL_STR,
-                                expr.span,
-                                "unnecessary string allocation",
-                                "try",
-                                format!("{}.as_str()", symbol.as_symbol_snippet(cx)),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                    },
-                    // nothing found
-                    [(_, None), (_, None)] => {},
-                }
+                    }
+                },
+                // nothing found
+                [(_, None), (_, None)] => {},
             }
         }
     }

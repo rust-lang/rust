@@ -259,3 +259,18 @@ fn false_negative_5707() {
     let _z = x.clone(); // pr 7346 can't lint on `x`
     drop(y);
 }
+
+mod issue10074 {
+    #[derive(Debug, Clone)]
+    enum MyEnum {
+        A = 1,
+    }
+
+    fn false_positive_on_as() {
+        let e = MyEnum::A;
+        let v = e.clone() as u16;
+
+        println!("{e:?}");
+        println!("{v}");
+    }
+}

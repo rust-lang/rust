@@ -1,7 +1,5 @@
 #![feature(array_chunks)]
 #![feature(box_patterns)]
-#![feature(f128)]
-#![feature(f16)]
 #![feature(if_let_guard)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(let_chains)]
@@ -367,10 +365,10 @@ pub fn is_inherent_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 /// Checks if a method is defined in an impl of a diagnostic item
 pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
-    if let Some(impl_did) = cx.tcx.impl_of_method(def_id) {
-        if let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def() {
-            return cx.tcx.is_diagnostic_item(diag_item, adt.did());
-        }
+    if let Some(impl_did) = cx.tcx.impl_of_method(def_id)
+        && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
+    {
+        return cx.tcx.is_diagnostic_item(diag_item, adt.did());
     }
     false
 }
@@ -457,10 +455,10 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
         QPath::Resolved(_, path) => match_path(path, segments),
         QPath::TypeRelative(ty, segment) => match ty.kind {
             TyKind::Path(ref inner_path) => {
-                if let [prefix @ .., end] = segments {
-                    if match_qpath(inner_path, prefix) {
-                        return segment.ident.name.as_str() == *end;
-                    }
+                if let [prefix @ .., end] = segments
+                    && match_qpath(inner_path, prefix)
+                {
+                    return segment.ident.name.as_str() == *end;
                 }
                 false
             },
@@ -523,10 +521,10 @@ pub fn match_path(path: &Path<'_>, segments: &[&str]) -> bool {
 
 /// If the expression is a path to a local, returns the canonical `HirId` of the local.
 pub fn path_to_local(expr: &Expr<'_>) -> Option<HirId> {
-    if let ExprKind::Path(QPath::Resolved(None, path)) = expr.kind {
-        if let Res::Local(id) = path.res {
-            return Some(id);
-        }
+    if let ExprKind::Path(QPath::Resolved(None, path)) = expr.kind
+        && let Res::Local(id) = path.res
+    {
+        return Some(id);
     }
     None
 }
@@ -893,16 +891,14 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
         sym::BinaryHeap,
     ];
 
-    if let QPath::TypeRelative(_, method) = path {
-        if method.ident.name == sym::new {
-            if let Some(impl_did) = cx.tcx.impl_of_method(def_id) {
-                if let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def() {
-                    return std_types_symbols.iter().any(|&symbol| {
-                        cx.tcx.is_diagnostic_item(symbol, adt.did()) || Some(adt.did()) == cx.tcx.lang_items().string()
-                    });
-                }
-            }
-        }
+    if let QPath::TypeRelative(_, method) = path
+        && method.ident.name == sym::new
+        && let Some(impl_did) = cx.tcx.impl_of_method(def_id)
+        && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
+    {
+        return std_types_symbols.iter().any(|&symbol| {
+            cx.tcx.is_diagnostic_item(symbol, adt.did()) || Some(adt.did()) == cx.tcx.lang_items().string()
+        });
     }
     false
 }
@@ -1027,6 +1023,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
         ExprKind::Call(from_func, [arg]) => is_default_equivalent_from(cx, from_func, arg),
         ExprKind::Path(qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, e.hir_id), OptionNone),
         ExprKind::AddrOf(rustc_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
+        ExprKind::Block(Block { stmts: [], expr, .. }, _) => expr.is_some_and(|e| is_default_equivalent(cx, e)),
         _ => false,
     }
 }
@@ -1203,12 +1200,10 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
             .adjustments()
             .get(child_id)
             .map_or(&[][..], |x| &**x)
-        {
-            if let rustc_ty::RawPtr(_, mutability) | rustc_ty::Ref(_, _, mutability) =
+            && let rustc_ty::RawPtr(_, mutability) | rustc_ty::Ref(_, _, mutability) =
                 *adjust.last().map_or(target, |a| a.target).kind()
-            {
-                return CaptureKind::Ref(mutability);
-            }
+        {
+            return CaptureKind::Ref(mutability);
         }
 
         match parent {
@@ -1736,10 +1731,10 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
 /// Checks whether the given expression is a constant literal of the given value.
 pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
     // FIXME: use constant folding
-    if let ExprKind::Lit(spanned) = expr.kind {
-        if let LitKind::Int(v, _) = spanned.node {
-            return v == value;
-        }
+    if let ExprKind::Lit(spanned) = expr.kind
+        && let LitKind::Int(v, _) = spanned.node
+    {
+        return v == value;
     }
     false
 }
@@ -1776,10 +1771,10 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
             let data = span.ctxt().outer_expn_data();
             let new_span = data.call_site;
 
-            if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
-                if mac_name.as_str() == name {
-                    return Some(new_span);
-                }
+            if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind
+                && mac_name.as_str() == name
+            {
+                return Some(new_span);
             }
 
             span = new_span;
@@ -1805,10 +1800,10 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
         let data = span.ctxt().outer_expn_data();
         let new_span = data.call_site;
 
-        if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
-            if mac_name.as_str() == name {
-                return Some(new_span);
-            }
+        if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind
+            && mac_name.as_str() == name
+        {
+            return Some(new_span);
         }
     }
 
@@ -1829,15 +1824,15 @@ pub fn nth_arg<'tcx>(cx: &LateContext<'tcx>, fn_def_id: OwnerId, nth: usize) -> 
 
 /// Checks if an expression is constructing a tuple-like enum variant or struct
 pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let ExprKind::Call(fun, _) = expr.kind {
-        if let ExprKind::Path(ref qp) = fun.kind {
-            let res = cx.qpath_res(qp, fun.hir_id);
-            return match res {
-                Res::Def(DefKind::Variant | DefKind::Ctor(..), ..) => true,
-                Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
-                _ => false,
-            };
-        }
+    if let ExprKind::Call(fun, _) = expr.kind
+        && let ExprKind::Path(ref qp) = fun.kind
+    {
+        let res = cx.qpath_res(qp, fun.hir_id);
+        return match res {
+            Res::Def(DefKind::Variant | DefKind::Ctor(..), ..) => true,
+            Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
+            _ => false,
+        };
     }
     false
 }
@@ -1910,10 +1905,10 @@ pub fn is_self(slf: &Param<'_>) -> bool {
 }
 
 pub fn is_self_ty(slf: &hir::Ty<'_>) -> bool {
-    if let TyKind::Path(QPath::Resolved(None, path)) = slf.kind {
-        if let Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } = path.res {
-            return true;
-        }
+    if let TyKind::Path(QPath::Resolved(None, path)) = slf.kind
+        && let Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } = path.res
+    {
+        return true;
     }
     false
 }
@@ -2118,10 +2113,10 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     }
 
     // final `else {..}`
-    if !blocks.is_empty() {
-        if let ExprKind::Block(block, _) = expr.kind {
-            blocks.push(block);
-        }
+    if !blocks.is_empty()
+        && let ExprKind::Block(block, _) = expr.kind
+    {
+        blocks.push(block);
     }
 
     (conds, blocks)
@@ -2138,8 +2133,8 @@ pub fn is_async_fn(kind: FnKind<'_>) -> bool {
 
 /// Peels away all the compiler generated code surrounding the body of an async function,
 pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Closure(&Closure { body, .. }) = body.value.kind {
-        if let ExprKind::Block(
+    if let ExprKind::Closure(&Closure { body, .. }) = body.value.kind
+        && let ExprKind::Block(
             Block {
                 stmts: [],
                 expr:
@@ -2151,9 +2146,8 @@ pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'t
             },
             _,
         ) = tcx.hir_body(body).value.kind
-        {
-            return Some(expr);
-        }
+    {
+        return Some(expr);
     }
     None
 }
@@ -2627,10 +2621,10 @@ pub fn peel_ref_operators<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>
 }
 
 pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
-    if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
-        if let Res::Def(_, def_id) = path.res {
-            return cx.tcx.has_attr(def_id, sym::cfg_trace) || cx.tcx.has_attr(def_id, sym::cfg_attr);
-        }
+    if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
+        && let Res::Def(_, def_id) = path.res
+    {
+        return cx.tcx.has_attr(def_id, sym::cfg) || cx.tcx.has_attr(def_id, sym::cfg_attr);
     }
     false
 }
@@ -2649,18 +2643,16 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl Fn(&[Sym
                 if matches!(tcx.def_kind(id.owner_id), DefKind::Const)
                     && let item = tcx.hir_item(id)
                     && let ItemKind::Const(ident, ty, _generics, _body) = item.kind
-                {
-                    if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
+                    && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
                         // We could also check for the type name `test::TestDescAndFn`
-                        if let Res::Def(DefKind::Struct, _) = path.res {
-                            let has_test_marker = tcx
-                                .hir_attrs(item.hir_id())
-                                .iter()
-                                .any(|a| a.has_name(sym::rustc_test_marker));
-                            if has_test_marker {
-                                names.push(ident.name);
-                            }
-                        }
+                        && let Res::Def(DefKind::Struct, _) = path.res
+                {
+                    let has_test_marker = tcx
+                        .hir_attrs(item.hir_id())
+                        .iter()
+                        .any(|a| a.has_name(sym::rustc_test_marker));
+                    if has_test_marker {
+                        names.push(ident.name);
                     }
                 }
             }
@@ -2681,12 +2673,12 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
             // Since you can nest functions we need to collect all until we leave
             // function scope
             .any(|(_id, node)| {
-                if let Node::Item(item) = node {
-                    if let ItemKind::Fn { ident, .. } = item.kind {
-                        // Note that we have sorted the item names in the visitor,
-                        // so the binary_search gets the same as `contains`, but faster.
-                        return names.binary_search(&ident.name).is_ok();
-                    }
+                if let Node::Item(item) = node
+                    && let ItemKind::Fn { ident, .. } = item.kind
+                {
+                    // Note that we have sorted the item names in the visitor,
+                    // so the binary_search gets the same as `contains`, but faster.
+                    return names.binary_search(&ident.name).is_ok();
                 }
                 false
             })

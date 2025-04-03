@@ -16,9 +16,6 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// It's more readable to just negate.
     ///
-    /// ### Known problems
-    /// This only catches integers (for now).
-    ///
     /// ### Example
     /// ```rust,ignore
     /// let a = x * -1;
@@ -38,23 +35,32 @@ declare_lint_pass!(NegMultiply => [NEG_MULTIPLY]);
 
 impl<'tcx> LateLintPass<'tcx> for NegMultiply {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref op, left, right) = e.kind {
-            if BinOpKind::Mul == op.node {
-                match (&left.kind, &right.kind) {
-                    (&ExprKind::Unary(..), &ExprKind::Unary(..)) => {},
-                    (&ExprKind::Unary(UnOp::Neg, lit), _) => check_mul(cx, e.span, lit, right),
-                    (_, &ExprKind::Unary(UnOp::Neg, lit)) => check_mul(cx, e.span, lit, left),
-                    _ => {},
-                }
+        if let ExprKind::Binary(ref op, left, right) = e.kind
+            && BinOpKind::Mul == op.node
+        {
+            match (&left.kind, &right.kind) {
+                (&ExprKind::Unary(..), &ExprKind::Unary(..)) => {},
+                (&ExprKind::Unary(UnOp::Neg, lit), _) => check_mul(cx, e.span, lit, right),
+                (_, &ExprKind::Unary(UnOp::Neg, lit)) => check_mul(cx, e.span, lit, left),
+                _ => {},
             }
         }
     }
 }
 
 fn check_mul(cx: &LateContext<'_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_>) {
+    const F16_ONE: u16 = 1.0_f16.to_bits();
+    const F128_ONE: u128 = 1.0_f128.to_bits();
     if let ExprKind::Lit(l) = lit.kind
-        && consts::lit_to_mir_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)) == Constant::Int(1)
-        && cx.typeck_results().expr_ty(exp).is_integral()
+        && matches!(
+            consts::lit_to_mir_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)),
+            Constant::Int(1)
+                | Constant::F16(F16_ONE)
+                | Constant::F32(1.0)
+                | Constant::F64(1.0)
+                | Constant::F128(F128_ONE)
+        )
+        && cx.typeck_results().expr_ty(exp).is_numeric()
     {
         let mut applicability = Applicability::MachineApplicable;
         let (snip, from_macro) = snippet_with_context(cx, exp.span, span.ctxt(), "..", &mut applicability);

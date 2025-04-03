@@ -207,12 +207,12 @@ pub fn main() {
             // Beside checking for existence of `--sysroot` on the command line, we need to
             // check for the arg files that are prefixed with @ as well to be consistent with rustc
             for arg in args.iter() {
-                if let Some(arg_file_path) = arg.strip_prefix('@') {
-                    if let Ok(arg_file) = read_to_string(arg_file_path) {
-                        let split_arg_file: Vec<String> = arg_file.lines().map(ToString::to_string).collect();
-                        if has_arg(&split_arg_file, "--sysroot") {
-                            return true;
-                        }
+                if let Some(arg_file_path) = arg.strip_prefix('@')
+                    && let Ok(arg_file) = read_to_string(arg_file_path)
+                {
+                    let split_arg_file: Vec<String> = arg_file.lines().map(ToString::to_string).collect();
+                    if has_arg(&split_arg_file, "--sysroot") {
+                        return true;
                     }
                 }
             }
@@ -221,10 +221,10 @@ pub fn main() {
 
         let sys_root_env = std::env::var("SYSROOT").ok();
         let pass_sysroot_env_if_given = |args: &mut Vec<String>, sys_root_env| {
-            if let Some(sys_root) = sys_root_env {
-                if !has_sysroot_arg(args) {
-                    args.extend(vec!["--sysroot".into(), sys_root]);
-                }
+            if let Some(sys_root) = sys_root_env
+                && !has_sysroot_arg(args)
+            {
+                args.extend(vec!["--sysroot".into(), sys_root]);
             }
         };
 
