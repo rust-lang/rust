@@ -34,33 +34,31 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                     let _9: *const T;
                     scope 7 {
                     }
-                    scope 12 (inlined std::ptr::without_provenance::<T>) {
-                        scope 13 (inlined without_provenance_mut::<T>) {
+                    scope 11 (inlined std::ptr::without_provenance::<T>) {
+                        scope 12 (inlined without_provenance_mut::<T>) {
                         }
                     }
-                    scope 14 (inlined NonNull::<T>::as_ptr) {
+                    scope 13 (inlined NonNull::<T>::as_ptr) {
                     }
-                    scope 15 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
-                    }
-                }
-                scope 8 (inlined <NonNull<[T]> as From<&[T]>>::from) {
-                    scope 9 (inlined NonNull::<[T]>::from_ref) {
-                        let mut _4: *const [T];
+                    scope 14 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
                     }
                 }
-                scope 10 (inlined NonNull::<[T]>::cast::<T>) {
+                scope 8 (inlined NonNull::<[T]>::from_ref) {
+                    let mut _4: *const [T];
+                }
+                scope 9 (inlined NonNull::<[T]>::cast::<T>) {
                     let mut _5: *const T;
-                    scope 11 (inlined NonNull::<[T]>::as_ptr) {
+                    scope 10 (inlined NonNull::<[T]>::as_ptr) {
                     }
                 }
             }
         }
     }
-    scope 16 (inlined <std::slice::Iter<'_, T> as Iterator>::enumerate) {
-        scope 17 (inlined Enumerate::<std::slice::Iter<'_, T>>::new) {
+    scope 15 (inlined <std::slice::Iter<'_, T> as Iterator>::enumerate) {
+        scope 16 (inlined Enumerate::<std::slice::Iter<'_, T>>::new) {
         }
     }
-    scope 18 (inlined <Enumerate<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) {
+    scope 17 (inlined <Enumerate<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) {
     }
 
     bb0: {
