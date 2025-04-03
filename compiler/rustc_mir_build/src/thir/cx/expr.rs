@@ -9,7 +9,7 @@ use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
 };
 use rustc_middle::middle::region;
-use rustc_middle::mir::{self, BinOp, BorrowKind, UnOp};
+use rustc_middle::mir::{self, AssignOp, BinOp, BorrowKind, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCoercion,
@@ -489,7 +489,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     self.overloaded_operator(expr, Box::new([lhs, rhs]))
                 } else {
                     ExprKind::AssignOp {
-                        op: bin_op(op.node),
+                        op: assign_op(op.node),
                         lhs: self.mirror_expr(lhs),
                         rhs: self.mirror_expr(rhs),
                     }
@@ -1345,5 +1345,20 @@ fn bin_op(op: hir::BinOpKind) -> BinOp {
         hir::BinOpKind::Ge => BinOp::Ge,
         hir::BinOpKind::Gt => BinOp::Gt,
         _ => bug!("no equivalent for ast binop {:?}", op),
+    }
+}
+
+fn assign_op(op: hir::AssignOpKind) -> AssignOp {
+    match op {
+        hir::AssignOpKind::AddAssign => AssignOp::AddAssign,
+        hir::AssignOpKind::SubAssign => AssignOp::SubAssign,
+        hir::AssignOpKind::MulAssign => AssignOp::MulAssign,
+        hir::AssignOpKind::DivAssign => AssignOp::DivAssign,
+        hir::AssignOpKind::RemAssign => AssignOp::RemAssign,
+        hir::AssignOpKind::BitXorAssign => AssignOp::BitXorAssign,
+        hir::AssignOpKind::BitAndAssign => AssignOp::BitAndAssign,
+        hir::AssignOpKind::BitOrAssign => AssignOp::BitOrAssign,
+        hir::AssignOpKind::ShlAssign => AssignOp::ShlAssign,
+        hir::AssignOpKind::ShrAssign => AssignOp::ShrAssign,
     }
 }
