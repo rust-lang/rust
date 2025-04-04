@@ -121,6 +121,28 @@ impl<'tcx> JsonRenderer<'tcx> {
             Ok(())
         })
     }
+
+    pub(crate) fn target(&self) -> types::Target {
+        let sess = self.tcx.sess;
+
+        let globally_enabled_features: FxHashMap<&str, ()> =
+            sess.target_features.iter().map(|sym| (sym.as_str(), ())).collect();
+
+        types::Target {
+            target_features: sess
+                .target
+                .rust_target_features()
+                .into_iter()
+                .copied()
+                .map(|(name, stability, implied)| types::TargetFeature {
+                    name: name.into(),
+                    stable: matches!(stability, rustc_target::target_features::Stability::Stable),
+                    implies_features: implied.into_iter().copied().map(String::from).collect(),
+                    globally_enabled: globally_enabled_features.contains_key(name),
+                })
+                .collect(),
+        }
+    }
 }
 
 impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
@@ -288,6 +310,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                     )
                 })
                 .collect(),
+            target: self.target(),
             format_version: types::FORMAT_VERSION,
         };
         if let Some(ref out_dir) = self.out_dir {
