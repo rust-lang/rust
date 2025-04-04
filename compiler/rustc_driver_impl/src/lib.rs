@@ -807,7 +807,7 @@ fn print_crate_info(
                 }
             }
             DeploymentTarget => {
-                if sess.target.is_like_osx {
+                if sess.target.is_like_darwin {
                     println_info!(
                         "{}={}",
                         apple::deployment_target_env_var(&sess.target.os),
