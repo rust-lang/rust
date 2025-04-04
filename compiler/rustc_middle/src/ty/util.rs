@@ -450,26 +450,17 @@ impl<'tcx> TyCtxt<'tcx> {
                 continue;
             }
 
-            let [future, ctor] = self.associated_item_def_ids(impl_did) else {
-                self.dcx().span_delayed_bug(
-                    self.def_span(impl_did),
-                    "AsyncDrop impl without async_drop function or Dropper type",
-                );
-                continue;
-            };
-
-            if let Some((_, _, old_impl_did)) = dtor_candidate {
+            if let Some(old_impl_did) = dtor_candidate {
                 self.dcx()
                     .struct_span_err(self.def_span(impl_did), "multiple async drop impls found")
                     .with_span_note(self.def_span(old_impl_did), "other impl here")
                     .delay_as_bug();
             }
 
-            dtor_candidate = Some((*future, *ctor, impl_did));
+            dtor_candidate = Some(impl_did);
         }
 
-        let (future, ctor, _) = dtor_candidate?;
-        Some(ty::AsyncDestructor { future, ctor })
+        Some(ty::AsyncDestructor { impl_did: dtor_candidate? })
     }
 
     /// Returns async drop glue morphology for a definition. To get async drop

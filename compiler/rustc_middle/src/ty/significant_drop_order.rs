@@ -154,7 +154,7 @@ pub fn ty_dtor_span<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Span> {
             let dtor = if let Some(dtor) = tcx.adt_destructor(did) {
                 dtor.did
             } else if let Some(dtor) = tcx.adt_async_destructor(did) {
-                dtor.future
+                return Some(tcx.source_span(dtor.impl_did));
             } else {
                 return Some(try_local_did_span(did));
             };
