@@ -313,7 +313,12 @@ dependencies = [
 
 [[package]]
 name = "rustc-literal-escaper"
-version = "0.0.1"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0041b6238913c41fe704213a4a9329e2f685a156d1781998128b4149c230ad04"
+dependencies = [
+ "rustc-std-workspace-std",
+]
 
 [[package]]
 name = "rustc-std-workspace-alloc"

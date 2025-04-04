@@ -5,8 +5,8 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
+rustc-literal-escaper = "0.0.2"
 rustc_lexer = { path = "../rustc_lexer" }
-rustc-literal-escaper = "0.0.1"
 # tidy-alphabetical-end
 
 [target.'cfg(target_pointer_width = "64")'.dev-dependencies]

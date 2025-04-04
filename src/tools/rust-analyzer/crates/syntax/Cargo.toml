@@ -17,7 +17,7 @@ either.workspace = true
 itertools.workspace = true
 rowan = "=0.15.15"
 rustc-hash.workspace = true
-rustc-literal-escaper = "0.0.1"
+rustc-literal-escaper = "0.0.2"
 indexmap.workspace = true
 smol_str.workspace = true
 triomphe.workspace = true
