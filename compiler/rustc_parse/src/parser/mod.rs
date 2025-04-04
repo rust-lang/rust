@@ -778,7 +778,10 @@ impl<'a> Parser<'a> {
                 self.bump();
                 Some(res)
             } else {
-                panic!("no close delim when reparsing {mv_kind:?}");
+                // This can occur when invalid syntax is passed to a decl macro. E.g. see #139248,
+                // where the reparse attempt of an invalid expr consumed the trailing invisible
+                // delimiter.
+                None
             }
         } else {
             None
