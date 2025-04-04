@@ -83,13 +83,14 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 
 use std::mem;
 
+use interpret::ErrorHandled;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
-use rustc_middle::mir::*;
+use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind, LintLevel};
-use rustc_middle::ty::{self, TyCtxt, ValTree};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
 use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
 use rustc_session::lint::Level;
@@ -99,7 +100,7 @@ use tracing::{debug, instrument};
 
 use super::matches::BuiltMatchTree;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-use crate::errors::ConstContinueUnknownJumpTarget;
+use crate::errors::{ConstContinueBadConst, ConstContinueUnknownJumpTarget};
 
 #[derive(Debug)]
 pub(crate) struct Scopes<'tcx> {
@@ -815,6 +816,42 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.start_new_block().unit()
     }
 
+    /// Based on `FunctionCx::eval_unevaluated_mir_constant_to_valtree`.
+    fn eval_unevaluated_mir_constant_to_valtree(
+        &self,
+        constant: ConstOperand<'tcx>,
+    ) -> Result<(ty::ValTree<'tcx>, Ty<'tcx>), interpret::ErrorHandled> {
+        assert!(!constant.const_.ty().has_param());
+        let (uv, ty) = match constant.const_ {
+            mir::Const::Unevaluated(uv, ty) => (uv.shrink(), ty),
+            mir::Const::Ty(_, c) => match c.kind() {
+                // A constant that came from a const generic but was then used as an argument to
+                // old-style simd_shuffle (passing as argument instead of as a generic param).
+                ty::ConstKind::Value(cv) => return Ok((cv.valtree, cv.ty)),
+                other => span_bug!(constant.span, "{other:#?}"),
+            },
+            mir::Const::Val(mir::ConstValue::Scalar(mir::interpret::Scalar::Int(val)), ty) => {
+                return Ok((ValTree::from_scalar_int(self.tcx, val), ty));
+            }
+            // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
+            // a constant and write that value back into `Operand`s. This could happen, but is
+            // unlikely. Also: all users of `simd_shuffle` are on unstable and already need to take
+            // a lot of care around intrinsics. For an issue to happen here, it would require a
+            // macro expanding to a `simd_shuffle` call without wrapping the constant argument in a
+            // `const {}` block, but the user pass through arbitrary expressions.
+
+            // FIXME(oli-obk): Replace the magic const generic argument of `simd_shuffle` with a
+            // real const generic, and get rid of this entire function.
+            other => span_bug!(constant.span, "{other:#?}"),
+        };
+
+        match self.tcx.const_eval_resolve_for_typeck(self.typing_env(), uv, constant.span) {
+            Ok(Ok(valtree)) => Ok((valtree, ty)),
+            Ok(Err(ty)) => span_bug!(constant.span, "could not convert {ty:?} to a valtree"),
+            Err(e) => Err(e),
+        }
+    }
+
     /// Sets up the drops for jumping from `block` to `scope`.
     pub(crate) fn break_const_continuable_scope(
         &mut self,
@@ -892,8 +929,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             known_valid_scrutinee: true,
         };
 
+        let valtree = match self.eval_unevaluated_mir_constant_to_valtree(constant) {
+            Ok((valtree, ty)) => {
+                // Defensively check that the type is monomorphic.
+                assert!(!ty.has_param());
+
+                valtree
+            }
+            Err(ErrorHandled::Reported(..)) => return self.cfg.start_new_block().unit(),
+            Err(ErrorHandled::TooGeneric(_)) => {
+                self.tcx.dcx().emit_fatal(ConstContinueBadConst { span: constant.span });
+            }
+        };
+
         let Some(real_target) =
-            self.static_pattern_match(&cx, constant, &*scope.arms, &scope.built_match_tree)
+            self.static_pattern_match(&cx, valtree, &*scope.arms, &scope.built_match_tree)
         else {
             self.tcx.dcx().emit_fatal(ConstContinueUnknownJumpTarget { span })
         };
