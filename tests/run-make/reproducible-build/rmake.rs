@@ -20,6 +20,8 @@
 // See https://github.com/rust-lang/rust/pull/32293
 // Tracking Issue: https://github.com/rust-lang/rust/issues/129080
 
+//@ ignore-cross-compile (linker binary needs to run)
+
 use run_make_support::{
     bin_name, cwd, diff, is_darwin, is_windows, regex, rfs, run_in_tmpdir, rust_lib_name, rustc,
 };
