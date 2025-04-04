@@ -1217,6 +1217,14 @@ pub(crate) struct LoopMatchArmWithGuard {
 }
 
 #[derive(Diagnostic)]
+#[diag(mir_build_const_continue_bad_const)]
+pub(crate) struct ConstContinueBadConst {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(mir_build_const_continue_missing_value)]
 pub(crate) struct ConstContinueMissingValue {
     #[primary_span]
