@@ -473,6 +473,8 @@ pub fn linker_flags(
                 // cfg(bootstrap) - remove after updating bootstrap compiler (#137498)
                 if stage == 0 && target.is_windows() {
                     args.push("-Clink-arg=-fuse-ld=lld".to_string());
+                } else if target.starts_with("wasm") {
+                    // wasm-ld is the only available linker for wasm targets.
                 } else {
                     args.push("-Clinker-flavor=gnu-lld-cc".to_string());
                 }
