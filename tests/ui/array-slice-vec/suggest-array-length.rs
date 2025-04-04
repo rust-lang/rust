@@ -11,13 +11,8 @@ fn main() {
     static REF_STATIK: &[u8; _] = &[1];
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for static variables
     let foo: [i32; _] = [1, 2, 3];
-    //~^ ERROR using `_` for array lengths is unstable
     let bar: [i32; _] = [0; 3];
-    //~^ ERROR using `_` for array lengths is unstable
     let ref_foo: &[i32; _] = &[1, 2, 3];
-    //~^ ERROR using `_` for array lengths is unstable
     let ref_bar: &[i32; _] = &[0; 3];
-    //~^ ERROR using `_` for array lengths is unstable
     let multiple_ref_foo: &&[i32; _] = &&[1, 2, 3];
-    //~^ ERROR using `_` for array lengths is unstable
 }

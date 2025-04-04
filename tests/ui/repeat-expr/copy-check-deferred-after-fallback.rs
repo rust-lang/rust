@@ -1,5 +1,3 @@
-#![feature(generic_arg_infer)]
-
 // Test when deferring repeat expr copy checks to end of typechecking whether they're
 // checked before integer fallback occurs or not. We accomplish this by having a repeat
 // count that can only be inferred after integer fallback has occured. This test will
