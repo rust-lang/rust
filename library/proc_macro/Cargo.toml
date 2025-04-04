@@ -9,3 +9,4 @@ std = { path = "../std" }
 # `core` when resolving doc links. Without this line a different `core` will be
 # loaded from sysroot causing duplicate lang items and other similar errors.
 core = { path = "../core" }
+rustc-literal-escaper = "0.0.1"
