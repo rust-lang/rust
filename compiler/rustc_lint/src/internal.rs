@@ -133,6 +133,9 @@ fn check_into_iter_stability<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
     let Some(into_iterator_def_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else {
         return;
     };
+    if expr.span.from_expansion() {
+        return;
+    };
     // Is `expr` a function or method call?
     let Some((callee_def_id, generic_args, recv, args)) =
         get_callee_generic_args_and_args(cx, expr)
