@@ -239,7 +239,7 @@ mir_build_loop_match_missing_assignment =
 
 mir_build_loop_match_unsupported_type =
     this `#[loop_match]` state value has type `{$ty}`, which is not supported
-    .note = only integers and enums without fields are supported
+    .note = only integers, floats, bool, char, and enums without fields are supported
 
 mir_build_lower_range_bound_must_be_less_than_or_equal_to_upper =
     lower range bound must be less than or equal to upper

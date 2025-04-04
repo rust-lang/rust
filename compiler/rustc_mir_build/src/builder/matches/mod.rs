@@ -21,6 +21,7 @@ use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, Ty, TypeVisitableExt, ValTree, ValTreeKind,
 };
 use rustc_middle::{bug, span_bug};
+use rustc_pattern_analysis::constructor::RangeEnd;
 use rustc_pattern_analysis::rustc::{DeconstructedPat, RustcPatCtxt};
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use tracing::{debug, instrument};
@@ -1893,7 +1894,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
         candidate.or_span = Some(match_pair.pattern_span);
         candidate.subcandidates = pats
-            .into_vec()
             .into_iter()
             .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
             .collect();
@@ -2977,6 +2977,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(actual_value) => *pattern_value == actual_value,
                 Err(()) => bug!("bool value with invalid bits"),
             },
+            Constructor::F16Range(l, h, end) => {
+                let actual = valtree.unwrap_leaf().to_f16();
+                match end {
+                    RangeEnd::Included => (*l..=*h).contains(&actual),
+                    RangeEnd::Excluded => (*l..*h).contains(&actual),
+                }
+            }
+            Constructor::F32Range(l, h, end) => {
+                let actual = valtree.unwrap_leaf().to_f32();
+                match end {
+                    RangeEnd::Included => (*l..=*h).contains(&actual),
+                    RangeEnd::Excluded => (*l..*h).contains(&actual),
+                }
+            }
+            Constructor::F64Range(l, h, end) => {
+                let actual = valtree.unwrap_leaf().to_f64();
+                match end {
+                    RangeEnd::Included => (*l..=*h).contains(&actual),
+                    RangeEnd::Excluded => (*l..*h).contains(&actual),
+                }
+            }
+            Constructor::F128Range(l, h, end) => {
+                let actual = valtree.unwrap_leaf().to_f128();
+                match end {
+                    RangeEnd::Included => (*l..=*h).contains(&actual),
+                    RangeEnd::Excluded => (*l..*h).contains(&actual),
+                }
+            }
             Constructor::Wildcard => true,
 
             // These we may eventually support:
@@ -2985,10 +3013,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | Constructor::Slice(_)
             | Constructor::UnionField
             | Constructor::Or
-            | Constructor::F16Range(..)
-            | Constructor::F32Range(..)
-            | Constructor::F64Range(..)
-            | Constructor::F128Range(..)
             | Constructor::Str(_) => bug!("unsupported pattern constructor {:?}", pat.ctor()),
 
             // These should never occur here:
