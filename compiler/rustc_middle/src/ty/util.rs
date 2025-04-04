@@ -414,6 +414,11 @@ impl<'tcx> TyCtxt<'tcx> {
                 continue;
             };
 
+            if self.def_kind(item_id) != DefKind::AssocFn {
+                self.dcx().span_delayed_bug(self.def_span(item_id), "drop is not a function");
+                continue;
+            }
+
             if let Some(old_item_id) = dtor_candidate {
                 self.dcx()
                     .struct_span_err(self.def_span(item_id), "multiple drop impls found")
