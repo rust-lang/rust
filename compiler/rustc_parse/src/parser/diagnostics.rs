@@ -609,6 +609,8 @@ impl<'a> Parser<'a> {
         // FIXME: translation requires list formatting (for `expect`)
         let mut err = self.dcx().struct_span_err(self.token.span, msg_exp);
 
+        self.label_expected_raw_ref(&mut err);
+
         // Look for usages of '=>' where '>=' was probably intended
         if self.token == token::FatArrow
             && expected.iter().any(|tok| matches!(tok, TokenType::Operator | TokenType::Le))
@@ -748,6 +750,25 @@ impl<'a> Parser<'a> {
             self.check_for_misspelled_kw(&mut err, &expected);
         }
         Err(err)
+    }
+
+    /// Adds a label when `&raw EXPR` was written instead of `&raw const EXPR`/`&raw mut EXPR`.
+    ///
+    /// Given that not all parser diagnostics flow through `expected_one_of_not_found`, this
+    /// label may need added to other diagnostics emission paths as needed.
+    pub(super) fn label_expected_raw_ref(&mut self, err: &mut Diag<'_>) {
+        if self.prev_token.is_keyword(kw::Raw)
+            && self.expected_token_types.contains(TokenType::KwMut)
+            && self.expected_token_types.contains(TokenType::KwConst)
+            && self.token.can_begin_expr()
+        {
+            err.span_suggestions(
+                self.prev_token.span.shrink_to_hi(),
+                "`&raw` must be followed by `const` or `mut` to be a raw reference expression",
+                [" const".to_string(), " mut".to_string()],
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 
     /// Checks if the current token or the previous token are misspelled keywords
