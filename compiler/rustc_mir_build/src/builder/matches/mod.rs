@@ -2972,6 +2972,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 IntRange::from_singleton(actual_int).is_subrange(int_range)
             }
+            Constructor::Bool(pattern_value) => match valtree.unwrap_leaf().try_to_bool() {
+                Ok(actual_value) => *pattern_value == actual_value,
+                Err(()) => bug!("bool value with invalid bits"),
+            },
             Constructor::Wildcard => true,
 
             // these we may eventually support
@@ -2980,7 +2984,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | Constructor::Slice(_)
             | Constructor::UnionField
             | Constructor::Or
-            | Constructor::Bool(_)
             | Constructor::F16Range(..)
             | Constructor::F32Range(..)
             | Constructor::F64Range(..)
