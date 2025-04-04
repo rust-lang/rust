@@ -388,13 +388,13 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
 fn macho_object_build_version_for_target(sess: &Session) -> object::write::MachOBuildVersion {
     /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
     /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
-    fn pack_version((major, minor, patch): (u16, u8, u8)) -> u32 {
+    fn pack_version(apple::OSVersion { major, minor, patch }: apple::OSVersion) -> u32 {
         let (major, minor, patch) = (major as u32, minor as u32, patch as u32);
         (major << 16) | (minor << 8) | patch
     }
 
     let platform = apple::macho_platform(&sess.target);
-    let min_os = apple::deployment_target(sess);
+    let min_os = sess.apple_deployment_target();
 
     let mut build_version = object::write::MachOBuildVersion::default();
     build_version.platform = platform;
