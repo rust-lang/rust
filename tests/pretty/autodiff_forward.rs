@@ -36,4 +36,22 @@ pub fn f5(x: &[f64], y: f64) -> f64 {
     unimplemented!()
 }
 
+struct DoesNotImplDefault;
+#[autodiff(df6, Forward, Const)]
+pub fn f6() -> DoesNotImplDefault {
+    unimplemented!()
+}
+
+// Make sure, that we add the None for the default return.
+#[autodiff(df7, Forward, Const)]
+pub fn f7(x: f32) -> () {}
+
+#[autodiff(f8_1, Forward, Dual, DualOnly)]
+#[autodiff(f8_2, Forward, 4, Dual, DualOnly)]
+#[autodiff(f8_3, Forward, 4, Dual, Dual)]
+#[no_mangle]
+fn f8(x: &f32) -> f32 {
+    unimplemented!()
+}
+
 fn main() {}

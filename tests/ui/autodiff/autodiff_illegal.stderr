@@ -19,32 +19,24 @@ error: expected 1 activities, but found 2
    |
 LL | #[autodiff(df3, Reverse, Duplicated, Const)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected 1 activities, but found 0
   --> $DIR/autodiff_illegal.rs:27:1
    |
 LL | #[autodiff(df4, Reverse)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: Dual can not be used in Reverse Mode
   --> $DIR/autodiff_illegal.rs:34:1
    |
 LL | #[autodiff(df5, Reverse, Dual)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: Duplicated can not be used in Forward Mode
   --> $DIR/autodiff_illegal.rs:41:1
    |
 LL | #[autodiff(df6, Forward, Duplicated)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: Duplicated can not be used for this type
   --> $DIR/autodiff_illegal.rs:42:14
@@ -107,7 +99,6 @@ LL | #[autodiff(fn_exists, Reverse, Active)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `fn_exists` redefined here
    |
    = note: `fn_exists` must be defined only once in the value namespace of this module
-   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: autodiff requires at least a name and mode
   --> $DIR/autodiff_illegal.rs:95:1
@@ -135,42 +126,49 @@ error: invalid return activity Active in Forward Mode
    |
 LL | #[autodiff(df19, Forward, Dual, Active)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid return activity Dual in Reverse Mode
   --> $DIR/autodiff_illegal.rs:167:1
    |
 LL | #[autodiff(df20, Reverse, Active, Dual)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid return activity Duplicated in Reverse Mode
   --> $DIR/autodiff_illegal.rs:174:1
    |
 LL | #[autodiff(df21, Reverse, Active, Duplicated)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: failed to resolve: use of undeclared type `MyFloat`
   --> $DIR/autodiff_illegal.rs:130:1
    |
 LL | #[autodiff(df15, Reverse, Active, Active)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `MyFloat`
-   |
-   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: failed to resolve: use of undeclared type `F64Trans`
   --> $DIR/autodiff_illegal.rs:154:1
    |
 LL | #[autodiff(df18, Reverse, Active, Active)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `F64Trans`
+
+error[E0599]: the function or associated item `default` exists for tuple `(DoesNotImplDefault, DoesNotImplDefault)`, but its trait bounds were not satisfied
+  --> $DIR/autodiff_illegal.rs:181:1
    |
-   = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | struct DoesNotImplDefault;
+   | ------------------------- doesn't satisfy `DoesNotImplDefault: Default`
+LL | #[autodiff(df22, Forward, Dual)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function or associated item cannot be called on `(DoesNotImplDefault, DoesNotImplDefault)` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `DoesNotImplDefault: Default`
+           which is required by `(DoesNotImplDefault, DoesNotImplDefault): Default`
+help: consider annotating `DoesNotImplDefault` with `#[derive(Default)]`
+   |
+LL + #[derive(Default)]
+LL | struct DoesNotImplDefault;
+   |
 
-error: aborting due to 22 previous errors
+error: aborting due to 23 previous errors
 
-Some errors have detailed explanations: E0428, E0433, E0658.
+Some errors have detailed explanations: E0428, E0433, E0599, E0658.
 For more information about an error, try `rustc --explain E0428`.
