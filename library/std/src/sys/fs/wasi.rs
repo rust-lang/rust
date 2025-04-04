@@ -1,4 +1,5 @@
 use crate::ffi::{CStr, OsStr, OsString};
+use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, ManuallyDrop};
 use crate::os::raw::c_int;
@@ -10,7 +11,7 @@ use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::fd::WasiFd;
 pub use crate::sys::fs::common::exists;
 use crate::sys::time::SystemTime;
-use crate::sys::unsupported;
+use crate::sys::{unsupported, unsupported_err};
 use crate::sys_common::{AsInner, FromInner, IntoInner, ignore_notfound};
 use crate::{fmt, iter, ptr};
 
@@ -461,12 +462,12 @@ impl File {
         unsupported()
     }
 
-    pub fn try_lock(&self) -> io::Result<bool> {
-        unsupported()
+    pub fn try_lock(&self) -> Result<(), TryLockError> {
+        Err(TryLockError::Error(unsupported_err()))
     }
 
-    pub fn try_lock_shared(&self) -> io::Result<bool> {
-        unsupported()
+    pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
+        Err(TryLockError::Error(unsupported_err()))
     }
 
     pub fn unlock(&self) -> io::Result<()> {

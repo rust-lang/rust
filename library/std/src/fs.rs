@@ -116,6 +116,22 @@ pub struct File {
     inner: fs_imp::File,
 }
 
+/// An enumeration of possible errors which can occur while trying to acquire a lock
+/// from the [`try_lock`] method and [`try_lock_shared`] method on a [`File`].
+///
+/// [`try_lock`]: File::try_lock
+/// [`try_lock_shared`]: File::try_lock_shared
+#[unstable(feature = "file_lock", issue = "130994")]
+pub enum TryLockError {
+    /// The lock could not be acquired due to an I/O error on the file. The standard library will
+    /// not return an [`ErrorKind::WouldBlock`] error inside [`TryLockError::Error`]
+    ///
+    /// [`ErrorKind::WouldBlock`]: io::ErrorKind::WouldBlock
+    Error(io::Error),
+    /// The lock could not be acquired at this time because it is held by another handle/process.
+    WouldBlock,
+}
+
 /// Metadata information about a file.
 ///
 /// This structure is returned from the [`metadata`] or
@@ -350,6 +366,27 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
         File::create(path)?.write_all(contents)
     }
     inner(path.as_ref(), contents.as_ref())
+}
+
+#[unstable(feature = "file_lock", issue = "130994")]
+impl fmt::Debug for TryLockError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TryLockError::Error(err) => err.fmt(f),
+            TryLockError::WouldBlock => "WouldBlock".fmt(f),
+        }
+    }
+}
+
+#[unstable(feature = "file_lock", issue = "130994")]
+impl fmt::Display for TryLockError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TryLockError::Error(_) => "lock acquisition failed due to I/O error",
+            TryLockError::WouldBlock => "lock acquisition failed because the operation would block",
+        }
+        .fmt(f)
+    }
 }
 
 impl File {
@@ -734,8 +771,8 @@ impl File {
 
     /// Try to acquire an exclusive lock on the file.
     ///
-    /// Returns `Ok(false)` if a different lock is already held on this file (via another
-    /// handle/descriptor).
+    /// Returns `Err(TryLockError::WouldBlock)` if a different lock is already held on this file
+    /// (via another handle/descriptor).
     ///
     /// This acquires an exclusive lock; no other file handle to this file may acquire another lock.
     ///
@@ -777,23 +814,27 @@ impl File {
     ///
     /// ```no_run
     /// #![feature(file_lock)]
-    /// use std::fs::File;
+    /// use std::fs::{File, TryLockError};
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let f = File::create("foo.txt")?;
-    ///     f.try_lock()?;
+    ///     match f.try_lock() {
+    ///         Ok(_) => (),
+    ///         Err(TryLockError::WouldBlock) => (), // Lock not acquired
+    ///         Err(TryLockError::Error(err)) => return Err(err),
+    ///     }
     ///     Ok(())
     /// }
     /// ```
     #[unstable(feature = "file_lock", issue = "130994")]
-    pub fn try_lock(&self) -> io::Result<bool> {
+    pub fn try_lock(&self) -> Result<(), TryLockError> {
         self.inner.try_lock()
     }
 
     /// Try to acquire a shared (non-exclusive) lock on the file.
     ///
-    /// Returns `Ok(false)` if an exclusive lock is already held on this file (via another
-    /// handle/descriptor).
+    /// Returns `Err(TryLockError::WouldBlock)` if a different lock is already held on this file
+    /// (via another handle/descriptor).
     ///
     /// This acquires a shared lock; more than one file handle may hold a shared lock, but none may
     /// hold an exclusive lock at the same time.
@@ -834,16 +875,21 @@ impl File {
     ///
     /// ```no_run
     /// #![feature(file_lock)]
-    /// use std::fs::File;
+    /// use std::fs::{File, TryLockError};
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let f = File::open("foo.txt")?;
-    ///     f.try_lock_shared()?;
+    ///     match f.try_lock_shared() {
+    ///         Ok(_) => (),
+    ///         Err(TryLockError::WouldBlock) => (), // Lock not acquired
+    ///         Err(TryLockError::Error(err)) => return Err(err),
+    ///     }
+    ///
     ///     Ok(())
     /// }
     /// ```
     #[unstable(feature = "file_lock", issue = "130994")]
-    pub fn try_lock_shared(&self) -> io::Result<bool> {
+    pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
         self.inner.try_lock_shared()
     }
 
