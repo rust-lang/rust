@@ -237,10 +237,12 @@ pub enum AutoDiff {
     PrintPerf,
     /// Print intermediate IR generation steps
     PrintSteps,
-    /// Print the whole module, before running opts.
+    /// Print the module, before running autodiff.
     PrintModBefore,
-    /// Print the module after Enzyme differentiated everything.
+    /// Print the module after running autodiff.
     PrintModAfter,
+    /// Print the module after running autodiff and optimizations.
+    PrintModFinal,
 
     /// Enzyme's loose type debug helper (can cause incorrect gradients!!)
     /// Usable in cases where Enzyme errors with `can not deduce type of X`.
