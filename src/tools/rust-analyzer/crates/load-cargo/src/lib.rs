@@ -426,7 +426,7 @@ fn load_crate_graph(
 ) -> RootDatabase {
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<u16>().ok());
     let mut db = RootDatabase::new(lru_cap);
-    let mut analysis_change = ChangeWithProcMacros::new();
+    let mut analysis_change = ChangeWithProcMacros::default();
 
     db.enable_proc_attr_macros();
 

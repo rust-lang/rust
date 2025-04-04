@@ -231,7 +231,7 @@ fn remove_unnecessary_wrapper(
                 .and_then(Either::<ast::ReturnExpr, ast::StmtList>::cast)?;
 
             editor = builder.make_editor(parent.syntax());
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
 
             match parent {
                 Either::Left(ret_expr) => {

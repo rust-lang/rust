@@ -469,7 +469,7 @@ impl SourceChangeBuilder {
     }
 
     fn add_snippet_annotation(&mut self, kind: AnnotationSnippet) -> SyntaxAnnotation {
-        let annotation = SyntaxAnnotation::new();
+        let annotation = SyntaxAnnotation::default();
         self.snippet_annotations.push((kind, annotation));
         self.source_change.is_snippet = true;
         annotation

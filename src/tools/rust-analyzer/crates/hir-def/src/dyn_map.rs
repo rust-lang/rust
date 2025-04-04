@@ -112,6 +112,10 @@ pub struct Key<K, V, P = (K, V)> {
 }
 
 impl<K, V, P> Key<K, V, P> {
+    #[allow(
+        clippy::new_without_default,
+        reason = "this a const fn, so it can't be default yet. See <https://github.com/rust-lang/rust/issues/63065>"
+    )]
     pub(crate) const fn new() -> Key<K, V, P> {
         Key { _phantom: PhantomData }
     }
@@ -148,14 +152,9 @@ impl<K: Hash + Eq + 'static, V: 'static> Policy for (K, V) {
     }
 }
 
+#[derive(Default)]
 pub struct DynMap {
     pub(crate) map: Map,
-}
-
-impl Default for DynMap {
-    fn default() -> Self {
-        DynMap { map: Map::new() }
-    }
 }
 
 #[repr(transparent)]

@@ -105,7 +105,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
         format!("Replace if{let_} with match"),
         available_range,
         move |builder| {
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
             let match_expr = {
                 let else_arm = make_else_arm(ctx, &make, else_block, &cond_bodies);
                 let make_match_arm = |(pat, body): (_, ast::BlockExpr)| {
@@ -253,7 +253,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
         format!("Replace match with if{let_}"),
         match_expr.syntax().text_range(),
         move |builder| {
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
             let make_block_expr = |expr: ast::Expr| {
                 // Blocks with modifiers (unsafe, async, etc.) are parsed as BlockExpr, but are
                 // formatted without enclosing braces. If we encounter such block exprs,

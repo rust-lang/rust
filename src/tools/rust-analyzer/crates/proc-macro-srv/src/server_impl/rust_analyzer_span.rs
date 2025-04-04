@@ -212,7 +212,7 @@ impl server::TokenStream for RaSpanServer {
         base: Option<Self::TokenStream>,
         trees: Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
     ) -> Self::TokenStream {
-        let mut builder = TokenStreamBuilder::new();
+        let mut builder = TokenStreamBuilder::default();
         if let Some(base) = base {
             builder.push(base);
         }
@@ -227,7 +227,7 @@ impl server::TokenStream for RaSpanServer {
         base: Option<Self::TokenStream>,
         streams: Vec<Self::TokenStream>,
     ) -> Self::TokenStream {
-        let mut builder = TokenStreamBuilder::new();
+        let mut builder = TokenStreamBuilder::default();
         if let Some(base) = base {
             builder.push(base);
         }

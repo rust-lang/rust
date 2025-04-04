@@ -460,10 +460,6 @@ impl FormatArgumentsCollector {
         }
     }
 
-    pub fn new() -> Self {
-        Default::default()
-    }
-
     pub fn add(&mut self, arg: FormatArgument) -> usize {
         let index = self.arguments.len();
         if let Some(name) = arg.kind.ident() {

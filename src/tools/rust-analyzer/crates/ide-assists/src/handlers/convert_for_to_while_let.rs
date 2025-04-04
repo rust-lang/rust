@@ -51,7 +51,7 @@ pub(crate) fn convert_for_loop_to_while_let(
         "Replace this for loop with `while let`",
         for_loop.syntax().text_range(),
         |builder| {
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
             let mut editor = builder.make_editor(for_loop.syntax());
 
             let (iterable, method) = if impls_core_iter(&ctx.sema, &iterable) {

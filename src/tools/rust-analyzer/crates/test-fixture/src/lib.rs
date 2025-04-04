@@ -139,7 +139,7 @@ impl ChangeFixture {
             let channel = toolchain.as_deref().unwrap_or("stable");
             Version::parse(&format!("1.76.0-{channel}")).unwrap()
         });
-        let mut source_change = FileChange::new();
+        let mut source_change = FileChange::default();
 
         let mut files = Vec::new();
         let mut crate_graph = CrateGraphBuilder::default();

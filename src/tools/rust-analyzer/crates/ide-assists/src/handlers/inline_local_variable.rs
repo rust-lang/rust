@@ -91,7 +91,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 }
             }
 
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
 
             for (name, should_wrap) in wrap_in_parens {
                 let replacement = if should_wrap {

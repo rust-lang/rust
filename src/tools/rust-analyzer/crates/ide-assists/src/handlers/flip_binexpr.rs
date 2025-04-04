@@ -48,7 +48,7 @@ pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         op_token.text_range(),
         |builder| {
             let mut editor = builder.make_editor(&expr.syntax().parent().unwrap());
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
             if let FlipAction::FlipAndReplaceOp(binary_op) = action {
                 editor.replace(op_token, make.token(binary_op))
             };

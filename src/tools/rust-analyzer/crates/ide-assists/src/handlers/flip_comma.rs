@@ -101,7 +101,7 @@ fn flip_tree(tree: ast::TokenTree, comma: SyntaxToken) -> (ast::TokenTree, Synta
     ]
     .concat();
 
-    let make = SyntaxFactory::new();
+    let make = SyntaxFactory::with_mappings();
     let new_token_tree = make.token_tree(tree.left_delimiter_token().unwrap().kind(), result);
     (new_token_tree, make.finish_with_mappings())
 }

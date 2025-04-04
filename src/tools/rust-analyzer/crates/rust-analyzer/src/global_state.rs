@@ -299,7 +299,7 @@ impl GlobalState {
             FxHashMap::default();
 
         let (change, modified_rust_files, workspace_structure_change) = {
-            let mut change = ChangeWithProcMacros::new();
+            let mut change = ChangeWithProcMacros::default();
             let mut guard = self.vfs.write();
             let changed_files = guard.0.take_changes();
             if changed_files.is_empty() {

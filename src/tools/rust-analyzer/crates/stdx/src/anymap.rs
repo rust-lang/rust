@@ -101,20 +101,15 @@ pub struct Map<A: ?Sized + Downcast = dyn Any> {
 /// `Map::new()` doesn’t seem to be happy to infer that it should go with the default
 /// value. It’s a bit sad, really. Ah well, I guess this approach will do.
 pub type AnyMap = Map<dyn Any>;
+
 impl<A: ?Sized + Downcast> Default for Map<A> {
     #[inline]
     fn default() -> Map<A> {
-        Map::new()
+        Map { raw: RawMap::with_hasher(Default::default()) }
     }
 }
 
 impl<A: ?Sized + Downcast> Map<A> {
-    /// Create an empty collection.
-    #[inline]
-    pub fn new() -> Map<A> {
-        Map { raw: RawMap::with_hasher(Default::default()) }
-    }
-
     /// Returns a reference to the value stored in the collection for the type `T`,
     /// if it exists.
     #[inline]

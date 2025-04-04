@@ -86,7 +86,7 @@ fn integrated_highlighting_benchmark() {
             "self.data.cargo_buildScripts_rebuildOnSave",
             "self. data. cargo_buildScripts_rebuildOnSave",
         );
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
     }
@@ -149,7 +149,7 @@ fn integrated_completion_benchmark() {
         let completion_offset =
             patch(&mut text, "db.struct_data(self.id)", "sel;\ndb.struct_data(self.id)")
                 + "sel".len();
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
         completion_offset
@@ -200,7 +200,7 @@ fn integrated_completion_benchmark() {
         let completion_offset =
             patch(&mut text, "sel;\ndb.struct_data(self.id)", ";sel;\ndb.struct_data(self.id)")
                 + ";sel".len();
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
         completion_offset
@@ -250,7 +250,7 @@ fn integrated_completion_benchmark() {
         let completion_offset =
             patch(&mut text, "sel;\ndb.struct_data(self.id)", "self.;\ndb.struct_data(self.id)")
                 + "self.".len();
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
         completion_offset
@@ -367,7 +367,7 @@ fn integrated_diagnostics_benchmark() {
         let _it = stdx::timeit("change");
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
         patch(&mut text, "db.struct_data(self.id)", "();\ndb.struct_data(self.id)");
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
     };

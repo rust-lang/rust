@@ -170,7 +170,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             |edit| {
                 let (var_name, expr_replace) = kind.get_name_and_expr(ctx, &to_extract);
 
-                let make = SyntaxFactory::new();
+                let make = SyntaxFactory::with_mappings();
                 let mut editor = edit.make_editor(&expr_replace);
 
                 let pat_name = make.name(&var_name);

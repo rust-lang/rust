@@ -739,7 +739,7 @@ impl GlobalState {
 
             ws_to_crate_graph(&self.workspaces, self.config.extra_env(None), load)
         };
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         if initial_build || !self.config.expand_proc_macros() {
             if self.config.expand_proc_macros() {
                 change.set_proc_macros(
