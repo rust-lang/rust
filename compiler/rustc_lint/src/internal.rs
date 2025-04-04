@@ -1,10 +1,12 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
-use rustc_hir::HirId;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, GenericArgsRef, Ty as MiddleTy};
+use rustc_hir::{Expr, ExprKind, HirId};
+use rustc_middle::ty::{
+    self, ClauseKind, GenericArgsRef, ParamTy, ProjectionPredicate, TraitPredicate, Ty as MiddleTy,
+};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{Span, sym};
@@ -101,10 +103,11 @@ declare_tool_lint! {
 
 declare_lint_pass!(QueryStability => [POTENTIAL_QUERY_INSTABILITY, UNTRACKED_QUERY_INFORMATION]);
 
-impl LateLintPass<'_> for QueryStability {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        let Some((span, def_id, args)) = typeck_results_of_method_fn(cx, expr) else { return };
-        if let Ok(Some(instance)) = ty::Instance::try_resolve(cx.tcx, cx.typing_env(), def_id, args)
+impl<'tcx> LateLintPass<'tcx> for QueryStability {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
+        if let Some((span, def_id, args)) = typeck_results_of_method_fn(cx, expr)
+            && let Ok(Some(instance)) =
+                ty::Instance::try_resolve(cx.tcx, cx.typing_env(), def_id, args)
         {
             let def_id = instance.def_id();
             if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
@@ -122,7 +125,119 @@ impl LateLintPass<'_> for QueryStability {
                 );
             }
         }
+        check_into_iter_stability(cx, expr);
     }
+}
+
+fn check_into_iter_stability<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
+    let Some(into_iterator_def_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else {
+        return;
+    };
+    // Is `expr` a function or method call?
+    let Some((callee_def_id, generic_args, recv, args)) =
+        get_callee_generic_args_and_args(cx, expr)
+    else {
+        return;
+    };
+    let fn_sig = cx.tcx.fn_sig(callee_def_id).instantiate_identity().skip_binder();
+    let (_, inputs) = fn_sig.inputs_and_output.as_slice().split_last().unwrap();
+    for (arg_index, &input) in inputs.iter().enumerate() {
+        let &ty::Param(ParamTy { index: param_index, .. }) = input.kind() else {
+            continue;
+        };
+        let (trait_predicates, _) = get_input_traits_and_projections(cx, callee_def_id, input);
+        for TraitPredicate { trait_ref, .. } in trait_predicates {
+            // Does the function or method require any of its arguments to implement `IntoIterator`?
+            if trait_ref.def_id != into_iterator_def_id {
+                continue;
+            }
+            let self_ty = generic_args[param_index as usize].expect_ty();
+            let Some(self_ty_adt_def) = self_ty.peel_refs().ty_adt_def() else {
+                return;
+            };
+            cx.tcx.for_each_relevant_impl(into_iterator_def_id, self_ty, |impl_id| {
+                let impl_ty = cx.tcx.type_of(impl_id).skip_binder();
+                let Some(impl_ty_adt_def) = impl_ty.peel_refs().ty_adt_def() else {
+                    return;
+                };
+                // To reduce false positives, verify that `self_ty` and `impl_ty` refer to the same ADT.
+                if self_ty_adt_def != impl_ty_adt_def {
+                    return;
+                }
+                let Some(into_iter_item) = cx
+                    .tcx
+                    .associated_items(impl_id)
+                    .filter_by_name_unhygienic(sym::into_iter)
+                    .next()
+                else {
+                    return;
+                };
+                // Does the input type's `IntoIterator` implementation have the
+                // `rustc_lint_query_instability` attribute on its `into_iter` method?
+                if !cx.tcx.has_attr(into_iter_item.def_id, sym::rustc_lint_query_instability) {
+                    return;
+                }
+                let span = if let Some(recv) = recv {
+                    if arg_index == 0 { recv.span } else { args[arg_index - 1].span }
+                } else {
+                    args[arg_index].span
+                };
+                cx.emit_span_lint(
+                    POTENTIAL_QUERY_INSTABILITY,
+                    span,
+                    QueryInstability { query: cx.tcx.item_name(into_iter_item.def_id) },
+                );
+            });
+        }
+    }
+}
+
+/// Checks whether an expression is a function or method call and, if so, returns its `DefId`,
+/// `GenericArgs`, and arguments.
+fn get_callee_generic_args_and_args<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+) -> Option<(DefId, GenericArgsRef<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
+    if let ExprKind::Call(callee, args) = expr.kind
+        && let callee_ty = cx.typeck_results().expr_ty(callee)
+        && let ty::FnDef(callee_def_id, _) = callee_ty.kind()
+    {
+        let generic_args = cx.typeck_results().node_args(callee.hir_id);
+        return Some((*callee_def_id, generic_args, None, args));
+    }
+    if let ExprKind::MethodCall(_, recv, args, _) = expr.kind
+        && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+    {
+        let generic_args = cx.typeck_results().node_args(expr.hir_id);
+        return Some((method_def_id, generic_args, Some(recv), args));
+    }
+    None
+}
+
+/// Returns the `TraitPredicate`s and `ProjectionPredicate`s for a function's input type.
+fn get_input_traits_and_projections<'tcx>(
+    cx: &LateContext<'tcx>,
+    callee_def_id: DefId,
+    input: MiddleTy<'tcx>,
+) -> (Vec<TraitPredicate<'tcx>>, Vec<ProjectionPredicate<'tcx>>) {
+    let mut trait_predicates = Vec::new();
+    let mut projection_predicates = Vec::new();
+    for predicate in cx.tcx.param_env(callee_def_id).caller_bounds() {
+        match predicate.kind().skip_binder() {
+            ClauseKind::Trait(trait_predicate) => {
+                if trait_predicate.trait_ref.self_ty() == input {
+                    trait_predicates.push(trait_predicate);
+                }
+            }
+            ClauseKind::Projection(projection_predicate) => {
+                if projection_predicate.projection_term.self_ty() == input {
+                    projection_predicates.push(projection_predicate);
+                }
+            }
+            _ => {}
+        }
+    }
+    (trait_predicates, projection_predicates)
 }
 
 declare_tool_lint! {
