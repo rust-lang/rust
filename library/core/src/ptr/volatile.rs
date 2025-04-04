@@ -1,5 +1,7 @@
 use crate::mem::SizedTypeProperties;
-use crate::{cfg_match, intrinsics};
+use crate::intrinsics;
+use crate::macros::cfg;
+use crate::sync::atomic::{AtomicU8, AtomicU16, AtomicU32, Atomicu64};
 
 /// Performs a volatile read of the value from `src` without moving it. This
 /// leaves the memory in `src` unchanged.
@@ -78,52 +80,28 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
                 is_zst: bool = T::IS_ZST,
             ) => crate::ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
         );
-        cfg_match! {
-            all(target_arch = "arm", target_feature = "thumb-mode", target_pointer_width = "32") => {
-                {
-                    use crate::arch::asm;
-                    use crate::mem::MaybeUninit;
-
-                    match size_of::<T>() {
-                        // For the relevant sizes, ensure that just a single load is emitted
-                        // for the read with nothing merged or split.
-                        1 => {
-                            let byte: MaybeUninit::<u8>;
-                            asm!(
-                                "ldrb {out}, [{in}]",
-                                in = in(reg) src,
-                                out = out(reg) byte
-                            );
-
-                            intrinsics::transmute_unchecked(byte)
-                        }
-                        2 => {
-                            let halfword: MaybeUninit::<u16>;
-                            asm!(
-                                "ldrh {out}, [{in}]",
-                                in = in(reg) src,
-                                out = out(reg) halfword
-                            );
-
-                            intrinsics::transmute_unchecked(halfword)
-                        },
-                        4 => {
-                            let word: MaybeUninit::<u32>;
-                            asm!(
-                                "ldr {out}, [{in}]",
-                                in = in(reg) src,
-                                out = out(reg) word
-                            );
-
-                            intrinsics::transmute_unchecked(word)
-                        },
-                        // Anything else is mostly meaningless.
-                        _ => intrinsics::volatile_load(src),
-                    }
-            }}
-            _ => {
-                intrinsics::volatile_load(src)
-            }
+        match size_of<T>() {
+            1 => if cfg!(target_has_atomic_load_store = "8") && align_of::<T>() == align_of::<AtomicU8>() {
+                    intrinsics::atomic_load_relaxed(src)
+                } else {
+                    intrinsics::volatile_load(dst, val)
+                }
+            2 => if cfg!(target_has_atomic_load_store = "16") && align_of::<T>() == align_of::<AtomicU16>() {
+                    intrinsics::atomic_load_relaxed(src)
+                } else {
+                    intrinsics::volatile_load(dst, val)
+                }
+            4 => if cfg!(target_has_atomic_load_store = "32") && align_of::<T>() == align_of::<AtomicU32>() {
+                    intrinsics::atomic_load_relaxed(src)
+                } else {
+                    intrinsics::volatile_load(dst, val)
+                }
+            8 => if cfg!(target_has_atomic_load_store = "64") && align_of::<T>() == align_of::<AtomicU64>() {
+                    intrinsics::atomic_load_relaxed(src)
+                } else {
+                    intrinsics::volatile_load(dst, val)
+                }
+            _ => intrinsics::volatile_load(dst, val)
         }
     }
 }
@@ -204,37 +182,28 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
                 is_zst: bool = T::IS_ZST,
             ) => crate::ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
         );
-        cfg_match! {
-            all(target_arch = "arm", target_feature = "thumb-mode", target_pointer_width = "32") => {
-                {
-                    use crate::arch::asm;
-                    use crate::mem::MaybeUninit;
-
-                    match size_of::<T>() {
-                        1 =>
-                            asm!(
-                                "strb {val}, [{dest}]",
-                                val = in(reg) intrinsics::transmute_unchecked::<T, MaybeUninit<u8>>(src),
-                                dest = in(reg) dst
-                            ),
-
-                        2 => asm!(
-                            "strh {val}, [{dest}]",
-                            val = in(reg) intrinsics::transmute_unchecked::<T, MaybeUninit<u16>>(src),
-                            dest = in(reg) dst,
-                        ),
-                        4 => asm!(
-                            "str {val}, [{dest}]",
-                            val = in(reg) intrinsics::transmute_unchecked::<T, MaybeUninit<u32>>(src),
-                            dest = in(reg) dst
-                        ),
-                        _ => intrinsics::volatile_store(dst, src)
-                    }
+        match size_of<T>() {
+            1 => if cfg!(target_has_atomic_load_store = "8") && align_of::<T>() == align_of::<AtomicU8>() {
+                    intrinsics::atomic_store_relaxed(dst, val)
+                } else {
+                    intrinsics::volatile_store(dst, val)
                 }
-            }
-            _ => {
-                intrinsics::volatile_store(dst, src);
-            }
+            2 => if cfg!(target_has_atomic_load_store = "16") && align_of::<T>() == align_of::<AtomicU16>() {
+                    intrinsics::atomic_store_relaxed(dst, val)
+                } else {
+                    intrinsics::volatile_store(dst, val)
+                }
+            4 => if cfg!(target_has_atomic_load_store = "32") && align_of::<T>() == align_of::<AtomicU32>() {
+                    intrinsics::atomic_store_relaxed(dst, val)
+                } else {
+                    intrinsics::volatile_store(dst, val)
+                }
+            8 => if cfg!(target_has_atomic_load_store = "64") && align_of::<T>() == align_of::<AtomicU64>() {
+                    intrinsics::atomic_store_relaxed(dst, val)
+                } else {
+                    intrinsics::volatile_store(dst, val)
+                }
+            _ => intrinsics::volatile_store(dst, val)
         }
     }
 }
