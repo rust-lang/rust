@@ -2356,7 +2356,6 @@ impl Config {
         // build our internal lld and use it as the default linker, by setting the `rust.lld` config
         // to true by default:
         // - on the `x86_64-unknown-linux-gnu` target
-        // - on the `dev` and `nightly` channels
         // - when building our in-tree llvm (i.e. the target has not set an `llvm-config`), so that
         //   we're also able to build the corresponding lld
         // - or when using an external llvm that's downloaded from CI, which also contains our prebuilt
