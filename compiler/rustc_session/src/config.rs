@@ -462,16 +462,20 @@ impl LinkerFeaturesCli {
         check_lld(self.enabled, "+")?;
         check_lld(self.disabled, "-")?;
 
-        let mentioned_features = self.enabled.union(self.disabled);
-        for feature in LinkerFeatures::all() {
-            // Check that no other features were enabled without -Zunstable-options
-            // Note that this should currently be unreachable, because the `-Clinker-features` parser
-            // currently only accepts lld.
-            if feature != LinkerFeatures::LLD && mentioned_features.contains(feature) {
-                return Err("`-C linker-features` is stable only for the lld feature, \
-the`-Z unstable-options` flag must also be passed to use it with other features"
-                    .to_string());
-            }
+        // Since only lld is stable, any non-lld feature used is unstable, and that's an error.
+        let unstable_enabled = self.enabled - LinkerFeatures::LLD;
+        let unstable_disabled = self.disabled - LinkerFeatures::LLD;
+        if !unstable_enabled.union(unstable_disabled).is_empty() {
+            let unstable_features: Vec<_> = unstable_enabled
+                .iter()
+                .map(|f| format!("+{}", f.as_str().unwrap()))
+                .chain(unstable_disabled.iter().map(|f| format!("-{}", f.as_str().unwrap())))
+                .collect();
+            return Err(format!(
+                "the requested `-C linker-features={}` are unstable, and also require the \
+                `-Z unstable-options` flag to be usable",
+                unstable_features.join(","),
+            ));
         }
 
         Ok(())
