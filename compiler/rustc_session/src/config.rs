@@ -443,21 +443,26 @@ impl LinkerFeaturesCli {
         }
     }
 
-    /// Checks usage of unstable variants for linker features for the given `target_tuple`.
-    /// Returns `Ok` if no unstable variants are used.
+    /// When *not* using `-Z unstable-options` on the CLI, ensure only stable linker features are
+    /// used, for the given `TargetTuple`. Returns `Ok` if no unstable variants are used.
+    /// The caller should ensure that e.g. `nightly_options::is_unstable_enabled()`
+    /// returns false.
     pub(crate) fn check_unstable_variants(&self, target_tuple: &TargetTuple) -> Result<(), String> {
+        // `-C linker-features=[-+]lld` is only stable on x64 linux.
+        let check_lld = |features: LinkerFeatures, polarity: &str| {
+            let has_lld = features.is_lld_enabled();
+            if has_lld && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
+                return Err(format!(
+                    "`-C linker-features={polarity}lld` is unstable on the `{target_tuple}` \
+                    target. The `-Z unstable-options` flag must also be passed to use it on this target",
+                ));
+            }
+            Ok(())
+        };
+        check_lld(self.enabled, "+")?;
+        check_lld(self.disabled, "-")?;
+
         let mentioned_features = self.enabled.union(self.disabled);
-        let has_lld = mentioned_features.is_lld_enabled();
-
-        // Check that -Clinker-features=[-+]lld is not used anywhere else than on x64
-        // without -Zunstable-options.
-        if has_lld && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
-            return Err(format!(
-                "`-C linker-features` with lld are unstable for the `{target_tuple}` target, \
-the `-Z unstable-options` flag must also be passed to use it on this target",
-            ));
-        }
-
         for feature in LinkerFeatures::all() {
             // Check that no other features were enabled without -Zunstable-options
             // Note that this should currently be unreachable, because the `-Clinker-features` parser
