@@ -1277,10 +1277,12 @@ project-stable-mir = [
     "@oli-obk",
     "@scottmcm",
 ]
-
 project-exploit-mitigations = [
     "@cuviper",
     "@rcvalle",
+]
+compiletest = [
+    "@jieyouxu",
 ]
 
 [assign.owners]
