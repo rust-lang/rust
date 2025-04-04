@@ -235,6 +235,7 @@ name = "proc_macro"
 version = "0.0.0"
 dependencies = [
  "core",
+ "rustc-literal-escaper",
  "std",
 ]
 
@@ -309,6 +310,10 @@ dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
 ]
+
+[[package]]
+name = "rustc-literal-escaper"
+version = "0.0.1"
 
 [[package]]
 name = "rustc-std-workspace-alloc"
