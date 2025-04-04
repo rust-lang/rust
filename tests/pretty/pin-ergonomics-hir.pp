@@ -2,7 +2,8 @@
 //@ pretty-mode:hir
 //@ pp-exact:pin-ergonomics-hir.pp
 
-#![feature(pin_ergonomics)]#![allow(dead_code, incomplete_features)]
+#![feature(pin_ergonomics)]
+#![allow(dead_code, incomplete_features)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
 #[macro_use]
