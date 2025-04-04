@@ -609,6 +609,9 @@ config_data! {
         cargo_features: CargoFeaturesDef      = CargoFeaturesDef::Selected(vec![]),
         /// Whether to pass `--no-default-features` to cargo.
         cargo_noDefaultFeatures: bool    = false,
+        /// Whether to skip fetching dependencies. If set to "true", the analysis is performed
+        /// entirely offline, and Cargo metadata for dependencies is not fetched.
+        cargo_noDeps: bool = false,
         /// Relative path to the sysroot, or "discover" to try to automatically find it via
         /// "rustc --print sysroot".
         ///
@@ -2027,6 +2030,7 @@ impl Config {
             extra_env: self.cargo_extraEnv(source_root).clone(),
             target_dir: self.target_dir_from_config(source_root),
             set_test: *self.cfg_setTest(source_root),
+            no_deps: *self.cargo_noDeps(source_root),
         }
     }
 
