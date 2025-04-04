@@ -604,19 +604,28 @@ extern "C" void LLVMRustSetAllowReassoc(LLVMValueRef V) {
 
 extern "C" LLVMValueRef
 LLVMRustBuildAtomicLoad(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Source,
-                        const char *Name, LLVMAtomicOrdering Order) {
+                        const char *Name, LLVMAtomicOrdering Order, LLVMBool isVolatile) {
   Value *Ptr = unwrap(Source);
   LoadInst *LI = unwrap(B)->CreateLoad(unwrap(Ty), Ptr, Name);
   LI->setAtomic(fromRust(Order));
+
+  // atomic volatile
+  if (isVolatile)
+    LI->setVolatile(true);
   return wrap(LI);
 }
 
 extern "C" LLVMValueRef LLVMRustBuildAtomicStore(LLVMBuilderRef B,
                                                  LLVMValueRef V,
                                                  LLVMValueRef Target,
-                                                 LLVMAtomicOrdering Order) {
+                                                 LLVMAtomicOrdering Order,
+                                                 LLVMBool isVolatile) {
   StoreInst *SI = unwrap(B)->CreateStore(unwrap(V), unwrap(Target));
   SI->setAtomic(fromRust(Order));
+
+  // atomic volatile
+  if (isVolatile)
+    SI->setVolatile(true);
   return wrap(SI);
 }
 

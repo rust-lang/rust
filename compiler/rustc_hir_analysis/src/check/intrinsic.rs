@@ -430,10 +430,14 @@ pub fn check_intrinsic_type(
             sym::roundf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
             sym::roundf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
 
-            sym::volatile_load | sym::unaligned_volatile_load => {
+            sym::volatile_load
+            | sym::unaligned_volatile_load
+            | sym::volatile_load_atomic_relaxed => {
                 (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0))
             }
-            sym::volatile_store | sym::unaligned_volatile_store => {
+            sym::volatile_store
+            | sym::unaligned_volatile_store
+            | sym::volatile_store_atomic_relaxed => {
                 (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit)
             }
 
