@@ -15,8 +15,8 @@ system.
 
 ## Target maintainers
 
-- Amanieu d'Antras ([@Amanieu](https://github.com/Amanieu))
-- Lu Binglun ([@lubinglun](https://github.com/lubinglun))
+[@Amanieu](https://github.com/Amanieu)
+[@lubinglun](https://github.com/lubinglun)
 
 ## Requirements
 

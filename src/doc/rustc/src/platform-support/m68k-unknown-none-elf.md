@@ -4,9 +4,9 @@
 
 Bare metal Motorola 680x0
 
-## Designated Developers
+## Target Maintainers
 
-* [@knickish](https://github.com/knickish)
+[@knickish](https://github.com/knickish)
 
 ## Requirements
 
