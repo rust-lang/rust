@@ -226,17 +226,18 @@ impl TaitConstraintLocator<'_> {
         };
 
         // Use borrowck to get the type with unerased regions.
-        let borrowck_results = &self.tcx.mir_borrowck(item_def_id);
-
-        // If the body was tainted, then assume the opaque may have been constrained and just set it to error.
-        if let Some(guar) = borrowck_results.tainted_by_errors {
-            self.found =
-                Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: Ty::new_error(self.tcx, guar) });
-            return;
-        }
-
-        debug!(?borrowck_results.concrete_opaque_types);
-        if let Some(&concrete_type) = borrowck_results.concrete_opaque_types.get(&self.def_id) {
+        let concrete_opaque_types = match self.tcx.mir_borrowck(item_def_id) {
+            Ok(concrete_opaque_types) => concrete_opaque_types,
+            Err(guar) => {
+                self.found = Some(ty::OpaqueHiddenType {
+                    span: DUMMY_SP,
+                    ty: Ty::new_error(self.tcx, guar),
+                });
+                return;
+            }
+        };
+        debug!(?concrete_opaque_types);
+        if let Some(&concrete_type) = concrete_opaque_types.0.get(&self.def_id) {
             debug!(?concrete_type, "found constraint");
             if let Some(prev) = &mut self.found {
                 if concrete_type.ty != prev.ty {
@@ -316,27 +317,12 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
         }
     }
 
-    let mir_opaque_ty = tcx.mir_borrowck(owner_def_id).concrete_opaque_types.get(&def_id).copied();
-    if let Some(mir_opaque_ty) = mir_opaque_ty {
-        if mir_opaque_ty.references_error() {
-            return mir_opaque_ty.ty;
-        }
-
-        debug!(?owner_def_id);
-        let mut locator = RpitConstraintChecker { def_id, tcx, found: mir_opaque_ty };
-
-        match tcx.hir_node_by_def_id(owner_def_id) {
-            Node::Item(it) => intravisit::walk_item(&mut locator, it),
-            Node::ImplItem(it) => intravisit::walk_impl_item(&mut locator, it),
-            Node::TraitItem(it) => intravisit::walk_trait_item(&mut locator, it),
-            other => bug!("{:?} is not a valid scope for an opaque type item", other),
-        }
-
+    let concrete_opaque_types = match tcx.mir_borrowck(owner_def_id) {
+        Ok(concrete_opaque_types) => concrete_opaque_types,
+        Err(guar) => return Ty::new_error(tcx, guar),
+    };
+    if let Some(mir_opaque_ty) = concrete_opaque_types.0.get(&def_id) {
         mir_opaque_ty.ty
-    } else if let Some(guar) = tables.tainted_by_errors {
-        // Some error in the owner fn prevented us from populating
-        // the `concrete_opaque_types` table.
-        Ty::new_error(tcx, guar)
     } else {
         // Fall back to the RPIT we inferred during HIR typeck
         if let Some(hir_opaque_ty) = hir_opaque_ty {
@@ -350,63 +336,5 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
             // `()` until we the diverging default is changed.
             Ty::new_diverging_default(tcx)
         }
-    }
-}
-
-struct RpitConstraintChecker<'tcx> {
-    tcx: TyCtxt<'tcx>,
-
-    /// def_id of the opaque type whose defining uses are being checked
-    def_id: LocalDefId,
-
-    found: ty::OpaqueHiddenType<'tcx>,
-}
-
-impl RpitConstraintChecker<'_> {
-    #[instrument(skip(self), level = "debug")]
-    fn check(&self, def_id: LocalDefId) {
-        // Use borrowck to get the type with unerased regions.
-        let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
-        debug!(?concrete_opaque_types);
-        if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
-            debug!(?concrete_type, "found constraint");
-            if concrete_type.ty != self.found.ty {
-                if let Ok(d) = self.found.build_mismatch_error(&concrete_type, self.tcx) {
-                    d.emit();
-                }
-            }
-        }
-    }
-}
-
-impl<'tcx> intravisit::Visitor<'tcx> for RpitConstraintChecker<'tcx> {
-    type NestedFilter = nested_filter::OnlyBodies;
-
-    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
-        self.tcx
-    }
-    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        intravisit::walk_expr(self, ex);
-    }
-    fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
-        trace!(?it.owner_id);
-        // The opaque type itself or its children are not within its reveal scope.
-        if it.owner_id.def_id != self.def_id {
-            self.check(it.owner_id.def_id);
-            intravisit::walk_item(self, it);
-        }
-    }
-    fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
-        trace!(?it.owner_id);
-        // The opaque type itself or its children are not within its reveal scope.
-        if it.owner_id.def_id != self.def_id {
-            self.check(it.owner_id.def_id);
-            intravisit::walk_impl_item(self, it);
-        }
-    }
-    fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
-        trace!(?it.owner_id);
-        self.check(it.owner_id.def_id);
-        intravisit::walk_trait_item(self, it);
     }
 }

@@ -5,7 +5,7 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::pretty::{
     PassWhere, PrettyPrintMirOptions, create_dump_file, dump_enabled, dump_mir_to_writer,
 };
-use rustc_middle::mir::{Body, ClosureRegionRequirements, Location};
+use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::points::PointIndex;
 use rustc_session::config::MirIncludeSpans;
@@ -17,7 +17,7 @@ use crate::polonius::{
 };
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
-use crate::{BorrowckInferCtxt, RegionInferenceContext};
+use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
 
 /// `-Zdump-mir=polonius` dumps MIR annotated with NLL and polonius specific information.
 pub(crate) fn dump_polonius_mir<'tcx>(

@@ -955,7 +955,9 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             // Run unsafety check because it's responsible for stealing and
             // deallocating THIR.
             tcx.ensure_ok().check_unsafety(def_id);
-            tcx.ensure_ok().mir_borrowck(def_id)
+            if !tcx.is_typeck_child(def_id.to_def_id()) {
+                tcx.ensure_ok().mir_borrowck(def_id)
+            }
         });
     });
     sess.time("MIR_effect_checking", || {
