@@ -6,6 +6,8 @@
 // are named as expected.
 // See https://github.com/rust-lang/rust/pull/15686
 
+//@ ignore-nvptx64 (no target std)
+
 use run_make_support::{
     bin_name, cwd, has_prefix, has_suffix, rfs, rustc, shallow_find_files, target,
 };

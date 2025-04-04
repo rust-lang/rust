@@ -1,4 +1,5 @@
-//@ ignore-windows Windows does not actually strip
+//@ ignore-windows (Windows does not actually strip)
+//@ ignore-nvptx64 (needs target std)
 
 // Test that -Cstrip correctly strips/preserves debuginfo and symbols.
 
