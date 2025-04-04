@@ -38,13 +38,13 @@ fn associated_type_bounds<'tcx>(
         let icx = ItemCtxt::new(tcx, assoc_item_def_id);
         let mut bounds = Vec::new();
         icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
-        // Associated types are implicitly sized unless a `?Sized` bound is found
+        // Implicit bounds are added to associated types unless a `?Trait` bound is found
         match filter {
             PredicateFilter::All
             | PredicateFilter::SelfOnly
             | PredicateFilter::SelfTraitThatDefines(_)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
-                icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
+                icx.lowerer().add_default_traits(&mut bounds, item_ty, hir_bounds, None, span);
             }
             // `ConstIfConst` is only interested in `~const` bounds.
             PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
@@ -327,14 +327,13 @@ fn opaque_type_bounds<'tcx>(
         let icx = ItemCtxt::new(tcx, opaque_def_id);
         let mut bounds = Vec::new();
         icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
-        // Opaque types are implicitly sized unless a `?Sized` bound is found
+        // Implicit bounds are added to opaque types unless a `?Trait` bound is found
         match filter {
             PredicateFilter::All
             | PredicateFilter::SelfOnly
             | PredicateFilter::SelfTraitThatDefines(_)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
-                // Associated types are implicitly sized unless a `?Sized` bound is found
-                icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
+                icx.lowerer().add_default_traits(&mut bounds, item_ty, hir_bounds, None, span);
             }
             //`ConstIfConst` is only interested in `~const` bounds.
             PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
