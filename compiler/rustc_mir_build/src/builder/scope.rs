@@ -866,7 +866,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ty::Adt(adt_def, _) if adt_def.is_enum() => {
                 (state_ty.discriminant_ty(self.tcx), Rvalue::Discriminant(scope.state_place))
             }
-            ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
+            ty::Uint(_) | ty::Int(_) | ty::Float(_) | ty::Bool | ty::Char => {
                 (state_ty, Rvalue::Use(Operand::Copy(scope.state_place)))
             }
             _ => span_bug!(state_decl.source_info.span, "unsupported #[loop_match] state"),

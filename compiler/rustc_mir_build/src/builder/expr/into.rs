@@ -255,7 +255,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 fn is_supported_loop_match_type(ty: Ty<'_>) -> bool {
                     match ty.kind() {
-                        ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => true,
+                        ty::Uint(_) | ty::Int(_) | ty::Float(_) | ty::Bool | ty::Char => true,
                         ty::Adt(adt_def, _) => match adt_def.adt_kind() {
                             ty::AdtKind::Struct | ty::AdtKind::Union => false,
                             ty::AdtKind::Enum => {
