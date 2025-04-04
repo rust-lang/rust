@@ -60,6 +60,7 @@ pub mod crt_objects;
 mod base;
 mod json;
 
+pub use base::apple;
 pub use base::avr::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.
