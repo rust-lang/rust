@@ -864,15 +864,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let state_decl = &self.local_decls[scope.state_place.as_local().unwrap()];
         let state_ty = state_decl.ty;
-        let discriminant_ty = match state_ty {
-            ty if ty.is_enum() => ty.discriminant_ty(self.tcx),
-            ty if ty.is_integral() => ty,
-            _ => span_bug!(state_decl.source_info.span, "unsupported #[loop_match] state"),
-        };
-
-        let rvalue = match state_ty {
-            ty if ty.is_enum() => Rvalue::Discriminant(scope.state_place),
-            ty if ty.is_integral() => Rvalue::Use(Operand::Copy(scope.state_place)),
+        let (discriminant_ty, rvalue) = match state_ty.kind() {
+            ty::Adt(adt_def, _) if adt_def.is_enum() => {
+                (state_ty.discriminant_ty(self.tcx), Rvalue::Discriminant(scope.state_place))
+            }
+            ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
+                (state_ty, Rvalue::Use(Operand::Copy(scope.state_place)))
+            }
             _ => span_bug!(state_decl.source_info.span, "unsupported #[loop_match] state"),
         };
 
