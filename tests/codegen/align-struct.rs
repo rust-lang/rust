@@ -1,5 +1,6 @@
 //@ compile-flags: -C no-prepopulate-passes -Z mir-opt-level=0
-//
+// 32bit MSVC does not align things properly so we suppress high alignment annotations (#112480)
+//@ ignore-msvc
 
 #![crate_type = "lib"]
 

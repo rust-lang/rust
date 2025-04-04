@@ -144,6 +144,7 @@ pub struct ArgAttributes {
     /// (corresponding to LLVM's dereferenceable_or_null attributes, i.e., it is okay for this to be
     /// set on a null pointer, but all non-null pointers must be dereferenceable).
     pub pointee_size: Size,
+    /// The minimum alignment of the pointee, if any.
     pub pointee_align: Option<Align>,
 }
 
