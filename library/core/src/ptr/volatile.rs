@@ -1,7 +1,7 @@
 use crate::mem::SizedTypeProperties;
-use crate::intrinsics;
-use crate::macros::cfg;
-use crate::sync::atomic::{AtomicU8, AtomicU16, AtomicU32, Atomicu64};
+#[cfg(not(bootstrap))]
+use crate::sync::atomic::{AtomicU8, AtomicU16, AtomicU32, AtomicU64};
+use crate::{cfg, intrinsics};
 
 /// Performs a volatile read of the value from `src` without moving it. This
 /// leaves the memory in `src` unchanged.
@@ -80,29 +80,34 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
                 is_zst: bool = T::IS_ZST,
             ) => crate::ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
         );
-        match size_of<T>() {
-            1 => if cfg!(target_has_atomic_load_store = "8") && align_of::<T>() == align_of::<AtomicU8>() {
-                    intrinsics::atomic_load_relaxed(src)
-                } else {
-                    intrinsics::volatile_load(dst, val)
-                }
-            2 => if cfg!(target_has_atomic_load_store = "16") && align_of::<T>() == align_of::<AtomicU16>() {
-                    intrinsics::atomic_load_relaxed(src)
-                } else {
-                    intrinsics::volatile_load(dst, val)
-                }
-            4 => if cfg!(target_has_atomic_load_store = "32") && align_of::<T>() == align_of::<AtomicU32>() {
-                    intrinsics::atomic_load_relaxed(src)
-                } else {
-                    intrinsics::volatile_load(dst, val)
-                }
-            8 => if cfg!(target_has_atomic_load_store = "64") && align_of::<T>() == align_of::<AtomicU64>() {
-                    intrinsics::atomic_load_relaxed(src)
-                } else {
-                    intrinsics::volatile_load(dst, val)
-                }
-            _ => intrinsics::volatile_load(dst, val)
+
+        // TODO: Guard patterns
+        #[cfg(not(bootstrap))]
+        match size_of::<T>() {
+            1 if cfg!(target_has_atomic_load_store = "8")
+                && align_of::<T>() == align_of::<AtomicU8>() =>
+            {
+                intrinsics::volatile_load_atomic_relaxed(src)
+            }
+            2 if cfg!(target_has_atomic_load_store = "16")
+                && align_of::<T>() == align_of::<AtomicU16>() =>
+            {
+                intrinsics::volatile_load_atomic_relaxed(src)
+            }
+            4 if cfg!(target_has_atomic_load_store = "32")
+                && align_of::<T>() == align_of::<AtomicU32>() =>
+            {
+                intrinsics::volatile_load_atomic_relaxed(src)
+            }
+            8 if cfg!(target_has_atomic_load_store = "64")
+                && align_of::<T>() == align_of::<AtomicU64>() =>
+            {
+                intrinsics::volatile_load_atomic_relaxed(src)
+            }
+            _ => intrinsics::volatile_load(src),
         }
+        #[cfg(bootstrap)]
+        intrinsics::volatile_load(src)
     }
 }
 
@@ -182,28 +187,33 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
                 is_zst: bool = T::IS_ZST,
             ) => crate::ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
         );
-        match size_of<T>() {
-            1 => if cfg!(target_has_atomic_load_store = "8") && align_of::<T>() == align_of::<AtomicU8>() {
-                    intrinsics::atomic_store_relaxed(dst, val)
-                } else {
-                    intrinsics::volatile_store(dst, val)
-                }
-            2 => if cfg!(target_has_atomic_load_store = "16") && align_of::<T>() == align_of::<AtomicU16>() {
-                    intrinsics::atomic_store_relaxed(dst, val)
-                } else {
-                    intrinsics::volatile_store(dst, val)
-                }
-            4 => if cfg!(target_has_atomic_load_store = "32") && align_of::<T>() == align_of::<AtomicU32>() {
-                    intrinsics::atomic_store_relaxed(dst, val)
-                } else {
-                    intrinsics::volatile_store(dst, val)
-                }
-            8 => if cfg!(target_has_atomic_load_store = "64") && align_of::<T>() == align_of::<AtomicU64>() {
-                    intrinsics::atomic_store_relaxed(dst, val)
-                } else {
-                    intrinsics::volatile_store(dst, val)
-                }
-            _ => intrinsics::volatile_store(dst, val)
+
+        // TODO: Guard patterns
+        #[cfg(not(bootstrap))]
+        match size_of::<T>() {
+            1 if cfg!(target_has_atomic_load_store = "8")
+                && align_of::<T>() == align_of::<AtomicU8>() =>
+            {
+                intrinsics::volatile_store_atomic_relaxed(dst, src)
+            }
+            2 if cfg!(target_has_atomic_load_store = "16")
+                && align_of::<T>() == align_of::<AtomicU16>() =>
+            {
+                intrinsics::volatile_store_atomic_relaxed(dst, src)
+            }
+            4 if cfg!(target_has_atomic_load_store = "32")
+                && align_of::<T>() == align_of::<AtomicU32>() =>
+            {
+                intrinsics::volatile_store_atomic_relaxed(dst, src)
+            }
+            8 if cfg!(target_has_atomic_load_store = "64")
+                && align_of::<T>() == align_of::<AtomicU64>() =>
+            {
+                intrinsics::volatile_store_atomic_relaxed(dst, src)
+            }
+            _ => intrinsics::volatile_store(dst, src),
         }
+        #[cfg(bootstrap)]
+        intrinsics::volatile_store(dst, src)
     }
 }
