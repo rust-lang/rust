@@ -8,7 +8,7 @@ use std::iter;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
-use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
@@ -1441,23 +1441,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[tracing::instrument(level = "trace", skip(tcx))]
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
-        match self.kind() {
-            FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),
-            FnPtr(sig_tys, hdr) => sig_tys.with(*hdr),
-            Error(_) => {
-                // ignore errors (#54954)
-                Binder::dummy(ty::FnSig {
-                    inputs_and_output: ty::List::empty(),
-                    c_variadic: false,
-                    safety: hir::Safety::Safe,
-                    abi: ExternAbi::Rust,
-                })
-            }
-            Closure(..) => bug!(
-                "to get the signature of a closure, use `args.as_closure().sig()` not `fn_sig()`",
-            ),
-            _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self),
-        }
+        self.kind().fn_sig(tcx)
     }
 
     #[inline]
@@ -2043,32 +2027,7 @@ impl<'tcx> Ty<'tcx> {
     /// nested types may be further simplified, the outermost [`TyKind`] or
     /// type constructor remains the same.
     pub fn is_known_rigid(self) -> bool {
-        match self.kind() {
-            Bool
-            | Char
-            | Int(_)
-            | Uint(_)
-            | Float(_)
-            | Adt(_, _)
-            | Foreign(_)
-            | Str
-            | Array(_, _)
-            | Pat(_, _)
-            | Slice(_)
-            | RawPtr(_, _)
-            | Ref(_, _, _)
-            | FnDef(_, _)
-            | FnPtr(..)
-            | Dynamic(_, _, _)
-            | Closure(_, _)
-            | CoroutineClosure(_, _)
-            | Coroutine(_, _)
-            | CoroutineWitness(..)
-            | Never
-            | Tuple(_)
-            | UnsafeBinder(_) => true,
-            Error(_) | Infer(_) | Alias(_, _) | Param(_) | Bound(_, _) | Placeholder(_) => false,
-        }
+        self.kind().is_known_rigid()
     }
 }
 
