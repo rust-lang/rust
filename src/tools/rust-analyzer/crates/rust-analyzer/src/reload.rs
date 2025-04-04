@@ -413,35 +413,26 @@ impl GlobalState {
                 .map(|res| res.as_ref().map_err(|e| e.to_string()))
                 .chain(iter::repeat_with(|| Err("proc-macro-srv is not running".into())));
             for (client, paths) in proc_macro_clients.zip(paths) {
-                paths
-                    .into_iter()
-                    .map(move |(crate_id, res)| {
-                        (
-                            crate_id,
-                            res.map_or_else(
-                                |e| Err((e, true)),
-                                |(crate_name, path)| {
-                                    progress(path.to_string());
-                                    client.as_ref().map_err(|it| (it.clone(), true)).and_then(
-                                        |client| {
-                                            load_proc_macro(
-                                                client,
-                                                &path,
-                                                ignored_proc_macros
-                                                    .iter()
-                                                    .find_map(|(name, macros)| {
-                                                        eq_ignore_underscore(name, &crate_name)
-                                                            .then_some(&**macros)
-                                                    })
-                                                    .unwrap_or_default(),
-                                            )
-                                        },
-                                    )
-                                },
-                            ),
-                        )
-                    })
-                    .for_each(|(krate, res)| builder.insert(krate, res));
+                for (crate_id, res) in paths.iter() {
+                    let expansion_res = match client {
+                        Ok(client) => match res {
+                            Ok((crate_name, path)) => {
+                                progress(path.to_string());
+                                let ignored_proc_macros = ignored_proc_macros
+                                    .iter()
+                                    .find_map(|(name, macros)| {
+                                        eq_ignore_underscore(name, crate_name).then_some(&**macros)
+                                    })
+                                    .unwrap_or_default();
+
+                                load_proc_macro(client, path, ignored_proc_macros)
+                            }
+                            Err(e) => Err((e.clone(), true)),
+                        },
+                        Err(ref e) => Err((e.clone(), true)),
+                    };
+                    builder.insert(*crate_id, expansion_res)
+                }
             }
 
             change.set_proc_macros(builder);
@@ -645,7 +636,7 @@ impl GlobalState {
             Config::user_config_dir_path().as_deref(),
         );
 
-        if (self.proc_macro_clients.is_empty() || !same_workspaces)
+        if (self.proc_macro_clients.len() < self.workspaces.len() || !same_workspaces)
             && self.config.expand_proc_macros()
         {
             info!("Spawning proc-macro servers");
