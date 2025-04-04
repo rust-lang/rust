@@ -1048,7 +1048,7 @@ fn remove_casts_must_change_both_sides(mut_a: &*mut u8, mut_b: *mut u8) -> bool 
             let a = *mut_a as *const u8;
             // CHECK: [[B:_.+]] = copy _2 as *const u8 (PtrToPtr);
             let b = mut_b as *const u8;
-            // CHECK: _0 = Eq(copy (*_1), copy _2);
+            // CHECK: _0 = Eq(copy [[A]], copy [[B]]);
             RET = a == b;
             Return()
         }
