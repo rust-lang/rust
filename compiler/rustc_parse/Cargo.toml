@@ -15,6 +15,7 @@ rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_index = { path = "../rustc_index" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_macros = { path = "../rustc_macros" }
+rustc-literal-escaper = "0.0.1"
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 thin-vec = "0.2.12"
