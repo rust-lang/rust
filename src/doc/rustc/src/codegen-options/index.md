@@ -244,17 +244,22 @@ flag for another way to specify the linker.
 
 ## linker-features
 
-This flag allows enabling or disabling specific features used during linking.
+The `-Clinker-features` flag allows enabling or disabling specific features used during linking.
+
+These feature flags are a flexible extension mechanism that is complementary to linker flavors,
+designed to avoid the combinatorial explosion of having to create a new set of flavors for each
+linker feature we'd want to use.
 
 The flag accepts a comma-separated list of features, individually enabled (`+feature`) or disabled
 (`-feature`).
 
-Currently, only one such feature is stable:
-- `lld`: toggles the usage of the lld linker, either the system-installed binary, or the self-contained
-  `rust-lld` linker.
+Currently only one is stable, and only on the `x86_64-unknown-linux-gnu` target:
+- `lld`: to toggle using the lld linker, either the system-installed binary, or the self-contained
+  `rust-lld` linker (via the `-Clink-self-contained=+linker` flag).
 
-If you want to opt out of the usage of the `lld` linker (for targets where it is configured as the default linker),
-use `-Clinker-features=-lld`.
+For example, use:
+- `-Clinker-features=+lld` to opt in to using the `lld` linker
+- `-Clinker-features=-lld` to opt out instead, for targets where it is configured as the default linker
 
 ## linker-flavor
 
