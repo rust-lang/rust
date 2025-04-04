@@ -172,33 +172,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     };
 
     if let Node::TraitItem(item) = node {
-        let parent = tcx.local_parent(item.hir_id().owner.def_id);
-        let Node::Item(parent_trait) = tcx.hir_node_by_def_id(parent) else {
-            unreachable!();
-        };
-
-        let (trait_generics, trait_bounds) = match parent_trait.kind {
-            hir::ItemKind::Trait(_, _, _, generics, supertraits, _) => (generics, supertraits),
-            hir::ItemKind::TraitAlias(_, generics, supertraits) => (generics, supertraits),
-            _ => unreachable!(),
-        };
-
-        // Implicitly add `Self: DefaultAutoTrait` clauses on trait associated items if
-        // they are not added as super trait bounds to the trait itself. See comment on
-        // `requires_default_supertraits` for more details.
-        if !icx.lowerer().requires_default_supertraits(trait_bounds, trait_generics) {
-            let mut bounds = Vec::new();
-            let self_ty_where_predicates = (parent, item.generics.predicates);
-            icx.lowerer().add_default_traits_with_filter(
-                &mut bounds,
-                tcx.types.self_param,
-                &[],
-                Some(self_ty_where_predicates),
-                item.span,
-                |tr| tr != hir::LangItem::Sized,
-            );
-            predicates.extend(bounds);
-        }
+        let mut bounds = Vec::new();
+        icx.lowerer().add_default_trait_item_bounds(item, &mut bounds);
+        predicates.extend(bounds);
     }
 
     let generics = tcx.generics_of(def_id);
