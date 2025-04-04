@@ -48,7 +48,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
@@ -782,7 +782,22 @@ pub struct OpaqueHiddenType<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+/// Whether we're currently in HIR typeck or MIR borrowck.
+#[derive(Debug, Clone, Copy)]
+pub enum DefiningScopeKind {
+    /// During writeback in typeck, we don't care about regions and simply
+    /// erase them. This means we also don't check whether regions are
+    /// universal in the opaque type key. This will only be checked in
+    /// MIR borrowck.
+    HirTypeck,
+    MirBorrowck,
+}
+
 impl<'tcx> OpaqueHiddenType<'tcx> {
+    pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> OpaqueHiddenType<'tcx> {
+        OpaqueHiddenType { span: DUMMY_SP, ty: Ty::new_error(tcx, guar) }
+    }
+
     pub fn build_mismatch_error(
         &self,
         other: &Self,
@@ -808,8 +823,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         tcx: TyCtxt<'tcx>,
-        // typeck errors have subpar spans for opaque types, so delay error reporting until borrowck.
-        ignore_errors: bool,
+        defining_scope_kind: DefiningScopeKind,
     ) -> Self {
         let OpaqueTypeKey { def_id, args } = opaque_type_key;
 
@@ -828,10 +842,19 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         let map = args.iter().zip(id_args).collect();
         debug!("map = {:#?}", map);
 
-        // Convert the type from the function into a type valid outside
-        // the function, by replacing invalid regions with 'static,
-        // after producing an error for each of them.
-        self.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span, ignore_errors))
+        // Convert the type from the function into a type valid outside by mapping generic
+        // parameters to into the context of the opaque.
+        //
+        // We erase regions when doing this during HIR typeck.
+        let this = match defining_scope_kind {
+            DefiningScopeKind::HirTypeck => tcx.erase_regions(self),
+            DefiningScopeKind::MirBorrowck => self,
+        };
+        let result = this.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span));
+        if cfg!(debug_assertions) && matches!(defining_scope_kind, DefiningScopeKind::HirTypeck) {
+            assert_eq!(result.ty, tcx.erase_regions(result.ty));
+        }
+        result
     }
 }
 
