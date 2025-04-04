@@ -2,7 +2,7 @@
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
-use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::infer::{InferCtxt, InferOk, RegionVariableOrigin};
 use rustc_infer::traits::{
     FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
 };
@@ -11,7 +11,7 @@ use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt,
-    TypingMode,
+    TypingMode, fold_regions,
 };
 use tracing::{debug, instrument};
 
@@ -127,11 +127,10 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     // Opaques are treated as rigid outside of `TypingMode::PostAnalysis`,
     // so we can ignore those.
     match infcx.typing_mode() {
-        // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
-        TypingMode::Coherence
-        | TypingMode::Analysis { .. }
-        | TypingMode::PostBorrowckAnalysis { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
-        TypingMode::PostAnalysis => {}
+        TypingMode::Coherence | TypingMode::Analysis { .. } => {
+            flags.remove(ty::TypeFlags::HAS_TY_OPAQUE)
+        }
+        TypingMode::PostBorrowckAnalysis { .. } | TypingMode::PostAnalysis => {}
     }
 
     value.has_type_flags(flags)
@@ -168,6 +167,39 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         );
 
         if !needs_normalization(self.selcx.infcx, &value) { value } else { value.fold_with(self) }
+    }
+
+    fn normalize_opaque_ty(&mut self, ty: Ty<'tcx>, data: ty::AliasTy<'tcx>) -> Ty<'tcx> {
+        let recursion_limit = self.cx().recursion_limit();
+        if !recursion_limit.value_within_limit(self.depth) {
+            self.selcx.infcx.err_ctxt().report_overflow_error(
+                OverflowCause::DeeplyNormalize(data.into()),
+                self.cause.span,
+                true,
+                |_| {},
+            );
+        }
+
+        let args = data.args.fold_with(self);
+        let generic_ty = self.cx().type_of(data.def_id);
+        let mut concrete_ty = generic_ty.instantiate(self.cx(), args);
+
+        if concrete_ty == ty {
+            concrete_ty =
+                Ty::new_error_with_message(self.cx(), self.cause.span, "recursive opaque type");
+        }
+
+        let concrete_ty = fold_regions(self.cx(), concrete_ty, |re, _dbi| match re.kind() {
+            ty::ReErased => self.selcx.infcx.next_region_var_in_universe(
+                RegionVariableOrigin::MiscVariable(self.cause.span),
+                ty::UniverseIndex::ROOT,
+            ),
+            _ => re,
+        });
+        self.depth += 1;
+        let folded_ty = self.fold_ty(concrete_ty);
+        self.depth -= 1;
+        folded_ty
     }
 }
 
@@ -223,29 +255,20 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             ty::Opaque => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.selcx.infcx.typing_mode() {
-                    // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
-                    TypingMode::Coherence
-                    | TypingMode::Analysis { .. }
-                    | TypingMode::PostBorrowckAnalysis { .. } => ty.super_fold_with(self),
-                    TypingMode::PostAnalysis => {
-                        let recursion_limit = self.cx().recursion_limit();
-                        if !recursion_limit.value_within_limit(self.depth) {
-                            self.selcx.infcx.err_ctxt().report_overflow_error(
-                                OverflowCause::DeeplyNormalize(data.into()),
-                                self.cause.span,
-                                true,
-                                |_| {},
-                            );
+                    TypingMode::Coherence | TypingMode::Analysis { .. } => ty.super_fold_with(self),
+                    TypingMode::PostBorrowckAnalysis { defined_opaque_types } => {
+                        if data
+                            .def_id
+                            .as_local()
+                            .is_some_and(|def_id| defined_opaque_types.contains(&def_id))
+                        {
+                            self.normalize_opaque_ty(ty, data)
+                        } else {
+                            // Treat non-defining opaques as rigid
+                            ty.super_fold_with(self)
                         }
-
-                        let args = data.args.fold_with(self);
-                        let generic_ty = self.cx().type_of(data.def_id);
-                        let concrete_ty = generic_ty.instantiate(self.cx(), args);
-                        self.depth += 1;
-                        let folded_ty = self.fold_ty(concrete_ty);
-                        self.depth -= 1;
-                        folded_ty
                     }
+                    TypingMode::PostAnalysis => self.normalize_opaque_ty(ty, data),
                 }
             }
 

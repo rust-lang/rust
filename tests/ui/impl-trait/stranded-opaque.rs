@@ -8,6 +8,7 @@ impl Trait for i32 {}
 fn produce<T>() -> impl Trait<Assoc = impl Trait> {
     //~^ ERROR associated type `Assoc` not found for `Trait`
     //~| ERROR associated type `Assoc` not found for `Trait`
+    //~| ERROR the trait bound `(): Trait` is not satisfied
     16
 }
 
