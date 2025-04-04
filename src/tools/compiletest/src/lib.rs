@@ -12,6 +12,7 @@ pub mod common;
 pub mod compute_diff;
 mod debuggers;
 pub mod errors;
+mod executor;
 pub mod header;
 mod json;
 mod raise_fd_limit;
@@ -32,7 +33,6 @@ use std::{env, fs, vec};
 
 use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use getopts::Options;
-use test::ColorConfig;
 use tracing::*;
 use walkdir::WalkDir;
 
@@ -41,6 +41,7 @@ use crate::common::{
     CompareMode, Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
     output_base_dir, output_relative_path,
 };
+use crate::executor::{CollectedTest, ColorConfig, OutputFormat};
 use crate::header::HeadersCache;
 use crate::util::logv;
 
@@ -50,6 +51,12 @@ use crate::util::logv;
 /// some code here that inspects environment variables or even runs executables
 /// (e.g. when discovering debugger versions).
 pub fn parse_config(args: Vec<String>) -> Config {
+    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
+        eprintln!(
+            "WARNING: RUST_TEST_NOCAPTURE is not supported. Use the `--no-capture` flag instead."
+        );
+    }
+
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
@@ -128,6 +135,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "bless",
             "overwrite stderr/stdout files instead of complaining about a mismatch",
         )
+        .optflag("", "fail-fast", "stop as soon as possible after any test fails")
         .optflag("", "quiet", "print one character per test instead of one line")
         .optopt("", "color", "coloring: auto, always, never", "WHEN")
         .optflag("", "json", "emit json output instead of plaintext output")
@@ -319,6 +327,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     Config {
         bless: matches.opt_present("bless"),
+        fail_fast: matches.opt_present("fail-fast")
+            || env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
+
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
@@ -392,9 +403,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         verbose: matches.opt_present("verbose"),
         format: match (matches.opt_present("quiet"), matches.opt_present("json")) {
             (true, true) => panic!("--quiet and --json are incompatible"),
-            (true, false) => test::OutputFormat::Terse,
-            (false, true) => test::OutputFormat::Json,
-            (false, false) => test::OutputFormat::Pretty,
+            (true, false) => OutputFormat::Terse,
+            (false, true) => OutputFormat::Json,
+            (false, false) => OutputFormat::Pretty,
         },
         only_modified: matches.opt_present("only-modified"),
         color,
@@ -525,8 +536,6 @@ pub fn run_tests(config: Arc<Config>) {
     // Let tests know which target they're running as
     env::set_var("TARGET", &config.target);
 
-    let opts = test_opts(&config);
-
     let mut configs = Vec::new();
     if let Mode::DebugInfo = config.mode {
         // Debugging emscripten code doesn't make sense today
@@ -553,12 +562,12 @@ pub fn run_tests(config: Arc<Config>) {
         tests.extend(collect_and_make_tests(c));
     }
 
-    tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
+    tests.sort_by(|a, b| Ord::cmp(&a.desc.name, &b.desc.name));
 
     // Delegate to libtest to filter and run the big list of structures created
-    // during test discovery. When libtest decides to run a test, it will invoke
-    // the corresponding closure created by `make_test_closure`.
-    let res = test::run_tests_console(&opts, tests);
+    // during test discovery. When libtest decides to run a test, it will
+    // return control to compiletest by invoking a closure.
+    let res = crate::executor::execute_tests(&config, tests);
 
     // Check the outcome reported by libtest.
     match res {
@@ -602,37 +611,6 @@ pub fn run_tests(config: Arc<Config>) {
     }
 }
 
-pub fn test_opts(config: &Config) -> test::TestOpts {
-    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
-        eprintln!(
-            "WARNING: RUST_TEST_NOCAPTURE is no longer used. \
-                   Use the `--nocapture` flag instead."
-        );
-    }
-
-    test::TestOpts {
-        exclude_should_panic: false,
-        filters: config.filters.clone(),
-        filter_exact: config.filter_exact,
-        run_ignored: if config.run_ignored { test::RunIgnored::Yes } else { test::RunIgnored::No },
-        format: config.format,
-        logfile: config.logfile.clone(),
-        run_tests: true,
-        bench_benchmarks: true,
-        nocapture: config.nocapture,
-        color: config.color,
-        shuffle: false,
-        shuffle_seed: None,
-        test_threads: None,
-        skip: config.skip.clone(),
-        list: false,
-        options: test::Options::new(),
-        time_options: None,
-        force_run_in_process: false,
-        fail_fast: std::env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
-    }
-}
-
 /// Read-only context data used during test collection.
 struct TestCollectorCx {
     config: Arc<Config>,
@@ -643,17 +621,17 @@ struct TestCollectorCx {
 
 /// Mutable state used during test collection.
 struct TestCollector {
-    tests: Vec<test::TestDescAndFn>,
+    tests: Vec<CollectedTest>,
     found_path_stems: HashSet<PathBuf>,
     poisoned: bool,
 }
 
-/// Creates libtest structures for every test/revision in the test suite directory.
+/// Creates test structures for every test/revision in the test suite directory.
 ///
 /// This always inspects _all_ test files in the suite (e.g. all 17k+ ui tests),
 /// regardless of whether any filters/tests were specified on the command-line,
 /// because filtering is handled later by libtest.
-pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
+pub(crate) fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> {
     debug!("making tests from {}", config.src_test_suite_root.display());
     let common_inputs_stamp = common_inputs_stamp(&config);
     let modified_tests =
@@ -882,7 +860,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     };
 
     // For each revision (or the sole dummy revision), create and append a
-    // `test::TestDescAndFn` that can be handed over to libtest.
+    // `CollectedTest` that can be handed over to the test executor.
     collector.tests.extend(revisions.into_iter().map(|revision| {
         // Create a test name and description to hand over to libtest.
         let src_file = fs::File::open(&test_path).expect("open test file to parse ignores");
@@ -905,13 +883,14 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
         if !cx.config.force_rerun && is_up_to_date(cx, testpaths, &early_props, revision) {
             desc.ignore = true;
             // Keep this in sync with the "up-to-date" message detected by bootstrap.
-            desc.ignore_message = Some("up-to-date");
+            desc.ignore_message = Some("up-to-date".into());
         }
 
-        // Create the callback that will run this test/revision when libtest calls it.
-        let testfn = make_test_closure(Arc::clone(&cx.config), testpaths, revision);
+        let config = Arc::clone(&cx.config);
+        let testpaths = testpaths.clone();
+        let revision = revision.map(str::to_owned);
 
-        test::TestDescAndFn { desc, testfn }
+        CollectedTest { desc, config, testpaths, revision }
     }));
 }
 
@@ -1043,11 +1022,7 @@ impl Stamp {
 }
 
 /// Creates a name for this test/revision that can be handed over to libtest.
-fn make_test_name(
-    config: &Config,
-    testpaths: &TestPaths,
-    revision: Option<&str>,
-) -> test::TestName {
+fn make_test_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> String {
     // Print the name of the file, relative to the sources root.
     let path = testpaths.file.strip_prefix(&config.src_root).unwrap();
     let debugger = match config.debugger {
@@ -1059,32 +1034,14 @@ fn make_test_name(
         None => String::new(),
     };
 
-    test::DynTestName(format!(
+    format!(
         "[{}{}{}] {}{}",
         config.mode,
         debugger,
         mode_suffix,
         path.display(),
         revision.map_or("".to_string(), |rev| format!("#{}", rev))
-    ))
-}
-
-/// Creates a callback for this test/revision that libtest will call when it
-/// decides to actually run the underlying test.
-fn make_test_closure(
-    config: Arc<Config>,
-    testpaths: &TestPaths,
-    revision: Option<&str>,
-) -> test::TestFn {
-    let testpaths = testpaths.clone();
-    let revision = revision.map(str::to_owned);
-
-    // This callback is the link between compiletest's test discovery code,
-    // and the parts of compiletest that know how to run an individual test.
-    test::DynTestFn(Box::new(move || {
-        runtest::run(config, &testpaths, revision.as_deref());
-        Ok(())
-    }))
+    )
 }
 
 /// Checks that test discovery didn't find any tests whose name stem is a prefix
