@@ -969,7 +969,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         };
 
-        // If we can detect the expression to be an function or method call where the closure was
+        // If we can detect the expression to be a function or method call where the closure was
         // an argument, we point at the function or method definition argument...
         if let Some((callee_def_id, call_span, call_args)) = get_call_details() {
             let arg_pos = call_args

@@ -1147,10 +1147,8 @@ pub struct Destructor {
 // FIXME: consider combining this definition with regular `Destructor`
 #[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
 pub struct AsyncDestructor {
-    /// The `DefId` of the async destructor future constructor
-    pub ctor: DefId,
-    /// The `DefId` of the async destructor future type
-    pub future: DefId,
+    /// The `DefId` of the `impl AsyncDrop`
+    pub impl_did: LocalDefId,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
