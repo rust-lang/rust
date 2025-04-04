@@ -1,17 +1,17 @@
 //! This module provides `StaticIndex` which is used for powering
 //! read-only code browsers and emitting LSIF
 
+use arrayvec::ArrayVec;
 use hir::{Crate, HirFileIdExt, Module, Semantics, db::HirDatabase};
 use ide_db::{
     FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
     base_db::{RootQueryDb, SourceDatabase, VfsPath},
-    defs::Definition,
+    defs::{Definition, IdentClass},
     documentation::Documentation,
     famous_defs::FamousDefs,
-    helpers::get_definition,
 };
 use span::Edition;
-use syntax::{AstNode, SyntaxKind::*, SyntaxNode, T, TextRange};
+use syntax::{AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, T, TextRange};
 
 use crate::navigation_target::UpmappingResult;
 use crate::{
@@ -124,6 +124,22 @@ fn documentation_for_definition(
             })
             .to_display_target(sema.db),
     )
+}
+
+// FIXME: This is a weird function
+fn get_definitions(
+    sema: &Semantics<'_, RootDatabase>,
+    token: SyntaxToken,
+) -> Option<ArrayVec<Definition, 2>> {
+    for token in sema.descend_into_macros_exact(token) {
+        let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
+        if let Some(defs) = def {
+            if !defs.is_empty() {
+                return Some(defs);
+            }
+        }
+    }
+    None
 }
 
 pub enum VendoredLibrariesConfig<'a> {
@@ -257,11 +273,14 @@ impl StaticIndex<'_> {
         for token in tokens {
             let range = token.text_range();
             let node = token.parent().unwrap();
-            let def = match get_definition(&sema, token.clone()) {
-                Some(it) => it,
+            match get_definitions(&sema, token.clone()) {
+                Some(it) => {
+                    for i in it {
+                        add_token(i, range, &node);
+                    }
+                }
                 None => continue,
             };
-            add_token(def, range, &node);
         }
         self.files.push(result);
     }
@@ -308,7 +327,7 @@ impl StaticIndex<'_> {
 #[cfg(test)]
 mod tests {
     use crate::{StaticIndex, fixture};
-    use ide_db::{FileRange, FxHashSet, base_db::VfsPath};
+    use ide_db::{FileRange, FxHashMap, FxHashSet, base_db::VfsPath};
     use syntax::TextSize;
 
     use super::VendoredLibrariesConfig;
@@ -363,6 +382,71 @@ mod tests {
         }
     }
 
+    #[track_caller]
+    fn check_references(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        vendored_libs_config: VendoredLibrariesConfig<'_>,
+    ) {
+        let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
+        let s = StaticIndex::compute(&analysis, vendored_libs_config);
+        let mut range_set: FxHashMap<_, i32> = ranges.iter().map(|it| (it.0, 0)).collect();
+
+        // Make sure that all references have at least one range. We use a HashMap instead of a
+        // a HashSet so that we can have more than one reference at the same range.
+        for (_, t) in s.tokens.iter() {
+            for r in &t.references {
+                if r.is_definition {
+                    continue;
+                }
+                if r.range.range.start() == TextSize::from(0) {
+                    // ignore whole file range corresponding to module definition
+                    continue;
+                }
+                match range_set.entry(r.range) {
+                    std::collections::hash_map::Entry::Occupied(mut entry) => {
+                        let count = entry.get_mut();
+                        *count += 1;
+                    }
+                    std::collections::hash_map::Entry::Vacant(_) => {
+                        panic!("additional reference {r:?}");
+                    }
+                }
+            }
+        }
+        for (range, count) in range_set.iter() {
+            if *count == 0 {
+                panic!("unfound reference {range:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn field_initialization() {
+        check_references(
+            r#"
+struct Point {
+    x: f64,
+     //^^^
+    y: f64,
+     //^^^
+}
+    fn foo() {
+        let x = 5.;
+        let y = 10.;
+        let mut p = Point { x, y };
+                  //^^^^^   ^  ^
+        p.x = 9.;
+      //^ ^
+        p.y = 10.;
+      //^ ^
+    }
+"#,
+            VendoredLibrariesConfig::Included {
+                workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
+            },
+        );
+    }
+
     #[test]
     fn struct_and_enum() {
         check_all_ranges(
@@ -382,6 +466,17 @@ struct Foo;
      //^^^
 enum E { X(Foo) }
    //^   ^
+"#,
+            VendoredLibrariesConfig::Included {
+                workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
+            },
+        );
+
+        check_references(
+            r#"
+struct Foo;
+enum E { X(Foo) }
+   //      ^^^
 "#,
             VendoredLibrariesConfig::Included {
                 workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
