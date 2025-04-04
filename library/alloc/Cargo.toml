@@ -36,5 +36,4 @@ check-cfg = [
     'cfg(no_global_oom_handling)',
     'cfg(no_rc)',
     'cfg(no_sync)',
-    'cfg(randomized_layouts)',
 ]
