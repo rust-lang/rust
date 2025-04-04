@@ -9,9 +9,9 @@ use std::{fmt, iter};
 use build_helper::git::GitConfig;
 use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
-use test::{ColorConfig, OutputFormat};
 
 pub use self::Mode::*;
+use crate::executor::{ColorConfig, OutputFormat};
 use crate::util::{PathBufExt, add_dylib_path};
 
 macro_rules! string_enum {
@@ -177,6 +177,10 @@ pub enum Sanitizer {
 pub struct Config {
     /// `true` to overwrite stderr/stdout files instead of complaining about changes in output.
     pub bless: bool,
+
+    /// Stop as soon as possible after any test fails.
+    /// May run a few more tests before stopping, due to threading.
+    pub fail_fast: bool,
 
     /// The library paths required for running the compiler.
     pub compile_lib_path: PathBuf,
