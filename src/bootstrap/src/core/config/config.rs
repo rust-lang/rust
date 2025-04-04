@@ -417,6 +417,9 @@ pub struct Config {
     /// Command for visual diff display, e.g. `diff-tool --color=always`.
     pub compiletest_diff_tool: Option<String>,
 
+    /// Whether to use the precompiled stage0 libtest with compiletest.
+    pub compiletest_use_stage0_libtest: bool,
+
     pub is_running_on_ci: bool,
 }
 
@@ -983,6 +986,7 @@ define_config! {
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
         jobs: Option<u32> = "jobs",
         compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
+        compiletest_use_stage0_libtest: Option<bool> = "compiletest-use-stage0-libtest",
         ccache: Option<StringOrBool> = "ccache",
         exclude: Option<Vec<PathBuf>> = "exclude",
     }
@@ -1682,6 +1686,7 @@ impl Config {
             optimized_compiler_builtins,
             jobs,
             compiletest_diff_tool,
+            compiletest_use_stage0_libtest,
             mut ccache,
             exclude,
         } = toml.build.unwrap_or_default();
@@ -2415,6 +2420,7 @@ impl Config {
         config.optimized_compiler_builtins =
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
         config.compiletest_diff_tool = compiletest_diff_tool;
+        config.compiletest_use_stage0_libtest = compiletest_use_stage0_libtest.unwrap_or(true);
 
         let download_rustc = config.download_rustc_commit.is_some();
         config.explicit_stage_from_cli = flags.stage.is_some();
