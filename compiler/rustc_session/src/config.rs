@@ -366,16 +366,10 @@ impl LinkSelfContained {
             return false;
         }
 
+        // Only the linker component is stable, anything else is thus unstable.
         let mentioned_components = self.enabled_components.union(self.disabled_components);
-        for component in LinkSelfContainedComponents::all() {
-            if mentioned_components.contains(component) {
-                // Only the linker component is stable now
-                if component != LinkSelfContainedComponents::LINKER {
-                    return true;
-                }
-            }
-        }
-        false
+        let unstable_components = mentioned_components - LinkSelfContainedComponents::LINKER;
+        !unstable_components.is_empty()
     }
 
     /// Returns whether the self-contained linker component was enabled on the CLI, using the
