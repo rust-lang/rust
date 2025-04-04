@@ -30,7 +30,6 @@ fn bar() {
     foo_const(x);
 
     let x: Pin<&_> = &pin const Foo;
-
     foo_const(x);
     foo_const(x);
 }
