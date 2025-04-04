@@ -130,6 +130,12 @@ Set this to `"all"` to pass `--all-features` to cargo.
  Whether to pass `--no-default-features` to cargo.
 
 
+**rust-analyzer.cargo.noDeps** (default: false)
+
+ Whether to skip fetching dependencies. If set to "true", the analysis is performed
+entirely offline, and Cargo metadata for dependencies is not fetched.
+
+
 **rust-analyzer.cargo.sysroot** (default: "discover")
 
  Relative path to the sysroot, or "discover" to try to automatically find it via

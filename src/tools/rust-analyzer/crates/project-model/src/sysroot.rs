@@ -300,6 +300,7 @@ impl Sysroot {
             rust_lib_src_dir,
             &cargo_config,
             self,
+            false,
             // Make sure we never attempt to write to the sysroot
             true,
             &|_| (),

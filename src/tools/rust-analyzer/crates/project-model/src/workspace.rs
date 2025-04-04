@@ -220,6 +220,7 @@ impl ProjectWorkspace {
             sysroot,
             sysroot_src,
             target,
+            no_deps,
             ..
         } = config;
         let mut sysroot = match (sysroot, sysroot_src) {
@@ -301,6 +302,7 @@ impl ProjectWorkspace {
                             extra_env: extra_env.clone(),
                         },
                         &sysroot,
+                        *no_deps,
                         false,
                         &|_| (),
                     ) {
@@ -343,6 +345,7 @@ impl ProjectWorkspace {
                         extra_env: extra_env.clone(),
                     },
                     &sysroot,
+                    *no_deps,
                     false,
                     &|_| (),
                 )
@@ -511,6 +514,7 @@ impl ProjectWorkspace {
                 extra_env: config.extra_env.clone(),
             },
             &sysroot,
+            config.no_deps,
             false,
             &|_| (),
         )
