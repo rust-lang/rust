@@ -95,7 +95,7 @@ fn open_link_no_reparse(
             ObjectName: &mut path_str,
             RootDirectory: parent.as_raw_handle(),
             Attributes: ATTRIBUTES.load(Ordering::Relaxed),
-            ..c::OBJECT_ATTRIBUTES::default()
+            ..c::OBJECT_ATTRIBUTES::with_length()
         };
         let share = c::FILE_SHARE_DELETE | c::FILE_SHARE_READ | c::FILE_SHARE_WRITE;
         let options = c::FILE_OPEN_REPARSE_POINT | options;
