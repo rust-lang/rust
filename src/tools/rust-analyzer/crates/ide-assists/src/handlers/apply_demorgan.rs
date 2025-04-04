@@ -64,7 +64,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         _ => return None,
     };
 
-    let make = SyntaxFactory::new();
+    let make = SyntaxFactory::with_mappings();
 
     let demorganed = bin_expr.clone_subtree();
     let mut editor = SyntaxEditor::new(demorganed.syntax().clone());
@@ -111,7 +111,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         "Apply De Morgan's law",
         op_range,
         |builder| {
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
             let paren_expr = bin_expr.syntax().parent().and_then(ast::ParenExpr::cast);
             let neg_expr = paren_expr
                 .clone()
@@ -194,7 +194,7 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
         label,
         op_range,
         |builder| {
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
             let mut editor = builder.make_editor(method_call.syntax());
             // replace the method name
             let new_name = match name.text().as_str() {

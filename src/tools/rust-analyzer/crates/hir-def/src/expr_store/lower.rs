@@ -2053,7 +2053,7 @@ impl ExprCollector<'_> {
         f: ast::FormatArgsExpr,
         syntax_ptr: AstPtr<ast::Expr>,
     ) -> ExprId {
-        let mut args = FormatArgumentsCollector::new();
+        let mut args = FormatArgumentsCollector::default();
         f.args().for_each(|arg| {
             args.add(FormatArgument {
                 kind: match arg.name() {

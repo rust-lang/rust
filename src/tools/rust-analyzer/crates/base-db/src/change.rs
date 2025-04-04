@@ -34,10 +34,6 @@ impl fmt::Debug for FileChange {
 }
 
 impl FileChange {
-    pub fn new() -> Self {
-        FileChange::default()
-    }
-
     pub fn set_roots(&mut self, roots: Vec<SourceRoot>) {
         self.roots = Some(roots);
     }

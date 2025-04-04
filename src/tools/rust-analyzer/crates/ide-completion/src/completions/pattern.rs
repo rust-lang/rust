@@ -48,7 +48,7 @@ pub(crate) fn complete_pattern(
 
     // Suggest name only in let-stmt and fn param
     if pattern_ctx.should_suggest_name {
-        let mut name_generator = suggest_name::NameGenerator::new();
+        let mut name_generator = suggest_name::NameGenerator::default();
         if let Some(suggested) = ctx
             .expected_type
             .as_ref()

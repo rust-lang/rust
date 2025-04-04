@@ -26,7 +26,7 @@ impl ProcMacros {
         let parsed_body = crate::server_impl::TokenStream::with_subtree(macro_body);
 
         let parsed_attributes = attributes
-            .map_or_else(crate::server_impl::TokenStream::new, |attr| {
+            .map_or_else(crate::server_impl::TokenStream::default, |attr| {
                 crate::server_impl::TokenStream::with_subtree(attr)
             });
 

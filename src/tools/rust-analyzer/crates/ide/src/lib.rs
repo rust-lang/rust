@@ -238,7 +238,7 @@ impl Analysis {
         file_set.insert(file_id, VfsPath::new_virtual_path("/main.rs".to_owned()));
         let source_root = SourceRoot::new_local(file_set);
 
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.set_roots(vec![source_root]);
         let mut crate_graph = CrateGraphBuilder::default();
         // FIXME: cfg options

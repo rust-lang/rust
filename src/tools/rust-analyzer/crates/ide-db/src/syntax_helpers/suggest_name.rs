@@ -96,21 +96,16 @@ pub struct NameGenerator {
 }
 
 impl NameGenerator {
-    /// Create a new empty generator
-    pub fn new() -> Self {
-        Self { pool: FxHashMap::default() }
-    }
-
     /// Create a new generator with existing names. When suggesting a name, it will
     /// avoid conflicts with existing names.
     pub fn new_with_names<'a>(existing_names: impl Iterator<Item = &'a str>) -> Self {
-        let mut generator = Self::new();
+        let mut generator = Self::default();
         existing_names.for_each(|name| generator.insert(name));
         generator
     }
 
     pub fn new_from_scope_locals(scope: Option<SemanticsScope<'_>>) -> Self {
-        let mut generator = Self::new();
+        let mut generator = Self::default();
         if let Some(scope) = scope {
             scope.process_all_names(&mut |name, scope| {
                 if let hir::ScopeDef::Local(_) = scope {
@@ -471,7 +466,7 @@ mod tests {
             frange.range,
             "selection is not an expression(yet contained in one)"
         );
-        let name = NameGenerator::new().for_variable(&expr, &sema);
+        let name = NameGenerator::default().for_variable(&expr, &sema);
         assert_eq!(&name, expected);
     }
 
@@ -1118,7 +1113,7 @@ fn main() {
 
     #[test]
     fn conflicts_with_existing_names() {
-        let mut generator = NameGenerator::new();
+        let mut generator = NameGenerator::default();
         assert_eq!(generator.suggest_name("a"), "a");
         assert_eq!(generator.suggest_name("a"), "a1");
         assert_eq!(generator.suggest_name("a"), "a2");

@@ -77,7 +77,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
 
     let cfg = ctx.config.import_path_config();
 
-    let make = SyntaxFactory::new();
+    let make = SyntaxFactory::with_mappings();
 
     let module = ctx.sema.scope(expr.syntax())?.module();
     let (mut missing_pats, is_non_exhaustive, has_hidden_variants): (
@@ -467,7 +467,7 @@ fn build_pat(
             let fields = var.fields(db);
             let pat: ast::Pat = match var.kind(db) {
                 hir::StructKind::Tuple => {
-                    let mut name_generator = suggest_name::NameGenerator::new();
+                    let mut name_generator = suggest_name::NameGenerator::default();
                     let pats = fields.into_iter().map(|f| {
                         let name = name_generator.for_type(&f.ty(db), db, edition);
                         match name {

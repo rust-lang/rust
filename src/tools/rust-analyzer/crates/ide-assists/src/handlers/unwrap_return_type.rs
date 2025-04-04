@@ -67,7 +67,7 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 
     acc.add(kind.assist_id(), kind.label(), type_ref.syntax().text_range(), |builder| {
         let mut editor = builder.make_editor(&parent);
-        let make = SyntaxFactory::new();
+        let make = SyntaxFactory::with_mappings();
 
         let mut exprs_to_unwrap = Vec::new();
         let tail_cb = &mut |e: &_| tail_cb_impl(&mut exprs_to_unwrap, e);

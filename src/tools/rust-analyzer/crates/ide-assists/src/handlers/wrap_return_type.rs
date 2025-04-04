@@ -77,7 +77,7 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             type_ref.syntax().text_range(),
             |builder| {
                 let mut editor = builder.make_editor(&parent);
-                let make = SyntaxFactory::new();
+                let make = SyntaxFactory::with_mappings();
                 let alias = wrapper_alias(ctx, &make, &core_wrapper, type_ref, kind.symbol());
                 let new_return_ty = alias.unwrap_or_else(|| match kind {
                     WrapperKind::Option => make.ty_option(type_ref.clone()),

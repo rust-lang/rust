@@ -98,7 +98,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
             let closure_body = ast::Expr::cast(edit.new_root().clone()).unwrap();
 
             let mut editor = builder.make_editor(expr.syntax());
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
             let closure_body = match closure_body {
                 ast::Expr::BlockExpr(block) => unwrap_trivial_block(block),
                 e => e,
@@ -216,7 +216,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
             let closure_body = ast::BlockExpr::cast(edit.new_root().clone()).unwrap();
 
             let mut editor = builder.make_editor(mcall.syntax());
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
 
             let cond = match &receiver {
                 ast::Expr::ParenExpr(expr) => expr.expr().unwrap_or(receiver),
