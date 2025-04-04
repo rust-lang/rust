@@ -10,7 +10,7 @@ Target triples:
 
 ## Target maintainers
 
-- @tbu-
+[@tbu-](https://github.com/tbu-)
 
 ## Requirements
 

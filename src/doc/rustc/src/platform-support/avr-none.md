@@ -6,7 +6,7 @@ Series of microcontrollers from Atmel: ATmega8, ATmega328p etc.
 
 ## Target maintainers
 
-- [Patryk Wychowaniec](https://github.com/Patryk27) <pwychowaniec@pm.me>
+[@Patryk27](https://github.com/Patryk27)
 
 ## Requirements
 

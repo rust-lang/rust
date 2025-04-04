@@ -12,10 +12,10 @@ Apple watchOS targets.
 
 ## Target maintainers
 
-- [@deg4uss3r](https://github.com/deg4uss3r)
-- [@vladimir-ea](https://github.com/vladimir-ea)
-- [@leohowell](https://github.com/leohowell)
-- [@madsmtm](https://github.com/madsmtm)
+[@deg4uss3r](https://github.com/deg4uss3r)
+[@vladimir-ea](https://github.com/vladimir-ea)
+[@leohowell](https://github.com/leohowell)
+[@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 
