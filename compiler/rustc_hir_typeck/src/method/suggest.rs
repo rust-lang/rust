@@ -203,6 +203,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return guar;
         }
 
+        // Check for the write!/writeln! macro special case
+        let is_write_fmt = item_name.name == sym::write_fmt;
+        let is_write_macro =
+            expr_span.ctxt().outer_expn_data().macro_def_id.is_some_and(|def_id| {
+                self.tcx.is_diagnostic_item(sym::write_macro, def_id)
+                    || self.tcx.is_diagnostic_item(sym::writeln_macro, def_id)
+            });
+
+        if is_write_fmt && is_write_macro {
+            // This is a write!/writeln! macro call with write_fmt method error
+            let mut file = None;
+            let mut err = struct_span_code_err!(
+                self.dcx(),
+                span,
+                E0599,
+                "cannot write into `{}`",
+                self.tcx.short_string(rcvr_ty, &mut file)
+            );
+            *err.long_ty_path() = file;
+            err.note("type does not implement the `write_fmt` method");
+            err.help("try adding `use std::fmt::Write;` or `use std::io::Write;` to bring the appropriate trait into scope");
+            return err.emit();
+        }
+
         match error {
             MethodError::NoMatch(mut no_match_data) => self.report_no_match_method_error(
                 span,

@@ -6,12 +6,12 @@ fn main() {
     //~^ ERROR format argument must be a string literal
     //~| HELP you might be missing a string literal to format with
     //~| ERROR cannot write into `&'static str`
-    //~| NOTE must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method
-    //~| HELP a writer is needed before this format string
+    //~| NOTE type does not implement the `write_fmt` method
+    //~| HELP try adding `use std::fmt::Write;` or `use std::io::Write;` to bring the appropriate trait into scope
     writeln!("{}_{}", x, y);
     //~^ ERROR format argument must be a string literal
     //~| HELP you might be missing a string literal to format with
     //~| ERROR cannot write into `&'static str`
-    //~| NOTE must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method
-    //~| HELP a writer is needed before this format string
+    //~| NOTE type does not implement the `write_fmt` method
+    //~| HELP try adding `use std::fmt::Write;` or `use std::io::Write;` to bring the appropriate trait into scope
 }
