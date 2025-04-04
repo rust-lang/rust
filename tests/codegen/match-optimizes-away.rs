@@ -1,4 +1,5 @@
-//@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
+//@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes
+
 #![crate_type = "lib"]
 
 pub enum Three {

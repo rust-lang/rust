@@ -5,11 +5,12 @@ fn enum_clone_as_copy(_1: &Enum1) -> Enum1 {
     let mut _0: Enum1;
     scope 1 (inlined <Enum1 as Clone>::clone) {
         debug self => _1;
-        let mut _2: isize;
+        let _2: &AllCopy;
         let mut _3: &AllCopy;
-        let mut _4: &NestCopy;
+        let _4: &NestCopy;
+        let mut _5: &NestCopy;
         scope 2 {
-            debug __self_0 => _3;
+            debug __self_0 => _2;
             scope 6 (inlined <AllCopy as Clone>::clone) {
                 debug self => _3;
             }
@@ -17,10 +18,10 @@ fn enum_clone_as_copy(_1: &Enum1) -> Enum1 {
         scope 3 {
             debug __self_0 => _4;
             scope 4 (inlined <NestCopy as Clone>::clone) {
-                debug self => _4;
-                let _5: &AllCopy;
+                debug self => _5;
+                let _6: &AllCopy;
                 scope 5 (inlined <AllCopy as Clone>::clone) {
-                    debug self => _5;
+                    debug self => _6;
                 }
             }
         }
@@ -30,33 +31,14 @@ fn enum_clone_as_copy(_1: &Enum1) -> Enum1 {
         StorageLive(_2);
         StorageLive(_3);
         StorageLive(_4);
-        _2 = discriminant((*_1));
-        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
-    }
-
-    bb1: {
-        _3 = &(((*_1) as A).0: AllCopy);
-        _0 = copy (*_1);
-        goto -> bb3;
-    }
-
-    bb2: {
-        _4 = &(((*_1) as B).0: NestCopy);
         StorageLive(_5);
-        _5 = &((((*_1) as B).0: NestCopy).1: AllCopy);
-        StorageDead(_5);
+        StorageLive(_6);
         _0 = copy (*_1);
-        goto -> bb3;
-    }
-
-    bb3: {
+        StorageDead(_6);
+        StorageDead(_5);
         StorageDead(_4);
         StorageDead(_3);
         StorageDead(_2);
         return;
-    }
-
-    bb4: {
-        unreachable;
     }
 }
