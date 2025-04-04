@@ -14,13 +14,11 @@ use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef, LetStmt, LocalSource, Node};
+use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};
-use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, Ty, TypeVisitableExt, ValTree, ValTreeKind,
-};
-use rustc_middle::{bug, span_bug};
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind};
 use rustc_pattern_analysis::constructor::RangeEnd;
 use rustc_pattern_analysis::rustc::{DeconstructedPat, RustcPatCtxt};
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
@@ -2872,7 +2870,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn static_pattern_match(
         &self,
         cx: &RustcPatCtxt<'_, 'tcx>,
-        constant: ConstOperand<'tcx>,
+        valtree: ValTree<'tcx>,
         arms: &[ArmId],
         built_match_tree: &BuiltMatchTree<'tcx>,
     ) -> Option<BasicBlock> {
@@ -2880,6 +2878,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for (&arm_id, branch) in it {
             let pat = cx.lower_pat(&*self.thir.arms[arm_id].pattern);
 
+            // Peel off or-patterns if they exist.
             if let rustc_pattern_analysis::rustc::Constructor::Or = pat.ctor() {
                 for pat in pat.iter_fields() {
                     // For top-level or-patterns (the only ones we accept right now), when the
@@ -2891,12 +2890,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .or_else(|| branch.sub_branches.last())
                         .unwrap();
 
-                    match self.static_pattern_match_help(constant, &pat.pat) {
+                    match self.static_pattern_match_inner(valtree, &pat.pat) {
                         true => return Some(sub_branch.success_block),
                         false => continue,
                     }
                 }
-            } else if self.static_pattern_match_help(constant, &pat) {
+            } else if self.static_pattern_match_inner(valtree, &pat) {
                 return Some(branch.sub_branches[0].success_block);
             }
         }
@@ -2904,52 +2903,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         None
     }
 
-    /// Based on `FunctionCx::eval_unevaluated_mir_constant_to_valtree`.
-    fn eval_unevaluated_mir_constant_to_valtree(
+    /// Helper for [`Self::static_pattern_match`]. It does not recurse, meaning that it does not
+    /// handle or-patterns, or patterns for types with fields.
+    fn static_pattern_match_inner(
         &self,
-        constant: ConstOperand<'tcx>,
-    ) -> (ty::ValTree<'tcx>, Ty<'tcx>) {
-        assert!(!constant.const_.ty().has_param());
-        let (uv, ty) = match constant.const_ {
-            mir::Const::Unevaluated(uv, ty) => (uv.shrink(), ty),
-            mir::Const::Ty(_, c) => match c.kind() {
-                // A constant that came from a const generic but was then used as an argument to
-                // old-style simd_shuffle (passing as argument instead of as a generic param).
-                ty::ConstKind::Value(cv) => return (cv.valtree, cv.ty),
-                other => span_bug!(constant.span, "{other:#?}"),
-            },
-            mir::Const::Val(mir::ConstValue::Scalar(mir::interpret::Scalar::Int(val)), ty) => {
-                return (ValTree::from_scalar_int(self.tcx, val), ty);
-            }
-            // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
-            // a constant and write that value back into `Operand`s. This could happen, but is
-            // unlikely. Also: all users of `simd_shuffle` are on unstable and already need to take
-            // a lot of care around intrinsics. For an issue to happen here, it would require a
-            // macro expanding to a `simd_shuffle` call without wrapping the constant argument in a
-            // `const {}` block, but the user pass through arbitrary expressions.
-
-            // FIXME(oli-obk): Replace the magic const generic argument of `simd_shuffle` with a
-            // real const generic, and get rid of this entire function.
-            other => span_bug!(constant.span, "{other:#?}"),
-        };
-
-        match self.tcx.const_eval_resolve_for_typeck(self.typing_env(), uv, constant.span) {
-            Ok(Ok(valtree)) => (valtree, ty),
-            Ok(Err(ty)) => span_bug!(constant.span, "could not convert {ty:?} to a valtree"),
-            Err(_) => span_bug!(constant.span, "unable to evaluate this constant"),
-        }
-    }
-
-    fn static_pattern_match_help(
-        &self,
-        constant: ConstOperand<'tcx>,
+        valtree: ty::ValTree<'tcx>,
         pat: &DeconstructedPat<'_, 'tcx>,
     ) -> bool {
         use rustc_pattern_analysis::constructor::{IntRange, MaybeInfiniteInt};
         use rustc_pattern_analysis::rustc::Constructor;
-
-        let (valtree, ty) = self.eval_unevaluated_mir_constant_to_valtree(constant);
-        assert!(!ty.has_param());
 
         match pat.ctor() {
             Constructor::Variant(variant_index) => {
