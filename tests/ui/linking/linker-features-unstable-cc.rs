@@ -4,7 +4,6 @@
 // Note that, currently, only `lld` is parsed on the CLI, but that other linker features can exist
 // internally (`cc`).
 //
-//@ check-fail
 //@ compile-flags: --target=x86_64-unknown-linux-gnu -C linker-features=+cc --crate-type=rlib
 //@ needs-llvm-components: x86
 
