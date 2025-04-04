@@ -37,7 +37,7 @@ use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 
-/// Generates a Askama template struct for rendering items with common methods.
+/// Generates an Askama template struct for rendering items with common methods.
 ///
 /// Usage:
 /// ```ignore (illustrative)
@@ -1867,7 +1867,7 @@ fn item_proc_macro(cx: &Context<'_>, it: &clean::Item, m: &clean::ProcMacro) -> 
                     }
                 }
             }
-            Ok::<(), fmt::Error>(())
+            fmt::Result::Ok(())
         })?;
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
     })

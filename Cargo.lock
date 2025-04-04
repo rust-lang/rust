@@ -1387,8 +1387,8 @@ name = "generate-copyright"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "askama",
  "cargo_metadata 0.18.1",
- "rinja",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -3111,9 +3111,7 @@ version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3dc4940d00595430b3d7d5a01f6222b5e5b51395d1120bdb28d854bb8abb17a5"
 dependencies = [
- "humansize",
  "itoa",
- "percent-encoding",
  "rinja_derive",
 ]
 
