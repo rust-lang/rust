@@ -130,6 +130,7 @@ rm -r tests/run-make/translation # same
 rm -r tests/run-make/missing-unstable-trait-bound # This disables support for unstable features, but running cg_clif needs some unstable features
 rm -r tests/run-make/const-trait-stable-toolchain # same
 rm -r tests/run-make/incr-add-rust-src-component
+rm tests/ui/errors/remap-path-prefix-sysroot.rs # different sysroot source path
 
 # genuine bugs
 # ============
