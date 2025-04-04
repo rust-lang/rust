@@ -6,7 +6,7 @@ ARM64e iOS (14.0+)
 
 ## Target maintainers
 
-- Artyom Tetyukhin ([@arttet](https://github.com/arttet))
+[@arttet](https://github.com/arttet)
 
 ## Requirements
 

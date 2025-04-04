@@ -6,9 +6,9 @@ Targets for the [ESP-IDF](https://github.com/espressif/esp-idf) development fram
 
 ## Target maintainers
 
-- Ivan Markov [@ivmarkov](https://github.com/ivmarkov)
-- Scott Mabin [@MabezDev](https://github.com/MabezDev)
-- Sergio Gasquez [@SergioGasquez](https://github.com/SergioGasquez)
+[@ivmarkov](https://github.com/ivmarkov)
+[@MabezDev](https://github.com/MabezDev)
+[@SergioGasquez](https://github.com/SergioGasquez)
 
 ## Requirements
 

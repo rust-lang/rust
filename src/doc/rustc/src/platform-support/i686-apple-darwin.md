@@ -4,8 +4,8 @@ Apple macOS on 32-bit x86.
 
 ## Target maintainers
 
-- [@thomcc](https://github.com/thomcc)
-- [@madsmtm](https://github.com/madsmtm)
+[@thomcc](https://github.com/thomcc)
+[@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 

@@ -16,7 +16,7 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 
 ## Target maintainers
 
-- [Chris Copeland](https://github.com/chrisnc), `chris@chrisnc.net`
+[@chrisnc](https://github.com/chrisnc)
 
 ## Requirements
 

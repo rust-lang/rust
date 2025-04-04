@@ -7,10 +7,8 @@ Environment (TEE) for Android.
 
 ## Target maintainers
 
-- Nicole LeGare (@randomPoison)
-- Andrei Homescu (@ahomescu)
-- Chris Wailes (chriswailes@google.com)
-- As a fallback trusty-dev-team@google.com can be contacted
+[@randomPoison](https://github.com/randomPoison)
+[@ahomescu](https://github.com/ahomescu)
 
 ## Requirements
 

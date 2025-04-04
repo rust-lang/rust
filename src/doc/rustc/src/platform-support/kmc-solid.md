@@ -14,9 +14,9 @@ The target names follow this format: `$ARCH-kmc-solid_$KERNEL-$ABI`, where `$ARC
 | `armv7a-kmc-solid_asp3-eabi`   | `arm`         | `kmc`           | `solid_asp3` |
 | `armv7a-kmc-solid_asp3-eabihf` | `arm`         | `kmc`           | `solid_asp3` |
 
-## Designated Developers
+## Target Maintainers
 
-- [@kawadakk](https://github.com/kawadakk)
+[@kawadakk](https://github.com/kawadakk)
 
 ## Requirements
 

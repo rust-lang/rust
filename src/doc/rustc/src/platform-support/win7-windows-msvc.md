@@ -10,7 +10,7 @@ Target triples:
 
 ## Target maintainers
 
-- @roblabla
+[@roblabla](https://github.com/roblabla)
 
 ## Requirements
 

@@ -6,7 +6,7 @@ Little-endian 32 bit MIPS for Linux with `glibc.
 
 ## Target maintainers
 
-- [@LukasWoodtli](https://github.com/LukasWoodtli)
+[@LukasWoodtli](https://github.com/LukasWoodtli)
 
 ## Requirements
 

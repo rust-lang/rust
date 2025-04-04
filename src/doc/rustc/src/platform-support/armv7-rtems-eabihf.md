@@ -6,7 +6,7 @@ ARM targets for the [RTEMS realtime operating system](https://www.rtems.org)  us
 
 ## Target maintainers
 
-- [@thesummer](https://github.com/thesummer)
+[@thesummer](https://github.com/thesummer)
 
 ## Requirements
 

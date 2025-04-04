@@ -34,7 +34,7 @@ was not maintained at that time. This means that the list below is not
 exhaustive, and there are more interested parties in this target. That being
 said, those interested in maintaining this target are:
 
-- Alex Crichton, https://github.com/alexcrichton
+[@alexcrichton](https://github.com/alexcrichton)
 
 ## Requirements
 

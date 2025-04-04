@@ -13,7 +13,7 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 
 ## Target Maintainers
 
-* [@QuinnPainter](https://github.com/QuinnPainter)
+[@QuinnPainter](https://github.com/QuinnPainter)
 
 ## Testing
 

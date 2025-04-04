@@ -9,11 +9,13 @@ based on the ABI defined by Fortanix for the [Enclave Development Platform
 
 ## Target maintainers
 
-The [EDP team](mailto:edp.maintainers@fortanix.com) at Fortanix.
+[@jethrogb](https://github.com/jethrogb)
+[@raoulstrackx](https://github.com/raoulstrackx)
+[@mzohreva](https://github.com/mzohreva)
 
-- Jethro Beekman [@jethrogb](https://github.com/jethrogb)
-- Raoul Strackx [@raoulstrackx](https://github.com/raoulstrackx)
-- Mohsen Zohrevandi [@mzohreva](https://github.com/mzohreva)
+Further contacts:
+
+The [EDP team](mailto:edp.maintainers@fortanix.com) at Fortanix.
 
 ## Requirements
 
