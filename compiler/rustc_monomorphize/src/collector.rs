@@ -929,14 +929,16 @@ fn visit_instance_use<'tcx>(
         ty::InstanceKind::ThreadLocalShim(..) => {
             bug!("{:?} being reified", instance);
         }
-        ty::InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None) => {
+        ty::InstanceKind::DropGlue(_, None) => {
             // Don't need to emit noop drop glue if we are calling directly.
             if !is_direct_call {
                 output.push(create_fn_mono_item(tcx, instance, source));
             }
         }
         ty::InstanceKind::DropGlue(_, Some(_))
-        | ty::InstanceKind::AsyncDropGlueCtorShim(_, Some(_))
+        | ty::InstanceKind::FutureDropPollShim(..)
+        | ty::InstanceKind::AsyncDropGlue(_, _)
+        | ty::InstanceKind::AsyncDropGlueCtorShim(_, _)
         | ty::InstanceKind::VTableShim(..)
         | ty::InstanceKind::ReifyShim(..)
         | ty::InstanceKind::ClosureOnceShim { .. }

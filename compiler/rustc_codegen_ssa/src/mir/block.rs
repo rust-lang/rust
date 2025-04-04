@@ -926,10 +926,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let def = instance.map(|i| i.def);
 
-        if let Some(
-            ty::InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None),
-        ) = def
-        {
+        // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
+        // it is `func returning noop future`
+        if let Some(ty::InstanceKind::DropGlue(_, None)) = def {
             // Empty drop glue; a no-op.
             let target = target.unwrap();
             return helper.funclet_br(self, bx, target, mergeable_succ);
@@ -1386,8 +1385,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 MergingSucc::False
             }
 
-            mir::TerminatorKind::Drop { place, target, unwind, replace: _ } => self
-                .codegen_drop_terminator(
+            mir::TerminatorKind::Drop { place, target, unwind, replace: _, drop, async_fut } => {
+                assert!(
+                    async_fut.is_none() && drop.is_none(),
+                    "Async Drop must be expanded or reset to sync before codegen"
+                );
+                self.codegen_drop_terminator(
                     helper,
                     bx,
                     &terminator.source_info,
@@ -1395,7 +1398,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     target,
                     unwind,
                     mergeable_succ(),
-                ),
+                )
+            }
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, unwind } => self
                 .codegen_assert_terminator(
