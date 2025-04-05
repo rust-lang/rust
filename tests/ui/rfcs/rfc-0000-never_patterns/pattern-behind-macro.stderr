@@ -1,0 +1,10 @@
+error: a never pattern is always unreachable
+  --> $DIR/pattern-behind-macro.rs:13:21
+   |
+LL |         never!() => {}
+   |                     ^^ this will never be executed
+   |
+   = help: remove the match arm expression
+
+error: aborting due to 1 previous error
+
