@@ -35,9 +35,11 @@
 //! The only place that `_` is acceptable is to match a field (or
 //! variant argument) that does not require visiting.
 
-use crate::mir::*;
-use crate::ty::{GenericArgs, MirConst, Region, Ty, TyConst};
-use crate::{Error, Opaque, Span};
+use stable_mir::mir::*;
+use stable_mir::ty::{GenericArgs, MirConst, Region, Ty, TyConst};
+use stable_mir::{Error, Opaque, Span};
+
+use crate::stable_mir;
 
 macro_rules! make_mir_visitor {
     ($visitor_trait_name:ident, $($mutability:ident)?) => {

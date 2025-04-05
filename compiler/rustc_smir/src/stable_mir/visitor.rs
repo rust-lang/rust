@@ -1,11 +1,13 @@
 use std::ops::ControlFlow;
 
+use stable_mir::Opaque;
+use stable_mir::ty::TyConst;
+
 use super::ty::{
     Allocation, Binder, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,
     MirConst, Promoted, Region, RigidTy, TermKind, Ty, UnevaluatedConst,
 };
-use crate::Opaque;
-use crate::ty::TyConst;
+use crate::stable_mir;
 
 pub trait Visitor: Sized {
     type Break;
@@ -47,13 +49,13 @@ impl Visitable for TyConst {
     }
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
         match &self.kind {
-            crate::ty::TyConstKind::Param(_) | crate::ty::TyConstKind::Bound(_, _) => {}
-            crate::ty::TyConstKind::Unevaluated(_, args) => args.visit(visitor)?,
-            crate::ty::TyConstKind::Value(ty, alloc) => {
+            super::ty::TyConstKind::Param(_) | super::ty::TyConstKind::Bound(_, _) => {}
+            super::ty::TyConstKind::Unevaluated(_, args) => args.visit(visitor)?,
+            super::ty::TyConstKind::Value(ty, alloc) => {
                 alloc.visit(visitor)?;
                 ty.visit(visitor)?;
             }
-            crate::ty::TyConstKind::ZSTValue(ty) => ty.visit(visitor)?,
+            super::ty::TyConstKind::ZSTValue(ty) => ty.visit(visitor)?,
         }
         ControlFlow::Continue(())
     }

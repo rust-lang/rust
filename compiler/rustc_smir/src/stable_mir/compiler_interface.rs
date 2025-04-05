@@ -5,22 +5,24 @@
 
 use std::cell::Cell;
 
-use crate::abi::{FnAbi, Layout, LayoutShape};
-use crate::crate_def::Attribute;
-use crate::mir::alloc::{AllocId, GlobalAlloc};
-use crate::mir::mono::{Instance, InstanceDef, StaticDef};
-use crate::mir::{BinOp, Body, Place, UnOp};
-use crate::target::MachineInfo;
-use crate::ty::{
+use stable_mir::abi::{FnAbi, Layout, LayoutShape};
+use stable_mir::crate_def::Attribute;
+use stable_mir::mir::alloc::{AllocId, GlobalAlloc};
+use stable_mir::mir::mono::{Instance, InstanceDef, StaticDef};
+use stable_mir::mir::{BinOp, Body, Place, UnOp};
+use stable_mir::target::MachineInfo;
+use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, FieldDef, FnDef, ForeignDef,
     ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates, Generics,
     ImplDef, ImplTrait, IntrinsicDef, LineInfo, MirConst, PolyFnSig, RigidTy, Span, TraitDecl,
     TraitDef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef,
 };
-use crate::{
+use stable_mir::{
     AssocItems, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls,
     ItemKind, Symbol, TraitDecls, mir,
 };
+
+use crate::stable_mir;
 
 /// This trait defines the interface between stable_mir and the Rust compiler.
 /// Do not use this directly.
