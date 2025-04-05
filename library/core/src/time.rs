@@ -1,5 +1,4 @@
 #![stable(feature = "duration_core", since = "1.25.0")]
-
 //! Temporal quantification.
 //!
 //! # Examples:
@@ -308,6 +307,31 @@ impl Duration {
         Duration { secs, nanos: subsec_nanos }
     }
 
+
+    /// Creates a new Duration from the specified number of nanoseconds.
+    /// 
+    /// Use this function if you need to specify time greater than what can fit in u64 
+    /// (around 584 years).
+    /// 
+    /// # Examples 
+    /// 
+    /// ```
+    /// #![feature(duration_from_nanos_u128)]
+    /// use std::time::Duration;
+    /// let time_in_nanos = 2.pow(64);
+    /// let duration = Duration::from_nanos_u128(time_in_nanos);
+    /// ```
+    #[unstable(feature = "duration_from_nanos_u128", issue = "139201")]
+    pub const fn from_nanos_u128(nanos: u128) -> Duration {
+        const NANOS_PER_SEC: u128 = self::NANOS_PER_SEC as u128;
+        let secs = u64::try_from(nanos / NANOS_PER_SEC).unwrap_or(u64::MAX);
+        let subsec_nanos = (nanos % NANOS_PER_SEC) as u32;
+        // SAFETY: x % 1_000_000_000 < 1_000_000_000
+        let subsec_nanos = unsafe { Nanoseconds::new_unchecked(subsec_nanos) };
+
+        Duration { secs, nanos: subsec_nanos }
+    }
+    
     /// Creates a new `Duration` from the specified number of weeks.
     ///
     /// # Panics
