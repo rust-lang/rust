@@ -185,7 +185,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             let num_failed = sync::IntoDynSyncSend(AtomicU32::new(0));
             sync::par_for_each_in(many_seeds.seeds.clone(), |seed| {
                 let mut config = config.clone();
-                config.seed = Some(seed.into());
+                config.seed = Some((*seed).into());
                 eprintln!("Trying seed: {seed}");
                 let return_code = miri::eval_entry(tcx, entry_def_id, entry_type, config)
                     .unwrap_or(rustc_driver::EXIT_FAILURE);

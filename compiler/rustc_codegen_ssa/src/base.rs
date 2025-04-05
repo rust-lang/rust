@@ -10,7 +10,7 @@ use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_n
 use rustc_attr_parsing::OptimizeAttr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
-use rustc_data_structures::sync::par_map;
+use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
@@ -757,7 +757,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
             let pre_compiled_cgus = par_map(cgus, |(i, _)| {
                 let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
-                (i, module)
+                (i, IntoDynSyncSend(module))
             });
 
             total_codegen_time += start_time.elapsed();
@@ -777,7 +777,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         match cgu_reuse {
             CguReuse::No => {
                 let (module, cost) = if let Some(cgu) = pre_compiled_cgus.remove(&i) {
-                    cgu
+                    cgu.0
                 } else {
                     let start_time = Instant::now();
                     let module = backend.compile_codegen_unit(tcx, cgu.name());
