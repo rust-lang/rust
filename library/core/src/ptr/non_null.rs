@@ -1166,7 +1166,8 @@ impl<T: ?Sized> NonNull<T> {
     /// [`ptr::replace`]: crate::ptr::replace()
     #[inline(always)]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    pub unsafe fn replace(self, src: T) -> T
+    #[rustc_const_stable(feature = "const_inherent_ptr_replace", since = "CURRENT_RUSTC_VERSION")]
+    pub const unsafe fn replace(self, src: T) -> T
     where
         T: Sized,
     {
