@@ -244,7 +244,7 @@ impl<'a> AstValidator<'a> {
     fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>, bool)) {
         for Param { pat, .. } in &decl.inputs {
             match pat.kind {
-                PatKind::Ident(BindingMode::NONE, _, None) | PatKind::Wild => {}
+                PatKind::Missing | PatKind::Ident(BindingMode::NONE, _, None) | PatKind::Wild => {}
                 PatKind::Ident(BindingMode::MUT, ident, None) => {
                     report_err(pat.span, Some(ident), true)
                 }

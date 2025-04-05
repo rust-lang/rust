@@ -2987,9 +2987,7 @@ impl<'a> Parser<'a> {
                 }
                 match ty {
                     Ok(ty) => {
-                        let ident = Ident::new(kw::Empty, this.prev_token.span);
-                        let bm = BindingMode::NONE;
-                        let pat = this.mk_pat_ident(ty.span, bm, ident);
+                        let pat = this.mk_pat(ty.span, PatKind::Missing);
                         (pat, ty)
                     }
                     // If this is a C-variadic argument and we hit an error, return the error.

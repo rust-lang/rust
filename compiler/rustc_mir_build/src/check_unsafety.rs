@@ -315,6 +315,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
     fn visit_pat(&mut self, pat: &'a Pat<'tcx>) {
         if self.in_union_destructure {
             match pat.kind {
+                PatKind::Missing => unreachable!(),
                 // binding to a variable allows getting stuff out of variable
                 PatKind::Binding { .. }
                 // match is conditional on having this value

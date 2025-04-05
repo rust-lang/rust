@@ -250,7 +250,8 @@ pub(crate) fn for_each_immediate_subpat<'a, 'tcx>(
     mut callback: impl FnMut(&'a Pat<'tcx>),
 ) {
     match &pat.kind {
-        PatKind::Wild
+        PatKind::Missing
+        | PatKind::Wild
         | PatKind::Binding { subpattern: None, .. }
         | PatKind::Constant { value: _ }
         | PatKind::Range(_)

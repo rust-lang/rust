@@ -1868,6 +1868,7 @@ impl<'a> State<'a> {
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
         match pat.kind {
+            PatKind::Missing => unreachable!(),
             PatKind::Wild => self.word("_"),
             PatKind::Never => self.word("!"),
             PatKind::Binding(BindingMode(by_ref, mutbl), _, ident, sub) => {

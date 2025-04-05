@@ -747,6 +747,9 @@ pub struct Ascription<'tcx> {
 
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub enum PatKind<'tcx> {
+    /// A missing pattern, e.g. for an anonymous param in a bare fn like `fn f(u32)`.
+    Missing,
+
     /// A wildcard pattern: `_`.
     Wild,
 

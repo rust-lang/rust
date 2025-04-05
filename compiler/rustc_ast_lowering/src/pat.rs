@@ -26,6 +26,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let pat_hir_id = self.lower_node_id(pattern.id);
             let node = loop {
                 match &pattern.kind {
+                    PatKind::Missing => break hir::PatKind::Missing,
                     PatKind::Wild => break hir::PatKind::Wild,
                     PatKind::Never => break hir::PatKind::Never,
                     PatKind::Ident(binding_mode, ident, sub) => {

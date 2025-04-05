@@ -341,7 +341,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let ty = match pat.kind {
-            PatKind::Wild | PatKind::Err(_) => expected,
+            PatKind::Missing | PatKind::Wild | PatKind::Err(_) => expected,
             // We allow any type here; we ensure that the type is uninhabited during match checking.
             PatKind::Never => expected,
             PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
@@ -505,9 +505,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
 
             // Ref patterns are complicated, we handle them in `check_pat_ref`.
-            PatKind::Ref(..) => AdjustMode::Pass,
+            PatKind::Ref(..)
+            // No need to do anything on a missing pattern.
+            | PatKind::Missing
             // A `_` pattern works with any expected type, so there's no need to do anything.
-            PatKind::Wild
+            | PatKind::Wild
             // A malformed pattern doesn't have an expected type, so let's just accept any type.
             | PatKind::Err(_)
             // Bindings also work with whatever the expected type is,
@@ -1032,7 +1034,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | PatKind::Tuple(..)
                         | PatKind::Slice(..) => "binding",
 
-                        PatKind::Wild
+                        PatKind::Missing
+                        | PatKind::Wild
                         | PatKind::Never
                         | PatKind::Binding(..)
                         | PatKind::Box(..)
