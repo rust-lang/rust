@@ -676,7 +676,7 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
             }
             SYMBOL_PREINTERNED => {
                 let symbol_index = self.read_u32();
-                Symbol::new_from_decoded(symbol_index)
+                Symbol::new(symbol_index)
             }
             _ => unreachable!(),
         }
@@ -893,7 +893,7 @@ impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
     // copy&paste impl from rustc_metadata
     fn encode_symbol(&mut self, symbol: Symbol) {
         // if symbol preinterned, emit tag and symbol index
-        if symbol.is_preinterned() {
+        if symbol.is_predefined() {
             self.encoder.emit_u8(SYMBOL_PREINTERNED);
             self.encoder.emit_u32(symbol.as_u32());
         } else {
