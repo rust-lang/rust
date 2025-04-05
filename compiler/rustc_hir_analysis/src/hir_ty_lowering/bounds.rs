@@ -43,12 +43,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Checks whether `Self: DefaultAutoTrait` bounds should be added on trait super bounds
-    /// or associative items.
+    /// or associated items.
     ///
     /// To keep backward compatibility with existing code, `experimental_default_bounds` bounds
     /// should be added everywhere, including super bounds. However this causes a huge performance
     /// costs. For optimization purposes instead of adding default supertraits, bounds
-    /// are added to the associative items:
+    /// are added to the associated items:
     ///
     /// ```ignore(illustrative)
     /// // Default bounds are generated in the following way:
@@ -81,7 +81,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///
     /// Therefore, `experimental_default_bounds` are still being added to supertraits if
     /// the `SelfTyParam` or `AssocItemConstraint` were found in a trait header.
-    pub(crate) fn requires_default_supertraits(
+    fn requires_default_supertraits(
         &self,
         hir_bounds: &'tcx [hir::GenericBound<'tcx>],
         hir_generics: &'tcx hir::Generics<'tcx>,
@@ -120,6 +120,43 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         found
     }
 
+    /// Implicitly add `Self: DefaultAutoTrait` clauses on trait associated items if
+    /// they are not added as super trait bounds to the trait itself. See
+    /// `requires_default_supertraits` for more information.
+    pub(crate) fn add_default_trait_item_bounds(
+        &self,
+        trait_item: &hir::TraitItem<'tcx>,
+        bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
+    ) {
+        let tcx = self.tcx();
+        if !tcx.sess.opts.unstable_opts.experimental_default_bounds {
+            return;
+        }
+
+        let parent = tcx.local_parent(trait_item.hir_id().owner.def_id);
+        let hir::Node::Item(parent_trait) = tcx.hir_node_by_def_id(parent) else {
+            unreachable!();
+        };
+
+        let (trait_generics, trait_bounds) = match parent_trait.kind {
+            hir::ItemKind::Trait(_, _, _, generics, supertraits, _) => (generics, supertraits),
+            hir::ItemKind::TraitAlias(_, generics, supertraits) => (generics, supertraits),
+            _ => unreachable!(),
+        };
+
+        if !self.requires_default_supertraits(trait_bounds, trait_generics) {
+            let self_ty_where_predicates = (parent, trait_item.generics.predicates);
+            self.add_default_traits_with_filter(
+                bounds,
+                tcx.types.self_param,
+                &[],
+                Some(self_ty_where_predicates),
+                trait_item.span,
+                |tr| tr != hir::LangItem::Sized,
+            );
+        }
+    }
+
     /// Lazily sets `experimental_default_bounds` to true on trait super bounds.
     /// See `requires_default_supertraits` for more information.
     pub(crate) fn add_default_super_traits(
@@ -130,6 +167,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_generics: &'tcx hir::Generics<'tcx>,
         span: Span,
     ) {
+        if !self.tcx().sess.opts.unstable_opts.experimental_default_bounds {
+            return;
+        }
+
         assert!(matches!(self.tcx().def_kind(trait_def_id), DefKind::Trait | DefKind::TraitAlias));
         if self.requires_default_supertraits(hir_bounds, hir_generics) {
             let self_ty_where_predicates = (trait_def_id, hir_generics.predicates);
@@ -263,11 +304,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 seen_unbound = true;
             }
             let emit_relax_err = || {
-                let unbound_traits =
-                    match self.tcx().sess.opts.unstable_opts.experimental_default_bounds {
-                        true => "`?Sized` and `experimental_default_bounds`",
-                        false => "`?Sized`",
-                    };
+                let unbound_traits = match tcx.sess.opts.unstable_opts.experimental_default_bounds {
+                    true => "`?Sized` and `experimental_default_bounds`",
+                    false => "`?Sized`",
+                };
                 // There was a `?Trait` bound, but it was neither `?Sized` nor `experimental_default_bounds`.
                 tcx.dcx().span_err(
                     unbound.span,
