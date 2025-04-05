@@ -25,6 +25,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::print::{
     PrintTraitRefExt as _, with_crate_prefix, with_forced_trimmed_paths,
+    with_no_visible_paths_if_doc_hidden,
 };
 use rustc_middle::ty::{self, GenericArgKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
@@ -3328,7 +3329,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let path_strings = candidates.iter().map(|trait_did| {
                 format!(
                     "{prefix}{}{postfix}\n",
-                    with_crate_prefix!(self.tcx.def_path_str(*trait_did)),
+                    with_no_visible_paths_if_doc_hidden!(with_crate_prefix!(
+                        self.tcx.def_path_str(*trait_did)
+                    )),
                 )
             });
 
@@ -3336,7 +3339,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let parent_did = parent_map.get(trait_did).unwrap();
                 format!(
                     "{prefix}{}::*{postfix} // trait {}\n",
-                    with_crate_prefix!(self.tcx.def_path_str(*parent_did)),
+                    with_no_visible_paths_if_doc_hidden!(with_crate_prefix!(
+                        self.tcx.def_path_str(*parent_did)
+                    )),
                     self.tcx.item_name(*trait_did),
                 )
             });
