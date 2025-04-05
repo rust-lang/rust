@@ -4,6 +4,6 @@ fn main() {
     }
 
     unsafe {
-        let _ = malloc(0); //~ ERROR: calling a function with ABI C using caller ABI Rust
+        let _ = malloc(0); //~ ERROR: calling a function with calling convention "C" using caller calling convention "Rust"
     };
 }

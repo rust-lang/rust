@@ -353,8 +353,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if caller_fn_abi.conv != callee_fn_abi.conv {
             throw_ub_custom!(
                 fluent::const_eval_incompatible_calling_conventions,
-                callee_conv = format!("{:?}", callee_fn_abi.conv),
-                caller_conv = format!("{:?}", caller_fn_abi.conv),
+                callee_conv = format!("{}", callee_fn_abi.conv),
+                caller_conv = format!("{}", caller_fn_abi.conv),
             )
         }
 
