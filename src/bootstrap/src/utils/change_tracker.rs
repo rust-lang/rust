@@ -391,4 +391,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "You can now use `change-id = \"ignore\"` to suppress `change-id ` warnings in the console.",
     },
+    ChangeInfo {
+        change_id: 138934,
+        severity: ChangeSeverity::Info,
+        summary: "Added new option `include` to create config extensions.",
+    },
 ];
