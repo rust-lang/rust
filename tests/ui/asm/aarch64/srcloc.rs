@@ -1,10 +1,7 @@
-//@ revisions: old new
 //@ only-aarch64
 //@ build-fail
 //@ needs-asm-support
 //@ compile-flags: -Ccodegen-units=1
-//@[old] ignore-llvm-version: 19 - 99
-//@[new] min-llvm-version: 19
 
 use std::arch::asm;
 

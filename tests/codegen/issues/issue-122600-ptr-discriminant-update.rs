@@ -1,5 +1,4 @@
 //@ compile-flags: -Copt-level=3
-//@ min-llvm-version: 19
 
 #![crate_type = "lib"]
 

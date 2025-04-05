@@ -1,10 +1,8 @@
 //@ compile-flags: -Copt-level=3 -Z merge-functions=disabled --edition=2021
 //@ only-x86_64
-// FIXME: Remove the `min-llvm-version`.
 //@ revisions: NINETEEN TWENTY
 //@[NINETEEN] exact-llvm-major-version: 19
 //@[TWENTY] min-llvm-version: 20
-//@ min-llvm-version: 19
 
 #![crate_type = "lib"]
 #![feature(try_blocks)]

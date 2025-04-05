@@ -407,30 +407,28 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         // Do not set sanitizer attributes for naked functions.
         to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
 
-        if llvm_util::get_version() >= (19, 0, 0) {
-            // For non-naked functions, set branch protection attributes on aarch64.
-            if let Some(BranchProtection { bti, pac_ret }) =
-                cx.sess().opts.unstable_opts.branch_protection
-            {
-                assert!(cx.sess().target.arch == "aarch64");
-                if bti {
-                    to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
+        // For non-naked functions, set branch protection attributes on aarch64.
+        if let Some(BranchProtection { bti, pac_ret }) =
+            cx.sess().opts.unstable_opts.branch_protection
+        {
+            assert!(cx.sess().target.arch == "aarch64");
+            if bti {
+                to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
+            }
+            if let Some(PacRet { leaf, pc, key }) = pac_ret {
+                if pc {
+                    to_add.push(llvm::CreateAttrString(cx.llcx, "branch-protection-pauth-lr"));
                 }
-                if let Some(PacRet { leaf, pc, key }) = pac_ret {
-                    if pc {
-                        to_add.push(llvm::CreateAttrString(cx.llcx, "branch-protection-pauth-lr"));
-                    }
-                    to_add.push(llvm::CreateAttrStringValue(
-                        cx.llcx,
-                        "sign-return-address",
-                        if leaf { "all" } else { "non-leaf" },
-                    ));
-                    to_add.push(llvm::CreateAttrStringValue(
-                        cx.llcx,
-                        "sign-return-address-key",
-                        if key == PAuthKey::A { "a_key" } else { "b_key" },
-                    ));
-                }
+                to_add.push(llvm::CreateAttrStringValue(
+                    cx.llcx,
+                    "sign-return-address",
+                    if leaf { "all" } else { "non-leaf" },
+                ));
+                to_add.push(llvm::CreateAttrStringValue(
+                    cx.llcx,
+                    "sign-return-address-key",
+                    if key == PAuthKey::A { "a_key" } else { "b_key" },
+                ));
             }
         }
     }
@@ -510,12 +508,6 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
             InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
             InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
         }))
-        // HACK: LLVM versions 19+ do not have the FPMR feature and treat it as always enabled
-        // It only exists as a feature in LLVM 18, cannot be passed down for any other version
-        .chain(match &*cx.tcx.sess.target.arch {
-            "aarch64" if llvm_util::get_version().0 == 18 => vec!["+fpmr".to_string()],
-            _ => vec![],
-        })
         .collect::<Vec<String>>();
 
     if cx.tcx.sess.target.is_like_wasm {
