@@ -20,7 +20,6 @@
 #[cfg(test)]
 mod tests;
 
-pub mod process;
 pub mod wstr;
 pub mod wtf8;
 

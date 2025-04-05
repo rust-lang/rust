@@ -162,11 +162,6 @@ impl Command {
         }
     }
 
-    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
-        let (proc, pipes) = self.spawn(Stdio::MakePipe, false)?;
-        crate::sys_common::process::wait_with_output(proc, pipes)
-    }
-
     // WatchOS and TVOS headers mark the `fork`/`exec*` functions with
     // `__WATCHOS_PROHIBITED __TVOS_PROHIBITED`, and indicate that the
     // `posix_spawn*` functions should be used instead. It isn't entirely clear
