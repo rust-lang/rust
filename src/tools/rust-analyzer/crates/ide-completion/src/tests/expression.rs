@@ -171,6 +171,7 @@ impl Unit {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -249,6 +250,7 @@ fn complete_in_block() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -300,6 +302,7 @@ fn complete_after_if_expr() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -375,6 +378,7 @@ fn completes_in_loop_ctx() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -961,6 +965,7 @@ fn foo() { if foo {} $0 }
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1003,6 +1008,7 @@ fn foo() { if foo {} el$0 }
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1095,6 +1101,7 @@ fn foo() { if foo {} $0 let x = 92; }
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1137,6 +1144,7 @@ fn foo() { if foo {} el$0 let x = 92; }
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1179,6 +1187,7 @@ fn foo() { if foo {} el$0 { let x = 92; } }
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1231,6 +1240,7 @@ pub struct UnstableThisShouldNotBeListed;
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1285,6 +1295,7 @@ pub struct UnstableButWeAreOnNightlyAnyway;
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1529,6 +1540,7 @@ fn main() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -2001,6 +2013,7 @@ fn bar() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -2073,6 +2086,7 @@ fn foo() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop

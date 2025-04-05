@@ -1008,6 +1008,7 @@ fn here_we_go() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1059,6 +1060,7 @@ fn here_we_go() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1184,6 +1186,7 @@ fn bar() { qu$0 }
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1441,6 +1444,7 @@ fn foo() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
