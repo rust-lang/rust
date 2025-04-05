@@ -1,10 +1,11 @@
-//@ revisions: all strong basic none missing
+//@ revisions: all strong basic none missing rusty
 //@ assembly-output: emit-asm
 //@ ignore-apple slightly different policy on stack protection of arrays
 //@ ignore-msvc stack check code uses different function names
 //@ ignore-nvptx64 stack protector is not supported
 //@ ignore-wasm32-bare
 //@ [all] compile-flags: -Z stack-protector=all
+//@ [rusty] compile-flags: -Z stack-protector=rusty
 //@ [strong] compile-flags: -Z stack-protector=strong
 //@ [basic] compile-flags: -Z stack-protector=basic
 //@ [none] compile-flags: -Z stack-protector=none
@@ -27,6 +28,8 @@ pub fn emptyfn() {
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // rusty-NOT: __stack_chk_fail
 }
 
 // CHECK-LABEL: array_char{{:|\[}}
@@ -45,6 +48,8 @@ pub fn array_char(f: fn(*const char)) {
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // rusty: __stack_chk_fail
 }
 
 // CHECK-LABEL: array_u8_1{{:|\[}}
@@ -61,6 +66,8 @@ pub fn array_u8_1(f: fn(*const u8)) {
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // rusty: __stack_chk_fail
 }
 
 // CHECK-LABEL: array_u8_small{{:|\[}}
@@ -78,6 +85,8 @@ pub fn array_u8_small(f: fn(*const u8)) {
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // rusty: __stack_chk_fail
 }
 
 // CHECK-LABEL: array_u8_large{{:|\[}}
@@ -94,6 +103,8 @@ pub fn array_u8_large(f: fn(*const u8)) {
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // rusty: __stack_chk_fail
 }
 
 #[derive(Copy, Clone)]
@@ -113,6 +124,8 @@ pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // rusty: __stack_chk_fail
 }
 
 // CHECK-LABEL: local_var_addr_used_indirectly{{:|\[}}
@@ -140,6 +153,8 @@ pub fn local_var_addr_used_indirectly(f: fn(bool)) {
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // rusty: __stack_chk_fail
 }
 
 // CHECK-LABEL: local_string_addr_taken{{:|\[}}
@@ -156,6 +171,8 @@ pub fn local_string_addr_taken(f: fn(&String)) {
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // rusty: __stack_chk_fail
 }
 
 pub trait SelfByRef {
@@ -185,6 +202,9 @@ pub fn local_var_addr_taken_used_locally_only(factory: fn() -> i32, sink: fn(i32
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // FIXME: rusty stack smash protection needs to support inline scenario detection
+    // rusty: __stack_chk_fail
 }
 
 pub struct Gigastruct {
@@ -222,6 +242,9 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // FIXME: How does the rust compiler handle moves of large structures?
+    // rusty-NOT: __stack_chk_fail
 }
 
 // CHECK-LABEL: local_large_var_cloned{{:|\[}}
@@ -251,6 +274,9 @@ pub fn local_large_var_cloned(f: fn(Gigastruct)) {
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // FIXME: How does the rust compiler handle moves of large structures?
+    // rusty-NOT: __stack_chk_fail
 }
 
 extern "C" {
@@ -291,6 +317,11 @@ pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // FIXME: Rusty thinks a function that returns a mutable raw pointer may
+    // be a stack memory allocation function, so it performs stack smash protection.
+    // Is it possible to optimize the heuristics?
+    // rusty: __stack_chk_fail
 }
 
 // CHECK-LABEL: alloca_large_compile_time_constant_arg{{:|\[}}
@@ -303,6 +334,8 @@ pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // rusty: __stack_chk_fail
 }
 
 // CHECK-LABEL: alloca_dynamic_arg{{:|\[}}
@@ -315,6 +348,8 @@ pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // rusty: __stack_chk_fail
 }
 
 // The question then is: in what ways can Rust code generate array-`alloca`
@@ -342,6 +377,9 @@ pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // FIXME: Does Rusty need to handle this type of optimization?
+    // rusty: __stack_chk_fail
 }
 
 // CHECK-LABEL: unsized_local{{:|\[}}
@@ -361,4 +399,6 @@ pub fn unsized_local(s: &[u8], l: bool, f: fn(&mut [u8])) {
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
+
+    // rusty: __stack_chk_fail
 }
