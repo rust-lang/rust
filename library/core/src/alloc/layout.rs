@@ -520,6 +520,14 @@ impl Layout {
             unsafe { Ok(Layout::from_size_align_unchecked(array_size, align.as_usize())) }
         }
     }
+
+    /// Perma-unstable access to `align` as `Alignment` type.
+    #[unstable(issue = "none", feature = "std_internals")]
+    #[doc(hidden)]
+    #[inline]
+    pub const fn alignment(&self) -> Alignment {
+        self.align
+    }
 }
 
 #[stable(feature = "alloc_layout", since = "1.28.0")]
