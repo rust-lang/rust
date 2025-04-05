@@ -1169,6 +1169,7 @@ pub enum MacStmtStyle {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Local {
     pub id: NodeId,
+    pub super_: Option<Span>,
     pub pat: P<Pat>,
     pub ty: Option<P<Ty>>,
     pub kind: LocalKind,
@@ -3926,7 +3927,7 @@ mod size_asserts {
     static_assert_size!(Item, 144);
     static_assert_size!(ItemKind, 80);
     static_assert_size!(LitKind, 24);
-    static_assert_size!(Local, 80);
+    static_assert_size!(Local, 96);
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 72);
