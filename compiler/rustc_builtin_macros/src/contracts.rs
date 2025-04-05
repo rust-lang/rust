@@ -57,14 +57,31 @@ fn expand_contract_clause(
         if let TokenTree::Token(token, _) = tt { token.is_ident_named(sym) } else { false }
     };
 
+    let is_top_level_kw = |tt: &TokenTree| {
+        if let TokenTree::Token(token, _) = tt {
+            if token.is_ident_named(kw::Fn)
+                || token.is_ident_named(kw::Struct)
+                || token.is_ident_named(kw::Enum)
+                || token.is_ident_named(kw::Trait)
+                || token.is_ident_named(kw::Impl)
+                || token.is_ident_named(kw::Static)
+                || token.is_ident_named(kw::Const)
+                || token.is_ident_named(kw::Type)
+                || token.is_ident_named(kw::Mod)
+            {
+                return true;
+            }
+        }
+        false
+    };
+
     // Find the `fn` keyword to check if this is a function.
-    if cursor
-        .find(|tt| {
-            new_tts.push_tree((*tt).clone());
-            is_kw(tt, kw::Fn)
-        })
-        .is_none()
-    {
+    // If some other top-level keyword is found before the `fn` keyword, we emit an error.
+    let found_kw = cursor.find(|tt| {
+        new_tts.push_tree((*tt).clone());
+        is_top_level_kw(tt)
+    });
+    if found_kw.is_none() || !is_kw(found_kw.unwrap(), kw::Fn) {
         return Err(ecx
             .sess
             .dcx()
