@@ -486,6 +486,9 @@ hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
     .note = replace `Self` with a different type
 
+hir_analysis_self_in_type_alias = `Self` is not allowed in type aliases
+    .label = `Self` is only available in impls, traits, and concrete type definitions
+
 hir_analysis_self_ty_not_captured = `impl Trait` must mention the `Self` type of the trait in `use<...>`
     .label = `Self` type parameter is implicitly captured by this `impl Trait`
     .note = currently, all type parameters are required to be mentioned in the precise captures list
