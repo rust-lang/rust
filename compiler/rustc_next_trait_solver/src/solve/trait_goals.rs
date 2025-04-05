@@ -1301,7 +1301,6 @@ where
                 .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
                 .map(|c| c.result)
                 .collect();
-
             return if let Some(response) = self.try_merge_responses(&where_bounds) {
                 Ok((response, Some(TraitGoalProvenVia::ParamEnv)))
             } else {
@@ -1322,9 +1321,18 @@ where
             };
         }
 
+        // If there are *only* global where bounds, then make sure to return that this
+        // is still reported as being proven-via the param-env so that rigid projections
+        // operate correctly.
+        let proven_via =
+            if candidates.iter().all(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
+                TraitGoalProvenVia::ParamEnv
+            } else {
+                TraitGoalProvenVia::Misc
+            };
         let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();
         if let Some(response) = self.try_merge_responses(&all_candidates) {
-            Ok((response, Some(TraitGoalProvenVia::Misc)))
+            Ok((response, Some(proven_via)))
         } else {
             self.flounder(&all_candidates).map(|r| (r, None))
         }
