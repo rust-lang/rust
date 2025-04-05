@@ -627,7 +627,7 @@ fn filename_and_frag_for_def(
             return Some((def, file, Some(format!("variant.{}", ev.name(db).as_str()))));
         }
         Definition::Const(c) => {
-            format!("const.{}.html", c.name(db)?.as_str())
+            format!("constant.{}.html", c.name(db)?.as_str())
         }
         Definition::Static(s) => {
             format!("static.{}.html", s.name(db).as_str())
