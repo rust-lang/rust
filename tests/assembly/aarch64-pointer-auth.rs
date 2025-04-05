@@ -8,7 +8,6 @@
 //@ [PACRET] compile-flags: -Z branch-protection=pac-ret,leaf
 //@ [PAUTHLR_NOP] compile-flags: -Z branch-protection=pac-ret,pc,leaf
 //@ [PAUTHLR] compile-flags: -C target-feature=+pauth-lr -Z branch-protection=pac-ret,pc,leaf
-//@ min-llvm-version: 19
 
 #![feature(no_core, lang_items)]
 #![no_std]

@@ -1,5 +1,5 @@
 Function name: nested_if::doubly_nested_if_in_condition
-Raw bytes (170): 0x[01, 01, 0f, 01, 05, 05, 11, 05, 09, 05, 37, 09, 0d, 05, 09, 05, 1f, 09, 15, 15, 19, 05, 2b, 09, 19, 09, 0d, 05, 37, 09, 0d, 01, 11, 14, 01, 0f, 01, 01, 09, 28, 09, 02, 01, 08, 00, 4e, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 30, 11, 06, 02, 00, 00, 00, 0d, 00, 4e, 05, 00, 10, 00, 11, 28, 06, 02, 00, 10, 00, 36, 30, 09, 16, 01, 00, 02, 00, 10, 00, 11, 30, 0d, 32, 02, 00, 00, 00, 15, 00, 36, 16, 00, 18, 00, 19, 28, 03, 02, 00, 18, 00, 1e, 30, 15, 1a, 01, 02, 00, 00, 18, 00, 19, 15, 00, 1d, 00, 1e, 30, 19, 22, 02, 00, 00, 00, 1d, 00, 1e, 19, 00, 21, 00, 25, 26, 00, 2f, 00, 34, 37, 00, 39, 00, 3e, 32, 00, 48, 00, 4c, 11, 00, 4f, 02, 06, 3a, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Raw bytes (170): 0x[01, 01, 0f, 01, 05, 05, 11, 05, 09, 05, 37, 09, 0d, 05, 09, 05, 1f, 09, 15, 15, 19, 05, 2b, 09, 19, 09, 0d, 05, 37, 09, 0d, 01, 11, 14, 01, 0e, 01, 01, 09, 28, 09, 02, 01, 08, 00, 4e, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 30, 11, 06, 02, 00, 00, 00, 0d, 00, 4e, 05, 00, 10, 00, 11, 28, 06, 02, 00, 10, 00, 36, 30, 09, 16, 01, 00, 02, 00, 10, 00, 11, 30, 0d, 32, 02, 00, 00, 00, 15, 00, 36, 16, 00, 18, 00, 19, 28, 03, 02, 00, 18, 00, 1e, 30, 15, 1a, 01, 02, 00, 00, 18, 00, 19, 15, 00, 1d, 00, 1e, 30, 19, 22, 02, 00, 00, 00, 1d, 00, 1e, 19, 00, 21, 00, 25, 26, 00, 2f, 00, 34, 37, 00, 39, 00, 3e, 32, 00, 48, 00, 4c, 11, 00, 4f, 02, 06, 3a, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 15
@@ -19,7 +19,7 @@ Number of expressions: 15
 - expression 13 operands: lhs = Counter(2), rhs = Counter(3)
 - expression 14 operands: lhs = Counter(0), rhs = Counter(4)
 Number of file 0 mappings: 20
-- Code(Counter(0)) at (prev + 15, 1) to (start + 1, 9)
+- Code(Counter(0)) at (prev + 14, 1) to (start + 1, 9)
 - MCDCDecision { bitmap_idx: 9, conditions_num: 2 } at (prev + 1, 8) to (start + 0, 78)
 - MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 2, false_next_id: 0 } at (prev + 0, 8) to (start + 0, 9)
     true  = c1
@@ -59,7 +59,7 @@ Number of file 0 mappings: 20
 Highest counter ID seen: c6
 
 Function name: nested_if::nested_if_in_condition
-Raw bytes (118): 0x[01, 01, 0a, 01, 05, 05, 11, 05, 09, 05, 09, 05, 23, 09, 0d, 09, 0d, 05, 23, 09, 0d, 01, 11, 0e, 01, 07, 01, 01, 09, 28, 06, 02, 01, 08, 00, 2e, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 30, 11, 06, 02, 00, 00, 00, 0d, 00, 2e, 05, 00, 10, 00, 11, 28, 03, 02, 00, 10, 00, 16, 30, 09, 0e, 01, 00, 02, 00, 10, 00, 11, 0e, 00, 15, 00, 16, 30, 0d, 1e, 02, 00, 00, 00, 15, 00, 16, 23, 00, 19, 00, 1d, 1e, 00, 27, 00, 2c, 11, 00, 2f, 02, 06, 26, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Raw bytes (118): 0x[01, 01, 0a, 01, 05, 05, 11, 05, 09, 05, 09, 05, 23, 09, 0d, 09, 0d, 05, 23, 09, 0d, 01, 11, 0e, 01, 06, 01, 01, 09, 28, 06, 02, 01, 08, 00, 2e, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 30, 11, 06, 02, 00, 00, 00, 0d, 00, 2e, 05, 00, 10, 00, 11, 28, 03, 02, 00, 10, 00, 16, 30, 09, 0e, 01, 00, 02, 00, 10, 00, 11, 0e, 00, 15, 00, 16, 30, 0d, 1e, 02, 00, 00, 00, 15, 00, 16, 23, 00, 19, 00, 1d, 1e, 00, 27, 00, 2c, 11, 00, 2f, 02, 06, 26, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 10
@@ -74,7 +74,7 @@ Number of expressions: 10
 - expression 8 operands: lhs = Counter(2), rhs = Counter(3)
 - expression 9 operands: lhs = Counter(0), rhs = Counter(4)
 Number of file 0 mappings: 14
-- Code(Counter(0)) at (prev + 7, 1) to (start + 1, 9)
+- Code(Counter(0)) at (prev + 6, 1) to (start + 1, 9)
 - MCDCDecision { bitmap_idx: 6, conditions_num: 2 } at (prev + 1, 8) to (start + 0, 46)
 - MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 2, false_next_id: 0 } at (prev + 0, 8) to (start + 0, 9)
     true  = c1
@@ -103,7 +103,7 @@ Number of file 0 mappings: 14
 Highest counter ID seen: c4
 
 Function name: nested_if::nested_in_then_block_in_condition
-Raw bytes (170): 0x[01, 01, 0f, 01, 05, 05, 19, 05, 09, 05, 09, 05, 37, 09, 0d, 09, 0d, 37, 11, 09, 0d, 11, 15, 37, 15, 09, 0d, 05, 37, 09, 0d, 01, 19, 14, 01, 22, 01, 01, 09, 28, 09, 02, 01, 08, 00, 4b, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 30, 19, 06, 02, 00, 00, 00, 0d, 00, 4b, 05, 00, 10, 00, 11, 28, 03, 02, 00, 10, 00, 16, 30, 09, 0e, 01, 00, 02, 00, 10, 00, 11, 0e, 00, 15, 00, 16, 30, 0d, 32, 02, 00, 00, 00, 15, 00, 16, 37, 00, 1c, 00, 1d, 28, 06, 02, 00, 1c, 00, 22, 30, 11, 1e, 01, 02, 00, 00, 1c, 00, 1d, 11, 00, 21, 00, 22, 30, 15, 26, 02, 00, 00, 00, 21, 00, 22, 15, 00, 25, 00, 29, 2a, 00, 33, 00, 38, 32, 00, 44, 00, 49, 19, 00, 4c, 02, 06, 3a, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Raw bytes (170): 0x[01, 01, 0f, 01, 05, 05, 19, 05, 09, 05, 09, 05, 37, 09, 0d, 09, 0d, 37, 11, 09, 0d, 11, 15, 37, 15, 09, 0d, 05, 37, 09, 0d, 01, 19, 14, 01, 21, 01, 01, 09, 28, 09, 02, 01, 08, 00, 4b, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 30, 19, 06, 02, 00, 00, 00, 0d, 00, 4b, 05, 00, 10, 00, 11, 28, 03, 02, 00, 10, 00, 16, 30, 09, 0e, 01, 00, 02, 00, 10, 00, 11, 0e, 00, 15, 00, 16, 30, 0d, 32, 02, 00, 00, 00, 15, 00, 16, 37, 00, 1c, 00, 1d, 28, 06, 02, 00, 1c, 00, 22, 30, 11, 1e, 01, 02, 00, 00, 1c, 00, 1d, 11, 00, 21, 00, 22, 30, 15, 26, 02, 00, 00, 00, 21, 00, 22, 15, 00, 25, 00, 29, 2a, 00, 33, 00, 38, 32, 00, 44, 00, 49, 19, 00, 4c, 02, 06, 3a, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 15
@@ -123,7 +123,7 @@ Number of expressions: 15
 - expression 13 operands: lhs = Counter(2), rhs = Counter(3)
 - expression 14 operands: lhs = Counter(0), rhs = Counter(6)
 Number of file 0 mappings: 20
-- Code(Counter(0)) at (prev + 34, 1) to (start + 1, 9)
+- Code(Counter(0)) at (prev + 33, 1) to (start + 1, 9)
 - MCDCDecision { bitmap_idx: 9, conditions_num: 2 } at (prev + 1, 8) to (start + 0, 75)
 - MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 2, false_next_id: 0 } at (prev + 0, 8) to (start + 0, 9)
     true  = c1
@@ -163,7 +163,7 @@ Number of file 0 mappings: 20
 Highest counter ID seen: c6
 
 Function name: nested_if::nested_single_condition_decision
-Raw bytes (83): 0x[01, 01, 05, 01, 05, 05, 0d, 05, 09, 05, 09, 01, 0d, 0b, 01, 17, 01, 04, 09, 28, 03, 02, 04, 08, 00, 29, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 30, 0d, 06, 02, 00, 00, 00, 0d, 00, 29, 05, 00, 10, 00, 11, 20, 09, 0e, 00, 10, 00, 11, 09, 00, 14, 00, 19, 0e, 00, 23, 00, 27, 0d, 00, 2a, 02, 06, 12, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Raw bytes (83): 0x[01, 01, 05, 01, 05, 05, 0d, 05, 09, 05, 09, 01, 0d, 0b, 01, 16, 01, 04, 09, 28, 03, 02, 04, 08, 00, 29, 30, 05, 02, 01, 02, 00, 00, 08, 00, 09, 30, 0d, 06, 02, 00, 00, 00, 0d, 00, 29, 05, 00, 10, 00, 11, 20, 09, 0e, 00, 10, 00, 11, 09, 00, 14, 00, 19, 0e, 00, 23, 00, 27, 0d, 00, 2a, 02, 06, 12, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 5
@@ -173,7 +173,7 @@ Number of expressions: 5
 - expression 3 operands: lhs = Counter(1), rhs = Counter(2)
 - expression 4 operands: lhs = Counter(0), rhs = Counter(3)
 Number of file 0 mappings: 11
-- Code(Counter(0)) at (prev + 23, 1) to (start + 4, 9)
+- Code(Counter(0)) at (prev + 22, 1) to (start + 4, 9)
 - MCDCDecision { bitmap_idx: 3, conditions_num: 2 } at (prev + 4, 8) to (start + 0, 41)
 - MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 2, false_next_id: 0 } at (prev + 0, 8) to (start + 0, 9)
     true  = c1

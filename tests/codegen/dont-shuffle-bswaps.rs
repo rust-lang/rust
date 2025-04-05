@@ -3,7 +3,6 @@
 //@[OPT3] compile-flags: -C opt-level=3
 // some targets don't do the opt we are looking for
 //@[OPT3] only-64bit
-//@ min-llvm-version: 18.1.3
 
 #![crate_type = "lib"]
 #![no_std]

@@ -164,23 +164,6 @@ pub(crate) unsafe fn create_module<'ll>(
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
 
-    if llvm_version < (19, 0, 0) {
-        if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
-            // LLVM 19 sets -Fn32 in its data layout string for 64-bit ARM
-            // Earlier LLVMs leave this default, so remove it.
-            // See https://github.com/llvm/llvm-project/pull/90702
-            target_data_layout = target_data_layout.replace("-Fn32", "");
-        }
-    }
-
-    if llvm_version < (19, 0, 0) {
-        if sess.target.arch == "loongarch64" {
-            // LLVM 19 updates the LoongArch64 data layout.
-            // See https://github.com/llvm/llvm-project/pull/93814
-            target_data_layout = target_data_layout.replace("-n32:64", "-n64");
-        }
-    }
-
     if llvm_version < (20, 0, 0) {
         if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
             // LLVM 20 defines three additional address spaces for alternate
@@ -1218,10 +1201,8 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         if self.sess().instrument_coverage() {
             ifn!("llvm.instrprof.increment", fn(ptr, t_i64, t_i32, t_i32) -> void);
-            if crate::llvm_util::get_version() >= (19, 0, 0) {
-                ifn!("llvm.instrprof.mcdc.parameters", fn(ptr, t_i64, t_i32) -> void);
-                ifn!("llvm.instrprof.mcdc.tvbitmap.update", fn(ptr, t_i64, t_i32, ptr) -> void);
-            }
+            ifn!("llvm.instrprof.mcdc.parameters", fn(ptr, t_i64, t_i32) -> void);
+            ifn!("llvm.instrprof.mcdc.tvbitmap.update", fn(ptr, t_i64, t_i32, ptr) -> void);
         }
 
         ifn!("llvm.type.test", fn(ptr, t_metadata) -> i1);

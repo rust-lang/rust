@@ -12,7 +12,6 @@
 //@ [PAUTHLR_LEAF] compile-flags: -Z branch-protection=pac-ret,pc,leaf
 //@ [PAUTHLR_BTI] compile-flags: -Z branch-protection=bti,pac-ret,pc
 //@ compile-flags: --target aarch64-unknown-linux-gnu
-//@ min-llvm-version: 19
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]

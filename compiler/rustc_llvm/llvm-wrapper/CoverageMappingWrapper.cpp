@@ -47,7 +47,6 @@ struct LLVMRustMCDCBranchParameters {
   int16_t ConditionIDs[2];
 };
 
-#if LLVM_VERSION_GE(19, 0)
 static coverage::mcdc::BranchParameters
 fromRust(LLVMRustMCDCBranchParameters Params) {
   return coverage::mcdc::BranchParameters(
@@ -59,7 +58,6 @@ fromRust(LLVMRustMCDCDecisionParameters Params) {
   return coverage::mcdc::DecisionParameters(Params.BitmapIdx,
                                             Params.NumConditions);
 }
-#endif
 
 // Must match the layout of
 // `rustc_codegen_llvm::coverageinfo::ffi::CoverageSpan`.
@@ -203,7 +201,6 @@ extern "C" void LLVMRustCoverageWriteFunctionMappingsToBuffer(
         Region.Span.LineEnd, Region.Span.ColumnEnd));
   }
 
-#if LLVM_VERSION_GE(19, 0)
   // MC/DC branch regions:
   for (const auto &Region : ArrayRef(MCDCBranchRegions, NumMCDCBranchRegions)) {
     MappingRegions.push_back(coverage::CounterMappingRegion::makeBranchRegion(
@@ -221,7 +218,6 @@ extern "C" void LLVMRustCoverageWriteFunctionMappingsToBuffer(
         Region.Span.LineStart, Region.Span.ColumnStart, Region.Span.LineEnd,
         Region.Span.ColumnEnd));
   }
-#endif
 
   // Write the converted expressions and mappings to a byte buffer.
   auto CoverageMappingWriter = coverage::CoverageMappingWriter(
