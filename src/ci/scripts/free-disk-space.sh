@@ -14,6 +14,18 @@ isX86() {
     fi
 }
 
+# Check if we're on a GitHub hosted runner.
+# Otherwise, we are running in aws codebuild because on codebuild,
+# RUNNER_ENVIRONMENT is "self-hosted".
+isGitHubRunner() {
+    # `:-` means "use the value of RUNNER_ENVIRONMENT if it exists, otherwise use an empty string".
+    if [[ "${RUNNER_ENVIRONMENT:-}" == "github-hosted" ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # print a line of the specified character
 printSeparationLine() {
     for ((i = 0; i < 80; i++)); do
@@ -118,10 +130,14 @@ removeUnusedFilesAndDirs() {
         # Azure
         "/opt/az"
         "/usr/share/az_"*
-
-        # Environment variable set by GitHub Actions
-        "$AGENT_TOOLSDIRECTORY"
     )
+
+    if [ -n "${AGENT_TOOLSDIRECTORY:-}" ]; then
+        # Environment variable set by GitHub Actions
+        to_remove+=(
+            "${AGENT_TOOLSDIRECTORY}"
+        )
+    fi
 
     for element in "${to_remove[@]}"; do
         if [ ! -e "$element" ]; then
@@ -155,20 +171,25 @@ cleanPackages() {
         '^dotnet-.*'
         '^llvm-.*'
         '^mongodb-.*'
-        'azure-cli'
         'firefox'
         'libgl1-mesa-dri'
         'mono-devel'
         'php.*'
     )
 
-    if isX86; then
+    if isGitHubRunner; then
         packages+=(
-            'google-chrome-stable'
-            'google-cloud-cli'
-            'google-cloud-sdk'
-            'powershell'
+            azure-cli
         )
+
+        if isX86; then
+            packages+=(
+                'google-chrome-stable'
+                'google-cloud-cli'
+                'google-cloud-sdk'
+                'powershell'
+            )
+        fi
     fi
 
     sudo apt-get -qq remove -y --fix-missing "${packages[@]}"
