@@ -582,7 +582,9 @@ impl<T: ?Sized> Mutex<T> {
     /// Returns a mutable reference to the underlying data.
     ///
     /// Since this call borrows the `Mutex` mutably, no actual locking needs to
-    /// take place -- the mutable borrow statically guarantees no locks exist.
+    /// take place -- the mutable borrow statically guarantees no new locks can be acquired
+    /// while this reference exists. Note that this method does not clear any previous abandoned locks
+    /// (e.g., via [`forget()`] on a [`MutexGuard`]).
     ///
     /// # Errors
     ///
@@ -599,6 +601,8 @@ impl<T: ?Sized> Mutex<T> {
     /// *mutex.get_mut().unwrap() = 10;
     /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
+    ///
+    /// [`forget()`]: mem::forget
     #[stable(feature = "mutex_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         let data = self.data.get_mut();

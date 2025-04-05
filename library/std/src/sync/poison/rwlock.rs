@@ -608,7 +608,9 @@ impl<T: ?Sized> RwLock<T> {
     /// Returns a mutable reference to the underlying data.
     ///
     /// Since this call borrows the `RwLock` mutably, no actual locking needs to
-    /// take place -- the mutable borrow statically guarantees no locks exist.
+    /// take place -- the mutable borrow statically guarantees no new locks can be acquired
+    /// while this reference exists. Note that this method does not clear any previously abandoned locks
+    /// (e.g., via [`forget()`] on a [`RwLockReadGuard`] or [`RwLockWriteGuard`]).
     ///
     /// # Errors
     ///

@@ -1156,7 +1156,9 @@ impl<T: ?Sized> RefCell<T> {
     /// Since this method borrows `RefCell` mutably, it is statically guaranteed
     /// that no borrows to the underlying data exist. The dynamic checks inherent
     /// in [`borrow_mut`] and most other methods of `RefCell` are therefore
-    /// unnecessary.
+    /// unnecessary. Note that this method does not reset the borrowing state if borrows were previously leaked
+    /// (e.g., via [`forget()`] on a [`Ref`] or [`RefMut`]). For that purpose,
+    /// consider using the unstable [`undo_leak`] method.
     ///
     /// This method can only be called if `RefCell` can be mutably borrowed,
     /// which in general is only the case directly after the `RefCell` has
@@ -1167,6 +1169,8 @@ impl<T: ?Sized> RefCell<T> {
     /// Use [`borrow_mut`] to get mutable access to the underlying data then.
     ///
     /// [`borrow_mut`]: RefCell::borrow_mut()
+    /// [`forget()`]: mem::forget
+    /// [`undo_leak`]: RefCell::undo_leak()
     ///
     /// # Examples
     ///
