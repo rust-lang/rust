@@ -1,5 +1,6 @@
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir;
 use rustc_middle::ty::Instance;
 use rustc_span::Span;
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -25,8 +26,11 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
         in_value: OperandRef<'tcx, B::Value>,
         out_place: Option<PlaceRef<'tcx, B::Value>>,
     },
-    Const {
+    Interpolate {
         string: String,
+    },
+    Const {
+        value: OperandRef<'tcx, B::Value>,
     },
     SymFn {
         instance: Instance<'tcx>,
@@ -41,9 +45,20 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
 
 #[derive(Debug)]
 pub enum GlobalAsmOperandRef<'tcx> {
-    Const { string: String },
-    SymFn { instance: Instance<'tcx> },
-    SymStatic { def_id: DefId },
+    Interpolate {
+        string: String,
+    },
+    ConstPointer {
+        value: mir::interpret::Pointer,
+        /// Instance that instantiates this const operand.
+        instance: Instance<'tcx>,
+    },
+    SymFn {
+        instance: Instance<'tcx>,
+    },
+    SymStatic {
+        def_id: DefId,
+    },
 }
 
 pub trait AsmBuilderMethods<'tcx>: BackendTypes {
