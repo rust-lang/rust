@@ -3,8 +3,8 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::os::windows::prelude::*;
 use crate::path::Path;
 use crate::random::{DefaultRandomSource, Random};
-use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::Relaxed;
+use crate::sync::atomic::{Atomic, AtomicUsize};
 use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
@@ -192,7 +192,7 @@ pub fn spawn_pipe_relay(
 }
 
 fn random_number() -> usize {
-    static N: AtomicUsize = AtomicUsize::new(0);
+    static N: Atomic<usize> = AtomicUsize::new(0);
     loop {
         if N.load(Relaxed) != 0 {
             return N.fetch_add(1, Relaxed);
