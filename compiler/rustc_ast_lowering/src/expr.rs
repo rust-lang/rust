@@ -74,14 +74,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // Merge attributes into the inner expression.
                     if !e.attrs.is_empty() {
                         let old_attrs = self.attrs.get(&ex.hir_id.local_id).copied().unwrap_or(&[]);
-                        self.attrs.insert(
-                            ex.hir_id.local_id,
-                            &*self.arena.alloc_from_iter(
-                                self.lower_attrs_vec(&e.attrs, e.span)
-                                    .into_iter()
-                                    .chain(old_attrs.iter().cloned()),
-                            ),
+                        let attrs = &*self.arena.alloc_from_iter(
+                            self.lower_attrs_vec(&e.attrs, e.span)
+                                .into_iter()
+                                .chain(old_attrs.iter().cloned()),
                         );
+                        if attrs.is_empty() {
+                            return ex;
+                        }
+
+                        self.attrs.insert(ex.hir_id.local_id, attrs);
                     }
                     return ex;
                 }
