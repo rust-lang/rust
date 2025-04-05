@@ -44,6 +44,7 @@ windows_targets::link!("kernel32.dll" "system" fn GetExitCodeProcess(hprocess : 
 windows_targets::link!("kernel32.dll" "system" fn GetFileAttributesW(lpfilename : PCWSTR) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetFileInformationByHandle(hfile : HANDLE, lpfileinformation : *mut BY_HANDLE_FILE_INFORMATION) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn GetFileInformationByHandleEx(hfile : HANDLE, fileinformationclass : FILE_INFO_BY_HANDLE_CLASS, lpfileinformation : *mut core::ffi::c_void, dwbuffersize : u32) -> BOOL);
+windows_targets::link!("kernel32.dll" "system" fn GetFileSizeEx(hfile : HANDLE, lpfilesize : *mut i64) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn GetFileType(hfile : HANDLE) -> FILE_TYPE);
 windows_targets::link!("kernel32.dll" "system" fn GetFinalPathNameByHandleW(hfile : HANDLE, lpszfilepath : PWSTR, cchfilepath : u32, dwflags : GETFINALPATHNAMEBYHANDLE_FLAGS) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetFullPathNameW(lpfilename : PCWSTR, nbufferlength : u32, lpbuffer : PWSTR, lpfilepart : *mut PWSTR) -> u32);
