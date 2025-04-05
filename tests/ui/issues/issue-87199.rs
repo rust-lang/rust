@@ -17,5 +17,5 @@ fn ret() -> impl Iterator<Item = ()> + ?Send { std::iter::empty() }
 fn main() {
     ref_arg::<i32>(&5);
     ref_arg::<[i32]>(&[5]);
-    //~^ the size for values of type `[i32]` cannot be known
+    //~^ ERROR the size for values of type `[i32]` cannot be known
 }

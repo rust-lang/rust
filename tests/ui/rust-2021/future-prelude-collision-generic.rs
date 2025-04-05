@@ -27,11 +27,11 @@ impl std::iter::FromIterator<i32> for Generic<'static, i32> {
 fn main() {
     Generic::from_iter(1);
     //~^ WARNING trait-associated function `from_iter` will become ambiguous in Rust 2021
-    //~| this is accepted in the current edition (Rust 2018)
+    //~| WARN this is accepted in the current edition (Rust 2018)
     Generic::<'static, i32>::from_iter(1);
     //~^ WARNING trait-associated function `from_iter` will become ambiguous in Rust 2021
-    //~| this is accepted in the current edition (Rust 2018)
+    //~| WARN this is accepted in the current edition (Rust 2018)
     Generic::<'_, _>::from_iter(1);
     //~^ WARNING trait-associated function `from_iter` will become ambiguous in Rust 2021
-    //~| this is accepted in the current edition (Rust 2018)
+    //~| WARN this is accepted in the current edition (Rust 2018)
 }

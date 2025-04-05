@@ -34,13 +34,13 @@ const fn foo35(a: bool, b: bool) -> bool { a ^ b }
 struct Foo<T: ?Sized>(T);
 impl<T> Foo<T> {
     const fn new(t: T) -> Self { Foo(t) }
-    const fn into_inner(self) -> T { self.0 } //~ destructor of
+    const fn into_inner(self) -> T { self.0 } //~ ERROR destructor of
     const fn get(&self) -> &T { &self.0 }
     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
 }
 impl<'a, T> Foo<T> {
     const fn new_lt(t: T) -> Self { Foo(t) }
-    const fn into_inner_lt(self) -> T { self.0 } //~ destructor of
+    const fn into_inner_lt(self) -> T { self.0 } //~ ERROR destructor of
     const fn get_lt(&self) -> &T { &self.0 }
     const fn get_mut_lt(&mut self) -> &mut T { &mut self.0 }
 }

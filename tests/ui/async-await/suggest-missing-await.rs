@@ -43,7 +43,7 @@ async fn suggest_await_on_previous_match_arms() {
         0 => dummy(), //~ HELP consider `await`ing on the `Future`
         1 => dummy(),
         2 => dummy().await,
-        //~^ `match` arms have incompatible types [E0308]
+        //~^ ERROR `match` arms have incompatible types [E0308]
     };
 }
 

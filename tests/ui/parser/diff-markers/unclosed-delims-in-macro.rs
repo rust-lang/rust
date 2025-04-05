@@ -8,4 +8,4 @@ macro_rules! foo {
     () { //
 >>>>>>> 7a4f13c blah blah blah
     }
-} //~ this file contains an unclosed delimiter
+} //~ ERROR this file contains an unclosed delimiter

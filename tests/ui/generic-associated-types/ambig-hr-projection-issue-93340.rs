@@ -13,7 +13,7 @@ fn cmp_eq<'a, 'b, A: Scalar, B: Scalar, O: Scalar>(a: A::RefType<'a>, b: B::RefT
 
 fn build_expression<A: Scalar, B: Scalar, O: Scalar>(
 ) -> impl Fn(A::RefType<'_>, B::RefType<'_>) -> O {
-    //[next]~^^ expected a `Fn(<A as Scalar>::RefType<'_>, <B as Scalar>::RefType<'_>)` closure
+    //[next]~^^ ERROR expected a `Fn(<A as Scalar>::RefType<'_>, <B as Scalar>::RefType<'_>)` closure
     cmp_eq
     //~^ ERROR type annotations needed
 }

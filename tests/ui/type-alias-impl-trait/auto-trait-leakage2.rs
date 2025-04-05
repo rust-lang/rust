@@ -4,8 +4,8 @@
 use std::rc::Rc;
 
 type Foo = impl std::fmt::Debug; //~ NOTE appears within the type
-//~^ within this `Foo`
-//~| expansion of desugaring
+//~^ NOTE within this `Foo`
+//~| NOTE expansion of desugaring
 
 #[define_opaque(Foo)]
 pub fn foo() -> Foo {
@@ -13,8 +13,8 @@ pub fn foo() -> Foo {
 }
 
 fn is_send<T: Send>(_: T) {}
-//~^ required by this bound
-//~| required by a bound
+//~^ NOTE required by this bound
+//~| NOTE required by a bound
 
 fn main() {
     is_send(foo());

@@ -15,7 +15,7 @@ const VALUE: Foo = value();
 fn test() {
     match VALUE {
         VALUE => (),
-        //~^ `Foo` cannot be used in patterns
+        //~^ ERROR `Foo` cannot be used in patterns
         _ => (),
     }
 }
