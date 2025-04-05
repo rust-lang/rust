@@ -1447,6 +1447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn try_structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.resolve_vars_with_obligations(ty);
 
+        debug!("next_solver = {:?}", self.next_trait_solver());
         if self.next_trait_solver()
             && let ty::Alias(..) = ty.kind()
         {
