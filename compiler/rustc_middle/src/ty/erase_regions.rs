@@ -1,21 +1,27 @@
 use tracing::debug;
 
-use crate::query::Providers;
+use crate::dep_graph::DepGraph;
 use crate::ty::{
     self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 
-pub(super) fn provide(providers: &mut Providers) {
-    *providers = Providers { erase_regions_ty, ..*providers };
-}
-
-fn erase_regions_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    // N.B., use `super_fold_with` here. If we used `fold_with`, it
-    // could invoke the `erase_regions_ty` query recursively.
-    ty.super_fold_with(&mut RegionEraserVisitor { tcx })
-}
-
 impl<'tcx> TyCtxt<'tcx> {
+    /// Erases regions from `ty` to yield a new type.
+    pub fn erase_regions_ty(self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if let Some(ty) = self.erased_region_cache.get(&ty) {
+            return ty;
+        }
+
+        let result = DepGraph::debug_assert_no_deps(|| {
+            // N.B., use `super_fold_with` here. If we used `fold_with`, it
+            // could invoke the `erase_regions_ty` function recursively.
+            ty.super_fold_with(&mut RegionEraserVisitor { tcx: self })
+        });
+
+        self.erased_region_cache.insert(ty, result);
+        result
+    }
+
     /// Returns an equivalent value with all free regions removed (note
     /// that late-bound regions remain, because they are important for
     /// subtyping, but they are anonymized and normalized as well)..
