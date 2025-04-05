@@ -1180,7 +1180,7 @@ unsafe extern "C" {
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
-    pub(crate) fn LLVMCountParams(Fn: &Value) -> c_uint;
+    pub(crate) safe fn LLVMCountParams(Fn: &Value) -> c_uint;
     pub(crate) fn LLVMGetParam(Fn: &Value, Index: c_uint) -> &Value;
 
     // Operations on basic blocks

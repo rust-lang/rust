@@ -30,6 +30,8 @@ declare global {
         currentCrate: string|null;
         /**
          * Hide popovers, tooltips, or the mobile sidebar.
+         *
+         * Pass `true` to reset focus for tooltip popovers.
          */
         hideAllModals: function(boolean),
         /**
@@ -78,6 +80,8 @@ declare global {
         pending_implementors?: rustdoc.Implementors,
         register_type_impls?: function(rustdoc.TypeImpls): void,
         pending_type_impls?: rustdoc.TypeImpls,
+        rustdoc_add_line_numbers_to_examples?: function(),
+        rustdoc_remove_line_numbers_from_examples?: function(),
     }
     interface HTMLElement {
         /** Used by the popover tooltip code. */
@@ -477,4 +481,14 @@ declare namespace rustdoc {
      * is a tuple of (filename, subdirs, filenames).
      */
     type Dir = [string, rustdoc.Dir[], string[]]
+
+    /**
+     * Indivitual setting object, used in `settings.js`
+     */
+    interface Setting {
+        js_name: string,
+        name: string,
+        options?: string[],
+        default: string | boolean,
+    }
 }

@@ -23,11 +23,11 @@ use std::{fmt, io};
 use serde::Serialize;
 
 use crate::compiler_interface::with;
-pub use crate::crate_def::{CrateDef, CrateDefType, DefId};
+pub use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType, DefId};
 pub use crate::error::*;
 use crate::mir::mono::StaticDef;
 use crate::mir::{Body, Mutability};
-use crate::ty::{FnDef, ForeignModuleDef, ImplDef, IndexedVal, Span, TraitDef, Ty};
+use crate::ty::{AssocItem, FnDef, ForeignModuleDef, ImplDef, IndexedVal, Span, TraitDef, Ty};
 
 pub mod abi;
 #[macro_use]
@@ -70,6 +70,9 @@ pub type TraitDecls = Vec<TraitDef>;
 
 /// A list of impl trait decls.
 pub type ImplTraitDecls = Vec<ImplDef>;
+
+/// A list of associated items.
+pub type AssocItems = Vec<AssocItem>;
 
 /// Holds information about a crate.
 #[derive(Clone, PartialEq, Eq, Debug, Serialize)]
