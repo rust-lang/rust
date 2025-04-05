@@ -1,0 +1,18 @@
+error[E0055]: reached the recursion limit while auto-dereferencing `Cyclic`
+  --> $DIR/recursion-limit.rs:18:9
+   |
+LL |         () => {}
+   |         ^^ deref recursion limit reached
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "16"]` attribute to your crate (`recursion_limit`)
+
+error[E0277]: the trait bound `Cyclic: DerefPure` is not satisfied
+  --> $DIR/recursion-limit.rs:18:9
+   |
+LL |         () => {}
+   |         ^^ the trait `DerefPure` is not implemented for `Cyclic`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0055, E0277.
+For more information about an error, try `rustc --explain E0055`.
