@@ -1,4 +1,4 @@
-error: cannot capture late-bound lifetime in `impl Trait` in binding
+error: cannot capture late-bound lifetime in nested `impl Trait`
   --> $DIR/escaping-bound-var.rs:12:52
    |
 LL |     let x: &dyn for<'a> Foo<'a, Out = impl Sized + 'a> = &();

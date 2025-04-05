@@ -1,20 +1,23 @@
 error[E0666]: nested `impl Trait` is not allowed
-  --> $DIR/non-lifetime-binder.rs:6:29
+  --> $DIR/non-lifetime-binder-nested.rs:6:29
    |
-LL | fn f() -> impl for<T> Trait<impl Trait<T>> {}
+LL | fn f() -> impl for<T> Trait<impl Trait<T>> {
    |           ------------------^^^^^^^^^^^^^-
    |           |                 |
    |           |                 nested `impl Trait` here
    |           outer `impl Trait`
 
 error[E0277]: the trait bound `(): Trait<impl Trait<T>>` is not satisfied
-  --> $DIR/non-lifetime-binder.rs:6:11
+  --> $DIR/non-lifetime-binder-nested.rs:6:11
    |
-LL | fn f() -> impl for<T> Trait<impl Trait<T>> {}
+LL | fn f() -> impl for<T> Trait<impl Trait<T>> {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<impl Trait<T>>` is not implemented for `()`
+...
+LL |     ()
+   |     -- return type was inferred to be `()` here
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/non-lifetime-binder.rs:4:1
+  --> $DIR/non-lifetime-binder-nested.rs:4:1
    |
 LL | trait Trait<T> {}
    | ^^^^^^^^^^^^^^
