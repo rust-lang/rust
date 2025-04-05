@@ -3545,6 +3545,7 @@ dependencies = [
  "portable-atomic",
  "rustc-hash 2.1.1",
  "rustc-rayon",
+ "rustc-rayon-core",
  "rustc-stable-hash",
  "rustc_arena",
  "rustc_graphviz",

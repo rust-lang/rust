@@ -19,6 +19,7 @@
 #![feature(rustdoc_internals)]
 #![feature(slice_as_array)]
 #![feature(try_blocks)]
+#![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 use std::any::Any;
@@ -39,6 +40,7 @@ use rustc_codegen_ssa::back::write::{
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::sync::{DynSend, downcast_box_any_dyn_send};
 use rustc_errors::{DiagCtxtHandle, FatalError};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -347,7 +349,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         tcx: TyCtxt<'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
-    ) -> Box<dyn Any> {
+    ) -> Box<dyn Any + DynSend> {
         Box::new(rustc_codegen_ssa::base::codegen_crate(
             LlvmCodegenBackend(()),
             tcx,
@@ -359,14 +361,15 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn join_codegen(
         &self,
-        ongoing_codegen: Box<dyn Any>,
+        ongoing_codegen: Box<dyn Any + DynSend>,
         sess: &Session,
         outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
-        let (codegen_results, work_products) = ongoing_codegen
-            .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
-            .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
-            .join(sess);
+        let (codegen_results, work_products) = downcast_box_any_dyn_send::<
+            rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>,
+        >(ongoing_codegen)
+        .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<dyn Any + DynSend>")
+        .join(sess);
 
         if sess.opts.unstable_opts.llvm_time_trace {
             sess.time("llvm_dump_timing_file", || {

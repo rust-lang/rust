@@ -1,4 +1,5 @@
 use std::alloc::Allocator;
+use std::any::Any;
 
 #[rustc_on_unimplemented(message = "`{Self}` doesn't implement `DynSend`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Send`")]
@@ -51,9 +52,20 @@ macro_rules! already_send {
 
 // These structures are already `Send`.
 already_send!(
-    [std::backtrace::Backtrace][std::io::Stdout][std::io::Stderr][std::io::Error][std::fs::File]
-        [rustc_arena::DroplessArena][crate::memmap::Mmap][crate::profiling::SelfProfiler]
-        [crate::owned_slice::OwnedSlice]
+    [std::backtrace::Backtrace]
+    [std::io::Stdout]
+    [std::io::Stderr]
+    [std::io::Error]
+    [std::fs::File]
+    [std::sync::Condvar]
+    [jobserver_crate::Client]
+    [jobserver_crate::HelperThread]
+    [jobserver_crate::Acquired]
+    [Box<dyn Any + Send>]
+    [rustc_arena::DroplessArena]
+    [crate::memmap::Mmap]
+    [crate::profiling::SelfProfiler]
+    [crate::owned_slice::OwnedSlice]
 );
 
 macro_rules! impl_dyn_send {
@@ -64,10 +76,14 @@ macro_rules! impl_dyn_send {
 
 impl_dyn_send!(
     [std::sync::atomic::AtomicPtr<T> where T]
-    [std::sync::Mutex<T> where T: ?Sized+ DynSend]
+            [std::sync::Mutex<T> where T: ?Sized + DynSend]
+            [std::sync::RwLock<T> where T: ?Sized + DynSend]
     [std::sync::mpsc::Sender<T> where T: DynSend]
+            [std::sync::mpsc::Receiver<T> where T: DynSend]
     [std::sync::Arc<T> where T: ?Sized + DynSync + DynSend]
+            [std::sync::OnceLock<T> where T: DynSend]
     [std::sync::LazyLock<T, F> where T: DynSend, F: DynSend]
+            [std::thread::JoinHandle<T> where T]
     [std::collections::HashSet<K, S> where K: DynSend, S: DynSend]
     [std::collections::HashMap<K, V, S> where K: DynSend, V: DynSend, S: DynSend]
     [std::collections::BTreeMap<K, V, A> where K: DynSend, V: DynSend, A: std::alloc::Allocator + Clone + DynSend]
@@ -119,9 +135,9 @@ macro_rules! already_sync {
 // These structures are already `Sync`.
 already_sync!(
     [std::sync::atomic::AtomicBool][std::sync::atomic::AtomicUsize][std::sync::atomic::AtomicU8]
-        [std::sync::atomic::AtomicU32][std::backtrace::Backtrace][std::io::Error][std::fs::File]
-        [jobserver_crate::Client][crate::memmap::Mmap][crate::profiling::SelfProfiler]
-        [crate::owned_slice::OwnedSlice]
+        [std::sync::atomic::AtomicU32][std::backtrace::Backtrace][std::sync::Condvar]
+        [std::io::Error][std::fs::File][jobserver_crate::Client][crate::memmap::Mmap]
+        [crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice]
 );
 
 // Use portable AtomicU64 for targets without native 64-bit atomics
@@ -142,7 +158,9 @@ impl_dyn_sync!(
     [std::sync::OnceLock<T> where T: DynSend + DynSync]
     [std::sync::Mutex<T> where T: ?Sized + DynSend]
     [std::sync::Arc<T> where T: ?Sized + DynSync + DynSend]
+            [std::sync::RwLock<T> where T: ?Sized + DynSend + DynSync]
     [std::sync::LazyLock<T, F> where T: DynSend + DynSync, F: DynSend]
+    [std::sync::mpsc::SyncSender<T> where T: DynSend]
     [std::collections::HashSet<K, S> where K: DynSync, S: DynSync]
     [std::collections::HashMap<K, V, S> where K: DynSync, V: DynSync, S: DynSync]
     [std::collections::BTreeMap<K, V, A> where K: DynSync, V: DynSync, A: std::alloc::Allocator + Clone + DynSync]
@@ -222,5 +240,17 @@ impl<T> std::ops::DerefMut for IntoDynSyncSend<T> {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
+    }
+}
+
+#[inline]
+pub fn downcast_box_any_dyn_send<T: Any>(this: Box<dyn Any + DynSend>) -> Result<Box<T>, ()> {
+    if <dyn Any>::is::<T>(&*this) {
+        unsafe {
+            let (raw, alloc): (*mut (dyn Any + DynSend), _) = Box::into_raw_with_allocator(this);
+            Ok(Box::from_raw_in(raw as *mut T, alloc))
+        }
+    } else {
+        Err(())
     }
 }

@@ -4,6 +4,7 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(try_blocks)]
+#![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 mod callbacks;
