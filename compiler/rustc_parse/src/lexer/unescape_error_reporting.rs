@@ -199,16 +199,7 @@ pub(crate) fn emit_unescape_error(
             err.span_label(span, format!("must be ASCII{postfix}"));
             // Note: the \\xHH suggestions are not given for raw byte string
             // literals, because they are araw and so cannot use any escapes.
-            if (c as u32) <= 0xFF && mode != Mode::RawByteStr {
-                err.span_suggestion(
-                    span,
-                    format!(
-                        "if you meant to use the unicode code point for {c:?}, use a \\xHH escape"
-                    ),
-                    format!("\\x{:X}", c as u32),
-                    Applicability::MaybeIncorrect,
-                );
-            } else if mode == Mode::Byte {
+            if mode == Mode::Byte {
                 err.span_label(span, "this multibyte character does not fit into a single byte");
             } else if mode != Mode::RawByteStr {
                 let mut utf8 = String::new();
