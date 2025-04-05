@@ -308,7 +308,7 @@ impl<T, S> HashSet<T, S> {
     /// ```
     #[inline]
     #[rustc_lint_query_instability]
-    #[stable(feature = "hash_extract_if", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "hash_extract_if", since = "1.87.0")]
     pub fn extract_if<F>(&mut self, pred: F) -> ExtractIf<'_, T, F>
     where
         F: FnMut(&T) -> bool,
@@ -1390,7 +1390,7 @@ pub struct Drain<'a, K: 'a> {
 ///
 /// let mut extract_ifed = a.extract_if(|v| v % 2 == 0);
 /// ```
-#[stable(feature = "hash_extract_if", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "hash_extract_if", since = "1.87.0")]
 pub struct ExtractIf<'a, K, F>
 where
     F: FnMut(&K) -> bool,
@@ -1673,7 +1673,7 @@ impl<K: fmt::Debug> fmt::Debug for Drain<'_, K> {
     }
 }
 
-#[stable(feature = "hash_extract_if", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "hash_extract_if", since = "1.87.0")]
 impl<K, F> Iterator for ExtractIf<'_, K, F>
 where
     F: FnMut(&K) -> bool,
@@ -1690,10 +1690,10 @@ where
     }
 }
 
-#[stable(feature = "hash_extract_if", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "hash_extract_if", since = "1.87.0")]
 impl<K, F> FusedIterator for ExtractIf<'_, K, F> where F: FnMut(&K) -> bool {}
 
-#[stable(feature = "hash_extract_if", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "hash_extract_if", since = "1.87.0")]
 impl<'a, K, F> fmt::Debug for ExtractIf<'a, K, F>
 where
     F: FnMut(&K) -> bool,

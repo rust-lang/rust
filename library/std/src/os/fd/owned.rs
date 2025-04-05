@@ -505,7 +505,7 @@ impl<'a> AsFd for io::StderrLock<'a> {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for io::PipeReader {
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -513,7 +513,7 @@ impl AsFd for io::PipeReader {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl From<io::PipeReader> for OwnedFd {
     fn from(pipe: io::PipeReader) -> Self {
@@ -521,7 +521,7 @@ impl From<io::PipeReader> for OwnedFd {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for io::PipeWriter {
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -529,7 +529,7 @@ impl AsFd for io::PipeWriter {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl From<io::PipeWriter> for OwnedFd {
     fn from(pipe: io::PipeWriter) -> Self {
@@ -537,7 +537,7 @@ impl From<io::PipeWriter> for OwnedFd {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for io::PipeReader {
     fn from(owned_fd: OwnedFd) -> Self {
@@ -545,7 +545,7 @@ impl From<OwnedFd> for io::PipeReader {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for io::PipeWriter {
     fn from(owned_fd: OwnedFd) -> Self {

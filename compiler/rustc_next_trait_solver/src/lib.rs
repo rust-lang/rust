@@ -6,7 +6,7 @@
 
 // tidy-alphabetical-start
 #![allow(rustc::usage_of_type_ir_inherent)]
-#![cfg_attr(not(bootstrap), allow(rustc::usage_of_type_ir_traits))]
+#![allow(rustc::usage_of_type_ir_traits)]
 // tidy-alphabetical-end
 
 pub mod canonicalizer;

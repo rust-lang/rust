@@ -216,7 +216,7 @@ pub macro Clone($item:item) {
 /// Use closures allow captured values to be automatically used.
 /// This is similar to have a closure that you would call `.use` over each captured value.
 #[unstable(feature = "ergonomic_clones", issue = "132290")]
-#[cfg_attr(not(bootstrap), lang = "use_cloned")]
+#[lang = "use_cloned"]
 pub trait UseCloned: Clone {
     // Empty.
 }

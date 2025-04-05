@@ -16,22 +16,22 @@ unsafe extern "Rust" {
     // otherwise.
     #[rustc_allocator]
     #[rustc_nounwind]
-    #[cfg_attr(not(bootstrap), rustc_std_internal_symbol)]
+    #[rustc_std_internal_symbol]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
     #[rustc_deallocator]
     #[rustc_nounwind]
-    #[cfg_attr(not(bootstrap), rustc_std_internal_symbol)]
+    #[rustc_std_internal_symbol]
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
     #[rustc_reallocator]
     #[rustc_nounwind]
-    #[cfg_attr(not(bootstrap), rustc_std_internal_symbol)]
+    #[rustc_std_internal_symbol]
     fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
     #[rustc_allocator_zeroed]
     #[rustc_nounwind]
-    #[cfg_attr(not(bootstrap), rustc_std_internal_symbol)]
+    #[rustc_std_internal_symbol]
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
 
-    #[cfg_attr(not(bootstrap), rustc_std_internal_symbol)]
+    #[rustc_std_internal_symbol]
     static __rust_no_alloc_shim_is_unstable: u8;
 }
 
@@ -360,7 +360,7 @@ unsafe extern "Rust" {
     // This is the magic symbol to call the global alloc error handler. rustc generates
     // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
     // default implementations below (`__rdl_oom`) otherwise.
-    #[cfg_attr(not(bootstrap), rustc_std_internal_symbol)]
+    #[rustc_std_internal_symbol]
     fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
 }
 
@@ -427,7 +427,7 @@ pub mod __alloc_error_handler {
         unsafe extern "Rust" {
             // This symbol is emitted by rustc next to __rust_alloc_error_handler.
             // Its value depends on the -Zoom={panic,abort} compiler option.
-            #[cfg_attr(not(bootstrap), rustc_std_internal_symbol)]
+            #[rustc_std_internal_symbol]
             static __rust_alloc_error_handler_should_panic: u8;
         }
 

@@ -952,7 +952,7 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     ///     assert_eq!(*x, i);
     /// }
     /// ```
-    #[stable(feature = "box_uninit_write", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "box_uninit_write", since = "1.87.0")]
     #[inline]
     pub fn write(mut boxed: Self, value: T) -> Box<T, A> {
         unsafe {

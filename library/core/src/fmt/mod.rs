@@ -1515,19 +1515,6 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argume
         // which guarantees the indexes are always within bounds.
         unsafe { (getcount(args, &arg.width), getcount(args, &arg.precision)) };
 
-    #[cfg(bootstrap)]
-    let options =
-        *FormattingOptions { flags: flags::ALWAYS_SET | arg.flags << 21, width: 0, precision: 0 }
-            .align(match arg.align {
-                rt::Alignment::Left => Some(Alignment::Left),
-                rt::Alignment::Right => Some(Alignment::Right),
-                rt::Alignment::Center => Some(Alignment::Center),
-                rt::Alignment::Unknown => None,
-            })
-            .fill(arg.fill)
-            .width(width)
-            .precision(precision);
-    #[cfg(not(bootstrap))]
     let options = FormattingOptions { flags: arg.flags, width, precision };
 
     // Extract the correct argument
@@ -1544,21 +1531,6 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argume
     unsafe { value.fmt(fmt) }
 }
 
-#[cfg(bootstrap)]
-unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> Option<u16> {
-    match *cnt {
-        rt::Count::Is(n) => Some(n as u16),
-        rt::Count::Implied => None,
-        rt::Count::Param(i) => {
-            debug_assert!(i < args.len());
-            // SAFETY: cnt and args come from the same Arguments,
-            // which guarantees this index is always within bounds.
-            unsafe { args.get_unchecked(i).as_u16() }
-        }
-    }
-}
-
-#[cfg(not(bootstrap))]
 unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> u16 {
     match *cnt {
         rt::Count::Is(n) => n,
