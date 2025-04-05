@@ -396,12 +396,12 @@ impl<'tcx> GenericArgs<'tcx> {
         InlineConstArgs { args: self }
     }
 
-    /// Creates an `GenericArgs` that maps each generic parameter to itself.
+    /// Creates a `GenericArgs` that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: impl Into<DefId>) -> GenericArgsRef<'tcx> {
         Self::for_item(tcx, def_id.into(), |param, _| tcx.mk_param_from_def(param))
     }
 
-    /// Creates an `GenericArgs` for generic parameter definitions,
+    /// Creates a `GenericArgs` for generic parameter definitions,
     /// by calling closures to obtain each kind.
     /// The closures get to observe the `GenericArgs` as they're
     /// being built, which can be used to correctly
