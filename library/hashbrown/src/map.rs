@@ -4131,7 +4131,8 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(self, value: V) -> OccupiedEntry<'a, K, V, S, A>
     where
-        K: Hash + From<&'b Q>,
+        K: Hash,
+        &'b Q: Into<K>,
         S: BuildHasher,
     {
         match self {
@@ -4164,7 +4165,8 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn or_insert(self, default: V) -> &'a mut V
     where
-        K: Hash + From<&'b Q>,
+        K: Hash,
+        &'b Q: Into<K>,
         S: BuildHasher,
     {
         match self {
@@ -4194,7 +4196,8 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V
     where
-        K: Hash + From<&'b Q>,
+        K: Hash,
+        &'b Q: Into<K>,
         S: BuildHasher,
     {
         match self {
@@ -4225,7 +4228,8 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn or_insert_with_key<F: FnOnce(&Q) -> V>(self, default: F) -> &'a mut V
     where
-        K: Hash + Borrow<Q> + From<&'b Q>,
+        K: Hash + Borrow<Q>,
+        &'b Q: Into<K>,
         S: BuildHasher,
     {
         match self {
@@ -4320,7 +4324,8 @@ impl<'a, 'b, K, Q: ?Sized, V: Default, S, A: Allocator> EntryRef<'a, 'b, K, Q, V
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn or_default(self) -> &'a mut V
     where
-        K: Hash + From<&'b Q>,
+        K: Hash,
+        &'b Q: Into<K>,
         S: BuildHasher,
     {
         match self {
@@ -4368,7 +4373,8 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'a, 'b, K, Q, V, S
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(self, value: V) -> &'a mut V
     where
-        K: Hash + From<&'b Q>,
+        K: Hash,
+        &'b Q: Into<K>,
         S: BuildHasher,
     {
         let table = &mut self.table.table;
@@ -4399,7 +4405,8 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'a, 'b, K, Q, V, S
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V, S, A>
     where
-        K: Hash + From<&'b Q>,
+        K: Hash,
+        &'b Q: Into<K>,
         S: BuildHasher,
     {
         let elem = self.table.table.insert(
