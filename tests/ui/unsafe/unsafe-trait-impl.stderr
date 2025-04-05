@@ -1,11 +1,11 @@
 error[E0053]: method `len` has an incompatible type for trait
-  --> $DIR/unsafe-trait-impl.rs:8:5
+  --> $DIR/unsafe-trait-impl.rs:10:5
    |
 LL |     fn len(&self) -> u32 { *self }
    |     ^^^^^^^^^^^^^^^^^^^^ expected unsafe fn, found safe fn
    |
 note: type in trait
-  --> $DIR/unsafe-trait-impl.rs:4:5
+  --> $DIR/unsafe-trait-impl.rs:6:5
    |
 LL |     unsafe fn len(&self) -> u32;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
