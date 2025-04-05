@@ -83,8 +83,11 @@ pub enum GoalSource {
     /// Instantiating a higher-ranked goal and re-proving it.
     InstantiateHigherRanked,
     /// Predicate required for an alias projection to be well-formed.
-    /// This is used in two places: projecting to an opaque whose hidden type
-    /// is already registered in the opaque type storage, and for rigid projections.
+    /// This is used in three places:
+    /// 1. projecting to an opaque whose hidden type is already registered in
+    ///    the opaque type storage,
+    /// 2. for rigid projections's trait goal,
+    /// 3. for GAT where clauses.
     AliasWellFormed,
     /// In case normalizing aliases in nested goals cycles, eagerly normalizing these
     /// aliases in the context of the parent may incorrectly change the cycle kind.
