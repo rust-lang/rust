@@ -4,7 +4,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypingMode, fold_regions};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode, fold_regions};
 use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 use tracing::debug;
@@ -77,6 +77,15 @@ fn diagnostic_hir_wf_check<'tcx>(
             let tcx_ty = fold_regions(self.tcx, tcx_ty, |r, _| {
                 if r.is_bound() { self.tcx.lifetimes.re_erased } else { r }
             });
+
+            // We may be checking the WFness of a type in an opaque with a non-lifetime bound.
+            // Perhaps we could rebind all the escaping bound vars, but they're coming from
+            // arbitrary debruijn indices and aren't particularly important anyways, since they
+            // are only coming from `feature(non_lifetime_binders)` anyways.
+            if tcx_ty.has_escaping_bound_vars() {
+                return;
+            }
+
             let cause = traits::ObligationCause::new(
                 ty.span,
                 self.def_id,
