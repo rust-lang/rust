@@ -652,6 +652,8 @@ pub enum CallSource {
     /// Other types of desugaring that did not come from the HIR, but we don't care about
     /// for diagnostics (yet).
     Misc,
+    /// Use of value, generating a clone function call
+    Use,
     /// Normal function call, no special source
     Normal,
 }

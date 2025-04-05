@@ -53,4 +53,8 @@ ignore = [
     # Code automatically generated and included.
     "compiler/rustc_codegen_gcc/src/intrinsic/archs.rs",
     "compiler/rustc_codegen_gcc/example",
+
+    # Rustfmt doesn't support use closures yet
+    "tests/mir-opt/ergonomic-clones/closure.rs",
+    "tests/codegen/ergonomic-clones/closure.rs",
 ]
