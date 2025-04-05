@@ -13,12 +13,10 @@ fn slice_ptr_get_unchecked_range(_1: *const [u32], _2: std::ops::Range<usize>) -
             let _7: usize;
             scope 3 {
                 scope 6 (inlined core::slice::index::get_offset_len_noubcheck::<u32>) {
-                    let _9: *const u32;
+                    let _8: *const u32;
                     scope 7 {
-                    }
-                    scope 8 (inlined core::slice::index::get_noubcheck::<u32>) {
-                        let _8: *const u32;
-                        scope 9 {
+                        let _9: *const u32;
+                        scope 8 {
                         }
                     }
                 }
@@ -42,13 +40,13 @@ fn slice_ptr_get_unchecked_range(_1: *const [u32], _2: std::ops::Range<usize>) -
     bb1: {
         StorageDead(_5);
         _7 = SubUnchecked(copy _4, copy _3);
-        StorageLive(_9);
         StorageLive(_8);
+        StorageLive(_9);
         _8 = copy _1 as *const u32 (PtrToPtr);
         _9 = Offset(copy _8, copy _3);
-        StorageDead(_8);
         _0 = *const [u32] from (copy _9, copy _7);
         StorageDead(_9);
+        StorageDead(_8);
         StorageDead(_7);
         return;
     }

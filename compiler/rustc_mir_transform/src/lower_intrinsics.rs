@@ -262,6 +262,52 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                         });
                         terminator.kind = TerminatorKind::Goto { target };
                     }
+                    sym::slice_get_unchecked => {
+                        let target = target.unwrap();
+                        let Ok([ptrish, index]) = take_array(args) else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Wrong number of arguments for {intrinsic:?}",
+                            );
+                        };
+
+                        let place = ptrish.node.place().unwrap();
+                        assert!(!place.is_indirect());
+                        let updated_place = place.project_deeper(
+                            &[
+                                ProjectionElem::Deref,
+                                ProjectionElem::Index(
+                                    index.node.place().unwrap().as_local().unwrap(),
+                                ),
+                            ],
+                            tcx,
+                        );
+
+                        let ret_ty = generic_args.type_at(0);
+                        let rvalue = match *ret_ty.kind() {
+                            ty::RawPtr(_, Mutability::Not) => {
+                                Rvalue::RawPtr(RawPtrKind::Const, updated_place)
+                            }
+                            ty::RawPtr(_, Mutability::Mut) => {
+                                Rvalue::RawPtr(RawPtrKind::Mut, updated_place)
+                            }
+                            ty::Ref(region, _, Mutability::Not) => {
+                                Rvalue::Ref(region, BorrowKind::Shared, updated_place)
+                            }
+                            ty::Ref(region, _, Mutability::Mut) => Rvalue::Ref(
+                                region,
+                                BorrowKind::Mut { kind: MutBorrowKind::Default },
+                                updated_place,
+                            ),
+                            _ => bug!("Unknown return type {ret_ty:?}"),
+                        };
+
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((*destination, rvalue))),
+                        });
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
                     sym::transmute | sym::transmute_unchecked => {
                         let dst_ty = destination.ty(local_decls, tcx).ty;
                         let Ok([arg]) = take_array(args) else {
