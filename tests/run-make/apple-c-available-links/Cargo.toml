@@ -1,0 +1,7 @@
+[package]
+name = "foo"
+version = "0.0.0"
+edition = "2024"
+
+[build-dependencies]
+cc = "1.0"
