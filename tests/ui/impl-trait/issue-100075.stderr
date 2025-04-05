@@ -2,10 +2,7 @@ error[E0720]: cannot resolve opaque type
   --> $DIR/issue-100075.rs:13:37
    |
 LL | fn _g<T>(t: &'static T) -> &'static impl Marker {
-   |                                     ^^^^^^^^^^^ recursive opaque type
-...
-LL |         return _g(t);
-   |                ----- returning here with type `&impl Marker`
+   |                                     ^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

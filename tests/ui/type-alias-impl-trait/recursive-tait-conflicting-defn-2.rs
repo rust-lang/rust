@@ -13,7 +13,7 @@ fn transform<S>() -> impl std::fmt::Display {
 }
 #[define_opaque(Op)]
 fn bad() -> Op {
-    //~^ ERROR concrete type differs from previous defining opaque type use
+    //~^ ERROR cannot resolve opaque type
     transform::<Op>()
 }
 
