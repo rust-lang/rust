@@ -707,7 +707,8 @@ impl<D: Deps> GraphEncoder<D> {
         }
     }
 
-    pub(crate) fn send(
+    /// Encodes a node that does not exists in the previous graph.
+    pub(crate) fn send_new(
         &self,
         node: DepNode,
         fingerprint: Fingerprint,
@@ -716,6 +717,40 @@ impl<D: Deps> GraphEncoder<D> {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
         let node = NodeInfo { node, fingerprint, edges };
         self.status.lock().as_mut().unwrap().encode_node(&node, &self.record_graph)
+    }
+
+    /// Encodes a node that exists in the previous graph, but was re-executed.
+    ///
+    /// This will also ensure the dep node is colored either red or green.
+    pub(crate) fn send_and_color(
+        &self,
+        prev_index: SerializedDepNodeIndex,
+        colors: &DepNodeColorMap,
+        node: DepNode,
+        fingerprint: Fingerprint,
+        edges: EdgesVec,
+        is_green: bool,
+    ) -> DepNodeIndex {
+        let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
+        let node = NodeInfo { node, fingerprint, edges };
+
+        let mut status = self.status.lock();
+        let status = status.as_mut().unwrap();
+
+        // Check colors inside the lock to avoid racing when `send_promoted` is called concurrently
+        // on the same index.
+        match colors.get(prev_index) {
+            None => {
+                let dep_node_index = status.encode_node(&node, &self.record_graph);
+                colors.insert(
+                    prev_index,
+                    if is_green { DepNodeColor::Green(dep_node_index) } else { DepNodeColor::Red },
+                );
+                dep_node_index
+            }
+            Some(DepNodeColor::Green(dep_node_index)) => dep_node_index,
+            Some(DepNodeColor::Red) => panic!(),
+        }
     }
 
     /// Encodes a node that was promoted from the previous graph. It reads the information directly from
@@ -733,8 +768,8 @@ impl<D: Deps> GraphEncoder<D> {
         let mut status = self.status.lock();
         let status = status.as_mut().unwrap();
 
-        // Check colors inside the lock to avoid racing when `send_promoted` is called concurrently
-        // on the same index.
+        // Check colors inside the lock to avoid racing when `send_promoted` or `send_and_color`
+        // is called concurrently on the same index.
         match colors.get(prev_index) {
             None => {
                 let dep_node_index =
