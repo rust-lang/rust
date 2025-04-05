@@ -5,7 +5,7 @@
 mod block;
 
 use rowan::Direction;
-use rustc_lexer::unescape::{self, unescape_mixed, unescape_unicode, Mode};
+use rustc_literal_escaper::{unescape_mixed, unescape_unicode, EscapeError, Mode};
 
 use crate::{
     algo,
@@ -44,8 +44,8 @@ pub(crate) fn validate(root: &SyntaxNode, errors: &mut Vec<SyntaxError>) {
     }
 }
 
-fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> (&'static str, bool) {
-    use unescape::EscapeError as EE;
+fn rustc_unescape_error_to_string(err: EscapeError) -> (&'static str, bool) {
+    use rustc_literal_escaper::EscapeError as EE;
 
     #[rustfmt::skip]
     let err_message = match err {
@@ -127,7 +127,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
     let text = token.text();
 
     // FIXME: lift this lambda refactor to `fn` (https://github.com/rust-lang/rust-analyzer/pull/2834#discussion_r366199205)
-    let mut push_err = |prefix_len, off, err: unescape::EscapeError| {
+    let mut push_err = |prefix_len, off, err: EscapeError| {
         let off = token.text_range().start() + TextSize::try_from(off + prefix_len).unwrap();
         let (message, is_err) = rustc_unescape_error_to_string(err);
         // FIXME: Emit lexer warnings

@@ -26,7 +26,6 @@
 // tidy-alphabetical-end
 
 mod cursor;
-pub mod unescape;
 
 #[cfg(test)]
 mod tests;

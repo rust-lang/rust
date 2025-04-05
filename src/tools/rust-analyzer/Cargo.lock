@@ -1270,6 +1270,7 @@ dependencies = [
  "edition",
  "expect-test",
  "ra-ap-rustc_lexer",
+ "rustc-literal-escaper",
  "stdx",
  "tracing",
 ]
@@ -1744,6 +1745,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "583034fd73374156e66797ed8e5b0d5690409c9226b22d87cb7f19821c05d152"
 
 [[package]]
+name = "rustc-literal-escaper"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0041b6238913c41fe704213a4a9329e2f685a156d1781998128b4149c230ad04"
+
+[[package]]
 name = "rustc-stable-hash"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1978,10 +1985,10 @@ dependencies = [
  "indexmap",
  "itertools",
  "parser",
- "ra-ap-rustc_lexer",
  "rayon",
  "rowan",
  "rustc-hash 2.0.0",
+ "rustc-literal-escaper",
  "rustc_apfloat",
  "smol_str",
  "stdx",

@@ -14,6 +14,7 @@ rust-version.workspace = true
 [dependencies]
 drop_bomb = "0.1.5"
 ra-ap-rustc_lexer.workspace = true
+rustc-literal-escaper.workspace = true
 tracing = { workspace = true, optional = true }
 
 edition.workspace = true
