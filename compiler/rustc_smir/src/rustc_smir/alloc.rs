@@ -36,39 +36,30 @@ pub(crate) fn try_new_allocation<'tcx>(
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx>,
 ) -> Result<Allocation, Error> {
+    let layout = tables
+        .tcx
+        .layout_of(rustc_middle::ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+        .map_err(|e| e.stable(tables))?;
     Ok(match const_value {
         ConstValue::Scalar(scalar) => {
             let size = scalar.size();
-            let align = tables
-                .tcx
-                .layout_of(rustc_middle::ty::TypingEnv::fully_monomorphized().as_query_input(ty))
-                .map_err(|e| e.stable(tables))?
-                .align;
-            let mut allocation =
-                rustc_middle::mir::interpret::Allocation::new(size, align.abi, AllocInit::Uninit);
+            let mut allocation = rustc_middle::mir::interpret::Allocation::new(
+                size,
+                layout.align.abi,
+                AllocInit::Uninit,
+            );
             allocation
                 .write_scalar(&tables.tcx, alloc_range(Size::ZERO, size), scalar)
                 .map_err(|e| e.stable(tables))?;
             allocation.stable(tables)
         }
-        ConstValue::ZeroSized => {
-            let align = tables
-                .tcx
-                .layout_of(rustc_middle::ty::TypingEnv::fully_monomorphized().as_query_input(ty))
-                .map_err(|e| e.stable(tables))?
-                .align;
-            new_empty_allocation(align.abi)
-        }
+        ConstValue::ZeroSized => new_empty_allocation(layout.align.abi),
         ConstValue::Slice { data, meta } => {
             let alloc_id = tables.tcx.reserve_and_set_memory_alloc(data);
             let ptr = Pointer::new(alloc_id.into(), Size::ZERO);
             let scalar_ptr = rustc_middle::mir::interpret::Scalar::from_pointer(ptr, &tables.tcx);
             let scalar_meta =
                 rustc_middle::mir::interpret::Scalar::from_target_usize(meta, &tables.tcx);
-            let layout = tables
-                .tcx
-                .layout_of(rustc_middle::ty::TypingEnv::fully_monomorphized().as_query_input(ty))
-                .map_err(|e| e.stable(tables))?;
             let mut allocation = rustc_middle::mir::interpret::Allocation::new(
                 layout.size,
                 layout.align.abi,
@@ -92,12 +83,7 @@ pub(crate) fn try_new_allocation<'tcx>(
         }
         ConstValue::Indirect { alloc_id, offset } => {
             let alloc = tables.tcx.global_alloc(alloc_id).unwrap_memory();
-            let ty_size = tables
-                .tcx
-                .layout_of(rustc_middle::ty::TypingEnv::fully_monomorphized().as_query_input(ty))
-                .map_err(|e| e.stable(tables))?
-                .size;
-            allocation_filter(&alloc.0, alloc_range(offset, ty_size), tables)
+            allocation_filter(&alloc.0, alloc_range(offset, layout.size), tables)
         }
     })
 }
