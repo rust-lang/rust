@@ -266,19 +266,16 @@ where
                 let tcx = self.tcx();
 
                 assert_eq!(self.elaborator.typing_env().typing_mode, ty::TypingMode::PostAnalysis);
-                // The type error for normalization may have been in dropck: see
-                // `compute_drop_data` in rustc_borrowck, in which case we wouldn't have
-                // deleted the MIR body and could have an error here as well.
                 let field_ty = match tcx
                     .try_normalize_erasing_regions(self.elaborator.typing_env(), f.ty(tcx, args))
                 {
                     Ok(t) => t,
                     Err(_) => Ty::new_error(
                         self.tcx(),
-                        self.elaborator
-                            .body()
-                            .tainted_by_errors
-                            .expect("Error in drop elaboration not found by dropck."),
+                        self.tcx().dcx().span_delayed_bug(
+                            self.elaborator.body().span,
+                            "Error normalizing in drop elaboration.",
+                        ),
                     ),
                 };
 
