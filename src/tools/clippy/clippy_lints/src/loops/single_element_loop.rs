@@ -71,7 +71,7 @@ pub(super) fn check<'tcx>(
     {
         let mut applicability = Applicability::MachineApplicable;
         let mut pat_snip = snippet_with_applicability(cx, pat.span, "..", &mut applicability);
-        if matches!(pat.kind, PatKind::Or(..)) {
+        if matches!(pat.kind, PatKind::Or(..)) && !pat_snip.starts_with("(") {
             pat_snip = format!("({pat_snip})").into();
         }
         let mut arg_snip = snippet_with_applicability(cx, arg_expression.span, "..", &mut applicability);
