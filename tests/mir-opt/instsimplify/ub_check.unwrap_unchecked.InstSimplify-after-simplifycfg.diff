@@ -9,7 +9,7 @@
           let mut _3: isize;
           scope 2 {
           }
-          scope 3 (inlined unreachable_unchecked) {
+          scope 3 (inlined #[track_caller] unreachable_unchecked) {
               let mut _4: bool;
               let _5: ();
               scope 4 (inlined core::ub_checks::check_language_ub) {
