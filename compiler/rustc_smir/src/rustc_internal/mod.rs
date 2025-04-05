@@ -22,6 +22,7 @@ use stable_mir::ty::IndexedVal;
 
 use crate::rustc_smir::context::TablesWrapper;
 use crate::rustc_smir::{Stable, Tables};
+use crate::stable_mir;
 
 mod internal;
 pub mod pretty;
