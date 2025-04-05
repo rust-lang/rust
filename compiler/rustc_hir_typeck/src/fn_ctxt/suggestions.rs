@@ -1263,7 +1263,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        if let ty::Ref(_, inner_ty, hir::Mutability::Not) = expr_ty.kind()
+        if !expr.span.in_external_macro(self.tcx.sess.source_map())
+            && let ty::Ref(_, inner_ty, hir::Mutability::Not) = expr_ty.kind()
             && let Some(clone_trait_def) = self.tcx.lang_items().clone_trait()
             && expected_ty == *inner_ty
             && self
