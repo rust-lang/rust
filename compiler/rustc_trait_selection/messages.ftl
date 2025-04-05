@@ -72,8 +72,6 @@ trait_selection_adjust_signature_remove_borrow = consider adjusting the signatur
 
 trait_selection_ascribe_user_type_prove_predicate = ...so that the where clause holds
 
-trait_selection_async_closure_not_fn = async closure does not implement `{$kind}` because it captures state from its environment
-
 trait_selection_await_both_futures = consider `await`ing on both `Future`s
 trait_selection_await_future = consider `await`ing on the `Future`
 trait_selection_await_note = calling an async function returns a future
@@ -123,6 +121,8 @@ trait_selection_closure_kind_requirement = the requirement to implement `{$trait
 
 trait_selection_compare_impl_item_obligation = ...so that the definition in impl matches the definition from the trait
 trait_selection_consider_specifying_length = consider specifying the actual array length
+trait_selection_coro_closure_not_fn = {$coro_kind}closure does not implement `{$kind}` because it captures state from its environment
+
 trait_selection_data_flows = ...but data{$label_var1_exists ->
     [true] {" "}from `{$label_var1}`
     *[false] {""}
