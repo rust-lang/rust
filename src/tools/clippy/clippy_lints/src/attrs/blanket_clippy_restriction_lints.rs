@@ -8,17 +8,18 @@ use rustc_span::{DUMMY_SP, sym};
 
 pub(super) fn check(cx: &EarlyContext<'_>, name: Symbol, items: &[MetaItemInner]) {
     for lint in items {
-        if let Some(lint_name) = extract_clippy_lint(lint) {
-            if lint_name.as_str() == "restriction" && name != sym::allow {
-                span_lint_and_help(
-                    cx,
-                    BLANKET_CLIPPY_RESTRICTION_LINTS,
-                    lint.span(),
-                    "`clippy::restriction` is not meant to be enabled as a group",
-                    None,
-                    "enable the restriction lints you need individually",
-                );
-            }
+        if let Some(lint_name) = extract_clippy_lint(lint)
+            && lint_name.as_str() == "restriction"
+            && name != sym::allow
+        {
+            span_lint_and_help(
+                cx,
+                BLANKET_CLIPPY_RESTRICTION_LINTS,
+                lint.span(),
+                "`clippy::restriction` is not meant to be enabled as a group",
+                None,
+                "enable the restriction lints you need individually",
+            );
         }
     }
 }

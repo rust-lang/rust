@@ -128,10 +128,10 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                             // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
                             // so we check the term for `U`.
                             ty::ClauseKind::Projection(projection_predicate) => {
-                                if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack() {
-                                    if contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen) {
-                                        return true;
-                                    }
+                                if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack()
+                                    && contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen)
+                                {
+                                    return true;
                                 }
                             },
                             _ => (),
@@ -337,20 +337,20 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
             for (predicate, _) in cx.tcx.explicit_item_self_bounds(def_id).skip_binder() {
-                if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
-                    if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
-                        return true;
-                    }
+                if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+                    && cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use)
+                {
+                    return true;
                 }
             }
             false
         },
         ty::Dynamic(binder, _, _) => {
             for predicate in *binder {
-                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
-                    if cx.tcx.has_attr(trait_ref.def_id, sym::must_use) {
-                        return true;
-                    }
+                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
+                    && cx.tcx.has_attr(trait_ref.def_id, sym::must_use)
+                {
+                    return true;
                 }
             }
             false
@@ -1352,7 +1352,7 @@ pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_n
     }
 }
 
-/// Get's the type of a field by name.
+/// Gets the type of a field by name.
 pub fn get_field_by_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, name: Symbol) -> Option<Ty<'tcx>> {
     match *ty.kind() {
         ty::Adt(def, args) if def.is_union() || def.is_struct() => def

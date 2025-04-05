@@ -2,7 +2,7 @@ use crate::reference::DEREF_ADDROF;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_parent_expr, is_from_proc_macro, is_lint_allowed};
+use clippy_utils::{get_parent_expr, is_from_proc_macro, is_lint_allowed, is_mutable};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -73,6 +73,9 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
                 }
             })
             && !is_from_proc_macro(cx, e)
+            && let e_ty = cx.typeck_results().expr_ty_adjusted(e)
+            // check if the reference is coercing to a mutable reference
+            && (!matches!(e_ty.kind(), ty::Ref(_, _, Mutability::Mut)) || is_mutable(cx, deref_target))
             && let Some(deref_text) = deref_target.span.get_source_text(cx)
         {
             span_lint_and_then(
@@ -90,10 +93,10 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
 
                     // has deref trait -> give 2 help
                     // doesn't have deref trait -> give 1 help
-                    if let Some(deref_trait_id) = cx.tcx.lang_items().deref_trait() {
-                        if !implements_trait(cx, *inner_ty, deref_trait_id, &[]) {
-                            return;
-                        }
+                    if let Some(deref_trait_id) = cx.tcx.lang_items().deref_trait()
+                        && !implements_trait(cx, *inner_ty, deref_trait_id, &[])
+                    {
+                        return;
                     }
 
                     diag.span_suggestion(

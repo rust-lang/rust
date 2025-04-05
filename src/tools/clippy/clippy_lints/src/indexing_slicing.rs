@@ -136,28 +136,28 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
 
                     let const_range = to_const_range(cx, range, size);
 
-                    if let (Some(start), _) = const_range {
-                        if start > size {
-                            span_lint(
-                                cx,
-                                OUT_OF_BOUNDS_INDEXING,
-                                range.start.map_or(expr.span, |start| start.span),
-                                "range is out of bounds",
-                            );
-                            return;
-                        }
+                    if let (Some(start), _) = const_range
+                        && start > size
+                    {
+                        span_lint(
+                            cx,
+                            OUT_OF_BOUNDS_INDEXING,
+                            range.start.map_or(expr.span, |start| start.span),
+                            "range is out of bounds",
+                        );
+                        return;
                     }
 
-                    if let (_, Some(end)) = const_range {
-                        if end > size {
-                            span_lint(
-                                cx,
-                                OUT_OF_BOUNDS_INDEXING,
-                                range.end.map_or(expr.span, |end| end.span),
-                                "range is out of bounds",
-                            );
-                            return;
-                        }
+                    if let (_, Some(end)) = const_range
+                        && end > size
+                    {
+                        span_lint(
+                            cx,
+                            OUT_OF_BOUNDS_INDEXING,
+                            range.end.map_or(expr.span, |end| end.span),
+                            "range is out of bounds",
+                        );
+                        return;
                     }
 
                     if let (Some(_), Some(_)) = const_range {

@@ -145,7 +145,7 @@ fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &E
             "consider `Option::take()` instead",
             format!(
                 "{}.take()",
-                Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "", &mut applicability).maybe_par()
+                Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "", &mut applicability).maybe_paren()
             ),
             applicability,
         );
@@ -178,7 +178,7 @@ fn check_replace_option_with_some(
             "consider `Option::replace()` instead",
             format!(
                 "{}.replace({})",
-                Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "_", &mut applicability).maybe_par(),
+                Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "_", &mut applicability).maybe_paren(),
                 snippet_with_applicability(cx, src_arg.span, "_", &mut applicability)
             ),
             applicability,
@@ -304,14 +304,12 @@ impl<'tcx> LateLintPass<'tcx> for MemReplace {
             && let ExprKind::Path(ref func_qpath) = func.kind
             && let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id()
             && cx.tcx.is_diagnostic_item(sym::mem_replace, def_id)
-        {
             // Check that second argument is `Option::None`
-            if !check_replace_option_with_none(cx, src, dest, expr.span)
-                && !check_replace_option_with_some(cx, src, dest, expr.span, self.msrv)
-                && !check_replace_with_default(cx, src, dest, expr, self.msrv)
-            {
-                check_replace_with_uninit(cx, src, dest, expr.span);
-            }
+            && !check_replace_option_with_none(cx, src, dest, expr.span)
+            && !check_replace_option_with_some(cx, src, dest, expr.span, self.msrv)
+            && !check_replace_with_default(cx, src, dest, expr, self.msrv)
+        {
+            check_replace_with_uninit(cx, src, dest, expr.span);
         }
     }
 }

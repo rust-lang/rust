@@ -45,15 +45,14 @@ fn emit_lint(cx: &LateContext<'_>, expr: &Expr<'_>, spans: &[(Span, Option<Strin
         let spans = spans
             .iter()
             .filter_map(|(span, name)| {
-                if let Some(name) = name {
+                if let Some(name) = name
                     // We need to check that the name is a local.
-                    if !mir
+                    && !mir
                         .var_debug_info
                         .iter()
                         .any(|local| !local.source_info.span.from_expansion() && local.name.as_str() == name)
-                    {
-                        return None;
-                    }
+                {
+                    return None;
                 }
                 Some(*span)
             })

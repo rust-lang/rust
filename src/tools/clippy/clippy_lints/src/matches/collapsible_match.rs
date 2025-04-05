@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::snippet;
@@ -99,7 +99,7 @@ fn check_arm<'tcx>(
         } else {
             String::new()
         };
-        span_lint_and_then(cx, COLLAPSIBLE_MATCH, inner_expr.span, msg, |diag| {
+        span_lint_hir_and_then(cx, COLLAPSIBLE_MATCH, inner_expr.hir_id, inner_expr.span, msg, |diag| {
             let mut help_span = MultiSpan::from_spans(vec![binding_span, inner_then_pat.span]);
             help_span.push_span_label(binding_span, "replace this binding");
             help_span.push_span_label(inner_then_pat.span, format!("with this pattern{replace_msg}"));

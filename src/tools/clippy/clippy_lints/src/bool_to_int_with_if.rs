@@ -72,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for BoolToIntWithIf {
                 s
             };
 
-            let into_snippet = snippet.clone().maybe_par();
+            let into_snippet = snippet.clone().maybe_paren();
             let as_snippet = snippet.as_ty(ty);
 
             span_lint_and_then(

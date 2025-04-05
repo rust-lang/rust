@@ -8,6 +8,10 @@ on:
     tags:
       - rust-1.**
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 env:
   TARGET_BRANCH: 'gh-pages'
   SHA: '${{ github.sha }}'

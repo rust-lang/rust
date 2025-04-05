@@ -255,7 +255,7 @@ fn find_method_sugg_for_if_let<'tcx>(
             };
 
             let sugg = Sugg::hir_with_context(cx, result_expr, ctxt, "_", &mut app)
-                .maybe_par()
+                .maybe_paren()
                 .to_string();
 
             diag.span_suggestion(span, "try", format!("{keyword} {sugg}.{good_method}"), app);
@@ -279,7 +279,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 _ => op,
             };
             let mut app = Applicability::MachineApplicable;
-            let receiver_sugg = Sugg::hir_with_applicability(cx, result_expr, "_", &mut app).maybe_par();
+            let receiver_sugg = Sugg::hir_with_applicability(cx, result_expr, "_", &mut app).maybe_paren();
             let mut sugg = format!("{receiver_sugg}.{good_method}");
 
             if let Some(guard) = maybe_guard {
@@ -303,7 +303,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 }
 
                 let guard = Sugg::hir(cx, guard, "..");
-                let _ = write!(sugg, " && {}", guard.maybe_par());
+                let _ = write!(sugg, " && {}", guard.maybe_paren());
             }
 
             span_lint_and_sugg(

@@ -1,5 +1,5 @@
 error: large future with a size of 16385 bytes
-  --> tests/ui/large_futures.rs:10:9
+  --> tests/ui/large_futures.rs:13:9
    |
 LL |         big_fut([0u8; 1024 * 16]).await;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Box::pin` on it: `Box::pin(big_fut([0u8; 1024 * 16]))`
@@ -8,37 +8,37 @@ LL |         big_fut([0u8; 1024 * 16]).await;
    = help: to override `-D warnings` add `#[allow(clippy::large_futures)]`
 
 error: large future with a size of 16386 bytes
-  --> tests/ui/large_futures.rs:13:5
+  --> tests/ui/large_futures.rs:16:5
    |
 LL |     f.await
    |     ^ help: consider `Box::pin` on it: `Box::pin(f)`
 
 error: large future with a size of 16387 bytes
-  --> tests/ui/large_futures.rs:18:9
+  --> tests/ui/large_futures.rs:21:9
    |
 LL |         wait().await;
    |         ^^^^^^ help: consider `Box::pin` on it: `Box::pin(wait())`
 
 error: large future with a size of 16387 bytes
-  --> tests/ui/large_futures.rs:24:13
+  --> tests/ui/large_futures.rs:27:13
    |
 LL |             wait().await;
    |             ^^^^^^ help: consider `Box::pin` on it: `Box::pin(wait())`
 
 error: large future with a size of 65540 bytes
-  --> tests/ui/large_futures.rs:32:5
+  --> tests/ui/large_futures.rs:35:5
    |
 LL |     foo().await;
    |     ^^^^^ help: consider `Box::pin` on it: `Box::pin(foo())`
 
 error: large future with a size of 49159 bytes
-  --> tests/ui/large_futures.rs:35:5
+  --> tests/ui/large_futures.rs:38:5
    |
 LL |     calls_fut(fut).await;
    |     ^^^^^^^^^^^^^^ help: consider `Box::pin` on it: `Box::pin(calls_fut(fut))`
 
 error: large future with a size of 65540 bytes
-  --> tests/ui/large_futures.rs:48:5
+  --> tests/ui/large_futures.rs:51:5
    |
 LL | /     async {
 LL | |
@@ -61,7 +61,7 @@ LL +     })
    |
 
 error: large future with a size of 65540 bytes
-  --> tests/ui/large_futures.rs:61:13
+  --> tests/ui/large_futures.rs:64:13
    |
 LL | /             async {
 LL | |

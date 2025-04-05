@@ -109,10 +109,10 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 continue;
             }
 
-            if let ty::Adt(def, _) = arg_ty.kind() {
-                if def.is_manually_drop() {
-                    continue;
-                }
+            if let ty::Adt(def, _) = arg_ty.kind()
+                && def.is_manually_drop()
+            {
+                continue;
             }
 
             // `{ arg = &cloned; clone(move arg); }` or `{ arg = &cloned; to_path_buf(arg); }`
@@ -191,11 +191,11 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 if clone_usage.cloned_used && clone_usage.clone_consumed_or_mutated {
                     // cloned value is used, and the clone is modified or moved
                     continue;
-                } else if let Some(loc) = clone_usage.cloned_consume_or_mutate_loc {
+                } else if let Some(loc) = clone_usage.cloned_consume_or_mutate_loc
                     // cloned value is mutated, and the clone is alive.
-                    if possible_borrower.local_is_alive_at(ret_local, loc) {
-                        continue;
-                    }
+                    && possible_borrower.local_is_alive_at(ret_local, loc)
+                {
+                    continue;
                 }
                 clone_usage
             };
@@ -216,14 +216,13 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
 
                 let call_snip = &snip[dot + 1..];
                 // Machine applicable when `call_snip` looks like `foobar()`
-                if let Some(call_snip) = call_snip.strip_suffix("()").map(str::trim) {
-                    if call_snip
+                if let Some(call_snip) = call_snip.strip_suffix("()").map(str::trim)
+                    && call_snip
                         .as_bytes()
                         .iter()
                         .all(|b| b.is_ascii_alphabetic() || *b == b'_')
-                    {
-                        app = Applicability::MachineApplicable;
-                    }
+                {
+                    app = Applicability::MachineApplicable;
                 }
 
                 span_lint_hir_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |diag| {

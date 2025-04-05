@@ -86,11 +86,11 @@ fn should_skip<'tcx>(
         return false;
     }
 
-    if let PatKind::Binding(.., name, _) = arg.pat.kind {
+    if let PatKind::Binding(.., name, _) = arg.pat.kind
         // If it's a potentially unused variable, we don't check it.
-        if name.name == kw::Underscore || name.as_str().starts_with('_') {
-            return true;
-        }
+        && (name.name == kw::Underscore || name.as_str().starts_with('_'))
+    {
+        return true;
     }
 
     // All spans generated from a proc-macro invocation are the same...
@@ -164,13 +164,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
         };
 
         // Exclude non-inherent impls
-        if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id) {
-            if matches!(
+        if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id)
+            && matches!(
                 item.kind,
                 ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
-            ) {
-                return;
-            }
+            )
+        {
+            return;
         }
 
         let fn_sig = cx.tcx.fn_sig(fn_def_id).instantiate_identity();
@@ -353,10 +353,10 @@ impl MutablyUsedVariablesCtxt<'_> {
         for (parent, node) in self.tcx.hir_parent_iter(item) {
             if let Some(fn_sig) = self.tcx.hir_fn_sig_by_hir_id(parent) {
                 return fn_sig.header.is_unsafe();
-            } else if let Node::Block(block) = node {
-                if matches!(block.rules, BlockCheckMode::UnsafeBlock(_)) {
-                    return true;
-                }
+            } else if let Node::Block(block) = node
+                && matches!(block.rules, BlockCheckMode::UnsafeBlock(_))
+            {
+                return true;
             }
         }
         false
@@ -426,10 +426,10 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                 // upon!
                 self.add_mutably_used_var(*vid);
             }
-        } else if borrow == ty::BorrowKind::Immutable {
+        } else if borrow == ty::BorrowKind::Immutable
             // If there is an `async block`, it'll contain a call to a closure which we need to
             // go into to ensure all "mutate" checks are found.
-            if let Node::Expr(Expr {
+            && let Node::Expr(Expr {
                 kind:
                     ExprKind::Call(
                         _,
@@ -442,9 +442,8 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                     ),
                 ..
             }) = self.tcx.hir_node(cmt.hir_id)
-            {
-                self.async_closures.insert(*def_id);
-            }
+        {
+            self.async_closures.insert(*def_id);
         }
     }
 
@@ -460,10 +459,9 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                 }),
             ..
         } = &cmt.place
+            && !projections.is_empty()
         {
-            if !projections.is_empty() {
-                self.add_mutably_used_var(*vid);
-            }
+            self.add_mutably_used_var(*vid);
         }
     }
 
@@ -477,10 +475,9 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                 }),
             ..
         } = &cmt.place
+            && self.is_in_unsafe_block(id)
         {
-            if self.is_in_unsafe_block(id) {
-                self.add_mutably_used_var(*vid);
-            }
+            self.add_mutably_used_var(*vid);
         }
         self.prev_bind = None;
     }
@@ -499,15 +496,14 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                 }),
             ..
         } = &cmt.place
+            && let FakeReadCause::ForLet(Some(inner)) = cause
         {
-            if let FakeReadCause::ForLet(Some(inner)) = cause {
-                // Seems like we are inside an async function. We need to store the closure `DefId`
-                // to go through it afterwards.
-                self.async_closures.insert(inner);
-                self.add_alias(cmt.hir_id, *vid);
-                self.prev_move_to_closure.insert(*vid);
-                self.prev_bind = None;
-            }
+            // Seems like we are inside an async function. We need to store the closure `DefId`
+            // to go through it afterwards.
+            self.async_closures.insert(inner);
+            self.add_alias(cmt.hir_id, *vid);
+            self.prev_move_to_closure.insert(*vid);
+            self.prev_bind = None;
         }
     }
 
@@ -522,10 +518,9 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                 }),
             ..
         } = &cmt.place
+            && self.is_in_unsafe_block(id)
         {
-            if self.is_in_unsafe_block(id) {
-                self.add_mutably_used_var(*vid);
-            }
+            self.add_mutably_used_var(*vid);
         }
     }
 }

@@ -377,22 +377,21 @@ impl ItemNameRepetitions {
                         "field name starts with the struct's name",
                     );
                 }
-                if field_words.len() > item_name_words.len() {
+                if field_words.len() > item_name_words.len()
                     // lint only if the end is not covered by the start
-                    if field_words
+                    && field_words
                         .iter()
                         .rev()
                         .zip(item_name_words.iter().rev())
                         .all(|(a, b)| a == b)
-                    {
-                        span_lint_hir(
-                            cx,
-                            STRUCT_FIELD_NAMES,
-                            field.hir_id,
-                            field.span,
-                            "field name ends with the struct's name",
-                        );
-                    }
+                {
+                    span_lint_hir(
+                        cx,
+                        STRUCT_FIELD_NAMES,
+                        field.hir_id,
+                        field.span,
+                        "field name ends with the struct's name",
+                    );
                 }
             }
         }
@@ -445,56 +444,55 @@ impl LateLintPass<'_> for ItemNameRepetitions {
 
         let item_name = ident.name.as_str();
         let item_camel = to_camel_case(item_name);
-        if !item.span.from_expansion() && is_present_in_source(cx, item.span) {
-            if let [.., (mod_name, mod_camel, mod_owner_id)] = &*self.modules {
-                // constants don't have surrounding modules
-                if !mod_camel.is_empty() {
-                    if mod_name == &ident.name
-                        && let ItemKind::Mod(..) = item.kind
-                        && (!self.allow_private_module_inception || cx.tcx.visibility(mod_owner_id.def_id).is_public())
-                    {
-                        span_lint(
+        if !item.span.from_expansion() && is_present_in_source(cx, item.span)
+            && let [.., (mod_name, mod_camel, mod_owner_id)] = &*self.modules
+            // constants don't have surrounding modules
+            && !mod_camel.is_empty()
+        {
+            if mod_name == &ident.name
+                && let ItemKind::Mod(..) = item.kind
+                && (!self.allow_private_module_inception || cx.tcx.visibility(mod_owner_id.def_id).is_public())
+            {
+                span_lint(
+                    cx,
+                    MODULE_INCEPTION,
+                    item.span,
+                    "module has the same name as its containing module",
+                );
+            }
+
+            // The `module_name_repetitions` lint should only trigger if the item has the module in its
+            // name. Having the same name is accepted.
+            if cx.tcx.visibility(item.owner_id).is_public()
+                && cx.tcx.visibility(mod_owner_id.def_id).is_public()
+                && item_camel.len() > mod_camel.len()
+            {
+                let matching = count_match_start(mod_camel, &item_camel);
+                let rmatching = count_match_end(mod_camel, &item_camel);
+                let nchars = mod_camel.chars().count();
+
+                let is_word_beginning = |c: char| c == '_' || c.is_uppercase() || c.is_numeric();
+
+                if matching.char_count == nchars {
+                    match item_camel.chars().nth(nchars) {
+                        Some(c) if is_word_beginning(c) => span_lint(
                             cx,
-                            MODULE_INCEPTION,
-                            item.span,
-                            "module has the same name as its containing module",
-                        );
+                            MODULE_NAME_REPETITIONS,
+                            ident.span,
+                            "item name starts with its containing module's name",
+                        ),
+                        _ => (),
                     }
-
-                    // The `module_name_repetitions` lint should only trigger if the item has the module in its
-                    // name. Having the same name is accepted.
-                    if cx.tcx.visibility(item.owner_id).is_public()
-                        && cx.tcx.visibility(mod_owner_id.def_id).is_public()
-                        && item_camel.len() > mod_camel.len()
-                    {
-                        let matching = count_match_start(mod_camel, &item_camel);
-                        let rmatching = count_match_end(mod_camel, &item_camel);
-                        let nchars = mod_camel.chars().count();
-
-                        let is_word_beginning = |c: char| c == '_' || c.is_uppercase() || c.is_numeric();
-
-                        if matching.char_count == nchars {
-                            match item_camel.chars().nth(nchars) {
-                                Some(c) if is_word_beginning(c) => span_lint(
-                                    cx,
-                                    MODULE_NAME_REPETITIONS,
-                                    ident.span,
-                                    "item name starts with its containing module's name",
-                                ),
-                                _ => (),
-                            }
-                        }
-                        if rmatching.char_count == nchars
-                            && !self.is_allowed_prefix(&item_camel[..item_camel.len() - rmatching.byte_count])
-                        {
-                            span_lint(
-                                cx,
-                                MODULE_NAME_REPETITIONS,
-                                ident.span,
-                                "item name ends with its containing module's name",
-                            );
-                        }
-                    }
+                }
+                if rmatching.char_count == nchars
+                    && !self.is_allowed_prefix(&item_camel[..item_camel.len() - rmatching.byte_count])
+                {
+                    span_lint(
+                        cx,
+                        MODULE_NAME_REPETITIONS,
+                        ident.span,
+                        "item name ends with its containing module's name",
+                    );
                 }
             }
         }

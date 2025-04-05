@@ -11,7 +11,7 @@ LL | | }
    | |_^
    |
    = warning: unqualified `#[repr(packed)]` defaults to `#[repr(Rust, packed)]`, which has no stable ABI
-   = help: qualify the desired ABI explicity via `#[repr(C, packed)]` or `#[repr(Rust, packed)]`
+   = help: qualify the desired ABI explicitly via `#[repr(C, packed)]` or `#[repr(Rust, packed)]`
 note: the lint level is defined here
   --> tests/ui/repr_packed_without_abi.rs:1:9
    |
@@ -31,7 +31,7 @@ LL | | }
    | |_^
    |
    = warning: unqualified `#[repr(packed)]` defaults to `#[repr(Rust, packed)]`, which has no stable ABI
-   = help: qualify the desired ABI explicity via `#[repr(C, packed)]` or `#[repr(Rust, packed)]`
+   = help: qualify the desired ABI explicitly via `#[repr(C, packed)]` or `#[repr(Rust, packed)]`
 
 error: aborting due to 2 previous errors
 

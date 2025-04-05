@@ -402,53 +402,53 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
         }
     }
 
-    if path.exists() {
-        if let Some(lint) = lints.iter().find(|l| l.name == name) {
-            if lint.module == name {
-                // The lint name is the same as the file, we can just delete the entire file
-                fs::remove_file(path)?;
-            } else {
-                // We can't delete the entire file, just remove the declaration
+    if path.exists()
+        && let Some(lint) = lints.iter().find(|l| l.name == name)
+    {
+        if lint.module == name {
+            // The lint name is the same as the file, we can just delete the entire file
+            fs::remove_file(path)?;
+        } else {
+            // We can't delete the entire file, just remove the declaration
 
-                if let Some(Some("mod.rs")) = path.file_name().map(OsStr::to_str) {
-                    // Remove clippy_lints/src/some_mod/some_lint.rs
-                    let mut lint_mod_path = path.to_path_buf();
-                    lint_mod_path.set_file_name(name);
-                    lint_mod_path.set_extension("rs");
+            if let Some(Some("mod.rs")) = path.file_name().map(OsStr::to_str) {
+                // Remove clippy_lints/src/some_mod/some_lint.rs
+                let mut lint_mod_path = path.to_path_buf();
+                lint_mod_path.set_file_name(name);
+                lint_mod_path.set_extension("rs");
 
-                    let _ = fs::remove_file(lint_mod_path);
-                }
-
-                let mut content =
-                    fs::read_to_string(path).unwrap_or_else(|_| panic!("failed to read `{}`", path.to_string_lossy()));
-
-                eprintln!(
-                    "warn: you will have to manually remove any code related to `{name}` from `{}`",
-                    path.display()
-                );
-
-                assert!(
-                    content[lint.declaration_range.clone()].contains(&name.to_uppercase()),
-                    "error: `{}` does not contain lint `{}`'s declaration",
-                    path.display(),
-                    lint.name
-                );
-
-                // Remove lint declaration (declare_clippy_lint!)
-                content.replace_range(lint.declaration_range.clone(), "");
-
-                // Remove the module declaration (mod xyz;)
-                let mod_decl = format!("\nmod {name};");
-                content = content.replacen(&mod_decl, "", 1);
-
-                remove_impl_lint_pass(&lint.name.to_uppercase(), &mut content);
-                fs::write(path, content).unwrap_or_else(|_| panic!("failed to write to `{}`", path.to_string_lossy()));
+                let _ = fs::remove_file(lint_mod_path);
             }
 
-            remove_test_assets(name);
-            remove_lint(name, lints);
-            return Ok(true);
+            let mut content =
+                fs::read_to_string(path).unwrap_or_else(|_| panic!("failed to read `{}`", path.to_string_lossy()));
+
+            eprintln!(
+                "warn: you will have to manually remove any code related to `{name}` from `{}`",
+                path.display()
+            );
+
+            assert!(
+                content[lint.declaration_range.clone()].contains(&name.to_uppercase()),
+                "error: `{}` does not contain lint `{}`'s declaration",
+                path.display(),
+                lint.name
+            );
+
+            // Remove lint declaration (declare_clippy_lint!)
+            content.replace_range(lint.declaration_range.clone(), "");
+
+            // Remove the module declaration (mod xyz;)
+            let mod_decl = format!("\nmod {name};");
+            content = content.replacen(&mod_decl, "", 1);
+
+            remove_impl_lint_pass(&lint.name.to_uppercase(), &mut content);
+            fs::write(path, content).unwrap_or_else(|_| panic!("failed to write to `{}`", path.to_string_lossy()));
         }
+
+        remove_test_assets(name);
+        remove_lint(name, lints);
+        return Ok(true);
     }
 
     Ok(false)

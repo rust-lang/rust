@@ -724,6 +724,43 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks if a `match` or `if let` expression can be simplified using
+    /// `.unwrap_or_default()`.
+    ///
+    /// ### Why is this bad?
+    /// It can be done in one call with `.unwrap_or_default()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let x: Option<String> = Some(String::new());
+    /// let y: String = match x {
+    ///     Some(v) => v,
+    ///     None => String::new(),
+    /// };
+    ///
+    /// let x: Option<Vec<String>> = Some(Vec::new());
+    /// let y: Vec<String> = if let Some(v) = x {
+    ///     v
+    /// } else {
+    ///     Vec::new()
+    /// };
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let x: Option<String> = Some(String::new());
+    /// let y: String = x.unwrap_or_default();
+    ///
+    /// let x: Option<Vec<String>> = Some(Vec::new());
+    /// let y: Vec<String> = x.unwrap_or_default();
+    /// ```
+    #[clippy::version = "1.79.0"]
+    pub MANUAL_UNWRAP_OR_DEFAULT,
+    suspicious,
+    "check if a `match` or `if let` can be simplified with `unwrap_or_default`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for `match vec[idx]` or `match vec[n..m]`.
     ///
     /// ### Why is this bad?
@@ -1040,6 +1077,7 @@ impl_lint_pass!(Matches => [
     NEEDLESS_MATCH,
     COLLAPSIBLE_MATCH,
     MANUAL_UNWRAP_OR,
+    MANUAL_UNWRAP_OR_DEFAULT,
     MATCH_ON_VEC_ITEMS,
     MATCH_STR_CASE_MISMATCH,
     SIGNIFICANT_DROP_IN_SCRUTINEE,
