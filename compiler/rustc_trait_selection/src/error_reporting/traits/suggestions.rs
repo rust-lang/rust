@@ -449,6 +449,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
+        if obligation.cause.span.in_external_macro(self.infcx.tcx.sess.source_map()) {
+            return false;
+        }
+
         let mut code = obligation.cause.code();
         if let ObligationCauseCode::FunctionArg { arg_hir_id, call_hir_id, .. } = code
             && let Some(typeck_results) = &self.typeck_results
