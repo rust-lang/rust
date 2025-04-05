@@ -41,7 +41,6 @@ fn simple() {
     same("}}", &[Lit("}")]);
     same("\\}}", &[Lit("\\"), Lit("}")]);
 }
-
 #[test]
 fn invalid01() {
     musterr("{")
@@ -79,15 +78,40 @@ fn invalid_precision() {
 }
 
 #[test]
-fn format_nothing() {
+fn format_empty() {
     same(
         "{}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
-            position_span: InnerSpan { start: 2, end: 2 },
+            position_span: 2..2,
             format: fmtdflt(),
         }))],
     );
+}
+#[test]
+fn format_tab_empty() {
+    let fmt_pre = r###""\t{}""###;
+    let fmt = "\t{}";
+    let parser = Parser::new(fmt, None, Some(fmt_pre.into()), false, ParseMode::Format);
+    assert_eq!(
+        parser.collect::<Vec<Piece<'static>>>(),
+        &[
+            Lit("\t"),
+            NextArgument(Box::new(Argument {
+                position: ArgumentImplicitlyIs(0),
+                position_span: 4..4,
+                format: fmtdflt(),
+            }))
+        ],
+    );
+}
+#[test]
+fn format_open_brace_tab() {
+    let fmt_pre = r###""{\t""###;
+    let fmt = "{\t";
+    let mut parser = Parser::new(fmt, None, Some(fmt_pre.into()), false, ParseMode::Format);
+    let _ = parser.by_ref().collect::<Vec<Piece<'static>>>();
+    assert_eq!(parser.errors[0].span, 4..4);
 }
 #[test]
 fn format_position() {
@@ -95,7 +119,7 @@ fn format_position() {
         "{3}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
-            position_span: InnerSpan { start: 2, end: 3 },
+            position_span: 2..3,
             format: fmtdflt(),
         }))],
     );
@@ -106,7 +130,7 @@ fn format_position_nothing_else() {
         "{3:}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
-            position_span: InnerSpan { start: 2, end: 3 },
+            position_span: 2..3,
             format: fmtdflt(),
         }))],
     );
@@ -117,10 +141,46 @@ fn format_named() {
         "{name}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentNamed("name"),
-            position_span: InnerSpan { start: 2, end: 6 },
+            position_span: 2..6,
             format: fmtdflt(),
         }))],
     )
+}
+#[test]
+fn format_named_space_nothing() {
+    same(
+        "{name} {}",
+        &[
+            NextArgument(Box::new(Argument {
+                position: ArgumentNamed("name"),
+                position_span: 2..6,
+                format: fmtdflt(),
+            })),
+            Lit(" "),
+            NextArgument(Box::new(Argument {
+                position: ArgumentImplicitlyIs(0),
+                position_span: 9..9,
+                format: fmtdflt(),
+            })),
+        ],
+    )
+}
+#[test]
+fn format_raw() {
+    let snippet = r###"r#"assertion `left {op} right` failed"#"###.into();
+    let source = r#"assertion `left {op} right` failed"#;
+
+    let parser = Parser::new(source, Some(1), Some(snippet), true, ParseMode::Format);
+    let expected = &[
+        Lit("assertion `left "),
+        NextArgument(Box::new(Argument {
+            position: ArgumentNamed("op"),
+            position_span: 20..22,
+            format: fmtdflt(),
+        })),
+        Lit(" right` failed"),
+    ];
+    assert_eq!(parser.collect::<Vec<Piece<'static>>>(), expected);
 }
 #[test]
 fn format_type() {
@@ -128,7 +188,7 @@ fn format_type() {
         "{3:x}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
-            position_span: InnerSpan { start: 2, end: 3 },
+            position_span: 2..3,
             format: FormatSpec {
                 fill: None,
                 fill_span: None,
@@ -153,7 +213,7 @@ fn format_align_fill() {
         "{3:>}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
-            position_span: InnerSpan { start: 2, end: 3 },
+            position_span: 2..3,
             format: FormatSpec {
                 fill: None,
                 fill_span: None,
@@ -175,10 +235,10 @@ fn format_align_fill() {
         "{3:0<}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
-            position_span: InnerSpan { start: 2, end: 3 },
+            position_span: 2..3,
             format: FormatSpec {
                 fill: Some('0'),
-                fill_span: Some(InnerSpan::new(4, 5)),
+                fill_span: Some(4..5),
                 align: AlignLeft,
                 sign: None,
                 alternate: false,
@@ -197,10 +257,10 @@ fn format_align_fill() {
         "{3:*<abcd}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
-            position_span: InnerSpan { start: 2, end: 3 },
+            position_span: 2..3,
             format: FormatSpec {
                 fill: Some('*'),
-                fill_span: Some(InnerSpan::new(4, 5)),
+                fill_span: Some(4..5),
                 align: AlignLeft,
                 sign: None,
                 alternate: false,
@@ -211,7 +271,7 @@ fn format_align_fill() {
                 precision_span: None,
                 width_span: None,
                 ty: "abcd",
-                ty_span: Some(InnerSpan::new(6, 10)),
+                ty_span: Some(6..10),
             },
         }))],
     );
@@ -222,7 +282,7 @@ fn format_counts() {
         "{:10x}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
-            position_span: InnerSpan { start: 2, end: 2 },
+            position_span: 2..2,
             format: FormatSpec {
                 fill: None,
                 fill_span: None,
@@ -234,7 +294,7 @@ fn format_counts() {
                 precision: CountImplied,
                 precision_span: None,
                 width: CountIs(10),
-                width_span: Some(InnerSpan { start: 3, end: 5 }),
+                width_span: Some(3..5),
                 ty: "x",
                 ty_span: None,
             },
@@ -244,7 +304,7 @@ fn format_counts() {
         "{:10$.10x}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
-            position_span: InnerSpan { start: 2, end: 2 },
+            position_span: 2..2,
             format: FormatSpec {
                 fill: None,
                 fill_span: None,
@@ -254,9 +314,9 @@ fn format_counts() {
                 zero_pad: false,
                 debug_hex: None,
                 precision: CountIs(10),
-                precision_span: Some(InnerSpan { start: 6, end: 9 }),
+                precision_span: Some(6..9),
                 width: CountIsParam(10),
-                width_span: Some(InnerSpan { start: 3, end: 6 }),
+                width_span: Some(3..6),
                 ty: "x",
                 ty_span: None,
             },
@@ -266,7 +326,7 @@ fn format_counts() {
         "{1:0$.10x}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentIs(1),
-            position_span: InnerSpan { start: 2, end: 3 },
+            position_span: 2..3,
             format: FormatSpec {
                 fill: None,
                 fill_span: None,
@@ -276,9 +336,9 @@ fn format_counts() {
                 zero_pad: false,
                 debug_hex: None,
                 precision: CountIs(10),
-                precision_span: Some(InnerSpan { start: 6, end: 9 }),
+                precision_span: Some(6..9),
                 width: CountIsParam(0),
-                width_span: Some(InnerSpan { start: 4, end: 6 }),
+                width_span: Some(4..6),
                 ty: "x",
                 ty_span: None,
             },
@@ -288,7 +348,7 @@ fn format_counts() {
         "{:.*x}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(1),
-            position_span: InnerSpan { start: 2, end: 2 },
+            position_span: 2..2,
             format: FormatSpec {
                 fill: None,
                 fill_span: None,
@@ -298,7 +358,7 @@ fn format_counts() {
                 zero_pad: false,
                 debug_hex: None,
                 precision: CountIsStar(0),
-                precision_span: Some(InnerSpan { start: 3, end: 5 }),
+                precision_span: Some(3..5),
                 width: CountImplied,
                 width_span: None,
                 ty: "x",
@@ -310,7 +370,7 @@ fn format_counts() {
         "{:.10$x}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
-            position_span: InnerSpan { start: 2, end: 2 },
+            position_span: 2..2,
             format: FormatSpec {
                 fill: None,
                 fill_span: None,
@@ -321,7 +381,7 @@ fn format_counts() {
                 debug_hex: None,
                 precision: CountIsParam(10),
                 width: CountImplied,
-                precision_span: Some(InnerSpan::new(3, 7)),
+                precision_span: Some(3..7),
                 width_span: None,
                 ty: "x",
                 ty_span: None,
@@ -332,7 +392,7 @@ fn format_counts() {
         "{:a$.b$?}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
-            position_span: InnerSpan { start: 2, end: 2 },
+            position_span: 2..2,
             format: FormatSpec {
                 fill: None,
                 fill_span: None,
@@ -341,10 +401,10 @@ fn format_counts() {
                 alternate: false,
                 zero_pad: false,
                 debug_hex: None,
-                precision: CountIsName("b", InnerSpan { start: 6, end: 7 }),
-                precision_span: Some(InnerSpan { start: 5, end: 8 }),
-                width: CountIsName("a", InnerSpan { start: 3, end: 4 }),
-                width_span: Some(InnerSpan { start: 3, end: 5 }),
+                precision: CountIsName("b", 6..7),
+                precision_span: Some(5..8),
+                width: CountIsName("a", 3..4),
+                width_span: Some(3..5),
                 ty: "?",
                 ty_span: None,
             },
@@ -354,7 +414,7 @@ fn format_counts() {
         "{:.4}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
-            position_span: InnerSpan { start: 2, end: 2 },
+            position_span: 2..2,
             format: FormatSpec {
                 fill: None,
                 fill_span: None,
@@ -364,7 +424,7 @@ fn format_counts() {
                 zero_pad: false,
                 debug_hex: None,
                 precision: CountIs(4),
-                precision_span: Some(InnerSpan { start: 3, end: 5 }),
+                precision_span: Some(3..5),
                 width: CountImplied,
                 width_span: None,
                 ty: "",
@@ -379,7 +439,7 @@ fn format_flags() {
         "{:-}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
-            position_span: InnerSpan { start: 2, end: 2 },
+            position_span: 2..2,
             format: FormatSpec {
                 fill: None,
                 fill_span: None,
@@ -401,7 +461,7 @@ fn format_flags() {
         "{:+#}",
         &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
-            position_span: InnerSpan { start: 2, end: 2 },
+            position_span: 2..2,
             format: FormatSpec {
                 fill: None,
                 fill_span: None,
@@ -428,7 +488,7 @@ fn format_mixture() {
             Lit("abcd "),
             NextArgument(Box::new(Argument {
                 position: ArgumentIs(3),
-                position_span: InnerSpan { start: 7, end: 8 },
+                position_span: 7..8,
                 format: FormatSpec {
                     fill: None,
                     fill_span: None,
@@ -455,7 +515,7 @@ fn format_whitespace() {
         "{ }",
         &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
-            position_span: InnerSpan { start: 2, end: 3 },
+            position_span: 2..3,
             format: fmtdflt(),
         }))],
     );
@@ -463,8 +523,33 @@ fn format_whitespace() {
         "{  }",
         &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
-            position_span: InnerSpan { start: 2, end: 4 },
+            position_span: 2..4,
             format: fmtdflt(),
         }))],
     );
+}
+#[test]
+fn asm_linespans() {
+    let asm_pre = r###"r"
+        .intel_syntax noprefix
+        nop""###;
+    let asm = r"
+        .intel_syntax noprefix
+        nop";
+    let mut parser = Parser::new(asm, Some(0), Some(asm_pre.into()), false, ParseMode::InlineAsm);
+    assert!(parser.is_source_literal);
+    assert_eq!(
+        parser.by_ref().collect::<Vec<Piece<'static>>>(),
+        &[Lit("\n        .intel_syntax noprefix\n        nop")]
+    );
+    assert_eq!(parser.line_spans, &[2..2, 11..33, 42..45]);
+}
+#[test]
+fn asm_concat() {
+    let asm_pre = r###"concat!("invalid", "_", "instruction")"###;
+    let asm = "invalid_instruction";
+    let mut parser = Parser::new(asm, None, Some(asm_pre.into()), false, ParseMode::InlineAsm);
+    assert!(!parser.is_source_literal);
+    assert_eq!(parser.by_ref().collect::<Vec<Piece<'static>>>(), &[Lit(asm)]);
+    assert_eq!(parser.line_spans, &[]);
 }
