@@ -1,8 +1,8 @@
 use super::super::{
-    ArrayChunks, ByRefSized, Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, FlatMap,
-    Flatten, Fuse, Inspect, Intersperse, IntersperseWith, Map, MapWhile, MapWindows, Peekable,
-    Product, Rev, Scan, Skip, SkipWhile, StepBy, Sum, Take, TakeWhile, TrustedRandomAccessNoCoerce,
-    Zip, try_process,
+    ArrayChunks, Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, FlatMap, Flatten,
+    Fuse, Inspect, Intersperse, IntersperseWith, Map, MapWhile, MapWindows, Peekable, Product, Rev,
+    Scan, Skip, SkipWhile, StepBy, Sum, Take, TakeWhile, TrustedRandomAccessNoCoerce, Zip,
+    try_process,
 };
 use crate::array;
 use crate::cmp::{self, Ordering};
@@ -2062,7 +2062,7 @@ pub trait Iterator {
         Self::Item: Try<Residual: Residual<B>>,
         B: FromIterator<<Self::Item as Try>::Output>,
     {
-        try_process(ByRefSized(self), |i| i.collect())
+        try_process(self, |i| i.collect())
     }
 
     /// Collects all the items from an iterator into a collection.
@@ -4035,88 +4035,5 @@ where
             Some(_) => Ordering::Less,
         }),
         ControlFlow::Break(x) => x,
-    }
-}
-
-/// Implements `Iterator` for mutable references to iterators, such as those produced by [`Iterator::by_ref`].
-///
-/// This implementation passes all method calls on to the original iterator.
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator + ?Sized> Iterator for &mut I {
-    type Item = I::Item;
-    #[inline]
-    fn next(&mut self) -> Option<I::Item> {
-        (**self).next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (**self).size_hint()
-    }
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        (**self).advance_by(n)
-    }
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        (**self).nth(n)
-    }
-    fn fold<B, F>(self, init: B, f: F) -> B
-    where
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.spec_fold(init, f)
-    }
-    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
-    where
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>,
-    {
-        self.spec_try_fold(init, f)
-    }
-}
-
-/// Helper trait to specialize `fold` and `try_fold` for `&mut I where I: Sized`
-trait IteratorRefSpec: Iterator {
-    fn spec_fold<B, F>(self, init: B, f: F) -> B
-    where
-        F: FnMut(B, Self::Item) -> B;
-
-    fn spec_try_fold<B, F, R>(&mut self, init: B, f: F) -> R
-    where
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>;
-}
-
-impl<I: Iterator + ?Sized> IteratorRefSpec for &mut I {
-    default fn spec_fold<B, F>(self, init: B, mut f: F) -> B
-    where
-        F: FnMut(B, Self::Item) -> B,
-    {
-        let mut accum = init;
-        while let Some(x) = self.next() {
-            accum = f(accum, x);
-        }
-        accum
-    }
-
-    default fn spec_try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
-    where
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>,
-    {
-        let mut accum = init;
-        while let Some(x) = self.next() {
-            accum = f(accum, x)?;
-        }
-        try { accum }
-    }
-}
-
-impl<I: Iterator> IteratorRefSpec for &mut I {
-    impl_fold_via_try_fold! { spec_fold -> spec_try_fold }
-
-    fn spec_try_fold<B, F, R>(&mut self, init: B, f: F) -> R
-    where
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>,
-    {
-        (**self).try_fold(init, f)
     }
 }

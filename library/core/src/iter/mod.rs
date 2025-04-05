@@ -382,8 +382,6 @@ macro_rules! impl_fold_via_try_fold {
 
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
 pub use self::adapters::ArrayChunks;
-#[unstable(feature = "std_internals", issue = "none")]
-pub use self::adapters::ByRefSized;
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::adapters::Cloned;
 #[stable(feature = "iter_copied", since = "1.36.0")]
