@@ -6,9 +6,8 @@ use rustc_ast_ir::Mutability;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
-use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
-#[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_type_ir::data_structures::{NoError, UnifyKey, UnifyValue};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use self::TyKind::*;
@@ -796,7 +795,6 @@ pub enum InferTy {
 
 /// Raw `TyVid` are used as the unification key for `sub_relations`;
 /// they carry no values.
-#[cfg(feature = "nightly")]
 impl UnifyKey for TyVid {
     type Value = ();
     #[inline]
@@ -812,7 +810,6 @@ impl UnifyKey for TyVid {
     }
 }
 
-#[cfg(feature = "nightly")]
 impl UnifyValue for IntVarValue {
     type Error = NoError;
 
@@ -832,7 +829,6 @@ impl UnifyValue for IntVarValue {
     }
 }
 
-#[cfg(feature = "nightly")]
 impl UnifyKey for IntVid {
     type Value = IntVarValue;
     #[inline] // make this function eligible for inlining - it is quite hot.
@@ -848,7 +844,6 @@ impl UnifyKey for IntVid {
     }
 }
 
-#[cfg(feature = "nightly")]
 impl UnifyValue for FloatVarValue {
     type Error = NoError;
 
@@ -866,7 +861,6 @@ impl UnifyValue for FloatVarValue {
     }
 }
 
-#[cfg(feature = "nightly")]
 impl UnifyKey for FloatVid {
     type Value = FloatVarValue;
     #[inline]
