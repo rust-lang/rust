@@ -7,14 +7,14 @@ pub fn main() {
     let _x: usize = match Some(1) {
         Ok(u) => u,
         //~^ ERROR mismatched types
-        //~| expected enum `Option<{integer}>`
-        //~| found enum `Result<_, _>`
-        //~| expected `Option<{integer}>`, found `Result<_, _>`
+        //~| NOTE_NONVIRAL expected enum `Option<{integer}>`
+        //~| NOTE_NONVIRAL found enum `Result<_, _>`
+        //~| NOTE_NONVIRAL expected `Option<{integer}>`, found `Result<_, _>`
 
         Err(e) => panic!(e)
         //~^ ERROR mismatched types
-        //~| expected enum `Option<{integer}>`
-        //~| found enum `Result<_, _>`
-        //~| expected `Option<{integer}>`, found `Result<_, _>`
+        //~| NOTE_NONVIRAL expected enum `Option<{integer}>`
+        //~| NOTE_NONVIRAL found enum `Result<_, _>`
+        //~| NOTE_NONVIRAL expected `Option<{integer}>`, found `Result<_, _>`
     };
 }

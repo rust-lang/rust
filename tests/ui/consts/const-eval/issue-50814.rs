@@ -19,7 +19,7 @@ impl<A: Unsigned, B: Unsigned> Unsigned for Sum<A, B> {
 
 fn foo<T>(_: T) -> &'static u8 {
     &Sum::<U8, U8>::MAX
-    //~^ constant
+    //~^ NOTE_NONVIRAL constant
 }
 
 fn main() {

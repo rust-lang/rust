@@ -7,7 +7,7 @@ macro_rules! make_macro {
         macro_rules! $macro_name {
         //~^ ERROR macro expansion ignores `{` and any tokens following
         //~| ERROR cannot find macro `macro_rules` in this scope
-        //~| put a macro name here
+        //~| NOTE_NONVIRAL put a macro name here
             () => {}
         }
     }

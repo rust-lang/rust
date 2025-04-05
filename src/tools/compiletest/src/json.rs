@@ -147,7 +147,9 @@ pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Er
         // output.  This hack just skips over such lines. Yuck.
         if line.starts_with('{') {
             match serde_json::from_str::<Diagnostic>(line) {
-                Ok(diagnostic) => push_actual_errors(&mut errors, &diagnostic, &[], file_name),
+                Ok(diagnostic) => {
+                    push_actual_errors(&mut errors, &diagnostic, &[], file_name, None)
+                }
                 Err(error) => {
                     // Ignore the future compat report message - this is handled
                     // by `extract_rendered`
@@ -172,6 +174,7 @@ fn push_actual_errors(
     diagnostic: &Diagnostic,
     default_spans: &[&DiagnosticSpan],
     file_name: &str,
+    prev_parent: Option<usize>,
 ) {
     // In case of macro expansions, we need to get the span of the callsite
     let spans_info_in_this_file: Vec<_> = diagnostic
@@ -229,26 +232,37 @@ fn push_actual_errors(
     // Convert multi-line messages into multiple errors.
     // We expect to replace these with something more structured anyhow.
     let mut message_lines = diagnostic.message.lines();
-    let kind = Some(ErrorKind::from_compiler_str(&diagnostic.level));
+    let kind = ErrorKind::from_compiler_str(&diagnostic.level);
     let first_line = message_lines.next().unwrap_or(&diagnostic.message);
+    let mut parent = None;
     if primary_spans.is_empty() {
         static RE: OnceLock<Regex> = OnceLock::new();
         let re_init =
             || Regex::new(r"aborting due to \d+ previous errors?|\d+ warnings? emitted").unwrap();
+        if parent.is_none() {
+            parent = Some(errors.len());
+        }
         errors.push(Error {
             line_num: None,
             kind,
             msg: with_code(None, first_line),
             require_annotation: diagnostic.level != "failure-note"
                 && !RE.get_or_init(re_init).is_match(first_line),
+            viral: true,
+            parent: prev_parent,
         });
     } else {
         for span in primary_spans {
+            if parent.is_none() {
+                parent = Some(errors.len());
+            }
             errors.push(Error {
                 line_num: Some(span.line_start),
                 kind,
                 msg: with_code(Some(span), first_line),
                 require_annotation: true,
+                viral: true,
+                parent: prev_parent,
             });
         }
     }
@@ -259,6 +273,8 @@ fn push_actual_errors(
                 kind,
                 msg: with_code(None, next_line),
                 require_annotation: false,
+                viral: true,
+                parent: prev_parent,
             });
         } else {
             for span in primary_spans {
@@ -267,6 +283,8 @@ fn push_actual_errors(
                     kind,
                     msg: with_code(Some(span), next_line),
                     require_annotation: false,
+                    viral: true,
+                    parent: prev_parent,
                 });
             }
         }
@@ -278,9 +296,11 @@ fn push_actual_errors(
             for (index, line) in suggested_replacement.lines().enumerate() {
                 errors.push(Error {
                     line_num: Some(span.line_start + index),
-                    kind: Some(ErrorKind::Suggestion),
+                    kind: ErrorKind::Suggestion,
                     msg: line.to_string(),
                     require_annotation: true,
+                    viral: true,
+                    parent,
                 });
             }
         }
@@ -289,7 +309,7 @@ fn push_actual_errors(
     // Add notes for the backtrace
     for span in primary_spans {
         if let Some(frame) = &span.expansion {
-            push_backtrace(errors, frame, file_name);
+            push_backtrace(errors, frame, file_name, parent);
         }
     }
 
@@ -297,15 +317,17 @@ fn push_actual_errors(
     for span in spans_in_this_file.iter().filter(|span| span.label.is_some()) {
         errors.push(Error {
             line_num: Some(span.line_start),
-            kind: Some(ErrorKind::Note),
+            kind: ErrorKind::Note,
             msg: span.label.clone().unwrap(),
             require_annotation: true,
+            viral: true,
+            parent,
         });
     }
 
     // Flatten out the children.
     for child in &diagnostic.children {
-        push_actual_errors(errors, child, primary_spans, file_name);
+        push_actual_errors(errors, child, primary_spans, file_name, parent);
     }
 }
 
@@ -313,17 +335,20 @@ fn push_backtrace(
     errors: &mut Vec<Error>,
     expansion: &DiagnosticSpanMacroExpansion,
     file_name: &str,
+    parent: Option<usize>,
 ) {
     if Path::new(&expansion.span.file_name) == Path::new(&file_name) {
         errors.push(Error {
             line_num: Some(expansion.span.line_start),
-            kind: Some(ErrorKind::Note),
+            kind: ErrorKind::Note,
             msg: format!("in this expansion of {}", expansion.macro_decl_name),
             require_annotation: true,
+            viral: true,
+            parent,
         });
     }
 
     if let Some(previous_expansion) = &expansion.span.expansion {
-        push_backtrace(errors, previous_expansion, file_name);
+        push_backtrace(errors, previous_expansion, file_name, parent);
     }
 }

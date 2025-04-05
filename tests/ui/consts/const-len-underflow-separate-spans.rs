@@ -12,5 +12,5 @@ const LEN: usize = ONE - TWO;
 
 fn main() {
     let a: [i8; LEN] = unimplemented!();
-//~^ constant
+//~^ NOTE_NONVIRAL constant
 }

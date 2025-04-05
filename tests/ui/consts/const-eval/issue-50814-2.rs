@@ -17,7 +17,7 @@ impl<T: C> Foo<T> for A<T> {
 }
 
 fn foo<T: C>() -> &'static usize {
-    &<A<T> as Foo<T>>::BAR //~ constant
+    &<A<T> as Foo<T>>::BAR //~ NOTE_NONVIRAL constant
 }
 
 impl C for () {

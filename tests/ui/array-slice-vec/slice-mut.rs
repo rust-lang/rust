@@ -6,7 +6,7 @@ fn main() {
 
     let y: &mut[_] = &x[2..4];
     //~^ ERROR mismatched types
-    //~| expected mutable reference `&mut [_]`
-    //~| found reference `&[isize]`
-    //~| types differ in mutability
+    //~| NOTE_NONVIRAL expected mutable reference `&mut [_]`
+    //~| NOTE_NONVIRAL found reference `&[isize]`
+    //~| NOTE_NONVIRAL types differ in mutability
 }

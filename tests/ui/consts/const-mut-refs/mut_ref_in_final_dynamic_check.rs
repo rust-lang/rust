@@ -16,16 +16,16 @@ const fn helper() -> Option<&'static mut i32> { unsafe {
     Some(&mut *std::ptr::addr_of_mut!(BUFFER))
 } }
 const MUT: Option<&mut i32> = helper(); //~ ERROR it is undefined behavior to use this value
-//~^ encountered reference to mutable
+//~^ NOTE_NONVIRAL encountered reference to mutable
 
 const fn helper_int2ptr() -> Option<&'static mut i32> { unsafe {
     // Undefined behaviour (integer as pointer), who doesn't love tests like this.
     Some(&mut *(42 as *mut i32))
 } }
 const INT2PTR: Option<&mut i32> = helper_int2ptr(); //~ ERROR it is undefined behavior to use this value
-//~^  encountered a dangling reference
+//~^ NOTE_NONVIRAL encountered a dangling reference
 static INT2PTR_STATIC: Option<&mut i32> = helper_int2ptr(); //~ ERROR it is undefined behavior to use this value
-//~^  encountered a dangling reference
+//~^ NOTE_NONVIRAL encountered a dangling reference
 
 const fn helper_dangling() -> Option<&'static mut i32> { unsafe {
     // Undefined behaviour (dangling pointer), who doesn't love tests like this.

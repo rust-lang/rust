@@ -9,7 +9,7 @@ fn main() {
     // not convertible to a path.
   let x: isize = noexporttypelib::foo();
     //~^ ERROR mismatched types
-    //~| expected type `isize`
-    //~| found enum `Option<isize>`
-    //~| expected `isize`, found `Option<isize>`
+    //~| NOTE_NONVIRAL expected type `isize`
+    //~| NOTE_NONVIRAL found enum `Option<isize>`
+    //~| NOTE_NONVIRAL expected `isize`, found `Option<isize>`
 }

@@ -4,9 +4,9 @@
 fn foo<Foo, Bar>(x: Foo) -> Bar {
     x
 //~^ ERROR mismatched types
-//~| expected type parameter `Bar`, found type parameter `Foo`
-//~| expected type parameter `Bar`
-//~| found type parameter `Foo`
+//~| NOTE_NONVIRAL expected type parameter `Bar`, found type parameter `Foo`
+//~| NOTE_NONVIRAL expected type parameter `Bar`
+//~| NOTE_NONVIRAL found type parameter `Foo`
 }
 
 fn main() {}

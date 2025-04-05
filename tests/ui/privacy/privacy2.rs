@@ -20,7 +20,7 @@ fn test1() {
     //~^ ERROR requires `sized` lang_item
     use bar::foo;
     //~^ ERROR unresolved import `bar::foo` [E0432]
-    //~| no `foo` in `bar`
+    //~| NOTE_NONVIRAL no `foo` in `bar`
 }
 
 fn test2() {

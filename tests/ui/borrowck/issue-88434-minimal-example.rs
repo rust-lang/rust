@@ -1,13 +1,13 @@
 // Regression test related to issue 88434
 
 const _CONST: &() = &f(&|_| {}); //~ ERROR evaluation of constant value failed
-//~^ constant
+//~^ NOTE_NONVIRAL constant
 
 const fn f<F>(_: &F)
 where
     F: FnMut(&u8),
 {
-    panic!() //~ inside `f
+    panic!() //~ NOTE_NONVIRAL inside `f
 }
 
 fn main() { }

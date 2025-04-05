@@ -7,41 +7,41 @@ fn main() {
     match (true, false) {
         A::B => (),
 //~^ ERROR mismatched types
-//~| expected `(bool, bool)`, found `A`
-//~| expected tuple `(bool, bool)`
-//~| found enum `A`
+//~| NOTE_NONVIRAL expected `(bool, bool)`, found `A`
+//~| NOTE_NONVIRAL expected tuple `(bool, bool)`
+//~| NOTE_NONVIRAL found enum `A`
         _ => ()
     }
 
     match (true, false) {
         (true, false, false) => ()
 //~^ ERROR mismatched types
-//~| expected a tuple with 2 elements, found one with 3 elements
-//~| expected tuple `(bool, bool)`
-//~| found tuple `(_, _, _)`
+//~| NOTE_NONVIRAL expected a tuple with 2 elements, found one with 3 elements
+//~| NOTE_NONVIRAL expected tuple `(bool, bool)`
+//~| NOTE_NONVIRAL found tuple `(_, _, _)`
     }
 
     match (true, false) {
         (true, false, false) => ()
 //~^ ERROR mismatched types
-//~| expected a tuple with 2 elements, found one with 3 elements
-//~| expected tuple `(bool, bool)`
-//~| found tuple `(_, _, _)`
+//~| NOTE_NONVIRAL expected a tuple with 2 elements, found one with 3 elements
+//~| NOTE_NONVIRAL expected tuple `(bool, bool)`
+//~| NOTE_NONVIRAL found tuple `(_, _, _)`
     }
 
     match (true, false) {
         box (true, false) => ()
 //~^ ERROR mismatched types
-//~| expected tuple `(bool, bool)`
-//~| found struct `Box<_>`
+//~| NOTE_NONVIRAL expected tuple `(bool, bool)`
+//~| NOTE_NONVIRAL found struct `Box<_>`
     }
 
     match (true, false) {
         &(true, false) => ()
 //~^ ERROR mismatched types
-//~| expected `(bool, bool)`, found `&_`
-//~| expected tuple `(bool, bool)`
-//~| found reference `&_`
+//~| NOTE_NONVIRAL expected `(bool, bool)`, found `&_`
+//~| NOTE_NONVIRAL expected tuple `(bool, bool)`
+//~| NOTE_NONVIRAL found reference `&_`
     }
 
 
@@ -53,5 +53,5 @@ fn main() {
 
     // Make sure none of the errors above were fatal
     let x: char = true; //~  ERROR mismatched types
-                        //~| expected `char`, found `bool`
+                        //~| NOTE_NONVIRAL expected `char`, found `bool`
 }

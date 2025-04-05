@@ -34,7 +34,7 @@ fn make_foo(_: *mut *mut Foo) {
 fn main() {
     let mut result: SmartPtr<Foo> = SmartPtr(std::ptr::null_mut());
     make_foo(&mut &mut *result); //~ ERROR mismatched types
-                                 //~^ expected `*mut *mut Foo`, found `&mut &mut Foo`
+                                 //~^ NOTE_NONVIRAL expected `*mut *mut Foo`, found `&mut &mut Foo`
     make_foo(out(&mut result)); // works, but makes one wonder why above coercion cannot happen
 }
 

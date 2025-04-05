@@ -679,9 +679,7 @@ impl<'test> TestCx<'test> {
             "check_expected_errors: expected_errors={:?} proc_res.status={:?}",
             expected_errors, proc_res.status
         );
-        if proc_res.status.success()
-            && expected_errors.iter().any(|x| x.kind == Some(ErrorKind::Error))
-        {
+        if proc_res.status.success() && expected_errors.iter().any(|x| x.kind == ErrorKind::Error) {
             self.fatal_proc_rec("process did not return an error status", proc_res);
         }
 
@@ -709,22 +707,28 @@ impl<'test> TestCx<'test> {
             self.testpaths.file.display().to_string()
         };
 
-        let expect_help = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Help));
-        let expect_note = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Note));
+        // If the testcase being checked contains at least one expected "help"
+        // message, then we'll ensure that all "help" messages are expected.
+        // Otherwise, all "help" messages reported by the compiler will be ignored.
+        // This logic also applies to "note" messages.
+        let expect_help = expected_errors.iter().any(|ee| ee.kind == ErrorKind::Help && ee.viral);
+        // let expect_note = expected_errors.iter().any(|ee| ee.kind == ErrorKind::Note && ee.viral);
 
         // Parse the JSON output from the compiler and extract out the messages.
-        let actual_errors = json::parse_output(&diagnostic_file_name, &proc_res.stderr, proc_res);
+        let mut actual_errors =
+            json::parse_output(&diagnostic_file_name, &proc_res.stderr, proc_res);
         let mut unexpected = Vec::new();
         let mut found = vec![false; expected_errors.len()];
-        for mut actual_error in actual_errors {
+        let mut unexpected_actual_indices = Vec::new();
+        let mut poisoned_parents = HashSet::new();
+        for (actual_index, actual_error) in actual_errors.iter_mut().enumerate() {
             actual_error.msg = self.normalize_output(&actual_error.msg, &[]);
 
             let opt_index =
                 expected_errors.iter().enumerate().position(|(index, expected_error)| {
                     !found[index]
                         && actual_error.line_num == expected_error.line_num
-                        && (expected_error.kind.is_none()
-                            || actual_error.kind == expected_error.kind)
+                        && actual_error.kind == expected_error.kind
                         && actual_error.msg.contains(&expected_error.msg)
                 });
 
@@ -733,25 +737,41 @@ impl<'test> TestCx<'test> {
                     // found a match, everybody is happy
                     assert!(!found[index]);
                     found[index] = true;
-                }
 
-                None => {
-                    // If the test is a known bug, don't require that the error is annotated
-                    if self.is_unexpected_compiler_message(&actual_error, expect_help, expect_note)
-                    {
-                        self.error(&format!(
-                            "{}:{}: unexpected {}: '{}'",
-                            file_name,
-                            actual_error.line_num_str(),
-                            actual_error
-                                .kind
-                                .as_ref()
-                                .map_or(String::from("message"), |k| k.to_string()),
-                            actual_error.msg
-                        ));
-                        unexpected.push(actual_error);
+                    if actual_error.kind == ErrorKind::Note && expected_errors[index].viral {
+                        poisoned_parents.insert(actual_error.parent);
                     }
                 }
+
+                None => unexpected_actual_indices.push(actual_index),
+            }
+        }
+
+        for unexpected_actual_index in unexpected_actual_indices {
+            // If the test is a known bug, don't require that the error is annotated
+            let actual_error = &actual_errors[unexpected_actual_index];
+            let mut expect_note = false;
+            let mut next_parent = actual_error.parent;
+            loop {
+                if poisoned_parents.contains(&next_parent) {
+                    expect_note = true;
+                    break;
+                }
+                match next_parent {
+                    Some(next) => next_parent = actual_errors[next].parent,
+                    None => break,
+                }
+            }
+
+            if self.is_unexpected_compiler_message(&actual_error, expect_help, expect_note) {
+                self.error(&format!(
+                    "{}:{}: unexpected {}: '{}'",
+                    file_name,
+                    actual_error.line_num_str(),
+                    actual_error.kind,
+                    actual_error.msg
+                ));
+                unexpected.push(actual_error);
             }
         }
 
@@ -763,7 +783,7 @@ impl<'test> TestCx<'test> {
                     "{}:{}: expected {} not found: {}",
                     file_name,
                     expected_error.line_num_str(),
-                    expected_error.kind.as_ref().map_or("message".into(), |k| k.to_string()),
+                    expected_error.kind,
                     expected_error.msg
                 ));
                 not_found.push(expected_error);
@@ -803,17 +823,15 @@ impl<'test> TestCx<'test> {
         expect_help: bool,
         expect_note: bool,
     ) -> bool {
+        // If the test being checked doesn't contain any "help" or "note" annotations, then
+        // we don't require annotating "help" or "note" (respecively) diagnostics at all.
         actual_error.require_annotation
-            && actual_error.kind.map_or(false, |err_kind| {
-                // If the test being checked doesn't contain any "help" or "note" annotations, then
-                // we don't require annotating "help" or "note" (respecively) diagnostics at all.
-                let default_require_annotations = self.props.require_annotations[&err_kind];
-                match err_kind {
-                    ErrorKind::Help => expect_help && default_require_annotations,
-                    ErrorKind::Note => expect_note && default_require_annotations,
-                    _ => default_require_annotations,
-                }
-            })
+            && self.props.require_annotations[&actual_error.kind]
+            && match actual_error.kind {
+                ErrorKind::Help => expect_help,
+                ErrorKind::Note => expect_note,
+                _ => true,
+            }
     }
 
     fn should_emit_metadata(&self, pm: Option<PassMode>) -> Emit {

@@ -16,6 +16,6 @@ struct B;
 fn main() {
     B.request();
     //~^ ERROR my message [E0599]
-    //~| my label
-    //~| my note
+    //~| NOTE_NONVIRAL my label
+    //~| NOTE_NONVIRAL my note
 }

@@ -10,7 +10,7 @@ fn bar(x: u32) -> u32 {
 fn foobar(n: u32) -> u32 {
     let g = if n % 2 == 0 { &foo } else { &bar };
     //~^ ERROR `if` and `else` have incompatible types
-    //~| different fn items have unique types, even if their signatures are the same
+    //~| NOTE_NONVIRAL different fn items have unique types, even if their signatures are the same
     g(n)
 }
 
@@ -22,33 +22,33 @@ fn main() {
     let mut a = foo;
     a = bar;
     //~^ ERROR mismatched types
-    //~| expected fn item `fn(_) -> _ {foo}`
-    //~| found fn item `fn(_) -> _ {bar}`
-    //~| different fn items have unique types, even if their signatures are the same
+    //~| NOTE_NONVIRAL expected fn item `fn(_) -> _ {foo}`
+    //~| NOTE_NONVIRAL found fn item `fn(_) -> _ {bar}`
+    //~| NOTE_NONVIRAL different fn items have unique types, even if their signatures are the same
 
     // display note even when boxed
     let mut b = Box::new(foo);
     b = Box::new(bar);
     //~^ ERROR mismatched types
-    //~| different fn items have unique types, even if their signatures are the same
+    //~| NOTE_NONVIRAL different fn items have unique types, even if their signatures are the same
 
     // suggest removing reference
     let c: fn(u32) -> u32 = &foo;
     //~^ ERROR mismatched types
-    //~| expected fn pointer `fn(_) -> _`
-    //~| found reference `&fn(_) -> _ {foo}`
+    //~| NOTE_NONVIRAL expected fn pointer `fn(_) -> _`
+    //~| NOTE_NONVIRAL found reference `&fn(_) -> _ {foo}`
 
     // suggest using reference
     let d: &fn(u32) -> u32 = foo;
     //~^ ERROR mismatched types
-    //~| expected reference `&fn(_) -> _`
-    //~| found fn item `fn(_) -> _ {foo}`
+    //~| NOTE_NONVIRAL expected reference `&fn(_) -> _`
+    //~| NOTE_NONVIRAL found fn item `fn(_) -> _ {foo}`
 
     // suggest casting with reference
     let e: &fn(u32) -> u32 = &foo;
     //~^ ERROR mismatched types
-    //~| expected reference `&fn(_) -> _`
-    //~| found reference `&fn(_) -> _ {foo}`
+    //~| NOTE_NONVIRAL expected reference `&fn(_) -> _`
+    //~| NOTE_NONVIRAL found reference `&fn(_) -> _ {foo}`
 
     // OK
     let mut z: fn(u32) -> u32 = foo as fn(u32) -> u32;

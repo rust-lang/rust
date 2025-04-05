@@ -15,9 +15,9 @@ macro_rules! type_combinations {
         // dropped *after* the yield.
         {
             let g = #[coroutine] move || match drop($name::Client { ..$name::Client::default() }) {
-            //~^ `significant_drop::Client` which is not `Send`
-            //~| `insignificant_dtor::Client` which is not `Send`
-            //~| `derived_drop::Client` which is not `Send`
+            //~^ NOTE_NONVIRAL `significant_drop::Client` which is not `Send`
+            //~| NOTE_NONVIRAL `insignificant_dtor::Client` which is not `Send`
+            //~| NOTE_NONVIRAL `derived_drop::Client` which is not `Send`
                 _ => yield,
             };
             assert_send(g);

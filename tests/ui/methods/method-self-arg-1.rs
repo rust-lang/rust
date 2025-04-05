@@ -9,9 +9,9 @@ impl Foo {
 fn main() {
     let x = Foo;
     Foo::bar(x); //~  ERROR mismatched types
-                 //~| expected `&Foo`, found `Foo`
+                 //~| NOTE_NONVIRAL expected `&Foo`, found `Foo`
     Foo::bar(&42); //~  ERROR mismatched types
-                      //~| expected `&Foo`, found `&{integer}`
-                      //~| expected reference `&Foo`
-                      //~| found reference `&{integer}`
+                      //~| NOTE_NONVIRAL expected `&Foo`, found `&{integer}`
+                      //~| NOTE_NONVIRAL expected reference `&Foo`
+                      //~| NOTE_NONVIRAL found reference `&{integer}`
 }

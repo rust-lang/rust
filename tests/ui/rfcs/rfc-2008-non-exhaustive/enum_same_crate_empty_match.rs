@@ -3,20 +3,20 @@
 #[non_exhaustive]
 pub enum NonExhaustiveEnum {
     Unit,
-    //~^ not covered
+    //~^ NOTE_NONVIRAL not covered
     Tuple(u32),
-    //~^ not covered
+    //~^ NOTE_NONVIRAL not covered
     Struct { field: u32 }
-    //~^ not covered
+    //~^ NOTE_NONVIRAL not covered
 }
 
 pub enum NormalEnum {
     Unit,
-    //~^ not covered
+    //~^ NOTE_NONVIRAL not covered
     Tuple(u32),
-    //~^ not covered
+    //~^ NOTE_NONVIRAL not covered
     Struct { field: u32 }
-    //~^ not covered
+    //~^ NOTE_NONVIRAL not covered
 }
 
 #[non_exhaustive]

@@ -20,7 +20,7 @@ const READ_MUT: u32 = unsafe { MUTABLE }; //~ERROR evaluation of constant value 
 
 // Evaluating this does not read anything mutable, but validation does, so this should error.
 const REF_INTERIOR_MUT: &usize = { //~ ERROR undefined behavior
-    //~| encountered reference to mutable memory
+    //~| NOTE_NONVIRAL encountered reference to mutable memory
     static FOO: AtomicUsize = AtomicUsize::new(0);
     unsafe { &*(&FOO as *const _ as *const usize) }
 };

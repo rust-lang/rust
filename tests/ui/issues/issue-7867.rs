@@ -6,9 +6,9 @@ fn main() {
     match (true, false) {
         A::B => (),
         //~^ ERROR mismatched types
-        //~| expected `(bool, bool)`, found `A`
-        //~| expected tuple `(bool, bool)`
-        //~| found enum `A`
+        //~| NOTE_NONVIRAL expected `(bool, bool)`, found `A`
+        //~| NOTE_NONVIRAL expected tuple `(bool, bool)`
+        //~| NOTE_NONVIRAL found enum `A`
         _ => ()
     }
 }

@@ -5,7 +5,7 @@ fn main() {
     match (S { a: 1 }) {
         E::C(_) => (),
         //~^ ERROR mismatched types
-        //~| expected `S`, found `E`
+        //~| NOTE_NONVIRAL expected `S`, found `E`
         _ => ()
     }
 }

@@ -31,14 +31,14 @@ fn main() {
     // n > m
     let &&x = &1isize as &dyn T;
     //~^ ERROR mismatched types
-    //~| expected trait object `dyn T`
-    //~| found reference `&_`
+    //~| NOTE_NONVIRAL expected trait object `dyn T`
+    //~| NOTE_NONVIRAL found reference `&_`
     let &&&x = &(&1isize as &dyn T);
     //~^ ERROR mismatched types
-    //~| expected trait object `dyn T`
-    //~| found reference `&_`
+    //~| NOTE_NONVIRAL expected trait object `dyn T`
+    //~| NOTE_NONVIRAL found reference `&_`
     let box box x = Box::new(1isize) as Box<dyn T>;
     //~^ ERROR mismatched types
-    //~| expected trait object `dyn T`
-    //~| found struct `Box<_>`
+    //~| NOTE_NONVIRAL expected trait object `dyn T`
+    //~| NOTE_NONVIRAL found struct `Box<_>`
 }

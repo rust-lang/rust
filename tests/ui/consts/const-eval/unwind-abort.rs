@@ -1,5 +1,5 @@
 const extern "C" fn foo() {
-    panic!() //~ inside `foo`
+    panic!() //~ NOTE_NONVIRAL inside `foo`
 }
 
 const _: () = foo(); //~ ERROR evaluation of constant value failed

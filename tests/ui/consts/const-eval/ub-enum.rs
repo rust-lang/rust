@@ -58,7 +58,7 @@ union MaybeUninit<T: Copy> {
 }
 const BAD_ENUM2_UNDEF : Enum2 = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR evaluation of constant value failed
-//~| uninitialized
+//~| NOTE_NONVIRAL uninitialized
 
 // Pointer value in an enum with a niche that is not just 0.
 const BAD_ENUM2_OPTION_PTR: Option<Enum2> = unsafe { mem::transmute(&0) };

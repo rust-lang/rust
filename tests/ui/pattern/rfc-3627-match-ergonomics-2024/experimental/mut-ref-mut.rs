@@ -27,7 +27,7 @@ pub fn main() {
 
     let [&mut mut x] = &[&mut 0];
     //[classic2024]~^ ERROR: mismatched types
-    //[classic2024]~| cannot match inherited `&` with `&mut` pattern
+    //[classic2024]~| NOTE_NONVIRAL cannot match inherited `&` with `&mut` pattern
     //[structural2024]~^^^ ERROR binding cannot be both mutable and by-reference
     #[cfg(any(stable2021, classic2021, structural2021))] { x = 0 }
 }

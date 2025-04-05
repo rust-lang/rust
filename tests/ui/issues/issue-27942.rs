@@ -4,9 +4,9 @@ pub trait Buffer<'a, R: Resources<'a>> {
 
     fn select(&self) -> BufferViewHandle<R>;
     //~^ ERROR mismatched types
-    //~| lifetime mismatch
+    //~| NOTE_NONVIRAL lifetime mismatch
     //~| ERROR mismatched types
-    //~| lifetime mismatch
+    //~| NOTE_NONVIRAL lifetime mismatch
 }
 
 pub struct BufferViewHandle<'a, R: 'a+Resources<'a>>(&'a R);

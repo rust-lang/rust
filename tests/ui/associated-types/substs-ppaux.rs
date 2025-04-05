@@ -22,35 +22,35 @@ where
 {
     let x: () = <i8 as Foo<'static, 'static, u8>>::bar::<'static, char>;
     //[verbose]~^ ERROR mismatched types
-    //[verbose]~| expected unit type `()`
-    //[verbose]~| found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
+    //[verbose]~| NOTE_NONVIRAL expected unit type `()`
+    //[verbose]~| NOTE_NONVIRAL found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
     //[normal]~^^^^ ERROR mismatched types
-    //[normal]~| expected unit type `()`
-    //[normal]~| found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
+    //[normal]~| NOTE_NONVIRAL expected unit type `()`
+    //[normal]~| NOTE_NONVIRAL found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
 
     let x: () = <i8 as Foo<'static, 'static, u32>>::bar::<'static, char>;
     //[verbose]~^ ERROR mismatched types
-    //[verbose]~| expected unit type `()`
-    //[verbose]~| found fn item `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
+    //[verbose]~| NOTE_NONVIRAL expected unit type `()`
+    //[verbose]~| NOTE_NONVIRAL found fn item `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
     //[normal]~^^^^ ERROR mismatched types
-    //[normal]~| expected unit type `()`
-    //[normal]~| found fn item `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
+    //[normal]~| NOTE_NONVIRAL expected unit type `()`
+    //[normal]~| NOTE_NONVIRAL found fn item `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
 
     let x: () = <i8 as Foo<'static, 'static, u8>>::baz;
     //[verbose]~^ ERROR mismatched types
-    //[verbose]~| expected unit type `()`
-    //[verbose]~| found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
+    //[verbose]~| NOTE_NONVIRAL expected unit type `()`
+    //[verbose]~| NOTE_NONVIRAL found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
     //[normal]~^^^^ ERROR mismatched types
-    //[normal]~| expected unit type `()`
-    //[normal]~| found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
+    //[normal]~| NOTE_NONVIRAL expected unit type `()`
+    //[normal]~| NOTE_NONVIRAL found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
 
     let x: () = foo::<'static>;
     //[verbose]~^ ERROR mismatched types
-    //[verbose]~| expected unit type `()`
-    //[verbose]~| found fn item `fn() {foo::<'static>}`
+    //[verbose]~| NOTE_NONVIRAL expected unit type `()`
+    //[verbose]~| NOTE_NONVIRAL found fn item `fn() {foo::<'static>}`
     //[normal]~^^^^ ERROR mismatched types
-    //[normal]~| expected unit type `()`
-    //[normal]~| found fn item `fn() {foo::<'static>}`
+    //[normal]~| NOTE_NONVIRAL expected unit type `()`
+    //[normal]~| NOTE_NONVIRAL found fn item `fn() {foo::<'static>}`
 
     <str as Foo<u8>>::bar;
     //[verbose]~^ ERROR the trait bound `str: Foo<'?0, '?1, u8>` is not satisfied

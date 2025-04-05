@@ -7,8 +7,8 @@ trait Foo {
 impl Foo for u32 {
     fn len(&self) -> u32 { *self }
     //~^ ERROR method `len` has an incompatible type for trait
-    //~| expected signature `unsafe fn(&_) -> _`
-    //~| found signature `fn(&_) -> _`
+    //~| NOTE_NONVIRAL expected signature `unsafe fn(&_) -> _`
+    //~| NOTE_NONVIRAL found signature `fn(&_) -> _`
 }
 
 fn main() { }

@@ -2,6 +2,6 @@ mod foo { pub mod foo {  } }
 
 use foo::foo;
 //~^ ERROR the name `foo` is defined multiple times
-//~| `foo` reimported here
+//~| NOTE_NONVIRAL `foo` reimported here
 
 fn main() {}

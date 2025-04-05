@@ -12,16 +12,16 @@ pub fn main() {
 fn test1() {
     let x: Foo<_> = Bar::<usize>(PhantomData);
     //~^ ERROR mismatched types
-    //~| expected struct `Foo<_>`
-    //~| found struct `Bar<usize>`
-    //~| expected `Foo<_>`, found `Bar<usize>`
+    //~| NOTE_NONVIRAL expected struct `Foo<_>`
+    //~| NOTE_NONVIRAL found struct `Bar<usize>`
+    //~| NOTE_NONVIRAL expected `Foo<_>`, found `Bar<usize>`
     let y: Foo<usize> = x;
 }
 
 fn test2() {
     let x: Foo<_> = Bar::<usize>(PhantomData);
     //~^ ERROR mismatched types
-    //~| expected struct `Foo<_>`
-    //~| found struct `Bar<usize>`
-    //~| expected `Foo<_>`, found `Bar<usize>`
+    //~| NOTE_NONVIRAL expected struct `Foo<_>`
+    //~| NOTE_NONVIRAL found struct `Bar<usize>`
+    //~| NOTE_NONVIRAL expected `Foo<_>`, found `Bar<usize>`
 }

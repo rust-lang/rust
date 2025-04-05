@@ -14,14 +14,14 @@
 fn errors_caught_in_hir_typeck_on_stable() {
     let [&x] = &[&mut 0];
     //[stable2021]~^ ERROR mismatched types
-    //[stable2021]~| types differ in mutability
+    //[stable2021]~| NOTE_NONVIRAL types differ in mutability
     //[classic2024]~^^^ ERROR: cannot move out of type
     #[cfg(any(classic2021, structural2021))] let _: u32 = x;
     #[cfg(structural2024)] let _: &u32 = x;
 
     let [&x] = &mut [&mut 0];
     //[stable2021]~^ ERROR mismatched types
-    //[stable2021]~| types differ in mutability
+    //[stable2021]~| NOTE_NONVIRAL types differ in mutability
     //[classic2024]~^^^ ERROR: cannot move out of type
     #[cfg(any(classic2021, structural2021))] let _: u32 = x;
     #[cfg(structural2024)] let _: &u32 = x;

@@ -6,7 +6,7 @@ struct T<const B: &'static bool>;
 impl<const B: &'static bool> T<B> {
     const fn set_false(&self) {
         unsafe {
-            *(B as *const bool as *mut bool) = false; //~ inside `T
+            *(B as *const bool as *mut bool) = false; //~ NOTE_NONVIRAL inside `T
         }
     }
 }

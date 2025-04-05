@@ -9,7 +9,7 @@ pub fn main() {
     let f1: &Fat<[isize]> = &Fat { ptr: [1, 2, 3] };
     let f2: &Fat<[isize; 3]> = f1;
     //~^ ERROR mismatched types
-    //~| expected `&Fat<[isize; 3]>`, found `&Fat<[isize]>`
-    //~| expected reference `&Fat<[isize; 3]>`
-    //~| found reference `&Fat<[isize]>`
+    //~| NOTE_NONVIRAL expected `&Fat<[isize; 3]>`, found `&Fat<[isize]>`
+    //~| NOTE_NONVIRAL expected reference `&Fat<[isize; 3]>`
+    //~| NOTE_NONVIRAL found reference `&Fat<[isize]>`
 }

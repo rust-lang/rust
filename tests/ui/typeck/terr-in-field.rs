@@ -11,7 +11,7 @@ struct Bar {
 fn want_foo(f: Foo) {}
 fn have_bar(b: Bar) {
     want_foo(b); //~  ERROR mismatched types
-                 //~| expected `Foo`, found `Bar`
+                 //~| NOTE_NONVIRAL expected `Foo`, found `Bar`
 }
 
 fn main() {}
