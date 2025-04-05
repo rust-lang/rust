@@ -123,7 +123,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
 /// Empty string, to be used where LLVM expects an instruction name, indicating
 /// that the instruction is to be left unnamed (i.e. numbered, in textual IR).
 // FIXME(eddyb) pass `&CStr` directly to FFI once it's a thin pointer.
-const UNNAMED: *const c_char = c"".as_ptr();
+pub(crate) const UNNAMED: *const c_char = c"".as_ptr();
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericBuilder<'_, 'll, CX> {
     type Value = <GenericCx<'ll, CX> as BackendTypes>::Value;

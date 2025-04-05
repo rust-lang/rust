@@ -770,8 +770,13 @@ mod llvm_enzyme {
                         d_inputs.push(shadow_arg.clone());
                     }
                 }
-                DiffActivity::Dual | DiffActivity::DualOnly => {
-                    for i in 0..x.width {
+                DiffActivity::Dual | DiffActivity::DualOnly | DiffActivity::Dualv => {
+                    let iterations = if matches!(activity, DiffActivity::Dualv) {
+                        1
+                    } else {
+                        x.width
+                    };
+                    for i in 0..iterations {
                         let mut shadow_arg = arg.clone();
                         let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
                             ident.name
@@ -858,8 +863,8 @@ mod llvm_enzyme {
                 }
             };
 
-            if let DiffActivity::Dual = x.ret_activity {
-                let kind = if x.width == 1 {
+            if matches!(x.ret_activity, DiffActivity::Dual | DiffActivity::Dualv) {
+                let kind = if x.width == 1 || matches!(x.ret_activity, DiffActivity::Dualv) {
                     // Dual can only be used for f32/f64 ret.
                     // In that case we return now a tuple with two floats.
                     TyKind::Tup(thin_vec![ty.clone(), ty.clone()])
