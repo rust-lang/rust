@@ -78,20 +78,20 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
     /// GVN can also do this optimization, but GVN is only run at mir-opt-level 2 so having this in
     /// InstSimplify helps unoptimized builds.
     fn simplify_repeated_aggregate(&self, rvalue: &mut Rvalue<'tcx>) {
-        let Rvalue::Aggregate(box AggregateKind::Array(_), fields) = rvalue else {
+        let Rvalue::Aggregate(box AggregateKind::Array(_), fields) = &*rvalue else {
             return;
         };
         if fields.len() < 5 {
             return;
         }
-        let first = &fields[rustc_abi::FieldIdx::ZERO];
+        let (first, rest) = fields[..].split_first().unwrap();
         let Operand::Constant(first) = first else {
             return;
         };
         let Ok(first_val) = first.const_.eval(self.tcx, self.typing_env, first.span) else {
             return;
         };
-        if fields.iter().all(|field| {
+        if rest.iter().all(|field| {
             let Operand::Constant(field) = field else {
                 return false;
             };
