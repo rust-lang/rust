@@ -17,6 +17,16 @@ LL |     assert_eq!(y, 2);
    |     ^^^^^^^^^^^^^^^^ no implementation for `&{integer} == {integer}`
    |
    = help: the trait `PartialEq<{integer}>` is not implemented for `&{integer}`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f128
+             f16
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+           and 8 others
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `&{integer}` with `{integer}`
