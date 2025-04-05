@@ -22,3 +22,5 @@ pub mod rustc_internal;
 
 // Make this module private for now since external users should not call these directly.
 mod rustc_smir;
+
+pub mod stable_mir;

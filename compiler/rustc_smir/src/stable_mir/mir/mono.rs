@@ -2,12 +2,13 @@ use std::fmt::{Debug, Formatter};
 use std::io;
 
 use serde::Serialize;
+use stable_mir::abi::FnAbi;
+use stable_mir::crate_def::CrateDef;
+use stable_mir::mir::Body;
+use stable_mir::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, IndexedVal, Ty};
+use stable_mir::{CrateItem, DefId, Error, ItemKind, Opaque, Symbol, with};
 
-use crate::abi::FnAbi;
-use crate::crate_def::CrateDef;
-use crate::mir::Body;
-use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, IndexedVal, Ty};
-use crate::{CrateItem, DefId, Error, ItemKind, Opaque, Symbol, with};
+use crate::stable_mir;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum MonoItem {
@@ -117,11 +118,11 @@ impl Instance {
     }
 
     /// Resolve an instance starting from a function definition and generic arguments.
-    pub fn resolve(def: FnDef, args: &GenericArgs) -> Result<Instance, crate::Error> {
+    pub fn resolve(def: FnDef, args: &GenericArgs) -> Result<Instance, Error> {
         with(|context| {
-            context.resolve_instance(def, args).ok_or_else(|| {
-                crate::Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`"))
-            })
+            context
+                .resolve_instance(def, args)
+                .ok_or_else(|| Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`")))
         })
     }
 
@@ -131,11 +132,11 @@ impl Instance {
     }
 
     /// Resolve an instance for a given function pointer.
-    pub fn resolve_for_fn_ptr(def: FnDef, args: &GenericArgs) -> Result<Instance, crate::Error> {
+    pub fn resolve_for_fn_ptr(def: FnDef, args: &GenericArgs) -> Result<Instance, Error> {
         with(|context| {
-            context.resolve_for_fn_ptr(def, args).ok_or_else(|| {
-                crate::Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`"))
-            })
+            context
+                .resolve_for_fn_ptr(def, args)
+                .ok_or_else(|| Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`")))
         })
     }
 
@@ -144,11 +145,11 @@ impl Instance {
         def: ClosureDef,
         args: &GenericArgs,
         kind: ClosureKind,
-    ) -> Result<Instance, crate::Error> {
+    ) -> Result<Instance, Error> {
         with(|context| {
-            context.resolve_closure(def, args, kind).ok_or_else(|| {
-                crate::Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`"))
-            })
+            context
+                .resolve_closure(def, args, kind)
+                .ok_or_else(|| Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`")))
         })
     }
 
@@ -195,7 +196,7 @@ impl Debug for Instance {
 /// Try to convert a crate item into an instance.
 /// The item cannot be generic in order to be converted into an instance.
 impl TryFrom<CrateItem> for Instance {
-    type Error = crate::Error;
+    type Error = stable_mir::Error;
 
     fn try_from(item: CrateItem) -> Result<Self, Self::Error> {
         with(|context| {
@@ -212,7 +213,7 @@ impl TryFrom<CrateItem> for Instance {
 /// Try to convert an instance into a crate item.
 /// Only user defined instances can be converted.
 impl TryFrom<Instance> for CrateItem {
-    type Error = crate::Error;
+    type Error = stable_mir::Error;
 
     fn try_from(value: Instance) -> Result<Self, Self::Error> {
         with(|context| {
@@ -259,7 +260,7 @@ crate_def! {
 }
 
 impl TryFrom<CrateItem> for StaticDef {
-    type Error = crate::Error;
+    type Error = stable_mir::Error;
 
     fn try_from(value: CrateItem) -> Result<Self, Self::Error> {
         if matches!(value.kind(), ItemKind::Static) {
@@ -271,7 +272,7 @@ impl TryFrom<CrateItem> for StaticDef {
 }
 
 impl TryFrom<Instance> for StaticDef {
-    type Error = crate::Error;
+    type Error = stable_mir::Error;
 
     fn try_from(value: Instance) -> Result<Self, Self::Error> {
         StaticDef::try_from(CrateItem::try_from(value)?)

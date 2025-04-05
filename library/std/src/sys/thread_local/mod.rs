@@ -30,9 +30,9 @@ cfg_if::cfg_if! {
         target_os = "zkvm",
         target_os = "trusty",
     ))] {
-        mod statik;
-        pub use statik::{EagerStorage, LazyStorage, thread_local_inner};
-        pub(crate) use statik::{LocalPointer, local_pointer};
+        mod no_threads;
+        pub use no_threads::{EagerStorage, LazyStorage, thread_local_inner};
+        pub(crate) use no_threads::{LocalPointer, local_pointer};
     } else if #[cfg(target_thread_local)] {
         mod native;
         pub use native::{EagerStorage, LazyStorage, thread_local_inner};
