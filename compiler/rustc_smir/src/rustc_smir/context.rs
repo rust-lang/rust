@@ -822,6 +822,21 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let ty = un_op.internal(&mut *tables, tcx).ty(tcx, arg_internal);
         ty.stable(&mut *tables)
     }
+
+    fn associated_items(&self, def_id: stable_mir::DefId) -> stable_mir::AssocItems {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let def_id = tables[def_id];
+        let assoc_items = if tcx.is_trait_alias(def_id) {
+            Vec::new()
+        } else {
+            tcx.associated_item_def_ids(def_id)
+                .iter()
+                .map(|did| tcx.associated_item(*did).stable(&mut *tables))
+                .collect()
+        };
+        assoc_items
+    }
 }
 
 pub(crate) struct TablesWrapper<'tcx>(pub RefCell<Tables<'tcx>>);
