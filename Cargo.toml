@@ -89,3 +89,7 @@ codegen-units = 1
 # FIXME: LTO cannot be enabled for binaries in a workspace
 # <https://github.com/rust-lang/cargo/issues/9330>
 # lto = true
+
+[patch.crates-io]
+nix = { git = "https://github.com/psumbera/nix.git", branch = "mypatch" }
+libffi-sys = { git = "https://github.com/psumbera/libffi-rs.git", branch = "sparcv9" }
