@@ -50,6 +50,10 @@ pub enum DiffActivity {
     /// with it.
     Dual,
     /// Forward Mode, Compute derivatives for this input/output and *overwrite* the shadow argument
+    /// with it. It expects the shadow argument to be `width` times larger than the original
+    /// input/output.
+    Dualv,
+    /// Forward Mode, Compute derivatives for this input/output and *overwrite* the shadow argument
     /// with it. Drop the code which updates the original input/output for maximum performance.
     DualOnly,
     /// Reverse Mode, Compute derivatives for this &T or *T input and *add* it to the shadow argument.
@@ -133,6 +137,7 @@ pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
         DiffMode::Source => false,
         DiffMode::Forward => {
             activity == DiffActivity::Dual
+                || activity == DiffActivity::Dualv
                 || activity == DiffActivity::DualOnly
                 || activity == DiffActivity::Const
         }
@@ -156,7 +161,7 @@ pub fn valid_ty_for_activity(ty: &P<Ty>, activity: DiffActivity) -> bool {
     if matches!(activity, Const) {
         return true;
     }
-    if matches!(activity, Dual | DualOnly) {
+    if matches!(activity, Dual | DualOnly | Dualv) {
         return true;
     }
     // FIXME(ZuseZ4) We should make this more robust to also
@@ -173,7 +178,7 @@ pub fn valid_input_activity(mode: DiffMode, activity: DiffActivity) -> bool {
         DiffMode::Error => false,
         DiffMode::Source => false,
         DiffMode::Forward => {
-            matches!(activity, Dual | DualOnly | Const)
+            matches!(activity, Dual | DualOnly | Dualv | Const)
         }
         DiffMode::Reverse => {
             matches!(activity, Active | ActiveOnly | Duplicated | DuplicatedOnly | Const)
@@ -189,6 +194,7 @@ impl Display for DiffActivity {
             DiffActivity::Active => write!(f, "Active"),
             DiffActivity::ActiveOnly => write!(f, "ActiveOnly"),
             DiffActivity::Dual => write!(f, "Dual"),
+            DiffActivity::Dualv => write!(f, "Dualv"),
             DiffActivity::DualOnly => write!(f, "DualOnly"),
             DiffActivity::Duplicated => write!(f, "Duplicated"),
             DiffActivity::DuplicatedOnly => write!(f, "DuplicatedOnly"),
@@ -220,6 +226,7 @@ impl FromStr for DiffActivity {
             "ActiveOnly" => Ok(DiffActivity::ActiveOnly),
             "Const" => Ok(DiffActivity::Const),
             "Dual" => Ok(DiffActivity::Dual),
+            "Dualv" => Ok(DiffActivity::Dualv),
             "DualOnly" => Ok(DiffActivity::DualOnly),
             "Duplicated" => Ok(DiffActivity::Duplicated),
             "DuplicatedOnly" => Ok(DiffActivity::DuplicatedOnly),

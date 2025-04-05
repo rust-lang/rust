@@ -31,6 +31,7 @@ fn adjust_activity_to_abi<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec
                     let activity = match da[i] {
                         DiffActivity::DualOnly
                         | DiffActivity::Dual
+                        | DiffActivity::Dualv
                         | DiffActivity::DuplicatedOnly
                         | DiffActivity::Duplicated => DiffActivity::FakeActivitySize,
                         DiffActivity::Const => DiffActivity::Const,
