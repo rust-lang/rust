@@ -1,5 +1,5 @@
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/block-must-not-have-result-while.rs:2:5
+  --> $DIR/block-must-not-have-result-while.rs:4:5
    |
 LL |     while true {
    |     ^^^^^^^^^^ help: use `loop`
@@ -7,7 +7,7 @@ LL |     while true {
    = note: `#[warn(while_true)]` on by default
 
 error[E0308]: mismatched types
-  --> $DIR/block-must-not-have-result-while.rs:3:9
+  --> $DIR/block-must-not-have-result-while.rs:5:9
    |
 LL | /     while true {
 LL | |         true

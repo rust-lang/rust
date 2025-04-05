@@ -1,6 +1,7 @@
 // Can't put mut in non-ident pattern
 
 //@ edition:2018
+//@ dont-require-annotations: HELP
 
 #![feature(box_patterns)]
 #![allow(warnings)]
@@ -13,20 +14,20 @@ pub fn main() {
 
     let mut mut x = 0;
     //~^ ERROR `mut` on a binding may not be repeated
-    //~| remove the additional `mut`s
+    //~| HELP remove the additional `mut`s
 
     let mut mut mut mut mut x = 0;
     //~^ ERROR `mut` on a binding may not be repeated
-    //~| remove the additional `mut`s
+    //~| HELP remove the additional `mut`s
 
     struct Foo { x: isize }
     let mut Foo { x: x } = Foo { x: 3 };
     //~^ ERROR `mut` must be attached to each individual binding
-    //~| add `mut` to each binding
+    //~| HELP add `mut` to each binding
 
     let mut Foo { x } = Foo { x: 3 };
     //~^ ERROR `mut` must be attached to each individual binding
-    //~| add `mut` to each binding
+    //~| HELP add `mut` to each binding
 
     struct r#yield(u8, u8);
     let mut mut yield(become, await) = r#yield(0, 0);

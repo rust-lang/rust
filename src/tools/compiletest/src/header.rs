@@ -594,7 +594,7 @@ impl TestProps {
                         config.parse_name_value_directive(ln, DONT_REQUIRE_ANNOTATIONS)
                     {
                         self.require_annotations
-                            .insert(ErrorKind::expect_from_user_str(&err_kind), false);
+                            .insert(ErrorKind::from_user_str(err_kind.trim()), false);
                     }
                 },
             );

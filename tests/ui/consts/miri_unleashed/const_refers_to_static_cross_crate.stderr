@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static_cross_crate.rs:12:1
+  --> $DIR/const_refers_to_static_cross_crate.rs:14:1
    |
 LL | const SLICE_MUT: &[u8; 1] = {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
@@ -10,7 +10,7 @@ LL | const SLICE_MUT: &[u8; 1] = {
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static_cross_crate.rs:17:1
+  --> $DIR/const_refers_to_static_cross_crate.rs:19:1
    |
 LL | const U8_MUT: &u8 = {
    | ^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
@@ -21,7 +21,7 @@ LL | const U8_MUT: &u8 = {
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static_cross_crate.rs:23:1
+  --> $DIR/const_refers_to_static_cross_crate.rs:25:1
    |
 LL | const U8_MUT2: &u8 = {
    | ^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
@@ -32,7 +32,7 @@ LL | const U8_MUT2: &u8 = {
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_refers_to_static_cross_crate.rs:29:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:31:15
    |
 LL |         match static_cross_crate::OPT_ZERO {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses mutable global memory

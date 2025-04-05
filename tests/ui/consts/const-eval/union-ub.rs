@@ -1,4 +1,5 @@
 //@ stderr-per-bitwidth
+//@ dont-require-annotations: NOTE
 
 #[repr(C)]
 union DummyUnion {
@@ -33,7 +34,7 @@ const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool};
 //~^ ERROR it is undefined behavior to use this value
 const UNINIT_BOOL: bool = unsafe { DummyUnion { unit: () }.bool};
 //~^ ERROR evaluation of constant value failed
-//~| uninitialized
+//~| NOTE uninitialized
 
 // The value is not valid for any union variant, but that's fine
 // unions are just a convenient way to transmute bits around

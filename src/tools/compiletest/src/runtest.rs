@@ -680,9 +680,7 @@ impl<'test> TestCx<'test> {
             "check_expected_errors: expected_errors={:?} proc_res.status={:?}",
             expected_errors, proc_res.status
         );
-        if proc_res.status.success()
-            && expected_errors.iter().any(|x| x.kind == Some(ErrorKind::Error))
-        {
+        if proc_res.status.success() && expected_errors.iter().any(|x| x.kind == ErrorKind::Error) {
             self.fatal_proc_rec("process did not return an error status", proc_res);
         }
 
@@ -710,8 +708,8 @@ impl<'test> TestCx<'test> {
             self.testpaths.file.display().to_string()
         };
 
-        let expect_help = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Help));
-        let expect_note = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Note));
+        let expect_help = expected_errors.iter().any(|ee| ee.kind == ErrorKind::Help);
+        let expect_note = expected_errors.iter().any(|ee| ee.kind == ErrorKind::Note);
 
         // Parse the JSON output from the compiler and extract out the messages.
         let actual_errors = json::parse_output(&diagnostic_file_name, &proc_res.stderr, proc_res);
@@ -724,8 +722,7 @@ impl<'test> TestCx<'test> {
                 expected_errors.iter().enumerate().position(|(index, expected_error)| {
                     !found[index]
                         && actual_error.line_num == expected_error.line_num
-                        && (expected_error.kind.is_none()
-                            || actual_error.kind == expected_error.kind)
+                        && actual_error.kind == expected_error.kind
                         && actual_error.msg.contains(&expected_error.msg)
                 });
 
@@ -744,10 +741,7 @@ impl<'test> TestCx<'test> {
                             "{}:{}: unexpected {}: '{}'",
                             file_name,
                             actual_error.line_num_str(),
-                            actual_error
-                                .kind
-                                .as_ref()
-                                .map_or(String::from("message"), |k| k.to_string()),
+                            actual_error.kind,
                             actual_error.msg
                         ));
                         unexpected.push(actual_error);
@@ -764,7 +758,7 @@ impl<'test> TestCx<'test> {
                     "{}:{}: expected {} not found: {}",
                     file_name,
                     expected_error.line_num_str(),
-                    expected_error.kind.as_ref().map_or("message".into(), |k| k.to_string()),
+                    expected_error.kind,
                     expected_error.msg
                 ));
                 not_found.push(expected_error);
@@ -804,17 +798,15 @@ impl<'test> TestCx<'test> {
         expect_help: bool,
         expect_note: bool,
     ) -> bool {
+        // If the test being checked doesn't contain any "help" or "note" annotations, then
+        // we don't require annotating "help" or "note" (respecively) diagnostics at all.
         actual_error.require_annotation
-            && actual_error.kind.map_or(false, |err_kind| {
-                // If the test being checked doesn't contain any "help" or "note" annotations, then
-                // we don't require annotating "help" or "note" (respecively) diagnostics at all.
-                let default_require_annotations = self.props.require_annotations[&err_kind];
-                match err_kind {
-                    ErrorKind::Help => expect_help && default_require_annotations,
-                    ErrorKind::Note => expect_note && default_require_annotations,
-                    _ => default_require_annotations,
-                }
-            })
+            && self.props.require_annotations[&actual_error.kind]
+            && match actual_error.kind {
+                ErrorKind::Help => expect_help,
+                ErrorKind::Note => expect_note,
+                _ => true,
+            }
     }
 
     fn should_emit_metadata(&self, pm: Option<PassMode>) -> Emit {

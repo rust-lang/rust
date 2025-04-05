@@ -1,11 +1,11 @@
 error[E0053]: method `bar` has an incompatible type for trait
-  --> $DIR/issue-13033.rs:8:30
+  --> $DIR/issue-13033.rs:10:30
    |
 LL |     fn bar(&mut self, other: &dyn Foo) {}
    |                              ^^^^^^^^ types differ in mutability
    |
 note: type in trait
-  --> $DIR/issue-13033.rs:2:30
+  --> $DIR/issue-13033.rs:4:30
    |
 LL |     fn bar(&mut self, other: &mut dyn Foo);
    |                              ^^^^^^^^^^^^

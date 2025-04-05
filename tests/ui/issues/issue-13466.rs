@@ -1,5 +1,7 @@
 // Regression test for #13466
 
+//@ dont-require-annotations: NOTE
+
 pub fn main() {
     // The expected arm type `Option<T>` has one type parameter, while
     // the actual arm `Result<T, E>` has two. typeck should not be
@@ -7,14 +9,14 @@ pub fn main() {
     let _x: usize = match Some(1) {
         Ok(u) => u,
         //~^ ERROR mismatched types
-        //~| expected enum `Option<{integer}>`
-        //~| found enum `Result<_, _>`
-        //~| expected `Option<{integer}>`, found `Result<_, _>`
+        //~| NOTE expected enum `Option<{integer}>`
+        //~| NOTE found enum `Result<_, _>`
+        //~| NOTE expected `Option<{integer}>`, found `Result<_, _>`
 
         Err(e) => panic!(e)
         //~^ ERROR mismatched types
-        //~| expected enum `Option<{integer}>`
-        //~| found enum `Result<_, _>`
-        //~| expected `Option<{integer}>`, found `Result<_, _>`
+        //~| NOTE expected enum `Option<{integer}>`
+        //~| NOTE found enum `Result<_, _>`
+        //~| NOTE expected `Option<{integer}>`, found `Result<_, _>`
     };
 }

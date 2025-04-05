@@ -10,12 +10,12 @@ fn f10() {
     let x = Foo {f: "hi".to_string()};
 
     let y = match x {
-        Foo {f} => {}
+        Foo {f} => {} //~ NOTE value partially moved here
     };
 
     touch(&x); //~ ERROR borrow of partially moved value: `x`
-    //~^ value borrowed here after partial move
-    //~| partial move occurs because `x.f` has type `String`
+    //~^ NOTE value borrowed here after partial move
+    //~| NOTE partial move occurs because `x.f` has type `String`
 }
 
 fn main() {}

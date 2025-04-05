@@ -229,7 +229,7 @@ fn push_actual_errors(
     // Convert multi-line messages into multiple errors.
     // We expect to replace these with something more structured anyhow.
     let mut message_lines = diagnostic.message.lines();
-    let kind = Some(ErrorKind::from_compiler_str(&diagnostic.level));
+    let kind = ErrorKind::from_compiler_str(&diagnostic.level);
     let first_line = message_lines.next().unwrap_or(&diagnostic.message);
     if primary_spans.is_empty() {
         static RE: OnceLock<Regex> = OnceLock::new();
@@ -278,7 +278,7 @@ fn push_actual_errors(
             for (index, line) in suggested_replacement.lines().enumerate() {
                 errors.push(Error {
                     line_num: Some(span.line_start + index),
-                    kind: Some(ErrorKind::Suggestion),
+                    kind: ErrorKind::Suggestion,
                     msg: line.to_string(),
                     require_annotation: true,
                 });
@@ -297,7 +297,7 @@ fn push_actual_errors(
     for span in spans_in_this_file.iter().filter(|span| span.label.is_some()) {
         errors.push(Error {
             line_num: Some(span.line_start),
-            kind: Some(ErrorKind::Note),
+            kind: ErrorKind::Note,
             msg: span.label.clone().unwrap(),
             require_annotation: true,
         });
@@ -317,7 +317,7 @@ fn push_backtrace(
     if Path::new(&expansion.span.file_name) == Path::new(&file_name) {
         errors.push(Error {
             line_num: Some(expansion.span.line_start),
-            kind: Some(ErrorKind::Note),
+            kind: ErrorKind::Note,
             msg: format!("in this expansion of {}", expansion.macro_decl_name),
             require_annotation: true,
         });

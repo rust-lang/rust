@@ -1,4 +1,6 @@
- #![feature(default_field_values)]
+//@ dont-require-annotations: HELP
+
+#![feature(default_field_values)]
 
 #[derive(Debug)]
 pub struct S;
@@ -56,10 +58,10 @@ fn main () {
     let _ = Bar { bar: S, .. }; // ok
     let _ = Qux::<4> { .. };
     let _ = Rak(..); //~ ERROR E0308
-    //~^ you might have meant to use `..` to skip providing
+    //~^ HELP you might have meant to use `..` to skip providing
     let _ = Rak(0, ..); //~ ERROR E0061
-    //~^ you might have meant to use `..` to skip providing
+    //~^ HELP you might have meant to use `..` to skip providing
     let _ = Rak(.., 0); //~ ERROR E0061
-    //~^ you might have meant to use `..` to skip providing
+    //~^ HELP you might have meant to use `..` to skip providing
     let _ = Rak { .. }; // ok
 }

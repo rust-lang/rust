@@ -1,4 +1,5 @@
 //@ build-fail
+//@ dont-require-annotations: NOTE
 
 // Regression test for #66975
 #![feature(never_type)]
@@ -11,5 +12,5 @@ impl PrintName {
 }
 
 fn main() {
-    let _ = PrintName::VOID; //~ erroneous constant encountered
+    let _ = PrintName::VOID; //~ NOTE erroneous constant encountered
 }

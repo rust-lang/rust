@@ -5,7 +5,7 @@ LL |     const C: () = panic!();
    |                   ^^^^^^^^ evaluation panicked: explicit panic
 
 note: erroneous constant encountered
-  --> $DIR/interpret-in-const-called-fn.rs:17:9
+  --> $DIR/interpret-in-const-called-fn.rs:18:9
    |
 LL |         Fail::<T>::C;
    |         ^^^^^^^^^^^^

@@ -1,6 +1,7 @@
 fn main() {
     [0; ..10];
     //~^ ERROR mismatched types
-    //~| expected type `usize`
-    //~| found struct `RangeTo<{integer}>`
+    //~| NOTE expected type `usize`
+    //~| NOTE found struct `RangeTo<{integer}>`
+    //~| NOTE expected `usize`, found `RangeTo<{integer}>
 }
