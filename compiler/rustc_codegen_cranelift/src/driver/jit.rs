@@ -126,6 +126,11 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) {
+    if tcx.codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
+        tcx.dcx()
+            .span_fatal(tcx.def_span(instance.def_id()), "Naked asm is not supported in JIT mode");
+    }
+
     cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
         tcx.prof.clone(),
     )));
@@ -135,16 +140,15 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
             crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));
 
         let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
-        if let Some(codegened_func) = crate::base::codegen_fn(
+        let codegened_func = crate::base::codegen_fn(
             tcx,
             cx,
             &mut TypeDebugContext::default(),
             cached_func,
             module,
             instance,
-        ) {
-            crate::base::compile_fn(cx, &tcx.prof, cached_context, module, codegened_func);
-        }
+        );
+        crate::base::compile_fn(cx, &tcx.prof, cached_context, module, codegened_func);
     });
 }
 
