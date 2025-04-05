@@ -1,7 +1,7 @@
 use std::fmt::{self, Display};
 use std::path::PathBuf;
 
-use rinja::Template;
+use askama::Template;
 use rustc_data_structures::fx::FxIndexMap;
 
 use super::static_files::{STATIC_FILES, StaticFiles};

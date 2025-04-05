@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
 
-use rinja::Template;
+use askama::Template;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefIdMap, DefIdSet};
@@ -123,10 +123,10 @@ impl<'a> Link<'a> {
 pub(crate) mod filters {
     use std::fmt::{self, Display};
 
-    use rinja::filters::Safe;
+    use askama::filters::Safe;
 
     use crate::html::escape::EscapeBodyTextWithWbr;
-    pub(crate) fn wrapped<T>(v: T) -> rinja::Result<Safe<impl Display>>
+    pub(crate) fn wrapped<T>(v: T) -> askama::Result<Safe<impl Display>>
     where
         T: Display,
     {
