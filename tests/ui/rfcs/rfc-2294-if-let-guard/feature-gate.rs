@@ -64,7 +64,7 @@ fn _macros() {
     //~^ ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
     match () {
-        #[cfg(FALSE)]
+        #[cfg(false)]
         () if let 0 = 1 => {}
         //~^ ERROR `if let` guards are experimental
         _ => {}

@@ -2,7 +2,7 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 impl S {
     static IA: u8 = 0; //~ ERROR associated `static` items are not allowed
     static IB: u8; //~ ERROR associated `static` items are not allowed
@@ -12,7 +12,7 @@ impl S {
     //~^ ERROR a static item cannot be `default`
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 trait T {
     static TA: u8 = 0; //~ ERROR associated `static` items are not allowed
     static TB: u8; //~ ERROR associated `static` items are not allowed
@@ -22,7 +22,7 @@ trait T {
     //~^ ERROR a static item cannot be `default`
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 impl T for S {
     static TA: u8 = 0; //~ ERROR associated `static` items are not allowed
     static TB: u8; //~ ERROR associated `static` items are not allowed

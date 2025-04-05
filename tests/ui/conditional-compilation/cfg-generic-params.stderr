@@ -31,7 +31,7 @@ LL | struct WhereYes where for<#[cfg_attr(yes, unknown)] 'a> u8: Copy;
 error[E0658]: only lifetime parameters can be used in this context
   --> $DIR/cfg-generic-params.rs:7:48
    |
-LL | type FnBad = for<#[cfg(FALSE)] 'a, #[cfg(yes)] T> fn();
+LL | type FnBad = for<#[cfg(false)] 'a, #[cfg(yes)] T> fn();
    |                                                ^
    |
    = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
@@ -41,7 +41,7 @@ LL | type FnBad = for<#[cfg(FALSE)] 'a, #[cfg(yes)] T> fn();
 error[E0658]: only lifetime parameters can be used in this context
   --> $DIR/cfg-generic-params.rs:11:54
    |
-LL | type PolyBad = dyn for<#[cfg(FALSE)] 'a, #[cfg(yes)] T> Copy;
+LL | type PolyBad = dyn for<#[cfg(false)] 'a, #[cfg(yes)] T> Copy;
    |                                                      ^
    |
    = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
@@ -51,7 +51,7 @@ LL | type PolyBad = dyn for<#[cfg(FALSE)] 'a, #[cfg(yes)] T> Copy;
 error[E0658]: only lifetime parameters can be used in this context
   --> $DIR/cfg-generic-params.rs:15:57
    |
-LL | struct WhereBad where for<#[cfg(FALSE)] 'a, #[cfg(yes)] T> u8: Copy;
+LL | struct WhereBad where for<#[cfg(false)] 'a, #[cfg(yes)] T> u8: Copy;
    |                                                         ^
    |
    = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information

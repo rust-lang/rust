@@ -5,8 +5,8 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 extern crate async;
 
-#[cfg(FALSE)]
+#[cfg(false)]
 extern crate async as something_else;

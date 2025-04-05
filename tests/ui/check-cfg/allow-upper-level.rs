@@ -6,7 +6,7 @@
 
 #[allow(unexpected_cfgs)]
 mod aa {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     fn bar() {}
 }
 
