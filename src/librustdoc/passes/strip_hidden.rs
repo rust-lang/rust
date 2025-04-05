@@ -91,19 +91,21 @@ impl DocFolder for Stripper<'_, '_> {
 
         if let clean::ImportItem(clean::Import { source, .. }) = &i.kind
             && let Some(source_did) = source.did
-            && let Some(import_def_id) = i.def_id().and_then(|def_id| def_id.as_local())
         {
-            let reexports = reexport_chain(self.tcx, import_def_id, source_did);
-
-            // Check if any reexport in the chain has a hidden source
-            let has_hidden_source = reexports
-                .iter()
-                .filter_map(|reexport| reexport.id())
-                .any(|reexport_did| self.tcx.is_doc_hidden(reexport_did))
-                || self.tcx.is_doc_hidden(source_did);
-
-            if has_hidden_source {
+            if self.tcx.is_doc_hidden(source_did) {
                 return None;
+            } else if let Some(import_def_id) = i.def_id().and_then(|def_id| def_id.as_local()) {
+                let reexports = reexport_chain(self.tcx, import_def_id, source_did);
+
+                // Check if any reexport in the chain has a hidden source
+                let has_hidden_source = reexports
+                    .iter()
+                    .filter_map(|reexport| reexport.id())
+                    .any(|reexport_did| self.tcx.is_doc_hidden(reexport_did));
+
+                if has_hidden_source {
+                    return None;
+                }
             }
         }
 
