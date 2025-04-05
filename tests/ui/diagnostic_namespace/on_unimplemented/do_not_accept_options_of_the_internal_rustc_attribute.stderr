@@ -39,82 +39,82 @@ LL | #[diagnostic::on_unimplemented = "Message"]
    = help: only `message`, `note` and `label` are allowed as options
 
 warning: there is no parameter `from_desugaring` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:17
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `direct` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:34
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                  ^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `cause` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:42
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `integral` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:49
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                 ^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `integer` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:59
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                           ^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `float` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:15
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `_Self` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:22
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                      ^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `crate_local` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:29
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                             ^^^^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `Trait` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:42
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
 warning: there is no parameter `ItemContext` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:49
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                 ^^^^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
@@ -191,91 +191,91 @@ LL | fn takes_bar(_: impl Bar) {}
    |                      ^^^ required by this bound in `takes_bar`
 
 warning: there is no parameter `from_desugaring` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:17
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `direct` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:34
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                  ^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `cause` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:42
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `integral` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:49
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                 ^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `integer` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:33:59
    |
 LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}",
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                           ^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `float` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:15
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `_Self` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:22
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                      ^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `crate_local` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:29
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                             ^^^^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `Trait` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:42
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: there is no parameter `ItemContext` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:5
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:44:49
    |
 LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                 ^^^^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
