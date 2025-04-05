@@ -1,0 +1,51 @@
+error: expected `{`, found `)`
+  --> $DIR/no-close-delim-issue-139248.rs:3:38
+   |
+LL | thread_local! { static a : () = (if b) }
+   |                                      ^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/no-close-delim-issue-139248.rs:3:37
+   |
+LL | thread_local! { static a : () = (if b) }
+   |                                     ^
+
+error: expected `{`, found `)`
+  --> $DIR/no-close-delim-issue-139248.rs:3:38
+   |
+LL | thread_local! { static a : () = (if b) }
+   |                                      ^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/no-close-delim-issue-139248.rs:3:37
+   |
+LL | thread_local! { static a : () = (if b) }
+   |                                     ^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: expected `{`, found `)`
+  --> $DIR/no-close-delim-issue-139248.rs:3:38
+   |
+LL | thread_local! { static a : () = (if b) }
+   |                                      ^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/no-close-delim-issue-139248.rs:3:37
+   |
+LL | thread_local! { static a : () = (if b) }
+   |                                     ^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: expected expression, found end of macro arguments
+  --> $DIR/no-close-delim-issue-139248.rs:3:1
+   |
+LL | thread_local! { static a : () = (if b) }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected expression
+  --> $SRC_DIR/std/src/sys/thread_local/native/mod.rs:LL:COL
+   |
+   = note: while parsing argument for this `expr` macro fragment
+   |
+   = note: this error originates in the macro `thread_local` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
