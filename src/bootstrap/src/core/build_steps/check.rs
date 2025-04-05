@@ -1,5 +1,6 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
+use crate::core::build_steps::check;
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
@@ -9,7 +10,7 @@ use crate::core::builder::{
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{Mode, Subcommand};
+use crate::{Compiler, Mode, Subcommand};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
@@ -27,15 +28,23 @@ pub struct Std {
     /// passing `Builder::kind` to cargo invocations would run clippy on the entire compiler and library,
     /// which is not useful if we only want to lint a few crates with specific rules.
     override_build_kind: Option<Kind>,
+
+    override_compiler: Option<Compiler>,
 }
 
 impl Std {
     pub fn new(target: TargetSelection) -> Self {
-        Self { target, crates: vec![], override_build_kind: None }
+        Self { target, crates: vec![], override_build_kind: None, override_compiler: None }
     }
 
     pub fn build_kind(mut self, kind: Option<Kind>) -> Self {
         self.override_build_kind = kind;
+        self
+    }
+
+    /// Override the compiler used. Needed when checking tools that use [`Mode::ToolStd`].
+    pub fn with_compiler(mut self, compiler: Compiler) -> Self {
+        self.override_compiler = Some(compiler);
         self
     }
 }
@@ -53,14 +62,21 @@ impl Step for Std {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = std_crates_for_run_make(&run);
-        run.builder.ensure(Std { target: run.target, crates, override_build_kind: None });
+        run.builder.ensure(Std {
+            target: run.target,
+            crates,
+            override_build_kind: None,
+            override_compiler: None,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
         builder.require_submodule("library/stdarch", None);
 
         let target = self.target;
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = self
+            .override_compiler
+            .unwrap_or_else(|| builder.compiler(builder.top_stage, builder.config.build));
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -375,6 +391,8 @@ macro_rules! tool_check_step {
             // The part of this path after the final '/' is also used as a display name.
             path: $path:literal
             $(, alt_path: $alt_path:literal )*
+            , mode: $mode:path
+            $(, allow_features: $allow_features:expr )?
             $(, default: $default:literal )?
             $( , )?
         }
@@ -400,7 +418,14 @@ macro_rules! tool_check_step {
 
             fn run(self, builder: &Builder<'_>) {
                 let Self { target } = self;
-                run_tool_check_step(builder, target, stringify!($name), $path);
+
+                let allow_features = {
+                    let mut _value = "";
+                    $( _value = $allow_features; )?
+                    _value
+                };
+
+                run_tool_check_step(builder, target, $path, $mode, allow_features);
             }
         }
     }
@@ -410,18 +435,38 @@ macro_rules! tool_check_step {
 fn run_tool_check_step(
     builder: &Builder<'_>,
     target: TargetSelection,
-    step_type_name: &str,
     path: &str,
+    mode: Mode,
+    allow_features: &str,
 ) {
     let display_name = path.rsplit('/').next().unwrap();
-    let compiler = builder.compiler(builder.top_stage, builder.config.build);
 
-    builder.ensure(Rustc::new(target, builder));
+    let host = builder.config.build;
+    let compiler;
+
+    match mode {
+        Mode::ToolBootstrap => {
+            // Most "bootstrap tools" just need the bootstrap compiler.
+            compiler = builder.compiler(0, host);
+        }
+        Mode::ToolStd => {
+            // A small number of bootstrap tools also rely on in-tree standard
+            // library crates (e.g. compiletest needs libtest), so we use the
+            // bootstrap compiler to do a check build of the standard library.
+            compiler = builder.compiler(0, host);
+            builder.ensure(check::Std::new(target).with_compiler(compiler));
+        }
+        Mode::ToolRustc => {
+            compiler = builder.compiler(builder.top_stage, host);
+            builder.ensure(check::Rustc::new(target, builder));
+        }
+        _ => panic!("unexpected mode for tool check step: {mode:?}"),
+    }
 
     let mut cargo = prepare_tool_cargo(
         builder,
         compiler,
-        Mode::ToolRustc,
+        mode,
         target,
         builder.kind,
         path,
@@ -432,6 +477,7 @@ fn run_tool_check_step(
         SourceType::InTree,
         &[],
     );
+    cargo.allow_features(allow_features);
 
     // For ./x.py clippy, don't run with --all-targets because
     // linting tests and benchmarks can produce very noisy results
@@ -439,32 +485,54 @@ fn run_tool_check_step(
         cargo.arg("--all-targets");
     }
 
-    let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
-        .with_prefix(&format!("{}-check", step_type_name.to_lowercase()));
+    let stamp = BuildStamp::new(&builder.cargo_out(compiler, mode, target))
+        .with_prefix(&format!("{display_name}-check"));
 
-    let _guard = builder.msg_check(format!("{display_name} artifacts"), target);
+    let _guard =
+        builder.msg_tool(builder.kind, mode, display_name, compiler.stage, &compiler.host, &target);
     run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 }
 
-tool_check_step!(Rustdoc { path: "src/tools/rustdoc", alt_path: "src/librustdoc" });
+// FIXME: Some of these `Mode::ToolRustc` values might be wrong.
+// (Historically, all tools were hardcoded to use `Mode::ToolRustc`.)
+
+tool_check_step!(Rustdoc {
+    path: "src/tools/rustdoc",
+    alt_path: "src/librustdoc",
+    mode: Mode::ToolRustc,
+});
 // Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
-tool_check_step!(Clippy { path: "src/tools/clippy" });
-tool_check_step!(Miri { path: "src/tools/miri" });
-tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri" });
-tool_check_step!(Rustfmt { path: "src/tools/rustfmt" });
-tool_check_step!(MiroptTestTools { path: "src/tools/miropt-test-tools" });
-tool_check_step!(TestFloatParse { path: "src/etc/test-float-parse" });
-tool_check_step!(FeaturesStatusDump { path: "src/tools/features-status-dump" });
+tool_check_step!(Clippy { path: "src/tools/clippy", mode: Mode::ToolRustc });
+tool_check_step!(Miri { path: "src/tools/miri", mode: Mode::ToolRustc });
+tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: Mode::ToolRustc });
+tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: Mode::ToolRustc });
+tool_check_step!(MiroptTestTools { path: "src/tools/miropt-test-tools", mode: Mode::ToolRustc });
+tool_check_step!(TestFloatParse { path: "src/etc/test-float-parse", mode: Mode::ToolRustc });
+tool_check_step!(FeaturesStatusDump {
+    path: "src/tools/features-status-dump",
+    mode: Mode::ToolRustc,
+});
 
-tool_check_step!(Bootstrap { path: "src/bootstrap", default: false });
+tool_check_step!(Bootstrap { path: "src/bootstrap", mode: Mode::ToolBootstrap, default: false });
 
 // `run-make-support` will be built as part of suitable run-make compiletest test steps, but support
 // check to make it easier to work on.
-tool_check_step!(RunMakeSupport { path: "src/tools/run-make-support", default: false });
+tool_check_step!(RunMakeSupport {
+    path: "src/tools/run-make-support",
+    mode: Mode::ToolBootstrap,
+    default: false,
+});
 
 // Compiletest is implicitly "checked" when it gets built in order to run tests,
 // so this is mainly for people working on compiletest to run locally.
-tool_check_step!(Compiletest { path: "src/tools/compiletest", default: false });
+//
+// Compiletest uses libtest internally, so it needs `Mode::ToolStd` and `#![feature(test)]`.
+tool_check_step!(Compiletest {
+    path: "src/tools/compiletest",
+    mode: Mode::ToolStd,
+    allow_features: "test",
+    default: false,
+});
