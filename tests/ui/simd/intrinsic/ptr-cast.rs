@@ -7,6 +7,9 @@ use std::intrinsics::simd::{simd_cast_ptr, simd_expose_provenance, simd_with_exp
 #[derive(Copy, Clone)]
 #[repr(simd)]
 struct V<T>([T; 2]);
+impl<T> V<T> {
+    fn to_array(self) -> [T; 2] { unsafe { std::intrinsics::transmute_unchecked(self) } }
+}
 
 fn main() {
     unsafe {
@@ -22,8 +25,8 @@ fn main() {
 
         let with_exposed_provenance: V<*mut i8> = simd_with_exposed_provenance(exposed_addr);
 
-        assert!(const_ptrs.0 == [ptr as *const u8, core::ptr::null()]);
-        assert!(exposed_addr.0 == [ptr as usize, 0]);
-        assert!(with_exposed_provenance.0 == ptrs.0);
+        assert!(const_ptrs.to_array() == [ptr as *const u8, core::ptr::null()]);
+        assert!(exposed_addr.to_array() == [ptr as usize, 0]);
+        assert!(with_exposed_provenance.to_array() == ptrs.to_array());
     }
 }

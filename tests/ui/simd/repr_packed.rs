@@ -42,7 +42,6 @@ fn main() {
         // non-powers-of-two should have padding (which is removed by #[repr(packed)]),
         // but the intrinsic handles it
         let x: Simd<f64, 3> = simd_add(Simd::<f64, 3>([0., 1., 2.]), Simd::<f64, 3>([2., 2., 2.]));
-        let arr: [f64; 3] = x.0;
-        assert_eq!(arr, [2., 3., 4.]);
+        assert_eq!(std::mem::transmute::<_, [f64; 3]>(x), [2., 3., 4.]);
     }
 }
