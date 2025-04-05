@@ -396,6 +396,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 source,
                                 parse_ordering(bx, ordering),
                                 size,
+                                false,
                             )
                         } else {
                             invalid_monomorphization(ty);
@@ -409,7 +410,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let size = bx.layout_of(ty).size;
                             let val = args[1].immediate();
                             let ptr = args[0].immediate();
-                            bx.atomic_store(val, ptr, parse_ordering(bx, ordering), size);
+                            bx.atomic_store(val, ptr, parse_ordering(bx, ordering), size, false);
                         } else {
                             invalid_monomorphization(ty);
                         }
@@ -491,7 +492,48 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
+            sym::volatile_load_atomic_relaxed => {
+                use crate::common::AtomicOrdering;
 
+                let ty = fn_args.type_at(0);
+                if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
+                    let layout = bx.layout_of(ty);
+                    let size = layout.size;
+                    let source = args[0].immediate();
+                    bx.atomic_load(
+                        bx.backend_type(layout),
+                        source,
+                        AtomicOrdering::Relaxed,
+                        size,
+                        true,
+                    );
+                } else {
+                    bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                        span,
+                        name,
+                        ty,
+                    });
+                }
+                return Ok(());
+            }
+            sym::volatile_store_atomic_relaxed => {
+                use crate::common::AtomicOrdering;
+
+                let ty = fn_args.type_at(0);
+                if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
+                    let size = bx.layout_of(ty).size;
+                    let val = args[1].immediate();
+                    let ptr = args[0].immediate();
+                    bx.atomic_store(val, ptr, AtomicOrdering::Relaxed, size, true);
+                } else {
+                    bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                        span,
+                        name,
+                        ty,
+                    });
+                }
+                return Ok(());
+            }
             sym::nontemporal_store => {
                 let dst = args[0].deref(bx.cx());
                 args[1].val.nontemporal_store(bx, dst);

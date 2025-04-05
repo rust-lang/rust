@@ -1841,6 +1841,26 @@ pub unsafe fn unaligned_volatile_load<T>(src: *const T) -> T;
 #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_store"]
 pub unsafe fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 
+/// Performs a volatile load from the `dst` pointer.
+/// This pointer is required to be aligned and supported for
+/// lock-free atomic operations.
+///
+/// It also creates a relaxed atomic ordering at this place.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[cfg(not(bootstrap))]
+pub unsafe fn volatile_load_atomic_relaxed<T>(src: *const T) -> T;
+
+/// Performs a volatile store to the `dst` pointer.
+/// This pointer is required to be aligned, and the value supported
+/// for lock-free atomic operations.
+///
+/// This also creates a relaxed atomic ordering on at this place.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[cfg(not(bootstrap))]
+pub unsafe fn volatile_store_atomic_relaxed<T>(dst: *mut T, val: T);
+
 /// Returns the square root of an `f16`
 ///
 /// The stabilized version of this intrinsic is
