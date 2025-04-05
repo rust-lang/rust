@@ -156,8 +156,6 @@ fn main() {
         && match (target_arch.as_str(), target_os.as_str()) {
             // FIXME: Disabled on Miri as the intrinsics are not implemented yet.
             _ if is_miri => false,
-            // x86 has a crash for `powi`: <https://github.com/llvm/llvm-project/issues/105747>
-            ("x86" | "x86_64", _) => false,
             // Assume that working `f16` means working `f16` math for most platforms, since
             // operations just go through `f32`.
             _ => true,
