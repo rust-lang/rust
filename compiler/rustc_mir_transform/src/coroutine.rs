@@ -69,10 +69,11 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{
-    MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
-    always_storage_live_locals,
+    MaybeBorrowedLocals, MaybeInitializedPlaces, MaybeLiveLocals, MaybeRequiresStorage,
+    MaybeStorageLive, always_storage_live_locals,
 };
-use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
+use rustc_mir_dataflow::move_paths::MoveData;
+use rustc_mir_dataflow::{self, Analysis, MaybeReachable, Results, ResultsVisitor};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{Span, sym};
 use rustc_target::spec::PanicStrategy;
@@ -633,6 +634,12 @@ struct LivenessInfo {
     /// Which locals are live across any suspension point.
     saved_locals: CoroutineSavedLocals,
 
+    /// Which locals are live *and* initialized across any suspension point.
+    ///
+    /// A local that is live but is not initialized (i.e. it has been moved out of) does
+    /// not need to be accounted for in auto trait checking.
+    init_locals: DenseBitSet<Local>,
+
     /// The set of saved locals live at each suspension point.
     live_locals_at_suspension_points: Vec<DenseBitSet<CoroutineSavedLocal>>,
 
@@ -686,10 +693,18 @@ fn locals_live_across_suspend_points<'tcx>(
     let mut liveness =
         MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("coroutine")).into_results_cursor(body);
 
+    let move_data = MoveData::gather_moves(body, tcx, |_| true);
+
+    // Calculate the set of locals which are initialized
+    let mut inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
+        .iterate_to_fixpoint(tcx, body, Some("coroutine"))
+        .into_results_cursor(body);
+
     let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
     let mut live_locals_at_suspension_points = Vec::new();
     let mut source_info_at_suspension_points = Vec::new();
     let mut live_locals_at_any_suspension_point = DenseBitSet::new_empty(body.local_decls.len());
+    let mut init_locals_at_any_suspension_point = DenseBitSet::new_empty(body.local_decls.len());
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
@@ -727,12 +742,26 @@ fn locals_live_across_suspend_points<'tcx>(
             // The coroutine argument is ignored.
             live_locals.remove(SELF_ARG);
 
-            debug!("loc = {:?}, live_locals = {:?}", loc, live_locals);
+            inits.seek_to_block_end(block);
+            let mut init_locals: DenseBitSet<_> = DenseBitSet::new_empty(body.local_decls.len());
+            if let MaybeReachable::Reachable(bitset) = inits.get() {
+                for move_path_index in bitset.iter() {
+                    if let Some(local) = move_data.move_paths[move_path_index].place.as_local() {
+                        init_locals.insert(local);
+                    }
+                }
+            }
+            init_locals.intersect(&live_locals);
+
+            debug!(
+                "loc = {:?}, live_locals = {:?}, init_locals = {:?}",
+                loc, live_locals, init_locals
+            );
 
             // Add the locals live at this suspension point to the set of locals which live across
             // any suspension points
             live_locals_at_any_suspension_point.union(&live_locals);
-
+            init_locals_at_any_suspension_point.union(&init_locals);
             live_locals_at_suspension_points.push(live_locals);
             source_info_at_suspension_points.push(data.terminator().source_info);
         }
@@ -757,6 +786,7 @@ fn locals_live_across_suspend_points<'tcx>(
 
     LivenessInfo {
         saved_locals,
+        init_locals: init_locals_at_any_suspension_point,
         live_locals_at_suspension_points,
         source_info_at_suspension_points,
         storage_conflicts,
@@ -929,6 +959,7 @@ fn compute_layout<'tcx>(
 ) {
     let LivenessInfo {
         saved_locals,
+        init_locals,
         live_locals_at_suspension_points,
         source_info_at_suspension_points,
         storage_conflicts,
@@ -950,6 +981,9 @@ fn compute_layout<'tcx>(
         // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
         // default.
         let ignore_for_traits = match decl.local_info {
+            // If only the storage is required to be live, but local is not initialized,
+            // then we can ignore such type for auto trait purposes.
+            _ if !init_locals.contains(local) => true,
             // Do not include raw pointers created from accessing `static` items, as those could
             // well be re-created by another access to the same static.
             ClearCrossCrate::Set(box LocalInfo::StaticRef { is_thread_local, .. }) => {
