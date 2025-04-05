@@ -677,4 +677,26 @@ crate::Foo;
 crate::Foo;"#]],
         );
     }
+
+    #[test]
+    fn semi_glueing() {
+        check(
+            r#"
+macro_rules! __log_value {
+    ($key:ident :$capture:tt =) => {};
+}
+
+macro_rules! __log {
+    ($key:tt $(:$capture:tt)? $(= $value:expr)?; $($arg:tt)+) => {
+        __log_value!($key $(:$capture)* = $($value)*);
+    };
+}
+
+__log!(written:%; "Test"$0);
+    "#,
+            expect![[r#"
+                __log!
+            "#]],
+        );
+    }
 }

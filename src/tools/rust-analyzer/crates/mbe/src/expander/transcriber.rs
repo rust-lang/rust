@@ -389,8 +389,13 @@ fn expand_var(
     match ctx.bindings.get_fragment(v, id, &mut ctx.nesting, marker) {
         Ok(fragment) => {
             match fragment {
-                Fragment::Tokens(tt) => builder.extend_with_tt(tt.strip_invisible()),
-                Fragment::TokensOwned(tt) => builder.extend_with_tt(tt.view().strip_invisible()),
+                // rustc spacing is not like ours. Ours is like proc macros', it dictates how puncts will actually be joined.
+                // rustc uses them mostly for pretty printing. So we have to deviate a bit from what rustc does here.
+                // Basically, a metavariable can never be joined with whatever after it.
+                Fragment::Tokens(tt) => builder.extend_with_tt_alone(tt.strip_invisible()),
+                Fragment::TokensOwned(tt) => {
+                    builder.extend_with_tt_alone(tt.view().strip_invisible())
+                }
                 Fragment::Expr(sub) => {
                     let sub = sub.strip_invisible();
                     let mut span = id;
@@ -402,7 +407,7 @@ fn expand_var(
                     if wrap_in_parens {
                         builder.open(tt::DelimiterKind::Parenthesis, span);
                     }
-                    builder.extend_with_tt(sub);
+                    builder.extend_with_tt_alone(sub);
                     if wrap_in_parens {
                         builder.close(span);
                     }

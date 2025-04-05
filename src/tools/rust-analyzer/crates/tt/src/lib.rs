@@ -22,6 +22,8 @@ use stdx::{impl_from, itertools::Itertools as _};
 
 pub use text_size::{TextRange, TextSize};
 
+pub const MAX_GLUED_PUNCT_LEN: usize = 3;
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct Lit {
     pub kind: LitKind,
@@ -241,6 +243,23 @@ impl<S: Copy> TopSubtreeBuilder<S> {
 
     pub fn extend_with_tt(&mut self, tt: TokenTreesView<'_, S>) {
         self.token_trees.extend(tt.0.iter().cloned());
+    }
+
+    /// Like [`Self::extend_with_tt()`], but makes sure the new tokens will never be
+    /// joint with whatever comes after them.
+    pub fn extend_with_tt_alone(&mut self, tt: TokenTreesView<'_, S>) {
+        if let Some((last, before_last)) = tt.0.split_last() {
+            self.token_trees.reserve(tt.0.len());
+            self.token_trees.extend(before_last.iter().cloned());
+            let last = if let TokenTree::Leaf(Leaf::Punct(last)) = last {
+                let mut last = *last;
+                last.spacing = Spacing::Alone;
+                TokenTree::Leaf(Leaf::Punct(last))
+            } else {
+                last.clone()
+            };
+            self.token_trees.push(last);
+        }
     }
 
     pub fn expected_delimiters(&self) -> impl Iterator<Item = &Delimiter<S>> {
