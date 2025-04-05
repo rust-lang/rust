@@ -519,6 +519,22 @@ img {
 	/* make sure there's a 1px gap between the scrollbar and resize handle */
 	left: calc(var(--desktop-sidebar-width) + 1px);
 }
+/* visual indication that the sidebar can be resized */
+.sidebar-resize-hint {
+	background-color: var(--sidebar-resize-hint-color);
+	color: 
+	margin: 0 5px 5px 0;
+	padding: 1px 2px 4px 0;
+	margin-top: 16px;
+	border-width: 7px 6px 7px 1px;
+	border-style: solid;
+	border-color: var(--sidebar-resize-hint-color);
+	border-radius: 0 5px 5px 0;
+	font-size: 10px;
+	/* allow to stack with `.sidebar-resizer.active::before` */
+	position: abosolute;
+	cursor: e-resize;
+}
 
 .rustdoc.src .sidebar-resizer {
 	/* when closed, place resizer glow on top of the normal src sidebar border (no need to
@@ -585,11 +601,13 @@ img {
 	margin-left: -140px;
 	border-left: none;
 }
-.sidebar-resizer.active:before {
+.sidebar-resizer.active::before {
 	border-left: solid 2px var(--sidebar-resizer-active);
 	display: block;
 	height: 100%;
 	content: "";
+	/* allow to stack with `.sidebar-resize-hint` */
+	position: absolute;
 }
 
 .sidebar, .mobile-topbar, .sidebar-menu-toggle,
@@ -2890,6 +2908,7 @@ by default.
 	--settings-button-border-focus: #717171;
 	--sidebar-background-color: #f5f5f5;
 	--sidebar-background-color-hover: #e0e0e0;
+	--sidebar-resize-hint-color: #000a;
 	--code-block-background-color: #f5f5f5;
 	--scrollbar-track-background-color: #dcdcdc;
 	--scrollbar-thumb-background-color: rgba(36, 37, 39, 0.6);
@@ -2995,6 +3014,7 @@ by default.
 	--settings-button-border-focus: #ffb900;
 	--sidebar-background-color: #505050;
 	--sidebar-background-color-hover: #676767;
+	--sidebar-resize-hint-color: #000a;
 	--code-block-background-color: #2A2A2A;
 	--scrollbar-track-background-color: #717171;
 	--scrollbar-thumb-background-color: rgba(32, 34, 37, .6);
@@ -3107,6 +3127,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--settings-button-border-focus: #e0e0e0;
 	--sidebar-background-color: #14191f;
 	--sidebar-background-color-hover: rgba(70, 70, 70, 0.33);
+	--sidebar-resize-hint-color: #999;
 	--code-block-background-color: #191f26;
 	--scrollbar-track-background-color: transparent;
 	--scrollbar-thumb-background-color: #5c6773;
