@@ -3,6 +3,7 @@
 use rustc_abi::FieldIdx;
 
 use crate::rustc_smir::{Stable, Tables};
+use crate::stable_mir;
 
 mod abi;
 mod error;

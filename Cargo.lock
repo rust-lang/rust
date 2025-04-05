@@ -4432,7 +4432,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "scoped-tls",
- "stable_mir",
+ "serde",
  "tracing",
 ]
 
@@ -4990,8 +4990,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 name = "stable_mir"
 version = "0.1.0-preview"
 dependencies = [
- "scoped-tls",
- "serde",
+ "rustc_smir",
 ]
 
 [[package]]

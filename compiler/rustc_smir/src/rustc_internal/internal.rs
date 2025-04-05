@@ -21,6 +21,7 @@ use stable_mir::{CrateItem, CrateNum, DefId};
 
 use super::RustcInternal;
 use crate::rustc_smir::Tables;
+use crate::stable_mir;
 
 impl RustcInternal for CrateItem {
     type T<'tcx> = rustc_span::def_id::DefId;

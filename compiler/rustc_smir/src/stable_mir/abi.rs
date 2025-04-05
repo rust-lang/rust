@@ -3,12 +3,13 @@ use std::num::NonZero;
 use std::ops::RangeInclusive;
 
 use serde::Serialize;
+use stable_mir::compiler_interface::with;
+use stable_mir::mir::FieldIdx;
+use stable_mir::target::{MachineInfo, MachineSize as Size};
+use stable_mir::ty::{Align, IndexedVal, Ty, VariantIdx};
+use stable_mir::{Error, Opaque, error};
 
-use crate::compiler_interface::with;
-use crate::mir::FieldIdx;
-use crate::target::{MachineInfo, MachineSize as Size};
-use crate::ty::{Align, IndexedVal, Ty, VariantIdx};
-use crate::{Error, Opaque, error};
+use crate::stable_mir;
 
 /// A function ABI definition.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -149,7 +150,7 @@ pub enum FieldsShape {
     Arbitrary {
         /// Offsets for the first byte of each field,
         /// ordered to match the source definition order.
-        /// I.e.: It follows the same order as [crate::ty::VariantDef::fields()].
+        /// I.e.: It follows the same order as [super::ty::VariantDef::fields()].
         /// This vector does not go in increasing order.
         offsets: Vec<Size>,
     },

@@ -2,9 +2,10 @@
 //! such as, a function, a trait, an enum, and any other definitions.
 
 use serde::Serialize;
+use stable_mir::ty::{GenericArgs, Span, Ty};
+use stable_mir::{AssocItems, Crate, Symbol, with};
 
-use crate::ty::{GenericArgs, Span, Ty};
-use crate::{AssocItems, Crate, Symbol, with};
+use crate::stable_mir;
 
 /// A unique identification number for each item accessible for the current compilation unit.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]

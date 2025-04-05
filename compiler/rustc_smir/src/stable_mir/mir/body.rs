@@ -1,14 +1,15 @@
 use std::io;
 
 use serde::Serialize;
-
-use crate::compiler_interface::with;
-use crate::mir::pretty::function_body;
-use crate::ty::{
+use stable_mir::compiler_interface::with;
+use stable_mir::mir::pretty::function_body;
+use stable_mir::ty::{
     AdtDef, ClosureDef, CoroutineClosureDef, CoroutineDef, GenericArgs, MirConst, Movability,
     Region, RigidTy, Ty, TyConst, TyKind, VariantIdx,
 };
-use crate::{Error, Opaque, Span, Symbol};
+use stable_mir::{Error, Opaque, Span, Symbol};
+
+use crate::stable_mir;
 
 /// The SMIR representation of a single function.
 #[derive(Clone, Debug, Serialize)]
@@ -565,7 +566,7 @@ pub enum Rvalue {
     ///
     /// **Needs clarification**: Are there weird additional semantics here related to the runtime
     /// nature of this operation?
-    ThreadLocalRef(crate::CrateItem),
+    ThreadLocalRef(stable_mir::CrateItem),
 
     /// Computes a value as described by the operation.
     NullaryOp(NullOp, Ty),

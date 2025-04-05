@@ -2,15 +2,16 @@ use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
 
 use serde::Serialize;
+use stable_mir::abi::{FnAbi, Layout};
+use stable_mir::crate_def::{CrateDef, CrateDefItems, CrateDefType};
+use stable_mir::mir::alloc::{AllocId, read_target_int, read_target_uint};
+use stable_mir::mir::mono::StaticDef;
+use stable_mir::target::MachineInfo;
+use stable_mir::{Filename, Opaque};
 
 use super::mir::{Body, Mutability, Safety};
 use super::{DefId, Error, Symbol, with};
-use crate::abi::{FnAbi, Layout};
-use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType};
-use crate::mir::alloc::{AllocId, read_target_int, read_target_uint};
-use crate::mir::mono::StaticDef;
-use crate::target::MachineInfo;
-use crate::{Filename, Opaque};
+use crate::stable_mir;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize)]
 pub struct Ty(usize);
@@ -588,7 +589,7 @@ pub enum IntTy {
 impl IntTy {
     pub fn num_bytes(self) -> usize {
         match self {
-            IntTy::Isize => crate::target::MachineInfo::target_pointer_width().bytes(),
+            IntTy::Isize => MachineInfo::target_pointer_width().bytes(),
             IntTy::I8 => 1,
             IntTy::I16 => 2,
             IntTy::I32 => 4,
@@ -611,7 +612,7 @@ pub enum UintTy {
 impl UintTy {
     pub fn num_bytes(self) -> usize {
         match self {
-            UintTy::Usize => crate::target::MachineInfo::target_pointer_width().bytes(),
+            UintTy::Usize => MachineInfo::target_pointer_width().bytes(),
             UintTy::U8 => 1,
             UintTy::U16 => 2,
             UintTy::U32 => 4,

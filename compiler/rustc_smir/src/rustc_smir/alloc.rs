@@ -6,6 +6,7 @@ use stable_mir::mir::Mutability;
 use stable_mir::ty::{Allocation, ProvenanceMap};
 
 use crate::rustc_smir::{Stable, Tables};
+use crate::stable_mir;
 
 /// Creates new empty `Allocation` from given `Align`.
 fn new_empty_allocation(align: Align) -> Allocation {
