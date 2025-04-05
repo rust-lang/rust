@@ -52,9 +52,33 @@ pub struct Crate {
     pub paths: HashMap<Id, ItemSummary>,
     /// Maps `crate_id` of items to a crate name and html_root_url if it exists.
     pub external_crates: HashMap<u32, ExternalCrate>,
+    /// Information about the target for which this documentation was generated
+    pub target: Target,
     /// A single version number to be used in the future when making backwards incompatible changes
     /// to the JSON output.
     pub format_version: u32,
+}
+
+/// Information about a target
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Target {
+    /// A list of `#[target_feature]` which exist for this target, along with their status in this
+    /// compiler session
+    pub target_features: Vec<TargetFeature>,
+}
+
+/// Information about a `#[target_feature]`
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TargetFeature {
+    /// The name of this feature
+    pub name: String,
+    /// Other feature(s) which are implied by this feature
+    pub implies_features: Vec<String>,
+    /// Whether this feature is stable
+    pub stable: bool,
+    /// Whether this feature is globally enabled for this target, for example, due to the
+    /// target's ABI requiring this feature, or due to compiler flags which enable it everywhere
+    pub globally_enabled: bool,
 }
 
 /// Metadata of a crate, either the same crate on which `rustdoc` was invoked, or its dependency.
