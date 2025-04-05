@@ -55,12 +55,16 @@ pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
     from_trusted_iterator(repeat_n(val, N))
 }
 
-/// Creates an array of type [T; N], where each element `T` is the returned value from `cb`
-/// using that element's index.
+/// Creates an array where each element is produced by calling `f` with
+/// that element's index while walking forward through the array.
 ///
-/// # Arguments
+/// This is essentially the same as writing
+/// ```text
+/// [f(0), f(1), f(2), …, f(N - 2), f(N - 1)]
+/// ```
+/// and is similar to `(0..i).map(f)`, just for arrays not iterators.
 ///
-/// * `cb`: Callback where the passed argument is the current array index.
+/// If `N == 0`, this produces an empty array without ever calling `f`.
 ///
 /// # Example
 ///
@@ -82,13 +86,30 @@ pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
 /// // indexes are:       0     1      2     3      4
 /// assert_eq!(bool_arr, [true, false, true, false, true]);
 /// ```
+///
+/// You can also capture things, for example to create an array full of clones
+/// where you can't just use `[item; N]` because it's not `Copy`:
+/// ```
+/// # // TBH `array::repeat` would be better for this, but it's not stable yet.
+/// let my_string = String::from("Hello");
+/// let clones: [String; 42] = std::array::from_fn(|_| my_string.clone());
+/// assert!(clones.iter().all(|x| *x == my_string));
+/// ```
+///
+/// The array is generated in ascending index order, starting from the front
+/// and going towards the back, so you can use closures with mutable state:
+/// ```
+/// let mut state = 1;
+/// let a = std::array::from_fn(|_| { let x = state; state *= 2; x });
+/// assert_eq!(a, [1, 2, 4, 8, 16, 32]);
+/// ```
 #[inline]
 #[stable(feature = "array_from_fn", since = "1.63.0")]
-pub fn from_fn<T, const N: usize, F>(cb: F) -> [T; N]
+pub fn from_fn<T, const N: usize, F>(f: F) -> [T; N]
 where
     F: FnMut(usize) -> T,
 {
-    try_from_fn(NeverShortCircuit::wrap_mut_1(cb)).0
+    try_from_fn(NeverShortCircuit::wrap_mut_1(f)).0
 }
 
 /// Creates an array `[T; N]` where each fallible array element `T` is returned by the `cb` call.
