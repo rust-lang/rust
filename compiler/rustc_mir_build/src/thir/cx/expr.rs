@@ -476,6 +476,56 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 ExprKind::RawBorrow { mutability, arg: self.mirror_expr(arg) }
             }
 
+            // Make `&pin mut $expr` and `&pin const $expr` into
+            // `Pin { __pointer: &mut { $expr } }` and `Pin { __pointer: &$expr }`.
+            hir::ExprKind::AddrOf(hir::BorrowKind::Pin, mutbl, arg) => match expr_ty.kind() {
+                &ty::Adt(adt_def, args)
+                    if tcx.is_lang_item(adt_def.did(), rustc_hir::LangItem::Pin) =>
+                {
+                    let ty = args.type_at(0);
+                    let arg_ty = self.typeck_results.expr_ty(arg);
+                    let mut arg = self.mirror_expr(arg);
+                    // for `&pin mut $place`, move the place `$place` to ensure it will not be used afterwards
+                    if mutbl.is_mut() {
+                        let block = self.thir.blocks.push(Block {
+                            targeted_by_break: false,
+                            region_scope: region::Scope {
+                                local_id: expr.hir_id.local_id,
+                                data: region::ScopeData::Node,
+                            },
+                            span: expr.span,
+                            stmts: Box::new([]),
+                            expr: Some(arg),
+                            safety_mode: BlockSafety::Safe,
+                        });
+                        arg = self.thir.exprs.push(Expr {
+                            temp_lifetime: TempLifetime {
+                                temp_lifetime: None,
+                                backwards_incompatible: None,
+                            },
+                            ty: arg_ty,
+                            span: expr.span,
+                            kind: ExprKind::Block { block },
+                        });
+                    }
+                    let expr = self.thir.exprs.push(Expr {
+                        temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                        ty,
+                        span: expr.span,
+                        kind: ExprKind::Borrow { borrow_kind: mutbl.to_borrow_kind(), arg },
+                    });
+                    ExprKind::Adt(Box::new(AdtExpr {
+                        adt_def,
+                        variant_index: FIRST_VARIANT,
+                        args,
+                        fields: Box::new([FieldExpr { name: FieldIdx::from(0u32), expr }]),
+                        user_ty: None,
+                        base: AdtExprBase::None,
+                    }))
+                }
+                _ => span_bug!(expr.span, "unexpected type for pinned borrow: {:?}", expr_ty),
+            },
+
             hir::ExprKind::Block(blk, _) => ExprKind::Block { block: self.mirror_block(blk) },
 
             hir::ExprKind::Assign(lhs, rhs, _) => {
