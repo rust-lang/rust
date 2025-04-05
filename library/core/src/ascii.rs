@@ -9,9 +9,10 @@
 
 #![stable(feature = "core_ascii", since = "1.26.0")]
 
+use crate::escape::{AlwaysEscaped, EscapeIterInner};
+use crate::fmt;
 use crate::iter::FusedIterator;
 use crate::num::NonZero;
-use crate::{escape, fmt};
 
 mod ascii_char;
 #[unstable(feature = "ascii_char", issue = "110998")]
@@ -24,7 +25,7 @@ pub use ascii_char::AsciiChar as Char;
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct EscapeDefault(escape::EscapeIterInner<4>);
+pub struct EscapeDefault(EscapeIterInner<4, AlwaysEscaped>);
 
 /// Returns an iterator that produces an escaped version of a `u8`.
 ///
@@ -96,17 +97,12 @@ pub fn escape_default(c: u8) -> EscapeDefault {
 impl EscapeDefault {
     #[inline]
     pub(crate) const fn new(c: u8) -> Self {
-        Self(escape::EscapeIterInner::ascii(c))
+        Self(EscapeIterInner::ascii(c))
     }
 
     #[inline]
     pub(crate) fn empty() -> Self {
-        Self(escape::EscapeIterInner::empty())
-    }
-
-    #[inline]
-    pub(crate) fn as_str(&self) -> &str {
-        self.0.as_str()
+        Self(EscapeIterInner::empty())
     }
 }
 
@@ -168,7 +164,7 @@ impl FusedIterator for EscapeDefault {}
 #[stable(feature = "ascii_escape_display", since = "1.39.0")]
 impl fmt::Display for EscapeDefault {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.0.as_str())
+        fmt::Display::fmt(&self.0, f)
     }
 }
 
