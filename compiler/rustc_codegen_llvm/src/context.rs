@@ -328,6 +328,22 @@ pub(crate) unsafe fn create_module<'ll>(
                 pfe.prefix().into(),
             );
         }
+
+        // Add "kcfi-arity" module flag if KCFI arity indicator is enabled. (See
+        // https://github.com/llvm/llvm-project/pull/117121.)
+        if sess.is_sanitizer_kcfi_arity_enabled() {
+            // KCFI arity indicator requires LLVM 21.0.0 or later.
+            if llvm_version < (21, 0, 0) {
+                tcx.dcx().emit_err(crate::errors::SanitizerKcfiArityRequiresLLVM2100);
+            }
+
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Override,
+                "kcfi-arity",
+                1,
+            );
+        }
     }
 
     // Control Flow Guard is currently only supported by MSVC and LLVM on Windows.

@@ -381,6 +381,10 @@ impl Session {
         self.opts.unstable_opts.sanitizer_cfi_normalize_integers == Some(true)
     }
 
+    pub fn is_sanitizer_kcfi_arity_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_kcfi_arity == Some(true)
+    }
+
     pub fn is_sanitizer_kcfi_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI)
     }
@@ -1209,6 +1213,11 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if !sess.is_sanitizer_cfi_enabled() {
             sess.dcx().emit_err(errors::SanitizerCfiCanonicalJumpTablesRequiresCfi);
         }
+    }
+
+    // KCFI arity indicator requires KCFI.
+    if sess.is_sanitizer_kcfi_arity_enabled() && !sess.is_sanitizer_kcfi_enabled() {
+        sess.dcx().emit_err(errors::SanitizerKcfiArityRequiresKcfi);
     }
 
     // LLVM CFI pointer generalization requires CFI or KCFI.
