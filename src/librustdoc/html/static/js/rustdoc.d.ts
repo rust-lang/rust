@@ -464,7 +464,7 @@ declare namespace rustdoc {
 
     /**
      * Maps from crate names to trait implementation data.
-     * Provied by generated `trait.impl` files.
+     * Provided by generated `trait.impl` files.
      */
     type Implementors = {
         [key: string]: Array<[string, number, Array<string>]>

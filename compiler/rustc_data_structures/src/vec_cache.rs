@@ -257,7 +257,7 @@ unsafe impl<K: Idx, #[may_dangle] V, I> Drop for VecCache<K, V, I> {
         // we are also guaranteed to just need to deallocate any large arrays (not iterate over
         // contents).
         //
-        // Confirm no need to deallocate invidual entries. Note that `V: Copy` is asserted on
+        // Confirm no need to deallocate individual entries. Note that `V: Copy` is asserted on
         // insert/lookup but not necessarily construction, primarily to avoid annoyingly propagating
         // the bounds into struct definitions everywhere.
         assert!(!std::mem::needs_drop::<K>());
