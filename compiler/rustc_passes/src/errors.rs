@@ -1197,10 +1197,6 @@ pub(crate) struct UnlabeledCfInWhileCondition<'a> {
     pub cf_type: &'a str,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(passes_undefined_naked_function_abi)]
-pub(crate) struct UndefinedNakedFunctionAbi;
-
 #[derive(Diagnostic)]
 #[diag(passes_no_patterns)]
 pub(crate) struct NoPatterns {

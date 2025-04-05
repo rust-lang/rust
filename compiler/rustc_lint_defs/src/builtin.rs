@@ -110,7 +110,6 @@ declare_lint_pass! {
         UNCONDITIONAL_PANIC,
         UNCONDITIONAL_RECURSION,
         UNCOVERED_PARAM_IN_PROJECTION,
-        UNDEFINED_NAKED_FUNCTION_ABI,
         UNEXPECTED_CFGS,
         UNFULFILLED_LINT_EXPECTATIONS,
         UNINHABITED_STATIC,
@@ -2828,39 +2827,6 @@ declare_lint! {
     pub USELESS_DEPRECATED,
     Deny,
     "detects deprecation attributes with no effect",
-}
-
-declare_lint! {
-    /// The `undefined_naked_function_abi` lint detects naked function definitions that
-    /// either do not specify an ABI or specify the Rust ABI.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #![feature(asm_experimental_arch, naked_functions)]
-    ///
-    /// use std::arch::naked_asm;
-    ///
-    /// #[naked]
-    /// pub fn default_abi() -> u32 {
-    ///     unsafe { naked_asm!(""); }
-    /// }
-    ///
-    /// #[naked]
-    /// pub extern "Rust" fn rust_abi() -> u32 {
-    ///     unsafe { naked_asm!(""); }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The Rust ABI is currently undefined. Therefore, naked functions should
-    /// specify a non-Rust ABI.
-    pub UNDEFINED_NAKED_FUNCTION_ABI,
-    Warn,
-    "undefined naked function ABI"
 }
 
 declare_lint! {
