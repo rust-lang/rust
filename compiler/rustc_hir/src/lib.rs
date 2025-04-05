@@ -4,7 +4,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(closure_track_caller)]

@@ -393,8 +393,8 @@ impl<'a> Parser<'a> {
                 } else {
                     // `(T, U) -> R`
 
-                    let prev_token_before_parsing = self.prev_token.clone();
-                    let token_before_parsing = self.token.clone();
+                    let prev_token_before_parsing = self.prev_token;
+                    let token_before_parsing = self.token;
                     let mut snapshot = None;
                     if self.may_recover()
                         && prev_token_before_parsing == token::PathSep

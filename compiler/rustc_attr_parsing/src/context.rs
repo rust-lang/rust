@@ -320,7 +320,7 @@ impl<'sess> AttributeParser<'sess> {
             ast::AttrArgs::Delimited(args) => AttrArgs::Delimited(DelimArgs {
                 dspan: args.dspan,
                 delim: args.delim,
-                tokens: args.tokens.flattened(),
+                tokens: args.tokens.clone(),
             }),
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle

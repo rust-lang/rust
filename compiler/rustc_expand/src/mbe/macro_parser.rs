@@ -179,7 +179,7 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
         for tt in tts {
             match tt {
                 TokenTree::Token(token) => {
-                    locs.push(MatcherLoc::Token { token: token.clone() });
+                    locs.push(MatcherLoc::Token { token: *token });
                 }
                 TokenTree::Delimited(span, _, delimited) => {
                     let open_token = Token::new(token::OpenDelim(delimited.delim), span.open);
@@ -648,7 +648,7 @@ impl TtParser {
                     // There are no possible next positions AND we aren't waiting for the black-box
                     // parser: syntax error.
                     return Failure(T::build_failure(
-                        parser.token.clone(),
+                        parser.token,
                         parser.approx_token_stream_pos(),
                         "no rules expected this token in macro call",
                     ));

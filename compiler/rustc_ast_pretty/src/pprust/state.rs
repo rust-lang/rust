@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
@@ -876,14 +876,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn nonterminal_to_string(&self, nt: &Nonterminal) -> String {
-        // We extract the token stream from the AST fragment and pretty print
-        // it, rather than using AST pretty printing, because `Nonterminal` is
-        // slated for removal in #124141. (This method will also then be
-        // removed.)
-        self.tts_to_string(&TokenStream::from_nonterminal_ast(nt))
-    }
-
     /// Print the token kind precisely, without converting `$crate` into its respective crate name.
     fn token_kind_to_string(&self, tok: &TokenKind) -> Cow<'static, str> {
         self.token_kind_to_string_ext(tok, None)
@@ -976,8 +968,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 doc_comment_to_string(comment_kind, attr_style, data).into()
             }
             token::Eof => "<eof>".into(),
-
-            token::Interpolated(ref nt) => self.nonterminal_to_string(&nt).into(),
         }
     }
 

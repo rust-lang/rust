@@ -547,7 +547,7 @@ impl<'a> Parser<'a> {
 
             // Recovery
             mutbl = Mutability::Mut;
-            let (dyn_tok, dyn_tok_sp) = (self.token.clone(), self.token_spacing);
+            let (dyn_tok, dyn_tok_sp) = (self.token, self.token_spacing);
             self.bump();
             self.bump_with((dyn_tok, dyn_tok_sp));
         }
@@ -886,7 +886,7 @@ impl<'a> Parser<'a> {
     /// ```
     fn parse_generic_bound(&mut self) -> PResult<'a, GenericBound> {
         let lo = self.token.span;
-        let leading_token = self.prev_token.clone();
+        let leading_token = self.prev_token;
         let has_parens = self.eat(exp!(OpenParen));
 
         let bound = if self.token.is_lifetime() {
