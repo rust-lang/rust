@@ -1090,26 +1090,36 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             {
                 // See `assemble_candidates_for_unsizing` for more info.
                 // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
-                let iter = data_a
-                    .principal()
-                    .filter(|_| {
-                        // optionally drop the principal, if we're unsizing to no principal
-                        data_b.principal().is_some()
-                    })
-                    .map(|b| b.map_bound(ty::ExistentialPredicate::Trait))
-                    .into_iter()
-                    .chain(
+                let existential_predicates = if data_b.principal().is_some() {
+                    tcx.mk_poly_existential_predicates_from_iter(
                         data_a
-                            .projection_bounds()
-                            .map(|b| b.map_bound(ty::ExistentialPredicate::Projection)),
+                            .principal()
+                            .map(|b| b.map_bound(ty::ExistentialPredicate::Trait))
+                            .into_iter()
+                            .chain(
+                                data_a
+                                    .projection_bounds()
+                                    .map(|b| b.map_bound(ty::ExistentialPredicate::Projection)),
+                            )
+                            .chain(
+                                data_b
+                                    .auto_traits()
+                                    .map(ty::ExistentialPredicate::AutoTrait)
+                                    .map(ty::Binder::dummy),
+                            ),
                     )
-                    .chain(
+                } else {
+                    // If we're unsizing to a dyn type that has no principal, then drop
+                    // the principal and projections from the type. We use the auto traits
+                    // from the RHS type since as we noted that we've checked for auto
+                    // trait compatibility during unsizing.
+                    tcx.mk_poly_existential_predicates_from_iter(
                         data_b
                             .auto_traits()
                             .map(ty::ExistentialPredicate::AutoTrait)
                             .map(ty::Binder::dummy),
-                    );
-                let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(iter);
+                    )
+                };
                 let source_trait = Ty::new_dynamic(tcx, existential_predicates, r_b, dyn_a);
 
                 // Require that the traits involved in this upcast are **equal**;
