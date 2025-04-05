@@ -44,8 +44,10 @@ fn demo_ge_partial(_1: &(f32, f32), _2: &(f32, f32)) -> bool {
         StorageDead(_5);
         StorageDead(_4);
         StorageDead(_3);
+        StorageLive(_8);
         _8 = copy ((_7 as Break).0: bool);
         _0 = copy _8;
+        StorageDead(_8);
         goto -> bb3;
     }
 

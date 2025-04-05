@@ -31,15 +31,13 @@
           (*_3) = const true;
           _4 = const ();
           StorageDead(_4);
--         StorageLive(_5);
-+         nop;
+          StorageLive(_5);
           StorageLive(_6);
           _6 = copy (_2.1: bool);
           _5 = Not(move _6);
           StorageDead(_6);
           _0 = copy _5;
--         StorageDead(_5);
-+         nop;
+          StorageDead(_5);
           StorageDead(_3);
           StorageDead(_2);
           return;
