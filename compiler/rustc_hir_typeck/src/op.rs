@@ -249,7 +249,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rhs_ty_var,
             Some(lhs_expr),
             |err, ty| {
-                if let Op::BinOp(binop) = op
+                if !expr.span.in_external_macro(self.tcx.sess.source_map())
+                    && let Op::BinOp(binop) = op
                     && binop.node == hir::BinOpKind::Eq
                 {
                     self.suggest_swapping_lhs_and_rhs(err, ty, lhs_ty, rhs_expr, lhs_expr);
