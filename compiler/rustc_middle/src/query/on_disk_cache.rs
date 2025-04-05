@@ -16,7 +16,8 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixed
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
-    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
+    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext,
+    SyntaxContextDataNonRecursive as SyntaxContextData,
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{
