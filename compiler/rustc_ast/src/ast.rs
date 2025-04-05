@@ -120,6 +120,17 @@ impl Path {
         Path { segments: thin_vec![PathSegment::from_ident(ident)], span: ident.span, tokens: None }
     }
 
+    pub fn is_ident(&self, name: Symbol) -> bool {
+        if let [segment] = self.segments.as_ref()
+            && segment.args.is_none()
+            && segment.ident.name == name
+        {
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn is_global(&self) -> bool {
         self.segments.first().is_some_and(|segment| segment.ident.name == kw::PathRoot)
     }
