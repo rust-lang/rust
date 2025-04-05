@@ -294,7 +294,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         // First, check if we are projecting to a variant.
         match layout.variants {
             Variants::Multiple { tag_field, .. } => {
-                if tag_field == field {
+                if tag_field.as_usize() == field {
                     return match layout.ty.kind() {
                         ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
                         ty::Coroutine(..) => PathElem::CoroutineTag,
