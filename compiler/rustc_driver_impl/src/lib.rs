@@ -34,7 +34,6 @@ use std::time::{Instant, SystemTime};
 use std::{env, str};
 
 use rustc_ast as ast;
-use rustc_codegen_ssa::back::apple;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{
@@ -807,8 +806,8 @@ fn print_crate_info(
                 if sess.target.is_like_darwin {
                     println_info!(
                         "{}={}",
-                        apple::deployment_target_env_var(&sess.target.os),
-                        apple::pretty_version(apple::deployment_target(sess)),
+                        rustc_target::spec::apple::deployment_target_env_var(&sess.target.os),
+                        sess.apple_deployment_target().fmt_pretty(),
                     )
                 } else {
                     #[allow(rustc::diagnostic_outside_of_impl)]

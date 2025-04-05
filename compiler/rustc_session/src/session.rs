@@ -29,7 +29,7 @@ use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
     CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
-    TargetTuple, TlsModel,
+    TargetTuple, TlsModel, apple,
 };
 
 use crate::code_stats::CodeStats;
@@ -893,6 +893,45 @@ impl Session {
             FileNameDisplayPreference::Remapped
         } else {
             FileNameDisplayPreference::Local
+        }
+    }
+
+    /// Get the deployment target on Apple platforms based on the standard environment variables,
+    /// or fall back to the minimum version supported by `rustc`.
+    ///
+    /// This should be guarded behind `if sess.target.is_like_darwin`.
+    pub fn apple_deployment_target(&self) -> apple::OSVersion {
+        let min = apple::OSVersion::minimum_deployment_target(&self.target);
+        let env_var = apple::deployment_target_env_var(&self.target.os);
+
+        // FIXME(madsmtm): Track changes to this.
+        if let Ok(deployment_target) = env::var(env_var) {
+            match apple::OSVersion::from_str(&deployment_target) {
+                Ok(version) => {
+                    let os_min = apple::OSVersion::os_minimum_deployment_target(&self.target.os);
+                    // It is common that the deployment target is set a bit too low, for example on
+                    // macOS Aarch64 to also target older x86_64. So we only want to warn when variable
+                    // is lower than the minimum OS supported by rustc, not when the variable is lower
+                    // than the minimum for a specific target.
+                    if version < os_min {
+                        self.dcx().emit_warn(errors::AppleDeploymentTarget::TooLow {
+                            env_var,
+                            version: version.fmt_pretty().to_string(),
+                            os_min: os_min.fmt_pretty().to_string(),
+                        });
+                    }
+
+                    // Raise the deployment target to the minimum supported.
+                    version.max(min)
+                }
+                Err(error) => {
+                    self.dcx().emit_err(errors::AppleDeploymentTarget::Invalid { env_var, error });
+                    min
+                }
+            }
+        } else {
+            // If no deployment target variable is set, default to the minimum found above.
+            min
         }
     }
 }
