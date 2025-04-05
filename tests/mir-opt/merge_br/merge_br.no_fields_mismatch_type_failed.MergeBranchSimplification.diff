@@ -1,0 +1,32 @@
+- // MIR for `no_fields_mismatch_type_failed` before MergeBranchSimplification
++ // MIR for `no_fields_mismatch_type_failed` after MergeBranchSimplification
+  
+  fn no_fields_mismatch_type_failed(_1: NoFields) -> NoFields2 {
+      debug a => _1;
+      let mut _0: NoFields2;
+      let mut _2: isize;
+  
+      bb0: {
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _0 = NoFields2::B;
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _0 = NoFields2::A;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          return;
+      }
+  }
+  
