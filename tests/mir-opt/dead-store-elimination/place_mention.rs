@@ -2,7 +2,7 @@
 // and don't remove it as a dead store.
 //
 //@ test-mir-pass: DeadStoreElimination-initial
-//@ compile-flags: -Zmir-keep-place-mention
+//@ compile-flags: -Zmir-preserve-ub
 
 // EMIT_MIR place_mention.main.DeadStoreElimination-initial.diff
 fn main() {
