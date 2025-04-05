@@ -193,7 +193,7 @@ pub fn benchmark<F>(
     id: TestId,
     desc: TestDesc,
     monitor_ch: Sender<CompletedTest>,
-    nocapture: bool,
+    capture: bool,
     f: F,
 ) where
     F: FnMut(&mut Bencher) -> Result<(), String>,
@@ -202,7 +202,7 @@ pub fn benchmark<F>(
 
     let data = Arc::new(Mutex::new(Vec::new()));
 
-    if !nocapture {
+    if capture {
         io::set_output_capture(Some(data.clone()));
     }
 

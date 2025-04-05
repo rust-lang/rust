@@ -18,7 +18,7 @@ pub struct TestOpts {
     pub run_tests: bool,
     pub bench_benchmarks: bool,
     pub logfile: Option<PathBuf>,
-    pub nocapture: bool,
+    pub capture: bool,
     pub color: ColorConfig,
     pub format: OutputFormat,
     pub shuffle: bool,
@@ -36,7 +36,7 @@ pub struct TestOpts {
 impl TestOpts {
     pub fn use_color(&self) -> bool {
         match self.color {
-            ColorConfig::AutoColor => !self.nocapture && io::stdout().is_terminal(),
+            ColorConfig::AutoColor => self.capture && io::stdout().is_terminal(),
             ColorConfig::AlwaysColor => true,
             ColorConfig::NeverColor => false,
         }
@@ -61,7 +61,7 @@ fn optgroups() -> getopts::Options {
         .optopt("", "logfile", "Write logs to the specified file (deprecated)", "PATH")
         .optflag(
             "",
-            "nocapture",
+            "no-capture",
             "don't capture stdout/stderr of each \
              task, allow printing directly",
         )
@@ -172,7 +172,7 @@ tests in the same order again. Note that --shuffle and --shuffle-seed do not
 affect whether the tests are run in parallel.
 
 All tests have their standard output and standard error captured by default.
-This can be overridden with the --nocapture flag or setting RUST_TEST_NOCAPTURE
+This can be overridden with the --no-capture flag or setting RUST_TEST_NOCAPTURE
 environment variable to a value other than "0". Logging is not captured by default.
 
 Test Attributes:
@@ -199,7 +199,10 @@ Test Attributes:
 /// otherwise creates a `TestOpts` object and returns it.
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Parse matches.
-    let opts = optgroups();
+    let mut opts = optgroups();
+    // Flags hidden from `usage`
+    opts.optflag("", "nocapture", "Deprecated, use `--no-capture`");
+
     let binary = args.first().map(|c| &**c).unwrap_or("...");
     let args = args.get(1..).unwrap_or(args);
     let matches = match opts.parse(args) {
@@ -210,7 +213,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Check if help was requested.
     if matches.opt_present("h") {
         // Show help and do nothing more.
-        usage(binary, &opts);
+        usage(binary, &optgroups());
         return None;
     }
 
@@ -274,7 +277,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     let logfile = get_log_file(&matches)?;
     let run_ignored = get_run_ignored(&matches, include_ignored)?;
     let filters = matches.free.clone();
-    let nocapture = get_nocapture(&matches)?;
+    let capture = get_capture(&matches)?;
     let test_threads = get_test_threads(&matches)?;
     let color = get_color_config(&matches)?;
     let format = get_format(&matches, quiet, allow_unstable)?;
@@ -295,7 +298,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         run_tests,
         bench_benchmarks,
         logfile,
-        nocapture,
+        capture,
         color,
         format,
         shuffle,
@@ -446,16 +449,22 @@ fn get_color_config(matches: &getopts::Matches) -> OptPartRes<ColorConfig> {
     Ok(color)
 }
 
-fn get_nocapture(matches: &getopts::Matches) -> OptPartRes<bool> {
-    let mut nocapture = matches.opt_present("nocapture");
-    if !nocapture {
-        nocapture = match env::var("RUST_TEST_NOCAPTURE") {
+fn get_capture(matches: &getopts::Matches) -> OptPartRes<bool> {
+    let no_capture = matches.opt_present("no-capture");
+    let nocapture = matches.opt_present("nocapture");
+    if nocapture {
+        let _ = write!(io::stderr(), "warning: `--nocapture` is deprecated, use `--no-capture`");
+    }
+
+    let mut capture = !(no_capture || nocapture);
+    if capture {
+        capture = !match env::var("RUST_TEST_NOCAPTURE") {
             Ok(val) => &val != "0",
             Err(_) => false,
         };
     }
 
-    Ok(nocapture)
+    Ok(capture)
 }
 
 fn get_run_ignored(matches: &getopts::Matches, include_ignored: bool) -> OptPartRes<RunIgnored> {

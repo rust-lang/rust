@@ -174,14 +174,14 @@ impl RunnableBench {
         id: TestId,
         desc: &TestDesc,
         monitor_ch: &Sender<CompletedTest>,
-        nocapture: bool,
+        capture: bool,
     ) {
         match self {
             RunnableBench::Static(f) => {
-                crate::bench::benchmark(id, desc.clone(), monitor_ch.clone(), nocapture, f)
+                crate::bench::benchmark(id, desc.clone(), monitor_ch.clone(), capture, f)
             }
             RunnableBench::Dynamic(f) => {
-                crate::bench::benchmark(id, desc.clone(), monitor_ch.clone(), nocapture, f)
+                crate::bench::benchmark(id, desc.clone(), monitor_ch.clone(), capture, f)
             }
         }
     }

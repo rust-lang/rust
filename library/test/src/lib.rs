@@ -115,7 +115,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
             process::exit(ERROR_EXIT_CODE);
         }
     } else {
-        if !opts.nocapture {
+        if opts.capture {
             // If we encounter a non-unwinding panic, flush any captured output from the current test,
             // and stop capturing output to ensure that the non-unwinding panic message is visible.
             // We also acquire the locks for both output streams to prevent output from other threads
@@ -574,7 +574,7 @@ pub fn run_test(
             }
 
             let name = desc.name.clone();
-            let nocapture = opts.nocapture;
+            let capture = opts.capture;
             let time_options = opts.time_options;
             let bench_benchmarks = opts.bench_benchmarks;
 
@@ -582,7 +582,7 @@ pub fn run_test(
                 RunStrategy::InProcess => run_test_in_process(
                     id,
                     desc,
-                    nocapture,
+                    capture,
                     time_options.is_some(),
                     runnable_test,
                     monitor_ch,
@@ -591,7 +591,7 @@ pub fn run_test(
                 RunStrategy::SpawnPrimary => spawn_test_subprocess(
                     id,
                     desc,
-                    nocapture,
+                    capture,
                     time_options.is_some(),
                     monitor_ch,
                     time_options,
@@ -626,7 +626,7 @@ pub fn run_test(
         }
         Runnable::Bench(runnable_bench) => {
             // Benchmarks aren't expected to panic, so we run them all in-process.
-            runnable_bench.run(id, &desc, &monitor_ch, opts.nocapture);
+            runnable_bench.run(id, &desc, &monitor_ch, opts.capture);
             None
         }
     }
@@ -644,7 +644,7 @@ fn __rust_begin_short_backtrace<T, F: FnOnce() -> T>(f: F) -> T {
 fn run_test_in_process(
     id: TestId,
     desc: TestDesc,
-    nocapture: bool,
+    capture: bool,
     report_time: bool,
     runnable_test: RunnableTest,
     monitor_ch: Sender<CompletedTest>,
@@ -653,7 +653,7 @@ fn run_test_in_process(
     // Buffer for capturing standard I/O
     let data = Arc::new(Mutex::new(Vec::new()));
 
-    if !nocapture {
+    if capture {
         io::set_output_capture(Some(data.clone()));
     }
 
@@ -691,7 +691,7 @@ where
 fn spawn_test_subprocess(
     id: TestId,
     desc: TestDesc,
-    nocapture: bool,
+    capture: bool,
     report_time: bool,
     monitor_ch: Sender<CompletedTest>,
     time_opts: Option<time::TestTimeOptions>,
@@ -706,7 +706,7 @@ fn spawn_test_subprocess(
         if bench_benchmarks {
             command.env(SECONDARY_TEST_BENCH_BENCHMARKS_VAR, "1");
         }
-        if nocapture {
+        if !capture {
             command.stdout(process::Stdio::inherit());
             command.stderr(process::Stdio::inherit());
         }
