@@ -3018,12 +3018,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 [] => span_bug!(ty.span, "trait object with no traits: {ty:?}"),
                             };
                             let needs_parens = traits.len() != 1;
-                            err.span_suggestion_verbose(
-                                span,
-                                "you can use `impl Trait` as the argument type",
-                                "impl ",
-                                Applicability::MaybeIncorrect,
-                            );
+                            if let Some(hir_id) = hir_id
+                                && self.tcx.parent_hir_node(hir_id).ident().is_some()
+                            {
+                                err.span_suggestion_verbose(
+                                    span,
+                                    "you can use `impl Trait` as the argument type",
+                                    "impl ",
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                             let sugg = if !needs_parens {
                                 vec![(span.shrink_to_lo(), format!("&{kw}"))]
                             } else {
