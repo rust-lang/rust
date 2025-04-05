@@ -25,6 +25,10 @@ use crate::{fmt, ops, slice, str};
 /// The `CStr` can then be converted to a Rust <code>&[str]</code> by performing
 /// UTF-8 validation, or into an owned `CString`.
 ///
+/// The `CStr` [`Deref`] implementation has the same semantics as
+/// [`CStr::to_bytes`]; the trailing nul terminator is **omitted** from
+/// [`Deref::Target`].
+///
 /// `&CStr` is to `CString` as <code>&[str]</code> is to `String`: the former
 /// in each pair are borrowed references; the latter are owned
 /// strings.
@@ -87,6 +91,8 @@ use crate::{fmt, ops, slice, str};
 /// ```
 ///
 /// [str]: prim@str "str"
+/// [`Deref`]: crate::ops::Deref
+/// [`Deref::Target`]: crate::ops::Deref::Target
 #[derive(PartialEq, Eq, Hash)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 #[rustc_diagnostic_item = "cstr_type"]
@@ -707,6 +713,22 @@ impl AsRef<CStr> for CStr {
     #[inline]
     fn as_ref(&self) -> &CStr {
         self
+    }
+}
+
+#[unstable(feature = "bstr", issue = "134915")]
+impl AsRef<crate::bstr::ByteStr> for CStr {
+    #[inline]
+    fn as_ref(&self) -> &crate::bstr::ByteStr {
+        crate::bstr::ByteStr::from_bytes(self.to_bytes())
+    }
+}
+
+impl ops::Deref for CStr {
+    type Target = crate::bstr::ByteStr;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_ref()
     }
 }
 
