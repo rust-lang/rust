@@ -342,6 +342,7 @@ impl AsFd for UnixListener {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for UnixListener {
+    /// Make a `UnixListener` with `OwnedFd` as it's inner file descriptor.
     #[inline]
     fn from(fd: OwnedFd) -> UnixListener {
         UnixListener(Socket::from_inner(FromInner::from_inner(fd)))

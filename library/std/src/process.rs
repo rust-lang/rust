@@ -1923,6 +1923,7 @@ impl ExitStatusError {
 
 #[unstable(feature = "exit_status_error", issue = "84908")]
 impl From<ExitStatusError> for ExitStatus {
+    /// Wrap the converted inner of `ExitStatusError` in `ExitStatus`
     fn from(error: ExitStatusError) -> Self {
         Self(error.0.into())
     }

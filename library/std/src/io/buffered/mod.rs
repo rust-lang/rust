@@ -173,6 +173,7 @@ impl<W> IntoInnerError<W> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W> From<IntoInnerError<W>> for Error {
+    /// Get the error of the inner buffer
     fn from(iie: IntoInnerError<W>) -> Error {
         iie.1
     }
