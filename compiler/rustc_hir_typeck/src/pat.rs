@@ -325,7 +325,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         };
         let adjust_mode = self.calc_adjust_mode(pat, opt_path_res.map(|(res, ..)| res));
-        self.check_pat_inner(pat, opt_path_res, adjust_mode, expected, pat_info);
+        let ty = self.check_pat_inner(pat, opt_path_res, adjust_mode, expected, pat_info);
+        self.write_ty(pat.hir_id, ty);
+
+        // (note_1): In most of the cases where (note_1) is referenced
+        // (literals and constants being the exception), we relate types
+        // using strict equality, even though subtyping would be sufficient.
+        // There are a few reasons for this, some of which are fairly subtle
+        // and which cost me (nmatsakis) an hour or two debugging to remember,
+        // so I thought I'd write them down this time.
+        //
+        // 1. There is no loss of expressiveness here, though it does
+        // cause some inconvenience. What we are saying is that the type
+        // of `x` becomes *exactly* what is expected. This can cause unnecessary
+        // errors in some cases, such as this one:
+        //
+        // ```
+        // fn foo<'x>(x: &'x i32) {
+        //    let a = 1;
+        //    let mut z = x;
+        //    z = &a;
+        // }
+        // ```
+        //
+        // The reason we might get an error is that `z` might be
+        // assigned a type like `&'x i32`, and then we would have
+        // a problem when we try to assign `&a` to `z`, because
+        // the lifetime of `&a` (i.e., the enclosing block) is
+        // shorter than `'x`.
+        //
+        // HOWEVER, this code works fine. The reason is that the
+        // expected type here is whatever type the user wrote, not
+        // the initializer's type. In this case the user wrote
+        // nothing, so we are going to create a type variable `Z`.
+        // Then we will assign the type of the initializer (`&'x i32`)
+        // as a subtype of `Z`: `&'x i32 <: Z`. And hence we
+        // will instantiate `Z` as a type `&'0 i32` where `'0` is
+        // a fresh region variable, with the constraint that `'x : '0`.
+        // So basically we're all set.
+        //
+        // Note that there are two tests to check that this remains true
+        // (`regions-reassign-{match,let}-bound-pointer.rs`).
+        //
+        // 2. An outdated issue related to the old HIR borrowck. See the test
+        // `regions-relate-bound-regions-on-closures-to-inference-variables.rs`,
     }
 
     // Helper to avoid resolving the same path pattern several times.
@@ -336,7 +379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         adjust_mode: AdjustMode,
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
-    ) {
+    ) -> Ty<'tcx> {
         let PatInfo { mut binding_mode, mut max_ref_mutbl, current_depth, .. } = pat_info;
         #[cfg(debug_assertions)]
         if binding_mode == ByRef::Yes(Mutability::Mut)
@@ -369,7 +412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             decl_origin: old_pat_info.decl_origin,
         };
 
-        let ty = match pat.kind {
+        match pat.kind {
             // Peel off a `&` or `&mut` from the scrutinee type. See the examples in
             // `tests/ui/rfcs/rfc-2005-default-binding-mode`.
             _ if let AdjustMode::Peel = adjust_mode
@@ -408,13 +451,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Use the old pat info to keep `current_depth` to its old value.
                 let new_pat_info = PatInfo { binding_mode, max_ref_mutbl, ..old_pat_info };
-                return self.check_pat_inner(
-                    pat,
-                    opt_path_res,
-                    adjust_mode,
-                    inner_ty,
-                    new_pat_info,
-                );
+                // Recurse with the new expected type.
+                self.check_pat_inner(pat, opt_path_res, adjust_mode, inner_ty, new_pat_info)
             }
             PatKind::Missing | PatKind::Wild | PatKind::Err(_) => expected,
             // We allow any type here; we ensure that the type is uninhabited during match checking.
@@ -465,51 +503,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Slice(before, slice, after) => {
                 self.check_pat_slice(pat.span, before, slice, after, expected, pat_info)
             }
-        };
-
-        self.write_ty(pat.hir_id, ty);
-
-        // (note_1): In most of the cases where (note_1) is referenced
-        // (literals and constants being the exception), we relate types
-        // using strict equality, even though subtyping would be sufficient.
-        // There are a few reasons for this, some of which are fairly subtle
-        // and which cost me (nmatsakis) an hour or two debugging to remember,
-        // so I thought I'd write them down this time.
-        //
-        // 1. There is no loss of expressiveness here, though it does
-        // cause some inconvenience. What we are saying is that the type
-        // of `x` becomes *exactly* what is expected. This can cause unnecessary
-        // errors in some cases, such as this one:
-        //
-        // ```
-        // fn foo<'x>(x: &'x i32) {
-        //    let a = 1;
-        //    let mut z = x;
-        //    z = &a;
-        // }
-        // ```
-        //
-        // The reason we might get an error is that `z` might be
-        // assigned a type like `&'x i32`, and then we would have
-        // a problem when we try to assign `&a` to `z`, because
-        // the lifetime of `&a` (i.e., the enclosing block) is
-        // shorter than `'x`.
-        //
-        // HOWEVER, this code works fine. The reason is that the
-        // expected type here is whatever type the user wrote, not
-        // the initializer's type. In this case the user wrote
-        // nothing, so we are going to create a type variable `Z`.
-        // Then we will assign the type of the initializer (`&'x i32`)
-        // as a subtype of `Z`: `&'x i32 <: Z`. And hence we
-        // will instantiate `Z` as a type `&'0 i32` where `'0` is
-        // a fresh region variable, with the constraint that `'x : '0`.
-        // So basically we're all set.
-        //
-        // Note that there are two tests to check that this remains true
-        // (`regions-reassign-{match,let}-bound-pointer.rs`).
-        //
-        // 2. An outdated issue related to the old HIR borrowck. See the test
-        // `regions-relate-bound-regions-on-closures-to-inference-variables.rs`,
+        }
     }
 
     /// How should the binding mode and expected type be adjusted?
