@@ -3017,6 +3017,6 @@ impl<T: ?Sized> Debug for SyncUnsafeCell<T> {
     }
 }
 
-// If you expected tests to be here, look instead at the core/tests/fmt.rs file,
+// If you expected tests to be here, look instead at coretests/tests/fmt/;
 // it's a lot easier than creating all of the rt::Piece structures here.
-// There are also tests in the alloc crate, for those that need allocations.
+// There are also tests in alloctests/tests/fmt.rs, for those that need allocations.
