@@ -21,7 +21,6 @@
 mod tests;
 
 use crate::ffi::OsString;
-use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 use crate::path::{Path, PathBuf};
 use crate::sealed::Sealed;
@@ -29,6 +28,7 @@ use crate::sync::Arc;
 use crate::sys::fs as fs_imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
+use crate::{error, fmt};
 
 /// An object providing access to an open file on the filesystem.
 ///
@@ -367,6 +367,9 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
     }
     inner(path.as_ref(), contents.as_ref())
 }
+
+#[unstable(feature = "file_lock", issue = "130994")]
+impl error::Error for TryLockError {}
 
 #[unstable(feature = "file_lock", issue = "130994")]
 impl fmt::Debug for TryLockError {
