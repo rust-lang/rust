@@ -874,8 +874,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => span_bug!(state_decl.source_info.span, "unsupported #[loop_match] state"),
         };
 
-        // The PatCtxt is normally used in pattern exhaustiveness checking, but reused here
-        // because it performs normalization and const evaluation.
+        // The `PatCtxt` is normally used in pattern exhaustiveness checking, but reused
+        // here because it performs normalization and const evaluation.
         let dropless_arena = rustc_arena::DroplessArena::default();
         let typeck_results = self.tcx.typeck(self.def_id);
         let cx = RustcPatCtxt {

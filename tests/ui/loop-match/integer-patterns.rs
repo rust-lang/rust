@@ -1,4 +1,4 @@
-// Test that signed and unsigned integer patterns work with #[loop_match].
+// Test that signed and unsigned integer patterns work with `#[loop_match]`.
 
 //@ run-pass
 

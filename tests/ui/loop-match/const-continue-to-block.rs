@@ -1,5 +1,5 @@
-// A #[const_continue] to a normal labeled block (that does is not part of a #[loop_match]) should
-// error.
+// Test that a `#[const_continue]` that breaks to a normal labeled block (that
+// is not part of a `#[loop_match]`) produces an error.
 
 #![allow(incomplete_features)]
 #![feature(loop_match)]
@@ -18,7 +18,7 @@ fn const_continue_to_block() -> u8 {
                 _ => 'b: {
                     #[const_continue]
                     break 'b 2;
-                    //~^ ERROR `#[const_continue]` must break to a labeled block that participates in a `#[loop_match]`
+                    //~^ ERROR `#[const_continue]` must break to a labeled block in a `#[loop_match]`
                 }
             }
         }

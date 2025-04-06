@@ -380,7 +380,7 @@ pub enum ExprKind<'tcx> {
     },
     /// A `#[loop_match] loop { state = 'blk: { match state { ... } } }` expression.
     LoopMatch {
-        /// The state variable that is updated, and also the scrutinee of the match
+        /// The state variable that is updated, and also the scrutinee of the match.
         state: ExprId,
         region_scope: region::Scope,
         arms: Box<[ArmId]>,

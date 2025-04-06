@@ -619,7 +619,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, min_generic_const_args, experimental!(type_const),
     ),
 
-    // #[loop_match] and #[const_continue]
+    // The `#[loop_match]` and `#[const_continue]` attributes are part of the
+    // lang experiment for RFC 3720 tracked in:
+    //
+    // - https://github.com/rust-lang/rust/issues/132306
     gated!(
         const_continue, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::No, loop_match, experimental!(const_continue)

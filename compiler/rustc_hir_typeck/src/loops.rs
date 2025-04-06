@@ -39,9 +39,9 @@ enum Context {
     AnonConst,
     /// E.g. `const { ... }`.
     ConstBlock,
-    /// `#[loop_match] loop { state = 'label: { /* ... */ } }`
+    /// E.g. `#[loop_match] loop { state = 'label: { /* ... */ } }`.
     LoopMatch {
-        /// The label of the labeled block (so not the loop!)
+        /// The label of the labeled block (not of the loop itself).
         labeled_block: Label,
     },
 }
@@ -209,7 +209,7 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
                     Err(hir::LoopIdError::UnresolvedLabel) => None,
                 };
 
-                // a #[const_continue] must be to a block that participates in #[loop_match]
+                // A `#[const_continue]` must break to a block in a `#[loop_match]`.
                 let attrs = self.tcx.hir_attrs(e.hir_id);
                 if attrs.iter().any(|attr| attr.has_name(sym::const_continue)) {
                     if let Some(break_label) = break_label.label {
@@ -419,9 +419,9 @@ impl<'hir> CheckLoopVisitor<'hir> {
             return None;
         }
 
-        // NOTE: diagnostics are emitted during MIR construction.
+        // NOTE: Diagnostics are emitted during MIR construction.
 
-        // accept either `state = expr` or `state = expr;`
+        // Accept either `state = expr` or `state = expr;`.
         let loop_body_expr = match body.stmts {
             [] => match body.expr {
                 Some(expr) => expr,

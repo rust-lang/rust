@@ -876,7 +876,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 if is_loop_match {
                     let dcx = self.tcx.dcx();
 
-                    // accept either `state = expr` or `state = expr;`
+                    // Accept either `state = expr` or `state = expr;`.
                     let loop_body_expr = match body.stmts {
                         [] => match body.expr {
                             Some(expr) => expr,

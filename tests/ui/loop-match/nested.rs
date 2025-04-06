@@ -1,5 +1,6 @@
-// Test that a nested #[loop_match] works as expected, and e.g. a #[const_continue] of the inner
-// #[loop_match] does not interact with the outer #[loop_match].
+// Test that a nested `#[loop_match]` works as expected, and that e.g. a
+// `#[const_continue]` of the inner `#[loop_match]` does not interact with the
+// outer `#[loop_match]`.
 
 //@ run-pass
 
