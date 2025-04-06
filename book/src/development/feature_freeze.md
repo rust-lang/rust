@@ -3,7 +3,7 @@
 This is a temporary notice.
 
 From May 9th, 2025 until the 1st of August, 2025 we will perform a feature freeze. Only bugfix PRs will be reviewed
-with the exception of already open ones. Every feature-adding PR open in between those dates will be moved into a
+with the exception of already open ones. Every feature-adding PR opened in between those dates will be moved into a
 milestone to be reviewed separately at another time.
 
 We do this because of the long backlog of bugs that need to be addressed
@@ -42,7 +42,8 @@ easy-to-happen occurrences.
 - 🟩 [False positives][false_positive], a lint should not have fired, the easiest of them all, as this is "just"
 identifying the root of a the false positive and making an exception for those cases.
 
-Note that false negatives do not have priority unless the case is very clear, as they are a feature-request in a trench coat.
+Note that false negatives do not have priority unless the case is very clear, as they are a feature-request in a
+trench coat.
 
 [search_ice]: https://github.com/rust-lang/rust-clippy/issues?q=sort%3Aupdated-desc+state%3Aopen+label%3A%22I-ICE%22
 [sugg_causes_bug]: https://github.com/rust-lang/rust-clippy/issues?q=sort%3Aupdated-desc%20state%3Aopen%20label%3AI-suggestion-causes-bug
