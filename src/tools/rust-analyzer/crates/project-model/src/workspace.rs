@@ -1664,6 +1664,7 @@ fn sysroot_to_crate_graph(
                         vec![
                             CfgAtom::Flag(sym::debug_assertions.clone()),
                             CfgAtom::Flag(sym::miri.clone()),
+                            CfgAtom::Flag(sym::bootstrap.clone()),
                         ],
                         vec![CfgAtom::Flag(sym::test.clone())],
                     ),

@@ -303,6 +303,19 @@ pub struct CrateWorkspaceData {
     pub toolchain: Option<Version>,
 }
 
+impl CrateWorkspaceData {
+    pub fn is_atleast_187(&self) -> bool {
+        const VERSION_187: Version = Version {
+            major: 1,
+            minor: 87,
+            patch: 0,
+            pre: Prerelease::EMPTY,
+            build: BuildMetadata::EMPTY,
+        };
+        self.toolchain.as_ref().map_or(false, |v| *v >= VERSION_187)
+    }
+}
+
 fn toolchain_channel(db: &dyn RootQueryDb, krate: Crate) -> Option<ReleaseChannel> {
     krate.workspace_data(db).toolchain.as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
 }

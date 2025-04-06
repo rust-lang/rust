@@ -161,6 +161,7 @@ define_symbols! {
     bitxor_assign,
     bitxor,
     bool,
+    bootstrap,
     box_free,
     Box,
     boxed,
@@ -525,4 +526,8 @@ define_symbols! {
     ignore_flyimport,
     ignore_flyimport_methods,
     ignore_methods,
+    position,
+    flags,
+    precision,
+    width,
 }

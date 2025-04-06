@@ -570,10 +570,17 @@ impl AnyDiagnostic {
         source_map: &hir_def::expr_store::BodySourceMap,
     ) -> Option<AnyDiagnostic> {
         let expr_syntax = |expr| {
-            source_map.expr_syntax(expr).inspect_err(|_| stdx::never!("synthetic syntax")).ok()
+            source_map
+                .expr_syntax(expr)
+                .inspect_err(|_| stdx::never!("inference diagnostic in desugared expr"))
+                .ok()
         };
-        let pat_syntax =
-            |pat| source_map.pat_syntax(pat).inspect_err(|_| stdx::never!("synthetic syntax")).ok();
+        let pat_syntax = |pat| {
+            source_map
+                .pat_syntax(pat)
+                .inspect_err(|_| stdx::never!("inference diagnostic in desugared pattern"))
+                .ok()
+        };
         let expr_or_pat_syntax = |id| match id {
             ExprOrPatId::ExprId(expr) => expr_syntax(expr),
             ExprOrPatId::PatId(pat) => pat_syntax(pat),
