@@ -163,9 +163,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 enum AdjustMode {
     /// Peel off all immediate reference types.
     Peel,
-    /// Reset binding mode to the initial mode.
-    /// Used for destructuring assignment, where we don't want any match ergonomics.
-    Reset,
     /// Pass on the input binding mode and expected type.
     Pass,
 }
@@ -322,6 +319,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, pat_info))]
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx>) {
         let PatInfo { binding_mode, max_ref_mutbl, top_info: ti, current_depth, .. } = pat_info;
+        #[cfg(debug_assertions)]
+        if binding_mode == ByRef::Yes(Mutability::Mut)
+            && max_ref_mutbl != MutblCap::Mut
+            && self.downgrade_mut_inside_shared()
+        {
+            span_bug!(pat.span, "Pattern mutability cap violated!");
+        }
 
         let path_res = match pat.kind {
             PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
@@ -330,8 +334,65 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         };
         let adjust_mode = self.calc_adjust_mode(pat, path_res.map(|(res, ..)| res));
-        let (expected, binding_mode, max_ref_mutbl) =
-            self.calc_default_binding_mode(pat, expected, binding_mode, adjust_mode, max_ref_mutbl);
+        let (expected, binding_mode, max_ref_mutbl) = match adjust_mode {
+            // When we perform destructuring assignment, we disable default match bindings, which
+            // are unintuitive in this context.
+            _ if !pat.default_binding_modes => (expected, ByRef::No, MutblCap::Mut),
+            AdjustMode::Pass => (expected, binding_mode, max_ref_mutbl),
+            // Peel off as many immediately nested `& mut?` from the expected type as possible
+            // and return the new expected type and binding default binding mode.
+            // The adjustments vector, if non-empty is stored in a table.
+            AdjustMode::Peel => {
+                let mut binding_mode = binding_mode;
+                let mut max_ref_mutbl = max_ref_mutbl;
+                let mut expected = self.try_structurally_resolve_type(pat.span, expected);
+                // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
+                // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
+                // the `Some(5)` which is not of type Ref.
+                //
+                // For each ampersand peeled off, update the binding mode and push the original
+                // type into the adjustments vector.
+                //
+                // See the examples in `ui/match-defbm*.rs`.
+                let mut pat_adjustments = vec![];
+                while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
+                    debug!("inspecting {:?}", expected);
+
+                    debug!("current discriminant is Ref, inserting implicit deref");
+                    // Preserve the reference type. We'll need it later during THIR lowering.
+                    pat_adjustments.push(expected);
+
+                    expected = self.try_structurally_resolve_type(pat.span, inner_ty);
+                    binding_mode = ByRef::Yes(match binding_mode {
+                        // If default binding mode is by value, make it `ref` or `ref mut`
+                        // (depending on whether we observe `&` or `&mut`).
+                        ByRef::No |
+                        // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
+                        ByRef::Yes(Mutability::Mut) => inner_mutability,
+                        // Once a `ref`, always a `ref`.
+                        // This is because a `& &mut` cannot mutate the underlying value.
+                        ByRef::Yes(Mutability::Not) => Mutability::Not,
+                    });
+                }
+
+                if self.downgrade_mut_inside_shared() {
+                    binding_mode = binding_mode.cap_ref_mutability(max_ref_mutbl.as_mutbl());
+                }
+                if binding_mode == ByRef::Yes(Mutability::Not) {
+                    max_ref_mutbl = MutblCap::Not;
+                }
+
+                if !pat_adjustments.is_empty() {
+                    debug!("default binding mode is now {:?}", binding_mode);
+                    self.typeck_results
+                        .borrow_mut()
+                        .pat_adjustments_mut()
+                        .insert(pat.hir_id, pat_adjustments);
+                }
+
+                (expected, binding_mode, max_ref_mutbl)
+            }
+        };
         let pat_info = PatInfo {
             binding_mode,
             max_ref_mutbl,
@@ -437,39 +498,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `regions-relate-bound-regions-on-closures-to-inference-variables.rs`,
     }
 
-    /// Compute the new expected type and default binding mode from the old ones
-    /// as well as the pattern form we are currently checking.
-    fn calc_default_binding_mode(
-        &self,
-        pat: &'tcx Pat<'tcx>,
-        expected: Ty<'tcx>,
-        def_br: ByRef,
-        adjust_mode: AdjustMode,
-        max_ref_mutbl: MutblCap,
-    ) -> (Ty<'tcx>, ByRef, MutblCap) {
-        #[cfg(debug_assertions)]
-        if def_br == ByRef::Yes(Mutability::Mut)
-            && max_ref_mutbl != MutblCap::Mut
-            && self.downgrade_mut_inside_shared()
-        {
-            span_bug!(pat.span, "Pattern mutability cap violated!");
-        }
-        match adjust_mode {
-            AdjustMode::Pass => (expected, def_br, max_ref_mutbl),
-            AdjustMode::Reset => (expected, ByRef::No, MutblCap::Mut),
-            AdjustMode::Peel => self.peel_off_references(pat, expected, def_br, max_ref_mutbl),
-        }
-    }
-
     /// How should the binding mode and expected type be adjusted?
     ///
     /// When the pattern is a path pattern, `opt_path_res` must be `Some(res)`.
     fn calc_adjust_mode(&self, pat: &'tcx Pat<'tcx>, opt_path_res: Option<Res>) -> AdjustMode {
-        // When we perform destructuring assignment, we disable default match bindings, which are
-        // unintuitive in this context.
-        if !pat.default_binding_modes {
-            return AdjustMode::Reset;
-        }
         match &pat.kind {
             // Type checking these product-like types successfully always require
             // that the expected type be of those types and not reference types.
@@ -524,64 +556,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Like or-patterns, guard patterns just propogate to their subpatterns.
             | PatKind::Guard(..) => AdjustMode::Pass,
         }
-    }
-
-    /// Peel off as many immediately nested `& mut?` from the expected type as possible
-    /// and return the new expected type and binding default binding mode.
-    /// The adjustments vector, if non-empty is stored in a table.
-    fn peel_off_references(
-        &self,
-        pat: &'tcx Pat<'tcx>,
-        expected: Ty<'tcx>,
-        mut def_br: ByRef,
-        mut max_ref_mutbl: MutblCap,
-    ) -> (Ty<'tcx>, ByRef, MutblCap) {
-        let mut expected = self.try_structurally_resolve_type(pat.span, expected);
-        // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
-        // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
-        // the `Some(5)` which is not of type Ref.
-        //
-        // For each ampersand peeled off, update the binding mode and push the original
-        // type into the adjustments vector.
-        //
-        // See the examples in `ui/match-defbm*.rs`.
-        let mut pat_adjustments = vec![];
-        while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
-            debug!("inspecting {:?}", expected);
-
-            debug!("current discriminant is Ref, inserting implicit deref");
-            // Preserve the reference type. We'll need it later during THIR lowering.
-            pat_adjustments.push(expected);
-
-            expected = self.try_structurally_resolve_type(pat.span, inner_ty);
-            def_br = ByRef::Yes(match def_br {
-                // If default binding mode is by value, make it `ref` or `ref mut`
-                // (depending on whether we observe `&` or `&mut`).
-                ByRef::No |
-                // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
-                ByRef::Yes(Mutability::Mut) => inner_mutability,
-                // Once a `ref`, always a `ref`.
-                // This is because a `& &mut` cannot mutate the underlying value.
-                ByRef::Yes(Mutability::Not) => Mutability::Not,
-            });
-        }
-
-        if self.downgrade_mut_inside_shared() {
-            def_br = def_br.cap_ref_mutability(max_ref_mutbl.as_mutbl());
-        }
-        if def_br == ByRef::Yes(Mutability::Not) {
-            max_ref_mutbl = MutblCap::Not;
-        }
-
-        if !pat_adjustments.is_empty() {
-            debug!("default binding mode is now {:?}", def_br);
-            self.typeck_results
-                .borrow_mut()
-                .pat_adjustments_mut()
-                .insert(pat.hir_id, pat_adjustments);
-        }
-
-        (expected, def_br, max_ref_mutbl)
     }
 
     fn check_pat_expr_unadjusted(&self, lt: &'tcx hir::PatExpr<'tcx>) -> Ty<'tcx> {
