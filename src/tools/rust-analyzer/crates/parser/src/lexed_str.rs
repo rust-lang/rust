@@ -10,7 +10,7 @@
 
 use std::ops;
 
-use rustc_lexer::unescape::{EscapeError, Mode};
+use rustc_literal_escaper::{EscapeError, Mode, unescape_byte, unescape_char, unescape_mixed, unescape_unicode};
 
 use crate::{
     Edition,
@@ -282,7 +282,7 @@ impl<'a> Converter<'a> {
                     let text = &self.res.text[self.offset + 1..][..len - 1];
                     let i = text.rfind('\'').unwrap();
                     let text = &text[..i];
-                    if let Err(e) = rustc_lexer::unescape::unescape_char(text) {
+                    if let Err(e) = unescape_char(text) {
                         err = error_to_diagnostic_message(e, Mode::Char);
                     }
                 }
@@ -295,7 +295,7 @@ impl<'a> Converter<'a> {
                     let text = &self.res.text[self.offset + 2..][..len - 2];
                     let i = text.rfind('\'').unwrap();
                     let text = &text[..i];
-                    if let Err(e) = rustc_lexer::unescape::unescape_byte(text) {
+                    if let Err(e) = unescape_byte(text) {
                         err = error_to_diagnostic_message(e, Mode::Byte);
                     }
                 }
@@ -402,14 +402,14 @@ fn unescape_string_error_message(text: &str, mode: Mode) -> &'static str {
     let mut error_message = "";
     match mode {
         Mode::CStr => {
-            rustc_lexer::unescape::unescape_mixed(text, mode, &mut |_, res| {
+            unescape_mixed(text, mode, &mut |_, res| {
                 if let Err(e) = res {
                     error_message = error_to_diagnostic_message(e, mode);
                 }
             });
         }
         Mode::ByteStr | Mode::Str => {
-            rustc_lexer::unescape::unescape_unicode(text, mode, &mut |_, res| {
+            unescape_unicode(text, mode, &mut |_, res| {
                 if let Err(e) = res {
                     error_message = error_to_diagnostic_message(e, mode);
                 }
