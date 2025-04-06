@@ -18,9 +18,8 @@
 extern crate minicore;
 use minicore::*;
 
-extern "rust-intrinsic" {
-    pub fn nontemporal_store<T>(ptr: *mut T, val: T);
-}
+#[rustc_intrinsic]
+pub unsafe fn nontemporal_store<T>(ptr: *mut T, val: T);
 
 #[no_mangle]
 pub fn a(a: &mut u32, b: u32) {

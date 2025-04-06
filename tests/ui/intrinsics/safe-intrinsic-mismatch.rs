@@ -1,13 +1,14 @@
 #![feature(intrinsics)]
 #![feature(rustc_attrs)]
 
-extern "rust-intrinsic" {
-    fn size_of<T>() -> usize; //~ ERROR intrinsic safety mismatch
-    //~^ ERROR intrinsic safety mismatch
-}
+#[rustc_intrinsic]
+unsafe fn size_of<T>() -> usize;
+//~^ ERROR intrinsic safety mismatch
+//~| ERROR intrinsic has wrong type
 
 #[rustc_intrinsic]
-const fn assume(_b: bool) {} //~ ERROR intrinsic safety mismatch
+const fn assume(_b: bool) {}
+//~^ ERROR intrinsic safety mismatch
 //~| ERROR intrinsic has wrong type
 
 #[rustc_intrinsic]
