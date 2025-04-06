@@ -106,12 +106,13 @@ impl<M> ModuleCodegen<M> {
         emit_ir: bool,
         outputs: &OutputFilenames,
     ) -> CompiledModule {
-        let object = emit_obj.then(|| outputs.temp_path(OutputType::Object, Some(&self.name)));
-        let dwarf_object = emit_dwarf_obj.then(|| outputs.temp_path_dwo(Some(&self.name)));
-        let bytecode = emit_bc.then(|| outputs.temp_path(OutputType::Bitcode, Some(&self.name)));
-        let assembly = emit_asm.then(|| outputs.temp_path(OutputType::Assembly, Some(&self.name)));
+        let object = emit_obj.then(|| outputs.temp_path_for_cgu(OutputType::Object, &self.name));
+        let dwarf_object = emit_dwarf_obj.then(|| outputs.temp_path_dwo_for_cgu(&self.name));
+        let bytecode = emit_bc.then(|| outputs.temp_path_for_cgu(OutputType::Bitcode, &self.name));
+        let assembly =
+            emit_asm.then(|| outputs.temp_path_for_cgu(OutputType::Assembly, &self.name));
         let llvm_ir =
-            emit_ir.then(|| outputs.temp_path(OutputType::LlvmAssembly, Some(&self.name)));
+            emit_ir.then(|| outputs.temp_path_for_cgu(OutputType::LlvmAssembly, &self.name));
 
         CompiledModule {
             name: self.name.clone(),

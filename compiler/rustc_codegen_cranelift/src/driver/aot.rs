@@ -169,8 +169,8 @@ fn produce_final_output_artifacts(
         if codegen_results.modules.len() == 1 {
             // 1) Only one codegen unit. In this case it's no difficulty
             //    to copy `foo.0.x` to `foo.x`.
-            let module_name = Some(&codegen_results.modules[0].name[..]);
-            let path = crate_output.temp_path(output_type, module_name);
+            let path =
+                crate_output.temp_path_for_cgu(output_type, &codegen_results.modules[0].name);
             let output = crate_output.path(output_type);
             if !output_type.is_text_output() && output.is_tty() {
                 sess.dcx()
@@ -183,22 +183,16 @@ fn produce_final_output_artifacts(
                 ensure_removed(sess.dcx(), &path);
             }
         } else {
-            let extension = crate_output
-                .temp_path(output_type, None)
-                .extension()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_owned();
-
             if crate_output.outputs.contains_explicit_name(&output_type) {
                 // 2) Multiple codegen units, with `--emit foo=some_name`. We have
                 //    no good solution for this case, so warn the user.
-                sess.dcx().emit_warn(ssa_errors::IgnoringEmitPath { extension });
+                sess.dcx()
+                    .emit_warn(ssa_errors::IgnoringEmitPath { extension: output_type.extension() });
             } else if crate_output.single_output_file.is_some() {
                 // 3) Multiple codegen units, with `-o some_name`. We have
                 //    no good solution for this case, so warn the user.
-                sess.dcx().emit_warn(ssa_errors::IgnoringOutput { extension });
+                sess.dcx()
+                    .emit_warn(ssa_errors::IgnoringOutput { extension: output_type.extension() });
             } else {
                 // 4) Multiple codegen units, but no explicit name. We
                 //    just leave the `foo.0.x` files in place.
@@ -409,7 +403,7 @@ fn emit_module(
         object.set_section_data(comment_section, producer, 1);
     }
 
-    let tmp_file = output_filenames.temp_path(OutputType::Object, Some(&name));
+    let tmp_file = output_filenames.temp_path_for_cgu(OutputType::Object, &name);
     let file = match File::create(&tmp_file) {
         Ok(file) => file,
         Err(err) => return Err(format!("error creating object file: {}", err)),
@@ -450,7 +444,7 @@ fn reuse_workproduct_for_cgu(
 ) -> Result<ModuleCodegenResult, String> {
     let work_product = cgu.previous_work_product(tcx);
     let obj_out_regular =
-        tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu.name().as_str()));
+        tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, cgu.name().as_str());
     let source_file_regular = rustc_incremental::in_incr_comp_dir_sess(
         &tcx.sess,
         &work_product.saved_files.get("o").expect("no saved object file in work product"),
@@ -627,7 +621,7 @@ fn emit_metadata_module(tcx: TyCtxt<'_>, metadata: &EncodedMetadata) -> Compiled
         .to_string();
 
     let tmp_file =
-        tcx.output_filenames(()).temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
+        tcx.output_filenames(()).temp_path_for_cgu(OutputType::Metadata, &metadata_cgu_name);
 
     let symbol_name = rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx);
     let obj = create_compressed_metadata_file(tcx.sess, metadata, &symbol_name);

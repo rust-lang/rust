@@ -112,8 +112,7 @@ pub fn link_binary(
                 codegen_results.crate_info.local_crate_name,
             );
             let crate_name = format!("{}", codegen_results.crate_info.local_crate_name);
-            let out_filename =
-                output.file_for_writing(outputs, OutputType::Exe, Some(crate_name.as_str()));
+            let out_filename = output.file_for_writing(outputs, OutputType::Exe, &crate_name);
             match crate_type {
                 CrateType::Rlib => {
                     let _timer = sess.timer("link_rlib");
