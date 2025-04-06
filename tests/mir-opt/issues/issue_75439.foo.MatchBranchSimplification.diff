@@ -5,23 +5,18 @@
       debug bytes => _1;
       let mut _0: std::option::Option<[u8; 4]>;
       let _2: [u32; 4];
-      let mut _3: [u8; 16];
-      let mut _5: [u8; 4];
-      let mut _6: u32;
+      let mut _4: [u8; 4];
       scope 1 {
           debug dwords => _2;
           scope 2 {
-              debug ip => _4;
-              let _4: u32;
+              debug ip => _3;
+              let _3: u32;
           }
       }
   
       bb0: {
           StorageLive(_2);
-          StorageLive(_3);
-          _3 = copy _1;
-          _2 = move _3 as [u32; 4] (Transmute);
-          StorageDead(_3);
+          _2 = copy _1 as [u32; 4] (Transmute);
           switchInt(copy _2[0 of 4]) -> [0: bb1, otherwise: bb4];
       }
   
@@ -34,15 +29,10 @@
       }
   
       bb3: {
+          _3 = copy _2[3 of 4];
           StorageLive(_4);
-          _4 = copy _2[3 of 4];
-          StorageLive(_5);
-          StorageLive(_6);
-          _6 = copy _4;
-          _5 = move _6 as [u8; 4] (Transmute);
-          StorageDead(_6);
-          _0 = Option::<[u8; 4]>::Some(move _5);
-          StorageDead(_5);
+          _4 = copy _3 as [u8; 4] (Transmute);
+          _0 = Option::<[u8; 4]>::Some(move _4);
           StorageDead(_4);
           goto -> bb5;
       }

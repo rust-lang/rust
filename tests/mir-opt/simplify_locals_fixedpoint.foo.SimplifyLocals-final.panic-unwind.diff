@@ -8,6 +8,9 @@
       let mut _3: std::option::Option<T>;
       let mut _4: isize;
       let mut _5: isize;
+-     let mut _7: bool;
+-     let mut _8: u8;
+-     let mut _9: bool;
       scope 1 {
           debug a => _6;
           let _6: u8;
@@ -32,9 +35,7 @@
       }
   
       bb2: {
-          StorageLive(_6);
           _6 = copy (((_1.0: std::option::Option<u8>) as Some).0: u8);
-          StorageDead(_6);
           goto -> bb3;
       }
   

@@ -10,9 +10,9 @@
           scope 2 {
           }
           scope 3 (inlined unreachable_unchecked) {
-              let mut _4: bool;
-              let _5: ();
+              let _4: ();
               scope 4 (inlined core::ub_checks::check_language_ub) {
+                  let mut _5: bool;
                   scope 5 (inlined core::ub_checks::check_language_ub::runtime) {
                   }
               }
@@ -23,7 +23,7 @@
           StorageLive(_2);
           _2 = copy _1;
           StorageLive(_3);
-          StorageLive(_5);
+          StorageLive(_4);
           _3 = discriminant(_2);
           switchInt(move _3) -> [0: bb2, 1: bb3, otherwise: bb1];
       }
@@ -33,16 +33,16 @@
       }
   
       bb2: {
-          StorageLive(_4);
--         _4 = UbChecks();
-+         _4 = const false;
-          assume(copy _4);
-          _5 = unreachable_unchecked::precondition_check() -> [return: bb1, unwind unreachable];
+          StorageLive(_5);
+-         _5 = UbChecks();
++         _5 = const false;
+          assume(copy _5);
+          _4 = unreachable_unchecked::precondition_check() -> [return: bb1, unwind unreachable];
       }
   
       bb3: {
           _0 = move ((_2 as Some).0: i32);
-          StorageDead(_5);
+          StorageDead(_4);
           StorageDead(_3);
           StorageDead(_2);
           return;
