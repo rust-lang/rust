@@ -2,17 +2,17 @@
 
 This is a temporary notice.
 
-From May 9th, 2025 until the 1st of August, 2025 we will perform a feature freeze. Only bugfix PRs will be reviewed with the
-exception of already open ones. Every feature-adding PR open in between those dates will be moved into a milestone
-to be reviewed separately at another time.
+From May 9th, 2025 until the 1st of August, 2025 we will perform a feature freeze. Only bugfix PRs will be reviewed
+with the exception of already open ones. Every feature-adding PR open in between those dates will be moved into a
+milestone to be reviewed separately at another time.
 
 We do this because of the long backlog of bugs that need to be addressed
 in order to contiue being the state of the art linter that Clippy has become known for being.
 
 ## For contributors
 
-If you are a contributor or are planning to become one, **please do not open a lint-adding PR**, we have lots of open bugs
-of all levels of difficulty that you can address instead!
+If you are a contributor or are planning to become one, **please do not open a lint-adding PR**, we have lots of open
+bugs of all levels of difficulty that you can address instead!
 
 We currently have about 800 lints, each one posing a maintainability challenge that needs to account to every possible
 usecase of the whole ecosystem. Bugs are natural in every software, but the Clippy team considers that Clippy needs a
@@ -28,19 +28,19 @@ If you'd like to help, making a bugfix, making sure that it works, and opening a
 
 As a general metric and always taking into account your skill and knowledge level, you can use this guide:
 
-- 🟥 [ICEs][search_ice], these are compiler errors that causes Clippy to panic and crash. Usually involves high-level debugging,
-sometimes interacting directly with the upstream compiler. Difficult to fix but a great challenge that improves
-a lot developer workflows!
+- 🟥 [ICEs][search_ice], these are compiler errors that causes Clippy to panic and crash. Usually involves high-level
+debugging, sometimes interacting directly with the upstream compiler. Difficult to fix but a great challenge that
+improves a lot developer workflows!
 
-- 🟧 [Suggestion causes bug][sugg_causes_bug], Clippy suggested code that changed logic in some silent way. Unacceptable, as this may have
-disastreous consequences. Easier to fix than ICEs
+- 🟧 [Suggestion causes bug][sugg_causes_bug], Clippy suggested code that changed logic in some silent way.
+Unacceptable, as this may have disastreous consequences. Easier to fix than ICEs
 
-- 🟨 [Suggestion causes error][sugg_causes_error], Clippy suggested code snippet that caused a compiler error when applied.
-We need to make sure that Clippy doesn't suggest using a variable twice at the same time or similar
+- 🟨 [Suggestion causes error][sugg_causes_error], Clippy suggested code snippet that caused a compiler error
+when applied. We need to make sure that Clippy doesn't suggest using a variable twice at the same time or similar
 easy-to-happen occurrences.
 
-- 🟩 [False positives][false_positive], a lint should not have fired, the easiest of them all, as this is "just" identifying the root of a
-the false positive and making an exception for those cases.
+- 🟩 [False positives][false_positive], a lint should not have fired, the easiest of them all, as this is "just"
+identifying the root of a the false positive and making an exception for those cases.
 
 Note that false negatives do not have priority unless the case is very clear, as they are a feature-request in a trench coat.
 
