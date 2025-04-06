@@ -10,7 +10,7 @@ LL |         acc += cnt2;
    |         --- borrow later used here
 ...
 LL |     }
-   |     - `line` dropped here while still borrowed
+   |      - `line` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

@@ -31,7 +31,7 @@ LL |         let mut closure = || p = &y;
    |                           value captured here
 ...
 LL |     }
-   |     - `y` dropped here while still borrowed
+   |      - `y` dropped here while still borrowed
 LL |
 LL |     deref(p);
    |           - borrow later used here

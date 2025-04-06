@@ -10,7 +10,7 @@ LL |         box_it(Box::new(|| i += 1))
    |                         |
    |                         value captured here
 LL |     };
-   |     - `i` dropped here while still borrowed
+   |      - `i` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

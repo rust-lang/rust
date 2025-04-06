@@ -22,7 +22,7 @@ LL |         if false { return ay; }
    |                           -- returning this value requires that `y` is borrowed for `'static`
 ...
 LL | }
-   | - `y` dropped here while still borrowed
+   |  - `y` dropped here while still borrowed
 
 error[E0597]: `y` does not live long enough
   --> $DIR/regions-nested-fns.rs:10:15

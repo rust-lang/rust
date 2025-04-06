@@ -13,7 +13,7 @@ LL |             if false { &y } else { z }
    |                        returning this value requires that `y` is borrowed for `'static`
 ...
 LL | }
-   | - `y` dropped here while still borrowed
+   |  - `y` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

@@ -14,7 +14,7 @@ LL |     const fn get<R: Deref<Target = Self>>(self: R) -> u32 {
    |                                           ^^^^ the destructor for this type cannot be evaluated in constant functions
 ...
 LL |     }
-   |     - value is dropped here
+   |      - value is dropped here
 
 error[E0801]: invalid generic `self` parameter type: `R`
   --> $DIR/arbitrary-self-from-method-substs-ice.rs:10:49

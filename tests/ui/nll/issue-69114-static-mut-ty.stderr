@@ -11,7 +11,7 @@ LL |         BAR = &n;
    |         assignment requires that `n` is borrowed for `'static`
 ...
 LL | }
-   | - `n` dropped here while still borrowed
+   |  - `n` dropped here while still borrowed
 
 error[E0597]: `n` does not live long enough
   --> $DIR/issue-69114-static-mut-ty.rs:30:22
@@ -26,7 +26,7 @@ LL |         BAR_ELIDED = &n;
    |         assignment requires that `n` is borrowed for `'static`
 ...
 LL | }
-   | - `n` dropped here while still borrowed
+   |  - `n` dropped here while still borrowed
 
 error: aborting due to 2 previous errors
 

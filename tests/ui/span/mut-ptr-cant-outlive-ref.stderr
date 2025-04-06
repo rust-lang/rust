@@ -6,7 +6,7 @@ LL |         let b = m.borrow();
 LL |         p = &*b;
    |               ^ borrowed value does not live long enough
 LL |     }
-   |     - `b` dropped here while still borrowed
+   |      - `b` dropped here while still borrowed
 LL |
 LL |     p.use_ref();
    |     - borrow later used here

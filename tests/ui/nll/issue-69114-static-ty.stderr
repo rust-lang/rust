@@ -10,7 +10,7 @@ LL |     FOO(&n);
    |     argument requires that `n` is borrowed for `'static`
 LL |
 LL | }
-   | - `n` dropped here while still borrowed
+   |  - `n` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

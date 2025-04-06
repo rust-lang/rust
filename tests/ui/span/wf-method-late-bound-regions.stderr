@@ -8,7 +8,7 @@ LL |         let pointer = Box::new(42);
 LL |         f2.xmute(&pointer)
    |                  ^^^^^^^^ borrowed value does not live long enough
 LL |     };
-   |     - `pointer` dropped here while still borrowed
+   |      - `pointer` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

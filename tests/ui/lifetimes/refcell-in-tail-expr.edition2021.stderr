@@ -11,10 +11,10 @@ LL |     if let Ok(mut byte) = cell.try_borrow_mut() {
    |                           a temporary with access to the borrow is created here ...
 ...
 LL | }
-   | -
-   | |
-   | `cell` dropped here while still borrowed
-   | ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `Result<RefMut<'_, u8>, BorrowMutError>`
+   |  -
+   |  |
+   |  `cell` dropped here while still borrowed
+   |  ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `Result<RefMut<'_, u8>, BorrowMutError>`
    |
 help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
    |

@@ -32,7 +32,7 @@ LL |         f = || x;
    |             |
    |             value captured here
 LL |     }
-   |     - `x` dropped here while still borrowed
+   |      - `x` dropped here while still borrowed
 LL |     f.use_ref();
    |     - borrow later used here
 
@@ -94,7 +94,7 @@ LL |         f = || x = 0;
    |             |
    |             value captured here
 LL |     }
-   |     - `x` dropped here while still borrowed
+   |      - `x` dropped here while still borrowed
 LL |     f.use_ref();
    |     - borrow later used here
 
@@ -156,7 +156,7 @@ LL |         f = || *x = 0;
    |             |
    |             value captured here
 LL |     }
-   |     - `x` dropped here while still borrowed
+   |      - `x` dropped here while still borrowed
 LL |     f.use_ref();
    |     - borrow later used here
 

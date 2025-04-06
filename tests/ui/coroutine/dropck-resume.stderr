@@ -8,7 +8,7 @@ LL |         r = y.as_ref().unwrap();
    |             ^ immutable borrow occurs here
 LL |
 LL |     }
-   |     - mutable borrow might be used here, when `g` is dropped and runs the destructor for coroutine
+   |      - mutable borrow might be used here, when `g` is dropped and runs the destructor for coroutine
 
 error: aborting due to 1 previous error
 

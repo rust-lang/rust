@@ -5,7 +5,7 @@ LL |     let x = Some(Vec::new());
    |         ^ the destructor for this type cannot be evaluated in constants
 ...
 LL | };
-   | - value is dropped here
+   |  - value is dropped here
 
 error[E0493]: destructor of `Option<Vec<i32>>` cannot be evaluated at compile-time
   --> $DIR/drop-fail.rs:40:9
@@ -14,7 +14,7 @@ LL |     let mut tmp = None;
    |         ^^^^^^^ the destructor for this type cannot be evaluated in constants
 ...
 LL | };
-   | - value is dropped here
+   |  - value is dropped here
 
 error: aborting due to 2 previous errors
 

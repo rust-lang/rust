@@ -9,7 +9,7 @@ LL |     let x = <&'static u32 as Bazoom<_>>::method;
 LL |     x(&a, b, c);
    |       ^^ borrowed value does not live long enough
 LL | }
-   | - `a` dropped here while still borrowed
+   |  - `a` dropped here while still borrowed
 
 error[E0597]: `b` does not live long enough
   --> $DIR/method-ufcs-2.rs:37:39
@@ -26,7 +26,7 @@ LL |     <_ as Bazoom<&'a u32>>::method(a, &b, c);
    |     |                                 borrowed value does not live long enough
    |     argument requires that `b` is borrowed for `'a`
 LL | }
-   | - `b` dropped here while still borrowed
+   |  - `b` dropped here while still borrowed
 
 error[E0597]: `b` does not live long enough
   --> $DIR/method-ufcs-2.rs:51:44
@@ -46,7 +46,7 @@ LL |         <_ as Bazoom<&'a u32>>::method(a, &b, c);
    |         argument requires that `b` is borrowed for `'a`
 LL |     };
 LL | }
-   | - `b` dropped here while still borrowed
+   |  - `b` dropped here while still borrowed
 
 error: aborting due to 3 previous errors
 

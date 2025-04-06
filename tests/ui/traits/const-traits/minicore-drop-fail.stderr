@@ -2,7 +2,7 @@ error[E0493]: destructor of `NotDropImpl` cannot be evaluated at compile-time
   --> $DIR/minicore-drop-fail.rs:27:13
    |
 LL |     let _ = NotDropImpl;
-   |             ^^^^^^^^^^^- value is dropped here
+   |             ^^^^^^^^^^^ - value is dropped here
    |             |
    |             the destructor for this type cannot be evaluated in constant functions
 
@@ -10,7 +10,7 @@ error[E0493]: destructor of `Contains<NotDropImpl>` cannot be evaluated at compi
   --> $DIR/minicore-drop-fail.rs:29:13
    |
 LL |     let _ = Contains(NotDropImpl);
-   |             ^^^^^^^^^^^^^^^^^^^^^- value is dropped here
+   |             ^^^^^^^^^^^^^^^^^^^^^ - value is dropped here
    |             |
    |             the destructor for this type cannot be evaluated in constant functions
 
@@ -18,7 +18,7 @@ error[E0493]: destructor of `Conditional<()>` cannot be evaluated at compile-tim
   --> $DIR/minicore-drop-fail.rs:31:13
    |
 LL |     let _ = Conditional(());
-   |             ^^^^^^^^^^^^^^^- value is dropped here
+   |             ^^^^^^^^^^^^^^^ - value is dropped here
    |             |
    |             the destructor for this type cannot be evaluated in constant functions
 
@@ -29,7 +29,7 @@ LL | const fn drop_arbitrary<T>(_: T) {
    |                            ^ the destructor for this type cannot be evaluated in constant functions
 LL |
 LL | }
-   | - value is dropped here
+   |  - value is dropped here
 
 error: aborting due to 4 previous errors
 

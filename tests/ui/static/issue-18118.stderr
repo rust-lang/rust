@@ -9,7 +9,7 @@ LL |         &p
    |         borrowed value does not live long enough
    |         using this value as a constant requires that `p` is borrowed for `'static`
 LL |     };
-   |     - `p` dropped here while still borrowed
+   |      - `p` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

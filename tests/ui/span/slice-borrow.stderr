@@ -5,7 +5,7 @@ LL |         let x: &[isize] = &vec![1, 2, 3, 4, 5];
    |                            ^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
 ...
 LL |     }
-   |     - temporary value is freed at the end of this statement
+   |      - temporary value is freed at the end of this statement
 LL |     y.use_ref();
    |     - borrow later used here
    |

@@ -117,7 +117,7 @@ LL |     ap0 = &mut ap1;
    |     assignment requires that `ap1` is borrowed for `'3`
 ...
 LL | }
-   | - `ap1` dropped here while still borrowed
+   |  - `ap1` dropped here while still borrowed
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:35:5

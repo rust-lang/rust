@@ -9,7 +9,7 @@ LL |             some_closure(c);
    |             ------------ borrow later captured here by closure
 LL |         });
 LL |     }
-   |     - `a` dropped here while still borrowed
+   |      - `a` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

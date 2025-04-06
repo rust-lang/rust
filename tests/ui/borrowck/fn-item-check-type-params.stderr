@@ -23,7 +23,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/fn-item-check-type-params.rs:48:11
    |
 LL |     want(&String::new(), extend_lt);
-   |     ------^^^^^^^^^^^^^------------- temporary value is freed at the end of this statement
+   |     ------^^^^^^^^^^^^^------------ - temporary value is freed at the end of this statement
    |     |     |
    |     |     creates a temporary value which is freed while still in use
    |     argument requires that borrow lasts for `'static`
@@ -32,7 +32,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/fn-item-check-type-params.rs:54:26
    |
 LL |     let val = extend_lt(&String::from("blah blah blah"));
-   |               -----------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-- temporary value is freed at the end of this statement
+   |               -----------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- - temporary value is freed at the end of this statement
    |               |          |
    |               |          creates a temporary value which is freed while still in use
    |               argument requires that borrow lasts for `'static`

@@ -11,7 +11,7 @@ LL |         foo.g();
    |         ^^^ second mutable borrow occurs here
 LL |
 LL |     }
-   |     - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<Bar<'_>>`
+   |      - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<Bar<'_>>`
    |
 help: consider using the `matches!` macro
    |
@@ -32,7 +32,7 @@ LL |         foo.g();
    |         ^^^ second mutable borrow occurs here
 LL |
 LL |     }
-   |     - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<Bar<'_>>`
+   |      - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<Bar<'_>>`
    |
 help: consider using the `matches!` macro
    |
@@ -52,7 +52,7 @@ LL |         foo.g();
    |         ^^^ second mutable borrow occurs here
 LL |
 LL |     }
-   |     - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<Bar<'_>>`
+   |      - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<Bar<'_>>`
 
 error[E0499]: cannot borrow `foo` as mutable more than once at a time
   --> $DIR/already-borrowed-as-mutable-if-let-133941.rs:37:9
@@ -66,13 +66,13 @@ LL |         foo.g();
    |         ^^^ second mutable borrow occurs here
 LL |
 LL |     }
-   |     - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<Bar<'_>>`
+   |      - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<Bar<'_>>`
 
 error[E0499]: cannot borrow `foo` as mutable more than once at a time
   --> $DIR/already-borrowed-as-mutable-if-let-133941.rs:40:45
    |
 LL |     while let Some(_x) = {let _x = foo.f(); foo.g(); None::<()>} {
-   |                                    ---      ^^^                - first borrow might be used here, when `_x` is dropped and runs the destructor for type `Option<Bar<'_>>`
+   |                                    ---      ^^^                 - first borrow might be used here, when `_x` is dropped and runs the destructor for type `Option<Bar<'_>>`
    |                                    |        |
    |                                    |        second mutable borrow occurs here
    |                                    first mutable borrow occurs here
@@ -81,7 +81,7 @@ error[E0499]: cannot borrow `foo` as mutable more than once at a time
   --> $DIR/already-borrowed-as-mutable-if-let-133941.rs:43:42
    |
 LL |     if let Some(_x) = {let _x = foo.f(); foo.g(); None::<()>} {
-   |                                 ---      ^^^                - first borrow might be used here, when `_x` is dropped and runs the destructor for type `Option<Bar<'_>>`
+   |                                 ---      ^^^                 - first borrow might be used here, when `_x` is dropped and runs the destructor for type `Option<Bar<'_>>`
    |                                 |        |
    |                                 |        second mutable borrow occurs here
    |                                 first mutable borrow occurs here

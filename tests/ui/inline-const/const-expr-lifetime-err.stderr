@@ -11,7 +11,7 @@ LL |     equate(InvariantRef::new(&y), const { InvariantRef::<'a>::NEW });
    |                              borrowed value does not live long enough
 LL |
 LL | }
-   | - `y` dropped here while still borrowed
+   |  - `y` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

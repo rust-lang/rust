@@ -9,7 +9,7 @@ LL |         [ word ] => { assert_static(word); }
    |                       ------------------- argument requires that `line` is borrowed for `'static`
 LL |     }
 LL | }
-   | - `line` dropped here while still borrowed
+   |  - `line` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

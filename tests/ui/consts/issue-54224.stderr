@@ -2,9 +2,8 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-54224.rs:1:39
    |
 LL | const FOO: Option<&[[u8; 3]]> = Some(&[*b"foo"]);
-   |                                 ------^^^^^^^^^-
-   |                                 |     |        |
-   |                                 |     |        temporary value is freed at the end of this statement
+   |                                 ------^^^^^^^^^-- temporary value is freed at the end of this statement
+   |                                 |     |
    |                                 |     creates a temporary value which is freed while still in use
    |                                 using this value as a constant requires that borrow lasts for `'static`
 
@@ -12,9 +11,8 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-54224.rs:9:57
    |
 LL | pub const Z: Cow<'static, [ [u8; 3] ]> = Cow::Borrowed(&[*b"ABC"]);
-   |                                          ---------------^^^^^^^^^-
-   |                                          |              |        |
-   |                                          |              |        temporary value is freed at the end of this statement
+   |                                          ---------------^^^^^^^^^-- temporary value is freed at the end of this statement
+   |                                          |              |
    |                                          |              creates a temporary value which is freed while still in use
    |                                          using this value as a constant requires that borrow lasts for `'static`
 

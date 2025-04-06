@@ -9,7 +9,7 @@ LL |     let s_inner: &'a S = &*v.0;
    |                  type annotation requires that `*v.0` is borrowed for `'a`
 LL |     &s_inner.0
 LL | }
-   | - here, drop of `v` needs exclusive access to `*v.0`, because the type `VecWrapper<'_>` implements the `Drop` trait
+   |  - here, drop of `v` needs exclusive access to `*v.0`, because the type `VecWrapper<'_>` implements the `Drop` trait
 
 error: aborting due to 1 previous error
 

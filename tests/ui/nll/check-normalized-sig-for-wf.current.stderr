@@ -11,7 +11,7 @@ LL |     f(&s).0
    |     argument requires that `s` is borrowed for `'static`
 LL |
 LL | }
-   | - `s` dropped here while still borrowed
+   |  - `s` dropped here while still borrowed
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/check-normalized-sig-for-wf.rs:19:5

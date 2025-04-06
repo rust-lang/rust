@@ -11,7 +11,7 @@ LL |     let _: &'a A = &x;
    |            |
    |            type annotation requires that `x` is borrowed for `'a`
 LL | }
-   | - `x` dropped here while still borrowed
+   |  - `x` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

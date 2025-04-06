@@ -4,7 +4,7 @@ error: function cannot return without recursing
 LL |     fn drop(&mut self) {
    |     ^^^^^^^^^^^^^^^^^^ cannot return without recursing
 LL |         let _ = RecursiveDrop;
-   |                              - recursive call site
+   |                               - recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
 note: the lint level is defined here

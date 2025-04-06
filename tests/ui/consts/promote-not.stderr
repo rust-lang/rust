@@ -2,9 +2,8 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:9:50
    |
 LL | static mut TEST1: Option<&mut [i32]> = Some(&mut [1, 2, 3]);
-   |                                        ----------^^^^^^^^^-
-   |                                        |         |        |
-   |                                        |         |        temporary value is freed at the end of this statement
+   |                                        ----------^^^^^^^^^-- temporary value is freed at the end of this statement
+   |                                        |         |
    |                                        |         creates a temporary value which is freed while still in use
    |                                        using this value as a static requires that borrow lasts for `'static`
 
@@ -16,7 +15,7 @@ LL |     let x = &mut [1,2,3];
 LL |     x
    |     - using this value as a static requires that borrow lasts for `'static`
 LL | };
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:34:29
@@ -26,7 +25,7 @@ LL |     let _x: &'static i32 = &unsafe { U { x: 0 }.x };
    |             |
    |             type annotation requires that borrow lasts for `'static`
 LL | };
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:40:29
@@ -36,7 +35,7 @@ LL |     let _val: &'static _ = &(Cell::new(1), 2).1;
    |               |
    |               type annotation requires that borrow lasts for `'static`
 LL | };
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0493]: destructor of `String` cannot be evaluated at compile-time
   --> $DIR/promote-not.rs:47:14
@@ -45,7 +44,7 @@ LL |     let x = &String::new();
    |              ^^^^^^^^^^^^^ the destructor for this type cannot be evaluated in constants
 ...
 LL | };
-   | - value is dropped here
+   |  - value is dropped here
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:59:33
@@ -55,7 +54,7 @@ LL |         let _x: &'static u32 = &mk_panic();
    |                 |
    |                 type annotation requires that borrow lasts for `'static`
 LL |     }
-   |     - temporary value is freed at the end of this statement
+   |      - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:21:32
@@ -65,7 +64,7 @@ LL |         let _x: &'static () = &foo();
    |                 |
    |                 type annotation requires that borrow lasts for `'static`
 LL |     }
-   |     - temporary value is freed at the end of this statement
+   |      - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:29:29
@@ -75,7 +74,7 @@ LL |     let _x: &'static i32 = &unsafe { U { x: 0 }.x };
    |             |
    |             type annotation requires that borrow lasts for `'static`
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:65:29
@@ -86,7 +85,7 @@ LL |     let _val: &'static _ = &(Cell::new(1), 2).0;
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:66:29
@@ -97,7 +96,7 @@ LL |     let _val: &'static _ = &(Cell::new(1), 2).1;
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:69:29
@@ -108,7 +107,7 @@ LL |     let _val: &'static _ = &(1/0);
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:70:29
@@ -119,7 +118,7 @@ LL |     let _val: &'static _ = &(1/(1-1));
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:71:29
@@ -130,7 +129,7 @@ LL |     let _val: &'static _ = &((1+1)/(1-1));
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:72:29
@@ -141,7 +140,7 @@ LL |     let _val: &'static _ = &(i32::MIN/-1);
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:73:29
@@ -152,7 +151,7 @@ LL |     let _val: &'static _ = &(i32::MIN/(0-1));
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:74:29
@@ -163,7 +162,7 @@ LL |     let _val: &'static _ = &(-128i8/-1);
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:75:29
@@ -174,7 +173,7 @@ LL |     let _val: &'static _ = &(1%0);
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:76:29
@@ -185,7 +184,7 @@ LL |     let _val: &'static _ = &(1%(1-1));
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:77:29
@@ -196,7 +195,7 @@ LL |     let _val: &'static _ = &([1,2,3][4]+1);
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:81:29
@@ -207,7 +206,7 @@ LL |     let _val: &'static _ = &TEST_DROP;
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:83:29
@@ -218,7 +217,7 @@ LL |     let _val: &'static _ = &&TEST_DROP;
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:83:30
@@ -229,7 +228,7 @@ LL |     let _val: &'static _ = &&TEST_DROP;
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:86:29
@@ -240,7 +239,7 @@ LL |     let _val: &'static _ = &(&TEST_DROP,);
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:86:31
@@ -251,7 +250,7 @@ LL |     let _val: &'static _ = &(&TEST_DROP,);
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:89:29
@@ -262,13 +261,13 @@ LL |     let _val: &'static _ = &[&TEST_DROP; 1];
    |               type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:89:31
    |
 LL |     let _val: &'static _ = &[&TEST_DROP; 1];
-   |               ----------      ^^^^^^^^^    - temporary value is freed at the end of this statement
+   |               ----------      ^^^^^^^^^     - temporary value is freed at the end of this statement
    |               |               |
    |               |               creates a temporary value which is freed while still in use
    |               type annotation requires that borrow lasts for `'static`
@@ -282,7 +281,7 @@ LL |     let x: &'static _ = &UnionWithCell { f1: 0 };
    |            type annotation requires that borrow lasts for `'static`
 LL |
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error: aborting due to 27 previous errors
 

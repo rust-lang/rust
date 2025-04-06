@@ -9,7 +9,7 @@ LL | |         Foo { a: &1 }.b == Foo { a: &2 }.b
 LL | |     };
    | |_____^ creates a temporary value which is freed while still in use
 LL |   }
-   |   - temporary value is freed at the end of this statement
+   |    - temporary value is freed at the end of this statement
 
 error: aborting due to 1 previous error
 

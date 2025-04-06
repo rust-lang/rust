@@ -10,7 +10,7 @@ LL |         <() as Foo<'static>>::C => { }
    |         ----------------------- type annotation requires that `a` is borrowed for `'static`
 ...
 LL | }
-   | - `a` dropped here while still borrowed
+   |  - `a` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

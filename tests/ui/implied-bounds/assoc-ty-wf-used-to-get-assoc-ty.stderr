@@ -10,7 +10,7 @@ LL |     let _: &'static u8 = test(&x, &&3);
    |                          argument requires that `x` is borrowed for `'static`
 ...
 LL | }
-   | - `x` dropped here while still borrowed
+   |  - `x` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

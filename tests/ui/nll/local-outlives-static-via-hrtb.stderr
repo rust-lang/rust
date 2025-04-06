@@ -10,7 +10,7 @@ LL |     assert_static_via_hrtb(&local);
    |     argument requires that `local` is borrowed for `'static`
 LL |     assert_static_via_hrtb_with_assoc_type(&&local);
 LL | }
-   | - `local` dropped here while still borrowed
+   |  - `local` dropped here while still borrowed
    |
 note: due to current limitations in the borrow checker, this implies a `'static` lifetime
   --> $DIR/local-outlives-static-via-hrtb.rs:15:53

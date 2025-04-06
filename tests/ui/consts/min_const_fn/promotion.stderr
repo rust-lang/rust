@@ -7,7 +7,7 @@ LL |     let x: &'static () = &foo1();
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:12:28
@@ -18,7 +18,7 @@ LL |     let y: &'static i32 = &foo2(42);
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:13:28
@@ -29,7 +29,7 @@ LL |     let z: &'static i32 = &foo3();
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:14:34
@@ -40,7 +40,7 @@ LL |     let a: &'static Cell<i32> = &foo4();
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:15:42
@@ -51,7 +51,7 @@ LL |     let a: &'static Option<Cell<i32>> = &foo5();
    |            type annotation requires that borrow lasts for `'static`
 LL |     let a: &'static Option<Cell<i32>> = &foo6();
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:16:42
@@ -61,7 +61,7 @@ LL |     let a: &'static Option<Cell<i32>> = &foo6();
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error: aborting due to 6 previous errors
 

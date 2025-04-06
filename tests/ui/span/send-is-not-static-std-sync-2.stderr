@@ -8,7 +8,7 @@ LL |         let x = 1;
 LL |         Mutex::new(&x)
    |                    ^^ borrowed value does not live long enough
 LL |     };
-   |     - `x` dropped here while still borrowed
+   |      - `x` dropped here while still borrowed
 
 error[E0597]: `x` does not live long enough
   --> $DIR/send-is-not-static-std-sync-2.rs:21:21
@@ -20,7 +20,7 @@ LL |         let x = 1;
 LL |         RwLock::new(&x)
    |                     ^^ borrowed value does not live long enough
 LL |     };
-   |     - `x` dropped here while still borrowed
+   |      - `x` dropped here while still borrowed
 
 error[E0597]: `x` does not live long enough
   --> $DIR/send-is-not-static-std-sync-2.rs:31:25
@@ -32,7 +32,7 @@ LL |         let _ = tx.send(&x);
    |                         ^^ borrowed value does not live long enough
 LL |         (tx, rx)
 LL |     };
-   |     - `x` dropped here while still borrowed
+   |      - `x` dropped here while still borrowed
 
 error: aborting due to 3 previous errors
 
