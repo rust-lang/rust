@@ -354,13 +354,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // type into the adjustments vector.
                 //
                 // See the examples in `ui/match-defbm*.rs`.
-                let mut pat_adjustments = vec![];
                 while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
                     debug!("inspecting {:?}", expected);
 
                     debug!("current discriminant is Ref, inserting implicit deref");
                     // Preserve the reference type. We'll need it later during THIR lowering.
-                    pat_adjustments.push(expected);
+                    self.typeck_results
+                        .borrow_mut()
+                        .pat_adjustments_mut()
+                        .entry(pat.hir_id)
+                        .or_default()
+                        .push(expected);
 
                     expected = self.try_structurally_resolve_type(pat.span, inner_ty);
                     binding_mode = ByRef::Yes(match binding_mode {
@@ -382,13 +386,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     max_ref_mutbl = MutblCap::Not;
                 }
 
-                if !pat_adjustments.is_empty() {
-                    debug!("default binding mode is now {:?}", binding_mode);
-                    self.typeck_results
-                        .borrow_mut()
-                        .pat_adjustments_mut()
-                        .insert(pat.hir_id, pat_adjustments);
-                }
+                debug!("default binding mode is now {:?}", binding_mode);
 
                 (expected, binding_mode, max_ref_mutbl)
             }
