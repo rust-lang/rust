@@ -1,14 +1,17 @@
 use std::iter;
 
 use rustc_abi::Integer;
-use rustc_index::IndexSlice;
+use rustc_index::{IndexSlice, IndexVec};
+use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use tracing::instrument;
 
 use super::simplify::simplify_cfg;
+use crate::dead_store_elimination::{self, ModifyBasicBlocks};
 use crate::patch::MirPatch;
+use crate::simplify::strip_nops;
 
 pub(super) struct MatchBranchSimplification;
 
@@ -20,6 +23,17 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let typing_env = body.typing_env(tcx);
         let mut apply_patch = false;
+        let mut bbs = body.basic_blocks.clone();
+        let bbs = bbs.as_mut_preserves_cfg();
+        // We can ignore the dead store statements when merging branches.
+        dead_store_elimination::eliminate(
+            tcx,
+            ModifyBasicBlocks::BasicBlocks(body, bbs),
+            true,
+            false,
+        );
+        eliminate_unused_storage_mark(body, bbs);
+        strip_nops(bbs.as_mut_slice());
         let mut patch = MirPatch::new(body);
         for (bb, data) in body.basic_blocks.iter_enumerated() {
             match data.terminator().kind {
@@ -33,11 +47,17 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
                 _ => continue,
             };
 
-            if SimplifyToIf.simplify(tcx, body, &mut patch, bb, typing_env).is_some() {
+            if SimplifyToIf
+                .simplify(tcx, body, bbs.as_slice(), &mut patch, bb, typing_env)
+                .is_some()
+            {
                 apply_patch = true;
                 continue;
             }
-            if SimplifyToExp::default().simplify(tcx, body, &mut patch, bb, typing_env).is_some() {
+            if SimplifyToExp::default()
+                .simplify(tcx, body, bbs.as_slice(), &mut patch, bb, typing_env)
+                .is_some()
+            {
                 apply_patch = true;
                 continue;
             }
@@ -62,11 +82,11 @@ trait SimplifyMatch<'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
+        bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         patch: &mut MirPatch<'tcx>,
         switch_bb_idx: BasicBlock,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<()> {
-        let bbs = &body.basic_blocks;
         let (discr, targets) = match bbs[switch_bb_idx].terminator().kind {
             TerminatorKind::SwitchInt { ref discr, ref targets, .. } => (discr, targets),
             _ => unreachable!(),
@@ -83,7 +103,7 @@ trait SimplifyMatch<'tcx> {
         let discr_local = patch.new_temp(discr_ty, source_info.span);
 
         let (_, first) = targets.iter().next().unwrap();
-        let statement_index = bbs[switch_bb_idx].statements.len();
+        let statement_index = body.basic_blocks[switch_bb_idx].statements.len();
         let parent_end = Location { block: switch_bb_idx, statement_index };
         patch.add_statement(parent_end, StatementKind::StorageLive(discr_local));
         patch.add_assign(parent_end, Place::from(discr_local), Rvalue::Use(discr));
@@ -522,6 +542,46 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
                     patch.add_assign(parent_end, *lhs, r_val);
                 }
                 _ => unreachable!(),
+            }
+        }
+    }
+}
+
+struct EliminateUnusedStorageMark {
+    storage_live_locals: IndexVec<Local, Option<usize>>,
+}
+
+impl<'tcx> Visitor<'tcx> for EliminateUnusedStorageMark {
+    fn visit_local(&mut self, local: Local, _: visit::PlaceContext, _: Location) {
+        self.storage_live_locals[local] = None;
+    }
+}
+
+fn eliminate_unused_storage_mark<'tcx>(
+    body: &Body<'tcx>,
+    basic_blocks: &mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+) {
+    for (bb, data) in basic_blocks.iter_enumerated_mut() {
+        let mut unused_storage_mark = EliminateUnusedStorageMark {
+            storage_live_locals: IndexVec::from_elem_n(None, body.local_decls.len()),
+        };
+        for stmt_index in 0..data.statements.len() {
+            let loc = Location { block: bb, statement_index: stmt_index };
+            match data.statements[stmt_index].kind {
+                StatementKind::StorageLive(local) => {
+                    unused_storage_mark.storage_live_locals[local] = Some(stmt_index);
+                }
+                StatementKind::StorageDead(local)
+                    if let Some(live_stmt_index) =
+                        unused_storage_mark.storage_live_locals[local] =>
+                {
+                    data.statements[live_stmt_index].make_nop();
+                    data.statements[stmt_index].make_nop();
+                    unused_storage_mark.storage_live_locals[local] = None;
+                }
+                _ => {
+                    unused_storage_mark.visit_statement(&data.statements[stmt_index], loc);
+                }
             }
         }
     }

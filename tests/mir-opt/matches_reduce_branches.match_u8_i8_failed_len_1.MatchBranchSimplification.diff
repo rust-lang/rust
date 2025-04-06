@@ -17,7 +17,7 @@
   
       bb2: {
           _0 = const i8::MAX;
-          _0 = const i8::MAX;
+          _0 = Add(copy _0, const 0_i8);
           goto -> bb6;
       }
   

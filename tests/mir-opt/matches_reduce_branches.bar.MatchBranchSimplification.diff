@@ -45,7 +45,7 @@
 +         _3 = Eq(copy _11, const 7_i32);
           _4 = const false;
           _5 = const true;
-          _6 = ();
+-         _6 = ();
 -         goto -> bb3;
 -     }
 - 

@@ -116,7 +116,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 
     fn simplify(mut self) {
-        self.strip_nops();
+        strip_nops(self.basic_blocks);
 
         // Vec of the blocks that should be merged. We store the indices here, instead of the
         // statements itself to avoid moving the (relatively) large statements twice.
@@ -276,11 +276,11 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         terminator.kind = TerminatorKind::Goto { target: first_succ };
         true
     }
+}
 
-    fn strip_nops(&mut self) {
-        for blk in self.basic_blocks.iter_mut() {
-            blk.statements.retain(|stmt| !matches!(stmt.kind, StatementKind::Nop))
-        }
+pub(super) fn strip_nops(basic_blocks: &mut IndexSlice<BasicBlock, BasicBlockData<'_>>) {
+    for blk in basic_blocks.iter_mut() {
+        blk.statements.retain(|stmt| !matches!(stmt.kind, StatementKind::Nop))
     }
 }
 

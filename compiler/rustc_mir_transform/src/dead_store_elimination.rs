@@ -12,6 +12,7 @@
 //!     will still not cause any further changes.
 //!
 
+use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -24,17 +25,49 @@ use rustc_mir_dataflow::impls::{
 
 use crate::util::is_within_packed;
 
+pub(super) enum ModifyBasicBlocks<'tcx, 'a> {
+    Direct(&'a mut Body<'tcx>),
+    BasicBlocks(&'a Body<'tcx>, &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>>),
+}
+
+impl<'tcx, 'a> ModifyBasicBlocks<'tcx, 'a> {
+    pub(super) fn body(&self) -> &Body<'tcx> {
+        match self {
+            ModifyBasicBlocks::Direct(body) => body,
+            ModifyBasicBlocks::BasicBlocks(body, _) => body,
+        }
+    }
+
+    pub(super) fn bbs(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        match self {
+            ModifyBasicBlocks::Direct(body) => body.basic_blocks.as_mut_preserves_cfg(),
+            ModifyBasicBlocks::BasicBlocks(_, bbs) => bbs,
+        }
+    }
+}
+
 /// Performs the optimization on the body
 ///
 /// The `borrowed` set must be a `DenseBitSet` of all the locals that are ever borrowed in this
 /// body. It can be generated via the [`borrowed_locals`] function.
-fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+pub(super) fn eliminate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mut modify_basic_blocks: ModifyBasicBlocks<'tcx, '_>,
+    ignore_debuginfo: bool,
+    arg_copy_to_move: bool,
+) {
+    let body = modify_basic_blocks.body();
     let borrowed_locals = borrowed_locals(body);
 
     // If the user requests complete debuginfo, mark the locals that appear in it as live, so
     // we don't remove assignments to them.
-    let mut always_live = debuginfo_locals(body);
-    always_live.union(&borrowed_locals);
+    let always_live = if ignore_debuginfo {
+        borrowed_locals.clone()
+    } else {
+        let mut always_live = debuginfo_locals(body);
+        always_live.union(&borrowed_locals);
+        always_live
+    };
 
     let mut live = MaybeTransitiveLiveLocals::new(&always_live)
         .iterate_to_fixpoint(tcx, body, None)
@@ -46,7 +79,8 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let mut patch = Vec::new();
 
     for (bb, bb_data) in traversal::preorder(body) {
-        if let TerminatorKind::Call { ref args, .. } = bb_data.terminator().kind {
+        if arg_copy_to_move && let TerminatorKind::Call { ref args, .. } = bb_data.terminator().kind
+        {
             let loc = Location { block: bb, statement_index: bb_data.statements.len() };
 
             // Position ourselves between the evaluation of `args` and the write to `destination`.
@@ -113,7 +147,7 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         return;
     }
 
-    let bbs = body.basic_blocks.as_mut_preserves_cfg();
+    let bbs = modify_basic_blocks.bbs();
     for Location { block, statement_index } in patch {
         bbs[block].statements[statement_index].make_nop();
     }
@@ -145,7 +179,7 @@ impl<'tcx> crate::MirPass<'tcx> for DeadStoreElimination {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        eliminate(tcx, body);
+        eliminate(tcx, ModifyBasicBlocks::Direct(body), false, true);
     }
 
     fn is_required(&self) -> bool {

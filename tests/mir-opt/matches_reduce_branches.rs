@@ -237,7 +237,7 @@ fn match_u8_i8_failed_len_1(i: EnumAu8) -> i8 {
         }
         bb2 = {
             RET = 127;
-            RET = 127;
+            RET = RET + 0;
             Goto(ret)
         }
         bb3 = {
@@ -289,6 +289,50 @@ fn match_u8_i8_failed_len_2(i: EnumAu8) -> i8 {
         }
         bb4 = {
             RET = -1;
+            RET = RET + 0;
+            Goto(ret)
+        }
+        unreachable_bb = {
+            Unreachable()
+        }
+        ret = {
+            Return()
+        }
+    }
+}
+
+// EMIT_MIR matches_reduce_branches.match_u8_i8_dead_store.MatchBranchSimplification.diff
+#[custom_mir(dialect = "built")]
+fn match_u8_i8_dead_store(i: EnumAu8) -> i8 {
+    // CHECK-LABEL: fn match_u8_i8_dead_store(
+    // CHECK-NOT: switchInt
+    // CHECK: IntToInt
+    // CHECK: return
+    mir! {
+        {
+            let a = Discriminant(i);
+            match a {
+                0 => bb1,
+                127 => bb2,
+                128 => bb3,
+                255 => bb4,
+                _ => unreachable_bb,
+            }
+        }
+        bb1 = {
+            RET = 0;
+            Goto(ret)
+        }
+        bb2 = {
+            RET = 1; // This a dead store statement.
+            RET = 127;
+            Goto(ret)
+        }
+        bb3 = {
+            RET = -128;
+            Goto(ret)
+        }
+        bb4 = {
             RET = -1;
             Goto(ret)
         }
