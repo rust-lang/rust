@@ -380,21 +380,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
-        let PatInfo { mut binding_mode, mut max_ref_mutbl, current_depth, .. } = pat_info;
         #[cfg(debug_assertions)]
-        if binding_mode == ByRef::Yes(Mutability::Mut)
-            && max_ref_mutbl != MutblCap::Mut
+        if pat_info.binding_mode == ByRef::Yes(Mutability::Mut)
+            && pat_info.max_ref_mutbl != MutblCap::Mut
             && self.downgrade_mut_inside_shared()
         {
             span_bug!(pat.span, "Pattern mutability cap violated!");
         }
 
-        if !pat.default_binding_modes {
-            // When we perform destructuring assignment, we disable default match bindings, which
-            // are unintuitive in this context.
-            binding_mode = ByRef::No;
-            max_ref_mutbl = MutblCap::Mut;
-        };
         // Resolve type if needed.
         let expected = if let AdjustMode::Peel = adjust_mode
             && pat.default_binding_modes
@@ -404,13 +397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expected
         };
         let old_pat_info = pat_info;
-        let pat_info = PatInfo {
-            binding_mode,
-            max_ref_mutbl,
-            current_depth: current_depth + 1,
-            top_info: old_pat_info.top_info,
-            decl_origin: old_pat_info.decl_origin,
-        };
+        let pat_info = PatInfo { current_depth: old_pat_info.current_depth + 1, ..old_pat_info };
 
         match pat.kind {
             // Peel off a `&` or `&mut` from the scrutinee type. See the examples in
@@ -430,7 +417,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .or_default()
                     .push(expected);
 
-                binding_mode = ByRef::Yes(match binding_mode {
+                let mut binding_mode = ByRef::Yes(match pat_info.binding_mode {
                     // If default binding mode is by value, make it `ref` or `ref mut`
                     // (depending on whether we observe `&` or `&mut`).
                     ByRef::No |
@@ -441,6 +428,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ByRef::Yes(Mutability::Not) => Mutability::Not,
                 });
 
+                let mut max_ref_mutbl = pat_info.max_ref_mutbl;
                 if self.downgrade_mut_inside_shared() {
                     binding_mode = binding_mode.cap_ref_mutability(max_ref_mutbl.as_mutbl());
                 }
