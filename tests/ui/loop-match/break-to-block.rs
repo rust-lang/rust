@@ -1,4 +1,4 @@
-// Test that a break without #[const_continue] still works as expected.
+// Test that a `break` without `#[const_continue]` still works as expected.
 
 //@ run-pass
 

@@ -1,4 +1,8 @@
-// Test that #[const_continue] correctly emits cleanup paths for drops.
+// Test that `#[const_continue]` correctly emits cleanup paths for drops.
+//
+// Here, we first drop `DropBomb`, causing an unwind. Then `ExitOnDrop` should
+// be dropped, causing us to exit with `0` rather than with some non-zero value
+// due to the panic, which is what causes the test to pass.
 
 //@ run-pass
 //@ needs-unwind

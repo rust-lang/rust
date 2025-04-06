@@ -1,4 +1,5 @@
-// Test a basic correct example of #[loop_match] with #[const_continue].
+// Test that a basic correct example of `#[loop_match]` with `#[const_continue]`
+// works correctly.
 
 //@ run-pass
 
@@ -22,9 +23,9 @@ fn main() {
                     break 'blk State::B;
                 }
                 State::B => {
-                    // without special logic, the compiler believes this is a re-assignment to
-                    // an immutable variable because of the `loop`. So, this tests that local
-                    // variables work.
+                    // Without special logic, the compiler believes this is a
+                    // reassignment to an immutable variable because of the
+                    // `loop`. So this tests that local variables work.
                     let _a = 0;
 
                     if true {

@@ -1,4 +1,6 @@
-// Test that a good error is emitted when the #[loop_match] state is an unsupported type
+// Test that the right error is emitted when the `#[loop_match]` state is an
+// unsupported type.
+
 #![allow(incomplete_features)]
 #![feature(loop_match)]
 #![crate_type = "lib"]

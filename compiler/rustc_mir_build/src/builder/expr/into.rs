@@ -310,7 +310,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     // The `built_tree` maps match arms to their basic block (where control flow
                     // jumps to when a value matches the arm). This structure is stored so that a
-                    // #[const_continue] can figure out what basic block to jump to.
+                    // `#[const_continue]` can figure out what basic block to jump to.
                     let built_tree = this.lower_match_tree(
                         body_block,
                         scrutinee_span,
@@ -327,7 +327,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // hence the `in_breakable_scope`.
                     //
                     // Then `in_const_continuable_scope` stores information for the lowering of
-                    // #[const_continue], and finally the match is lowered in the standard way.
+                    // `#[const_continue]`, and finally the match is lowered in the standard way.
                     unpack!(
                         body_block = this.in_scope(
                             (region_scope, source_info),

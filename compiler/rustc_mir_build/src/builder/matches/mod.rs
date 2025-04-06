@@ -2867,7 +2867,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         true
     }
 
-    /// Attempt to statically pick the BasicBlock that a value would resolve to at runtime.
+    /// Attempt to statically pick the `BasicBlock` that a value would resolve to at runtime.
     pub(crate) fn static_pattern_match(
         &self,
         cx: &RustcPatCtxt<'_, 'tcx>,
@@ -2926,7 +2926,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // a lot of care around intrinsics. For an issue to happen here, it would require a
             // macro expanding to a `simd_shuffle` call without wrapping the constant argument in a
             // `const {}` block, but the user pass through arbitrary expressions.
-            // FIXME(oli-obk): replace the magic const generic argument of `simd_shuffle` with a
+
+            // FIXME(oli-obk): Replace the magic const generic argument of `simd_shuffle` with a
             // real const generic, and get rid of this entire function.
             other => span_bug!(constant.span, "{other:#?}"),
         };
@@ -2977,7 +2978,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             },
             Constructor::Wildcard => true,
 
-            // these we may eventually support
+            // These we may eventually support:
             Constructor::Struct
             | Constructor::Ref
             | Constructor::Slice(_)
@@ -2989,7 +2990,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | Constructor::F128Range(..)
             | Constructor::Str(_) => bug!("unsupported pattern constructor {:?}", pat.ctor()),
 
-            // these should never occur here
+            // These should never occur here:
             Constructor::Opaque(_)
             | Constructor::Never
             | Constructor::NonExhaustive
