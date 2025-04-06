@@ -941,7 +941,7 @@ impl<'test> TestCx<'test> {
             .arg("-L")
             .arg(aux_dir)
             .arg("-o")
-            .arg(out_dir.as_ref())
+            .arg(out_dir)
             .arg("--deny")
             .arg("warnings")
             .arg(&self.testpaths.file)
