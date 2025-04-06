@@ -188,12 +188,16 @@ jobs:
     name: Rust Cross
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        target: [powerpc-unknown-linux-gnu, x86_64-unknown-linux-musl, wasm32-unknown-unknown]
+        include:
+          # The rust-analyzer binary is not expected to compile on WASM, but the IDE
+          # crate should
+          - target: wasm32-unknown-unknown
+            ide-only: true
     env:
-      targets: "powerpc-unknown-linux-gnu x86_64-unknown-linux-musl"
-      # The rust-analyzer binary is not expected to compile on WASM, but the IDE
-      # crate should
-      targets_ide: "wasm32-unknown-unknown"
-      RUSTFLAGS: "-D warnings"
+      RUSTFLAGS: "-Dwarnings"
 
     steps:
       - name: Checkout repository
@@ -202,19 +206,15 @@ jobs:
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update stable
-          rustup target add ${{ env.targets }} ${{ env.targets_ide }}
+          rustup target add ${{ matrix.target }}
 
       # - name: Cache Dependencies
       #   uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
 
-      - name: Check
-        run: |
-          for target in ${{ env.targets }}; do
-            cargo check --target=$target --all-targets
-          done
-          for target in ${{ env.targets_ide }}; do
-            cargo check -p ide --target=$target --all-targets
-          done
+      - run: cargo check --target=${{ matrix.target }} --all-targets -p ide
+        if: ${{ matrix.ide-only }}
+      - run: cargo check --target=${{ matrix.target }} --all-targets
+        if: ${{ !matrix.ide-only }}
 
   typescript:
     needs: changes
