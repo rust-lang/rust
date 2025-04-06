@@ -6,13 +6,13 @@ fn main() {
 
     let option: Option<String> = Some(string.clone());
     take_str_maybe(option);
-    //~^ ERROR: mismatched types [E0308]
+    //~^ ERROR mismatched types [E0308]
 
     let option_ref = Some(&string);
     take_str_maybe(option_ref);
-    //~^ ERROR: mismatched types [E0308]
+    //~^ ERROR mismatched types [E0308]
 
     let option_ref_ref = option_ref.as_ref();
     take_str_maybe(option_ref_ref);
-    //~^ ERROR: mismatched types [E0308]
+    //~^ ERROR mismatched types [E0308]
 }

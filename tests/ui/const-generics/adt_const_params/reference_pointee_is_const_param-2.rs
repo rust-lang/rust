@@ -9,7 +9,7 @@ use std::marker::UnsizedConstParamTy;
 struct ConstStrU(*const u8, usize);
 
 impl UnsizedConstParamTy for &'static ConstStrU {}
-//~^ ERROR: the trait `ConstParamTy_` cannot be implemented for this type
+//~^ ERROR the trait `ConstParamTy_` cannot be implemented for this type
 
 impl ConstStrU {
     const fn from_bytes(bytes: &'static [u8]) -> Self {

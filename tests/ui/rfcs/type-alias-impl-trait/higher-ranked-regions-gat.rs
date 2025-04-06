@@ -17,7 +17,7 @@ impl Trait for Struct {
 #[define_opaque(Foo)]
 fn foo() -> Foo {
     Struct
-    //~^ ERROR: expected generic lifetime parameter, found `'a`
+    //~^ ERROR expected generic lifetime parameter, found `'a`
 }
 
 fn main() {}

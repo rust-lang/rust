@@ -2,6 +2,6 @@
 
 #[link(name = "foo", kind = "framework")]
 extern "C" {}
-//~^^ ERROR: link kind `framework` is only supported on Apple targets
+//~^^ ERROR link kind `framework` is only supported on Apple targets
 
 fn main() {}

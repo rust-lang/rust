@@ -6,16 +6,16 @@ fn foo() -> u32 {
 
 fn bar() -> u32 {
     loop { break 'label: loop { break 'label 42; }; }
-    //~^ ERROR: parentheses are required around this expression to avoid confusion
-    //~| HELP: wrap the expression in parentheses
+    //~^ ERROR parentheses are required around this expression to avoid confusion
+    //~| HELP wrap the expression in parentheses
 }
 
 fn baz() -> u32 {
     'label: loop {
         break 'label
-        //~^ WARNING: this labeled break expression is easy to confuse with an unlabeled break
+        //~^ WARNING this labeled break expression is easy to confuse with an unlabeled break
             loop { break 42; };
-            //~^ HELP: wrap this expression in parentheses
+            //~^ HELP wrap this expression in parentheses
     };
 
     'label2: loop {
@@ -31,8 +31,8 @@ pub fn main() {
     };
     let b = loop {
         break 'inner_loop: loop {
-        //~^ ERROR: parentheses are required around this expression to avoid confusion
-        //~| HELP: wrap the expression in parentheses
+        //~^ ERROR parentheses are required around this expression to avoid confusion
+        //~| HELP wrap the expression in parentheses
             break 'inner_loop 1;
         };
     };

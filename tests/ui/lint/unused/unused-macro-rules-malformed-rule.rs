@@ -3,7 +3,7 @@
 macro_rules! foo {
     (v) => {};
     (w) => {};
-    () => 0; //~ ERROR: macro rhs must be delimited
+    () => 0; //~ ERROR macro rhs must be delimited
 }
 
 fn main() {

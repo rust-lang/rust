@@ -16,26 +16,26 @@ fn type_mismatches() {
     // patterns check slices' length appropriately when matching on slices.
     match BSTR_UNSIZED {
         BSTR_SIZED => {}
-        //~^ ERROR: mismatched types
+        //~^ ERROR mismatched types
         _ => {}
     }
     match STRUCT_UNSIZED {
         STRUCT_SIZED => {}
-        //~^ ERROR: mismatched types
+        //~^ ERROR mismatched types
         _ => {}
     }
 
     // Test that slice consts can't be used where an array pattern is expected.
     match BSTR_UNSIZED {
         BSTR_SIZED => {}
-        //~^ ERROR: mismatched types
+        //~^ ERROR mismatched types
         _ => {}
     }
     // If the types matched here, this would still error, since unsized structs aren't permitted in
     // constant patterns. See the `invalid_patterns` test below.
     match STRUCT_UNSIZED {
         STRUCT_SIZED => {}
-        //~^ ERROR: mismatched types
+        //~^ ERROR mismatched types
         _ => {}
     }
 }
@@ -45,7 +45,7 @@ fn invalid_patterns() {
     // See `tests/ui/consts/issue-87046.rs` for an example with `str`.
     match STRUCT_UNSIZED {
         STRUCT_UNSIZED => {}
-        //~^ ERROR: cannot use unsized non-slice type `SomeStruct<[u8]>` in constant patterns
+        //~^ ERROR cannot use unsized non-slice type `SomeStruct<[u8]>` in constant patterns
         _ => {}
     }
 }

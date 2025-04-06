@@ -1,7 +1,7 @@
 #![feature(extended_varargs_abi_support)]
 
 fn baz(f: extern "Rust" fn(usize, ...)) {
-    //~^ ERROR: C-variadic function must have a compatible calling convention,
+    //~^ ERROR C-variadic function must have a compatible calling convention,
     // like C, cdecl, system, aapcs, win64, sysv64 or efiapi
     f(22, 44);
 }

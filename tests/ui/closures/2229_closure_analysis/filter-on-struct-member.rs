@@ -22,10 +22,10 @@ impl Data {
         self.list.retain(
             #[rustc_capture_analysis]
             |v| self.filter.allowed(*v),
-            //~^ ERROR: First Pass analysis includes:
-            //~| ERROR: Min Capture analysis includes:
-            //~| NOTE: Capturing self[Deref,(0, 0)] -> Immutable
-            //~| NOTE: Min Capture self[Deref,(0, 0)] -> Immutable
+            //~^ ERROR First Pass analysis includes:
+            //~| ERROR Min Capture analysis includes:
+            //~| NOTE Capturing self[Deref,(0, 0)] -> Immutable
+            //~| NOTE Min Capture self[Deref,(0, 0)] -> Immutable
         );
     }
 }

@@ -14,14 +14,14 @@
 
 pub fn main() {
     if let Some(&Some(ref mut x)) = &mut Some(Some(0)) {
-        //[stable2021]~^ ERROR: mismatched types
-        //[classic2021,structural2021,classic2024,structural2024]~^^ ERROR: cannot borrow as mutable inside an `&` pattern
+        //[stable2021]~^ ERROR mismatched types
+        //[classic2021,structural2021,classic2024,structural2024]~^^ ERROR cannot borrow as mutable inside an `&` pattern
         let _: &mut u8 = x;
     }
 
     if let &Some(Some(ref mut x)) = &mut Some(Some(0)) {
-        //[stable2021]~^ ERROR: mismatched types
-        //[classic2021,structural2021,classic2024,structural2024]~^^ ERROR: cannot borrow as mutable inside an `&` pattern
+        //[stable2021]~^ ERROR mismatched types
+        //[classic2021,structural2021,classic2024,structural2024]~^^ ERROR cannot borrow as mutable inside an `&` pattern
         let _: &mut u8 = x;
     }
 
@@ -29,19 +29,19 @@ pub fn main() {
         ($var:ident) => { ref mut $var };
     }
     let &pat!(x) = &mut 0;
-    //[stable2021]~^ ERROR: mismatched types
-    //[classic2021,structural2021,classic2024,structural2024]~^^ ERROR: cannot borrow as mutable inside an `&` pattern
+    //[stable2021]~^ ERROR mismatched types
+    //[classic2021,structural2021,classic2024,structural2024]~^^ ERROR cannot borrow as mutable inside an `&` pattern
     let _: &mut u8 = x;
 
     let &(ref mut a, ref mut b) = &mut (true, false);
-    //[stable2021]~^ ERROR: mismatched types
-    //[classic2021,structural2021,classic2024,structural2024]~^^ ERROR: cannot borrow as mutable inside an `&` pattern
-    //[classic2021,structural2021,classic2024,structural2024]~| ERROR: cannot borrow as mutable inside an `&` pattern
+    //[stable2021]~^ ERROR mismatched types
+    //[classic2021,structural2021,classic2024,structural2024]~^^ ERROR cannot borrow as mutable inside an `&` pattern
+    //[classic2021,structural2021,classic2024,structural2024]~| ERROR cannot borrow as mutable inside an `&` pattern
     let _: &mut bool = a;
     let _: &mut bool = b;
 
     let &[x] = &mut &mut [0];
-    //[stable2021]~^ ERROR: mismatched types
-    //[classic2021,classic2024]~^^ ERROR: cannot borrow as mutable inside an `&` pattern
+    //[stable2021]~^ ERROR mismatched types
+    //[classic2021,classic2024]~^^ ERROR cannot borrow as mutable inside an `&` pattern
     let _: &u32 = x;
 }

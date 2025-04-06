@@ -16,7 +16,7 @@ fn cycle1() -> impl Clone {
 
 fn cycle2() -> impl Clone {
     send(cycle1().clone());
-    //~^ ERROR: cannot check whether the hidden type of opaque type satisfies auto traits
+    //~^ ERROR cannot check whether the hidden type of opaque type satisfies auto traits
 
     Rc::new(String::from("foo"))
 }

@@ -7,7 +7,7 @@ fn main() {
     let cell = std::cell::RefCell::new(0u8);
 
     if let Ok(mut byte) = cell.try_borrow_mut() {
-        //[edition2021]~^ ERROR: `cell` does not live long enough
+        //[edition2021]~^ ERROR `cell` does not live long enough
         *byte = 1;
     }
 }

@@ -7,7 +7,7 @@ mod a {
 
 fn main() {
     a::Foo::new();
-    //~^ ERROR: struct `Foo` is private
+    //~^ ERROR struct `Foo` is private
     a::Bar::new();
-    //~^ ERROR: enum `Bar` is private
+    //~^ ERROR enum `Bar` is private
 }

@@ -13,7 +13,7 @@ fn f() -> Foo {todo!()}
 
 fn main() {
     let x = f();
-    //~^ WARNING: unused variable: `x`
+    //~^ WARNING unused variable: `x`
     let _ = x;
-    //~^ WARNING: unreachable expression
+    //~^ WARNING unreachable expression
 }

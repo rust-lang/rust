@@ -10,15 +10,15 @@ fn simple_move_closure() {
 
     let t = T(S("s".into()));
     let mut c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     move || {
-    //~^ ERROR: First Pass analysis includes:
-    //~| ERROR: Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         t.0.0 = "new S".into();
-        //~^ NOTE: Capturing t[(0, 0),(0, 0)] -> Mutable
-        //~| NOTE: Min Capture t[(0, 0),(0, 0)] -> ByValue
+        //~^ NOTE Capturing t[(0, 0),(0, 0)] -> Mutable
+        //~| NOTE Min Capture t[(0, 0),(0, 0)] -> ByValue
     };
     c();
 }
@@ -29,15 +29,15 @@ fn simple_ref() {
     let ref_s = &mut s;
 
     let mut c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     move || {
-    //~^ ERROR: First Pass analysis includes:
-    //~| ERROR: Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         *ref_s += 10;
-        //~^ NOTE: Capturing ref_s[Deref] -> Mutable
-        //~| NOTE: Min Capture ref_s[] -> ByValue
+        //~^ NOTE Capturing ref_s[Deref] -> Mutable
+        //~| NOTE Min Capture ref_s[] -> ByValue
     };
     c();
 }
@@ -51,15 +51,15 @@ fn struct_contains_ref_to_another_struct_1() {
     let t = T(&mut s);
 
     let mut c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     move || {
-    //~^ ERROR: First Pass analysis includes:
-    //~| ERROR: Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         t.0.0 = "new s".into();
-        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> Mutable
-        //~| NOTE: Min Capture t[(0, 0)] -> ByValue
+        //~^ NOTE Capturing t[(0, 0),Deref,(0, 0)] -> Mutable
+        //~| NOTE Min Capture t[(0, 0)] -> ByValue
     };
 
     c();
@@ -75,15 +75,15 @@ fn struct_contains_ref_to_another_struct_2() {
     let t = T(&s);
 
     let mut c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     move || {
-    //~^ ERROR: First Pass analysis includes:
-    //~| ERROR: Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         let _t = t.0.0;
-        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> Immutable
-        //~| NOTE: Min Capture t[(0, 0)] -> ByValue
+        //~^ NOTE Capturing t[(0, 0),Deref,(0, 0)] -> Immutable
+        //~| NOTE Min Capture t[(0, 0)] -> ByValue
     };
 
     c();
@@ -98,15 +98,15 @@ fn struct_contains_ref_to_another_struct_3() {
     let t = T(&s);
 
     let mut c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     move || {
-    //~^ ERROR: First Pass analysis includes:
-    //~| ERROR: Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         let _t = t.0.0;
-        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
-        //~| NOTE: Min Capture t[(0, 0)] -> ByValue
+        //~^ NOTE Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
+        //~| NOTE Min Capture t[(0, 0)] -> ByValue
     };
 
     c();
@@ -120,15 +120,15 @@ fn truncate_box_derefs() {
     // Content within the box is moved within the closure
     let b = Box::new(S(10));
     let c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     move || {
-    //~^ ERROR: First Pass analysis includes:
-    //~| ERROR: Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         let _t = b.0;
-        //~^ NOTE: Capturing b[Deref,(0, 0)] -> Immutable
-        //~| NOTE: Min Capture b[] -> ByValue
+        //~^ NOTE Capturing b[Deref,(0, 0)] -> Immutable
+        //~| NOTE Min Capture b[] -> ByValue
     };
 
     c();
@@ -137,15 +137,15 @@ fn truncate_box_derefs() {
     let b = Box::new(S(10));
 
     let c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     move || {
-    //~^ ERROR: First Pass analysis includes:
-    //~| ERROR: Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         println!("{}", b.0);
-        //~^ NOTE: Capturing b[Deref,(0, 0)] -> Immutable
-        //~| NOTE: Min Capture b[] -> ByValue
+        //~^ NOTE Capturing b[Deref,(0, 0)] -> Immutable
+        //~| NOTE Min Capture b[] -> ByValue
     };
 
     c();
@@ -155,15 +155,15 @@ fn truncate_box_derefs() {
     let t = (0, b);
 
     let c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     move || {
-    //~^ ERROR: First Pass analysis includes:
-    //~| ERROR: Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         println!("{}", t.1.0);
-        //~^ NOTE: Capturing t[(1, 0),Deref,(0, 0)] -> Immutable
-        //~| NOTE: Min Capture t[(1, 0)] -> ByValue
+        //~^ NOTE Capturing t[(1, 0),Deref,(0, 0)] -> Immutable
+        //~| NOTE Min Capture t[(1, 0)] -> ByValue
     };
 }
 
@@ -178,13 +178,13 @@ fn box_mut_1() {
     let box_p_foo = Box::new(p_foo);
 
     let c = #[rustc_capture_analysis] move || box_p_foo.x += 10;
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     //~| First Pass analysis includes:
-    //~| NOTE: Capturing box_p_foo[Deref,Deref,(0, 0)] -> Mutable
+    //~| NOTE Capturing box_p_foo[Deref,Deref,(0, 0)] -> Mutable
     //~| Min Capture analysis includes:
-    //~| NOTE: Min Capture box_p_foo[] -> ByValue
+    //~| NOTE Min Capture box_p_foo[] -> ByValue
 }
 
 // Ensure that even in move closures, if the data is not owned by the root variable
@@ -196,13 +196,13 @@ fn box_mut_2() {
     let p_foo = &mut box_foo;
 
     let c = #[rustc_capture_analysis] move || p_foo.x += 10;
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     //~| First Pass analysis includes:
-    //~| NOTE: Capturing p_foo[Deref,Deref,(0, 0)] -> Mutable
+    //~| NOTE Capturing p_foo[Deref,Deref,(0, 0)] -> Mutable
     //~| Min Capture analysis includes:
-    //~| NOTE: Min Capture p_foo[] -> ByValue
+    //~| NOTE Min Capture p_foo[] -> ByValue
 }
 
 // Test that move closures can take ownership of Copy type
@@ -210,13 +210,13 @@ fn returned_closure_owns_copy_type_data() -> impl Fn() -> i32 {
     let x = 10;
 
     let c = #[rustc_capture_analysis] move || x;
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     //~| First Pass analysis includes:
-    //~| NOTE: Capturing x[] -> Immutable
+    //~| NOTE Capturing x[] -> Immutable
     //~| Min Capture analysis includes:
-    //~| NOTE: Min Capture x[] -> ByValue
+    //~| NOTE Min Capture x[] -> ByValue
 
     c
 }

@@ -9,12 +9,12 @@
 
 
 fn main() {
-    format_args!("{}", 1 << 32); //~ ERROR: arithmetic operation will overflow
-    format_args!("{}", 1 >> 32); //~ ERROR: arithmetic operation will overflow
-    format_args!("{}", 1 + i32::MAX); //~ ERROR: arithmetic operation will overflow
-    format_args!("{}", -5 - i32::MAX); //~ ERROR: arithmetic operation will overflow
-    format_args!("{}", 5 * i32::MAX); //~ ERROR: arithmetic operation will overflow
-    format_args!("{}", 1 / 0); //~ ERROR: this operation will panic at runtime
-    format_args!("{}", 1 % 0); //~ ERROR: this operation will panic at runtime
-    format_args!("{}", [1, 2, 3][4]); //~ ERROR: this operation will panic at runtime
+    format_args!("{}", 1 << 32); //~ ERROR arithmetic operation will overflow
+    format_args!("{}", 1 >> 32); //~ ERROR arithmetic operation will overflow
+    format_args!("{}", 1 + i32::MAX); //~ ERROR arithmetic operation will overflow
+    format_args!("{}", -5 - i32::MAX); //~ ERROR arithmetic operation will overflow
+    format_args!("{}", 5 * i32::MAX); //~ ERROR arithmetic operation will overflow
+    format_args!("{}", 1 / 0); //~ ERROR this operation will panic at runtime
+    format_args!("{}", 1 % 0); //~ ERROR this operation will panic at runtime
+    format_args!("{}", [1, 2, 3][4]); //~ ERROR this operation will panic at runtime
 }

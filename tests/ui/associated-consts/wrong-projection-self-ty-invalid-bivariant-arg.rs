@@ -1,5 +1,5 @@
 struct Fail<T>;
-//~^ ERROR: type parameter `T` is never used
+//~^ ERROR type parameter `T` is never used
 
 impl Fail<i32> {
     const C: () = ();

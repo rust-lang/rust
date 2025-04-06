@@ -15,6 +15,6 @@ fn unify<const N: usize>(_: &[Foo<N>; N]) {
 
 fn main() {
     let x = &[Foo::<_>; _];
-    //~^ ERROR: type annotations needed for `&[Foo<_>; _]`
+    //~^ ERROR type annotations needed for `&[Foo<_>; _]`
     _ = unify(x);
 }

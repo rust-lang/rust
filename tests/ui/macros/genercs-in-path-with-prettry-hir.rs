@@ -9,6 +9,6 @@ macro_rules! m {
     }
 }
 
-m!(inline<u8>); //~ ERROR: unexpected generic arguments in path
+m!(inline<u8>); //~ ERROR unexpected generic arguments in path
 
 fn main() {}

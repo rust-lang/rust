@@ -14,7 +14,7 @@ mod basic_pass {
     type Opq<'a> = impl Sized + 'a;
     #[define_opaque(Opq)]
     fn test() -> impl for<'a> Trait<'a, Ty = Opq<'a>> {}
-    //~^ ERROR: expected generic lifetime parameter, found `'a`
+    //~^ ERROR expected generic lifetime parameter, found `'a`
 }
 
 mod capture_rpit {
@@ -40,7 +40,7 @@ mod capture_tait_complex_pass {
     type Opq2 = impl for<'a> Trait<'a, Ty = Opq1<'a>>;
     #[define_opaque(Opq2)]
     fn test() -> Opq2 {}
-    //~^ ERROR: expected generic lifetime parameter, found `'a`
+    //~^ ERROR expected generic lifetime parameter, found `'a`
 }
 
 // Same as the above, but make sure that different placeholder regions are not equal.
@@ -60,7 +60,7 @@ mod constrain_fail0 {
     type Opq0<'a, 'b> = impl Sized;
     #[define_opaque(Opq0)]
     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'static>> {}
-    //~^ ERROR: expected generic lifetime parameter, found `'a`
+    //~^ ERROR expected generic lifetime parameter, found `'a`
 }
 
 // non-defining use because generic lifetime is used multiple times.
@@ -69,7 +69,7 @@ mod constrain_fail {
     type Opq0<'a, 'b> = impl Sized;
     #[define_opaque(Opq0)]
     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'a>> {}
-    //~^ ERROR: expected generic lifetime parameter, found `'a`
+    //~^ ERROR expected generic lifetime parameter, found `'a`
 }
 
 mod constrain_pass {
@@ -79,7 +79,7 @@ mod constrain_pass {
     type Opq2 = impl for<'a> Trait<'a, Ty = Opq1<'a>>;
     #[define_opaque(Opq2)]
     fn test() -> Opq2 {}
-    //~^ ERROR: expected generic lifetime parameter, found `'a`
+    //~^ ERROR expected generic lifetime parameter, found `'a`
 }
 
 fn main() {}

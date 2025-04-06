@@ -6,12 +6,12 @@ fn main() {
     // place of type `str`.
     match "foo".to_string() {
         deref!("foo") => {}
-        //~^ ERROR: mismatched types
+        //~^ ERROR mismatched types
         _ => {}
     }
     match &"foo".to_string() {
         deref!("foo") => {}
-        //~^ ERROR: mismatched types
+        //~^ ERROR mismatched types
         _ => {}
     }
 }

@@ -8,7 +8,7 @@ trait Tr {
 
     fn make() -> Self::Ty {
         0u8
-        //~^ error: mismatched types
+        //~^ error mismatched types
     }
 }
 
@@ -84,10 +84,10 @@ fn main() {
     //let _: <A<()> as Tr>::Ty = 0u8;
     //let _: <A2<()> as Tr>::Ty = 0u8;
 
-    let _: <B<()> as Tr>::Ty = 0u8;   //~ error: mismatched types
-    let _: <B<()> as Tr>::Ty = true;  //~ error: mismatched types
-    let _: <B2<()> as Tr>::Ty = 0u8;  //~ error: mismatched types
-    let _: <B2<()> as Tr>::Ty = true; //~ error: mismatched types
+    let _: <B<()> as Tr>::Ty = 0u8;   //~ error mismatched types
+    let _: <B<()> as Tr>::Ty = true;  //~ error mismatched types
+    let _: <B2<()> as Tr>::Ty = 0u8;  //~ error mismatched types
+    let _: <B2<()> as Tr>::Ty = true; //~ error mismatched types
 
     let _: <C<()> as Tr>::Ty = true;
 

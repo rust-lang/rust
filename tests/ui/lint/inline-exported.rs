@@ -8,17 +8,17 @@
 #![deny(unused_attributes)]
 
 #[inline]
-//~^ ERROR: `#[inline]` is ignored on externally exported functions
+//~^ ERROR `#[inline]` is ignored on externally exported functions
 #[no_mangle]
 fn no_mangle() {}
 
 #[inline]
-//~^ ERROR: `#[inline]` is ignored on externally exported functions
+//~^ ERROR `#[inline]` is ignored on externally exported functions
 #[export_name = "export_name"]
 fn export_name() {}
 
 #[inline]
-//~^ ERROR: `#[inline]` is ignored on externally exported functions
+//~^ ERROR `#[inline]` is ignored on externally exported functions
 #[linkage = "external"]
 fn external_linkage() {}
 

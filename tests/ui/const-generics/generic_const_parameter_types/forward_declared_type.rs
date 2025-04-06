@@ -4,8 +4,8 @@
 use std::marker::PhantomData;
 
 struct UsesConst<const N: [u8; M], const M: usize>;
-//~^ ERROR: const parameter types cannot reference parameters before they are declared
+//~^ ERROR const parameter types cannot reference parameters before they are declared
 struct UsesType<const N: [T; 2], T>(PhantomData<T>);
-//~^ ERROR: const parameter types cannot reference parameters before they are declared
+//~^ ERROR const parameter types cannot reference parameters before they are declared
 
 fn main() {}

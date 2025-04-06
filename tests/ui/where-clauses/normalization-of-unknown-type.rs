@@ -21,7 +21,7 @@ struct AndThen;
 
 impl Filter for AndThen
 where
-    Foo: Filter, //~ ERROR: cannot find type `Foo`
+    Foo: Filter, //~ ERROR cannot find type `Foo`
 {
     type Future = ();
 }

@@ -13,15 +13,15 @@
 pub extern crate missing_docs;
 
 type Typedef = String;
-pub type PubTypedef = String; //~ ERROR: missing documentation for a type alias
+pub type PubTypedef = String; //~ ERROR missing documentation for a type alias
 
 struct Foo {
     a: isize,
     b: isize,
 }
 
-pub struct PubFoo { //~ ERROR: missing documentation for a struct
-    pub a: isize,      //~ ERROR: missing documentation for a struct field
+pub struct PubFoo { //~ ERROR missing documentation for a struct
+    pub a: isize,      //~ ERROR missing documentation for a struct field
     b: isize,
 }
 
@@ -32,11 +32,11 @@ pub struct PubFoo2 {
 }
 
 mod module_no_dox {}
-pub mod pub_module_no_dox {} //~ ERROR: missing documentation for a module
+pub mod pub_module_no_dox {} //~ ERROR missing documentation for a module
 
 /// dox
 pub fn foo() {}
-pub fn foo2() {} //~ ERROR: missing documentation for a function
+pub fn foo2() {} //~ ERROR missing documentation for a function
 fn foo3() {}
 #[allow(missing_docs)] pub fn foo4() {}
 
@@ -54,11 +54,11 @@ trait B {
     fn foo_with_impl(&self) {}
 }
 
-pub trait C { //~ ERROR: missing documentation for a trait
-    fn foo(&self); //~ ERROR: missing documentation for a method
-    fn foo_with_impl(&self) {} //~ ERROR: missing documentation for a method
-    fn foo_no_self(); //~ ERROR: missing documentation for an associated function
-    fn foo_no_self_with_impl() {} //~ ERROR: missing documentation for an associated function
+pub trait C { //~ ERROR missing documentation for a trait
+    fn foo(&self); //~ ERROR missing documentation for a method
+    fn foo_with_impl(&self) {} //~ ERROR missing documentation for a method
+    fn foo_no_self(); //~ ERROR missing documentation for an associated function
+    fn foo_no_self_with_impl() {} //~ ERROR missing documentation for an associated function
 }
 
 #[allow(missing_docs)]
@@ -68,8 +68,8 @@ pub trait D {
 
 /// dox
 pub trait E: Sized {
-    type AssociatedType; //~ ERROR: missing documentation for an associated type
-    type AssociatedTypeDef = Self; //~ ERROR: missing documentation for an associated type
+    type AssociatedType; //~ ERROR missing documentation for an associated type
+    type AssociatedTypeDef = Self; //~ ERROR missing documentation for an associated type
 
     /// dox
     type DocumentedType;
@@ -85,7 +85,7 @@ impl Foo {
 }
 
 impl PubFoo {
-    pub fn foo() {} //~ ERROR: missing documentation for an associated function
+    pub fn foo() {} //~ ERROR missing documentation for an associated function
     /// dox
     pub fn foo1() {}
     fn foo2() {}
@@ -122,9 +122,9 @@ enum Baz {
     BarB
 }
 
-pub enum PubBaz { //~ ERROR: missing documentation for an enum
-    PubBazA { //~ ERROR: missing documentation for a variant
-        a: isize, //~ ERROR: missing documentation for a struct field
+pub enum PubBaz { //~ ERROR missing documentation for an enum
+    PubBazA { //~ ERROR missing documentation for a variant
+        a: isize, //~ ERROR missing documentation for a struct field
     },
 }
 
@@ -155,7 +155,7 @@ pub const FOO1: u32 = 0;
 pub const FOO2: u32 = 0;
 #[doc(hidden)]
 pub const FOO3: u32 = 0;
-pub const FOO4: u32 = 0; //~ ERROR: missing documentation for a const
+pub const FOO4: u32 = 0; //~ ERROR missing documentation for a const
 
 
 static BAR: u32 = 0;
@@ -165,20 +165,20 @@ pub static BAR1: u32 = 0;
 pub static BAR2: u32 = 0;
 #[doc(hidden)]
 pub static BAR3: u32 = 0;
-pub static BAR4: u32 = 0; //~ ERROR: missing documentation for a static
+pub static BAR4: u32 = 0; //~ ERROR missing documentation for a static
 
 
 mod internal_impl {
     /// dox
     pub fn documented() {}
-    pub fn undocumented1() {} //~ ERROR: missing documentation for a function
-    pub fn undocumented2() {} //~ ERROR: missing documentation for a function
+    pub fn undocumented1() {} //~ ERROR missing documentation for a function
+    pub fn undocumented2() {} //~ ERROR missing documentation for a function
     fn undocumented3() {}
     /// dox
     pub mod globbed {
         /// dox
         pub fn also_documented() {}
-        pub fn also_undocumented1() {} //~ ERROR: missing documentation for a function
+        pub fn also_undocumented1() {} //~ ERROR missing documentation for a function
         fn also_undocumented2() {}
     }
 }
@@ -194,19 +194,19 @@ extern "C" {
     /// dox
     pub fn extern_fn_documented(f: f32) -> f32;
     pub fn extern_fn_undocumented(f: f32) -> f32;
-    //~^ ERROR: missing documentation for a function
+    //~^ ERROR missing documentation for a function
 
     /// dox
     pub static EXTERN_STATIC_DOCUMENTED: u8;
     pub static EXTERN_STATIC_UNDOCUMENTED: u8;
-    //~^ ERROR: missing documentation for a static
+    //~^ ERROR missing documentation for a static
 
     /// dox
     pub type ExternTyDocumented;
     pub type ExternTyUndocumented;
-    //~^ ERROR: missing documentation for a foreign type
+    //~^ ERROR missing documentation for a foreign type
 }
 
-pub trait T = Sync; //~ ERROR: missing documentation for a trait alias
+pub trait T = Sync; //~ ERROR missing documentation for a trait alias
 
 fn main() {}

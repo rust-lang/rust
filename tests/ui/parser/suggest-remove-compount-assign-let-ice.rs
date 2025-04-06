@@ -12,5 +12,5 @@ fn main() {
     // Adapted from #128845 but with irrelevant components removed and simplified.
     let x ➖= 1;
     //~^ ERROR unknown start of token: \u{2796}
-    //~| ERROR: can't reassign to an uninitialized variable
+    //~| ERROR can't reassign to an uninitialized variable
 }

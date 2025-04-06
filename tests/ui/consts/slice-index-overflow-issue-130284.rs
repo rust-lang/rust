@@ -5,7 +5,7 @@ const C: () = {
     unsafe {
         // This used to ICE, but it should just report UB.
         let _ice = (*fat)[usize::MAX - 1];
-        //~^ERROR: constant value failed
+        //~^ERROR constant value failed
         //~| overflow
     }
 };

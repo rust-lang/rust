@@ -6,7 +6,7 @@ type Foo<T> = impl Default;
 #[define_opaque(Foo)]
 fn foo<T: Default>(t: T) -> Foo<T> {
     t
-    //~^ ERROR: the trait bound `T: Default` is not satisfied
+    //~^ ERROR the trait bound `T: Default` is not satisfied
 }
 
 struct NotDefault;

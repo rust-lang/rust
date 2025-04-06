@@ -11,7 +11,7 @@ mod localmod {
 use std::cell::Cell;
 
 // Implicitly local import, gets lint.
-use localmod::S; //~ERROR: unqualified
+use localmod::S; //~ERROR unqualified
 
 // Explicitly local import, no lint.
 use self::localmod::T;

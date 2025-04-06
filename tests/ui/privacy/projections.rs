@@ -1,6 +1,6 @@
 mod m {
     struct Priv;
-    pub type Leak = Priv; //~ WARN: `Priv` is more private than the item `Leak`
+    pub type Leak = Priv; //~ WARN `Priv` is more private than the item `Leak`
 }
 
 trait Trait {
@@ -12,7 +12,7 @@ impl Trait for u8 {
 }
 
 fn check() -> <u8 as Trait>::A<m::Leak> {
-    //~^ ERROR: `Priv` is private
+    //~^ ERROR `Priv` is private
     0
 }
 
@@ -22,12 +22,12 @@ trait Trait2 {
 
 impl Trait2 for u8 {
     type A<T> = m::Leak;
-    //~^ ERROR: `Priv` is private
-    //~| ERROR: private type `Priv` in public interface
+    //~^ ERROR `Priv` is private
+    //~| ERROR private type `Priv` in public interface
 }
 
 fn check2() -> <u8 as Trait2>::A<u32> {
-    //~^ ERROR: `Priv` is private
+    //~^ ERROR `Priv` is private
     todo!()
 }
 
@@ -37,8 +37,8 @@ trait Trait3 {
 
 impl Trait3 for u8 {
     type A<T: Trait> = T::A<m::Leak>;
-    //~^ ERROR: `Priv` is private
-    //~| ERROR: private type `Priv` in public interface
+    //~^ ERROR `Priv` is private
+    //~| ERROR private type `Priv` in public interface
 }
 
 fn check3() -> <u8 as Trait3>::A<u8> {

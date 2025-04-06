@@ -9,7 +9,7 @@
 // We may want to lift this restriction in the future.
 
 pub struct Dependent<T, const X: T>([(); X]);
-//~^ ERROR: the type of const parameters must not depend on other generic parameters
-//~| ERROR: type parameter `T` is never used
+//~^ ERROR the type of const parameters must not depend on other generic parameters
+//~| ERROR type parameter `T` is never used
 
 fn main() {}

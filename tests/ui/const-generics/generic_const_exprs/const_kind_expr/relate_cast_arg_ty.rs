@@ -5,8 +5,8 @@
 
 fn foo<const N: usize>() -> [(); (true as usize) + N] {
     [(); (1_u8 as usize) + N]
-    //~^ error: mismatched types
-    //~| error: unconstrained generic constant
+    //~^ error mismatched types
+    //~| error unconstrained generic constant
 }
 
 fn main() {}

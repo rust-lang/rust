@@ -11,7 +11,7 @@ where
 }
 
 fn bar<'a>(_arg: &'a i32) {
-    foo::<dyn Animal<&'a i32>, &'a i32>() //~ ERROR: lifetime may not live long enough
+    foo::<dyn Animal<&'a i32>, &'a i32>() //~ ERROR lifetime may not live long enough
 }
 
 fn baz<T: 'static + ?Sized>() {}

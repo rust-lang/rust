@@ -44,7 +44,7 @@ fn in_dyn_Fn_parameter_in_return() -> &'static dyn Fn(impl Debug) { panic!() }
 
 // Allowed (but it's still ambiguous; nothing constrains the RPIT in this body).
 fn in_dyn_Fn_return_in_return() -> &'static dyn Fn() -> impl Debug { panic!() }
-//~^ ERROR: type annotations needed
+//~^ ERROR type annotations needed
 
 // Disallowed
 fn in_impl_Fn_parameter_in_parameters(_: &impl Fn(impl Debug)) { panic!() }
@@ -62,7 +62,7 @@ fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
 
 // Allowed
 fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() }
-//~^ ERROR: type annotations needed
+//~^ ERROR type annotations needed
 
 // Disallowed
 fn in_Fn_parameter_in_generics<F: Fn(impl Debug)> (_: F) { panic!() }

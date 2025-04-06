@@ -12,7 +12,7 @@ impl std::ops::Deref for CallMe {
 
     #[define_opaque(FnType)]
     fn deref(&self) -> &Self::Target {
-        //~^ ERROR: item does not constrain `ReturnType
+        //~^ ERROR item does not constrain `ReturnType
         #[define_opaque(ReturnType)]
         fn inner(val: &u32) -> ReturnType {
             async move { *val * 2 }

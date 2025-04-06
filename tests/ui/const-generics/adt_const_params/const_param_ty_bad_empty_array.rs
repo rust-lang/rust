@@ -8,5 +8,5 @@ fn check<T: std::marker::ConstParamTy_>() {}
 
 fn main() {
     check::<[NotParam; 0]>();
-    //~^ error: `NotParam` can't be used as a const parameter type
+    //~^ error `NotParam` can't be used as a const parameter type
 }

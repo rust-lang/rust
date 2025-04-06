@@ -13,7 +13,7 @@ impl Runnable for Implementor {
     type Coro = impl Coroutine<Yield = (), Return = ()>;
 
     fn run(&mut self) -> Self::Coro {
-        //~^ ERROR: type mismatch resolving
+        //~^ ERROR type mismatch resolving
         #[coroutine]
         move || {
             yield 1;

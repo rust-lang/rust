@@ -10,7 +10,7 @@ impl <T> Fun for T {
 
 fn bug<'a, T: Fun<F<'a> = T>>(t: T) -> T::F<'a> {
     T::identity(())
-      //~^ ERROR: mismatched types
+      //~^ ERROR mismatched types
 }
 
 

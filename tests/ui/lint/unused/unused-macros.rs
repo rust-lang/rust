@@ -3,14 +3,14 @@
 #![deny(unused_macro_rules)]
 
 // Most simple case
-macro_rules! unused { //~ ERROR: unused macro definition
+macro_rules! unused { //~ ERROR unused macro definition
     () => {};
 }
 
 // Test macros created by macros
 macro_rules! create_macro {
     () => {
-        macro_rules! m { //~ ERROR: unused macro definition
+        macro_rules! m { //~ ERROR unused macro definition
             () => {};
         }
     };
@@ -23,7 +23,7 @@ mod bar {
     // works.
 
     #[deny(unused_macros)]
-    macro_rules! unused { //~ ERROR: unused macro definition
+    macro_rules! unused { //~ ERROR unused macro definition
         () => {};
     }
 }

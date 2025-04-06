@@ -22,45 +22,45 @@ fn never_pattern_typeck_fail(void: Void) {
     // Don't accept on a non-empty type.
     match () {
         !,
-        //[fail]~^ ERROR: mismatched types
+        //[fail]~^ ERROR mismatched types
     }
     match (0, false) {
         !,
-        //[fail]~^ ERROR: mismatched types
+        //[fail]~^ ERROR mismatched types
     }
     match (0, false) {
         (_, !),
-        //[fail]~^ ERROR: mismatched types
+        //[fail]~^ ERROR mismatched types
     }
     match Some(0) {
         None => {}
         Some(!),
-        //[fail]~^ ERROR: mismatched types
+        //[fail]~^ ERROR mismatched types
     }
 
     // Don't accept on an arbitrary type, even if there are no more branches.
     match () {
         () => {}
         !,
-        //[fail]~^ ERROR: mismatched types
+        //[fail]~^ ERROR mismatched types
     }
 
     // Don't accept even on an empty branch.
     match None::<Void> {
         None => {}
         !,
-        //[fail]~^ ERROR: mismatched types
+        //[fail]~^ ERROR mismatched types
     }
     match (&[] as &[Void]) {
         [] => {}
         !,
-        //[fail]~^ ERROR: mismatched types
+        //[fail]~^ ERROR mismatched types
     }
     // Let alone if the emptiness is behind a reference.
     match None::<&Void> {
         None => {}
         !,
-        //[fail]~^ ERROR: mismatched types
+        //[fail]~^ ERROR mismatched types
     }
 }
 

@@ -15,7 +15,7 @@ impl T3<1, 2, 3> {
 }
 
 fn main() {
-    T1<1>::C; //~ ERROR: comparison operators cannot be chained
-    T2<1, 2>::C; //~ ERROR: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
-    T3<1, 2, 3>::C; //~ ERROR: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
+    T1<1>::C; //~ ERROR comparison operators cannot be chained
+    T2<1, 2>::C; //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
+    T3<1, 2, 3>::C; //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
 }

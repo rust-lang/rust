@@ -24,22 +24,22 @@ fn assert_type_eq<T, U: Eq<T>>(_: T, _: U) {}
 /// only when the binding is from edition 2024.
 fn ref_binding_tests() {
     let match_ctor!(ref x) = &[0];
-    //[classic2024,structural2024]~^ ERROR: binding modifiers may only be written when the default binding mode is `move`
+    //[classic2024,structural2024]~^ ERROR binding modifiers may only be written when the default binding mode is `move`
     #[cfg(any(classic2021, structural2021))] assert_type_eq(x, &0u32);
 
     let [bind_ref!(y)] = &[0];
-    //[classic2021,structural2021]~^ ERROR: binding modifiers may only be written when the default binding mode is `move`
+    //[classic2021,structural2021]~^ ERROR binding modifiers may only be written when the default binding mode is `move`
     #[cfg(any(classic2024, structural2024))] assert_type_eq(y, &0u32);
 }
 
 /// Likewise, when binding with `mut`.
 fn mut_binding_tests() {
     let match_ctor!(mut x) = &[0];
-    //[classic2024,structural2024]~^ ERROR: binding cannot be both mutable and by-reference
+    //[classic2024,structural2024]~^ ERROR binding cannot be both mutable and by-reference
     #[cfg(any(classic2021, structural2021))] assert_type_eq(x, 0u32);
 
     let [bind_mut!(y)] = &[0];
-    //[classic2021,structural2021]~^ ERROR: binding cannot be both mutable and by-reference
+    //[classic2021,structural2021]~^ ERROR binding cannot be both mutable and by-reference
     #[cfg(any(classic2024, structural2024))] assert_type_eq(y, 0u32);
 }
 
@@ -59,30 +59,30 @@ fn layers_eaten_tests() {
 /// under `ref_pat_eat_one_layer_2024`, these should be errors.
 fn rule_3_tests() {
     let match_ref!([x]) = &&mut [0];
-    //[classic2021,classic2024]~^ ERROR: cannot borrow data in a `&` reference as mutable
+    //[classic2021,classic2024]~^ ERROR cannot borrow data in a `&` reference as mutable
     #[cfg(any(structural2021, structural2024))] assert_type_eq(x, &0u32);
 
     let &match_ctor!(y) = &&mut [0];
-    //[classic2021,classic2024]~^ ERROR: cannot borrow data in a `&` reference as mutable
+    //[classic2021,classic2024]~^ ERROR cannot borrow data in a `&` reference as mutable
     #[cfg(any(structural2021, structural2024))] assert_type_eq(y, &0u32);
 
     let &[bind!(z)] = &&mut [0];
-    //[classic2021,classic2024]~^ ERROR: cannot borrow data in a `&` reference as mutable
+    //[classic2021,classic2024]~^ ERROR cannot borrow data in a `&` reference as mutable
     #[cfg(any(structural2021, structural2024))] assert_type_eq(z, &0u32);
 }
 
 /// Test that the interaction between Rules 3 and 5 doesn't break.
 fn rules_3_and_5_tests() {
     let match_ref!([x]) = &mut &mut [0];
-    //[classic2021,classic2024]~^ ERROR: cannot borrow as mutable inside an `&` pattern
+    //[classic2021,classic2024]~^ ERROR cannot borrow as mutable inside an `&` pattern
     #[cfg(any(structural2021, structural2024))] assert_type_eq(x, &0u32);
 
     let &match_ctor!(y) = &mut &mut [0];
-    //[classic2021,classic2024]~^ ERROR: cannot borrow as mutable inside an `&` pattern
+    //[classic2021,classic2024]~^ ERROR cannot borrow as mutable inside an `&` pattern
     #[cfg(any(structural2021, structural2024))] assert_type_eq(y, &0u32);
 
     let &[bind!(z)] = &mut &mut [0];
-    //[classic2021,classic2024]~^ ERROR: cannot borrow as mutable inside an `&` pattern
+    //[classic2021,classic2024]~^ ERROR cannot borrow as mutable inside an `&` pattern
     #[cfg(any(structural2021, structural2024))] assert_type_eq(z, &0u32);
 }
 
@@ -108,15 +108,15 @@ fn rule_5_tests() {
 /// Make sure binding with `ref mut` is an error within a `&` pattern matching a `&mut` reference.
 fn rule_5_mutability_error_tests() {
     let match_ref!(ref mut x) = &mut 0;
-    //~^ ERROR: cannot borrow as mutable inside an `&` pattern
+    //~^ ERROR cannot borrow as mutable inside an `&` pattern
     let &bind_ref_mut!(x) = &mut 0;
-    //~^ ERROR: cannot borrow as mutable inside an `&` pattern
+    //~^ ERROR cannot borrow as mutable inside an `&` pattern
 
     // also test inherited references (assumes rule 4)
     let [match_ref!(ref mut x)] = &mut [0];
-    //~^ ERROR: cannot borrow as mutable inside an `&` pattern
+    //~^ ERROR cannot borrow as mutable inside an `&` pattern
     let [&bind_ref_mut!(x)] = &mut [0];
-    //~^ ERROR: cannot borrow as mutable inside an `&` pattern
+    //~^ ERROR cannot borrow as mutable inside an `&` pattern
 }
 
 fn main() {}

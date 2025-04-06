@@ -18,9 +18,9 @@ fn bar<const N: usize>() {}
 
 fn foo<const N: usize>() {
     bar::<{ [1; N] }>();
-    //~^ ERROR: generic parameters may not be used in const operations
+    //~^ ERROR generic parameters may not be used in const operations
     bar::<{ [1; { N + 1 }] }>();
-    //~^ ERROR: generic parameters may not be used in const operations
+    //~^ ERROR generic parameters may not be used in const operations
 }
 
 fn main() {}

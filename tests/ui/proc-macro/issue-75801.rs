@@ -14,6 +14,6 @@ macro_rules! foo {
     };
 }
 
-foo!("baz"); //~ ERROR: mismatched types [E0308]
+foo!("baz"); //~ ERROR mismatched types [E0308]
 
 fn main() {}

@@ -6,7 +6,7 @@ fn f1(x: &mut isize) {
 }
 
 fn f2() {
-    let mut x: isize = 3; //~ ERROR: value assigned to `x` is never read
+    let mut x: isize = 3; //~ ERROR value assigned to `x` is never read
     x = 4;
     x.clone();
 }
@@ -14,17 +14,17 @@ fn f2() {
 fn f3() {
     let mut x: isize = 3;
     x.clone();
-    x = 4; //~ ERROR: value assigned to `x` is never read
+    x = 4; //~ ERROR value assigned to `x` is never read
 }
 
-fn f4(mut x: i32) { //~ ERROR: value passed to `x` is never read
+fn f4(mut x: i32) { //~ ERROR value passed to `x` is never read
     x = 4;
     x.clone();
 }
 
 fn f5(mut x: i32) {
     x.clone();
-    x = 4; //~ ERROR: value assigned to `x` is never read
+    x = 4; //~ ERROR value assigned to `x` is never read
 }
 
 // #22630

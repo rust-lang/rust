@@ -6,7 +6,7 @@ auto trait Magic : Sized where Option<Self> : Magic {} //~ ERROR E0568
 impl<T:Magic> Magic for T {}
 
 fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
-//~^ ERROR: use of moved value
+//~^ ERROR use of moved value
 
 #[derive(Debug)]
 struct NoClone;

@@ -14,7 +14,7 @@ impl Foo for u8 {
 
 trait Baz {
     type Fv: Foo = u8;
-    const C: <Self::Fv as Foo>::Bar = 6665;  //~ error: mismatched types
+    const C: <Self::Fv as Foo>::Bar = 6665;  //~ error mismatched types
 }
 
 fn main() {}

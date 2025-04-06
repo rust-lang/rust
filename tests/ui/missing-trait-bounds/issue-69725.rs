@@ -7,7 +7,7 @@ use issue_69725::Struct;
 
 fn crash<A>() {
     let _ = Struct::<A>::new().clone();
-    //~^ ERROR: the method
+    //~^ ERROR the method
 }
 
 fn main() {}

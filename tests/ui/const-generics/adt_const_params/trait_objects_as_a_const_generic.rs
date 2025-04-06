@@ -6,7 +6,7 @@ use std::marker::UnsizedConstParamTy;
 trait Trait {}
 
 impl UnsizedConstParamTy for dyn Trait {}
-//~^ ERROR: the trait `ConstParamTy` may not be implemented for this type
+//~^ ERROR the trait `ConstParamTy` may not be implemented for this type
 
 fn foo<const N: dyn Trait>() {}
 

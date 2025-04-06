@@ -16,6 +16,6 @@ trait MyTrait<'a> {}
 
 impl<'a, T: MyPredicate<'a>> MyTrait<'a> for T {}
 impl<'a, T> MyTrait<'a> for &'a T {}
-//[stock]~^ ERROR: conflicting implementations of trait `MyTrait<'_>` for type `&_`
+//[stock]~^ ERROR conflicting implementations of trait `MyTrait<'_>` for type `&_`
 
 fn main() {}

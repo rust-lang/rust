@@ -8,5 +8,5 @@
 
 fn main() {
     let foo = 22;
-    let u32::XXX = foo else { return }; //~ ERROR: no associated item named `XXX` found for type `u32` in the current scope [E0599]
+    let u32::XXX = foo else { return }; //~ ERROR no associated item named `XXX` found for type `u32` in the current scope [E0599]
 }

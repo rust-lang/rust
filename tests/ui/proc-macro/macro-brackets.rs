@@ -8,7 +8,7 @@ macro_rules! id {
 }
 
 #[identity_attr]
-id![static X: u32 = 'a';]; //~ ERROR: mismatched types
+id![static X: u32 = 'a';]; //~ ERROR mismatched types
 
 
 fn main() {}

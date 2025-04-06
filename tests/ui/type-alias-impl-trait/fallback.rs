@@ -23,7 +23,7 @@ fn constrained_foo() -> Foo {
 #[define_opaque(Foo)]
 fn unconstrained_foo() -> Wrapper<Foo> {
     Wrapper::Second
-    //~^ ERROR: type annotations needed
+    //~^ ERROR type annotations needed
 }
 
 fn main() {}

@@ -1,4 +1,4 @@
-//~ ERROR: cycle detected
+//~ ERROR cycle detected
 //! Safe transmute did not handle cycle errors that could occur during
 //! layout computation. This test checks that we do not ICE in such
 //! situations (see #117491).
@@ -19,7 +19,7 @@ mod assert {
 fn should_pad_explicitly_packed_field() {
     #[repr(C)]
     struct ExplicitlyPadded(ExplicitlyPadded);
-    //~^ ERROR: recursive type
+    //~^ ERROR recursive type
 
     assert::is_maybe_transmutable::<ExplicitlyPadded, ()>();
 }

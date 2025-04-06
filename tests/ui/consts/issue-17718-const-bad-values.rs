@@ -4,11 +4,11 @@
 #![allow(static_mut_refs)]
 
 const C1: &'static mut [usize] = &mut [];
-//~^ ERROR: mutable references are not allowed
+//~^ ERROR mutable references are not allowed
 
 static mut S: i32 = 3;
 const C2: &'static mut i32 = unsafe { &mut S };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR it is undefined behavior to use this value
 //~| reference to mutable memory
 
 fn main() {}

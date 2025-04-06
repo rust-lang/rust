@@ -22,7 +22,7 @@ fn bar<T: Trait<Assoc = u32>>(_: T) {}
 fn main() {
     let foo = Foo(Default::default());
     bar(foo);
-    //~^ ERROR: type mismatch resolving `<Foo<_> as Trait>::Assoc == u32`
+    //~^ ERROR type mismatch resolving `<Foo<_> as Trait>::Assoc == u32`
     // Here diagnostics would manually construct a `<Foo<?y> as Trait>::Assoc normalizes-to ?x` goal
     // which would return a nested goal of `?y: Sized` from the impl.
 }

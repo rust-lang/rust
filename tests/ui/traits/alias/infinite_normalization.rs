@@ -6,6 +6,6 @@
 #![feature(trait_alias)]
 fn foo<T: Baz<i32>>() {}
 trait Baz<A> = Baz<Option<A>>;
-//~^ ERROR: cycle detected when computing the implied predicates of `Baz`
+//~^ ERROR cycle detected when computing the implied predicates of `Baz`
 
 fn main() {}

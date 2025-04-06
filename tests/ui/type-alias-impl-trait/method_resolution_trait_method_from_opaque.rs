@@ -24,9 +24,9 @@ impl Foo {
 
     #[define_opaque(Tait)]
     fn foo(&mut self) {
-        //[current]~^ ERROR: item does not constrain
+        //[current]~^ ERROR item does not constrain
         self.bar.next().unwrap();
-        //[next]~^ ERROR: type annotations needed
+        //[next]~^ ERROR type annotations needed
     }
 }
 

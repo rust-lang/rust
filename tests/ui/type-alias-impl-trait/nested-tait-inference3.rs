@@ -11,7 +11,7 @@ impl Foo<FooX> for () {}
 
 #[define_opaque(FooX)]
 fn foo() -> impl Foo<FooX> {
-    //~^ ERROR: item does not constrain
+    //~^ ERROR item does not constrain
     ()
 }
 

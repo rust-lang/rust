@@ -55,4 +55,4 @@ fn baz() {
         {
             && let () = ()
     }
-} //~ERROR: this file contains an unclosed delimiter
+} //~ERROR this file contains an unclosed delimiter

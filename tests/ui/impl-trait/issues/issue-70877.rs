@@ -23,17 +23,17 @@ pub fn quux(st: FooArg) -> FooRet {
 pub type Foo = impl Iterator<Item = FooItem>;
 #[define_opaque(Foo)]
 pub fn ham() -> Foo {
-    //~^ ERROR: item does not constrain `FooRet::{opaque#0}`
+    //~^ ERROR item does not constrain `FooRet::{opaque#0}`
     Bar(1)
 }
 #[define_opaque(Foo)]
 pub fn oof() -> impl std::fmt::Debug {
-    //~^ ERROR: item does not constrain `FooRet::{opaque#0}`
-    //~| ERROR: item does not constrain `Foo::{opaque#0}`
+    //~^ ERROR item does not constrain `FooRet::{opaque#0}`
+    //~| ERROR item does not constrain `Foo::{opaque#0}`
     let mut bar = ham();
     let func = bar.next().unwrap();
     return func(&"oof");
-    //~^ ERROR: opaque type's hidden type cannot be another opaque type
+    //~^ ERROR opaque type's hidden type cannot be another opaque type
 }
 
 fn main() {

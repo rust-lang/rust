@@ -5,7 +5,7 @@ trait Trait<T> {}
 impl<T, U> Trait<T> for U {}
 
 fn hello() -> &'static (dyn Trait<impl Sized> + Send) {
-    //~^ ERROR: type annotations needed
+    //~^ ERROR type annotations needed
     if false {
         let x = hello();
         let _: &'static dyn Trait<()> = &x;

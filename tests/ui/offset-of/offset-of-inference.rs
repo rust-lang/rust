@@ -5,5 +5,5 @@ struct Foo<T> {
 }
 
 fn main() {
-    let _ = core::mem::offset_of!(Foo<_>, x); //~ ERROR: type annotations needed
+    let _ = core::mem::offset_of!(Foo<_>, x); //~ ERROR type annotations needed
 }

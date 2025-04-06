@@ -5,7 +5,7 @@
 
 fn main() {
     if let a = "" {
-        //~^ WARNING: irrefutable `if let` pattern
+        //~^ WARNING irrefutable `if let` pattern
         drop(|_: ()| drop(a));
     }
 }

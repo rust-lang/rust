@@ -8,5 +8,5 @@
 pub trait Sized {}
 
 #[target_feature(enable = "forced-atomics")]
-//~^ERROR: cannot be enabled with
+//~^ERROR cannot be enabled with
 pub unsafe fn my_fun() {}

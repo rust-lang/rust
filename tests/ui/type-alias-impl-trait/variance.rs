@@ -6,21 +6,21 @@ trait Captures<'a> {}
 impl<T> Captures<'_> for T {}
 
 type NotCapturedEarly<'a> = impl Sized; //~ ['a: *, 'a: o]
-//~^ ERROR: unconstrained opaque type
+//~^ ERROR unconstrained opaque type
 
 type CapturedEarly<'a> = impl Sized + Captures<'a>; //~ ['a: *, 'a: o]
-//~^ ERROR: unconstrained opaque type
+//~^ ERROR unconstrained opaque type
 
 type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>; //~ ['a: *, 'a: o, 'b: o]
 //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
-//~| ERROR: unconstrained opaque type
+//~| ERROR unconstrained opaque type
 
 type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>; //~ ['a: *, 'a: o, 'b: o]
 //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
-//~| ERROR: unconstrained opaque type
+//~| ERROR unconstrained opaque type
 
 type Bar<'a, 'b: 'b, T> = impl Sized; //~ ERROR ['a: *, 'b: *, T: o, 'a: o, 'b: o]
-//~^ ERROR: unconstrained opaque type
+//~^ ERROR unconstrained opaque type
 
 trait Foo<'i> {
     type ImplicitCapture<'a>;
@@ -32,24 +32,24 @@ trait Foo<'i> {
 
 impl<'i> Foo<'i> for &'i () {
     type ImplicitCapture<'a> = impl Sized; //~ ['i: *, 'a: *, 'i: o, 'a: o]
-    //~^ ERROR: unconstrained opaque type
+    //~^ ERROR unconstrained opaque type
 
     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>; //~ ['i: *, 'a: *, 'i: o, 'a: o]
-    //~^ ERROR: unconstrained opaque type
+    //~^ ERROR unconstrained opaque type
 
     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>; //~ ['i: *, 'a: *, 'i: o, 'a: o]
-    //~^ ERROR: unconstrained opaque type
+    //~^ ERROR unconstrained opaque type
 }
 
 impl<'i> Foo<'i> for () {
     type ImplicitCapture<'a> = impl Sized; //~ ['i: *, 'a: *, 'i: o, 'a: o]
-    //~^ ERROR: unconstrained opaque type
+    //~^ ERROR unconstrained opaque type
 
     type ExplicitCaptureFromHeader<'a> = impl Sized + Captures<'i>; //~ ['i: *, 'a: *, 'i: o, 'a: o]
-    //~^ ERROR: unconstrained opaque type
+    //~^ ERROR unconstrained opaque type
 
     type ExplicitCaptureFromGat<'a> = impl Sized + Captures<'a>; //~ ['i: *, 'a: *, 'i: o, 'a: o]
-    //~^ ERROR: unconstrained opaque type
+    //~^ ERROR unconstrained opaque type
 }
 
 trait Nesting<'a> {

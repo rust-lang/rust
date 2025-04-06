@@ -9,7 +9,7 @@ trait MySized {}
 
 #[lang = "add"]
 trait MyAdd<'a, T> {}
-//~^^ ERROR: `add` lang item must be applied to a trait with 1 generic argument [E0718]
+//~^^ ERROR `add` lang item must be applied to a trait with 1 generic argument [E0718]
 
 #[lang = "drop_in_place"]
 //~^ ERROR `drop_in_place` lang item must be applied to a function with at least 1 generic
@@ -17,7 +17,7 @@ fn my_ptr_drop() {}
 
 #[lang = "index"]
 trait MyIndex<'a, T> {}
-//~^^ ERROR: `index` lang item must be applied to a trait with 1 generic argument [E0718]
+//~^^ ERROR `index` lang item must be applied to a trait with 1 generic argument [E0718]
 
 #[lang = "phantom_data"]
 //~^ ERROR `phantom_data` lang item must be applied to a struct with 1 generic argument

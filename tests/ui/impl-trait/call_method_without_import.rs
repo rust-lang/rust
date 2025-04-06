@@ -15,7 +15,7 @@ fn foo(f: &mut std::fmt::Formatter<'_>) -> impl std::fmt::Debug {
     if false {
         let x = foo(f);
         x.fmt(f);
-        //[no_import]~^ ERROR: no method named `fmt` found
+        //[no_import]~^ ERROR no method named `fmt` found
     }
     ()
 }
@@ -24,7 +24,7 @@ fn foo1(f: &mut std::fmt::Formatter<'_>) -> impl std::fmt::Debug {
     if false {
         let x = &mut foo(f);
         x.fmt(f);
-        //[no_import]~^ ERROR: no method named `fmt` found
+        //[no_import]~^ ERROR no method named `fmt` found
     }
     ()
 }

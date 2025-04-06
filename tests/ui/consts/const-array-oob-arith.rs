@@ -3,10 +3,10 @@ const IDX: usize = 3;
 const VAL: i32 = ARR[IDX];
 const BONG: [i32; (ARR[0] - 41) as usize] = [5];
 const BLUB: [i32; (ARR[0] - 40) as usize] = [5];
-//~^ ERROR: mismatched types
+//~^ ERROR mismatched types
 //~| expected an array
 const BOO: [i32; (ARR[0] - 41) as usize] = [5, 99];
-//~^ ERROR: mismatched types
+//~^ ERROR mismatched types
 //~| expected an array
 
 fn main() {

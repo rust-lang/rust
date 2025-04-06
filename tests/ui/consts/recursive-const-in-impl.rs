@@ -8,5 +8,5 @@ impl<T> Thing<T> {
 }
 
 fn main() {
-    println!("{}", Thing::<i32>::X); //~ ERROR: queries overflow the depth limit!
+    println!("{}", Thing::<i32>::X); //~ ERROR queries overflow the depth limit!
 }

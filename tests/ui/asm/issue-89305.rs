@@ -11,6 +11,6 @@ use std::arch::asm;
 fn main() {
     unsafe {
         let x: () = asm!("nop");
-        //~^ WARNING: unused variable: `x`
+        //~^ WARNING unused variable: `x`
     }
 }

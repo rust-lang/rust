@@ -10,7 +10,7 @@ where
     [(); { N + 1 }]:,
     [(); { N + 2 }]:, {
     Foo::<N, { N + 2 }>
-    //~^ error: mismatched types
+    //~^ error mismatched types
 }
 
 fn main() {}

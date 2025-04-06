@@ -3,7 +3,7 @@
 
 enum Variant {
     A,
-    B, //~ WARNING: variant `B` is never constructed
+    B, //~ WARNING variant `B` is never constructed
 }
 
 struct A {
@@ -14,7 +14,7 @@ fn discriminant_is_a_ref() {
     let here = A { field: Variant::A };
     let out_ref = &here.field;
 
-    || match out_ref { //~ WARNING: unused closure that must be used
+    || match out_ref { //~ WARNING unused closure that must be used
         Variant::A => (),
         Variant::B => (),
     };
@@ -23,7 +23,7 @@ fn discriminant_is_a_ref() {
 fn discriminant_is_a_field() {
     let here = A { field: Variant::A };
 
-    || match here.field { //~ WARNING: unused closure that must be used
+    || match here.field { //~ WARNING unused closure that must be used
         Variant::A => (),
         Variant::B => (),
     };

@@ -7,7 +7,7 @@
 #![cfg_attr(full, allow(incomplete_features))]
 
 struct Collatz<const N: Option<usize>>;
-//~^ ERROR: `Option<usize>` is forbidden
+//~^ ERROR `Option<usize>` is forbidden
 
 impl <const N: usize> Collatz<{Some(N)}> {}
 //~^ ERROR the const parameter

@@ -18,7 +18,7 @@ fn is_send<T: Send>(_: T) {}
 
 fn main() {
     is_send(foo());
-    //~^ ERROR: `Rc<u32>` cannot be sent between threads safely [E0277]
+    //~^ ERROR `Rc<u32>` cannot be sent between threads safely [E0277]
     //~| NOTE cannot be sent
     //~| NOTE required by a bound
 }

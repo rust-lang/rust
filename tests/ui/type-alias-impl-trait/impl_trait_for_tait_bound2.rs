@@ -9,7 +9,7 @@ impl Yay for u32 {}
 
 #[define_opaque(Foo)]
 fn foo() {
-    is_yay::<Foo>(); //~ ERROR: the trait bound `Foo: Yay` is not satisfied
+    is_yay::<Foo>(); //~ ERROR the trait bound `Foo: Yay` is not satisfied
 }
 
 fn is_yay<T: Yay>() {}

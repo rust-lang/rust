@@ -24,11 +24,11 @@ static BOO: &mut Foo<()> = &mut Foo(());
 //~^ ERROR encountered mutable pointer in final value of static
 
 const BLUNT: &mut i32 = &mut 42;
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR it is undefined behavior to use this value
 //~| pointing to read-only memory
 
 const SUBTLE: &mut i32 = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     //~| constructing invalid value: encountered reference to mutable memory in `const`
     static mut STATIC: i32 = 0;
     &mut STATIC
@@ -59,31 +59,31 @@ unsafe impl Sync for Synced {}
 
 // Make sure we also catch this behind a type-erased `dyn Trait` reference.
 const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR it is undefined behavior to use this value
 //~| `UnsafeCell` in read-only memory
 
 // # Check for mutable references to read-only memory
 
 static READONLY: i32 = 0;
 static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR it is undefined behavior to use this value
 //~| pointing to read-only memory
 
 // # Check for consts pointing to mutable memory
 
 static mut MUTABLE: i32 = 42;
-const POINTS_TO_MUTABLE: &i32 = unsafe { &MUTABLE }; //~ERROR: undefined behavior
+const POINTS_TO_MUTABLE: &i32 = unsafe { &MUTABLE }; //~ERROR undefined behavior
 //~| encountered reference to mutable memory
 static mut MUTABLE_REF: &mut i32 = &mut 42;
 const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
-//~^ ERROR: evaluation of constant value failed
+//~^ ERROR evaluation of constant value failed
 //~| accesses mutable global memory
 
 const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
-//~^ ERROR: mutable pointer in final value
+//~^ ERROR mutable pointer in final value
 
 const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
-//~^ ERROR: mutable pointer in final value
+//~^ ERROR mutable pointer in final value
 
 // This does *not* error since it uses a shared reference, and we have to ignore
 // those. See <https://github.com/rust-lang/rust/pull/128543>.

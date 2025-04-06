@@ -5,7 +5,7 @@
 
 pub trait C {
     async fn new() -> [u8; _];
-    //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
     //~| ERROR using `_` for array lengths is unstable
 }
 

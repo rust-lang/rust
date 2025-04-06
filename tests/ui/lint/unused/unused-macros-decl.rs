@@ -4,7 +4,7 @@
 #![deny(unused_macro_rules)]
 
 // Most simple case
-macro unused { //~ ERROR: unused macro definition
+macro unused { //~ ERROR unused macro definition
     () => {}
 }
 
@@ -14,13 +14,13 @@ mod bar {
     // works.
 
     #[deny(unused_macros)]
-    macro unused { //~ ERROR: unused macro definition
+    macro unused { //~ ERROR unused macro definition
         () => {}
     }
 }
 
 mod boo {
-    pub(crate) macro unused { //~ ERROR: unused macro definition
+    pub(crate) macro unused { //~ ERROR unused macro definition
         () => {}
     }
 }

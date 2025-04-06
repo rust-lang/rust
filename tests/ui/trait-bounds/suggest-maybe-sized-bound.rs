@@ -6,7 +6,7 @@ fn main() {
 
     struct StructB {
         a: StructA<isize, [u8]>,
-        //~^ ERROR: the size for values of type `[u8]` cannot be known at compilation time [E0277]
+        //~^ ERROR the size for values of type `[u8]` cannot be known at compilation time [E0277]
     }
 
     trait Trait {
@@ -15,6 +15,6 @@ fn main() {
 
     impl Trait for () {
         type P<X> = [u8];
-        //~^ ERROR: the size for values of type `[u8]` cannot be known at compilation time [E0277]
+        //~^ ERROR the size for values of type `[u8]` cannot be known at compilation time [E0277]
     }
 }

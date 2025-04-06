@@ -4,7 +4,7 @@
 
 fn moved() -> impl Iterator<Item = u32> {
     let mut x = "foo".to_string();
-    gen { //~ ERROR: gen block may outlive the current function
+    gen { //~ ERROR gen block may outlive the current function
         yield 42;
         if x == "foo" { return }
         x.clear();

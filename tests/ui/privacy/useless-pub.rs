@@ -5,7 +5,7 @@ pub trait E {
 }
 
 impl E for A {
-    pub fn foo(&self) {} //~ ERROR: visibility qualifiers are not permitted here
+    pub fn foo(&self) {} //~ ERROR visibility qualifiers are not permitted here
 }
 
 enum Foo {

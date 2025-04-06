@@ -8,14 +8,14 @@ async fn func() -> Result<u16, u64> {
     }.await?;
 
     Ok(())
-    //~^ ERROR: mismatched types [E0308]
+    //~^ ERROR mismatched types [E0308]
 }
 
 async fn func2() -> Result<u16, u64> {
     Err(42u64)?;
 
     Ok(())
-    //~^ ERROR: mismatched types [E0308]
+    //~^ ERROR mismatched types [E0308]
 }
 
 fn main() {
@@ -24,6 +24,6 @@ fn main() {
             return Err(42u64);
         }
         Ok(())
-        //~^ ERROR: mismatched types [E0308]
+        //~^ ERROR mismatched types [E0308]
     };
 }

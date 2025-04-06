@@ -11,7 +11,7 @@ trait Trait: Sized {
 impl Trait for () {
     type Assoc = impl std::fmt::Debug;
     type Foo = [(); {
-        let x: Self::Assoc = 42; //~ ERROR: mismatched types
+        let x: Self::Assoc = 42; //~ ERROR mismatched types
         3
     }];
     fn foo() -> Self::Assoc {

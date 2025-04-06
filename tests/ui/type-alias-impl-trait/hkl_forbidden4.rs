@@ -11,7 +11,7 @@ type FutNothing<'a> = impl 'a + Future<Output = ()>;
 
 async fn operation(_: &mut ()) -> () {
     call(operation).await
-    //~^ ERROR: concrete type differs from previous
+    //~^ ERROR concrete type differs from previous
 }
 
 #[define_opaque(FutNothing)]

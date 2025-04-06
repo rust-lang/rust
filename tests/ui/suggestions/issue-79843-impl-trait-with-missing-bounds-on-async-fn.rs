@@ -12,7 +12,7 @@ trait Foo {
 async fn run(_: &(), foo: impl Foo) -> std::io::Result<()> {
     let bar = foo.bar();
     assert_is_send(&bar);
-//~^ ERROR: `<impl Foo as Foo>::Bar` cannot be sent between threads safely
+//~^ ERROR `<impl Foo as Foo>::Bar` cannot be sent between threads safely
 
     Ok(())
 }
@@ -22,7 +22,7 @@ async fn run(_: &(), foo: impl Foo) -> std::io::Result<()> {
 async fn run2< >(_: &(), foo: impl Foo) -> std::io::Result<()> {
     let bar = foo.bar();
     assert_is_send(&bar);
-//~^ ERROR: `<impl Foo as Foo>::Bar` cannot be sent between threads safely
+//~^ ERROR `<impl Foo as Foo>::Bar` cannot be sent between threads safely
 
     Ok(())
 }

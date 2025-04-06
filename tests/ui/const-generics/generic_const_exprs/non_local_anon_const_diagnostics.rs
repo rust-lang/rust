@@ -10,7 +10,7 @@ where
     [(); M + 1]:,
 {
     let _: anon_const_non_local::Foo<2> = anon_const_non_local::foo::<M>();
-    //~^ ERROR: mismatched types
+    //~^ ERROR mismatched types
 }
 
 fn main() {}

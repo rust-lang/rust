@@ -7,7 +7,7 @@ where
     [(); M + 1]:,
 {
     bar()
-    //~^ ERROR: unconstrained
+    //~^ ERROR unconstrained
 }
 
 fn bar<const N: usize>() -> [(); N]

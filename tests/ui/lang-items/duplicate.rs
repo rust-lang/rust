@@ -3,7 +3,7 @@
 
 #[lang = "sized"]
 trait Sized {}
-//~^ ERROR: duplicate lang item
+//~^ ERROR duplicate lang item
 
 #[lang = "tuple_trait"]
 pub trait Tuple {}

@@ -16,7 +16,7 @@ mod b {
     }
     #[macro_export]
     macro_rules! b { () => () }
-    //~^ ERROR: the name `b` is defined multiple times
+    //~^ ERROR the name `b` is defined multiple times
 }
 mod c {
     #[allow(unused_imports)]

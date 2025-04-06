@@ -16,7 +16,7 @@ where
 
 fn bad<T>(f: fn(&'static str) -> T) {
     test(Compose(f, |_| {}));
-    //~^ ERROR: implementation of `FnOnce` is not general enough
+    //~^ ERROR implementation of `FnOnce` is not general enough
 }
 
 fn main() {}

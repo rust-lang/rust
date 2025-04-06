@@ -12,7 +12,7 @@ fn arrays_1() {
     // c will capture `arr` completely, therefore another index into the
     // array can't be modified here
     arr[1] += 10;
-    //~^ ERROR: cannot use `arr[_]` because it was mutably borrowed
+    //~^ ERROR cannot use `arr[_]` because it was mutably borrowed
     c();
 }
 
@@ -26,7 +26,7 @@ fn arrays_2() {
     // c will capture `arr` completely, therefore another index into the
     // array can't be modified here
     arr[1] += 10;
-    //~^ ERROR: cannot assign to `arr[_]` because it is borrowed
+    //~^ ERROR cannot assign to `arr[_]` because it is borrowed
     c();
 }
 
@@ -40,7 +40,7 @@ fn arrays_3() {
     // c will capture `arr` completely, therefore another index into the
     // array can't be modified here
     arr[1] += 10;
-    //~^ ERROR: cannot assign to `arr[_]` because it is borrowed
+    //~^ ERROR cannot assign to `arr[_]` because it is borrowed
     c();
 }
 
@@ -54,7 +54,7 @@ fn arrays_4() {
     // c will capture `arr` completely, therefore we cannot borrow another index
     // into the array.
     println!("{}", arr[3]);
-    //~^ ERROR: cannot borrow `arr[_]` as immutable because it is also borrowed as mutable
+    //~^ ERROR cannot borrow `arr[_]` as immutable because it is also borrowed as mutable
 
     c();
 }
@@ -69,7 +69,7 @@ fn arrays_5() {
     // c will capture `arr` completely, therefore we cannot borrow other indices
     // into the array.
     println!("{:#?}", &arr[3..2]);
-    //~^ ERROR: cannot borrow `arr` as immutable because it is also borrowed as mutable
+    //~^ ERROR cannot borrow `arr` as immutable because it is also borrowed as mutable
 
     c();
 }

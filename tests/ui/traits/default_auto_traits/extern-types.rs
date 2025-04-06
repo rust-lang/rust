@@ -42,7 +42,7 @@ mod extern_non_leak {
     impl !Leak for Opaque {}
     fn forward_extern_ty(x: &Opaque) {
         foo(x);
-        //~^ ERROR: the trait bound `extern_non_leak::Opaque: Leak` is not satisfied
+        //~^ ERROR the trait bound `extern_non_leak::Opaque: Leak` is not satisfied
     }
 }
 

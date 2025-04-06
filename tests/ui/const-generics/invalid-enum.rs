@@ -21,17 +21,17 @@ impl<const CF: CompileFlag, T> Example<CF, T> {
 
 pub fn main() {
   test_1::<CompileFlag::A>();
-  //~^ ERROR: expected type, found variant
-  //~| ERROR: unresolved item provided when a constant was expected
+  //~^ ERROR expected type, found variant
+  //~| ERROR unresolved item provided when a constant was expected
 
   test_2::<_, CompileFlag::A>(0);
-  //~^ ERROR: expected type, found variant
-  //~| ERROR: unresolved item provided when a constant was expected
+  //~^ ERROR expected type, found variant
+  //~| ERROR unresolved item provided when a constant was expected
 
   let _: Example<CompileFlag::A, _> = Example { x: 0 };
-  //~^ ERROR: expected type, found variant
-  //~| ERROR: unresolved item provided when a constant was expected
+  //~^ ERROR expected type, found variant
+  //~| ERROR unresolved item provided when a constant was expected
 
   let _: Example<Example::ASSOC_FLAG, _> = Example { x: 0 };
-  //~^ ERROR: type provided when a constant was expected
+  //~^ ERROR type provided when a constant was expected
 }

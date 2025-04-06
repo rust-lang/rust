@@ -18,7 +18,7 @@ fn validity() {
     assert::is_maybe_transmutable::<u8, MaybeUninit<u8>>();
 
     // An uninitialized byte is never a valid initialized byte.
-    assert::is_maybe_transmutable::<MaybeUninit<u8>, u8>(); //~ ERROR: cannot be safely transmuted
+    assert::is_maybe_transmutable::<MaybeUninit<u8>, u8>(); //~ ERROR cannot be safely transmuted
 }
 
 fn padding() {

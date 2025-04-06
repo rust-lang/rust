@@ -6,7 +6,7 @@ pub const fn test(_: &Type) {
 
     let local = Type;
     become takes_borrow(&local);
-    //~^ error: `local` does not live long enough
+    //~^ error `local` does not live long enough
 }
 
 struct Type;

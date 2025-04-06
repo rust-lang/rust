@@ -67,7 +67,7 @@ trait Baz {}
 //~^ NOTE not a function
 
 #[inline(always)]
-//~^ ERROR: cannot use `#[inline(always)]`
+//~^ ERROR cannot use `#[inline(always)]`
 #[target_feature(enable = "sse2")]
 unsafe fn test() {}
 
@@ -90,7 +90,7 @@ impl Foo {}
 
 trait Quux {
     fn foo(); //~ NOTE `foo` from trait
-    //~^ NOTE: type in trait
+    //~^ NOTE type in trait
 }
 
 impl Quux for Foo {
@@ -99,9 +99,9 @@ impl Quux for Foo {
     //~| NOTE cannot be applied to safe trait method
     fn foo() {}
     //~^ NOTE not an `unsafe` function
-    //~| ERROR: incompatible type for trait
-    //~| NOTE: expected safe fn, found unsafe fn
-    //~| NOTE: expected signature `fn()`
+    //~| ERROR incompatible type for trait
+    //~| NOTE expected safe fn, found unsafe fn
+    //~| NOTE expected signature `fn()`
 }
 
 fn main() {

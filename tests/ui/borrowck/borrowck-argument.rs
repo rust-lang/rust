@@ -7,18 +7,18 @@ impl S {
 }
 
 fn func(arg: S) {
-    arg.mutate(); //~ ERROR: cannot borrow `arg` as mutable, as it is not declared as mutable
+    arg.mutate(); //~ ERROR cannot borrow `arg` as mutable, as it is not declared as mutable
 }
 
 impl S {
     fn method(&self, arg: S) {
-        arg.mutate(); //~ ERROR: cannot borrow `arg` as mutable, as it is not declared as mutable
+        arg.mutate(); //~ ERROR cannot borrow `arg` as mutable, as it is not declared as mutable
     }
 }
 
 trait T {
     fn default(&self, arg: S) {
-        arg.mutate(); //~ ERROR: cannot borrow `arg` as mutable, as it is not declared as mutable
+        arg.mutate(); //~ ERROR cannot borrow `arg` as mutable, as it is not declared as mutable
     }
 }
 
@@ -30,5 +30,5 @@ fn main() {
     s.method(s);
     s.default(s);
     (|arg: S| { arg.mutate() })(s);
-    //~^ ERROR: cannot borrow `arg` as mutable, as it is not declared as mutable
+    //~^ ERROR cannot borrow `arg` as mutable, as it is not declared as mutable
 }

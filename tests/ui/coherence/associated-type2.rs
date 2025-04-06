@@ -9,7 +9,7 @@ trait ToUnit {
 }
 
 impl<T> ToUnit for *const T {}
-//~^ ERROR: not all trait items implemented
+//~^ ERROR not all trait items implemented
 
 trait Overlap<T> {}
 

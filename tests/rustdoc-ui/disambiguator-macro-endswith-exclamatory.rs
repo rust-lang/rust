@@ -1,6 +1,6 @@
 //@ check-pass
 
-//! [macro@m!] //~ WARN: unresolved link to `m`
+//! [macro@m!] //~ WARN unresolved link to `m`
 
 //issue#126986
 

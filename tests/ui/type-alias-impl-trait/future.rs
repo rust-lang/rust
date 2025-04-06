@@ -14,7 +14,7 @@ type FooFuture<B> = impl Future<Output = ()>;
 #[define_opaque(FooFuture)]
 fn foo<B: Bar>(bar: B) -> FooFuture<B> {
     async move { bar.bar() }
-    //~^ ERROR: the trait bound `B: Bar` is not satisfied
+    //~^ ERROR the trait bound `B: Bar` is not satisfied
 }
 
 pub fn mainish(ctx: &mut std::task::Context) {

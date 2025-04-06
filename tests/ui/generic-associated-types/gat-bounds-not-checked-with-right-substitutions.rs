@@ -17,7 +17,7 @@ trait Gat {
 }
 
 impl Gat for () {
-    type Gat<'a> = &'a str; //~ ERROR: implementation of `Lengthen` is not general enough
+    type Gat<'a> = &'a str; //~ ERROR implementation of `Lengthen` is not general enough
 }
 
 fn main() {

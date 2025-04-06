@@ -21,7 +21,7 @@ where
     T: SubEncoder,
 {
     type Size = <Self as SubEncoder>::ActualSize;
-    //~^ ERROR: cannot add `<T as SubEncoder>::ActualSize` to `<T as SubEncoder>::ActualSize`
+    //~^ ERROR cannot add `<T as SubEncoder>::ActualSize` to `<T as SubEncoder>::ActualSize`
 
     fn foo(&self) -> Self::Size {
         self.bar() + self.bar()

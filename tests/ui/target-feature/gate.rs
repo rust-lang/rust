@@ -28,7 +28,7 @@
 // gate-test-m68k_target_feature
 
 #[target_feature(enable = "avx512bw")]
-//~^ ERROR: currently unstable
+//~^ ERROR currently unstable
 unsafe fn foo() {}
 
 fn main() {}

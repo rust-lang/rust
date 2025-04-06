@@ -10,7 +10,7 @@ struct Test<'a> {
 
 fn call<F>(mut f: F) where F: FnMut(Fn) {
     f(Box::new(|| {
-    //~^ ERROR: cannot borrow `f` as mutable more than once
+    //~^ ERROR cannot borrow `f` as mutable more than once
         f((Box::new(|| {})))
     }));
 }
@@ -32,7 +32,7 @@ fn test3<F>(f: &mut F) where F: FnMut() {
 
 fn test4(f: &Test) {
     f.f.call_mut(())
-    //~^ ERROR: cannot borrow `f.f` as mutable, as it is behind a `&` reference
+    //~^ ERROR cannot borrow `f.f` as mutable, as it is behind a `&` reference
 }
 
 fn test5(f: &mut Test) {

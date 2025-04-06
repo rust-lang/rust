@@ -15,14 +15,14 @@ fn main() {
     fn assert_send<T: Send>(_: T) {}
 
     assert_sync(#[coroutine] || {
-        //~^ ERROR: coroutine cannot be shared between threads safely
+        //~^ ERROR coroutine cannot be shared between threads safely
         let a = NotSync;
         yield;
         drop(a);
     });
 
     assert_send(#[coroutine] || {
-        //~^ ERROR: coroutine cannot be sent between threads safely
+        //~^ ERROR coroutine cannot be sent between threads safely
         let a = NotSend;
         yield;
         drop(a);

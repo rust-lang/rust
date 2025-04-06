@@ -6,7 +6,7 @@
 use std::fmt::Debug;
 
 fn main() {
-    //~^ ERROR: item does not constrain
+    //~^ ERROR item does not constrain
     type Existential = impl Debug;
 
     #[define_opaque(Existential)]

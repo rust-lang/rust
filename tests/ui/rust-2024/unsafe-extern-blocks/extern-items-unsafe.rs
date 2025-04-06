@@ -9,8 +9,8 @@ unsafe extern "C" {
 
 fn test2() {
     test1(TEST1);
-    //~^ ERROR: call to unsafe function `test1` is unsafe
-    //~| ERROR: use of extern static is unsafe
+    //~^ ERROR call to unsafe function `test1` is unsafe
+    //~| ERROR use of extern static is unsafe
 }
 
 fn test3() {

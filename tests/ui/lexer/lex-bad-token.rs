@@ -1,3 +1,3 @@
-● //~ ERROR: unknown start of token
+● //~ ERROR unknown start of token
 
 fn main() {}

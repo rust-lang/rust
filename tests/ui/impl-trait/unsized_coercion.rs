@@ -12,7 +12,7 @@ impl Trait for u32 {}
 fn hello() -> Box<impl Trait> {
     if true {
         let x = hello();
-        //[next]~^ ERROR: the size for values of type `dyn Trait` cannot be known at compilation time
+        //[next]~^ ERROR the size for values of type `dyn Trait` cannot be known at compilation time
         let y: Box<dyn Trait> = x;
     }
     Box::new(1u32)

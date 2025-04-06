@@ -13,7 +13,7 @@ impl Foo for () {
 
 // Must not be allowed
 impl Foo for i32 {}
-//~^ ERROR: not all trait items implemented, missing: `foo`
+//~^ ERROR not all trait items implemented, missing: `foo`
 
 impl Foo for dyn std::fmt::Debug {}
 
@@ -37,6 +37,6 @@ trait Trait {
         Self: Sized;
 }
 impl<T: ?Sized> Trait for T {}
-//~^ ERROR: not all trait items implemented, missing: `foo`
+//~^ ERROR not all trait items implemented, missing: `foo`
 
 fn main() {}

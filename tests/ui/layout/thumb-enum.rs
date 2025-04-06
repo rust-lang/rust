@@ -15,22 +15,22 @@ use minicore::*;
 
 #[rustc_layout(debug)]
 #[repr(C)]
-enum A { Apple } //~ ERROR: layout_of
+enum A { Apple } //~ ERROR layout_of
 
 #[rustc_layout(debug)]
 #[repr(C)]
-enum B { Banana = 255, } //~ ERROR: layout_of
+enum B { Banana = 255, } //~ ERROR layout_of
 
 #[rustc_layout(debug)]
 #[repr(C)]
-enum C { Chaenomeles = 256, } //~ ERROR: layout_of
+enum C { Chaenomeles = 256, } //~ ERROR layout_of
 
 #[rustc_layout(debug)]
 #[repr(C)]
-enum P { Peach = 0x1000_0000isize, } //~ ERROR: layout_of
+enum P { Peach = 0x1000_0000isize, } //~ ERROR layout_of
 
 const TANGERINE: usize = 0x8100_0000; // hack to get negative numbers without negation operator!
 
 #[rustc_layout(debug)]
 #[repr(C)]
-enum T { Tangerine = TANGERINE as isize } //~ ERROR: layout_of
+enum T { Tangerine = TANGERINE as isize } //~ ERROR layout_of

@@ -18,7 +18,7 @@ mod bar {
 pub fn foo() {}
 
 fn test2() {
-    use bar::glob::gpriv; //~ ERROR: module `glob` is private
+    use bar::glob::gpriv; //~ ERROR module `glob` is private
     gpriv();
 }
 

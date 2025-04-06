@@ -11,5 +11,5 @@ impl<const STRATEGIES: usize> Combination<STRATEGIES> {
 
 pub fn main() {
     Combination::<0>.and::<_>().and::<_>();
-    //~^ ERROR: type annotations needed
+    //~^ ERROR type annotations needed
 }

@@ -15,16 +15,16 @@ const fn const_main() {
     let x = 42;
     unsafe {
         unstable_intrinsic::size_of_val(&x);
-        //~^ERROR: unstable library feature `unstable`
-        //~|ERROR: not yet stable as a const intrinsic
+        //~^ERROR unstable library feature `unstable`
+        //~|ERROR not yet stable as a const intrinsic
         unstable_intrinsic::min_align_of_val(&x);
-        //~^ERROR: unstable library feature `unstable`
-        //~|ERROR: not yet stable as a const intrinsic
+        //~^ERROR unstable library feature `unstable`
+        //~|ERROR not yet stable as a const intrinsic
 
         size_of_val(&x);
-        //~^ERROR: cannot use `#[feature(local)]`
+        //~^ERROR cannot use `#[feature(local)]`
         min_align_of_val(&x);
-        //~^ERROR: cannot use `#[feature(local)]`
+        //~^ERROR cannot use `#[feature(local)]`
     }
 }
 

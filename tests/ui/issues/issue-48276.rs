@@ -9,7 +9,7 @@ struct A;
 
 impl<'a, 'b> MyFrom<A> for &'a str {
     fn from(self: &'a Self) -> &'b str {
-        //~^ ERROR: method `from` has a `&self` declaration in the impl, but not in the trait
+        //~^ ERROR method `from` has a `&self` declaration in the impl, but not in the trait
         "asdf"
     }
 }
@@ -18,14 +18,14 @@ struct B;
 
 impl From<A> for B {
     fn from(&self) -> B {
-        //~^ ERROR: method `from` has a `&self` declaration in the impl, but not in the trait
+        //~^ ERROR method `from` has a `&self` declaration in the impl, but not in the trait
         B
     }
 }
 
 impl From<A> for &'static str {
     fn from(&self) -> &'static str {
-        //~^ ERROR: method `from` has a `&self` declaration in the impl, but not in the trait
+        //~^ ERROR method `from` has a `&self` declaration in the impl, but not in the trait
         ""
     }
 }

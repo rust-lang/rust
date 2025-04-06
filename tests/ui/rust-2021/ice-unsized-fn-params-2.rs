@@ -5,7 +5,7 @@
 #![feature(unsized_fn_params)]
 
 fn guard(_s: Copy) -> bool {
-    //~^ ERROR: expected a type, found a trait
+    //~^ ERROR expected a type, found a trait
     panic!()
 }
 

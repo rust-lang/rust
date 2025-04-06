@@ -13,9 +13,9 @@ const fn stable_fn() {
     unstable_if_unmarked_const_fn_crate::expose_on_stable();
     // This one is not.
     unstable_if_unmarked_const_fn_crate::not_stably_const();
-    //~^ERROR: cannot use `#[feature(rustc_private)]`
+    //~^ERROR cannot use `#[feature(rustc_private)]`
     unmarked_const_fn_crate::just_a_fn();
-    //~^ERROR: cannot be (indirectly) exposed to stable
+    //~^ERROR cannot be (indirectly) exposed to stable
 }
 
 fn main() {}

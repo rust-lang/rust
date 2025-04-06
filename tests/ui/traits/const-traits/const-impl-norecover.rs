@@ -2,7 +2,7 @@
 
 struct Foo;
 
-const impl Foo { //~ ERROR: expected identifier, found keyword
+const impl Foo { //~ ERROR expected identifier, found keyword
     fn bar() {}
 }
 

@@ -80,7 +80,7 @@ impl<'a, R, T: Broadcastable, F: Fn(T::Element) -> R, const DIM: usize> TensorSi
     for BMap<'a, R, T, F, DIM>
 {
     fn size(&self) -> [usize; DIM] {
-        //~^ ERROR: method not compatible with trait
+        //~^ ERROR method not compatible with trait
         self.reference.size()
     }
 }
@@ -90,7 +90,7 @@ impl<'a, R, T: Broadcastable, F: Fn(T::Element) -> R, const DIM: usize> Broadcas
 {
     type Element = R;
     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
-        //~^ ERROR: method not compatible with trait
+        //~^ ERROR method not compatible with trait
         self.reference.bget(index).map(&self.closure)
     }
 }

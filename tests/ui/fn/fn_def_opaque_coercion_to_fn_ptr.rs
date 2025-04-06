@@ -16,7 +16,7 @@ type F = impl Sized;
 #[define_opaque(F)]
 fn f(a: F) {
     let mut x = bar::<F>;
-    x = foo::<()>; //~ ERROR: mismatched types
+    x = foo::<()>; //~ ERROR mismatched types
     x(a);
     x(());
 }
@@ -26,7 +26,7 @@ type I = impl Sized;
 #[define_opaque(I)]
 fn i(a: I) {
     let mut x = bar::<()>;
-    x = foo::<I>; //~ ERROR: mismatched types
+    x = foo::<I>; //~ ERROR mismatched types
     x(a);
     x(());
 }

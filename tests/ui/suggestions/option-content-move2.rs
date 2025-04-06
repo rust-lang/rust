@@ -9,7 +9,7 @@ fn foo() {
     func(|| {
         // Shouldn't suggest `move ||.as_ref()` here
         move || {
-        //~^ ERROR: cannot move out of `var`
+        //~^ ERROR cannot move out of `var`
             var = Some(NotCopyable);
         }
     });
@@ -19,7 +19,7 @@ fn bar() {
     func(|| {
         // Shouldn't suggest `move ||.as_ref()` nor to `clone()` here
         move || {
-        //~^ ERROR: cannot move out of `var`
+        //~^ ERROR cannot move out of `var`
             var = Some(NotCopyableButCloneable);
         }
     });

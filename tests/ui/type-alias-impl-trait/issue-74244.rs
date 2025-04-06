@@ -7,7 +7,7 @@ trait Allocator {
 struct DefaultAllocator;
 
 impl<T> Allocator for DefaultAllocator {
-    //~^ ERROR: the type parameter `T` is not constrained
+    //~^ ERROR the type parameter `T` is not constrained
     type Buffer = ();
 }
 

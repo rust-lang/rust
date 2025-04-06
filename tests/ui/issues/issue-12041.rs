@@ -6,7 +6,7 @@ fn main() {
     let _t = thread::spawn(move|| -> () {
         loop {
             let tx = tx;
-            //~^ ERROR: use of moved value: `tx`
+            //~^ ERROR use of moved value: `tx`
             tx.send(1);
         }
     });

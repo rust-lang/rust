@@ -4,7 +4,7 @@
 //@[edition2024] edition:2024
 
 
-#[no_mangle] //[edition2024]~ ERROR: unsafe attribute used without unsafe
+#[no_mangle] //[edition2024]~ ERROR unsafe attribute used without unsafe
 extern "C" fn foo() {}
 
 fn main() {}

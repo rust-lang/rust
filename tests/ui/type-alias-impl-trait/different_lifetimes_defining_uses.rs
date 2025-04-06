@@ -11,7 +11,7 @@ fn foo<'a, 'b>(a: &'a u32, b: &'b u32) -> OneLifetime<'a, 'b> {
 #[define_opaque(OneLifetime)]
 fn bar<'a, 'b>(a: &'a u32, b: &'b u32) -> OneLifetime<'a, 'b> {
     b
-    //~^ ERROR: concrete type differs from previous defining opaque type use
+    //~^ ERROR concrete type differs from previous defining opaque type use
 }
 
 fn main() {}

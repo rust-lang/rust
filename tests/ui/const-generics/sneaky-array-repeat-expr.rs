@@ -9,8 +9,8 @@ impl<const N: usize> Trait<N> for () {
 
 pub const fn foo<const N: usize>() where (): Trait<N> {
     let bar = [(); <()>::Assoc];
-    //~^ error: constant expression depends on a generic parameter
-    //~| error: constant expression depends on a generic parameter
+    //~^ error constant expression depends on a generic parameter
+    //~| error constant expression depends on a generic parameter
 }
 
 trait Trait2<const N: usize> {
@@ -24,8 +24,8 @@ impl<const N: usize> Trait2<N> for () {
 
 pub const fn foo2<const N: usize>() where (): Trait2<N> {
     let bar2 = [(); <()>::Assoc2];
-    //~^ error: constant expression depends on a generic parameter
-    //~| error: constant expression depends on a generic parameter
+    //~^ error constant expression depends on a generic parameter
+    //~| error constant expression depends on a generic parameter
 }
 
 fn main() {

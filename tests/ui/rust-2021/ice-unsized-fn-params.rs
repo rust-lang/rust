@@ -4,14 +4,14 @@
 
 trait B {
     fn f(a: A) -> A;
-    //~^ ERROR: expected a type, found a trait
-    //~| ERROR: expected a type, found a trait
+    //~^ ERROR expected a type, found a trait
+    //~| ERROR expected a type, found a trait
 }
 
 trait A {
     fn g(b: B) -> B;
-    //~^ ERROR: expected a type, found a trait
-    //~| ERROR: expected a type, found a trait
+    //~^ ERROR expected a type, found a trait
+    //~| ERROR expected a type, found a trait
 }
 
 fn main() {}

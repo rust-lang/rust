@@ -5,4 +5,4 @@
 //~^ ERROR unknown lint
 //~| NOTE lint is unstable
 //~| NOTE see issue
-//~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+//~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date

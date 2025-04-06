@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![deny(unused_results, unused_must_use)]
-//~^ NOTE: the lint level is defined here
-//~| NOTE: the lint level is defined here
+//~^ NOTE the lint level is defined here
+//~| NOTE the lint level is defined here
 
 #[must_use]
 enum MustUse { Test }
@@ -18,9 +18,9 @@ fn qux() -> MustUseMsg { return foo::<MustUseMsg>(); }
 #[allow(unused_results)]
 fn test() {
     foo::<isize>();
-    foo::<MustUse>(); //~ ERROR: unused `MustUse` that must be used
-    foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` that must be used
-    //~^ NOTE: some message
+    foo::<MustUse>(); //~ ERROR unused `MustUse` that must be used
+    foo::<MustUseMsg>(); //~ ERROR unused `MustUseMsg` that must be used
+    //~^ NOTE some message
 }
 
 #[allow(unused_results, unused_must_use)]
@@ -31,10 +31,10 @@ fn test2() {
 }
 
 fn main() {
-    foo::<isize>(); //~ ERROR: unused result of type `isize`
-    foo::<MustUse>(); //~ ERROR: unused `MustUse` that must be used
-    foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` that must be used
-    //~^ NOTE: some message
+    foo::<isize>(); //~ ERROR unused result of type `isize`
+    foo::<MustUse>(); //~ ERROR unused `MustUse` that must be used
+    foo::<MustUseMsg>(); //~ ERROR unused `MustUseMsg` that must be used
+    //~^ NOTE some message
 
     let _ = foo::<isize>();
     let _ = foo::<MustUse>();

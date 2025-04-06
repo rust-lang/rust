@@ -23,11 +23,11 @@ impl Bar<Foo> {
 
 impl Bar<u32> {
     fn foo(self: Bar<Foo>) {
-        //~^ ERROR: invalid `self` parameter
+        //~^ ERROR invalid `self` parameter
         self.bar()
     }
     fn foomp(self: &Bar<Foo>) {
-        //~^ ERROR: invalid `self` parameter
+        //~^ ERROR invalid `self` parameter
         self.bar()
     }
 }

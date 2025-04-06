@@ -13,10 +13,10 @@ pub const fn not_stably_const() {
 pub const fn expose_on_stable() {
     // Calling `not_stably_const` here is *not* okay.
     not_stably_const();
-    //~^ERROR: cannot use `#[feature(rustc_private)]`
+    //~^ERROR cannot use `#[feature(rustc_private)]`
     // Also directly using const-unstable things is not okay.
     let _x = async { 15 };
-    //~^ERROR: cannot use `#[feature(const_async_blocks)]`
+    //~^ERROR cannot use `#[feature(const_async_blocks)]`
 }
 
 fn main() {

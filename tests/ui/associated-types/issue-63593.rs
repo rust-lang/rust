@@ -10,7 +10,7 @@
 trait Inner<S> {}
 
 trait MyTrait {
-    type This = Self;  //~ error: size for values of type `Self` cannot be known
+    type This = Self;  //~ error size for values of type `Self` cannot be known
     fn something<I: Inner<Self::This>>(i: I);
 }
 

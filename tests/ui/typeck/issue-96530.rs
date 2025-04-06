@@ -6,7 +6,7 @@ struct Person {
 fn first_woman(man: &Person) -> Person {
     Person {
         first_name: "Eve".to_string(),
-        ..man.clone() //~ ERROR: mismatched types
+        ..man.clone() //~ ERROR mismatched types
     }
 }
 

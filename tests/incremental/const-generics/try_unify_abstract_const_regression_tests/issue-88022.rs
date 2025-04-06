@@ -14,13 +14,13 @@ where
     [(); { S * 2 }]: Default;
 
 impl<'a, T, const S: usize> Iterator for BufferIter<'a, T, S> {
-    //~^ error: the trait bound
-    //~^^ error: unconstrained generic constant
+    //~^ error the trait bound
+    //~^^ error unconstrained generic constant
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        //~^ error: the trait bound
-        //~^^ error: unconstrained generic constant
+        //~^ error the trait bound
+        //~^^ error unconstrained generic constant
         None
     }
 }

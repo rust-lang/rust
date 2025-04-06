@@ -19,7 +19,7 @@ fn make_goal<T: Trait<N>, const N: usize>(_: &T, _: [NotCopy; N]) {}
 fn main() {
     let a = 1;
     let b = [NotCopy; _];
-    //~^ ERROR: type annotations needed
+    //~^ ERROR type annotations needed
 
     // a is of type `?y`
     // b is of type `[NotCopy; ?x]`

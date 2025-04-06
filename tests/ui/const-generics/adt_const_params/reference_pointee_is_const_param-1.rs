@@ -6,6 +6,6 @@ use std::marker::UnsizedConstParamTy;
 struct Foo;
 
 impl UnsizedConstParamTy for &'static Foo {}
-//~^ ERROR: the trait `ConstParamTy_` cannot be implemented for this type
+//~^ ERROR the trait `ConstParamTy_` cannot be implemented for this type
 
 fn main() {}

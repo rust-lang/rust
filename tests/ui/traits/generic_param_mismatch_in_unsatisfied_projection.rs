@@ -16,7 +16,7 @@ impl Wrapper {
     fn do_something_wrapper<O, F>(&mut self, _: F)
     where
         F: for<'a> FnOnce(<F as Output<i32>>::Type),
-        //~^ ERROR: trait takes 0 generic arguments but 1 generic argument was supplied
+        //~^ ERROR trait takes 0 generic arguments but 1 generic argument was supplied
     {
     }
 }

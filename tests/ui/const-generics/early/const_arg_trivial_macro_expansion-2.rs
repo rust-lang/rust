@@ -5,13 +5,13 @@
 macro_rules! y {
     ( $($matcher:tt)*) => {
         x
-        //~^ ERROR: cannot find value `x` in this scope
+        //~^ ERROR cannot find value `x` in this scope
     };
 }
 
 const _: A<
-    //~^ ERROR: free constant item without body
-    //~| ERROR: cannot find type `A` in this scope
+    //~^ ERROR free constant item without body
+    //~| ERROR cannot find type `A` in this scope
     {
         y! { test.tou8 }
     },

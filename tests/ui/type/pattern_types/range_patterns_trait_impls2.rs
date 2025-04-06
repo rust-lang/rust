@@ -10,6 +10,6 @@ use std::pat::pattern_type;
 type Y = pattern_type!(u32 is 1..);
 
 impl Eq for Y {}
-//~^ ERROR: only traits defined in the current crate can be implemented for arbitrary types
+//~^ ERROR only traits defined in the current crate can be implemented for arbitrary types
 
 fn main() {}

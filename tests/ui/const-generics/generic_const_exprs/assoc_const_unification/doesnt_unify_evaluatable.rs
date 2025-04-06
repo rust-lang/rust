@@ -7,7 +7,7 @@ trait Trait {
 
 fn foo<T: Trait, U: Trait>() where [(); U::ASSOC]:, {
     bar::<{ T::ASSOC }>();
-    //~^ ERROR: unconstrained generic constant
+    //~^ ERROR unconstrained generic constant
 }
 
 fn bar<const N: usize>() {}

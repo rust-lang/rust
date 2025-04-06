@@ -3,7 +3,7 @@ mod a {
     impl S { }
 }
 
-fn foo(_: a::S) { //~ ERROR: struct `S` is private
+fn foo(_: a::S) { //~ ERROR struct `S` is private
 }
 
 fn main() {}

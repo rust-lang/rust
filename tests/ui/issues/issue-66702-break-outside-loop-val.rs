@@ -3,7 +3,7 @@
 fn main() {
     'some_label: loop {
         || break 'some_label ();
-        //~^ ERROR: use of unreachable label `'some_label`
-        //~| ERROR: `break` inside of a closure
+        //~^ ERROR use of unreachable label `'some_label`
+        //~| ERROR `break` inside of a closure
     }
 }

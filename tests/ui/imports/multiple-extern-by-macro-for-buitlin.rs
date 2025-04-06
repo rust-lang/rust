@@ -7,7 +7,7 @@ extern crate core;
 macro_rules! m {
     () => {
         extern crate std as core;
-        //~^ ERROR: the name `core` is defined multiple times
+        //~^ ERROR the name `core` is defined multiple times
     };
 }
 

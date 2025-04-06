@@ -18,5 +18,5 @@ fn main() {
     let trait_object = &() as &dyn Trait;
     trait_object.static_lifetime_bound();
     trait_object.arg_lifetime_bound(&());
-    trait_object.autotrait_bound(); //~ ERROR: the trait bound `dyn Trait: AutoTrait` is not satisfied
+    trait_object.autotrait_bound(); //~ ERROR the trait bound `dyn Trait: AutoTrait` is not satisfied
 }

@@ -25,7 +25,7 @@ fn main() {
     let counter = Mutex;
 
     if let Ok(_) = counter.lock() { }
-    //[edition2021]~^ ERROR: does not live long enough
+    //[edition2021]~^ ERROR does not live long enough
 
     // Up until Edition 2021:
     // With this code as written, the dynamic semantics here implies

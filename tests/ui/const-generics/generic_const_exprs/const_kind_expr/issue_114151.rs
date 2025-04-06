@@ -15,12 +15,12 @@ where
     [(); (L - 1) + 1 + L]:,
 {
     foo::<_, L>([(); L + 1 + L]);
-    //~^ ERROR: mismatched types
-    //~^^ ERROR: unconstrained generic constant
-    //~^^^ ERROR: function takes 1 generic argument but 2 generic arguments were supplied
-    //~^^^^ ERROR: unconstrained generic constant
-    //~^^^^^ ERROR: unconstrained generic constant `L + 1 + L`
-    //~^^^^^^ ERROR: unconstrained generic constant `L + 1`
+    //~^ ERROR mismatched types
+    //~^^ ERROR unconstrained generic constant
+    //~^^^ ERROR function takes 1 generic argument but 2 generic arguments were supplied
+    //~^^^^ ERROR unconstrained generic constant
+    //~^^^^^ ERROR unconstrained generic constant `L + 1 + L`
+    //~^^^^^^ ERROR unconstrained generic constant `L + 1`
 }
 
 fn main() {}

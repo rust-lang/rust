@@ -20,6 +20,6 @@ fn extract<T, const N: usize>(_: [Foo<T>; N]) -> T {
 
 fn main() {
     let x = [Foo(PhantomData); 2];
-    //[gai]~^ ERROR: type annotations needed
+    //[gai]~^ ERROR type annotations needed
     _ = extract(x).max(2);
 }

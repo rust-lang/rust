@@ -7,6 +7,6 @@
 use std::marker::PhantomData;
 
 struct Bug<'a, const S: &'a str>(PhantomData<&'a ()>);
-//~^ ERROR: the type of const parameters must not depend on other generic parameters
+//~^ ERROR the type of const parameters must not depend on other generic parameters
 
 impl Bug<'_, ""> {}

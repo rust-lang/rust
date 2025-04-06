@@ -3,7 +3,7 @@ fn main() {
         Var1,
         Var2(String),
         Var3 {
-            abc: {}, //~ ERROR: expected type, found `{`
+            abc: {}, //~ ERROR expected type, found `{`
         },
     }
 
@@ -22,7 +22,7 @@ fn main() {
     {
         // fail again
         enum Test4 {
-            Nope(i32 {}) //~ ERROR: found `{`
+            Nope(i32 {}) //~ ERROR found `{`
         }
         let () = 1; //~ ERROR mismatched types
     }

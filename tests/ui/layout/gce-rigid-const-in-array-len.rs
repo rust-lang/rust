@@ -12,7 +12,7 @@
 //! constant.
 
 #![feature(rustc_attrs)]
-#![feature(generic_const_exprs)] //~ WARNING: the feature `generic_const_exprs` is incomplete
+#![feature(generic_const_exprs)] //~ WARNING the feature `generic_const_exprs` is incomplete
 #![feature(trivial_bounds)]
 
 #![crate_type = "lib"]
@@ -22,6 +22,6 @@ trait A {
 }
 
 #[rustc_layout(debug)]
-struct S([u8; <u8 as A>::B]) //~ ERROR: the type `[u8; <u8 as A>::B]` has an unknown layout
+struct S([u8; <u8 as A>::B]) //~ ERROR the type `[u8; <u8 as A>::B]` has an unknown layout
 where
     u8: A;

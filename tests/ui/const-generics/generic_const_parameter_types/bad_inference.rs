@@ -15,9 +15,9 @@ fn foo<T: ConstParamTy_, const N: usize, const M: [T; N]>() -> [T; N] {
 fn main() {
     // Requires inferring `T`/`N` from `12_u8` and `2` respectively.
     let a = foo::<_, _, { [12_u8; 2] }>();
-    //~^ ERROR: anonymous constants with inferred types are not yet supported
+    //~^ ERROR anonymous constants with inferred types are not yet supported
 
     // Requires inferring `T`/`N`/`12_?i`/`_` from `[u8; 2]`
     let b: [u8; 2] = foo::<_, _, { [12; _] }>();
-    //~^ ERROR: anonymous constants with inferred types are not yet supported
+    //~^ ERROR anonymous constants with inferred types are not yet supported
 }

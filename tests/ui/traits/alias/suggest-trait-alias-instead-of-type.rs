@@ -8,6 +8,6 @@
 type Strings = Iterator<Item=String>;
 
 struct Struct<S: Strings>(S);
-//~^ ERROR: expected trait, found type alias `Strings`
+//~^ ERROR expected trait, found type alias `Strings`
 
 fn main() {}

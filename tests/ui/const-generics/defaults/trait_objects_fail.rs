@@ -24,7 +24,7 @@ fn bar<const N: u8>(arg: &dyn Traitor<N>) -> u8 {
 
 fn main() {
     foo(&10_u32);
-    //~^ error: the trait bound `u32: Trait` is not satisfied
+    //~^ error the trait bound `u32: Trait` is not satisfied
     bar(&true);
-    //~^ error: the trait bound `bool: Traitor<_>` is not satisfied
+    //~^ error the trait bound `bool: Traitor<_>` is not satisfied
 }

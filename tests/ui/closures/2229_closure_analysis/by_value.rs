@@ -16,18 +16,18 @@ fn big_box() {
     let t = (b, 10);
 
     let c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
     //~^ First Pass analysis includes:
     //~| Min Capture analysis includes:
         let p = t.0.0;
-        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
-        //~| NOTE: Min Capture t[(0, 0)] -> ByValue
+        //~^ NOTE Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
+        //~| NOTE Min Capture t[(0, 0)] -> ByValue
         println!("{} {:?}", t.1, p);
-        //~^ NOTE: Capturing t[(1, 0)] -> Immutable
-        //~| NOTE: Min Capture t[(1, 0)] -> Immutable
+        //~^ NOTE Capturing t[(1, 0)] -> Immutable
+        //~| NOTE Min Capture t[(1, 0)] -> Immutable
     };
 
     c();

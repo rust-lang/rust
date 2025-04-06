@@ -9,4 +9,4 @@ type Percent = pattern_type!(u32 is 0..=100);
 type Negative = pattern_type!(i32 is ..=0);
 type Positive = pattern_type!(i32 is 0..);
 type Always = pattern_type!(Option<u32> is Some(_));
-//~^ ERROR: pattern not supported in pattern types
+//~^ ERROR pattern not supported in pattern types

@@ -4,7 +4,7 @@
 //! reported.
 
 enum AstKind<'ast> {
-    //~^ ERROR: `'ast` is never used
+    //~^ ERROR `'ast` is never used
     ExprInt,
 }
 
@@ -15,7 +15,7 @@ enum Foo {
 
 enum Other {
     Other1(Foo),
-    Other2(AstKind), //~ ERROR: missing lifetime specifier
+    Other2(AstKind), //~ ERROR missing lifetime specifier
 }
 
 fn main() {

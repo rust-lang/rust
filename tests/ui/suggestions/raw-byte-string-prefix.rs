@@ -4,7 +4,7 @@
 
 fn main() {
     rb"abc";
-    //~^ ERROR: prefix `rb` is unknown
-    //~| HELP: use `br` for a raw byte string
-    //~| ERROR: expected one of
+    //~^ ERROR prefix `rb` is unknown
+    //~| HELP use `br` for a raw byte string
+    //~| ERROR expected one of
 }

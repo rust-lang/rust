@@ -10,7 +10,7 @@ struct Foo {
 
 fn use_foo(x: Foo) -> (i32, i32) {
     let Foo { foo, bar, baz } = x; //~ WARNING unused variable: `baz`
-                                   //~| help: try ignoring the field
+                                   //~| help try ignoring the field
     return (foo, bar);
 }
 

@@ -13,7 +13,7 @@ fn consume<T: 'static>(_val: T)
 where
     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
     //~^ overly complex generic constant
-    //~| ERROR: cannot call
+    //~| ERROR cannot call
 {
 }
 
@@ -21,7 +21,7 @@ fn test<T: 'static>()
 where
     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
     //~^ overly complex generic constant
-    //~| ERROR: cannot call
+    //~| ERROR cannot call
 {
 }
 

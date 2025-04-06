@@ -6,6 +6,6 @@
 trait Trait {}
 impl<const N: u8> Trait for [(); N] {}
 impl<const N: i8> Trait for [(); N] {}
-//~^ ERROR: conflicting implementations of trait `Trait`
+//~^ ERROR conflicting implementations of trait `Trait`
 
 fn main() {}

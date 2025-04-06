@@ -9,5 +9,5 @@ fn foo<T: Tr>(i: T) {}
 fn main() {
     let a: i32 = 32;
     foo(a);
-    //~^ ERROR: the trait bound `i32: Tr` is not satisfied [E0277]
+    //~^ ERROR the trait bound `i32: Tr` is not satisfied [E0277]
 }

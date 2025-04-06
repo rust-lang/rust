@@ -17,8 +17,8 @@ extern crate format_string_proc_macro;
 
 fn main() {
     format!(concat!("abc}"));
-    //~^ ERROR: invalid format string: unmatched `}` found
+    //~^ ERROR invalid format string: unmatched `}` found
 
     format!(err_with_input_span!(""));
-    //~^ ERROR: invalid format string: unmatched `}` found
+    //~^ ERROR invalid format string: unmatched `}` found
 }

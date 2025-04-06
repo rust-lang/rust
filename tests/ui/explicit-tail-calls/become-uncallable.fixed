@@ -4,15 +4,15 @@
 #![allow(unused)]
 
 fn f() -> u64 {
-    return 1; //~ error: `become` requires a function call
+    return 1; //~ error `become` requires a function call
 }
 
 fn g() {
-    return { h() }; //~ error: `become` requires a function call
+    return { h() }; //~ error `become` requires a function call
 }
 
 fn h() {
-    return *&g(); //~ error: `become` requires a function call
+    return *&g(); //~ error `become` requires a function call
 }
 
 fn main() {}

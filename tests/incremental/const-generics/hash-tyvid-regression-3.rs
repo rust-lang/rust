@@ -16,7 +16,7 @@ where
     fn new() -> Self {
         let mut node = Node::new();
         node.keys.some_function();
-        //~^ error: no method named
+        //~^ error no method named
         node
     }
 }

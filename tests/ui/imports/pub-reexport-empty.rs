@@ -3,7 +3,7 @@
 mod a {}
 
 pub use a::*;
-//~^ ERROR: unused import: `a::*`
+//~^ ERROR unused import: `a::*`
 
 mod b {
     mod c {
@@ -20,6 +20,6 @@ mod d {
 }
 
 pub use d::*;
-//~^ ERROR: unused import: `d::*`
+//~^ ERROR unused import: `d::*`
 
 fn main() {}

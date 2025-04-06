@@ -11,21 +11,21 @@ use std::cmp::Ordering;
 #[repr(packed)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
 struct StructA(String);
-//~^ ERROR: cannot move out of `self` which is behind a shared reference
-//~| ERROR: cannot move out of `self` which is behind a shared reference
-//~| ERROR: cannot move out of `other` which is behind a shared reference
-//~| ERROR: cannot move out of `self` which is behind a shared reference
-//~| ERROR: cannot move out of `other` which is behind a shared reference
-//~| ERROR: cannot move out of `self` which is behind a shared reference
-//~| ERROR: cannot move out of `other` which is behind a shared reference
-//~| ERROR: cannot move out of `self` which is behind a shared reference
-//~| ERROR: cannot move out of `self` which is behind a shared reference
+//~^ ERROR cannot move out of `self` which is behind a shared reference
+//~| ERROR cannot move out of `self` which is behind a shared reference
+//~| ERROR cannot move out of `other` which is behind a shared reference
+//~| ERROR cannot move out of `self` which is behind a shared reference
+//~| ERROR cannot move out of `other` which is behind a shared reference
+//~| ERROR cannot move out of `self` which is behind a shared reference
+//~| ERROR cannot move out of `other` which is behind a shared reference
+//~| ERROR cannot move out of `self` which is behind a shared reference
+//~| ERROR cannot move out of `self` which is behind a shared reference
 
 
 // Unrelated impl: additinal diagnostic should NOT be emitted
 impl StructA {
     fn fmt(&self) -> String {
-        self.0 //~ ERROR: cannot move out of `self` which is behind a shared reference
+        self.0 //~ ERROR cannot move out of `self` which is behind a shared reference
     }
 }
 
@@ -35,7 +35,7 @@ struct StructB(String);
 
 impl Debug for StructB {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        let x = &{ self.0 }; //~ ERROR: cannot move out of `self` which is behind a shared reference
+        let x = &{ self.0 }; //~ ERROR cannot move out of `self` which is behind a shared reference
         write!(f, "{}", x)
     }
 }
@@ -43,16 +43,16 @@ impl Debug for StructB {
 impl PartialEq for StructB {
     fn eq(&self, other: &StructB) -> bool {
         ({ self.0 }) == ({ other.0 })
-        //~^ ERROR: cannot move out of `self` which is behind a shared reference
-        //~| ERROR: cannot move out of `other` which is behind a shared reference
+        //~^ ERROR cannot move out of `self` which is behind a shared reference
+        //~| ERROR cannot move out of `other` which is behind a shared reference
     }
 }
 
 impl PartialOrd for StructB {
     fn partial_cmp(&self, other: &StructB) -> Option<Ordering> {
         PartialOrd::partial_cmp(&{ self.0 }, &{ other.0 })
-        //~^ ERROR: cannot move out of `self` which is behind a shared reference
-        //~| ERROR: cannot move out of `other` which is behind a shared reference
+        //~^ ERROR cannot move out of `self` which is behind a shared reference
+        //~| ERROR cannot move out of `other` which is behind a shared reference
     }
 }
 
@@ -65,7 +65,7 @@ struct StructD(String);
 
 impl Debug for StructD {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        let x = &{ self.0 }; //~ ERROR: cannot move out of `self` which is behind a shared reference
+        let x = &{ self.0 }; //~ ERROR cannot move out of `self` which is behind a shared reference
         write!(f, "{}", x)
     }
 }
@@ -73,23 +73,23 @@ impl Debug for StructD {
 impl PartialEq for StructD {
     fn eq(&self, other: &StructD) -> bool {
         ({ self.0 }) == ({ other.0 })
-        //~^ ERROR: cannot move out of `self` which is behind a shared reference
-        //~| ERROR: cannot move out of `other` which is behind a shared reference
+        //~^ ERROR cannot move out of `self` which is behind a shared reference
+        //~| ERROR cannot move out of `other` which is behind a shared reference
     }
 }
 
 impl PartialOrd for StructD {
     fn partial_cmp(&self, other: &StructD) -> Option<Ordering> {
         PartialOrd::partial_cmp(&{ self.0 }, &{ other.0 })
-        //~^ ERROR: cannot move out of `self` which is behind a shared reference
-        //~| ERROR: cannot move out of `other` which is behind a shared reference
+        //~^ ERROR cannot move out of `self` which is behind a shared reference
+        //~| ERROR cannot move out of `other` which is behind a shared reference
     }
 }
 
 // Packed + derives but the move is outside of a derive
 // expansion: additinal diagnostic should NOT be emitted
 fn func(arg: &StructA) -> String {
-    arg.0 //~ ERROR: cannot move out of `arg` which is behind a shared reference
+    arg.0 //~ ERROR cannot move out of `arg` which is behind a shared reference
 }
 
 fn main(){

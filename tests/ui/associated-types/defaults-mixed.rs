@@ -9,10 +9,10 @@ trait Trait {
 
 // `Bar` must be specified
 impl Trait for () {}
-//~^ error: not all trait items implemented, missing: `Bar`
+//~^ error not all trait items implemented, missing: `Bar`
 
 impl Trait for bool {
-//~^ error: not all trait items implemented, missing: `Bar`
+//~^ error not all trait items implemented, missing: `Bar`
     type Foo = ();
 }
 

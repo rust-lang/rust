@@ -26,7 +26,7 @@ impl Username {
     pub fn is_root(&self) -> bool {
         match self {
             ROOT_USER => true,
-            //~^ ERROR: cannot use unsized non-slice type `Username` in constant patterns
+            //~^ ERROR cannot use unsized non-slice type `Username` in constant patterns
             _ => false,
         }
     }

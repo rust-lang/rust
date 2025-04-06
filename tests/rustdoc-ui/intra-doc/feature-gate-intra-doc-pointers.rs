@@ -1,6 +1,6 @@
 //! [pointer::add]
-//~^ ERROR: experimental
+//~^ ERROR experimental
 //! [pointer::wrapping_add]
-//~^ ERROR: experimental
+//~^ ERROR experimental
 //! [pointer] // This is explicitly allowed
 //! [reference] // This is explicitly allowed

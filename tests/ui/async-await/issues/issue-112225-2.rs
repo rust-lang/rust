@@ -11,7 +11,7 @@ use core::future::Future;
 
 fn main() {
     let x = Default::default();
-    //~^ ERROR: type annotations needed
+    //~^ ERROR type annotations needed
     do_async(
         async { x.0; },
         { || { let _: &(i32,) = &x; } },

@@ -18,5 +18,5 @@ impl<'a> Index<&'a bool> for Container {
 fn main() {
     let container = Container(Test);
     let mut val = true;
-    container[&mut val].test(); //~ ERROR: cannot borrow data
+    container[&mut val].test(); //~ ERROR cannot borrow data
 }

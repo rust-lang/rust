@@ -2,8 +2,8 @@
 
 struct MyError;
 impl std::error::Error for MyError {}
-//~^ ERROR: `MyError` doesn't implement `std::fmt::Display`
-//~| ERROR: `MyError` doesn't implement `Debug`
+//~^ ERROR `MyError` doesn't implement `std::fmt::Display`
+//~| ERROR `MyError` doesn't implement `Debug`
 
 fn main() {}
 

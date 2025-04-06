@@ -10,7 +10,7 @@ trait Trait1 {
 
 trait Trait2 {
     type Associated: Trait1 = Self;
-    //~^ ERROR: the trait bound `Self: Trait1` is not satisfied
+    //~^ ERROR the trait bound `Self: Trait1` is not satisfied
     //~| the size for values of type `Self` cannot be known
 }
 

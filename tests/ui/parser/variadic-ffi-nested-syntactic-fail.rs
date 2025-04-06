@@ -10,5 +10,5 @@ fn f3() where for<> ...: {}
 
 fn main() {
     let _recovery_witness: () = 0;
-    //~^ ERROR: mismatched types
+    //~^ ERROR mismatched types
 }

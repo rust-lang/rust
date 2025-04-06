@@ -7,32 +7,32 @@ extern crate malicious_macro;
 use std::marker::CoercePointee;
 
 #[derive(CoercePointee)]
-//~^ ERROR: `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
+//~^ ERROR `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
 enum NotStruct<'a, T: ?Sized> {
     Variant(&'a T),
 }
 
 #[derive(CoercePointee)]
-//~^ ERROR: `CoercePointee` can only be derived on `struct`s with at least one field
+//~^ ERROR `CoercePointee` can only be derived on `struct`s with at least one field
 #[repr(transparent)]
 struct NoField<'a, #[pointee] T: ?Sized> {}
-//~^ ERROR: lifetime parameter `'a` is never used
-//~| ERROR: type parameter `T` is never used
+//~^ ERROR lifetime parameter `'a` is never used
+//~| ERROR type parameter `T` is never used
 
 #[derive(CoercePointee)]
-//~^ ERROR: `CoercePointee` can only be derived on `struct`s with at least one field
+//~^ ERROR `CoercePointee` can only be derived on `struct`s with at least one field
 #[repr(transparent)]
 struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
-//~^ ERROR: lifetime parameter `'a` is never used
-//~| ERROR: type parameter `T` is never used
+//~^ ERROR lifetime parameter `'a` is never used
+//~| ERROR type parameter `T` is never used
 
 #[derive(CoercePointee)]
-//~^ ERROR: `CoercePointee` can only be derived on `struct`s that are generic over at least one type
+//~^ ERROR `CoercePointee` can only be derived on `struct`s that are generic over at least one type
 #[repr(transparent)]
 struct NoGeneric<'a>(&'a u8);
 
 #[derive(CoercePointee)]
-//~^ ERROR: exactly one generic type parameter must be marked as `#[pointee]` to derive `CoercePointee` traits
+//~^ ERROR exactly one generic type parameter must be marked as `#[pointee]` to derive `CoercePointee` traits
 #[repr(transparent)]
 struct AmbiguousPointee<'a, T1: ?Sized, T2: ?Sized> {
     a: (&'a T1, &'a T2),
@@ -41,18 +41,18 @@ struct AmbiguousPointee<'a, T1: ?Sized, T2: ?Sized> {
 #[derive(CoercePointee)]
 #[repr(transparent)]
 struct TooManyPointees<'a, #[pointee] A: ?Sized, #[pointee] B: ?Sized>((&'a A, &'a B));
-//~^ ERROR: only one type parameter can be marked as `#[pointee]` when deriving `CoercePointee` traits
+//~^ ERROR only one type parameter can be marked as `#[pointee]` when deriving `CoercePointee` traits
 
 #[derive(CoercePointee)]
 struct NotTransparent<'a, #[pointee] T: ?Sized> {
-    //~^ ERROR: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
+    //~^ ERROR `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
     ptr: &'a T,
 }
 
 #[derive(CoercePointee)]
 #[repr(transparent)]
 struct NoMaybeSized<'a, #[pointee] T> {
-    //~^ ERROR: `derive(CoercePointee)` requires `T` to be marked `?Sized`
+    //~^ ERROR `derive(CoercePointee)` requires `T` to be marked `?Sized`
     ptr: &'a T,
 }
 
@@ -60,7 +60,7 @@ struct NoMaybeSized<'a, #[pointee] T> {
 #[repr(transparent)]
 struct PointeeOnField<'a, #[pointee] T: ?Sized> {
     #[pointee]
-    //~^ ERROR: the `#[pointee]` attribute may only be used on generic parameters
+    //~^ ERROR the `#[pointee]` attribute may only be used on generic parameters
     ptr: &'a T,
 }
 
@@ -70,7 +70,7 @@ struct PointeeInTypeConstBlock<
     'a,
     T: ?Sized = [u32; const {
                     struct UhOh<#[pointee] T>(T);
-                    //~^ ERROR: the `#[pointee]` attribute may only be used on generic parameters
+                    //~^ ERROR the `#[pointee]` attribute may only be used on generic parameters
                     10
                 }],
 > {
@@ -84,7 +84,7 @@ struct PointeeInConstConstBlock<
     T: ?Sized,
     const V: u32 = {
         struct UhOh<#[pointee] T>(T);
-        //~^ ERROR: the `#[pointee]` attribute may only be used on generic parameters
+        //~^ ERROR the `#[pointee]` attribute may only be used on generic parameters
         10
     },
 > {
@@ -99,7 +99,7 @@ struct PointeeInAnotherTypeConstBlock<'a, #[pointee] T: ?Sized> {
         T,
         {
             struct UhOh<#[pointee] T>(T);
-            //~^ ERROR: the `#[pointee]` attribute may only be used on generic parameters
+            //~^ ERROR the `#[pointee]` attribute may only be used on generic parameters
             0
         },
     >,
@@ -138,7 +138,7 @@ struct GlobalCoreSized<'a, #[pointee] T: ?::core::marker::Sized> {
 #[malicious_macro::norepr]
 #[repr(transparent)]
 struct TryToWipeRepr<'a, #[pointee] T: ?Sized> {
-    //~^ ERROR: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout [E0802]
+    //~^ ERROR `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout [E0802]
     ptr: &'a T,
 }
 

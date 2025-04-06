@@ -8,7 +8,7 @@ fn no_constraining() -> Foo<10> {
 
 pub fn different_than_default() -> Foo<10> {
     Foo::<10, 12>
-    //~^ error: mismatched types
+    //~^ error mismatched types
 }
 
 fn main() {}

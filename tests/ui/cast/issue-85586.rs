@@ -6,5 +6,5 @@
 fn main() {
     let a = [1, 2, 3].iter().sum();
     let b = (a + 1) as usize;
-    //~^ ERROR: type annotations needed [E0282]
+    //~^ ERROR type annotations needed [E0282]
 }

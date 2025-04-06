@@ -5,6 +5,6 @@
 extern crate suggest_constructor_cycle_error as a;
 
 const CONST_NAME: a::Uuid = a::Uuid(());
-//~^ ERROR: cannot initialize a tuple struct which contains private fields [E0423]
+//~^ ERROR cannot initialize a tuple struct which contains private fields [E0423]
 
 fn main() {}

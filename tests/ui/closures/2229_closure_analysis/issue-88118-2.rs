@@ -8,7 +8,7 @@ fn print_error_count(registry: &Registry) {
     |x: &Registry| {
         match &x {
             Registry if let _ = registry.try_find_description() => { }
-            //~^ WARNING: irrefutable `if let` guard pattern
+            //~^ WARNING irrefutable `if let` guard pattern
             _ => {}
         }
     };

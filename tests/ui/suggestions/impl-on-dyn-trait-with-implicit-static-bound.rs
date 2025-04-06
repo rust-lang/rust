@@ -36,7 +36,7 @@ mod bar {
 
     fn use_it<'a>(val: &'a dyn ObjectTrait) -> &'a () {
         val.use_self()
-        //~^ ERROR: borrowed data escapes
+        //~^ ERROR borrowed data escapes
     }
 }
 
@@ -54,7 +54,7 @@ mod baz {
 
     fn use_it<'a>(val: &'a Box<dyn ObjectTrait + 'a>) -> &'a () {
         val.use_self()
-        //~^ ERROR: borrowed data escapes
+        //~^ ERROR borrowed data escapes
     }
 }
 

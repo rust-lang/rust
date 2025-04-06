@@ -6,7 +6,7 @@ fn invalid() {
     static S: i8 = 10;
 
     const C: &bool = unsafe { std::mem::transmute(&S) };
-    //~^ERROR: undefined behavior
+    //~^ERROR undefined behavior
     //~| expected a boolean
 
     // This must be rejected here (or earlier), since it's not a valid `&bool`.
@@ -22,7 +22,7 @@ fn extern_() {
     }
 
     const C: &i8 = unsafe { &S };
-    //~^ERROR: undefined behavior
+    //~^ERROR undefined behavior
     //~| `extern` static
 
     // This must be rejected here (or earlier), since the pattern cannot be read.
@@ -36,7 +36,7 @@ fn mutable() {
     static mut S_MUT: i32 = 0;
 
     const C: &i32 = unsafe { &S_MUT };
-    //~^ERROR: undefined behavior
+    //~^ERROR undefined behavior
     //~| encountered reference to mutable memory
 
     // This *must not build*, the constant we are matching against

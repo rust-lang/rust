@@ -8,10 +8,10 @@ type Tait = impl FnOnce() -> ();
 
 #[define_opaque(Tait)]
 fn reify_as_tait() -> Thunk<Tait> {
-    //~^ ERROR: expected a `FnOnce()` closure, found `()`
+    //~^ ERROR expected a `FnOnce()` closure, found `()`
     Thunk::new(|cont| cont)
-    //~^ ERROR: mismatched types
-    //~| ERROR: expected a `FnOnce()` closure, found `()`
+    //~^ ERROR mismatched types
+    //~| ERROR expected a `FnOnce()` closure, found `()`
 }
 
 struct Thunk<F>(F);

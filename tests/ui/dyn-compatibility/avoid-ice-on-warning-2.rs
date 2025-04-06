@@ -10,6 +10,6 @@ fn id<F>(f: Copy) -> usize {
 //[old]~| WARN trait objects without an explicit `dyn` are deprecated
 //[old]~| WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
     f()
-    //[old]~^ ERROR: expected function, found `(dyn Copy + 'static)`
+    //[old]~^ ERROR expected function, found `(dyn Copy + 'static)`
 }
 fn main() {}

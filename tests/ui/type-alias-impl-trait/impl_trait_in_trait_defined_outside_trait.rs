@@ -12,7 +12,7 @@ trait Trait: Sized {
 impl Trait for () {
     type Assoc = impl std::fmt::Debug;
     fn foo() {
-        let x: Self::Assoc = 42; //~ ERROR: mismatched types
+        let x: Self::Assoc = 42; //~ ERROR mismatched types
     }
     fn bar() -> Self::Assoc {
         ""
@@ -28,7 +28,7 @@ trait Trait2: Sized {
 impl Trait2 for () {
     type Assoc = impl std::fmt::Debug;
     const FOO: () = {
-        let x: Self::Assoc = 42; //~ ERROR: mismatched types
+        let x: Self::Assoc = 42; //~ ERROR mismatched types
     };
     fn bar() -> Self::Assoc {
         ""

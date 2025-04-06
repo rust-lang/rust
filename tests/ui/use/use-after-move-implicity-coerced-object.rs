@@ -26,5 +26,5 @@ fn main() {
     l.push(n);
 
     let x = n.to_string();
-    //~^ ERROR: borrow of moved value: `n`
+    //~^ ERROR borrow of moved value: `n`
 }

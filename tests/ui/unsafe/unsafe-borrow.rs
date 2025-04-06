@@ -7,7 +7,7 @@ fn tuple_struct() {
 
     let mut foo = unsafe { NonZero((1,)) };
     let a = &mut foo.0.0;
-    //~^ ERROR: mutation of layout constrained field is unsafe
+    //~^ ERROR mutation of layout constrained field is unsafe
 }
 
 fn slice() {
@@ -27,7 +27,7 @@ fn array() {
     let nums = [1, 2, 3, 4];
     let mut foo = unsafe { NonZero(nums) };
     let a = &mut foo.0[2];
-    //~^ ERROR: mutation of layout constrained field is unsafe
+    //~^ ERROR mutation of layout constrained field is unsafe
 }
 
 fn block() {
@@ -46,7 +46,7 @@ fn mtch() {
     let mut foo = unsafe { NonZero((1,)) };
     match &mut foo {
         NonZero((a,)) => *a = 0,
-        //~^ ERROR: mutation of layout constrained field is unsafe
+        //~^ ERROR mutation of layout constrained field is unsafe
     }
 }
 

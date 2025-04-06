@@ -2,5 +2,5 @@
 
 fn main ( ) {
 format ! ( concat ! ( r#"lJ𐏿Æ�.𐏿�"# , "r} {}" )     ) ;
-//~^ ERROR: invalid format string: unmatched `}` found
+//~^ ERROR invalid format string: unmatched `}` found
 }

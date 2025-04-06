@@ -12,7 +12,7 @@ struct DefaultAllocator;
 // `<DefaultAllocator as Allocator>::Buffer` to be ambiguous,
 // which caused an ICE with `-Znormalize-docs`.
 impl<T> Allocator for DefaultAllocator {
-    //~^ ERROR: the type parameter `T` is not constrained
+    //~^ ERROR the type parameter `T` is not constrained
     type Buffer = ();
 }
 

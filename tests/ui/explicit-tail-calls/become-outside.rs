@@ -4,11 +4,11 @@
 
 #[cfg(constant)]
 const _: () = {
-    become f(); //[constant]~ error: become statement outside of function body
+    become f(); //[constant]~ error become statement outside of function body
 };
 
 #[cfg(array)]
-struct Bad([(); become f()]); //[array]~ error: become statement outside of function body
+struct Bad([(); become f()]); //[array]~ error become statement outside of function body
 
 fn f() {}
 

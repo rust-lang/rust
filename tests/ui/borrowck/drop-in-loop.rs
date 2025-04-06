@@ -15,7 +15,7 @@ fn drop_in_loop() {
     let mut base = true;
     let mut wrapper = WrapperWithDrop(&mut base);
     loop {
-        base = false; //~ ERROR: cannot assign to `base`
+        base = false; //~ ERROR cannot assign to `base`
         wrapper = WrapperWithDrop(&mut base);
     }
 }

@@ -54,12 +54,12 @@ macro_rules! test_shuffle_lanes {
         }
     }
 }
-//~^^^^^ ERROR: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
-//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
-//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
-//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
-//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
-//~| ERROR: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
+//~^^^^^ ERROR invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
+//~| ERROR invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
+//~| ERROR invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
+//~| ERROR invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
+//~| ERROR invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
+//~| ERROR invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds
 // Because the test is mostly embedded in a macro, all the errors have the same origin point.
 // And unfortunately, standard comments, as in the UI test harness, disappear in macros!
 

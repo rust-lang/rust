@@ -15,8 +15,8 @@ pub extern "C" fn my_fun_trivial(_x: i32, _y: f32) {}
 
 #[repr(C)]
 pub struct MyType(i32, i32);
-pub extern "C" fn my_fun(_x: MyType) {} //~ERROR: wasm ABI transition
-//~^WARN: previously accepted
+pub extern "C" fn my_fun(_x: MyType) {} //~ERROR wasm ABI transition
+//~^WARN previously accepted
 
 // This one is ABI-safe as it only wraps a single field,
 // and the return type can be anything.
@@ -27,8 +27,8 @@ pub extern "C" fn my_fun_safe(_x: MySafeType) -> MyType { loop {} }
 // This one not ABI-safe due to the alignment.
 #[repr(C, align(16))]
 pub struct MyAlignedType(i32);
-pub extern "C" fn my_fun_aligned(_x: MyAlignedType) {} //~ERROR: wasm ABI transition
-//~^WARN: previously accepted
+pub extern "C" fn my_fun_aligned(_x: MyAlignedType) {} //~ERROR wasm ABI transition
+//~^WARN previously accepted
 
 // Check call-site warning
 extern "C" {
@@ -36,6 +36,6 @@ extern "C" {
 }
 
 pub fn call_other_fun(x: MyType) {
-    unsafe { other_fun(x) } //~ERROR: wasm ABI transition
-    //~^WARN: previously accepted
+    unsafe { other_fun(x) } //~ERROR wasm ABI transition
+    //~^WARN previously accepted
 }

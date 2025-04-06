@@ -18,7 +18,7 @@ impl Foo<()> for () {
 impl Foo<i32> for () {
     type Bar = u32;
     fn foo(&self) -> <Self as Foo<()>>::Bar {}
-    //~^ ERROR: mismatched types
+    //~^ ERROR mismatched types
 }
 
 fn main() {}

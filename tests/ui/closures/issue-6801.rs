@@ -16,6 +16,6 @@ fn main() {
       let x  : Box<usize>  = Box::new(9);
       let sq =  || { *x * *x };
 
-      twice(x); //~ ERROR: cannot move out of
+      twice(x); //~ ERROR cannot move out of
       invoke(sq);
 }

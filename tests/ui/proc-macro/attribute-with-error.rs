@@ -8,9 +8,9 @@ extern crate test_macros;
 #[recollect_attr]
 fn test1() {
     let a: i32 = "foo";
-    //~^ ERROR: mismatched types
+    //~^ ERROR mismatched types
     let b: i32 = "f'oo";
-    //~^ ERROR: mismatched types
+    //~^ ERROR mismatched types
 }
 
 fn test2() {
@@ -23,7 +23,7 @@ trait A {
     // FIXME: should have a #[recollect_attr] attribute here and assert that it works
     fn foo(&self) {
         let a: i32 = "foo";
-        //~^ ERROR: mismatched types
+        //~^ ERROR mismatched types
     }
 }
 
@@ -33,7 +33,7 @@ impl A for B {
     #[recollect_attr]
     fn foo(&self) {
         let a: i32 = "foo";
-        //~^ ERROR: mismatched types
+        //~^ ERROR mismatched types
     }
 }
 

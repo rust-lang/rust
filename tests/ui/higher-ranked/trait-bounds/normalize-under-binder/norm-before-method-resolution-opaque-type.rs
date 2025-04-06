@@ -19,7 +19,7 @@ where
     for<'a> X: Trait<'a>,
     for<'a> <X as Trait<'a>>::Out<()>: Copy,
 {
-    let x = *x; //[old]~ ERROR: cannot move out of `*x`
+    let x = *x; //[old]~ ERROR cannot move out of `*x`
     todo!();
 }
 

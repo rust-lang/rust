@@ -1,11 +1,11 @@
 // Parse `cfg_attr` with varying numbers of attributes and trailing commas
 
 // Completely empty `cfg_attr` input
-#[cfg_attr()] //~ error: malformed `cfg_attr` attribute input
+#[cfg_attr()] //~ error malformed `cfg_attr` attribute input
 struct NoConfigurationPredicate;
 
 // Zero attributes, zero trailing comma (comma manatory here)
-#[cfg_attr(all())] //~ error: expected `,`, found end of `cfg_attr`
+#[cfg_attr(all())] //~ error expected `,`, found end of `cfg_attr`
 struct A0C0;
 
 // Zero attributes, one trailing comma

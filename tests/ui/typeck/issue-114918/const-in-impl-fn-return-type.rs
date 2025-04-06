@@ -10,7 +10,7 @@
 
 trait Trait {
     fn func<const N: u32>() -> [(); N];
-    //~^ ERROR: the constant `N` is not of type `usize`
+    //~^ ERROR the constant `N` is not of type `usize`
 }
 
 struct S {}

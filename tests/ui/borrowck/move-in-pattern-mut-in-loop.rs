@@ -5,6 +5,6 @@ fn main() {
     let mut opt = Some(&mut x);
     for _ in 0..5 {
         if let Some(mut _x) = opt {}
-        //~^ ERROR: use of moved value
+        //~^ ERROR use of moved value
     }
 }

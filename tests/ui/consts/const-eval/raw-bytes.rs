@@ -148,7 +148,7 @@ const STR_NO_INIT: &str = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8>
 const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::<u8> { uninit: () }]) };
 //~^ ERROR it is undefined behavior to use this value
 const MYSTR_NO_INIT_ISSUE83182: &MyStr = unsafe { mem::transmute::<&[_], _>(&[&()]) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR it is undefined behavior to use this value
 
 // # slice
 const SLICE_TOO_LONG: &[u8] = unsafe { mem::transmute((&42u8, 999usize)) };
@@ -208,34 +208,34 @@ const _: &[!] = unsafe { &*(1_usize as *const [!; 42]) }; //~ ERROR undefined be
 
 // Reading uninitialized  data
 pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR it is undefined behavior to use this value
 // Reinterpret pointers as integers (UB in CTFE.)
 pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, mem::size_of::<&u32>()) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR it is undefined behavior to use this value
 // Layout mismatch
 pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR it is undefined behavior to use this value
 
 // Reading padding is not ok
 pub static S7: &[u16] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     let ptr = (&D2 as *const Struct as *const u16).add(1);
 
     from_raw_parts(ptr, 4)
 };
 
 pub static R4: &[u8] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     let ptr = (&D1) as *const mem::MaybeUninit<&u32> as *const u8;
     from_ptr_range(ptr..ptr.add(1))
 };
 pub static R5: &[u8] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     let ptr = &D3 as *const &u32;
     from_ptr_range(ptr.cast()..ptr.add(1).cast())
 };
 pub static R6: &[bool] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     let ptr = &D0 as *const u32 as *const bool;
     from_ptr_range(ptr..ptr.add(4))
 };

@@ -7,7 +7,7 @@ struct Test<'a> { s: &'a str }
 fn silly<'y, 'z>(_s: &'y Test<'z>) -> &'y <Test<'z> as Trait>::Out where 'z: 'static {
     let x = Test { s: "this cannot last" };
     &x
-    //~^ ERROR: cannot return reference to local variable `x`
+    //~^ ERROR cannot return reference to local variable `x`
 }
 
 impl<'b> Trait for Test<'b> { type Out = Test<'b>; }

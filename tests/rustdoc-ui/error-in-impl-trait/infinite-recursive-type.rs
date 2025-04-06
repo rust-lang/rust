@@ -1,6 +1,6 @@
 fn f() -> impl Sized {
     enum E {
-        //~^ ERROR: recursive type
+        //~^ ERROR recursive type
         V(E),
     }
 

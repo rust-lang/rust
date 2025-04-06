@@ -16,7 +16,7 @@ impl Foo<()> for () {}
 
 #[define_opaque(FooX)]
 fn foo() -> impl Foo<FooX> {
-    //[current]~^ ERROR: the trait bound `(): Foo<FooX>` is not satisfied
+    //[current]~^ ERROR the trait bound `(): Foo<FooX>` is not satisfied
     // FIXME(type-alias-impl-trait): We could probably make this work.
     ()
 }

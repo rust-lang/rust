@@ -7,31 +7,31 @@ use std::marker::PhantomData;
 struct Foo(u32);
 impl Foo {
     fn get<R: Deref<Target = Self>>(self: R) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+        //~^ ERROR invalid generic `self` parameter type
         self.0
     }
     fn get1<R: Deref<Target = Self>>(self: &R) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+        //~^ ERROR invalid generic `self` parameter type
         self.0
     }
     fn get2<R: Deref<Target = Self>>(self: &mut R) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+        //~^ ERROR invalid generic `self` parameter type
         self.0
     }
     fn get3<R: Deref<Target = Self>>(self: std::rc::Rc<R>) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+        //~^ ERROR invalid generic `self` parameter type
         self.0
     }
     fn get4<R: Deref<Target = Self>>(self: &std::rc::Rc<R>) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+        //~^ ERROR invalid generic `self` parameter type
         self.0
     }
     fn get5<R: Deref<Target = Self>>(self: std::rc::Rc<&R>) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+        //~^ ERROR invalid generic `self` parameter type
         self.0
     }
     fn get6<FR: FindReceiver>(self: FR::Receiver, other: FR) -> u32 {
-        //[default]~^ ERROR: `<FR as FindReceiver>::Receiver` cannot be used as the type of `self`
+        //[default]~^ ERROR `<FR as FindReceiver>::Receiver` cannot be used as the type of `self`
         42
     }
 }
@@ -59,7 +59,7 @@ struct Bar<R>(std::marker::PhantomData<R>);
 
 impl<R: std::ops::Deref<Target = Self>> Bar<R> {
     fn get(self: R) {}
-    //[default]~^ ERROR: `R` cannot be used as the type of `self`
+    //[default]~^ ERROR `R` cannot be used as the type of `self`
 }
 
 trait FindReceiver {

@@ -12,7 +12,7 @@ fn test51<'a>() {
 }
 fn test52<'a>() {
     assert_send::<&'a (dyn Dummy + Sync)>();
-    //~^ ERROR: lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
 }
 
 // ...unless they are properly bounded

@@ -21,7 +21,7 @@ fn assign() -> Qux {
 }
 
 extern "C" {
-    fn lint_me() -> <u32 as Foo>::Assoc; //~ ERROR: uses type `Qux`
+    fn lint_me() -> <u32 as Foo>::Assoc; //~ ERROR uses type `Qux`
 }
 
 fn main() {}

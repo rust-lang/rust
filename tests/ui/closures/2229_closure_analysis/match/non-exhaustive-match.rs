@@ -24,7 +24,7 @@ fn main() {
     let _a = || { match l1 { L1::A => (), L1::B => () } };
     // (except if the match is already non-exhaustive)
     let _b = || { match l1 { L1::A => () } };
-    //~^ ERROR: non-exhaustive patterns: `L1::B` not covered [E0004]
+    //~^ ERROR non-exhaustive patterns: `L1::B` not covered [E0004]
 
     // l2 should not be captured as it is a non-exhaustive SingleVariant
     // defined in this crate
@@ -35,16 +35,16 @@ fn main() {
     // E1 is not visibly uninhabited from here
     let (e1, e2, e3, e4) = bar();
     let _d = || { match e1 {} };
-    //~^ ERROR: non-exhaustive patterns: type `E1` is non-empty [E0004]
+    //~^ ERROR non-exhaustive patterns: type `E1` is non-empty [E0004]
     let _e = || { match e2 { E2::A => (), E2::B => () } };
-    //~^ ERROR: non-exhaustive patterns: `_` not covered [E0004]
+    //~^ ERROR non-exhaustive patterns: `_` not covered [E0004]
     let _f = || { match e2 { E2::A => (), E2::B => (), _ => () }  };
 
     // e3 should be captured as it is a non-exhaustive SingleVariant
     // defined in another crate
     let _g = || { match e3 { E3::C => (), _ => () }  };
     let mut mut_e3 = e3;
-    //~^ ERROR: cannot move out of `e3` because it is borrowed
+    //~^ ERROR cannot move out of `e3` because it is borrowed
     _g();
 
     // e4 should not be captured as it is a SingleVariant

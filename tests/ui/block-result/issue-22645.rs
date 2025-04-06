@@ -13,5 +13,5 @@ impl<RHS: Scalar> Add <RHS> for Bob {
 fn main() {
   let b = Bob + 3.5;
   b + 3 //~ ERROR E0277
-  //~^ ERROR: mismatched types
+  //~^ ERROR mismatched types
 }

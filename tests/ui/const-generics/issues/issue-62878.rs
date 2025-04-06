@@ -8,5 +8,5 @@ fn foo<const N: usize, const A: [u8; N]>() {}
 
 fn main() {
     foo::<_, { [1] }>();
-    //[min]~^ ERROR: const arguments cannot yet be inferred with `_`
+    //[min]~^ ERROR const arguments cannot yet be inferred with `_`
 }

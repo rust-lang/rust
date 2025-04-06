@@ -29,12 +29,12 @@ pub trait Access<T> {
     }
 }
 impl<T, A: Access<T>, P: Deref<Target = A>> Access<T> for P {
-    //~^ NOTE: required for `Arc<ArcSwapAny<Arc<usize>>>` to implement `Access<_>`
+    //~^ NOTE required for `Arc<ArcSwapAny<Arc<usize>>>` to implement `Access<_>`
     //~| NOTE unsatisfied trait bound introduced here
     type Guard = A::Guard;
 }
 impl<T> Access<T> for ArcSwapAny<T> {
-    //~^ NOTE: multiple `impl`s satisfying `ArcSwapAny<Arc<usize>>: Access<_>` found
+    //~^ NOTE multiple `impl`s satisfying `ArcSwapAny<Arc<usize>>: Access<_>` found
     type Guard = Guard<T>;
 }
 impl<T> Access<T> for ArcSwapAny<Arc<T>> {
@@ -48,8 +48,8 @@ pub struct ArcSwapAny<T> {
 pub fn foo() {
     let s: Arc<ArcSwapAny<Arc<usize>>> = unimplemented!();
     let guard: Guard<Arc<usize>> = s.load();
-    //~^ ERROR: type annotations needed
-    //~| HELP: try using a fully qualified path to specify the expected types
+    //~^ ERROR type annotations needed
+    //~| HELP try using a fully qualified path to specify the expected types
 }
 
 fn main() {}

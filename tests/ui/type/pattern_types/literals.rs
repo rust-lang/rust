@@ -20,12 +20,12 @@ fn in_range() -> pattern_type!(u32 is 1..) {
 
 fn negative_lit_on_unsigned_ty() -> pattern_type!(u32 is 1..) {
     -3
-    //~^ ERROR: cannot apply unary operator `-` to type `(u32) is 1..`
+    //~^ ERROR cannot apply unary operator `-` to type `(u32) is 1..`
 }
 
 fn negative_lit_in_range() -> pattern_type!(i8 is -5..5) {
     -2
-    //~^ ERROR: cannot apply unary operator `-` to type `(i8) is -5..=4`
+    //~^ ERROR cannot apply unary operator `-` to type `(i8) is -5..=4`
 }
 
 fn positive_lit_in_range_of_signed() -> pattern_type!(i8 is -5..5) {

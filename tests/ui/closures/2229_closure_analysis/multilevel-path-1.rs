@@ -20,15 +20,15 @@ fn main() {
     // Therefore `w.p` is captured
     // Note that `wp.x` doesn't start off a variable defined outside the closure.
     let c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
-    //~^ ERROR: First Pass analysis includes:
-    //~| ERROR: Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         let wp = &w.p;
-        //~^ NOTE: Capturing w[(0, 0)] -> Immutable
-        //~| NOTE: Min Capture w[(0, 0)] -> Immutable
+        //~^ NOTE Capturing w[(0, 0)] -> Immutable
+        //~| NOTE Min Capture w[(0, 0)] -> Immutable
         println!("{}", wp.x);
     };
 

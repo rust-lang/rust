@@ -11,8 +11,8 @@ const fn make_generic(_: usize, a: bool) -> bool {
 
 fn foo<const N: usize>() -> Bar<{ make_generic(N, true == false) }> {
     Bar::<{ make_generic(N, 1_u8 == 0_u8) }>
-    //~^ error: mismatched types
-    //~| error: unconstrained generic constant
+    //~^ error mismatched types
+    //~| error unconstrained generic constant
 }
 
 fn main() {}

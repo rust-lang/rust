@@ -48,9 +48,9 @@ fn opaque<T>() -> impl Project2 {
 fn check<T: Project1>() {
     unsafe {
         std::mem::transmute::<_, ()>(opaque::<T>().get());
-        //~^ ERROR: cannot transmute
-        //~| NOTE: (unable to determine layout for `<impl Project2 as Project2>::Assoc2` because `<impl Project2 as Project2>::Assoc2` cannot be normalized)
-        //~| NOTE: (0 bits)
+        //~^ ERROR cannot transmute
+        //~| NOTE (unable to determine layout for `<impl Project2 as Project2>::Assoc2` because `<impl Project2 as Project2>::Assoc2` cannot be normalized)
+        //~| NOTE (0 bits)
     }
 }
 

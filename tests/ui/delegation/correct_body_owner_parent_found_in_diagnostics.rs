@@ -7,7 +7,7 @@ pub struct InvariantRef<'a, T: ?Sized>(&'a T, PhantomData<&'a mut &'a T>);
 
 impl<'a> InvariantRef<'a, ()> {
     pub const NEW: Self = InvariantRef::new(&());
-    //~^ ERROR: no function or associated item named `new` found
+    //~^ ERROR no function or associated item named `new` found
 }
 
 trait Trait {
@@ -20,15 +20,15 @@ struct Z(u8);
 
 impl Trait for Z {
     reuse <u8 as Trait>::{foo, bar, meh} { &const { InvariantRef::<'a>::NEW } }
-    //~^ ERROR: use of undeclared lifetime name `'a`
-    //~| ERROR: use of undeclared lifetime name `'a`
-    //~| ERROR: use of undeclared lifetime name `'a`
-    //~| ERROR: the trait bound `u8: Trait` is not satisfied
-    //~| ERROR: the trait bound `u8: Trait` is not satisfied
-    //~| ERROR: the trait bound `u8: Trait` is not satisfied
-    //~| ERROR: mismatched types
-    //~| ERROR: mismatched types
-    //~| ERROR: mismatched types
+    //~^ ERROR use of undeclared lifetime name `'a`
+    //~| ERROR use of undeclared lifetime name `'a`
+    //~| ERROR use of undeclared lifetime name `'a`
+    //~| ERROR the trait bound `u8: Trait` is not satisfied
+    //~| ERROR the trait bound `u8: Trait` is not satisfied
+    //~| ERROR the trait bound `u8: Trait` is not satisfied
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
 }
 
 fn main() { }

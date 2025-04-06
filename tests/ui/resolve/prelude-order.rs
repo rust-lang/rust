@@ -76,7 +76,7 @@ fn e1() {} // NOTE: testing with `-> usize` isn't valid, crates aren't considere
 
 // extern/libs -> extern
 // https://github.com/rust-lang/rust/issues/139095
-fn e2() -> Option<i32> { None } //~ ERROR: expected type, found crate
+fn e2() -> Option<i32> { None } //~ ERROR expected type, found crate
 
 // macro/libs -> macro
 #[test] //~ ERROR mismatched types

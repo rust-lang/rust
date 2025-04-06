@@ -4,7 +4,7 @@ pub struct S {
 }
 
 pub fn test(s: S) {
-    dbg!(s.cap) //~ ERROR: no field `cap` on type `S` [E0609]
+    dbg!(s.cap) //~ ERROR no field `cap` on type `S` [E0609]
 }
 
 pub(crate) mod string {

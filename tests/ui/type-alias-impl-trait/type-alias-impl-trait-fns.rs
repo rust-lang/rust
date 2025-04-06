@@ -18,7 +18,7 @@ fn bla() -> TE {
 
 #[define_opaque(TE)]
 fn bla2() -> TE {
-    //~^ ERROR: item does not constrain `TE::{opaque#0}`
+    //~^ ERROR item does not constrain `TE::{opaque#0}`
     bla()
 }
 

@@ -7,14 +7,14 @@ extern crate issue_80074;
 
 #[macro_use(m)]
 extern crate issue_80074_2;
-//~^^ ERROR: imported macro not found
+//~^^ ERROR imported macro not found
 
 fn main() {
     foo!();
-    //~^ WARN: macro `foo` is private
-    //~| WARN: it will become a hard error in a future release!
+    //~^ WARN macro `foo` is private
+    //~| WARN it will become a hard error in a future release!
     bar!();
-    //~^ ERROR: cannot find macro `bar` in this scope
+    //~^ ERROR cannot find macro `bar` in this scope
     m!();
-    //~^ ERROR: cannot find macro `m` in this scope
+    //~^ ERROR cannot find macro `m` in this scope
 }

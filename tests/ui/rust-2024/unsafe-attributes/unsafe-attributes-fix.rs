@@ -11,7 +11,7 @@ macro_rules! tt {
 macro_rules! ident {
     ($e:ident) => {
         #[$e]
-        //~^ ERROR: unsafe attribute used without unsafe
+        //~^ ERROR unsafe attribute used without unsafe
         //~| WARN this is accepted in the current edition
         extern "C" fn bar() {}
     }
@@ -20,7 +20,7 @@ macro_rules! ident {
 macro_rules! ident2 {
     ($e:ident, $l:literal) => {
         #[$e = $l]
-        //~^ ERROR: unsafe attribute used without unsafe
+        //~^ ERROR unsafe attribute used without unsafe
         //~| WARN this is accepted in the current edition
         extern "C" fn bars() {}
     }
@@ -43,28 +43,28 @@ macro_rules! meta2 {
 macro_rules! with_cfg_attr {
     () => {
         #[cfg_attr(all(), link_section = ".custom_section")]
-        //~^ ERROR: unsafe attribute used without unsafe
+        //~^ ERROR unsafe attribute used without unsafe
         //~| WARN this is accepted in the current edition
         pub extern "C" fn abc() {}
     };
 }
 
 tt!([no_mangle]);
-//~^ ERROR: unsafe attribute used without unsafe
+//~^ ERROR unsafe attribute used without unsafe
 //~| WARN this is accepted in the current edition
 ident!(no_mangle);
 meta!(no_mangle);
-//~^ ERROR: unsafe attribute used without unsafe
+//~^ ERROR unsafe attribute used without unsafe
 //~| WARN this is accepted in the current edition
 meta2!(export_name = "baw");
-//~^ ERROR: unsafe attribute used without unsafe
+//~^ ERROR unsafe attribute used without unsafe
 //~| WARN this is accepted in the current edition
 ident2!(export_name, "bars");
 
 with_cfg_attr!();
 
 #[no_mangle]
-//~^ ERROR: unsafe attribute used without unsafe
+//~^ ERROR unsafe attribute used without unsafe
 //~| WARN this is accepted in the current edition
 extern "C" fn one() {}
 

@@ -28,11 +28,11 @@ impl Foo for Box<i32> {}
 // Can't override a non-`default` fn
 impl Foo for Box<i64> {
     type Ty = Vec<()>;
-//~^ error: `Ty` specializes an item from a parent `impl`, but that item is not marked `default`
+//~^ error `Ty` specializes an item from a parent `impl`, but that item is not marked `default`
     const CONST: u8 = 42;
-//~^ error: `CONST` specializes an item from a parent `impl`, but that item is not marked `default`
+//~^ error `CONST` specializes an item from a parent `impl`, but that item is not marked `default`
     fn foo(&self) -> bool { true }
-//~^ error: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
+//~^ error `foo` specializes an item from a parent `impl`, but that item is not marked `default`
 }
 
 
@@ -44,11 +44,11 @@ impl Foo for Vec<()> {}
 
 impl Foo for Vec<bool> {
     type Ty = Vec<()>;
-//~^ error: `Ty` specializes an item from a parent `impl`, but that item is not marked `default`
+//~^ error `Ty` specializes an item from a parent `impl`, but that item is not marked `default`
     const CONST: u8 = 42;
-//~^ error: `CONST` specializes an item from a parent `impl`, but that item is not marked `default`
+//~^ error `CONST` specializes an item from a parent `impl`, but that item is not marked `default`
     fn foo(&self) -> bool { true }
-//~^ error: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
+//~^ error `foo` specializes an item from a parent `impl`, but that item is not marked `default`
 }
 
 fn main() {}

@@ -17,17 +17,17 @@ fn fn_mut() -> _ {
     //~| SUGGESTION impl FnMut(char)
     //~| NOTE for more information on `Fn` traits and closure types
     let x = String::new();
-    //~^ HELP: consider changing this to be mutable
+    //~^ HELP consider changing this to be mutable
     //~| NOTE binding `x` declared here
-    |c| { //~ NOTE: value captured here
+    |c| { //~ NOTE value captured here
         x.push(c);
-        //~^ ERROR: does not live long enough
-        //~| NOTE: does not live long enough
-        //~| NOTE: cannot borrow as mutable
-        //~| ERROR: not declared as mutable
+        //~^ ERROR does not live long enough
+        //~| NOTE does not live long enough
+        //~| NOTE cannot borrow as mutable
+        //~| ERROR not declared as mutable
     }
-} //~ NOTE: borrow later used here
-//~^ NOTE: dropped here
+} //~ NOTE borrow later used here
+//~^ NOTE dropped here
 
 fn fun() -> _ {
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types [E0121]

@@ -19,12 +19,12 @@ fn do_something<T>(_: &T) {}
 
 fn main() {
     do_something(if let Some(value) = Droppy.get_ref() { value } else { &0 });
-    //~^ ERROR: temporary value dropped while borrowed
+    //~^ ERROR temporary value dropped while borrowed
     do_something(if let Some(value) = Droppy.get_ref() {
-        //~^ ERROR: temporary value dropped while borrowed
+        //~^ ERROR temporary value dropped while borrowed
         value
     } else if let Some(value) = Droppy.get_ref() {
-        //~^ ERROR: temporary value dropped while borrowed
+        //~^ ERROR temporary value dropped while borrowed
         value
     } else {
         &0

@@ -25,12 +25,12 @@ macro_rules! make_foo {
 gimme_a! {make_foo!}
 
 struct Bar<'a, 'b: 'a> {
-    //~^ ERROR: outlives requirements can be inferred
+    //~^ ERROR outlives requirements can be inferred
     bar: &'a &'b (),
 }
 
 struct BarWhere<'a, 'b> where 'b: 'a {
-    //~^ ERROR: outlives requirements can be inferred
+    //~^ ERROR outlives requirements can be inferred
     bar: &'a &'b (),
 }
 
@@ -39,11 +39,11 @@ mod everything_inside {
     macro_rules! m {
         ('b: 'a) => {
             struct Foo<'a, 'b: 'a>(&'a &'b ());
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
             struct Bar<'a, 'b>(&'a &'b ()) where 'b: 'a;
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
             struct Baz<'a, 'b>(&'a &'b ()) where (): Sized, 'b: 'a;
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
         };
     }
     m!('b: 'a);
@@ -53,11 +53,11 @@ mod inner_lifetime_outside_colon_inside {
     macro_rules! m {
         ($b:lifetime: 'a) => {
             struct Foo<'a, $b: 'a>(&'a &$b ());
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
             struct Bar<'a, $b>(&'a &$b ()) where $b: 'a;
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
             struct Baz<'a, $b>(&'a &$b ()) where (): Sized, $b: 'a;
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
         }
     }
     m!('b: 'a);
@@ -115,9 +115,9 @@ mod everything_outside_with_tt_outer {
             // struct Foo<$a, $b $colon $a>(&$a &$b ());
             // ^ ERROR: outlives requirements can be inferred
             struct Bar<$a, $b>(&$a &$b ()) where $b $colon $a;
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
             struct Baz<$a, $b>(&$a &$b ()) where (): Sized, $b $colon $a;
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
         }
     }
     m!('b: 'a);
@@ -130,9 +130,9 @@ mod everything_outside_with_tt_both {
             // struct Foo<$a, $b $colon $a>(&$a &$b ());
             // ^ ERROR: outlives requirements can be inferred
             struct Bar<$a, $b>(&$a &$b ()) where $b $colon $a;
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
             struct Baz<$a, $b>(&$a &$b ()) where (): Sized, $b $colon $a;
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
         }
     }
     m!('b: 'a);

@@ -14,5 +14,5 @@ m!();
 
 fn main() {
     use ::_;
-    //~^ ERROR: expected identifier, found reserved identifier `_`
+    //~^ ERROR expected identifier, found reserved identifier `_`
 }

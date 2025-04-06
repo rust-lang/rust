@@ -23,7 +23,7 @@ fn foo(x: bool) -> Bar<impl Trait> {
     if x {
         let x = foo(false);
         x.bar();
-        //[next]~^ ERROR: multiple applicable items in scope
+        //[next]~^ ERROR multiple applicable items in scope
     }
     Bar(42_i32)
 }

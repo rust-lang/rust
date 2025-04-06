@@ -10,7 +10,7 @@
 //! resolution.
 
 extern crate uta;
-extern crate utb; //~ ERROR: found possibly newer version of crate `uta` which `utb` depends
+extern crate utb; //~ ERROR found possibly newer version of crate `uta` which `utb` depends
 
 fn main() {
     utb::foo()

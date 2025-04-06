@@ -13,7 +13,7 @@ where
 
 fn extend_lt<'a>(x: &'a str) -> Box<dyn AsRef<str> + 'static> {
     type DynTrait = dyn for<'a> Trait<&'a str, Assoc = &'a str>;
-    hr::<DynTrait, _>(x) //~ ERROR: borrowed data escapes outside of function
+    hr::<DynTrait, _>(x) //~ ERROR borrowed data escapes outside of function
 }
 
 fn main() {

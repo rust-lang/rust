@@ -8,8 +8,8 @@ trait B {
 
 trait A {
     fn g(new: B) -> B;
-    //~^ ERROR: expected a type, found a trait
-    //~| ERROR: expected a type, found a trait
+    //~^ ERROR expected a type, found a trait
+    //~| ERROR expected a type, found a trait
 }
 
 fn main() {}

@@ -18,7 +18,7 @@ fn innocent_looking_victim() {
             match x {
                 Some(ref msg) => {
                     (f.c)(f, true);
-                    //~^ ERROR: cannot borrow `*f` as mutable more than once at a time
+                    //~^ ERROR cannot borrow `*f` as mutable more than once at a time
                     println!("{}", msg);
                 },
                 None => panic!("oops"),

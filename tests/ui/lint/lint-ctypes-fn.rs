@@ -68,23 +68,23 @@ pub extern "C" fn ptr_unit(p: *const ()) { }
 pub extern "C" fn ptr_tuple(p: *const ((),)) { }
 
 pub extern "C" fn slice_type(p: &[u32]) { }
-//~^ ERROR: uses type `[u32]`
+//~^ ERROR uses type `[u32]`
 
 pub extern "C" fn str_type(p: &str) { }
-//~^ ERROR: uses type `str`
+//~^ ERROR uses type `str`
 
 pub extern "C" fn box_type(p: Box<u32>) { }
 
 pub extern "C" fn opt_box_type(p: Option<Box<u32>>) { }
 
 pub extern "C" fn boxed_slice(p: Box<[u8]>) { }
-//~^ ERROR: uses type `Box<[u8]>`
+//~^ ERROR uses type `Box<[u8]>`
 
 pub extern "C" fn boxed_string(p: Box<str>) { }
-//~^ ERROR: uses type `Box<str>`
+//~^ ERROR uses type `Box<str>`
 
 pub extern "C" fn boxed_trait(p: Box<dyn Trait>) { }
-//~^ ERROR: uses type `Box<dyn Trait>`
+//~^ ERROR uses type `Box<dyn Trait>`
 
 pub extern "C" fn char_type(p: char) { }
 //~^ ERROR uses type `char`
@@ -121,10 +121,10 @@ pub extern "C" fn fn_type2(p: fn()) { }
 pub extern "C" fn fn_contained(p: RustBadRet) { }
 
 pub extern "C" fn transparent_i128(p: TransparentI128) { }
-//~^ ERROR: uses type `i128`
+//~^ ERROR uses type `i128`
 
 pub extern "C" fn transparent_str(p: TransparentStr) { }
-//~^ ERROR: uses type `str`
+//~^ ERROR uses type `str`
 
 pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
 
@@ -183,10 +183,10 @@ pub extern "C" fn used_generic3<T: Default>() -> T {
 }
 
 pub extern "C" fn used_generic4<T>(x: Vec<T>) { }
-//~^ ERROR: uses type `Vec<T>`
+//~^ ERROR uses type `Vec<T>`
 
 pub extern "C" fn used_generic5<T>() -> Vec<T> {
-//~^ ERROR: uses type `Vec<T>`
+//~^ ERROR uses type `Vec<T>`
     Default::default()
 }
 

@@ -20,6 +20,6 @@ fn constrain() -> Alias {
 
 impl OtherTrait for Alias {}
 impl OtherTrait for i32 {}
-//~^ ERROR: conflicting implementations of trait `OtherTrait` for type `Alias`
+//~^ ERROR conflicting implementations of trait `OtherTrait` for type `Alias`
 
 fn main() {}

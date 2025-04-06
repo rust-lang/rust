@@ -6,6 +6,6 @@
 // identifiers are enabled.
 
 fn main() {
-    let async = 3; //~ ERROR: is a keyword
+    let async = 3; //~ ERROR is a keyword
     //~^ WARN this is accepted in the current edition
 }

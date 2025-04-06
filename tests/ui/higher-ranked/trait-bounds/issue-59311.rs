@@ -15,9 +15,9 @@ where
     for<'a> &'a V: Trait + 'static,
 {
     v.t(|| {});
-    //~^ ERROR: implementation of `Trait` is not general enough
-    //~| ERROR: implementation of `Trait` is not general enough
-    //~| ERROR: higher-ranked lifetime error
+    //~^ ERROR implementation of `Trait` is not general enough
+    //~| ERROR implementation of `Trait` is not general enough
+    //~| ERROR higher-ranked lifetime error
 }
 
 fn main() {}

@@ -5,10 +5,10 @@ trait Foo {
 }
 
 impl <T, T1> Foo for T {
-    //~^ ERROR: the type parameter `T1` is not constrained
+    //~^ ERROR the type parameter `T1` is not constrained
     type F<T1> = &[u8];
-      //~^ ERROR: the name `T1` is already used for
-      //~| ERROR: `&` without an explicit lifetime name cannot be used here
+      //~^ ERROR the name `T1` is already used for
+      //~| ERROR `&` without an explicit lifetime name cannot be used here
 }
 
 fn main() {}

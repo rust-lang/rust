@@ -32,5 +32,5 @@ impl Foo for [i32; 0] {}
 fn main() {
     let x: &dyn Foo = &[];
     let x = x.cast::<[i32]>();
-    //~^ ERROR: the trait bound `dyn Foo: CastTo<[i32]>` is not satisfied
+    //~^ ERROR the trait bound `dyn Foo: CastTo<[i32]>` is not satisfied
 }

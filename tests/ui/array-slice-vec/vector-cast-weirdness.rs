@@ -17,13 +17,13 @@ fn main() {
     // No longer a type mismatch - the `_` can be fully resolved by type inference.
     let p1: *const u8 = &x1.y as *const _;
     let p1: *mut u8 = &x1.y as *mut _;
-    //~^ ERROR: casting `&[u8; 2]` as `*mut u8` is invalid
+    //~^ ERROR casting `&[u8; 2]` as `*mut u8` is invalid
     let t1: *const [u8; 2] = &x1.y as *const _;
     let t1: *mut [u8; 2] = &x1.y as *mut _;
-    //~^ ERROR: casting `&[u8; 2]` as `*mut [u8; 2]` is invalid
+    //~^ ERROR casting `&[u8; 2]` as `*mut [u8; 2]` is invalid
     let h1: *const [u8; 2] = &x1.y as *const [u8; 2];
     let t1: *mut [u8; 2] = &x1.y as *mut [u8; 2];
-    //~^ ERROR: casting `&[u8; 2]` as `*mut [u8; 2]` is invalid
+    //~^ ERROR casting `&[u8; 2]` as `*mut [u8; 2]` is invalid
 
     let mut x1 = X { y: [0, 0] };
 

@@ -36,7 +36,7 @@ struct BaseCommand {
 }
 
 fn request_key(command: BaseCommand) {
-    match command { //~ ERROR: reached pattern complexity limit
+    match command { //~ ERROR reached pattern complexity limit
         BaseCommand { field01: true, .. } => {}
         BaseCommand { field02: true, .. } => {}
         BaseCommand { field03: true, .. } => {}

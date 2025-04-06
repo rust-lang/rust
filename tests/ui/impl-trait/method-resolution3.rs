@@ -19,7 +19,7 @@ fn foo(x: bool) -> Bar<impl Sized> {
     if x {
         let x = foo(false);
         x.bar();
-        //~^ ERROR: multiple applicable items in scope
+        //~^ ERROR multiple applicable items in scope
     }
     todo!()
 }

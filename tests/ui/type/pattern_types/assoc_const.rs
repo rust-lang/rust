@@ -15,10 +15,10 @@ trait Foo {
 }
 
 fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)) {}
-//[default]~^ ERROR: generic parameters may not be used in const operations
-//[default]~| ERROR: generic parameters may not be used in const operations
+//[default]~^ ERROR generic parameters may not be used in const operations
+//[default]~| ERROR generic parameters may not be used in const operations
 fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
-//[default]~^ ERROR: generic parameters may not be used in const operations
-//[default]~| ERROR: generic parameters may not be used in const operations
+//[default]~^ ERROR generic parameters may not be used in const operations
+//[default]~| ERROR generic parameters may not be used in const operations
 
 fn main() {}

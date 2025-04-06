@@ -22,7 +22,7 @@ struct S<T: ?Sized> {
 fn m<'a>() {
     let unsend: *const dyn Cat<'a> = &();
     let _send = unsend as *const S<dyn Cat<'static>>;
-    //~^ error: lifetime may not live long enough
+    //~^ error lifetime may not live long enough
 }
 
 fn main() {

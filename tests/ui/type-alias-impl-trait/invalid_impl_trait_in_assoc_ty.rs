@@ -7,10 +7,10 @@ trait Foo {
 
 impl Foo for () {
     type Foo = impl std::fmt::Debug;
-    //~^ ERROR: unconstrained opaque type
+    //~^ ERROR unconstrained opaque type
     fn bar() {
         let x: Self::Foo = ();
-        //~^ ERROR: mismatched types
+        //~^ ERROR mismatched types
     }
 }
 

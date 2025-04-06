@@ -19,7 +19,7 @@ impl Tuple for () {}
 // FIXME: this passes if we use `<(), ()>` here instead of `<(), Opaque>`,
 // even though there can't be more overlap from the opaque version
 impl SpecTrait<(), Opaque> for () {
-    //~^ ERROR: conflicting implementations
+    //~^ ERROR conflicting implementations
     fn f() {}
 }
 

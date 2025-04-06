@@ -20,6 +20,6 @@ fn main() {
 
 
     println!("{:?}", p);
-    //~^ ERROR: cannot borrow `p` as immutable because it is also borrowed as mutable
+    //~^ ERROR cannot borrow `p` as immutable because it is also borrowed as mutable
     c();
 }

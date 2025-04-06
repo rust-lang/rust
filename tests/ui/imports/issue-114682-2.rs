@@ -6,7 +6,7 @@ extern crate issue_114682_2_extern;
 use issue_114682_2_extern::max;
 
 type A = issue_114682_2_extern::max;
-//~^ ERROR: expected type, found function `issue_114682_2_extern::max`
+//~^ ERROR expected type, found function `issue_114682_2_extern::max`
 // FIXME:
 // The above error was emitted due to `(Mod(issue_114682_2_extern), Namespace(Type), Ident(max))`
 // being identified as an ambiguous item.

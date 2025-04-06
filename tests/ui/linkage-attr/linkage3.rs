@@ -5,7 +5,7 @@
 extern "C" {
     #[linkage = "foo"]
     static foo: *const i32;
-//~^ ERROR: invalid linkage specified
+//~^ ERROR invalid linkage specified
 }
 
 fn main() {

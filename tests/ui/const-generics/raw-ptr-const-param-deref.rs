@@ -8,10 +8,10 @@
 
 const A: u32 = 3;
 
-struct Const<const P: *const u32>; //~ ERROR: using raw pointers as const generic parameters
+struct Const<const P: *const u32>; //~ ERROR using raw pointers as const generic parameters
 
 impl<const P: *const u32> Const<P> {
-    //~^ ERROR: using raw pointers as const generic parameters
+    //~^ ERROR using raw pointers as const generic parameters
     fn get() -> u32 {
         unsafe { *P }
     }

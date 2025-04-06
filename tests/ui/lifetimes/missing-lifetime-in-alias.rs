@@ -14,8 +14,8 @@ struct Impl<'a>(&'a ());
 impl<'a> Trait<'a> for Impl<'a> {
     type Foo = &'a ();
     type Bar<'b> = &'b ();
-    //~^ ERROR: does not fulfill the required lifetime
-    //~| NOTE: type must outlive the lifetime `'b`
+    //~^ ERROR does not fulfill the required lifetime
+    //~| NOTE type must outlive the lifetime `'b`
 }
 
 type A<'a> = Impl<'a>;

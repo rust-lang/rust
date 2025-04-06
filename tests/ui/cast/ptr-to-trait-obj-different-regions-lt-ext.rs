@@ -9,7 +9,7 @@ trait Static<'a> {
 }
 
 fn bad_cast<'a>(x: *const dyn Static<'static>) -> *const dyn Static<'a> {
-    x as _ //~ error: lifetime may not live long enough
+    x as _ //~ error lifetime may not live long enough
 }
 
 impl Static<'static> for () {

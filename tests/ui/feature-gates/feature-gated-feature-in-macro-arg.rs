@@ -8,7 +8,7 @@ fn main() {
         extern "rust-intrinsic" { //~ ERROR "rust-intrinsic" ABI is an implementation detail
             fn atomic_fence();
         }
-        atomic_fence(); //~ ERROR: is unsafe
+        atomic_fence(); //~ ERROR is unsafe
         42
     });
 }

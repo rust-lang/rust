@@ -14,18 +14,18 @@ type OneConst<const X: usize> = impl Debug;
 
 #[define_opaque(OneTy)]
 fn concrete_ty() -> OneTy<u32> {
-    //~^ ERROR: expected generic type parameter, found `u32`
+    //~^ ERROR expected generic type parameter, found `u32`
     5u32
 }
 
 #[define_opaque(OneLifetime)]
 fn concrete_lifetime() -> OneLifetime<'static> {
     6u32
-    //~^ ERROR: expected generic lifetime parameter, found `'static`
+    //~^ ERROR expected generic lifetime parameter, found `'static`
 }
 
 #[define_opaque(OneConst)]
 fn concrete_const() -> OneConst<{ 123 }> {
-    //~^ ERROR: expected generic constant parameter, found `123`
+    //~^ ERROR expected generic constant parameter, found `123`
     7u32
 }

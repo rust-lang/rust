@@ -6,14 +6,14 @@ const C_INNER: (*const u8, u8) = (C, 0);
 
 fn foo(x: *const u8) {
     match x {
-        C => {} //~ERROR: behave unpredictably
+        C => {} //~ERROR behave unpredictably
         _ => {}
     }
 }
 
 fn foo2(x: *const u8) {
     match (x, 1) {
-        C_INNER => {} //~ERROR: behave unpredictably
+        C_INNER => {} //~ERROR behave unpredictably
         _ => {}
     }
 }
@@ -24,12 +24,12 @@ const STR: *const str = "abcd";
 
 fn main() {
     match D {
-        D => {} //~ERROR: behave unpredictably
+        D => {} //~ERROR behave unpredictably
         _ => {}
     }
 
     match STR {
-        STR => {} //~ERROR: behave unpredictably
+        STR => {} //~ERROR behave unpredictably
         _ => {}
     }
 }

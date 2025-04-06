@@ -4,38 +4,38 @@
 #![warn(dead_code)]
 
 struct Foo {
-    a: i32, //~ WARNING: fields `a` and `b` are never read
+    a: i32, //~ WARNING fields `a` and `b` are never read
     pub b: i32,
 }
 
 struct Bar;
 
 impl Bar {
-    fn a(&self) -> i32 { 5 } //~ WARNING: methods `a` and `b` are never used [dead_code]
+    fn a(&self) -> i32 { 5 } //~ WARNING methods `a` and `b` are never used [dead_code]
     pub fn b(&self) -> i32 { 6 }
 }
 
 pub(crate) struct Foo1 {
-    a: i32, //~ WARNING: fields `a` and `b` are never read
+    a: i32, //~ WARNING fields `a` and `b` are never read
     pub b: i32,
 }
 
 pub(crate) struct Bar1;
 
 impl Bar1 {
-    fn a(&self) -> i32 { 5 } //~ WARNING: methods `a` and `b` are never used [dead_code]
+    fn a(&self) -> i32 { 5 } //~ WARNING methods `a` and `b` are never used [dead_code]
     pub fn b(&self) -> i32 { 6 }
 }
 
 pub(crate) struct Foo2 {
-    a: i32, //~ WARNING: fields `a` and `b` are never read
+    a: i32, //~ WARNING fields `a` and `b` are never read
     pub b: i32,
 }
 
 pub(crate) struct Bar2;
 
 impl Bar2 {
-    fn a(&self) -> i32 { 5 } //~ WARNING: methods `a` and `b` are never used [dead_code]
+    fn a(&self) -> i32 { 5 } //~ WARNING methods `a` and `b` are never used [dead_code]
     pub fn b(&self) -> i32 { 6 }
 }
 

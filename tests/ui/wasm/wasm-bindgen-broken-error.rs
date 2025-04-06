@@ -22,7 +22,7 @@
 //@[v1_0_0] rustc-env:CARGO_PKG_VERSION_PATCH=0
 
 #![crate_name = "wasm_bindgen"]
-//[v0_1_0]~^ ERROR: older versions of the `wasm-bindgen` crate
-//[v0_2_87]~^^ ERROR: older versions of the `wasm-bindgen` crate
+//[v0_1_0]~^ ERROR older versions of the `wasm-bindgen` crate
+//[v0_2_87]~^^ ERROR older versions of the `wasm-bindgen` crate
 
 fn main() {}

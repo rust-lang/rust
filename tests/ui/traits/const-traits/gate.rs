@@ -2,7 +2,7 @@
 
 fn main() {
     (const || {})();
-    //~^ ERROR: const closures are experimental
+    //~^ ERROR const closures are experimental
 }
 
 macro_rules! e {

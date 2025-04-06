@@ -14,7 +14,7 @@ use attributes_included::*;
 #[inline]
 /// doc
 fn foo() {
-    let a: i32 = "foo"; //~ WARN: unused variable
+    let a: i32 = "foo"; //~ WARN unused variable
 }
 
 fn main() {

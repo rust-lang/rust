@@ -7,17 +7,17 @@
 
 pub fn main() {
     let &mut _ = &&0;
-    //~^ ERROR: mismatched types
+    //~^ ERROR mismatched types
 
     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&0;
-    //~^ ERROR: mismatched types
+    //~^ ERROR mismatched types
 
     let &mut _ = &&mut 0;
-    //~^ ERROR: mismatched types
+    //~^ ERROR mismatched types
 
     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&mut 0;
-    //~^ ERROR: mismatched types
+    //~^ ERROR mismatched types
 
     let &mut &mut &mut &mut _ = &mut &&&&mut &&&mut &mut 0;
-    //~^ ERROR: mismatched types
+    //~^ ERROR mismatched types
 }

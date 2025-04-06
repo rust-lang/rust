@@ -9,7 +9,7 @@ fn main() {
     let a: Box<Box<_>> = Box::new(Box::new(2));
     let b = &a;
 
-    let z = *a; //~ ERROR: cannot move out of `*a` because it is borrowed
+    let z = *a; //~ ERROR cannot move out of `*a` because it is borrowed
     b.use_ref();
 }
 

@@ -8,7 +8,7 @@ fn func(func_arg: &mut V) {
         // a destructuring binding like `let V(x) = ...`
         // because only `V(x) = ...` triggers the ICE
         let x;
-        V(x) = func_arg; //~ ERROR: mismatched types
+        V(x) = func_arg; //~ ERROR mismatched types
         func_arg.0 = 0;
      };
 }

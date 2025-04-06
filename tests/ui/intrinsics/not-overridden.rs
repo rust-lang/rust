@@ -13,5 +13,5 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
 
 fn main() {
     unsafe { const_deallocate(std::ptr::null_mut(), 0, 0) }
-    //~^ ERROR: must be overridden
+    //~^ ERROR must be overridden
 }

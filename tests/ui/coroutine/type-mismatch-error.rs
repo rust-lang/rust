@@ -15,7 +15,7 @@ fn main() {
                 yield ();
             } else {
                 a
-                //~^ error: `if` and `else` have incompatible types
+                //~^ error `if` and `else` have incompatible types
             }
         },
         0u8,

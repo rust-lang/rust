@@ -14,24 +14,24 @@ use std::{
 
 // Null is never valid for references
 pub static S0: &[u32] = unsafe { from_raw_parts(ptr::null(), 0) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR it is undefined behavior to use this value
 pub static S1: &[()] = unsafe { from_raw_parts(ptr::null(), 0) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR it is undefined behavior to use this value
 
 // Out of bounds
 pub static S2: &[u32] = unsafe { from_raw_parts(&D0, 2) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR it is undefined behavior to use this value
 
 // Reading uninitialized  data
-pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) }; //~ ERROR: it is undefined behavior to use this value
+pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) }; //~ ERROR it is undefined behavior to use this value
 // Reinterpret pointers as integers (UB in CTFE.)
-pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, size_of::<&u32>()) }; //~ ERROR: it is undefined behavior to use this value
+pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, size_of::<&u32>()) }; //~ ERROR it is undefined behavior to use this value
 // Layout mismatch
-pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4) }; //~ ERROR: it is undefined behavior to use this value
+pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4) }; //~ ERROR it is undefined behavior to use this value
 
 // Reading padding is not ok
 pub static S7: &[u16] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     let ptr = (&D2 as *const Struct as *const u16).add(1);
 
     from_raw_parts(ptr, 4)
@@ -39,7 +39,7 @@ pub static S7: &[u16] = unsafe {
 
 // Unaligned read
 pub static S8: &[u64] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     let ptr = (&D4 as *const [u32; 2] as *const u32).byte_add(1).cast::<u64>();
 
     from_raw_parts(ptr, 1)
@@ -55,22 +55,22 @@ pub static R2: &[u32] = unsafe {
     //~^ ERROR could not evaluate static initializer
 };
 pub static R4: &[u8] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     let ptr = (&D1) as *const MaybeUninit<&u32> as *const u8;
     from_ptr_range(ptr..ptr.add(1))
 };
 pub static R5: &[u8] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     let ptr = &D3 as *const &u32;
     from_ptr_range(ptr.cast()..ptr.add(1).cast())
 };
 pub static R6: &[bool] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     let ptr = &D0 as *const u32 as *const bool;
     from_ptr_range(ptr..ptr.add(4))
 };
 pub static R7: &[u16] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR it is undefined behavior to use this value
     let ptr = (&D2 as *const Struct as *const u16).byte_add(1);
     from_ptr_range(ptr..ptr.add(4))
 };

@@ -3,7 +3,7 @@
 
 #[cfg(in_attr)]
 #[link(name = "foo", kind = "dylib", modifiers = "+as-needed")]
-//[in_attr]~^ ERROR: linking modifier `as-needed` is unstable
+//[in_attr]~^ ERROR linking modifier `as-needed` is unstable
 extern "C" {}
 
 fn main() {}

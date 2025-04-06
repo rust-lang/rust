@@ -5,7 +5,7 @@
 use std::ops::{ Deref };
 
 struct X(dyn Iterator<Item = &'a ()>);
-//~^ ERROR: use of undeclared lifetime name `'a`
+//~^ ERROR use of undeclared lifetime name `'a`
 
 impl Deref for X {
     type Target = isize;

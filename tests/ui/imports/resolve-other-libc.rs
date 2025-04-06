@@ -9,6 +9,6 @@
 //   error[E0658]: use of unstable library feature `rustc_private`: \
 //           this crate is being loaded from the sysroot
 //
-extern crate libc; //~ ERROR: extern location for libc does not exist: test.rlib
+extern crate libc; //~ ERROR extern location for libc does not exist: test.rlib
 
 fn main() {}

@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 fn main() {
-    while true {} //~ ERROR: infinite
+    while true {} //~ ERROR infinite
 }
 
 #[allow(warnings)]
@@ -12,10 +12,10 @@ fn foo() {
 
 #[warn(warnings)]
 fn bar() {
-    while true {} //~ WARNING: infinite
+    while true {} //~ WARNING infinite
 }
 
 #[forbid(warnings)]
 fn baz() {
-    while true {} //~ ERROR: infinite
+    while true {} //~ ERROR infinite
 }

@@ -4,7 +4,7 @@
 
 struct Foo {
     x: usize,
-    b: bool, //~ ERROR: field `b` is never read
+    b: bool, //~ ERROR field `b` is never read
 }
 
 fn field_read(f: Foo) -> usize {
@@ -58,7 +58,7 @@ fn field_match_in_patterns(b: XYZ) -> String {
 }
 
 struct Bar {
-    x: usize, //~ ERROR: fields `x` and `c` are never read
+    x: usize, //~ ERROR fields `x` and `c` are never read
     b: bool,
     c: bool,
     _guard: ()

@@ -5,8 +5,8 @@
 #![allow(unused_macros)]
 
 marco_rules! thing {
-//~^ ERROR: expected one of
-//~| HELP: perhaps you meant to define a macro
+//~^ ERROR expected one of
+//~| HELP perhaps you meant to define a macro
     () => {}
 }
 

@@ -370,15 +370,15 @@ mod multiple_predicates_with_same_span {
     macro_rules! m {
         ($($name:ident)+) => {
             struct Inline<'a, $($name: 'a,)+>(&'a ($($name,)+));
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
             struct FullWhere<'a, $($name,)+>(&'a ($($name,)+)) where $($name: 'a,)+;
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
             struct PartialWhere<'a, $($name,)+>(&'a ($($name,)+)) where (): Sized, $($name: 'a,)+;
-            //~^ ERROR: outlives requirements can be inferred
+            //~^ ERROR outlives requirements can be inferred
             struct Interleaved<'a, $($name,)+>(&'a ($($name,)+))
             where
                 (): Sized,
-                $($name: 'a, $name: 'a, )+ //~ ERROR: outlives requirements can be inferred
+                $($name: 'a, $name: 'a, )+ //~ ERROR outlives requirements can be inferred
                 $($name: 'a, $name: 'a, )+;
         }
     }

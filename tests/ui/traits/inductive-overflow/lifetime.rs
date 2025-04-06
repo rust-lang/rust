@@ -16,13 +16,13 @@ struct C<'a>(&'a ());
 struct X<T: Y>(T::P);
 
 impl<T: NotAuto> NotAuto for Box<T> {}
-impl<T: Y> NotAuto for X<T> where T::P: NotAuto {} //~ NOTE: required
+impl<T: Y> NotAuto for X<T> where T::P: NotAuto {} //~ NOTE required
 //~^ NOTE unsatisfied trait bound introduced here
 impl<'a> NotAuto for C<'a> {}
 
 fn is_send<S: NotAuto>() {}
-//~^ NOTE: required
-//~| NOTE: required
+//~^ NOTE required
+//~| NOTE required
 
 fn main() {
     // Should only be a few notes.

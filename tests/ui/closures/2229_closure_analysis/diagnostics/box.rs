@@ -19,7 +19,7 @@ fn box_1() {
     };
 
     e.0.0.m.x = format!("not-x");
-    //~^ ERROR: cannot assign to `e.0.0.m.x` because it is borrowed
+    //~^ ERROR cannot assign to `e.0.0.m.x` because it is borrowed
     c();
 }
 
@@ -36,7 +36,7 @@ fn box_2() {
     };
 
     println!("{}", e.0.0.m.x);
-    //~^ ERROR: cannot borrow `e.0.0.m.x` as immutable because it is also borrowed as mutable
+    //~^ ERROR cannot borrow `e.0.0.m.x` as immutable because it is also borrowed as mutable
     c();
 }
 
@@ -53,7 +53,7 @@ fn box_3() {
     };
 
     e.0.0.m.x = format!("not-x");
-    //~^ ERROR: cannot assign to `e.0.0.m.x` because it is borrowed
+    //~^ ERROR cannot assign to `e.0.0.m.x` because it is borrowed
     c();
 }
 

@@ -10,7 +10,7 @@ where
     [(); both(N + 1, M + 1)]:,
 {
     bar()
-    //~^ ERROR: unconstrained generic constant
+    //~^ ERROR unconstrained generic constant
 }
 
 fn bar<const N: usize>() -> [(); N]

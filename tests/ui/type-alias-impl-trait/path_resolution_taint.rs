@@ -3,7 +3,7 @@
 #![feature(type_alias_impl_trait)]
 
 fn dyn_hoops<T>() -> *const dyn Iterator<Item = impl Captures> {
-    //~^ ERROR: cannot find trait `Captures` in this scope
+    //~^ ERROR cannot find trait `Captures` in this scope
     loop {}
 }
 

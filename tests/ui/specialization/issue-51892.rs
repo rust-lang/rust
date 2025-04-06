@@ -12,7 +12,7 @@ impl<T: ?Sized> Trait for T {
 
 impl<T: Trait> Trait for *const T {
     type Type = [u8; std::mem::size_of::<<T as Trait>::Type>()];
-    //~^ ERROR: unconstrained generic constant
+    //~^ ERROR unconstrained generic constant
 }
 
 fn main() {}

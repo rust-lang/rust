@@ -18,6 +18,6 @@ struct C;
 impl<'a> A<'a> for C {
     type B<'b> = impl Clone;
 
-    fn a(&'a self) -> Self::B<'a> {} //~ ERROR: non-defining opaque type use in defining scope
-    //~^ ERROR: non-defining opaque type use in defining scope
+    fn a(&'a self) -> Self::B<'a> {} //~ ERROR non-defining opaque type use in defining scope
+    //~^ ERROR non-defining opaque type use in defining scope
 }

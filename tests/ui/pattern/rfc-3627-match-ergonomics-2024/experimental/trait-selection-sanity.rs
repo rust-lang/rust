@@ -25,6 +25,6 @@ fn main() {
         }
     }
 
-    let (&_, b) = generic(); //[without_impl]~ ERROR: the trait bound `&_: main::Ref` is not satisfied [E0277]
+    let (&_, b) = generic(); //[without_impl]~ ERROR the trait bound `&_: main::Ref` is not satisfied [E0277]
     assert!(!b);
 }

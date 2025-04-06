@@ -7,5 +7,5 @@
 const RECUR<T>: () = RECUR::<(T,)>;
 
 fn main() {
-    let _ = RECUR::<()>; //~ ERROR: queries overflow the depth limit!
+    let _ = RECUR::<()>; //~ ERROR queries overflow the depth limit!
 }

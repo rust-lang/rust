@@ -7,7 +7,7 @@ use std::arch::naked_asm;
 
 #[naked]
 #[target_feature(enable = "avx2")]
-//~^ ERROR: `#[target_feature(/* ... */)]` is currently unstable on `#[naked]` functions
+//~^ ERROR `#[target_feature(/* ... */)]` is currently unstable on `#[naked]` functions
 extern "C" fn naked() {
     unsafe { naked_asm!("") }
 }

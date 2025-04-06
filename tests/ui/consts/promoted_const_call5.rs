@@ -29,14 +29,14 @@ const C: () = {
 
 const _: () = {
     let _: &'static _ = &new_manually_drop(new_string());
-    //~^ ERROR: temporary value dropped while borrowed
+    //~^ ERROR temporary value dropped while borrowed
 };
 
 fn main() {
     let _: &'static _ = &id(&new_string());
-    //~^ ERROR: temporary value dropped while borrowed
-    //~| ERROR: temporary value dropped while borrowed
+    //~^ ERROR temporary value dropped while borrowed
+    //~| ERROR temporary value dropped while borrowed
 
     let _: &'static _ = &new_manually_drop(new_string());
-    //~^ ERROR: temporary value dropped while borrowed
+    //~^ ERROR temporary value dropped while borrowed
 }

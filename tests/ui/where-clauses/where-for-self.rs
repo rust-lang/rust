@@ -13,7 +13,7 @@ impl<'a, 'b> Bar<'b> for &'a u32 {
 
 fn foo<T>(x: &T)
     where for<'a> &'a T: for<'b> Bar<'b>
-    //~^ error: nested quantification of lifetimes
+    //~^ error nested quantification of lifetimes
 {}
 
 fn main() {}

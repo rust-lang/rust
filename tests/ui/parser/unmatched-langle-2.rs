@@ -11,5 +11,5 @@
 
 fn main() {
     foo::<Ty<<<i32>();
-    //~^ ERROR: expected `::`, found `(`
+    //~^ ERROR expected `::`, found `(`
 }

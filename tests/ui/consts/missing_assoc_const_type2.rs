@@ -10,7 +10,7 @@ trait Range {
 struct TwoDigits;
 impl Range for TwoDigits {
     const FIRST:  = 10;
-    //~^ ERROR: missing type
+    //~^ ERROR missing type
     const LAST: u8 = 99;
 }
 

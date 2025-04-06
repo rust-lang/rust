@@ -8,7 +8,7 @@ impl X {
     fn f(&mut self) {
         generic(self);
         self.0 += 1;
-        //~^ ERROR: use of moved value: `self` [E0382]
+        //~^ ERROR use of moved value: `self` [E0382]
     }
 }
 

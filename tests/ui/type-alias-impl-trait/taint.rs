@@ -11,7 +11,7 @@ fn set(x: &mut isize) -> isize {
 
 #[define_opaque(Two)]
 fn d(x: Two) {
-    let c1 = || set(x); //~ ERROR: expected generic lifetime parameter, found `'_`
+    let c1 = || set(x); //~ ERROR expected generic lifetime parameter, found `'_`
     c1;
 }
 

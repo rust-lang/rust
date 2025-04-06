@@ -21,7 +21,7 @@ fn main() {
     };
 
     let py = &mut w.p.x;
-    //~^ ERROR: cannot borrow `w.p.x` as mutable more than once at a time
+    //~^ ERROR cannot borrow `w.p.x` as mutable more than once at a time
     c();
 
     *py = 20

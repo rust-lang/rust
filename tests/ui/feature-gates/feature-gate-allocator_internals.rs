@@ -1,3 +1,3 @@
-#![default_lib_allocator] //~ ERROR: attribute is an experimental feature
+#![default_lib_allocator] //~ ERROR attribute is an experimental feature
 
 fn main() {}

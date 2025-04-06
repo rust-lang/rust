@@ -24,19 +24,19 @@ fn test_discriminant() {
     generic_discriminant(&SomeEnum::B);
 
     discriminant(&());
-    //~^ error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+    //~^ error the return value of `mem::discriminant` is unspecified when called with a non-enum type
 
     discriminant(&&SomeEnum::B);
-    //~^ error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+    //~^ error the return value of `mem::discriminant` is unspecified when called with a non-enum type
 
     discriminant(&SomeStruct);
-    //~^ error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+    //~^ error the return value of `mem::discriminant` is unspecified when called with a non-enum type
 
     discriminant(&123u32);
-    //~^ error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+    //~^ error the return value of `mem::discriminant` is unspecified when called with a non-enum type
 
     discriminant(&&123i8);
-    //~^ error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+    //~^ error the return value of `mem::discriminant` is unspecified when called with a non-enum type
 }
 
 fn test_variant_count() {
@@ -44,16 +44,16 @@ fn test_variant_count() {
     generic_variant_count::<SomeEnum>();
 
     variant_count::<&str>();
-    //~^ error: the return value of `mem::variant_count` is unspecified when called with a non-enum type
+    //~^ error the return value of `mem::variant_count` is unspecified when called with a non-enum type
 
     variant_count::<*const u8>();
-    //~^ error: the return value of `mem::variant_count` is unspecified when called with a non-enum type
+    //~^ error the return value of `mem::variant_count` is unspecified when called with a non-enum type
 
     variant_count::<()>();
-    //~^ error: the return value of `mem::variant_count` is unspecified when called with a non-enum type
+    //~^ error the return value of `mem::variant_count` is unspecified when called with a non-enum type
 
     variant_count::<&SomeEnum>();
-    //~^ error: the return value of `mem::variant_count` is unspecified when called with a non-enum type
+    //~^ error the return value of `mem::variant_count` is unspecified when called with a non-enum type
 }
 
 fn main() {

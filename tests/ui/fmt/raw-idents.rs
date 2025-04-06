@@ -5,10 +5,10 @@
 
 fn main() {
     let r#type = "foobar";
-    println!("It is {r#type}"); //~ ERROR: invalid format string: raw identifiers are not supported
-    println!(r##"It still is {r#type}"##); //~ ERROR: invalid format string: raw identifiers are not supported
-    println!(concat!("{r#", "type}")); //~ ERROR: invalid format string: raw identifiers are not supported
-    println!("{\x72\x23type:?}"); //~ ERROR: invalid format string: raw identifiers are not supported
+    println!("It is {r#type}"); //~ ERROR invalid format string: raw identifiers are not supported
+    println!(r##"It still is {r#type}"##); //~ ERROR invalid format string: raw identifiers are not supported
+    println!(concat!("{r#", "type}")); //~ ERROR invalid format string: raw identifiers are not supported
+    println!("{\x72\x23type:?}"); //~ ERROR invalid format string: raw identifiers are not supported
 
     // OK
     println!("{type}");

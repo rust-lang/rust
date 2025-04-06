@@ -4,5 +4,5 @@ extern crate issue_16725 as foo;
 
 fn main() {
     unsafe { foo::bar(); }
-    //~^ ERROR: function `bar` is private
+    //~^ ERROR function `bar` is private
 }

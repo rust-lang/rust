@@ -14,7 +14,7 @@ impl Drop for Foo {
 macro_rules! m {
     (@ $body:expr) => {{
         let f = || $body;
-        //~^ WARNING: drop order
+        //~^ WARNING drop order
         f();
     }};
     ($body:block) => {{
@@ -25,7 +25,7 @@ macro_rules! m {
 fn main() {
     let a = (Foo(0), Foo(1));
     m!({
-        //~^ HELP: add a dummy
+        //~^ HELP add a dummy
         let x = a.0;
         println!("{:?}", x);
     });

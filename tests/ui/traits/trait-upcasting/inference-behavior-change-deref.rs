@@ -29,5 +29,5 @@ fn main() {
     let x: &dyn Foo = &();
     let y = take_dyn(x);
     let z: u32 = y;
-    //~^ error: mismatched types
+    //~^ error mismatched types
 }

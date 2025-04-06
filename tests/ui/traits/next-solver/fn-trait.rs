@@ -18,11 +18,11 @@ fn main() {
     require_fn(f);
     require_fn(f as fn() -> i32);
     require_fn(f as unsafe fn() -> i32);
-    //~^ ERROR: expected a `Fn()` closure, found `unsafe fn() -> i32`
+    //~^ ERROR expected a `Fn()` closure, found `unsafe fn() -> i32`
     require_fn(g);
-    //~^ ERROR: expected a `Fn()` closure, found `extern "C" fn() -> i32 {g}`
+    //~^ ERROR expected a `Fn()` closure, found `extern "C" fn() -> i32 {g}`
     require_fn(g as extern "C" fn() -> i32);
-    //~^ ERROR: expected a `Fn()` closure, found `extern "C" fn() -> i32`
+    //~^ ERROR expected a `Fn()` closure, found `extern "C" fn() -> i32`
     require_fn(h);
-    //~^ ERROR: expected a `Fn()` closure, found `unsafe fn() -> i32 {h}`
+    //~^ ERROR expected a `Fn()` closure, found `unsafe fn() -> i32 {h}`
 }

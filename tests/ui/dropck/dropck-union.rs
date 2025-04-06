@@ -34,5 +34,5 @@ impl<'a> Drop for C<'a> {
 
 fn main() {
     let v : Wrap<C> = Wrap::new(C(Cell::new(None)));
-    v.0.set(Some(&v)); //~ ERROR: `v` does not live long enough
+    v.0.set(Some(&v)); //~ ERROR `v` does not live long enough
 }

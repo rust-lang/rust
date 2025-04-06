@@ -12,7 +12,7 @@ const fn baz() -> Foo {
 #[define_opaque(Foo)]
 fn bar() {
     foo::<{ baz() }>();
-    //~^ ERROR: mismatched types
+    //~^ ERROR mismatched types
 }
 
 fn main() {}

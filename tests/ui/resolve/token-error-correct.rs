@@ -3,6 +3,6 @@
 fn main() {
     foo(bar(;
 }
-//~^ ERROR: mismatched closing delimiter: `}`
+//~^ ERROR mismatched closing delimiter: `}`
 
 fn foo(_: usize) {}

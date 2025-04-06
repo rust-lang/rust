@@ -21,7 +21,7 @@ fn not_gooder() -> Foo {
     // while we could know this from the hidden type, it would
     // need extra roundabout logic to support it.
     is_send::<Foo>();
-    //~^ ERROR: type annotations needed: cannot satisfy `Foo: Send`
+    //~^ ERROR type annotations needed: cannot satisfy `Foo: Send`
 
     x
 }

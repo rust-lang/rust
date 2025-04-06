@@ -3,7 +3,7 @@
 // If macro syntax is stabilized, replace with a different unstable syntax.
 
 macro a() {}
-//~^ ERROR: `macro` is experimental
+//~^ ERROR `macro` is experimental
 
 #[cfg(FALSE)]
 macro b() {}
@@ -14,7 +14,7 @@ macro_rules! identity {
 
 identity! {
     macro c() {}
-    //~^ ERROR: `macro` is experimental
+    //~^ ERROR `macro` is experimental
 }
 
 #[cfg(FALSE)]

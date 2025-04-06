@@ -15,5 +15,5 @@ impl Builder<true, true> {
 fn main() {
     let b = Builder::<false, false>;
     b.cast().build();
-    //~^ ERROR: no method named `build` found for struct `Builder<false, true>` in the current scope
+    //~^ ERROR no method named `build` found for struct `Builder<false, true>` in the current scope
 }

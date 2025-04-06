@@ -16,7 +16,7 @@ impl S {
 fn main() {
     let s = S;
     let x = s.f();
-    //~^ WARNING: unused variable: `x`
+    //~^ WARNING unused variable: `x`
     let _y = x;
-    //~^ WARNING: unreachable definition
+    //~^ WARNING unreachable definition
 }

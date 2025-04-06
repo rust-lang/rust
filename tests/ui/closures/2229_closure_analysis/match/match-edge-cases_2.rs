@@ -30,7 +30,7 @@ fn edge_case_if() {
         _ => ()
     }};
     let mut mut_ts = ts;
-    //~^ ERROR: cannot move out of `ts` because it is borrowed
+    //~^ ERROR cannot move out of `ts` because it is borrowed
     _b();
 }
 

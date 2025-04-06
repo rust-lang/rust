@@ -5,5 +5,5 @@
 
 fn main() {
     vec![(42, 22)].iter().map(|(x, _y)| ()).count();
-    //~^ ERROR: variable does not need to be mutable
+    //~^ ERROR variable does not need to be mutable
 }

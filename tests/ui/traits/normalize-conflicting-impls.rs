@@ -7,12 +7,12 @@ where
 
 impl<N, R> Allocator<N, R> for DefaultAllocator
 where
-    R::Value: DimName, //~ ERROR: `Value` not found for `R`
+    R::Value: DimName, //~ ERROR `Value` not found for `R`
 {
     type Buffer = ();
 }
 impl<N> Allocator<N, ()> for DefaultAllocator {}
-//~^ ERROR: conflicting implementations
+//~^ ERROR conflicting implementations
 impl DimName for () {}
 impl DimName for u32 {}
 impl<N, D: DimName> From<VectorN<N, D>> for Point<N, D> {

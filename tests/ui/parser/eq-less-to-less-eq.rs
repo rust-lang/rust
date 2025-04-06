@@ -25,7 +25,7 @@ fn baz() {
 fn qux() {
     let a = 0;
     let b = 4;
-    if a =< i32>::abs(-4) { //~ERROR: mismatched types
+    if a =< i32>::abs(-4) { //~ERROR mismatched types
         println!("yay!");
     }
 }

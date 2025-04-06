@@ -66,7 +66,7 @@ fn test6() {
     let x: u8;
     let c1 = || match x { };
     //~^ ERROR E0381
-    //~| ERROR: non-exhaustive patterns: type `u8` is non-empty
+    //~| ERROR non-exhaustive patterns: type `u8` is non-empty
 }
 
 fn main() {

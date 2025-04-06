@@ -2,5 +2,5 @@
 
 fn main() {
     if foo {
-    ) //~ ERROR: mismatched closing delimiter: `)`
+    ) //~ ERROR mismatched closing delimiter: `)`
 }

@@ -18,5 +18,5 @@ trait FutureExt: Future {
 
 fn main() {
     let _: BoxFuture<'static, bool> = async {}.boxed();
-    //~^ ERROR: mismatched types
+    //~^ ERROR mismatched types
 }

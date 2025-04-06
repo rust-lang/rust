@@ -11,7 +11,7 @@ fn foo() -> Foo {
 }
 
 #[define_opaque(Foo)]
-fn bar() -> Foo { //~ ERROR: concrete type differs from previous defining opaque type use
+fn bar() -> Foo { //~ ERROR concrete type differs from previous defining opaque type use
     panic!()
 }
 

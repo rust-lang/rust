@@ -4,7 +4,7 @@
 #[inline]
 fn f() {}
 
-#[inline] //~ ERROR: attribute should be applied to function or closure
+#[inline] //~ ERROR attribute should be applied to function or closure
 struct S;
 
 struct I {
@@ -18,7 +18,7 @@ macro_rules! m_e {
     () => {};
 }
 
-#[inline] //~ ERROR: attribute should be applied to function or closure
+#[inline] //~ ERROR attribute should be applied to function or closure
 macro_rules! m {
     () => {};
 }

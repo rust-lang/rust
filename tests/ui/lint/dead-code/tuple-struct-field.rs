@@ -1,24 +1,24 @@
 #![deny(dead_code)]
-//~^ NOTE: the lint level is defined here
+//~^ NOTE the lint level is defined here
 
 use std::marker::PhantomData;
 
 const LEN: usize = 4;
 
 struct UnusedAtTheEnd(i32, f32, [u8; LEN], String, u8);
-//~^ ERROR:fields `1`, `2`, `3`, and `4` are never read
-//~| NOTE: fields in this struct
-//~| HELP: consider removing these fields
+//~^ ERRORfields `1`, `2`, `3`, and `4` are never read
+//~| NOTE fields in this struct
+//~| HELP consider removing these fields
 
 struct UnusedJustOneField(i32);
-//~^ ERROR: field `0` is never read
-//~| NOTE: field in this struct
-//~| HELP: consider removing this field
+//~^ ERROR field `0` is never read
+//~| NOTE field in this struct
+//~| HELP consider removing this field
 
 struct UnusedInTheMiddle(i32, f32, String, u8, u32);
-//~^ ERROR: fields `1`, `2`, and `4` are never read
-//~| NOTE: fields in this struct
-//~| HELP: consider changing the fields to be of unit type to suppress this warning while preserving the field numbering, or remove the fields
+//~^ ERROR fields `1`, `2`, and `4` are never read
+//~| NOTE fields in this struct
+//~| HELP consider changing the fields to be of unit type to suppress this warning while preserving the field numbering, or remove the fields
 
 struct GoodUnit(());
 

@@ -5,7 +5,7 @@ trait B {
 fn f()
 where
     dyn for<'j> B<AssocType: 'j>:,
-    //~^ ERROR: associated type bounds are not allowed in `dyn` types
+    //~^ ERROR associated type bounds are not allowed in `dyn` types
 {
 }
 

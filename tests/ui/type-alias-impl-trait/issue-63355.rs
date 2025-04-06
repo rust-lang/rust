@@ -41,7 +41,7 @@ impl Baz for () {
 
     #[define_opaque(BarImpl)]
     fn bar() -> Self::Bar {
-        //~^ ERROR: item does not constrain `FooImpl::{opaque#0}`
+        //~^ ERROR item does not constrain `FooImpl::{opaque#0}`
         ()
     }
 }

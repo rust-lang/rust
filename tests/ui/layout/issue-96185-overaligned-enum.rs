@@ -6,7 +6,7 @@
 // This cannot use `Scalar` abi since there is padding.
 #[rustc_layout(debug)]
 #[repr(align(8))]
-pub enum Aligned1 { //~ ERROR: layout_of
+pub enum Aligned1 { //~ ERROR layout_of
     Zero = 0,
     One = 1,
 }
@@ -14,7 +14,7 @@ pub enum Aligned1 { //~ ERROR: layout_of
 // This should use `Scalar` abi.
 #[rustc_layout(debug)]
 #[repr(align(1))]
-pub enum Aligned2 { //~ ERROR: layout_of
+pub enum Aligned2 { //~ ERROR layout_of
     Zero = 0,
     One = 1,
 }

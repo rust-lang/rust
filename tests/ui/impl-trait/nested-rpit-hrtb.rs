@@ -58,7 +58,7 @@ fn two_htrb_outlives() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> 
 
 // This should resolve.
 fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Qux<'b>> {}
-//~^ ERROR: the trait bound `for<'a, 'b> &'a (): Qux<'b>` is not satisfied
+//~^ ERROR the trait bound `for<'a, 'b> &'a (): Qux<'b>` is not satisfied
 
 // `'b` is not in scope for the outlives bound.
 fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}

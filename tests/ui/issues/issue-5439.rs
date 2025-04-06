@@ -8,7 +8,7 @@ struct Bar {
 
 impl Bar {
     fn make_foo (&self, i: isize) -> Box<Foo> {
-        return Box::new(Foo { nonexistent: self, foo: i }); //~ ERROR: no field named
+        return Box::new(Foo { nonexistent: self, foo: i }); //~ ERROR no field named
     }
 }
 

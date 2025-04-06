@@ -6,7 +6,7 @@ trait Bar<T> {}
 trait Foo: Bar<i32> {}
 
 impl<'a> Deref for dyn Foo + 'a {
-    //~^ warn: this `Deref` implementation is covered by an implicit supertrait coercion
+    //~^ warn this `Deref` implementation is covered by an implicit supertrait coercion
     type Target = dyn Bar<u32> + 'a;
 
     fn deref(&self) -> &Self::Target {

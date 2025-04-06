@@ -4,7 +4,7 @@ mod error1 {
   }
 
   fn f1<'a>(arg : Box<dyn X< 1 = 32 >>) {}
-      //~^ ERROR: expected expression, found `)`
+      //~^ ERROR expected expression, found `)`
 }
 
 mod error2 {
@@ -14,7 +14,7 @@ mod error2 {
   }
 
   fn f2<'a>(arg : Box<dyn X< { 1 } = 32 >>) {}
-    //~^ ERROR: expected one of
+    //~^ ERROR expected one of
 }
 
 fn main() {}

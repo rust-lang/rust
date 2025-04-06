@@ -28,10 +28,10 @@ impl<'a, R, T: Broadcastable, F: Fn(T::Element) -> R, const DIM: usize> TensorSi
     for BMap<'a, R, T, F, DIM>
 {
     fn size(&self) -> [usize; DIM] {
-        //~^ ERROR: method not compatible with trait [E0308]
+        //~^ ERROR method not compatible with trait [E0308]
         self.reference.size()
-        //~^ ERROR: unconstrained generic constant
-        //~| ERROR: mismatched types
+        //~^ ERROR unconstrained generic constant
+        //~| ERROR mismatched types
     }
 }
 

@@ -26,7 +26,7 @@ fn void() {
     // anything else.
     assert::is_maybe_transmutable::<Void, u128>();
 
-    assert::is_maybe_transmutable::<(), Void>(); //~ ERROR: cannot be safely transmuted
+    assert::is_maybe_transmutable::<(), Void>(); //~ ERROR cannot be safely transmuted
 }
 
 // Non-ZST uninhabited types are, nonetheless, uninhabited.
@@ -38,7 +38,7 @@ fn yawning_void_struct() {
     const _: () = {
         assert!(std::mem::size_of::<YawningVoid>() == std::mem::size_of::<u128>());
         // Just to be sure the above constant actually evaluated:
-        assert!(false); //~ ERROR: evaluation of constant value failed
+        assert!(false); //~ ERROR evaluation of constant value failed
     };
 
     // This transmutation is vacuously acceptable; since one cannot construct a
@@ -46,7 +46,7 @@ fn yawning_void_struct() {
     // anything else.
     assert::is_maybe_transmutable::<YawningVoid, u128>();
 
-    assert::is_maybe_transmutable::<(), Void>(); //~ ERROR: cannot be safely transmuted
+    assert::is_maybe_transmutable::<(), Void>(); //~ ERROR cannot be safely transmuted
 }
 
 // Non-ZST uninhabited types are, nonetheless, uninhabited.
@@ -60,7 +60,7 @@ fn yawning_void_enum() {
     const _: () = {
         assert!(std::mem::size_of::<YawningVoid>() == std::mem::size_of::<u128>());
         // Just to be sure the above constant actually evaluated:
-        assert!(false); //~ ERROR: evaluation of constant value failed
+        assert!(false); //~ ERROR evaluation of constant value failed
     };
 
     // This transmutation is vacuously acceptable; since one cannot construct a
@@ -68,7 +68,7 @@ fn yawning_void_enum() {
     // anything else.
     assert::is_maybe_transmutable::<YawningVoid, u128>();
 
-    assert::is_maybe_transmutable::<(), Void>(); //~ ERROR: cannot be safely transmuted
+    assert::is_maybe_transmutable::<(), Void>(); //~ ERROR cannot be safely transmuted
 }
 
 // References to uninhabited types are, logically, uninhabited, but for layout
@@ -84,12 +84,12 @@ fn distant_void() {
     const _: () = {
         assert!(std::mem::size_of::<DistantVoid>() == std::mem::size_of::<usize>());
         // Just to be sure the above constant actually evaluated:
-        assert!(false); //~ ERROR: evaluation of constant value failed
+        assert!(false); //~ ERROR evaluation of constant value failed
     };
 
     assert::is_maybe_transmutable::<DistantVoid, ()>();
     assert::is_maybe_transmutable::<DistantVoid, &'static Void>();
-    assert::is_maybe_transmutable::<u128, DistantVoid>(); //~ ERROR: cannot be safely transmuted
+    assert::is_maybe_transmutable::<u128, DistantVoid>(); //~ ERROR cannot be safely transmuted
 }
 
 fn issue_126267() {
@@ -105,5 +105,5 @@ fn issue_126267() {
 
     struct Src;
     type Dst = Error;
-    assert::is_maybe_transmutable::<Src, Dst>(); //~ERROR: cannot be safely transmuted
+    assert::is_maybe_transmutable::<Src, Dst>(); //~ERROR cannot be safely transmuted
 }

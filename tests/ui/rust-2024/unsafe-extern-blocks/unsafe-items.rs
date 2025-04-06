@@ -15,8 +15,8 @@ fn test2() {
 
 fn test3() {
     test1(TEST1);
-    //~^ ERROR: call to unsafe function `test1` is unsafe
-    //~| ERROR: use of extern static is unsafe
+    //~^ ERROR call to unsafe function `test1` is unsafe
+    //~| ERROR use of extern static is unsafe
 }
 
 fn main() {}

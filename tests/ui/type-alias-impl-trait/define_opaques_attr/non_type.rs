@@ -3,5 +3,5 @@
 fn foo() {}
 
 #[define_opaque(foo)]
-//~^ ERROR: expected type alias or associated type with opaqaue types
+//~^ ERROR expected type alias or associated type with opaqaue types
 fn main() {}

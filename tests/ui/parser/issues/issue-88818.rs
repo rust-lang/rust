@@ -3,8 +3,8 @@
 
 struct S { }
 impl for S { }
-//~^ ERROR: missing trait in a trait impl
-//~| HELP: add a trait here
-//~| HELP: for an inherent impl, drop this `for`
+//~^ ERROR missing trait in a trait impl
+//~| HELP add a trait here
+//~| HELP for an inherent impl, drop this `for`
 
 fn main() {}

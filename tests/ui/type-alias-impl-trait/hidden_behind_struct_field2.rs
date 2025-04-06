@@ -13,10 +13,10 @@ trait Trait: Sized {
 
 impl Trait for Bar {
     type Assoc = impl std::fmt::Debug;
-    //~^ ERROR: unconstrained opaque type
+    //~^ ERROR unconstrained opaque type
     fn foo() -> Foo {
         Foo { field: () }
-        //~^ ERROR: mismatched types
+        //~^ ERROR mismatched types
     }
 }
 

@@ -18,5 +18,5 @@ fn main() {
         println!("access {}", foo.x);
     };
     test(&*ptr);
-    //~^ ERROR: cannot borrow `*ptr` as immutable
+    //~^ ERROR cannot borrow `*ptr` as immutable
 }

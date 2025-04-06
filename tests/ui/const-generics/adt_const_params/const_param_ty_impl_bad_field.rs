@@ -8,10 +8,10 @@ struct NotParam;
 struct CantParam(NotParam);
 
 impl std::marker::UnsizedConstParamTy for CantParam {}
-//~^ error: the trait `ConstParamTy_` cannot be implemented for this type
+//~^ error the trait `ConstParamTy_` cannot be implemented for this type
 
 #[derive(std::marker::UnsizedConstParamTy, Eq, PartialEq)]
-//~^ error: the trait `ConstParamTy_` cannot be implemented for this type
+//~^ error the trait `ConstParamTy_` cannot be implemented for this type
 struct CantParamDerive(NotParam);
 
 fn main() {}

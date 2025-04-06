@@ -44,12 +44,12 @@ pub struct TransparentCustomZst(i32, ZeroSize);
 pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
 
 extern "C" {
-    pub fn ptr_type1(size: *const Foo); //~ ERROR: uses type `Foo`
-    pub fn ptr_type2(size: *const Foo); //~ ERROR: uses type `Foo`
+    pub fn ptr_type1(size: *const Foo); //~ ERROR uses type `Foo`
+    pub fn ptr_type2(size: *const Foo); //~ ERROR uses type `Foo`
     pub fn ptr_unit(p: *const ());
-    pub fn ptr_tuple(p: *const ((),)); //~ ERROR: uses type `((),)`
-    pub fn slice_type(p: &[u32]); //~ ERROR: uses type `[u32]`
-    pub fn str_type(p: &str); //~ ERROR: uses type `str`
+    pub fn ptr_tuple(p: *const ((),)); //~ ERROR uses type `((),)`
+    pub fn slice_type(p: &[u32]); //~ ERROR uses type `[u32]`
+    pub fn str_type(p: &str); //~ ERROR uses type `str`
     pub fn box_type(p: Box<u32>); //~ ERROR uses type `Box<u32>`
     pub fn opt_box_type(p: Option<Box<u32>>);
     //~^ ERROR uses type `Option<Box<u32>>`
@@ -66,19 +66,19 @@ extern "C" {
         -> ::std::marker::PhantomData<bool>; //~ ERROR uses type `PhantomData<bool>`
     pub fn fn_type(p: RustFn); //~ ERROR uses type `fn()`
     pub fn fn_type2(p: fn()); //~ ERROR uses type `fn()`
-    pub fn fn_contained(p: RustBadRet); //~ ERROR: uses type `Box<u32>`
-    pub fn transparent_i128(p: TransparentI128); //~ ERROR: uses type `i128`
-    pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `str`
-    pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: uses type `Box<u32>`
-    pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
+    pub fn fn_contained(p: RustBadRet); //~ ERROR uses type `Box<u32>`
+    pub fn transparent_i128(p: TransparentI128); //~ ERROR uses type `i128`
+    pub fn transparent_str(p: TransparentStr); //~ ERROR uses type `str`
+    pub fn transparent_fn(p: TransparentBadFn); //~ ERROR uses type `Box<u32>`
+    pub fn raw_array(arr: [u8; 8]); //~ ERROR uses type `[u8; 8]`
 
     pub fn no_niche_a(a: Option<UnsafeCell<extern "C" fn()>>);
-    //~^ ERROR: uses type `Option<UnsafeCell<extern "C" fn()>>`
+    //~^ ERROR uses type `Option<UnsafeCell<extern "C" fn()>>`
     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
-    //~^ ERROR: uses type `Option<UnsafeCell<&i32>>`
+    //~^ ERROR uses type `Option<UnsafeCell<&i32>>`
 
-    pub static static_u128_type: u128; //~ ERROR: uses type `u128`
-    pub static static_u128_array_type: [u128; 16]; //~ ERROR: uses type `u128`
+    pub static static_u128_type: u128; //~ ERROR uses type `u128`
+    pub static static_u128_array_type: [u128; 16]; //~ ERROR uses type `u128`
 
     pub fn good3(fptr: Option<extern "C" fn()>);
     pub fn good4(aptr: &[u8; 4 as usize]);

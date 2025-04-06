@@ -9,7 +9,7 @@ impl Opcode {
 
 pub fn example1(msg_type: Opcode) -> impl FnMut(&[u8]) {
     move |i| match msg_type {
-    //~^ ERROR: non-exhaustive patterns: `Opcode(0_u8)` and `Opcode(2_u8..=u8::MAX)` not covered
+    //~^ ERROR non-exhaustive patterns: `Opcode(0_u8)` and `Opcode(2_u8..=u8::MAX)` not covered
         Opcode::OP1 => unimplemented!(),
     }
 }
@@ -25,7 +25,7 @@ impl Opcode2 {
 pub fn example2(msg_type: Opcode2) -> impl FnMut(&[u8]) {
 
     move |i| match msg_type {
-    //~^ ERROR: non-exhaustive patterns: `Opcode2(Opcode(0_u8))` and `Opcode2(Opcode(2_u8..=u8::MAX))` not covered
+    //~^ ERROR non-exhaustive patterns: `Opcode2(Opcode(0_u8))` and `Opcode2(Opcode(2_u8..=u8::MAX))` not covered
         Opcode2::OP2=> unimplemented!(),
     }
 }

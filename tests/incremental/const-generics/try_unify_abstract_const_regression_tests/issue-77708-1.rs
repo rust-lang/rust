@@ -11,7 +11,7 @@ where
     C: Delegates<FileCap<{ false }>>,
 {
     writes_to_specific_path(&cap);
-    //~^ error: the trait bound
+    //~^ error the trait bound
 }
 
 fn writes_to_specific_path<C>(cap: &C)

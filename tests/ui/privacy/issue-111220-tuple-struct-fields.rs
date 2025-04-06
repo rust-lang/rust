@@ -6,7 +6,7 @@ mod b {
 impl b::A {
     fn inherent_bypass(&self) {
         let Self(x) = self;
-        //~^ ERROR: tuple struct constructor `A` is private
+        //~^ ERROR tuple struct constructor `A` is private
         println!("{x}");
     }
 }
@@ -18,7 +18,7 @@ pub trait B {
 impl B for b::A {
     fn f(&self) {
         let Self(a) = self;
-        //~^ ERROR: tuple struct constructor `A` is private
+        //~^ ERROR tuple struct constructor `A` is private
         println!("{}", a);
     }
 }
@@ -38,7 +38,7 @@ pub trait Bypass2 {
 impl Bypass2 for <() as Projector>::P {
     fn f2(&self) {
         let Self(a) = self;
-        //~^ ERROR: tuple struct constructor `A` is private
+        //~^ ERROR tuple struct constructor `A` is private
         println!("{}", a);
     }
 }

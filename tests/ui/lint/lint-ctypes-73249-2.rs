@@ -24,7 +24,7 @@ struct A<T: Foo> {
 }
 
 extern "C" {
-    fn lint_me() -> A<()>; //~ ERROR: uses type `Qux`
+    fn lint_me() -> A<()>; //~ ERROR uses type `Qux`
 }
 
 fn main() {}

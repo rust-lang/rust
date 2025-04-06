@@ -22,7 +22,7 @@ where
     fn split(&mut self, i: usize, k: K, right: bool) -> Node<K, D> {
         let mut node = Node::new();
         node.keys.push(k);
-        //~^ error: no method named
+        //~^ error no method named
         node
     }
 }

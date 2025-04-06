@@ -6,9 +6,9 @@
 use std::pat::pattern_type;
 
 type Always = pattern_type!(Option<u32> is Some(_));
-//~^ ERROR: pattern not supported
+//~^ ERROR pattern not supported
 
 type Binding = pattern_type!(Option<u32> is x);
-//~^ ERROR: pattern not supported
+//~^ ERROR pattern not supported
 
 fn main() {}

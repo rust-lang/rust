@@ -7,19 +7,19 @@ struct S { _s: (String,) }
 
 fn main() {
     let _x: (i32,) = (5);
-    //~^ ERROR: mismatched types [E0308]
-    //~| HELP: use a trailing comma to create a tuple with one element
+    //~^ ERROR mismatched types [E0308]
+    //~| HELP use a trailing comma to create a tuple with one element
 
     foo((Some(3)));
-    //~^ ERROR: mismatched types [E0308]
-    //~| HELP: use a trailing comma to create a tuple with one element
+    //~^ ERROR mismatched types [E0308]
+    //~| HELP use a trailing comma to create a tuple with one element
 
     let _s = S { _s: ("abc".to_string()) };
-    //~^ ERROR: mismatched types [E0308]
-    //~| HELP: use a trailing comma to create a tuple with one element
+    //~^ ERROR mismatched types [E0308]
+    //~| HELP use a trailing comma to create a tuple with one element
 
     // Do not issue the suggestion if the found type is already a tuple.
     let t = (1, 2);
     let _x: (i32,) = (t);
-    //~^ ERROR: mismatched types [E0308]
+    //~^ ERROR mismatched types [E0308]
 }

@@ -19,7 +19,7 @@ impl Bar for Foo {
 
 fn live_fn() {}
 
-fn dead_fn() {} //~ ERROR: function `dead_fn` is never used
+fn dead_fn() {} //~ ERROR function `dead_fn` is never used
 
 fn used_fn() {}
 
@@ -31,6 +31,6 @@ fn actual_main() {
 }
 
 // this is not main
-fn main() { //~ ERROR: function `main` is never used
+fn main() { //~ ERROR function `main` is never used
     dead_fn();
 }

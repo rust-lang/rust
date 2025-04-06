@@ -4,7 +4,7 @@
 fn main() {
     let f = Fancy{};
     let o = Other::new(f);
-    //~^ ERROR: the trait bound `Fancy: SomeTrait` is not satisfied [E0277]
+    //~^ ERROR the trait bound `Fancy: SomeTrait` is not satisfied [E0277]
 }
 
 struct Fancy {}

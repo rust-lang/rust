@@ -6,6 +6,6 @@ fn main() {
         &[] => 0,
         &[a,b,c] => 3,
         &[a, ref rest @ ..] => a,
-        &[10,a, ref rest @ ..] => 10 //~ ERROR: unreachable pattern
+        &[10,a, ref rest @ ..] => 10 //~ ERROR unreachable pattern
     };
 }

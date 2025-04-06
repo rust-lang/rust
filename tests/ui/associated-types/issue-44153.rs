@@ -15,5 +15,5 @@ impl<'a> Visit for () where
 {}
 
 fn main() {
-    <() as Visit>::visit(); //~ ERROR: type mismatch resolving
+    <() as Visit>::visit(); //~ ERROR type mismatch resolving
 }

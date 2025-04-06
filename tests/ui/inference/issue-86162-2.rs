@@ -10,5 +10,5 @@ impl Foo {
 
 fn main() {
     Foo::bar(gen()); //<- Do not suggest `Foo::bar::<impl Clone>()`!
-    //~^ ERROR: type annotations needed
+    //~^ ERROR type annotations needed
 }

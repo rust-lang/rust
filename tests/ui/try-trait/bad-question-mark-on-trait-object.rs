@@ -1,14 +1,14 @@
 struct E;
-//~^ NOTE `E` needs to implement `std::error::Error`
+//~^ NOTE `E` needs to implement `std::error:Error`
 //~| NOTE alternatively, `E` needs to implement `Into<X>`
 struct X; //~ NOTE `X` needs to implement `From<E>`
 
-fn foo() -> Result<(), Box<dyn std::error::Error>> { //~ NOTE required `E: std::error::Error` because of this
+fn foo() -> Result<(), Box<dyn std::error::Error>> { //~ NOTE required `E: std::error:Error` because of this
     Ok(bar()?)
-    //~^ ERROR `?` couldn't convert the error: `E: std::error::Error` is not satisfied
-    //~| NOTE the trait `std::error::Error` is not implemented for `E`
+    //~^ ERROR `?` couldn't convert the error: `E: std::error:Error` is not satisfied
+    //~| NOTE the trait `std::error:Error` is not implemented for `E`
     //~| NOTE the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-    //~| NOTE required for `Box<dyn std::error::Error>` to implement `From<E>`
+    //~| NOTE required for `Box<dyn std::error:Error>` to implement `From<E>`
     //~| NOTE this has type `Result<_, E>`
     //~| NOTE in this expansion
     //~| NOTE in this expansion

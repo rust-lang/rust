@@ -9,13 +9,13 @@
 #![allow(incomplete_features)]
 
 struct A<const B: () = 1, C>(C);
-//~^ ERROR: generic parameters with a default must be trailing
-//~| ERROR: mismatched types
+//~^ ERROR generic parameters with a default must be trailing
+//~| ERROR mismatched types
 
 struct Cond<const B: bool>;
 
 struct Thing<T = Cond<0>>(T);
-//~^ ERROR: mismatched types
+//~^ ERROR mismatched types
 
 impl Thing {}
 

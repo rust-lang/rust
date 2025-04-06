@@ -23,7 +23,7 @@ impl From<!> for E {
 fn foo(never: !) {
     <E as From<!>>::from(never); // Ok
     <E as From<_>>::from(never); // Should the inference fail?
-    //[unit]~^ error: the trait bound `E: From<()>` is not satisfied
+    //[unit]~^ error the trait bound `E: From<()>` is not satisfied
 }
 
 fn main() {}

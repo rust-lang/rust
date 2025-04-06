@@ -14,12 +14,12 @@ fn foo<'x, P>(
 }
 
 pub fn bar<'t, T>(
-    //~^ HELP: consider adding an explicit lifetime bound
+    //~^ HELP consider adding an explicit lifetime bound
     post: T,
     x: &'t Foo,
 ) -> &'t impl Trait {
     foo(post, x)
-    //~^ ERROR: the parameter type `T` may not live long enough
+    //~^ ERROR the parameter type `T` may not live long enough
 }
 
 fn main() {}

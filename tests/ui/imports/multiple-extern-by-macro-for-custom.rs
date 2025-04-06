@@ -8,7 +8,7 @@ extern crate empty;
 macro_rules! m {
     () => {
         extern crate std as empty;
-        //~^ ERROR: the name `empty` is defined multiple times
+        //~^ ERROR the name `empty` is defined multiple times
     };
 }
 

@@ -12,6 +12,6 @@ pub async fn connect() -> io::Result<MyStream> {
 }
 
 impl TryFrom<OtherStream> for MyStream {}
-//~^ ERROR: missing
+//~^ ERROR missing
 
 fn main() {}

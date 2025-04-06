@@ -13,6 +13,6 @@ impl Foo<()> for () {
 }
 
 impl Foo<u32> for () {}
-//~^ ERROR: not all trait items implemented, missing: `foo`
+//~^ ERROR not all trait items implemented, missing: `foo`
 
 fn main() {}

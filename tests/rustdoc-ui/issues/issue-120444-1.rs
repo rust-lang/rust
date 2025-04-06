@@ -9,7 +9,7 @@ mod webdavfs {
 
 /// [`Vfs`][crate::Vfs]
 pub use webdavfs::A;
-//~^^ error: redundant explicit link target
+//~^^ error redundant explicit link target
 
 /// [`Vfs`]
 pub use webdavfs::B;

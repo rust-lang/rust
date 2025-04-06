@@ -5,8 +5,8 @@ enum E { A }
 
 fn main() {
     match E::A {
-        ! | //~ ERROR: a trailing `|` is not allowed in an or-pattern
-        //~^ ERROR: mismatched types
-        if true => {} //~ ERROR: a never pattern is always unreachable
+        ! | //~ ERROR a trailing `|` is not allowed in an or-pattern
+        //~^ ERROR mismatched types
+        if true => {} //~ ERROR a never pattern is always unreachable
     }
 }

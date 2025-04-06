@@ -6,6 +6,6 @@
 trait H<T> {}
 
 unsafe extern "C" fn ordering4<'a, F: H<&'static &'a ()>>(_: (), ...) {}
-//~^ ERROR: in type `&'static &'a ()`, reference has a longer lifetime than the data it references [E0491]
+//~^ ERROR in type `&'static &'a ()`, reference has a longer lifetime than the data it references [E0491]
 
 fn main() {}

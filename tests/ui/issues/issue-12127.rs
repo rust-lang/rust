@@ -9,6 +9,6 @@ fn main() {
     to_fn_once(move|| {
         f();
         f();
-        //~^ ERROR: use of moved value: `f`
+        //~^ ERROR use of moved value: `f`
     })()
 }

@@ -13,22 +13,22 @@ fn main() {
     let q = Point { x: 10, y: 10 };
 
     let c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
     //~^ First Pass analysis includes:
     //~| Min Capture analysis includes:
         println!("{:?}", p);
-        //~^ NOTE: Capturing p[] -> Immutable
-        //~| NOTE: Min Capture p[] -> Immutable
+        //~^ NOTE Capturing p[] -> Immutable
+        //~| NOTE Min Capture p[] -> Immutable
         println!("{:?}", p.x);
-        //~^ NOTE: Capturing p[(0, 0)] -> Immutable
+        //~^ NOTE Capturing p[(0, 0)] -> Immutable
 
         println!("{:?}", q.x);
-        //~^ NOTE: Capturing q[(0, 0)] -> Immutable
+        //~^ NOTE Capturing q[(0, 0)] -> Immutable
         println!("{:?}", q);
-        //~^ NOTE: Capturing q[] -> Immutable
-        //~| NOTE: Min Capture q[] -> Immutable
+        //~^ NOTE Capturing q[] -> Immutable
+        //~| NOTE Min Capture q[] -> Immutable
     };
 }

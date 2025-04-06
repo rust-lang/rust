@@ -6,7 +6,7 @@ trait MyTrait {
 
 impl MyTrait for i32 {
     fn foo(&self) -> i32 {
-        //~^ ERROR: method should be `async` or return a future, but it is synchronous
+        //~^ ERROR method should be `async` or return a future, but it is synchronous
         *self
     }
 }

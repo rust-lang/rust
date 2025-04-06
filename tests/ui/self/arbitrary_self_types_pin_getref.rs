@@ -21,5 +21,5 @@ fn main() {
     let pinned_a: Pin<&mut A> = pin!(A);
     let pinned_a: Pin<&A> = pinned_a.as_ref();
     let _ = pinned_a.get_ref();
-    //[feature]~^ ERROR: multiple applicable items
+    //[feature]~^ ERROR multiple applicable items
 }

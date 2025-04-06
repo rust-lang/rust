@@ -40,16 +40,16 @@ impl<T> Wrapper<T> {
 
 fn main() {
     assert_eq!(Wrapper(A).f(), 1);
-    //~^ ERROR: multiple applicable items in scope
+    //~^ ERROR multiple applicable items in scope
     assert_eq!(Wrapper(A).g(), 2);
-    //~^ ERROR: multiple applicable items in scope
+    //~^ ERROR multiple applicable items in scope
     assert_eq!(Wrapper(A).h(), 3);
-    //~^ ERROR: multiple applicable items in scope
+    //~^ ERROR multiple applicable items in scope
     let a = Wrapper(A);
     assert_eq!(Wrapper(B).f(), 9);
-    //~^ ERROR: multiple applicable items in scope
+    //~^ ERROR multiple applicable items in scope
     assert_eq!(Wrapper(C).f(), 10);
-    //~^ ERROR: multiple applicable items in scope
+    //~^ ERROR multiple applicable items in scope
     assert_eq!(Wrapper(C).g(), 11);
-    //~^ ERROR: multiple applicable items in scope
+    //~^ ERROR multiple applicable items in scope
 }

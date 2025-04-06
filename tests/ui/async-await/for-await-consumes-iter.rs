@@ -12,7 +12,7 @@ async fn real_main() {
     }
     // make sure iter has been moved and we can't iterate over it again.
     for await i in iter {
-        //~^ ERROR: use of moved value: `iter`
+        //~^ ERROR use of moved value: `iter`
     }
 }
 

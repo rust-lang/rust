@@ -20,7 +20,7 @@ fn m() {
     //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     let x = match true {
         true => Default::default(),
-        //[e2024]~^ error: the trait bound `!: Default` is not satisfied
+        //[e2024]~^ error the trait bound `!: Default` is not satisfied
         false => panic!("..."),
     };
 
@@ -35,7 +35,7 @@ fn q() -> Option<()> {
     }
 
     deserialize()?;
-    //[e2024]~^ error: the trait bound `!: Default` is not satisfied
+    //[e2024]~^ error the trait bound `!: Default` is not satisfied
 
     None
 }
@@ -48,7 +48,7 @@ fn meow() -> Result<(), ()> {
     //[e2021]~^ this function depends on never type fallback being `()`
     //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     help(1)?;
-    //[e2024]~^ error: the trait bound `(): From<!>` is not satisfied
+    //[e2024]~^ error the trait bound `(): From<!>` is not satisfied
     Ok(())
 }
 
@@ -60,7 +60,7 @@ pub fn fallback_return() -> Result<(), ()> {
     //[e2021]~^ this function depends on never type fallback being `()`
     //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     takes_apit(|| Default::default())?;
-    //[e2024]~^ error: the trait bound `!: Default` is not satisfied
+    //[e2024]~^ error the trait bound `!: Default` is not satisfied
     Ok(())
 }
 
@@ -74,6 +74,6 @@ fn fully_apit() -> Result<(), ()> {
     //[e2021]~^ this function depends on never type fallback being `()`
     //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     takes_apit2(mk()?);
-    //[e2024]~^ error: the trait bound `!: Default` is not satisfied
+    //[e2024]~^ error the trait bound `!: Default` is not satisfied
     Ok(())
 }

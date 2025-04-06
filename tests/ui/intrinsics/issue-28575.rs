@@ -5,5 +5,5 @@ extern "C" {
 }
 
 fn main() {
-    FOO() //~ ERROR: use of extern static is unsafe
+    FOO() //~ ERROR use of extern static is unsafe
 }

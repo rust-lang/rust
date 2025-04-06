@@ -25,7 +25,7 @@ impl<T: Id> Trait<T> for <T as Id>::Assoc {
         T: Id<Assoc = b::A>,
     {
         let Self(a) = self;
-        //~^ ERROR: tuple struct constructor `A` is private
+        //~^ ERROR tuple struct constructor `A` is private
         println!("{a}");
     }
 }

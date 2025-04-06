@@ -7,7 +7,7 @@ trait Trait0 {}
 
 impl Trait0 for dyn Send {}
 impl Trait0 for dyn Send {}
-//~^ ERROR: E0119
+//~^ ERROR E0119
 
 // Problem 1: associated types
 trait Trait1 {

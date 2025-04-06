@@ -19,7 +19,7 @@ impl MaybeDynCompatible for () {}
 impl<T> Smartass for T {
     type Data = <Self as Smartass>::Data2;
     default type Data2 = ();
-    //~^ ERROR: the trait bound `(): CoerceUnsized<*const [u8]>` is not satisfied
+    //~^ ERROR the trait bound `(): CoerceUnsized<*const [u8]>` is not satisfied
 }
 
 impl Smartass for () {

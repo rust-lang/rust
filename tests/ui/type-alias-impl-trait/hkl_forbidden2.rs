@@ -13,7 +13,7 @@ impl<'a> Trait<'a> for () {
 #[define_opaque(Opaque)]
 fn test() -> &'static dyn for<'a> Trait<'a, Assoc = Opaque<'a>> {
     &()
-    //~^ ERROR: expected generic lifetime parameter, found `'a`
+    //~^ ERROR expected generic lifetime parameter, found `'a`
 }
 
 fn main() {}

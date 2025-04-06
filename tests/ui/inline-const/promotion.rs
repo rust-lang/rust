@@ -14,7 +14,7 @@ fn main() {
     let v = const {
         if mk_false() {
             let _x: &'static i32 = &div_by_zero();
-            //~^ ERROR: temporary value dropped while borrowed
+            //~^ ERROR temporary value dropped while borrowed
         }
         42
     };

@@ -23,7 +23,7 @@ where
 {
     fn eq(&self, other: &&'a [A]) -> bool {
         self.0 == other
-        //~^ error: can't compare
+        //~^ error can't compare
     }
 }
 

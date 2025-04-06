@@ -14,7 +14,7 @@ trait Bits {
 
 impl Bits for u8 {
     fn bit<const I: usize>(self) -> bool {
-        //~^ ERROR: method `bit` has an incompatible generic parameter for trait `Bits` [E0053]
+        //~^ ERROR method `bit` has an incompatible generic parameter for trait `Bits` [E0053]
         let i = 1 << I;
         let mask = u8::from(i);
         mask & self == mask

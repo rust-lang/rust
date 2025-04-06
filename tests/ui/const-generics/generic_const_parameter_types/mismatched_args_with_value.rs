@@ -8,8 +8,8 @@ fn bar<T: ConstParamTy_, const M: [T; 2]>() {}
 
 fn main() {
     foo::<3, { [1; 2] }>();
-    //~^ ERROR: mismatched type
+    //~^ ERROR mismatched type
 
     bar::<u8, { [2_u16; 2] }>();
-    //~^ ERROR: mismatched type
+    //~^ ERROR mismatched type
 }

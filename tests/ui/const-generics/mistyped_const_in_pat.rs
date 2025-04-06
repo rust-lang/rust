@@ -11,7 +11,7 @@ impl<T> Trait<T> for Vec<T> {
 }
 
 impl Trait<u8> for Vec<u8> {}
-//~^ ERROR: conflicting implementations
+//~^ ERROR conflicting implementations
 
 const BAR: <Vec<u8> as Trait<u8>>::Assoc = 3;
 

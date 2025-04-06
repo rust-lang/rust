@@ -11,6 +11,6 @@ mod mod2 {
 }
 
 use mod2::{sub_mod::TraitA};
-//~^ ERROR: module `sub_mod` is private
+//~^ ERROR module `sub_mod` is private
 
 fn main() {}

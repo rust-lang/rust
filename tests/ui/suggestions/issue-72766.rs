@@ -11,7 +11,7 @@ impl SadGirl {
 
 async fn async_main() -> Result<(), ()> {
     // should be `.call().await?`
-    SadGirl {}.call()?; //~ ERROR: the `?` operator can only be applied to values
+    SadGirl {}.call()?; //~ ERROR the `?` operator can only be applied to values
     Ok(())
 }
 

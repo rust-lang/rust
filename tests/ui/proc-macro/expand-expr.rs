@@ -105,17 +105,17 @@ simple_lit!(b'\x00');
 simple_lit!(b'\0');
 
 // Extra tokens after the string literal aren't ignored
-expand_expr_fail!("string"; hello); //~ ERROR: expected one of `.`, `?`, or an operator, found `;`
+expand_expr_fail!("string"; hello); //~ ERROR expected one of `.`, `?`, or an operator, found `;`
 
 // Invalid expressions produce errors in addition to returning `Err(())`.
-expand_expr_fail!($); //~ ERROR: expected expression, found `$`
-expand_expr_fail!(echo_tts!($)); //~ ERROR: expected expression, found `$`
-expand_expr_fail!(echo_pm!($)); //~ ERROR: expected expression, found `$`
+expand_expr_fail!($); //~ ERROR expected expression, found `$`
+expand_expr_fail!(echo_tts!($)); //~ ERROR expected expression, found `$`
+expand_expr_fail!(echo_pm!($)); //~ ERROR expected expression, found `$`
 
 // We get errors reported and recover during macro expansion if the macro
 // doesn't produce a valid expression.
-expand_expr_is!("string", echo_tts!("string"; hello)); //~ ERROR: macro expansion ignores `hello` and any tokens following
-expand_expr_is!("string", echo_pm!("string"; hello)); //~ ERROR: macro expansion ignores `;` and any tokens following
+expand_expr_is!("string", echo_tts!("string"; hello)); //~ ERROR macro expansion ignores `hello` and any tokens following
+expand_expr_is!("string", echo_pm!("string"; hello)); //~ ERROR macro expansion ignores `;` and any tokens following
 
 // For now, fail if a non-literal expression is expanded.
 expand_expr_fail!(arbitrary_expression() + "etc");
@@ -123,7 +123,7 @@ expand_expr_fail!(echo_tts!(arbitrary_expression() + "etc"));
 expand_expr_fail!(echo_expr!(arbitrary_expression() + "etc"));
 expand_expr_fail!(echo_pm!(arbitrary_expression() + "etc"));
 
-const _: u32 = recursive_expand!(); //~ ERROR: recursion limit reached while expanding `recursive_expand!`
+const _: u32 = recursive_expand!(); //~ ERROR recursion limit reached while expanding `recursive_expand!`
 
 fn main() {
     // https://github.com/rust-lang/rust/issues/104414

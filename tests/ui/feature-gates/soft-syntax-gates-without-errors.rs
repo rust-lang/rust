@@ -4,8 +4,8 @@
 
 #[cfg(FALSE)]
 macro b() {}
-//~^ WARN: `macro` is experimental
-//~| WARN: unstable syntax
+//~^ WARN `macro` is experimental
+//~| WARN unstable syntax
 
 macro_rules! identity {
     ($($x:tt)*) => ($($x)*);
@@ -19,8 +19,8 @@ identity! {
 identity! {
     #[cfg(FALSE)]
     macro e() {}
-    //~^ WARN: `macro` is experimental
-    //~| WARN: unstable syntax
+    //~^ WARN `macro` is experimental
+    //~| WARN unstable syntax
 }
 
 fn main() {}

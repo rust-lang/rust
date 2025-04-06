@@ -35,7 +35,7 @@ fn use_of_b() -> AliasB {
 }
 
 extern "C" {
-    fn lint_me() -> <AliasB as TraitB>::Assoc; //~ ERROR: uses type `AliasA`
+    fn lint_me() -> <AliasB as TraitB>::Assoc; //~ ERROR uses type `AliasA`
 }
 
 fn main() {}

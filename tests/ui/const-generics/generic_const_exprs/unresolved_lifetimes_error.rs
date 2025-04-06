@@ -3,7 +3,7 @@
 
 fn foo() -> [(); {
     let a: &'a ();
-    //~^ ERROR: use of undeclared lifetime name `'a`
+    //~^ ERROR use of undeclared lifetime name `'a`
     10_usize
 }] {
     loop {}

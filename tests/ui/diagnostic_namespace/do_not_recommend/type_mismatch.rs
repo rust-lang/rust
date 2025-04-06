@@ -22,5 +22,5 @@ fn verify<T: TheImportantOne>() {}
 
 pub fn main() {
     verify::<u8>();
-    //~^ERROR: Very important message! [E0277]
+    //~^ERROR Very important message! [E0277]
 }

@@ -7,7 +7,7 @@ fn nested_field() {
 
     let mut foo = unsafe { NonZero((1,)) };
     foo.0.0 = 0;
-    //~^ ERROR: mutation of layout constrained field is unsafe
+    //~^ ERROR mutation of layout constrained field is unsafe
 }
 
 fn block() {

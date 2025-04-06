@@ -7,8 +7,8 @@ fn foo<T>(t: T) -> T {
 }
 
 fn f<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) {
-    let mut x = foo::<&'a ()>; //~ ERROR: lifetime may not live long enough
-    x = foo::<&'b ()>; //~ ERROR: lifetime may not live long enough
+    let mut x = foo::<&'a ()>; //~ ERROR lifetime may not live long enough
+    x = foo::<&'b ()>; //~ ERROR lifetime may not live long enough
     x = foo::<&'c ()>;
     x(a);
     x(b);

@@ -3,6 +3,6 @@
 
 #![deny(unknown_lints)]
 
-#![deny(clippy)] //~ ERROR: unknown lint: `clippy`
+#![deny(clippy)] //~ ERROR unknown lint: `clippy`
 
 fn main() {}

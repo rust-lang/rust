@@ -14,7 +14,7 @@ pub mod b {
         use b::B;
 
         fn foo(b: &B) {
-            b.foo(); //~ ERROR: no method named `foo` found
+            b.foo(); //~ ERROR no method named `foo` found
         }
     }
 

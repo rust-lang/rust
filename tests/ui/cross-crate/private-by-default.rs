@@ -21,25 +21,25 @@ fn main() {
 
     // private items at the top should be inaccessible
     static_priv_by_default::j;
-    //~^ ERROR: static `j` is private
+    //~^ ERROR static `j` is private
     static_priv_by_default::k;
-    //~^ ERROR: function `k` is private
+    //~^ ERROR function `k` is private
     static_priv_by_default::l;
-    //~^ ERROR: struct `l` is private
+    //~^ ERROR struct `l` is private
     foo::<static_priv_by_default::m>();
-    //~^ ERROR: enum `m` is private
+    //~^ ERROR enum `m` is private
     foo::<static_priv_by_default::n>();
-    //~^ ERROR: type alias `n` is private
+    //~^ ERROR type alias `n` is private
 
     // public items in a private mod should be inaccessible
     static_priv_by_default::foo::a;
-    //~^ ERROR: module `foo` is private
+    //~^ ERROR module `foo` is private
     static_priv_by_default::foo::b;
-    //~^ ERROR: module `foo` is private
+    //~^ ERROR module `foo` is private
     static_priv_by_default::foo::c;
-    //~^ ERROR: module `foo` is private
+    //~^ ERROR module `foo` is private
     foo::<static_priv_by_default::foo::d>();
-    //~^ ERROR: module `foo` is private
+    //~^ ERROR module `foo` is private
     foo::<static_priv_by_default::foo::e>();
-    //~^ ERROR: module `foo` is private
+    //~^ ERROR module `foo` is private
 }

@@ -9,12 +9,12 @@ struct Inner { i: i32 }
 struct Outer { o: Inner }
 
 fn foo(Outer { o: Inner { i } }: Outer) {}
-//~^ ERROR: unused variable: `i`
-//~| HELP: try ignoring the field
+//~^ ERROR unused variable: `i`
+//~| HELP try ignoring the field
 
 fn main() {
     let s = Outer { o: Inner { i: 42 } };
     let Outer { o: Inner { i } } = s;
-    //~^ ERROR: unused variable: `i`
-    //~| HELP: try ignoring the field
+    //~^ ERROR unused variable: `i`
+    //~| HELP try ignoring the field
 }

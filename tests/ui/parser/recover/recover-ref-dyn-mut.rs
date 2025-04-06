@@ -3,7 +3,7 @@
 
 fn main() {
     let r: &dyn mut Trait;
-    //~^ ERROR: `mut` must precede `dyn`
-    //~| HELP: place `mut` before `dyn`
-    //~| ERROR: cannot find trait `Trait` in this scope [E0405]
+    //~^ ERROR `mut` must precede `dyn`
+    //~| HELP place `mut` before `dyn`
+    //~| ERROR cannot find trait `Trait` in this scope [E0405]
 }

@@ -24,9 +24,9 @@ fn value_to_value() {
 fn ref_to_ref() {
     // We forbid `UnsafeCell`-containing ref-to-ref transmutations, because the
     // two types may use different, incompatible synchronization strategies.
-    assert::is_maybe_transmutable::<&'static u8, &'static UnsafeCell<u8>>(); //~ ERROR: cannot be safely transmuted
+    assert::is_maybe_transmutable::<&'static u8, &'static UnsafeCell<u8>>(); //~ ERROR cannot be safely transmuted
 
-    assert::is_maybe_transmutable::<&'static UnsafeCell<u8>, &'static UnsafeCell<u8>>(); //~ ERROR: cannot be safely transmuted
+    assert::is_maybe_transmutable::<&'static UnsafeCell<u8>, &'static UnsafeCell<u8>>(); //~ ERROR cannot be safely transmuted
 }
 
 fn mut_to_mut() {

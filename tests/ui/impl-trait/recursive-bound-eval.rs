@@ -18,7 +18,7 @@ impl<E, T: Fn() -> E> Parser<E> for T {
 
 pub fn recursive_fn<E>() -> impl Parser<E> {
     move || recursive_fn().parse()
-    //[next]~^ ERROR: type annotations needed
+    //[next]~^ ERROR type annotations needed
 }
 
 fn main() {}

@@ -5,5 +5,5 @@ fn gen<T>() -> T { todo!() }
 
 fn main() {
     foo(gen()); //<- Do not suggest `foo::<impl Clone>()`!
-    //~^ ERROR: type annotations needed
+    //~^ ERROR type annotations needed
 }

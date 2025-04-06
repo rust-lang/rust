@@ -4,7 +4,7 @@ struct Bar { baz: String }
 fn foo(foo: Foo) -> bool {
     match foo {
         Foo("hi".to_owned()) => true,
-        //~^ error: expected a pattern, found an expression
+        //~^ error expected a pattern, found an expression
         _ => false
     }
 }
@@ -12,7 +12,7 @@ fn foo(foo: Foo) -> bool {
 fn bar(bar: Bar) -> bool {
     match bar {
         Bar { baz: "hi".to_owned() } => true,
-        //~^ error: expected a pattern, found an expression
+        //~^ error expected a pattern, found an expression
         _ => false
     }
 }
@@ -23,7 +23,7 @@ fn baz() {
 
     match foo.as_slice() {
         &["foo".to_string()] => {}
-        //~^ error: expected a pattern, found an expression
+        //~^ error expected a pattern, found an expression
         _ => {}
     };
 }
@@ -34,13 +34,13 @@ fn qux() {
     const MAGIC: Magic = Magic(42);
 
     if let Some(MAGIC.0 as usize) = None::<usize> {}
-    //~^ error: expected a pattern, found an expression
+    //~^ error expected a pattern, found an expression
 }
 
 fn main() {
     if let (-1.some(4)) = (0, Some(4)) {}
-    //~^ error: expected a pattern, found an expression
+    //~^ error expected a pattern, found an expression
 
     if let (-1.Some(4)) = (0, Some(4)) {}
-    //~^ error: expected a pattern, found an expression
+    //~^ error expected a pattern, found an expression
 }

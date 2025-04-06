@@ -27,32 +27,32 @@ enum UninhDiscriminant {
 
 const INVALID_BOOL: () = unsafe {
     let _x: bool = transmute(3u8);
-    //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~^ ERROR evaluation of constant value failed
     //[with_flag]~| invalid value
 };
 
 const INVALID_PTR_IN_INT: () = unsafe {
     let _x: usize = transmute(&3u8);
-    //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~^ ERROR evaluation of constant value failed
     //[with_flag]~| invalid value
 };
 
 const INVALID_PTR_IN_ENUM: () = unsafe {
     let _x: PtrSizedEnum = transmute(&3u8);
-    //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~^ ERROR evaluation of constant value failed
     //[with_flag]~| invalid value
 };
 
 const INVALID_SLICE_TO_USIZE_TRANSMUTE: () = unsafe {
     let x: &[u8] = &[0; 32];
     let _x: (usize, usize) = transmute(x);
-    //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~^ ERROR evaluation of constant value failed
     //[with_flag]~| invalid value
 };
 
 const UNALIGNED_PTR: () = unsafe {
     let _x: &u32 = transmute(&[0u8; 4]);
-    //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~^ ERROR evaluation of constant value failed
     //[with_flag]~| invalid value
 };
 
@@ -60,7 +60,7 @@ const UNINHABITED_VARIANT: () = unsafe {
     let data = [1u8];
     // Not using transmute, we want to hit the ImmTy code path.
     let v = *addr_of!(data).cast::<UninhDiscriminant>();
-    //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~^ ERROR evaluation of constant value failed
     //[with_flag]~| invalid value
 };
 
@@ -80,7 +80,7 @@ const PARTIAL_POINTER: () = unsafe {
     let mem = Packed { pad1: 0, ptr: &0u8 as *const u8, pad2: [0; 7] };
     let mem = Align { p: mem, align: 0 };
     let _val = *(&mem as *const Align as *const [*const u8; 2]);
-    //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~^ ERROR evaluation of constant value failed
     //[with_flag]~| invalid value
 };
 
@@ -95,7 +95,7 @@ const VALID_ARRAY: [Option<i32>; 0] = { let e = [None; 0]; e };
 const OVERSIZED_REF: () = { unsafe {
     let slice: *const [u8] = transmute((1usize, usize::MAX));
     let _val = &*slice;
-    //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~^ ERROR evaluation of constant value failed
     //[with_flag]~| slice is bigger than largest supported object
 } };
 

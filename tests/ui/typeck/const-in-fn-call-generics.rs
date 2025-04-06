@@ -9,7 +9,7 @@ impl<const B: u32> Collate<B> for i32 {
     type Pass = ();
     fn collate(self) -> Self::Pass {
         generic::<{ true }>()
-        //~^ ERROR: mismatched types
+        //~^ ERROR mismatched types
     }
 }
 

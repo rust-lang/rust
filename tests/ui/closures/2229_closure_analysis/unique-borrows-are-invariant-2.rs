@@ -13,7 +13,7 @@ impl<'b> Spooky<'b> {
             if let Some(owned) = &self.owned {
                 let borrow: &'a &'static u32 = owned;
                 self.borrowed = borrow;
-                //~^ ERROR: lifetime may not live long enough
+                //~^ ERROR lifetime may not live long enough
             }
         };
         closure();

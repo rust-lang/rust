@@ -13,7 +13,7 @@ where
     test_lifetime_param::Ty<'a>: 'static,
 {
     test_lifetime_param::assert_static::<'a>()
-    //~^ ERROR: lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
 }
 
 mod test_higher_kinded_lifetime_param {
@@ -29,14 +29,14 @@ where
     for<'b> test_higher_kinded_lifetime_param::Ty<'b>: 'a,
 {
     test_higher_kinded_lifetime_param::assert_static::<'a>()
-    //~^ ERROR: lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
 }
 
 mod test_higher_kinded_lifetime_param2 {
     fn assert_static<'a: 'static>() {}
     fn test<'a>() {
         assert_static::<'a>()
-        //~^ ERROR: lifetime may not live long enough
+        //~^ ERROR lifetime may not live long enough
     }
 }
 
@@ -53,7 +53,7 @@ where
     test_type_param::Ty<A>: 'static,
 {
     test_type_param::assert_static::<A>()
-    //~^ ERROR: parameter type `A` may not live long enough
+    //~^ ERROR parameter type `A` may not live long enough
 }
 
 mod test_implied_from_fn_sig {

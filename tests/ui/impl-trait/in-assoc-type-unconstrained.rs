@@ -6,8 +6,8 @@ mod compare_ty {
     }
     impl Trait for () {
         type Ty = Option<impl Sized>;
-        //~^ ERROR: unconstrained opaque type
-        //~| ERROR: type mismatch resolving `<Option<<() as Trait>::Ty::{opaque#0}> as IntoIterator>::Item == ()`
+        //~^ ERROR unconstrained opaque type
+        //~| ERROR type mismatch resolving `<Option<<() as Trait>::Ty::{opaque#0}> as IntoIterator>::Item == ()`
     }
 }
 
@@ -18,9 +18,9 @@ mod compare_method {
     }
     impl Trait for () {
         type Ty = impl Sized;
-        //~^ ERROR: unconstrained opaque type
+        //~^ ERROR unconstrained opaque type
         fn method() -> () {}
-        //~^ ERROR: method `method` has an incompatible type for trait
+        //~^ ERROR method `method` has an incompatible type for trait
     }
 }
 

@@ -50,7 +50,7 @@ struct Test6<'a, 'b:'a> { //~ ERROR ['a: +, 'b: o]
 
 #[rustc_variance]
 struct Test7<'a> { //~ ERROR ['a: *]
-    //~^ ERROR: `'a` is never used
+    //~^ ERROR `'a` is never used
     x: isize
 }
 

@@ -14,11 +14,11 @@ struct Bar<T>(T);
 
 impl Bar<Foo> {
     fn bar(self: Bar<u32>) {
-        //~^ ERROR: invalid `self` parameter
+        //~^ ERROR invalid `self` parameter
         self.foo()
     }
     fn baz(self: &Bar<u32>) {
-        //~^ ERROR: invalid `self` parameter
+        //~^ ERROR invalid `self` parameter
         self.foo()
     }
 }

@@ -30,13 +30,13 @@ const FOO: Foo = foo();
 
 const BAR: () = {
     let _: &'static _ = &FOO;
-    //[string,atomic,unit]~^ ERROR: destructor of `Foo` cannot be evaluated at compile-time
+    //[string,atomic,unit]~^ ERROR destructor of `Foo` cannot be evaluated at compile-time
 };
 
 const BAZ: &Foo = &FOO;
-//[atomic]~^ ERROR: constants cannot refer to interior mutable data
+//[atomic]~^ ERROR constants cannot refer to interior mutable data
 
 fn main() {
     let _: &'static _ = &FOO;
-    //[string,atomic,unit]~^ ERROR: temporary value dropped while borrowed
+    //[string,atomic,unit]~^ ERROR temporary value dropped while borrowed
 }

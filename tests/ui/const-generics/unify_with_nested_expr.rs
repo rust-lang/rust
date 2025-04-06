@@ -6,7 +6,7 @@ where
     [(); N + 1 + 1]:,
 {
     bar();
-    //~^ ERROR: type annotations
+    //~^ ERROR type annotations
 }
 
 fn bar<const N: usize>()

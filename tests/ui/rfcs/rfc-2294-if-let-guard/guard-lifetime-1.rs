@@ -6,7 +6,7 @@ fn main() {
     let x: Option<Option<String>> = Some(Some(String::new()));
     match x {
         Some(mut y) if let Some(ref z) = y => {
-            //~^ ERROR: cannot move out of `x.0` because it is borrowed
+            //~^ ERROR cannot move out of `x.0` because it is borrowed
             let _z: &String = z;
             let _y: Option<String> = y;
         }

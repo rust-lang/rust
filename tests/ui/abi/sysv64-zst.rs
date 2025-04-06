@@ -5,4 +5,4 @@
 #![crate_type = "lib"]
 
 #[rustc_abi(debug)]
-extern "sysv64" fn pass_zst(_: ()) {} //~ ERROR: fn_abi
+extern "sysv64" fn pass_zst(_: ()) {} //~ ERROR fn_abi

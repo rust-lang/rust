@@ -6,7 +6,7 @@ extern crate test_macros;
 #[recollect_attr]
 fn another() {
     fn bar() {
-        let x: u32 = "x"; //~ ERROR: mismatched types
+        let x: u32 = "x"; //~ ERROR mismatched types
     }
 
     bar();
@@ -15,7 +15,7 @@ fn another() {
 fn main() {
     #[recollect_attr]
     fn bar() {
-        let x: u32 = "x"; //~ ERROR: mismatched types
+        let x: u32 = "x"; //~ ERROR mismatched types
     }
 
     bar();

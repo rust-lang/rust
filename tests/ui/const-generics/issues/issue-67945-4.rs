@@ -5,10 +5,10 @@
 #![cfg_attr(full, feature(generic_const_exprs))]
 #![cfg_attr(full, allow(incomplete_features))]
 
-struct Bug<S> { //[min]~ ERROR: parameter `S` is never used
-    A: [(); { //[full]~ ERROR: overly complex generic constant
+struct Bug<S> { //[min]~ ERROR parameter `S` is never used
+    A: [(); { //[full]~ ERROR overly complex generic constant
         let x: Option<Box<S>> = None;
-        //[min]~^ ERROR: generic parameters may not be used in const operations
+        //[min]~^ ERROR generic parameters may not be used in const operations
         0
     }],
 }

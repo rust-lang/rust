@@ -4,7 +4,7 @@
 
 fn extend_lifetime<'a, 'b>(x: &mut (&'a str,), y: &'b str) {
     let mut closure = |input| x.0 = input;
-    //~^ ERROR: lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
     closure(y);
 }
 

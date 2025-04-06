@@ -61,4 +61,4 @@ extern crate minicore;
 use minicore::*;
 
 #[rustc_abi(debug)]
-extern "C" fn pass_zst(_: ()) {} //~ ERROR: fn_abi
+extern "C" fn pass_zst(_: ()) {} //~ ERROR fn_abi

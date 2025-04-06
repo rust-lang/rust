@@ -9,7 +9,7 @@
 mod a { pub static x: isize = 3; pub static y: isize = 4; }
 
 mod b {
-    use a::x; //~ ERROR: unused import
+    use a::x; //~ ERROR unused import
     #[allow(unused_imports)]
     use a::y; // no error here
 }
@@ -18,7 +18,7 @@ mod b {
 mod c {
     use a::x;
     #[deny(unused_imports)]
-    use a::y; //~ ERROR: unused import
+    use a::y; //~ ERROR unused import
 }
 
 fn main() {}

@@ -18,14 +18,14 @@ pub fn test1() {
 
     let f = Foo(Rc::new(1));
     let x = #[rustc_capture_analysis] move || {
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-    //~| ERROR: First Pass analysis includes:
-    //~| ERROR: Min Capture analysis includes:
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~| ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         println!("{:?}", f.0);
-        //~^ NOTE: Capturing f[(0, 0)] -> Immutable
-        //~| NOTE: Min Capture f[] -> ByValue
+        //~^ NOTE Capturing f[(0, 0)] -> Immutable
+        //~| NOTE Min Capture f[] -> ByValue
     };
 
     x();
@@ -46,14 +46,14 @@ fn test2() {
     let character = Character { hp: 100, name: format!("A") };
 
     let c = #[rustc_capture_analysis] move || {
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-    //~| ERROR: First Pass analysis includes:
-    //~| ERROR: Min Capture analysis includes:
+    //~^ ERROR attributes on expressions are experimental
+    //~| NOTE see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~| ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         println!("{}", character.hp)
-        //~^ NOTE: Capturing character[(0, 0)] -> Immutable
-        //~| NOTE: Min Capture character[(0, 0)] -> ByValue
+        //~^ NOTE Capturing character[(0, 0)] -> Immutable
+        //~| NOTE Min Capture character[(0, 0)] -> ByValue
     };
 
     c();

@@ -7,7 +7,7 @@ use std::collections::BinaryHeap;
 fn foo(heap: &mut BinaryHeap<i32>) {
     match heap.peek_mut() {
         Some(_) => { heap.pop(); },
-        //~^ ERROR: cannot borrow `*heap` as mutable more than once at a time
+        //~^ ERROR cannot borrow `*heap` as mutable more than once at a time
         None => (),
     }
 }

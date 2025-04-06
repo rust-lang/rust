@@ -24,10 +24,10 @@ impl Droppy {
 
 fn main() {
     if let Some(_value) = Droppy.get() {
-        //[edition2021]~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
-        //[edition2021]~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
-        //[edition2021]~| WARN: this changes meaning in Rust 2024
+        //[edition2021]~^ ERROR `if let` assigns a shorter lifetime since Edition 2024
+        //[edition2021]~| HELP a `match` with a single arm can preserve the drop order up to Edition 2021
+        //[edition2021]~| WARN this changes meaning in Rust 2024
     } else {
-        //[edition2021]~^ HELP: the value is now dropped here in Edition 2024
+        //[edition2021]~^ HELP the value is now dropped here in Edition 2024
     }
 }

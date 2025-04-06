@@ -10,11 +10,11 @@ mod allowed_unsafe {
 
 macro_rules! unsafe_in_macro {
     () => {
-        global_asm!(""); //~ ERROR: usage of `core::arch::global_asm`
+        global_asm!(""); //~ ERROR usage of `core::arch::global_asm`
     };
 }
 
-global_asm!(""); //~ ERROR: usage of `core::arch::global_asm`
+global_asm!(""); //~ ERROR usage of `core::arch::global_asm`
 unsafe_in_macro!();
 
 fn main() {}

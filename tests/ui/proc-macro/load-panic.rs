@@ -5,7 +5,7 @@
 extern crate test_macros;
 
 #[derive(Panic)]
-//~^ ERROR: proc-macro derive panicked
+//~^ ERROR proc-macro derive panicked
 struct Foo;
 
 fn main() {}

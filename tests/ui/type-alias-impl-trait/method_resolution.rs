@@ -20,7 +20,7 @@ impl Bar<Foo> {
 impl Bar<u32> {
     fn foo(self) {
         self.bar()
-        //~^ ERROR: no method named `bar`
+        //~^ ERROR no method named `bar`
     }
 }
 

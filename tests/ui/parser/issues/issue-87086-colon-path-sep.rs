@@ -15,40 +15,40 @@ fn f() -> Foo { Foo::Bar }
 fn g1() {
     match f() {
         Foo:Bar => {}
-        //~^ ERROR: expected one of
-        //~| HELP: maybe write a path separator here
+        //~^ ERROR expected one of
+        //~| HELP maybe write a path separator here
         _ => {}
     }
     match f() {
         qux::Foo:Bar => {}
-        //~^ ERROR: expected one of
-        //~| HELP: maybe write a path separator here
+        //~^ ERROR expected one of
+        //~| HELP maybe write a path separator here
         _ => {}
     }
     match f() {
         qux:Foo::Baz => {}
-        //~^ ERROR: expected one of
-        //~| HELP: maybe write a path separator here
+        //~^ ERROR expected one of
+        //~| HELP maybe write a path separator here
         _ => {}
     }
     match f() {
         qux: Foo::Baz if true => {}
-        //~^ ERROR: expected one of
-        //~| HELP: maybe write a path separator here
+        //~^ ERROR expected one of
+        //~| HELP maybe write a path separator here
         _ => {}
     }
-    if let Foo:Bar = f() { //~ WARN: irrefutable `if let` pattern
-    //~^ ERROR: expected one of
-    //~| HELP: maybe write a path separator here
-    //~| HELP: consider replacing the `if let` with a `let`
+    if let Foo:Bar = f() { //~ WARN irrefutable `if let` pattern
+    //~^ ERROR expected one of
+    //~| HELP maybe write a path separator here
+    //~| HELP consider replacing the `if let` with a `let`
     }
 }
 
 fn g1_neg() {
     match f() {
         ref qux: Foo::Baz => {}
-        //~^ ERROR: expected one of
-        //~| HELP: maybe write a path separator here
+        //~^ ERROR expected one of
+        //~| HELP maybe write a path separator here
         _ => {}
     }
 }
@@ -56,8 +56,8 @@ fn g1_neg() {
 fn g2_neg() {
     match f() {
         mut qux: Foo::Baz => {}
-        //~^ ERROR: expected one of
-        //~| HELP: maybe write a path separator here
+        //~^ ERROR expected one of
+        //~| HELP maybe write a path separator here
         _ => {}
     }
 }
@@ -67,13 +67,13 @@ fn main() {
     match myfoo {
         Foo::Bar => {}
         Foo:Bar::Baz => {}
-        //~^ ERROR: expected one of
-        //~| HELP: maybe write a path separator here
+        //~^ ERROR expected one of
+        //~| HELP maybe write a path separator here
     }
     match myfoo {
         Foo::Bar => {}
         Foo:Bar => {}
-        //~^ ERROR: expected one of
-        //~| HELP: maybe write a path separator here
+        //~^ ERROR expected one of
+        //~| HELP maybe write a path separator here
     }
 }

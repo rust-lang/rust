@@ -25,41 +25,41 @@ fn main() {
     }
 
     if let Some(_value) = droppy().get() {
-        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+        //~^ ERROR `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN this changes meaning in Rust 2024
+        //~| HELP a `match` with a single arm can preserve the drop order up to Edition 2021
         // do something
     } else {
-        //~^ HELP: the value is now dropped here in Edition 2024
+        //~^ HELP the value is now dropped here in Edition 2024
         // do something else
     }
 
     if let Some(_value) = droppy().get() {
-        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+        //~^ ERROR `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN this changes meaning in Rust 2024
+        //~| HELP a `match` with a single arm can preserve the drop order up to Edition 2021
         // do something
     } else if let Some(_value) = droppy().get() {
-        //~^ HELP: the value is now dropped here in Edition 2024
+        //~^ HELP the value is now dropped here in Edition 2024
         // do something else
     }
-    //~^ HELP: the value is now dropped here in Edition 2024
+    //~^ HELP the value is now dropped here in Edition 2024
 
     if droppy().get().is_some() {
         // Should not lint
     } else if let Some(_value) = droppy().get() {
-        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+        //~^ ERROR `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN this changes meaning in Rust 2024
+        //~| HELP a `match` with a single arm can preserve the drop order up to Edition 2021
     } else if droppy().get().is_none() {
-        //~^ HELP: the value is now dropped here in Edition 2024
+        //~^ HELP the value is now dropped here in Edition 2024
     }
 
     if let Some(1) = { if let Some(_value) = Droppy.get() { Some(1) } else { None } } {
-        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| HELP: the value is now dropped here in Edition 2024
-        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+        //~^ ERROR `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN this changes meaning in Rust 2024
+        //~| HELP the value is now dropped here in Edition 2024
+        //~| HELP a `match` with a single arm can preserve the drop order up to Edition 2021
     }
 
     if let () = { if let Some(_value) = Droppy.get() {} } {
@@ -70,16 +70,16 @@ fn main() {
 
     #[rustfmt::skip]
     if (if let Some(_value) = droppy().get() { true } else { false }) {
-        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| HELP: the value is now dropped here in Edition 2024
-        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+        //~^ ERROR `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN this changes meaning in Rust 2024
+        //~| HELP the value is now dropped here in Edition 2024
+        //~| HELP a `match` with a single arm can preserve the drop order up to Edition 2021
         // do something
     } else if (((if let Some(_value) = droppy().get() { true } else { false }))) {
-        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| HELP: the value is now dropped here in Edition 2024
-        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+        //~^ ERROR `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN this changes meaning in Rust 2024
+        //~| HELP the value is now dropped here in Edition 2024
+        //~| HELP a `match` with a single arm can preserve the drop order up to Edition 2021
     }
 
     while let Some(_value) = droppy().get() {
@@ -88,17 +88,17 @@ fn main() {
     }
 
     while (if let Some(_value) = droppy().get() { false } else { true }) {
-        //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| HELP: the value is now dropped here in Edition 2024
-        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+        //~^ ERROR `if let` assigns a shorter lifetime since Edition 2024
+        //~| WARN this changes meaning in Rust 2024
+        //~| HELP the value is now dropped here in Edition 2024
+        //~| HELP a `match` with a single arm can preserve the drop order up to Edition 2021
     }
 
     if let Some(_value) = Some((droppy(), ()).1) {} else {}
-    //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
-    //~| WARN: this changes meaning in Rust 2024
-    //~| HELP: the value is now dropped here in Edition 2024
-    //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+    //~^ ERROR `if let` assigns a shorter lifetime since Edition 2024
+    //~| WARN this changes meaning in Rust 2024
+    //~| HELP the value is now dropped here in Edition 2024
+    //~| HELP a `match` with a single arm can preserve the drop order up to Edition 2021
 
     // We want to keep the `if let`s below as direct descendents of match arms,
     // so the formatting is suppressed.

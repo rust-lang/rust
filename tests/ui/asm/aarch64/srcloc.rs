@@ -10,75 +10,75 @@ use std::arch::asm;
 fn main() {
     unsafe {
         asm!("invalid_instruction");
-        //~^ ERROR: unrecognized instruction mnemonic
+        //~^ ERROR unrecognized instruction mnemonic
 
         asm!("
             invalid_instruction
         ");
-        //~^^ ERROR: unrecognized instruction mnemonic
+        //~^^ ERROR unrecognized instruction mnemonic
 
         asm!(r#"
             invalid_instruction
         "#);
-        //~^^ ERROR: unrecognized instruction mnemonic
+        //~^^ ERROR unrecognized instruction mnemonic
 
         asm!("
             mov x0, x0
             invalid_instruction
             mov x0, x0
         ");
-        //~^^^ ERROR: unrecognized instruction mnemonic
+        //~^^^ ERROR unrecognized instruction mnemonic
 
         asm!(r#"
             mov x0, x0
             invalid_instruction
             mov x0, x0
         "#);
-        //~^^^ ERROR: unrecognized instruction mnemonic
+        //~^^^ ERROR unrecognized instruction mnemonic
 
         asm!(concat!("invalid", "_", "instruction"));
-        //~^ ERROR: unrecognized instruction mnemonic
+        //~^ ERROR unrecognized instruction mnemonic
 
         asm!(
             "invalid_instruction",
         );
-        //~^^ ERROR: unrecognized instruction mnemonic
+        //~^^ ERROR unrecognized instruction mnemonic
 
         asm!(
             "mov x0, x0",
             "invalid_instruction",
             "mov x0, x0",
         );
-        //~^^^ ERROR: unrecognized instruction mnemonic
+        //~^^^ ERROR unrecognized instruction mnemonic
 
         asm!(
             "mov x0, x0\n",
             "invalid_instruction",
             "mov x0, x0",
         );
-        //~^^^ ERROR: unrecognized instruction mnemonic
+        //~^^^ ERROR unrecognized instruction mnemonic
 
         asm!(
             "mov x0, x0",
             concat!("invalid", "_", "instruction"),
             "mov x0, x0",
         );
-        //~^^^ ERROR: unrecognized instruction mnemonic
+        //~^^^ ERROR unrecognized instruction mnemonic
 
         asm!(
             concat!("mov x0", ", ", "x0"),
             concat!("invalid", "_", "instruction"),
             concat!("mov x0", ", ", "x0"),
         );
-        //~^^^ ERROR: unrecognized instruction mnemonic
+        //~^^^ ERROR unrecognized instruction mnemonic
 
         // Make sure template strings get separated
         asm!(
             "invalid_instruction1",
             "invalid_instruction2",
         );
-        //~^^^ ERROR: unrecognized instruction mnemonic
-        //~^^^ ERROR: unrecognized instruction mnemonic
+        //~^^^ ERROR unrecognized instruction mnemonic
+        //~^^^ ERROR unrecognized instruction mnemonic
 
         asm!(
             concat!(
@@ -86,8 +86,8 @@ fn main() {
                 "invalid", "_", "instruction2",
             ),
         );
-        //~^^^^^ ERROR: unrecognized instruction mnemonic
-        //~^^^^^^ ERROR: unrecognized instruction mnemonic
+        //~^^^^^ ERROR unrecognized instruction mnemonic
+        //~^^^^^^ ERROR unrecognized instruction mnemonic
 
         asm!(
             concat!(
@@ -99,10 +99,10 @@ fn main() {
                 "invalid", "_", "instruction4",
             ),
         );
-        //~^^^^^^^^^ ERROR: unrecognized instruction mnemonic
-        //~^^^^^^^^^^ ERROR: unrecognized instruction mnemonic
-        //~^^^^^^^ ERROR: unrecognized instruction mnemonic
-        //~^^^^^^^^ ERROR: unrecognized instruction mnemonic
+        //~^^^^^^^^^ ERROR unrecognized instruction mnemonic
+        //~^^^^^^^^^^ ERROR unrecognized instruction mnemonic
+        //~^^^^^^^ ERROR unrecognized instruction mnemonic
+        //~^^^^^^^^ ERROR unrecognized instruction mnemonic
 
         asm!(
             concat!(
@@ -114,16 +114,16 @@ fn main() {
                 "invalid", "_", "instruction4", "\n",
             ),
         );
-        //~^^^^^^^^^ ERROR: unrecognized instruction mnemonic
-        //~^^^^^^^^^^ ERROR: unrecognized instruction mnemonic
-        //~^^^^^^^ ERROR: unrecognized instruction mnemonic
-        //~^^^^^^^^ ERROR: unrecognized instruction mnemonic
+        //~^^^^^^^^^ ERROR unrecognized instruction mnemonic
+        //~^^^^^^^^^^ ERROR unrecognized instruction mnemonic
+        //~^^^^^^^ ERROR unrecognized instruction mnemonic
+        //~^^^^^^^^ ERROR unrecognized instruction mnemonic
 
         asm!(
             "",
             "\n",
             "invalid_instruction"
         );
-        //~^^ ERROR: unrecognized instruction mnemonic
+        //~^^ ERROR unrecognized instruction mnemonic
     }
 }

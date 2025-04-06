@@ -21,7 +21,7 @@ fn move_into_fnmut() {
 
     consume_fnmut(|| {
         let Either::Two(ref mut _t) = x;
-        //~^ ERROR: mismatched types
+        //~^ ERROR mismatched types
 
         let X(mut _t) = x;
     });

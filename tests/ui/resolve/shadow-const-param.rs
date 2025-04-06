@@ -5,13 +5,13 @@
 fn foo<const N: i32>(i: i32) -> bool {
     match i {
         N @ _ => true,
-        //~^ ERROR: match bindings cannot shadow const parameters [E0530]
+        //~^ ERROR match bindings cannot shadow const parameters [E0530]
     }
 }
 
 fn bar<const N: i32>(i: i32) -> bool {
     let N @ _ = 0;
-    //~^ ERROR: let bindings cannot shadow const parameters [E0530]
+    //~^ ERROR let bindings cannot shadow const parameters [E0530]
     match i {
         N @ _ => true,
     }

@@ -9,7 +9,7 @@ type MySliceBool = MySlice<[bool]>;
 
 struct P2 {
     b: MySliceBool,
-    //~^ ERROR: the size for values of type `[bool]` cannot be known at compilation time
+    //~^ ERROR the size for values of type `[bool]` cannot be known at compilation time
 }
 
 static CHECK: () = assert!(align_of::<P2>() == 1); //~ ERROR could not evaluate static initializer

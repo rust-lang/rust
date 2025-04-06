@@ -8,7 +8,7 @@ use std::arch::naked_asm;
 extern "C" fn naked() {
     naked_asm!("")
     //~^ ERROR use of unstable library feature `naked_functions`
-    //~| ERROR: requires unsafe
+    //~| ERROR requires unsafe
 }
 
 #[naked]
@@ -16,7 +16,7 @@ extern "C" fn naked() {
 extern "C" fn naked_2() -> isize {
     naked_asm!("")
     //~^ ERROR use of unstable library feature `naked_functions`
-    //~| ERROR: requires unsafe
+    //~| ERROR requires unsafe
 }
 
 fn main() {}

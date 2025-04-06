@@ -16,13 +16,13 @@ fn foo(x: !) -> Box<dyn Error> {
     // Method resolution will generate new inference vars and relate them.
     // Thus fallback will not fall back to `!`, but `()` instead.
     Box::<_ /* ! */>::new(x)
-    //[nofallback]~^ ERROR trait bound `(): std::error::Error` is not satisfied
+    //[nofallback]~^ ERROR trait bound `(): std::error:Error` is not satisfied
 }
 
 fn foo_raw_ptr(x: !) -> *mut dyn Error {
     /* *mut $0 is coerced to *mut Error here */
     raw_ptr_box::<_ /* ! */>(x)
-    //[nofallback]~^ ERROR trait bound `(): std::error::Error` is not satisfied
+    //[nofallback]~^ ERROR trait bound `(): std::error:Error` is not satisfied
 }
 
 fn no_coercion(d: *mut dyn Error) -> *mut dyn Error {
