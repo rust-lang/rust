@@ -1534,10 +1534,6 @@ impl<'a> InferenceContext<'a> {
                 None => return (self.err_ty(), None),
             }
         };
-        let Some(mod_path) = path.mod_path() else {
-            never!("resolver should always resolve lang item paths");
-            return (self.err_ty(), None);
-        };
         return match resolution {
             TypeNs::AdtId(AdtId::StructId(strukt)) => {
                 let substs = path_ctx.substs_from_path(strukt.into(), true);
@@ -1567,6 +1563,10 @@ impl<'a> InferenceContext<'a> {
 
                 let Some(remaining_idx) = unresolved else {
                     drop(ctx);
+                    let Some(mod_path) = path.mod_path() else {
+                        never!("resolver should always resolve lang item paths");
+                        return (self.err_ty(), None);
+                    };
                     return self.resolve_variant_on_alias(ty, None, mod_path);
                 };
 
@@ -1630,6 +1630,10 @@ impl<'a> InferenceContext<'a> {
                 (ty, variant)
             }
             TypeNs::TypeAliasId(it) => {
+                let Some(mod_path) = path.mod_path() else {
+                    never!("resolver should always resolve lang item paths");
+                    return (self.err_ty(), None);
+                };
                 let substs = path_ctx.substs_from_path_segment(it.into(), true, None);
                 drop(ctx);
                 let ty = self.db.ty(it.into());

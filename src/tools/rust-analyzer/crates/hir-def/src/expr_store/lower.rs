@@ -2321,54 +2321,99 @@ impl ExprCollector<'_> {
             zero_pad,
             debug_hex,
         } = &placeholder.format_options;
-        let fill = self.alloc_expr_desugared(Expr::Literal(Literal::Char(fill.unwrap_or(' '))));
 
-        let align = {
-            let align = LangItem::FormatAlignment.ty_rel_path(
-                self.db,
-                self.krate,
-                match alignment {
-                    Some(FormatAlignment::Left) => Name::new_symbol_root(sym::Left.clone()),
-                    Some(FormatAlignment::Right) => Name::new_symbol_root(sym::Right.clone()),
-                    Some(FormatAlignment::Center) => Name::new_symbol_root(sym::Center.clone()),
-                    None => Name::new_symbol_root(sym::Unknown.clone()),
-                },
-            );
-            match align {
-                Some(path) => self.alloc_expr_desugared(Expr::Path(path)),
-                None => self.missing_expr(),
-            }
-        };
-        // This needs to match `Flag` in library/core/src/fmt/rt.rs.
-        let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
-            | (((sign == Some(FormatSign::Minus)) as u32) << 1)
-            | ((alternate as u32) << 2)
-            | ((zero_pad as u32) << 3)
-            | (((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 4)
-            | (((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 5);
-        let flags = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
-            flags as u128,
-            Some(BuiltinUint::U32),
-        )));
-        let precision = self.make_count(precision, argmap);
-        let width = self.make_count(width, argmap);
+        let precision_expr = self.make_count(precision, argmap);
+        let width_expr = self.make_count(width, argmap);
 
-        let format_placeholder_new = {
-            let format_placeholder_new = LangItem::FormatPlaceholder.ty_rel_path(
-                self.db,
-                self.krate,
-                Name::new_symbol_root(sym::new.clone()),
-            );
-            match format_placeholder_new {
-                Some(path) => self.alloc_expr_desugared(Expr::Path(path)),
-                None => self.missing_expr(),
-            }
-        };
+        if self.krate.workspace_data(self.db).is_atleast_187() {
+            // These need to match the constants in library/core/src/fmt/rt.rs.
+            let align = match alignment {
+                Some(FormatAlignment::Left) => 0,
+                Some(FormatAlignment::Right) => 1,
+                Some(FormatAlignment::Center) => 2,
+                None => 3,
+            };
+            // This needs to match `Flag` in library/core/src/fmt/rt.rs.
+            let flags = fill.unwrap_or(' ') as u32
+                | ((sign == Some(FormatSign::Plus)) as u32) << 21
+                | ((sign == Some(FormatSign::Minus)) as u32) << 22
+                | (alternate as u32) << 23
+                | (zero_pad as u32) << 24
+                | ((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 25
+                | ((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 26
+                | (width.is_some() as u32) << 27
+                | (precision.is_some() as u32) << 28
+                | align << 29
+                | 1 << 31; // Highest bit always set.
+            let flags = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
+                flags as u128,
+                Some(BuiltinUint::U32),
+            )));
 
-        self.alloc_expr_desugared(Expr::Call {
-            callee: format_placeholder_new,
-            args: Box::new([position, fill, align, flags, precision, width]),
-        })
+            let position = RecordLitField {
+                name: Name::new_symbol_root(sym::position.clone()),
+                expr: position,
+            };
+            let flags =
+                RecordLitField { name: Name::new_symbol_root(sym::flags.clone()), expr: flags };
+            let precision = RecordLitField {
+                name: Name::new_symbol_root(sym::precision.clone()),
+                expr: precision_expr,
+            };
+            let width = RecordLitField {
+                name: Name::new_symbol_root(sym::width.clone()),
+                expr: width_expr,
+            };
+            self.alloc_expr_desugared(Expr::RecordLit {
+                path: LangItem::FormatPlaceholder.path(self.db, self.krate).map(Box::new),
+                fields: Box::new([position, flags, precision, width]),
+                spread: None,
+            })
+        } else {
+            let format_placeholder_new = {
+                let format_placeholder_new = LangItem::FormatPlaceholder.ty_rel_path(
+                    self.db,
+                    self.krate,
+                    Name::new_symbol_root(sym::new.clone()),
+                );
+                match format_placeholder_new {
+                    Some(path) => self.alloc_expr_desugared(Expr::Path(path)),
+                    None => self.missing_expr(),
+                }
+            };
+            // This needs to match `Flag` in library/core/src/fmt/rt.rs.
+            let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
+                | (((sign == Some(FormatSign::Minus)) as u32) << 1)
+                | ((alternate as u32) << 2)
+                | ((zero_pad as u32) << 3)
+                | (((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 4)
+                | (((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 5);
+            let flags = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
+                flags as u128,
+                Some(BuiltinUint::U32),
+            )));
+            let fill = self.alloc_expr_desugared(Expr::Literal(Literal::Char(fill.unwrap_or(' '))));
+            let align = {
+                let align = LangItem::FormatAlignment.ty_rel_path(
+                    self.db,
+                    self.krate,
+                    match alignment {
+                        Some(FormatAlignment::Left) => Name::new_symbol_root(sym::Left.clone()),
+                        Some(FormatAlignment::Right) => Name::new_symbol_root(sym::Right.clone()),
+                        Some(FormatAlignment::Center) => Name::new_symbol_root(sym::Center.clone()),
+                        None => Name::new_symbol_root(sym::Unknown.clone()),
+                    },
+                );
+                match align {
+                    Some(path) => self.alloc_expr_desugared(Expr::Path(path)),
+                    None => self.missing_expr(),
+                }
+            };
+            self.alloc_expr_desugared(Expr::Call {
+                callee: format_placeholder_new,
+                args: Box::new([position, fill, align, flags, precision_expr, width_expr]),
+            })
+        }
     }
 
     /// Generate a hir expression for a format_args Count.

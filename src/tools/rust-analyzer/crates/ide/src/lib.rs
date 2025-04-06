@@ -753,7 +753,7 @@ impl Analysis {
         frange: FileRange,
     ) -> Cancellable<Vec<Assist>> {
         let include_fixes = match &assist_config.allowed {
-            Some(it) => it.iter().any(|&it| it == AssistKind::QuickFix),
+            Some(it) => it.contains(&AssistKind::QuickFix),
             None => true,
         };
 
