@@ -37,7 +37,6 @@
 
 use std::ops::Deref;
 
-use rustc_abi::ExternAbi;
 use rustc_attr_parsing::InlineAttr;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
@@ -1240,10 +1239,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         if let (Some(a_sig), Some(b_sig)) = (a_sig, b_sig) {
-            // Intrinsics are not coercible to function pointers.
-            if a_sig.abi() == ExternAbi::RustIntrinsic || b_sig.abi() == ExternAbi::RustIntrinsic {
-                return Err(TypeError::IntrinsicCast);
-            }
             // The signature must match.
             let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
             let sig = self
