@@ -120,13 +120,17 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
             tcx.sess.split_debuginfo(),
             tcx.sess.opts.unstable_opts.split_dwarf_kind,
             mod_name,
+            tcx.sess.invocation_temp.as_deref(),
         )
     } else {
         None
     };
 
-    let output_obj_file =
-        Some(tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, mod_name));
+    let output_obj_file = Some(tcx.output_filenames(()).temp_path_for_cgu(
+        OutputType::Object,
+        mod_name,
+        tcx.sess.invocation_temp.as_deref(),
+    ));
     let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
 
     target_machine_factory(
@@ -330,7 +334,11 @@ pub(crate) fn save_temp_bitcode(
         return;
     }
     let ext = format!("{name}.bc");
-    let path = cgcx.output_filenames.temp_path_ext_for_cgu(&ext, &module.name);
+    let path = cgcx.output_filenames.temp_path_ext_for_cgu(
+        &ext,
+        &module.name,
+        cgcx.invocation_temp.as_deref(),
+    );
     write_bitcode_to_file(module, &path)
 }
 
@@ -694,7 +702,11 @@ pub(crate) unsafe fn optimize(
     let _handlers = DiagnosticHandlers::new(cgcx, dcx, llcx, module, CodegenDiagnosticsStage::Opt);
 
     if config.emit_no_opt_bc {
-        let out = cgcx.output_filenames.temp_path_ext_for_cgu("no-opt.bc", &module.name);
+        let out = cgcx.output_filenames.temp_path_ext_for_cgu(
+            "no-opt.bc",
+            &module.name,
+            cgcx.invocation_temp.as_deref(),
+        );
         write_bitcode_to_file(module, &out)
     }
 
@@ -739,8 +751,11 @@ pub(crate) unsafe fn optimize(
         if let Some(thin_lto_buffer) = thin_lto_buffer {
             let thin_lto_buffer = unsafe { ThinBuffer::from_raw_ptr(thin_lto_buffer) };
             module.thin_lto_buffer = Some(thin_lto_buffer.data().to_vec());
-            let bc_summary_out =
-                cgcx.output_filenames.temp_path_for_cgu(OutputType::ThinLinkBitcode, &module.name);
+            let bc_summary_out = cgcx.output_filenames.temp_path_for_cgu(
+                OutputType::ThinLinkBitcode,
+                &module.name,
+                cgcx.invocation_temp.as_deref(),
+            );
             if config.emit_thin_lto_summary
                 && let Some(thin_link_bitcode_filename) = bc_summary_out.file_name()
             {
@@ -808,8 +823,16 @@ pub(crate) unsafe fn codegen(
         // copy it to the .o file, and delete the bitcode if it wasn't
         // otherwise requested.
 
-        let bc_out = cgcx.output_filenames.temp_path_for_cgu(OutputType::Bitcode, &module.name);
-        let obj_out = cgcx.output_filenames.temp_path_for_cgu(OutputType::Object, &module.name);
+        let bc_out = cgcx.output_filenames.temp_path_for_cgu(
+            OutputType::Bitcode,
+            &module.name,
+            cgcx.invocation_temp.as_deref(),
+        );
+        let obj_out = cgcx.output_filenames.temp_path_for_cgu(
+            OutputType::Object,
+            &module.name,
+            cgcx.invocation_temp.as_deref(),
+        );
 
         if config.bitcode_needed() {
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
@@ -851,8 +874,11 @@ pub(crate) unsafe fn codegen(
         if config.emit_ir {
             let _timer =
                 cgcx.prof.generic_activity_with_arg("LLVM_module_codegen_emit_ir", &*module.name);
-            let out =
-                cgcx.output_filenames.temp_path_for_cgu(OutputType::LlvmAssembly, &module.name);
+            let out = cgcx.output_filenames.temp_path_for_cgu(
+                OutputType::LlvmAssembly,
+                &module.name,
+                cgcx.invocation_temp.as_deref(),
+            );
             let out_c = path_to_c_string(&out);
 
             extern "C" fn demangle_callback(
@@ -894,7 +920,11 @@ pub(crate) unsafe fn codegen(
         if config.emit_asm {
             let _timer =
                 cgcx.prof.generic_activity_with_arg("LLVM_module_codegen_emit_asm", &*module.name);
-            let path = cgcx.output_filenames.temp_path_for_cgu(OutputType::Assembly, &module.name);
+            let path = cgcx.output_filenames.temp_path_for_cgu(
+                OutputType::Assembly,
+                &module.name,
+                cgcx.invocation_temp.as_deref(),
+            );
 
             // We can't use the same module for asm and object code output,
             // because that triggers various errors like invalid IR or broken
@@ -924,7 +954,9 @@ pub(crate) unsafe fn codegen(
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &*module.name);
 
-                let dwo_out = cgcx.output_filenames.temp_path_dwo_for_cgu(&module.name);
+                let dwo_out = cgcx
+                    .output_filenames
+                    .temp_path_dwo_for_cgu(&module.name, cgcx.invocation_temp.as_deref());
                 let dwo_out = match (cgcx.split_debuginfo, cgcx.split_dwarf_kind) {
                     // Don't change how DWARF is emitted when disabled.
                     (SplitDebuginfo::Off, _) => None,
@@ -989,6 +1021,7 @@ pub(crate) unsafe fn codegen(
         config.emit_asm,
         config.emit_ir,
         &cgcx.output_filenames,
+        cgcx.invocation_temp.as_deref(),
     ))
 }
 

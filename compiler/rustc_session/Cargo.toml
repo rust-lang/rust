@@ -7,6 +7,7 @@ edition = "2024"
 # tidy-alphabetical-start
 bitflags = "2.4.1"
 getopts = "0.2"
+rand = "0.9.0"
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }

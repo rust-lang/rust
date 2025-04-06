@@ -6,6 +6,8 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::{env, fmt, io};
 
+use rand::{RngCore, rng};
+use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
@@ -203,6 +205,14 @@ pub struct Session {
 
     target_filesearch: FileSearch,
     host_filesearch: FileSearch,
+
+    /// A random string generated per invocation of rustc.
+    ///
+    /// This is prepended to all temporary files so that they do not collide
+    /// during concurrent invocations of rustc, or past invocations that were
+    /// preserved with a flag like `-C save-temps`, since these files may be
+    /// hard linked.
+    pub invocation_temp: Option<String>,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -1117,6 +1127,12 @@ pub fn build_session(
     let target_filesearch =
         filesearch::FileSearch::new(&sopts.search_paths, &target_tlib_path, &target);
     let host_filesearch = filesearch::FileSearch::new(&sopts.search_paths, &host_tlib_path, &host);
+
+    let invocation_temp = sopts
+        .incremental
+        .as_ref()
+        .map(|_| rng().next_u32().to_base_fixed_len(CASE_INSENSITIVE).to_string());
+
     let sess = Session {
         target,
         host,
@@ -1140,6 +1156,7 @@ pub fn build_session(
         expanded_args,
         target_filesearch,
         host_filesearch,
+        invocation_temp,
     };
 
     validate_commandline_args_with_session_available(&sess);

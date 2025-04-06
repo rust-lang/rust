@@ -31,8 +31,16 @@ pub(crate) unsafe fn codegen(
         // TODO(antoyo): remove this environment variable.
         let fat_lto = env::var("EMBED_LTO_BITCODE").as_deref() == Ok("1");
 
-        let bc_out = cgcx.output_filenames.temp_path_for_cgu(OutputType::Bitcode, &module.name);
-        let obj_out = cgcx.output_filenames.temp_path_for_cgu(OutputType::Object, &module.name);
+        let bc_out = cgcx.output_filenames.temp_path_for_cgu(
+            OutputType::Bitcode,
+            &module.name,
+            cgcx.invocation_temp.as_deref(),
+        );
+        let obj_out = cgcx.output_filenames.temp_path_for_cgu(
+            OutputType::Object,
+            &module.name,
+            cgcx.invocation_temp.as_deref(),
+        );
 
         if config.bitcode_needed() {
             if fat_lto {
@@ -113,15 +121,22 @@ pub(crate) unsafe fn codegen(
         }
 
         if config.emit_ir {
-            let out =
-                cgcx.output_filenames.temp_path_for_cgu(OutputType::LlvmAssembly, &module.name);
+            let out = cgcx.output_filenames.temp_path_for_cgu(
+                OutputType::LlvmAssembly,
+                &module.name,
+                cgcx.invocation_temp.as_deref(),
+            );
             std::fs::write(out, "").expect("write file");
         }
 
         if config.emit_asm {
             let _timer =
                 cgcx.prof.generic_activity_with_arg("GCC_module_codegen_emit_asm", &*module.name);
-            let path = cgcx.output_filenames.temp_path_for_cgu(OutputType::Assembly, &module.name);
+            let path = cgcx.output_filenames.temp_path_for_cgu(
+                OutputType::Assembly,
+                &module.name,
+                cgcx.invocation_temp.as_deref(),
+            );
             context.compile_to_file(OutputKind::Assembler, path.to_str().expect("path to str"));
         }
 
@@ -235,6 +250,7 @@ pub(crate) unsafe fn codegen(
         config.emit_asm,
         config.emit_ir,
         &cgcx.output_filenames,
+        cgcx.invocation_temp.as_deref(),
     ))
 }
 
