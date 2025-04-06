@@ -211,7 +211,7 @@ declare_features! (
     (internal, custom_mir, "1.65.0", None),
     /// Outputs useful `assert!` messages
     (unstable, generic_assert, "1.63.0", None),
-    /// Allows using the `rust-intrinsic`'s "ABI".
+    /// Allows using the #[rustc_intrinsic] attribute.
     (internal, intrinsics, "1.0.0", None),
     /// Allows using `#[lang = ".."]` attribute for linking items to special compiler logic.
     (internal, lang_items, "1.0.0", None),
