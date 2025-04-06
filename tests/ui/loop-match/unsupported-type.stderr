@@ -1,5 +1,5 @@
 error: this `#[loop_match]` state value has type `Option<bool>`, which is not supported
-  --> $DIR/unsupported-type.rs:10:9
+  --> $DIR/unsupported-type.rs:12:9
    |
 LL |         state = 'blk: {
    |         ^^^^^

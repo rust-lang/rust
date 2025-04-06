@@ -227,11 +227,11 @@ mir_build_loop_match_bad_statements =
     statements are not allowed in this position within a `#[loop_match]`
 
 mir_build_loop_match_invalid_match =
-    invalid match on `loop_match` state
-    .note = only matches on local variables are valid
+    invalid match on `#[loop_match]` state
+    .note = a local variable must be the scrutinee within a `#[loop_match]`
 
 mir_build_loop_match_invalid_update =
-    invalid update of the `loop_match` state
+    invalid update of the `#[loop_match]` state
     .label = the assignment must update this variable
 
 mir_build_loop_match_missing_assignment =

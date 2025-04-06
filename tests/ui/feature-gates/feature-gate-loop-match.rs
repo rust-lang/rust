@@ -1,4 +1,5 @@
-// A #[const_continue] to a labeled loop should error.
+// Test that `#[loop_match]` and `#[const_continue]` cannot be used without
+// `#![feature(loop_match)]`.
 
 enum State {
     A,

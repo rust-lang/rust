@@ -1,4 +1,5 @@
-// Test that a good error is emitted when #[loop_match] is applied to syntax it does not support.
+// Test that the correct error is emitted when `#[loop_match]` is applied to
+// syntax it does not support.
 #![allow(incomplete_features)]
 #![feature(loop_match)]
 #![crate_type = "lib"]
@@ -15,7 +16,7 @@ fn invalid_update() {
     #[loop_match]
     loop {
         fake = 'blk: {
-            //~^ ERROR invalid update of the `loop_match` state
+            //~^ ERROR invalid update of the `#[loop_match]` state
             match state {
                 _ => State::B,
             }
@@ -29,7 +30,7 @@ fn invalid_scrutinee() {
     loop {
         state = 'blk: {
             match State::A {
-                //~^ ERROR invalid match on `loop_match` state
+                //~^ ERROR invalid match on `#[loop_match]` state
                 _ => State::B,
             }
         }

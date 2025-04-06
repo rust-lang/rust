@@ -1,5 +1,5 @@
-// Checks that #[loop_match] and #[const_continue] attributes can be
-// placed on expressions only.
+// Test that the `#[loop_match]` and `#[const_continue]` attributes can only be
+// placed on expressions.
 
 #![allow(incomplete_features)]
 #![feature(loop_match)]

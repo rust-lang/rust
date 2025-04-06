@@ -1,4 +1,4 @@
-// Test that #[loop_match] supportes or patterns.
+// Test that `#[loop_match]` supports or-patterns.
 
 //@ run-pass
 
