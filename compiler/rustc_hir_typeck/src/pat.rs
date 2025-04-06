@@ -318,6 +318,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Conversely, inside this module, `check_pat_top` should never be used.
     #[instrument(level = "debug", skip(self, pat_info))]
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx>) {
+        let opt_path_res = match pat.kind {
+            PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
+                Some(self.resolve_ty_and_res_fully_qualified_call(qpath, *hir_id, *span))
+            }
+            _ => None,
+        };
+        let adjust_mode = self.calc_adjust_mode(pat, opt_path_res.map(|(res, ..)| res));
+        self.check_pat_inner(pat, opt_path_res, adjust_mode, expected, pat_info);
+    }
+
+    // Helper to avoid resolving the same path pattern several times.
+    fn check_pat_inner(
+        &self,
+        pat: &'tcx Pat<'tcx>,
+        opt_path_res: Option<(Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>])>,
+        adjust_mode: AdjustMode,
+        expected: Ty<'tcx>,
+        pat_info: PatInfo<'tcx>,
+    ) {
         let PatInfo { binding_mode, max_ref_mutbl, top_info: ti, current_depth, .. } = pat_info;
         #[cfg(debug_assertions)]
         if binding_mode == ByRef::Yes(Mutability::Mut)
@@ -327,34 +346,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span_bug!(pat.span, "Pattern mutability cap violated!");
         }
 
-        let path_res = match pat.kind {
-            PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
-                Some(self.resolve_ty_and_res_fully_qualified_call(qpath, *hir_id, *span))
-            }
-            _ => None,
-        };
-        let adjust_mode = self.calc_adjust_mode(pat, path_res.map(|(res, ..)| res));
         let (expected, binding_mode, max_ref_mutbl) = match adjust_mode {
             // When we perform destructuring assignment, we disable default match bindings, which
             // are unintuitive in this context.
             _ if !pat.default_binding_modes => (expected, ByRef::No, MutblCap::Mut),
             AdjustMode::Pass => (expected, binding_mode, max_ref_mutbl),
-            // Peel off as many immediately nested `& mut?` from the expected type as possible
-            // and return the new expected type and binding default binding mode.
-            // The adjustments vector, if non-empty is stored in a table.
+            // Peel an immediately nested `& mut?` from the expected type if possible and return the
+            // new expected type and binding default binding mode.
             AdjustMode::Peel => {
-                let mut binding_mode = binding_mode;
-                let mut max_ref_mutbl = max_ref_mutbl;
-                let mut expected = self.try_structurally_resolve_type(pat.span, expected);
-                // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
-                // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
-                // the `Some(5)` which is not of type Ref.
+                let expected = self.try_structurally_resolve_type(pat.span, expected);
+                // Peel off a `&` or `&mut` from the scrutinee type. For each ampersand peeled off,
+                // update the binding mode and push the original type into the adjustments vector.
                 //
-                // For each ampersand peeled off, update the binding mode and push the original
-                // type into the adjustments vector.
-                //
-                // See the examples in `ui/match-defbm*.rs`.
-                while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
+                // See the examples in `tests/ui/rfcs/rfc-2005-default-binding-mode`.
+                if let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
                     debug!("inspecting {:?}", expected);
 
                     debug!("current discriminant is Ref, inserting implicit deref");
@@ -366,8 +371,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .or_default()
                         .push(expected);
 
-                    expected = self.try_structurally_resolve_type(pat.span, inner_ty);
-                    binding_mode = ByRef::Yes(match binding_mode {
+                    let mut binding_mode = ByRef::Yes(match binding_mode {
                         // If default binding mode is by value, make it `ref` or `ref mut`
                         // (depending on whether we observe `&` or `&mut`).
                         ByRef::No |
@@ -377,18 +381,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // This is because a `& &mut` cannot mutate the underlying value.
                         ByRef::Yes(Mutability::Not) => Mutability::Not,
                     });
-                }
 
-                if self.downgrade_mut_inside_shared() {
-                    binding_mode = binding_mode.cap_ref_mutability(max_ref_mutbl.as_mutbl());
+                    if self.downgrade_mut_inside_shared() {
+                        binding_mode = binding_mode.cap_ref_mutability(max_ref_mutbl.as_mutbl());
+                    }
+                    let mut max_ref_mutbl = max_ref_mutbl;
+                    if binding_mode == ByRef::Yes(Mutability::Not) {
+                        max_ref_mutbl = MutblCap::Not;
+                    }
+                    debug!("default binding mode is now {:?}", binding_mode);
+                    let pat_info = PatInfo { binding_mode, max_ref_mutbl, ..pat_info };
+                    return self.check_pat_inner(
+                        pat,
+                        opt_path_res,
+                        adjust_mode,
+                        inner_ty,
+                        pat_info,
+                    );
+                } else {
+                    (expected, binding_mode, max_ref_mutbl)
                 }
-                if binding_mode == ByRef::Yes(Mutability::Not) {
-                    max_ref_mutbl = MutblCap::Not;
-                }
-
-                debug!("default binding mode is now {:?}", binding_mode);
-
-                (expected, binding_mode, max_ref_mutbl)
             }
         };
         let pat_info = PatInfo {
@@ -409,7 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     pat.hir_id,
                     *span,
                     qpath,
-                    path_res.unwrap(),
+                    opt_path_res.unwrap(),
                     expected,
                     &pat_info.top_info,
                 );
