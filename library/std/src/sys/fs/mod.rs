@@ -9,7 +9,7 @@ cfg_if::cfg_if! {
     if #[cfg(target_family = "unix")] {
         mod unix;
         use unix as imp;
-        pub use unix::{chown, fchown, lchown};
+        pub use unix::{chown, fchown, lchown, mkfifo};
         #[cfg(not(target_os = "fuchsia"))]
         pub use unix::chroot;
         pub(crate) use unix::debug_assert_fd_is_open;
