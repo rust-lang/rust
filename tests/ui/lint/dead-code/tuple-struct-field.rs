@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 const LEN: usize = 4;
 
 struct UnusedAtTheEnd(i32, f32, [u8; LEN], String, u8);
-//~^ ERRORfields `1`, `2`, `3`, and `4` are never read
+//~^ ERROR fields `1`, `2`, `3`, and `4` are never read
 //~| NOTE fields in this struct
 //~| HELP consider removing these fields
 

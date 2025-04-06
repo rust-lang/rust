@@ -20,5 +20,5 @@ fn main() {
     //~^ NOTE the above error was encountered while instantiating
 }
 
-//~? ERROR evaluation of `post_monomorphization_error:ValidateConstImm::<2, 0, 1>::VALID` failed
+//~? ERROR evaluation of `post_monomorphization_error::ValidateConstImm::<2, 0, 1>::VALID` failed
 //~? NOTE erroneous constant encountered
