@@ -7,10 +7,10 @@ edition = "2024"
 # tidy-alphabetical-start
 bitflags = "2.4.1"
 memchr = "2.7.4"
+rustc-literal-escaper = "0.0.2"
 rustc_ast_ir = { path = "../rustc_ast_ir" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_index = { path = "../rustc_index" }
-rustc_lexer = { path = "../rustc_lexer" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }

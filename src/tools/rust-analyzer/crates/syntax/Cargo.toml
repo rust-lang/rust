@@ -17,12 +17,11 @@ either.workspace = true
 itertools.workspace = true
 rowan = "=0.15.15"
 rustc-hash.workspace = true
+rustc-literal-escaper.workspace = true
 indexmap.workspace = true
 smol_str.workspace = true
 triomphe.workspace = true
 tracing.workspace = true
-
-ra-ap-rustc_lexer.workspace = true
 
 parser.workspace = true
 stdx.workspace = true

@@ -27,6 +27,7 @@
 #![feature(panic_can_unwind)]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
+#![feature(stmt_expr_attributes)]
 #![feature(extend_one)]
 #![recursion_limit = "256"]
 #![allow(internal_features)]
@@ -51,10 +52,23 @@ use std::{error, fmt};
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
+#[unstable(feature = "proc_macro_value", issue = "136652")]
+pub use rustc_literal_escaper::EscapeError;
+use rustc_literal_escaper::{MixedUnit, Mode, byte_from_char, unescape_mixed, unescape_unicode};
 #[unstable(feature = "proc_macro_totokens", issue = "130977")]
 pub use to_tokens::ToTokens;
 
 use crate::escape::{EscapeOptions, escape_bytes};
+
+/// Errors returned when trying to retrieve a literal unescaped value.
+#[unstable(feature = "proc_macro_value", issue = "136652")]
+#[derive(Debug, PartialEq, Eq)]
+pub enum ConversionErrorKind {
+    /// The literal failed to be escaped, take a look at [`EscapeError`] for more information.
+    FailedToUnescape(EscapeError),
+    /// Trying to convert a literal with the wrong type.
+    InvalidLiteralKind,
+}
 
 /// Determines whether proc_macro has been made accessible to the currently
 /// running program.
@@ -1449,6 +1463,107 @@ impl Literal {
             bridge::LitKind::Integer | bridge::LitKind::Float | bridge::LitKind::ErrWithGuar => {
                 f(&[symbol, suffix])
             }
+        })
+    }
+
+    /// Returns the unescaped string value if the current literal is a string or a string literal.
+    #[unstable(feature = "proc_macro_value", issue = "136652")]
+    pub fn str_value(&self) -> Result<String, ConversionErrorKind> {
+        self.0.symbol.with(|symbol| match self.0.kind {
+            bridge::LitKind::Str => {
+                if symbol.contains('\\') {
+                    let mut buf = String::with_capacity(symbol.len());
+                    let mut error = None;
+                    // Force-inlining here is aggressive but the closure is
+                    // called on every char in the string, so it can be hot in
+                    // programs with many long strings containing escapes.
+                    unescape_unicode(
+                        symbol,
+                        Mode::Str,
+                        &mut #[inline(always)]
+                        |_, c| match c {
+                            Ok(c) => buf.push(c),
+                            Err(err) => {
+                                if err.is_fatal() {
+                                    error = Some(ConversionErrorKind::FailedToUnescape(err));
+                                }
+                            }
+                        },
+                    );
+                    if let Some(error) = error { Err(error) } else { Ok(buf) }
+                } else {
+                    Ok(symbol.to_string())
+                }
+            }
+            bridge::LitKind::StrRaw(_) => Ok(symbol.to_string()),
+            _ => Err(ConversionErrorKind::InvalidLiteralKind),
+        })
+    }
+
+    /// Returns the unescaped string value if the current literal is a c-string or a c-string
+    /// literal.
+    #[unstable(feature = "proc_macro_value", issue = "136652")]
+    pub fn cstr_value(&self) -> Result<Vec<u8>, ConversionErrorKind> {
+        self.0.symbol.with(|symbol| match self.0.kind {
+            bridge::LitKind::CStr => {
+                let mut error = None;
+                let mut buf = Vec::with_capacity(symbol.len());
+
+                unescape_mixed(symbol, Mode::CStr, &mut |_span, c| match c {
+                    Ok(MixedUnit::Char(c)) => {
+                        buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
+                    }
+                    Ok(MixedUnit::HighByte(b)) => buf.push(b),
+                    Err(err) => {
+                        if err.is_fatal() {
+                            error = Some(ConversionErrorKind::FailedToUnescape(err));
+                        }
+                    }
+                });
+                if let Some(error) = error {
+                    Err(error)
+                } else {
+                    buf.push(0);
+                    Ok(buf)
+                }
+            }
+            bridge::LitKind::CStrRaw(_) => {
+                // Raw strings have no escapes so we can convert the symbol
+                // directly to a `Lrc<u8>` after appending the terminating NUL
+                // char.
+                let mut buf = symbol.to_owned().into_bytes();
+                buf.push(0);
+                Ok(buf)
+            }
+            _ => Err(ConversionErrorKind::InvalidLiteralKind),
+        })
+    }
+
+    /// Returns the unescaped string value if the current literal is a byte string or a byte string
+    /// literal.
+    #[unstable(feature = "proc_macro_value", issue = "136652")]
+    pub fn byte_str_value(&self) -> Result<Vec<u8>, ConversionErrorKind> {
+        self.0.symbol.with(|symbol| match self.0.kind {
+            bridge::LitKind::ByteStr => {
+                let mut buf = Vec::with_capacity(symbol.len());
+                let mut error = None;
+
+                unescape_unicode(symbol, Mode::ByteStr, &mut |_, c| match c {
+                    Ok(c) => buf.push(byte_from_char(c)),
+                    Err(err) => {
+                        if err.is_fatal() {
+                            error = Some(ConversionErrorKind::FailedToUnescape(err));
+                        }
+                    }
+                });
+                if let Some(error) = error { Err(error) } else { Ok(buf) }
+            }
+            bridge::LitKind::ByteStrRaw(_) => {
+                // Raw strings have no escapes so we can convert the symbol
+                // directly to a `Lrc<u8>`.
+                Ok(symbol.to_owned().into_bytes())
+            }
+            _ => Err(ConversionErrorKind::InvalidLiteralKind),
         })
     }
 }

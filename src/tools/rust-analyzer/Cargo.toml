@@ -136,6 +136,7 @@ pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.0", default-features = false }
 rayon = "1.8.0"
 rustc-hash = "2.0.0"
+rustc-literal-escaper = "0.0.2"
 semver = "1.0.14"
 serde = { version = "1.0.192" }
 serde_derive = { version = "1.0.192" }
