@@ -146,7 +146,7 @@ pub(crate) fn compile_global_asm(
     global_asm.push('\n');
 
     let global_asm_object_file = add_file_stem_postfix(
-        config.output_filenames.temp_path(OutputType::Object, Some(cgu_name)),
+        config.output_filenames.temp_path_for_cgu(OutputType::Object, cgu_name),
         ".asm",
     );
 
