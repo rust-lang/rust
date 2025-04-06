@@ -8,6 +8,7 @@ pub mod flags;
 mod highlight;
 mod lsif;
 mod parse;
+mod prime_caches;
 mod run_tests;
 mod rustc_tests;
 mod scip;

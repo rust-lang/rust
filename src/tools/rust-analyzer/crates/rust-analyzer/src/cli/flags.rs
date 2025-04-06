@@ -139,6 +139,21 @@ xflags::xflags! {
             optional --proc-macro-srv path: PathBuf
         }
 
+        /// prime caches, as rust-analyzer does typically at startup in interactive sessions.
+        cmd prime-caches {
+            /// Directory with Cargo.toml.
+            required path: PathBuf
+
+            /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
+            optional --disable-build-scripts
+            /// Don't use expand proc macros.
+            optional --disable-proc-macros
+            /// Run the proc-macro-srv binary at the specified path.
+            optional --proc-macro-srv path: PathBuf
+            /// Run cache priming in parallel.
+            optional --parallel
+        }
+
         cmd ssr {
             /// A structured search replace rule (`$a.foo($b) ==>> bar($a, $b)`)
             repeated rule: SsrRule
@@ -197,6 +212,7 @@ pub enum RustAnalyzerCmd {
     RustcTests(RustcTests),
     Diagnostics(Diagnostics),
     UnresolvedReferences(UnresolvedReferences),
+    PrimeCaches(PrimeCaches),
     Ssr(Ssr),
     Search(Search),
     Lsif(Lsif),
@@ -274,6 +290,16 @@ pub struct UnresolvedReferences {
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,
     pub proc_macro_srv: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+pub struct PrimeCaches {
+    pub path: PathBuf,
+
+    pub disable_build_scripts: bool,
+    pub disable_proc_macros: bool,
+    pub proc_macro_srv: Option<PathBuf>,
+    pub parallel: bool,
 }
 
 #[derive(Debug)]

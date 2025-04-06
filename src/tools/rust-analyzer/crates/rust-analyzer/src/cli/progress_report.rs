@@ -9,13 +9,13 @@ pub(crate) struct ProgressReport<'a> {
     text: String,
     hidden: bool,
 
-    len: u64,
+    len: usize,
     pos: u64,
     msg: Option<Box<dyn Fn() -> String + 'a>>,
 }
 
 impl<'a> ProgressReport<'a> {
-    pub(crate) fn new(len: u64) -> ProgressReport<'a> {
+    pub(crate) fn new(len: usize) -> ProgressReport<'a> {
         ProgressReport { curr: 0.0, text: String::new(), hidden: false, len, pos: 0, msg: None }
     }
 
