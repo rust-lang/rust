@@ -125,6 +125,7 @@ define_symbols! {
     riscv_dash_interrupt_dash_s = "riscv-interrupt-s",
     rust_dash_call = "rust-call",
     rust_dash_cold = "rust-cold",
+    rust_dash_intrinsic = "rust-intrinsic",
     stdcall_dash_unwind = "stdcall-unwind",
     system_dash_unwind = "system-unwind",
     sysv64_dash_unwind = "sysv64-unwind",
