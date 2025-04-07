@@ -3340,11 +3340,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.opts.unstable_opts.next_solver.coherence
     }
 
-    #[allow(rustc::bad_opt_access)]
-    pub fn use_typing_mode_borrowck(self) -> bool {
-        self.next_trait_solver_globally() || self.sess.opts.unstable_opts.typing_mode_borrowck
-    }
-
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {
         self.opt_rpitit_info(def_id).is_some()
     }

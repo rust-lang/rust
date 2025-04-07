@@ -20,10 +20,14 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
+use std::rc::Rc;
 
 use borrow_set::LocalsStateAtExit;
+use polonius_engine::AllFacts;
+use region_infer::opaque_types::DeferredOpaqueTypeError;
 use root_cx::BorrowCheckRootCtxt;
 use rustc_abi::FieldIdx;
+use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::LintDiagnostic;
@@ -32,6 +36,7 @@ use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::{
     InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
 };
@@ -47,14 +52,17 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MovePathIndex,
 };
+use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
+use type_check::free_region_relations::UniversalRegionRelations;
+use type_check::{Locations, MirTypeckRegionConstraints, MirTypeckResults};
 
 use crate::borrow_set::{BorrowData, BorrowSet};
-use crate::consumers::{BodyWithBorrowckFacts, ConsumerOptions};
+use crate::consumers::{BodyWithBorrowckFacts, ConsumerOptions, RustcFacts};
 use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
 use crate::diagnostics::{
     AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
@@ -62,8 +70,10 @@ use crate::diagnostics::{
 use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
-use crate::polonius::PoloniusDiagnosticsContext;
-use crate::polonius::legacy::{PoloniusLocationTable, PoloniusOutput};
+use crate::polonius::legacy::{
+    PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
+};
+use crate::polonius::{PoloniusContext, PoloniusDiagnosticsContext};
 use crate::prefixes::PrefixSet;
 use crate::region_infer::RegionInferenceContext;
 use crate::renumber::RegionCtxt;
@@ -75,7 +85,6 @@ mod constraints;
 mod dataflow;
 mod def_use;
 mod diagnostics;
-mod member_constraints;
 mod nll;
 mod path_utils;
 mod place_ext;
@@ -126,20 +135,8 @@ fn mir_borrowck(
         let opaque_types = ConcreteOpaqueTypes(Default::default());
         Ok(tcx.arena.alloc(opaque_types))
     } else {
-        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def);
-        // We need to manually borrowck all nested bodies from the HIR as
-        // we do not generate MIR for dead code. Not doing so causes us to
-        // never check closures in dead code.
-        let nested_bodies = tcx.nested_bodies_within(def);
-        for def_id in nested_bodies {
-            root_cx.get_or_insert_nested(def_id);
-        }
-
-        let PropagatedBorrowCheckResults { closure_requirements, used_mut_upvars } =
-            do_mir_borrowck(&mut root_cx, def, None).0;
-        debug_assert!(closure_requirements.is_none());
-        debug_assert!(used_mut_upvars.is_empty());
-        root_cx.finalize()
+        let root_cx = BorrowCheckRootCtxt::new(tcx, def);
+        root_cx.borrowck_root(None).0
     }
 }
 
@@ -150,6 +147,8 @@ struct PropagatedBorrowCheckResults<'tcx> {
     closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
     used_mut_upvars: SmallVec<[FieldIdx; 8]>,
 }
+
+type DeferredClosureRequirements<'tcx> = Vec<(LocalDefId, ty::GenericArgsRef<'tcx>, Locations)>;
 
 /// After we borrow check a closure, we are left with various
 /// requirements that we have inferred between the free regions that
@@ -289,6 +288,24 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
     }
 }
 
+struct BorrowckState<'tcx> {
+    infcx: BorrowckInferCtxt<'tcx>,
+    body_owned: Body<'tcx>,
+    promoted: IndexVec<Promoted, Body<'tcx>>,
+    move_data: MoveData<'tcx>,
+    borrow_set: BorrowSet<'tcx>,
+    location_table: PoloniusLocationTable,
+    location_map: Rc<DenseLocationMap>,
+    universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+    region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
+    known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
+    constraints: MirTypeckRegionConstraints<'tcx>,
+    deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
+    deferred_opaque_type_errors: Vec<DeferredOpaqueTypeError<'tcx>>,
+    polonius_facts: Option<AllFacts<RustcFacts>>,
+    polonius_context: Option<PoloniusContext>,
+}
+
 /// Perform the actual borrow checking.
 ///
 /// Use `consumer_options: None` for the default behavior of returning
@@ -297,11 +314,11 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
 ///
 /// For nested bodies this should only be called through `root_cx.get_or_insert_nested`.
 #[instrument(skip(root_cx), level = "debug")]
-fn do_mir_borrowck<'tcx>(
+fn start_do_mir_borrowck<'tcx>(
     root_cx: &mut BorrowCheckRootCtxt<'tcx>,
     def: LocalDefId,
     consumer_options: Option<ConsumerOptions>,
-) -> (PropagatedBorrowCheckResults<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
+) -> BorrowckState<'tcx> {
     let tcx = root_cx.tcx;
     let infcx = BorrowckInferCtxt::new(tcx, def);
     let (input_body, promoted) = tcx.mir_promoted(def);
@@ -322,6 +339,7 @@ fn do_mir_borrowck<'tcx>(
     let body = &body_owned; // no further changes
 
     let location_table = PoloniusLocationTable::new(body);
+    let location_map = Rc::new(DenseLocationMap::new(body));
 
     let move_data = MoveData::gather_moves(body, tcx, |_| true);
 
@@ -332,6 +350,80 @@ fn do_mir_borrowck<'tcx>(
     let locals_are_invalidated_at_exit = tcx.hir_body_owner_kind(def).is_fn_or_closure();
     let borrow_set = BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data);
 
+    let is_polonius_legacy_enabled = infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
+    let polonius_input = consumer_options.map(|c| c.polonius_input()).unwrap_or_default()
+        || is_polonius_legacy_enabled;
+    let mut polonius_facts =
+        (polonius_input || PoloniusFacts::enabled(infcx.tcx)).then_some(PoloniusFacts::default());
+
+    // Run the MIR type-checker.
+    let MirTypeckResults {
+        constraints,
+        universal_region_relations,
+        region_bound_pairs,
+        known_type_outlives_obligations,
+        deferred_closure_requirements,
+        polonius_context,
+    } = type_check::type_check(
+        root_cx,
+        &infcx,
+        &body,
+        &promoted,
+        universal_regions,
+        &location_table,
+        &borrow_set,
+        &mut polonius_facts,
+        flow_inits,
+        &move_data,
+        Rc::clone(&location_map),
+    );
+
+    BorrowckState {
+        infcx,
+        body_owned,
+        promoted,
+        move_data,
+        borrow_set,
+        location_table,
+        location_map,
+        universal_region_relations,
+        region_bound_pairs,
+        known_type_outlives_obligations,
+        constraints,
+        deferred_closure_requirements,
+        deferred_opaque_type_errors: Default::default(),
+        polonius_facts,
+        polonius_context,
+    }
+}
+
+fn resume_do_mir_borrowck<'tcx>(
+    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    consumer_options: Option<ConsumerOptions>,
+    BorrowckState {
+        infcx,
+        body_owned,
+        promoted,
+        move_data,
+        borrow_set,
+        location_table,
+        location_map,
+        universal_region_relations,
+        region_bound_pairs: _,
+        known_type_outlives_obligations: _,
+        constraints,
+        deferred_closure_requirements,
+        deferred_opaque_type_errors,
+        polonius_facts,
+        polonius_context,
+    }: BorrowckState<'tcx>,
+) -> (PropagatedBorrowCheckResults<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
+    assert!(!infcx.has_opaque_types_in_storage());
+    assert!(deferred_closure_requirements.is_empty());
+    let tcx = root_cx.tcx;
+    let body = &body_owned;
+    let def = body.source.def_id().expect_local();
+
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
         regioncx,
@@ -341,17 +433,22 @@ fn do_mir_borrowck<'tcx>(
         nll_errors,
         polonius_diagnostics,
     } = nll::compute_regions(
-        root_cx,
         &infcx,
-        universal_regions,
         body,
-        &promoted,
         &location_table,
-        flow_inits,
         &move_data,
         &borrow_set,
+        location_map,
         consumer_options,
+        universal_region_relations,
+        constraints,
+        polonius_facts,
+        polonius_context,
     );
+
+    if nll_errors.has_errors().is_none() && !deferred_opaque_type_errors.is_empty() {
+        regioncx.emit_deferred_opaque_type_errors(root_cx, &infcx, deferred_opaque_type_errors);
+    }
 
     // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.
@@ -578,12 +675,7 @@ pub(crate) struct BorrowckInferCtxt<'tcx> {
 
 impl<'tcx> BorrowckInferCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        let typing_mode = if tcx.use_typing_mode_borrowck() {
-            TypingMode::borrowck(tcx, def_id)
-        } else {
-            TypingMode::analysis_in_body(tcx, def_id)
-        };
-        let infcx = tcx.infer_ctxt().build(typing_mode);
+        let infcx = tcx.infer_ctxt().build(TypingMode::borrowck(tcx, def_id));
         let param_env = tcx.param_env(def_id);
         BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()), param_env }
     }
