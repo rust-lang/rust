@@ -95,6 +95,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_local(&mut self, l: &Local) -> &'hir hir::LetStmt<'hir> {
         // Let statements are allowed to have impl trait in bindings.
+        let super_ = l.super_;
         let ty = l.ty.as_ref().map(|t| {
             self.lower_ty(t, self.impl_trait_in_bindings_ctxt(ImplTraitPosition::Variable))
         });
@@ -109,7 +110,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let span = self.lower_span(l.span);
         let source = hir::LocalSource::Normal;
         self.lower_attrs(hir_id, &l.attrs, l.span);
-        self.arena.alloc(hir::LetStmt { hir_id, ty, pat, init, els, span, source })
+        self.arena.alloc(hir::LetStmt { hir_id, super_, ty, pat, init, els, span, source })
     }
 
     fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {
