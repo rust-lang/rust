@@ -44,13 +44,13 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
         return &[];
     }
 
-    match tcx.def_kind(item_def_id) {
+    let kind = tcx.def_kind(item_def_id);
+    match kind {
         DefKind::Fn
         | DefKind::AssocFn
         | DefKind::Enum
         | DefKind::Struct
         | DefKind::Union
-        | DefKind::Variant
         | DefKind::Ctor(..) => {
             // These are inferred.
             let crate_map = tcx.crate_variances(());
@@ -89,7 +89,11 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
     }
 
     // Variance not relevant.
-    span_bug!(tcx.def_span(item_def_id), "asked to compute variance for wrong kind of item");
+    span_bug!(
+        tcx.def_span(item_def_id),
+        "asked to compute variance for {}",
+        kind.descr(item_def_id.to_def_id())
+    );
 }
 
 #[derive(Debug, Copy, Clone)]
