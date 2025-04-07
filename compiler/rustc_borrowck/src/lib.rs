@@ -76,7 +76,6 @@ mod constraints;
 mod dataflow;
 mod def_use;
 mod diagnostics;
-mod member_constraints;
 mod nll;
 mod path_utils;
 mod place_ext;

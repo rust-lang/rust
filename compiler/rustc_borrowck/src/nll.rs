@@ -27,6 +27,7 @@ use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
 use crate::region_infer::RegionInferenceContext;
+use crate::region_infer::opaque_types::handle_opaque_type_uses;
 use crate::type_check::{self, MirTypeckResults};
 use crate::universal_regions::UniversalRegions;
 use crate::{
@@ -98,22 +99,26 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     let location_map = Rc::new(DenseLocationMap::new(body));
 
     // Run the MIR type-checker.
-    let MirTypeckResults {
-        constraints,
-        universal_region_relations,
-        opaque_type_values,
-        polonius_context,
-    } = type_check::type_check(
+    let MirTypeckResults { constraints, universal_region_relations, polonius_context } =
+        type_check::type_check(
+            root_cx,
+            infcx,
+            body,
+            promoted,
+            universal_regions,
+            location_table,
+            borrow_set,
+            &mut polonius_facts,
+            flow_inits,
+            move_data,
+            Rc::clone(&location_map),
+        );
+
+    let (constraints, deferred_opaque_type_errors) = handle_opaque_type_uses(
         root_cx,
         infcx,
-        body,
-        promoted,
-        universal_regions,
-        location_table,
-        borrow_set,
-        &mut polonius_facts,
-        flow_inits,
-        move_data,
+        constraints,
+        &universal_region_relations,
         Rc::clone(&location_map),
     );
 
@@ -166,9 +171,9 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     if let Some(guar) = nll_errors.has_errors() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
         infcx.set_tainted_by_errors(guar);
+    } else if !deferred_opaque_type_errors.is_empty() {
+        regioncx.emit_deferred_opaque_type_errors(root_cx, infcx, deferred_opaque_type_errors);
     }
-
-    regioncx.infer_opaque_types(root_cx, infcx, opaque_type_values);
 
     NllOutput {
         regioncx,

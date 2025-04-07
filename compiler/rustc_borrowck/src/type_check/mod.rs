@@ -26,8 +26,8 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
     self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
-    Dynamic, GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt,
-    TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
+    Dynamic, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, UserArgs, UserTypeAnnotationIndex,
+    fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::ResultsCursor;
@@ -44,7 +44,6 @@ use tracing::{debug, instrument, trace};
 use crate::borrow_set::BorrowSet;
 use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::diagnostics::UniverseInfo;
-use crate::member_constraints::MemberConstraintSet;
 use crate::polonius::legacy::{PoloniusFacts, PoloniusLocationTable};
 use crate::polonius::{PoloniusContext, PoloniusLivenessContext};
 use crate::region_infer::TypeTest;
@@ -74,7 +73,6 @@ mod constraint_conversion;
 pub(crate) mod free_region_relations;
 mod input_output;
 pub(crate) mod liveness;
-mod opaque_types;
 mod relate_tys;
 
 /// Type checks the given `mir` in the context of the inference
@@ -118,7 +116,6 @@ pub(crate) fn type_check<'a, 'tcx>(
         placeholder_index_to_region: IndexVec::default(),
         liveness_constraints: LivenessValues::with_specific_points(Rc::clone(&location_map)),
         outlives_constraints: OutlivesConstraintSet::default(),
-        member_constraints: MemberConstraintSet::default(),
         type_tests: Vec::default(),
         universe_causes: FxIndexMap::default(),
     };
@@ -169,10 +166,10 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     liveness::generate(&mut typeck, &location_map, flow_inits, move_data);
 
-    let opaque_type_values =
-        opaque_types::take_opaques_and_register_member_constraints(&mut typeck);
-
     // We're done with typeck, we can finalize the polonius liveness context for region inference.
+    //
+    // FIXME: Handling opaque type uses may introduce new regions. This likely has to be moved to
+    // a later point.
     let polonius_context = typeck.polonius_liveness.take().map(|liveness_context| {
         PoloniusContext::create_from_liveness(
             liveness_context,
@@ -181,12 +178,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         )
     });
 
-    MirTypeckResults {
-        constraints,
-        universal_region_relations,
-        opaque_type_values,
-        polonius_context,
-    }
+    MirTypeckResults { constraints, universal_region_relations, polonius_context }
 }
 
 #[track_caller]
@@ -233,7 +225,6 @@ struct TypeChecker<'a, 'tcx> {
 pub(crate) struct MirTypeckResults<'tcx> {
     pub(crate) constraints: MirTypeckRegionConstraints<'tcx>,
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-    pub(crate) opaque_type_values: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
     pub(crate) polonius_context: Option<PoloniusContext>,
 }
 
@@ -265,8 +256,6 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
 
     pub(crate) outlives_constraints: OutlivesConstraintSet<'tcx>,
 
-    pub(crate) member_constraints: MemberConstraintSet<'tcx, RegionVid>,
-
     pub(crate) universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
@@ -275,7 +264,7 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
 impl<'tcx> MirTypeckRegionConstraints<'tcx> {
     /// Creates a `Region` for a given `PlaceholderRegion`, or returns the
     /// region that corresponds to a previously created one.
-    fn placeholder_region(
+    pub(crate) fn placeholder_region(
         &mut self,
         infcx: &InferCtxt<'tcx>,
         placeholder: ty::PlaceholderRegion,
@@ -290,6 +279,16 @@ impl<'tcx> MirTypeckRegionConstraints<'tcx> {
                 region
             }
         }
+    }
+
+    /// Same as `Self::placeholder_region`, except that never adds new regions but instead ICEs in case we
+    /// haven't already created an NLL var for this placeholders.
+    pub(crate) fn get_placeholder_region(
+        &self,
+        placeholder: ty::PlaceholderRegion,
+    ) -> ty::Region<'tcx> {
+        let placeholder_index = self.placeholder_indices.lookup_index(placeholder);
+        *self.placeholder_index_to_region.get(placeholder_index).unwrap()
     }
 }
 
@@ -366,14 +365,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn body(&self) -> &Body<'tcx> {
         self.body
-    }
-
-    fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> RegionVid {
-        if let ty::RePlaceholder(placeholder) = r.kind() {
-            self.constraints.placeholder_region(self.infcx, placeholder).as_var()
-        } else {
-            self.universal_regions.to_region_vid(r)
-        }
     }
 
     fn unsized_feature_enabled(&self) -> bool {

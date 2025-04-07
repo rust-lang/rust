@@ -8,9 +8,11 @@ use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
 use rustc_middle::mir::{BasicBlock, Location};
 use rustc_middle::ty::{self, RegionVid};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
-use tracing::debug;
+use tracing::{debug, instrument};
 
+use super::ConstraintSccs;
 use crate::BorrowIndex;
+use crate::constraints::ConstraintSccIndex;
 use crate::polonius::LiveLoans;
 
 rustc_index::newtype_index! {
@@ -421,6 +423,40 @@ impl ToElementIndex for ty::PlaceholderRegion {
     fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
         let index = values.placeholder_indices.lookup_index(self);
         values.placeholders.contains(row, index)
+    }
+}
+
+impl RegionValues<ConstraintSccIndex> {
+    /// Propagate the region constraints: this will grow the values
+    /// for each region variable until all the constraints are
+    /// satisfied. Note that some values may grow **too** large to be
+    /// feasible, but we check this later.
+    #[instrument(skip(self, constraint_sccs), level = "debug")]
+    pub(super) fn propagate_constraints(&mut self, constraint_sccs: &ConstraintSccs) {
+        // To propagate constraints, we walk the DAG induced by the
+        // SCC. For each SCC, we visit its successors and compute
+        // their values, then we union all those values to get our
+        // own.
+        for scc in constraint_sccs.all_sccs() {
+            self.compute_value_for_scc(constraint_sccs, scc);
+        }
+    }
+
+    /// Computes the value of the SCC `scc_a`, which has not yet been
+    /// computed, by unioning the values of its successors.
+    /// Assumes that all successors have been computed already
+    /// (which is assured by iterating over SCCs in dependency order).
+    #[instrument(skip(self, constraint_sccs), level = "debug")]
+    fn compute_value_for_scc(
+        &mut self,
+        constraint_sccs: &ConstraintSccs,
+        scc_a: ConstraintSccIndex,
+    ) {
+        // Walk each SCC `B` such that `A: B`...
+        for &scc_b in constraint_sccs.successors(scc_a) {
+            debug!(?scc_b);
+            self.add_region(scc_a, scc_b);
+        }
     }
 }
 
