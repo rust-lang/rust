@@ -491,7 +491,6 @@ impl RustcInternal for Abi {
             Abi::CCmseNonSecureCall => rustc_abi::ExternAbi::CCmseNonSecureCall,
             Abi::CCmseNonSecureEntry => rustc_abi::ExternAbi::CCmseNonSecureEntry,
             Abi::System { unwind } => rustc_abi::ExternAbi::System { unwind },
-            Abi::RustIntrinsic => rustc_abi::ExternAbi::RustIntrinsic,
             Abi::RustCall => rustc_abi::ExternAbi::RustCall,
             Abi::Unadjusted => rustc_abi::ExternAbi::Unadjusted,
             Abi::RustCold => rustc_abi::ExternAbi::RustCold,

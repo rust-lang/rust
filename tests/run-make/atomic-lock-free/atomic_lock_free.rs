@@ -2,9 +2,8 @@
 #![crate_type = "rlib"]
 #![no_core]
 
-extern "rust-intrinsic" {
-    fn atomic_xadd_seqcst<T>(dst: *mut T, src: T) -> T;
-}
+#[rustc_intrinsic]
+unsafe fn atomic_xadd_seqcst<T>(dst: *mut T, src: T) -> T;
 
 #[lang = "sized"]
 trait Sized {}
