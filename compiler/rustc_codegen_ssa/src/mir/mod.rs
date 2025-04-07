@@ -173,12 +173,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let tcx = cx.tcx();
     let llfn = cx.get_fn(instance);
 
-    let mir = tcx.instance_mir(instance.def);
-    let mir = instance.instantiate_mir_and_normalize_erasing_regions(
-        tcx,
-        ty::TypingEnv::fully_monomorphized(),
-        ty::EarlyBinder::bind(mir.clone()),
-    );
+    let mut mir = tcx.instance_mir(instance.def);
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
@@ -186,6 +181,15 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     if tcx.codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
         crate::mir::naked_asm::codegen_naked_asm::<Bx>(cx, &mir, instance);
         return;
+    }
+
+    if tcx.features().ergonomic_clones() {
+        let monomorphized_mir = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx,
+            ty::TypingEnv::fully_monomorphized(),
+            ty::EarlyBinder::bind(mir.clone()),
+        );
+        mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, monomorphized_mir));
     }
 
     let debug_context = cx.create_function_debug_context(instance, fn_abi, llfn, &mir);
@@ -209,8 +213,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 if bb == mir::START_BLOCK { CachedLlbb::Some(start_llbb) } else { CachedLlbb::None }
             })
             .collect();
-
-    let mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, mir));
 
     let mut fx = FunctionCx {
         instance,
