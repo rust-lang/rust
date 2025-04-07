@@ -38,7 +38,7 @@ pub(crate) fn unresolved_field(
         format!(
             "no field `{}` on type `{}`{method_suffix}",
             d.name.display(ctx.sema.db, ctx.edition),
-            d.receiver.display(ctx.sema.db, ctx.edition)
+            d.receiver.display(ctx.sema.db, ctx.display_target)
         ),
         adjusted_display_range(ctx, d.expr, &|expr| {
             Some(

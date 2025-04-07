@@ -1,5 +1,5 @@
 error[E0601]: `main` function not found in crate `imported_main_const_fn_item_type_forbidden`
-  --> $DIR/imported_main_const_fn_item_type_forbidden.rs:10:22
+  --> $DIR/imported_main_const_fn_item_type_forbidden.rs:14:22
    |
 LL | use foo::BAR as main;
    |     ---------------- ^ consider adding a `main` function to `$DIR/imported_main_const_fn_item_type_forbidden.rs`

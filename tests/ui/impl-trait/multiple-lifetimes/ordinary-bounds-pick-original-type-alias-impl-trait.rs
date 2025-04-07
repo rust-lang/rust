@@ -10,6 +10,7 @@ impl<T> Trait<'_, '_> for T {}
 
 type Foo<'a, 'b> = impl Trait<'a, 'b>;
 
+#[define_opaque(Foo)]
 fn upper_bounds<'a, 'b>(a: &'a u8, b: &'b u8) -> Foo<'a, 'b> {
     // In this simple case, you have a hidden type `(&'0 u8, &'1 u8)` and constraints like
     //

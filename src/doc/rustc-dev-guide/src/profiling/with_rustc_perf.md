@@ -9,7 +9,7 @@ which will download and build the suite for you, build a local compiler toolchai
 
 You can use the `./x perf <command> [options]` command to use this integration.
 
-You can use normal bootstrap flags for this command, such as `--stage 1` or `--stage 2`, for example to modify the stage of the created sysroot. It might also be useful to configure `config.toml` to better support profiling, e.g. set `rust.debuginfo-level = 1` to add source line information to the built compiler.
+You can use normal bootstrap flags for this command, such as `--stage 1` or `--stage 2`, for example to modify the stage of the created sysroot. It might also be useful to configure `bootstrap.toml` to better support profiling, e.g. set `rust.debuginfo-level = 1` to add source line information to the built compiler.
 
 `x perf` currently supports the following commands:
 - `benchmark <id>`: Benchmark the compiler and store the results under the passed `id`.

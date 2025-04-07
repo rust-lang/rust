@@ -50,11 +50,13 @@ fn seek_to_start_false_trait_bound<T: MySeekTrait>(t: &mut T) {
 // This should trigger clippy warning
 fn seek_to_start<T: Seek>(t: &mut T) {
     t.seek(SeekFrom::Start(0));
+    //~^ seek_to_start_instead_of_rewind
 }
 
 // This should trigger clippy warning
 fn owned_seek_to_start<T: Seek>(mut t: T) {
     t.seek(SeekFrom::Start(0));
+    //~^ seek_to_start_instead_of_rewind
 }
 
 // This should NOT trigger clippy warning because
@@ -134,6 +136,7 @@ fn msrv_1_55() {
     write!(f, "{hello}").unwrap();
 
     f.seek(SeekFrom::Start(0));
+    //~^ seek_to_start_instead_of_rewind
 
     let mut buf = String::new();
     f.read_to_string(&mut buf).unwrap();

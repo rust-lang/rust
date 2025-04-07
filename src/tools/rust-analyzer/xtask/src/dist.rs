@@ -38,11 +38,11 @@ impl flags::Dist {
                 // A hack to make VS Code prefer nightly over stable.
                 format!("{VERSION_NIGHTLY}.{patch_version}")
             };
-            dist_server(sh, &format!("{version}-standalone"), &target, allocator)?;
+            dist_server(sh, &format!("{version}-standalone"), &target, allocator, self.zig)?;
             let release_tag = if stable { date_iso(sh)? } else { "nightly".to_owned() };
             dist_client(sh, &version, &release_tag, &target)?;
         } else {
-            dist_server(sh, "0.0.0-standalone", &target, allocator)?;
+            dist_server(sh, "0.0.0-standalone", &target, allocator, self.zig)?;
         }
         Ok(())
     }
@@ -83,6 +83,7 @@ fn dist_server(
     release: &str,
     target: &Target,
     allocator: Malloc,
+    zig: bool,
 ) -> anyhow::Result<()> {
     let _e = sh.push_env("CFG_RELEASE", release);
     let _e = sh.push_env("CARGO_PROFILE_RELEASE_LTO", "thin");
@@ -92,13 +93,14 @@ fn dist_server(
     //   * on Linux, this blows up the binary size from 8MB to 43MB, which is unreasonable.
     // let _e = sh.push_env("CARGO_PROFILE_RELEASE_DEBUG", "1");
 
-    if target.name.contains("-linux-") {
-        env::set_var("CC", "clang");
-    }
-
-    let target_name = &target.name;
+    let linux_target = target.is_linux();
+    let target_name = match &target.libc_suffix {
+        Some(libc_suffix) if zig => format!("{}.{libc_suffix}", target.name),
+        _ => target.name.to_owned(),
+    };
     let features = allocator.to_features();
-    cmd!(sh, "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --release").run()?;
+    let command = if linux_target && zig { "zigbuild" } else { "build" };
+    cmd!(sh, "cargo {command} --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --release").run()?;
 
     let dst = Path::new("dist").join(&target.artifact_name);
     if target_name.contains("-windows-") {
@@ -156,6 +158,7 @@ fn zip(src_path: &Path, symbols_path: Option<&PathBuf>, dest_path: &Path) -> any
 
 struct Target {
     name: String,
+    libc_suffix: Option<String>,
     server_path: PathBuf,
     symbols_path: Option<PathBuf>,
     artifact_name: String,
@@ -177,6 +180,10 @@ impl Target {
                 }
             }
         };
+        let (name, libc_suffix) = match name.split_once('.') {
+            Some((l, r)) => (l.to_owned(), Some(r.to_owned())),
+            None => (name, None),
+        };
         let out_path = project_root.join("target").join(&name).join("release");
         let (exe_suffix, symbols_path) = if name.contains("-windows-") {
             (".exe".into(), Some(out_path.join("rust_analyzer.pdb")))
@@ -185,7 +192,11 @@ impl Target {
         };
         let server_path = out_path.join(format!("rust-analyzer{exe_suffix}"));
         let artifact_name = format!("rust-analyzer-{name}{exe_suffix}");
-        Self { name, server_path, symbols_path, artifact_name }
+        Self { name, libc_suffix, server_path, symbols_path, artifact_name }
+    }
+
+    fn is_linux(&self) -> bool {
+        self.name.contains("-linux-")
     }
 }
 

@@ -73,14 +73,12 @@ declare_lint_pass! {
         NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
         NON_CONTIGUOUS_RANGE_ENDPOINTS,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
-        ORDER_DEPENDENT_TRAIT_OBJECTS,
         OUT_OF_SCOPE_MACRO_CALLS,
         OVERLAPPING_RANGE_ENDPOINTS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
         PRIVATE_BOUNDS,
         PRIVATE_INTERFACES,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-        PTR_CAST_ADD_AUTO_TO_OBJECT,
         PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_IMPORTS,
@@ -145,6 +143,7 @@ declare_lint_pass! {
         UNUSED_VARIABLES,
         USELESS_DEPRECATED,
         WARNINGS,
+        WASM_C_ABI,
         // tidy-alphabetical-end
     ]
 }
@@ -1503,42 +1502,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `order_dependent_trait_objects` lint detects a trait coherency
-    /// violation that would allow creating two trait impls for the same
-    /// dynamic trait object involving marker traits.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// pub trait Trait {}
-    ///
-    /// impl Trait for dyn Send + Sync { }
-    /// impl Trait for dyn Sync + Send { }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// A previous bug caused the compiler to interpret traits with different
-    /// orders (such as `Send + Sync` and `Sync + Send`) as distinct types
-    /// when they were intended to be treated the same. This allowed code to
-    /// define separate trait implementations when there should be a coherence
-    /// error. This is a [future-incompatible] lint to transition this to a
-    /// hard error in the future. See [issue #56484] for more details.
-    ///
-    /// [issue #56484]: https://github.com/rust-lang/rust/issues/56484
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub ORDER_DEPENDENT_TRAIT_OBJECTS,
-    Deny,
-    "trait-object types were treated as different depending on marker-trait order",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #56484 <https://github.com/rust-lang/rust/issues/56484>",
-    };
-}
-
-declare_lint! {
     /// The `coherence_leak_check` lint detects conflicting implementations of
     /// a trait that are only distinguished by the old leak-check code.
     ///
@@ -2711,7 +2674,7 @@ declare_lint! {
     ///
     /// ```rust
     /// const fn foo<T>() -> usize {
-    ///     if std::mem::size_of::<*mut T>() < 8 { // size of *mut T does not depend on T
+    ///     if size_of::<*mut T>() < 8 { // size of *mut T does not depend on T
     ///         4
     ///     } else {
     ///         8
@@ -3782,7 +3745,7 @@ declare_lint! {
     Warn,
     "use of unsupported calling convention for function pointer",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #130260 <https://github.com/rust-lang/rust/issues/130260>",
     };
 }
@@ -4828,58 +4791,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `ptr_cast_add_auto_to_object` lint detects casts of raw pointers to trait
-    /// objects, which add auto traits.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,edition2021,compile_fail
-    /// let ptr: *const dyn core::any::Any = &();
-    /// _ = ptr as *const dyn core::any::Any + Send;
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Adding an auto trait can make the vtable invalid, potentially causing
-    /// UB in safe code afterwards. For example:
-    ///
-    /// ```ignore (causes a warning)
-    /// #![feature(arbitrary_self_types)]
-    ///
-    /// trait Trait {
-    ///     fn f(self: *const Self)
-    ///     where
-    ///         Self: Send;
-    /// }
-    ///
-    /// impl Trait for *const () {
-    ///     fn f(self: *const Self) {
-    ///         unreachable!()
-    ///     }
-    /// }
-    ///
-    /// fn main() {
-    ///     let unsend: *const () = &();
-    ///     let unsend: *const dyn Trait = &unsend;
-    ///     let send_bad: *const (dyn Trait + Send) = unsend as _;
-    ///     send_bad.f(); // this crashes, since vtable for `*const ()` does not have an entry for `f`
-    /// }
-    /// ```
-    ///
-    /// Generally you must ensure that vtable is right for the pointer's type,
-    /// before passing the pointer to safe code.
-    pub PTR_CAST_ADD_AUTO_TO_OBJECT,
-    Warn,
-    "detects `as` casts from pointers to `dyn Trait` to pointers to `dyn Trait + Auto`",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #127323 <https://github.com/rust-lang/rust/issues/127323>",
-    };
-}
-
-declare_lint! {
     /// The `out_of_scope_macro_calls` lint detects `macro_rules` called when they are not in scope,
     /// above their definition, which may happen in key-value attributes.
     ///
@@ -5172,6 +5083,8 @@ declare_lint! {
     /// }
     /// ```
     ///
+    /// This will produce:
+    ///
     /// ```text
     /// warning: ABI error: this function call uses a avx vector type, which is not enabled in the caller
     ///  --> lint_example.rs:18:12
@@ -5213,5 +5126,48 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #116558 <https://github.com/rust-lang/rust/issues/116558>",
+    };
+}
+
+declare_lint! {
+    /// The `wasm_c_abi` lint detects usage of the `extern "C"` ABI of wasm that is affected
+    /// by a planned ABI change that has the goal of aligning Rust with the standard C ABI
+    /// of this target.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs wasm32-unknown-unknown)
+    /// #[repr(C)]
+    /// struct MyType(i32, i32);
+    ///
+    /// extern "C" my_fun(x: MyType) {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: this function function definition is affected by the wasm ABI transition: it passes an argument of non-scalar type `MyType`
+    /// --> $DIR/wasm_c_abi_transition.rs:17:1
+    ///  |
+    ///  | pub extern "C" fn my_fun(_x: MyType) {}
+    ///  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///  |
+    ///  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///  = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
+    ///  = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Rust has historically implemented a non-spec-compliant C ABI on wasm32-unknown-unknown. This
+    /// has caused incompatibilities with other compilers and Wasm targets. In a future version
+    /// of Rust, this will be fixed, and therefore code relying on the non-spec-compliant C ABI will
+    /// stop functioning.
+    pub WASM_C_ABI,
+    Warn,
+    "detects code relying on rustc's non-spec-compliant wasm C ABI",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #138762 <https://github.com/rust-lang/rust/issues/138762>",
     };
 }

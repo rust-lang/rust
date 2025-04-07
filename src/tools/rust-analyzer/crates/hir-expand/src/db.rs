@@ -2,7 +2,6 @@
 
 use base_db::{ra_salsa, CrateId, SourceDatabase};
 use either::Either;
-use limit::Limit;
 use mbe::MatchedArmIndex;
 use rustc_hash::FxHashSet;
 use span::{AstIdMap, Edition, EditionedFileId, Span, SyntaxContextData, SyntaxContextId};
@@ -35,7 +34,7 @@ type MacroArgResult = (Arc<tt::TopSubtree>, SyntaxFixupUndoInfo, Span);
 /// an error will be emitted.
 ///
 /// Actual max for `analysis-stats .` at some point: 30672.
-static TOKEN_LIMIT: Limit = Limit::new(2_097_152);
+const TOKEN_LIMIT: usize = 2_097_152;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
@@ -740,20 +739,19 @@ pub(crate) fn token_tree_to_syntax_node(
 fn check_tt_count(tt: &tt::TopSubtree) -> Result<(), ExpandResult<()>> {
     let tt = tt.top_subtree();
     let count = tt.count();
-    if TOKEN_LIMIT.check(count).is_err() {
+    if count <= TOKEN_LIMIT {
+        Ok(())
+    } else {
         Err(ExpandResult {
             value: (),
             err: Some(ExpandError::other(
                 tt.delimiter.open,
                 format!(
                     "macro invocation exceeds token limit: produced {} tokens, limit is {}",
-                    count,
-                    TOKEN_LIMIT.inner(),
+                    count, TOKEN_LIMIT,
                 ),
             )),
         })
-    } else {
-        Ok(())
     }
 }
 

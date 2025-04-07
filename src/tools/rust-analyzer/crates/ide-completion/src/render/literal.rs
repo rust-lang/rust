@@ -8,7 +8,7 @@ use ide_db::{
 
 use crate::{
     context::{CompletionContext, PathCompletionCtx, PathKind},
-    item::{Builder, CompletionItem},
+    item::{Builder, CompletionItem, CompletionRelevanceFn},
     render::{
         compute_type_match,
         variant::{
@@ -17,7 +17,7 @@ use crate::{
         },
         RenderContext,
     },
-    CompletionItemKind, CompletionRelevance,
+    CompletionItemKind, CompletionRelevance, CompletionRelevanceReturnType,
 };
 
 pub(crate) fn render_variant_lit(
@@ -82,10 +82,10 @@ fn render(
 
     let mut rendered = match kind {
         StructKind::Tuple if should_add_parens => {
-            render_tuple_lit(db, snippet_cap, &fields, &escaped_qualified_name, completion.edition)
+            render_tuple_lit(completion, snippet_cap, &fields, &escaped_qualified_name)
         }
         StructKind::Record if should_add_parens => {
-            render_record_lit(db, snippet_cap, &fields, &escaped_qualified_name, completion.edition)
+            render_record_lit(completion, snippet_cap, &fields, &escaped_qualified_name)
         }
         _ => RenderedLiteral {
             literal: escaped_qualified_name.clone(),
@@ -131,6 +131,12 @@ fn render(
     let ty = thing.ty(db);
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, &ty),
+        // function is a misnomer here, this is more about constructor information
+        function: Some(CompletionRelevanceFn {
+            has_params: !fields.is_empty(),
+            has_self_param: false,
+            return_type: CompletionRelevanceReturnType::DirectConstructor,
+        }),
         ..ctx.completion_relevance()
     });
 

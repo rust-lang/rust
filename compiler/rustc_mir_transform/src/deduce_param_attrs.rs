@@ -80,35 +80,6 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
         // `f` passes. Note that function arguments are the only situation in which this problem can
         // arise: every other use of `move` in MIR doesn't actually write to the value it moves
         // from.
-        //
-        // Anyway, right now this situation doesn't actually arise in practice. Instead, the MIR for
-        // that function looks like this:
-        //
-        //      fn f(_1: BigStruct) -> () {
-        //          let mut _0: ();
-        //          let mut _2: BigStruct;
-        //          bb0: {
-        //              _2 = move _1;
-        //              _0 = g(move _2) -> bb1;
-        //          }
-        //          ...
-        //      }
-        //
-        // Because of that extra move that MIR construction inserts, `x` (i.e. `_1`) can *in
-        // practice* safely be marked `readonly`.
-        //
-        // To handle the possibility that other optimizations (for example, destination propagation)
-        // might someday generate MIR like the first example above, we panic upon seeing an argument
-        // to *our* function that is directly moved into *another* function as an argument. Having
-        // eliminated that problematic case, we can safely treat moves as copies in this analysis.
-        //
-        // In the future, if MIR optimizations cause arguments of a caller to be directly moved into
-        // the argument of a callee, we can just add that argument to `mutated_args` instead of
-        // panicking.
-        //
-        // Note that, because the problematic MIR is never actually generated, we can't add a test
-        // case for this.
-
         if let TerminatorKind::Call { ref args, .. } = terminator.kind {
             for arg in args {
                 if let Operand::Move(place) = arg.node {

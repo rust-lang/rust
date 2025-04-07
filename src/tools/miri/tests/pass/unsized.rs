@@ -1,21 +1,7 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-#![feature(unsized_tuple_coercion)]
 #![feature(unsized_fn_params)]
 #![feature(custom_mir, core_intrinsics)]
-
-use std::mem;
-
-fn unsized_tuple() {
-    let x: &(i32, i32, [i32]) = &(0, 1, [2, 3]);
-    let y: &(i32, i32, [i32]) = &(0, 1, [2, 3, 4]);
-    let mut a = [y, x];
-    a.sort();
-    assert_eq!(a, [x, y]);
-
-    assert_eq!(&format!("{:?}", a), "[(0, 1, [2, 3]), (0, 1, [2, 3, 4])]");
-    assert_eq!(mem::size_of_val(x), 16);
-}
 
 fn unsized_params() {
     pub fn f0(_f: dyn FnOnce()) {}
@@ -56,7 +42,6 @@ fn unsized_field_projection() {
 }
 
 fn main() {
-    unsized_tuple();
     unsized_params();
     unsized_field_projection();
 }

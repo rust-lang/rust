@@ -17,7 +17,6 @@ LL |     let _ = quote! { $ip };
              Rc<T>
              bool
            and 24 others
-   = note: this error originates in the macro `quote` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

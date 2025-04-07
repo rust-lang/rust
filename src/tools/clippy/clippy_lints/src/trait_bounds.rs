@@ -95,7 +95,7 @@ impl TraitBounds {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             max_trait_bounds: conf.max_trait_bounds,
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
         }
     }
 }
@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         // special handling for self trait bounds as these are not considered generics
         // ie. trait Foo: Display {}
         if let Item {
-            kind: ItemKind::Trait(_, _, _, bounds, ..),
+            kind: ItemKind::Trait(_, _, _, _, bounds, ..),
             ..
         } = item
         {
@@ -133,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     ..
                 }) = segments.first()
                 && let Some(Node::Item(Item {
-                    kind: ItemKind::Trait(_, _, _, self_bounds, _),
+                    kind: ItemKind::Trait(_, _, _, _, self_bounds, _),
                     ..
                 })) = cx.tcx.hir_get_if_local(*def_id)
             {
@@ -223,17 +223,15 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 impl TraitBounds {
     /// Is the given bound a `?Sized` bound, and is combining it (i.e. `T: X + ?Sized`) an error on
     /// this MSRV? See <https://github.com/rust-lang/rust-clippy/issues/8772> for details.
     fn cannot_combine_maybe_bound(&self, cx: &LateContext<'_>, bound: &GenericBound<'_>) -> bool {
-        if !self.msrv.meets(msrvs::MAYBE_BOUND_IN_WHERE)
-            && let GenericBound::Trait(tr) = bound
+        if let GenericBound::Trait(tr) = bound
             && let BoundPolarity::Maybe(_) = tr.modifiers.polarity
+            && !self.msrv.meets(cx, msrvs::MAYBE_BOUND_IN_WHERE)
         {
             cx.tcx.lang_items().get(LangItem::Sized) == tr.trait_ref.path.res.opt_def_id()
         } else {

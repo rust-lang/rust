@@ -613,9 +613,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNo
             diag.span_note(span, fluent::mir_build_def_note);
         }
 
-        let is_variant_list_non_exhaustive = matches!(self.ty.kind(),
-            ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local());
-        if is_variant_list_non_exhaustive {
+        let is_non_exhaustive = matches!(self.ty.kind(),
+            ty::Adt(def, _) if def.variant_list_has_applicable_non_exhaustive());
+        if is_non_exhaustive {
             diag.note(fluent::mir_build_non_exhaustive_type_note);
         } else {
             diag.note(fluent::mir_build_type_note);
@@ -828,7 +828,7 @@ pub(crate) struct IrrefutableLetPatternsWhileLet {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_borrow_of_moved_value)]
-pub(crate) struct BorrowOfMovedValue {
+pub(crate) struct BorrowOfMovedValue<'tcx> {
     #[primary_span]
     #[label]
     #[label(mir_build_occurs_because_label)]
@@ -836,7 +836,7 @@ pub(crate) struct BorrowOfMovedValue {
     #[label(mir_build_value_borrowed_label)]
     pub(crate) conflicts_ref: Vec<Span>,
     pub(crate) name: Ident,
-    pub(crate) ty: String,
+    pub(crate) ty: Ty<'tcx>,
     #[suggestion(code = "ref ", applicability = "machine-applicable")]
     pub(crate) suggest_borrowing: Option<Span>,
 }

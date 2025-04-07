@@ -11,7 +11,6 @@ LL | pub struct BytePos(pub u32);
    | ^^^^^^^^^^^^^^^^^^ must implement `Not`
 note: the trait `Not` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

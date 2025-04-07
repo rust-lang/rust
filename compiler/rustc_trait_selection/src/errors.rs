@@ -9,10 +9,10 @@ use rustc_errors::{
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
-use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, Node};
+use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, IsAnonInPath, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
-use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, Region, Ty, TyCtxt};
+use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, GenericArg, Region, Ty, TyCtxt};
 use rustc_span::{BytePos, Ident, Span, Symbol, kw};
 
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
@@ -516,7 +516,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                     match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.scope))
                     {
                         hir::Node::Item(hir::Item {
-                            kind: hir::ItemKind::Trait(_, _, generics, ..),
+                            kind: hir::ItemKind::Trait(_, _, _, generics, ..),
                             ..
                         })
                         | hir::Node::Item(hir::Item {
@@ -567,10 +567,14 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
 
             impl<'v> Visitor<'v> for ImplicitLifetimeFinder {
                 fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
-                    let make_suggestion = |ident: Ident| {
-                        if ident.name == kw::Empty && ident.span.is_empty() {
+                    let make_suggestion = |lifetime: &hir::Lifetime| {
+                        if lifetime.is_anon_in_path == IsAnonInPath::Yes
+                            && lifetime.ident.span.is_empty()
+                        {
                             format!("{}, ", self.suggestion_param_name)
-                        } else if ident.name == kw::UnderscoreLifetime && ident.span.is_empty() {
+                        } else if lifetime.ident.name == kw::UnderscoreLifetime
+                            && lifetime.ident.span.is_empty()
+                        {
                             format!("{} ", self.suggestion_param_name)
                         } else {
                             self.suggestion_param_name.clone()
@@ -584,7 +588,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                                         matches!(
                                             arg,
                                             hir::GenericArg::Lifetime(lifetime)
-                                            if lifetime.ident.name == kw::Empty
+                                                if lifetime.is_anon_in_path == IsAnonInPath::Yes
                                         )
                                     }) {
                                         self.suggestions.push((
@@ -605,7 +609,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                                             {
                                                 self.suggestions.push((
                                                     lifetime.ident.span,
-                                                    make_suggestion(lifetime.ident),
+                                                    make_suggestion(lifetime),
                                                 ));
                                             }
                                         }
@@ -614,8 +618,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                             }
                         }
                         hir::TyKind::Ref(lifetime, ..) if lifetime.is_anonymous() => {
-                            self.suggestions
-                                .push((lifetime.ident.span, make_suggestion(lifetime.ident)));
+                            self.suggestions.push((lifetime.ident.span, make_suggestion(lifetime)));
                         }
                         _ => {}
                     }
@@ -784,10 +787,10 @@ pub enum TyOrSig<'tcx> {
 }
 
 impl IntoDiagArg for TyOrSig<'_> {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         match self {
-            TyOrSig::Ty(ty) => ty.into_diag_arg(),
-            TyOrSig::ClosureSig(sig) => sig.into_diag_arg(),
+            TyOrSig::Ty(ty) => ty.into_diag_arg(path),
+            TyOrSig::ClosureSig(sig) => sig.into_diag_arg(path),
         }
     }
 }
@@ -1918,4 +1921,15 @@ impl Subdiagnostic for AddPreciseCapturingForOvercapture {
             );
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(trait_selection_opaque_type_non_generic_param, code = E0792)]
+pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
+    pub ty: GenericArg<'tcx>,
+    pub kind: &'a str,
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub param_span: Span,
 }

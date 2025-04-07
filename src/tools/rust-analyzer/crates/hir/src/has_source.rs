@@ -15,7 +15,7 @@ use tt::TextRange;
 use crate::{
     db::HirDatabase, Adt, Callee, Const, Enum, ExternCrateDecl, Field, FieldSource, Function, Impl,
     InlineAsmOperand, Label, LifetimeParam, LocalSource, Macro, Module, Param, SelfParam, Static,
-    Struct, Trait, TraitAlias, TypeAlias, TypeOrConstParam, Union, Variant,
+    Struct, Trait, TraitAlias, TypeAlias, TypeOrConstParam, Union, Variant, VariantDef,
 };
 
 pub trait HasSource {
@@ -107,6 +107,16 @@ impl HasSource for Adt {
             Adt::Struct(s) => Some(s.source(db)?.map(ast::Adt::Struct)),
             Adt::Union(u) => Some(u.source(db)?.map(ast::Adt::Union)),
             Adt::Enum(e) => Some(e.source(db)?.map(ast::Adt::Enum)),
+        }
+    }
+}
+impl HasSource for VariantDef {
+    type Ast = ast::VariantDef;
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        match self {
+            VariantDef::Struct(s) => Some(s.source(db)?.map(ast::VariantDef::Struct)),
+            VariantDef::Union(u) => Some(u.source(db)?.map(ast::VariantDef::Union)),
+            VariantDef::Variant(v) => Some(v.source(db)?.map(ast::VariantDef::Variant)),
         }
     }
 }

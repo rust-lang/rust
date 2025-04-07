@@ -338,6 +338,16 @@ pub(crate) struct ForwardDeclaredGenericParam {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
+    pub(crate) param: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_forward_declared_generic_in_const_param_ty)]
+pub(crate) struct ForwardDeclaredGenericInConstParamTy {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) param: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -347,26 +357,19 @@ pub(crate) struct ParamInTyOfConstParam {
     #[label]
     pub(crate) span: Span,
     pub(crate) name: Symbol,
-    #[subdiagnostic]
-    pub(crate) param_kind: Option<ParamKindInTyOfConstParam>,
-}
-
-#[derive(Debug)]
-#[derive(Subdiagnostic)]
-pub(crate) enum ParamKindInTyOfConstParam {
-    #[note(resolve_type_param_in_ty_of_const_param)]
-    Type,
-    #[note(resolve_const_param_in_ty_of_const_param)]
-    Const,
-    #[note(resolve_lifetime_param_in_ty_of_const_param)]
-    Lifetime,
 }
 
 #[derive(Diagnostic)]
 #[diag(resolve_self_in_generic_param_default, code = E0735)]
 pub(crate) struct SelfInGenericParamDefault {
     #[primary_span]
-    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_self_in_const_generic_ty)]
+pub(crate) struct SelfInConstGenericTy {
+    #[primary_span]
     pub(crate) span: Span,
 }
 
@@ -960,15 +963,6 @@ pub(crate) struct StaticLifetimeIsReserved {
     #[label]
     pub(crate) span: Span,
     pub(crate) lifetime: Ident,
-}
-
-#[derive(Diagnostic)]
-#[diag(resolve_attempt_to_define_builtin_macro_twice, code = E0773)]
-pub(crate) struct AttemptToDefineBuiltinMacroTwice {
-    #[primary_span]
-    pub(crate) span: Span,
-    #[note]
-    pub(crate) note_span: Span,
 }
 
 #[derive(Diagnostic)]

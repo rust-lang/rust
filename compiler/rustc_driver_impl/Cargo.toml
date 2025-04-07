@@ -54,7 +54,7 @@ time = { version = "0.3.36", default-features = false, features = ["alloc", "for
 tracing = { version = "0.1.35" }
 # tidy-alphabetical-end
 
-[target.'cfg(unix)'.dependencies]
+[target.'cfg(all(unix, any(target_env = "gnu", target_os = "macos")))'.dependencies]
 # tidy-alphabetical-start
 libc = "0.2"
 # tidy-alphabetical-end

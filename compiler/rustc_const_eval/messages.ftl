@@ -93,7 +93,7 @@ const_eval_expected_inbounds_pointer =
     }
 
 const_eval_extern_static =
-    cannot access extern static ({$did})
+    cannot access extern static `{$did}`
 const_eval_extern_type_field = `extern type` field does not have a known offset
 
 const_eval_fn_ptr_call =
@@ -108,6 +108,8 @@ const_eval_frame_note_inner = inside {$where_ ->
     [instance] `{$instance}`
     *[other] {""}
 }
+
+const_eval_frame_note_last = the failure occurred here
 
 const_eval_in_bounds_test = out-of-bounds pointer use
 const_eval_incompatible_calling_conventions =
@@ -300,8 +302,7 @@ const_eval_overflow_arith =
 const_eval_overflow_shift =
     overflowing shift by {$shift_amount} in `{$intrinsic}`
 
-const_eval_panic =
-    the evaluated program panicked at '{$msg}', {$file}:{$line}:{$col}
+const_eval_panic = evaluation panicked: {$msg}
 
 const_eval_panic_non_str = argument to `panic!()` in a const context must have type `&str`
 
@@ -380,7 +381,7 @@ const_eval_thread_local_access =
     thread-local statics cannot be accessed at compile-time
 
 const_eval_thread_local_static =
-    cannot access thread local static ({$did})
+    cannot access thread local static `{$did}`
 const_eval_too_generic =
     encountered overly generic constant
 const_eval_too_many_caller_args =

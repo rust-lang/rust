@@ -52,6 +52,7 @@ fn good_return_explicit_lt_struct<'a>(foo: &'a Foo) -> FooRef<'a> {
 fn bad(x: &u32, y: &Foo, z: &Baz) {}
 //~^ ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
 //~| ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
+//~| ERROR: this argument (4 byte) is passed by reference, but would be more efficient if passed by
 
 impl Foo {
     fn good(self, a: &mut u32, b: u32, c: &Bar) {}

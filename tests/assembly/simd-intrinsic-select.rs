@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: x86-avx2 x86-avx512 aarch64
 //@ [x86-avx2] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 //@ [x86-avx2] compile-flags: -C target-feature=+avx2
@@ -14,12 +15,8 @@
 #![no_core]
 #![allow(non_camel_case_types)]
 
-// Because we don't have core yet.
-#[lang = "sized"]
-pub trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(simd)]
 pub struct i8x16([i8; 16]);
@@ -51,9 +48,8 @@ pub struct f64x8([f64; 8]);
 #[repr(simd)]
 pub struct m64x8([i64; 8]);
 
-extern "rust-intrinsic" {
-    fn simd_select<M, V>(mask: M, a: V, b: V) -> V;
-}
+#[rustc_intrinsic]
+unsafe fn simd_select<M, V>(mask: M, a: V, b: V) -> V;
 
 // CHECK-LABEL: select_i8x16
 #[no_mangle]

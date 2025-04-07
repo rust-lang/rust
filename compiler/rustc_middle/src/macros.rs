@@ -59,8 +59,8 @@ macro_rules! TrivialLiftImpls {
 macro_rules! TrivialTypeTraversalImpls {
     ($($ty:ty),+ $(,)?) => {
         $(
-            impl<'tcx> $crate::ty::fold::TypeFoldable<$crate::ty::TyCtxt<'tcx>> for $ty {
-                fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$crate::ty::TyCtxt<'tcx>>>(
+            impl<'tcx> $crate::ty::TypeFoldable<$crate::ty::TyCtxt<'tcx>> for $ty {
+                fn try_fold_with<F: $crate::ty::FallibleTypeFolder<$crate::ty::TyCtxt<'tcx>>>(
                     self,
                     _: &mut F,
                 ) -> ::std::result::Result<Self, F::Error> {
@@ -68,7 +68,7 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
 
                 #[inline]
-                fn fold_with<F: $crate::ty::fold::TypeFolder<$crate::ty::TyCtxt<'tcx>>>(
+                fn fold_with<F: $crate::ty::TypeFolder<$crate::ty::TyCtxt<'tcx>>>(
                     self,
                     _: &mut F,
                 ) -> Self {
@@ -76,14 +76,14 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
             }
 
-            impl<'tcx> $crate::ty::visit::TypeVisitable<$crate::ty::TyCtxt<'tcx>> for $ty {
+            impl<'tcx> $crate::ty::TypeVisitable<$crate::ty::TyCtxt<'tcx>> for $ty {
                 #[inline]
-                fn visit_with<F: $crate::ty::visit::TypeVisitor<$crate::ty::TyCtxt<'tcx>>>(
+                fn visit_with<F: $crate::ty::TypeVisitor<$crate::ty::TyCtxt<'tcx>>>(
                     &self,
                     _: &mut F)
                     -> F::Result
                 {
-                    <F::Result as ::rustc_middle::ty::visit::VisitorResult>::output()
+                    <F::Result as ::rustc_middle::ty::VisitorResult>::output()
                 }
             }
         )+

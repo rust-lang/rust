@@ -13,7 +13,7 @@ LL +     for x in v.iter() {
    |
 
 error: you seem to use `.enumerate()` and immediately discard the index
-  --> tests/ui/unused_enumerate_index.rs:59:19
+  --> tests/ui/unused_enumerate_index.rs:60:19
    |
 LL |     for (_, x) in dummy.enumerate() {
    |                   ^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     for x in dummy {
    |
 
 error: you seem to use `.enumerate()` and immediately discard the index
-  --> tests/ui/unused_enumerate_index.rs:63:39
+  --> tests/ui/unused_enumerate_index.rs:65:39
    |
 LL |     let _ = vec![1, 2, 3].into_iter().enumerate().map(|(_, x)| println!("{x}"));
    |                                       ^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     let _ = vec![1, 2, 3].into_iter().map(|x| println!("{x}"));
    |
 
 error: you seem to use `.enumerate()` and immediately discard the index
-  --> tests/ui/unused_enumerate_index.rs:65:39
+  --> tests/ui/unused_enumerate_index.rs:68:39
    |
 LL |     let p = vec![1, 2, 3].into_iter().enumerate();
    |                                       ^^^^^^^^^^^
@@ -45,11 +45,12 @@ LL |     let p = vec![1, 2, 3].into_iter().enumerate();
 help: remove the `.enumerate()` call
    |
 LL ~     let p = vec![1, 2, 3].into_iter();
+LL |
 LL ~     p.map(|x| println!("{x}"));
    |
 
 error: you seem to use `.enumerate()` and immediately discard the index
-  --> tests/ui/unused_enumerate_index.rs:86:17
+  --> tests/ui/unused_enumerate_index.rs:90:17
    |
 LL |     _ = mac2!().enumerate().map(|(_, _v)| {});
    |                 ^^^^^^^^^^^
@@ -61,18 +62,6 @@ LL +     _ = mac2!().map(|_v| {});
    |
 
 error: you seem to use `.enumerate()` and immediately discard the index
-  --> tests/ui/unused_enumerate_index.rs:94:39
-   |
-LL |     let v = [1, 2, 3].iter().copied().enumerate();
-   |                                       ^^^^^^^^^^^
-   |
-help: remove the `.enumerate()` call
-   |
-LL ~     let v = [1, 2, 3].iter().copied();
-LL ~     let x = v.map(|x: i32| x).sum::<i32>();
-   |
-
-error: you seem to use `.enumerate()` and immediately discard the index
   --> tests/ui/unused_enumerate_index.rs:99:39
    |
 LL |     let v = [1, 2, 3].iter().copied().enumerate();
@@ -81,11 +70,12 @@ LL |     let v = [1, 2, 3].iter().copied().enumerate();
 help: remove the `.enumerate()` call
    |
 LL ~     let v = [1, 2, 3].iter().copied();
+LL |
 LL ~     let x = v.map(|x: i32| x).sum::<i32>();
    |
 
 error: you seem to use `.enumerate()` and immediately discard the index
-  --> tests/ui/unused_enumerate_index.rs:103:39
+  --> tests/ui/unused_enumerate_index.rs:105:39
    |
 LL |     let v = [1, 2, 3].iter().copied().enumerate();
    |                                       ^^^^^^^^^^^
@@ -93,6 +83,20 @@ LL |     let v = [1, 2, 3].iter().copied().enumerate();
 help: remove the `.enumerate()` call
    |
 LL ~     let v = [1, 2, 3].iter().copied();
+LL |
+LL ~     let x = v.map(|x: i32| x).sum::<i32>();
+   |
+
+error: you seem to use `.enumerate()` and immediately discard the index
+  --> tests/ui/unused_enumerate_index.rs:110:39
+   |
+LL |     let v = [1, 2, 3].iter().copied().enumerate();
+   |                                       ^^^^^^^^^^^
+   |
+help: remove the `.enumerate()` call
+   |
+LL ~     let v = [1, 2, 3].iter().copied();
+LL |
 LL ~     let x = v.map(|x| x).sum::<i32>();
    |
 

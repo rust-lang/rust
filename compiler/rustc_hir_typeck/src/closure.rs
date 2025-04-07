@@ -12,13 +12,14 @@ use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, 
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::span_bug;
-use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{
+    self, ClosureKind, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor,
+};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::traits::ArgKind;
 use rustc_trait_selection::traits;
-use rustc_type_ir::ClosureKind;
 use tracing::{debug, instrument, trace};
 
 use super::{CoroutineTypes, Expectation, FnCtxt, check_fn};
@@ -163,11 +164,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let resume_ty = liberated_sig.inputs().get(0).copied().unwrap_or(tcx.types.unit);
 
                 let interior = self.next_ty_var(expr_span);
-                self.deferred_coroutine_interiors.borrow_mut().push((
-                    expr_def_id,
-                    body.id(),
-                    interior,
-                ));
+                self.deferred_coroutine_interiors.borrow_mut().push((expr_def_id, interior));
 
                 // Coroutines that come from coroutine closures have not yet determined
                 // their kind ty, so make a fresh infer var which will be constrained
@@ -973,7 +970,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
 
         // Normalize only after registering in `user_provided_sigs`.
-        self.normalize(self.tcx.hir().span(hir_id), result)
+        self.normalize(self.tcx.def_span(expr_def_id), result)
     }
 
     /// Invoked when we are translating the coroutine that results

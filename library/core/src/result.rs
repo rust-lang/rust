@@ -654,7 +654,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "result_ok_method")]
+    #[rustc_diagnostic_item = "result_ok_method"]
     pub fn ok(self) -> Option<T> {
         match self {
             Ok(x) => Some(x),
@@ -1742,6 +1742,14 @@ where
             (to, from) => *to = from.clone(),
         }
     }
+}
+
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T, E> crate::clone::UseCloned for Result<T, E>
+where
+    T: crate::clone::UseCloned,
+    E: crate::clone::UseCloned,
+{
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

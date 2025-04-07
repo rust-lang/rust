@@ -85,7 +85,22 @@ pub struct Hidden;
 pub use self::Hidden as InlinedHidden;
 ```
 
-The same applies on re-exports themselves: if you have multiple re-exports and some of them have
+However, if you still want the re-export itself to be visible, you can add the `#[doc(inline)]`
+attribute on it:
+
+```rust,ignore (inline)
+// This struct won't be visible.
+#[doc(hidden)]
+pub struct Hidden;
+
+#[doc(inline)]
+pub use self::Hidden as InlinedHidden;
+```
+
+In this case, you will have `pub use self::Hidden as InlinedHidden;` in the generated documentation
+but no link to the `Hidden` item.
+
+So back to `#[doc(hidden)]`: if you have multiple re-exports and some of them have
 `#[doc(hidden)]`, then these ones (and only these) won't appear in the documentation:
 
 ```rust,ignore (inline)

@@ -72,9 +72,9 @@ impl IndentLevel {
     }
 
     /// XXX: this intentionally doesn't change the indent of the very first token.
-    /// Ie, in something like
+    /// For example, in something like:
     /// ```
-    /// fn foo() {
+    /// fn foo() -> i32 {
     ///    92
     /// }
     /// ```

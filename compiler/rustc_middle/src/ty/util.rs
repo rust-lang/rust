@@ -2,7 +2,7 @@
 
 use std::{fmt, iter};
 
-use rustc_abi::{ExternAbi, Float, Integer, IntegerType, Size};
+use rustc_abi::{Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -23,11 +23,10 @@ use super::TypingEnv;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::query::Providers;
-use crate::ty::fold::fold_regions;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast, fold_regions,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -192,6 +191,18 @@ impl<'tcx> TyCtxt<'tcx> {
         ty.is_trivially_pure_clone_copy() || self.is_copy_raw(typing_env.as_query_input(ty))
     }
 
+    /// Checks whether `ty: UseCloned` holds while ignoring region constraints.
+    ///
+    /// This function should not be used if there is an `InferCtxt` available.
+    /// Use `InferCtxt::type_is_copy_modulo_regions` instead.
+    pub fn type_is_use_cloned_modulo_regions(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        ty.is_trivially_pure_clone_copy() || self.is_use_cloned_raw(typing_env.as_query_input(ty))
+    }
+
     /// Returns the deeply last field of nested structures, or the same type if
     /// not a structure at all. Corresponds to the only possible unsized field,
     /// and its type can be used to determine unsizing strategy.
@@ -206,6 +217,20 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self;
         tcx.struct_tail_raw(ty, |ty| tcx.normalize_erasing_regions(typing_env, ty), || {})
+    }
+
+    /// Returns true if a type has metadata.
+    pub fn type_has_metadata(self, ty: Ty<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+        if ty.is_sized(self, typing_env) {
+            return false;
+        }
+
+        let tail = self.struct_tail_for_codegen(ty, typing_env);
+        match tail.kind() {
+            ty::Foreign(..) => false,
+            ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
+            _ => bug!("unexpected unsized tail: {:?}", tail),
+        }
     }
 
     /// Returns the deeply last field of nested structures, or the same type if
@@ -364,77 +389,83 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Calculate the destructor of a given type.
     pub fn calculate_dtor(
         self,
-        adt_did: DefId,
-        validate: impl Fn(Self, DefId) -> Result<(), ErrorGuaranteed>,
+        adt_did: LocalDefId,
+        validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
     ) -> Option<ty::Destructor> {
         let drop_trait = self.lang_items().drop_trait()?;
         self.ensure_ok().coherent_trait(drop_trait).ok()?;
 
-        let ty = self.type_of(adt_did).instantiate_identity();
         let mut dtor_candidate = None;
-        self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
+        // `Drop` impls can only be written in the same crate as the adt, and cannot be blanket impls
+        for &impl_did in self.local_trait_impls(drop_trait) {
+            let Some(adt_def) = self.type_of(impl_did).skip_binder().ty_adt_def() else { continue };
+            if adt_def.did() != adt_did.to_def_id() {
+                continue;
+            }
+
             if validate(self, impl_did).is_err() {
                 // Already `ErrorGuaranteed`, no need to delay a span bug here.
-                return;
+                continue;
             }
 
             let Some(item_id) = self.associated_item_def_ids(impl_did).first() else {
                 self.dcx()
                     .span_delayed_bug(self.def_span(impl_did), "Drop impl without drop function");
-                return;
+                continue;
             };
 
-            if let Some((old_item_id, _)) = dtor_candidate {
+            if self.def_kind(item_id) != DefKind::AssocFn {
+                self.dcx().span_delayed_bug(self.def_span(item_id), "drop is not a function");
+                continue;
+            }
+
+            if let Some(old_item_id) = dtor_candidate {
                 self.dcx()
                     .struct_span_err(self.def_span(item_id), "multiple drop impls found")
                     .with_span_note(self.def_span(old_item_id), "other impl here")
                     .delay_as_bug();
             }
 
-            dtor_candidate = Some((*item_id, self.impl_trait_header(impl_did).unwrap().constness));
-        });
+            dtor_candidate = Some(*item_id);
+        }
 
-        let (did, constness) = dtor_candidate?;
-        Some(ty::Destructor { did, constness })
+        let did = dtor_candidate?;
+        Some(ty::Destructor { did })
     }
 
     /// Calculate the async destructor of a given type.
     pub fn calculate_async_dtor(
         self,
-        adt_did: DefId,
-        validate: impl Fn(Self, DefId) -> Result<(), ErrorGuaranteed>,
+        adt_did: LocalDefId,
+        validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
     ) -> Option<ty::AsyncDestructor> {
         let async_drop_trait = self.lang_items().async_drop_trait()?;
         self.ensure_ok().coherent_trait(async_drop_trait).ok()?;
 
-        let ty = self.type_of(adt_did).instantiate_identity();
         let mut dtor_candidate = None;
-        self.for_each_relevant_impl(async_drop_trait, ty, |impl_did| {
-            if validate(self, impl_did).is_err() {
-                // Already `ErrorGuaranteed`, no need to delay a span bug here.
-                return;
+        // `AsyncDrop` impls can only be written in the same crate as the adt, and cannot be blanket impls
+        for &impl_did in self.local_trait_impls(async_drop_trait) {
+            let Some(adt_def) = self.type_of(impl_did).skip_binder().ty_adt_def() else { continue };
+            if adt_def.did() != adt_did.to_def_id() {
+                continue;
             }
 
-            let [future, ctor] = self.associated_item_def_ids(impl_did) else {
-                self.dcx().span_delayed_bug(
-                    self.def_span(impl_did),
-                    "AsyncDrop impl without async_drop function or Dropper type",
-                );
-                return;
-            };
+            if validate(self, impl_did).is_err() {
+                // Already `ErrorGuaranteed`, no need to delay a span bug here.
+                continue;
+            }
 
-            if let Some((_, _, old_impl_did)) = dtor_candidate {
+            if let Some(old_impl_did) = dtor_candidate {
                 self.dcx()
                     .struct_span_err(self.def_span(impl_did), "multiple async drop impls found")
                     .with_span_note(self.def_span(old_impl_did), "other impl here")
                     .delay_as_bug();
             }
 
-            dtor_candidate = Some((*future, *ctor, impl_did));
-        });
+            dtor_candidate = Some(impl_did);
+        }
 
-        let (future, ctor, _) = dtor_candidate?;
-        Some(ty::AsyncDestructor { future, ctor })
+        Some(ty::AsyncDestructor { impl_did: dtor_candidate? })
     }
 
     /// Returns async drop glue morphology for a definition. To get async drop
@@ -726,51 +757,37 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Return the set of types that should be taken into account when checking
-    /// trait bounds on a coroutine's internal state.
-    // FIXME(compiler-errors): We should remove this when the old solver goes away;
-    // and all other usages of this function should go through `bound_coroutine_hidden_types`
-    // instead.
+    /// trait bounds on a coroutine's internal state. This properly replaces
+    /// `ReErased` with new existential bound lifetimes.
     pub fn coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> impl Iterator<Item = ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>> {
         let coroutine_layout = self.mir_coroutine_witnesses(def_id);
-        coroutine_layout
-            .as_ref()
-            .map_or_else(|| [].iter(), |l| l.field_tys.iter())
-            .filter(|decl| !decl.ignore_for_traits)
-            .map(|decl| ty::EarlyBinder::bind(decl.ty))
-    }
-
-    /// Return the set of types that should be taken into account when checking
-    /// trait bounds on a coroutine's internal state. This properly replaces
-    /// `ReErased` with new existential bound lifetimes.
-    pub fn bound_coroutine_hidden_types(
-        self,
-        def_id: DefId,
-    ) -> impl Iterator<Item = ty::EarlyBinder<'tcx, ty::Binder<'tcx, Ty<'tcx>>>> {
-        let coroutine_layout = self.mir_coroutine_witnesses(def_id);
-        coroutine_layout
-            .as_ref()
-            .map_or_else(|| [].iter(), |l| l.field_tys.iter())
-            .filter(|decl| !decl.ignore_for_traits)
-            .map(move |decl| {
-                let mut vars = vec![];
-                let ty = fold_regions(self, decl.ty, |re, debruijn| {
-                    assert_eq!(re, self.lifetimes.re_erased);
-                    let var = ty::BoundVar::from_usize(vars.len());
-                    vars.push(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon));
-                    ty::Region::new_bound(
-                        self,
-                        debruijn,
-                        ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon },
-                    )
-                });
-                ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
-                    ty,
-                    self.mk_bound_variable_kinds(&vars),
-                ))
-            })
+        let mut vars = vec![];
+        let bound_tys = self.mk_type_list_from_iter(
+            coroutine_layout
+                .as_ref()
+                .map_or_else(|| [].iter(), |l| l.field_tys.iter())
+                .filter(|decl| !decl.ignore_for_traits)
+                .map(|decl| {
+                    let ty = fold_regions(self, decl.ty, |re, debruijn| {
+                        assert_eq!(re, self.lifetimes.re_erased);
+                        let var = ty::BoundVar::from_usize(vars.len());
+                        vars.push(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon));
+                        ty::Region::new_bound(
+                            self,
+                            debruijn,
+                            ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon },
+                        )
+                    });
+                    ty
+                }),
+        );
+        ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
+            bound_tys,
+            self.mk_bound_variable_kinds(&vars),
+        ))
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.
@@ -1535,55 +1552,6 @@ impl<'tcx> Ty<'tcx> {
     }
 }
 
-pub enum ExplicitSelf<'tcx> {
-    ByValue,
-    ByReference(ty::Region<'tcx>, hir::Mutability),
-    ByRawPointer(hir::Mutability),
-    ByBox,
-    Other,
-}
-
-impl<'tcx> ExplicitSelf<'tcx> {
-    /// Categorizes an explicit self declaration like `self: SomeType`
-    /// into either `self`, `&self`, `&mut self`, `Box<Self>`, or
-    /// `Other`.
-    /// This is mainly used to require the arbitrary_self_types feature
-    /// in the case of `Other`, to improve error messages in the common cases,
-    /// and to make `Other` dyn-incompatible.
-    ///
-    /// Examples:
-    ///
-    /// ```ignore (illustrative)
-    /// impl<'a> Foo for &'a T {
-    ///     // Legal declarations:
-    ///     fn method1(self: &&'a T); // ExplicitSelf::ByReference
-    ///     fn method2(self: &'a T); // ExplicitSelf::ByValue
-    ///     fn method3(self: Box<&'a T>); // ExplicitSelf::ByBox
-    ///     fn method4(self: Rc<&'a T>); // ExplicitSelf::Other
-    ///
-    ///     // Invalid cases will be caught by `check_method_receiver`:
-    ///     fn method_err1(self: &'a mut T); // ExplicitSelf::Other
-    ///     fn method_err2(self: &'static T) // ExplicitSelf::ByValue
-    ///     fn method_err3(self: &&T) // ExplicitSelf::ByReference
-    /// }
-    /// ```
-    ///
-    pub fn determine<P>(self_arg_ty: Ty<'tcx>, is_self_ty: P) -> ExplicitSelf<'tcx>
-    where
-        P: Fn(Ty<'tcx>) -> bool,
-    {
-        use self::ExplicitSelf::*;
-
-        match *self_arg_ty.kind() {
-            _ if is_self_ty(self_arg_ty) => ByValue,
-            ty::Ref(region, ty, mutbl) if is_self_ty(ty) => ByReference(region, mutbl),
-            ty::RawPtr(ty, mutbl) if is_self_ty(ty) => ByRawPointer(mutbl),
-            _ if self_arg_ty.boxed_ty().is_some_and(is_self_ty) => ByBox,
-            _ => Other,
-        }
-    }
-}
-
 /// Returns a list of types such that the given type needs drop if and only if
 /// *any* of the returned types need drop. Returns `Err(AlwaysRequiresDrop)` if
 /// this type always needs drop.
@@ -1751,17 +1719,13 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 /// the compiler to make some assumptions about its shape; if the user doesn't use a feature gate, they may
 /// cause an ICE that we otherwise may want to prevent.
 pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
-    if tcx.features().intrinsics()
-        && (matches!(tcx.fn_sig(def_id).skip_binder().abi(), ExternAbi::RustIntrinsic)
-            || tcx.has_attr(def_id, sym::rustc_intrinsic))
-    {
-        let must_be_overridden = tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden)
-            || match tcx.hir_node_by_def_id(def_id) {
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { has_body, .. }, .. }) => {
-                    !has_body
-                }
-                _ => true,
-            };
+    if tcx.features().intrinsics() && tcx.has_attr(def_id, sym::rustc_intrinsic) {
+        let must_be_overridden = match tcx.hir_node_by_def_id(def_id) {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { has_body, .. }, .. }) => {
+                !has_body
+            }
+            _ => true,
+        };
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id.into()),
             must_be_overridden,

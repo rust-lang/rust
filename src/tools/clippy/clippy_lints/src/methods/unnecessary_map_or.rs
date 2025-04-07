@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::{Sugg, make_binop};
-use clippy_utils::ty::{get_type_diagnostic_name, implements_trait};
+use clippy_utils::ty::{get_type_diagnostic_name, implements_trait, is_copy};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{get_parent_expr, is_from_proc_macro, path_to_local_id};
 use rustc_ast::LitKind::Bool;
@@ -42,7 +42,7 @@ pub(super) fn check<'a>(
     def: &Expr<'_>,
     map: &Expr<'_>,
     method_span: Span,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     let ExprKind::Lit(def_kind) = def.kind else {
         return;
@@ -81,9 +81,11 @@ pub(super) fn check<'a>(
             && (path_to_local_id(l, hir_id) ^ path_to_local_id(r, hir_id))
             && !is_local_used(cx, non_binding_location, hir_id)
             && let typeck_results = cx.typeck_results()
-            && typeck_results.expr_ty(l) == typeck_results.expr_ty(r)
+            && let l_ty = typeck_results.expr_ty(l)
+            && l_ty == typeck_results.expr_ty(r)
             && let Some(partial_eq) = cx.tcx.get_diagnostic_item(sym::PartialEq)
             && implements_trait(cx, recv_ty, partial_eq, &[recv_ty.into()])
+            && is_copy(cx, l_ty)
     {
         let wrap = variant.variant_name();
 
@@ -117,14 +119,14 @@ pub(super) fn check<'a>(
         .into_string();
 
         (vec![(expr.span, sugg)], "a standard comparison", app)
-    } else if !def_bool && msrv.meets(msrvs::OPTION_RESULT_IS_VARIANT_AND) {
+    } else if !def_bool && msrv.meets(cx, msrvs::OPTION_RESULT_IS_VARIANT_AND) {
         let suggested_name = variant.method_name();
         (
             vec![(method_span, suggested_name.into()), (ext_def_span, String::default())],
             suggested_name,
             Applicability::MachineApplicable,
         )
-    } else if def_bool && matches!(variant, Variant::Some) && msrv.meets(msrvs::IS_NONE_OR) {
+    } else if def_bool && matches!(variant, Variant::Some) && msrv.meets(cx, msrvs::IS_NONE_OR) {
         (
             vec![(method_span, "is_none_or".into()), (ext_def_span, String::default())],
             "is_none_or",

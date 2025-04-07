@@ -1,6 +1,5 @@
 use std::assert_matches::assert_matches;
 
-use libc::{c_char, c_uint};
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, Scalar};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
@@ -483,12 +482,13 @@ pub(crate) fn inline_asm_call<'ll>(
 
     debug!("Asm Output Type: {:?}", output);
     let fty = bx.cx.type_func(&argtys, output);
-    unsafe {
-        // Ask LLVM to verify that the constraints are well-formed.
-        let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_c_char_ptr(), cons.len());
-        debug!("constraint verification result: {:?}", constraints_ok);
-        if constraints_ok {
-            let v = llvm::LLVMRustInlineAsm(
+    // Ask LLVM to verify that the constraints are well-formed.
+    let constraints_ok =
+        unsafe { llvm::LLVMRustInlineAsmVerify(fty, cons.as_c_char_ptr(), cons.len()) };
+    debug!("constraint verification result: {:?}", constraints_ok);
+    if constraints_ok {
+        let v = unsafe {
+            llvm::LLVMRustInlineAsm(
                 fty,
                 asm.as_c_char_ptr(),
                 asm.len(),
@@ -498,54 +498,50 @@ pub(crate) fn inline_asm_call<'ll>(
                 alignstack,
                 dia,
                 can_throw,
-            );
+            )
+        };
 
-            let call = if !labels.is_empty() {
-                assert!(catch_funclet.is_none());
-                bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None, None)
-            } else if let Some((catch, funclet)) = catch_funclet {
-                bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet, None)
-            } else {
-                bx.call(fty, None, None, v, inputs, None, None)
-            };
-
-            // Store mark in a metadata node so we can map LLVM errors
-            // back to source locations. See #17552.
-            let key = "srcloc";
-            let kind = llvm::LLVMGetMDKindIDInContext(
-                bx.llcx,
-                key.as_ptr().cast::<c_char>(),
-                key.len() as c_uint,
-            );
-
-            // `srcloc` contains one 64-bit integer for each line of assembly code,
-            // where the lower 32 bits hold the lo byte position and the upper 32 bits
-            // hold the hi byte position.
-            let mut srcloc = vec![];
-            if dia == llvm::AsmDialect::Intel && line_spans.len() > 1 {
-                // LLVM inserts an extra line to add the ".intel_syntax", so add
-                // a dummy srcloc entry for it.
-                //
-                // Don't do this if we only have 1 line span since that may be
-                // due to the asm template string coming from a macro. LLVM will
-                // default to the first srcloc for lines that don't have an
-                // associated srcloc.
-                srcloc.push(llvm::LLVMValueAsMetadata(bx.const_u64(0)));
-            }
-            srcloc.extend(line_spans.iter().map(|span| {
-                llvm::LLVMValueAsMetadata(bx.const_u64(
-                    u64::from(span.lo().to_u32()) | (u64::from(span.hi().to_u32()) << 32),
-                ))
-            }));
-            let md = llvm::LLVMMDNodeInContext2(bx.llcx, srcloc.as_ptr(), srcloc.len());
-            let md = llvm::LLVMMetadataAsValue(&bx.llcx, md);
-            llvm::LLVMSetMetadata(call, kind, md);
-
-            Some(call)
+        let call = if !labels.is_empty() {
+            assert!(catch_funclet.is_none());
+            bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None, None)
+        } else if let Some((catch, funclet)) = catch_funclet {
+            bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet, None)
         } else {
-            // LLVM has detected an issue with our constraints, bail out
-            None
+            bx.call(fty, None, None, v, inputs, None, None)
+        };
+
+        // Store mark in a metadata node so we can map LLVM errors
+        // back to source locations. See #17552.
+        let key = "srcloc";
+        let kind = bx.get_md_kind_id(key);
+
+        // `srcloc` contains one 64-bit integer for each line of assembly code,
+        // where the lower 32 bits hold the lo byte position and the upper 32 bits
+        // hold the hi byte position.
+        let mut srcloc = vec![];
+        if dia == llvm::AsmDialect::Intel && line_spans.len() > 1 {
+            // LLVM inserts an extra line to add the ".intel_syntax", so add
+            // a dummy srcloc entry for it.
+            //
+            // Don't do this if we only have 1 line span since that may be
+            // due to the asm template string coming from a macro. LLVM will
+            // default to the first srcloc for lines that don't have an
+            // associated srcloc.
+            srcloc.push(llvm::LLVMValueAsMetadata(bx.const_u64(0)));
         }
+        srcloc.extend(line_spans.iter().map(|span| {
+            llvm::LLVMValueAsMetadata(
+                bx.const_u64(u64::from(span.lo().to_u32()) | (u64::from(span.hi().to_u32()) << 32)),
+            )
+        }));
+        let md = unsafe { llvm::LLVMMDNodeInContext2(bx.llcx, srcloc.as_ptr(), srcloc.len()) };
+        let md = bx.get_metadata_value(md);
+        llvm::LLVMSetMetadata(call, kind, md);
+
+        Some(call)
+    } else {
+        // LLVM has detected an issue with our constraints, bail out
+        None
     }
 }
 
@@ -939,9 +935,10 @@ fn llvm_fixup_input<'ll, 'tcx>(
             }
             bx.insert_element(bx.const_undef(vec_ty), value, bx.const_i32(0))
         }
-        (AArch64(AArch64InlineAsmRegClass::vreg_low16), BackendRepr::Vector { element, count })
-            if layout.size.bytes() == 8 =>
-        {
+        (
+            AArch64(AArch64InlineAsmRegClass::vreg_low16),
+            BackendRepr::SimdVector { element, count },
+        ) if layout.size.bytes() == 8 => {
             let elem_ty = llvm_asm_scalar_type(bx.cx, element);
             let vec_ty = bx.cx.type_vector(elem_ty, count);
             let indices: Vec<_> = (0..count * 2).map(|x| bx.const_i32(x as i32)).collect();
@@ -954,7 +951,7 @@ fn llvm_fixup_input<'ll, 'tcx>(
         }
         (
             X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
-            BackendRepr::Vector { .. },
+            BackendRepr::SimdVector { .. },
         ) if layout.size.bytes() == 64 => bx.bitcast(value, bx.cx.type_vector(bx.cx.type_f64(), 8)),
         (
             X86(
@@ -989,7 +986,7 @@ fn llvm_fixup_input<'ll, 'tcx>(
                 | X86InlineAsmRegClass::ymm_reg
                 | X86InlineAsmRegClass::zmm_reg,
             ),
-            BackendRepr::Vector { element, count: count @ (8 | 16) },
+            BackendRepr::SimdVector { element, count: count @ (8 | 16) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             bx.bitcast(value, bx.type_vector(bx.type_i16(), count))
         }
@@ -1026,7 +1023,7 @@ fn llvm_fixup_input<'ll, 'tcx>(
                 | ArmInlineAsmRegClass::qreg_low4
                 | ArmInlineAsmRegClass::qreg_low8,
             ),
-            BackendRepr::Vector { element, count: count @ (4 | 8) },
+            BackendRepr::SimdVector { element, count: count @ (4 | 8) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             bx.bitcast(value, bx.type_vector(bx.type_i16(), count))
         }
@@ -1099,9 +1096,10 @@ fn llvm_fixup_output<'ll, 'tcx>(
             }
             value
         }
-        (AArch64(AArch64InlineAsmRegClass::vreg_low16), BackendRepr::Vector { element, count })
-            if layout.size.bytes() == 8 =>
-        {
+        (
+            AArch64(AArch64InlineAsmRegClass::vreg_low16),
+            BackendRepr::SimdVector { element, count },
+        ) if layout.size.bytes() == 8 => {
             let elem_ty = llvm_asm_scalar_type(bx.cx, element);
             let vec_ty = bx.cx.type_vector(elem_ty, count * 2);
             let indices: Vec<_> = (0..count).map(|x| bx.const_i32(x as i32)).collect();
@@ -1114,7 +1112,7 @@ fn llvm_fixup_output<'ll, 'tcx>(
         }
         (
             X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
-            BackendRepr::Vector { .. },
+            BackendRepr::SimdVector { .. },
         ) if layout.size.bytes() == 64 => bx.bitcast(value, layout.llvm_type(bx.cx)),
         (
             X86(
@@ -1145,7 +1143,7 @@ fn llvm_fixup_output<'ll, 'tcx>(
                 | X86InlineAsmRegClass::ymm_reg
                 | X86InlineAsmRegClass::zmm_reg,
             ),
-            BackendRepr::Vector { element, count: count @ (8 | 16) },
+            BackendRepr::SimdVector { element, count: count @ (8 | 16) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             bx.bitcast(value, bx.type_vector(bx.type_f16(), count))
         }
@@ -1182,7 +1180,7 @@ fn llvm_fixup_output<'ll, 'tcx>(
                 | ArmInlineAsmRegClass::qreg_low4
                 | ArmInlineAsmRegClass::qreg_low8,
             ),
-            BackendRepr::Vector { element, count: count @ (4 | 8) },
+            BackendRepr::SimdVector { element, count: count @ (4 | 8) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             bx.bitcast(value, bx.type_vector(bx.type_f16(), count))
         }
@@ -1243,9 +1241,10 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
             let count = 16 / layout.size.bytes();
             cx.type_vector(elem_ty, count)
         }
-        (AArch64(AArch64InlineAsmRegClass::vreg_low16), BackendRepr::Vector { element, count })
-            if layout.size.bytes() == 8 =>
-        {
+        (
+            AArch64(AArch64InlineAsmRegClass::vreg_low16),
+            BackendRepr::SimdVector { element, count },
+        ) if layout.size.bytes() == 8 => {
             let elem_ty = llvm_asm_scalar_type(cx, element);
             cx.type_vector(elem_ty, count * 2)
         }
@@ -1256,7 +1255,7 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
         }
         (
             X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
-            BackendRepr::Vector { .. },
+            BackendRepr::SimdVector { .. },
         ) if layout.size.bytes() == 64 => cx.type_vector(cx.type_f64(), 8),
         (
             X86(
@@ -1284,7 +1283,7 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
                 | X86InlineAsmRegClass::ymm_reg
                 | X86InlineAsmRegClass::zmm_reg,
             ),
-            BackendRepr::Vector { element, count: count @ (8 | 16) },
+            BackendRepr::SimdVector { element, count: count @ (8 | 16) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             cx.type_vector(cx.type_i16(), count)
         }
@@ -1321,7 +1320,7 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
                 | ArmInlineAsmRegClass::qreg_low4
                 | ArmInlineAsmRegClass::qreg_low8,
             ),
-            BackendRepr::Vector { element, count: count @ (4 | 8) },
+            BackendRepr::SimdVector { element, count: count @ (4 | 8) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             cx.type_vector(cx.type_i16(), count)
         }

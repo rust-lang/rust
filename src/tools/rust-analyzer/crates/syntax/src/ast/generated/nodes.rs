@@ -2447,6 +2447,17 @@ pub enum UseBoundGenericArg {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum VariantDef {
+    Struct(Struct),
+    Union(Union),
+    Variant(Variant),
+}
+impl ast::HasAttrs for VariantDef {}
+impl ast::HasDocComments for VariantDef {}
+impl ast::HasName for VariantDef {}
+impl ast::HasVisibility for VariantDef {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AnyHasArgList {
     pub(crate) syntax: SyntaxNode,
 }
@@ -6738,6 +6749,40 @@ impl AstNode for UseBoundGenericArg {
         }
     }
 }
+impl From<Struct> for VariantDef {
+    #[inline]
+    fn from(node: Struct) -> VariantDef { VariantDef::Struct(node) }
+}
+impl From<Union> for VariantDef {
+    #[inline]
+    fn from(node: Union) -> VariantDef { VariantDef::Union(node) }
+}
+impl From<Variant> for VariantDef {
+    #[inline]
+    fn from(node: Variant) -> VariantDef { VariantDef::Variant(node) }
+}
+impl AstNode for VariantDef {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, STRUCT | UNION | VARIANT) }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            STRUCT => VariantDef::Struct(Struct { syntax }),
+            UNION => VariantDef::Union(Union { syntax }),
+            VARIANT => VariantDef::Variant(Variant { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            VariantDef::Struct(it) => &it.syntax,
+            VariantDef::Union(it) => &it.syntax,
+            VariantDef::Variant(it) => &it.syntax,
+        }
+    }
+}
 impl AnyHasArgList {
     #[inline]
     pub fn new<T: ast::HasArgList>(node: T) -> AnyHasArgList {
@@ -7749,6 +7794,11 @@ impl std::fmt::Display for Type {
     }
 }
 impl std::fmt::Display for UseBoundGenericArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for VariantDef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

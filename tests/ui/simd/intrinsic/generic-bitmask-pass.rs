@@ -1,13 +1,12 @@
 //@ run-pass
 #![allow(non_camel_case_types)]
-
 //@ ignore-emscripten
 //@ ignore-endian-big behavior of simd_bitmask is endian-specific
 
 // Test that the simd_bitmask intrinsic produces correct results.
+#![feature(repr_simd, core_intrinsics)]
 
-#![feature(repr_simd, intrinsics)]
-#[allow(non_camel_case_types)]
+use std::intrinsics::simd::simd_bitmask;
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -20,9 +19,6 @@ struct u8x4(pub [u8; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct Tx4<T>(pub [T; 4]);
-
-#[rustc_intrinsic]
-unsafe fn simd_bitmask<T, U>(x: T) -> U;
 
 fn main() {
     let z = u32x4([0, 0, 0, 0]);
@@ -56,6 +52,5 @@ fn main() {
 
         let r: u8 = simd_bitmask(msize);
         assert_eq!(r, e);
-
     }
 }

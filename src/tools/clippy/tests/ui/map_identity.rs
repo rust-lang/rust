@@ -5,9 +5,14 @@ fn main() {
     let x: [u16; 3] = [1, 2, 3];
     // should lint
     let _: Vec<_> = x.iter().map(not_identity).map(|x| return x).collect();
+    //~^ map_identity
     let _: Vec<_> = x.iter().map(std::convert::identity).map(|y| y).collect();
+    //~^ map_identity
+    //~| map_identity
     let _: Option<u8> = Some(3).map(|x| x);
+    //~^ map_identity
     let _: Result<i8, f32> = Ok(-3).map(|x| {
+        //~^ map_identity
         return x;
     });
     // should not lint
@@ -18,6 +23,7 @@ fn main() {
         return x + 3;
     });
     let _: Result<u32, u32> = Ok(1).map_err(|a| a);
+    //~^ map_identity
     let _: Result<u32, u32> = Ok(1).map_err(|a: u32| a * 42);
     // : u32 guides type inference
     let _ = Ok(1).map_err(|a: u32| a);
@@ -28,13 +34,17 @@ fn issue7189() {
     // should lint
     let x = [(1, 2), (3, 4)].iter().copied();
     let _ = x.clone().map(|(x, y)| (x, y));
+    //~^ map_identity
     let _ = x.clone().map(|(x, y)| {
+        //~^ map_identity
         return (x, y);
     });
     let _ = x.clone().map(|(x, y)| return (x, y));
+    //~^ map_identity
 
     let y = [(1, 2, (3, (4,))), (5, 6, (7, (8,)))].iter().copied();
     let _ = y.clone().map(|(x, y, (z, (w,)))| (x, y, (z, (w,))));
+    //~^ map_identity
 
     // should not lint
     let _ = x.clone().map(|(x, y)| (x, y, y));
@@ -64,6 +74,7 @@ fn issue11764() {
 
     // no match ergonomics for `(i32, i32)`
     let _ = x.iter().copied().map(|(x, y)| (x, y));
+    //~^ map_identity
 }
 
 fn issue13904() {
@@ -75,8 +86,10 @@ fn issue13904() {
     #[allow(unused_mut)]
     let mut it = [1, 2, 3].into_iter();
     let _ = it.map(|x| x).next();
+    //~^ map_identity
 
     // lint
     let it = [1, 2, 3].into_iter();
     let _ = { it }.map(|x| x).next();
+    //~^ map_identity
 }

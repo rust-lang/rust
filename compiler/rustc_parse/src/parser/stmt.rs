@@ -5,7 +5,7 @@ use std::ops::Bound;
 use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::{
     AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, HasAttrs, Local,
@@ -33,8 +33,8 @@ impl<'a> Parser<'a> {
     /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of
     /// whether or not we have attributes.
     // Public for rustfmt usage.
-    pub(super) fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
-        Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|e| {
+    pub fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
+        Ok(self.parse_stmt_without_recovery(false, force_collect, false).unwrap_or_else(|e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
             None
@@ -42,23 +42,27 @@ impl<'a> Parser<'a> {
     }
 
     /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of
-    /// whether or not we have attributes.
-    // Public for `cfg_eval` macro expansion.
+    /// whether or not we have attributes. If `force_full_expr` is true, parses the stmt without
+    /// using `Restriction::STMT_EXPR`. Public for `cfg_eval` macro expansion.
     pub fn parse_stmt_without_recovery(
         &mut self,
         capture_semi: bool,
         force_collect: ForceCollect,
+        force_full_expr: bool,
     ) -> PResult<'a, Option<Stmt>> {
         let pre_attr_pos = self.collect_pos();
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
 
-        maybe_whole!(self, NtStmt, |stmt| {
+        if let Some(stmt) = self.eat_metavar_seq(MetaVarKind::Stmt, |this| {
+            this.parse_stmt_without_recovery(false, ForceCollect::Yes, false)
+        }) {
+            let mut stmt = stmt.expect("an actual statement");
             stmt.visit_attrs(|stmt_attrs| {
                 attrs.prepend_to_nt_inner(stmt_attrs);
             });
-            Some(stmt.into_inner())
-        });
+            return Ok(Some(stmt));
+        }
 
         if self.token.is_keyword(kw::Mut) && self.is_keyword_ahead(1, &[kw::Let]) {
             self.bump();
@@ -69,10 +73,24 @@ impl<'a> Parser<'a> {
             });
         }
 
-        let stmt = if self.token.is_keyword(kw::Let) {
+        let stmt = if self.token.is_keyword(kw::Super) && self.is_keyword_ahead(1, &[kw::Let]) {
+            self.collect_tokens(None, attrs, force_collect, |this, attrs| {
+                let super_span = this.token.span;
+                this.expect_keyword(exp!(Super))?;
+                this.expect_keyword(exp!(Let))?;
+                this.psess.gated_spans.gate(sym::super_let, super_span);
+                let local = this.parse_local(Some(super_span), attrs)?;
+                let trailing = Trailing::from(capture_semi && this.token == token::Semi);
+                Ok((
+                    this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
+                    trailing,
+                    UsePreAttrPos::No,
+                ))
+            })?
+        } else if self.token.is_keyword(kw::Let) {
             self.collect_tokens(None, attrs, force_collect, |this, attrs| {
                 this.expect_keyword(exp!(Let))?;
-                let local = this.parse_local(attrs)?;
+                let local = this.parse_local(None, attrs)?;
                 let trailing = Trailing::from(capture_semi && this.token == token::Semi);
                 Ok((
                     this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
@@ -147,12 +165,14 @@ impl<'a> Parser<'a> {
         } else if self.token != token::CloseDelim(Delimiter::Brace) {
             // Remainder are line-expr stmts. This is similar to the `parse_stmt_path_start` case
             // above.
+            let restrictions =
+                if force_full_expr { Restrictions::empty() } else { Restrictions::STMT_EXPR };
             let e = self.collect_tokens(
                 Some(pre_attr_pos),
                 AttrWrapper::empty(),
                 force_collect,
                 |this, _empty_attrs| {
-                    let (expr, _) = this.parse_expr_res(Restrictions::STMT_EXPR, attrs)?;
+                    let (expr, _) = this.parse_expr_res(restrictions, attrs)?;
                     Ok((expr, Trailing::No, UsePreAttrPos::Yes))
                 },
             )?;
@@ -176,7 +196,7 @@ impl<'a> Parser<'a> {
         let stmt = self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let path = this.parse_path(PathStyle::Expr)?;
 
-            if this.eat(exp!(Not)) {
+            if this.eat(exp!(Bang)) {
                 let stmt_mac = this.parse_stmt_mac(lo, attrs, path)?;
                 return Ok((
                     stmt_mac,
@@ -229,11 +249,15 @@ impl<'a> Parser<'a> {
         let mac = P(MacCall { path, args });
 
         let kind = if (style == MacStmtStyle::Braces
-            && self.token != token::Dot
-            && self.token != token::Question)
-            || self.token == token::Semi
-            || self.token == token::Eof
-        {
+            && !matches!(self.token.kind, token::Dot | token::Question))
+            || matches!(
+                self.token.kind,
+                token::Semi
+                    | token::Eof
+                    | token::CloseDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
+                        MetaVarKind::Stmt
+                    )))
+            ) {
             StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None }))
         } else {
             // Since none of the above applied, this is an expression statement macro.
@@ -271,7 +295,7 @@ impl<'a> Parser<'a> {
         force_collect: ForceCollect,
     ) -> PResult<'a, Stmt> {
         let stmt = self.collect_tokens(None, attrs, force_collect, |this, attrs| {
-            let local = this.parse_local(attrs)?;
+            let local = this.parse_local(None, attrs)?;
             // FIXME - maybe capture semicolon in recovery?
             Ok((
                 this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
@@ -285,8 +309,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a local variable declaration.
-    fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
-        let lo = self.prev_token.span;
+    fn parse_local(&mut self, super_: Option<Span>, attrs: AttrVec) -> PResult<'a, P<Local>> {
+        let lo = super_.unwrap_or(self.prev_token.span);
 
         if self.token.is_keyword(kw::Const) && self.look_ahead(1, |t| t.is_ident()) {
             self.dcx().emit_err(errors::ConstLetMutuallyExclusive { span: lo.to(self.token.span) });
@@ -388,6 +412,7 @@ impl<'a> Parser<'a> {
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
         Ok(P(ast::Local {
+            super_,
             ty,
             pat,
             kind,
@@ -442,7 +467,16 @@ impl<'a> Parser<'a> {
     /// Parses the RHS of a local variable declaration (e.g., `= 14;`).
     fn parse_initializer(&mut self, eq_optional: bool) -> PResult<'a, Option<P<Expr>>> {
         let eq_consumed = match self.token.kind {
-            token::BinOpEq(..) => {
+            token::PlusEq
+            | token::MinusEq
+            | token::StarEq
+            | token::SlashEq
+            | token::PercentEq
+            | token::CaretEq
+            | token::AndEq
+            | token::OrEq
+            | token::ShlEq
+            | token::ShrEq => {
                 // Recover `let x <op>= 1` as `let x = 1` We must not use `+ BytePos(1)` here
                 // because `<op>` can be a multi-byte lookalike that was recovered, e.g. `➖=` (the
                 // `➖` is a U+2796 Heavy Minus Sign Unicode Character) that was recovered as a
@@ -463,7 +497,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a block. No inner attributes are allowed.
     pub fn parse_block(&mut self) -> PResult<'a, P<Block>> {
-        let (attrs, block) = self.parse_inner_attrs_and_block()?;
+        let (attrs, block) = self.parse_inner_attrs_and_block(None)?;
         if let [.., last] = &*attrs {
             let suggest_to_outer = match &last.kind {
                 ast::AttrKind::Normal(attr) => attr.item.is_valid_for_outer_style(),
@@ -492,7 +526,7 @@ impl<'a> Parser<'a> {
         //      bar;
         //
         // which is valid in other languages, but not Rust.
-        match self.parse_stmt_without_recovery(false, ForceCollect::No) {
+        match self.parse_stmt_without_recovery(false, ForceCollect::No, false) {
             // If the next token is an open brace, e.g., we have:
             //
             //     if expr other_expr {
@@ -641,33 +675,37 @@ impl<'a> Parser<'a> {
         Err(self.error_block_no_opening_brace_msg(Cow::from(msg)))
     }
 
-    /// Parses a block. Inner attributes are allowed.
-    pub(super) fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (AttrVec, P<Block>)> {
-        self.parse_block_common(self.token.span, BlockCheckMode::Default, true)
+    /// Parses a block. Inner attributes are allowed, block labels are not.
+    ///
+    /// If `loop_header` is `Some` and an unexpected block label is encountered,
+    /// it is suggested to be moved just before `loop_header`, else it is suggested to be removed.
+    pub(super) fn parse_inner_attrs_and_block(
+        &mut self,
+        loop_header: Option<Span>,
+    ) -> PResult<'a, (AttrVec, P<Block>)> {
+        self.parse_block_common(self.token.span, BlockCheckMode::Default, loop_header)
     }
 
-    /// Parses a block. Inner attributes are allowed.
+    /// Parses a block. Inner attributes are allowed, block labels are not.
+    ///
+    /// If `loop_header` is `Some` and an unexpected block label is encountered,
+    /// it is suggested to be moved just before `loop_header`, else it is suggested to be removed.
     pub(super) fn parse_block_common(
         &mut self,
         lo: Span,
         blk_mode: BlockCheckMode,
-        can_be_struct_literal: bool,
+        loop_header: Option<Span>,
     ) -> PResult<'a, (AttrVec, P<Block>)> {
         maybe_whole!(self, NtBlock, |block| (AttrVec::new(), block));
 
         let maybe_ident = self.prev_token.clone();
-        self.maybe_recover_unexpected_block_label();
+        self.maybe_recover_unexpected_block_label(loop_header);
         if !self.eat(exp!(OpenBrace)) {
             return self.error_block_no_opening_brace();
         }
 
         let attrs = self.parse_inner_attributes()?;
-        let tail = match self.maybe_suggest_struct_literal(
-            lo,
-            blk_mode,
-            maybe_ident,
-            can_be_struct_literal,
-        ) {
+        let tail = match self.maybe_suggest_struct_literal(lo, blk_mode, maybe_ident) {
             Some(tail) => tail?,
             None => self.parse_block_tail(lo, blk_mode, AttemptLocalParseRecovery::Yes)?,
         };
@@ -688,7 +726,7 @@ impl<'a> Parser<'a> {
             if self.token == token::Eof {
                 break;
             }
-            if self.is_vcs_conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
+            if self.is_vcs_conflict_marker(&TokenKind::Shl, &TokenKind::Lt) {
                 // Account for `<<<<<<<` diff markers. We can't proactively error here because
                 // that can be a valid path start, so we snapshot and reparse only we've
                 // encountered another parse error.
@@ -801,10 +839,24 @@ impl<'a> Parser<'a> {
         &mut self,
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, Option<Stmt>> {
-        // Skip looking for a trailing semicolon when we have an interpolated statement.
-        maybe_whole!(self, NtStmt, |stmt| Some(stmt.into_inner()));
+        // Skip looking for a trailing semicolon when we have a metavar seq.
+        if let Some(stmt) = self.eat_metavar_seq(MetaVarKind::Stmt, |this| {
+            // Why pass `true` for `force_full_expr`? Statement expressions are less expressive
+            // than "full" expressions, due to the `STMT_EXPR` restriction, and sometimes need
+            // parentheses. E.g. the "full" expression `match paren_around_match {} | true` when
+            // used in statement context must be written `(match paren_around_match {} | true)`.
+            // However, if the expression we are parsing in this statement context was pasted by a
+            // declarative macro, it may have come from a "full" expression context, and lack
+            // these parentheses. So we lift the `STMT_EXPR` restriction to ensure the statement
+            // will reparse successfully.
+            this.parse_stmt_without_recovery(false, ForceCollect::No, true)
+        }) {
+            let stmt = stmt.expect("an actual statement");
+            return Ok(Some(stmt));
+        }
 
-        let Some(mut stmt) = self.parse_stmt_without_recovery(true, ForceCollect::No)? else {
+        let Some(mut stmt) = self.parse_stmt_without_recovery(true, ForceCollect::No, false)?
+        else {
             return Ok(None);
         };
 
@@ -1000,14 +1052,7 @@ impl<'a> Parser<'a> {
         rules: BlockCheckMode,
         span: Span,
     ) -> P<Block> {
-        P(Block {
-            stmts,
-            id: DUMMY_NODE_ID,
-            rules,
-            span,
-            tokens: None,
-            could_be_bare_literal: false,
-        })
+        P(Block { stmts, id: DUMMY_NODE_ID, rules, span, tokens: None })
     }
 
     pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {

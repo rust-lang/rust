@@ -57,10 +57,6 @@ help: consider specifying the generic argument
    |
 LL |         Receiver.generic::<T>();
    |                         +++++
-help: you might have meant to return this to infer its type parameters
-   |
-LL |         return Receiver.generic();
-   |         ++++++
 
 error: aborting due to 4 previous errors
 

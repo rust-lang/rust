@@ -1,5 +1,4 @@
 use crate::ffi::c_void;
-use crate::mem::size_of;
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
 use crate::sys::c;
 

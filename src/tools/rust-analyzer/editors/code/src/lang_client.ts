@@ -5,6 +5,8 @@ export class RaLanguageClient extends lc.LanguageClient {
     override handleFailedRequest<T>(
         type: lc.MessageSignature,
         token: vscode.CancellationToken | undefined,
+        // declared as `any` in vscode-languageclient
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         error: any,
         defaultValue: T,
         showNotification?: boolean | undefined,

@@ -34,6 +34,26 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     assist_emit_must_use: false,
     term_search_fuel: 400,
     term_search_borrowck: true,
+    code_action_grouping: true,
+};
+
+pub(crate) const TEST_CONFIG_NO_GROUPING: AssistConfig = AssistConfig {
+    snippet_cap: SnippetCap::new(true),
+    allowed: None,
+    insert_use: InsertUseConfig {
+        granularity: ImportGranularity::Crate,
+        prefix_kind: hir::PrefixKind::Plain,
+        enforce_granularity: true,
+        group: true,
+        skip_glob_imports: true,
+    },
+    prefer_no_std: false,
+    prefer_prelude: true,
+    prefer_absolute: false,
+    assist_emit_must_use: false,
+    term_search_fuel: 400,
+    term_search_borrowck: true,
+    code_action_grouping: false,
 };
 
 pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
@@ -52,6 +72,7 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
     assist_emit_must_use: false,
     term_search_fuel: 400,
     term_search_borrowck: true,
+    code_action_grouping: true,
 };
 
 pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
@@ -70,6 +91,7 @@ pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
     assist_emit_must_use: false,
     term_search_fuel: 400,
     term_search_borrowck: true,
+    code_action_grouping: true,
 };
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, EditionedFileId) {
@@ -166,6 +188,20 @@ pub(crate) fn check_assist_not_applicable_for_import_one(
 ) {
     check_with_config(
         TEST_CONFIG_IMPORT_ONE,
+        assist,
+        ra_fixture,
+        ExpectedResult::NotApplicable,
+        None,
+    );
+}
+
+#[track_caller]
+pub(crate) fn check_assist_not_applicable_no_grouping(
+    assist: Handler,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+) {
+    check_with_config(
+        TEST_CONFIG_NO_GROUPING,
         assist,
         ra_fixture,
         ExpectedResult::NotApplicable,
@@ -674,18 +710,22 @@ pub fn test_some_range(a: int) -> bool {
                                         Indel {
                                             insert: "let",
                                             delete: 45..47,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "var_name",
                                             delete: 48..60,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "=",
                                             delete: 61..81,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "5;\n    if let 2..6 = var_name {\n        true\n    } else {\n        false\n    }",
                                             delete: 82..108,
+                                            annotation: None,
                                         },
                                     ],
                                 },
@@ -703,6 +743,8 @@ pub fn test_some_range(a: int) -> bool {
                         },
                         file_system_edits: [],
                         is_snippet: true,
+                        annotations: {},
+                        next_annotation_id: 0,
                     },
                 ),
                 command: Some(
@@ -803,18 +845,22 @@ pub fn test_some_range(a: int) -> bool {
                                         Indel {
                                             insert: "let",
                                             delete: 45..47,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "var_name",
                                             delete: 48..60,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "=",
                                             delete: 61..81,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "5;\n    if let 2..6 = var_name {\n        true\n    } else {\n        false\n    }",
                                             delete: 82..108,
+                                            annotation: None,
                                         },
                                     ],
                                 },
@@ -832,6 +878,8 @@ pub fn test_some_range(a: int) -> bool {
                         },
                         file_system_edits: [],
                         is_snippet: true,
+                        annotations: {},
+                        next_annotation_id: 0,
                     },
                 ),
                 command: Some(
@@ -866,22 +914,27 @@ pub fn test_some_range(a: int) -> bool {
                                         Indel {
                                             insert: "const",
                                             delete: 45..47,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "VAR_NAME:",
                                             delete: 48..60,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "i32",
                                             delete: 61..81,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "=",
                                             delete: 82..86,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "5;\n    if let 2..6 = VAR_NAME {\n        true\n    } else {\n        false\n    }",
                                             delete: 87..108,
+                                            annotation: None,
                                         },
                                     ],
                                 },
@@ -899,6 +952,8 @@ pub fn test_some_range(a: int) -> bool {
                         },
                         file_system_edits: [],
                         is_snippet: true,
+                        annotations: {},
+                        next_annotation_id: 0,
                     },
                 ),
                 command: Some(
@@ -933,22 +988,27 @@ pub fn test_some_range(a: int) -> bool {
                                         Indel {
                                             insert: "static",
                                             delete: 45..47,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "VAR_NAME:",
                                             delete: 48..60,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "i32",
                                             delete: 61..81,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "=",
                                             delete: 82..86,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "5;\n    if let 2..6 = VAR_NAME {\n        true\n    } else {\n        false\n    }",
                                             delete: 87..108,
+                                            annotation: None,
                                         },
                                     ],
                                 },
@@ -966,6 +1026,8 @@ pub fn test_some_range(a: int) -> bool {
                         },
                         file_system_edits: [],
                         is_snippet: true,
+                        annotations: {},
+                        next_annotation_id: 0,
                     },
                 ),
                 command: Some(
@@ -1000,10 +1062,12 @@ pub fn test_some_range(a: int) -> bool {
                                         Indel {
                                             insert: "fun_name()",
                                             delete: 59..60,
+                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "\n\nfn fun_name() -> i32 {\n    5\n}",
                                             delete: 110..110,
+                                            annotation: None,
                                         },
                                     ],
                                 },
@@ -1021,6 +1085,8 @@ pub fn test_some_range(a: int) -> bool {
                         },
                         file_system_edits: [],
                         is_snippet: true,
+                        annotations: {},
+                        next_annotation_id: 0,
                     },
                 ),
                 command: None,

@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ check-pass
 //@ compile-flags: --crate-type=lib
 
@@ -7,6 +8,9 @@
 #![feature(rustc_attrs)]
 
 #![no_core]
+
+extern crate minicore;
+use minicore::*;
 
 #[rustc_builtin_macro]
 macro derive() {}
@@ -25,9 +29,6 @@ mod default {
         }
     }
 }
-
-#[lang = "sized"]
-trait Sized {}
 
 #[derive(Default)]
 enum S {

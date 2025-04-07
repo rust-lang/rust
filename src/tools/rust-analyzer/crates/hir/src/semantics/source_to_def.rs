@@ -5,7 +5,7 @@
 //!
 //! This module solves the following problem:
 //!
-//!     Given a piece of syntax, find the corresponding semantic definition (def).
+//! > Given a piece of syntax, find the corresponding semantic definition (def).
 //!
 //! This problem is a part of more-or-less every IDE feature implemented. Every
 //! IDE functionality (like goto to definition), conceptually starts with a

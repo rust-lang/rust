@@ -9,7 +9,7 @@ use std::thread::panicking;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{FluentValue, fluent_value_from_str_list_sep_by_and};
-use rustc_lint_defs::Applicability;
+use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
@@ -148,11 +148,17 @@ where
 /// converted rather than on `DiagArgValue`, which enables types from other `rustc_*` crates to
 /// implement this.
 pub trait IntoDiagArg {
-    fn into_diag_arg(self) -> DiagArgValue;
+    /// Convert `Self` into a `DiagArgValue` suitable for rendering in a diagnostic.
+    ///
+    /// It takes a `path` where "long values" could be written to, if the `DiagArgValue` is too big
+    /// for displaying on the terminal. This path comes from the `Diag` itself. When rendering
+    /// values that come from `TyCtxt`, like `Ty<'_>`, they can use `TyCtxt::short_string`. If a
+    /// value has no shortening logic that could be used, the argument can be safely ignored.
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue;
 }
 
 impl IntoDiagArg for DiagArgValue {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         self
     }
 }
@@ -290,6 +296,7 @@ pub struct DiagInner {
 
     pub messages: Vec<(DiagMessage, Style)>,
     pub code: Option<ErrCode>,
+    pub lint_id: Option<LintExpectationId>,
     pub span: MultiSpan,
     pub children: Vec<Subdiag>,
     pub suggestions: Suggestions,
@@ -318,6 +325,7 @@ impl DiagInner {
     pub fn new_with_messages(level: Level, messages: Vec<(DiagMessage, Style)>) -> Self {
         DiagInner {
             level,
+            lint_id: None,
             messages,
             code: None,
             span: MultiSpan::new(),
@@ -340,7 +348,7 @@ impl DiagInner {
         match self.level {
             Level::Bug | Level::Fatal | Level::Error | Level::DelayedBug => true,
 
-            Level::ForceWarning(_)
+            Level::ForceWarning
             | Level::Warning
             | Level::Note
             | Level::OnceNote
@@ -348,7 +356,7 @@ impl DiagInner {
             | Level::OnceHelp
             | Level::FailureNote
             | Level::Allow
-            | Level::Expect(_) => false,
+            | Level::Expect => false,
         }
     }
 
@@ -359,7 +367,7 @@ impl DiagInner {
 
     pub(crate) fn is_force_warn(&self) -> bool {
         match self.level {
-            Level::ForceWarning(_) => {
+            Level::ForceWarning => {
                 assert!(self.is_lint.is_some());
                 true
             }
@@ -395,7 +403,7 @@ impl DiagInner {
     }
 
     pub(crate) fn arg(&mut self, name: impl Into<DiagArgName>, arg: impl IntoDiagArg) {
-        self.args.insert(name.into(), arg.into_diag_arg());
+        self.args.insert(name.into(), arg.into_diag_arg(&mut self.long_ty_path));
     }
 
     /// Fields used for Hash, and PartialEq trait.
@@ -484,7 +492,7 @@ pub struct Diag<'a, G: EmissionGuarantee = ErrorGuaranteed> {
 // would be bad.
 impl<G> !Clone for Diag<'_, G> {}
 
-rustc_data_structures::static_assert_size!(Diag<'_, ()>, 3 * std::mem::size_of::<usize>());
+rustc_data_structures::static_assert_size!(Diag<'_, ()>, 3 * size_of::<usize>());
 
 impl<G: EmissionGuarantee> Deref for Diag<'_, G> {
     type Target = DiagInner;
@@ -1250,6 +1258,17 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     #[rustc_lint_diagnostics]
     pub fn code(&mut self, code: ErrCode) -> &mut Self {
         self.code = Some(code);
+        self
+    } }
+
+    with_fn! { with_lint_id,
+    /// Add an argument.
+    #[rustc_lint_diagnostics]
+    pub fn lint_id(
+        &mut self,
+        id: LintExpectationId,
+    ) -> &mut Self {
+        self.lint_id = Some(id);
         self
     } }
 

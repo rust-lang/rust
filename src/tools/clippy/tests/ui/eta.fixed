@@ -29,12 +29,19 @@ macro_rules! closure_mac {
 
 fn main() {
     let a = Some(1u8).map(foo);
+    //~^ redundant_closure
     let c = Some(1u8).map(|a| {1+2; foo}(a));
     true.then(|| mac!()); // don't lint function in macro expansion
     Some(1).map(closure_mac!()); // don't lint closure in macro expansion
     let _: Option<Vec<u8>> = true.then(std::vec::Vec::new); // special case vec!
+    //
+    //~^^ redundant_closure
     let d = Some(1u8).map(|a| foo(foo2(a))); //is adjusted?
+    //
+    //~^^ redundant_closure
     all(&[1, 2, 3], &&2, below); //is adjusted
+    //
+    //~^^ redundant_closure
     unsafe {
         Some(1u8).map(|a| unsafe_fn(a)); // unsafe fn
     }
@@ -42,6 +49,7 @@ fn main() {
     // See #815
     let e = Some(1u8).map(|a| divergent(a));
     let e = Some(1u8).map(generic);
+    //~^ redundant_closure
     let e = Some(1u8).map(generic);
     // See #515
     let a: Option<Box<dyn (::std::ops::Deref<Target = [i32]>)>> =
@@ -94,16 +102,22 @@ impl<'a> std::ops::Deref for TestStruct<'a> {
 fn test_redundant_closures_containing_method_calls() {
     let i = 10;
     let e = Some(TestStruct { some_ref: &i }).map(TestStruct::foo);
+    //~^ redundant_closure_for_method_calls
     let e = Some(TestStruct { some_ref: &i }).map(TestTrait::trait_foo);
+    //~^ redundant_closure_for_method_calls
     let e = Some(TestStruct { some_ref: &i }).map(|a| a.trait_foo_ref());
     let e = Some(&mut vec![1, 2, 3]).map(std::vec::Vec::clear);
+    //~^ redundant_closure_for_method_calls
     unsafe {
         let e = Some(TestStruct { some_ref: &i }).map(|a| a.foo_unsafe());
     }
     let e = Some("str").map(std::string::ToString::to_string);
+    //~^ redundant_closure_for_method_calls
     let e = Some('a').map(char::to_uppercase);
+    //~^ redundant_closure_for_method_calls
     let e: std::vec::Vec<usize> = vec!['a', 'b', 'c'].iter().map(|c| c.len_utf8()).collect();
     let e: std::vec::Vec<char> = vec!['a', 'b', 'c'].iter().map(char::to_ascii_uppercase).collect();
+    //~^ redundant_closure_for_method_calls
     let e = Some(PathBuf::new()).as_ref().and_then(|s| s.to_str());
     let c = Some(TestStruct { some_ref: &i })
         .as_ref()
@@ -120,6 +134,7 @@ fn test_redundant_closures_containing_method_calls() {
     fn issue14096() {
         let x = Some("42");
         let _ = x.map(str::parse::<i16>);
+        //~^ redundant_closure_for_method_calls
     }
 }
 
@@ -172,6 +187,7 @@ fn generic<T>(_: T) -> u8 {
 
 fn passes_fn_mut(mut x: Box<dyn FnMut()>) {
     requires_fn_once(x);
+    //~^ redundant_closure
 }
 fn requires_fn_once<T: FnOnce()>(_: T) {}
 
@@ -179,11 +195,13 @@ fn test_redundant_closure_with_function_pointer() {
     type FnPtrType = fn(u8);
     let foo_ptr: FnPtrType = foo;
     let a = Some(1u8).map(foo_ptr);
+    //~^ redundant_closure
 }
 
 fn test_redundant_closure_with_another_closure() {
     let closure = |a| println!("{}", a);
     let a = Some(1u8).map(closure);
+    //~^ redundant_closure
 }
 
 fn make_lazy(f: impl Fn() -> fn(u8) -> u8) -> impl Fn(u8) -> u8 {
@@ -216,8 +234,11 @@ fn mutable_closure_used_again(x: Vec<i32>, y: Vec<i32>, z: Vec<i32>) {
     let mut res = Vec::new();
     let mut add_to_res = |n| res.push(n);
     x.into_iter().for_each(&mut add_to_res);
+    //~^ redundant_closure
     y.into_iter().for_each(&mut add_to_res);
+    //~^ redundant_closure
     z.into_iter().for_each(add_to_res);
+    //~^ redundant_closure
 }
 
 fn mutable_closure_in_loop() {
@@ -225,10 +246,12 @@ fn mutable_closure_in_loop() {
     let mut closure = |n| value += n;
     for _ in 0..5 {
         Some(1).map(&mut closure);
+        //~^ redundant_closure
 
         let mut value = 0;
         let mut in_loop = |n| value += n;
         Some(1).map(in_loop);
+        //~^ redundant_closure
     }
 }
 
@@ -322,13 +345,16 @@ fn not_general_enough() {
 pub fn mutable_impl_fn_mut(mut f: impl FnMut(), mut f_used_once: impl FnMut()) -> impl FnMut() {
     fn takes_fn_mut(_: impl FnMut()) {}
     takes_fn_mut(&mut f);
+    //~^ redundant_closure
 
     fn takes_fn_once(_: impl FnOnce()) {}
     takes_fn_once(&mut f);
+    //~^ redundant_closure
 
     f();
 
     move || takes_fn_mut(&mut f_used_once)
+    //~^ redundant_closure
 }
 
 impl dyn TestTrait + '_ {
@@ -341,16 +367,20 @@ impl dyn TestTrait + '_ {
 fn angle_brackets_and_args() {
     let array_opt: Option<&[u8; 3]> = Some(&[4, 8, 7]);
     array_opt.map(<[u8; 3]>::as_slice);
+    //~^ redundant_closure_for_method_calls
 
     let slice_opt: Option<&[u8]> = Some(b"slice");
     slice_opt.map(<[u8]>::len);
+    //~^ redundant_closure_for_method_calls
 
     let ptr_opt: Option<*const usize> = Some(&487);
     ptr_opt.map(<*const usize>::is_null);
+    //~^ redundant_closure_for_method_calls
 
     let test_struct = TestStruct { some_ref: &487 };
     let dyn_opt: Option<&dyn TestTrait> = Some(&test_struct);
     dyn_opt.map(<dyn TestTrait>::method_on_dyn);
+    //~^ redundant_closure_for_method_calls
 }
 
 // https://github.com/rust-lang/rust-clippy/issues/12199
@@ -411,6 +441,7 @@ fn _mixed_late_bound_and_early_bound_regions() {
         *y
     }
     let _ = f(&0, f2);
+    //~^ redundant_closure
 }
 
 fn _closure_with_types() {
@@ -439,10 +470,12 @@ mod issue_10854 {
 
         pub fn calls_test(test: Option<Test>) -> Option<i32> {
             test.map(Test::method)
+            //~^ redundant_closure_for_method_calls
         }
 
         pub fn calls_outer(test: Option<super::Outer>) -> Option<i32> {
             test.map(super::Outer::method)
+            //~^ redundant_closure_for_method_calls
         }
     }
 
@@ -456,6 +489,7 @@ mod issue_10854 {
 
     pub fn calls_into_mod(test: Option<test_mod::Test>) -> Option<i32> {
         test.map(test_mod::Test::method)
+        //~^ redundant_closure_for_method_calls
     }
 
     mod a {
@@ -463,6 +497,7 @@ mod issue_10854 {
             pub mod c {
                 pub fn extreme_nesting(test: Option<super::super::super::d::Test>) -> Option<i32> {
                     test.map(crate::issue_10854::d::Test::method)
+                    //~^ redundant_closure_for_method_calls
                 }
             }
         }
@@ -482,10 +517,12 @@ mod issue_10854 {
 mod issue_12853 {
     fn f_by_value<F: Fn(u32)>(f: F) {
         let x = Box::new(|| None.map(&f));
+        //~^ redundant_closure
         x();
     }
     fn f_by_ref<F: Fn(u32)>(f: &F) {
         let x = Box::new(|| None.map(f));
+        //~^ redundant_closure
         x();
     }
 }
@@ -503,5 +540,6 @@ mod issue_13073 {
         let _field = bind.as_deref().or_else(|| get_default()).unwrap();
         // should lint
         let _field = bind.or_else(get_default).unwrap();
+        //~^ redundant_closure
     }
 }

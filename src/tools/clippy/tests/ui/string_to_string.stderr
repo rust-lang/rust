@@ -8,5 +8,21 @@ LL |     let mut v = message.to_string();
    = note: `-D clippy::string-to-string` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::string_to_string)]`
 
-error: aborting due to 1 previous error
+error: `to_string()` called on a `String`
+  --> tests/ui/string_to_string.rs:14:9
+   |
+LL |         x.to_string()
+   |         ^^^^^^^^^^^^^
+   |
+   = help: consider using `.clone()`
+
+error: `to_string()` called on a `String`
+  --> tests/ui/string_to_string.rs:19:33
+   |
+LL |     let _ = x.unwrap_or_else(|| v.to_string());
+   |                                 ^^^^^^^^^^^^^
+   |
+   = help: consider using `.clone()`
+
+error: aborting due to 3 previous errors
 

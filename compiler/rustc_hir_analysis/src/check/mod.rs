@@ -62,9 +62,9 @@ a type parameter).
 
 */
 
+pub mod always_applicable;
 mod check;
 mod compare_impl_item;
-pub mod dropck;
 mod entry;
 pub mod intrinsic;
 pub mod intrinsicck;
@@ -84,6 +84,7 @@ use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -113,11 +114,11 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor> {
-    tcx.calculate_dtor(def_id.to_def_id(), dropck::check_drop_impl)
+    tcx.calculate_dtor(def_id, always_applicable::check_drop_impl)
 }
 
 fn adt_async_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::AsyncDestructor> {
-    tcx.calculate_async_dtor(def_id.to_def_id(), dropck::check_drop_impl)
+    tcx.calculate_async_dtor(def_id, always_applicable::check_drop_impl)
 }
 
 /// Given a `DefId` for an opaque type in return position, find its parent item's return
@@ -136,26 +137,16 @@ fn get_owner_return_paths(
     })
 }
 
-/// Forbid defining intrinsics in Rust code,
-/// as they must always be defined by the compiler.
-// FIXME: Move this to a more appropriate place.
-pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: ExternAbi) {
-    if let ExternAbi::RustIntrinsic = abi {
-        tcx.dcx().span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
-    }
-}
-
-fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
+pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     // Only restricted on wasm target for now
     if !tcx.sess.target.is_like_wasm {
         return;
     }
 
     // If `#[link_section]` is missing, then nothing to verify
-    let attrs = tcx.codegen_fn_attrs(id);
-    if attrs.link_section.is_none() {
+    let Some(link_section) = tcx.codegen_fn_attrs(id).link_section else {
         return;
-    }
+    };
 
     // For the wasm32 target statics with `#[link_section]` other than `.init_array`
     // are placed into custom sections of the final output file, but this isn't like
@@ -181,11 +172,8 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     //  continue to work, but would no longer be necessary.
 
     if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id())
-        && alloc.inner().provenance().ptrs().len() != 0
-        && attrs
-            .link_section
-            .map(|link_section| !link_section.as_str().starts_with(".init_array"))
-            .unwrap()
+        && !alloc.inner().provenance().ptrs().is_empty()
+        && !link_section.as_str().starts_with(".init_array")
     {
         let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
@@ -240,13 +228,13 @@ fn missing_items_err(
         (Vec::new(), Vec::new(), Vec::new());
 
     for &trait_item in missing_items {
-        let snippet = suggestion_signature(
+        let snippet = with_types_for_signature!(suggestion_signature(
             tcx,
             trait_item,
             tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity(),
-        );
+        ));
         let code = format!("{padding}{snippet}\n{padding}");
-        if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
+        if let Some(span) = tcx.hir_span_if_local(trait_item.def_id) {
             missing_trait_item_label
                 .push(errors::MissingTraitItemLabel { span, item: trait_item.name });
             missing_trait_item.push(errors::MissingTraitItemSuggestion {
@@ -344,9 +332,8 @@ fn bounds_from_generic_predicates<'tcx>(
             ty::ClauseKind::Trait(trait_predicate) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
-                if Some(def_id) != tcx.lang_items().sized_trait() {
-                    // Type params are `Sized` by default, do not add that restriction to the list
-                    // if it is a positive requirement.
+                if !tcx.is_default_trait(def_id) {
+                    // Do not add that restriction to the list if it is a positive requirement.
                     entry.push(trait_predicate.def_id());
                 }
             }
@@ -537,7 +524,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, d
     let variant_spans: Vec<_> = adt
         .variants()
         .iter()
-        .map(|variant| tcx.hir().span_if_local(variant.def_id).unwrap())
+        .map(|variant| tcx.hir_span_if_local(variant.def_id).unwrap())
         .collect();
     let (mut spans, mut many) = (Vec::new(), None);
     if let [start @ .., end] = &*variant_spans {

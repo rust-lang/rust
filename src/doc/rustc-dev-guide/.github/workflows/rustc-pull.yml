@@ -111,4 +111,4 @@ jobs:
           to: 196385
           type: "stream"
           topic: "Subtree sync automation"
-          content: ${{ steps.message.outputs.message }}
+          content: ${{ steps.create-message.outputs.message }}

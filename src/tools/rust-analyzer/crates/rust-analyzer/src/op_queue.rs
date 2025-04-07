@@ -6,7 +6,7 @@ pub(crate) type Cause = String;
 /// A single-item queue that allows callers to request an operation to
 /// be performed later.
 ///
-/// ```
+/// ```ignore
 /// let queue = OpQueue::default();
 ///
 /// // Request work to be done.

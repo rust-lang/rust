@@ -3,10 +3,9 @@
 //
 //@ run-pass
 //@ compile-flags: -Zmir-opt-level=4
-#![feature(intrinsics, repr_simd)]
+#![feature(core_intrinsics, repr_simd)]
 
-#[rustc_intrinsic]
-unsafe fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
+use std::intrinsics::simd::simd_shuffle;
 
 #[repr(simd)]
 #[derive(Debug, PartialEq)]

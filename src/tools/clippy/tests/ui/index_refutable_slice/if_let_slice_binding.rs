@@ -12,21 +12,24 @@ fn lintable_examples() {
     // Try with reference
     let slice: Option<&[u32]> = Some(&[1, 2, 3]);
     if let Some(slice) = slice {
-        //~^ ERROR: this binding can be a slice pattern to avoid indexing
+        //~^ index_refutable_slice
+
         println!("{}", slice[0]);
     }
 
     // Try with copy
     let slice: Option<[u32; 3]> = Some([1, 2, 3]);
     if let Some(slice) = slice {
-        //~^ ERROR: this binding can be a slice pattern to avoid indexing
+        //~^ index_refutable_slice
+
         println!("{}", slice[0]);
     }
 
     // Try with long slice and small indices
     let slice: Option<[u32; 9]> = Some([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     if let Some(slice) = slice {
-        //~^ ERROR: this binding can be a slice pattern to avoid indexing
+        //~^ index_refutable_slice
+
         println!("{}", slice[2]);
         println!("{}", slice[0]);
     }
@@ -34,7 +37,8 @@ fn lintable_examples() {
     // Multiple bindings
     let slice_wrapped: SomeEnum<[u32; 3]> = SomeEnum::One([5, 6, 7]);
     if let SomeEnum::One(slice) | SomeEnum::Three(slice) = slice_wrapped {
-        //~^ ERROR: this binding can be a slice pattern to avoid indexing
+        //~^ index_refutable_slice
+
         println!("{}", slice[0]);
     }
 
@@ -42,8 +46,9 @@ fn lintable_examples() {
     let a_wrapped: SomeEnum<[u32; 3]> = SomeEnum::One([9, 5, 1]);
     let b_wrapped: Option<[u32; 2]> = Some([4, 6]);
     if let (SomeEnum::Three(a), Some(b)) = (a_wrapped, b_wrapped) {
-        //~^ ERROR: this binding can be a slice pattern to avoid indexing
-        //~| ERROR: this binding can be a slice pattern to avoid indexing
+        //~^ index_refutable_slice
+        //~| index_refutable_slice
+
         println!("{} -> {}", a[2], b[1]);
     }
 
@@ -51,7 +56,8 @@ fn lintable_examples() {
     // borrowed and `String` doesn't implement copy
     let slice: Option<[String; 2]> = Some([String::from("1"), String::from("2")]);
     if let Some(ref slice) = slice {
-        //~^ ERROR: this binding can be a slice pattern to avoid indexing
+        //~^ index_refutable_slice
+
         println!("{:?}", slice[1]);
     }
     println!("{:?}", slice);
@@ -60,7 +66,8 @@ fn lintable_examples() {
     // a reference
     let slice: Option<[String; 2]> = Some([String::from("1"), String::from("2")]);
     if let Some(slice) = &slice {
-        //~^ ERROR: this binding can be a slice pattern to avoid indexing
+        //~^ index_refutable_slice
+
         println!("{:?}", slice[0]);
     }
     println!("{:?}", slice);
@@ -130,7 +137,8 @@ fn check_slice_in_struct() {
 
     // Test 1: Field access
     if let Some(slice) = wrap.inner {
-        //~^ ERROR: this binding can be a slice pattern to avoid indexing
+        //~^ index_refutable_slice
+
         if wrap.is_awesome {
             println!("This is awesome! {}", slice[0]);
         }
@@ -138,7 +146,8 @@ fn check_slice_in_struct() {
 
     // Test 2: function access
     if let Some(slice) = wrap.inner {
-        //~^ ERROR: this binding can be a slice pattern to avoid indexing
+        //~^ index_refutable_slice
+
         if wrap.is_super_awesome() {
             println!("This is super awesome! {}", slice[0]);
         }

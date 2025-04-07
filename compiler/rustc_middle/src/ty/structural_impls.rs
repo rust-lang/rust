@@ -11,16 +11,16 @@ use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_type_ir::ConstKind;
-use rustc_type_ir::visit::{VisitorResult, try_visit};
+use rustc_type_ir::{ConstKind, VisitorResult, try_visit};
 
 use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Pattern, Region};
 use crate::mir::PlaceElem;
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
-use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
+use crate::ty::{
+    self, FallibleTypeFolder, InferConst, Lift, Term, TermKind, Ty, TyCtxt, TypeFoldable,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+};
 
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -50,7 +50,7 @@ impl<'tcx> fmt::Debug for ty::AdtDef<'tcx> {
 
 impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = ty::tls::with(|tcx| tcx.hir().name(self.var_path.hir_id));
+        let name = ty::tls::with(|tcx| tcx.hir_name(self.var_path.hir_id));
         write!(f, "UpvarId({:?};`{}`;{:?})", self.var_path.hir_id, name, self.closure_expr_id)
     }
 }
@@ -86,15 +86,15 @@ impl fmt::Debug for ty::LateParamRegion {
 impl fmt::Debug for ty::LateParamRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::LateParamRegionKind::Anon(idx) => write!(f, "BrAnon({idx})"),
+            ty::LateParamRegionKind::Anon(idx) => write!(f, "LateAnon({idx})"),
             ty::LateParamRegionKind::Named(did, name) => {
                 if did.is_crate_root() {
-                    write!(f, "BrNamed({name})")
+                    write!(f, "LateNamed({name})")
                 } else {
-                    write!(f, "BrNamed({did:?}, {name})")
+                    write!(f, "LateNamed({did:?}, {name})")
                 }
             }
-            ty::LateParamRegionKind::ClosureEnv => write!(f, "BrEnv"),
+            ty::LateParamRegionKind::ClosureEnv => write!(f, "LateEnv"),
         }
     }
 }
@@ -284,6 +284,7 @@ TrivialTypeTraversalImpls! {
     rustc_hir::def_id::LocalDefId,
     rustc_hir::HirId,
     rustc_hir::MatchSource,
+    rustc_hir::RangeEnd,
     rustc_span::Ident,
     rustc_span::Span,
     rustc_span::Symbol,

@@ -15,7 +15,6 @@ pub enum Expr {
 #[no_mangle]
 pub extern "C" fn issue_114312(expr: Expr) {
     // CHECK-LABEL: @issue_114312(
-    // CHECK-NOT: readonly
     // CHECK-SAME: byval
     // CHECK-NEXT: start:
     // CHECK-NEXT: ret void

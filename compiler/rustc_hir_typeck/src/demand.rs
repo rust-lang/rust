@@ -6,9 +6,8 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::bug;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, AssocItem, Ty, TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{self, AssocItem, BottomUpFolder, Ty, TypeFoldable, TypeVisitableExt};
 use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
@@ -722,8 +721,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         },
                     )) => {
                         if let Some(hir::Node::Item(hir::Item {
-                            ident,
-                            kind: hir::ItemKind::Static(ty, ..) | hir::ItemKind::Const(ty, ..),
+                            kind:
+                                hir::ItemKind::Static(ident, ty, ..)
+                                | hir::ItemKind::Const(ident, ty, ..),
                             ..
                         })) = self.tcx.hir_get_if_local(*def_id)
                         {
@@ -865,10 +865,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
                 vec![(
                     ty_ref.1.ty.span.shrink_to_lo(),
-                    format!(
-                        "{}mut ",
-                        if ty_ref.0.ident.span.lo() == ty_ref.0.ident.span.hi() { "" } else { " " },
-                    ),
+                    format!("{}mut ", if ty_ref.0.ident.span.is_empty() { "" } else { " " },),
                 )]
             };
             sugg.extend([
@@ -999,10 +996,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let container = with_no_trimmed_paths!(self.tcx.def_path_str(container_id));
         for def_id in pick.import_ids {
             let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
-            path_span.push_span_label(
-                self.tcx.hir().span(hir_id),
-                format!("`{container}` imported here"),
-            );
+            path_span
+                .push_span_label(self.tcx.hir_span(hir_id), format!("`{container}` imported here"));
         }
         let tail = with_no_trimmed_paths!(match &other_methods_in_scope[..] {
             [] => return,
@@ -1265,7 +1260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     CallableKind::Function
                 };
-                maybe_emit_help(def_id, path.segments[0].ident, args, callable_kind);
+                maybe_emit_help(def_id, path.segments.last().unwrap().ident, args, callable_kind);
             }
             hir::ExprKind::MethodCall(method, _receiver, args, _span) => {
                 let Some(def_id) =

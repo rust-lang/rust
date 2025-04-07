@@ -25,4 +25,17 @@ impl example_runner::Testable for IsFoo {
 const TEST_1: IsFoo = IsFoo("hello");
 
 #[test_case]
-const TEST_2: IsFoo = IsFoo("foo");
+static TEST_2: IsFoo = IsFoo("foo");
+
+// FIXME: `test_case` is currently ignored on anything other than
+// fn/const/static. This should be an error. Compare this with `#[test]` and
+// #[bench] whose expanders emit "error: expected a non-associated function,
+// found […]" if applied to invalid items.
+#[test_case]
+struct _S;
+
+// FIXME: as above.
+#[test_case]
+impl _S {
+    fn _f() {}
+}

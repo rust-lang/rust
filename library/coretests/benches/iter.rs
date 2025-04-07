@@ -1,6 +1,5 @@
 use core::borrow::Borrow;
 use core::iter::*;
-use core::mem;
 use core::num::Wrapping;
 use core::ops::Range;
 
@@ -477,7 +476,7 @@ fn bench_next_chunk_copied(b: &mut Bencher) {
         let mut iter = black_box(&v).iter().copied();
         let mut acc = Wrapping(0);
         // This uses a while-let loop to side-step the TRA specialization in ArrayChunks
-        while let Ok(chunk) = iter.next_chunk::<{ mem::size_of::<u64>() }>() {
+        while let Ok(chunk) = iter.next_chunk::<{ size_of::<u64>() }>() {
             let d = u64::from_ne_bytes(chunk);
             acc += Wrapping(d.rotate_left(7).wrapping_add(1));
         }
@@ -496,7 +495,7 @@ fn bench_next_chunk_trusted_random_access(b: &mut Bencher) {
             .iter()
             // this shows that we're not relying on the slice::Iter specialization in Copied
             .map(|b| *b.borrow())
-            .array_chunks::<{ mem::size_of::<u64>() }>()
+            .array_chunks::<{ size_of::<u64>() }>()
             .map(|ary| {
                 let d = u64::from_ne_bytes(ary);
                 Wrapping(d.rotate_left(7).wrapping_add(1))

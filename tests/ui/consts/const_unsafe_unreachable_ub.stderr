@@ -1,20 +1,16 @@
 error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/hint.rs:LL:COL
+  --> $DIR/const_unsafe_unreachable_ub.rs:8:28
    |
-   = note: entering unreachable code
+LL | const BAR: bool = unsafe { foo(false) };
+   |                            ^^^^^^^^^^ entering unreachable code
    |
-note: inside `unreachable_unchecked`
-  --> $SRC_DIR/core/src/hint.rs:LL:COL
 note: inside `foo`
-  --> $DIR/const_unsafe_unreachable_ub.rs:6:18
+  --> $DIR/const_unsafe_unreachable_ub.rs:4:18
    |
 LL |         false => std::hint::unreachable_unchecked(),
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `BAR`
-  --> $DIR/const_unsafe_unreachable_ub.rs:10:28
-   |
-LL | const BAR: bool = unsafe { foo(false) };
-   |                            ^^^^^^^^^^
+note: inside `unreachable_unchecked`
+  --> $SRC_DIR/core/src/hint.rs:LL:COL
 
 error: aborting due to 1 previous error
 

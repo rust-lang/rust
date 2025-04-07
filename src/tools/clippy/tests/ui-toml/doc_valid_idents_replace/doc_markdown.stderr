@@ -25,7 +25,7 @@ LL + /// OAuth and `LaTeX` are inside Clippy's default list.
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui-toml/doc_valid_idents_replace/doc_markdown.rs:9:5
+  --> tests/ui-toml/doc_valid_idents_replace/doc_markdown.rs:11:5
    |
 LL | /// TestItemThingyOfCoolness might sound cool but is not on the list and should be linted.
    |     ^^^^^^^^^^^^^^^^^^^^^^^^

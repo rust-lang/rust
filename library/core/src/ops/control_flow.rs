@@ -79,7 +79,8 @@ use crate::{convert, ops};
 /// [`Break`]: ControlFlow::Break
 /// [`Continue`]: ControlFlow::Continue
 #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "ControlFlow")]
+#[rustc_diagnostic_item = "ControlFlow"]
+#[must_use]
 // ControlFlow should not implement PartialOrd or Ord, per RFC 3058:
 // https://rust-lang.github.io/rfcs/3058-try-trait-v2.html#traits-for-controlflow
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -225,6 +226,27 @@ impl<B, C> ControlFlow<B, C> {
         match self {
             ControlFlow::Continue(x) => ControlFlow::Continue(f(x)),
             ControlFlow::Break(x) => ControlFlow::Break(x),
+        }
+    }
+}
+
+impl<T> ControlFlow<T, T> {
+    /// Extracts the value `T` that is wrapped by `ControlFlow<T, T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(control_flow_into_value)]
+    /// use std::ops::ControlFlow;
+    ///
+    /// assert_eq!(ControlFlow::<i32, i32>::Break(1024).into_value(), 1024);
+    /// assert_eq!(ControlFlow::<i32, i32>::Continue(512).into_value(), 512);
+    /// ```
+    #[unstable(feature = "control_flow_into_value", issue = "137461")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    pub const fn into_value(self) -> T {
+        match self {
+            ControlFlow::Continue(x) | ControlFlow::Break(x) => x,
         }
     }
 }

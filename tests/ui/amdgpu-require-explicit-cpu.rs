@@ -3,7 +3,6 @@
 //@ compile-flags: --crate-type=cdylib --target=amdgcn-amd-amdhsa
 //@ needs-llvm-components: amdgpu
 //@ needs-rust-lld
-//@[nocpu] error-pattern: target requires explicitly specifying a cpu
 //@[nocpu] build-fail
 //@[cpu] compile-flags: -Ctarget-cpu=gfx900
 //@[cpu] build-pass
@@ -15,3 +14,5 @@
 trait Sized {}
 
 pub fn foo() {}
+
+//[nocpu]~? ERROR target requires explicitly specifying a cpu with `-C target-cpu`

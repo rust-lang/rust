@@ -4,6 +4,7 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core};
 use hir::LifetimeName;
+use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{Visitor, walk_expr};
@@ -19,7 +20,6 @@ use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, Pre
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
-use rustc_abi::ExternAbi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::{fmt, iter};
@@ -127,28 +127,34 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// This lint checks for invalid usages of `ptr::null`.
+    /// Use `std::ptr::eq` when applicable
     ///
     /// ### Why is this bad?
-    /// This causes undefined behavior.
+    /// `ptr::eq` can be used to compare `&T` references
+    /// (which coerce to `*const T` implicitly) by their address rather than
+    /// comparing the values they point to.
     ///
     /// ### Example
-    /// ```ignore
-    /// // Undefined behavior
-    /// unsafe { std::slice::from_raw_parts(ptr::null(), 0); }
-    /// ```
+    /// ```no_run
+    /// let a = &[1, 2, 3];
+    /// let b = &[1, 2, 3];
     ///
-    /// Use instead:
-    /// ```ignore
-    /// unsafe { std::slice::from_raw_parts(NonNull::dangling().as_ptr(), 0); }
+    /// assert!(a as *const _ as usize == b as *const _ as usize);
     /// ```
-    #[clippy::version = "1.53.0"]
-    pub INVALID_NULL_PTR_USAGE,
-    correctness,
-    "invalid usage of a null pointer, suggesting `NonNull::dangling()` instead"
+    /// Use instead:
+    /// ```no_run
+    /// let a = &[1, 2, 3];
+    /// let b = &[1, 2, 3];
+    ///
+    /// assert!(std::ptr::eq(a, b));
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub PTR_EQ,
+    style,
+    "use `std::ptr::eq` when comparing raw pointers"
 }
 
-declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF, INVALID_NULL_PTR_USAGE]);
+declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF, PTR_EQ]);
 
 impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
@@ -253,10 +259,14 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         if let ExprKind::Binary(op, l, r) = expr.kind
             && (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne)
         {
-            let non_null_path_snippet = match (is_null_path(cx, l), is_null_path(cx, r)) {
-                (true, false) if let Some(sugg) = Sugg::hir_opt(cx, r) => sugg.maybe_par(),
-                (false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_par(),
-                _ => return,
+            let non_null_path_snippet = match (
+                is_lint_allowed(cx, CMP_NULL, expr.hir_id),
+                is_null_path(cx, l),
+                is_null_path(cx, r),
+            ) {
+                (false, true, false) if let Some(sugg) = Sugg::hir_opt(cx, r) => sugg.maybe_par(),
+                (false, false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_par(),
+                _ => return check_ptr_eq(cx, expr, op.node, l, r),
             };
 
             span_lint_and_sugg(
@@ -268,54 +278,6 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                 format!("{non_null_path_snippet}.is_null()"),
                 Applicability::MachineApplicable,
             );
-        } else {
-            check_invalid_ptr_usage(cx, expr);
-        }
-    }
-}
-
-fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let ExprKind::Call(fun, args) = expr.kind
-        && let ExprKind::Path(ref qpath) = fun.kind
-        && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
-        && let Some(name) = cx.tcx.get_diagnostic_name(fun_def_id)
-    {
-        // TODO: `ptr_slice_from_raw_parts` and its mutable variant should probably still be linted
-        // conditionally based on how the return value is used, but not universally like the other
-        // functions since there are valid uses for null slice pointers.
-        //
-        // See: https://github.com/rust-lang/rust-clippy/pull/13452/files#r1773772034
-
-        // `arg` positions where null would cause U.B.
-        let arg_indices: &[_] = match name {
-            sym::ptr_read
-            | sym::ptr_read_unaligned
-            | sym::ptr_read_volatile
-            | sym::ptr_replace
-            | sym::ptr_write
-            | sym::ptr_write_bytes
-            | sym::ptr_write_unaligned
-            | sym::ptr_write_volatile
-            | sym::slice_from_raw_parts
-            | sym::slice_from_raw_parts_mut => &[0],
-            sym::ptr_copy | sym::ptr_copy_nonoverlapping | sym::ptr_swap | sym::ptr_swap_nonoverlapping => &[0, 1],
-            _ => return,
-        };
-
-        for &arg_idx in arg_indices {
-            if let Some(arg) = args.get(arg_idx).filter(|arg| is_null_path(cx, arg))
-                && let Some(std_or_core) = std_or_core(cx)
-            {
-                span_lint_and_sugg(
-                    cx,
-                    INVALID_NULL_PTR_USAGE,
-                    arg.span,
-                    "pointer must be non-null",
-                    "change this to",
-                    format!("{std_or_core}::ptr::NonNull::dangling().as_ptr()"),
-                    Applicability::MachineApplicable,
-                );
-            }
         }
     }
 }
@@ -738,5 +700,73 @@ fn is_null_path(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             .is_some_and(|id| matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ptr_null | sym::ptr_null_mut)))
     } else {
         false
+    }
+}
+
+fn check_ptr_eq<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    op: BinOpKind,
+    left: &'tcx Expr<'_>,
+    right: &'tcx Expr<'_>,
+) {
+    if expr.span.from_expansion() {
+        return;
+    }
+
+    // Remove one level of usize conversion if any
+    let (left, right) = match (expr_as_cast_to_usize(cx, left), expr_as_cast_to_usize(cx, right)) {
+        (Some(lhs), Some(rhs)) => (lhs, rhs),
+        _ => (left, right),
+    };
+
+    // This lint concerns raw pointers
+    let (left_ty, right_ty) = (cx.typeck_results().expr_ty(left), cx.typeck_results().expr_ty(right));
+    if !left_ty.is_raw_ptr() || !right_ty.is_raw_ptr() {
+        return;
+    }
+
+    let (left_var, right_var) = (peel_raw_casts(cx, left, left_ty), peel_raw_casts(cx, right, right_ty));
+
+    if let Some(left_snip) = left_var.span.get_source_text(cx)
+        && let Some(right_snip) = right_var.span.get_source_text(cx)
+    {
+        let Some(top_crate) = std_or_core(cx) else { return };
+        let invert = if op == BinOpKind::Eq { "" } else { "!" };
+        span_lint_and_sugg(
+            cx,
+            PTR_EQ,
+            expr.span,
+            format!("use `{top_crate}::ptr::eq` when comparing raw pointers"),
+            "try",
+            format!("{invert}{top_crate}::ptr::eq({left_snip}, {right_snip})"),
+            Applicability::MachineApplicable,
+        );
+    }
+}
+
+// If the given expression is a cast to a usize, return the lhs of the cast
+// E.g., `foo as *const _ as usize` returns `foo as *const _`.
+fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+    if cx.typeck_results().expr_ty(cast_expr) == cx.tcx.types.usize
+        && let ExprKind::Cast(expr, _) = cast_expr.kind
+    {
+        Some(expr)
+    } else {
+        None
+    }
+}
+
+// Peel raw casts if the remaining expression can be coerced to it
+fn peel_raw_casts<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, expr_ty: Ty<'tcx>) -> &'tcx Expr<'tcx> {
+    if let ExprKind::Cast(inner, _) = expr.kind
+        && let ty::RawPtr(target_ty, _) = expr_ty.kind()
+        && let inner_ty = cx.typeck_results().expr_ty(inner)
+        && let ty::RawPtr(inner_target_ty, _) | ty::Ref(_, inner_target_ty, _) = inner_ty.kind()
+        && target_ty == inner_target_ty
+    {
+        peel_raw_casts(cx, inner, inner_ty)
+    } else {
+        expr
     }
 }

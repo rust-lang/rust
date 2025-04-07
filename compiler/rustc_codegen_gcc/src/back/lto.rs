@@ -632,17 +632,16 @@ pub unsafe fn optimize_thin_module(
             Arc::new(SyncContext::new(context))
         }
     };
-    let module = ModuleCodegen {
-        module_llvm: GccContext {
+    let module = ModuleCodegen::new_regular(
+        thin_module.name().to_string(),
+        GccContext {
             context,
             should_combine_object_files,
             // TODO(antoyo): use the correct relocation model here.
             relocation_model: RelocModel::Pic,
             temp_dir: None,
         },
-        name: thin_module.name().to_string(),
-        kind: ModuleKind::Regular,
-    };
+    );
     /*{
         let target = &*module.module_llvm.tm;
         let llmod = module.module_llvm.llmod();

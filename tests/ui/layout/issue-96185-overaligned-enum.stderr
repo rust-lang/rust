@@ -4,7 +4,7 @@ error: layout_of(Aligned1) = Layout {
                abi: Align(8 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -43,7 +43,7 @@ error: layout_of(Aligned1) = Layout {
                            abi: Align(8 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -67,7 +67,7 @@ error: layout_of(Aligned1) = Layout {
                            abi: Align(8 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -104,7 +104,7 @@ error: layout_of(Aligned2) = Layout {
                abi: Align(1 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I8,
@@ -149,7 +149,7 @@ error: layout_of(Aligned2) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -173,7 +173,7 @@ error: layout_of(Aligned2) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {

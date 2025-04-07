@@ -27,13 +27,13 @@ fn main() {
     if a == 2 {
         println!("This is weird");
     }
-    //~^ ERROR: unnecessary semicolon
+    //~^ unnecessary_semicolon
 
     a.match {
         3 => println!("three"),
         _ => println!("not three"),
     }
-    //~^ ERROR: unnecessary semicolon
+    //~^ unnecessary_semicolon
 }
 
 // This is a problem in edition 2021 and below
@@ -45,6 +45,7 @@ fn borrow_issue() {
         },
         None => {},
     }
+    //~[edition2024]^ unnecessary_semicolon
 }
 
 fn no_borrow_issue(a: u32, b: u32) {
@@ -54,6 +55,7 @@ fn no_borrow_issue(a: u32, b: u32) {
         },
         None => {},
     }
+    //~^ unnecessary_semicolon
 }
 
 fn issue14100() -> bool {

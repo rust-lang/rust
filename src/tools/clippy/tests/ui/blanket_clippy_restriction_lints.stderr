@@ -6,7 +6,7 @@ error: `clippy::restriction` is not meant to be enabled as a group
    = help: to override `-D warnings` add `#[allow(clippy::blanket_clippy_restriction_lints)]`
 
 error: `clippy::restriction` is not meant to be enabled as a group
-  --> tests/ui/blanket_clippy_restriction_lints.rs:6:9
+  --> tests/ui/blanket_clippy_restriction_lints.rs:7:9
    |
 LL | #![warn(clippy::restriction)]
    |         ^^^^^^^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL | #![warn(clippy::restriction)]
    = help: enable the restriction lints you need individually
 
 error: `clippy::restriction` is not meant to be enabled as a group
-  --> tests/ui/blanket_clippy_restriction_lints.rs:8:9
+  --> tests/ui/blanket_clippy_restriction_lints.rs:9:9
    |
 LL | #![deny(clippy::restriction)]
    |         ^^^^^^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL | #![deny(clippy::restriction)]
    = help: enable the restriction lints you need individually
 
 error: `clippy::restriction` is not meant to be enabled as a group
-  --> tests/ui/blanket_clippy_restriction_lints.rs:10:11
+  --> tests/ui/blanket_clippy_restriction_lints.rs:11:11
    |
 LL | #![forbid(clippy::restriction)]
    |           ^^^^^^^^^^^^^^^^^^^

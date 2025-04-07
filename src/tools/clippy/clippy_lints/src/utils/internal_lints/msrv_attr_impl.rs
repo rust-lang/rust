@@ -30,8 +30,7 @@ impl LateLintPass<'_> for MsrvAttrImpl {
                 .tcx
                 .impl_trait_ref(item.owner_id)
                 .map(EarlyBinder::instantiate_identity)
-            && let is_late_pass = match_def_path(cx, trait_ref.def_id, &paths::LATE_LINT_PASS)
-            && (is_late_pass || match_def_path(cx, trait_ref.def_id, &paths::EARLY_LINT_PASS))
+            && match_def_path(cx, trait_ref.def_id, &paths::EARLY_LINT_PASS)
             && let ty::Adt(self_ty_def, _) = trait_ref.self_ty().kind()
             && self_ty_def.is_struct()
             && self_ty_def.all_fields().any(|f| {
@@ -40,20 +39,18 @@ impl LateLintPass<'_> for MsrvAttrImpl {
                     .instantiate_identity()
                     .walk()
                     .filter(|t| matches!(t.unpack(), GenericArgKind::Type(_)))
-                    .any(|t| match_type(cx, t.expect_ty(), &paths::MSRV))
+                    .any(|t| match_type(cx, t.expect_ty(), &paths::MSRV_STACK))
             })
             && !items.iter().any(|item| item.ident.name.as_str() == "check_attributes")
         {
-            let context = if is_late_pass { "LateContext" } else { "EarlyContext" };
-            let lint_pass = if is_late_pass { "LateLintPass" } else { "EarlyLintPass" };
             let span = cx.sess().source_map().span_through_char(item.span, '{');
             span_lint_and_sugg(
                 cx,
                 MISSING_MSRV_ATTR_IMPL,
                 span,
-                format!("`extract_msrv_attr!` macro missing from `{lint_pass}` implementation"),
-                format!("add `extract_msrv_attr!({context})` to the `{lint_pass}` implementation"),
-                format!("{}\n    extract_msrv_attr!({context});", snippet(cx, span, "..")),
+                "`extract_msrv_attr!` macro missing from `EarlyLintPass` implementation",
+                "add `extract_msrv_attr!()` to the `EarlyLintPass` implementation",
+                format!("{}\n    extract_msrv_attr!();", snippet(cx, span, "..")),
                 Applicability::MachineApplicable,
             );
         }

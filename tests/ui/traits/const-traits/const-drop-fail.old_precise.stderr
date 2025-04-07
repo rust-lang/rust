@@ -11,7 +11,7 @@ note: required by a bound in `check`
   --> $DIR/const-drop-fail.rs:24:19
    |
 LL | const fn check<T: ~const Destruct>(_: T) {}
-   |                   ^^^^^^ required by this bound in `check`
+   |                   ^^^^^^^^^^^^^^^ required by this bound in `check`
 
 error[E0277]: the trait bound `NonTrivialDrop: const Destruct` is not satisfied
   --> $DIR/const-drop-fail.rs:35:5
@@ -26,7 +26,7 @@ note: required by a bound in `check`
   --> $DIR/const-drop-fail.rs:24:19
    |
 LL | const fn check<T: ~const Destruct>(_: T) {}
-   |                   ^^^^^^ required by this bound in `check`
+   |                   ^^^^^^^^^^^^^^^ required by this bound in `check`
 
 error: aborting due to 2 previous errors
 

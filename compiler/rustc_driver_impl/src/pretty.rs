@@ -268,8 +268,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             let tcx = ex.tcx();
             let f = |annotation: &dyn pprust_hir::PpAnn| {
                 let sm = sess.source_map();
-                let hir_map = tcx.hir();
-                let attrs = |id| hir_map.attrs(id);
+                let attrs = |id| tcx.hir_attrs(id);
                 pprust_hir::print_crate(
                     sm,
                     tcx.hir_root_module(),

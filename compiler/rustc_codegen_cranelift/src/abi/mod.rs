@@ -402,9 +402,13 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
         if is_call_from_compiler_builtins_to_upstream_monomorphization(fx.tcx, instance) {
             if target.is_some() {
-                let caller = with_no_trimmed_paths!(fx.tcx.def_path_str(fx.instance.def_id()));
-                let callee = with_no_trimmed_paths!(fx.tcx.def_path_str(def_id));
-                fx.tcx.dcx().emit_err(CompilerBuiltinsCannotCall { caller, callee });
+                let caller_def = fx.instance.def_id();
+                let e = CompilerBuiltinsCannotCall {
+                    span: fx.tcx.def_span(caller_def),
+                    caller: with_no_trimmed_paths!(fx.tcx.def_path_str(caller_def)),
+                    callee: with_no_trimmed_paths!(fx.tcx.def_path_str(def_id)),
+                };
+                fx.tcx.dcx().emit_err(e);
             } else {
                 fx.bcx.ins().trap(TrapCode::user(2).unwrap());
                 return;
@@ -637,7 +641,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 .flat_map(|arg_abi| arg_abi.get_abi_param(fx.tcx).into_iter()),
         );
 
-        if fx.tcx.sess.target.is_like_osx && fx.tcx.sess.target.arch == "aarch64" {
+        if fx.tcx.sess.target.is_like_darwin && fx.tcx.sess.target.arch == "aarch64" {
             // Add any padding arguments needed for Apple AArch64.
             // There's no need to pad the argument list unless variadic arguments are actually being
             // passed.

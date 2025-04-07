@@ -101,7 +101,7 @@ fn dummy_gate_test_expand(
 /// somewhat inconsistently resolve derive attributes.
 ///
 /// As such, we expand `#[derive(Foo, bar::Bar)]` into
-/// ```
+/// ```ignore
 ///  #![Foo]
 ///  #![bar::Bar]
 /// ```

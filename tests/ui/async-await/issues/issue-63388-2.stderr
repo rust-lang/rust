@@ -12,16 +12,6 @@ help: consider using the `'a` lifetime
 LL |     ) -> &'a dyn Foo
    |           ++
 
-error[E0621]: explicit lifetime required in the type of `foo`
-  --> $DIR/issue-63388-2.rs:14:9
-   |
-LL |         foo: &dyn Foo, bar: &'a dyn Foo
-   |              -------- help: add explicit lifetime `'a` to the type of `foo`: `&'a (dyn Foo + 'a)`
-...
-LL |         foo
-   |         ^^^ lifetime `'a` required
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0106, E0621.
-For more information about an error, try `rustc --explain E0106`.
+For more information about this error, try `rustc --explain E0106`.

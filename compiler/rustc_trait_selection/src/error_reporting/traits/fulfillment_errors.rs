@@ -14,16 +14,19 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem, Node};
 use rustc_infer::infer::{InferOk, TypeTrace};
+use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{
     PrintPolyTraitPredicateExt, PrintTraitPredicateExt as _, PrintTraitRefExt as _,
     with_forced_trimmed_paths,
 };
-use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
+use rustc_middle::ty::{
+    self, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    Upcast,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::{debug, instrument};
@@ -829,7 +832,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 && let ty::Closure(closure_def_id, _) | ty::CoroutineClosure(closure_def_id, _) =
                     *typeck_results.node_type(arg_hir_id).kind()
             {
-                // Otherwise, extract the closure kind from the obligation.
+                // Otherwise, extract the closure kind from the obligation,
+                // but only if we actually have an argument to deduce the
+                // closure type from...
                 let mut err = self.report_closure_error(
                     &obligation,
                     closure_def_id,
@@ -844,63 +849,72 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let self_ty = trait_pred.self_ty().skip_binder();
 
-        if let Some(expected_kind) = self.tcx.fn_trait_kind_from_def_id(trait_pred.def_id()) {
-            let (closure_def_id, found_args, by_ref_captures) = match *self_ty.kind() {
-                ty::Closure(def_id, args) => {
-                    (def_id, args.as_closure().sig().map_bound(|sig| sig.inputs()[0]), None)
-                }
-                ty::CoroutineClosure(def_id, args) => (
-                    def_id,
-                    args.as_coroutine_closure()
-                        .coroutine_closure_sig()
-                        .map_bound(|sig| sig.tupled_inputs_ty),
-                    Some(args.as_coroutine_closure().coroutine_captures_by_ref_ty()),
-                ),
-                _ => return None,
+        let (expected_kind, trait_prefix) =
+            if let Some(expected_kind) = self.tcx.fn_trait_kind_from_def_id(trait_pred.def_id()) {
+                (expected_kind, "")
+            } else if let Some(expected_kind) =
+                self.tcx.async_fn_trait_kind_from_def_id(trait_pred.def_id())
+            {
+                (expected_kind, "Async")
+            } else {
+                return None;
             };
 
-            let expected_args =
-                trait_pred.map_bound(|trait_pred| trait_pred.trait_ref.args.type_at(1));
-
-            // Verify that the arguments are compatible. If the signature is
-            // mismatched, then we have a totally different error to report.
-            if self.enter_forall(found_args, |found_args| {
-                self.enter_forall(expected_args, |expected_args| {
-                    !self.can_eq(obligation.param_env, expected_args, found_args)
-                })
-            }) {
-                return None;
+        let (closure_def_id, found_args, by_ref_captures) = match *self_ty.kind() {
+            ty::Closure(def_id, args) => {
+                (def_id, args.as_closure().sig().map_bound(|sig| sig.inputs()[0]), None)
             }
+            ty::CoroutineClosure(def_id, args) => (
+                def_id,
+                args.as_coroutine_closure()
+                    .coroutine_closure_sig()
+                    .map_bound(|sig| sig.tupled_inputs_ty),
+                Some(args.as_coroutine_closure().coroutine_captures_by_ref_ty()),
+            ),
+            _ => return None,
+        };
 
-            if let Some(found_kind) = self.closure_kind(self_ty)
-                && !found_kind.extends(expected_kind)
-            {
-                let mut err = self.report_closure_error(
-                    &obligation,
-                    closure_def_id,
-                    found_kind,
-                    expected_kind,
-                    "",
-                );
-                self.note_obligation_cause(&mut err, &obligation);
-                return Some(err.emit());
-            }
+        let expected_args = trait_pred.map_bound(|trait_pred| trait_pred.trait_ref.args.type_at(1));
 
-            // If the closure has captures, then perhaps the reason that the trait
-            // is unimplemented is because async closures don't implement `Fn`/`FnMut`
-            // if they have captures.
-            if let Some(by_ref_captures) = by_ref_captures
-                && let ty::FnPtr(sig_tys, _) = by_ref_captures.kind()
-                && !sig_tys.skip_binder().output().is_unit()
-            {
-                let mut err = self.dcx().create_err(AsyncClosureNotFn {
-                    span: self.tcx.def_span(closure_def_id),
-                    kind: expected_kind.as_str(),
-                });
-                self.note_obligation_cause(&mut err, &obligation);
-                return Some(err.emit());
-            }
+        // Verify that the arguments are compatible. If the signature is
+        // mismatched, then we have a totally different error to report.
+        if self.enter_forall(found_args, |found_args| {
+            self.enter_forall(expected_args, |expected_args| {
+                !self.can_eq(obligation.param_env, expected_args, found_args)
+            })
+        }) {
+            return None;
         }
+
+        if let Some(found_kind) = self.closure_kind(self_ty)
+            && !found_kind.extends(expected_kind)
+        {
+            let mut err = self.report_closure_error(
+                &obligation,
+                closure_def_id,
+                found_kind,
+                expected_kind,
+                trait_prefix,
+            );
+            self.note_obligation_cause(&mut err, &obligation);
+            return Some(err.emit());
+        }
+
+        // If the closure has captures, then perhaps the reason that the trait
+        // is unimplemented is because async closures don't implement `Fn`/`FnMut`
+        // if they have captures.
+        if let Some(by_ref_captures) = by_ref_captures
+            && let ty::FnPtr(sig_tys, _) = by_ref_captures.kind()
+            && !sig_tys.skip_binder().output().is_unit()
+        {
+            let mut err = self.dcx().create_err(AsyncClosureNotFn {
+                span: self.tcx.def_span(closure_def_id),
+                kind: expected_kind.as_str(),
+            });
+            self.note_obligation_cause(&mut err, &obligation);
+            return Some(err.emit());
+        }
+
         None
     }
 
@@ -917,7 +931,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             )) = arg.kind
             && let Node::Pat(pat) = self.tcx.hir_node(*hir_id)
             && let Some((preds, guar)) = self.reported_trait_errors.borrow().get(&pat.span)
-            && preds.contains(&obligation.predicate)
+            && preds.contains(&obligation.as_goal())
         {
             return Err(*guar);
         }
@@ -1189,9 +1203,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let span = obligation.cause.span;
 
         let mut diag = match ty.kind() {
-            _ if ty.has_param() => {
-                span_bug!(span, "const param tys cannot mention other generic parameters");
-            }
             ty::Float(_) => {
                 struct_span_code_err!(
                     self.dcx(),
@@ -1226,7 +1237,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 // Only suggest derive if this isn't a derived obligation,
                 // and the struct is local.
-                if let Some(span) = self.tcx.hir().span_if_local(def.did())
+                if let Some(span) = self.tcx.hir_span_if_local(def.did())
                     && obligation.cause.code().parent().is_none()
                 {
                     if ty.is_structural_eq_shallow(self.tcx) {
@@ -1282,6 +1293,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn can_match_trait(
         &self,
+        param_env: ty::ParamEnv<'tcx>,
         goal: ty::TraitPredicate<'tcx>,
         assumption: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
@@ -1296,11 +1308,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             assumption,
         );
 
-        self.can_eq(ty::ParamEnv::empty(), goal.trait_ref, trait_assumption.trait_ref)
+        self.can_eq(param_env, goal.trait_ref, trait_assumption.trait_ref)
     }
 
     fn can_match_projection(
         &self,
+        param_env: ty::ParamEnv<'tcx>,
         goal: ty::ProjectionPredicate<'tcx>,
         assumption: ty::PolyProjectionPredicate<'tcx>,
     ) -> bool {
@@ -1310,7 +1323,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             assumption,
         );
 
-        let param_env = ty::ParamEnv::empty();
         self.can_eq(param_env, goal.projection_term, assumption.projection_term)
             && self.can_eq(param_env, goal.term, assumption.term)
     }
@@ -1320,24 +1332,32 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn error_implies(
         &self,
-        cond: ty::Predicate<'tcx>,
-        error: ty::Predicate<'tcx>,
+        cond: Goal<'tcx, ty::Predicate<'tcx>>,
+        error: Goal<'tcx, ty::Predicate<'tcx>>,
     ) -> bool {
         if cond == error {
             return true;
         }
 
-        if let Some(error) = error.as_trait_clause() {
+        // FIXME: We could be smarter about this, i.e. if cond's param-env is a
+        // subset of error's param-env. This only matters when binders will carry
+        // predicates though, and obviously only matters for error reporting.
+        if cond.param_env != error.param_env {
+            return false;
+        }
+        let param_env = error.param_env;
+
+        if let Some(error) = error.predicate.as_trait_clause() {
             self.enter_forall(error, |error| {
-                elaborate(self.tcx, std::iter::once(cond))
+                elaborate(self.tcx, std::iter::once(cond.predicate))
                     .filter_map(|implied| implied.as_trait_clause())
-                    .any(|implied| self.can_match_trait(error, implied))
+                    .any(|implied| self.can_match_trait(param_env, error, implied))
             })
-        } else if let Some(error) = error.as_projection_clause() {
+        } else if let Some(error) = error.predicate.as_projection_clause() {
             self.enter_forall(error, |error| {
-                elaborate(self.tcx, std::iter::once(cond))
+                elaborate(self.tcx, std::iter::once(cond.predicate))
                     .filter_map(|implied| implied.as_projection_clause())
-                    .any(|implied| self.can_match_projection(error, implied))
+                    .any(|implied| self.can_match_projection(param_env, error, implied))
             })
         } else {
             false
@@ -2419,6 +2439,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 &mut vec![],
                 &mut Default::default(),
             );
+            self.suggest_swapping_lhs_and_rhs(
+                err,
+                obligation.predicate,
+                obligation.param_env,
+                obligation.cause.code(),
+            );
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
                 && let Some(mut diag) =
@@ -2530,9 +2556,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 return GetSafeTransmuteErrorAndReason::Silent;
             };
 
-            let Some(assume) =
-                rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, assume)
-            else {
+            let Some(assume) = rustc_transmute::Assume::from_const(self.infcx.tcx, assume) else {
                 self.dcx().span_delayed_bug(
                     span,
                     "Unable to construct rustc_transmute::Assume where it was previously possible",
@@ -2544,11 +2568,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let src = trait_pred.trait_ref.args.type_at(1);
             let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
 
-            match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
-                obligation.cause,
-                src_and_dst,
-                assume,
-            ) {
+            match rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx)
+                .is_transmutable(src_and_dst, assume)
+            {
                 Answer::No(reason) => {
                     let safe_transmute_explanation = match reason {
                         rustc_transmute::Reason::SrcIsNotYetSupported => {
@@ -2931,7 +2953,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let found_node = found_did.and_then(|did| self.tcx.hir_get_if_local(did));
-        let found_span = found_did.and_then(|did| self.tcx.hir().span_if_local(did));
+        let found_span = found_did.and_then(|did| self.tcx.hir_span_if_local(did));
 
         if !self.reported_signature_mismatch.borrow_mut().insert((span, found_span)) {
             // We check closures twice, with obligations flowing in different directions,
@@ -3018,7 +3040,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         node: Node<'_>,
     ) -> Option<(Span, Option<Span>, Vec<ArgKind>)> {
         let sm = self.tcx.sess.source_map();
-        let hir = self.tcx.hir();
         Some(match node {
             Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, fn_arg_span, .. }),
@@ -3074,7 +3095,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .collect::<Vec<ArgKind>>(),
             ),
             Node::Ctor(variant_data) => {
-                let span = variant_data.ctor_hir_id().map_or(DUMMY_SP, |id| hir.span(id));
+                let span = variant_data.ctor_hir_id().map_or(DUMMY_SP, |id| self.tcx.hir_span(id));
                 (span, None, vec![ArgKind::empty(); variant_data.fields().len()])
             }
             _ => panic!("non-FnLike node found: {node:?}"),
@@ -3251,7 +3272,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> Result<Diag<'a>, ErrorGuaranteed> {
-        if !self.tcx.features().generic_const_exprs() {
+        if !self.tcx.features().generic_const_exprs()
+            && !self.tcx.features().min_generic_const_args()
+        {
             let guar = self
                 .dcx()
                 .struct_span_err(span, "constant expression depends on a generic parameter")

@@ -38,7 +38,7 @@ impl<R> Transitions<R>
 where
     R: Ref,
 {
-    #[allow(dead_code)]
+    #[cfg(test)]
     fn insert(&mut self, transition: Transition<R>, state: State) {
         match transition {
             Transition::Byte(b) => {
@@ -55,6 +55,7 @@ where
 #[derive(Hash, Eq, PartialEq, PartialOrd, Ord, Copy, Clone)]
 pub(crate) struct State(u32);
 
+#[cfg(test)]
 #[derive(Hash, Eq, PartialEq, Clone, Copy)]
 pub(crate) enum Transition<R>
 where
@@ -70,6 +71,7 @@ impl fmt::Debug for State {
     }
 }
 
+#[cfg(test)]
 impl<R> fmt::Debug for Transition<R>
 where
     R: Ref,
@@ -86,15 +88,6 @@ impl<R> Dfa<R>
 where
     R: Ref,
 {
-    #[allow(dead_code)]
-    pub(crate) fn unit() -> Self {
-        let transitions: Map<State, Transitions<R>> = Map::default();
-        let start = State::new();
-        let accepting = start;
-
-        Self { transitions, start, accepting }
-    }
-
     #[cfg(test)]
     pub(crate) fn bool() -> Self {
         let mut transitions: Map<State, Transitions<R>> = Map::default();
@@ -175,6 +168,7 @@ impl State {
     }
 }
 
+#[cfg(test)]
 impl<R> From<nfa::Transition<R>> for Transition<R>
 where
     R: Ref,

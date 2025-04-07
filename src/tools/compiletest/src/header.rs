@@ -11,6 +11,7 @@ use tracing::*;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
+use crate::executor::{CollectedTestDesc, ShouldPanic};
 use crate::header::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::header::needs::CachedNeedsConditions;
 use crate::util::static_regex;
@@ -709,11 +710,11 @@ impl TestProps {
 /// returns a struct containing various parts of the directive.
 fn line_directive<'line>(
     line_number: usize,
-    comment: &str,
     original_line: &'line str,
 ) -> Option<DirectiveLine<'line>> {
     // Ignore lines that don't start with the comment prefix.
-    let after_comment = original_line.trim_start().strip_prefix(comment)?.trim_start();
+    let after_comment =
+        original_line.trim_start().strip_prefix(COMPILETEST_DIRECTIVE_PREFIX)?.trim_start();
 
     let revision;
     let raw_directive;
@@ -722,7 +723,7 @@ fn line_directive<'line>(
         // A comment like `//@[foo]` only applies to revision `foo`.
         let Some((line_revision, after_close_bracket)) = after_open_bracket.split_once(']') else {
             panic!(
-                "malformed condition directive: expected `{comment}[foo]`, found `{original_line}`"
+                "malformed condition directive: expected `{COMPILETEST_DIRECTIVE_PREFIX}[foo]`, found `{original_line}`"
             )
         };
 
@@ -836,6 +837,8 @@ pub(crate) fn check_directive<'a>(
     CheckDirectiveResult { is_known_directive: is_known(&directive_name), trailing_directive }
 }
 
+const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
+
 fn iter_header(
     mode: Mode,
     _suite: &str,
@@ -849,8 +852,7 @@ fn iter_header(
     }
 
     // Coverage tests in coverage-run mode always have these extra directives, without needing to
-    // specify them manually in every test file. (Some of the comments below have been copied over
-    // from the old `tests/run-make/coverage-reports/Makefile`, which no longer exists.)
+    // specify them manually in every test file.
     //
     // FIXME(jieyouxu): I feel like there's a better way to do this, leaving for later.
     if mode == Mode::CoverageRun {
@@ -867,9 +869,6 @@ fn iter_header(
         }
     }
 
-    // NOTE(jieyouxu): once we get rid of `Makefile`s we can unconditionally check for `//@`.
-    let comment = if testfile.extension().is_some_and(|e| e == "rs") { "//@" } else { "#" };
-
     let mut rdr = BufReader::with_capacity(1024, rdr);
     let mut ln = String::new();
     let mut line_number = 0;
@@ -882,7 +881,7 @@ fn iter_header(
         }
         let ln = ln.trim();
 
-        let Some(directive_line) = line_directive(line_number, comment, ln) else {
+        let Some(directive_line) = line_directive(line_number, ln) else {
             continue;
         };
 
@@ -926,7 +925,14 @@ fn iter_header(
 
 impl Config {
     fn parse_and_update_revisions(&self, testfile: &Path, line: &str, existing: &mut Vec<String>) {
-        const FORBIDDEN_REVISION_NAMES: [&str; 9] =
+        const FORBIDDEN_REVISION_NAMES: [&str; 2] = [
+            // `//@ revisions: true false` Implying `--cfg=true` and `--cfg=false` makes it very
+            // weird for the test, since if the test writer wants a cfg of the same revision name
+            // they'd have to use `cfg(r#true)` and `cfg(r#false)`.
+            "true", "false",
+        ];
+
+        const FILECHECK_FORBIDDEN_REVISION_NAMES: [&str; 9] =
             ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
 
         if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
@@ -935,25 +941,38 @@ impl Config {
             }
 
             let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
-            for revision in raw.split_whitespace().map(|r| r.to_string()) {
-                if !duplicates.insert(revision.clone()) {
+            for revision in raw.split_whitespace() {
+                if !duplicates.insert(revision.to_string()) {
                     panic!(
                         "duplicate revision: `{}` in line `{}`: {}",
                         revision,
                         raw,
                         testfile.display()
                     );
-                } else if matches!(self.mode, Mode::Assembly | Mode::Codegen | Mode::MirOpt)
-                    && FORBIDDEN_REVISION_NAMES.contains(&revision.as_str())
-                {
+                }
+
+                if FORBIDDEN_REVISION_NAMES.contains(&revision) {
                     panic!(
-                        "revision name `{revision}` is not permitted in a test suite that uses `FileCheck` annotations\n\
-                         as it is confusing when used as custom `FileCheck` prefix: `{revision}` in line `{}`: {}",
+                        "revision name `{revision}` is not permitted: `{}` in line `{}`: {}",
+                        revision,
                         raw,
                         testfile.display()
                     );
                 }
-                existing.push(revision);
+
+                if matches!(self.mode, Mode::Assembly | Mode::Codegen | Mode::MirOpt)
+                    && FILECHECK_FORBIDDEN_REVISION_NAMES.contains(&revision)
+                {
+                    panic!(
+                        "revision name `{revision}` is not permitted in a test suite that uses \
+                        `FileCheck` annotations as it is confusing when used as custom `FileCheck` \
+                        prefix: `{revision}` in line `{}`: {}",
+                        raw,
+                        testfile.display()
+                    );
+                }
+
+                existing.push(revision.to_string());
             }
         }
     }
@@ -1070,10 +1089,11 @@ impl Config {
     }
 }
 
+// FIXME(jieyouxu): fix some of these variable names to more accurately reflect what they do.
 fn expand_variables(mut value: String, config: &Config) -> String {
     const CWD: &str = "{{cwd}}";
     const SRC_BASE: &str = "{{src-base}}";
-    const BUILD_BASE: &str = "{{build-base}}";
+    const TEST_SUITE_BUILD_BASE: &str = "{{build-base}}";
     const RUST_SRC_BASE: &str = "{{rust-src-base}}";
     const SYSROOT_BASE: &str = "{{sysroot-base}}";
     const TARGET_LINKER: &str = "{{target-linker}}";
@@ -1088,12 +1108,13 @@ fn expand_variables(mut value: String, config: &Config) -> String {
         value = value.replace(SRC_BASE, &config.src_test_suite_root.to_str().unwrap());
     }
 
-    if value.contains(BUILD_BASE) {
-        value = value.replace(BUILD_BASE, &config.build_base.to_string_lossy());
+    if value.contains(TEST_SUITE_BUILD_BASE) {
+        value =
+            value.replace(TEST_SUITE_BUILD_BASE, &config.build_test_suite_root.to_str().unwrap());
     }
 
     if value.contains(SYSROOT_BASE) {
-        value = value.replace(SYSROOT_BASE, &config.sysroot_base.to_string_lossy());
+        value = value.replace(SYSROOT_BASE, &config.sysroot_base.to_str().unwrap());
     }
 
     if value.contains(TARGET_LINKER) {
@@ -1335,15 +1356,15 @@ where
     Some((min, max))
 }
 
-pub fn make_test_description<R: Read>(
+pub(crate) fn make_test_description<R: Read>(
     config: &Config,
     cache: &HeadersCache,
-    name: test::TestName,
+    name: String,
     path: &Path,
     src: R,
     test_revision: Option<&str>,
     poisoned: &mut bool,
-) -> test::TestDesc {
+) -> CollectedTestDesc {
     let mut ignore = false;
     let mut ignore_message = None;
     let mut should_fail = false;
@@ -1367,10 +1388,7 @@ pub fn make_test_description<R: Read>(
                     match $e {
                         IgnoreDecision::Ignore { reason } => {
                             ignore = true;
-                            // The ignore reason must be a &'static str, so we have to leak memory to
-                            // create it. This is fine, as the header is parsed only at the start of
-                            // compiletest so it won't grow indefinitely.
-                            ignore_message = Some(&*Box::leak(Box::<str>::from(reason)));
+                            ignore_message = Some(reason.into());
                         }
                         IgnoreDecision::Error { message } => {
                             eprintln!("error: {}:{line_number}: {message}", path.display());
@@ -1385,7 +1403,7 @@ pub fn make_test_description<R: Read>(
             decision!(cfg::handle_ignore(config, ln));
             decision!(cfg::handle_only(config, ln));
             decision!(needs::handle_needs(&cache.needs, config, ln));
-            decision!(ignore_llvm(config, ln));
+            decision!(ignore_llvm(config, path, ln));
             decision!(ignore_cdb(config, ln));
             decision!(ignore_gdb(config, ln));
             decision!(ignore_lldb(config, ln));
@@ -1411,25 +1429,12 @@ pub fn make_test_description<R: Read>(
     // since we run the pretty printer across all tests by default.
     // If desired, we could add a `should-fail-pretty` annotation.
     let should_panic = match config.mode {
-        crate::common::Pretty => test::ShouldPanic::No,
-        _ if should_fail => test::ShouldPanic::Yes,
-        _ => test::ShouldPanic::No,
+        crate::common::Pretty => ShouldPanic::No,
+        _ if should_fail => ShouldPanic::Yes,
+        _ => ShouldPanic::No,
     };
 
-    test::TestDesc {
-        name,
-        ignore,
-        ignore_message,
-        source_file: "",
-        start_line: 0,
-        start_col: 0,
-        end_line: 0,
-        end_col: 0,
-        should_panic,
-        compile_fail: false,
-        no_run: false,
-        test_type: test::TestType::Unknown,
-    }
+    CollectedTestDesc { name, ignore, ignore_message, should_panic }
 }
 
 fn ignore_cdb(config: &Config, line: &str) -> IgnoreDecision {
@@ -1525,7 +1530,7 @@ fn ignore_lldb(config: &Config, line: &str) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
+fn ignore_llvm(config: &Config, path: &Path, line: &str) -> IgnoreDecision {
     if let Some(needed_components) =
         config.parse_name_value_directive(line, "needs-llvm-components")
     {
@@ -1536,8 +1541,9 @@ fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
         {
             if env::var_os("COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS").is_some() {
                 panic!(
-                    "missing LLVM component {}, and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set",
-                    missing_component
+                    "missing LLVM component {}, and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set: {}",
+                    missing_component,
+                    path.display()
                 );
             }
             return IgnoreDecision::Ignore {

@@ -1,19 +1,20 @@
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
+use std::sync::Arc;
 use std::{mem, slice};
 
 use ast::token::IdentIsRaw;
-use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::{self as attr, TransparencyError};
+use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_feature::Features;
+use rustc_hir as hir;
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
@@ -371,7 +372,7 @@ pub fn compile_declarative_macro(
     features: &Features,
     macro_def: &ast::MacroDef,
     ident: Ident,
-    attrs: &[impl AttributeExt],
+    attrs: &[hir::Attribute],
     span: Span,
     node_id: NodeId,
     edition: Edition,
@@ -379,7 +380,6 @@ pub fn compile_declarative_macro(
     let mk_syn_ext = |expander| {
         SyntaxExtension::new(
             sess,
-            features,
             SyntaxExtensionKind::LegacyBang(expander),
             span,
             Vec::new(),
@@ -389,9 +389,8 @@ pub fn compile_declarative_macro(
             node_id != DUMMY_NODE_ID,
         )
     };
-    let dummy_syn_ext = |guar| (mk_syn_ext(Box::new(DummyExpander(guar))), Vec::new());
+    let dummy_syn_ext = |guar| (mk_syn_ext(Arc::new(DummyExpander(guar))), Vec::new());
 
-    let dcx = sess.dcx();
     let lhs_nm = Ident::new(sym::lhs, span);
     let rhs_nm = Ident::new(sym::rhs, span);
     let tt_spec = Some(NonterminalKind::TT);
@@ -542,16 +541,8 @@ pub fn compile_declarative_macro(
 
     check_emission(macro_check::check_meta_variables(&sess.psess, node_id, span, &lhses, &rhses));
 
-    let (transparency, transparency_error) = attr::find_transparency(attrs, macro_rules);
-    match transparency_error {
-        Some(TransparencyError::UnknownTransparency(value, span)) => {
-            dcx.span_err(span, format!("unknown macro transparency: `{value}`"));
-        }
-        Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) => {
-            dcx.span_err(vec![old_span, new_span], "multiple macro transparency attributes");
-        }
-        None => {}
-    }
+    let transparency = find_attr!(attrs, AttributeKind::MacroTransparency(x) => *x)
+        .unwrap_or(Transparency::fallback(macro_rules));
 
     if let Some(guar) = guar {
         // To avoid warning noise, only consider the rules of this
@@ -592,7 +583,7 @@ pub fn compile_declarative_macro(
         })
         .collect();
 
-    let expander = Box::new(MacroRulesMacroExpander {
+    let expander = Arc::new(MacroRulesMacroExpander {
         name: ident,
         span,
         node_id,
@@ -700,7 +691,7 @@ fn has_compile_error_macro(rhs: &mbe::TokenTree) -> bool {
                     && let TokenKind::Ident(ident, _) = ident.kind
                     && ident == sym::compile_error
                     && let mbe::TokenTree::Token(bang) = bang
-                    && let TokenKind::Not = bang.kind
+                    && let TokenKind::Bang = bang.kind
                     && let mbe::TokenTree::Delimited(.., del) = args
                     && !del.delim.skip()
                 {
@@ -1145,7 +1136,7 @@ fn check_matcher_core<'tt>(
                         && matches!(kind, NonterminalKind::Pat(PatParam { inferred: true }))
                         && matches!(
                             next_token,
-                            TokenTree::Token(token) if *token == BinOp(token::BinOpToken::Or)
+                            TokenTree::Token(token) if *token == token::Or
                         )
                     {
                         // It is suggestion to use pat_param, for example: $x:pat -> $x:pat_param.
@@ -1187,7 +1178,7 @@ fn check_matcher_core<'tt>(
 
                             if kind == NonterminalKind::Pat(PatWithOr)
                                 && sess.psess.edition.at_least_rust_2021()
-                                && next_token.is_token(&BinOp(token::BinOpToken::Or))
+                                && next_token.is_token(&token::Or)
                             {
                                 let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
                                     span,
@@ -1306,7 +1297,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
-                        FatArrow | Comma | Eq | BinOp(token::Or) => IsInFollow::Yes,
+                        FatArrow | Comma | Eq | Or => IsInFollow::Yes,
                         Ident(name, IdentIsRaw::No) if name == kw::If || name == kw::In => {
                             IsInFollow::Yes
                         }
@@ -1342,9 +1333,9 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                         | Colon
                         | Eq
                         | Gt
-                        | BinOp(token::Shr)
+                        | Shr
                         | Semi
-                        | BinOp(token::Or) => IsInFollow::Yes,
+                        | Or => IsInFollow::Yes,
                         Ident(name, IdentIsRaw::No) if name == kw::As || name == kw::Where => {
                             IsInFollow::Yes
                         }

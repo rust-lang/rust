@@ -13,11 +13,13 @@ fn alternatives() {
 
     // not ok
     if let Value::B | Value::A(_) = ref_value {}
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
+
     if let &Value::B | &Value::A(Some(_)) = ref_value {}
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
+
     if let Value::B | Value::A(Some(_)) = *ref_value {}
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
 
     // ok
     if let &Value::B | &Value::A(_) = ref_value {}

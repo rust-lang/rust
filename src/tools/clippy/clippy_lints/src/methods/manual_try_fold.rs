@@ -17,10 +17,9 @@ pub(super) fn check<'tcx>(
     init: &Expr<'_>,
     acc: &Expr<'_>,
     fold_span: Span,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if !fold_span.in_external_macro(cx.sess().source_map())
-        && msrv.meets(msrvs::ITERATOR_TRY_FOLD)
         && is_trait_method(cx, expr, sym::Iterator)
         && let init_ty = cx.typeck_results().expr_ty(init)
         && let Some(try_trait) = cx.tcx.lang_items().try_trait()
@@ -29,6 +28,7 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Path(qpath) = path.kind
         && let Res::Def(DefKind::Ctor(_, _), _) = cx.qpath_res(&qpath, path.hir_id)
         && let ExprKind::Closure(closure) = acc.kind
+        && msrv.meets(cx, msrvs::ITERATOR_TRY_FOLD)
         && !is_from_proc_macro(cx, expr)
         && let Some(args_snip) = closure
             .fn_arg_span

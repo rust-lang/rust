@@ -32,7 +32,7 @@ impl<'a> Parser<'a> {
                 | MetaVarKind::Expr { .. }
                 | MetaVarKind::Ty { .. }
                 | MetaVarKind::Literal // `true`, `false`
-                | MetaVarKind::Meta
+                | MetaVarKind::Meta { .. }
                 | MetaVarKind::Path => true,
 
                 MetaVarKind::Item
@@ -48,14 +48,7 @@ impl<'a> Parser<'a> {
         /// Old variant of `may_be_ident`. Being phased out.
         fn nt_may_be_ident(nt: &Nonterminal) -> bool {
             match nt {
-                NtStmt(_)
-                | NtPat(_)
-                | NtExpr(_)
-                | NtLiteral(_) // `true`, `false`
-                | NtMeta(_)
-                | NtPath(_) => true,
-
-                NtItem(_) | NtBlock(_) => false,
+                NtBlock(_) => false,
             }
         }
 
@@ -98,8 +91,7 @@ impl<'a> Parser<'a> {
                 token::OpenDelim(Delimiter::Brace) => true,
                 token::NtLifetime(..) => true,
                 token::Interpolated(nt) => match &**nt {
-                    NtBlock(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
-                    NtItem(_) | NtPat(_) | NtMeta(_) | NtPath(_) => false,
+                    NtBlock(_) => true,
                 },
                 token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(k))) => match k {
                     MetaVarKind::Block
@@ -109,7 +101,7 @@ impl<'a> Parser<'a> {
                     MetaVarKind::Item
                     | MetaVarKind::Pat(_)
                     | MetaVarKind::Ty { .. }
-                    | MetaVarKind::Meta
+                    | MetaVarKind::Meta { .. }
                     | MetaVarKind::Path
                     | MetaVarKind::Vis => false,
                     MetaVarKind::Lifetime | MetaVarKind::Ident | MetaVarKind::TT => {
@@ -149,7 +141,7 @@ impl<'a> Parser<'a> {
             // Note that TT is treated differently to all the others.
             NonterminalKind::TT => return Ok(ParseNtResult::Tt(self.parse_token_tree())),
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
-                Some(item) => NtItem(item),
+                Some(item) => return Ok(ParseNtResult::Item(item)),
                 None => {
                     return Err(self
                         .dcx()
@@ -162,7 +154,7 @@ impl<'a> Parser<'a> {
                 NtBlock(self.collect_tokens_no_attrs(|this| this.parse_block())?)
             }
             NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
-                Some(s) => NtStmt(P(s)),
+                Some(stmt) => return Ok(ParseNtResult::Stmt(P(stmt))),
                 None => {
                     return Err(self
                         .dcx()
@@ -170,20 +162,27 @@ impl<'a> Parser<'a> {
                 }
             },
             NonterminalKind::Pat(pat_kind) => {
-                NtPat(self.collect_tokens_no_attrs(|this| match pat_kind {
-                    PatParam { .. } => this.parse_pat_no_top_alt(None, None),
-                    PatWithOr => this.parse_pat_no_top_guard(
-                        None,
-                        RecoverComma::No,
-                        RecoverColon::No,
-                        CommaRecoveryMode::EitherTupleOrPipe,
-                    ),
-                })?)
+                return Ok(ParseNtResult::Pat(
+                    self.collect_tokens_no_attrs(|this| match pat_kind {
+                        PatParam { .. } => this.parse_pat_no_top_alt(None, None),
+                        PatWithOr => this.parse_pat_no_top_guard(
+                            None,
+                            RecoverComma::No,
+                            RecoverColon::No,
+                            CommaRecoveryMode::EitherTupleOrPipe,
+                        ),
+                    })?,
+                    pat_kind,
+                ));
             }
-            NonterminalKind::Expr(_) => NtExpr(self.parse_expr_force_collect()?),
+            NonterminalKind::Expr(expr_kind) => {
+                return Ok(ParseNtResult::Expr(self.parse_expr_force_collect()?, expr_kind));
+            }
             NonterminalKind::Literal => {
-                // The `:literal` matcher does not support attributes
-                NtLiteral(self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?)
+                // The `:literal` matcher does not support attributes.
+                return Ok(ParseNtResult::Literal(
+                    self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?,
+                ));
             }
             NonterminalKind::Ty => {
                 return Ok(ParseNtResult::Ty(
@@ -203,9 +202,13 @@ impl<'a> Parser<'a> {
                 };
             }
             NonterminalKind::Path => {
-                NtPath(P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?))
+                return Ok(ParseNtResult::Path(P(
+                    self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?
+                )));
             }
-            NonterminalKind::Meta => NtMeta(P(self.parse_attr_item(ForceCollect::Yes)?)),
+            NonterminalKind::Meta => {
+                return Ok(ParseNtResult::Meta(P(self.parse_attr_item(ForceCollect::Yes)?)));
+            }
             NonterminalKind::Vis => {
                 return Ok(ParseNtResult::Vis(P(self.collect_tokens_no_attrs(|this| {
                     this.parse_visibility(FollowedByType::Yes)

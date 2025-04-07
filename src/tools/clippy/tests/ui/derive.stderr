@@ -3,9 +3,9 @@ error: you are implementing `Clone` explicitly on a `Copy` type
    |
 LL | / impl Clone for Qux {
 LL | |
+LL | |
 LL | |     fn clone(&self) -> Self {
-LL | |         Qux
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
@@ -14,99 +14,99 @@ note: consider deriving `Clone` or removing `Copy`
    |
 LL | / impl Clone for Qux {
 LL | |
+LL | |
 LL | |     fn clone(&self) -> Self {
-LL | |         Qux
-LL | |     }
+...  |
 LL | | }
    | |_^
    = note: `-D clippy::expl-impl-clone-on-copy` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::expl_impl_clone_on_copy)]`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:39:1
+  --> tests/ui/derive.rs:40:1
    |
 LL | / impl<'a> Clone for Lt<'a> {
 LL | |
+LL | |
 LL | |     fn clone(&self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> tests/ui/derive.rs:39:1
+  --> tests/ui/derive.rs:40:1
    |
 LL | / impl<'a> Clone for Lt<'a> {
 LL | |
+LL | |
 LL | |     fn clone(&self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
+...  |
 LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:51:1
+  --> tests/ui/derive.rs:53:1
    |
 LL | / impl Clone for BigArray {
 LL | |
+LL | |
 LL | |     fn clone(&self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> tests/ui/derive.rs:51:1
+  --> tests/ui/derive.rs:53:1
    |
 LL | / impl Clone for BigArray {
 LL | |
+LL | |
 LL | |     fn clone(&self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
+...  |
 LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:63:1
+  --> tests/ui/derive.rs:66:1
    |
 LL | / impl Clone for FnPtr {
 LL | |
+LL | |
 LL | |     fn clone(&self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> tests/ui/derive.rs:63:1
+  --> tests/ui/derive.rs:66:1
    |
 LL | / impl Clone for FnPtr {
 LL | |
+LL | |
 LL | |     fn clone(&self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
+...  |
 LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:84:1
+  --> tests/ui/derive.rs:88:1
    |
 LL | / impl<T: Clone> Clone for Generic2<T> {
 LL | |
+LL | |
 LL | |     fn clone(&self) -> Self {
-LL | |         Self(self.0.clone())
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> tests/ui/derive.rs:84:1
+  --> tests/ui/derive.rs:88:1
    |
 LL | / impl<T: Clone> Clone for Generic2<T> {
 LL | |
+LL | |
 LL | |     fn clone(&self) -> Self {
-LL | |         Self(self.0.clone())
-LL | |     }
+...  |
 LL | | }
    | |_^
 

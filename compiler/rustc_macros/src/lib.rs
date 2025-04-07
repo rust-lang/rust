@@ -6,7 +6,6 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
 #![feature(proc_macro_tracked_env)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use proc_macro::TokenStream;
@@ -17,6 +16,7 @@ mod diagnostics;
 mod extension;
 mod hash_stable;
 mod lift;
+mod print_attribute;
 mod query;
 mod serialize;
 mod symbols;
@@ -74,8 +74,8 @@ decl_derive!(
     hash_stable::hash_stable_no_context_derive
 );
 
-decl_derive!([Decodable_Generic] => serialize::decodable_generic_derive);
-decl_derive!([Encodable_Generic] => serialize::encodable_generic_derive);
+decl_derive!([Decodable_NoContext] => serialize::decodable_nocontext_derive);
+decl_derive!([Encodable_NoContext] => serialize::encodable_nocontext_derive);
 decl_derive!([Decodable] => serialize::decodable_derive);
 decl_derive!([Encodable] => serialize::encodable_derive);
 decl_derive!([TyDecodable] => serialize::type_decodable_derive);
@@ -174,4 +174,12 @@ decl_derive! {
     ///
     /// The error type is `u32`.
     try_from::try_from_u32
+}
+decl_derive! {
+    [PrintAttribute] =>
+    /// Derives `PrintAttribute` for `AttributeKind`.
+    /// This macro is pretty specific to `rustc_attr_data_structures` and likely not that useful in
+    /// other places. It's deriving something close to `Debug` without printing some extraenous
+    /// things like spans.
+    print_attribute::print_attribute
 }

@@ -8,13 +8,13 @@ LL |         let b = &*a;
    = help: to override `-D warnings` add `#[allow(clippy::borrow_deref_ref)]`
 
 error: deref on an immutable reference
-  --> tests/ui/borrow_deref_ref.rs:15:22
+  --> tests/ui/borrow_deref_ref.rs:16:22
    |
 LL |         let b = &mut &*bar(&12);
    |                      ^^^^^^^^^^ help: if you would like to reborrow, try removing `&*`: `bar(&12)`
 
 error: deref on an immutable reference
-  --> tests/ui/borrow_deref_ref.rs:69:23
+  --> tests/ui/borrow_deref_ref.rs:71:23
    |
 LL |         let addr_y = &&*x as *const _ as usize; // assert ok
    |                       ^^^ help: if you would like to reborrow, try removing `&*`: `x`

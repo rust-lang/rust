@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: aarch64-linux aarch64-darwin wasm32-wasip1
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 
@@ -19,14 +20,9 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
-impl Copy for [u32; 16] {}
 impl Copy for BigS {}
 impl Copy for BigU {}
 

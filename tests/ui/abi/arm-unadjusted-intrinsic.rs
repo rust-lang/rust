@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ build-pass
 //@ revisions: arm
 //@[arm] compile-flags: --target arm-unknown-linux-gnueabi
@@ -14,19 +15,8 @@
 #![crate_type = "lib"]
 #![allow(non_camel_case_types)]
 
-/// To work cross-target this test must be no_core.
-/// This little prelude supplies what we need.
-#[lang = "sized"]
-pub trait Sized {}
-
-#[lang = "copy"]
-pub trait Copy: Sized {}
-impl Copy for i8 {}
-impl<T: ?Sized> Copy for *const T {}
-impl<T: ?Sized> Copy for *mut T {}
-
-// I hate no_core tests!
-impl<T: Copy, const N: usize> Copy for [T; N] {}
+extern crate minicore;
+use minicore::*;
 
 // Regression test for https://github.com/rust-lang/rust/issues/118124.
 

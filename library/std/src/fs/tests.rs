@@ -1719,6 +1719,23 @@ fn test_eq_direntry_metadata() {
     }
 }
 
+/// Test that windows file type equality is not affected by attributes unrelated
+/// to the file type.
+#[test]
+#[cfg(target_os = "windows")]
+fn test_eq_windows_file_type() {
+    let tmpdir = tmpdir();
+    let file1 = File::create(tmpdir.join("file1")).unwrap();
+    let file2 = File::create(tmpdir.join("file2")).unwrap();
+    assert_eq!(file1.metadata().unwrap().file_type(), file2.metadata().unwrap().file_type());
+
+    // Change the readonly attribute of one file.
+    let mut perms = file1.metadata().unwrap().permissions();
+    perms.set_readonly(true);
+    file1.set_permissions(perms).unwrap();
+    assert_eq!(file1.metadata().unwrap().file_type(), file2.metadata().unwrap().file_type());
+}
+
 /// Regression test for https://github.com/rust-lang/rust/issues/50619.
 #[test]
 #[cfg(target_os = "linux")]
@@ -1878,7 +1895,7 @@ fn windows_unix_socket_exists() {
         let bytes = socket_path.as_os_str().as_encoded_bytes();
         let bytes = core::slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len());
         addr.sun_path[..bytes.len()].copy_from_slice(bytes);
-        let len = mem::size_of_val(&addr) as i32;
+        let len = size_of_val(&addr) as i32;
         let result = c::bind(socket, (&raw const addr).cast::<c::SOCKADDR>(), len);
         c::closesocket(socket);
         assert_eq!(result, 0);
@@ -1962,6 +1979,10 @@ fn test_rename_directory_to_non_empty_directory() {
 #[test]
 fn test_rename_symlink() {
     let tmpdir = tmpdir();
+    if !got_symlink_permission(&tmpdir) {
+        return;
+    };
+
     let original = tmpdir.join("original");
     let dest = tmpdir.join("dest");
     let not_exist = Path::new("does not exist");

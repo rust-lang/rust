@@ -4,8 +4,12 @@
 #![no_std]
 #![no_core]
 
+extern crate minicore;
+use minicore::*;
+
 // See also: repr-c-int-dead-variants.rs
 
+//@ add-core-stubs
 //@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 
@@ -59,6 +63,3 @@ enum DeadBranchHasOtherField { //~ ERROR layout_of
     Variant1(Void, Align8U64),
     Variant2(u8),
 }
-
-#[lang = "sized"]
-trait Sized {}

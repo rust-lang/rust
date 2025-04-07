@@ -617,7 +617,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 });
             }
 
-            hir::ItemKind::ExternCrate(_)
+            hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Use(..)
             | hir::ItemKind::Macro(..)
             | hir::ItemKind::Mod(..)
@@ -627,13 +627,13 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }
-            hir::ItemKind::TyAlias(_, generics)
-            | hir::ItemKind::Const(_, generics, _)
-            | hir::ItemKind::Enum(_, generics)
-            | hir::ItemKind::Struct(_, generics)
-            | hir::ItemKind::Union(_, generics)
-            | hir::ItemKind::Trait(_, _, generics, ..)
-            | hir::ItemKind::TraitAlias(generics, ..)
+            hir::ItemKind::TyAlias(_, _, generics)
+            | hir::ItemKind::Const(_, _, generics, _)
+            | hir::ItemKind::Enum(_, _, generics)
+            | hir::ItemKind::Struct(_, _, generics)
+            | hir::ItemKind::Union(_, _, generics)
+            | hir::ItemKind::Trait(_, _, _, generics, ..)
+            | hir::ItemKind::TraitAlias(_, generics, ..)
             | hir::ItemKind::Impl(&hir::Impl { generics, .. }) => {
                 // These kinds of items have only early-bound lifetime parameters.
                 self.visit_early(item.hir_id(), generics, |this| intravisit::walk_item(this, item));
@@ -1462,7 +1462,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         for &(opaque_def_id, captures) in opaque_capture_scopes.iter().rev() {
             let mut captures = captures.borrow_mut();
             let remapped = *captures.entry(lifetime).or_insert_with(|| {
-                let feed = self.tcx.create_def(opaque_def_id, ident.name, DefKind::LifetimeParam);
+                let feed =
+                    self.tcx.create_def(opaque_def_id, Some(ident.name), DefKind::LifetimeParam);
                 feed.def_span(ident.span);
                 feed.def_ident_span(Some(ident.span));
                 feed.def_id()
@@ -1528,7 +1529,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             if let ResolvedArg::LateBound(..) = def
                 && let Some(what) = crossed_late_boundary
             {
-                let use_span = self.tcx.hir().span(hir_id);
+                let use_span = self.tcx.hir_span(hir_id);
                 let def_span = self.tcx.def_span(param_def_id);
                 let guar = match self.tcx.def_kind(param_def_id) {
                     DefKind::ConstParam => {
@@ -1575,11 +1576,11 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 } => {
                     let guar = self.tcx.dcx().emit_err(match self.tcx.def_kind(param_def_id) {
                         DefKind::TyParam => errors::LateBoundInApit::Type {
-                            span: self.tcx.hir().span(hir_id),
+                            span: self.tcx.hir_span(hir_id),
                             param_span: self.tcx.def_span(param_def_id),
                         },
                         DefKind::ConstParam => errors::LateBoundInApit::Const {
-                            span: self.tcx.hir().span(hir_id),
+                            span: self.tcx.hir_span(hir_id),
                             param_span: self.tcx.def_span(param_def_id),
                         },
                         kind => {
@@ -1604,7 +1605,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
         self.tcx
             .dcx()
-            .span_bug(self.tcx.hir().span(hir_id), format!("could not resolve {param_def_id:?}"));
+            .span_bug(self.tcx.hir_span(hir_id), format!("could not resolve {param_def_id:?}"));
     }
 
     #[instrument(level = "debug", skip(self))]

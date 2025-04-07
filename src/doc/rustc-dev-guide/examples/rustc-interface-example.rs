@@ -1,3 +1,5 @@
+// Tested with nightly-2025-03-28
+
 #![feature(rustc_private)]
 
 extern crate rustc_driver;
@@ -8,8 +10,6 @@ extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
-
-use std::sync::Arc;
 
 use rustc_errors::registry;
 use rustc_hash::FxHashMap;
@@ -56,7 +56,7 @@ fn main() {
         expanded_args: Vec::new(),
         ice_file: None,
         hash_untracked_state: None,
-        using_internal_features: Arc::default(),
+        using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
     };
     rustc_interface::run_compiler(config, |compiler| {
         // Parse the program and print the syntax tree.
@@ -64,14 +64,13 @@ fn main() {
         println!("{krate:?}");
         // Analyze the program and inspect the types of definitions.
         rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
-            for id in tcx.hir().items() {
-                let hir = tcx.hir();
-                let item = hir.item(id);
+            for id in tcx.hir_free_items() {
+                let item = tcx.hir_item(id);
                 match item.kind {
-                    rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn(_, _, _) => {
-                        let name = item.ident;
+                    rustc_hir::ItemKind::Static(ident, ..)
+                    | rustc_hir::ItemKind::Fn { ident, .. } => {
                         let ty = tcx.type_of(item.hir_id().owner.def_id);
-                        println!("{name:?}:\t{ty:?}")
+                        println!("{ident:?}:\t{ty:?}")
                     }
                     _ => (),
                 }

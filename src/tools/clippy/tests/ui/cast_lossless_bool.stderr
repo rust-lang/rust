@@ -14,7 +14,7 @@ LL +     let _ = u8::from(true);
    |
 
 error: casts from `bool` to `u16` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:9:13
+  --> tests/ui/cast_lossless_bool.rs:10:13
    |
 LL |     let _ = true as u16;
    |             ^^^^^^^^^^^
@@ -27,7 +27,7 @@ LL +     let _ = u16::from(true);
    |
 
 error: casts from `bool` to `u32` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:10:13
+  --> tests/ui/cast_lossless_bool.rs:12:13
    |
 LL |     let _ = true as u32;
    |             ^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL +     let _ = u32::from(true);
    |
 
 error: casts from `bool` to `u64` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:11:13
+  --> tests/ui/cast_lossless_bool.rs:14:13
    |
 LL |     let _ = true as u64;
    |             ^^^^^^^^^^^
@@ -53,7 +53,7 @@ LL +     let _ = u64::from(true);
    |
 
 error: casts from `bool` to `u128` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:12:13
+  --> tests/ui/cast_lossless_bool.rs:16:13
    |
 LL |     let _ = true as u128;
    |             ^^^^^^^^^^^^
@@ -66,7 +66,7 @@ LL +     let _ = u128::from(true);
    |
 
 error: casts from `bool` to `usize` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:13:13
+  --> tests/ui/cast_lossless_bool.rs:18:13
    |
 LL |     let _ = true as usize;
    |             ^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ LL +     let _ = usize::from(true);
    |
 
 error: casts from `bool` to `i8` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:15:13
+  --> tests/ui/cast_lossless_bool.rs:21:13
    |
 LL |     let _ = true as i8;
    |             ^^^^^^^^^^
@@ -92,7 +92,7 @@ LL +     let _ = i8::from(true);
    |
 
 error: casts from `bool` to `i16` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:16:13
+  --> tests/ui/cast_lossless_bool.rs:23:13
    |
 LL |     let _ = true as i16;
    |             ^^^^^^^^^^^
@@ -105,7 +105,7 @@ LL +     let _ = i16::from(true);
    |
 
 error: casts from `bool` to `i32` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:17:13
+  --> tests/ui/cast_lossless_bool.rs:25:13
    |
 LL |     let _ = true as i32;
    |             ^^^^^^^^^^^
@@ -118,7 +118,7 @@ LL +     let _ = i32::from(true);
    |
 
 error: casts from `bool` to `i64` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:18:13
+  --> tests/ui/cast_lossless_bool.rs:27:13
    |
 LL |     let _ = true as i64;
    |             ^^^^^^^^^^^
@@ -131,7 +131,7 @@ LL +     let _ = i64::from(true);
    |
 
 error: casts from `bool` to `i128` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:19:13
+  --> tests/ui/cast_lossless_bool.rs:29:13
    |
 LL |     let _ = true as i128;
    |             ^^^^^^^^^^^^
@@ -144,7 +144,7 @@ LL +     let _ = i128::from(true);
    |
 
 error: casts from `bool` to `isize` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:20:13
+  --> tests/ui/cast_lossless_bool.rs:31:13
    |
 LL |     let _ = true as isize;
    |             ^^^^^^^^^^^^^
@@ -157,7 +157,7 @@ LL +     let _ = isize::from(true);
    |
 
 error: casts from `bool` to `u16` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:23:13
+  --> tests/ui/cast_lossless_bool.rs:35:13
    |
 LL |     let _ = (true | false) as u16;
    |             ^^^^^^^^^^^^^^^^^^^^^
@@ -170,7 +170,7 @@ LL +     let _ = u16::from(true | false);
    |
 
 error: casts from `bool` to `u8` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:25:13
+  --> tests/ui/cast_lossless_bool.rs:38:13
    |
 LL |     let _ = true as U8;
    |             ^^^^^^^^^^
@@ -183,7 +183,7 @@ LL +     let _ = U8::from(true);
    |
 
 error: casts from `bool` to `u8` can be expressed infallibly using `From`
-  --> tests/ui/cast_lossless_bool.rs:53:13
+  --> tests/ui/cast_lossless_bool.rs:67:13
    |
 LL |     let _ = true as u8;
    |             ^^^^^^^^^^

@@ -10,13 +10,13 @@ use rustc_span::sym;
 
 use super::USELESS_NONZERO_NEW_UNCHECKED;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, func: &Expr<'tcx>, args: &[Expr<'_>], msrv: &Msrv) {
-    if msrv.meets(msrvs::CONST_UNWRAP)
-        && let ExprKind::Path(QPath::TypeRelative(ty, segment)) = func.kind
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, func: &Expr<'tcx>, args: &[Expr<'_>], msrv: Msrv) {
+    if let ExprKind::Path(QPath::TypeRelative(ty, segment)) = func.kind
         && segment.ident.name == sym::new_unchecked
         && let [init_arg] = args
         && is_inside_always_const_context(cx.tcx, expr.hir_id)
         && is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::NonZero)
+        && msrv.meets(cx, msrvs::CONST_UNWRAP)
     {
         let mut app = Applicability::MachineApplicable;
         let ty_str = snippet_with_applicability(cx, ty.span, "_", &mut app);

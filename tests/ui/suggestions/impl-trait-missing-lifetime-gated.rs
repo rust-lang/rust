@@ -18,7 +18,6 @@ mod elided {
     // But that lifetime does not participate in resolution.
     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
     //~^ ERROR missing lifetime specifier
-    //~| ERROR lifetime may not live long enough
 }
 
 mod underscore {
@@ -37,7 +36,6 @@ mod underscore {
     // But that lifetime does not participate in resolution.
     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
     //~^ ERROR missing lifetime specifier
-    //~| ERROR lifetime may not live long enough
 }
 
 mod alone_in_path {

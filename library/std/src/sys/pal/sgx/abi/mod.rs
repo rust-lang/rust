@@ -6,7 +6,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use crate::io::Write;
 
 // runtime features
-pub(super) mod panic;
+pub mod panic;
 mod reloc;
 
 // library features

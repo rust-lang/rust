@@ -16,46 +16,59 @@ fn main() {
 
     // test hashset
     for x in &hash_set {
+        //~^ iter_over_hash_type
         let _ = x;
     }
     for x in hash_set.iter() {
+        //~^ iter_over_hash_type
         let _ = x;
     }
     for x in hash_set.clone() {
+        //~^ iter_over_hash_type
         let _ = x;
     }
     for x in hash_set.drain() {
+        //~^ iter_over_hash_type
         let _ = x;
     }
 
     // test hashmap
     for (x, y) in &hash_map {
+        //~^ iter_over_hash_type
         let _ = (x, y);
     }
     for x in hash_map.keys() {
+        //~^ iter_over_hash_type
         let _ = x;
     }
     for x in hash_map.values() {
+        //~^ iter_over_hash_type
         let _ = x;
     }
     for x in hash_map.values_mut() {
+        //~^ iter_over_hash_type
         *x += 1;
     }
     for x in hash_map.iter() {
+        //~^ iter_over_hash_type
         let _ = x;
     }
     for x in hash_map.clone() {
+        //~^ iter_over_hash_type
         let _ = x;
     }
     for x in hash_map.drain() {
+        //~^ iter_over_hash_type
         let _ = x;
     }
 
     // test type-aliased hashers
     for x in fx_hash_set {
+        //~^ iter_over_hash_type
         let _ = x;
     }
     for x in fx_hash_map {
+        //~^ iter_over_hash_type
         let _ = x;
     }
 

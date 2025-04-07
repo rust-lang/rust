@@ -10,7 +10,6 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
-doctest = false
 
 [dependencies]
 lz4_flex = { version = "0.11", default-features = false }

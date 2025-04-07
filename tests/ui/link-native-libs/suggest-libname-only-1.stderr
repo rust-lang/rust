@@ -1,5 +1,5 @@
 warning: extern declarations without an explicit ABI are deprecated
-  --> $DIR/suggest-libname-only-1.rs:7:1
+  --> $DIR/suggest-libname-only-1.rs:6:1
    |
 LL | extern { }
    | ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`

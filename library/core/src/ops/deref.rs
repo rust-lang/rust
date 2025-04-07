@@ -150,6 +150,7 @@ pub trait Deref {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
 impl<T: ?Sized> const Deref for &T {
     type Target = T;
 
@@ -163,6 +164,7 @@ impl<T: ?Sized> const Deref for &T {
 impl<T: ?Sized> !DerefMut for &T {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
 impl<T: ?Sized> const Deref for &mut T {
     type Target = T;
 
@@ -273,6 +275,7 @@ pub trait DerefMut: ~const Deref {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
 impl<T: ?Sized> const DerefMut for &mut T {
     fn deref_mut(&mut self) -> &mut T {
         *self

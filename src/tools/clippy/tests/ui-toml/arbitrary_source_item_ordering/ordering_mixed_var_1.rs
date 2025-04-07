@@ -103,20 +103,24 @@ impl TraitUnordered for StructUnordered {
     fn a() {}
     fn c() {}
     fn b() {}
+    //~^ arbitrary_source_item_ordering
 
     type SomeType = ();
 
     const A: bool = false;
     const C: bool = false;
     const B: bool = false;
+    //~^ arbitrary_source_item_ordering
 }
 
 impl TraitUnorderedItemKinds for StructUnordered {
     const A: bool = false;
 
     type SomeType = ();
+    //~^ arbitrary_source_item_ordering
 
     fn a() {}
+    //~^ arbitrary_source_item_ordering
 }
 
 struct StructUnorderedGeneric<T> {
@@ -143,20 +147,24 @@ trait TraitUnordered {
     fn a();
     fn c();
     fn b();
+    //~^ arbitrary_source_item_ordering
 
     type SomeType;
 
     const A: bool;
     const C: bool;
     const B: bool;
+    //~^ arbitrary_source_item_ordering
 }
 
 trait TraitUnorderedItemKinds {
     const A: bool;
 
     type SomeType;
+    //~^ arbitrary_source_item_ordering
 
     fn a();
+    //~^ arbitrary_source_item_ordering
 }
 
 #[derive(std::clone::Clone, Default)]

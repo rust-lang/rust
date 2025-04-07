@@ -7,10 +7,8 @@ use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarInfo, CanonicalVarValues,
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::solve::Goal;
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_type_ir::TypingMode;
 use rustc_type_ir::solve::{Certainty, NoSolution};
@@ -98,7 +96,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     ) -> Option<Vec<Goal<'tcx, ty::Predicate<'tcx>>>> {
         crate::traits::wf::unnormalized_obligations(&self.0, param_env, arg, DUMMY_SP, CRATE_DEF_ID)
             .map(|obligations| {
-                obligations.into_iter().map(|obligation| obligation.into()).collect()
+                obligations.into_iter().map(|obligation| obligation.as_goal()).collect()
             })
     }
 
@@ -151,16 +149,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.instantiate_canonical_var(span, cv_info, universe_map)
     }
 
-    fn insert_hidden_type(
+    fn register_hidden_type_in_storage(
         &self,
-        opaque_type_key: ty::OpaqueTypeKey<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        hidden_ty: Ty<'tcx>,
-        goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
-    ) -> Result<(), NoSolution> {
-        self.0
-            .insert_hidden_type(opaque_type_key, DUMMY_SP, param_env, hidden_ty, goals)
-            .map_err(|_| NoSolution)
+        opaque_type_key: rustc_type_ir::OpaqueTypeKey<Self::Interner>,
+        hidden_ty: <Self::Interner as ty::Interner>::Ty,
+        span: <Self::Interner as ty::Interner>::Span,
+    ) -> Option<<Self::Interner as ty::Interner>::Ty> {
+        self.0.register_hidden_type_in_storage(
+            opaque_type_key,
+            ty::OpaqueHiddenType { span, ty: hidden_ty },
+        )
     }
 
     fn add_item_bounds_for_hidden_type(
@@ -172,15 +170,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) {
         self.0.add_item_bounds_for_hidden_type(def_id, args, param_env, hidden_ty, goals);
-    }
-
-    fn inject_new_hidden_type_unchecked(
-        &self,
-        key: ty::OpaqueTypeKey<'tcx>,
-        hidden_ty: Ty<'tcx>,
-        span: Span,
-    ) {
-        self.0.inject_new_hidden_type_unchecked(key, ty::OpaqueHiddenType { ty: hidden_ty, span })
     }
 
     fn reset_opaque_types(&self) {
@@ -206,6 +195,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             match self.typing_mode() {
                 TypingMode::Coherence
                 | TypingMode::Analysis { .. }
+                | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. } => false,
                 TypingMode::PostAnalysis => {
                     let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);
@@ -222,7 +212,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     // register candidates. We probably need to register >1 since we may have an OR of ANDs.
     fn is_transmutable(
         &self,
-        param_env: ty::ParamEnv<'tcx>,
         dst: Ty<'tcx>,
         src: Ty<'tcx>,
         assume: ty::Const<'tcx>,
@@ -231,16 +220,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         // which will ICE for region vars.
         let (dst, src) = self.tcx.erase_regions((dst, src));
 
-        let Some(assume) = rustc_transmute::Assume::from_const(self.tcx, param_env, assume) else {
+        let Some(assume) = rustc_transmute::Assume::from_const(self.tcx, assume) else {
             return Err(NoSolution);
         };
 
         // FIXME(transmutability): This really should be returning nested goals for `Answer::If*`
-        match rustc_transmute::TransmuteTypeEnv::new(&self.0).is_transmutable(
-            ObligationCause::dummy(),
-            rustc_transmute::Types { src, dst },
-            assume,
-        ) {
+        match rustc_transmute::TransmuteTypeEnv::new(self.0.tcx)
+            .is_transmutable(rustc_transmute::Types { src, dst }, assume)
+        {
             rustc_transmute::Answer::Yes => Ok(Certainty::Yes),
             rustc_transmute::Answer::No(_) | rustc_transmute::Answer::If(_) => Err(NoSolution),
         }

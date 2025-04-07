@@ -33,7 +33,7 @@ impl ExtractedDocTests {
         opts: &super::GlobalTestOptions,
         options: &RustdocOptions,
     ) {
-        let edition = scraped_test.edition(&options);
+        let edition = scraped_test.edition(options);
 
         let ScrapedDocTest { filename, line, langstr, text, name } = scraped_test;
 
@@ -48,7 +48,7 @@ impl ExtractedDocTests {
         let (full_test_code, size) = doctest.generate_unique_doctest(
             &text,
             langstr.test_harness,
-            &opts,
+            opts,
             Some(&opts.crate_name),
         );
         self.doctests.push(ExtractedDocTest {

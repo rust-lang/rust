@@ -9,7 +9,7 @@ LL |         pub fn to_many(&mut self) -> Option<&mut [T]> {
    = help: to override `-D warnings` add `#[allow(clippy::wrong_self_convention)]`
 
 error: methods with the following characteristics: (`to_*` and `*_mut`) usually take `self` by mutable reference
-  --> tests/ui/wrong_self_conventions_mut.rs:23:28
+  --> tests/ui/wrong_self_conventions_mut.rs:24:28
    |
 LL |         pub fn to_many_mut(&self) -> Option<&[T]> {
    |                            ^^^^^

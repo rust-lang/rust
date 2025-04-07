@@ -52,32 +52,57 @@ fn main() {
     binary_heap.push(1);
 
     &vec[..].len();
+    //~^ iter_count
     vec.len();
+    //~^ iter_count
     boxed_slice.len();
+    //~^ iter_count
     vec_deque.len();
+    //~^ iter_count
     hash_set.len();
+    //~^ iter_count
     hash_map.len();
+    //~^ iter_count
     b_tree_map.len();
+    //~^ iter_count
     b_tree_set.len();
+    //~^ iter_count
     linked_list.len();
+    //~^ iter_count
     binary_heap.len();
+    //~^ iter_count
 
     vec.len();
+    //~^ iter_count
     &vec[..].len();
+    //~^ iter_count
     vec_deque.len();
+    //~^ iter_count
     hash_map.len();
+    //~^ iter_count
     b_tree_map.len();
+    //~^ iter_count
     linked_list.len();
+    //~^ iter_count
 
     &vec[..].len();
+    //~^ iter_count
     vec.len();
+    //~^ iter_count
     vec_deque.len();
+    //~^ iter_count
     hash_set.len();
+    //~^ iter_count
     hash_map.len();
+    //~^ iter_count
     b_tree_map.len();
+    //~^ iter_count
     b_tree_set.len();
+    //~^ iter_count
     linked_list.len();
+    //~^ iter_count
     binary_heap.len();
+    //~^ iter_count
 
     // Make sure we don't lint for non-relevant types.
     let false_positive = HasIter;

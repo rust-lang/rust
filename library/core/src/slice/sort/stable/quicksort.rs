@@ -1,6 +1,6 @@
 //! This module contains a stable quicksort and partition implementation.
 
-use crate::mem::{self, ManuallyDrop, MaybeUninit};
+use crate::mem::{ManuallyDrop, MaybeUninit};
 use crate::slice::sort::shared::FreezeMarker;
 use crate::slice::sort::shared::pivot::choose_pivot;
 use crate::slice::sort::shared::smallsort::StableSmallSortTypeImpl;
@@ -126,7 +126,7 @@ fn stable_partition<T, F: FnMut(&T, &T) -> bool>(
             // this gave significant performance boosts in benchmarks. Unrolling
             // through for _ in 0..UNROLL_LEN { .. } instead of manually improves
             // compile times but has a ~10-20% performance penalty on opt-level=s.
-            if const { mem::size_of::<T>() <= 16 } {
+            if const { size_of::<T>() <= 16 } {
                 const UNROLL_LEN: usize = 4;
                 let unroll_end = v_base.add(loop_end_pos.saturating_sub(UNROLL_LEN - 1));
                 while state.scan < unroll_end {

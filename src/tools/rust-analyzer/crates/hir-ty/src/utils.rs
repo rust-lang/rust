@@ -9,18 +9,15 @@ use chalk_ir::{
     DebruijnIndex,
 };
 use hir_def::{
-    attr::Attrs,
     db::DefDatabase,
     generics::{WherePredicate, WherePredicateTypeTarget},
     lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
-    tt,
     type_ref::{TraitBoundModifier, TypeRef},
     EnumId, EnumVariantId, FunctionId, Lookup, OpaqueInternableThing, TraitId, TypeAliasId,
     TypeOrConstParamId,
 };
 use hir_expand::name::Name;
-use intern::{sym, Symbol};
 use rustc_abi::TargetDataLayout;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
@@ -32,8 +29,8 @@ use crate::{
     db::HirDatabase,
     layout::{Layout, TagEncoding},
     mir::pad16,
-    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TraitRef, TraitRefExt,
-    Ty, WhereClause,
+    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TargetFeatures, TraitRef,
+    TraitRefExt, Ty, WhereClause,
 };
 
 pub(crate) fn fn_traits(
@@ -267,32 +264,6 @@ impl<'a> ClosureSubst<'a> {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct TargetFeatures {
-    enabled: FxHashSet<Symbol>,
-}
-
-impl TargetFeatures {
-    pub fn from_attrs(attrs: &Attrs) -> Self {
-        let enabled = attrs
-            .by_key(&sym::target_feature)
-            .tt_values()
-            .filter_map(|tt| {
-                match tt.token_trees().flat_tokens() {
-                    [
-                        tt::TokenTree::Leaf(tt::Leaf::Ident(enable_ident)),
-                        tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '=', .. })),
-                        tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal { kind: tt::LitKind::Str, symbol: features, .. })),
-                    ] if enable_ident.sym == sym::enable => Some(features),
-                    _ => None,
-                }
-            })
-            .flat_map(|features| features.as_str().split(',').map(Symbol::intern))
-            .collect();
-        Self { enabled }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Unsafety {
     Safe,
@@ -314,7 +285,8 @@ pub fn is_fn_unsafe_to_call(
 
     if data.has_target_feature() {
         // RFC 2396 <https://rust-lang.github.io/rfcs/2396-target-feature-1.1.html>.
-        let callee_target_features = TargetFeatures::from_attrs(&db.attrs(func.into()));
+        let callee_target_features =
+            TargetFeatures::from_attrs_no_implications(&db.attrs(func.into()));
         if !caller_target_features.enabled.is_superset(&callee_target_features.enabled) {
             return Unsafety::Unsafe;
         }
@@ -330,26 +302,13 @@ pub fn is_fn_unsafe_to_call(
 
     let loc = func.lookup(db.upcast());
     match loc.container {
-        hir_def::ItemContainerId::ExternBlockId(block) => {
-            let id = block.lookup(db.upcast()).id;
-            let is_intrinsic_block =
-                id.item_tree(db.upcast())[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic);
-            if is_intrinsic_block {
-                // legacy intrinsics
-                // extern "rust-intrinsic" intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
-                if db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists() {
-                    Unsafety::Safe
-                } else {
-                    Unsafety::Unsafe
-                }
+        hir_def::ItemContainerId::ExternBlockId(_block) => {
+            // Function in an `extern` block are always unsafe to call, except when
+            // it is marked as `safe`.
+            if data.is_safe() {
+                Unsafety::Safe
             } else {
-                // Function in an `extern` block are always unsafe to call, except when
-                // it is marked as `safe`.
-                if data.is_safe() {
-                    Unsafety::Safe
-                } else {
-                    Unsafety::Unsafe
-                }
+                Unsafety::Unsafe
             }
         }
         _ => Unsafety::Safe,

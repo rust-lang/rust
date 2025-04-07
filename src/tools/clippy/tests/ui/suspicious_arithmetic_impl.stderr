@@ -8,7 +8,7 @@ LL |         Foo(self.0 - other.0)
    = help: to override `-D warnings` add `#[allow(clippy::suspicious_arithmetic_impl)]`
 
 error: suspicious use of `-` in `AddAssign` impl
-  --> tests/ui/suspicious_arithmetic_impl.rs:22:23
+  --> tests/ui/suspicious_arithmetic_impl.rs:21:23
    |
 LL |         *self = *self - other;
    |                       ^
@@ -17,43 +17,43 @@ LL |         *self = *self - other;
    = help: to override `-D warnings` add `#[allow(clippy::suspicious_op_assign_impl)]`
 
 error: suspicious use of `/` in `MulAssign` impl
-  --> tests/ui/suspicious_arithmetic_impl.rs:37:16
+  --> tests/ui/suspicious_arithmetic_impl.rs:35:16
    |
 LL |         self.0 /= other.0;
    |                ^^
 
 error: suspicious use of `/` in `Rem` impl
-  --> tests/ui/suspicious_arithmetic_impl.rs:76:20
+  --> tests/ui/suspicious_arithmetic_impl.rs:74:20
    |
 LL |         Foo(self.0 / other.0)
    |                    ^
 
 error: suspicious use of `|` in `BitAnd` impl
-  --> tests/ui/suspicious_arithmetic_impl.rs:85:20
+  --> tests/ui/suspicious_arithmetic_impl.rs:83:20
    |
 LL |         Foo(self.0 | other.0)
    |                    ^
 
 error: suspicious use of `^` in `BitOr` impl
-  --> tests/ui/suspicious_arithmetic_impl.rs:94:20
+  --> tests/ui/suspicious_arithmetic_impl.rs:92:20
    |
 LL |         Foo(self.0 ^ other.0)
    |                    ^
 
 error: suspicious use of `&` in `BitXor` impl
-  --> tests/ui/suspicious_arithmetic_impl.rs:103:20
+  --> tests/ui/suspicious_arithmetic_impl.rs:101:20
    |
 LL |         Foo(self.0 & other.0)
    |                    ^
 
 error: suspicious use of `>>` in `Shl` impl
-  --> tests/ui/suspicious_arithmetic_impl.rs:112:20
+  --> tests/ui/suspicious_arithmetic_impl.rs:110:20
    |
 LL |         Foo(self.0 >> other.0)
    |                    ^^
 
 error: suspicious use of `<<` in `Shr` impl
-  --> tests/ui/suspicious_arithmetic_impl.rs:121:20
+  --> tests/ui/suspicious_arithmetic_impl.rs:119:20
    |
 LL |         Foo(self.0 << other.0)
    |                    ^^

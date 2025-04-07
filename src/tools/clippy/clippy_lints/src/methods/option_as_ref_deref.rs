@@ -18,12 +18,8 @@ pub(super) fn check(
     as_ref_recv: &hir::Expr<'_>,
     map_arg: &hir::Expr<'_>,
     is_mut: bool,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
-    if !msrv.meets(msrvs::OPTION_AS_DEREF) {
-        return;
-    }
-
     let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
 
     let option_ty = cx.typeck_results().expr_ty(as_ref_recv);
@@ -93,7 +89,7 @@ pub(super) fn check(
         _ => false,
     };
 
-    if is_deref {
+    if is_deref && msrv.meets(cx, msrvs::OPTION_AS_DEREF) {
         let current_method = if is_mut {
             format!(".as_mut().map({})", snippet(cx, map_arg.span, ".."))
         } else {

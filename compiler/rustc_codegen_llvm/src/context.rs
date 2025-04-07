@@ -1,10 +1,11 @@
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, c_char, c_uint};
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::str;
 
-use rustc_abi::{HasDataLayout, TargetDataLayout, VariantIdx};
+use rustc_abi::{HasDataLayout, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::TypeKind;
@@ -27,34 +28,36 @@ use rustc_session::config::{
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
 use smallvec::SmallVec;
 
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
-use crate::common::{self, AsCCharPtr};
+use crate::common::AsCCharPtr;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
-use crate::llvm::{Metadata, MetadataType};
+use crate::llvm::Metadata;
 use crate::type_::Type;
 use crate::value::Value;
-use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
+use crate::{attributes, common, coverageinfo, debuginfo, llvm, llvm_util};
 
 /// `TyCtxt` (and related cache datastructures) can't be move between threads.
 /// However, there are various cx related functions which we want to be available to the builder and
 /// other compiler pieces. Here we define a small subset which has enough information and can be
 /// moved around more freely.
-pub(crate) struct SimpleCx<'ll> {
+pub(crate) struct SCx<'ll> {
     pub llmod: &'ll llvm::Module,
     pub llcx: &'ll llvm::Context,
+    pub isize_ty: &'ll Type,
 }
 
-impl<'ll> Borrow<SimpleCx<'ll>> for CodegenCx<'ll, '_> {
-    fn borrow(&self) -> &SimpleCx<'ll> {
+impl<'ll> Borrow<SCx<'ll>> for FullCx<'ll, '_> {
+    fn borrow(&self) -> &SCx<'ll> {
         &self.scx
     }
 }
 
-impl<'ll, 'tcx> Deref for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> Deref for FullCx<'ll, 'tcx> {
     type Target = SimpleCx<'ll>;
 
     #[inline]
@@ -63,10 +66,25 @@ impl<'ll, 'tcx> Deref for CodegenCx<'ll, 'tcx> {
     }
 }
 
+pub(crate) struct GenericCx<'ll, T: Borrow<SCx<'ll>>>(T, PhantomData<SCx<'ll>>);
+
+impl<'ll, T: Borrow<SCx<'ll>>> Deref for GenericCx<'ll, T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+pub(crate) type SimpleCx<'ll> = GenericCx<'ll, SCx<'ll>>;
+
 /// There is one `CodegenCx` per codegen unit. Each one has its own LLVM
 /// `llvm::Context` so that several codegen units may be processed in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
-pub(crate) struct CodegenCx<'ll, 'tcx> {
+pub(crate) type CodegenCx<'ll, 'tcx> = GenericCx<'ll, FullCx<'ll, 'tcx>>;
+
+pub(crate) struct FullCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub scx: SimpleCx<'ll>,
     pub use_dll_storage_attrs: bool,
@@ -103,8 +121,6 @@ pub(crate) struct CodegenCx<'ll, 'tcx> {
 
     /// Mapping of scalar types to llvm types.
     pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
-
-    pub isize_ty: &'ll Type,
 
     /// Extra per-CGU codegen state needed when coverage instrumentation is enabled.
     pub coverage_cx: Option<coverageinfo::CguCoverageContext<'ll, 'tcx>>,
@@ -148,23 +164,6 @@ pub(crate) unsafe fn create_module<'ll>(
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
 
-    if llvm_version < (19, 0, 0) {
-        if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
-            // LLVM 19 sets -Fn32 in its data layout string for 64-bit ARM
-            // Earlier LLVMs leave this default, so remove it.
-            // See https://github.com/llvm/llvm-project/pull/90702
-            target_data_layout = target_data_layout.replace("-Fn32", "");
-        }
-    }
-
-    if llvm_version < (19, 0, 0) {
-        if sess.target.arch == "loongarch64" {
-            // LLVM 19 updates the LoongArch64 data layout.
-            // See https://github.com/llvm/llvm-project/pull/93814
-            target_data_layout = target_data_layout.replace("-n32:64", "-n64");
-        }
-    }
-
     if llvm_version < (20, 0, 0) {
         if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
             // LLVM 20 defines three additional address spaces for alternate
@@ -205,7 +204,7 @@ pub(crate) unsafe fn create_module<'ll>(
     {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess, false);
         unsafe {
-            llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, &tm);
+            llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm.raw());
         }
 
         let llvm_data_layout = unsafe { llvm::LLVMGetDataLayoutStr(llmod) };
@@ -310,6 +309,22 @@ pub(crate) unsafe fn create_module<'ll>(
                 llvm::ModuleFlagMergeBehavior::Override,
                 "kcfi-offset",
                 pfe.prefix().into(),
+            );
+        }
+
+        // Add "kcfi-arity" module flag if KCFI arity indicator is enabled. (See
+        // https://github.com/llvm/llvm-project/pull/117121.)
+        if sess.is_sanitizer_kcfi_arity_enabled() {
+            // KCFI arity indicator requires LLVM 21.0.0 or later.
+            if llvm_version < (21, 0, 0) {
+                tcx.dcx().emit_err(crate::errors::SanitizerKcfiArityRequiresLLVM2100);
+            }
+
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Override,
+                "kcfi-arity",
+                1,
             );
         }
     }
@@ -579,33 +594,33 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             None
         };
 
-        let isize_ty = Type::ix_llcx(llcx, tcx.data_layout.pointer_size.bits());
-
-        CodegenCx {
-            tcx,
-            scx: SimpleCx { llcx, llmod },
-            use_dll_storage_attrs,
-            tls_model,
-            codegen_unit,
-            instances: Default::default(),
-            vtables: Default::default(),
-            const_str_cache: Default::default(),
-            const_globals: Default::default(),
-            statics_to_rauw: RefCell::new(Vec::new()),
-            used_statics: RefCell::new(Vec::new()),
-            compiler_used_statics: RefCell::new(Vec::new()),
-            type_lowering: Default::default(),
-            scalar_lltypes: Default::default(),
-            isize_ty,
-            coverage_cx,
-            dbg_cx,
-            eh_personality: Cell::new(None),
-            eh_catch_typeinfo: Cell::new(None),
-            rust_try_fn: Cell::new(None),
-            intrinsics: Default::default(),
-            local_gen_sym_counter: Cell::new(0),
-            renamed_statics: Default::default(),
-        }
+        GenericCx(
+            FullCx {
+                tcx,
+                scx: SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size),
+                use_dll_storage_attrs,
+                tls_model,
+                codegen_unit,
+                instances: Default::default(),
+                vtables: Default::default(),
+                const_str_cache: Default::default(),
+                const_globals: Default::default(),
+                statics_to_rauw: RefCell::new(Vec::new()),
+                used_statics: RefCell::new(Vec::new()),
+                compiler_used_statics: RefCell::new(Vec::new()),
+                type_lowering: Default::default(),
+                scalar_lltypes: Default::default(),
+                coverage_cx,
+                dbg_cx,
+                eh_personality: Cell::new(None),
+                eh_catch_typeinfo: Cell::new(None),
+                rust_try_fn: Cell::new(None),
+                intrinsics: Default::default(),
+                local_gen_sym_counter: Cell::new(0),
+                renamed_statics: Default::default(),
+            },
+            PhantomData,
+        )
     }
 
     pub(crate) fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
@@ -629,23 +644,49 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 }
 impl<'ll> SimpleCx<'ll> {
+    pub(crate) fn get_return_type(&self, ty: &'ll Type) -> &'ll Type {
+        assert_eq!(self.type_kind(ty), TypeKind::Function);
+        unsafe { llvm::LLVMGetReturnType(ty) }
+    }
+    pub(crate) fn get_type_of_global(&self, val: &'ll Value) -> &'ll Type {
+        unsafe { llvm::LLVMGlobalGetValueType(val) }
+    }
     pub(crate) fn val_ty(&self, v: &'ll Value) -> &'ll Type {
         common::val_ty(v)
     }
+}
+impl<'ll> SimpleCx<'ll> {
+    pub(crate) fn new(
+        llmod: &'ll llvm::Module,
+        llcx: &'ll llvm::Context,
+        pointer_size: Size,
+    ) -> Self {
+        let isize_ty = llvm::Type::ix_llcx(llcx, pointer_size.bits());
+        Self(SCx { llmod, llcx, isize_ty }, PhantomData)
+    }
+}
 
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn get_metadata_value(&self, metadata: &'ll Metadata) -> &'ll Value {
-        unsafe { llvm::LLVMMetadataAsValue(self.llcx, metadata) }
+        llvm::LLVMMetadataAsValue(self.llcx(), metadata)
+    }
+
+    // FIXME(autodiff): We should split `ConstCodegenMethods` to pull the reusable parts
+    // onto a trait that is also implemented for GenericCx.
+    pub(crate) fn get_const_i64(&self, n: u64) -> &'ll Value {
+        let ty = unsafe { llvm::LLVMInt64TypeInContext(self.llcx()) };
+        unsafe { llvm::LLVMConstInt(ty, n, llvm::False) }
     }
 
     pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
         let name = SmallCStr::new(name);
-        unsafe { llvm::LLVMGetNamedFunction(self.llmod, name.as_ptr()) }
+        unsafe { llvm::LLVMGetNamedFunction((**self).borrow().llmod, name.as_ptr()) }
     }
 
-    pub(crate) fn get_md_kind_id(&self, name: &str) -> u32 {
+    pub(crate) fn get_md_kind_id(&self, name: &str) -> llvm::MetadataKindId {
         unsafe {
             llvm::LLVMGetMDKindIDInContext(
-                self.llcx,
+                self.llcx(),
                 name.as_ptr() as *const c_char,
                 name.len() as c_uint,
             )
@@ -654,12 +695,8 @@ impl<'ll> SimpleCx<'ll> {
 
     pub(crate) fn create_metadata(&self, name: String) -> Option<&'ll Metadata> {
         Some(unsafe {
-            llvm::LLVMMDStringInContext2(self.llcx, name.as_ptr() as *const c_char, name.len())
+            llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr() as *const c_char, name.len())
         })
-    }
-
-    pub(crate) fn type_kind(&self, ty: &'ll Type) -> TypeKind {
-        unsafe { llvm::LLVMRustGetTypeKind(ty).to_generic() }
     }
 }
 
@@ -1108,6 +1145,18 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.usub.sat.i64", fn(t_i64, t_i64) -> t_i64);
         ifn!("llvm.usub.sat.i128", fn(t_i128, t_i128) -> t_i128);
 
+        ifn!("llvm.scmp.i8.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.scmp.i8.i16", fn(t_i16, t_i16) -> t_i8);
+        ifn!("llvm.scmp.i8.i32", fn(t_i32, t_i32) -> t_i8);
+        ifn!("llvm.scmp.i8.i64", fn(t_i64, t_i64) -> t_i8);
+        ifn!("llvm.scmp.i8.i128", fn(t_i128, t_i128) -> t_i8);
+
+        ifn!("llvm.ucmp.i8.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.ucmp.i8.i16", fn(t_i16, t_i16) -> t_i8);
+        ifn!("llvm.ucmp.i8.i32", fn(t_i32, t_i32) -> t_i8);
+        ifn!("llvm.ucmp.i8.i64", fn(t_i64, t_i64) -> t_i8);
+        ifn!("llvm.ucmp.i8.i128", fn(t_i128, t_i128) -> t_i8);
+
         ifn!("llvm.lifetime.start.p0i8", fn(t_i64, ptr) -> void);
         ifn!("llvm.lifetime.end.p0i8", fn(t_i64, ptr) -> void);
 
@@ -1152,10 +1201,8 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         if self.sess().instrument_coverage() {
             ifn!("llvm.instrprof.increment", fn(ptr, t_i64, t_i32, t_i32) -> void);
-            if crate::llvm_util::get_version() >= (19, 0, 0) {
-                ifn!("llvm.instrprof.mcdc.parameters", fn(ptr, t_i64, t_i32) -> void);
-                ifn!("llvm.instrprof.mcdc.tvbitmap.update", fn(ptr, t_i64, t_i32, ptr) -> void);
-            }
+            ifn!("llvm.instrprof.mcdc.parameters", fn(ptr, t_i64, t_i32) -> void);
+            ifn!("llvm.instrprof.mcdc.tvbitmap.update", fn(ptr, t_i64, t_i32, ptr) -> void);
         }
 
         ifn!("llvm.type.test", fn(ptr, t_metadata) -> i1);
@@ -1181,7 +1228,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             Some(def_id) => self.get_static(def_id),
             _ => {
                 let ty = self.type_struct(&[self.type_ptr(), self.type_ptr()], false);
-                self.declare_global("rust_eh_catch_typeinfo", ty)
+                self.declare_global(&mangle_internal_symbol(self.tcx, "rust_eh_catch_typeinfo"), ty)
             }
         };
         self.eh_catch_typeinfo.set(Some(eh_catch_typeinfo));
@@ -1203,27 +1250,18 @@ impl CodegenCx<'_, '_> {
         name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
-
-    /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
-    pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: MetadataType, md: &'a Metadata) {
-        unsafe {
-            let node = llvm::LLVMMetadataAsValue(&self.llcx, md);
-            llvm::LLVMSetMetadata(val, kind_id as c_uint, node);
-        }
-    }
 }
 
-// This is a duplication of the set_metadata function above. However, so far it's the only one
-// shared between both contexts, so it doesn't seem worth it to make the Cx generic like we did it
-// for the Builder.
-impl SimpleCx<'_> {
-    #[allow(unused)]
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
-    pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: MetadataType, md: &'a Metadata) {
-        unsafe {
-            let node = llvm::LLVMMetadataAsValue(&self.llcx, md);
-            llvm::LLVMSetMetadata(val, kind_id as c_uint, node);
-        }
+    pub(crate) fn set_metadata<'a>(
+        &self,
+        val: &'a Value,
+        kind_id: impl Into<llvm::MetadataKindId>,
+        md: &'ll Metadata,
+    ) {
+        let node = self.get_metadata_value(md);
+        llvm::LLVMSetMetadata(val, kind_id.into(), node);
     }
 }
 

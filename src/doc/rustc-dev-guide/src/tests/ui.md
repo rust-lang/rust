@@ -202,6 +202,12 @@ several ways to match the message with the line (see the examples below):
 * `~|`: Associates the error level and message with the *same* line as the
   *previous comment*. This is more convenient than using multiple carets when
   there are multiple messages associated with the same line.
+* `~v`: Associates the error level and message with the *next* error
+  annotation line. Each symbol (`v`) that you add adds a line to this, so `~vvv`
+  is three lines below the error annotation line.
+* `~?`: Used to match error levels and messages with errors not having line
+  information. These can be placed on any line in the test file, but are
+  conventionally placed at the end.
 
 Example:
 
@@ -270,10 +276,35 @@ fn main() {
 //~| ERROR this pattern has 1 field, but the corresponding tuple struct has 3 fields [E0023]
 ```
 
+#### Positioned above error line
+
+Use the `//~v` idiom with number of v's in the string to indicate the number
+of lines below. This is typically used in lexer or parser tests matching on errors like unclosed
+delimiter or unclosed literal happening at the end of file.
+
+```rust,ignore
+// ignore-tidy-trailing-newlines
+//~v ERROR this file contains an unclosed delimiter
+fn main((ؼ
+```
+
+#### Error without line information
+
+Use `//~?` to match an error without line information.
+`//~?` is precise and will not match errors if their line information is available.
+It should be preferred to using `error-pattern`, which is imprecise and non-exhaustive.
+
+```rust,ignore
+//@ compile-flags: --print yyyy
+
+//~? ERROR unknown print request: `yyyy`
+```
+
 ### `error-pattern`
 
-The `error-pattern` [directive](directives.md) can be used for messages that don't
-have a specific span.
+The `error-pattern` [directive](directives.md) can be used for runtime messages, which don't
+have a specific span, or for compile time messages if imprecise matching is required due to
+multi-line platform specific diagnostics.
 
 Let's think about this test:
 
@@ -300,7 +331,12 @@ fn main() {
 }
 ```
 
-But for strict testing, try to use the `ERROR` annotation as much as possible.
+But for strict testing, try to use the `ERROR` annotation as much as possible,
+including `//~?` annotations for diagnostics without span.
+For compile time diagnostics `error-pattern` should very rarely be necessary.
+
+Per-line annotations (`//~`) are still checked in tests using `error-pattern`,
+to opt out of these checks in exceptional cases use `//@ compile-flags: --error-format=human`.
 
 ### Error levels
 
@@ -353,7 +389,7 @@ would be a `.mir.stderr` and `.thir.stderr` file with the different outputs of
 the different revisions.
 
 > Note: cfg revisions also work inside the source code with `#[cfg]` attributes.
-> 
+>
 > By convention, the `FALSE` cfg is used to have an always-false config.
 
 ## Controlling pass/fail expectations
@@ -414,6 +450,14 @@ reasons, including:
 2. Providing a sentinel that will fail if the bug is incidentally fixed. This
    can alert the developer so they know that the associated issue has been fixed
    and can possibly be closed.
+
+This directive takes comma-separated issue numbers as arguments, or `"unknown"`:
+
+- `//@ known-bug: #123, #456` (when the issues are on rust-lang/rust)
+- `//@ known-bug: rust-lang/chalk#123456`
+  (allows arbitrary text before the `#`, which is useful when the issue is on another repo)
+- `//@ known-bug: unknown`
+  (when there is no known issue yet; preferrably open one if it does not already exist)
 
 Do not include [error annotations](#error-annotations) in a test with
 `known-bug`. The test should still include other normal directives and

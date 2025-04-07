@@ -15,9 +15,9 @@ use tracing::debug;
 
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
-use crate::errors::{PathSingleColon, PathTripleColon};
+use crate::errors::{self, PathSingleColon, PathTripleColon};
+use crate::exp;
 use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
-use crate::{errors, exp, maybe_whole};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -194,7 +194,11 @@ impl<'a> Parser<'a> {
             }
         };
 
-        maybe_whole!(self, NtPath, |path| reject_generics_if_mod_style(self, path.into_inner()));
+        if let Some(path) =
+            self.eat_metavar_seq(MetaVarKind::Path, |this| this.parse_path(PathStyle::Type))
+        {
+            return Ok(reject_generics_if_mod_style(self, path));
+        }
 
         // If we have a `ty` metavar in the form of a path, reparse it directly as a path, instead
         // of reparsing it as a `ty` and then extracting the path.
@@ -301,10 +305,7 @@ impl<'a> Parser<'a> {
         let is_args_start = |token: &Token| {
             matches!(
                 token.kind,
-                token::Lt
-                    | token::BinOp(token::Shl)
-                    | token::OpenDelim(Delimiter::Parenthesis)
-                    | token::LArrow
+                token::Lt | token::Shl | token::OpenDelim(Delimiter::Parenthesis) | token::LArrow
             )
         };
         let check_args_start = |this: &mut Self| {
@@ -378,11 +379,14 @@ impl<'a> Parser<'a> {
 
                     self.psess.gated_spans.gate(sym::return_type_notation, span);
 
+                    let prev_lo = self.prev_token.span.shrink_to_hi();
                     if self.eat_noexpect(&token::RArrow) {
                         let lo = self.prev_token.span;
                         let ty = self.parse_ty()?;
+                        let span = lo.to(ty.span);
+                        let suggestion = prev_lo.to(ty.span);
                         self.dcx()
-                            .emit_err(errors::BadReturnTypeNotationOutput { span: lo.to(ty.span) });
+                            .emit_err(errors::BadReturnTypeNotationOutput { span, suggestion });
                     }
 
                     P(ast::GenericArgs::ParenthesizedElided(span))

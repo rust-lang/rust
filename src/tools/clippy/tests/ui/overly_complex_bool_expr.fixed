@@ -8,10 +8,12 @@ fn main() {
     let d: bool = unimplemented!();
     let e: bool = unimplemented!();
     let _ = a;
-    //~^ ERROR: this boolean expression contains a logic bug
+    //~^ overly_complex_bool_expr
+
     let _ = !(a && b);
     let _ = false;
-    //~^ ERROR: this boolean expression contains a logic bug
+    //~^ overly_complex_bool_expr
+
     // don't lint on cfgs
     let _ = cfg!(you_shall_not_not_pass) && a;
     let _ = a || !b || !c || !d || !e;
@@ -22,11 +24,14 @@ fn equality_stuff() {
     let a: i32 = unimplemented!();
     let b: i32 = unimplemented!();
     let _ = false;
-    //~^ ERROR: this boolean expression contains a logic bug
+    //~^ overly_complex_bool_expr
+
     let _ = false;
-    //~^ ERROR: this boolean expression contains a logic bug
+    //~^ overly_complex_bool_expr
+
     let _ = false;
-    //~^ ERROR: this boolean expression contains a logic bug
+    //~^ overly_complex_bool_expr
+
     let _ = a > b && a == b;
 }
 

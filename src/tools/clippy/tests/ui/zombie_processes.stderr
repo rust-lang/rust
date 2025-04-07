@@ -11,7 +11,7 @@ LL |         let mut x = Command::new("").spawn().unwrap();
    = help: to override `-D warnings` add `#[allow(clippy::zombie_processes)]`
 
 error: spawned process is never `wait()`ed on
-  --> tests/ui/zombie_processes.rs:41:21
+  --> tests/ui/zombie_processes.rs:42:21
    |
 LL |         let mut x = Command::new("").spawn().unwrap();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -21,7 +21,7 @@ LL |         let mut x = Command::new("").spawn().unwrap();
    = note: see https://doc.rust-lang.org/stable/std/process/struct.Child.html#warning
 
 error: spawned process is never `wait()`ed on
-  --> tests/ui/zombie_processes.rs:66:21
+  --> tests/ui/zombie_processes.rs:68:21
    |
 LL |         let mut x = Command::new("").spawn().unwrap();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |         let mut x = Command::new("").spawn().unwrap();
    = note: see https://doc.rust-lang.org/stable/std/process/struct.Child.html#warning
 
 error: spawned process is never `wait()`ed on
-  --> tests/ui/zombie_processes.rs:73:21
+  --> tests/ui/zombie_processes.rs:76:21
    |
 LL |         let mut x = Command::new("").spawn().unwrap();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,18 +41,18 @@ LL |         let mut x = Command::new("").spawn().unwrap();
    = note: see https://doc.rust-lang.org/stable/std/process/struct.Child.html#warning
 
 error: spawned process is not `wait()`ed on in all code paths
-  --> tests/ui/zombie_processes.rs:99:21
+  --> tests/ui/zombie_processes.rs:103:21
    |
 LL |         let mut x = Command::new("").spawn().unwrap();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: no `wait()` call exists on the code path to this early return
-  --> tests/ui/zombie_processes.rs:102:13
+  --> tests/ui/zombie_processes.rs:107:13
    |
 LL |             return;
    |             ^^^^^^
 note: `wait()` call exists, but it is unreachable due to the early return
-  --> tests/ui/zombie_processes.rs:104:9
+  --> tests/ui/zombie_processes.rs:109:9
    |
 LL |         x.wait().unwrap();
    |         ^
@@ -61,20 +61,20 @@ LL |         x.wait().unwrap();
    = note: see https://doc.rust-lang.org/stable/std/process/struct.Child.html#warning
 
 error: spawned process is not `wait()`ed on in all code paths
-  --> tests/ui/zombie_processes.rs:108:21
+  --> tests/ui/zombie_processes.rs:113:21
    |
 LL |         let mut x = Command::new("").spawn().unwrap();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this if expression has a `wait()` call, but it is missing an else block
-  --> tests/ui/zombie_processes.rs:110:9
+  --> tests/ui/zombie_processes.rs:116:9
    |
 LL | /         if true {
 LL | |             x.wait().unwrap();
 LL | |         }
    | |_________^
 note: `wait()` called here
-  --> tests/ui/zombie_processes.rs:111:13
+  --> tests/ui/zombie_processes.rs:117:13
    |
 LL |             x.wait().unwrap();
    |             ^
@@ -83,13 +83,13 @@ LL |             x.wait().unwrap();
    = note: see https://doc.rust-lang.org/stable/std/process/struct.Child.html#warning
 
 error: spawned process is not `wait()`ed on in all code paths
-  --> tests/ui/zombie_processes.rs:116:21
+  --> tests/ui/zombie_processes.rs:122:21
    |
 LL |         let mut x = Command::new("").spawn().unwrap();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `wait()` is not called in this if branch
-  --> tests/ui/zombie_processes.rs:120:10
+  --> tests/ui/zombie_processes.rs:127:10
    |
 LL |           } else {
    |  __________^
@@ -97,7 +97,7 @@ LL | |             // this else block exists to test the other help message
 LL | |         }
    | |_________^
 note: `wait()` is called in the other branch
-  --> tests/ui/zombie_processes.rs:119:13
+  --> tests/ui/zombie_processes.rs:126:13
    |
 LL |             x.wait().unwrap();
    |             ^
@@ -106,20 +106,20 @@ LL |             x.wait().unwrap();
    = note: see https://doc.rust-lang.org/stable/std/process/struct.Child.html#warning
 
 error: spawned process is not `wait()`ed on in all code paths
-  --> tests/ui/zombie_processes.rs:126:21
+  --> tests/ui/zombie_processes.rs:133:21
    |
 LL |         let mut x = Command::new("").spawn().unwrap();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `wait()` is not called in this if branch
-  --> tests/ui/zombie_processes.rs:128:9
+  --> tests/ui/zombie_processes.rs:136:9
    |
 LL | /         if true {
 LL | |             // this else block exists to test the other help message
 LL | |         } else {
    | |_________^
 note: `wait()` is called in the other branch
-  --> tests/ui/zombie_processes.rs:131:13
+  --> tests/ui/zombie_processes.rs:139:13
    |
 LL |             x.wait().unwrap();
    |             ^

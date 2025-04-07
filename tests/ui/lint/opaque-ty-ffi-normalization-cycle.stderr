@@ -1,5 +1,5 @@
 error: `extern` block uses type `AliasB`, which is not FFI-safe
-  --> $DIR/opaque-ty-ffi-normalization-cycle.rs:37:21
+  --> $DIR/opaque-ty-ffi-normalization-cycle.rs:39:21
    |
 LL |     fn lint_me() -> <AliasB as TraitB>::Assoc;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe

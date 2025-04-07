@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::{fs, io, mem, str, thread};
 
+use rustc_abi::Size;
 use rustc_ast::attr;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -278,6 +279,10 @@ impl ModuleConfig {
             || self.emit_obj == EmitObj::Bitcode
             || self.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
     }
+
+    pub fn embed_bitcode(&self) -> bool {
+        self.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
+    }
 }
 
 /// Configuration passed to the function returned by the `target_machine_factory`.
@@ -347,10 +352,11 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub is_pe_coff: bool,
     pub target_can_use_split_dwarf: bool,
     pub target_arch: String,
-    pub target_is_like_osx: bool,
+    pub target_is_like_darwin: bool,
     pub target_is_like_aix: bool,
     pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
     pub split_dwarf_kind: rustc_session::config::SplitDwarfKind,
+    pub pointer_size: Size,
 
     /// All commandline args used to invoke the compiler, with @file args fully expanded.
     /// This will only be used within debug info, e.g. in the pdb file on windows
@@ -469,7 +475,7 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
 
-    let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+    let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
     let no_builtins = attr::contains_name(crate_attrs, sym::no_builtins);
 
     let crate_info = CrateInfo::new(tcx, target_cpu);
@@ -540,9 +546,12 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         if let Some(path) = &module.bytecode {
             files.push((OutputType::Bitcode.extension(), path.as_path()));
         }
-        if let Some((id, product)) =
-            copy_cgu_workproduct_to_incr_comp_cache_dir(sess, &module.name, files.as_slice())
-        {
+        if let Some((id, product)) = copy_cgu_workproduct_to_incr_comp_cache_dir(
+            sess,
+            &module.name,
+            files.as_slice(),
+            &module.links_from_incr_cache,
+        ) {
             work_products.insert(id, product);
         }
     }
@@ -560,16 +569,13 @@ fn produce_final_output_artifacts(
 
     // Produce final compile outputs.
     let copy_gracefully = |from: &Path, to: &OutFileName| match to {
-        OutFileName::Stdout => {
-            if let Err(e) = copy_to_stdout(from) {
-                sess.dcx().emit_err(errors::CopyPath::new(from, to.as_path(), e));
-            }
+        OutFileName::Stdout if let Err(e) = copy_to_stdout(from) => {
+            sess.dcx().emit_err(errors::CopyPath::new(from, to.as_path(), e));
         }
-        OutFileName::Real(path) => {
-            if let Err(e) = fs::copy(from, path) {
-                sess.dcx().emit_err(errors::CopyPath::new(from, path, e));
-            }
+        OutFileName::Real(path) if let Err(e) = fs::copy(from, path) => {
+            sess.dcx().emit_err(errors::CopyPath::new(from, path, e));
         }
+        _ => {}
     };
 
     let copy_if_one_unit = |output_type: OutputType, keep_numbered: bool| {
@@ -679,14 +685,12 @@ fn produce_final_output_artifacts(
             needs_crate_object || (user_wants_objects && sess.codegen_units().as_usize() > 1);
 
         for module in compiled_modules.modules.iter() {
-            if let Some(ref path) = module.object {
-                if !keep_numbered_objects {
+            if !keep_numbered_objects {
+                if let Some(ref path) = module.object {
                     ensure_removed(sess.dcx(), path);
                 }
-            }
 
-            if let Some(ref path) = module.dwarf_object {
-                if !keep_numbered_objects {
+                if let Some(ref path) = module.dwarf_object {
                     ensure_removed(sess.dcx(), path);
                 }
             }
@@ -698,12 +702,11 @@ fn produce_final_output_artifacts(
             }
         }
 
-        if !user_wants_bitcode {
-            if let Some(ref allocator_module) = compiled_modules.allocator_module {
-                if let Some(ref path) = allocator_module.bytecode {
-                    ensure_removed(sess.dcx(), path);
-                }
-            }
+        if !user_wants_bitcode
+            && let Some(ref allocator_module) = compiled_modules.allocator_module
+            && let Some(ref path) = allocator_module.bytecode
+        {
+            ensure_removed(sess.dcx(), path);
         }
     }
 
@@ -877,14 +880,14 @@ pub(crate) fn compute_per_cgu_lto_type(
 
 fn execute_optimize_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
-    module: ModuleCodegen<B::Module>,
+    mut module: ModuleCodegen<B::Module>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
 
     unsafe {
-        B::optimize(cgcx, dcx, &module, module_config)?;
+        B::optimize(cgcx, dcx, &mut module, module_config)?;
     }
 
     // After we've done the initial round of optimizations we need to
@@ -934,7 +937,9 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 ) -> WorkItemResult<B> {
     let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
 
-    let load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
+    let mut links_from_incr_cache = Vec::new();
+
+    let mut load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
         let source_file = in_incr_comp_dir(incr_comp_session_dir, saved_path);
         debug!(
             "copying preexisting module `{}` from {:?} to {}",
@@ -943,7 +948,10 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
             output_path.display()
         );
         match link_or_copy(&source_file, &output_path) {
-            Ok(_) => Some(output_path),
+            Ok(_) => {
+                links_from_incr_cache.push(source_file);
+                Some(output_path)
+            }
             Err(error) => {
                 cgcx.create_dcx().handle().emit_err(errors::CopyPathBuf {
                     source_file,
@@ -966,7 +974,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
             load_from_incr_comp_dir(dwarf_obj_out, saved_dwarf_object_file)
         });
 
-    let load_from_incr_cache = |perform, output_type: OutputType| {
+    let mut load_from_incr_cache = |perform, output_type: OutputType| {
         if perform {
             let saved_file = module.source.saved_files.get(output_type.extension())?;
             let output_path = cgcx.output_filenames.temp_path(output_type, Some(&module.name));
@@ -986,6 +994,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     }
 
     WorkItemResult::Finished(CompiledModule {
+        links_from_incr_cache,
         name: module.name,
         kind: ModuleKind::Regular,
         object,
@@ -1207,11 +1216,12 @@ fn start_executing_work<B: ExtraBackendMethods>(
         is_pe_coff: tcx.sess.target.is_like_windows,
         target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),
         target_arch: tcx.sess.target.arch.to_string(),
-        target_is_like_osx: tcx.sess.target.is_like_osx,
+        target_is_like_darwin: tcx.sess.target.is_like_darwin,
         target_is_like_aix: tcx.sess.target.is_like_aix,
         split_debuginfo: tcx.sess.split_debuginfo(),
         split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
         parallel: backend.supports_parallel() && !sess.opts.unstable_opts.no_parallel_backend,
+        pointer_size: tcx.data_layout.pointer_size,
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -2176,7 +2186,7 @@ fn msvc_imps_needed(tcx: TyCtxt<'_>) -> bool {
     // indirectly from ThinLTO. In theory these are not needed as ThinLTO could resolve
     // these, but it currently does not do so.
     let can_have_static_objects =
-        tcx.sess.lto() == Lto::Thin || tcx.crate_types().iter().any(|ct| *ct == CrateType::Rlib);
+        tcx.sess.lto() == Lto::Thin || tcx.crate_types().contains(&CrateType::Rlib);
 
     tcx.sess.target.is_like_windows &&
     can_have_static_objects   &&

@@ -7,13 +7,13 @@ use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
 use rustc_session::parse::add_feature_diagnostics;
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::errors::{
     AsyncBoundNotOnTrait, AsyncBoundOnlyForFnTraits, BadReturnTypeNotation,
-    GenericTypeWithParentheses, UseAngleBrackets,
+    GenericTypeWithParentheses, RTNSuggestion, UseAngleBrackets,
 };
 use super::{
     AllowReturnTypeNotation, GenericArgsCtor, GenericArgsMode, ImplTraitContext, ImplTraitPosition,
@@ -268,19 +268,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 GenericArgs::Parenthesized(data) => match generic_args_mode {
                     GenericArgsMode::ReturnTypeNotation => {
-                        let mut err = if !data.inputs.is_empty() {
-                            self.dcx().create_err(BadReturnTypeNotation::Inputs {
-                                span: data.inputs_span,
-                            })
-                        } else if let FnRetTy::Ty(ty) = &data.output {
-                            self.dcx().create_err(BadReturnTypeNotation::Output {
-                                span: data.inputs_span.shrink_to_hi().to(ty.span),
-                            })
-                        } else {
-                            self.dcx().create_err(BadReturnTypeNotation::NeedsDots {
-                                span: data.inputs_span,
-                            })
+                        let err = match (&data.inputs[..], &data.output) {
+                            ([_, ..], FnRetTy::Default(_)) => {
+                                BadReturnTypeNotation::Inputs { span: data.inputs_span }
+                            }
+                            ([], FnRetTy::Default(_)) => {
+                                BadReturnTypeNotation::NeedsDots { span: data.inputs_span }
+                            }
+                            // The case `T: Trait<method(..) -> Ret>` is handled in the parser.
+                            (_, FnRetTy::Ty(ty)) => {
+                                let span = data.inputs_span.shrink_to_hi().to(ty.span);
+                                BadReturnTypeNotation::Output {
+                                    span,
+                                    suggestion: RTNSuggestion {
+                                        output: span,
+                                        input: data.inputs_span,
+                                    },
+                                }
+                            }
                         };
+                        let mut err = self.dcx().create_err(err);
                         if !self.tcx.features().return_type_notation()
                             && self.tcx.sess.is_nightly_build()
                         {
@@ -443,10 +450,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             0,
             (start.as_u32()..end.as_u32()).map(|i| {
                 let id = NodeId::from_u32(i);
-                let l = self.lower_lifetime(&Lifetime {
-                    id,
-                    ident: Ident::new(kw::Empty, elided_lifetime_span),
-                });
+                let l = self.lower_lifetime_anon_in_path(id, elided_lifetime_span);
                 GenericArg::Lifetime(l)
             }),
         );

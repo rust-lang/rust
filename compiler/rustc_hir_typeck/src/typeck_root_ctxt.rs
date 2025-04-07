@@ -7,8 +7,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{HirId, HirIdMap};
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_middle::span_bug;
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -60,7 +59,10 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
 
     pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, HirId)>>,
 
-    pub(super) deferred_coroutine_interiors: RefCell<Vec<(LocalDefId, hir::BodyId, Ty<'tcx>)>>,
+    pub(super) deferred_coroutine_interiors: RefCell<Vec<(LocalDefId, Ty<'tcx>)>>,
+
+    pub(super) deferred_repeat_expr_checks:
+        RefCell<Vec<(&'tcx hir::Expr<'tcx>, Ty<'tcx>, ty::Const<'tcx>)>>,
 
     /// Whenever we introduce an adjustment from `!` into a type variable,
     /// we record that type variable here. This is later used to inform
@@ -96,6 +98,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             deferred_transmute_checks: RefCell::new(Vec::new()),
             deferred_asm_checks: RefCell::new(Vec::new()),
             deferred_coroutine_interiors: RefCell::new(Vec::new()),
+            deferred_repeat_expr_checks: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
             infer_var_info: RefCell::new(Default::default()),
         }

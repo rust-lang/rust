@@ -13,7 +13,7 @@ LL | trait Foo<const N: dyn Bar<2>> {
    |                    +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:9:20
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:10:20
    |
 LL | trait Bar<const M: Foo<2>> {}
    |                    ^^^^^^
@@ -32,7 +32,7 @@ LL | trait Foo<const N: Bar<2>> {
    |           ^^^^^^^^^^^^^^^
    |
 note: ...which requires computing type of `Bar::M`...
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:9:11
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:10:11
    |
 LL | trait Bar<const M: Foo<2>> {}
    |           ^^^^^^^^^^^^^^^
@@ -44,6 +44,26 @@ LL | trait Foo<const N: Bar<2>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: aborting due to 1 previous error; 2 warnings emitted
+error[E0391]: cycle detected when computing type of `Foo::N`
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:11
+   |
+LL | trait Foo<const N: Bar<2>> {
+   |           ^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing type of `Bar::M`...
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:10:11
+   |
+LL | trait Bar<const M: Foo<2>> {}
+   |           ^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `Foo::N`, completing the cycle
+note: cycle used when computing explicit predicates of trait `Foo`
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:2:1
+   |
+LL | trait Foo<const N: Bar<2>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0391`.

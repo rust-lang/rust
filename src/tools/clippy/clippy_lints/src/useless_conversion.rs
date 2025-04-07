@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
-use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
+use clippy_utils::ty::{get_type_diagnostic_name, is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{
     get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, path_to_local,
 };
@@ -13,7 +13,7 @@ use rustc_infer::traits::Obligation;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, AdtDef, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -412,24 +412,14 @@ pub fn check_function_application(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &
 }
 
 fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>) -> bool {
-    let recv_ty = cx.typeck_results().expr_ty(recv);
-    if is_inherent_method_call(cx, expr)
-        && let Some(recv_ty_defid) = recv_ty.ty_adt_def().map(AdtDef::did)
-    {
-        if let Some(diag_name) = cx.tcx.get_diagnostic_name(recv_ty_defid)
-            && matches!(diag_name, sym::Option | sym::Result)
-        {
-            return true;
-        }
-
-        if cx.tcx.is_diagnostic_item(sym::ControlFlow, recv_ty_defid) {
-            return true;
-        }
+    if is_inherent_method_call(cx, expr) {
+        matches!(
+            get_type_diagnostic_name(cx, cx.typeck_results().expr_ty(recv)),
+            Some(sym::Option | sym::Result | sym::ControlFlow)
+        )
+    } else {
+        is_trait_method(cx, expr, sym::Iterator)
     }
-    if is_trait_method(cx, expr, sym::Iterator) {
-        return true;
-    }
-    false
 }
 
 fn adjustments(cx: &LateContext<'_>, expr: &Expr<'_>) -> String {

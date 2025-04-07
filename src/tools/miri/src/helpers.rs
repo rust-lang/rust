@@ -14,9 +14,10 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, MaybeResult, TyAndLayout};
-use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
+use rustc_middle::ty::{self, Binder, FloatTy, FnSig, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::{Conv, FnAbi};
 
 use crate::*;
@@ -994,12 +995,96 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         exp_abi: Conv,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
-    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>
-    where
-        &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
-    {
+    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
         self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
-        check_arg_count(args)
+
+        if abi.c_variadic {
+            throw_ub_format!(
+                "calling a non-variadic function with a variadic caller-side signature"
+            );
+        }
+        if let Ok(ops) = args.try_into() {
+            return interp_ok(ops);
+        }
+        throw_ub_format!(
+            "incorrect number of arguments for `{link_name}`: got {}, expected {}",
+            args.len(),
+            N
+        )
+    }
+
+    /// Check that the given `caller_fn_abi` matches the expected ABI described by
+    /// `callee_abi`, `callee_input_tys`, `callee_output_ty`, and the return the list of
+    /// arguments.
+    fn check_shim_abi<'a, const N: usize>(
+        &mut self,
+        link_name: Symbol,
+        caller_fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        callee_abi: ExternAbi,
+        callee_input_tys: [Ty<'tcx>; N],
+        callee_output_ty: Ty<'tcx>,
+        caller_args: &'a [OpTy<'tcx>],
+    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
+        let this = self.eval_context_mut();
+        let mut inputs_and_output = callee_input_tys.to_vec();
+        inputs_and_output.push(callee_output_ty);
+        let fn_sig_binder = Binder::dummy(FnSig {
+            inputs_and_output: this.machine.tcx.mk_type_list(&inputs_and_output),
+            c_variadic: false,
+            // This does not matter for the ABI.
+            safety: Safety::Safe,
+            abi: callee_abi,
+        });
+        let callee_fn_abi = this.fn_abi_of_fn_ptr(fn_sig_binder, Default::default())?;
+
+        this.check_abi_and_shim_symbol_clash(caller_fn_abi, callee_fn_abi.conv, link_name)?;
+
+        if caller_fn_abi.c_variadic {
+            throw_ub_format!(
+                "ABI mismatch: calling a non-variadic function with a variadic caller-side signature"
+            );
+        }
+
+        if callee_fn_abi.fixed_count != caller_fn_abi.fixed_count {
+            throw_ub_format!(
+                "ABI mismatch: expected {} arguments, found {} arguments ",
+                callee_fn_abi.fixed_count,
+                caller_fn_abi.fixed_count
+            );
+        }
+
+        if callee_fn_abi.can_unwind && !caller_fn_abi.can_unwind {
+            throw_ub_format!(
+                "ABI mismatch: callee may unwind, but caller-side signature prohibits unwinding",
+            );
+        }
+
+        if !this.check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret)? {
+            throw_ub!(AbiMismatchReturn {
+                caller_ty: caller_fn_abi.ret.layout.ty,
+                callee_ty: callee_fn_abi.ret.layout.ty
+            });
+        }
+
+        if let Some(index) = caller_fn_abi
+            .args
+            .iter()
+            .zip(callee_fn_abi.args.iter())
+            .map(|(caller_arg, callee_arg)| this.check_argument_compat(caller_arg, callee_arg))
+            .collect::<InterpResult<'tcx, Vec<bool>>>()?
+            .into_iter()
+            .position(|b| !b)
+        {
+            throw_ub!(AbiMismatchArgument {
+                caller_ty: caller_fn_abi.args[index].layout.ty,
+                callee_ty: callee_fn_abi.args[index].layout.ty
+            });
+        }
+
+        if let Ok(ops) = caller_args.try_into() {
+            return interp_ok(ops);
+        }
+        unreachable!()
     }
 
     /// Check shim for variadic function.
@@ -1015,7 +1100,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
     {
         self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
-        check_vargarg_fixed_arg_count(link_name, abi, args)
+
+        if !abi.c_variadic {
+            throw_ub_format!(
+                "calling a variadic function with a non-variadic caller-side signature"
+            );
+        }
+        if abi.fixed_count != u32::try_from(N).unwrap() {
+            throw_ub_format!(
+                "incorrect number of fixed arguments for variadic function `{}`: got {}, expected {N}",
+                link_name.as_str(),
+                abi.fixed_count
+            )
+        }
+        if let Some(args) = args.split_first_chunk() {
+            return interp_ok(args);
+        }
+        panic!("mismatch between signature and `args` slice");
     }
 
     /// Mark a machine allocation that was just created as immutable.
@@ -1158,6 +1259,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         interp_ok(array)
     }
+
+    fn mangle_internal_symbol<'a>(&'a mut self, name: &'static str) -> &'a str
+    where
+        'tcx: 'a,
+    {
+        let this = self.eval_context_mut();
+        let tcx = *this.tcx;
+        this.machine
+            .mangle_internal_symbol_cache
+            .entry(name)
+            .or_insert_with(|| mangle_internal_symbol(tcx, name))
+    }
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -1199,7 +1312,7 @@ impl<'tcx> MiriMachine<'tcx> {
 }
 
 /// Check that the number of args is what we expect.
-pub fn check_arg_count<'a, 'tcx, const N: usize>(
+pub fn check_intrinsic_arg_count<'a, 'tcx, const N: usize>(
     args: &'a [OpTy<'tcx>],
 ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>
 where
@@ -1208,7 +1321,11 @@ where
     if let Ok(ops) = args.try_into() {
         return interp_ok(ops);
     }
-    throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
+    throw_ub_format!(
+        "incorrect number of arguments for intrinsic: got {}, expected {}",
+        args.len(),
+        N
+    )
 }
 
 /// Check that the number of varargs is at least the minimum what we expect.
@@ -1223,34 +1340,6 @@ pub fn check_min_vararg_count<'a, 'tcx, const N: usize>(
     }
     throw_ub_format!(
         "not enough variadic arguments for `{name}`: got {}, expected at least {}",
-        args.len(),
-        N
-    )
-}
-
-/// Check the number of fixed args of a vararg function.
-/// Returns a tuple that consisting of an array of fixed args, and a slice of varargs.
-fn check_vargarg_fixed_arg_count<'a, 'tcx, const N: usize>(
-    link_name: Symbol,
-    abi: &FnAbi<'tcx, Ty<'tcx>>,
-    args: &'a [OpTy<'tcx>],
-) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], &'a [OpTy<'tcx>])> {
-    if !abi.c_variadic {
-        throw_ub_format!("calling a variadic function with a non-variadic caller-side signature");
-    }
-    if abi.fixed_count != u32::try_from(N).unwrap() {
-        throw_ub_format!(
-            "incorrect number of fixed arguments for variadic function `{}`: got {}, expected {N}",
-            link_name.as_str(),
-            abi.fixed_count
-        )
-    }
-    if let Some(args) = args.split_first_chunk() {
-        return interp_ok(args);
-    }
-    throw_ub_format!(
-        "incorrect number of arguments for `{}`: got {}, expected at least {}",
-        link_name.as_str(),
         args.len(),
         N
     )

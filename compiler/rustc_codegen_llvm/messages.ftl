@@ -56,6 +56,8 @@ codegen_llvm_prepare_thin_lto_module_with_llvm_err = failed to prepare thin LTO 
 codegen_llvm_run_passes = failed to run LLVM passes
 codegen_llvm_run_passes_with_llvm_err = failed to run LLVM passes: {$llvm_err}
 
+codegen_llvm_sanitizer_kcfi_arity_requires_llvm_21_0_0 = `-Zsanitizer-kcfi-arity` requires LLVM 21.0.0 or later.
+
 codegen_llvm_sanitizer_memtag_requires_mte =
     `-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`
 

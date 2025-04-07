@@ -23,27 +23,43 @@ macro_rules! r#gen {
 fn main() {
     // These should be raised
     std::iter::repeat_with(|| do_something()).take(10);
+    //~^ map_with_unused_argument_over_ranges
     std::iter::repeat_with(|| do_something()).take(10);
+    //~^ map_with_unused_argument_over_ranges
     std::iter::repeat_with(|| do_something()).take(11);
+    //~^ map_with_unused_argument_over_ranges
     std::iter::repeat_with(|| do_something()).take(7);
+    //~^ map_with_unused_argument_over_ranges
     std::iter::repeat_with(|| do_something()).take(8);
+    //~^ map_with_unused_argument_over_ranges
     std::iter::repeat_n(3, 10);
+    //~^ map_with_unused_argument_over_ranges
     std::iter::repeat_with(|| {
+        //~^ map_with_unused_argument_over_ranges
         let x = 3;
         x + 2
     }).take(10);
     std::iter::repeat_with(|| do_something()).take(10).collect::<Vec<_>>();
+    //~^ map_with_unused_argument_over_ranges
     let upper = 4;
     std::iter::repeat_with(|| do_something()).take(upper);
+    //~^ map_with_unused_argument_over_ranges
     let upper_fn = || 4;
     std::iter::repeat_with(|| do_something()).take(upper_fn());
+    //~^ map_with_unused_argument_over_ranges
     std::iter::repeat_with(|| do_something()).take(upper_fn() + 1);
+    //~^ map_with_unused_argument_over_ranges
     std::iter::repeat_with(|| do_something()).take(upper_fn() - 2);
+    //~^ map_with_unused_argument_over_ranges
     std::iter::repeat_with(|| do_something()).take(upper_fn() - 1);
+    //~^ map_with_unused_argument_over_ranges
     (-3..9).map(|_| do_something());
     std::iter::repeat_with(|| do_something()).take(0);
+    //~^ map_with_unused_argument_over_ranges
     std::iter::repeat_with(|| do_something()).take(1);
+    //~^ map_with_unused_argument_over_ranges
     std::iter::repeat_with(|| do_something()).take((1 << 4) - 0);
+    //~^ map_with_unused_argument_over_ranges
     // These should not be raised
     r#gen!();
     let lower = 2;
@@ -65,9 +81,11 @@ fn msrv_1_27() {
 #[clippy::msrv = "1.28"]
 fn msrv_1_28() {
     std::iter::repeat_with(|| do_something()).take(10);
+    //~^ map_with_unused_argument_over_ranges
 }
 
 #[clippy::msrv = "1.81"]
 fn msrv_1_82() {
     std::iter::repeat(3).take(10);
+    //~^ map_with_unused_argument_over_ranges
 }

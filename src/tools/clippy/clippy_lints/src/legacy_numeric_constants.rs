@@ -39,9 +39,7 @@ pub struct LegacyNumericConstants {
 
 impl LegacyNumericConstants {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -51,10 +49,10 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         // Integer modules are "TBD" deprecated, and the contents are too,
         // so lint on the `use` statement directly.
-        if let ItemKind::Use(path, kind @ (UseKind::Single | UseKind::Glob)) = item.kind
-            && self.msrv.meets(msrvs::NUMERIC_ASSOCIATED_CONSTANTS)
+        if let ItemKind::Use(path, kind @ (UseKind::Single(_) | UseKind::Glob)) = item.kind
             && !item.span.in_external_macro(cx.sess().source_map())
             && let Some(def_id) = path.res[0].opt_def_id()
+            && self.msrv.meets(cx, msrvs::NUMERIC_ASSOCIATED_CONSTANTS)
         {
             let module = if is_integer_module(cx, def_id) {
                 true
@@ -74,7 +72,9 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
                     "importing a legacy numeric constant"
                 },
                 |diag| {
-                    if item.ident.name == kw::Underscore {
+                    if let UseKind::Single(ident) = kind
+                        && ident.name == kw::Underscore
+                    {
                         diag.help("remove this import");
                         return;
                     }
@@ -137,8 +137,8 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             return;
         };
 
-        if self.msrv.meets(msrvs::NUMERIC_ASSOCIATED_CONSTANTS)
-            && !expr.span.in_external_macro(cx.sess().source_map())
+        if !expr.span.in_external_macro(cx.sess().source_map())
+            && self.msrv.meets(cx, msrvs::NUMERIC_ASSOCIATED_CONSTANTS)
             && !is_from_proc_macro(cx, expr)
         {
             span_lint_hir_and_then(cx, LEGACY_NUMERIC_CONSTANTS, expr.hir_id, span, msg, |diag| {
@@ -151,8 +151,6 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             });
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn is_integer_module(cx: &LateContext<'_>, did: DefId) -> bool {

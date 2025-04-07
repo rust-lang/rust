@@ -28,9 +28,9 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
             // We don't try to detect stuff `<like, this>` because that's not valid HTML,
             // and we don't try to detect stuff `<like this>` because that's not valid Rust.
             let mut generics_end = range.end;
-            if let Some(Some(mut generics_start)) = (is_open_tag
-                && dox[..generics_end].ends_with('>'))
-            .then(|| extract_path_backwards(dox, range.start))
+            if is_open_tag
+                && dox[..generics_end].ends_with('>')
+                && let Some(mut generics_start) = extract_path_backwards(dox, range.start)
             {
                 while generics_start != 0
                     && generics_end < dox.len()

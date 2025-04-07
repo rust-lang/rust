@@ -2,6 +2,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -13,7 +14,6 @@
 #![feature(rustdoc_internals)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;
@@ -35,7 +35,6 @@ use rustc_infer::infer::{
 };
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{
@@ -74,6 +73,7 @@ mod def_use;
 mod diagnostics;
 mod member_constraints;
 mod nll;
+mod opaque_types;
 mod path_utils;
 mod place_ext;
 mod places_conflict;
@@ -103,11 +103,8 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
-    let (input_body, promoted) = tcx.mir_promoted(def);
-    debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
-
+    let (input_body, _) = tcx.mir_promoted(def);
     let input_body: &Body<'_> = &input_body.borrow();
-
     if input_body.should_skip() || input_body.tainted_by_errors.is_some() {
         debug!("Skipping borrowck because of injected body or tainted body");
         // Let's make up a borrowck result! Fun times!
@@ -120,7 +117,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
         return tcx.arena.alloc(result);
     }
 
-    let borrowck_result = do_mir_borrowck(tcx, input_body, &*promoted.borrow(), None).0;
+    let borrowck_result = do_mir_borrowck(tcx, def, None).0;
     debug!("mir_borrowck done");
 
     tcx.arena.alloc(borrowck_result)
@@ -131,15 +128,16 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
 /// Use `consumer_options: None` for the default behavior of returning
 /// [`BorrowCheckResult`] only. Otherwise, return [`BodyWithBorrowckFacts`] according
 /// to the given [`ConsumerOptions`].
-#[instrument(skip(tcx, input_body, input_promoted), fields(id=?input_body.source.def_id()), level = "debug")]
+#[instrument(skip(tcx), level = "debug")]
 fn do_mir_borrowck<'tcx>(
     tcx: TyCtxt<'tcx>,
-    input_body: &Body<'tcx>,
-    input_promoted: &IndexSlice<Promoted, Body<'tcx>>,
+    def: LocalDefId,
     consumer_options: Option<ConsumerOptions>,
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
-    let def = input_body.source.def_id().expect_local();
     let infcx = BorrowckInferCtxt::new(tcx, def);
+    let (input_body, promoted) = tcx.mir_promoted(def);
+    let input_body: &Body<'_> = &input_body.borrow();
+    let input_promoted: &IndexSlice<_, _> = &promoted.borrow();
     if let Some(e) = input_body.tainted_by_errors {
         infcx.set_tainted_by_errors(e);
     }
@@ -173,12 +171,6 @@ fn do_mir_borrowck<'tcx>(
     let free_regions = nll::replace_regions_in_mir(&infcx, &mut body_owned, &mut promoted);
     let body = &body_owned; // no further changes
 
-    // FIXME(-Znext-solver): A bit dubious that we're only registering
-    // predefined opaques in the typeck root.
-    if infcx.next_trait_solver() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
-        infcx.register_predefined_opaques_for_next_solver(def);
-    }
-
     let location_table = PoloniusLocationTable::new(body);
 
     let move_data = MoveData::gather_moves(body, tcx, |_| true);
@@ -193,7 +185,7 @@ fn do_mir_borrowck<'tcx>(
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
         regioncx,
-        opaque_type_values,
+        concrete_opaque_types,
         polonius_input,
         polonius_output,
         opt_closure_req,
@@ -223,7 +215,7 @@ fn do_mir_borrowck<'tcx>(
         body,
         &regioncx,
         &opt_closure_req,
-        &opaque_type_values,
+        &concrete_opaque_types,
         diags_buffer,
     );
 
@@ -358,7 +350,7 @@ fn do_mir_borrowck<'tcx>(
     let tainted_by_errors = mbcx.emit_errors();
 
     let result = BorrowCheckResult {
-        concrete_opaque_types: opaque_type_values,
+        concrete_opaque_types: concrete_opaque_types.into_inner(),
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
         tainted_by_errors,
@@ -433,7 +425,12 @@ pub(crate) struct BorrowckInferCtxt<'tcx> {
 
 impl<'tcx> BorrowckInferCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        let infcx = tcx.infer_ctxt().build(TypingMode::analysis_in_body(tcx, def_id));
+        let typing_mode = if tcx.use_typing_mode_borrowck() {
+            TypingMode::borrowck(tcx, def_id)
+        } else {
+            TypingMode::analysis_in_body(tcx, def_id)
+        };
+        let infcx = tcx.infer_ctxt().build(typing_mode);
         let param_env = tcx.param_env(def_id);
         BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()), param_env }
     }
@@ -479,28 +476,6 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
         }
 
         next_region
-    }
-
-    /// With the new solver we prepopulate the opaque type storage during
-    /// MIR borrowck with the hidden types from HIR typeck. This is necessary
-    /// to avoid ambiguities as earlier goals can rely on the hidden type
-    /// of an opaque which is only constrained by a later goal.
-    fn register_predefined_opaques_for_next_solver(&self, def_id: LocalDefId) {
-        let tcx = self.tcx;
-        // OK to use the identity arguments for each opaque type key, since
-        // we remap opaques from HIR typeck back to their definition params.
-        for data in tcx.typeck(def_id).concrete_opaque_types.iter().map(|(k, v)| (*k, *v)) {
-            // HIR typeck did not infer the regions of the opaque, so we instantiate
-            // them with fresh inference variables.
-            let (key, hidden_ty) = fold_regions(tcx, data, |_, _| {
-                self.next_nll_region_var_in_universe(
-                    NllRegionVariableOrigin::Existential { from_forall: false },
-                    ty::UniverseIndex::ROOT,
-                )
-            });
-
-            self.inject_new_hidden_type_unchecked(key, hidden_ty);
-        }
     }
 }
 
@@ -648,7 +623,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<
             | StatementKind::StorageLive(..) => {}
             // This does not affect borrowck
             StatementKind::BackwardIncompatibleDropHint { place, reason: BackwardIncompatibleDropReason::Edition2024 } => {
-                self.check_backward_incompatible_drop(location, (**place, span), state);
+                self.check_backward_incompatible_drop(location, **place, state);
             }
             StatementKind::StorageDead(local) => {
                 self.access_place(
@@ -1174,7 +1149,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     fn check_backward_incompatible_drop(
         &mut self,
         location: Location,
-        (place, place_span): (Place<'tcx>, Span),
+        place: Place<'tcx>,
         state: &BorrowckDomain,
     ) {
         let tcx = self.infcx.tcx;
@@ -1490,14 +1465,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                         let stmt = &bbd.statements[loc.statement_index];
                         debug!("temporary assigned in: stmt={:?}", stmt);
 
-                        if let StatementKind::Assign(box (_, Rvalue::Ref(_, _, source))) = stmt.kind
-                        {
-                            propagate_closure_used_mut_place(self, source);
-                        } else {
-                            bug!(
-                                "closures should only capture user variables \
+                        match stmt.kind {
+                            StatementKind::Assign(box (
+                                _,
+                                Rvalue::Ref(_, _, source)
+                                | Rvalue::Use(Operand::Copy(source) | Operand::Move(source)),
+                            )) => {
+                                propagate_closure_used_mut_place(self, source);
+                            }
+                            _ => {
+                                bug!(
+                                    "closures should only capture user variables \
                                  or references to user variables"
-                            );
+                                );
+                            }
                         }
                     }
                     _ => propagate_closure_used_mut_place(self, place),
@@ -2474,19 +2455,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         let body = self.body;
         for local in body.mut_vars_and_args_iter().filter(|local| !self.used_mut.contains(local)) {
             let local_decl = &body.local_decls[local];
-            let lint_root = match &body.source_scopes[local_decl.source_info.scope].local_data {
-                ClearCrossCrate::Set(data) => data.lint_root,
-                _ => continue,
+            let ClearCrossCrate::Set(SourceScopeLocalData { lint_root, .. }) =
+                body.source_scopes[local_decl.source_info.scope].local_data
+            else {
+                continue;
             };
 
             // Skip over locals that begin with an underscore or have no name
-            match self.local_names[local] {
-                Some(name) => {
-                    if name.as_str().starts_with('_') {
-                        continue;
-                    }
-                }
-                None => continue,
+            if self.local_names[local].is_none_or(|name| name.as_str().starts_with('_')) {
+                continue;
             }
 
             let span = local_decl.source_info.span;

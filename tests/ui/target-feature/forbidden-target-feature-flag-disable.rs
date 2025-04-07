@@ -10,3 +10,5 @@
 
 #[lang = "sized"]
 pub trait Sized {}
+
+//~? WARN target feature `forced-atomics` cannot be disabled with `-Ctarget-feature`: unsound because it changes the ABI of atomic operations

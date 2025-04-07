@@ -13,6 +13,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         x.kill();
         x.id();
     }
@@ -40,6 +41,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         let v = &x;
         // (allow shared refs is fine because one cannot call `.wait()` through that)
     }
@@ -65,6 +67,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         if true {
             std::process::exit(0);
         }
@@ -72,6 +75,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         if true {
             while false {}
             // Calling `exit()` after leaving a while loop should still be linted.
@@ -98,6 +102,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         if true {
             return;
         }
@@ -107,6 +112,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         if true {
             x.wait().unwrap();
         }
@@ -115,6 +121,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         if true {
             x.wait().unwrap();
         } else {
@@ -125,6 +132,7 @@ fn main() {
     {
         let mut x = Command::new("").spawn().unwrap();
         //~^ zombie_processes
+
         if true {
             // this else block exists to test the other help message
         } else {

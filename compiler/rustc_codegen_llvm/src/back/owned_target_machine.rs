@@ -1,6 +1,5 @@
 use std::ffi::{CStr, c_char};
 use std::marker::PhantomData;
-use std::ops::Deref;
 use std::ptr::NonNull;
 
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -80,12 +79,12 @@ impl OwnedTargetMachine {
             .map(|tm_unique| Self { tm_unique, phantom: PhantomData })
             .ok_or_else(|| LlvmError::CreateTargetMachine { triple: SmallCStr::from(triple) })
     }
-}
 
-impl Deref for OwnedTargetMachine {
-    type Target = llvm::TargetMachine;
-
-    fn deref(&self) -> &Self::Target {
+    /// Returns inner `llvm::TargetMachine` type.
+    ///
+    /// This could be a `Deref` implementation, but `llvm::TargetMachine` is an extern type and
+    /// `Deref::Target: ?Sized`.
+    pub fn raw(&self) -> &llvm::TargetMachine {
         // SAFETY: constructing ensures we have a valid pointer created by
         // llvm::LLVMRustCreateTargetMachine.
         unsafe { self.tm_unique.as_ref() }

@@ -3,7 +3,7 @@ use std::iter;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::{UnwindTerminateReason, traversal};
+use rustc_middle::mir::{Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
@@ -240,7 +240,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let local_values = {
         let args = arg_local_refs(&mut start_bx, &mut fx, &memory_locals);
 
-        let mut allocate_local = |local| {
+        let mut allocate_local = |local: Local| {
             let decl = &mir.local_decls[local];
             let layout = start_bx.layout_of(fx.monomorphize(decl.ty));
             assert!(!layout.ty.has_erasable_regions());

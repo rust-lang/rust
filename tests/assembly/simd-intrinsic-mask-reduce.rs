@@ -1,4 +1,5 @@
 // verify that simd mask reductions do not introduce additional bit shift operations
+//@ add-core-stubs
 //@ revisions: x86 aarch64
 //@ [x86] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 // Set the base cpu explicitly, in case the default has been changed.
@@ -13,20 +14,16 @@
 #![no_core]
 #![allow(non_camel_case_types)]
 
-// Because we don't have core yet.
-#[lang = "sized"]
-pub trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(simd)]
 pub struct mask8x16([i8; 16]);
 
-extern "rust-intrinsic" {
-    fn simd_reduce_all<T>(x: T) -> bool;
-    fn simd_reduce_any<T>(x: T) -> bool;
-}
+#[rustc_intrinsic]
+unsafe fn simd_reduce_all<T>(x: T) -> bool;
+#[rustc_intrinsic]
+unsafe fn simd_reduce_any<T>(x: T) -> bool;
 
 // CHECK-LABEL: mask_reduce_all:
 #[no_mangle]

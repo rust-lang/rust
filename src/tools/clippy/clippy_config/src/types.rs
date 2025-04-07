@@ -1,6 +1,8 @@
 use clippy_utils::def_path_def_ids;
+use rustc_errors::{Applicability, Diag};
 use rustc_hir::def_id::DefIdMap;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::Span;
 use serde::de::{self, Deserializer, Visitor};
 use serde::{Deserialize, Serialize, ser};
 use std::collections::HashMap;
@@ -12,37 +14,99 @@ pub struct Rename {
     pub rename: String,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-pub enum DisallowedPath {
-    Simple(String),
-    WithReason { path: String, reason: Option<String> },
+pub type DisallowedPathWithoutReplacement = DisallowedPath<false>;
+
+#[derive(Debug, Serialize)]
+pub struct DisallowedPath<const REPLACEMENT_ALLOWED: bool = true> {
+    path: String,
+    reason: Option<String>,
+    replacement: Option<String>,
 }
 
-impl DisallowedPath {
+impl<'de, const REPLACEMENT_ALLOWED: bool> Deserialize<'de> for DisallowedPath<REPLACEMENT_ALLOWED> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let enum_ = DisallowedPathEnum::deserialize(deserializer)?;
+        if !REPLACEMENT_ALLOWED && enum_.replacement().is_some() {
+            return Err(de::Error::custom("replacement not allowed for this configuration"));
+        }
+        Ok(Self {
+            path: enum_.path().to_owned(),
+            reason: enum_.reason().map(ToOwned::to_owned),
+            replacement: enum_.replacement().map(ToOwned::to_owned),
+        })
+    }
+}
+
+// `DisallowedPathEnum` is an implementation detail to enable the `Deserialize` implementation just
+// above. `DisallowedPathEnum` is not meant to be used outside of this file.
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+enum DisallowedPathEnum {
+    Simple(String),
+    WithReason {
+        path: String,
+        reason: Option<String>,
+        replacement: Option<String>,
+    },
+}
+
+impl<const REPLACEMENT_ALLOWED: bool> DisallowedPath<REPLACEMENT_ALLOWED> {
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_, ()>) + use<'_, REPLACEMENT_ALLOWED> {
+        move |diag| {
+            if let Some(replacement) = &self.replacement {
+                diag.span_suggestion(
+                    span,
+                    self.reason.as_ref().map_or_else(|| String::from("use"), Clone::clone),
+                    replacement,
+                    Applicability::MachineApplicable,
+                );
+            } else if let Some(reason) = &self.reason {
+                diag.note(reason.clone());
+            }
+        }
+    }
+}
+
+impl DisallowedPathEnum {
     pub fn path(&self) -> &str {
         let (Self::Simple(path) | Self::WithReason { path, .. }) = self;
 
         path
     }
 
-    pub fn reason(&self) -> Option<&str> {
+    fn reason(&self) -> Option<&str> {
         match &self {
             Self::WithReason { reason, .. } => reason.as_deref(),
+            Self::Simple(_) => None,
+        }
+    }
+
+    fn replacement(&self) -> Option<&str> {
+        match &self {
+            Self::WithReason { replacement, .. } => replacement.as_deref(),
             Self::Simple(_) => None,
         }
     }
 }
 
 /// Creates a map of disallowed items to the reason they were disallowed.
-pub fn create_disallowed_map(
+pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
     tcx: TyCtxt<'_>,
-    disallowed: &'static [DisallowedPath],
-) -> DefIdMap<(&'static str, Option<&'static str>)> {
+    disallowed: &'static [DisallowedPath<REPLACEMENT_ALLOWED>],
+) -> DefIdMap<(&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)> {
     disallowed
         .iter()
-        .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x.reason()))
-        .flat_map(|(name, path, reason)| def_path_def_ids(tcx, &path).map(move |id| (id, (name, reason))))
+        .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x))
+        .flat_map(|(name, path, disallowed_path)| {
+            def_path_def_ids(tcx, &path).map(move |id| (id, (name, disallowed_path)))
+        })
         .collect()
 }
 
@@ -241,6 +305,7 @@ impl SourceItemOrderingModuleItemKind {
 pub struct SourceItemOrderingModuleItemGroupings {
     groups: Vec<(String, Vec<SourceItemOrderingModuleItemKind>)>,
     lut: HashMap<SourceItemOrderingModuleItemKind, usize>,
+    back_lut: HashMap<SourceItemOrderingModuleItemKind, String>,
 }
 
 impl SourceItemOrderingModuleItemGroupings {
@@ -256,6 +321,30 @@ impl SourceItemOrderingModuleItemGroupings {
         lut
     }
 
+    fn build_back_lut(
+        groups: &[(String, Vec<SourceItemOrderingModuleItemKind>)],
+    ) -> HashMap<SourceItemOrderingModuleItemKind, String> {
+        let mut lut = HashMap::new();
+        for (group_name, items) in groups {
+            for item in items {
+                lut.insert(item.clone(), group_name.clone());
+            }
+        }
+        lut
+    }
+
+    pub fn grouping_name_of(&self, item: &SourceItemOrderingModuleItemKind) -> Option<&String> {
+        self.back_lut.get(item)
+    }
+
+    pub fn grouping_names(&self) -> Vec<String> {
+        self.groups.iter().map(|(name, _)| name.clone()).collect()
+    }
+
+    pub fn is_grouping(&self, grouping: &str) -> bool {
+        self.groups.iter().any(|(g, _)| g == grouping)
+    }
+
     pub fn module_level_order_of(&self, item: &SourceItemOrderingModuleItemKind) -> Option<usize> {
         self.lut.get(item).copied()
     }
@@ -266,7 +355,8 @@ impl From<&[(&str, &[SourceItemOrderingModuleItemKind])]> for SourceItemOrdering
         let groups: Vec<(String, Vec<SourceItemOrderingModuleItemKind>)> =
             value.iter().map(|item| (item.0.to_string(), item.1.to_vec())).collect();
         let lut = Self::build_lut(&groups);
-        Self { groups, lut }
+        let back_lut = Self::build_back_lut(&groups);
+        Self { groups, lut, back_lut }
     }
 }
 
@@ -284,6 +374,7 @@ impl<'de> Deserialize<'de> for SourceItemOrderingModuleItemGroupings {
         let groups = Vec::<(String, Vec<SourceItemOrderingModuleItemKind>)>::deserialize(deserializer)?;
         let items_total: usize = groups.iter().map(|(_, v)| v.len()).sum();
         let lut = Self::build_lut(&groups);
+        let back_lut = Self::build_back_lut(&groups);
 
         let mut expected_items = SourceItemOrderingModuleItemKind::all_variants();
         for item in lut.keys() {
@@ -306,7 +397,7 @@ impl<'de> Deserialize<'de> for SourceItemOrderingModuleItemGroupings {
                 ));
             }
 
-            Ok(Self { groups, lut })
+            Ok(Self { groups, lut, back_lut })
         } else if items_total != all_items.len() {
             Err(de::Error::custom(format!(
                 "Some module item kinds were configured more than once, or were missing, in the source ordering configuration. \
@@ -418,6 +509,83 @@ impl Serialize for SourceItemOrderingTraitAssocItemKinds {
     }
 }
 
+/// Describes which specific groupings should have their items ordered
+/// alphabetically.
+///
+/// This is separate from defining and enforcing groupings. For example,
+/// defining enums are grouped before structs still allows for an enum B to be
+/// placed before an enum A. Only when enforcing ordering within the grouping,
+/// will it be checked if A is placed before B.
+#[derive(Clone, Debug)]
+pub enum SourceItemOrderingWithinModuleItemGroupings {
+    /// All groupings should have their items ordered.
+    All,
+
+    /// None of the groupings should have their order checked.
+    None,
+
+    /// Only the specified groupings should have their order checked.
+    Custom(Vec<String>),
+}
+
+impl SourceItemOrderingWithinModuleItemGroupings {
+    pub fn ordered_within(&self, grouping_name: &String) -> bool {
+        match self {
+            SourceItemOrderingWithinModuleItemGroupings::All => true,
+            SourceItemOrderingWithinModuleItemGroupings::None => false,
+            SourceItemOrderingWithinModuleItemGroupings::Custom(groups) => groups.contains(grouping_name),
+        }
+    }
+}
+
+/// Helper struct for deserializing the [`SourceItemOrderingWithinModuleItemGroupings`].
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum StringOrVecOfString {
+    String(String),
+    Vec(Vec<String>),
+}
+
+impl<'de> Deserialize<'de> for SourceItemOrderingWithinModuleItemGroupings {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let description = "The available options for configuring an ordering within module item groups are: \
+                    \"all\", \"none\", or a list of module item group names \
+                    (as configured with the `module-item-order-groupings` configuration option).";
+
+        match StringOrVecOfString::deserialize(deserializer) {
+            Ok(StringOrVecOfString::String(preset)) if preset == "all" => {
+                Ok(SourceItemOrderingWithinModuleItemGroupings::All)
+            },
+            Ok(StringOrVecOfString::String(preset)) if preset == "none" => {
+                Ok(SourceItemOrderingWithinModuleItemGroupings::None)
+            },
+            Ok(StringOrVecOfString::String(preset)) => Err(de::Error::custom(format!(
+                "Unknown configuration option: {preset}.\n{description}"
+            ))),
+            Ok(StringOrVecOfString::Vec(groupings)) => {
+                Ok(SourceItemOrderingWithinModuleItemGroupings::Custom(groupings))
+            },
+            Err(e) => Err(de::Error::custom(format!("{e}\n{description}"))),
+        }
+    }
+}
+
+impl Serialize for SourceItemOrderingWithinModuleItemGroupings {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ser::Serializer,
+    {
+        match self {
+            SourceItemOrderingWithinModuleItemGroupings::All => serializer.serialize_str("all"),
+            SourceItemOrderingWithinModuleItemGroupings::None => serializer.serialize_str("none"),
+            SourceItemOrderingWithinModuleItemGroupings::Custom(vec) => vec.serialize(serializer),
+        }
+    }
+}
+
 // these impls are never actually called but are used by the various config options that default to
 // empty lists
 macro_rules! unimplemented_serialize {
@@ -436,7 +604,6 @@ macro_rules! unimplemented_serialize {
 }
 
 unimplemented_serialize! {
-    DisallowedPath,
     Rename,
     MacroMatcher,
 }

@@ -1,5 +1,6 @@
 //! Inlining pass for MIR functions.
 
+use std::assert_matches::debug_assert_matches;
 use std::iter;
 use std::ops::{Range, RangeFrom};
 
@@ -18,7 +19,7 @@ use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::source_map::Spanned;
 use tracing::{debug, instrument, trace, trace_span};
 
-use crate::cost_checker::CostChecker;
+use crate::cost_checker::{CostChecker, is_call_like};
 use crate::deref_separator::deref_finder;
 use crate::simplify::simplify_cfg;
 use crate::validate::validate_types;
@@ -26,6 +27,7 @@ use crate::{check_inline, util};
 
 pub(crate) mod cycle;
 
+const HISTORY_DEPTH_LIMIT: usize = 20;
 const TOP_DOWN_DEPTH_LIMIT: usize = 5;
 
 #[derive(Clone, Debug)]
@@ -117,6 +119,11 @@ trait Inliner<'tcx> {
     /// Should inlining happen for a given callee?
     fn should_inline_for_callee(&self, def_id: DefId) -> bool;
 
+    fn check_codegen_attributes_extra(
+        &self,
+        callee_attrs: &CodegenFnAttrs,
+    ) -> Result<(), &'static str>;
+
     fn check_caller_mir_body(&self, body: &Body<'tcx>) -> bool;
 
     /// Returns inlining decision that is based on the examination of callee MIR body.
@@ -128,10 +135,6 @@ trait Inliner<'tcx> {
         callee_attrs: &CodegenFnAttrs,
     ) -> Result<(), &'static str>;
 
-    // How many callsites in a body are we allowed to inline? We need to limit this in order
-    // to prevent super-linear growth in MIR size.
-    fn inline_limit_for_block(&self) -> Option<usize>;
-
     /// Called when inlining succeeds.
     fn on_inline_success(
         &mut self,
@@ -142,9 +145,6 @@ trait Inliner<'tcx> {
 
     /// Called when inlining failed or was not performed.
     fn on_inline_failure(&self, callsite: &CallSite<'tcx>, reason: &'static str);
-
-    /// Called when the inline limit for a body is reached.
-    fn on_inline_limit_reached(&self) -> bool;
 }
 
 struct ForceInliner<'tcx> {
@@ -191,6 +191,14 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
         ForceInline::should_run_pass_for_callee(self.tcx(), def_id)
     }
 
+    fn check_codegen_attributes_extra(
+        &self,
+        callee_attrs: &CodegenFnAttrs,
+    ) -> Result<(), &'static str> {
+        debug_assert_matches!(callee_attrs.inline, InlineAttr::Force { .. });
+        Ok(())
+    }
+
     fn check_caller_mir_body(&self, _: &Body<'tcx>) -> bool {
         true
     }
@@ -222,10 +230,6 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
         } else {
             Ok(())
         }
-    }
-
-    fn inline_limit_for_block(&self) -> Option<usize> {
-        Some(usize::MAX)
     }
 
     fn on_inline_success(
@@ -261,10 +265,6 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
             justification: justification.map(|sym| crate::errors::ForceInlineJustification { sym }),
         });
     }
-
-    fn on_inline_limit_reached(&self) -> bool {
-        false
-    }
 }
 
 struct NormalInliner<'tcx> {
@@ -278,11 +278,21 @@ struct NormalInliner<'tcx> {
     /// The number of `DefId`s is finite, so checking history is enough
     /// to ensure that we do not loop endlessly while inlining.
     history: Vec<DefId>,
+    /// How many (multi-call) callsites have we inlined for the top-level call?
+    ///
+    /// We need to limit this in order to prevent super-linear growth in MIR size.
+    top_down_counter: usize,
     /// Indicates that the caller body has been modified.
     changed: bool,
     /// Indicates that the caller is #[inline] and just calls another function,
     /// and thus we can inline less into it as it'll be inlined itself.
     caller_is_inline_forwarder: bool,
+}
+
+impl<'tcx> NormalInliner<'tcx> {
+    fn past_depth_limit(&self) -> bool {
+        self.history.len() > HISTORY_DEPTH_LIMIT || self.top_down_counter > TOP_DOWN_DEPTH_LIMIT
+    }
 }
 
 impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
@@ -295,6 +305,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
             typing_env,
             def_id,
             history: Vec::new(),
+            top_down_counter: 0,
             changed: false,
             caller_is_inline_forwarder: matches!(
                 codegen_fn_attrs.inline,
@@ -327,6 +338,17 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
         true
     }
 
+    fn check_codegen_attributes_extra(
+        &self,
+        callee_attrs: &CodegenFnAttrs,
+    ) -> Result<(), &'static str> {
+        if self.past_depth_limit() && matches!(callee_attrs.inline, InlineAttr::None) {
+            Err("Past depth limit so not inspecting unmarked callee")
+        } else {
+            Ok(())
+        }
+    }
+
     fn check_caller_mir_body(&self, body: &Body<'tcx>) -> bool {
         // Avoid inlining into coroutines, since their `optimized_mir` is used for layout computation,
         // which can create a cycle, even when no attempt is made to inline the function in the other
@@ -351,7 +373,11 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
             return Err("body has errors");
         }
 
-        let mut threshold = if self.caller_is_inline_forwarder {
+        if self.past_depth_limit() && callee_body.basic_blocks.len() > 1 {
+            return Err("Not inlining multi-block body as we're past a depth limit");
+        }
+
+        let mut threshold = if self.caller_is_inline_forwarder || self.past_depth_limit() {
             tcx.sess.opts.unstable_opts.inline_mir_forwarder_threshold.unwrap_or(30)
         } else if tcx.cross_crate_inlinable(callsite.callee.def_id()) {
             tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
@@ -431,14 +457,6 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
         }
     }
 
-    fn inline_limit_for_block(&self) -> Option<usize> {
-        match self.history.len() {
-            0 => Some(usize::MAX),
-            1..=TOP_DOWN_DEPTH_LIMIT => Some(1),
-            _ => None,
-        }
-    }
-
     fn on_inline_success(
         &mut self,
         callsite: &CallSite<'tcx>,
@@ -447,13 +465,21 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
     ) {
         self.changed = true;
 
+        let new_calls_count = new_blocks
+            .clone()
+            .filter(|&bb| is_call_like(caller_body.basic_blocks[bb].terminator()))
+            .count();
+        if new_calls_count > 1 {
+            self.top_down_counter += 1;
+        }
+
         self.history.push(callsite.callee.def_id());
         process_blocks(self, caller_body, new_blocks);
         self.history.pop();
-    }
 
-    fn on_inline_limit_reached(&self) -> bool {
-        true
+        if self.history.is_empty() {
+            self.top_down_counter = 0;
+        }
     }
 
     fn on_inline_failure(&self, _: &CallSite<'tcx>, _: &'static str) {}
@@ -482,8 +508,6 @@ fn process_blocks<'tcx, I: Inliner<'tcx>>(
     caller_body: &mut Body<'tcx>,
     blocks: Range<BasicBlock>,
 ) {
-    let Some(inline_limit) = inliner.inline_limit_for_block() else { return };
-    let mut inlined_count = 0;
     for bb in blocks {
         let bb_data = &caller_body[bb];
         if bb_data.is_cleanup {
@@ -505,13 +529,6 @@ fn process_blocks<'tcx, I: Inliner<'tcx>>(
             Ok(new_blocks) => {
                 debug!("inlined {}", callsite.callee);
                 inliner.on_inline_success(&callsite, caller_body, new_blocks);
-
-                inlined_count += 1;
-                if inlined_count == inline_limit {
-                    if inliner.on_inline_limit_reached() {
-                        return;
-                    }
-                }
             }
         }
     }
@@ -584,6 +601,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     let callee_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
     check_inline::is_inline_valid_on_fn(tcx, callsite.callee.def_id())?;
     check_codegen_attributes(inliner, callsite, callee_attrs)?;
+    inliner.check_codegen_attributes_extra(callee_attrs)?;
 
     let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
     let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
@@ -606,14 +624,14 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
         ty::EarlyBinder::bind(callee_body.clone()),
     ) else {
         debug!("failed to normalize callee body");
-        return Err("implementation limitation");
+        return Err("implementation limitation -- could not normalize callee body");
     };
 
     // Normally, this shouldn't be required, but trait normalization failure can create a
     // validation ICE.
     if !validate_types(tcx, inliner.typing_env(), &callee_body, &caller_body).is_empty() {
         debug!("failed to validate callee body");
-        return Err("implementation limitation");
+        return Err("implementation limitation -- callee body failed validation");
     }
 
     // Check call signature compatibility.
@@ -622,17 +640,9 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     let output_type = callee_body.return_ty();
     if !util::sub_types(tcx, inliner.typing_env(), output_type, destination_ty) {
         trace!(?output_type, ?destination_ty);
-        debug!("failed to normalize return type");
-        return Err("implementation limitation");
+        return Err("implementation limitation -- return type mismatch");
     }
     if callsite.fn_sig.abi() == ExternAbi::RustCall {
-        // FIXME: Don't inline user-written `extern "rust-call"` functions,
-        // since this is generally perf-negative on rustc, and we hope that
-        // LLVM will inline these functions instead.
-        if callee_body.spread_arg.is_some() {
-            return Err("user-written rust-call functions");
-        }
-
         let (self_arg, arg_tuple) = match &args[..] {
             [arg_tuple] => (None, arg_tuple),
             [self_arg, arg_tuple] => (Some(self_arg), arg_tuple),
@@ -642,12 +652,17 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
         let self_arg_ty = self_arg.map(|self_arg| self_arg.node.ty(&caller_body.local_decls, tcx));
 
         let arg_tuple_ty = arg_tuple.node.ty(&caller_body.local_decls, tcx);
-        let ty::Tuple(arg_tuple_tys) = *arg_tuple_ty.kind() else {
-            bug!("Closure arguments are not passed as a tuple");
+        let arg_tys = if callee_body.spread_arg.is_some() {
+            std::slice::from_ref(&arg_tuple_ty)
+        } else {
+            let ty::Tuple(arg_tuple_tys) = *arg_tuple_ty.kind() else {
+                bug!("Closure arguments are not passed as a tuple");
+            };
+            arg_tuple_tys.as_slice()
         };
 
         for (arg_ty, input) in
-            self_arg_ty.into_iter().chain(arg_tuple_tys).zip(callee_body.args_iter())
+            self_arg_ty.into_iter().chain(arg_tys.iter().copied()).zip(callee_body.args_iter())
         {
             let input_type = callee_body.local_decls[input].ty;
             if !util::sub_types(tcx, inliner.typing_env(), input_type, arg_ty) {
@@ -663,7 +678,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
             if !util::sub_types(tcx, inliner.typing_env(), input_type, arg_ty) {
                 trace!(?arg_ty, ?input_type);
                 debug!("failed to normalize argument type");
-                return Err("implementation limitation");
+                return Err("implementation limitation -- arg mismatch");
             }
         }
     }
@@ -693,13 +708,13 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
             // won't cause cycles on this.
             if !inliner.tcx().is_mir_available(callee_def_id) {
                 debug!("item MIR unavailable");
-                return Err("implementation limitation");
+                return Err("implementation limitation -- MIR unavailable");
             }
         }
         // These have no own callable MIR.
         InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => {
             debug!("instance without MIR (intrinsic / virtual)");
-            return Err("implementation limitation");
+            return Err("implementation limitation -- cannot inline intrinsic");
         }
 
         // FIXME(#127030): `ConstParamHasTy` has bad interactions with
@@ -709,7 +724,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         // substituted.
         InstanceKind::DropGlue(_, Some(ty)) if ty.has_type_flags(TypeFlags::HAS_CT_PARAM) => {
             debug!("still needs substitution");
-            return Err("implementation limitation");
+            return Err("implementation limitation -- HACK for dropping polymorphic type");
         }
 
         // This cannot result in an immediate cycle since the callee MIR is a shim, which does
@@ -772,6 +787,8 @@ fn check_codegen_attributes<'tcx, I: Inliner<'tcx>>(
     if let OptimizeAttr::DoNotOptimize = callee_attrs.optimize {
         return Err("has DoNotOptimize attribute");
     }
+
+    inliner.check_codegen_attributes_extra(callee_attrs)?;
 
     // Reachability pass defines which functions are eligible for inlining. Generally inlining
     // other functions is incorrect because they could reference symbols that aren't exported.
@@ -1060,8 +1077,7 @@ fn make_call_args<'tcx, I: Inliner<'tcx>>(
 
         closure_ref_arg.chain(tuple_tmp_args).collect()
     } else {
-        // FIXME(edition_2024): switch back to a normal method call.
-        <_>::into_iter(args)
+        args.into_iter()
             .map(|a| create_temp_if_necessary(inliner, a.node, callsite, caller_body, return_block))
             .collect()
     }

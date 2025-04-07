@@ -1,8 +1,8 @@
-error[E0275]: overflow evaluating the requirement `Loop == _`
+error[E0271]: type mismatch resolving `Loop normalizes-to _`
   --> $DIR/inherent-impls-overflow.rs:10:6
    |
 LL | impl Loop {}
-   |      ^^^^
+   |      ^^^^ types differ
 
 error: type parameter `T` is only used recursively
   --> $DIR/inherent-impls-overflow.rs:14:24
@@ -36,4 +36,5 @@ LL | impl Poly0<()> {}
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0275`.
+Some errors have detailed explanations: E0271, E0275.
+For more information about an error, try `rustc --explain E0271`.

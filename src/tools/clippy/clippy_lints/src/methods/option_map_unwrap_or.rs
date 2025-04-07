@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(
     unwrap_recv: &rustc_hir::Expr<'_>,
     unwrap_arg: &'tcx rustc_hir::Expr<'_>,
     map_span: Span,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     // lint if the caller of `map()` is an `Option`
     if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option) {
@@ -71,9 +71,9 @@ pub(super) fn check<'tcx>(
         }
 
         // is_some_and is stabilised && `unwrap_or` argument is false; suggest `is_some_and` instead
-        let suggest_is_some_and = msrv.meets(msrvs::OPTION_RESULT_IS_VARIANT_AND)
-            && matches!(&unwrap_arg.kind, ExprKind::Lit(lit)
-            if matches!(lit.node, rustc_ast::LitKind::Bool(false)));
+        let suggest_is_some_and = matches!(&unwrap_arg.kind, ExprKind::Lit(lit)
+            if matches!(lit.node, rustc_ast::LitKind::Bool(false)))
+            && msrv.meets(cx, msrvs::OPTION_RESULT_IS_VARIANT_AND);
 
         let mut applicability = Applicability::MachineApplicable;
         // get snippet for unwrap_or()

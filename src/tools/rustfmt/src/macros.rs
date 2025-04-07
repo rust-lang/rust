@@ -12,14 +12,11 @@
 use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use rustc_ast::token::{BinOpToken, Delimiter, Token, TokenKind};
+use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenStreamIter, TokenTree};
 use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
-use rustc_span::{
-    BytePos, DUMMY_SP, Span, Symbol,
-    symbol::{self, kw},
-};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol};
 use tracing::debug;
 
 use crate::comment::{
@@ -60,7 +57,7 @@ pub(crate) enum MacroArg {
     Ty(ptr::P<ast::Ty>),
     Pat(ptr::P<ast::Pat>),
     Item(ptr::P<ast::Item>),
-    Keyword(symbol::Ident, Span),
+    Keyword(Ident, Span),
 }
 
 impl MacroArg {
@@ -103,20 +100,12 @@ impl Rewrite for MacroArg {
 }
 
 /// Rewrite macro name without using pretty-printer if possible.
-fn rewrite_macro_name(
-    context: &RewriteContext<'_>,
-    path: &ast::Path,
-    extra_ident: Option<symbol::Ident>,
-) -> String {
-    let name = if path.segments.len() == 1 {
+fn rewrite_macro_name(context: &RewriteContext<'_>, path: &ast::Path) -> String {
+    if path.segments.len() == 1 {
         // Avoid using pretty-printer in the common case.
         format!("{}!", rewrite_ident(context, path.segments[0].ident))
     } else {
         format!("{}!", pprust::path_to_string(path))
-    };
-    match extra_ident {
-        Some(ident) if ident.name != kw::Empty => format!("{name} {ident}"),
-        _ => name,
     }
 }
 
@@ -165,7 +154,6 @@ fn return_macro_parse_failure_fallback(
 
 pub(crate) fn rewrite_macro(
     mac: &ast::MacCall,
-    extra_ident: Option<symbol::Ident>,
     context: &RewriteContext<'_>,
     shape: Shape,
     position: MacroPosition,
@@ -179,14 +167,7 @@ pub(crate) fn rewrite_macro(
     } else {
         let guard = context.enter_macro();
         let result = catch_unwind(AssertUnwindSafe(|| {
-            rewrite_macro_inner(
-                mac,
-                extra_ident,
-                context,
-                shape,
-                position,
-                guard.is_nested(),
-            )
+            rewrite_macro_inner(mac, context, shape, position, guard.is_nested())
         }));
         match result {
             Err(..) => {
@@ -207,7 +188,6 @@ pub(crate) fn rewrite_macro(
 
 fn rewrite_macro_inner(
     mac: &ast::MacCall,
-    extra_ident: Option<symbol::Ident>,
     context: &RewriteContext<'_>,
     shape: Shape,
     position: MacroPosition,
@@ -222,7 +202,7 @@ fn rewrite_macro_inner(
 
     let original_style = macro_style(mac, context);
 
-    let macro_name = rewrite_macro_name(context, &mac.path, extra_ident);
+    let macro_name = rewrite_macro_name(context, &mac.path);
     let is_forced_bracket = FORCED_BRACKET_MACROS.contains(&&macro_name[..]);
 
     let style = if is_forced_bracket && !is_nested_macro {
@@ -423,7 +403,6 @@ fn rewrite_empty_macro_def_body(
         rules: ast::BlockCheckMode::Default,
         span,
         tokens: None,
-        could_be_bare_literal: false,
     };
     block.rewrite_result(context, shape)
 }
@@ -433,7 +412,7 @@ pub(crate) fn rewrite_macro_def(
     shape: Shape,
     indent: Indent,
     def: &ast::MacroDef,
-    ident: symbol::Ident,
+    ident: Ident,
     vis: &ast::Visibility,
     span: Span,
 ) -> RewriteResult {
@@ -841,7 +820,7 @@ impl MacroArgParser {
             match tok {
                 TokenTree::Token(
                     Token {
-                        kind: TokenKind::BinOp(BinOpToken::Plus),
+                        kind: TokenKind::Plus,
                         ..
                     },
                     _,
@@ -855,7 +834,7 @@ impl MacroArgParser {
                 )
                 | TokenTree::Token(
                     Token {
-                        kind: TokenKind::BinOp(BinOpToken::Star),
+                        kind: TokenKind::Star,
                         ..
                     },
                     _,
@@ -1088,14 +1067,32 @@ fn force_space_before(tok: &TokenKind) -> bool {
         | TokenKind::Gt
         | TokenKind::AndAnd
         | TokenKind::OrOr
-        | TokenKind::Not
+        | TokenKind::Bang
         | TokenKind::Tilde
-        | TokenKind::BinOpEq(_)
+        | TokenKind::PlusEq
+        | TokenKind::MinusEq
+        | TokenKind::StarEq
+        | TokenKind::SlashEq
+        | TokenKind::PercentEq
+        | TokenKind::CaretEq
+        | TokenKind::AndEq
+        | TokenKind::OrEq
+        | TokenKind::ShlEq
+        | TokenKind::ShrEq
         | TokenKind::At
         | TokenKind::RArrow
         | TokenKind::LArrow
         | TokenKind::FatArrow
-        | TokenKind::BinOp(_)
+        | TokenKind::Plus
+        | TokenKind::Minus
+        | TokenKind::Star
+        | TokenKind::Slash
+        | TokenKind::Percent
+        | TokenKind::Caret
+        | TokenKind::And
+        | TokenKind::Or
+        | TokenKind::Shl
+        | TokenKind::Shr
         | TokenKind::Pound
         | TokenKind::Dollar => true,
         _ => false,
@@ -1113,8 +1110,8 @@ fn next_space(tok: &TokenKind) -> SpaceState {
     debug!("next_space: {:?}", tok);
 
     match tok {
-        TokenKind::Not
-        | TokenKind::BinOp(BinOpToken::And)
+        TokenKind::Bang
+        | TokenKind::And
         | TokenKind::Tilde
         | TokenKind::At
         | TokenKind::Comma

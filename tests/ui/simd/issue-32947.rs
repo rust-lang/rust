@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-emscripten FIXME(#45351)
 
 #![feature(repr_simd, test)]
 
@@ -15,9 +14,7 @@ fn main() {
     // non-optimized builds
     unsafe {
         let memory = &mut [0u64; 8] as *mut _ as *mut u8;
-        let misaligned_ptr: &mut [u8; 32] = {
-            std::mem::transmute(memory.offset(1))
-        };
+        let misaligned_ptr: &mut [u8; 32] = { std::mem::transmute(memory.offset(1)) };
         *misaligned_ptr = std::mem::transmute(Mu64([1, 1, 1, 1]));
         test::black_box(memory);
     }

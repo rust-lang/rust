@@ -12,7 +12,6 @@ note: the `Copy` impl for `Vector2<K>` requires that `K: Debug`
    |
 LL |     pub loc: Vector2<K>,
    |              ^^^^^^^^^^
-   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `K` with trait `Debug`
    |
 LL | pub struct AABB<K: Debug> {
@@ -67,7 +66,6 @@ LL | #[derive(Debug, Copy, Clone)]
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
    |                               ---- unsatisfied trait bound introduced in this `derive` macro
    = note: required for the cast from `&Vector2<K>` to `&dyn Debug`
-   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `K` with trait `Copy`
    |
 LL | pub struct AABB<K: std::marker::Copy> {
@@ -82,7 +80,6 @@ LL | pub struct AABB<K> {
 LL |     pub loc: Vector2<K>,
    |     ^^^^^^^^^^^^^^^^^^^ `K` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `K` with trait `Debug`
    |
 LL | pub struct AABB<K: std::fmt::Debug> {
@@ -102,7 +99,6 @@ note: required by a bound in `Vector2`
    |
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
    |                               ^^^^ required by this bound in `Vector2`
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `K` with trait `Copy`
    |
 LL | pub struct AABB<K: std::marker::Copy> {
@@ -117,7 +113,6 @@ LL | #[derive(Debug, Copy, Clone)]
 LL |     pub size: Vector2<K>,
    |     ^^^^^^^^^^^^^^^^^^^^ `K` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `K` with trait `Debug`
    |
 LL | pub struct AABB<K: std::fmt::Debug> {
@@ -139,7 +134,6 @@ LL | #[derive(Debug, Copy, Clone)]
    |                       ^^^^^
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
    |                               ---- unsatisfied trait bound introduced in this `derive` macro
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `K` with trait `Copy`
    |
 LL | pub struct AABB<K: std::marker::Copy> {

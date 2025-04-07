@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: mips64 mips64el
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 
@@ -13,14 +14,9 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
-impl Copy for [u32; 16] {}
 impl Copy for BigS {}
 impl Copy for BigU {}
 

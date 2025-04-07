@@ -24,8 +24,7 @@
 pub use instantiate::CanonicalExt;
 use rustc_index::IndexVec;
 pub use rustc_middle::infer::canonical::*;
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, GenericArg, List, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArg, List, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 
 use crate::infer::{InferCtxt, RegionVariableOrigin};

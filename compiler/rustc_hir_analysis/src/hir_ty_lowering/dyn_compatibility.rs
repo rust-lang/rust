@@ -4,15 +4,14 @@ use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
-use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
-    self, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
+    self, BottomUpFolder, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
     TypeVisitableExt, Upcast,
 };
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_dyn_compatibility_violations};
-use rustc_type_ir::elaborate::ClauseWithSupertraitSpan;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -57,6 +56,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 potential_assoc_types.extend(cur_potential_assoc_types);
             }
         }
+
+        let ast_bounds: Vec<_> =
+            hir_bounds.iter().map(|&trait_ref| hir::GenericBound::Trait(trait_ref)).collect();
+
+        self.add_default_traits_with_filter(
+            &mut user_written_bounds,
+            dummy_self,
+            &ast_bounds,
+            None,
+            span,
+            |tr| tr != hir::LangItem::Sized,
+        );
 
         let (elaborated_trait_bounds, elaborated_projection_bounds) =
             traits::expand_trait_aliases(tcx, user_written_bounds.iter().copied());
@@ -177,7 +188,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 .in_definition_order()
                                 // We only care about associated types.
                                 .filter(|item| item.kind == ty::AssocKind::Type)
-                                // No RPITITs -- even with `async_fn_in_dyn_trait`, they are implicit.
+                                // No RPITITs -- they're not dyn-compatible for now.
                                 .filter(|item| !item.is_impl_trait_in_trait())
                                 // If the associated type has a `where Self: Sized` bound,
                                 // we do not need to constrain the associated type.

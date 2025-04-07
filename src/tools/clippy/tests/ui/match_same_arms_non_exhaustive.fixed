@@ -41,7 +41,7 @@ pub fn g(x: Ordering) {
         Ordering::Relaxed => println!("relaxed"),
         Ordering::Release => println!("release"),
         Ordering::Acquire => println!("acquire"),
-        //~^ ERROR: this match arm has an identical body to the `_` wildcard arm
+        //~^ match_same_arms
         _ => repeat(),
     }
 }
@@ -54,7 +54,7 @@ mod g {
             Ordering::Relaxed => println!("relaxed"),
             Ordering::Release => println!("release"),
             Ordering::Acquire => println!("acquire"),
-            //~^ ERROR: this match arm has an identical body to the `_` wildcard arm
+            //~^ match_same_arms
             _ => repeat(),
         }
     }

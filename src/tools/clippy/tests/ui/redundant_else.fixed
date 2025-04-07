@@ -8,14 +8,16 @@ fn main() {
             println!("Love your neighbor;");
             break;
         }
-        //~^ ERROR: redundant else block
+        //~^ redundant_else
+
         println!("yet don't pull down your hedge.");
         // continue
         if foo() {
             println!("He that lies down with Dogs,");
             continue;
         }
-        //~^ ERROR: redundant else block
+        //~^ redundant_else
+
         println!("shall rise up with fleas.");
         // match block
         if foo() {
@@ -24,7 +26,8 @@ fn main() {
                 _ => return,
             }
         }
-        //~^ ERROR: redundant else block
+        //~^ redundant_else
+
         println!("You may delay, but time will not.");
     }
     // else if
@@ -33,14 +36,16 @@ fn main() {
     } else if foo() {
         return;
     }
-    //~^ ERROR: redundant else block
+    //~^ redundant_else
+
     println!("A fat kitchen makes a lean will.");
     // let binding outside of block
     let _ = {
         if foo() {
             return;
         }
-        //~^ ERROR: redundant else block
+        //~^ redundant_else
+
         1
     };
     // else if with let binding outside of block
@@ -50,7 +55,8 @@ fn main() {
         } else if foo() {
             return;
         }
-        //~^ ERROR: redundant else block
+        //~^ redundant_else
+
         2
     };
     // inside if let
@@ -59,7 +65,8 @@ fn main() {
         if foo() {
             return;
         }
-        //~^ ERROR: redundant else block
+        //~^ redundant_else
+
         1
     } else {
         1

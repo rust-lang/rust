@@ -316,8 +316,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_ident(&mut self, ident: Ident) -> Self::Result {
         walk_ident(self, ident)
     }
-    fn visit_mod(&mut self, m: &'v Mod<'v>, _s: Span, n: HirId) -> Self::Result {
-        walk_mod(self, m, n)
+    fn visit_mod(&mut self, m: &'v Mod<'v>, _s: Span, _n: HirId) -> Self::Result {
+        walk_mod(self, m)
     }
     fn visit_foreign_item(&mut self, i: &'v ForeignItem<'v>) -> Self::Result {
         walk_foreign_item(self, i)
@@ -363,7 +363,7 @@ pub trait Visitor<'v>: Sized {
     /// See the doc comments on [`Ty`] for an explanation of what it means for a type to be
     /// ambiguous.
     ///
-    /// The [`Visitor::visit_infer`] method should be overriden in order to handle infer vars.
+    /// The [`Visitor::visit_infer`] method should be overridden in order to handle infer vars.
     fn visit_ty(&mut self, t: &'v Ty<'v, AmbigArg>) -> Self::Result {
         walk_ty(self, t)
     }
@@ -374,7 +374,7 @@ pub trait Visitor<'v>: Sized {
     /// See the doc comments on [`ConstArg`] for an explanation of what it means for a const to be
     /// ambiguous.
     ///
-    /// The [`Visitor::visit_infer`] method should be overriden in order to handle infer vars.
+    /// The [`Visitor::visit_infer`] method should be overridden in order to handle infer vars.
     fn visit_const_arg(&mut self, c: &'v ConstArg<'v, AmbigArg>) -> Self::Result {
         walk_ambig_const_arg(self, c)
     }
@@ -464,8 +464,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_field_def(&mut self, s: &'v FieldDef<'v>) -> Self::Result {
         walk_field_def(self, s)
     }
-    fn visit_enum_def(&mut self, enum_definition: &'v EnumDef<'v>, item_id: HirId) -> Self::Result {
-        walk_enum_def(self, enum_definition, item_id)
+    fn visit_enum_def(&mut self, enum_definition: &'v EnumDef<'v>) -> Self::Result {
+        walk_enum_def(self, enum_definition)
     }
     fn visit_variant(&mut self, v: &'v Variant<'v>) -> Self::Result {
         walk_variant(self, v)
@@ -532,64 +532,66 @@ pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) -> 
 }
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::Result {
-    try_visit!(visitor.visit_ident(item.ident));
+    try_visit!(visitor.visit_id(item.hir_id()));
     match item.kind {
-        ItemKind::ExternCrate(orig_name) => {
-            try_visit!(visitor.visit_id(item.hir_id()));
+        ItemKind::ExternCrate(orig_name, ident) => {
             visit_opt!(visitor, visit_name, orig_name);
+            try_visit!(visitor.visit_ident(ident));
         }
-        ItemKind::Use(ref path, _) => {
+        ItemKind::Use(ref path, kind) => {
             try_visit!(visitor.visit_use(path, item.hir_id()));
+            match kind {
+                UseKind::Single(ident) => try_visit!(visitor.visit_ident(ident)),
+                UseKind::Glob | UseKind::ListStem => {}
+            }
         }
-        ItemKind::Static(ref typ, _, body) => {
-            try_visit!(visitor.visit_id(item.hir_id()));
+        ItemKind::Static(ident, ref typ, _, body) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_nested_body(body));
         }
-        ItemKind::Const(ref typ, ref generics, body) => {
-            try_visit!(visitor.visit_id(item.hir_id()));
+        ItemKind::Const(ident, ref typ, ref generics, body) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_nested_body(body));
         }
-        ItemKind::Fn { sig, generics, body: body_id, .. } => {
-            try_visit!(visitor.visit_id(item.hir_id()));
+        ItemKind::Fn { ident, sig, generics, body: body_id, .. } => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_fn(
-                FnKind::ItemFn(item.ident, generics, sig.header),
+                FnKind::ItemFn(ident, generics, sig.header),
                 sig.decl,
                 body_id,
                 item.span,
                 item.owner_id.def_id,
             ));
         }
-        ItemKind::Macro(..) => {
-            try_visit!(visitor.visit_id(item.hir_id()));
+        ItemKind::Macro(ident, _def, _kind) => {
+            try_visit!(visitor.visit_ident(ident));
         }
-        ItemKind::Mod(ref module) => {
-            // `visit_mod()` takes care of visiting the `Item`'s `HirId`.
+        ItemKind::Mod(ident, ref module) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_mod(module, item.span, item.hir_id()));
         }
         ItemKind::ForeignMod { abi: _, items } => {
-            try_visit!(visitor.visit_id(item.hir_id()));
             walk_list!(visitor, visit_foreign_item_ref, items);
         }
         ItemKind::GlobalAsm { asm: _, fake_body } => {
-            try_visit!(visitor.visit_id(item.hir_id()));
             // Visit the fake body, which contains the asm statement.
             // Therefore we should not visit the asm statement again
             // outside of the body, or some visitors won't have their
             // typeck results set correctly.
             try_visit!(visitor.visit_nested_body(fake_body));
         }
-        ItemKind::TyAlias(ref ty, ref generics) => {
-            try_visit!(visitor.visit_id(item.hir_id()));
+        ItemKind::TyAlias(ident, ref ty, ref generics) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_ty_unambig(ty));
             try_visit!(visitor.visit_generics(generics));
         }
-        ItemKind::Enum(ref enum_definition, ref generics) => {
+        ItemKind::Enum(ident, ref enum_definition, ref generics) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
-            // `visit_enum_def()` takes care of visiting the `Item`'s `HirId`.
-            try_visit!(visitor.visit_enum_def(enum_definition, item.hir_id()));
+            try_visit!(visitor.visit_enum_def(enum_definition));
         }
         ItemKind::Impl(Impl {
             constness: _,
@@ -602,26 +604,25 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             self_ty,
             items,
         }) => {
-            try_visit!(visitor.visit_id(item.hir_id()));
             try_visit!(visitor.visit_generics(generics));
             visit_opt!(visitor, visit_trait_ref, of_trait);
             try_visit!(visitor.visit_ty_unambig(self_ty));
             walk_list!(visitor, visit_impl_item_ref, *items);
         }
-        ItemKind::Struct(ref struct_definition, ref generics)
-        | ItemKind::Union(ref struct_definition, ref generics) => {
+        ItemKind::Struct(ident, ref struct_definition, ref generics)
+        | ItemKind::Union(ident, ref struct_definition, ref generics) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
-            try_visit!(visitor.visit_id(item.hir_id()));
             try_visit!(visitor.visit_variant_data(struct_definition));
         }
-        ItemKind::Trait(.., ref generics, bounds, trait_item_refs) => {
-            try_visit!(visitor.visit_id(item.hir_id()));
+        ItemKind::Trait(_is_auto, _safety, ident, ref generics, bounds, trait_item_refs) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_trait_item_ref, trait_item_refs);
         }
-        ItemKind::TraitAlias(ref generics, bounds) => {
-            try_visit!(visitor.visit_id(item.hir_id()));
+        ItemKind::TraitAlias(ident, ref generics, bounds) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             walk_list!(visitor, visit_param_bound, bounds);
         }
@@ -638,12 +639,7 @@ pub fn walk_ident<'v, V: Visitor<'v>>(visitor: &mut V, ident: Ident) -> V::Resul
     visitor.visit_name(ident.name)
 }
 
-pub fn walk_mod<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    module: &'v Mod<'v>,
-    mod_hir_id: HirId,
-) -> V::Result {
-    try_visit!(visitor.visit_id(mod_hir_id));
+pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod<'v>) -> V::Result {
     walk_list!(visitor, visit_nested_item, module.item_ids.iter().copied());
     V::Result::output()
 }
@@ -659,7 +655,9 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(
         ForeignItemKind::Fn(ref sig, param_names, ref generics) => {
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_fn_decl(sig.decl));
-            walk_list!(visitor, visit_ident, param_names.iter().copied());
+            for ident in param_names.iter().copied() {
+                visit_opt!(visitor, visit_ident, ident);
+            }
         }
         ForeignItemKind::Static(ref typ, _, _) => {
             try_visit!(visitor.visit_ty_unambig(typ));
@@ -708,9 +706,9 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) -> V::Res
 pub fn walk_ty_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v TyPat<'v>) -> V::Result {
     try_visit!(visitor.visit_id(pattern.hir_id));
     match pattern.kind {
-        TyPatKind::Range(lower_bound, upper_bound, _) => {
-            visit_opt!(visitor, visit_const_arg_unambig, lower_bound);
-            visit_opt!(visitor, visit_const_arg_unambig, upper_bound);
+        TyPatKind::Range(lower_bound, upper_bound) => {
+            try_visit!(visitor.visit_const_arg_unambig(lower_bound));
+            try_visit!(visitor.visit_const_arg_unambig(upper_bound));
         }
         TyPatKind::Err(_) => (),
     }
@@ -746,7 +744,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) -> V:
             visit_opt!(visitor, visit_pat_expr, lower_bound);
             visit_opt!(visitor, visit_pat_expr, upper_bound);
         }
-        PatKind::Never | PatKind::Wild | PatKind::Err(_) => (),
+        PatKind::Missing | PatKind::Never | PatKind::Wild | PatKind::Err(_) => (),
         PatKind::Slice(prepatterns, ref slice_pattern, postpatterns) => {
             walk_list!(visitor, visit_pat, prepatterns);
             visit_opt!(visitor, visit_pat, slice_pattern);
@@ -820,6 +818,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             try_visit!(visitor.visit_path_segment(segment));
             try_visit!(visitor.visit_expr(receiver));
             walk_list!(visitor, visit_expr, arguments);
+        }
+        ExprKind::Use(expr, _) => {
+            try_visit!(visitor.visit_expr(expr));
         }
         ExprKind::Binary(_, ref left_expression, ref right_expression) => {
             try_visit!(visitor.visit_expr(left_expression));
@@ -1145,7 +1146,6 @@ pub fn walk_use<'v, V: Visitor<'v>>(
     path: &'v UsePath<'v>,
     hir_id: HirId,
 ) -> V::Result {
-    try_visit!(visitor.visit_id(hir_id));
     let UsePath { segments, ref res, span } = *path;
     for &res in res {
         try_visit!(visitor.visit_path(&Path { segments, res, span }, hir_id));
@@ -1171,7 +1171,9 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
         }
         TraitItemKind::Fn(ref sig, TraitFn::Required(param_names)) => {
             try_visit!(visitor.visit_fn_decl(sig.decl));
-            walk_list!(visitor, visit_ident, param_names.iter().copied());
+            for ident in param_names.iter().copied() {
+                visit_opt!(visitor, visit_ident, ident);
+            }
         }
         TraitItemKind::Fn(ref sig, TraitFn::Provided(body_id)) => {
             try_visit!(visitor.visit_fn(
@@ -1326,9 +1328,7 @@ pub fn walk_field_def<'v, V: Visitor<'v>>(
 pub fn walk_enum_def<'v, V: Visitor<'v>>(
     visitor: &mut V,
     enum_definition: &'v EnumDef<'v>,
-    item_id: HirId,
 ) -> V::Result {
-    try_visit!(visitor.visit_id(item_id));
     walk_list!(visitor, visit_variant, enum_definition.variants);
     V::Result::output()
 }
@@ -1447,7 +1447,7 @@ pub fn walk_inline_asm<'v, V: Visitor<'v>>(
                 visit_opt!(visitor, visit_expr, out_expr);
             }
             InlineAsmOperand::Const { anon_const, .. } => {
-                try_visit!(visitor.visit_anon_const(anon_const));
+                try_visit!(visitor.visit_inline_const(anon_const));
             }
             InlineAsmOperand::SymFn { expr, .. } => {
                 try_visit!(visitor.visit_expr(expr));

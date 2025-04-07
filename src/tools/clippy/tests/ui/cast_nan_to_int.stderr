@@ -25,7 +25,7 @@ LL |     let _ = (0.0 * f32::INFINITY) as usize;
    = note: this always evaluates to 0
 
 error: casting a known NaN to usize
-  --> tests/ui/cast_nan_to_int.rs:17:13
+  --> tests/ui/cast_nan_to_int.rs:16:13
    |
 LL |     let _ = (f64::INFINITY + f64::NEG_INFINITY) as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL |     let _ = (f64::INFINITY + f64::NEG_INFINITY) as usize;
    = note: this always evaluates to 0
 
 error: casting a known NaN to usize
-  --> tests/ui/cast_nan_to_int.rs:20:13
+  --> tests/ui/cast_nan_to_int.rs:19:13
    |
 LL |     let _ = (f32::INFINITY - f32::INFINITY) as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL |     let _ = (f32::INFINITY - f32::INFINITY) as usize;
    = note: this always evaluates to 0
 
 error: casting a known NaN to usize
-  --> tests/ui/cast_nan_to_int.rs:23:13
+  --> tests/ui/cast_nan_to_int.rs:22:13
    |
 LL |     let _ = (f32::INFINITY / f32::NEG_INFINITY) as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

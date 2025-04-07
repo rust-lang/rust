@@ -14,6 +14,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -29,26 +30,26 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::abi::FnAbiLlvmExt;
+use crate::attributes;
 use crate::common::Funclet;
-use crate::context::{CodegenCx, SimpleCx};
+use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
     self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, GEPNoWrapFlags, Metadata, True,
 };
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
-use crate::{attributes, llvm_util};
 
 #[must_use]
-pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SimpleCx<'ll>>> {
+pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SCx<'ll>>> {
     pub llbuilder: &'ll mut llvm::Builder<'ll>,
-    pub cx: &'a CX,
+    pub cx: &'a GenericCx<'ll, CX>,
 }
 
-pub(crate) type SBuilder<'a, 'll> = GenericBuilder<'a, 'll, SimpleCx<'ll>>;
-pub(crate) type Builder<'a, 'll, 'tcx> = GenericBuilder<'a, 'll, CodegenCx<'ll, 'tcx>>;
+pub(crate) type SBuilder<'a, 'll> = GenericBuilder<'a, 'll, SCx<'ll>>;
+pub(crate) type Builder<'a, 'll, 'tcx> = GenericBuilder<'a, 'll, FullCx<'ll, 'tcx>>;
 
-impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> Drop for GenericBuilder<'a, 'll, CX> {
+impl<'a, 'll, CX: Borrow<SCx<'ll>>> Drop for GenericBuilder<'a, 'll, CX> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMDisposeBuilder(&mut *(self.llbuilder as *mut _));
@@ -57,7 +58,7 @@ impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> Drop for GenericBuilder<'a, 'll, CX> {
 }
 
 impl<'a, 'll> SBuilder<'a, 'll> {
-    fn call(
+    pub(crate) fn call(
         &mut self,
         llty: &'ll Type,
         llfn: &'ll Value,
@@ -87,78 +88,35 @@ impl<'a, 'll> SBuilder<'a, 'll> {
         };
         call
     }
-
-    fn with_scx(scx: &'a SimpleCx<'ll>) -> Self {
-        // Create a fresh builder from the simple context.
-        let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(scx.llcx) };
-        SBuilder { llbuilder, cx: scx }
-    }
 }
-impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> GenericBuilder<'a, 'll, CX> {
+
+impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
+    fn with_cx(scx: &'a GenericCx<'ll, CX>) -> Self {
+        // Create a fresh builder from the simple context.
+        let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(scx.deref().borrow().llcx) };
+        GenericBuilder { llbuilder, cx: scx }
+    }
+
     pub(crate) fn bitcast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildBitCast(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
-    fn ret_void(&mut self) {
-        unsafe {
-            llvm::LLVMBuildRetVoid(self.llbuilder);
-        }
+    pub(crate) fn ret_void(&mut self) {
+        llvm::LLVMBuildRetVoid(self.llbuilder);
     }
 
-    fn ret(&mut self, v: &'ll Value) {
+    pub(crate) fn ret(&mut self, v: &'ll Value) {
         unsafe {
             llvm::LLVMBuildRet(self.llbuilder, v);
         }
     }
-}
-impl<'a, 'll> SBuilder<'a, 'll> {
-    fn build(cx: &'a SimpleCx<'ll>, llbb: &'ll BasicBlock) -> SBuilder<'a, 'll> {
-        let bx = SBuilder::with_scx(cx);
+
+    pub(crate) fn build(cx: &'a GenericCx<'ll, CX>, llbb: &'ll BasicBlock) -> Self {
+        let bx = Self::with_cx(cx);
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bx.llbuilder, llbb);
         }
         bx
-    }
-
-    fn check_call<'b>(
-        &mut self,
-        typ: &str,
-        fn_ty: &'ll Type,
-        llfn: &'ll Value,
-        args: &'b [&'ll Value],
-    ) -> Cow<'b, [&'ll Value]> {
-        assert!(
-            self.cx.type_kind(fn_ty) == TypeKind::Function,
-            "builder::{typ} not passed a function, but {fn_ty:?}"
-        );
-
-        let param_tys = self.cx.func_params_types(fn_ty);
-
-        let all_args_match = iter::zip(&param_tys, args.iter().map(|&v| self.cx.val_ty(v)))
-            .all(|(expected_ty, actual_ty)| *expected_ty == actual_ty);
-
-        if all_args_match {
-            return Cow::Borrowed(args);
-        }
-
-        let casted_args: Vec<_> = iter::zip(param_tys, args)
-            .enumerate()
-            .map(|(i, (expected_ty, &actual_val))| {
-                let actual_ty = self.cx.val_ty(actual_val);
-                if expected_ty != actual_ty {
-                    debug!(
-                        "type mismatch in function call of {:?}. \
-                            Expected {:?} for param {}, got {:?}; injecting bitcast",
-                        llfn, expected_ty, i, actual_ty
-                    );
-                    self.bitcast(actual_val, expected_ty)
-                } else {
-                    actual_val
-                }
-            })
-            .collect();
-
-        Cow::Owned(casted_args)
     }
 }
 
@@ -167,17 +125,17 @@ impl<'a, 'll> SBuilder<'a, 'll> {
 // FIXME(eddyb) pass `&CStr` directly to FFI once it's a thin pointer.
 const UNNAMED: *const c_char = c"".as_ptr();
 
-impl<'ll, 'tcx> BackendTypes for Builder<'_, 'll, 'tcx> {
-    type Value = <CodegenCx<'ll, 'tcx> as BackendTypes>::Value;
-    type Metadata = <CodegenCx<'ll, 'tcx> as BackendTypes>::Metadata;
-    type Function = <CodegenCx<'ll, 'tcx> as BackendTypes>::Function;
-    type BasicBlock = <CodegenCx<'ll, 'tcx> as BackendTypes>::BasicBlock;
-    type Type = <CodegenCx<'ll, 'tcx> as BackendTypes>::Type;
-    type Funclet = <CodegenCx<'ll, 'tcx> as BackendTypes>::Funclet;
+impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericBuilder<'_, 'll, CX> {
+    type Value = <GenericCx<'ll, CX> as BackendTypes>::Value;
+    type Metadata = <GenericCx<'ll, CX> as BackendTypes>::Metadata;
+    type Function = <GenericCx<'ll, CX> as BackendTypes>::Function;
+    type BasicBlock = <GenericCx<'ll, CX> as BackendTypes>::BasicBlock;
+    type Type = <GenericCx<'ll, CX> as BackendTypes>::Type;
+    type Funclet = <GenericCx<'ll, CX> as BackendTypes>::Funclet;
 
-    type DIScope = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIScope;
-    type DILocation = <CodegenCx<'ll, 'tcx> as BackendTypes>::DILocation;
-    type DIVariable = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIVariable;
+    type DIScope = <GenericCx<'ll, CX> as BackendTypes>::DIScope;
+    type DILocation = <GenericCx<'ll, CX> as BackendTypes>::DILocation;
+    type DIVariable = <GenericCx<'ll, CX> as BackendTypes>::DIVariable;
 }
 
 impl abi::HasDataLayout for Builder<'_, '_, '_> {
@@ -293,9 +251,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn ret_void(&mut self) {
-        unsafe {
-            llvm::LLVMBuildRetVoid(self.llbuilder);
-        }
+        llvm::LLVMBuildRetVoid(self.llbuilder);
     }
 
     fn ret(&mut self, v: &'ll Value) {
@@ -356,8 +312,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // This function handles switch instructions with more than 2 targets and it needs to
         // emit branch weights metadata instead of using the intrinsic.
         // The values 1 and 2000 are the same as the values used by the `llvm.expect` intrinsic.
-        let cold_weight = unsafe { llvm::LLVMValueAsMetadata(self.cx.const_u32(1)) };
-        let hot_weight = unsafe { llvm::LLVMValueAsMetadata(self.cx.const_u32(2000)) };
+        let cold_weight = llvm::LLVMValueAsMetadata(self.cx.const_u32(1));
+        let hot_weight = llvm::LLVMValueAsMetadata(self.cx.const_u32(2000));
         let weight =
             |is_cold: bool| -> &Metadata { if is_cold { cold_weight } else { hot_weight } };
 
@@ -405,7 +361,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         // Emit KCFI operand bundle
         let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, instance, llfn);
-        if let Some(kcfi_bundle) = kcfi_bundle.as_deref() {
+        if let Some(kcfi_bundle) = kcfi_bundle.as_ref().map(|b| b.raw()) {
             bundles.push(kcfi_bundle);
         }
 
@@ -971,11 +927,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug_assert_ne!(self.val_ty(val), dest_ty);
 
         let trunc = self.trunc(val, dest_ty);
-        if llvm_util::get_version() >= (19, 0, 0) {
-            unsafe {
-                if llvm::LLVMIsAInstruction(trunc).is_some() {
-                    llvm::LLVMSetNUW(trunc, True);
-                }
+        unsafe {
+            if llvm::LLVMIsAInstruction(trunc).is_some() {
+                llvm::LLVMSetNUW(trunc, True);
             }
         }
         trunc
@@ -985,11 +939,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug_assert_ne!(self.val_ty(val), dest_ty);
 
         let trunc = self.trunc(val, dest_ty);
-        if llvm_util::get_version() >= (19, 0, 0) {
-            unsafe {
-                if llvm::LLVMIsAInstruction(trunc).is_some() {
-                    llvm::LLVMSetNSW(trunc, True);
-                }
+        unsafe {
+            if llvm::LLVMIsAInstruction(trunc).is_some() {
+                llvm::LLVMSetNSW(trunc, True);
             }
         }
         trunc
@@ -1117,6 +1069,35 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn fcmp(&mut self, op: RealPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         let op = llvm::RealPredicate::from_generic(op);
         unsafe { llvm::LLVMBuildFCmp(self.llbuilder, op as c_uint, lhs, rhs, UNNAMED) }
+    }
+
+    fn three_way_compare(
+        &mut self,
+        ty: Ty<'tcx>,
+        lhs: Self::Value,
+        rhs: Self::Value,
+    ) -> Option<Self::Value> {
+        // FIXME: See comment on the definition of `three_way_compare`.
+        if crate::llvm_util::get_version() < (20, 0, 0) {
+            return None;
+        }
+
+        let name = match (ty.is_signed(), ty.primitive_size(self.tcx).bits()) {
+            (true, 8) => "llvm.scmp.i8.i8",
+            (true, 16) => "llvm.scmp.i8.i16",
+            (true, 32) => "llvm.scmp.i8.i32",
+            (true, 64) => "llvm.scmp.i8.i64",
+            (true, 128) => "llvm.scmp.i8.i128",
+
+            (false, 8) => "llvm.ucmp.i8.i8",
+            (false, 16) => "llvm.ucmp.i8.i16",
+            (false, 32) => "llvm.ucmp.i8.i32",
+            (false, 64) => "llvm.ucmp.i8.i64",
+            (false, 128) => "llvm.ucmp.i8.i128",
+
+            _ => bug!("three-way compare unsupported for type {ty:?}"),
+        };
+        Some(self.call_intrinsic(name, &[lhs, rhs]))
     }
 
     /* Miscellaneous instructions */
@@ -1433,7 +1414,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         // Emit KCFI operand bundle
         let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, instance, llfn);
-        if let Some(kcfi_bundle) = kcfi_bundle.as_deref() {
+        if let Some(kcfi_bundle) = kcfi_bundle.as_ref().map(|b| b.raw()) {
             bundles.push(kcfi_bundle);
         }
 
@@ -1476,26 +1457,12 @@ impl<'ll> StaticBuilderMethods for Builder<'_, 'll, '_> {
 }
 
 impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
-    fn build(cx: &'a CodegenCx<'ll, 'tcx>, llbb: &'ll BasicBlock) -> Builder<'a, 'll, 'tcx> {
-        let bx = Builder::with_cx(cx);
-        unsafe {
-            llvm::LLVMPositionBuilderAtEnd(bx.llbuilder, llbb);
-        }
-        bx
-    }
-
-    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
-        // Create a fresh builder from the crate context.
-        let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(cx.llcx) };
-        Builder { llbuilder, cx }
-    }
-
     pub(crate) fn llfn(&self) -> &'ll Value {
         unsafe { llvm::LLVMGetBasicBlockParent(self.llbb()) }
     }
 }
 
-impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> GenericBuilder<'a, 'll, CX> {
+impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     fn position_at_start(&mut self, llbb: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMRustPositionBuilderAtStart(self.llbuilder, llbb);
@@ -1525,7 +1492,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
     }
 }
-impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> GenericBuilder<'a, 'll, CX> {
+impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     pub(crate) fn minnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs) }
     }
@@ -1626,9 +1593,7 @@ impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         let ret = unsafe { llvm::LLVMBuildCatchRet(self.llbuilder, funclet.cleanuppad(), unwind) };
         ret.expect("LLVM does not have support for catchret")
     }
-}
 
-impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn check_call<'b>(
         &mut self,
         typ: &str,
@@ -1643,7 +1608,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         let param_tys = self.cx.func_params_types(fn_ty);
 
-        let all_args_match = iter::zip(&param_tys, args.iter().map(|&v| self.val_ty(v)))
+        let all_args_match = iter::zip(&param_tys, args.iter().map(|&v| self.cx.val_ty(v)))
             .all(|(expected_ty, actual_ty)| *expected_ty == actual_ty);
 
         if all_args_match {
@@ -1653,7 +1618,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         let casted_args: Vec<_> = iter::zip(param_tys, args)
             .enumerate()
             .map(|(i, (expected_ty, &actual_val))| {
-                let actual_ty = self.val_ty(actual_val);
+                let actual_ty = self.cx.val_ty(actual_val);
                 if expected_ty != actual_ty {
                     debug!(
                         "type mismatch in function call of {:?}. \
@@ -1669,12 +1634,12 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         Cow::Owned(casted_args)
     }
-}
-impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> GenericBuilder<'a, 'll, CX> {
+
     pub(crate) fn va_arg(&mut self, list: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildVAArg(self.llbuilder, list, ty, UNNAMED) }
     }
 }
+
 impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     pub(crate) fn call_intrinsic(&mut self, intrinsic: &str, args: &[&'ll Value]) -> &'ll Value {
         let (ty, f) = self.cx.get_intrinsic(intrinsic);
@@ -1694,7 +1659,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         self.call_intrinsic(intrinsic, &[self.cx.const_u64(size), ptr]);
     }
 }
-impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> GenericBuilder<'a, 'll, CX> {
+impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     pub(crate) fn phi(
         &mut self,
         ty: &'ll Type,
@@ -1782,7 +1747,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         // Emit KCFI operand bundle
         let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, instance, llfn);
-        if let Some(kcfi_bundle) = kcfi_bundle.as_deref() {
+        if let Some(kcfi_bundle) = kcfi_bundle.as_ref().map(|b| b.raw()) {
             bundles.push(kcfi_bundle);
         }
 
@@ -1930,10 +1895,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         hash: &'ll Value,
         bitmap_bits: &'ll Value,
     ) {
-        assert!(
-            crate::llvm_util::get_version() >= (19, 0, 0),
-            "MCDC intrinsics require LLVM 19 or later"
-        );
         self.call_intrinsic("llvm.instrprof.mcdc.parameters", &[fn_name, hash, bitmap_bits]);
     }
 
@@ -1945,10 +1906,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         bitmap_index: &'ll Value,
         mcdc_temp: &'ll Value,
     ) {
-        assert!(
-            crate::llvm_util::get_version() >= (19, 0, 0),
-            "MCDC intrinsics require LLVM 19 or later"
-        );
         let args = &[fn_name, hash, bitmap_index, mcdc_temp];
         self.call_intrinsic("llvm.instrprof.mcdc.tvbitmap.update", args);
     }
@@ -1960,10 +1917,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn mcdc_condbitmap_update(&mut self, cond_index: &'ll Value, mcdc_temp: &'ll Value) {
-        assert!(
-            crate::llvm_util::get_version() >= (19, 0, 0),
-            "MCDC intrinsics require LLVM 19 or later"
-        );
         let align = self.tcx.data_layout.i32_align.abi;
         let current_tv_index = self.load(self.cx.type_i32(), mcdc_temp, align);
         let new_tv_index = self.add(current_tv_index, cond_index);

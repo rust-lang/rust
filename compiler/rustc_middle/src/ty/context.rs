@@ -7,6 +7,8 @@ pub mod tls;
 use std::assert_matches::{assert_matches, debug_assert_matches};
 use std::borrow::Borrow;
 use std::cmp::Ordering;
+use std::env::VarError;
+use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Bound, Deref};
@@ -49,11 +51,10 @@ use rustc_session::{Limit, MetadataKind, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
-use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::{
-    CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo, elaborate, search_graph,
+    CollectAndApply, Interner, TypeFlags, TypeFoldable, WithCachedTypeInfo, elaborate, search_graph,
 };
 use tracing::{debug, instrument};
 
@@ -205,6 +206,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn type_of(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         self.type_of(def_id)
     }
+    fn type_of_opaque_hir_typeck(self, def_id: LocalDefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
+        self.type_of_opaque_hir_typeck(def_id)
+    }
 
     type AdtDef = ty::AdtDef<'tcx>;
     fn adt_def(self, adt_def_id: DefId) -> Self::AdtDef {
@@ -324,11 +328,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.features()
     }
 
-    fn bound_coroutine_hidden_types(
+    fn coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> impl IntoIterator<Item = ty::EarlyBinder<'tcx, ty::Binder<'tcx, Ty<'tcx>>>> {
-        self.bound_coroutine_hidden_types(def_id)
+    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>> {
+        self.coroutine_hidden_types(def_id)
     }
 
     fn fn_sig(self, def_id: DefId) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
@@ -443,6 +447,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn is_lang_item(self, def_id: DefId, lang_item: TraitSolverLangItem) -> bool {
         self.is_lang_item(def_id, trait_lang_item_to_lang_item(lang_item))
+    }
+
+    fn is_default_trait(self, def_id: DefId) -> bool {
+        self.is_default_trait(def_id)
     }
 
     fn as_lang_item(self, def_id: DefId) -> Option<TraitSolverLangItem> {
@@ -592,6 +600,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn trait_is_auto(self, trait_def_id: DefId) -> bool {
         self.trait_is_auto(trait_def_id)
+    }
+
+    fn trait_is_coinductive(self, trait_def_id: DefId) -> bool {
+        self.trait_is_coinductive(trait_def_id)
     }
 
     fn trait_is_alias(self, trait_def_id: DefId) -> bool {
@@ -812,32 +824,38 @@ pub struct CtxtInterners<'tcx> {
 
 impl<'tcx> CtxtInterners<'tcx> {
     fn new(arena: &'tcx WorkerLocal<Arena<'tcx>>) -> CtxtInterners<'tcx> {
+        // Default interner size - this value has been chosen empirically, and may need to be adjusted
+        // as the compiler evolves.
+        const N: usize = 2048;
         CtxtInterners {
             arena,
-            type_: Default::default(),
-            const_lists: Default::default(),
-            args: Default::default(),
-            type_lists: Default::default(),
-            region: Default::default(),
-            poly_existential_predicates: Default::default(),
-            canonical_var_infos: Default::default(),
-            predicate: Default::default(),
-            clauses: Default::default(),
-            projs: Default::default(),
-            place_elems: Default::default(),
-            const_: Default::default(),
-            pat: Default::default(),
-            const_allocation: Default::default(),
-            bound_variable_kinds: Default::default(),
-            layout: Default::default(),
-            adt_def: Default::default(),
-            external_constraints: Default::default(),
-            predefined_opaques_in_body: Default::default(),
-            fields: Default::default(),
-            local_def_ids: Default::default(),
-            captures: Default::default(),
-            offset_of: Default::default(),
-            valtree: Default::default(),
+            // The factors have been chosen by @FractalFir based on observed interner sizes, and local perf runs.
+            // To get the interner sizes, insert `eprintln` printing the size of the interner in functions like `intern_ty`.
+            // Bigger benchmarks tend to give more accurate ratios, so use something like `x perf eprintln --includes cargo`.
+            type_: InternedSet::with_capacity(N * 16),
+            const_lists: InternedSet::with_capacity(N * 4),
+            args: InternedSet::with_capacity(N * 4),
+            type_lists: InternedSet::with_capacity(N * 4),
+            region: InternedSet::with_capacity(N * 4),
+            poly_existential_predicates: InternedSet::with_capacity(N / 4),
+            canonical_var_infos: InternedSet::with_capacity(N / 2),
+            predicate: InternedSet::with_capacity(N),
+            clauses: InternedSet::with_capacity(N),
+            projs: InternedSet::with_capacity(N * 4),
+            place_elems: InternedSet::with_capacity(N * 2),
+            const_: InternedSet::with_capacity(N * 2),
+            pat: InternedSet::with_capacity(N),
+            const_allocation: InternedSet::with_capacity(N),
+            bound_variable_kinds: InternedSet::with_capacity(N * 2),
+            layout: InternedSet::with_capacity(N),
+            adt_def: InternedSet::with_capacity(N),
+            external_constraints: InternedSet::with_capacity(N),
+            predefined_opaques_in_body: InternedSet::with_capacity(N),
+            fields: InternedSet::with_capacity(N * 4),
+            local_def_ids: InternedSet::with_capacity(N),
+            captures: InternedSet::with_capacity(N),
+            offset_of: InternedSet::with_capacity(N),
+            valtree: InternedSet::with_capacity(N),
         }
     }
 
@@ -1279,7 +1297,8 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
         let bodies = Default::default();
         let attrs = hir::AttributeMap::EMPTY;
 
-        let (opt_hash_including_bodies, _) = self.tcx.hash_owner_nodes(node, &bodies, &attrs.map);
+        let (opt_hash_including_bodies, _) =
+            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, attrs.define_opaque);
         let node = node.into();
         self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes {
             opt_hash_including_bodies,
@@ -1289,7 +1308,7 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
             ),
             bodies,
         })));
-        self.feed_owner_id().hir_attrs(attrs);
+        self.feed_owner_id().hir_attr_map(attrs);
     }
 }
 
@@ -1317,6 +1336,11 @@ pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }
 
+// Explicitly implement `DynSync` and `DynSend` for `TyCtxt` to short circuit trait resolution. Its
+// field are asserted to implement these traits below, so this is trivially safe, and it greatly
+// speeds-up compilation of this crate and its dependents.
+unsafe impl DynSend for TyCtxt<'_> {}
+unsafe impl DynSync for TyCtxt<'_> {}
 fn _assert_tcx_fields() {
     sync::assert_dyn_sync::<&'_ GlobalCtxt<'_>>();
     sync::assert_dyn_send::<&'_ GlobalCtxt<'_>>();
@@ -1522,6 +1546,25 @@ impl<'tcx> TyCtxt<'tcx> {
         self.reserve_and_set_memory_dedup(alloc, salt)
     }
 
+    pub fn default_traits(self) -> &'static [rustc_hir::LangItem] {
+        match self.sess.opts.unstable_opts.experimental_default_bounds {
+            true => &[
+                LangItem::Sized,
+                LangItem::DefaultTrait1,
+                LangItem::DefaultTrait2,
+                LangItem::DefaultTrait3,
+                LangItem::DefaultTrait4,
+            ],
+            false => &[LangItem::Sized],
+        }
+    }
+
+    pub fn is_default_trait(self, def_id: DefId) -> bool {
+        self.default_traits()
+            .iter()
+            .any(|&default_trait| self.lang_items().get(default_trait) == Some(def_id))
+    }
+
     /// Returns a range of the start/end indices specified with the
     /// `rustc_layout_scalar_valid_range` attribute.
     // FIXME(eddyb) this is an awkward spot for this method, maybe move it?
@@ -1542,7 +1585,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 Bound::Included(a.get())
             } else {
                 self.dcx().span_delayed_bug(
-                    attr.span,
+                    attr.span(),
                     "invalid rustc_layout_scalar_valid_range attribute",
                 );
                 Bound::Unbounded
@@ -1764,10 +1807,15 @@ impl<'tcx> TyCtxt<'tcx> {
         // - needs_metadata: for putting into crate metadata.
         // - instrument_coverage: for putting into coverage data (see
         //   `hash_mir_source`).
+        // - metrics_dir: metrics use the strict version hash in the filenames
+        //   for dumped metrics files to prevent overwriting distinct metrics
+        //   for similar source builds (may change in the future, this is part
+        //   of the proof of concept impl for the metrics initiative project goal)
         cfg!(debug_assertions)
             || self.sess.opts.incremental.is_some()
             || self.needs_metadata()
             || self.sess.instrument_coverage()
+            || self.sess.opts.unstable_opts.metrics_dir.is_some()
     }
 
     #[inline]
@@ -1868,6 +1916,15 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         None
     }
+
+    /// Helper to get a tracked environment variable via. [`TyCtxt::env_var_os`] and converting to
+    /// UTF-8 like [`std::env::var`].
+    pub fn env_var<K: ?Sized + AsRef<OsStr>>(self, key: &'tcx K) -> Result<&'tcx str, VarError> {
+        match self.env_var_os(key.as_ref()) {
+            Some(value) => value.to_str().ok_or_else(|| VarError::NotUnicode(value.to_os_string())),
+            None => Err(VarError::NotPresent),
+        }
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {
@@ -1875,7 +1932,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
     pub fn create_def(
         self,
         parent: LocalDefId,
-        name: Symbol,
+        name: Option<Symbol>,
         def_kind: DefKind,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let feed = self.tcx.create_def(parent, name, def_kind);
@@ -1890,7 +1947,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn create_def(
         self,
         parent: LocalDefId,
-        name: Symbol,
+        name: Option<Symbol>,
         def_kind: DefKind,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = def_kind.def_path_data(name);
@@ -1904,10 +1961,10 @@ impl<'tcx> TyCtxt<'tcx> {
         // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
         // comp. engine itself.
         //
-        // This call also writes to the value of `source_span` and `expn_that_defined` queries.
+        // This call also writes to the value of the `source_span` query.
         // This is fine because:
-        // - those queries are `eval_always` so we won't miss their result changing;
-        // - this write will have happened before these queries are called.
+        // - that query is `eval_always` so we won't miss its result changing;
+        // - this write will have happened before that query is called.
         let def_id = self.untracked.definitions.write().create_def(parent, data);
 
         // This function modifies `self.definitions` using a side-effect.
@@ -2199,7 +2256,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the origin of the opaque type `def_id`.
     #[instrument(skip(self), level = "trace", ret)]
     pub fn local_opaque_ty_origin(self, def_id: LocalDefId) -> hir::OpaqueTyOrigin<LocalDefId> {
-        self.hir().expect_opaque_ty(def_id).origin
+        self.hir_expect_opaque_ty(def_id).origin
     }
 
     pub fn finish(self) {
@@ -2321,8 +2378,8 @@ macro_rules! sty_debug_print {
                 $(let mut $variant = total;)*
 
                 for shard in tcx.interners.type_.lock_shards() {
-                    let types = shard.keys();
-                    for &InternedInSet(t) in types {
+                    let types = shard.iter();
+                    for &(InternedInSet(t), ()) in types {
                         let variant = match t.internee {
                             ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                                 ty::Float(..) | ty::Str | ty::Never => continue,
@@ -2996,8 +3053,8 @@ impl<'tcx> TyCtxt<'tcx> {
         span: impl Into<MultiSpan>,
         decorator: impl for<'a> LintDiagnostic<'a, ()>,
     ) {
-        let (level, src) = self.lint_level_at_node(lint, hir_id);
-        lint_level(self.sess, lint, level, src, Some(span.into()), |lint| {
+        let level = self.lint_level_at_node(lint, hir_id);
+        lint_level(self.sess, lint, level, Some(span.into()), |lint| {
             decorator.decorate_lint(lint);
         })
     }
@@ -3014,8 +3071,8 @@ impl<'tcx> TyCtxt<'tcx> {
         span: impl Into<MultiSpan>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
-        let (level, src) = self.lint_level_at_node(lint, hir_id);
-        lint_level(self.sess, lint, level, src, Some(span.into()), decorate);
+        let level = self.lint_level_at_node(lint, hir_id);
+        lint_level(self.sess, lint, level, Some(span.into()), decorate);
     }
 
     /// Find the crate root and the appropriate span where `use` and outer attributes can be
@@ -3082,8 +3139,8 @@ impl<'tcx> TyCtxt<'tcx> {
         id: HirId,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
-        let (level, src) = self.lint_level_at_node(lint, id);
-        lint_level(self.sess, lint, level, src, None, decorate);
+        let level = self.lint_level_at_node(lint, id);
+        lint_level(self.sess, lint, level, None, decorate);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {
@@ -3103,9 +3160,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
         self.mk_bound_variable_kinds(
-            &self.late_bound_vars_map(id.owner).get(&id.local_id).cloned().unwrap_or_else(|| {
-                bug!("No bound vars found for {}", self.hir().node_to_string(id))
-            }),
+            &self
+                .late_bound_vars_map(id.owner)
+                .get(&id.local_id)
+                .cloned()
+                .unwrap_or_else(|| bug!("No bound vars found for {}", self.hir_id_to_string(id))),
         )
     }
 
@@ -3218,6 +3277,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn next_trait_solver_in_coherence(self) -> bool {
         self.sess.opts.unstable_opts.next_solver.coherence
+    }
+
+    #[allow(rustc::bad_opt_access)]
+    pub fn use_typing_mode_borrowck(self) -> bool {
+        self.next_trait_solver_globally() || self.sess.opts.unstable_opts.typing_mode_borrowck
     }
 
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {

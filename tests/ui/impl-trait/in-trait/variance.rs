@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, precise_capturing_in_traits)]
+#![feature(rustc_attrs)]
 #![allow(internal_features)]
 #![rustc_variance_of_opaques]
 

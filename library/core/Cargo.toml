@@ -9,7 +9,7 @@ autobenches = false
 # If you update this, be sure to update it in a bunch of other places too!
 # As of 2024, it was src/tools/opt-dist, the core-no-fp-fmt-parse test and
 # the version of the prelude imported in core/lib.rs.
-edition = "2021"
+edition = "2024"
 
 [lib]
 test = false
@@ -32,6 +32,8 @@ check-cfg = [
     'cfg(bootstrap)',
     'cfg(no_fp_fmt_parse)',
     'cfg(stdarch_intel_sde)',
+    # #[cfg(bootstrap)]
+    'cfg(target_feature, values("vector-enhancements-1"))',
     # core use #[path] imports to portable-simd `core_simd` crate
     # and to stdarch `core_arch` crate which messes-up with Cargo list
     # of declared features, we therefor expect any feature cfg

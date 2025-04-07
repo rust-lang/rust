@@ -10,7 +10,7 @@ fn main() {
 }
 
 fn read_i16(buffer: &[u8], index: usize) -> i16 {
-    const SIZE: usize = std::mem::size_of::<i16>();
+    const SIZE: usize = size_of::<i16>();
     let mut bytes: [u8; SIZE] = [0u8; SIZE];
     bytes.copy_from_slice(&buffer[(index * SIZE)..(index * SIZE + SIZE)]);
     unsafe { std::mem::transmute(bytes) }

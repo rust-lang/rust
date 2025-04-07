@@ -3,8 +3,10 @@
 
 // Short form of the generic gather/scatter tests,
 // verifying simd([*const T; N]) and simd([*mut T; N]) pass typeck and work.
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::{simd_gather, simd_scatter};
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -22,13 +24,6 @@ struct f32x4([f32; 4]);
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct i32x4([i32; 4]);
 
-
-#[rustc_intrinsic]
-unsafe fn simd_gather<T, U, V>(x: T, y: U, z: V) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_scatter<T, U, V>(x: T, y: U, z: V) -> ();
-
 fn main() {
     let mut x = [0_f32, 1., 2., 3., 4., 5., 6., 7.];
 
@@ -39,11 +34,11 @@ fn main() {
     // reading from *const
     unsafe {
         let pointer = &x as *const f32;
-        let pointers =  cptrx4([
+        let pointers = cptrx4([
             pointer.offset(0) as *const f32,
             pointer.offset(2),
             pointer.offset(4),
-            pointer.offset(6)
+            pointer.offset(6),
         ]);
 
         let r_strided = simd_gather(default, pointers, mask);
@@ -58,7 +53,7 @@ fn main() {
             pointer.offset(0) as *mut f32,
             pointer.offset(2),
             pointer.offset(4),
-            pointer.offset(6)
+            pointer.offset(6),
         ]);
 
         let values = f32x4([42_f32, 43_f32, 44_f32, 45_f32]);

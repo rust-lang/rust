@@ -14,37 +14,37 @@ LL | ///     - first        one
    |                ^^^^^^^^ help: consider using four spaces per tab
 
 error: using tabs in doc comments is not recommended
-  --> tests/ui/tabs_in_doc_comments.rs:6:5
+  --> tests/ui/tabs_in_doc_comments.rs:8:5
    |
 LL | ///     - second    one
    |     ^^^^ help: consider using four spaces per tab
 
 error: using tabs in doc comments is not recommended
-  --> tests/ui/tabs_in_doc_comments.rs:6:14
+  --> tests/ui/tabs_in_doc_comments.rs:8:14
    |
 LL | ///     - second    one
    |                 ^^^^ help: consider using four spaces per tab
 
 error: using tabs in doc comments is not recommended
-  --> tests/ui/tabs_in_doc_comments.rs:9:9
+  --> tests/ui/tabs_in_doc_comments.rs:13:9
    |
 LL |     ///     - First String:
    |         ^^^^ help: consider using four spaces per tab
 
 error: using tabs in doc comments is not recommended
-  --> tests/ui/tabs_in_doc_comments.rs:10:9
+  --> tests/ui/tabs_in_doc_comments.rs:15:9
    |
 LL |     ///         - needs to be inside here
    |         ^^^^^^^^ help: consider using four spaces per tab
 
 error: using tabs in doc comments is not recommended
-  --> tests/ui/tabs_in_doc_comments.rs:13:9
+  --> tests/ui/tabs_in_doc_comments.rs:19:9
    |
 LL |     ///     - Second String:
    |         ^^^^ help: consider using four spaces per tab
 
 error: using tabs in doc comments is not recommended
-  --> tests/ui/tabs_in_doc_comments.rs:14:9
+  --> tests/ui/tabs_in_doc_comments.rs:21:9
    |
 LL |     ///         - needs to be inside here
    |         ^^^^^^^^ help: consider using four spaces per tab

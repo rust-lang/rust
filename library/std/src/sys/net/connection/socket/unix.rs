@@ -81,6 +81,7 @@ impl Socket {
                     target_os = "linux",
                     target_os = "netbsd",
                     target_os = "openbsd",
+                    target_os = "cygwin",
                     target_os = "nto",
                     target_os = "solaris",
                 ))] {
@@ -128,6 +129,7 @@ impl Socket {
                     target_os = "hurd",
                     target_os = "netbsd",
                     target_os = "openbsd",
+                    target_os = "cygwin",
                     target_os = "nto",
                 ))] {
                     // Like above, set cloexec atomically
@@ -257,6 +259,7 @@ impl Socket {
                 target_os = "hurd",
                 target_os = "netbsd",
                 target_os = "openbsd",
+                target_os = "cygwin",
             ))] {
                 unsafe {
                     let fd = cvt_r(|| libc::accept4(self.as_raw_fd(), storage, len, libc::SOCK_CLOEXEC))?;
@@ -326,7 +329,7 @@ impl Socket {
         // so we don't need to zero it here.
         // reference: https://linux.die.net/man/2/recvfrom
         let mut storage: mem::MaybeUninit<libc::sockaddr_storage> = mem::MaybeUninit::uninit();
-        let mut addrlen = mem::size_of_val(&storage) as libc::socklen_t;
+        let mut addrlen = size_of_val(&storage) as libc::socklen_t;
 
         let n = cvt(unsafe {
             libc::recvfrom(
@@ -421,10 +424,21 @@ impl Socket {
         Ok(())
     }
 
+    #[cfg(not(target_os = "cygwin"))]
     pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
         let linger = libc::linger {
             l_onoff: linger.is_some() as libc::c_int,
             l_linger: linger.unwrap_or_default().as_secs() as libc::c_int,
+        };
+
+        setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger)
+    }
+
+    #[cfg(target_os = "cygwin")]
+    pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+        let linger = libc::linger {
+            l_onoff: linger.is_some() as libc::c_ushort,
+            l_linger: linger.unwrap_or_default().as_secs() as libc::c_ushort,
         };
 
         setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger)

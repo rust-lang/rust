@@ -883,20 +883,20 @@ pub struct UseTree {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum UseTreeKind {
-    /// ```
+    /// ```ignore
     /// use path::to::Item;
     /// use path::to::Item as Renamed;
     /// use path::to::Trait as _;
     /// ```
     Single { path: Interned<ModPath>, alias: Option<ImportAlias> },
 
-    /// ```
+    /// ```ignore
     /// use *;  // (invalid, but can occur in nested tree)
     /// use path::*;
     /// ```
     Glob { path: Option<Interned<ModPath>> },
 
-    /// ```
+    /// ```ignore
     /// use prefix::{self, Item, ...};
     /// ```
     Prefixed { prefix: Option<Interned<ModPath>>, list: Box<[UseTree]> },

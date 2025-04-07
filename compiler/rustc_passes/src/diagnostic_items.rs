@@ -19,7 +19,7 @@ use rustc_span::{Symbol, sym};
 use crate::errors::DuplicateDiagnosticItemInCrate;
 
 fn observe_item<'tcx>(tcx: TyCtxt<'tcx>, diagnostic_items: &mut DiagnosticItems, owner: OwnerId) {
-    let attrs = tcx.hir().attrs(owner.into());
+    let attrs = tcx.hir_attrs(owner.into());
     if let Some(name) = extract(attrs) {
         // insert into our table
         collect_item(tcx, diagnostic_items, name, owner.to_def_id());
@@ -41,8 +41,8 @@ fn report_duplicate_item(
     original_def_id: DefId,
     item_def_id: DefId,
 ) {
-    let orig_span = tcx.hir().span_if_local(original_def_id);
-    let duplicate_span = tcx.hir().span_if_local(item_def_id);
+    let orig_span = tcx.hir_span_if_local(original_def_id);
+    let duplicate_span = tcx.hir_span_if_local(item_def_id);
     tcx.dcx().emit_err(DuplicateDiagnosticItemInCrate {
         duplicate_span,
         orig_span,

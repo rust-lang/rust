@@ -5,8 +5,9 @@ fn main() {
 
     #[rustfmt::skip]
     let _: Option<u32> = vec![1, 2, 3, 4, 5, 6]
-    //~^ ERROR: called `filter_map(..).next()` on an `Iterator`. This is more succinctly e
-    //~| NOTE: `-D clippy::filter-map-next` implied by `-D warnings`
+    //~^ filter_map_next
+
+
         .into_iter()
         .filter_map(|x| {
             if x == 2 {

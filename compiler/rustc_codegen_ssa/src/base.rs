@@ -5,7 +5,9 @@ use std::time::{Duration, Instant};
 
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
+use rustc_ast as ast;
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_name};
+use rustc_attr_parsing::OptimizeAttr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::par_map;
@@ -26,10 +28,10 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
 use rustc_span::{DUMMY_SP, Symbol, sym};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
-use {rustc_ast as ast, rustc_attr_parsing as attr};
 
 use crate::assert_module_sources::CguReuse;
 use crate::back::link::are_upstream_rust_objects_already_included;
@@ -656,6 +658,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 bytecode: None,
                 assembly: None,
                 llvm_ir: None,
+                links_from_incr_cache: Vec::new(),
             }
         })
     });
@@ -686,7 +689,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         submit_codegened_module_to_llvm(
             &backend,
             &ongoing_codegen.coordinator.sender,
-            ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator },
+            ModuleCodegen::new_allocator(llmod_id, module_llvm),
             cost,
         );
     }
@@ -875,7 +878,7 @@ impl CrateInfo {
         let linked_symbols =
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
-        let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+        let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
         let subsystem =
             ast::attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
         let windows_subsystem = subsystem.map(|subsystem| {
@@ -988,7 +991,12 @@ impl CrateInfo {
                 .for_each(|(_, linked_symbols)| {
                     let mut symbols = missing_weak_lang_items
                         .iter()
-                        .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text))
+                        .map(|item| {
+                            (
+                                format!("{prefix}{}", mangle_internal_symbol(tcx, item.as_str())),
+                                SymbolExportKind::Text,
+                            )
+                        })
                         .collect::<Vec<_>>();
                     symbols.sort_unstable_by(|a, b| a.0.cmp(&b.0));
                     linked_symbols.extend(symbols);
@@ -1001,7 +1009,13 @@ impl CrateInfo {
                         // errors.
                         linked_symbols.extend(ALLOCATOR_METHODS.iter().map(|method| {
                             (
-                                format!("{prefix}{}", global_fn_name(method.name).as_str()),
+                                format!(
+                                    "{prefix}{}",
+                                    mangle_internal_symbol(
+                                        tcx,
+                                        global_fn_name(method.name).as_str()
+                                    )
+                                ),
                                 SymbolExportKind::Text,
                             )
                         }));
@@ -1061,7 +1075,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 
         let any_for_speed = defids.items().any(|id| {
             let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
-            matches!(optimize, attr::OptimizeAttr::Speed)
+            matches!(optimize, OptimizeAttr::Speed)
         });
 
         if any_for_speed {
@@ -1091,11 +1105,12 @@ pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> 
     // know that later). If we are not doing LTO, there is only one optimized
     // version of each module, so we re-use that.
     let dep_node = cgu.codegen_dep_node(tcx);
-    assert!(
-        !tcx.dep_graph.dep_node_exists(&dep_node),
-        "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
-        cgu.name()
-    );
+    tcx.dep_graph.assert_dep_node_not_yet_allocated_in_current_session(&dep_node, || {
+        format!(
+            "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
+            cgu.name()
+        )
+    });
 
     if tcx.try_mark_green(&dep_node) {
         // We can re-use either the pre- or the post-thinlto state. If no LTO is

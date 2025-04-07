@@ -17,9 +17,9 @@ pub struct Bar {
 
 #[derive(Default)]
 pub struct Qux<const C: i32> {
-    bar: S = Self::S, //~ ERROR generic `Self` types are currently not permitted in anonymous constants
+    bar: S = Self::S,
     baz: i32 = foo(),
-    bat: i32 = <Qux<{ C }> as T>::K, //~ ERROR generic parameters may not be used in const operations
+    bat: i32 = <Qux<{ C }> as T>::K,
     bay: i32 = C,
 }
 

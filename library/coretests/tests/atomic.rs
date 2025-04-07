@@ -250,8 +250,6 @@ fn atomic_access_bool() {
 
 #[test]
 fn atomic_alignment() {
-    use std::mem::{align_of, size_of};
-
     #[cfg(target_has_atomic = "8")]
     assert_eq!(align_of::<AtomicBool>(), size_of::<AtomicBool>());
     #[cfg(target_has_atomic = "ptr")]

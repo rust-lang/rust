@@ -18,8 +18,8 @@ pub mod pub_module {} // ok
 fn foo() {}
 // missing #[inline]
 pub fn pub_foo() {}
-//~^ ERROR: missing `#[inline]` for a function
-//~| NOTE: `-D clippy::missing-inline-in-public-items` implied by `-D warnings`
+//~^ missing_inline_in_public_items
+
 #[inline]
 pub fn pub_foo_inline() {} // ok
 #[inline(always)]
@@ -37,7 +37,8 @@ pub trait PubBar {
     fn PubBar_a(); // ok
     // missing #[inline]
     fn PubBar_b() {}
-    //~^ ERROR: missing `#[inline]` for a default trait method
+    //~^ missing_inline_in_public_items
+
     #[inline]
     fn PubBar_c() {} // ok
 }
@@ -53,13 +54,15 @@ impl PubBar for Foo {
 impl PubBar for PubFoo {
     // missing #[inline]
     fn PubBar_a() {}
-    //~^ ERROR: missing `#[inline]` for a method
+    //~^ missing_inline_in_public_items
+
     // missing #[inline]
     fn PubBar_b() {}
-    //~^ ERROR: missing `#[inline]` for a method
+    //~^ missing_inline_in_public_items
+
     // missing #[inline]
     fn PubBar_c() {}
-    //~^ ERROR: missing `#[inline]` for a method
+    //~^ missing_inline_in_public_items
 }
 
 // do not need inline because Foo is not exported
@@ -71,7 +74,7 @@ impl Foo {
 impl PubFoo {
     // missing #[inline]
     pub fn PubFooImpl() {}
-    //~^ ERROR: missing `#[inline]` for a method
+    //~^ missing_inline_in_public_items
 }
 
 // do not lint this since users cannot control the external code

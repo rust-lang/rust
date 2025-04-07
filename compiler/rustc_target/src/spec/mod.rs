@@ -43,7 +43,7 @@ use std::str::FromStr;
 use std::{fmt, io};
 
 use rustc_abi::{Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -60,6 +60,7 @@ pub mod crt_objects;
 mod base;
 mod json;
 
+pub use base::apple;
 pub use base::avr::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.
@@ -81,7 +82,7 @@ pub enum Lld {
 /// of classes that we call "linker flavors".
 ///
 /// Technically, it's not even necessary, we can nearly always infer the flavor from linker name
-/// and target properties like `is_like_windows`/`is_like_osx`/etc. However, the PRs originally
+/// and target properties like `is_like_windows`/`is_like_darwin`/etc. However, the PRs originally
 /// introducing `-Clinker-flavor` (#40018 and friends) were aiming to reduce this kind of inference
 /// and provide something certain and explicitly specified instead, and that design goal is still
 /// relevant now.
@@ -1915,7 +1916,6 @@ supported_targets! {
     ("i686-pc-windows-msvc", i686_pc_windows_msvc),
     ("i686-uwp-windows-msvc", i686_uwp_windows_msvc),
     ("i686-win7-windows-msvc", i686_win7_windows_msvc),
-    ("i586-pc-windows-msvc", i586_pc_windows_msvc),
     ("thumbv7a-pc-windows-msvc", thumbv7a_pc_windows_msvc),
     ("thumbv7a-uwp-windows-msvc", thumbv7a_uwp_windows_msvc),
 
@@ -1925,6 +1925,7 @@ supported_targets! {
     ("wasm32-wasip1", wasm32_wasip1),
     ("wasm32-wasip2", wasm32_wasip2),
     ("wasm32-wasip1-threads", wasm32_wasip1_threads),
+    ("wasm32-wali-linux-musl", wasm32_wali_linux_musl),
     ("wasm64-unknown-unknown", wasm64_unknown_unknown),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
@@ -2234,7 +2235,10 @@ pub enum WasmCAbi {
     /// Spec-compliant C ABI.
     Spec,
     /// Legacy ABI. Which is non-spec-compliant.
-    Legacy,
+    Legacy {
+        /// Indicates whether the `wasm_c_abi` lint should be emitted.
+        with_lint: bool,
+    },
 }
 
 pub trait HasWasmCAbiOpt {
@@ -2403,7 +2407,7 @@ pub struct TargetOptions {
     /// in particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
     /// Also indicates whether to use Apple-specific ABI changes, such as extending function
     /// parameters to 32-bits.
-    pub is_like_osx: bool,
+    pub is_like_darwin: bool,
     /// Whether the target toolchain is like Solaris's.
     /// Only useful for compiling against Illumos/Solaris,
     /// as they have a different set of linker flags. Defaults to false.
@@ -2697,7 +2701,7 @@ fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'stati
 impl TargetOptions {
     pub fn supports_comdat(&self) -> bool {
         // XCOFF and MachO don't support COMDAT.
-        !self.is_like_aix && !self.is_like_osx
+        !self.is_like_aix && !self.is_like_darwin
     }
 }
 
@@ -2801,7 +2805,7 @@ impl Default for TargetOptions {
             families: cvs![],
             abi_return_struct_as_int: false,
             is_like_aix: false,
-            is_like_osx: false,
+            is_like_darwin: false,
             is_like_solaris: false,
             is_like_windows: false,
             is_like_msvc: false,
@@ -2914,20 +2918,35 @@ impl Target {
             // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
             // `__stdcall` only applies on x86 and on non-variadic functions:
             // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
-            System { unwind } if self.is_like_windows && self.arch == "x86" && !c_variadic => {
-                Stdcall { unwind }
+            System { unwind } => {
+                if self.is_like_windows && self.arch == "x86" && !c_variadic {
+                    Stdcall { unwind }
+                } else {
+                    C { unwind }
+                }
             }
-            System { unwind } => C { unwind },
-            EfiApi if self.arch == "arm" => Aapcs { unwind: false },
-            EfiApi if self.arch == "x86_64" => Win64 { unwind: false },
-            EfiApi => C { unwind: false },
+
+            EfiApi => {
+                if self.arch == "arm" {
+                    Aapcs { unwind: false }
+                } else if self.arch == "x86_64" {
+                    Win64 { unwind: false }
+                } else {
+                    C { unwind: false }
+                }
+            }
 
             // See commentary in `is_abi_supported`.
-            Stdcall { .. } | Thiscall { .. } if self.arch == "x86" => abi,
-            Stdcall { unwind } | Thiscall { unwind } => C { unwind },
-            Fastcall { .. } if self.arch == "x86" => abi,
-            Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => abi,
-            Fastcall { unwind } | Vectorcall { unwind } => C { unwind },
+            Stdcall { unwind } | Thiscall { unwind } | Fastcall { unwind } => {
+                if self.arch == "x86" { abi } else { C { unwind } }
+            }
+            Vectorcall { unwind } => {
+                if ["x86", "x86_64"].contains(&&*self.arch) {
+                    abi
+                } else {
+                    C { unwind }
+                }
+            }
 
             // The Windows x64 calling convention we use for `extern "Rust"`
             // <https://learn.microsoft.com/en-us/cpp/build/x64-software-conventions#register-volatility-and-preservation>
@@ -2943,14 +2962,9 @@ impl Target {
     pub fn is_abi_supported(&self, abi: ExternAbi) -> bool {
         use ExternAbi::*;
         match abi {
-            Rust
-            | C { .. }
-            | System { .. }
-            | RustIntrinsic
-            | RustCall
-            | Unadjusted
-            | Cdecl { .. }
-            | RustCold => true,
+            Rust | C { .. } | System { .. } | RustCall | Unadjusted | Cdecl { .. } | RustCold => {
+                true
+            }
             EfiApi => {
                 ["arm", "aarch64", "riscv32", "riscv64", "x86", "x86_64"].contains(&&self.arch[..])
             }
@@ -3052,9 +3066,9 @@ impl Target {
         }
 
         check_eq!(
-            self.is_like_osx,
+            self.is_like_darwin,
             self.vendor == "apple",
-            "`is_like_osx` must be set if and only if `vendor` is `apple`"
+            "`is_like_darwin` must be set if and only if `vendor` is `apple`"
         );
         check_eq!(
             self.is_like_solaris,
@@ -3080,9 +3094,9 @@ impl Target {
 
         // Check that default linker flavor is compatible with some other key properties.
         check_eq!(
-            self.is_like_osx,
+            self.is_like_darwin,
             matches!(self.linker_flavor, LinkerFlavor::Darwin(..)),
-            "`linker_flavor` must be `darwin` if and only if `is_like_osx` is set"
+            "`linker_flavor` must be `darwin` if and only if `is_like_darwin` is set"
         );
         check_eq!(
             self.is_like_msvc,
@@ -3327,7 +3341,10 @@ impl Target {
                 );
             }
             "arm" => {
-                check!(self.llvm_floatabi.is_some(), "ARM targets must specify their float ABI",)
+                check!(
+                    self.llvm_floatabi.is_some(),
+                    "ARM targets must set `llvm-floatabi` to `hard` or `soft`",
+                )
             }
             _ => {}
         }
@@ -3488,7 +3505,15 @@ impl Target {
                     return load_file(&p);
                 }
 
-                Err(format!("Could not find specification for target {target_tuple:?}"))
+                // Leave in a specialized error message for the removed target.
+                // FIXME: If you see this and it's been a few months after this has been released,
+                // you can probably remove it.
+                if target_tuple == "i586-pc-windows-msvc" {
+                    Err("the `i586-pc-windows-msvc` target has been removed. Use the `i686-pc-windows-msvc` target instead.\n\
+                        Windows 10 (the minimum required OS version) requires a CPU baseline of at least i686 so you can safely switch".into())
+                } else {
+                    Err(format!("could not find specification for target {target_tuple:?}"))
+                }
             }
             TargetTuple::TargetJson { ref contents, .. } => {
                 let obj = serde_json::from_str(contents).map_err(|e| e.to_string())?;
@@ -3519,6 +3544,59 @@ impl Target {
             },
             s => s.clone(),
         }
+    }
+
+    pub fn object_architecture(
+        &self,
+        unstable_target_features: &FxIndexSet<Symbol>,
+    ) -> Option<(object::Architecture, Option<object::SubArchitecture>)> {
+        use object::Architecture;
+        Some(match self.arch.as_ref() {
+            "arm" => (Architecture::Arm, None),
+            "aarch64" => (
+                if self.pointer_width == 32 {
+                    Architecture::Aarch64_Ilp32
+                } else {
+                    Architecture::Aarch64
+                },
+                None,
+            ),
+            "x86" => (Architecture::I386, None),
+            "s390x" => (Architecture::S390x, None),
+            "mips" | "mips32r6" => (Architecture::Mips, None),
+            "mips64" | "mips64r6" => (Architecture::Mips64, None),
+            "x86_64" => (
+                if self.pointer_width == 32 {
+                    Architecture::X86_64_X32
+                } else {
+                    Architecture::X86_64
+                },
+                None,
+            ),
+            "powerpc" => (Architecture::PowerPc, None),
+            "powerpc64" => (Architecture::PowerPc64, None),
+            "riscv32" => (Architecture::Riscv32, None),
+            "riscv64" => (Architecture::Riscv64, None),
+            "sparc" => {
+                if unstable_target_features.contains(&sym::v8plus) {
+                    // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
+                    (Architecture::Sparc32Plus, None)
+                } else {
+                    // Target uses V7 or V8, aka EM_SPARC
+                    (Architecture::Sparc, None)
+                }
+            }
+            "sparc64" => (Architecture::Sparc64, None),
+            "avr" => (Architecture::Avr, None),
+            "msp430" => (Architecture::Msp430, None),
+            "hexagon" => (Architecture::Hexagon, None),
+            "bpf" => (Architecture::Bpf, None),
+            "loongarch64" => (Architecture::LoongArch64, None),
+            "csky" => (Architecture::Csky, None),
+            "arm64ec" => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),
+            // Unsupported architecture.
+            _ => return None,
+        })
     }
 }
 

@@ -3,13 +3,13 @@
 **Source:**
 [config.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/rust-analyzer/src/config.rs)
 
-The [Installation](#_installation) section contains details on
+The [Installation](./installation.md) section contains details on
 configuration for some of the editors. In general `rust-analyzer` is
 configured via LSP messages, which means that it’s up to the editor to
 decide on the exact format and location of configuration files.
 
-Some clients, such as [VS Code](#vs-code) or [COC plugin in
-Vim](#coc-rust-analyzer) provide `rust-analyzer` specific configuration
+Some clients, such as [VS Code](./vs_code.md) or [COC plugin in
+Vim](./other_editors.md#coc-rust-analyzer) provide `rust-analyzer` specific configuration
 UIs. Others may require you to know a bit more about the interaction
 with `rust-analyzer`.
 

@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
     arg: &'tcx Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> bool {
     match (from_ty.kind(), to_ty.kind()) {
         (ty::RawPtr(from_pointee_ty, from_mutbl), ty::RawPtr(to_pointee_ty, to_mutbl)) => {
@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
                         if from_mutbl == to_mutbl
                             && to_pointee_ty.is_sized(cx.tcx, cx.typing_env())
-                            && msrv.meets(msrvs::POINTER_CAST)
+                            && msrv.meets(cx, msrvs::POINTER_CAST)
                         {
                             diag.span_suggestion_verbose(
                                 e.span,
@@ -43,7 +43,7 @@ pub(super) fn check<'tcx>(
                                 _ => None,
                             }
                             && !from_pointee_ty.has_erased_regions()
-                            && msrv.meets(msrvs::POINTER_CAST_CONSTNESS)
+                            && msrv.meets(cx, msrvs::POINTER_CAST_CONSTNESS)
                         {
                             diag.span_suggestion_verbose(
                                 e.span,

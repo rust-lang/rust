@@ -36,6 +36,7 @@ static mut STATIC: i32 = 0;
 
 fn test1() {
     unsafe {
+        //~^ multiple_unsafe_ops_per_block
         STATIC += 1;
         not_very_safe();
     }
@@ -45,6 +46,7 @@ fn test2() {
     let u = U { i: 0 };
 
     unsafe {
+        //~^ multiple_unsafe_ops_per_block
         drop(u.u);
         *raw_ptr();
     }
@@ -52,6 +54,7 @@ fn test2() {
 
 fn test3() {
     unsafe {
+        //~^ multiple_unsafe_ops_per_block
         asm!("nop");
         sample.not_very_safe();
         STATIC = 0;
@@ -61,6 +64,7 @@ fn test3() {
 fn test_all() {
     let u = U { i: 0 };
     unsafe {
+        //~^ multiple_unsafe_ops_per_block
         drop(u.u);
         drop(STATIC);
         sample.not_very_safe();
@@ -105,6 +109,7 @@ fn correct3() {
 
 unsafe fn read_char_bad(ptr: *const u8) -> char {
     unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
+    //~^ multiple_unsafe_ops_per_block
 }
 
 // no lint
@@ -123,6 +128,7 @@ fn issue10259() {
 
 fn _fn_ptr(x: unsafe fn()) {
     unsafe {
+        //~^ multiple_unsafe_ops_per_block
         x();
         x();
     }
@@ -134,6 +140,7 @@ fn _assoc_const() {
     }
     fn _f<T: X>() {
         unsafe {
+            //~^ multiple_unsafe_ops_per_block
             T::X();
             T::X();
         }
@@ -144,6 +151,7 @@ fn _field_fn_ptr(x: unsafe fn()) {
     struct X(unsafe fn());
     let x = X(x);
     unsafe {
+        //~^ multiple_unsafe_ops_per_block
         x.0();
         x.0();
     }

@@ -95,7 +95,7 @@ benches! {
 // These are separate since it's easier to debug errors if they don't go through
 // macro expansion first.
 fn is_ascii_align_to(bytes: &[u8]) -> bool {
-    if bytes.len() < core::mem::size_of::<usize>() {
+    if bytes.len() < size_of::<usize>() {
         return bytes.iter().all(|b| b.is_ascii());
     }
     // SAFETY: transmuting a sequence of `u8` to `usize` is always fine
@@ -106,7 +106,7 @@ fn is_ascii_align_to(bytes: &[u8]) -> bool {
 }
 
 fn is_ascii_align_to_unrolled(bytes: &[u8]) -> bool {
-    if bytes.len() < core::mem::size_of::<usize>() {
+    if bytes.len() < size_of::<usize>() {
         return bytes.iter().all(|b| b.is_ascii());
     }
     // SAFETY: transmuting a sequence of `u8` to `[usize; 2]` is always fine
@@ -118,6 +118,6 @@ fn is_ascii_align_to_unrolled(bytes: &[u8]) -> bool {
 
 #[inline]
 fn contains_nonascii(v: usize) -> bool {
-    const NONASCII_MASK: usize = usize::from_ne_bytes([0x80; core::mem::size_of::<usize>()]);
+    const NONASCII_MASK: usize = usize::from_ne_bytes([0x80; size_of::<usize>()]);
     (NONASCII_MASK & v) != 0
 }

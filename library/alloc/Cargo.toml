@@ -8,33 +8,15 @@ repository = "https://github.com/rust-lang/rust.git"
 description = "The Rust core allocation and collections library"
 autotests = false
 autobenches = false
-edition = "2021"
+edition = "2024"
+
+[lib]
+test = false
+bench = false
 
 [dependencies]
 core = { path = "../core", public = true }
-compiler_builtins = { version = "=0.1.147", features = ['rustc-dep-of-std'] }
-
-[dev-dependencies]
-rand = { version = "0.9.0", default-features = false, features = ["alloc"] }
-rand_xorshift = "0.4.0"
-
-[[test]]
-name = "alloctests"
-path = "tests/lib.rs"
-
-[[test]]
-name = "vec_deque_alloc_error"
-path = "tests/vec_deque_alloc_error.rs"
-
-[[bench]]
-name = "allocbenches"
-path = "benches/lib.rs"
-test = true
-
-[[bench]]
-name = "vec_deque_append_bench"
-path = "benches/vec_deque_append.rs"
-harness = false
+compiler_builtins = { version = "=0.1.152", features = ['rustc-dep-of-std'] }
 
 [features]
 compiler-builtins-mem = ['compiler_builtins/mem']
@@ -54,5 +36,4 @@ check-cfg = [
     'cfg(no_global_oom_handling)',
     'cfg(no_rc)',
     'cfg(no_sync)',
-    'cfg(randomized_layouts)',
 ]

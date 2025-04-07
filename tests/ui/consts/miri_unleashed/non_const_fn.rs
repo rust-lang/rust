@@ -9,3 +9,5 @@ static C: () = foo();
 //~| NOTE calling non-const function `foo`
 
 fn main() {}
+
+//~? WARN skipping const checks

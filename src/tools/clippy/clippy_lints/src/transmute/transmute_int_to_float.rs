@@ -16,10 +16,10 @@ pub(super) fn check<'tcx>(
     to_ty: Ty<'tcx>,
     arg: &'tcx Expr<'_>,
     const_context: bool,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
-        (ty::Int(_) | ty::Uint(_), ty::Float(_)) if !const_context || msrv.meets(msrvs::CONST_FLOAT_BITS_CONV) => {
+        (ty::Int(_) | ty::Uint(_), ty::Float(_)) if !const_context || msrv.meets(cx, msrvs::CONST_FLOAT_BITS_CONV) => {
             span_lint_and_then(
                 cx,
                 TRANSMUTE_INT_TO_FLOAT,

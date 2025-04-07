@@ -38,6 +38,7 @@
             Alloc,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     1: CrateData {
         root_file_id: FileId(
@@ -69,6 +70,7 @@
             Core,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     2: CrateData {
         root_file_id: FileId(
@@ -100,6 +102,7 @@
             Other,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     3: CrateData {
         root_file_id: FileId(
@@ -131,6 +134,7 @@
             Other,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     4: CrateData {
         root_file_id: FileId(
@@ -179,6 +183,7 @@
             ProcMacro,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     5: CrateData {
         root_file_id: FileId(
@@ -210,6 +215,7 @@
             Other,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     6: CrateData {
         root_file_id: FileId(
@@ -306,6 +312,7 @@
             Std,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     7: CrateData {
         root_file_id: FileId(
@@ -337,6 +344,7 @@
             Other,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     8: CrateData {
         root_file_id: FileId(
@@ -368,6 +376,7 @@
             Test,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     9: CrateData {
         root_file_id: FileId(
@@ -399,6 +408,7 @@
             Other,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     10: CrateData {
         root_file_id: FileId(
@@ -474,5 +484,6 @@
             ),
         },
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
 }

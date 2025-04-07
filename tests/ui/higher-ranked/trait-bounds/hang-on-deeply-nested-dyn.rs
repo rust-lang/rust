@@ -1,5 +1,3 @@
-//@ normalize-stderr: "long-type-\d+" -> "long-type-hash"
-
 fn id(
     f: &dyn Fn(u32),
 ) -> &dyn Fn(

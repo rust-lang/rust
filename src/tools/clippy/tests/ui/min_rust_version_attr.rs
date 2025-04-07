@@ -11,13 +11,13 @@ fn just_under_msrv() {
 #[clippy::msrv = "1.43.0"]
 fn meets_msrv() {
     let log2_10 = 3.321928094887362;
-    //~^ ERROR: approximate value of `f{32, 64}::consts::LOG2_10` found
+    //~^ approx_constant
 }
 
 #[clippy::msrv = "1.44.0"]
 fn just_above_msrv() {
     let log2_10 = 3.321928094887362;
-    //~^ ERROR: approximate value of `f{32, 64}::consts::LOG2_10` found
+    //~^ approx_constant
 }
 
 #[clippy::msrv = "1.42"]
@@ -28,7 +28,7 @@ fn no_patch_under() {
 #[clippy::msrv = "1.43"]
 fn no_patch_meets() {
     let log2_10 = 3.321928094887362;
-    //~^ ERROR: approximate value of `f{32, 64}::consts::LOG2_10` found
+    //~^ approx_constant
 }
 
 fn inner_attr_under() {
@@ -39,7 +39,7 @@ fn inner_attr_under() {
 fn inner_attr_meets() {
     #![clippy::msrv = "1.43"]
     let log2_10 = 3.321928094887362;
-    //~^ ERROR: approximate value of `f{32, 64}::consts::LOG2_10` found
+    //~^ approx_constant
 }
 
 // https://github.com/rust-lang/rust-clippy/issues/6920
@@ -50,7 +50,7 @@ fn scoping() {
 
     // Should warn
     let log2_10 = 3.321928094887362;
-    //~^ ERROR: approximate value of `f{32, 64}::consts::LOG2_10` found
+    //~^ approx_constant
 
     mod a {
         #![clippy::msrv = "1.42.0"]
@@ -58,7 +58,7 @@ fn scoping() {
         fn should_warn() {
             #![clippy::msrv = "1.43.0"]
             let log2_10 = 3.321928094887362;
-            //~^ ERROR: approximate value of `f{32, 64}::consts::LOG2_10` found
+            //~^ approx_constant
         }
 
         fn should_not_warn() {

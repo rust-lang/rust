@@ -1,7 +1,8 @@
 error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
-  --> tests/ui/four_forward_slashes.rs:12:1
+  --> tests/ui/four_forward_slashes.rs:11:1
    |
 LL | / //// whoops
+LL | |
 LL | | fn a() {}
    | |_^
    |
@@ -10,7 +11,7 @@ LL | | fn a() {}
 help: make this a doc comment by removing one `/`
    |
 LL - //// whoops
-LL - fn a() {}
+LL -
 LL + /// whoops
    |
 
@@ -18,6 +19,7 @@ error: this item has comments with 4 forward slashes (`////`). These look like d
   --> tests/ui/four_forward_slashes.rs:15:1
    |
 LL | / //// whoops
+LL | |
 LL | | #[allow(dead_code)]
 LL | | fn b() {}
    | |_^
@@ -25,15 +27,16 @@ LL | | fn b() {}
 help: make this a doc comment by removing one `/`
    |
 LL - //// whoops
-LL - #[allow(dead_code)]
+LL -
 LL + /// whoops
    |
 
 error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
-  --> tests/ui/four_forward_slashes.rs:19:1
+  --> tests/ui/four_forward_slashes.rs:20:1
    |
 LL | / //// whoops
 LL | | //// two borked comments!
+LL | |
 LL | | #[track_caller]
 LL | | fn c() {}
    | |_^
@@ -45,9 +48,10 @@ LL ~ /// two borked comments!
    |
 
 error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
-  --> tests/ui/four_forward_slashes.rs:27:1
+  --> tests/ui/four_forward_slashes.rs:29:1
    |
 LL | / //// between attributes
+LL | |
 LL | | #[allow(dead_code)]
 LL | | fn g() {}
    | |_^
@@ -55,21 +59,22 @@ LL | | fn g() {}
 help: make this a doc comment by removing one `/`
    |
 LL - //// between attributes
-LL - #[allow(dead_code)]
+LL -
 LL + /// between attributes
    |
 
 error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
-  --> tests/ui/four_forward_slashes.rs:31:1
+  --> tests/ui/four_forward_slashes.rs:34:1
    |
 LL | /     //// not very start of contents
+LL | |
 LL | | fn h() {}
    | |_^
    |
 help: make this a doc comment by removing one `/`
    |
 LL -     //// not very start of contents
-LL - fn h() {}
+LL -
 LL + /// not very start of contents
    |
 

@@ -145,19 +145,19 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         let mut result = vec![];
         if fps.is_empty() {
             debug!("Unrestricted search for {:?} impls...", trait_);
-            self.for_trait_impls(trait_, self_ty_fp, |impls| {
+            let _ = self.for_trait_impls(trait_, self_ty_fp, |impls| {
                 result.extend(impls.for_trait(trait_).map(id_to_chalk));
                 ControlFlow::Continue(())
-            })
+            });
         } else {
-            self.for_trait_impls(trait_, self_ty_fp, |impls| {
+            let _ = self.for_trait_impls(trait_, self_ty_fp, |impls| {
                 result.extend(
                     fps.iter().flat_map(move |fp| {
                         impls.for_trait_and_self_ty(trait_, *fp).map(id_to_chalk)
                     }),
                 );
                 ControlFlow::Continue(())
-            })
+            });
         };
 
         debug!("impls_for_trait returned {} impls", result.len());
@@ -708,6 +708,9 @@ fn well_known_trait_from_lang_item(item: LangItem) -> Option<WellKnownTrait> {
         LangItem::Fn => WellKnownTrait::Fn,
         LangItem::FnMut => WellKnownTrait::FnMut,
         LangItem::FnOnce => WellKnownTrait::FnOnce,
+        LangItem::AsyncFn => WellKnownTrait::AsyncFn,
+        LangItem::AsyncFnMut => WellKnownTrait::AsyncFnMut,
+        LangItem::AsyncFnOnce => WellKnownTrait::AsyncFnOnce,
         LangItem::Coroutine => WellKnownTrait::Coroutine,
         LangItem::Sized => WellKnownTrait::Sized,
         LangItem::Unpin => WellKnownTrait::Unpin,
@@ -715,6 +718,7 @@ fn well_known_trait_from_lang_item(item: LangItem) -> Option<WellKnownTrait> {
         LangItem::Tuple => WellKnownTrait::Tuple,
         LangItem::PointeeTrait => WellKnownTrait::Pointee,
         LangItem::FnPtrTrait => WellKnownTrait::FnPtr,
+        LangItem::Future => WellKnownTrait::Future,
         _ => return None,
     })
 }
@@ -730,6 +734,9 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
         WellKnownTrait::Fn => LangItem::Fn,
         WellKnownTrait::FnMut => LangItem::FnMut,
         WellKnownTrait::FnOnce => LangItem::FnOnce,
+        WellKnownTrait::AsyncFn => LangItem::AsyncFn,
+        WellKnownTrait::AsyncFnMut => LangItem::AsyncFnMut,
+        WellKnownTrait::AsyncFnOnce => LangItem::AsyncFnOnce,
         WellKnownTrait::Coroutine => LangItem::Coroutine,
         WellKnownTrait::Sized => LangItem::Sized,
         WellKnownTrait::Tuple => LangItem::Tuple,
@@ -737,6 +744,7 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
         WellKnownTrait::Unsize => LangItem::Unsize,
         WellKnownTrait::Pointee => LangItem::PointeeTrait,
         WellKnownTrait::FnPtr => LangItem::FnPtrTrait,
+        WellKnownTrait::Future => LangItem::Future,
     }
 }
 
@@ -768,21 +776,23 @@ pub(crate) fn adt_datum_query(
         phantom_data,
     };
 
-    let variant_id_to_fields = |id: VariantId| {
+    // this slows down rust-analyzer by quite a bit unfortunately, so enabling this is currently not worth it
+    let _variant_id_to_fields = |id: VariantId| {
         let variant_data = &id.variant_data(db.upcast());
-        let fields = if variant_data.fields().is_empty() || bound_vars_subst.is_empty(Interner) {
+        let fields = if variant_data.fields().is_empty() {
             vec![]
         } else {
-            // HACK: provide full struct type info slows down rust-analyzer by quite a bit unfortunately,
-            // so we trick chalk into thinking that our struct impl Unsize
-            if let Some(ty) = bound_vars_subst.at(Interner, 0).ty(Interner) {
-                vec![ty.clone()]
-            } else {
-                vec![]
-            }
+            let field_types = db.field_types(id);
+            variant_data
+                .fields()
+                .iter()
+                .map(|(idx, _)| field_types[idx].clone().substitute(Interner, &bound_vars_subst))
+                .filter(|it| !it.contains_unknown())
+                .collect()
         };
         rust_ir::AdtVariantDatum { fields }
     };
+    let variant_id_to_fields = |_: VariantId| rust_ir::AdtVariantDatum { fields: vec![] };
 
     let (kind, variants) = match adt_id {
         hir_def::AdtId::StructId(id) => {

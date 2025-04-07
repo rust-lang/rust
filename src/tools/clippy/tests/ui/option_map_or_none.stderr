@@ -8,25 +8,27 @@ LL |     let _: Option<i32> = opt.map_or(None, |x| Some(x + 1));
    = help: to override `-D warnings` add `#[allow(clippy::option_map_or_none)]`
 
 error: called `map_or(None, ..)` on an `Option` value
-  --> tests/ui/option_map_or_none.rs:13:26
+  --> tests/ui/option_map_or_none.rs:14:26
    |
 LL |       let _: Option<i32> = opt.map_or(None, |x| {
    |  __________________________^
+LL | |
 LL | |                         Some(x + 1)
 LL | |                        });
    | |_________________________^ help: consider using `map`: `opt.map(|x| x + 1)`
 
 error: called `map_or(None, ..)` on an `Option` value
-  --> tests/ui/option_map_or_none.rs:17:26
+  --> tests/ui/option_map_or_none.rs:19:26
    |
 LL |     let _: Option<i32> = opt.map_or(None, bar);
    |                          ^^^^^^^^^^^^^^^^^^^^^ help: consider using `and_then`: `opt.and_then(bar)`
 
 error: called `map_or(None, ..)` on an `Option` value
-  --> tests/ui/option_map_or_none.rs:18:26
+  --> tests/ui/option_map_or_none.rs:21:26
    |
 LL |       let _: Option<i32> = opt.map_or(None, |x| {
    |  __________________________^
+LL | |
 LL | |         let offset = 0;
 LL | |         let height = x;
 LL | |         Some(offset + height)
@@ -36,6 +38,7 @@ LL | |     });
 help: consider using `and_then`
    |
 LL ~     let _: Option<i32> = opt.and_then(|x| {
+LL +
 LL +         let offset = 0;
 LL +         let height = x;
 LL +         Some(offset + height)
@@ -43,7 +46,7 @@ LL ~     });
    |
 
 error: called `map_or(None, Some)` on a `Result` value
-  --> tests/ui/option_map_or_none.rs:25:26
+  --> tests/ui/option_map_or_none.rs:29:26
    |
 LL |     let _: Option<i32> = r.map_or(None, Some);
    |                          ^^^^^^^^^^^^^^^^^^^^ help: consider using `ok`: `r.ok()`

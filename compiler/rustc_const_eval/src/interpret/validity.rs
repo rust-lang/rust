@@ -1296,7 +1296,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     self.visit_scalar(b, b_layout)?;
                 }
             }
-            BackendRepr::Vector { .. } => {
+            BackendRepr::SimdVector { .. } => {
                 // No checks here, we assume layout computation gets this right.
                 // (This is harder to check since Miri does not represent these as `Immediate`. We
                 // also cannot use field projections since this might be a newtype around a vector.)
@@ -1322,7 +1322,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         trace!("validate_operand_internal: {:?}, {:?}", *val, val.layout.ty);
 
         // Run the visitor.
-        self.run_for_validation(|ecx| {
+        self.run_for_validation_mut(|ecx| {
             let reset_padding = reset_provenance_and_padding && {
                 // Check if `val` is actually stored in memory. If not, padding is not even
                 // represented and we need not reset it.

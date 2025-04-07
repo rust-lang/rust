@@ -177,11 +177,16 @@ error: empty line after doc comment
    |
 LL | /     /// comment on assoc item
 LL | |
+LL | |
    | |_^
 LL |       fn bar() {}
    |       ------ the comment documents this function
    |
    = help: if the empty line is unintentional, remove it
+help: if the doc comment should not document `bar` comment it out
+   |
+LL |     // /// comment on assoc item
+   |     ++
 
 error: aborting due to 11 previous errors
 

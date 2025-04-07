@@ -8,7 +8,6 @@ use std::{mem, ops};
 
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_feature::Features;
 use rustc_session::parse::ParseSess;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
@@ -48,12 +47,12 @@ impl Cfg {
         exclude: &FxHashSet<Cfg>,
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         match nested_cfg {
-            MetaItemInner::MetaItem(ref cfg) => Cfg::parse_without(cfg, exclude),
+            MetaItemInner::MetaItem(cfg) => Cfg::parse_without(cfg, exclude),
             MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => match *b {
                 true => Ok(Some(Cfg::True)),
                 false => Ok(Some(Cfg::False)),
             },
-            MetaItemInner::Lit(ref lit) => {
+            MetaItemInner::Lit(lit) => {
                 Err(InvalidCfgError { msg: "unexpected literal", span: lit.span })
             }
         }
@@ -132,18 +131,13 @@ impl Cfg {
     /// Checks whether the given configuration can be matched in the current session.
     ///
     /// Equivalent to `attr::cfg_matches`.
-    // FIXME: Actually make use of `features`.
-    pub(crate) fn matches(&self, psess: &ParseSess, features: Option<&Features>) -> bool {
+    pub(crate) fn matches(&self, psess: &ParseSess) -> bool {
         match *self {
             Cfg::False => false,
             Cfg::True => true,
-            Cfg::Not(ref child) => !child.matches(psess, features),
-            Cfg::All(ref sub_cfgs) => {
-                sub_cfgs.iter().all(|sub_cfg| sub_cfg.matches(psess, features))
-            }
-            Cfg::Any(ref sub_cfgs) => {
-                sub_cfgs.iter().any(|sub_cfg| sub_cfg.matches(psess, features))
-            }
+            Cfg::Not(ref child) => !child.matches(psess),
+            Cfg::All(ref sub_cfgs) => sub_cfgs.iter().all(|sub_cfg| sub_cfg.matches(psess)),
+            Cfg::Any(ref sub_cfgs) => sub_cfgs.iter().any(|sub_cfg| sub_cfg.matches(psess)),
             Cfg::Cfg(name, value) => psess.config.contains(&(name, value)),
         }
     }

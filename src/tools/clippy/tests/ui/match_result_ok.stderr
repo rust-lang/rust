@@ -13,7 +13,7 @@ LL +     if let Ok(y) = x.parse() { y } else { 0 }
    |
 
 error: matching on `Some` with `ok()` is redundant
-  --> tests/ui/match_result_ok.rs:23:9
+  --> tests/ui/match_result_ok.rs:24:9
    |
 LL |         if let Some(y) = x   .   parse()   .   ok   ()    {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +         if let Ok(y) = x   .   parse()    {
    |
 
 error: matching on `Some` with `ok()` is redundant
-  --> tests/ui/match_result_ok.rs:49:5
+  --> tests/ui/match_result_ok.rs:51:5
    |
 LL |     while let Some(a) = wat.next().ok() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

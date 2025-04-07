@@ -319,6 +319,7 @@ pub fn write_mir_pretty<'tcx>(
 
     writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
     writeln!(w, "// and is subject to change without notice. Knock yourself out.")?;
+    writeln!(w, "// HINT: See also -Z dump-mir for MIR at specific points during compilation.")?;
 
     let mut first = true;
     for def_id in dump_mir_def_ids(tcx, single) {
@@ -619,9 +620,8 @@ fn write_function_coverage_info(
     function_coverage_info: &coverage::FunctionCoverageInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::FunctionCoverageInfo { body_span, mappings, .. } = function_coverage_info;
+    let coverage::FunctionCoverageInfo { mappings, .. } = function_coverage_info;
 
-    writeln!(w, "{INDENT}coverage body span: {body_span:?}")?;
     for coverage::Mapping { kind, span } in mappings {
         writeln!(w, "{INDENT}coverage {kind:?} => {span:?};")?;
     }
@@ -652,7 +652,10 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
             write!(w, "static mut ")?
         }
         (_, _) if is_function => write!(w, "fn ")?,
-        (DefKind::AnonConst | DefKind::InlineConst, _) => {} // things like anon const, not an item
+        // things like anon const, not an item
+        (DefKind::AnonConst | DefKind::InlineConst, _) => {}
+        // `global_asm!` have fake bodies, which we may dump after mir-build
+        (DefKind::GlobalAsm, _) => {}
         _ => bug!("Unexpected def kind {:?}", kind),
     }
 
@@ -1199,7 +1202,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             && let Some(upvars) = tcx.upvars_mentioned(def_id)
                         {
                             for (&var_id, place) in iter::zip(upvars.keys(), places) {
-                                let var_name = tcx.hir().name(var_id);
+                                let var_name = tcx.hir_name(var_id);
                                 struct_fmt.field(var_name.as_str(), place);
                             }
                         } else {
@@ -1220,7 +1223,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             && let Some(upvars) = tcx.upvars_mentioned(def_id)
                         {
                             for (&var_id, place) in iter::zip(upvars.keys(), places) {
-                                let var_name = tcx.hir().name(var_id);
+                                let var_name = tcx.hir_name(var_id);
                                 struct_fmt.field(var_name.as_str(), place);
                             }
                         } else {

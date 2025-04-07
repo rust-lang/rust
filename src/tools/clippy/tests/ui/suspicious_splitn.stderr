@@ -57,7 +57,7 @@ LL |     let _ = [0, 1, 2].rsplitn_mut(1, |&x| x == 1);
    = note: the resulting iterator will always return the entire slice followed by `None`
 
 error: `splitn` called with `1` split
-  --> tests/ui/suspicious_splitn.rs:33:13
+  --> tests/ui/suspicious_splitn.rs:32:13
    |
 LL |     let _ = "a,b".splitn(X + 1, ',');
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL |     let _ = "a,b".splitn(X + 1, ',');
    = note: the resulting iterator will always return the entire string followed by `None`
 
 error: `splitn` called with `0` splits
-  --> tests/ui/suspicious_splitn.rs:36:13
+  --> tests/ui/suspicious_splitn.rs:35:13
    |
 LL |     let _ = "a,b".splitn(X, ',');
    |             ^^^^^^^^^^^^^^^^^^^^

@@ -46,7 +46,7 @@ pub fn parallel_guard<R>(f: impl FnOnce(&ParallelGuard) -> R) -> R {
     ret
 }
 
-pub fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
+fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
 where
     A: FnOnce() -> RA,
     B: FnOnce() -> RB,

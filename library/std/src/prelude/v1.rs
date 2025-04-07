@@ -103,6 +103,15 @@ pub use core::prelude::v1::type_ascribe;
 )]
 pub use core::prelude::v1::deref;
 
+// Do not `doc(no_inline)` either.
+#[unstable(
+    feature = "type_alias_impl_trait",
+    issue = "63063",
+    reason = "`type_alias_impl_trait` has open design concerns"
+)]
+#[cfg(not(bootstrap))]
+pub use core::prelude::v1::define_opaque;
+
 // The file so far is equivalent to core/src/prelude/v1.rs. It is duplicated
 // rather than glob imported because we want docs to show these re-exports as
 // pointing to within `std`.

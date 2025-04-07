@@ -7,11 +7,10 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::util::AsyncDropGlueMorphology;
 use rustc_middle::ty::{
-    self, GenericArgsRef, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
+    self, ClosureKind, GenericArgsRef, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
 };
 use rustc_span::sym;
 use rustc_trait_selection::traits;
-use rustc_type_ir::ClosureKind;
 use tracing::debug;
 use traits::translate_args;
 
@@ -107,11 +106,9 @@ fn resolve_associated_item<'tcx>(
     let input = typing_env.as_query_input(trait_ref);
     let vtbl = match tcx.codegen_select_candidate(input) {
         Ok(vtbl) => vtbl,
-        Err(
-            CodegenObligationError::Ambiguity
-            | CodegenObligationError::Unimplemented
-            | CodegenObligationError::FulfillmentError,
-        ) => return Ok(None),
+        Err(CodegenObligationError::Ambiguity | CodegenObligationError::Unimplemented) => {
+            return Ok(None);
+        }
         Err(CodegenObligationError::UnconstrainedParam(guar)) => return Err(guar),
     };
 
@@ -152,6 +149,7 @@ fn resolve_associated_item<'tcx>(
                 match typing_env.typing_mode {
                     ty::TypingMode::Coherence
                     | ty::TypingMode::Analysis { .. }
+                    | ty::TypingMode::Borrowck { .. }
                     | ty::TypingMode::PostBorrowckAnalysis { .. } => false,
                     ty::TypingMode::PostAnalysis => !trait_ref.still_further_specializable(),
                 }
@@ -381,8 +379,7 @@ fn resolve_associated_item<'tcx>(
             }
         }
         traits::ImplSource::Param(..)
-        | traits::ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _)
-        | traits::ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => None,
+        | traits::ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _) => None,
     })
 }
 

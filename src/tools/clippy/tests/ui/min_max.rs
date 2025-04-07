@@ -20,17 +20,19 @@ impl NotOrd {
 fn main() {
     let x = 2usize;
     min(1, max(3, x));
-    //~^ ERROR: this `min`/`max` combination leads to constant result
-    //~| NOTE: `-D clippy::min-max` implied by `-D warnings`
+    //~^ min_max
+
     min(max(3, x), 1);
-    //~^ ERROR: this `min`/`max` combination leads to constant result
+    //~^ min_max
+
     max(min(x, 1), 3);
-    //~^ ERROR: this `min`/`max` combination leads to constant result
+    //~^ min_max
+
     max(3, min(x, 1));
-    //~^ ERROR: this `min`/`max` combination leads to constant result
+    //~^ min_max
 
     my_max(3, my_min(x, 1));
-    //~^ ERROR: this `min`/`max` combination leads to constant result
+    //~^ min_max
 
     min(3, max(1, x)); // ok, could be 1, 2 or 3 depending on x
 
@@ -41,32 +43,37 @@ fn main() {
 
     let s = "Hello";
     min("Apple", max("Zoo", s));
-    //~^ ERROR: this `min`/`max` combination leads to constant result
+    //~^ min_max
+
     max(min(s, "Apple"), "Zoo");
-    //~^ ERROR: this `min`/`max` combination leads to constant result
+    //~^ min_max
 
     max("Apple", min(s, "Zoo")); // ok
 
     let f = 3f32;
     x.min(1).max(3);
-    //~^ ERROR: this `min`/`max` combination leads to constant result
+    //~^ min_max
+
     x.max(3).min(1);
-    //~^ ERROR: this `min`/`max` combination leads to constant result
+    //~^ min_max
+
     f.max(3f32).min(1f32);
-    //~^ ERROR: this `min`/`max` combination leads to constant result
+    //~^ min_max
 
     x.max(1).min(3); // ok
     x.min(3).max(1); // ok
     f.min(3f32).max(1f32); // ok
 
     max(x.min(1), 3);
-    //~^ ERROR: this `min`/`max` combination leads to constant result
+    //~^ min_max
+
     min(x.max(1), 3); // ok
 
     s.max("Zoo").min("Apple");
-    //~^ ERROR: this `min`/`max` combination leads to constant result
+    //~^ min_max
+
     s.min("Apple").max("Zoo");
-    //~^ ERROR: this `min`/`max` combination leads to constant result
+    //~^ min_max
 
     s.min("Zoo").max("Apple"); // ok
 

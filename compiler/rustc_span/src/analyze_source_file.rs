@@ -68,9 +68,7 @@ cfg_match! {
 
             const CHUNK_SIZE: usize = 16;
 
-            let src_bytes = src.as_bytes();
-
-            let chunk_count = src.len() / CHUNK_SIZE;
+            let (chunks, tail) = src.as_bytes().as_chunks::<CHUNK_SIZE>();
 
             // This variable keeps track of where we should start decoding a
             // chunk. If a multi-byte character spans across chunk boundaries,
@@ -78,25 +76,24 @@ cfg_match! {
             // handled it.
             let mut intra_chunk_offset = 0;
 
-            for chunk_index in 0..chunk_count {
-                let ptr = src_bytes.as_ptr() as *const __m128i;
+            for (chunk_index, chunk) in chunks.iter().enumerate() {
                 // We don't know if the pointer is aligned to 16 bytes, so we
                 // use `loadu`, which supports unaligned loading.
-                let chunk = unsafe { _mm_loadu_si128(ptr.add(chunk_index)) };
+                let chunk = unsafe { _mm_loadu_si128(chunk.as_ptr() as *const __m128i) };
 
                 // For character in the chunk, see if its byte value is < 0, which
                 // indicates that it's part of a UTF-8 char.
-                let multibyte_test = unsafe { _mm_cmplt_epi8(chunk, _mm_set1_epi8(0)) };
+                let multibyte_test = _mm_cmplt_epi8(chunk, _mm_set1_epi8(0));
                 // Create a bit mask from the comparison results.
-                let multibyte_mask = unsafe { _mm_movemask_epi8(multibyte_test) };
+                let multibyte_mask = _mm_movemask_epi8(multibyte_test);
 
                 // If the bit mask is all zero, we only have ASCII chars here:
                 if multibyte_mask == 0 {
                     assert!(intra_chunk_offset == 0);
 
                     // Check for newlines in the chunk
-                    let newlines_test = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8)) };
-                    let mut newlines_mask = unsafe { _mm_movemask_epi8(newlines_test) };
+                    let newlines_test = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8));
+                    let mut newlines_mask = _mm_movemask_epi8(newlines_test);
 
                     let output_offset = RelativeBytePos::from_usize(chunk_index * CHUNK_SIZE + 1);
 
@@ -123,7 +120,7 @@ cfg_match! {
             }
 
             // There might still be a tail left to analyze
-            let tail_start = chunk_count * CHUNK_SIZE + intra_chunk_offset;
+            let tail_start = src.len() - tail.len() + intra_chunk_offset;
             if tail_start < src.len() {
                 analyze_source_file_generic(
                     &src[tail_start..],

@@ -59,7 +59,7 @@ impl Thread {
             assert_eq!(
                 libc::pthread_attr_setstacksize(
                     attr.as_mut_ptr(),
-                    cmp::max(stack, min_stack_size(&attr))
+                    cmp::max(stack, min_stack_size(attr.as_ptr()))
                 ),
                 0
             );
@@ -137,13 +137,14 @@ impl Thread {
         target_os = "linux",
         target_os = "freebsd",
         target_os = "dragonfly",
-        target_os = "nuttx"
+        target_os = "nuttx",
+        target_os = "cygwin"
     ))]
     pub fn set_name(name: &CStr) {
         unsafe {
             cfg_if::cfg_if! {
-                if #[cfg(target_os = "linux")] {
-                    // Linux limits the allowed length of the name.
+                if #[cfg(any(target_os = "linux", target_os = "cygwin"))] {
+                    // Linux and Cygwin limits the allowed length of the name.
                     const TASK_COMM_LEN: usize = 16;
                     let name = truncate_cstr::<{ TASK_COMM_LEN }>(name);
                 } else {
@@ -188,12 +189,16 @@ impl Thread {
     }
 
     #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
+    // FIXME(#115199): Rust currently omits weak function definitions
+    // and its metadata from LLVM IR.
+    #[no_sanitize(cfi)]
     pub fn set_name(name: &CStr) {
-        weak! {
+        weak!(
             fn pthread_setname_np(
-                libc::pthread_t, *const libc::c_char
-            ) -> libc::c_int
-        }
+                thread: libc::pthread_t,
+                name: *const libc::c_char,
+            ) -> libc::c_int;
+        );
 
         if let Some(f) = pthread_setname_np.get() {
             #[cfg(target_os = "nto")]
@@ -342,6 +347,7 @@ impl Drop for Thread {
     target_os = "solaris",
     target_os = "illumos",
     target_os = "vxworks",
+    target_os = "cygwin",
     target_vendor = "apple",
 ))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
@@ -362,6 +368,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_os = "linux",
             target_os = "aix",
             target_vendor = "apple",
+            target_os = "cygwin",
         ))] {
             #[allow(unused_assignments)]
             #[allow(unused_mut)]
@@ -372,7 +379,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 quota = cgroups::quota().max(1);
                 let mut set: libc::cpu_set_t = unsafe { mem::zeroed() };
                 unsafe {
-                    if libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) == 0 {
+                    if libc::sched_getaffinity(0, size_of::<libc::cpu_set_t>(), &mut set) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
                         let count = count.min(quota);
 
@@ -412,7 +419,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                         libc::CPU_LEVEL_WHICH,
                         libc::CPU_WHICH_PID,
                         -1,
-                        mem::size_of::<libc::cpuset_t>(),
+                        size_of::<libc::cpuset_t>(),
                         &mut set,
                     ) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
@@ -447,7 +454,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             }
 
             let mut cpus: libc::c_uint = 0;
-            let mut cpus_size = crate::mem::size_of_val(&cpus);
+            let mut cpus_size = size_of_val(&cpus);
 
             unsafe {
                 cpus = libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as libc::c_uint;
@@ -480,7 +487,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             unsafe {
                 use libc::_syspage_ptr;
                 if _syspage_ptr.is_null() {
-                    Err(io::const_error!(io::ErrorKind::NotFound, "No syspage available"))
+                    Err(io::const_error!(io::ErrorKind::NotFound, "no syspage available"))
                 } else {
                     let cpus = (*_syspage_ptr).num_cpu;
                     NonZero::new(cpus as usize)
@@ -520,7 +527,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             }
         } else {
             // FIXME: implement on Redox, l4re
-            Err(io::const_error!(io::ErrorKind::Unsupported, "Getting the number of hardware threads is not supported on the target platform"))
+            Err(io::const_error!(io::ErrorKind::Unsupported, "getting the number of hardware threads is not supported on the target platform"))
         }
     }
 }
@@ -756,7 +763,9 @@ unsafe fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     // We use dlsym to avoid an ELF version dependency on GLIBC_PRIVATE. (#23628)
     // We shouldn't really be using such an internal symbol, but there's currently
     // no other way to account for the TLS size.
-    dlsym!(fn __pthread_get_minstack(*const libc::pthread_attr_t) -> libc::size_t);
+    dlsym!(
+        fn __pthread_get_minstack(attr: *const libc::pthread_attr_t) -> libc::size_t;
+    );
 
     match __pthread_get_minstack.get() {
         None => libc::PTHREAD_STACK_MIN,

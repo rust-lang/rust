@@ -4,11 +4,14 @@ use rustc_ast::{AsmMacro, InlineAsmOptions};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
-use rustc_middle::ty::CanonicalUserTypeAnnotation;
+use rustc_middle::ty::{CanonicalUserTypeAnnotation, Ty};
+use rustc_span::DUMMY_SP;
 use rustc_span::source_map::Spanned;
+use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
 use crate::builder::expr::category::{Category, RvalueFunc};
@@ -288,6 +291,57 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 this.diverge_from(block);
                 success.unit()
+            }
+            ExprKind::ByUse { expr, span } => {
+                let place = unpack!(block = this.as_place(block, expr));
+                let ty = place.ty(&this.local_decls, this.tcx).ty;
+
+                if this.tcx.type_is_copy_modulo_regions(this.infcx.typing_env(this.param_env), ty) {
+                    this.cfg.push_assign(
+                        block,
+                        source_info,
+                        destination,
+                        Rvalue::Use(Operand::Copy(place)),
+                    );
+                    block.unit()
+                } else if this.infcx.type_is_use_cloned_modulo_regions(this.param_env, ty) {
+                    // Convert `expr.use` to a call like `Clone::clone(&expr)`
+                    let success = this.cfg.start_new_block();
+                    let clone_trait = this.tcx.require_lang_item(LangItem::Clone, None);
+                    let clone_fn = this.tcx.associated_item_def_ids(clone_trait)[0];
+                    let func = Operand::function_handle(this.tcx, clone_fn, [ty.into()], expr_span);
+                    let ref_ty = Ty::new_imm_ref(this.tcx, this.tcx.lifetimes.re_erased, ty);
+                    let ref_place = this.temp(ref_ty, span);
+                    this.cfg.push_assign(
+                        block,
+                        source_info,
+                        ref_place,
+                        Rvalue::Ref(this.tcx.lifetimes.re_erased, BorrowKind::Shared, place),
+                    );
+                    this.cfg.terminate(
+                        block,
+                        source_info,
+                        TerminatorKind::Call {
+                            func,
+                            args: [Spanned { node: Operand::Move(ref_place), span: DUMMY_SP }]
+                                .into(),
+                            destination,
+                            target: Some(success),
+                            unwind: UnwindAction::Unreachable,
+                            call_source: CallSource::Misc,
+                            fn_span: expr_span,
+                        },
+                    );
+                    success.unit()
+                } else {
+                    this.cfg.push_assign(
+                        block,
+                        source_info,
+                        destination,
+                        Rvalue::Use(Operand::Move(place)),
+                    );
+                    block.unit()
+                }
             }
             ExprKind::Use { source } => this.expr_into_dest(destination, block, source),
             ExprKind::Borrow { arg, borrow_kind } => {

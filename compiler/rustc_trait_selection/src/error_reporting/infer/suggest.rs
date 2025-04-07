@@ -778,8 +778,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let exp_local_id = exp_def_id.as_local()?;
 
                 match (
-                    &self.tcx.hir().expect_opaque_ty(last_local_id),
-                    &self.tcx.hir().expect_opaque_ty(exp_local_id),
+                    &self.tcx.hir_expect_opaque_ty(last_local_id),
+                    &self.tcx.hir_expect_opaque_ty(exp_local_id),
                 ) {
                     (
                         hir::OpaqueTy { bounds: last_bounds, .. },

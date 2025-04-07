@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// let a = a;
     ///
     /// fn foo(b: i32) {
-    ///    let b = b;
+    ///     let b = b;
     /// }
     /// ```
     /// Use instead:
@@ -123,6 +123,5 @@ fn find_binding(pat: &Pat<'_>, name: Ident) -> Option<BindingMode> {
 /// Check if a rebinding of a local changes the effect of assignments to the binding.
 fn affects_assignments(cx: &LateContext<'_>, mutability: Mutability, bind: HirId, rebind: HirId) -> bool {
     // the binding is mutable and the rebinding is in a different scope than the original binding
-    mutability == Mutability::Mut
-        && cx.tcx.hir_get_enclosing_scope(bind) != cx.tcx.hir_get_enclosing_scope(rebind)
+    mutability == Mutability::Mut && cx.tcx.hir_get_enclosing_scope(bind) != cx.tcx.hir_get_enclosing_scope(rebind)
 }

@@ -7,7 +7,6 @@ edition = "2024"
 # tidy-alphabetical-start
 rustc-rayon = { version = "0.5.0" }
 rustc-rayon-core = { version = "0.5.0" }
-rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }
 rustc_ast_passes = { path = "../rustc_ast_passes" }
@@ -41,7 +40,6 @@ rustc_privacy = { path = "../rustc_privacy" }
 rustc_query_impl = { path = "../rustc_query_impl" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_resolve = { path = "../rustc_resolve" }
-rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
@@ -50,6 +48,11 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_traits = { path = "../rustc_traits" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 tracing = "0.1"
+# tidy-alphabetical-end
+
+[dev-dependencies]
+# tidy-alphabetical-start
+rustc_abi = { path = "../rustc_abi" }
 # tidy-alphabetical-end
 
 [features]

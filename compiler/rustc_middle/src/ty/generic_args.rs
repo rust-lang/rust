@@ -2,23 +2,22 @@
 
 use core::intrinsics;
 use std::marker::PhantomData;
-use std::mem;
 use std::num::NonZero;
 use std::ptr::NonNull;
 
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable, extension};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
 
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::ty::visit::{TypeVisitable, TypeVisitor, VisitorResult, walk_visitable_list};
 use crate::ty::{
-    self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, InlineConstArgs, Lift, List, Ty, TyCtxt,
+    self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, FallibleTypeFolder, InlineConstArgs,
+    Lift, List, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitor, VisitorResult,
+    walk_visitable_list,
 };
 
 pub type GenericArgKind<'tcx> = rustc_type_ir::GenericArgKind<TyCtxt<'tcx>>;
@@ -159,8 +158,8 @@ unsafe impl<'tcx> Sync for GenericArg<'tcx> where
 }
 
 impl<'tcx> IntoDiagArg for GenericArg<'tcx> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        self.to_string().into_diag_arg()
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        self.to_string().into_diag_arg(&mut None)
     }
 }
 
@@ -176,17 +175,17 @@ impl<'tcx> GenericArgKind<'tcx> {
         let (tag, ptr) = match self {
             GenericArgKind::Lifetime(lt) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*lt.0.0) & TAG_MASK, 0);
+                assert_eq!(align_of_val(&*lt.0.0) & TAG_MASK, 0);
                 (REGION_TAG, NonNull::from(lt.0.0).cast())
             }
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
+                assert_eq!(align_of_val(&*ty.0.0) & TAG_MASK, 0);
                 (TYPE_TAG, NonNull::from(ty.0.0).cast())
             }
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
+                assert_eq!(align_of_val(&*ct.0.0) & TAG_MASK, 0);
                 (CONST_TAG, NonNull::from(ct.0.0).cast())
             }
         };
@@ -335,13 +334,13 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for GenericArg<'tcx> {
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for GenericArg<'tcx> {
     fn encode(&self, e: &mut E) {
         self.unpack().encode(e)
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for GenericArg<'tcx> {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for GenericArg<'tcx> {
     fn decode(d: &mut D) -> GenericArg<'tcx> {
         GenericArgKind::decode(d).pack()
     }
@@ -397,14 +396,14 @@ impl<'tcx> GenericArgs<'tcx> {
         InlineConstArgs { args: self }
     }
 
-    /// Creates an `GenericArgs` that maps each generic parameter to itself.
+    /// Creates a [`GenericArgs`] that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: impl Into<DefId>) -> GenericArgsRef<'tcx> {
         Self::for_item(tcx, def_id.into(), |param, _| tcx.mk_param_from_def(param))
     }
 
-    /// Creates an `GenericArgs` for generic parameter definitions,
+    /// Creates a [`GenericArgs`] for generic parameter definitions,
     /// by calling closures to obtain each kind.
-    /// The closures get to observe the `GenericArgs` as they're
+    /// The closures get to observe the [`GenericArgs`] as they're
     /// being built, which can be used to correctly
     /// replace defaults of generic parameters.
     pub fn for_item<F>(tcx: TyCtxt<'tcx>, def_id: DefId, mut mk_kind: F) -> GenericArgsRef<'tcx>

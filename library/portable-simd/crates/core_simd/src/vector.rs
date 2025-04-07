@@ -1,8 +1,8 @@
 use crate::simd::{
+    LaneCount, Mask, MaskElement, SupportedLaneCount, Swizzle,
     cmp::SimdPartialOrd,
     num::SimdUint,
     ptr::{SimdConstPtr, SimdMutPtr},
-    LaneCount, Mask, MaskElement, SupportedLaneCount, Swizzle,
 };
 
 /// A SIMD vector with the shape of `[T; N]` but the operations of `T`.
@@ -83,7 +83,7 @@ use crate::simd::{
 /// converting `[T]` to `[Simd<T, N>]`, and allows soundly operating on an aligned SIMD body,
 /// but it may cost more time when handling the scalar head and tail.
 /// If these are not enough, it is most ideal to design data structures to be already aligned
-/// to `mem::align_of::<Simd<T, N>>()` before using `unsafe` Rust to read or write.
+/// to `align_of::<Simd<T, N>>()` before using `unsafe` Rust to read or write.
 /// Other ways to compensate for these facts, like materializing `Simd` to or from an array first,
 /// are handled by safe methods like [`Simd::from_array`] and [`Simd::from_slice`].
 ///

@@ -143,7 +143,7 @@ impl CompletionFieldsToResolve {
 /// already present, it should give all possible variants for the identifier at
 /// the caret. In other words, for
 ///
-/// ```no_run
+/// ```ignore
 /// fn f() {
 ///     let foo = 92;
 ///     let _ = bar$0

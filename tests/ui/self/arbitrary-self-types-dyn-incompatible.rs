@@ -1,7 +1,3 @@
-//@ revisions: curr dyn_compatible_for_dispatch
-
-#![cfg_attr(dyn_compatible_for_dispatch, feature(dyn_compatible_for_dispatch))]
-
 use std::rc::Rc;
 
 trait Foo {
@@ -31,9 +27,8 @@ impl Bar for usize {
 
 fn make_foo() {
     let x = Rc::new(5usize) as Rc<dyn Foo>;
-    //[curr]~^ ERROR E0038
-    //[curr]~| ERROR E0038
-    //[dyn_compatible_for_dispatch]~^^^ ERROR E0038
+    //~^ ERROR E0038
+    //~| ERROR E0038
 }
 
 fn make_bar() {

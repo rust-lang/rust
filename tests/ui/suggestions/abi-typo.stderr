@@ -2,12 +2,14 @@ error[E0703]: invalid ABI: found `cdedl`
   --> $DIR/abi-typo.rs:2:8
    |
 LL | extern "cdedl" fn cdedl() {}
-   |        ^^^^^^^
-   |        |
-   |        invalid ABI
-   |        help: did you mean: `"cdecl"`
+   |        ^^^^^^^ invalid ABI
    |
    = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+help: there's a similarly named valid ABI `cdecl`
+   |
+LL - extern "cdedl" fn cdedl() {}
+LL + extern "cdecl" fn cdedl() {}
+   |
 
 error: aborting due to 1 previous error
 

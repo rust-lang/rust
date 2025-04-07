@@ -4,8 +4,7 @@ use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, SourceInfo};
 use rustc_middle::span_bug;
 use rustc_middle::ty::relate::Relate;
-use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{GenericArgsRef, Region, RegionVid, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArgsRef, Region, RegionVid, Ty, TyCtxt, TypeVisitable};
 use rustc_mir_dataflow::ResultsCursor;
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
@@ -31,7 +30,6 @@ mod trace;
 /// performed before
 pub(super) fn generate<'a, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body: &Body<'tcx>,
     location_map: &DenseLocationMap,
     flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -51,23 +49,16 @@ pub(super) fn generate<'a, 'tcx>(
     // We do record these regions in the polonius context, since they're used to differentiate
     // relevant and boring locals, which is a key distinction used later in diagnostics.
     if typeck.tcx().sess.opts.unstable_opts.polonius.is_next_enabled() {
-        let (_, boring_locals) = compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
+        let (_, boring_locals) =
+            compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
         typeck.polonius_liveness.as_mut().unwrap().boring_nll_locals =
             boring_locals.into_iter().collect();
         free_regions = typeck.universal_regions.universal_regions_iter().collect();
     }
     let (relevant_live_locals, boring_locals) =
-        compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
+        compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
 
-    trace::trace(
-        typeck,
-        body,
-        location_map,
-        flow_inits,
-        move_data,
-        relevant_live_locals,
-        boring_locals,
-    );
+    trace::trace(typeck, location_map, flow_inits, move_data, relevant_live_locals, boring_locals);
 
     // Mark regions that should be live where they appear within rvalues or within a call: like
     // args, regions, and types.
@@ -76,7 +67,7 @@ pub(super) fn generate<'a, 'tcx>(
         &mut typeck.constraints.liveness_constraints,
         &typeck.universal_regions,
         &mut typeck.polonius_liveness,
-        body,
+        typeck.body,
     );
 }
 

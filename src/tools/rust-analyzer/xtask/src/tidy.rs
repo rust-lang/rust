@@ -27,8 +27,9 @@ fn check_lsp_extensions_docs(sh: &Shell) {
     };
 
     let actual_hash = {
-        let lsp_extensions_md =
-            sh.read_file(project_root().join("docs/dev/lsp-extensions.md")).unwrap();
+        let lsp_extensions_md = sh
+            .read_file(project_root().join("docs/book/src/contributing/lsp-extensions.md"))
+            .unwrap();
         let text = lsp_extensions_md
             .lines()
             .find_map(|line| line.strip_prefix("lsp/ext.rs hash:"))
@@ -185,7 +186,7 @@ Zlib OR Apache-2.0 OR MIT
 
 fn check_test_attrs(path: &Path, text: &str) {
     let panic_rule =
-        "https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/style.md#should_panic";
+        "https://github.com/rust-lang/rust-analyzer/blob/master/docs/book/src/contributing/style.md#should_panic";
     let need_panic: &[&str] = &[
         // This file.
         "slow-tests/tidy.rs",

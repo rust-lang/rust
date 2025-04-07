@@ -35,52 +35,71 @@ fn option_map_unit_fn() {
     let _ : Option<()> = x.field.map(do_nothing);
 
     if let Some(x_field) = x.field { do_nothing(x_field) }
+    //~^ option_map_unit_fn
 
     if let Some(x_field) = x.field { do_nothing(x_field) }
+    //~^ option_map_unit_fn
 
     if let Some(x_field) = x.field { diverge(x_field) }
+    //~^ option_map_unit_fn
 
     let captured = 10;
     if let Some(value) = x.field { do_nothing(value + captured) };
     let _ : Option<()> = x.field.map(|value| do_nothing(value + captured));
 
     if let Some(value) = x.field { x.do_option_nothing(value + captured) }
+    //~^ option_map_unit_fn
 
     if let Some(value) = x.field { x.do_option_plus_one(value + captured); }
+    //~^ option_map_unit_fn
 
 
     if let Some(value) = x.field { do_nothing(value + captured) }
+    //~^ option_map_unit_fn
 
     if let Some(value) = x.field { do_nothing(value + captured) }
+    //~^ option_map_unit_fn
 
     if let Some(value) = x.field { do_nothing(value + captured); }
+    //~^ option_map_unit_fn
 
     if let Some(value) = x.field { do_nothing(value + captured); }
+    //~^ option_map_unit_fn
 
 
     if let Some(value) = x.field { diverge(value + captured) }
+    //~^ option_map_unit_fn
 
     if let Some(value) = x.field { diverge(value + captured) }
+    //~^ option_map_unit_fn
 
     if let Some(value) = x.field { diverge(value + captured); }
+    //~^ option_map_unit_fn
 
     if let Some(value) = x.field { diverge(value + captured); }
+    //~^ option_map_unit_fn
 
 
     x.field.map(|value| plus_one(value + captured));
     x.field.map(|value| { plus_one(value + captured) });
     if let Some(value) = x.field { let y = plus_one(value + captured); }
+    //~^ option_map_unit_fn
 
     if let Some(value) = x.field { plus_one(value + captured); }
+    //~^ option_map_unit_fn
 
     if let Some(value) = x.field { plus_one(value + captured); }
+    //~^ option_map_unit_fn
 
 
     if let Some(ref value) = x.field { do_nothing(value + captured) }
+    //~^ option_map_unit_fn
 
     if let Some(a) = option() { do_nothing(a) }
+    //~^ option_map_unit_fn
 
     if let Some(value) = option() { println!("{:?}", value) }
+    //~^ option_map_unit_fn
 }
 
 fn main() {}

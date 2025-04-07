@@ -1,6 +1,6 @@
 use ide_db::imports::insert_use::ImportScope;
 use syntax::{
-    ast::{self, make, AstNode, HasArgList},
+    ast::{self, prec::ExprPrecedence, AstNode, HasArgList},
     TextRange,
 };
 
@@ -55,7 +55,7 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
         TextRange::new(path.syntax().text_range().start(), l_paren.text_range().end());
 
     // Parens around `expr` if needed
-    let parens = needs_parens_as_receiver(&first_arg).then(|| {
+    let parens = first_arg.precedence().needs_parentheses_in(ExprPrecedence::Postfix).then(|| {
         let range = first_arg.syntax().text_range();
         (range.start(), range.end())
     });
@@ -122,24 +122,6 @@ fn add_import(
             ide_db::imports::insert_use::insert_use(&scope, import, &ctx.config.insert_use);
         }
     }
-}
-
-fn needs_parens_as_receiver(expr: &ast::Expr) -> bool {
-    // Make `(expr).dummy()`
-    let dummy_call = make::expr_method_call(
-        make::expr_paren(expr.clone()),
-        make::name_ref("dummy"),
-        make::arg_list([]),
-    );
-
-    // Get the `expr` clone with the right parent back
-    // (unreachable!s are fine since we've just constructed the expression)
-    let ast::Expr::MethodCallExpr(call) = &dummy_call else { unreachable!() };
-    let Some(receiver) = call.receiver() else { unreachable!() };
-    let ast::Expr::ParenExpr(parens) = receiver else { unreachable!() };
-    let Some(expr) = parens.expr() else { unreachable!() };
-
-    expr.needs_parens_in(dummy_call.syntax().clone())
 }
 
 #[cfg(test)]

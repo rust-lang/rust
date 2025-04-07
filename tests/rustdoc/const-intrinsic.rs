@@ -9,19 +9,13 @@
 #[stable(since="1.0.0", feature="rust1")]
 #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-pub const unsafe fn transmute<T, U>(_: T) -> U {
-    loop {}
-}
+pub const unsafe fn transmute<T, U>(_: T) -> U;
 
 //@ has 'foo/fn.unreachable.html'
 //@ has - '//pre[@class="rust item-decl"]' 'pub unsafe fn unreachable() -> !'
 #[stable(since="1.0.0", feature="rust1")]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-pub unsafe fn unreachable() -> ! {
-    loop {}
-}
+pub unsafe fn unreachable() -> !;
 
 extern "C" {
     //@ has 'foo/fn.needs_drop.html'

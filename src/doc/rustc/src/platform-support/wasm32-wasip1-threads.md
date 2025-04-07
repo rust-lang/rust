@@ -100,14 +100,14 @@ This target is not a stable target. This means that there are a few engines
 which implement the `wasi-threads` feature and if they do they're likely behind a
 flag, for example:
 
-* Wasmtime - `--wasm-features=threads --wasi-modules=experimental-wasi-threads`
+* Wasmtime - `--wasi threads`
 * [WAMR](https://github.com/bytecodealliance/wasm-micro-runtime) - needs to be built with WAMR_BUILD_LIB_WASI_THREADS=1
 
 ## Building the target
 
 Users need to install or built wasi-sdk since release 20.0
 https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-20
-and specify path to *wasi-root* `config.toml`
+and specify path to *wasi-root* `bootstrap.toml`
 
 ```toml
 [target.wasm32-wasip1-threads]
@@ -115,7 +115,7 @@ wasi-root = ".../wasi-libc/sysroot"
 ```
 
 After that users can build this by adding it to the `target` list in
-`config.toml`, or with `-Zbuild-std`.
+`bootstrap.toml`, or with `-Zbuild-std`.
 
 ## Building Rust programs
 

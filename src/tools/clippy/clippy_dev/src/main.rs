@@ -17,7 +17,8 @@ fn main() {
             fix,
             allow_dirty,
             allow_staged,
-        } => dogfood::dogfood(fix, allow_dirty, allow_staged),
+            allow_no_vcs,
+        } => dogfood::dogfood(fix, allow_dirty, allow_staged, allow_no_vcs),
         DevCommand::Fmt { check, verbose } => fmt::run(check, verbose),
         DevCommand::UpdateLints { print_only, check } => {
             if print_only {
@@ -34,7 +35,7 @@ fn main() {
             category,
             r#type,
             msrv,
-        } => match new_lint::create(&pass, &name, &category, r#type.as_deref(), msrv) {
+        } => match new_lint::create(pass, &name, &category, r#type.as_deref(), msrv) {
             Ok(()) => update_lints::update(utils::UpdateMode::Change),
             Err(e) => eprintln!("Unable to create lint: {e}"),
         },
@@ -53,7 +54,12 @@ fn main() {
                     setup::git_hook::install_hook(force_override);
                 }
             },
-            SetupSubcommand::Toolchain { force, release, name } => setup::toolchain::create(force, release, &name),
+            SetupSubcommand::Toolchain {
+                standalone,
+                force,
+                release,
+                name,
+            } => setup::toolchain::create(standalone, force, release, &name),
             SetupSubcommand::VscodeTasks { remove, force_override } => {
                 if remove {
                     setup::vscode::remove_tasks();
@@ -68,7 +74,7 @@ fn main() {
             RemoveSubcommand::VscodeTasks => setup::vscode::remove_tasks(),
         },
         DevCommand::Serve { port, lint } => serve::run(port, lint),
-        DevCommand::Lint { path, args } => lint::run(&path, args.iter()),
+        DevCommand::Lint { path, edition, args } => lint::run(&path, &edition, args.iter()),
         DevCommand::RenameLint {
             old_name,
             new_name,
@@ -106,6 +112,9 @@ enum DevCommand {
         #[arg(long, requires = "fix")]
         /// Fix code even if the working directory has staged changes
         allow_staged: bool,
+        #[arg(long, requires = "fix")]
+        /// Fix code even if a VCS was not detected
+        allow_no_vcs: bool,
     },
     /// Run rustfmt on all projects and tests
     Fmt {
@@ -138,9 +147,9 @@ enum DevCommand {
     #[command(name = "new_lint")]
     /// Create a new lint and run `cargo dev update_lints`
     NewLint {
-        #[arg(short, long, value_parser = ["early", "late"], conflicts_with = "type", default_value = "late")]
+        #[arg(short, long, conflicts_with = "type", default_value = "late")]
         /// Specify whether the lint runs during the early or late pass
-        pass: String,
+        pass: new_lint::Pass,
         #[arg(
             short,
             long,
@@ -206,6 +215,9 @@ enum DevCommand {
     ///     cargo dev lint file.rs -- -W clippy::pedantic {n}
     ///     cargo dev lint ~/my-project -- -- -W clippy::pedantic
     Lint {
+        /// The Rust edition to use
+        #[arg(long, default_value = "2024")]
+        edition: String,
         /// The path to a file or package directory to lint
         path: String,
         /// Pass extra arguments to cargo/clippy-driver
@@ -264,14 +276,25 @@ enum SetupSubcommand {
         force_override: bool,
     },
     /// Install a rustup toolchain pointing to the local clippy build
+    ///
+    /// This creates a toolchain with symlinks pointing at
+    /// `target/.../{clippy-driver,cargo-clippy}`, rebuilds of the project will be reflected in the
+    /// created toolchain unless `--standalone` is passed
     Toolchain {
+        #[arg(long, short)]
+        /// Create a standalone toolchain by copying the clippy binaries instead
+        /// of symlinking them
+        ///
+        /// Use this for example to create a toolchain, make a small change and then make another
+        /// toolchain with a different name in order to easily compare the two
+        standalone: bool,
         #[arg(long, short)]
         /// Override an existing toolchain
         force: bool,
         #[arg(long, short)]
         /// Point to --release clippy binary
         release: bool,
-        #[arg(long, default_value = "clippy")]
+        #[arg(long, short, default_value = "clippy")]
         /// Name of the toolchain
         name: String,
     },

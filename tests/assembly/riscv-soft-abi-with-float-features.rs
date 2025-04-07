@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 //@ compile-flags: --target riscv64imac-unknown-none-elf -Ctarget-feature=+f,+d
 //@ needs-llvm-components: riscv
@@ -9,15 +10,8 @@
 #![crate_type = "lib"]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for f16 {}
-impl Copy for f32 {}
-impl Copy for f64 {}
+extern crate minicore;
+use minicore::*;
 
 // This test checks that the floats are all returned in `a0` as required by the `lp64` ABI.
 

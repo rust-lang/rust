@@ -1,6 +1,7 @@
 // Check the "probe-stack" attribute for targets with `StackProbeType::Inline`,
 // or `StackProbeType::InlineOrCall` when running on newer LLVM.
 
+//@ add-core-stubs
 //@ compile-flags: -C no-prepopulate-passes
 //@ revisions: aarch64 powerpc powerpc64 powerpc64le s390x i686 x86_64
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
@@ -22,8 +23,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 #[no_mangle]
 pub fn foo() {

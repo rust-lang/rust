@@ -708,7 +708,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             ty::Pat(subty, pat) => {
                 self.require_sized(subty, ObligationCauseCode::Misc);
                 match *pat {
-                    ty::PatternKind::Range { start, end, include_end: _ } => {
+                    ty::PatternKind::Range { start, end } => {
                         let mut check = |c| {
                             let cause = self.cause(ObligationCauseCode::Misc);
                             self.out.push(traits::Obligation::with_depth(
@@ -738,12 +738,8 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                                 }
                             }
                         };
-                        if let Some(start) = start {
-                            check(start)
-                        }
-                        if let Some(end) = end {
-                            check(end)
-                        }
+                        check(start);
+                        check(end);
                     }
                 }
             }
@@ -904,19 +900,14 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // FIXME(#27579) RFC also considers adding trait
                 // obligations that don't refer to Self and
                 // checking those
-
-                let defer_to_coercion = tcx.features().dyn_compatible_for_dispatch();
-
-                if !defer_to_coercion {
-                    if let Some(principal) = data.principal_def_id() {
-                        self.out.push(traits::Obligation::with_depth(
-                            tcx,
-                            self.cause(ObligationCauseCode::WellFormed(None)),
-                            self.recursion_depth,
-                            self.param_env,
-                            ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal)),
-                        ));
-                    }
+                if let Some(principal) = data.principal_def_id() {
+                    self.out.push(traits::Obligation::with_depth(
+                        tcx,
+                        self.cause(ObligationCauseCode::WellFormed(None)),
+                        self.recursion_depth,
+                        self.param_env,
+                        ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal)),
+                    ));
                 }
             }
 

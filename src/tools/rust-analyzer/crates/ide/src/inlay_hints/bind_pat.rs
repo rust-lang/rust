@@ -3,11 +3,10 @@
 //! fn f(a: i32, b: i32) -> i32 { a + b }
 //! let _x /* i32 */= f(4, 4);
 //! ```
-use hir::Semantics;
+use hir::{DisplayTarget, Semantics};
 use ide_db::{famous_defs::FamousDefs, RootDatabase};
 
 use itertools::Itertools;
-use span::EditionedFileId;
 use syntax::{
     ast::{self, AstNode, HasGenericArgs, HasName},
     match_ast,
@@ -22,7 +21,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: EditionedFileId,
+    display_target: DisplayTarget,
     pat: &ast::IdentPat,
 ) -> Option<()> {
     if !config.type_hints {
@@ -70,7 +69,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let mut label = label_of_ty(famous_defs, config, &ty, file_id.edition())?;
+    let mut label = label_of_ty(famous_defs, config, &ty, display_target)?;
 
     if config.hide_named_constructor_hints
         && is_named_constructor(sema, pat, &label.to_string()).is_some()

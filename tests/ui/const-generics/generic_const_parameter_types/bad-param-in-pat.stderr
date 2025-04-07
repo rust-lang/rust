@@ -1,0 +1,11 @@
+error[E0158]: constant parameters cannot be referenced in patterns
+  --> $DIR/bad-param-in-pat.rs:6:13
+   |
+LL |     fn bar<const V: u8>() {
+   |            ----------- constant defined here
+LL |         let V;
+   |             ^ can't be used in patterns
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0158`.

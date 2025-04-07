@@ -1,8 +1,7 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
-use rustc_middle::ty::fold::FnMutDelegate;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, FnMutDelegate, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use tracing::{debug, instrument};
 
 use super::RelateResult;
@@ -26,8 +25,9 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        if let Some(inner) = binder.clone().no_bound_vars() {
-            return inner;
+        // Inlined `no_bound_vars`.
+        if !binder.as_ref().skip_binder().has_escaping_bound_vars() {
+            return binder.skip_binder();
         }
 
         let next_universe = self.create_next_universe();

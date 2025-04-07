@@ -15,8 +15,8 @@ pub trait Trait2 {
 
 impl<'c, S: Trait2> Trait2 for &'c mut S {
     type FooFuture<'a> = impl Trait1;
-    //~^ ERROR unconstrained opaque type
     fn foo<'a>() -> Self::FooFuture<'a> {
+        //~^ ERROR item does not constrain `<&'c mut S as Trait2>::FooFuture::{opaque#0}`
         Struct(unimplemented!())
     }
 }

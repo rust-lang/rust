@@ -6,6 +6,8 @@ Protocol](https://microsoft.github.io/language-server-protocol/).
 This page assumes that you have already [installed the rust-analyzer
 binary](./rust_analyzer_binary.html).
 
+<!-- toc -->
+
 ## Emacs
 
 To use `rust-analyzer`, you need to install and enable one of the two

@@ -833,7 +833,7 @@ fn env_expand(
         if key.as_str() == "OUT_DIR" {
             err = Some(ExpandError::other(
                 span,
-                r#"`OUT_DIR` not set, enable "build scripts" to fix"#,
+                r#"`OUT_DIR` not set, build scripts may have failed to run"#,
             ));
         }
 

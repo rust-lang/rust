@@ -1,8 +1,8 @@
 //@ run-pass
 #![allow(dead_code)]
+#![feature(repr_simd, core_intrinsics)]
 
-
-#![feature(repr_simd, intrinsics)]
+use std::intrinsics::simd::{simd_extract, simd_insert};
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -11,13 +11,6 @@ struct S([i32; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct T<const N: usize>([i32; N]);
-
-#[rustc_intrinsic]
-unsafe fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_extract<T, E>(x: T, idx: u32) -> E;
-
 
 pub fn main() {
     let mut s = S([0; 4]);

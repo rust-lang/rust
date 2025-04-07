@@ -1,14 +1,13 @@
 #![feature(type_alias_impl_trait)]
 #![allow(dead_code)]
 
-mod bug {
-    pub type Bug<T, U> = impl Fn(T) -> U + Copy;
+pub type Bug<T, U> = impl Fn(T) -> U + Copy;
 
-    fn make_bug<T, U: From<T>>() -> Bug<T, U> {
-        |x| x.into() //~ ERROR the trait bound `U: From<T>` is not satisfied
-    }
+#[define_opaque(Bug)]
+fn make_bug<T, U: From<T>>() -> Bug<T, U> {
+    |x| x.into()
+    //~^ ERROR the trait bound `U: From<T>` is not satisfied
 }
-use bug::Bug;
 
 union Moo {
     x: Bug<u8, ()>,

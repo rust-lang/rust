@@ -71,7 +71,7 @@ pub struct ManualNonExhaustive {
 impl ManualNonExhaustive {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             constructed_enum_variants: FxHashSet::default(),
             potential_enums: Vec::new(),
         }
@@ -82,23 +82,23 @@ impl_lint_pass!(ManualNonExhaustive => [MANUAL_NON_EXHAUSTIVE]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if !self.msrv.meets(msrvs::NON_EXHAUSTIVE) || !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
+        if !cx.effective_visibilities.is_exported(item.owner_id.def_id) || !self.msrv.meets(cx, msrvs::NON_EXHAUSTIVE) {
             return;
         }
 
         match item.kind {
-            ItemKind::Enum(def, _) if def.variants.len() > 1 => {
+            ItemKind::Enum(_, def, _) if def.variants.len() > 1 => {
                 let iter = def.variants.iter().filter_map(|v| {
-                    (matches!(v.data, VariantData::Unit(_, _)) && is_doc_hidden(cx.tcx.hir().attrs(v.hir_id)))
+                    (matches!(v.data, VariantData::Unit(_, _)) && is_doc_hidden(cx.tcx.hir_attrs(v.hir_id)))
                         .then_some((v.def_id, v.span))
                 });
                 if let Ok((id, span)) = iter.exactly_one()
-                    && !attr::contains_name(cx.tcx.hir().attrs(item.hir_id()), sym::non_exhaustive)
+                    && !attr::contains_name(cx.tcx.hir_attrs(item.hir_id()), sym::non_exhaustive)
                 {
                     self.potential_enums.push((item.owner_id.def_id, id, item.span, span));
                 }
             },
-            ItemKind::Struct(variant_data, _) => {
+            ItemKind::Struct(_, variant_data, _) => {
                 let fields = variant_data.fields();
                 let private_fields = fields
                     .iter()
@@ -114,9 +114,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                         "this seems like a manual implementation of the non-exhaustive pattern",
                         |diag| {
                             if let Some(non_exhaustive) =
-                                attr::find_by_name(cx.tcx.hir().attrs(item.hir_id()), sym::non_exhaustive)
+                                attr::find_by_name(cx.tcx.hir_attrs(item.hir_id()), sym::non_exhaustive)
                             {
-                                diag.span_note(non_exhaustive.span, "the struct is already non-exhaustive");
+                                diag.span_note(non_exhaustive.span(), "the struct is already non-exhaustive");
                             } else {
                                 let indent = snippet_indent(cx, item.span).unwrap_or_default();
                                 diag.span_suggestion_verbose(
@@ -171,6 +171,4 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }

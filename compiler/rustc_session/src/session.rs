@@ -29,7 +29,7 @@ use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
     CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
-    TargetTuple, TlsModel,
+    TargetTuple, TlsModel, apple,
 };
 
 use crate::code_stats::CodeStats;
@@ -109,8 +109,8 @@ impl Mul<usize> for Limit {
 }
 
 impl rustc_errors::IntoDiagArg for Limit {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
-        self.to_string().into_diag_arg()
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
+        self.to_string().into_diag_arg(&mut None)
     }
 }
 
@@ -143,7 +143,6 @@ pub struct Session {
     pub target: Target,
     pub host: Target,
     pub opts: config::Options,
-    pub host_tlib_path: Arc<SearchPath>,
     pub target_tlib_path: Arc<SearchPath>,
     pub psess: ParseSess,
     pub sysroot: PathBuf,
@@ -382,6 +381,10 @@ impl Session {
         self.opts.unstable_opts.sanitizer_cfi_normalize_integers == Some(true)
     }
 
+    pub fn is_sanitizer_kcfi_arity_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_kcfi_arity == Some(true)
+    }
+
     pub fn is_sanitizer_kcfi_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI)
     }
@@ -586,6 +589,14 @@ impl Session {
             .default_visibility
             .or(self.target.options.default_visibility)
             .unwrap_or(SymbolVisibility::Interposable)
+    }
+
+    pub fn staticlib_components(&self, verbatim: bool) -> (&str, &str) {
+        if verbatim {
+            ("", "")
+        } else {
+            (&*self.target.staticlib_prefix, &*self.target.staticlib_suffix)
+        }
     }
 }
 
@@ -884,6 +895,45 @@ impl Session {
             FileNameDisplayPreference::Local
         }
     }
+
+    /// Get the deployment target on Apple platforms based on the standard environment variables,
+    /// or fall back to the minimum version supported by `rustc`.
+    ///
+    /// This should be guarded behind `if sess.target.is_like_darwin`.
+    pub fn apple_deployment_target(&self) -> apple::OSVersion {
+        let min = apple::OSVersion::minimum_deployment_target(&self.target);
+        let env_var = apple::deployment_target_env_var(&self.target.os);
+
+        // FIXME(madsmtm): Track changes to this.
+        if let Ok(deployment_target) = env::var(env_var) {
+            match apple::OSVersion::from_str(&deployment_target) {
+                Ok(version) => {
+                    let os_min = apple::OSVersion::os_minimum_deployment_target(&self.target.os);
+                    // It is common that the deployment target is set a bit too low, for example on
+                    // macOS Aarch64 to also target older x86_64. So we only want to warn when variable
+                    // is lower than the minimum OS supported by rustc, not when the variable is lower
+                    // than the minimum for a specific target.
+                    if version < os_min {
+                        self.dcx().emit_warn(errors::AppleDeploymentTarget::TooLow {
+                            env_var,
+                            version: version.fmt_pretty().to_string(),
+                            os_min: os_min.fmt_pretty().to_string(),
+                        });
+                    }
+
+                    // Raise the deployment target to the minimum supported.
+                    version.max(min)
+                }
+                Err(error) => {
+                    self.dcx().emit_err(errors::AppleDeploymentTarget::Invalid { env_var, error });
+                    min
+                }
+            }
+        } else {
+            // If no deployment target variable is set, default to the minimum found above.
+            min
+        }
+    }
 }
 
 // JUSTIFICATION: part of session construction
@@ -913,7 +963,7 @@ fn default_emitter(
     let source_map = if sopts.unstable_opts.link_only { None } else { Some(source_map) };
 
     match sopts.error_format {
-        config::ErrorOutputType::HumanReadable(kind, color_config) => {
+        config::ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
 
             if let HumanReadableErrorType::AnnotateSnippet = kind {
@@ -930,7 +980,6 @@ fn default_emitter(
                     .fluent_bundle(bundle)
                     .sm(source_map)
                     .short_message(short)
-                    .teach(sopts.unstable_opts.teach)
                     .diagnostic_width(sopts.diagnostic_width)
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
@@ -1043,6 +1092,7 @@ pub fn build_session(
 
     let host_triple = config::host_tuple();
     let target_triple = sopts.target_triple.tuple();
+    // FIXME use host sysroot?
     let host_tlib_path = Arc::new(SearchPath::from_sysroot_and_triple(&sysroot, host_triple));
     let target_tlib_path = if host_triple == target_triple {
         // Use the same `SearchPath` if host and target triple are identical to avoid unnecessary
@@ -1071,7 +1121,6 @@ pub fn build_session(
         target,
         host,
         opts: sopts,
-        host_tlib_path,
         target_tlib_path,
         psess,
         sysroot,
@@ -1203,6 +1252,11 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if !sess.is_sanitizer_cfi_enabled() {
             sess.dcx().emit_err(errors::SanitizerCfiCanonicalJumpTablesRequiresCfi);
         }
+    }
+
+    // KCFI arity indicator requires KCFI.
+    if sess.is_sanitizer_kcfi_arity_enabled() && !sess.is_sanitizer_kcfi_enabled() {
+        sess.dcx().emit_err(errors::SanitizerKcfiArityRequiresKcfi);
     }
 
     // LLVM CFI pointer generalization requires CFI or KCFI.
@@ -1430,7 +1484,7 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let fallback_bundle =
         fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
-        config::ErrorOutputType::HumanReadable(kind, color_config) => {
+        config::ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)

@@ -36,7 +36,7 @@ impl Input {
     /// the *previous* token was joint, with mbe, you know whether the *current*
     /// one is joint. This API allows for styles of usage:
     ///
-    /// ```
+    /// ```ignore
     /// // In text:
     /// tokens.was_joint(prev_joint);
     /// tokens.push(curr);

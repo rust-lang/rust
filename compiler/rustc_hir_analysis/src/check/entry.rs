@@ -99,7 +99,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 
     for attr in tcx.get_attrs(main_def_id, sym::track_caller) {
-        tcx.dcx().emit_err(errors::TrackCallerOnMain { span: attr.span, annotated: main_span });
+        tcx.dcx().emit_err(errors::TrackCallerOnMain { span: attr.span(), annotated: main_span });
         error = true;
     }
 

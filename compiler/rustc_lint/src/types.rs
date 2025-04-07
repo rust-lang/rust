@@ -1,7 +1,7 @@
 use std::iter;
 use std::ops::ControlFlow;
 
-use rustc_abi::{BackendRepr, ExternAbi, TagEncoding, VariantIdx, Variants, WrappingRange};
+use rustc_abi::{BackendRepr, TagEncoding, VariantIdx, Variants, WrappingRange};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir::intravisit::VisitorExt;
@@ -14,7 +14,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, Symbol, source_map, sym};
+use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -223,7 +223,7 @@ impl TypeLimits {
 fn lint_nan<'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx hir::Expr<'tcx>,
-    binop: hir::BinOp,
+    binop: hir::BinOpKind,
     l: &'tcx hir::Expr<'tcx>,
     r: &'tcx hir::Expr<'tcx>,
 ) {
@@ -262,19 +262,19 @@ fn lint_nan<'tcx>(
         InvalidNanComparisons::EqNe { suggestion }
     }
 
-    let lint = match binop.node {
+    let lint = match binop {
         hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, l) => {
             eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
                 nan_plus_binop: l_span.until(r_span),
                 float: r_span.shrink_to_hi(),
-                neg: (binop.node == hir::BinOpKind::Ne).then(|| r_span.shrink_to_lo()),
+                neg: (binop == hir::BinOpKind::Ne).then(|| r_span.shrink_to_lo()),
             })
         }
         hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, r) => {
             eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
                 nan_plus_binop: l_span.shrink_to_hi().to(r_span),
                 float: l_span.shrink_to_hi(),
-                neg: (binop.node == hir::BinOpKind::Ne).then(|| l_span.shrink_to_lo()),
+                neg: (binop == hir::BinOpKind::Ne).then(|| l_span.shrink_to_lo()),
             })
         }
         hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Gt | hir::BinOpKind::Ge
@@ -560,11 +560,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                 }
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
-                if is_comparison(binop) {
-                    if !check_limits(cx, binop, l, r) {
+                if is_comparison(binop.node) {
+                    if !check_limits(cx, binop.node, l, r) {
                         cx.emit_span_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
                     } else {
-                        lint_nan(cx, e, binop, l, r);
+                        lint_nan(cx, e, binop.node, l, r);
                         let cmpop = ComparisonOp::BinOp(binop.node);
                         lint_wide_pointer(cx, e, cmpop, l, r);
                         lint_fn_pointer(cx, e, cmpop, l, r);
@@ -591,8 +591,8 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             _ => {}
         };
 
-        fn is_valid<T: PartialOrd>(binop: hir::BinOp, v: T, min: T, max: T) -> bool {
-            match binop.node {
+        fn is_valid<T: PartialOrd>(binop: hir::BinOpKind, v: T, min: T, max: T) -> bool {
+            match binop {
                 hir::BinOpKind::Lt => v > min && v <= max,
                 hir::BinOpKind::Le => v >= min && v < max,
                 hir::BinOpKind::Gt => v >= min && v < max,
@@ -602,22 +602,19 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             }
         }
 
-        fn rev_binop(binop: hir::BinOp) -> hir::BinOp {
-            source_map::respan(
-                binop.span,
-                match binop.node {
-                    hir::BinOpKind::Lt => hir::BinOpKind::Gt,
-                    hir::BinOpKind::Le => hir::BinOpKind::Ge,
-                    hir::BinOpKind::Gt => hir::BinOpKind::Lt,
-                    hir::BinOpKind::Ge => hir::BinOpKind::Le,
-                    _ => return binop,
-                },
-            )
+        fn rev_binop(binop: hir::BinOpKind) -> hir::BinOpKind {
+            match binop {
+                hir::BinOpKind::Lt => hir::BinOpKind::Gt,
+                hir::BinOpKind::Le => hir::BinOpKind::Ge,
+                hir::BinOpKind::Gt => hir::BinOpKind::Lt,
+                hir::BinOpKind::Ge => hir::BinOpKind::Le,
+                _ => binop,
+            }
         }
 
         fn check_limits(
             cx: &LateContext<'_>,
-            binop: hir::BinOp,
+            binop: hir::BinOpKind,
             l: &hir::Expr<'_>,
             r: &hir::Expr<'_>,
         ) -> bool {
@@ -659,9 +656,9 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             }
         }
 
-        fn is_comparison(binop: hir::BinOp) -> bool {
+        fn is_comparison(binop: hir::BinOpKind) -> bool {
             matches!(
-                binop.node,
+                binop,
                 hir::BinOpKind::Eq
                     | hir::BinOpKind::Lt
                     | hir::BinOpKind::Le
@@ -882,27 +879,13 @@ fn ty_is_known_nonnull<'tcx>(
                 || Option::unwrap_or_default(
                     try {
                         match **pat {
-                            ty::PatternKind::Range { start, end, include_end } => {
-                                match (start, end) {
-                                    (Some(start), None) => {
-                                        start.try_to_value()?.try_to_bits(tcx, typing_env)? > 0
-                                    }
-                                    (Some(start), Some(end)) => {
-                                        let start =
-                                            start.try_to_value()?.try_to_bits(tcx, typing_env)?;
-                                        let end =
-                                            end.try_to_value()?.try_to_bits(tcx, typing_env)?;
+                            ty::PatternKind::Range { start, end } => {
+                                let start = start.try_to_value()?.try_to_bits(tcx, typing_env)?;
+                                let end = end.try_to_value()?.try_to_bits(tcx, typing_env)?;
 
-                                        if include_end {
-                                            // This also works for negative numbers, as we just need
-                                            // to ensure we aren't wrapping over zero.
-                                            start > 0 && end >= start
-                                        } else {
-                                            start > 0 && end > start
-                                        }
-                                    }
-                                    _ => false,
-                                }
+                                // This also works for negative numbers, as we just need
+                                // to ensure we aren't wrapping over zero.
+                                start > 0 && end >= start
                             }
                         }
                     },
@@ -1207,9 +1190,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
-                        let is_non_exhaustive =
-                            def.non_enum_variant().is_field_list_non_exhaustive();
-                        if is_non_exhaustive && !def.did().is_local() {
+                        if def.non_enum_variant().field_list_has_applicable_non_exhaustive() {
                             return FfiUnsafe {
                                 ty,
                                 reason: if def.is_struct() {
@@ -1262,14 +1243,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
-                        use improper_ctypes::{
-                            check_non_exhaustive_variant, non_local_and_non_exhaustive,
-                        };
+                        use improper_ctypes::check_non_exhaustive_variant;
 
-                        let non_local_def = non_local_and_non_exhaustive(def);
+                        let non_exhaustive = def.variant_list_has_applicable_non_exhaustive();
                         // Check the contained variants.
                         let ret = def.variants().iter().try_for_each(|variant| {
-                            check_non_exhaustive_variant(non_local_def, variant)
+                            check_non_exhaustive_variant(non_exhaustive, variant)
                                 .map_break(|reason| FfiUnsafe { ty, reason, help: None })?;
 
                             match self.check_variant_for_ffi(acc, ty, def, variant, args) {
@@ -1349,7 +1328,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::FnPtr(sig_tys, hdr) => {
                 let sig = sig_tys.with(hdr);
-                if self.is_internal_abi(sig.abi()) {
+                if sig.abi().is_rustic_abi() {
                     return FfiUnsafe {
                         ty,
                         reason: fluent::lint_improper_ctypes_fnptr_reason,
@@ -1421,7 +1400,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             CItemKind::Definition => "fn",
         };
         let span_note = if let ty::Adt(def, _) = ty.kind()
-            && let Some(sp) = self.cx.tcx.hir().span_if_local(def.did())
+            && let Some(sp) = self.cx.tcx.hir_span_if_local(def.did())
         {
             Some(sp)
         } else {
@@ -1436,7 +1415,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
         struct ProhibitOpaqueTypes;
-        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueTypes {
+        impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueTypes {
             type Result = ControlFlow<Ty<'tcx>>;
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
@@ -1552,13 +1531,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         self.check_type_for_ffi_and_report_errors(span, ty, true, false);
     }
 
-    fn is_internal_abi(&self, abi: ExternAbi) -> bool {
-        matches!(
-            abi,
-            ExternAbi::Rust | ExternAbi::RustCall | ExternAbi::RustCold | ExternAbi::RustIntrinsic
-        )
-    }
-
     /// Find any fn-ptr types with external ABIs in `ty`.
     ///
     /// For example, `Option<extern "C" fn()>` returns `extern "C" fn()`
@@ -1567,17 +1539,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         hir_ty: &hir::Ty<'tcx>,
         ty: Ty<'tcx>,
     ) -> Vec<(Ty<'tcx>, Span)> {
-        struct FnPtrFinder<'a, 'b, 'tcx> {
-            visitor: &'a ImproperCTypesVisitor<'b, 'tcx>,
+        struct FnPtrFinder<'tcx> {
             spans: Vec<Span>,
             tys: Vec<Ty<'tcx>>,
         }
 
-        impl<'a, 'b, 'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'a, 'b, 'tcx> {
+        impl<'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'tcx> {
             fn visit_ty(&mut self, ty: &'_ hir::Ty<'_, AmbigArg>) {
                 debug!(?ty);
                 if let hir::TyKind::BareFn(hir::BareFnTy { abi, .. }) = ty.kind
-                    && !self.visitor.is_internal_abi(*abi)
+                    && !abi.is_rustic_abi()
                 {
                     self.spans.push(ty.span);
                 }
@@ -1586,12 +1557,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        impl<'a, 'b, 'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for FnPtrFinder<'a, 'b, 'tcx> {
+        impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for FnPtrFinder<'tcx> {
             type Result = ();
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if let ty::FnPtr(_, hdr) = ty.kind()
-                    && !self.visitor.is_internal_abi(hdr.abi)
+                    && !hdr.abi.is_rustic_abi()
                 {
                     self.tys.push(ty);
                 }
@@ -1600,7 +1571,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        let mut visitor = FnPtrFinder { visitor: self, spans: Vec::new(), tys: Vec::new() };
+        let mut visitor = FnPtrFinder { spans: Vec::new(), tys: Vec::new() };
         ty.visit_with(&mut visitor);
         visitor.visit_ty_unambig(hir_ty);
 
@@ -1611,17 +1582,17 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
     fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, it: &hir::ForeignItem<'tcx>) {
         let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Declaration };
-        let abi = cx.tcx.hir().get_foreign_abi(it.hir_id());
+        let abi = cx.tcx.hir_get_foreign_abi(it.hir_id());
 
         match it.kind {
             hir::ForeignItemKind::Fn(sig, _, _) => {
-                if vis.is_internal_abi(abi) {
+                if abi.is_rustic_abi() {
                     vis.check_fn(it.owner_id.def_id, sig.decl)
                 } else {
                     vis.check_foreign_fn(it.owner_id.def_id, sig.decl);
                 }
             }
-            hir::ForeignItemKind::Static(ty, _, _) if !vis.is_internal_abi(abi) => {
+            hir::ForeignItemKind::Static(ty, _, _) if !abi.is_rustic_abi() => {
                 vis.check_foreign_static(it.owner_id, ty.span);
             }
             hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => (),
@@ -1660,6 +1631,9 @@ impl ImproperCTypesDefinitions {
             return true;
         } else if let Adt(adt_def, _) = ty.kind()
             && adt_def.is_struct()
+            && adt_def.repr().c()
+            && !adt_def.repr().packed()
+            && adt_def.repr().align.is_none()
         {
             let struct_variant = adt_def.variant(VariantIdx::ZERO);
             // Within a nested struct, all fields are examined to correctly
@@ -1681,12 +1655,15 @@ impl ImproperCTypesDefinitions {
         item: &'tcx hir::Item<'tcx>,
     ) {
         let adt_def = cx.tcx.adt_def(item.owner_id.to_def_id());
+        // repr(C) structs also with packed or aligned representation
+        // should be ignored.
         if adt_def.repr().c()
             && !adt_def.repr().packed()
+            && adt_def.repr().align.is_none()
             && cx.tcx.sess.target.os == "aix"
             && !adt_def.all_fields().next().is_none()
         {
-            let struct_variant_data = item.expect_struct().0;
+            let struct_variant_data = item.expect_struct().1;
             for (index, ..) in struct_variant_data.fields().iter().enumerate() {
                 // Struct fields (after the first field) are checked for the
                 // power alignment rule, as fields after the first are likely
@@ -1718,9 +1695,9 @@ impl ImproperCTypesDefinitions {
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
-            hir::ItemKind::Static(ty, ..)
-            | hir::ItemKind::Const(ty, ..)
-            | hir::ItemKind::TyAlias(ty, ..) => {
+            hir::ItemKind::Static(_, ty, ..)
+            | hir::ItemKind::Const(_, ty, ..)
+            | hir::ItemKind::TyAlias(_, ty, ..) => {
                 self.check_ty_maybe_containing_foreign_fnptr(
                     cx,
                     ty,
@@ -1775,7 +1752,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
         };
 
         let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Definition };
-        if vis.is_internal_abi(abi) {
+        if abi.is_rustic_abi() {
             vis.check_fn(id, decl);
         } else {
             vis.check_foreign_fn(id, decl);
@@ -1787,7 +1764,7 @@ declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 
 impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
-        if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
+        if let hir::ItemKind::Enum(_, ref enum_definition, _) = it.kind {
             let t = cx.tcx.type_of(it.owner_id).instantiate_identity();
             let ty = cx.tcx.erase_regions(t);
             let Ok(layout) = cx.layout_of(ty) else { return };

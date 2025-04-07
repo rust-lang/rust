@@ -8,14 +8,15 @@ use super::{
     parse_normalize_rule,
 };
 use crate::common::{Config, Debugger, Mode};
+use crate::executor::{CollectedTestDesc, ShouldPanic};
 
 fn make_test_description<R: Read>(
     config: &Config,
-    name: test::TestName,
+    name: String,
     path: &Path,
     src: R,
     revision: Option<&str>,
-) -> test::TestDesc {
+) -> CollectedTestDesc {
     let cache = HeadersCache::load(config);
     let mut poisoned = false;
     let test = crate::header::make_test_description(
@@ -155,7 +156,8 @@ impl ConfigBuilder {
             "--jsondocck-path=",
             "--src-root=",
             "--src-test-suite-root=",
-            "--build-base=",
+            "--build-root=",
+            "--build-test-suite-root=",
             "--sysroot-base=",
             "--cc=c",
             "--cxx=c++",
@@ -232,27 +234,22 @@ fn parse_rs(config: &Config, contents: &str) -> EarlyProps {
 }
 
 fn check_ignore(config: &Config, contents: &str) -> bool {
-    let tn = test::DynTestName(String::new());
+    let tn = String::new();
     let p = Path::new("a.rs");
     let d = make_test_description(&config, tn, p, std::io::Cursor::new(contents), None);
     d.ignore
 }
 
-fn parse_makefile(config: &Config, contents: &str) -> EarlyProps {
-    let bytes = contents.as_bytes();
-    EarlyProps::from_reader(config, Path::new("Makefile"), bytes)
-}
-
 #[test]
 fn should_fail() {
     let config: Config = cfg().build();
-    let tn = test::DynTestName(String::new());
+    let tn = String::new();
     let p = Path::new("a.rs");
 
     let d = make_test_description(&config, tn.clone(), p, std::io::Cursor::new(""), None);
-    assert_eq!(d.should_panic, test::ShouldPanic::No);
+    assert_eq!(d.should_panic, ShouldPanic::No);
     let d = make_test_description(&config, tn, p, std::io::Cursor::new("//@ should-fail"), None);
-    assert_eq!(d.should_panic, test::ShouldPanic::Yes);
+    assert_eq!(d.should_panic, ShouldPanic::Yes);
 }
 
 #[test]
@@ -260,10 +257,6 @@ fn revisions() {
     let config: Config = cfg().build();
 
     assert_eq!(parse_rs(&config, "//@ revisions: a b c").revisions, vec!["a", "b", "c"],);
-    assert_eq!(
-        parse_makefile(&config, "# revisions: hello there").revisions,
-        vec!["hello", "there"],
-    );
 }
 
 #[test]
@@ -573,6 +566,13 @@ fn test_duplicate_revisions() {
 fn test_assembly_mode_forbidden_revisions() {
     let config = cfg().mode("assembly").build();
     parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+#[should_panic(expected = "revision name `true` is not permitted")]
+fn test_forbidden_revisions() {
+    let config = cfg().mode("ui").build();
+    parse_rs(&config, "//@ revisions: true");
 }
 
 #[test]

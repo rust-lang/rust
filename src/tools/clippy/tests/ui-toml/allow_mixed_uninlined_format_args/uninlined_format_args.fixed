@@ -7,8 +7,14 @@ fn main() {
     let local_opt: Option<i32> = Some(3);
 
     println!("val='{local_i32}'");
+    //~^ uninlined_format_args
     println!("Hello x is {local_f64:.local_i32$}");
+    //~^ uninlined_format_args
+    //~| print_literal
     println!("Hello {local_i32} is {local_f64:.*}", 5);
+    //~^ uninlined_format_args
     println!("Hello {local_i32} is {local_f64:.*}", 5);
+    //~^ uninlined_format_args
     println!("{local_i32}, {}", local_opt.unwrap());
+    //~^ uninlined_format_args
 }

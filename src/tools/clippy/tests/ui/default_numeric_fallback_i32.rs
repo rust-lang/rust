@@ -18,11 +18,23 @@ mod basic_expr {
     fn test() {
         // Should lint unsuffixed literals typed `i32`.
         let x = 22;
+        //~^ default_numeric_fallback
         let x = [1, 2, 3];
+        //~^ default_numeric_fallback
+        //~| default_numeric_fallback
+        //~| default_numeric_fallback
         let x = if true { (1, 2) } else { (3, 4) };
+        //~^ default_numeric_fallback
+        //~| default_numeric_fallback
+        //~| default_numeric_fallback
+        //~| default_numeric_fallback
         let x = match 1 {
+            //~^ default_numeric_fallback
             1 => 1,
+            //~^ default_numeric_fallback
+            //~| default_numeric_fallback
             _ => 2,
+            //~^ default_numeric_fallback
         };
 
         // Should NOT lint suffixed literals.
@@ -42,6 +54,7 @@ mod nested_local {
         let x: _ = {
             // Should lint this because this literal is not bound to any types.
             let y = 1;
+            //~^ default_numeric_fallback
 
             // Should NOT lint this because this literal is bound to `_` of outer `Local`.
             1
@@ -50,12 +63,14 @@ mod nested_local {
         let x: _ = if true {
             // Should lint this because this literal is not bound to any types.
             let y = 1;
+            //~^ default_numeric_fallback
 
             // Should NOT lint this because this literal is bound to `_` of outer `Local`.
             1
         } else {
             // Should lint this because this literal is not bound to any types.
             let y = 1;
+            //~^ default_numeric_fallback
 
             // Should NOT lint this because this literal is bound to `_` of outer `Local`.
             2
@@ -64,6 +79,7 @@ mod nested_local {
         const CONST_X: i32 = {
             // Should lint this because this literal is not bound to any types.
             let y = 1;
+            //~^ default_numeric_fallback
 
             // Should NOT lint this because this literal is bound to `_` of outer `Local`.
             1
@@ -80,10 +96,12 @@ mod function_def {
         // Should lint this because return type is inferred to `i32` and NOT bound to a concrete
         // type.
         let f = || -> _ { 1 };
+        //~^ default_numeric_fallback
 
         // Even though the output type is specified,
         // this unsuffixed literal is linted to reduce heuristics and keep codebase simple.
         let f = || -> i32 { 1 };
+        //~^ default_numeric_fallback
     }
 }
 
@@ -98,9 +116,11 @@ mod function_calls {
 
         // Should lint this because the argument type is inferred to `i32` and NOT bound to a concrete type.
         generic_arg(1);
+        //~^ default_numeric_fallback
 
         // Should lint this because the argument type is inferred to `i32` and NOT bound to a concrete type.
         let x: _ = generic_arg(1);
+        //~^ default_numeric_fallback
     }
 }
 
@@ -119,9 +139,11 @@ mod struct_ctor {
 
         // Should lint this because the field type is inferred to `i32` and NOT bound to a concrete type.
         GenericStruct { x: 1 };
+        //~^ default_numeric_fallback
 
         // Should lint this because the field type is inferred to `i32` and NOT bound to a concrete type.
         let _ = GenericStruct { x: 1 };
+        //~^ default_numeric_fallback
     }
 }
 
@@ -140,6 +162,7 @@ mod enum_ctor {
 
         // Should lint this because the field type is inferred to `i32` and NOT bound to a concrete type.
         GenericEnum::X(1);
+        //~^ default_numeric_fallback
     }
 }
 
@@ -160,6 +183,7 @@ mod method_calls {
 
         // Should lint this because the argument type is bound to a concrete type.
         s.generic_arg(1);
+        //~^ default_numeric_fallback
     }
 }
 
@@ -170,6 +194,7 @@ mod in_macro {
     #[inline_macros]
     fn internal() {
         inline!(let x = 22;);
+        //~^ default_numeric_fallback
     }
 
     // Should NOT lint in external macro.
@@ -212,6 +237,9 @@ mod type_already_inferred {
         // Should NOT lint in `vec!` call if the type was already stated
         let data_i32: Vec<i32> = vec![1, 2, 3];
         let data_i32 = vec![1, 2, 3];
+        //~^ default_numeric_fallback
+        //~| default_numeric_fallback
+        //~| default_numeric_fallback
     }
 }
 

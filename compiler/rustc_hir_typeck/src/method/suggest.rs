@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use hir::Expr;
 use rustc_ast::ast::Mutability;
-use rustc_attr_parsing::parse_confusables;
+use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
@@ -158,7 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.typeck_results.borrow_mut().used_trait_imports.insert(import_id);
         }
 
-        let (span, sugg_span, source, item_name, args) = match self.tcx.hir_node(call_id) {
+        let (span, expr_span, source, item_name, args) = match self.tcx.hir_node(call_id) {
             hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::MethodCall(segment, rcvr, args, _),
                 span,
@@ -194,6 +194,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             node => unreachable!("{node:?}"),
         };
 
+        // Try to get the span of the identifier within the expression's syntax context
+        // (if that's different).
+        let within_macro_span = span.within_macro(expr_span, self.tcx.sess.source_map());
+
         // Avoid suggestions when we don't know what's going on.
         if let Err(guar) = rcvr_ty.error_reported() {
             return guar;
@@ -207,10 +211,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 call_id,
                 source,
                 args,
-                sugg_span,
+                expr_span,
                 &mut no_match_data,
                 expected,
                 trait_missing_method,
+                within_macro_span,
             ),
 
             MethodError::Ambiguity(mut sources) => {
@@ -221,6 +226,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "multiple applicable items in scope"
                 );
                 err.span_label(item_name.span, format!("multiple `{item_name}` found"));
+                if let Some(within_macro_span) = within_macro_span {
+                    err.span_label(within_macro_span, "due to this macro variable");
+                }
 
                 self.note_candidates_on_method_error(
                     rcvr_ty,
@@ -230,7 +238,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span,
                     &mut err,
                     &mut sources,
-                    Some(sugg_span),
+                    Some(expr_span),
                 );
                 err.emit()
             }
@@ -246,12 +254,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     item_name
                 );
                 err.span_label(item_name.span, format!("private {kind}"));
-                let sp = self
-                    .tcx
-                    .hir()
-                    .span_if_local(def_id)
-                    .unwrap_or_else(|| self.tcx.def_span(def_id));
+                let sp =
+                    self.tcx.hir_span_if_local(def_id).unwrap_or_else(|| self.tcx.def_span(def_id));
                 err.span_label(sp, format!("private {kind} defined here"));
+                if let Some(within_macro_span) = within_macro_span {
+                    err.span_label(within_macro_span, "due to this macro variable");
+                }
                 self.suggest_valid_traits(&mut err, item_name, out_of_scope_traits, true);
                 err.emit()
             }
@@ -267,6 +275,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut err = self.dcx().struct_span_err(span, msg);
                 if !needs_mut {
                     err.span_label(bound_span, "this has a `Sized` requirement");
+                }
+                if let Some(within_macro_span) = within_macro_span {
+                    err.span_label(within_macro_span, "due to this macro variable");
                 }
                 if !candidates.is_empty() {
                     let help = format!(
@@ -519,7 +530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     _ => {
-                        intravisit::walk_pat(self, p);
+                        let _ = intravisit::walk_pat(self, p);
                     }
                 }
                 ControlFlow::Continue(())
@@ -542,7 +553,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     method_name,
                     sugg_let: None,
                 };
-                let_visitor.visit_body(&body);
+                let _ = let_visitor.visit_body(&body);
                 if let Some(sugg_let) = let_visitor.sugg_let
                     && let Some(self_ty) = self.node_ty_opt(sugg_let.init_hir_id)
                 {
@@ -552,7 +563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span.push_span_label(sugg_let.span,
                             format!("`{rcvr_name}` of type `{self_ty}` that has method `{method_name}` defined earlier here"));
                     span.push_span_label(
-                        self.tcx.hir().span(recv_id),
+                        self.tcx.hir_span(recv_id),
                         format!(
                             "earlier `{rcvr_name}` shadowed here with type `{ty_str_reported}`"
                         ),
@@ -581,6 +592,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         no_match_data: &mut NoMatchData<'tcx>,
         expected: Expectation<'tcx>,
         trait_missing_method: bool,
+        within_macro_span: Option<Span>,
     ) -> ErrorGuaranteed {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
@@ -721,6 +733,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if tcx.sess.source_map().is_multiline(sugg_span) {
             err.span_label(sugg_span.with_hi(span.lo()), "");
         }
+        if let Some(within_macro_span) = within_macro_span {
+            err.span_label(within_macro_span, "due to this macro variable");
+        }
 
         if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
             ty_str = short_ty_str;
@@ -773,7 +788,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Ok(pick) = self.lookup_probe_for_diagnostic(
                 item_name,
                 Ty::new_ref(tcx, ty::Region::new_error_misc(tcx), ty, ptr_mutbl),
-                self.tcx.hir().expect_expr(self.tcx.parent_hir_id(rcvr_expr.hir_id)),
+                self.tcx.hir_expect_expr(self.tcx.parent_hir_id(rcvr_expr.hir_id)),
                 ProbeScope::TraitsInScope,
                 None,
             )
@@ -816,8 +831,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let SelfSource::MethodCall(rcvr_expr) = source {
             self.suggest_fn_call(&mut err, rcvr_expr, rcvr_ty, |output_ty| {
-                let call_expr =
-                    self.tcx.hir().expect_expr(self.tcx.parent_hir_id(rcvr_expr.hir_id));
+                let call_expr = self.tcx.hir_expect_expr(self.tcx.parent_hir_id(rcvr_expr.hir_id));
                 let probe = self.lookup_probe_for_diagnostic(
                     item_name,
                     output_ty,
@@ -1187,13 +1201,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     Some(
                         Node::Item(hir::Item {
-                            ident,
-                            kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                            kind:
+                                hir::ItemKind::Trait(_, _, ident, ..)
+                                | hir::ItemKind::TraitAlias(ident, ..),
                             ..
                         })
                         // We may also encounter unsatisfied GAT or method bounds
                         | Node::TraitItem(hir::TraitItem { ident, .. })
-                        | Node::ImplItem(hir::ImplItem { ident, .. }),
+                        | Node::ImplItem(hir::ImplItem { ident, .. })
                     ) => {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(ident.span);
@@ -1884,9 +1899,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for inherent_method in
                     self.tcx.associated_items(inherent_impl_did).in_definition_order()
                 {
-                    if let Some(attr) =
-                        self.tcx.get_attr(inherent_method.def_id, sym::rustc_confusables)
-                        && let Some(candidates) = parse_confusables(attr)
+                    if let Some(candidates) = find_attr!(self.tcx.get_all_attrs(inherent_method.def_id), AttributeKind::Confusables{symbols, ..} => symbols)
                         && candidates.contains(&item_name.name)
                         && let ty::AssocKind::Fn = inherent_method.kind
                     {
@@ -2357,7 +2370,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else {
-                    let call_expr = tcx.hir().expect_expr(tcx.parent_hir_id(expr.hir_id));
+                    let call_expr = tcx.hir_expect_expr(tcx.parent_hir_id(expr.hir_id));
 
                     if let Some(span) = call_expr.span.trim_start(item_name.span) {
                         err.span_suggestion(
@@ -2545,7 +2558,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ExprKind::Path(QPath::Resolved(_, path)) => {
                     // local binding
                     if let hir::def::Res::Local(hir_id) = path.res {
-                        let span = tcx.hir().span(hir_id);
+                        let span = tcx.hir_span(hir_id);
                         let filename = tcx.sess.source_map().span_to_filename(span);
 
                         let parent_node = self.tcx.parent_hir_node(hir_id);
@@ -2664,7 +2677,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 mod_id,
                 expr.hir_id,
             ) {
-                let call_expr = self.tcx.hir().expect_expr(self.tcx.parent_hir_id(expr.hir_id));
+                let call_expr = self.tcx.hir_expect_expr(self.tcx.parent_hir_id(expr.hir_id));
 
                 let lang_items = self.tcx.lang_items();
                 let never_mention_traits = [
@@ -2741,7 +2754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let SelfSource::MethodCall(expr) = source else {
             return;
         };
-        let call_expr = tcx.hir().expect_expr(tcx.parent_hir_id(expr.hir_id));
+        let call_expr = tcx.hir_expect_expr(tcx.parent_hir_id(expr.hir_id));
 
         let ty::Adt(kind, args) = actual.kind() else {
             return;
@@ -3750,7 +3763,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 {
                                     let self_first_arg = match method {
                                         hir::TraitFn::Required([ident, ..]) => {
-                                            ident.name == kw::SelfLower
+                                            matches!(ident, Some(Ident { name: kw::SelfLower, .. }))
                                         }
                                         hir::TraitFn::Provided(body_id) => {
                                             self.tcx.hir_body(*body_id).params.first().is_some_and(
@@ -3945,8 +3958,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return;
                         }
                         Node::Item(hir::Item {
-                            kind: hir::ItemKind::Trait(.., bounds, _),
-                            ident,
+                            kind: hir::ItemKind::Trait(_, _, ident, _, bounds, _),
                             ..
                         }) => {
                             let (sp, sep, article) = if bounds.is_empty() {

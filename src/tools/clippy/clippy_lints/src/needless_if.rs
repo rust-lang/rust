@@ -65,7 +65,7 @@ impl LateLintPass<'_> for NeedlessIf {
                 stmt.span,
                 "this `if` branch is empty",
                 "you can remove it",
-                if cond.can_have_side_effects() || !cx.tcx.hir().attrs(stmt.hir_id).is_empty() {
+                if cond.can_have_side_effects() || !cx.tcx.hir_attrs(stmt.hir_id).is_empty() {
                     // `{ foo }` or `{ foo } && bar` placed into a statement position would be
                     // interpreted as a block statement, force it to be an expression
                     if cond_snippet.starts_with('{') {

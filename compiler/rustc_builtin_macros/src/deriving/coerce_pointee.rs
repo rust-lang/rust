@@ -30,7 +30,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
     item.visit_with(&mut DetectNonGenericPointeeAttr { cx });
 
     let (name_ident, generics) = if let Annotatable::Item(aitem) = item
-        && let ItemKind::Struct(struct_data, g) = &aitem.kind
+        && let ItemKind::Struct(ident, struct_data, g) = &aitem.kind
     {
         if !matches!(
             struct_data,
@@ -40,7 +40,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
             cx.dcx().emit_err(RequireOneField { span });
             return;
         }
-        (aitem.ident, g)
+        (*ident, g)
     } else {
         cx.dcx().emit_err(RequireTransparent { span });
         return;
@@ -108,7 +108,6 @@ pub(crate) fn expand_deriving_coerce_pointee(
         push(Annotatable::Item(
             cx.item(
                 span,
-                Ident::empty(),
                 attrs.clone(),
                 ast::ItemKind::Impl(Box::new(ast::Impl {
                     safety: ast::Safety::Default,
@@ -153,7 +152,6 @@ pub(crate) fn expand_deriving_coerce_pointee(
         let trait_ref = cx.trait_ref(trait_path);
         let item = cx.item(
             span,
-            Ident::empty(),
             attrs.clone(),
             ast::ItemKind::Impl(Box::new(ast::Impl {
                 safety: ast::Safety::Default,
@@ -300,13 +298,16 @@ pub(crate) fn expand_deriving_coerce_pointee(
                 to_ty: &s_ty,
                 rewritten: false,
             };
-            let mut predicate = ast::WherePredicate {
-                kind: ast::WherePredicateKind::BoundPredicate(bound.clone()),
-                span: predicate.span,
-                id: ast::DUMMY_NODE_ID,
-            };
-            substitution.visit_where_predicate(&mut predicate);
+            let mut kind = ast::WherePredicateKind::BoundPredicate(bound.clone());
+            substitution.visit_where_predicate_kind(&mut kind);
             if substitution.rewritten {
+                let predicate = ast::WherePredicate {
+                    attrs: predicate.attrs.clone(),
+                    kind,
+                    span: predicate.span,
+                    id: ast::DUMMY_NODE_ID,
+                    is_placeholder: false,
+                };
                 impl_generics.where_clause.predicates.push(predicate);
             }
         }
@@ -388,8 +389,8 @@ impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
         }
     }
 
-    fn visit_where_predicate(&mut self, where_predicate: &mut ast::WherePredicate) {
-        match &mut where_predicate.kind {
+    fn visit_where_predicate_kind(&mut self, kind: &mut ast::WherePredicateKind) {
+        match kind {
             rustc_ast::WherePredicateKind::BoundPredicate(bound) => {
                 bound
                     .bound_generic_params

@@ -13,9 +13,11 @@ fn option_methods() {
     let _ = opt.is_some_and(|x| x > 1);
     // Multi-line cases.
     let _ = opt.is_some_and(|x| {
+    //~^ manual_is_variant_and
         x > 1
     });
     let _ = opt.is_some_and(|x| x > 1);
+    //~^ manual_is_variant_and
     let _ = opt
         .is_some_and(|x| x > 1);
 
@@ -24,6 +26,7 @@ fn option_methods() {
 
     let opt2 = Some('a');
     let _ = opt2.is_some_and(char::is_alphanumeric); // should lint
+    //~^ manual_is_variant_and
     let _ = opt_map!(opt2, |x| x == 'a').unwrap_or_default(); // should not lint
 }
 
@@ -33,6 +36,7 @@ fn result_methods() {
 
     // multi line cases
     let _ = res.is_ok_and(|x| {
+    //~^ manual_is_variant_and
         x > 1
     });
     let _ = res.is_ok_and(|x| x > 1);
@@ -42,6 +46,7 @@ fn result_methods() {
 
     let res2: Result<char, ()> = Ok('a');
     let _ = res2.is_ok_and(char::is_alphanumeric); // should lint
+    //~^ manual_is_variant_and
     let _ = opt_map!(res2, |x| x == 'a').unwrap_or_default(); // should not lint
 }
 

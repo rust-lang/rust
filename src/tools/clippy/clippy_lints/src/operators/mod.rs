@@ -11,19 +11,20 @@ mod float_cmp;
 mod float_equality_without_abs;
 mod identity_op;
 mod integer_division;
+mod manual_midpoint;
 mod misrefactored_assign_op;
 mod modulo_arithmetic;
 mod modulo_one;
 mod needless_bitwise_bool;
 mod numeric_arithmetic;
 mod op_ref;
-mod ptr_eq;
 mod self_assignment;
 mod verbose_bit_mask;
 
 pub(crate) mod arithmetic_side_effects;
 
 use clippy_config::Conf;
+use clippy_utils::msrvs::Msrv;
 use rustc_hir::{Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -768,35 +769,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Use `std::ptr::eq` when applicable
-    ///
-    /// ### Why is this bad?
-    /// `ptr::eq` can be used to compare `&T` references
-    /// (which coerce to `*const T` implicitly) by their address rather than
-    /// comparing the values they point to.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let a = &[1, 2, 3];
-    /// let b = &[1, 2, 3];
-    ///
-    /// assert!(a as *const _ as usize == b as *const _ as usize);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let a = &[1, 2, 3];
-    /// let b = &[1, 2, 3];
-    ///
-    /// assert!(std::ptr::eq(a, b));
-    /// ```
-    #[clippy::version = "1.49.0"]
-    pub PTR_EQ,
-    style,
-    "use `std::ptr::eq` when comparing raw pointers"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for explicit self-assignments.
     ///
     /// ### Why is this bad?
@@ -834,10 +806,35 @@ declare_clippy_lint! {
     "explicit self-assignment"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for manual implementation of `midpoint`.
+    ///
+    /// ### Why is this bad?
+    /// Using `(x + y) / 2` might cause an overflow on the intermediate
+    /// addition result.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let a: u32 = 0;
+    /// let c = (a + 10) / 2;
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let a: u32 = 0;
+    /// let c = u32::midpoint(a, 10);
+    /// ```
+    #[clippy::version = "1.87.0"]
+    pub MANUAL_MIDPOINT,
+    pedantic,
+    "manual implementation of `midpoint` which can overflow"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
     modulo_arithmetic_allow_comparison_to_zero: bool,
+    msrv: Msrv,
 }
 impl Operators {
     pub fn new(conf: &'static Conf) -> Self {
@@ -845,6 +842,7 @@ impl Operators {
             arithmetic_context: numeric_arithmetic::Context::default(),
             verbose_bit_mask_threshold: conf.verbose_bit_mask_threshold,
             modulo_arithmetic_allow_comparison_to_zero: conf.allow_comparison_to_zero,
+            msrv: conf.msrv,
         }
     }
 }
@@ -874,8 +872,8 @@ impl_lint_pass!(Operators => [
     MODULO_ONE,
     MODULO_ARITHMETIC,
     NEEDLESS_BITWISE_BOOL,
-    PTR_EQ,
     SELF_ASSIGNMENT,
+    MANUAL_MIDPOINT,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Operators {
@@ -892,7 +890,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                     erasing_op::check(cx, e, op.node, lhs, rhs);
                     identity_op::check(cx, e, op.node, lhs, rhs);
                     needless_bitwise_bool::check(cx, e, op.node, lhs, rhs);
-                    ptr_eq::check(cx, e, op.node, lhs, rhs);
+                    manual_midpoint::check(cx, e, op.node, lhs, rhs, self.msrv);
                 }
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
                 bit_mask::check(cx, e, op.node, lhs, rhs);
@@ -915,9 +913,10 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 );
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
-                self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
-                misrefactored_assign_op::check(cx, e, op.node, lhs, rhs);
-                modulo_arithmetic::check(cx, e, op.node, lhs, rhs, false);
+                let bin_op = op.node.into();
+                self.arithmetic_context.check_binary(cx, e, bin_op, lhs, rhs);
+                misrefactored_assign_op::check(cx, e, bin_op, lhs, rhs);
+                modulo_arithmetic::check(cx, e, bin_op, lhs, rhs, false);
             },
             ExprKind::Assign(lhs, rhs, _) => {
                 assign_op_pattern::check(cx, e, lhs, rhs);

@@ -10,7 +10,6 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
-doctest = false
 
 [dependencies]
 cov-mark = "2.0.0-pre.1"
@@ -30,7 +29,6 @@ bitflags.workspace = true
 
 # local deps
 base-db.workspace = true
-limit.workspace = true
 parser.workspace = true
 profile.workspace = true
 stdx.workspace = true

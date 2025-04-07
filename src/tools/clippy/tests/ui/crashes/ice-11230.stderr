@@ -8,7 +8,7 @@ LL |     for v in A.iter() {}
    = help: to override `-D warnings` add `#[allow(clippy::explicit_iter_loop)]`
 
 error: avoid using `collect()` when not needed
-  --> tests/ui/crashes/ice-11230.rs:15:7
+  --> tests/ui/crashes/ice-11230.rs:16:7
    |
 LL |     w.collect::<Vec<_>>().is_empty();
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`

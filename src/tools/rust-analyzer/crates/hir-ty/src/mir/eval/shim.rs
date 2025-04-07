@@ -11,8 +11,10 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use intern::{sym, Symbol};
+use stdx::never;
 
 use crate::{
+    display::DisplayTarget,
     error_lifetime,
     mir::eval::{
         pad16, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule, HirDisplay,
@@ -20,6 +22,7 @@ use crate::{
         LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan, Mutability, Result, Substitution,
         Ty, TyBuilder, TyExt,
     },
+    DropGlue,
 };
 
 mod simd;
@@ -56,19 +59,7 @@ impl Evaluator<'_> {
 
         let function_data = self.db.function_data(def);
         let attrs = self.db.attrs(def.into());
-        let is_intrinsic = attrs.by_key(&sym::rustc_intrinsic).exists()
-            // Keep this around for a bit until extern "rustc-intrinsic" abis are no longer used
-            || (match &function_data.abi {
-                Some(abi) => *abi == sym::rust_dash_intrinsic,
-                None => match def.lookup(self.db.upcast()).container {
-                    hir_def::ItemContainerId::ExternBlockId(block) => {
-                        let id = block.lookup(self.db.upcast()).id;
-                        id.item_tree(self.db.upcast())[id.value].abi.as_ref()
-                            == Some(&sym::rust_dash_intrinsic)
-                    }
-                    _ => false,
-                },
-            });
+        let is_intrinsic = attrs.by_key(&sym::rustc_intrinsic).exists();
 
         if is_intrinsic {
             return self.exec_intrinsic(
@@ -833,8 +824,7 @@ impl Evaluator<'_> {
                     // render full paths.
                     Err(_) => {
                         let krate = locals.body.owner.krate(self.db.upcast());
-                        let edition = self.db.crate_graph()[krate].edition;
-                        ty.display(self.db, edition).to_string()
+                        ty.display(self.db, DisplayTarget::from_crate(self.db, krate)).to_string()
                     }
                 };
                 let len = ty_name.len();
@@ -853,7 +843,14 @@ impl Evaluator<'_> {
                         "size_of generic arg is not provided".into(),
                     ));
                 };
-                let result = !ty.clone().is_copy(self.db, locals.body.owner);
+                let result = match self.db.has_drop_glue(ty.clone(), self.trait_env.clone()) {
+                    DropGlue::HasDropGlue => true,
+                    DropGlue::None => false,
+                    DropGlue::DependOnParams => {
+                        never!("should be fully monomorphized now");
+                        true
+                    }
+                };
                 destination.write_from_bytes(self, &[u8::from(result)])
             }
             "ptr_guaranteed_cmp" => {

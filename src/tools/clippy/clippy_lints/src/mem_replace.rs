@@ -8,7 +8,7 @@ use clippy_utils::{
     is_default_equivalent, is_expr_used_or_unified, is_res_lang_ctor, path_res, peel_ref_operators, std_or_core,
 };
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::OptionNone;
+use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -41,6 +41,31 @@ declare_clippy_lint! {
     pub MEM_REPLACE_OPTION_WITH_NONE,
     style,
     "replacing an `Option` with `None` instead of `take()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `mem::replace()` on an `Option` with `Some(…)`.
+    ///
+    /// ### Why is this bad?
+    /// `Option` already has the method `replace()` for
+    /// taking its current value (Some(…) or None) and replacing it with
+    /// `Some(…)`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let mut an_option = Some(0);
+    /// let replaced = std::mem::replace(&mut an_option, Some(1));
+    /// ```
+    /// Is better expressed with:
+    /// ```no_run
+    /// let mut an_option = Some(0);
+    /// let taken = an_option.replace(1);
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MEM_REPLACE_OPTION_WITH_SOME,
+    style,
+    "replacing an `Option` with `Some` instead of `replace()`"
 }
 
 declare_clippy_lint! {
@@ -101,28 +126,67 @@ declare_clippy_lint! {
 }
 
 impl_lint_pass!(MemReplace =>
-    [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_WITH_UNINIT, MEM_REPLACE_WITH_DEFAULT]);
+    [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_OPTION_WITH_SOME, MEM_REPLACE_WITH_UNINIT, MEM_REPLACE_WITH_DEFAULT]);
 
-fn check_replace_option_with_none(cx: &LateContext<'_>, dest: &Expr<'_>, expr_span: Span) {
-    // Since this is a late pass (already type-checked),
-    // and we already know that the second argument is an
-    // `Option`, we do not need to check the first
-    // argument's type. All that's left is to get
-    // the replacee's expr after peeling off the `&mut`
-    let sugg_expr = peel_ref_operators(cx, dest);
-    let mut applicability = Applicability::MachineApplicable;
-    span_lint_and_sugg(
-        cx,
-        MEM_REPLACE_OPTION_WITH_NONE,
-        expr_span,
-        "replacing an `Option` with `None`",
-        "consider `Option::take()` instead",
-        format!(
-            "{}.take()",
-            Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "", &mut applicability).maybe_par()
-        ),
-        applicability,
-    );
+fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) -> bool {
+    if is_res_lang_ctor(cx, path_res(cx, src), OptionNone) {
+        // Since this is a late pass (already type-checked),
+        // and we already know that the second argument is an
+        // `Option`, we do not need to check the first
+        // argument's type. All that's left is to get
+        // the replacee's expr after peeling off the `&mut`
+        let sugg_expr = peel_ref_operators(cx, dest);
+        let mut applicability = Applicability::MachineApplicable;
+        span_lint_and_sugg(
+            cx,
+            MEM_REPLACE_OPTION_WITH_NONE,
+            expr_span,
+            "replacing an `Option` with `None`",
+            "consider `Option::take()` instead",
+            format!(
+                "{}.take()",
+                Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "", &mut applicability).maybe_par()
+            ),
+            applicability,
+        );
+        true
+    } else {
+        false
+    }
+}
+
+fn check_replace_option_with_some(
+    cx: &LateContext<'_>,
+    src: &Expr<'_>,
+    dest: &Expr<'_>,
+    expr_span: Span,
+    msrv: Msrv,
+) -> bool {
+    if let ExprKind::Call(src_func, [src_arg]) = src.kind
+        && is_res_lang_ctor(cx, path_res(cx, src_func), OptionSome)
+        && msrv.meets(cx, msrvs::OPTION_REPLACE)
+    {
+        // We do not have to check for a `const` context here, because `core::mem::replace()` and
+        // `Option::replace()` have been const-stabilized simultaneously in version 1.83.0.
+        let sugg_expr = peel_ref_operators(cx, dest);
+        let mut applicability = Applicability::MachineApplicable;
+        span_lint_and_sugg(
+            cx,
+            MEM_REPLACE_OPTION_WITH_SOME,
+            expr_span,
+            "replacing an `Option` with `Some(..)`",
+            "consider `Option::replace()` instead",
+            format!(
+                "{}.replace({})",
+                Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "_", &mut applicability).maybe_par(),
+                snippet_with_applicability(cx, src_arg.span, "_", &mut applicability)
+            ),
+            applicability,
+        );
+        true
+    } else {
+        false
+    }
 }
 
 fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
@@ -181,27 +245,35 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
     }
 }
 
-fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
-    // disable lint for primitives
-    let expr_type = cx.typeck_results().expr_ty_adjusted(src);
-    if is_non_aggregate_primitive_type(expr_type) {
-        return;
-    }
-    if is_default_equivalent(cx, src) && !expr_span.in_external_macro(cx.tcx.sess.source_map()) {
-        let Some(top_crate) = std_or_core(cx) else { return };
+fn check_replace_with_default(
+    cx: &LateContext<'_>,
+    src: &Expr<'_>,
+    dest: &Expr<'_>,
+    expr: &Expr<'_>,
+    msrv: Msrv,
+) -> bool {
+    if is_expr_used_or_unified(cx.tcx, expr)
+        // disable lint for primitives
+        && let expr_type = cx.typeck_results().expr_ty_adjusted(src)
+        && !is_non_aggregate_primitive_type(expr_type)
+        && is_default_equivalent(cx, src)
+        && !expr.span.in_external_macro(cx.tcx.sess.source_map())
+        && let Some(top_crate) = std_or_core(cx)
+        && msrv.meets(cx, msrvs::MEM_TAKE)
+    {
         span_lint_and_then(
             cx,
             MEM_REPLACE_WITH_DEFAULT,
-            expr_span,
+            expr.span,
             format!(
                 "replacing a value of type `T` with `T::default()` is better expressed using `{top_crate}::mem::take`"
             ),
             |diag| {
-                if !expr_span.from_expansion() {
+                if !expr.span.from_expansion() {
                     let suggestion = format!("{top_crate}::mem::take({})", snippet(cx, dest.span, ""));
 
                     diag.span_suggestion(
-                        expr_span,
+                        expr.span,
                         "consider using",
                         suggestion,
                         Applicability::MachineApplicable,
@@ -209,6 +281,9 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
                 }
             },
         );
+        true
+    } else {
+        false
     }
 }
 
@@ -218,9 +293,7 @@ pub struct MemReplace {
 
 impl MemReplace {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -233,13 +306,12 @@ impl<'tcx> LateLintPass<'tcx> for MemReplace {
             && cx.tcx.is_diagnostic_item(sym::mem_replace, def_id)
         {
             // Check that second argument is `Option::None`
-            if is_res_lang_ctor(cx, path_res(cx, src), OptionNone) {
-                check_replace_option_with_none(cx, dest, expr.span);
-            } else if self.msrv.meets(msrvs::MEM_TAKE) && is_expr_used_or_unified(cx.tcx, expr) {
-                check_replace_with_default(cx, src, dest, expr.span);
+            if !check_replace_option_with_none(cx, src, dest, expr.span)
+                && !check_replace_option_with_some(cx, src, dest, expr.span, self.msrv)
+                && !check_replace_with_default(cx, src, dest, expr, self.msrv)
+            {
+                check_replace_with_uninit(cx, src, dest, expr.span);
             }
-            check_replace_with_uninit(cx, src, dest, expr.span);
         }
     }
-    extract_msrv_attr!(LateContext);
 }

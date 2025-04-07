@@ -294,7 +294,7 @@ impl SourceFileRange {
     }
 }
 
-/// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
+/// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block` with no label.
 pub fn expr_block(
     sess: &impl HasSession,
     expr: &Expr<'_>,
@@ -305,10 +305,10 @@ pub fn expr_block(
 ) -> String {
     let (code, from_macro) = snippet_block_with_context(sess, expr.span, outer, default, indent_relative_to, app);
     if !from_macro
-        && let ExprKind::Block(block, _) = expr.kind
+        && let ExprKind::Block(block, None) = expr.kind
         && block.rules != BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
     {
-        format!("{code}")
+        code
     } else {
         // FIXME: add extra indent for the unsafe blocks:
         //     original code:   unsafe { ... }
@@ -421,11 +421,10 @@ pub fn position_before_rarrow(s: &str) -> Option<usize> {
 }
 
 /// Reindent a multiline string with possibility of ignoring the first line.
-#[expect(clippy::needless_pass_by_value)]
-pub fn reindent_multiline(s: Cow<'_, str>, ignore_first: bool, indent: Option<usize>) -> Cow<'_, str> {
-    let s_space = reindent_multiline_inner(&s, ignore_first, indent, ' ');
+pub fn reindent_multiline(s: &str, ignore_first: bool, indent: Option<usize>) -> String {
+    let s_space = reindent_multiline_inner(s, ignore_first, indent, ' ');
     let s_tab = reindent_multiline_inner(&s_space, ignore_first, indent, '\t');
-    reindent_multiline_inner(&s_tab, ignore_first, indent, ' ').into()
+    reindent_multiline_inner(&s_tab, ignore_first, indent, ' ')
 }
 
 fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, ch: char) -> String {
@@ -553,42 +552,37 @@ pub fn snippet_opt(sess: &impl HasSession, span: Span) -> Option<String> {
 ///     } // aligned with `if`
 /// ```
 /// Note that the first line of the snippet always has 0 indentation.
-pub fn snippet_block<'a>(
-    sess: &impl HasSession,
-    span: Span,
-    default: &'a str,
-    indent_relative_to: Option<Span>,
-) -> Cow<'a, str> {
+pub fn snippet_block(sess: &impl HasSession, span: Span, default: &str, indent_relative_to: Option<Span>) -> String {
     let snip = snippet(sess, span, default);
     let indent = indent_relative_to.and_then(|s| indent_of(sess, s));
-    reindent_multiline(snip, true, indent)
+    reindent_multiline(&snip, true, indent)
 }
 
 /// Same as `snippet_block`, but adapts the applicability level by the rules of
 /// `snippet_with_applicability`.
-pub fn snippet_block_with_applicability<'a>(
+pub fn snippet_block_with_applicability(
     sess: &impl HasSession,
     span: Span,
-    default: &'a str,
+    default: &str,
     indent_relative_to: Option<Span>,
     applicability: &mut Applicability,
-) -> Cow<'a, str> {
+) -> String {
     let snip = snippet_with_applicability(sess, span, default, applicability);
     let indent = indent_relative_to.and_then(|s| indent_of(sess, s));
-    reindent_multiline(snip, true, indent)
+    reindent_multiline(&snip, true, indent)
 }
 
-pub fn snippet_block_with_context<'a>(
+pub fn snippet_block_with_context(
     sess: &impl HasSession,
     span: Span,
     outer: SyntaxContext,
-    default: &'a str,
+    default: &str,
     indent_relative_to: Option<Span>,
     app: &mut Applicability,
-) -> (Cow<'a, str>, bool) {
+) -> (String, bool) {
     let (snip, from_macro) = snippet_with_context(sess, span, outer, default, app);
     let indent = indent_relative_to.and_then(|s| indent_of(sess, s));
-    (reindent_multiline(snip, true, indent), from_macro)
+    (reindent_multiline(&snip, true, indent), from_macro)
 }
 
 /// Same as `snippet_with_applicability`, but first walks the span up to the given context.
@@ -749,11 +743,11 @@ mod test {
 
     #[test]
     fn test_reindent_multiline_single_line() {
-        assert_eq!("", reindent_multiline("".into(), false, None));
-        assert_eq!("...", reindent_multiline("...".into(), false, None));
-        assert_eq!("...", reindent_multiline("    ...".into(), false, None));
-        assert_eq!("...", reindent_multiline("\t...".into(), false, None));
-        assert_eq!("...", reindent_multiline("\t\t...".into(), false, None));
+        assert_eq!("", reindent_multiline("", false, None));
+        assert_eq!("...", reindent_multiline("...", false, None));
+        assert_eq!("...", reindent_multiline("    ...", false, None));
+        assert_eq!("...", reindent_multiline("\t...", false, None));
+        assert_eq!("...", reindent_multiline("\t\t...", false, None));
     }
 
     #[test]
@@ -768,7 +762,7 @@ mod test {
             y
         } else {
             z
-        }".into(), false, None));
+        }", false, None));
         assert_eq!("\
     if x {
     \ty
@@ -778,7 +772,7 @@ mod test {
         \ty
         } else {
         \tz
-        }".into(), false, None));
+        }", false, None));
     }
 
     #[test]
@@ -795,7 +789,7 @@ mod test {
 
         } else {
             z
-        }".into(), false, None));
+        }", false, None));
     }
 
     #[test]
@@ -811,6 +805,6 @@ mod test {
         y
     } else {
         z
-    }".into(), true, Some(8)));
+    }", true, Some(8)));
     }
 }

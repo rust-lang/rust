@@ -32,6 +32,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
+use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -39,13 +40,11 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, VariantDef};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, VariantDef, elaborate};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_type_ir::elaborate;
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
@@ -155,7 +154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 enum CastError<'tcx> {
     ErrorGuaranteed(ErrorGuaranteed),
 
@@ -182,6 +181,7 @@ enum CastError<'tcx> {
     /// when we're typechecking a type parameter with a ?Sized bound.
     IntToWideCast(Option<&'static str>),
     ForeignNonExhaustiveAdt,
+    PtrPtrAddingAutoTrait(Vec<DefId>),
 }
 
 impl From<ErrorGuaranteed> for CastError<'_> {
@@ -548,17 +548,19 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::SizedUnsizedCast => {
+                let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
+                let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                 fcx.dcx().emit_err(errors::CastThinPointerToWidePointer {
                     span: self.span,
-                    expr_ty: self.expr_ty,
-                    cast_ty: fcx.ty_to_string(self.cast_ty),
+                    expr_ty,
+                    cast_ty,
                     teach: fcx.tcx.sess.teach(E0607),
                 });
             }
             CastError::IntToWideCast(known_metadata) => {
                 let expr_if_nightly = fcx.tcx.sess.is_nightly_build().then_some(self.expr_span);
                 let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-                let expr_ty = fcx.ty_to_string(self.expr_ty);
+                let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                 let metadata = known_metadata.unwrap_or("type-specific metadata");
                 let known_wide = known_metadata.is_some();
                 let span = self.cast_span;
@@ -593,6 +595,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 )
                 .with_note("cannot cast an enum with a non-exhaustive variant when it's defined in another crate")
                 .emit();
+            }
+            CastError::PtrPtrAddingAutoTrait(added) => {
+                fcx.dcx().emit_err(errors::PtrCastAddAutoToObject {
+                    span: self.span,
+                    traits_len: added.len(),
+                    traits: {
+                        let mut traits: Vec<_> = added
+                            .into_iter()
+                            .map(|trait_did| fcx.tcx.def_path_str(trait_did))
+                            .collect();
+
+                        traits.sort();
+                        traits.into()
+                    },
+                });
             }
         }
     }
@@ -787,7 +804,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             _ => return Err(CastError::NonScalar),
         };
         if let ty::Adt(adt_def, _) = *self.expr_ty.kind()
-            && adt_def.did().krate != LOCAL_CRATE
+            && !adt_def.did().is_local()
             && adt_def.variants().iter().any(VariantDef::is_field_list_non_exhaustive)
         {
             return Err(CastError::ForeignNonExhaustiveAdt);
@@ -893,20 +910,22 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         // e.g. we want to allow `dyn T -> (dyn T,)`, etc.
                         //
                         // We also need to skip auto traits to emit an FCW and not an error.
-                        let src_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                        let src_obj = Ty::new_dynamic(
+                            tcx,
                             tcx.mk_poly_existential_predicates(
                                 &src_tty.without_auto_traits().collect::<Vec<_>>(),
                             ),
                             tcx.lifetimes.re_erased,
                             ty::Dyn,
-                        ));
-                        let dst_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                        );
+                        let dst_obj = Ty::new_dynamic(
+                            tcx,
                             tcx.mk_poly_existential_predicates(
                                 &dst_tty.without_auto_traits().collect::<Vec<_>>(),
                             ),
                             tcx.lifetimes.re_erased,
                             ty::Dyn,
-                        ));
+                        );
 
                         // `dyn Src = dyn Dst`, this checks for matching traits/generics/projections
                         // This is `fcx.demand_eqtype`, but inlined to give a better error.
@@ -936,23 +955,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             .collect::<Vec<_>>();
 
                         if !added.is_empty() {
-                            tcx.emit_node_span_lint(
-                                lint::builtin::PTR_CAST_ADD_AUTO_TO_OBJECT,
-                                self.expr.hir_id,
-                                self.span,
-                                errors::PtrCastAddAutoToObject {
-                                    traits_len: added.len(),
-                                    traits: {
-                                        let mut traits: Vec<_> = added
-                                            .into_iter()
-                                            .map(|trait_did| tcx.def_path_str(trait_did))
-                                            .collect();
-
-                                        traits.sort();
-                                        traits.into()
-                                    },
-                                },
-                            )
+                            return Err(CastError::PtrPtrAddingAutoTrait(added));
                         }
 
                         Ok(CastKind::PtrPtrCast)
@@ -1164,10 +1167,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             if let Some((deref_ty, _)) = derefed {
                 // Give a note about what the expr derefs to.
                 if deref_ty != self.expr_ty.peel_refs() {
-                    err.subdiagnostic(errors::DerefImplsIsEmpty {
-                        span: self.expr_span,
-                        deref_ty: fcx.ty_to_string(deref_ty),
-                    });
+                    err.subdiagnostic(errors::DerefImplsIsEmpty { span: self.expr_span, deref_ty });
                 }
 
                 // Create a multipart suggestion: add `!` and `.is_empty()` in
@@ -1175,7 +1175,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.subdiagnostic(errors::UseIsEmpty {
                     lo: self.expr_span.shrink_to_lo(),
                     hi: self.span.with_lo(self.expr_span.hi()),
-                    expr_ty: fcx.ty_to_string(self.expr_ty),
+                    expr_ty: self.expr_ty,
                 });
             }
         }

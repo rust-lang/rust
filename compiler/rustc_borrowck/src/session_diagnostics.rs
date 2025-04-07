@@ -295,17 +295,6 @@ pub(crate) struct MoveBorrow<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(borrowck_opaque_type_non_generic_param, code = E0792)]
-pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
-    pub ty: GenericArg<'tcx>,
-    pub kind: &'a str,
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub param_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(borrowck_opaque_type_lifetime_mismatch)]
 pub(crate) struct LifetimeMismatchOpaqueParam<'tcx> {
     pub arg: GenericArg<'tcx>,
@@ -459,17 +448,17 @@ pub(crate) enum OnClosureNote<'a> {
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum TypeNoCopy<'a> {
+pub(crate) enum TypeNoCopy<'a, 'tcx> {
     #[label(borrowck_ty_no_impl_copy)]
     Label {
         is_partial_move: bool,
-        ty: String,
+        ty: Ty<'tcx>,
         place: &'a str,
         #[primary_span]
         span: Span,
     },
     #[note(borrowck_ty_no_impl_copy)]
-    Note { is_partial_move: bool, ty: String, place: &'a str },
+    Note { is_partial_move: bool, ty: Ty<'tcx>, place: &'a str },
 }
 
 #[derive(Diagnostic)]

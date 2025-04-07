@@ -11,7 +11,7 @@ use crate::MemoryUsage;
 
 pub struct StopWatch {
     time: Instant,
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", not(target_env = "ohos")))]
     counter: Option<perf_event::Counter>,
     memory: MemoryUsage,
 }
@@ -24,7 +24,7 @@ pub struct StopWatchSpan {
 
 impl StopWatch {
     pub fn start() -> StopWatch {
-        #[cfg(target_os = "linux")]
+        #[cfg(all(target_os = "linux", not(target_env = "ohos")))]
         let counter = {
             // When debugging rust-analyzer using rr, the perf-related syscalls cause it to abort.
             // We allow disabling perf by setting the env var `RA_DISABLE_PERF`.
@@ -51,7 +51,7 @@ impl StopWatch {
         let time = Instant::now();
         StopWatch {
             time,
-            #[cfg(target_os = "linux")]
+            #[cfg(all(target_os = "linux", not(target_env = "ohos")))]
             counter,
             memory,
         }
@@ -60,10 +60,12 @@ impl StopWatch {
     pub fn elapsed(&mut self) -> StopWatchSpan {
         let time = self.time.elapsed();
 
-        #[cfg(target_os = "linux")]
+        #[cfg(all(target_os = "linux", not(target_env = "ohos")))]
         let instructions = self.counter.as_mut().and_then(|it| {
             it.read().map_err(|err| eprintln!("Failed to read perf counter: {err}")).ok()
         });
+        #[cfg(all(target_os = "linux", target_env = "ohos"))]
+        let instructions = None;
         #[cfg(not(target_os = "linux"))]
         let instructions = None;
 

@@ -46,18 +46,19 @@ fn main() {
     let mut t = (0, 0);
 
     Struct { field: 0 }.field = 1;
-    //~^ ERROR: assignment to temporary
-    //~| NOTE: `-D clippy::temporary-assignment` implied by `-D warnings`
+    //~^ temporary_assignment
+
     MultiStruct {
-        //~^ ERROR: assignment to temporary
+        //~^ temporary_assignment
         structure: Struct { field: 0 },
     }
     .structure
     .field = 1;
     ArrayStruct { array: [0] }.array[0] = 1;
-    //~^ ERROR: assignment to temporary
+    //~^ temporary_assignment
+
     (0, 0).0 = 1;
-    //~^ ERROR: assignment to temporary
+    //~^ temporary_assignment
 
     // no error
     s.field = 1;

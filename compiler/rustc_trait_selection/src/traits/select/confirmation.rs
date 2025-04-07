@@ -7,7 +7,6 @@
 //! [rustc dev guide]:
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 
-use std::iter;
 use std::ops::ControlFlow;
 
 use rustc_ast::Mutability;
@@ -40,7 +39,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidate: SelectionCandidate<'tcx>,
     ) -> Result<Selection<'tcx>, SelectionError<'tcx>> {
-        let mut impl_src = match candidate {
+        Ok(match candidate {
+            SizedCandidate { has_nested } => {
+                let data = self.confirm_builtin_candidate(obligation, has_nested);
+                ImplSource::Builtin(BuiltinImplSource::Misc, data)
+            }
+
             BuiltinCandidate { has_nested } => {
                 let data = self.confirm_builtin_candidate(obligation, has_nested);
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
@@ -135,15 +139,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             BikeshedGuaranteedNoDropCandidate => {
                 self.confirm_bikeshed_guaranteed_no_drop_candidate(obligation)
             }
-        };
-
-        // The obligations returned by confirmation are recursively evaluated
-        // so we need to make sure they have the correct depth.
-        for subobligation in impl_src.borrow_nested_obligations_mut() {
-            subobligation.set_depth_from_parent(obligation.recursion_depth);
-        }
-
-        Ok(impl_src)
+        })
     }
 
     fn confirm_projection_candidate(
@@ -267,9 +263,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else {
                 bug!("unexpected builtin trait {:?}", trait_def)
             };
-            let BuiltinImplConditions::Where(nested) = conditions else {
+            let BuiltinImplConditions::Where(types) = conditions else {
                 bug!("obligation {:?} had matched a builtin impl but now doesn't", obligation);
             };
+            let types = self.infcx.enter_forall_and_leak_universe(types);
 
             let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
             self.collect_predicates_for_types(
@@ -277,7 +274,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 cause,
                 obligation.recursion_depth + 1,
                 trait_def,
-                nested,
+                types,
             )
         } else {
             PredicateObligations::new()
@@ -410,13 +407,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let predicate = obligation.predicate.skip_binder();
 
         let mut assume = predicate.trait_ref.args.const_at(2);
-        // FIXME(min_generic_const_exprs): We should shallowly normalize this.
+        // FIXME(mgca): We should shallowly normalize this.
         if self.tcx().features().generic_const_exprs() {
             assume = crate::traits::evaluate_const(self.infcx, assume, obligation.param_env)
         }
-        let Some(assume) =
-            rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, assume)
-        else {
+        let Some(assume) = rustc_transmute::Assume::from_const(self.infcx.tcx, assume) else {
             return Err(Unimplemented);
         };
 
@@ -424,12 +419,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let src = predicate.trait_ref.args.type_at(1);
 
         debug!(?src, ?dst);
-        let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx);
-        let maybe_transmutable = transmute_env.is_transmutable(
-            obligation.cause.clone(),
-            rustc_transmute::Types { dst, src },
-            assume,
-        );
+        let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx);
+        let maybe_transmutable =
+            transmute_env.is_transmutable(rustc_transmute::Types { dst, src }, assume);
 
         let fully_flattened = match maybe_transmutable {
             Answer::No(_) => Err(Unimplemented)?,
@@ -450,51 +442,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        debug!(?obligation, "confirm_auto_impl_candidate");
-
-        let self_ty = obligation.predicate.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
-        let types = self.constituent_types_for_ty(self_ty)?;
-        Ok(self.vtable_auto_impl(obligation, obligation.predicate.def_id(), types))
-    }
-
-    /// See `confirm_auto_impl_candidate`.
-    fn vtable_auto_impl(
-        &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-        trait_def_id: DefId,
-        nested: ty::Binder<'tcx, Vec<Ty<'tcx>>>,
-    ) -> PredicateObligations<'tcx> {
-        debug!(?nested, "vtable_auto_impl");
         ensure_sufficient_stack(|| {
-            let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
-
             assert_eq!(obligation.predicate.polarity(), ty::PredicatePolarity::Positive);
-            let trait_ref =
-                self.infcx.enter_forall_and_leak_universe(obligation.predicate).trait_ref;
-            let trait_obligations = self.impl_or_trait_obligations(
-                &cause,
-                obligation.recursion_depth + 1,
-                obligation.param_env,
-                trait_def_id,
-                trait_ref.args,
-                obligation.predicate,
-            );
 
-            let mut obligations = self.collect_predicates_for_types(
+            let self_ty =
+                obligation.predicate.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
+
+            let types = self.constituent_types_for_ty(self_ty)?;
+            let types = self.infcx.enter_forall_and_leak_universe(types);
+
+            let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
+            let obligations = self.collect_predicates_for_types(
                 obligation.param_env,
                 cause,
                 obligation.recursion_depth + 1,
-                trait_def_id,
-                nested,
+                obligation.predicate.def_id(),
+                types,
             );
 
-            // Adds the predicates from the trait. Note that this contains a `Self: Trait`
-            // predicate as usual. It won't have any effect since auto traits are coinductive.
-            obligations.extend(trait_obligations);
-
-            debug!(?obligations, "vtable_auto_impl");
-
-            obligations
+            Ok(obligations)
         })
     }
 
@@ -635,12 +601,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         for assoc_type in assoc_types {
             let defs: &ty::Generics = tcx.generics_of(assoc_type);
-
-            // When `async_fn_in_dyn_trait` is enabled, we don't need to check the
-            // RPITIT for compatibility, since it's not provided by the user.
-            if tcx.features().async_fn_in_dyn_trait() && tcx.is_impl_trait_in_trait(assoc_type) {
-                continue;
-            }
 
             if !defs.own_params.is_empty() {
                 tcx.dcx().span_delayed_bug(
@@ -989,8 +949,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 return Err(SelectionError::Unimplemented);
             }
         } else {
-            nested.push(obligation.with(
+            nested.push(Obligation::new(
                 self.tcx(),
+                obligation.derived_cause(ObligationCauseCode::BuiltinDerived),
+                obligation.param_env,
                 ty::TraitRef::new(
                     self.tcx(),
                     self.tcx().require_lang_item(
@@ -1318,34 +1280,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nested.push(tail_unsize_obligation);
 
                 ImplSource::Builtin(BuiltinImplSource::Misc, nested)
-            }
-
-            // `(.., T)` -> `(.., U)`
-            (&ty::Tuple(tys_a), &ty::Tuple(tys_b)) => {
-                assert_eq!(tys_a.len(), tys_b.len());
-
-                // The last field of the tuple has to exist.
-                let (&a_last, a_mid) = tys_a.split_last().ok_or(Unimplemented)?;
-                let &b_last = tys_b.last().unwrap();
-
-                // Check that the source tuple with the target's
-                // last element is equal to the target.
-                let new_tuple =
-                    Ty::new_tup_from_iter(tcx, a_mid.iter().copied().chain(iter::once(b_last)));
-                let InferOk { mut obligations, .. } = self
-                    .infcx
-                    .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::Yes, target, new_tuple)
-                    .map_err(|_| Unimplemented)?;
-
-                // Add a nested `T: Unsize<U>` predicate.
-                let last_unsize_obligation = obligation.with(
-                    tcx,
-                    ty::TraitRef::new(tcx, obligation.predicate.def_id(), [a_last, b_last]),
-                );
-                obligations.push(last_unsize_obligation);
-
-                ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, obligations)
             }
 
             _ => bug!("source: {source}, target: {target}"),

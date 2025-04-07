@@ -45,7 +45,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     assert!(stable_mir::find_crates("std").len() == 1);
 
     let bar = get_item(&items, (DefKind::Fn, "bar")).unwrap();
-    let body = bar.body();
+    let body = bar.expect_body();
     assert_eq!(body.locals().len(), 2);
     assert_eq!(body.blocks.len(), 1);
     let block = &body.blocks[0];
@@ -60,7 +60,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     }
 
     let foo_bar = get_item(&items, (DefKind::Fn, "foo_bar")).unwrap();
-    let body = foo_bar.body();
+    let body = foo_bar.expect_body();
     assert_eq!(body.locals().len(), 5);
     assert_eq!(body.blocks.len(), 4);
     let block = &body.blocks[0];
@@ -70,7 +70,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     }
 
     let types = get_item(&items, (DefKind::Fn, "types")).unwrap();
-    let body = types.body();
+    let body = types.expect_body();
     assert_eq!(body.locals().len(), 6);
     assert_matches!(
         body.locals()[0].ty.kind(),
@@ -100,7 +100,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     );
 
     let drop = get_item(&items, (DefKind::Fn, "drop")).unwrap();
-    let body = drop.body();
+    let body = drop.expect_body();
     assert_eq!(body.blocks.len(), 2);
     let block = &body.blocks[0];
     match &block.terminator.kind {
@@ -109,7 +109,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     }
 
     let assert = get_item(&items, (DefKind::Fn, "assert")).unwrap();
-    let body = assert.body();
+    let body = assert.expect_body();
     assert_eq!(body.blocks.len(), 2);
     let block = &body.blocks[0];
     match &block.terminator.kind {
@@ -123,7 +123,8 @@ fn test_stable_mir() -> ControlFlow<()> {
         match &block.terminator.kind {
             stable_mir::mir::TerminatorKind::Call { func, .. } => {
                 let TyKind::RigidTy(ty) = func.ty(&body.locals()).unwrap().kind() else {
-                    unreachable!() };
+                    unreachable!()
+                };
                 let RigidTy::FnDef(def, args) = ty else { unreachable!() };
                 let next_func = Instance::resolve(def, &args).unwrap();
                 match next_func.body().unwrap().locals()[1].ty.kind() {
@@ -138,10 +139,10 @@ fn test_stable_mir() -> ControlFlow<()> {
 
     let foo_const = get_item(&items, (DefKind::Const, "FOO")).unwrap();
     // Ensure we don't panic trying to get the body of a constant.
-    foo_const.body();
+    foo_const.expect_body();
 
     let locals_fn = get_item(&items, (DefKind::Fn, "locals")).unwrap();
-    let body = locals_fn.body();
+    let body = locals_fn.expect_body();
     assert_eq!(body.locals().len(), 4);
     assert_matches!(
         body.ret_local().ty.kind(),
@@ -172,8 +173,10 @@ fn get_item<'a>(
     item: (DefKind, &str),
 ) -> Option<&'a stable_mir::CrateItem> {
     items.iter().find(|crate_item| {
-        matches!((item.0, crate_item.kind()), (DefKind::Fn, ItemKind::Fn) | (DefKind::Const,
-            ItemKind::Const)) && crate_item.name() == item.1
+        matches!(
+            (item.0, crate_item.kind()),
+            (DefKind::Fn, ItemKind::Fn) | (DefKind::Const, ItemKind::Const)
+        ) && crate_item.name() == item.1
     })
 }
 

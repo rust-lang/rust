@@ -133,7 +133,7 @@ macro_rules! env { () => {} }
 macro_rules! concat { () => {} }
 
   include!(concat!(env!("OUT_DIR"), "/out.rs"));
-                      //^^^^^^^^^ error: `OUT_DIR` not set, enable "build scripts" to fix
+                      //^^^^^^^^^ error: `OUT_DIR` not set, build scripts may have failed to run
 "#,
         );
     }
@@ -186,7 +186,7 @@ fn main() {
        //^^^^^^^ error: expected string literal
 
     env!("OUT_DIR");
-       //^^^^^^^^^ error: `OUT_DIR` not set, enable "build scripts" to fix
+       //^^^^^^^^^ error: `OUT_DIR` not set, build scripts may have failed to run
 
     compile_error!("compile_error works");
   //^^^^^^^^^^^^^ error: compile_error works

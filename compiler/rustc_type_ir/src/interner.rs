@@ -15,6 +15,7 @@ use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesDat
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, search_graph};
 
+#[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
 pub trait Interner:
     Sized
     + Copy
@@ -148,6 +149,8 @@ pub trait Interner:
     ) -> Option<Self::VariancesOf>;
 
     fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
+    fn type_of_opaque_hir_typeck(self, def_id: Self::LocalDefId)
+    -> ty::EarlyBinder<Self, Self::Ty>;
 
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::DefId) -> Self::AdtDef;
@@ -189,10 +192,10 @@ pub trait Interner:
     type Features: Features<Self>;
     fn features(self) -> Self::Features;
 
-    fn bound_coroutine_hidden_types(
+    fn coroutine_hidden_types(
         self,
         def_id: Self::DefId,
-    ) -> impl IntoIterator<Item = ty::EarlyBinder<Self, ty::Binder<Self, Self::Ty>>>;
+    ) -> ty::EarlyBinder<Self, ty::Binder<Self, Self::Tys>>;
 
     fn fn_sig(
         self,
@@ -258,6 +261,8 @@ pub trait Interner:
 
     fn is_lang_item(self, def_id: Self::DefId, lang_item: TraitSolverLangItem) -> bool;
 
+    fn is_default_trait(self, def_id: Self::DefId) -> bool;
+
     fn as_lang_item(self, def_id: Self::DefId) -> Option<TraitSolverLangItem>;
 
     fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId>;
@@ -278,6 +283,8 @@ pub trait Interner:
     fn impl_polarity(self, impl_def_id: Self::DefId) -> ty::ImplPolarity;
 
     fn trait_is_auto(self, trait_def_id: Self::DefId) -> bool;
+
+    fn trait_is_coinductive(self, trait_def_id: Self::DefId) -> bool;
 
     fn trait_is_alias(self, trait_def_id: Self::DefId) -> bool;
 

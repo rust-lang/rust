@@ -48,7 +48,7 @@
 //!
 //! Valid raw pointers as defined above are not necessarily properly aligned (where
 //! "proper" alignment is defined by the pointee type, i.e., `*const T` must be
-//! aligned to `mem::align_of::<T>()`). However, most functions require their
+//! aligned to `align_of::<T>()`). However, most functions require their
 //! arguments to be properly aligned, and will explicitly state
 //! this requirement in their documentation. Notable exceptions to this are
 //! [`read_unaligned`] and [`write_unaligned`].
@@ -297,7 +297,7 @@
 //!
 //!     // Our value, which must have enough alignment to have spare least-significant-bits.
 //!     let my_precious_data: u32 = 17;
-//!     assert!(core::mem::align_of::<u32>() > 1);
+//!     assert!(align_of::<u32>() > 1);
 //!
 //!     // Create a tagged pointer
 //!     let ptr = &my_precious_data as *const u32;
@@ -1098,12 +1098,12 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         } else {
             macro_rules! attempt_swap_as_chunks {
                 ($ChunkTy:ty) => {
-                    if mem::align_of::<T>() >= mem::align_of::<$ChunkTy>()
-                        && mem::size_of::<T>() % mem::size_of::<$ChunkTy>() == 0
+                    if align_of::<T>() >= align_of::<$ChunkTy>()
+                        && size_of::<T>() % size_of::<$ChunkTy>() == 0
                     {
                         let x: *mut $ChunkTy = x.cast();
                         let y: *mut $ChunkTy = y.cast();
-                        let count = count * (mem::size_of::<T>() / mem::size_of::<$ChunkTy>());
+                        let count = count * (size_of::<T>() / size_of::<$ChunkTy>());
                         // SAFETY: these are the same bytes that the caller promised were
                         // ok, just typed as `MaybeUninit<ChunkTy>`s instead of as `T`s.
                         // The `if` condition above ensures that we're not violating
@@ -1117,9 +1117,9 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
             // Split up the slice into small power-of-two-sized chunks that LLVM is able
             // to vectorize (unless it's a special type with more-than-pointer alignment,
             // because we don't want to pessimize things like slices of SIMD vectors.)
-            if mem::align_of::<T>() <= mem::size_of::<usize>()
-            && (!mem::size_of::<T>().is_power_of_two()
-                || mem::size_of::<T>() > mem::size_of::<usize>() * 2)
+            if align_of::<T>() <= size_of::<usize>()
+            && (!size_of::<T>().is_power_of_two()
+                || size_of::<T>() > size_of::<usize>() * 2)
             {
                 attempt_swap_as_chunks!(usize);
                 attempt_swap_as_chunks!(u8);
@@ -1443,10 +1443,8 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// Read a `usize` value from a byte buffer:
 ///
 /// ```
-/// use std::mem;
-///
 /// fn read_usize(x: &[u8]) -> usize {
-///     assert!(x.len() >= mem::size_of::<usize>());
+///     assert!(x.len() >= size_of::<usize>());
 ///
 ///     let ptr = x.as_ptr() as *const usize;
 ///
@@ -1467,7 +1465,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
     // Also, since we just wrote a valid value into `tmp`, it is guaranteed
     // to be properly initialized.
     unsafe {
-        copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, mem::size_of::<T>());
+        copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, size_of::<T>());
         tmp.assume_init()
     }
 }
@@ -1647,10 +1645,8 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// Write a `usize` value to a byte buffer:
 ///
 /// ```
-/// use std::mem;
-///
 /// fn write_usize(x: &mut [u8], val: usize) {
-///     assert!(x.len() >= mem::size_of::<usize>());
+///     assert!(x.len() >= size_of::<usize>());
 ///
 ///     let ptr = x.as_mut_ptr() as *mut usize;
 ///
@@ -1667,7 +1663,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
-        copy_nonoverlapping((&raw const src) as *const u8, dst as *mut u8, mem::size_of::<T>());
+        copy_nonoverlapping((&raw const src) as *const u8, dst as *mut u8, size_of::<T>());
         // We are calling the intrinsic directly to avoid function calls in the generated code.
         intrinsics::forget(src);
     }
@@ -1911,7 +1907,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         inverse & m_minus_one
     }
 
-    let stride = mem::size_of::<T>();
+    let stride = size_of::<T>();
 
     let addr: usize = p.addr();
 

@@ -3,8 +3,7 @@ use std::fmt;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
+use rustc_middle::ty::{ParamEnvAnd, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 
 use crate::infer::canonical::{

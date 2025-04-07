@@ -5,6 +5,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{inherits_cfg, is_from_proc_macro, is_self};
 use core::ops::ControlFlow;
+use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -20,7 +21,6 @@ use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
-use rustc_abi::ExternAbi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                     // We don't check unsafe functions.
                     return;
                 }
-                let attrs = cx.tcx.hir().attrs(hir_id);
+                let attrs = cx.tcx.hir_attrs(hir_id);
                 if header.abi != ExternAbi::Rust || requires_exact_signature(attrs) {
                     return;
                 }
@@ -280,7 +280,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                             diag.span_suggestion(
                                 sp,
                                 "consider changing to".to_string(),
-                                format!("&{}", snippet(cx, cx.tcx.hir().span(inner_ty.ty.hir_id), "_"),),
+                                format!("&{}", snippet(cx, cx.tcx.hir_span(inner_ty.ty.hir_id), "_"),),
                                 Applicability::Unspecified,
                             );
                             if cx.effective_visibilities.is_exported(*fn_def_id) {
@@ -395,6 +395,8 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
             self.prev_move_to_closure.swap_remove(vid);
         }
     }
+
+    fn use_cloned(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId) {}
 
     #[allow(clippy::if_same_then_else)]
     fn borrow(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, id: HirId, borrow: ty::BorrowKind) {

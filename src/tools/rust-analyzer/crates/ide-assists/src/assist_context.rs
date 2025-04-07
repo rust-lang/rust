@@ -52,6 +52,10 @@ pub(crate) struct AssistContext<'a> {
     frange: FileRange,
     trimmed_range: TextRange,
     source_file: SourceFile,
+    // We cache this here to speed up things slightly
+    token_at_offset: TokenAtOffset<SyntaxToken>,
+    // We cache this here to speed up things slightly
+    covering_element: SyntaxElement,
 }
 
 impl<'a> AssistContext<'a> {
@@ -78,8 +82,18 @@ impl<'a> AssistContext<'a> {
             // Selection solely consists of whitespace so just fall back to the original
             _ => frange.range,
         };
+        let token_at_offset = source_file.syntax().token_at_offset(frange.range.start());
+        let covering_element = source_file.syntax().covering_element(trimmed_range);
 
-        AssistContext { config, sema, frange, source_file, trimmed_range }
+        AssistContext {
+            config,
+            sema,
+            frange,
+            source_file,
+            trimmed_range,
+            token_at_offset,
+            covering_element,
+        }
     }
 
     pub(crate) fn db(&self) -> &RootDatabase {
@@ -114,7 +128,7 @@ impl<'a> AssistContext<'a> {
     }
 
     pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken> {
-        self.source_file.syntax().token_at_offset(self.offset())
+        self.token_at_offset.clone()
     }
     pub(crate) fn find_token_syntax_at_offset(&self, kind: SyntaxKind) -> Option<SyntaxToken> {
         self.token_at_offset().find(|it| it.kind() == kind)
@@ -136,7 +150,7 @@ impl<'a> AssistContext<'a> {
     }
     /// Returns the element covered by the selection range, this excludes trailing whitespace in the selection.
     pub(crate) fn covering_element(&self) -> SyntaxElement {
-        self.source_file.syntax().covering_element(self.selection_trimmed())
+        self.covering_element.clone()
     }
 }
 

@@ -117,7 +117,7 @@ fn lint<'tcx>(
     or_body_snippet: &str,
     indent: usize,
 ) {
-    let reindented_or_body = reindent_multiline(or_body_snippet.into(), true, Some(indent));
+    let reindented_or_body = reindent_multiline(or_body_snippet, true, Some(indent));
 
     let mut app = Applicability::MachineApplicable;
     let suggestion = sugg::Sugg::hir_with_context(cx, scrutinee, expr.span.ctxt(), "..", &mut app).maybe_par();

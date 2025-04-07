@@ -11,13 +11,16 @@ use crate::ptr::NonNull;
 #[derive(Copy, Clone)]
 pub struct Placeholder {
     pub position: usize,
+    #[cfg(bootstrap)]
     pub fill: char,
+    #[cfg(bootstrap)]
     pub align: Alignment,
     pub flags: u32,
     pub precision: Count,
     pub width: Count,
 }
 
+#[cfg(bootstrap)]
 impl Placeholder {
     #[inline]
     pub const fn new(
@@ -32,6 +35,7 @@ impl Placeholder {
     }
 }
 
+#[cfg(bootstrap)]
 #[lang = "format_alignment"]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Alignment {
@@ -47,22 +51,15 @@ pub enum Alignment {
 #[derive(Copy, Clone)]
 pub enum Count {
     /// Specified with a literal number, stores the value
+    #[cfg(bootstrap)]
     Is(usize),
+    /// Specified with a literal number, stores the value
+    #[cfg(not(bootstrap))]
+    Is(u16),
     /// Specified using `$` and `*` syntaxes, stores the index into `args`
     Param(usize),
     /// Not specified
     Implied,
-}
-
-// This needs to match the order of flags in compiler/rustc_ast_lowering/src/format.rs.
-#[derive(Copy, Clone)]
-pub(super) enum Flag {
-    SignPlus,
-    SignMinus,
-    Alternate,
-    SignAwareZeroPad,
-    DebugLowerHex,
-    DebugUpperHex,
 }
 
 #[derive(Copy, Clone)]
@@ -74,7 +71,7 @@ enum ArgumentType<'a> {
         formatter: unsafe fn(NonNull<()>, &mut Formatter<'_>) -> Result,
         _lifetime: PhantomData<&'a ()>,
     },
-    Count(usize),
+    Count(u16),
 }
 
 /// This struct represents a generic "argument" which is taken by format_args!().
@@ -150,8 +147,12 @@ impl Argument<'_> {
         Self::new(x, UpperExp::fmt)
     }
     #[inline]
+    #[track_caller]
     pub const fn from_usize(x: &usize) -> Argument<'_> {
-        Argument { ty: ArgumentType::Count(*x) }
+        if *x > u16::MAX as usize {
+            panic!("Formatting argument out of range");
+        }
+        Argument { ty: ArgumentType::Count(*x as u16) }
     }
 
     /// Format this placeholder argument.
@@ -181,7 +182,7 @@ impl Argument<'_> {
     }
 
     #[inline]
-    pub(super) const fn as_usize(&self) -> Option<usize> {
+    pub(super) const fn as_u16(&self) -> Option<u16> {
         match self.ty {
             ArgumentType::Count(count) => Some(count),
             ArgumentType::Placeholder { .. } => None,

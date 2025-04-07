@@ -13,10 +13,10 @@ build = "build.rs"
 List rustc_tools_util as regular AND build dependency.
 ````toml
 [dependencies]
-rustc_tools_util = "0.4.0"
+rustc_tools_util = "0.4.2"
 
 [build-dependencies]
-rustc_tools_util = "0.4.0"
+rustc_tools_util = "0.4.2"
 ````
 
 In `build.rs`, generate the data in your `main()`
@@ -51,7 +51,7 @@ The changelog for `rustc_tools_util` is available under:
 
 <!-- REUSE-IgnoreStart -->
 
-Copyright 2014-2024 The Rust Project Developers
+Copyright 2014-2025 The Rust Project Developers
 
 Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 http://www.apache.org/licenses/LICENSE-2.0> or the MIT license

@@ -5,42 +5,46 @@
 type Alias = Vec<Vec<Box<(u32, u32, u32, u32)>>>; // no warning here
 
 const CST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
-//~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
-//~| NOTE: `-D clippy::type-complexity` implied by `-D warnings`
+//~^ type_complexity
+
 static ST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
-//~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+//~^ type_complexity
 
 struct S {
     f: Vec<Vec<Box<(u32, u32, u32, u32)>>>,
-    //~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+    //~^ type_complexity
 }
 
 struct Ts(Vec<Vec<Box<(u32, u32, u32, u32)>>>);
-//~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+//~^ type_complexity
 
 enum E {
     Tuple(Vec<Vec<Box<(u32, u32, u32, u32)>>>),
-    //~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+    //~^ type_complexity
     Struct { f: Vec<Vec<Box<(u32, u32, u32, u32)>>> },
-    //~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+    //~^ type_complexity
 }
 
 impl S {
     const A: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
-    //~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+    //~^ type_complexity
+
     fn impl_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
-    //~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+    //~^ type_complexity
 }
 
 trait T {
     const A: Vec<Vec<Box<(u32, u32, u32, u32)>>>;
-    //~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+    //~^ type_complexity
+
     type B = Vec<Vec<Box<(u32, u32, u32, u32)>>>;
-    //~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+    //~^ type_complexity
+
     fn method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>);
-    //~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+    //~^ type_complexity
+
     fn def_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
-    //~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+    //~^ type_complexity
 }
 
 // Should not warn since there is likely no way to simplify this (#1013)
@@ -53,16 +57,17 @@ impl T for () {
 }
 
 fn test1() -> Vec<Vec<Box<(u32, u32, u32, u32)>>> {
-    //~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+    //~^ type_complexity
+
     vec![]
 }
 
 fn test2(_x: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
-//~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+//~^ type_complexity
 
 fn test3() {
     let _y: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![];
-    //~^ ERROR: very complex type used. Consider factoring parts into `type` definitions
+    //~^ type_complexity
 }
 
 #[repr(C)]

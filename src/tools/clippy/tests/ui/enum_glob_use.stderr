@@ -8,13 +8,13 @@ LL | use std::cmp::Ordering::*;
    = help: to override `-D warnings` add `#[allow(clippy::enum_glob_use)]`
 
 error: usage of wildcard import for enum variants
-  --> tests/ui/enum_glob_use.rs:11:5
+  --> tests/ui/enum_glob_use.rs:12:5
    |
 LL | use self::Enum::*;
    |     ^^^^^^^^^^^^^ help: try: `self::Enum::Foo`
 
 error: usage of wildcard import for enum variants
-  --> tests/ui/enum_glob_use.rs:15:13
+  --> tests/ui/enum_glob_use.rs:17:13
    |
 LL |         use crate::Enum::*;
    |             ^^^^^^^^^^^^^^ help: try: `crate::Enum::Foo`

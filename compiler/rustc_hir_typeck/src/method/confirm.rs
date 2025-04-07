@@ -15,9 +15,9 @@ use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
-use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, UserArgs,
+    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, UserArgs,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Span};
@@ -426,6 +426,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             fn provided_kind(
                 &mut self,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
@@ -446,7 +447,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
                         .cfcx
                         // We handle the ambig portions of `ConstArg` in the match arms below
-                        .lower_const_arg(ct.as_unambig_ct(), FeedConstTy::Param(param.def_id))
+                        .lower_const_arg(
+                            ct.as_unambig_ct(),
+                            FeedConstTy::Param(param.def_id, preceding_args),
+                        )
                         .into(),
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.cfcx.ct_infer(Some(param), inf.span).into()

@@ -93,15 +93,15 @@ fn broken_parenthesis_sequence() {
 macro_rules! m1 { ($x:ident) => { ($x } }
 macro_rules! m2 { ($x:ident) => {} }
 
-m1!();
-m2!(x
+fn f1() { m1!(x); }
+fn f2() { m2!(x }
 "#,
         expect![[r#"
 macro_rules! m1 { ($x:ident) => { ($x } }
 macro_rules! m2 { ($x:ident) => {} }
 
-/* error: macro definition has parse errors */
-/* error: expected ident */
+fn f1() { (x); }
+fn f2() { /* error: expected ident */ }
 "#]],
     )
 }

@@ -2,6 +2,7 @@ error: consider moving the `;` inside the block for consistent formatting
   --> tests/ui-toml/semicolon_block/semicolon_inside_block.rs:47:5
    |
 LL | /     {
+LL | |
 LL | |         unit_fn_block();
 LL | |         unit_fn_block()
 LL | |     };

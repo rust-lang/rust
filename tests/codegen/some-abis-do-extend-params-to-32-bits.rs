@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ compile-flags: -Cno-prepopulate-passes -Copt-level=0
 
 //@ revisions:x86_64 i686 aarch64-apple aarch64-windows aarch64-linux arm riscv
@@ -24,12 +25,8 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 // The patterns in this file are written in the style of a table to make the
 // uniformities and distinctions more apparent.

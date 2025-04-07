@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::process::ExitCode;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 use std::{env, fs};
 
 use regex::{Regex, RegexBuilder};
@@ -151,8 +151,7 @@ impl CommandKind {
     }
 }
 
-static LINE_PATTERN: OnceLock<Regex> = OnceLock::new();
-fn line_pattern() -> Regex {
+static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     RegexBuilder::new(
         r#"
         //@\s+
@@ -165,7 +164,19 @@ fn line_pattern() -> Regex {
     .unicode(true)
     .build()
     .unwrap()
-}
+});
+
+static DEPRECATED_LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
+    RegexBuilder::new(
+        r#"
+        //\s+@
+    "#,
+    )
+    .ignore_whitespace(true)
+    .unicode(true)
+    .build()
+    .unwrap()
+});
 
 fn print_err(msg: &str, lineno: usize) {
     eprintln!("Invalid command: {} on line {}", msg, lineno)
@@ -184,21 +195,23 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
     for (lineno, line) in file.split('\n').enumerate() {
         let lineno = lineno + 1;
 
-        let cap = match LINE_PATTERN.get_or_init(line_pattern).captures(line) {
-            Some(c) => c,
-            None => continue,
+        if DEPRECATED_LINE_PATTERN.is_match(line) {
+            print_err("Deprecated command syntax, replace `// @` with `//@ `", lineno);
+            errors = true;
+            continue;
+        }
+
+        let Some(cap) = LINE_PATTERN.captures(line) else {
+            continue;
         };
 
-        let negated = cap.name("negated").unwrap().as_str() == "!";
+        let negated = &cap["negated"] == "!";
 
         let args_str = &cap["args"];
-        let args = match shlex::split(args_str) {
-            Some(args) => args,
-            None => {
-                print_err(&format!("Invalid arguments to shlex::split: `{args_str}`",), lineno);
-                errors = true;
-                continue;
-            }
+        let Some(args) = shlex::split(args_str) else {
+            print_err(&format!("Invalid arguments to shlex::split: `{args_str}`",), lineno);
+            errors = true;
+            continue;
         };
 
         if let Some((kind, path)) = CommandKind::parse(&cap["cmd"], negated, &args) {

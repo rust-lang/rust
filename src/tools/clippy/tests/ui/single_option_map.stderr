@@ -1,0 +1,40 @@
+error: `fn` that only maps over argument
+  --> tests/ui/single_option_map.rs:8:1
+   |
+LL | / fn h(arg: Option<u32>) -> Option<u32> {
+LL | |
+LL | |
+LL | |     arg.map(|x| x * 2)
+LL | | }
+   | |_^
+   |
+   = help: move the `.map` to the caller or to an `_opt` function
+   = note: `-D clippy::single-option-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_option_map)]`
+
+error: `fn` that only maps over argument
+  --> tests/ui/single_option_map.rs:14:1
+   |
+LL | / fn j(arg: Option<u64>) -> Option<u64> {
+LL | |
+LL | |
+LL | |     arg.map(|x| x * 2)
+LL | | }
+   | |_^
+   |
+   = help: move the `.map` to the caller or to an `_opt` function
+
+error: `fn` that only maps over argument
+  --> tests/ui/single_option_map.rs:24:1
+   |
+LL | / fn mul_args_opt(a: Option<String>, b: u64) -> Option<String> {
+LL | |
+LL | |
+LL | |     a.map(|val| mul_args(val, b + 1))
+LL | | }
+   | |_^
+   |
+   = help: move the `.map` to the caller or to an `_opt` function
+
+error: aborting due to 3 previous errors
+

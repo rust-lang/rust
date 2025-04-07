@@ -8,7 +8,7 @@ macro_rules! format_ty {
             $fmt,
             $(
                 $arg
-                    .display($ctx.sema.db, $ctx.edition)
+                    .display($ctx.sema.db, $ctx.display_target)
                     .with_closure_style(ClosureStyle::ClosureWithId)
             ),*
         )

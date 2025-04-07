@@ -2,19 +2,21 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet;
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::{eq_expr_value, higher};
+use rustc_ast::BindingMode;
 use rustc_ast::ast::LitKind;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::intravisit::{Visitor, walk_expr, walk_pat};
+use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, Node, PatKind};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Span, sym};
+use rustc_span::{Symbol, sym};
 use std::iter;
 
 declare_clippy_lint! {
@@ -54,9 +56,7 @@ pub struct ManualStrip {
 
 impl ManualStrip {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -73,7 +73,6 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
         if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr)
             && let ExprKind::MethodCall(_, target_arg, [pattern], _) = cond.kind
             && let ExprKind::Path(target_path) = &target_arg.kind
-            && self.msrv.meets(msrvs::STR_STRIP_PREFIX)
             && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(cond.hir_id)
         {
             let strip_kind = if cx.tcx.is_diagnostic_item(sym::str_starts_with, method_def_id) {
@@ -95,18 +94,37 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
                 return;
             }
 
-            let strippings = find_stripping(cx, strip_kind, target_res, pattern, then);
-            if !strippings.is_empty() {
+            let (strippings, bindings) = find_stripping(cx, strip_kind, target_res, pattern, then);
+            if !strippings.is_empty() && self.msrv.meets(cx, msrvs::STR_STRIP_PREFIX) {
                 let kind_word = match strip_kind {
                     StripKind::Prefix => "prefix",
                     StripKind::Suffix => "suffix",
                 };
 
                 let test_span = expr.span.until(then.span);
+
+                // If the first use is a simple `let` statement, reuse its identifier in the `if let Some(…)` and
+                // remove the `let` statement as long as the identifier is never bound again within the lexical
+                // scope of interest.
+                let (ident_name, let_stmt_span, skip, mut app) = if let Node::LetStmt(let_stmt) =
+                    cx.tcx.parent_hir_node(strippings[0].hir_id)
+                    && let PatKind::Binding(BindingMode::NONE, _, ident, None) = &let_stmt.pat.kind
+                    && bindings.get(&ident.name) == Some(&1)
+                {
+                    (
+                        ident.name.as_str(),
+                        Some(cx.sess().source_map().span_extend_while_whitespace(let_stmt.span)),
+                        1,
+                        Applicability::MachineApplicable,
+                    )
+                } else {
+                    ("<stripped>", None, 0, Applicability::HasPlaceholders)
+                };
+
                 span_lint_and_then(
                     cx,
                     MANUAL_STRIP,
-                    strippings[0],
+                    strippings[0].span,
                     format!("stripping a {kind_word} manually"),
                     |diag| {
                         diag.span_note(test_span, format!("the {kind_word} was tested here"));
@@ -115,22 +133,26 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
                             iter::once((
                                 test_span,
                                 format!(
-                                    "if let Some(<stripped>) = {}.strip_{kind_word}({}) ",
-                                    snippet(cx, target_arg.span, ".."),
-                                    snippet(cx, pattern.span, "..")
+                                    "if let Some({ident_name}) = {}.strip_{kind_word}({}) ",
+                                    snippet_with_applicability(cx, target_arg.span, "_", &mut app),
+                                    snippet_with_applicability(cx, pattern.span, "_", &mut app)
                                 ),
                             ))
-                            .chain(strippings.into_iter().map(|span| (span, "<stripped>".into())))
+                            .chain(let_stmt_span.map(|span| (span, String::new())))
+                            .chain(
+                                strippings
+                                    .into_iter()
+                                    .skip(skip)
+                                    .map(|expr| (expr.span, ident_name.into())),
+                            )
                             .collect(),
-                            Applicability::HasPlaceholders,
+                            app,
                         );
                     },
                 );
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 // Returns `Some(arg)` if `expr` matches `arg.len()` and `None` otherwise.
@@ -188,19 +210,21 @@ fn peel_ref<'a>(expr: &'a Expr<'_>) -> &'a Expr<'a> {
 /// Find expressions where `target` is stripped using the length of `pattern`.
 /// We'll suggest replacing these expressions with the result of the `strip_{prefix,suffix}`
 /// method.
+/// Also, all bindings found during the visit are counted and returned.
 fn find_stripping<'tcx>(
     cx: &LateContext<'tcx>,
     strip_kind: StripKind,
     target: Res,
     pattern: &'tcx Expr<'_>,
-    expr: &'tcx Expr<'_>,
-) -> Vec<Span> {
+    expr: &'tcx Expr<'tcx>,
+) -> (Vec<&'tcx Expr<'tcx>>, FxHashMap<Symbol, usize>) {
     struct StrippingFinder<'a, 'tcx> {
         cx: &'a LateContext<'tcx>,
         strip_kind: StripKind,
         target: Res,
         pattern: &'tcx Expr<'tcx>,
-        results: Vec<Span>,
+        results: Vec<&'tcx Expr<'tcx>>,
+        bindings: FxHashMap<Symbol, usize>,
     }
 
     impl<'tcx> Visitor<'tcx> for StrippingFinder<'_, 'tcx> {
@@ -215,7 +239,7 @@ fn find_stripping<'tcx>(
                 match (self.strip_kind, start, end) {
                     (StripKind::Prefix, Some(start), None) => {
                         if eq_pattern_length(self.cx, self.pattern, start) {
-                            self.results.push(ex.span);
+                            self.results.push(ex);
                             return;
                         }
                     },
@@ -232,7 +256,7 @@ fn find_stripping<'tcx>(
                             && self.cx.qpath_res(left_path, left_arg.hir_id) == self.target
                             && eq_pattern_length(self.cx, self.pattern, right)
                         {
-                            self.results.push(ex.span);
+                            self.results.push(ex);
                             return;
                         }
                     },
@@ -242,6 +266,13 @@ fn find_stripping<'tcx>(
 
             walk_expr(self, ex);
         }
+
+        fn visit_pat(&mut self, pat: &'tcx rustc_hir::Pat<'tcx>) -> Self::Result {
+            if let PatKind::Binding(_, _, ident, _) = pat.kind {
+                *self.bindings.entry(ident.name).or_default() += 1;
+            }
+            walk_pat(self, pat);
+        }
     }
 
     let mut finder = StrippingFinder {
@@ -250,7 +281,8 @@ fn find_stripping<'tcx>(
         target,
         pattern,
         results: vec![],
+        bindings: FxHashMap::default(),
     };
     walk_expr(&mut finder, expr);
-    finder.results
+    (finder.results, finder.bindings)
 }

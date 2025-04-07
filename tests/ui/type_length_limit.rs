@@ -2,9 +2,6 @@
 //@ compile-flags: -Copt-level=0 -Zenforce-type-length-limit
 //~^^ ERROR reached the type-length limit
 
-// The regex below normalizes the long type file name to make it suitable for compare-modes.
-//@ normalize-stderr: "'\$TEST_BUILD_DIR/.*\.long-type.txt'" -> "'$$TEST_BUILD_DIR/$$FILE.long-type.txt'"
-
 // Test that the type length limit can be changed.
 // The exact type depends on optimizations, so disable them.
 

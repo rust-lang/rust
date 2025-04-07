@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: x64 A64 ppc64le
 //@ assembly-output: emit-asm
 //@ [x64] compile-flags: --target x86_64-unknown-linux-gnu -Crelocation-model=static
@@ -11,20 +12,8 @@
 #![no_core]
 #![crate_type = "rlib"]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
-
-#[lang = "sync"]
-trait Sync {}
-
-#[lang = "drop_in_place"]
-fn drop_in_place<T>(_: *mut T) {}
-
-impl Copy for u8 {}
-impl Sync for u8 {}
+extern crate minicore;
+use minicore::*;
 
 #[no_mangle]
 pub static PIERIS: u8 = 42;
@@ -36,7 +25,7 @@ extern "C" {
 }
 
 // CHECK-LABEL: banana:
-// On the next line LLVM 14 produces a `movb`, whereas LLVM 15+ produces a `movzbl`.
+// LLVM may produce either kind of `mov` here, depending on version and optimization level.
 // x64: {{movb|movzbl}}   chaenomeles{{(\(%[a-z0-9]+\))?}}, %{{[a-z0-9]+}}
 // A64:      adrp    [[REG:[a-z0-9]+]], chaenomeles
 // A64-NEXT: ldrb    {{[a-z0-9]+}}, {{\[}}[[REG]], :lo12:chaenomeles]

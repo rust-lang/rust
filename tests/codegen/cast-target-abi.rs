@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
+//@ add-core-stubs
 //@ revisions:aarch64 loongarch64 powerpc64 sparc64 x86_64
-//@ min-llvm-version: 19
-//@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes -Zlint-llvm-ir -Cllvm-args=-lint-abort-on-error
+//@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes -Zlint-llvm-ir
 
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
 //@[aarch64] needs-llvm-components: arm
@@ -21,12 +21,8 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 // This struct will be passed as a single `i64` or `i32`.
 // This may be (if `i64)) larger than the Rust layout, which is just `{ i16, i16 }`.

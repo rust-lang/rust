@@ -10,6 +10,7 @@ fn should_not_lint() {}
 #[allow(clippy::allow_attributes)]
 #[cfg(test)]
 mod tests {
+    //~^ items_after_test_module
     #[test]
     fn hi() {}
 }

@@ -9,8 +9,7 @@ use itertools::Itertools;
 use object::write::{self, StandardSegment, Symbol, SymbolSection};
 use object::{
     Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection, ObjectSymbol,
-    SectionFlags, SectionKind, SubArchitecture, SymbolFlags, SymbolKind, SymbolScope, elf, pe,
-    xcoff,
+    SectionFlags, SectionKind, SymbolFlags, SymbolKind, SymbolScope, elf, pe, xcoff,
 };
 use rustc_abi::Endian;
 use rustc_data_structures::memmap::Mmap;
@@ -206,57 +205,16 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Endian::Little => Endianness::Little,
         Endian::Big => Endianness::Big,
     };
-    let (architecture, sub_architecture) = match &sess.target.arch[..] {
-        "arm" => (Architecture::Arm, None),
-        "aarch64" => (
-            if sess.target.pointer_width == 32 {
-                Architecture::Aarch64_Ilp32
-            } else {
-                Architecture::Aarch64
-            },
-            None,
-        ),
-        "x86" => (Architecture::I386, None),
-        "s390x" => (Architecture::S390x, None),
-        "mips" | "mips32r6" => (Architecture::Mips, None),
-        "mips64" | "mips64r6" => (Architecture::Mips64, None),
-        "x86_64" => (
-            if sess.target.pointer_width == 32 {
-                Architecture::X86_64_X32
-            } else {
-                Architecture::X86_64
-            },
-            None,
-        ),
-        "powerpc" => (Architecture::PowerPc, None),
-        "powerpc64" => (Architecture::PowerPc64, None),
-        "riscv32" => (Architecture::Riscv32, None),
-        "riscv64" => (Architecture::Riscv64, None),
-        "sparc" => {
-            if sess.unstable_target_features.contains(&sym::v8plus) {
-                // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
-                (Architecture::Sparc32Plus, None)
-            } else {
-                // Target uses V7 or V8, aka EM_SPARC
-                (Architecture::Sparc, None)
-            }
-        }
-        "sparc64" => (Architecture::Sparc64, None),
-        "avr" => (Architecture::Avr, None),
-        "msp430" => (Architecture::Msp430, None),
-        "hexagon" => (Architecture::Hexagon, None),
-        "bpf" => (Architecture::Bpf, None),
-        "loongarch64" => (Architecture::LoongArch64, None),
-        "csky" => (Architecture::Csky, None),
-        "arm64ec" => (Architecture::Aarch64, Some(SubArchitecture::Arm64EC)),
-        // Unsupported architecture.
-        _ => return None,
+    let Some((architecture, sub_architecture)) =
+        sess.target.object_architecture(&sess.unstable_target_features)
+    else {
+        return None;
     };
     let binary_format = sess.target.binary_format.to_object();
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
     file.set_sub_architecture(sub_architecture);
-    if sess.target.is_like_osx {
+    if sess.target.is_like_darwin {
         if macho_is_arm64e(&sess.target) {
             file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
         }
@@ -292,7 +250,26 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 
         file.set_mangling(original_mangling);
     }
-    let e_flags = match architecture {
+    let e_flags = elf_e_flags(architecture, sess);
+    // adapted from LLVM's `MCELFObjectTargetWriter::getOSABI`
+    let os_abi = elf_os_abi(sess);
+    let abi_version = 0;
+    add_gnu_property_note(&mut file, architecture, binary_format, endianness);
+    file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
+    Some(file)
+}
+
+pub(super) fn elf_os_abi(sess: &Session) -> u8 {
+    match sess.target.options.os.as_ref() {
+        "hermit" => elf::ELFOSABI_STANDALONE,
+        "freebsd" => elf::ELFOSABI_FREEBSD,
+        "solaris" => elf::ELFOSABI_SOLARIS,
+        _ => elf::ELFOSABI_NONE,
+    }
+}
+
+pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
+    match architecture {
         Architecture::Mips => {
             let arch = match sess.target.options.cpu.as_ref() {
                 "mips1" => elf::EF_MIPS_ARCH_1,
@@ -373,7 +350,11 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Architecture::Avr => {
             // Resolve the ISA revision and set
             // the appropriate EF_AVR_ARCH flag.
-            ef_avr_arch(&sess.target.options.cpu)
+            if let Some(ref cpu) = sess.opts.cg.target_cpu {
+                ef_avr_arch(cpu)
+            } else {
+                bug!("AVR CPU not explicitly specified")
+            }
         }
         Architecture::Csky => {
             let e_flags = match sess.target.options.abi.as_ref() {
@@ -383,18 +364,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             e_flags
         }
         _ => 0,
-    };
-    // adapted from LLVM's `MCELFObjectTargetWriter::getOSABI`
-    let os_abi = match sess.target.options.os.as_ref() {
-        "hermit" => elf::ELFOSABI_STANDALONE,
-        "freebsd" => elf::ELFOSABI_FREEBSD,
-        "solaris" => elf::ELFOSABI_SOLARIS,
-        _ => elf::ELFOSABI_NONE,
-    };
-    let abi_version = 0;
-    add_gnu_property_note(&mut file, architecture, binary_format, endianness);
-    file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
-    Some(file)
+    }
 }
 
 /// Mach-O files contain information about:
@@ -418,13 +388,13 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 fn macho_object_build_version_for_target(sess: &Session) -> object::write::MachOBuildVersion {
     /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
     /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
-    fn pack_version((major, minor, patch): (u16, u8, u8)) -> u32 {
+    fn pack_version(apple::OSVersion { major, minor, patch }: apple::OSVersion) -> u32 {
         let (major, minor, patch) = (major as u32, minor as u32, patch as u32);
         (major << 16) | (minor << 8) | patch
     }
 
     let platform = apple::macho_platform(&sess.target);
-    let min_os = apple::deployment_target(sess);
+    let min_os = sess.apple_deployment_target();
 
     let mut build_version = object::write::MachOBuildVersion::default();
     build_version.platform = platform;
@@ -570,8 +540,8 @@ pub fn create_compressed_metadata_file(
     symbol_name: &str,
 ) -> Vec<u8> {
     let mut packed_metadata = rustc_metadata::METADATA_HEADER.to_vec();
-    packed_metadata.write_all(&(metadata.raw_data().len() as u64).to_le_bytes()).unwrap();
-    packed_metadata.extend(metadata.raw_data());
+    packed_metadata.write_all(&(metadata.stub_or_full().len() as u64).to_le_bytes()).unwrap();
+    packed_metadata.extend(metadata.stub_or_full());
 
     let Some(mut file) = create_object_file(sess) else {
         if sess.target.is_like_wasm {

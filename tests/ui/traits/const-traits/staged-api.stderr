@@ -1,3 +1,70 @@
+error: const stability on the impl does not match the const stability on the trait
+  --> $DIR/staged-api.rs:98:1
+   |
+LL | impl const U for u8 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this impl is (implicitly) stable...
+  --> $DIR/staged-api.rs:98:1
+   |
+LL | impl const U for u8 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: ...but the trait is unstable
+  --> $DIR/staged-api.rs:91:7
+   |
+LL | trait U {}
+   |       ^
+
+error: trait implementations cannot be const stable yet
+  --> $DIR/staged-api.rs:102:1
+   |
+LL | impl const U for u16 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+
+error: const stability on the impl does not match the const stability on the trait
+  --> $DIR/staged-api.rs:102:1
+   |
+LL | impl const U for u16 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this impl is (implicitly) stable...
+  --> $DIR/staged-api.rs:102:1
+   |
+LL | impl const U for u16 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+note: ...but the trait is unstable
+  --> $DIR/staged-api.rs:91:7
+   |
+LL | trait U {}
+   |       ^
+
+error: trait implementations cannot be const stable yet
+  --> $DIR/staged-api.rs:113:1
+   |
+LL | impl const S for u16 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+
+error: const stability on the impl does not match the const stability on the trait
+  --> $DIR/staged-api.rs:117:1
+   |
+LL | impl const S for u32 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this impl is unstable...
+  --> $DIR/staged-api.rs:117:1
+   |
+LL | impl const S for u32 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+note: ...but the trait is stable
+  --> $DIR/staged-api.rs:95:7
+   |
+LL | trait S {}
+   |       ^
+
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_trait_impl)]`
   --> $DIR/staged-api.rs:38:5
    |
@@ -323,5 +390,5 @@ LL + #[rustc_allow_const_fn_unstable(const_trait_impl)]
 LL | const fn implicitly_stable_const_context() {
    |
 
-error: aborting due to 19 previous errors
+error: aborting due to 24 previous errors
 

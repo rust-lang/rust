@@ -9,7 +9,6 @@ use std::ops::ControlFlow;
 use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -24,7 +23,9 @@ use super::elaborate;
 use crate::infer::TyCtxtInferExt;
 pub use crate::traits::DynCompatibilityViolation;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{MethodViolationCode, Obligation, ObligationCause, util};
+use crate::traits::{
+    MethodViolationCode, Obligation, ObligationCause, normalize_param_env_or_error, util,
+};
 
 /// Returns the dyn-compatibility violations that affect HIR ty lowering.
 ///
@@ -538,10 +539,10 @@ fn receiver_for_self_ty<'tcx>(
 /// a pointer.
 ///
 /// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result in
-/// a new check that `Trait` is dyn-compatible, creating a cycle (until dyn_compatible_for_dispatch
-/// is stabilized, see tracking issue <https://github.com/rust-lang/rust/issues/43561>).
-/// Instead, we fudge a little by introducing a new type parameter `U` such that
+/// a new check that `Trait` is dyn-compatible, creating a cycle.
+/// Instead, we emulate a placeholder by introducing a new type parameter `U` such that
 /// `Self: Unsize<U>` and `U: Trait + ?Sized`, and use `U` in place of `dyn Trait`.
+///
 /// Written as a chalk-style query:
 /// ```ignore (not-rust)
 /// forall (U: Trait + ?Sized) {
@@ -572,8 +573,6 @@ fn receiver_is_dispatchable<'tcx>(
 
     // the type `U` in the query
     // use a bogus type parameter to mimic a forall(U) query using u32::MAX for now.
-    // FIXME(mikeyhew) this is a total hack. Once dyn_compatible_for_dispatch is stabilized, we can
-    // replace this with `dyn Trait`
     let unsized_self_ty: Ty<'tcx> =
         Ty::new_param(tcx, u32::MAX, rustc_span::sym::RustaceansAreAwesome);
 
@@ -581,29 +580,41 @@ fn receiver_is_dispatchable<'tcx>(
     let unsized_receiver_ty =
         receiver_for_self_ty(tcx, receiver_ty, unsized_self_ty, method.def_id);
 
-    // create a modified param env, with `Self: Unsize<U>` and `U: Trait` added to caller bounds
-    // `U: ?Sized` is already implied here
+    // create a modified param env, with `Self: Unsize<U>` and `U: Trait` (and all of
+    // its supertraits) added to caller bounds. `U: ?Sized` is already implied here.
     let param_env = {
-        let param_env = tcx.param_env(method.def_id);
+        // N.B. We generally want to emulate the construction of the `unnormalized_param_env`
+        // in the param-env query here. The fact that we don't just start with the clauses
+        // in the param-env of the method is because those are already normalized, and mixing
+        // normalized and unnormalized copies of predicates in `normalize_param_env_or_error`
+        // will cause ambiguity that the user can't really avoid.
+        //
+        // We leave out certain complexities of the param-env query here. Specifically, we:
+        // 1. Do not add `~const` bounds since there are no `dyn const Trait`s.
+        // 2. Do not add RPITIT self projection bounds for defaulted methods, since we
+        //    are not constructing a param-env for "inside" of the body of the defaulted
+        //    method, so we don't really care about projecting to a specific RPIT type,
+        //    and because RPITITs are not dyn compatible (yet).
+        let mut predicates = tcx.predicates_of(method.def_id).instantiate_identity(tcx).predicates;
 
         // Self: Unsize<U>
         let unsize_predicate =
-            ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty]).upcast(tcx);
+            ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty]);
+        predicates.push(unsize_predicate.upcast(tcx));
 
         // U: Trait<Arg1, ..., ArgN>
-        let trait_predicate = {
-            let trait_def_id = method.trait_container(tcx).unwrap();
-            let args = GenericArgs::for_item(tcx, trait_def_id, |param, _| {
-                if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
-            });
+        let trait_def_id = method.trait_container(tcx).unwrap();
+        let args = GenericArgs::for_item(tcx, trait_def_id, |param, _| {
+            if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
+        });
+        let trait_predicate = ty::TraitRef::new_from_args(tcx, trait_def_id, args);
+        predicates.push(trait_predicate.upcast(tcx));
 
-            ty::TraitRef::new_from_args(tcx, trait_def_id, args).upcast(tcx)
-        };
-
-        let caller_bounds =
-            param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]);
-
-        ty::ParamEnv::new(tcx.mk_clauses_from_iter(caller_bounds))
+        normalize_param_env_or_error(
+            tcx,
+            ty::ParamEnv::new(tcx.mk_clauses(&predicates)),
+            ObligationCause::dummy_with_span(tcx.def_span(method.def_id)),
+        )
     };
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>
@@ -804,31 +815,8 @@ fn contains_illegal_impl_trait_in_trait<'tcx>(
     let ty = tcx.liberate_late_bound_regions(fn_def_id, ty);
 
     if tcx.asyncness(fn_def_id).is_async() {
-        // FIXME(async_fn_in_dyn_trait): Think of a better way to unify these code paths
-        // to issue an appropriate feature suggestion when users try to use AFIDT.
-        // Obviously we must only do this once AFIDT is finished enough to actually be usable.
-        if tcx.features().async_fn_in_dyn_trait() {
-            let ty::Alias(ty::Projection, proj) = *ty.kind() else {
-                bug!("expected async fn in trait to return an RPITIT");
-            };
-            assert!(tcx.is_impl_trait_in_trait(proj.def_id));
-
-            // FIXME(async_fn_in_dyn_trait): We should check that this bound is legal too,
-            // and stop relying on `async fn` in the definition.
-            for bound in tcx.item_bounds(proj.def_id).instantiate(tcx, proj.args) {
-                if let Some(violation) = bound
-                    .visit_with(&mut IllegalRpititVisitor { tcx, allowed: Some(proj) })
-                    .break_value()
-                {
-                    return Some(violation);
-                }
-            }
-
-            None
-        } else {
-            // Rendering the error as a separate `async-specific` message is better.
-            Some(MethodViolationCode::AsyncFn)
-        }
+        // Rendering the error as a separate `async-specific` message is better.
+        Some(MethodViolationCode::AsyncFn)
     } else {
         ty.visit_with(&mut IllegalRpititVisitor { tcx, allowed: None }).break_value()
     }

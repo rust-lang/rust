@@ -144,10 +144,8 @@ pub(crate) struct AllocMustStatics {
     pub(crate) span: Span,
 }
 
-#[cfg(llvm_enzyme)]
 pub(crate) use autodiff::*;
 
-#[cfg(llvm_enzyme)]
 mod autodiff {
     use super::*;
     #[derive(Diagnostic)]
@@ -188,11 +186,28 @@ mod autodiff {
     }
 
     #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_ret_activity)]
+    pub(crate) struct AutoDiffInvalidRetAct {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) mode: String,
+        pub(crate) act: String,
+    }
+
+    #[derive(Diagnostic)]
     #[diag(builtin_macros_autodiff_mode)]
     pub(crate) struct AutoDiffInvalidMode {
         #[primary_span]
         pub(crate) span: Span,
         pub(crate) mode: String,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_width)]
+    pub(crate) struct AutoDiffInvalidWidth {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) width: u128,
     }
 
     #[derive(Diagnostic)]
@@ -203,9 +218,7 @@ mod autodiff {
     }
 }
 
-#[cfg(not(llvm_enzyme))]
 pub(crate) use ad_fallback::*;
-#[cfg(not(llvm_enzyme))]
 mod ad_fallback {
     use super::*;
     #[derive(Diagnostic)]

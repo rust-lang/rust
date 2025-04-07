@@ -60,19 +60,18 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
             .expect("owning item has no entry");
 
         if max != self.hir_ids_seen.len() - 1 {
-            let hir = self.tcx.hir();
             let pretty_owner = self.tcx.hir_def_path(owner.def_id).to_string_no_crate_verbose();
 
             let missing_items: Vec<_> = (0..=max as u32)
                 .map(|i| ItemLocalId::from_u32(i))
                 .filter(|&local_id| !self.hir_ids_seen.contains(local_id))
-                .map(|local_id| hir.node_to_string(HirId { owner, local_id }))
+                .map(|local_id| self.tcx.hir_id_to_string(HirId { owner, local_id }))
                 .collect();
 
             let seen_items: Vec<_> = self
                 .hir_ids_seen
                 .iter()
-                .map(|local_id| hir.node_to_string(HirId { owner, local_id }))
+                .map(|local_id| self.tcx.hir_id_to_string(HirId { owner, local_id }))
                 .collect();
 
             self.error(|| {
@@ -137,7 +136,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
             self.error(|| {
                 format!(
                     "HirIdValidator: The recorded owner of {} is {} instead of {}",
-                    self.tcx.hir().node_to_string(hir_id),
+                    self.tcx.hir_id_to_string(hir_id),
                     self.tcx.hir_def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
                     self.tcx.hir_def_path(owner.def_id).to_string_no_crate_verbose()
                 )

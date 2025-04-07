@@ -5,10 +5,9 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::visit::MaxUniverse;
 use rustc_middle::ty::{
-    self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeVisitable, TypeVisitableExt,
-    TypingMode,
+    self, AliasRelationDirection, InferConst, MaxUniverse, Term, Ty, TyCtxt, TypeVisitable,
+    TypeVisitableExt, TypingMode,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument, warn};

@@ -31,7 +31,7 @@ fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
         if used_trait_imports.contains(&id) {
             continue;
         }
-        let item = tcx.hir().expect_item(id);
+        let item = tcx.hir_expect_item(id);
         if item.span.is_dummy() {
             continue;
         }

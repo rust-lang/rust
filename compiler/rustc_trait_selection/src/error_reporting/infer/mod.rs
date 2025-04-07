@@ -65,7 +65,9 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
-use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, with_forced_trimmed_paths};
+use rustc_middle::ty::print::{
+    PrintError, PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths,
+};
 use rustc_middle::ty::{
     self, List, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt,
@@ -507,7 +509,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 hir::MatchSource::TryDesugar(scrut_hir_id),
             ) => {
                 if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
-                    let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
+                    let scrut_expr = self.tcx.hir_expect_expr(scrut_hir_id);
                     let scrut_ty = if let hir::ExprKind::Call(_, args) = &scrut_expr.kind {
                         let arg_expr = args.first().expect("try desugaring call w/out arg");
                         self.typeck_results
@@ -546,7 +548,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }) => match source {
                 hir::MatchSource::TryDesugar(scrut_hir_id) => {
                     if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
-                        let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
+                        let scrut_expr = self.tcx.hir_expect_expr(scrut_hir_id);
                         let scrut_ty = if let hir::ExprKind::Call(_, args) = &scrut_expr.kind {
                             let arg_expr = args.first().expect("try desugaring call w/out arg");
                             self.typeck_results
@@ -835,7 +837,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let get_lifetimes = |sig| {
             use rustc_hir::def::Namespace;
             let (sig, reg) = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS)
-                .name_all_regions(sig)
+                .name_all_regions(sig, WrapBinderMode::ForAll)
                 .unwrap();
             let lts: Vec<String> =
                 reg.into_items().map(|(_, kind)| kind.to_string()).into_sorted_stable_ord();
@@ -1464,7 +1466,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypesVisitor<'tcx> {
+        impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypesVisitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) {
                 if let Some((kind, def_id)) = TyCategory::from_ty(self.tcx, t) {
                     let span = self.tcx.def_span(def_id);
@@ -2024,7 +2026,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 LetVisitor { span }.visit_body(body).break_value()
             }
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _, _), .. }) => {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(_, ty, _, _), .. }) => {
                 Some(&ty.peel_refs().kind)
             }
             _ => None,
@@ -2418,7 +2420,7 @@ impl<'tcx> ObligationCause<'tcx> {
 pub struct ObligationCauseAsDiagArg<'tcx>(pub ObligationCause<'tcx>);
 
 impl IntoDiagArg for ObligationCauseAsDiagArg<'_> {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         let kind = match self.0.code() {
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => "method_compat",
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => "type_compat",

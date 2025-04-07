@@ -21,7 +21,7 @@ The target definition can be seen [here](https://github.com/rust-lang/rust/blob/
 ## Building the target
 Because it is Tier 3, rust does not yet ship pre-compiled artifacts for this target.
 
-Therefore, you can build Rust with support for the target by adding it to the target list in config.toml, a sample configuration is shown below. It is expected that the user already have a working GNU compiler toolchain and update the paths accordingly.
+Therefore, you can build Rust with support for the target by adding it to the target list in bootstrap.toml, a sample configuration is shown below. It is expected that the user already have a working GNU compiler toolchain and update the paths accordingly.
 
 ```toml
 [llvm]

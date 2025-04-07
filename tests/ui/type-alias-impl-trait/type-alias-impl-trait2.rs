@@ -14,71 +14,74 @@ fn main() {
     assert_eq!(my_iter(42u8).collect::<Vec<u8>>(), vec![42u8]);
 }
 
-use defining_use_scope::*;
+// single definition
+pub type Foo = impl std::fmt::Display;
 
-mod defining_use_scope {
-    // single definition
-    pub type Foo = impl std::fmt::Display;
+#[define_opaque(Foo)]
+pub fn foo() -> Foo {
+    "foo"
+}
 
-    pub fn foo() -> Foo {
-        "foo"
-    }
+// two definitions
+pub type Bar = impl std::fmt::Display;
 
-    // two definitions
-    pub type Bar = impl std::fmt::Display;
+#[define_opaque(Bar)]
+pub fn bar1() -> Bar {
+    "bar1"
+}
 
-    pub fn bar1() -> Bar {
-        "bar1"
-    }
+#[define_opaque(Bar)]
+pub fn bar2() -> Bar {
+    "bar2"
+}
 
-    pub fn bar2() -> Bar {
-        "bar2"
-    }
+pub type MyIter<T> = impl Iterator<Item = T>;
 
-    pub type MyIter<T> = impl Iterator<Item = T>;
+#[define_opaque(MyIter)]
+pub fn my_iter<T>(t: T) -> MyIter<T> {
+    std::iter::once(t)
+}
 
-    pub fn my_iter<T>(t: T) -> MyIter<T> {
-        std::iter::once(t)
-    }
+#[define_opaque(MyIter)]
+fn my_iter2<T>(t: T) -> MyIter<T> {
+    std::iter::once(t)
+}
 
-    fn my_iter2<T>(t: T) -> MyIter<T> {
-        std::iter::once(t)
-    }
+// param names should not have an effect!
+#[define_opaque(MyIter)]
+fn my_iter3<U>(u: U) -> MyIter<U> {
+    std::iter::once(u)
+}
 
-    // param names should not have an effect!
-    fn my_iter3<U>(u: U) -> MyIter<U> {
-        std::iter::once(u)
-    }
+// param position should not have an effect!
+#[define_opaque(MyIter)]
+fn my_iter4<U, V>(_: U, v: V) -> MyIter<V> {
+    std::iter::once(v)
+}
 
-    // param position should not have an effect!
-    fn my_iter4<U, V>(_: U, v: V) -> MyIter<V> {
-        std::iter::once(v)
-    }
+// param names should not have an effect!
+type MyOtherIter<T> = impl Iterator<Item = T>;
 
-    // param names should not have an effect!
-    type MyOtherIter<T> = impl Iterator<Item = T>;
+#[define_opaque(MyOtherIter)]
+fn my_other_iter<U>(u: U) -> MyOtherIter<U> {
+    std::iter::once(u)
+}
 
-    fn my_other_iter<U>(u: U) -> MyOtherIter<U> {
-        std::iter::once(u)
-    }
+trait Trait {}
+type GenericBound<'a, T: Trait + 'a> = impl Sized + 'a;
 
-    trait Trait {}
-    type GenericBound<'a, T: Trait + 'a> = impl Sized + 'a;
+#[define_opaque(GenericBound)]
+fn generic_bound<'a, T: Trait + 'a>(t: T) -> GenericBound<'a, T> {
+    t
+}
 
-    fn generic_bound<'a, T: Trait + 'a>(t: T) -> GenericBound<'a, T> {
-        t
-    }
+pub type Passthrough<T: 'static> = impl Sized + 'static;
 
-    mod pass_through {
-        pub type Passthrough<T: 'static> = impl Sized + 'static;
+#[define_opaque(Passthrough)]
+fn define_passthrough<T: 'static>(t: T) -> Passthrough<T> {
+    t
+}
 
-        fn define_passthrough<T: 'static>(t: T) -> Passthrough<T> {
-            t
-        }
-    }
-
-    fn use_passthrough(x: pass_through::Passthrough<u32>) -> pass_through::Passthrough<u32> {
-        x
-    }
-
+fn use_passthrough(x: Passthrough<u32>) -> Passthrough<u32> {
+    x
 }

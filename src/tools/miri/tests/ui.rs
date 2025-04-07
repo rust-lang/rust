@@ -217,15 +217,11 @@ fn run_tests(
         ui_test::default_file_filter,
         // This could be used to overwrite the `Config` on a per-test basis.
         |_, _| {},
-        (
-            match args.format {
-                Format::Terse => status_emitter::Text::quiet(),
-                Format::Pretty => status_emitter::Text::verbose(),
-            },
-            status_emitter::Gha::</* GHA Actions groups*/ false> {
-                name: format!("{mode:?} {path} ({target})"),
-            },
-        ),
+        // No GHA output as that would also show in the main rustc repo.
+        match args.format {
+            Format::Terse => status_emitter::Text::quiet(),
+            Format::Pretty => status_emitter::Text::verbose(),
+        },
     )
 }
 
@@ -274,13 +270,13 @@ regexes! {
     // erase thread caller ids
     r"call [0-9]+"                  => "call ID",
     // erase platform module paths
-    "sys::pal::[a-z]+::"                  => "sys::pal::PLATFORM::",
+    r"\bsys::([a-z_]+)::[a-z]+::"   => "sys::$1::PLATFORM::",
     // Windows file paths
     r"\\"                           => "/",
     // erase Rust stdlib path
     "[^ \n`]*/(rust[^/]*|checkout)/library/" => "RUSTLIB/",
     // erase platform file paths
-    "sys/pal/[a-z]+/"                    => "sys/pal/PLATFORM/",
+    r"\bsys/([a-z_]+)/[a-z]+\b"     => "sys/$1/PLATFORM",
     // erase paths into the crate registry
     r"[^ ]*/\.?cargo/registry/.*/(.*\.rs)"  => "CARGO_REGISTRY/.../$1",
 }

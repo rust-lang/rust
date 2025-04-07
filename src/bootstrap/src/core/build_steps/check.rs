@@ -45,7 +45,10 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("sysroot").crate_or_deps("coretests").path("library")
+        run.crate_or_deps("sysroot")
+            .crate_or_deps("coretests")
+            .crate_or_deps("alloctests")
+            .path("library")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -451,7 +454,6 @@ tool_check_step!(Rustdoc { path: "src/tools/rustdoc", alt_path: "src/librustdoc"
 tool_check_step!(Clippy { path: "src/tools/clippy" });
 tool_check_step!(Miri { path: "src/tools/miri" });
 tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri" });
-tool_check_step!(Rls { path: "src/tools/rls" });
 tool_check_step!(Rustfmt { path: "src/tools/rustfmt" });
 tool_check_step!(MiroptTestTools { path: "src/tools/miropt-test-tools" });
 tool_check_step!(TestFloatParse { path: "src/etc/test-float-parse" });

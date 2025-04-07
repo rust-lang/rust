@@ -4,7 +4,7 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
-use rustc_attr_parsing::{
+use rustc_attr_data_structures::{
     self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
 };
 use rustc_data_structures::unord::UnordMap;
@@ -255,7 +255,7 @@ fn late_report_deprecation(
     // Calculating message for lint involves calling `self.def_path_str`,
     // which will by default invoke the expensive `visible_parent_map` query.
     // Skip all that work if the lint is allowed anyway.
-    if tcx.lint_level_at_node(lint, hir_id).0 == Level::Allow {
+    if tcx.lint_level_at_node(lint, hir_id).level == Level::Allow {
         return;
     }
 

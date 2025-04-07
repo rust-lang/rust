@@ -7,10 +7,14 @@ fn main() {
     // These should be linted:
 
     (42..=21).for_each(|x| println!("{}", x));
+    //~^ reversed_empty_ranges
     let _ = (ANSWER..21).filter(|x| x % 2 == 0).take(10).collect::<Vec<_>>();
+    //~^ reversed_empty_ranges
 
     for _ in -21..=-42 {}
+    //~^ reversed_empty_ranges
     for _ in 42u32..21u32 {}
+    //~^ reversed_empty_ranges
 
     // These should be ignored as they are not empty ranges:
 

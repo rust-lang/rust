@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// # let a: u32 = 42;
     /// if a > 10 {
-    ///    println!("a is greater than 10");
+    ///     println!("a is greater than 10");
     /// }
     /// ```
     #[clippy::version = "1.86.0"]

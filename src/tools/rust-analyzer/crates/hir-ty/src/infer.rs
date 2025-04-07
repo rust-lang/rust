@@ -335,7 +335,7 @@ impl Default for InternedStandardTypes {
 ///    sized struct to a dynamically sized one. E.g., &[i32; 4] -> &[i32] is
 ///    represented by:
 ///
-///    ```
+///    ```ignore
 ///    Deref(None) -> [i32; 4],
 ///    Borrow(AutoBorrow::Ref) -> &[i32; 4],
 ///    Unsize -> &[i32],
@@ -481,9 +481,10 @@ pub struct InferenceResult {
     /// or pattern can have multiple binding modes. For example:
     /// ```
     /// fn foo(mut slice: &[u32]) -> usize {
-    ///    slice = match slice {
-    ///        [0, rest @ ..] | rest => rest,
-    ///    };
+    ///     slice = match slice {
+    ///         [0, rest @ ..] | rest => rest,
+    ///     };
+    ///     0
     /// }
     /// ```
     /// the first `rest` has implicit `ref` binding mode, but the second `rest` binding mode is `move`.
@@ -1142,7 +1143,7 @@ impl<'a> InferenceContext<'a> {
             non_assocs: FxHashMap::default(),
         };
         for ty in tait_candidates {
-            ty.visit_with(collector.as_dyn(), DebruijnIndex::INNERMOST);
+            let _ = ty.visit_with(collector.as_dyn(), DebruijnIndex::INNERMOST);
         }
 
         // Non-assoc TAITs can be define-used everywhere as long as they are

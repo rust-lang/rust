@@ -1,9 +1,9 @@
 error[E0053]: method `dont_define_this` has an incompatible type for trait
-  --> $DIR/unnameable_type.rs:19:34
+  --> $DIR/unnameable_type.rs:20:34
    |
 LL | type MyPrivate = impl Sized;
    |                  ---------- the found opaque type
-LL | impl Trait for u32 {
+...
 LL |     fn dont_define_this(private: MyPrivate) {
    |                                  ^^^^^^^^^ expected `Private`, found opaque type
    |

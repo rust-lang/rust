@@ -171,7 +171,7 @@ const fn in_place_collectible<DEST, SRC>(
 ) -> bool {
     // Require matching alignments because an alignment-changing realloc is inefficient on many
     // system allocators and better implementations would require the unstable Allocator trait.
-    if const { SRC::IS_ZST || DEST::IS_ZST || mem::align_of::<SRC>() != mem::align_of::<DEST>() } {
+    if const { SRC::IS_ZST || DEST::IS_ZST || align_of::<SRC>() != align_of::<DEST>() } {
         return false;
     }
 
@@ -181,7 +181,7 @@ const fn in_place_collectible<DEST, SRC>(
             // e.g.
             // - 1 x [u8; 4] -> 4x u8, via flatten
             // - 4 x u8 -> 1x [u8; 4], via array_chunks
-            mem::size_of::<SRC>() * step_merge.get() >= mem::size_of::<DEST>() * step_expand.get()
+            size_of::<SRC>() * step_merge.get() >= size_of::<DEST>() * step_expand.get()
         }
         // Fall back to other from_iter impls if an overflow occurred in the step merge/expansion
         // tracking.
@@ -190,7 +190,7 @@ const fn in_place_collectible<DEST, SRC>(
 }
 
 const fn needs_realloc<SRC, DEST>(src_cap: usize, dst_cap: usize) -> bool {
-    if const { mem::align_of::<SRC>() != mem::align_of::<DEST>() } {
+    if const { align_of::<SRC>() != align_of::<DEST>() } {
         // FIXME(const-hack): use unreachable! once that works in const
         panic!("in_place_collectible() prevents this");
     }
@@ -199,8 +199,8 @@ const fn needs_realloc<SRC, DEST>(src_cap: usize, dst_cap: usize) -> bool {
     // the caller will have calculated a `dst_cap` that is an integer multiple of
     // `src_cap` without remainder.
     if const {
-        let src_sz = mem::size_of::<SRC>();
-        let dest_sz = mem::size_of::<DEST>();
+        let src_sz = size_of::<SRC>();
+        let dest_sz = size_of::<DEST>();
         dest_sz != 0 && src_sz % dest_sz == 0
     } {
         return false;
@@ -208,7 +208,7 @@ const fn needs_realloc<SRC, DEST>(src_cap: usize, dst_cap: usize) -> bool {
 
     // type layouts don't guarantee a fit, so do a runtime check to see if
     // the allocations happen to match
-    src_cap > 0 && src_cap * mem::size_of::<SRC>() != dst_cap * mem::size_of::<DEST>()
+    src_cap > 0 && src_cap * size_of::<SRC>() != dst_cap * size_of::<DEST>()
 }
 
 /// This provides a shorthand for the source type since local type aliases aren't a thing.
@@ -262,7 +262,7 @@ where
             inner.buf.cast::<T>(),
             inner.end as *const T,
             // SAFETY: the multiplication can not overflow, since `inner.cap * size_of::<I::SRC>()` is the size of the allocation.
-            inner.cap.unchecked_mul(mem::size_of::<I::Src>()) / mem::size_of::<T>(),
+            inner.cap.unchecked_mul(size_of::<I::Src>()) / size_of::<T>(),
         )
     };
 
@@ -310,14 +310,14 @@ where
         debug_assert_ne!(dst_cap, 0);
         unsafe {
             // The old allocation exists, therefore it must have a valid layout.
-            let src_align = mem::align_of::<I::Src>();
-            let src_size = mem::size_of::<I::Src>().unchecked_mul(src_cap);
+            let src_align = align_of::<I::Src>();
+            let src_size = size_of::<I::Src>().unchecked_mul(src_cap);
             let old_layout = Layout::from_size_align_unchecked(src_size, src_align);
 
             // The allocation must be equal or smaller for in-place iteration to be possible
             // therefore the new layout must be ≤ the old one and therefore valid.
-            let dst_align = mem::align_of::<T>();
-            let dst_size = mem::size_of::<T>().unchecked_mul(dst_cap);
+            let dst_align = align_of::<T>();
+            let dst_size = size_of::<T>().unchecked_mul(dst_cap);
             let new_layout = Layout::from_size_align_unchecked(dst_size, dst_align);
 
             let result = alloc.shrink(dst_buf.cast(), old_layout, new_layout);
@@ -325,7 +325,7 @@ where
             dst_buf = reallocated.cast::<T>();
         }
     } else {
-        debug_assert_eq!(src_cap * mem::size_of::<I::Src>(), dst_cap * mem::size_of::<T>());
+        debug_assert_eq!(src_cap * size_of::<I::Src>(), dst_cap * size_of::<T>());
     }
 
     mem::forget(dst_guard);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 /**
  * This file mirrors `crates/rust-analyzer/src/lsp_ext.rs` declarations.
  */

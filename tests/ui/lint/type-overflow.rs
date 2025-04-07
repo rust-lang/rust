@@ -41,8 +41,12 @@ fn main() {
 
     let fail = 0x8FFF_FFFF_FFFF_FFFE; //~WARNING literal out of range for `i32`
     //~| HELP consider using the type `u64` instead
-    //~| HELP
+    //~| HELP consider using the type `u64` for the literal and cast it to `i32`
 
     let fail = -0b1111_1111i8; //~WARNING literal out of range for `i8`
     //~| HELP consider using the type `i16` instead
+
+    let fail = 0x8000_0000_0000_0000_0000_0000_FFFF_FFFE; //~WARNING literal out of range for `i32`
+    //~| HELP consider using the type `u128` instead
+    //~| HELP consider using the type `u128` for the literal and cast it to `i32`
 }

@@ -1,7 +1,10 @@
 //@ build-fail
 
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::*;
+
 #[repr(simd)]
 #[derive(Copy, Clone)]
 pub struct i32x4(pub [i32; 4]);
@@ -13,55 +16,6 @@ pub struct u32x4(pub [u32; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 pub struct f32x4(pub [f32; 4]);
-
-#[rustc_intrinsic]
-unsafe fn simd_add<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_sub<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_mul<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_div<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_rem<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_shl<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_shr<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_and<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_or<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_xor<T>(x: T, y: T) -> T;
-
-
-#[rustc_intrinsic]
-unsafe fn simd_neg<T>(x: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_bswap<T>(x: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_bitreverse<T>(x: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_ctlz<T>(x: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_ctpop<T>(x: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_cttz<T>(x: T) -> T;
 
 fn main() {
     let x = i32x4([0, 0, 0, 0]);

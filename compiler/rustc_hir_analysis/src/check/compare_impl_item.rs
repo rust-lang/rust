@@ -12,10 +12,8 @@ use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisi
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt, TypingMode, Upcast,
 };
 use rustc_middle::{bug, span_bug};
@@ -996,6 +994,26 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
     }
 }
 
+/// Gets the string for an explicit self declaration, e.g. "self", "&self",
+/// etc.
+fn get_self_string<'tcx, P>(self_arg_ty: Ty<'tcx>, is_self_ty: P) -> String
+where
+    P: Fn(Ty<'tcx>) -> bool,
+{
+    if is_self_ty(self_arg_ty) {
+        "self".to_owned()
+    } else if let ty::Ref(_, ty, mutbl) = self_arg_ty.kind()
+        && is_self_ty(*ty)
+    {
+        match mutbl {
+            hir::Mutability::Not => "&self".to_owned(),
+            hir::Mutability::Mut => "&mut self".to_owned(),
+        }
+    } else {
+        format!("self: {self_arg_ty}")
+    }
+}
+
 fn report_trait_method_mismatch<'tcx>(
     infcx: &InferCtxt<'tcx>,
     mut cause: ObligationCause<'tcx>,
@@ -1021,21 +1039,22 @@ fn report_trait_method_mismatch<'tcx>(
             if trait_m.fn_has_self_parameter =>
         {
             let ty = trait_sig.inputs()[0];
-            let sugg = match ExplicitSelf::determine(ty, |ty| ty == impl_trait_ref.self_ty()) {
-                ExplicitSelf::ByValue => "self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
-                _ => format!("self: {ty}"),
-            };
+            let sugg = get_self_string(ty, |ty| ty == impl_trait_ref.self_ty());
 
             // When the `impl` receiver is an arbitrary self type, like `self: Box<Self>`, the
             // span points only at the type `Box<Self`>, but we want to cover the whole
             // argument pattern and type.
-            let (sig, body) = tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
+            let (sig, body) = tcx.hir_expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
             let span = tcx
                 .hir_body_param_names(body)
                 .zip(sig.decl.inputs.iter())
-                .map(|(param, ty)| param.span.to(ty.span))
+                .map(|(param_name, ty)| {
+                    if let Some(param_name) = param_name {
+                        param_name.span.to(ty.span)
+                    } else {
+                        ty.span
+                    }
+                })
                 .next()
                 .unwrap_or(impl_err_span);
 
@@ -1051,7 +1070,7 @@ fn report_trait_method_mismatch<'tcx>(
                 // Suggestion to change output type. We do not suggest in `async` functions
                 // to avoid complex logic or incorrect output.
                 if let ImplItemKind::Fn(sig, _) =
-                    &tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind
+                    &tcx.hir_expect_impl_item(impl_m.def_id.expect_local()).kind
                     && !sig.header.asyncness.is_async()
                 {
                     let msg = "change the output type to match the trait";
@@ -1190,12 +1209,12 @@ fn extract_spans_for_error_reporting<'tcx>(
 ) -> (Span, Option<Span>) {
     let tcx = infcx.tcx;
     let mut impl_args = {
-        let (sig, _) = tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
+        let (sig, _) = tcx.hir_expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
         sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span()))
     };
 
     let trait_args = trait_m.def_id.as_local().map(|def_id| {
-        let (sig, _) = tcx.hir().expect_trait_item(def_id).expect_fn();
+        let (sig, _) = tcx.hir_expect_trait_item(def_id).expect_fn();
         sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span()))
     });
 
@@ -1203,7 +1222,7 @@ fn extract_spans_for_error_reporting<'tcx>(
         TypeError::ArgumentMutability(i) | TypeError::ArgumentSorts(ExpectedFound { .. }, i) => {
             (impl_args.nth(i).unwrap(), trait_args.and_then(|mut args| args.nth(i)))
         }
-        _ => (cause.span, tcx.hir().span_if_local(trait_m.def_id)),
+        _ => (cause.span, tcx.hir_span_if_local(trait_m.def_id)),
     }
 }
 
@@ -1233,12 +1252,7 @@ fn compare_self_type<'tcx>(
             .build_with_typing_env(ty::TypingEnv::non_body_analysis(tcx, method.def_id));
         let self_arg_ty = tcx.liberate_late_bound_regions(method.def_id, self_arg_ty);
         let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty);
-        match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
-            ExplicitSelf::ByValue => "self".to_owned(),
-            ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
-            ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
-            _ => format!("self: {self_arg_ty}"),
-        }
+        get_self_string(self_arg_ty, can_eq_self)
     };
 
     match (trait_m.fn_has_self_parameter, impl_m.fn_has_self_parameter) {
@@ -1256,7 +1270,7 @@ fn compare_self_type<'tcx>(
                 self_descr
             );
             err.span_label(impl_m_span, format!("`{self_descr}` used in impl"));
-            if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
+            if let Some(span) = tcx.hir_span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("trait method declared without `{self_descr}`"));
             } else {
                 err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
@@ -1276,7 +1290,7 @@ fn compare_self_type<'tcx>(
                 self_descr
             );
             err.span_label(impl_m_span, format!("expected `{self_descr}` in impl"));
-            if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
+            if let Some(span) = tcx.hir_span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("`{self_descr}` used in trait"));
             } else {
                 err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
@@ -1371,7 +1385,7 @@ fn compare_number_of_generics<'tcx>(
                 spans
             };
             let (trait_spans, impl_trait_spans) = if let Some(def_id) = trait_.def_id.as_local() {
-                let trait_item = tcx.hir().expect_trait_item(def_id);
+                let trait_item = tcx.hir_expect_trait_item(def_id);
                 let arg_spans: Vec<Span> = arg_spans(trait_.kind, trait_item.generics);
                 let impl_trait_spans: Vec<Span> = trait_item
                     .generics
@@ -1384,11 +1398,11 @@ fn compare_number_of_generics<'tcx>(
                     .collect();
                 (Some(arg_spans), impl_trait_spans)
             } else {
-                let trait_span = tcx.hir().span_if_local(trait_.def_id);
+                let trait_span = tcx.hir_span_if_local(trait_.def_id);
                 (trait_span.map(|s| vec![s]), vec![])
             };
 
-            let impl_item = tcx.hir().expect_impl_item(impl_.def_id.expect_local());
+            let impl_item = tcx.hir_expect_impl_item(impl_.def_id.expect_local());
             let impl_item_impl_trait_spans: Vec<Span> = impl_item
                 .generics
                 .params
@@ -1466,7 +1480,7 @@ fn compare_number_of_method_arguments<'tcx>(
             .def_id
             .as_local()
             .and_then(|def_id| {
-                let (trait_m_sig, _) = &tcx.hir().expect_trait_item(def_id).expect_fn();
+                let (trait_m_sig, _) = &tcx.hir_expect_trait_item(def_id).expect_fn();
                 let pos = trait_number_args.saturating_sub(1);
                 trait_m_sig.decl.inputs.get(pos).map(|arg| {
                     if pos == 0 {
@@ -1476,9 +1490,9 @@ fn compare_number_of_method_arguments<'tcx>(
                     }
                 })
             })
-            .or_else(|| tcx.hir().span_if_local(trait_m.def_id));
+            .or_else(|| tcx.hir_span_if_local(trait_m.def_id));
 
-        let (impl_m_sig, _) = &tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
+        let (impl_m_sig, _) = &tcx.hir_expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
         let pos = impl_number_args.saturating_sub(1);
         let impl_span = impl_m_sig
             .decl
@@ -1580,10 +1594,10 @@ fn compare_synthetic_generics<'tcx>(
                     // as another generic argument
                     let new_name = tcx.opt_item_name(trait_def_id)?;
                     let trait_m = trait_m.def_id.as_local()?;
-                    let trait_m = tcx.hir().expect_trait_item(trait_m);
+                    let trait_m = tcx.hir_expect_trait_item(trait_m);
 
                     let impl_m = impl_m.def_id.as_local()?;
-                    let impl_m = tcx.hir().expect_impl_item(impl_m);
+                    let impl_m = tcx.hir_expect_impl_item(impl_m);
 
                     // in case there are no generics, take the spot between the function name
                     // and the opening paren of the argument list
@@ -1613,7 +1627,7 @@ fn compare_synthetic_generics<'tcx>(
                 err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
                 let _: Option<_> = try {
                     let impl_m = impl_m.def_id.as_local()?;
-                    let impl_m = tcx.hir().expect_impl_item(impl_m);
+                    let impl_m = tcx.hir_expect_impl_item(impl_m);
                     let (sig, _) = impl_m.expect_fn();
                     let input_tys = sig.decl.inputs;
 
@@ -1855,7 +1869,7 @@ fn compare_const_predicate_entailment<'tcx>(
         debug!(?impl_ty, ?trait_ty);
 
         // Locate the Span containing just the type of the offending impl
-        let (ty, _) = tcx.hir().expect_impl_item(impl_ct_def_id).expect_const();
+        let (ty, _) = tcx.hir_expect_impl_item(impl_ct_def_id).expect_const();
         cause.span = ty.span;
 
         let mut diag = struct_span_code_err!(
@@ -1868,7 +1882,7 @@ fn compare_const_predicate_entailment<'tcx>(
 
         let trait_c_span = trait_ct.def_id.as_local().map(|trait_ct_def_id| {
             // Add a label to the Span containing just the type of the const
-            let (ty, _) = tcx.hir().expect_trait_item(trait_ct_def_id).expect_const();
+            let (ty, _) = tcx.hir_expect_trait_item(trait_ct_def_id).expect_const();
             ty.span
         });
 
@@ -2361,7 +2375,7 @@ fn try_report_async_mismatch<'tcx>(
             return Err(tcx.sess.dcx().emit_err(MethodShouldReturnFuture {
                 span: tcx.def_span(impl_m.def_id),
                 method_name: tcx.item_ident(impl_m.def_id),
-                trait_item_span: tcx.hir().span_if_local(trait_m.def_id),
+                trait_item_span: tcx.hir_span_if_local(trait_m.def_id),
             }));
         }
     }

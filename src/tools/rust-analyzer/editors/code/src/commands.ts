@@ -78,6 +78,7 @@ export function memoryUsage(ctx: CtxInit): Cmd {
         provideTextDocumentContent(_uri: vscode.Uri): vscode.ProviderResult<string> {
             if (!vscode.window.activeTextEditor) return "";
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return ctx.client.sendRequest(ra.memoryUsage).then((mem: any) => {
                 return "Per-query memory usage:\n" + mem + "\n(note: database has been cleared)";
             });
@@ -161,7 +162,7 @@ export function joinLines(ctx: CtxInit): Cmd {
         });
         const textEdits = await client.protocol2CodeConverter.asTextEdits(items);
         await editor.edit((builder) => {
-            textEdits.forEach((edit: any) => {
+            textEdits.forEach((edit: vscode.TextEdit) => {
                 builder.replace(edit.range, edit.newText);
             });
         });
@@ -209,6 +210,7 @@ export function onEnter(ctx: CtxInit): Cmd {
                 ),
                 position: client.code2ProtocolConverter.asPosition(editor.selection.active),
             })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .catch((_error: any) => {
                 // client.handleFailedRequest(OnEnterRequest.type, error, null);
                 return null;
@@ -528,6 +530,7 @@ function viewFileUsingTextDocumentContentProvider(
                 void sleep(10).then(() => this.eventEmitter.fire(this.uri));
             }
         }
+
         private onDidChangeActiveTextEditor(editor: vscode.TextEditor | undefined) {
             if (editor && isRustEditor(editor) && shouldUpdate) {
                 this.eventEmitter.fire(this.uri);
@@ -620,6 +623,7 @@ export function viewFileText(ctx: CtxInit): Cmd {
                 void sleep(10).then(() => this.eventEmitter.fire(this.uri));
             }
         }
+
         private onDidChangeActiveTextEditor(editor: vscode.TextEditor | undefined) {
             if (editor && isRustEditor(editor)) {
                 this.eventEmitter.fire(this.uri);
@@ -683,6 +687,7 @@ export function viewItemTree(ctx: CtxInit): Cmd {
                 void sleep(10).then(() => this.eventEmitter.fire(this.uri));
             }
         }
+
         private onDidChangeActiveTextEditor(editor: vscode.TextEditor | undefined) {
             if (editor && isRustEditor(editor)) {
                 this.eventEmitter.fire(this.uri);
@@ -1001,9 +1006,8 @@ export function resolveCodeAction(ctx: CtxInit): Cmd {
             ...itemEdit,
             documentChanges: itemEdit.documentChanges?.filter((change) => "kind" in change),
         };
-        const fileSystemEdit = await client.protocol2CodeConverter.asWorkspaceEdit(
-            lcFileSystemEdit,
-        );
+        const fileSystemEdit =
+            await client.protocol2CodeConverter.asWorkspaceEdit(lcFileSystemEdit);
         await vscode.workspace.applyEdit(fileSystemEdit);
 
         // replace all text edits so that we can convert snippet text edits into `vscode.SnippetTextEdit`s

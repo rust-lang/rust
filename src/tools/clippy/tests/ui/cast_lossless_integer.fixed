@@ -7,66 +7,88 @@ fn main() {
     // Test clippy::cast_lossless with casts to integer types
     u16::from(0u8);
     //~^ cast_lossless
+
     i16::from(0u8);
     //~^ cast_lossless
+
     u32::from(0u8);
     //~^ cast_lossless
+
     i32::from(0u8);
     //~^ cast_lossless
+
     u64::from(0u8);
     //~^ cast_lossless
+
     i64::from(0u8);
     //~^ cast_lossless
+
     u128::from(0u8);
     //~^ cast_lossless
+
     i128::from(0u8);
     //~^ cast_lossless
 
     u32::from(0u16);
     //~^ cast_lossless
+
     i32::from(0u16);
     //~^ cast_lossless
+
     u64::from(0u16);
     //~^ cast_lossless
+
     i64::from(0u16);
     //~^ cast_lossless
+
     u128::from(0u16);
     //~^ cast_lossless
+
     i128::from(0u16);
     //~^ cast_lossless
 
     u64::from(0u32);
     //~^ cast_lossless
+
     i64::from(0u32);
     //~^ cast_lossless
+
     u128::from(0u32);
     //~^ cast_lossless
+
     i128::from(0u32);
     //~^ cast_lossless
 
     u128::from(0u64);
     //~^ cast_lossless
+
     i128::from(0u64);
     //~^ cast_lossless
 
     i16::from(0i8);
     //~^ cast_lossless
+
     i32::from(0i8);
     //~^ cast_lossless
+
     i64::from(0i8);
     //~^ cast_lossless
+
     i128::from(0i8);
     //~^ cast_lossless
 
     i32::from(0i16);
     //~^ cast_lossless
+
     i64::from(0i16);
     //~^ cast_lossless
+
     i128::from(0i16);
     //~^ cast_lossless
 
     i64::from(0i32);
     //~^ cast_lossless
+
     i128::from(0i32);
     //~^ cast_lossless
 
@@ -82,10 +104,13 @@ fn main() {
 
     let _: u16 = 0u8.into();
     //~^ cast_lossless
+
     let _: i16 = (-1i8).into();
     //~^ cast_lossless
+
     let _: u16 = (1u8 + 2).into();
     //~^ cast_lossless
+
     let _: u32 = (1i8 as u16).into();
     //~^ cast_lossless
 }
@@ -123,6 +148,7 @@ fn issue11458() {
     let x = 10_u128;
     let _ = i32::from(sign_cast!(x, u8, i8));
     //~^ cast_lossless
+
     let _ = i32::from(sign_cast!(x, u8, i8) + 1);
     //~^ cast_lossless
 }
@@ -146,6 +172,7 @@ fn ty_from_macro() {
     }
 
     let _ = <ty!()>::from(0u8);
+    //~^ cast_lossless
 }
 
 const IN_CONST: u64 = 0u8 as u64;

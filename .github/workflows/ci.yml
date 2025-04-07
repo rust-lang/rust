@@ -1,8 +1,8 @@
 # This file defines our primary CI workflow that runs on pull requests
 # and also on pushes to special branches (auto, try).
 #
-# The actual definition of the executed jobs is calculated by a Python
-# script located at src/ci/github-actions/ci.py, which
+# The actual definition of the executed jobs is calculated by the
+# `src/ci/citool` crate, which
 # uses job definition data from src/ci/github-actions/jobs.yml.
 # You should primarily modify the `jobs.yml` file if you want to modify
 # what jobs are executed in CI.
@@ -56,7 +56,10 @@ jobs:
       - name: Calculate the CI job matrix
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-        run: python3 src/ci/github-actions/ci.py calculate-job-matrix >> $GITHUB_OUTPUT
+        run: |
+          cd src/ci/citool
+          CARGO_INCREMENTAL=0 cargo test
+          CARGO_INCREMENTAL=0 cargo run calculate-job-matrix >> $GITHUB_OUTPUT
         id: jobs
   job:
     name: ${{ matrix.full_name }}
@@ -65,6 +68,9 @@ jobs:
     timeout-minutes: 360
     env:
       CI_JOB_NAME: ${{ matrix.name }}
+      CI_JOB_DOC_URL: ${{ matrix.doc_url }}
+      GITHUB_WORKFLOW_RUN_ID: ${{ github.run_id }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       # commit of PR sha or commit sha. `GITHUB_SHA` is not accurate for PRs.
       HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -179,9 +185,28 @@ jobs:
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
 
+      # Pre-build citool before the following step uninstalls rustup
+      # Build it into the build directory, to avoid modifying sources
+      - name: build citool
+        run: |
+          cd src/ci/citool
+          CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
+
       - name: run the build
-        # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
-        run: src/ci/scripts/run-build-from-ci.sh 2>&1
+        run: |
+          set +e
+          # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
+          src/ci/scripts/run-build-from-ci.sh 2>&1
+          STATUS=$?
+          set -e
+
+          if [[ "$STATUS" -ne 0 && -n "$CI_JOB_DOC_URL" ]]; then
+            echo "****************************************************************************"
+            echo "To find more information about this job, visit the following URL:"
+            echo "$CI_JOB_DOC_URL"
+            echo "****************************************************************************"
+          fi
+          exit ${STATUS}
         env:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
@@ -215,16 +240,37 @@ jobs:
         # erroring about invalid credentials instead.
         if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
 
+      - name: postprocess metrics into the summary
+        # This step is not critical, and if some I/O problem happens, we don't want
+        # to cancel the build.
+        continue-on-error: true
+        run: |
+          if [ -f build/metrics.json ]; then
+            METRICS=build/metrics.json
+          elif [ -f obj/build/metrics.json ]; then
+            METRICS=obj/build/metrics.json
+          else
+            echo "No metrics.json found"
+            exit 0
+          fi
+
+          # Get closest bors merge commit
+          PARENT_COMMIT=`git rev-list --author='bors <bors@rust-lang.org>' -n1 --first-parent HEAD^1`
+
+          ./build/citool/debug/citool postprocess-metrics \
+              --job-name ${CI_JOB_NAME} \
+              --parent ${PARENT_COMMIT} \
+              ${METRICS} >> ${GITHUB_STEP_SUMMARY}
+
       - name: upload job metrics to DataDog
+        # This step is not critical, and if some I/O problem happens, we don't want
+        # to cancel the build.
+        continue-on-error: true
         if: needs.calculate_matrix.outputs.run_type != 'pr'
         env:
-          DATADOG_SITE: datadoghq.com
           DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
           DD_GITHUB_JOB_NAME: ${{ matrix.full_name }}
-        run: |
-          cd src/ci
-          npm ci
-          python3 scripts/upload-build-metrics.py ../../build/cpu-usage.csv
+        run: ./build/citool/debug/citool upload-build-metrics build/cpu-usage.csv
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).

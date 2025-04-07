@@ -14,9 +14,9 @@ mod useless_attribute;
 mod utils;
 
 use clippy_config::Conf;
-use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::msrvs::{self, Msrv, MsrvStack};
 use rustc_ast::{self as ast, Attribute, MetaItemInner, MetaItemKind};
-use rustc_hir::{ImplItem, Item, TraitItem};
+use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
@@ -305,7 +305,7 @@ declare_clippy_lint! {
     ///     header_version: u16
     /// }
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.85.0"]
     pub REPR_PACKED_WITHOUT_ABI,
     suspicious,
     "ensures that `repr(packed)` always comes with a qualified ABI"
@@ -459,44 +459,42 @@ impl_lint_pass!(Attributes => [
 
 impl Attributes {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let attrs = cx.tcx.hir().attrs(item.hir_id());
-        if is_relevant_item(cx, item) {
-            inline_always::check(cx, item.span, item.ident.name, attrs);
+        let attrs = cx.tcx.hir_attrs(item.hir_id());
+        if let ItemKind::Fn { ident, .. } = item.kind
+            && is_relevant_item(cx, item)
+        {
+            inline_always::check(cx, item.span, ident.name, attrs);
         }
-        repr_attributes::check(cx, item.span, attrs, &self.msrv);
+        repr_attributes::check(cx, item.span, attrs, self.msrv);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if is_relevant_impl(cx, item) {
-            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()));
+            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir_attrs(item.hir_id()));
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if is_relevant_trait(cx, item) {
-            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()));
+            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir_attrs(item.hir_id()));
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 pub struct EarlyAttributes {
-    msrv: Msrv,
+    msrv: MsrvStack,
 }
 
 impl EarlyAttributes {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: MsrvStack::new(conf.msrv),
         }
     }
 }
@@ -515,17 +513,17 @@ impl EarlyLintPass for EarlyAttributes {
         non_minimal_cfg::check(cx, attr);
     }
 
-    extract_msrv_attr!(EarlyContext);
+    extract_msrv_attr!();
 }
 
 pub struct PostExpansionEarlyAttributes {
-    msrv: Msrv,
+    msrv: MsrvStack,
 }
 
 impl PostExpansionEarlyAttributes {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: MsrvStack::new(conf.msrv),
         }
     }
 }
@@ -589,5 +587,5 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
         duplicated_attributes::check(cx, &item.attrs);
     }
 
-    extract_msrv_attr!(EarlyContext);
+    extract_msrv_attr!();
 }

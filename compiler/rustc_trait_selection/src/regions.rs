@@ -17,13 +17,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
     ) -> Self {
-        Self::new_with_implied_bounds_compat(
-            infcx,
-            body_id,
-            param_env,
-            assumed_wf_tys,
-            !infcx.tcx.sess.opts.unstable_opts.no_implied_bounds_compat,
-        )
+        Self::new_with_implied_bounds_compat(infcx, body_id, param_env, assumed_wf_tys, false)
     }
 
     fn new_with_implied_bounds_compat(
@@ -31,7 +25,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
         body_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
-        implied_bounds_compat: bool,
+        disable_implied_bounds_hack: bool,
     ) -> Self {
         let mut bounds = vec![];
 
@@ -59,11 +53,11 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
         OutlivesEnvironment::from_normalized_bounds(
             param_env,
             bounds,
-            infcx.implied_bounds_tys_with_compat(
+            infcx.implied_bounds_tys(
                 body_id,
                 param_env,
                 assumed_wf_tys,
-                implied_bounds_compat,
+                disable_implied_bounds_hack,
             ),
         )
     }

@@ -1,5 +1,5 @@
 error: +v8plus,+v9
-  --> $DIR/sparcv8plus.rs:33:1
+  --> $DIR/sparcv8plus.rs:32:1
    |
 LL | compile_error!("+v8plus,+v9");
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

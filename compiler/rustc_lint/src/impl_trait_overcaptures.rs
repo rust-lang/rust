@@ -392,7 +392,7 @@ where
                         }
                         _ => {
                             self.tcx.dcx().span_delayed_bug(
-                                self.tcx.hir().span(arg.hir_id()),
+                                self.tcx.hir_span(arg.hir_id()),
                                 "no valid for captured arg",
                             );
                         }
@@ -506,9 +506,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
         self.tcx
     }
 
-    fn relate_with_variance<T: ty::relate::Relate<TyCtxt<'tcx>>>(
+    fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
         &mut self,
-        variance: rustc_type_ir::Variance,
+        variance: ty::Variance,
         _: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
         a: T,
         b: T,

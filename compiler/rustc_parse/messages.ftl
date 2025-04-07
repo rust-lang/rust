@@ -26,6 +26,11 @@ parse_async_move_block_in_2015 = `async move` blocks are only allowed in Rust 20
 parse_async_move_order_incorrect = the order of `move` and `async` is incorrect
     .suggestion = try switching the order
 
+parse_async_use_block_in_2015 = `async use` blocks are only allowed in Rust 2018 or later
+
+parse_async_use_order_incorrect = the order of `use` and `async` is incorrect
+    .suggestion = try switching the order
+
 parse_at_dot_dot_in_struct_pattern = `@ ..` is not supported in struct patterns
     .suggestion = bind to each field separately or, if you don't need them, just remove `{$ident} @`
 
@@ -348,6 +353,9 @@ parse_incorrect_use_of_await = incorrect use of `await`
 
 parse_incorrect_use_of_await_postfix_suggestion = `await` is a postfix operation
 
+parse_incorrect_use_of_use = incorrect use of `use`
+    .parentheses_suggestion = `use` is not a method call, try removing the parentheses
+
 parse_incorrect_visibility_restriction = incorrect visibility restriction
     .help = some possible visibility restrictions are:
             `pub(crate)`: visible only on the current crate
@@ -424,7 +432,7 @@ parse_invalid_logical_operator = `{$incorrect}` is not a logical operator
     .use_amp_amp_for_conjunction = use `&&` to perform logical conjunction
     .use_pipe_pipe_for_disjunction = use `||` to perform logical disjunction
 
-parse_invalid_meta_item = expected unsuffixed literal, found `{$token}`
+parse_invalid_meta_item = expected unsuffixed literal, found {$descr}
     .quote_ident_sugg = surround the identifier with quotation marks to make it into a string literal
 
 parse_invalid_offset_of = offset_of expects dot-separated field and variant names
@@ -749,10 +757,6 @@ parse_struct_literal_body_without_path =
     struct literal body without path
     .suggestion = you might have forgotten to add the struct literal inside the block
 
-parse_struct_literal_needing_parens =
-    invalid struct literal
-    .suggestion = you might need to surround the struct literal with parentheses
-
 parse_struct_literal_not_allowed_here = struct literals are not allowed here
     .suggestion = surround the struct literal with parentheses
 
@@ -834,8 +838,6 @@ parse_unexpected_expr_in_pat_const_sugg = consider extracting the expression int
 
 parse_unexpected_expr_in_pat_create_guard_sugg = consider moving the expression to a match arm guard
 
-parse_unexpected_expr_in_pat_inline_const_sugg = consider wrapping the expression in an inline `const` (requires `{"#"}![feature(inline_const_pat)]`)
-
 parse_unexpected_expr_in_pat_update_guard_sugg = consider moving the expression to the match arm guard
 
 parse_unexpected_if_with_if = unexpected `if` in the condition expression
@@ -856,7 +858,7 @@ parse_unexpected_parentheses_in_match_arm_pattern = unexpected parentheses surro
 parse_unexpected_self_in_generic_parameters = unexpected keyword `Self` in generic parameters
     .note = you cannot use `Self` as a generic parameter because it is reserved for associated items
 
-parse_unexpected_token_after_dot = unexpected token: `{$actual}`
+parse_unexpected_token_after_dot = unexpected token: {$actual}
 
 parse_unexpected_token_after_label = expected `while`, `for`, `loop` or `{"{"}` after a label
     .suggestion_remove_label = consider removing the label

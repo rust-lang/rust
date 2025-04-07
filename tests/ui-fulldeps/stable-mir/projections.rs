@@ -18,10 +18,10 @@ extern crate rustc_interface;
 extern crate stable_mir;
 
 use rustc_smir::rustc_internal;
+use stable_mir::ItemKind;
 use stable_mir::crate_def::CrateDef;
 use stable_mir::mir::{ProjectionElem, Rvalue, StatementKind};
 use stable_mir::ty::{RigidTy, TyKind, UintTy};
-use stable_mir::ItemKind;
 use std::assert_matches::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -31,7 +31,7 @@ const CRATE_NAME: &str = "input";
 /// Tests projections within Place objects
 fn test_place_projections() -> ControlFlow<()> {
     let items = stable_mir::all_local_items();
-    let body = get_item(&items, (ItemKind::Fn, "projections")).unwrap().body();
+    let body = get_item(&items, (ItemKind::Fn, "projections")).unwrap().expect_body();
     assert_eq!(body.blocks.len(), 4);
     // The first statement assigns `&s.c` to a local. The projections include a deref for `s`, since
     // `s` is passed as a reference argument, and a field access for field `c`.
@@ -53,7 +53,7 @@ fn test_place_projections() -> ControlFlow<()> {
                     );
                     let ty = place.ty(body.locals()).unwrap();
                     assert_matches!(ty.kind().rigid(), Some(RigidTy::Ref(..)));
-                },
+                }
                 other => panic!(
                     "Unable to match against expected rvalue projection. Expected the projection \
                      for `s.c`, which is a Deref and u8 Field. Got: {:?}",
@@ -137,9 +137,7 @@ fn get_item<'a>(
     items: &'a stable_mir::CrateItems,
     item: (ItemKind, &str),
 ) -> Option<&'a stable_mir::CrateItem> {
-    items.iter().find(|crate_item| {
-        crate_item.kind() == item.0 && crate_item.name() == item.1
-    })
+    items.iter().find(|crate_item| crate_item.kind() == item.0 && crate_item.name() == item.1)
 }
 
 /// This test will generate and analyze a dummy crate using the stable mir.

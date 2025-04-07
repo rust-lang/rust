@@ -6,6 +6,7 @@ use clippy_utils::usage::{local_used_after_expr, local_used_in};
 use clippy_utils::{
     get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate, path_to_local, path_to_local_id,
 };
+use rustc_abi::ExternAbi;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -15,7 +16,6 @@ use rustc_middle::ty::{
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
-use rustc_abi::ExternAbi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt as _;
 
 declare_clippy_lint! {

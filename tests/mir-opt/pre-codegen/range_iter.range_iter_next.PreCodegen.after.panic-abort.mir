@@ -9,6 +9,14 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
             let _5: u32;
             let mut _6: u32;
             scope 3 {
+                scope 5 (inlined <u32 as Step>::forward_unchecked) {
+                    scope 6 (inlined core::num::<impl u32>::unchecked_add) {
+                        scope 7 (inlined core::ub_checks::check_language_ub) {
+                            scope 8 (inlined core::ub_checks::check_language_ub::runtime) {
+                            }
+                        }
+                    }
+                }
             }
             scope 4 (inlined std::cmp::impls::<impl PartialOrd for u32>::lt) {
                 let mut _2: u32;
@@ -18,7 +26,6 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
     }
 
     bb0: {
-        StorageLive(_5);
         StorageLive(_4);
         StorageLive(_2);
         _2 = copy ((*_1).0: u32);
@@ -32,25 +39,21 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
 
     bb1: {
         _0 = const Option::<u32>::None;
-        goto -> bb4;
+        goto -> bb3;
     }
 
     bb2: {
         _5 = copy ((*_1).0: u32);
         StorageLive(_6);
-        _6 = <u32 as Step>::forward_unchecked(copy _5, const 1_usize) -> [return: bb3, unwind unreachable];
-    }
-
-    bb3: {
+        _6 = AddUnchecked(copy _5, const 1_u32);
         ((*_1).0: u32) = move _6;
         StorageDead(_6);
         _0 = Option::<u32>::Some(copy _5);
-        goto -> bb4;
+        goto -> bb3;
     }
 
-    bb4: {
+    bb3: {
         StorageDead(_4);
-        StorageDead(_5);
         return;
     }
 }

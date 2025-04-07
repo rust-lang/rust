@@ -1,5 +1,3 @@
-//@ normalize-stderr: "long-type-\d+" -> "long-type-hash"
-
 // Fixes #110131
 //
 // The issue is that we were constructing an `ImplDerived` cause code for the

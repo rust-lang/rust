@@ -14,7 +14,7 @@ use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `std::mem::size_of::<T>() * 8` when
+    /// Checks for usage of `size_of::<T>() * 8` when
     /// `T::BITS` is available.
     ///
     /// ### Why is this bad?
@@ -22,7 +22,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// std::mem::size_of::<usize>() * 8;
+    /// size_of::<usize>() * 8;
     /// ```
     /// Use instead:
     /// ```no_run
@@ -40,9 +40,7 @@ pub struct ManualBits {
 
 impl ManualBits {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -53,7 +51,6 @@ impl<'tcx> LateLintPass<'tcx> for ManualBits {
         if let ExprKind::Binary(bin_op, left_expr, right_expr) = expr.kind
             && let BinOpKind::Mul = &bin_op.node
             && !expr.span.from_expansion()
-            && self.msrv.meets(msrvs::MANUAL_BITS)
             && let ctxt = expr.span.ctxt()
             && left_expr.span.ctxt() == ctxt
             && right_expr.span.ctxt() == ctxt
@@ -61,6 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualBits {
             && matches!(resolved_ty.kind(), ty::Int(_) | ty::Uint(_))
             && let ExprKind::Lit(lit) = &other_expr.kind
             && let LitKind::Int(Pu128(8), _) = lit.node
+            && self.msrv.meets(cx, msrvs::INTEGER_BITS)
         {
             let mut app = Applicability::MachineApplicable;
             let ty_snip = snippet_with_context(cx, real_ty_span, ctxt, "..", &mut app).0;
@@ -70,15 +68,13 @@ impl<'tcx> LateLintPass<'tcx> for ManualBits {
                 cx,
                 MANUAL_BITS,
                 expr.span,
-                "usage of `mem::size_of::<T>()` to obtain the size of `T` in bits",
+                "usage of `size_of::<T>()` to obtain the size of `T` in bits",
                 "consider using",
                 sugg,
                 app,
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn get_one_size_of_ty<'tcx>(

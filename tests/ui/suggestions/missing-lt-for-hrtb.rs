@@ -8,8 +8,6 @@ fn main() {
     let x = S(&|x| {
         println!("hi");
         x
-        //~^ ERROR lifetime may not live long enough
-        //~| ERROR lifetime may not live long enough
     });
     x.0(&X(&()));
 }

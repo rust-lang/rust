@@ -27,11 +27,10 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_macros::extension;
-use rustc_middle::ty::fold::{TypeFoldable, fold_regions};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty,
-    TyCtxt, TypeVisitableExt,
+    TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, kw, sym};
@@ -182,6 +181,20 @@ impl<'tcx> DefiningTy<'tcx> {
             | DefiningTy::Const(def_id, ..)
             | DefiningTy::InlineConst(def_id, ..)
             | DefiningTy::GlobalAsm(def_id) => def_id,
+        }
+    }
+
+    /// Returns the args of the `DefiningTy`. These are equivalent to the identity
+    /// substs of the body, but replaced with region vids.
+    pub(crate) fn args(&self) -> ty::GenericArgsRef<'tcx> {
+        match *self {
+            DefiningTy::Closure(_, args)
+            | DefiningTy::Coroutine(_, args)
+            | DefiningTy::CoroutineClosure(_, args)
+            | DefiningTy::FnDef(_, args)
+            | DefiningTy::Const(_, args)
+            | DefiningTy::InlineConst(_, args) => args,
+            DefiningTy::GlobalAsm(_) => ty::List::empty(),
         }
     }
 }

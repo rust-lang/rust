@@ -5,7 +5,6 @@
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 #![cfg_attr(feature = "nightly", feature(rustdoc_internals))]
 #![cfg_attr(feature = "nightly", feature(step_trait))]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 /*! ABI handling for rustc
@@ -53,7 +52,7 @@ use rustc_data_structures::stable_hasher::StableOrd;
 use rustc_hashes::Hash64;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_Generic, Encodable_Generic, HashStable_Generic};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_Generic};
 
 mod callconv;
 mod layout;
@@ -75,7 +74,10 @@ pub use layout::{LayoutCalculator, LayoutCalculatorError};
 pub trait HashStableContext {}
 
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
 pub struct ReprFlags(u8);
 
 bitflags! {
@@ -107,7 +109,10 @@ impl std::fmt::Debug for ReprFlags {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
 pub enum IntegerType {
     /// Pointer-sized integer type, i.e. `isize` and `usize`. The field shows signedness, e.g.
     /// `Pointer(true)` means `isize`.
@@ -128,7 +133,10 @@ impl IntegerType {
 
 /// Represents the repr options provided by the user.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
-#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
 pub struct ReprOptions {
     pub int: Option<IntegerType>,
     pub align: Option<Align>,
@@ -204,6 +212,13 @@ impl ReprOptions {
         self.c()
     }
 }
+
+/// The maximum supported number of lanes in a SIMD vector.
+///
+/// This value is selected based on backend support:
+/// * LLVM does not appear to have a vector width limit.
+/// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
+pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
 
 /// Parsed [Data layout](https://llvm.org/docs/LangRef.html#data-layout)
 /// for a target, which contains everything needed to compute layouts.
@@ -481,7 +496,10 @@ impl FromStr for Endian {
 
 /// Size of a type in bytes.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
 pub struct Size {
     raw: u64,
 }
@@ -707,7 +725,10 @@ impl Step for Size {
 
 /// Alignment of a type in bytes (always a power of two).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
 pub struct Align {
     pow2: u8,
 }
@@ -796,7 +817,7 @@ impl Align {
     }
 
     #[inline]
-    pub fn bytes(self) -> u64 {
+    pub const fn bytes(self) -> u64 {
         1 << self.pow2
     }
 
@@ -806,7 +827,7 @@ impl Align {
     }
 
     #[inline]
-    pub fn bits(self) -> u64 {
+    pub const fn bits(self) -> u64 {
         self.bytes() * 8
     }
 
@@ -866,7 +887,10 @@ impl AbiAndPrefAlign {
 
 /// Integers, also used for enum discriminants.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
 pub enum Integer {
     I8,
     I16,
@@ -1410,7 +1434,7 @@ impl AddressSpace {
 pub enum BackendRepr {
     Scalar(Scalar),
     ScalarPair(Scalar, Scalar),
-    Vector {
+    SimdVector {
         element: Scalar,
         count: u64,
     },
@@ -1426,9 +1450,9 @@ impl BackendRepr {
     #[inline]
     pub fn is_unsized(&self) -> bool {
         match *self {
-            BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) | BackendRepr::Vector { .. } => {
-                false
-            }
+            BackendRepr::Scalar(_)
+            | BackendRepr::ScalarPair(..)
+            | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => !sized,
         }
     }
@@ -1438,7 +1462,8 @@ impl BackendRepr {
         !self.is_unsized()
     }
 
-    /// Returns `true` if this is a single signed integer scalar
+    /// Returns `true` if this is a single signed integer scalar.
+    /// Sanity check: panics if this is not a scalar type (see PR #70189).
     #[inline]
     pub fn is_signed(&self) -> bool {
         match self {
@@ -1467,7 +1492,7 @@ impl BackendRepr {
             BackendRepr::Scalar(s) => Some(s.align(cx).abi),
             BackendRepr::ScalarPair(s1, s2) => Some(s1.align(cx).max(s2.align(cx)).abi),
             // The align of a Vector can vary in surprising ways
-            BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => None,
+            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => None,
         }
     }
 
@@ -1489,7 +1514,7 @@ impl BackendRepr {
                 Some(size)
             }
             // The size of a Vector can vary in surprising ways
-            BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => None,
+            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => None,
         }
     }
 
@@ -1500,8 +1525,8 @@ impl BackendRepr {
             BackendRepr::ScalarPair(s1, s2) => {
                 BackendRepr::ScalarPair(s1.to_union(), s2.to_union())
             }
-            BackendRepr::Vector { element, count } => {
-                BackendRepr::Vector { element: element.to_union(), count }
+            BackendRepr::SimdVector { element, count } => {
+                BackendRepr::SimdVector { element: element.to_union(), count }
             }
             BackendRepr::Memory { .. } => BackendRepr::Memory { sized: true },
         }
@@ -1513,8 +1538,8 @@ impl BackendRepr {
             // We do *not* ignore the sign since it matters for some ABIs (e.g. s390x).
             (BackendRepr::Scalar(l), BackendRepr::Scalar(r)) => l.primitive() == r.primitive(),
             (
-                BackendRepr::Vector { element: element_l, count: count_l },
-                BackendRepr::Vector { element: element_r, count: count_r },
+                BackendRepr::SimdVector { element: element_l, count: count_l },
+                BackendRepr::SimdVector { element: element_r, count: count_r },
             ) => element_l.primitive() == element_r.primitive() && count_l == count_r,
             (BackendRepr::ScalarPair(l1, l2), BackendRepr::ScalarPair(r1, r2)) => {
                 l1.primitive() == r1.primitive() && l2.primitive() == r2.primitive()
@@ -1735,7 +1760,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if this is an aggregate type (including a ScalarPair!)
     pub fn is_aggregate(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => false,
+            BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => false,
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => true,
         }
     }
@@ -1743,48 +1768,6 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if this is an uninhabited type
     pub fn is_uninhabited(&self) -> bool {
         self.uninhabited
-    }
-
-    pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
-        let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
-        let size = scalar.size(cx);
-        let align = scalar.align(cx);
-
-        let range = scalar.valid_range(cx);
-
-        // All primitive types for which we don't have subtype coercions should get a distinct seed,
-        // so that types wrapping them can use randomization to arrive at distinct layouts.
-        //
-        // Some type information is already lost at this point, so as an approximation we derive
-        // the seed from what remains. For example on 64-bit targets usize and u64 can no longer
-        // be distinguished.
-        let randomization_seed = size
-            .bytes()
-            .wrapping_add(
-                match scalar.primitive() {
-                    Primitive::Int(_, true) => 1,
-                    Primitive::Int(_, false) => 2,
-                    Primitive::Float(_) => 3,
-                    Primitive::Pointer(_) => 4,
-                } << 32,
-            )
-            // distinguishes references from pointers
-            .wrapping_add((range.start as u64).rotate_right(16))
-            // distinguishes char from u32 and bool from u8
-            .wrapping_add((range.end as u64).rotate_right(16));
-
-        LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldsShape::Primitive,
-            backend_repr: BackendRepr::Scalar(scalar),
-            largest_niche,
-            uninhabited: false,
-            size,
-            align,
-            max_repr_align: None,
-            unadjusted_abi_align: align.abi,
-            randomization_seed: Hash64::new(randomization_seed),
-        }
     }
 }
 
@@ -1812,7 +1795,7 @@ where
         f.debug_struct("Layout")
             .field("size", size)
             .field("align", align)
-            .field("abi", backend_repr)
+            .field("backend_repr", backend_repr)
             .field("fields", fields)
             .field("largest_niche", largest_niche)
             .field("uninhabited", uninhabited)
@@ -1877,9 +1860,9 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// non-trivial alignment constraints. You probably want to use `is_1zst` instead.
     pub fn is_zst(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) | BackendRepr::Vector { .. } => {
-                false
-            }
+            BackendRepr::Scalar(_)
+            | BackendRepr::ScalarPair(..)
+            | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => sized && self.size.bytes() == 0,
         }
     }

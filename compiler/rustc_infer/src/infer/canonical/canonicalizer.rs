@@ -8,9 +8,9 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::Idx;
 use rustc_middle::bug;
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{
-    self, BoundVar, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt,
+    self, BoundVar, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 use smallvec::SmallVec;
 use tracing::debug;

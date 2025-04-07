@@ -40,6 +40,7 @@
 //@ revisions: loongarch64
 //@[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@[loongarch64] needs-llvm-components: loongarch
+//@[loongarch64] min-llvm-version: 20
 //FIXME: wasm is disabled due to <https://github.com/rust-lang/rust/issues/115666>.
 //FIXME @ revisions: wasm
 //FIXME @[wasm] compile-flags: --target wasm32-unknown-unknown
@@ -61,7 +62,6 @@
 //@[nvptx64] needs-llvm-components: nvptx
 #![feature(no_core, rustc_attrs, lang_items)]
 #![feature(unsized_fn_params, transparent_unions)]
-#![no_std]
 #![no_core]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 

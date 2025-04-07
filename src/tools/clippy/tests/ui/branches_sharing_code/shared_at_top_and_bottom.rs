@@ -15,7 +15,8 @@ fn overlapping_eq_regions() {
 
     // Overlap with separator
     if x == 7 {
-        //~^ ERROR: all if blocks contain the same code at both the start and the end
+        //~^ branches_sharing_code
+
         let t = 7;
         let _overlap_start = t * 2;
         let _overlap_end = 2 * t;
@@ -32,7 +33,8 @@ fn overlapping_eq_regions() {
 
     // Overlap with separator
     if x == 99 {
-        //~^ ERROR: all if blocks contain the same code at both the start and the end
+        //~^ branches_sharing_code
+
         let r = 7;
         let _overlap_start = r;
         let _overlap_middle = r * r;
@@ -62,7 +64,8 @@ fn complexer_example() {
     let x = 8;
     let y = 9;
     if (x > 7 && y < 13) || (x + y) % 2 == 1 {
-        //~^ ERROR: all if blocks contain the same code at both the start and the end
+        //~^ branches_sharing_code
+
         let a = 0xcafe;
         let b = 0xffff00ff;
         let e_id = gen_id(a, b);
@@ -96,7 +99,8 @@ fn added_note_for_expression_use() -> u32 {
     let x = 9;
 
     let _ = if x == 7 {
-        //~^ ERROR: all if blocks contain the same code at both the start and the end
+        //~^ branches_sharing_code
+
         let _ = 19;
 
         let _splitter = 6;
@@ -109,7 +113,8 @@ fn added_note_for_expression_use() -> u32 {
     };
 
     if x == 9 {
-        //~^ ERROR: all if blocks contain the same code at both the start and the end
+        //~^ branches_sharing_code
+
         let _ = 17;
 
         let _splitter = 6;

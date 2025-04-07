@@ -1,58 +1,38 @@
 error[E0308]: mismatched types
-  --> $DIR/masked-load-store-check-fail.rs:22:13
+  --> $DIR/masked-load-store-check-fail.rs:16:76
    |
-LL |         let _x: Simd<u8, 2> = simd_masked_load(
-   |                               ---------------- arguments to this function are incorrect
-...
-LL |             Simd::<u8, 4>([9; 4])
-   |             ^^^^^^^^^^^^^^^^^^^^^ expected `2`, found `4`
+LL |             simd_masked_load(Simd::<i8, 4>([-1, 0, -1, -1]), arr.as_ptr(), Simd::<u8, 4>([9; 4]));
+   |             ---------------- arguments to this function are incorrect      ^^^^^^^^^^^^^^^^^^^^^ expected `2`, found `4`
    |
    = note: expected struct `Simd<_, 2>`
               found struct `Simd<_, 4>`
 help: the return type of this call is `Simd<u8, 4>` due to the type of the argument passed
-  --> $DIR/masked-load-store-check-fail.rs:19:31
+  --> $DIR/masked-load-store-check-fail.rs:16:13
    |
-LL |           let _x: Simd<u8, 2> = simd_masked_load(
-   |  _______________________________^
-LL | |             Simd::<i8, 4>([-1, 0, -1, -1]),
-LL | |             arr.as_ptr(),
-LL | |             Simd::<u8, 4>([9; 4])
-   | |             --------------------- this argument influences the return type of `simd_masked_load`
-LL | |         );
-   | |_________^
+LL |             simd_masked_load(Simd::<i8, 4>([-1, 0, -1, -1]), arr.as_ptr(), Simd::<u8, 4>([9; 4]));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------^
+   |                                                                            |
+   |                                                                            this argument influences the return type of `simd_masked_load`
 note: function defined here
-  --> $DIR/masked-load-store-check-fail.rs:5:11
-   |
-LL | unsafe fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
-   |           ^^^^^^^^^^^^^^^^                               ---------
+  --> $SRC_DIR/core/src/intrinsics/simd.rs:LL:COL
 
 error[E0308]: mismatched types
-  --> $DIR/masked-load-store-check-fail.rs:29:13
+  --> $DIR/masked-load-store-check-fail.rs:19:92
    |
-LL |         let _x: Simd<u32, 4> = simd_masked_load(
-   |                                ---------------- arguments to this function are incorrect
-...
-LL |             default
-   |             ^^^^^^^ expected `Simd<u32, 4>`, found `Simd<u8, 4>`
+LL |         let _x: Simd<u32, 4> = simd_masked_load(Simd::<u8, 4>([1, 0, 1, 1]), arr.as_ptr(), default);
+   |                                ---------------- arguments to this function are incorrect   ^^^^^^^ expected `Simd<u32, 4>`, found `Simd<u8, 4>`
    |
    = note: expected struct `Simd<u32, _>`
               found struct `Simd<u8, _>`
 help: the return type of this call is `Simd<u8, 4>` due to the type of the argument passed
-  --> $DIR/masked-load-store-check-fail.rs:26:32
+  --> $DIR/masked-load-store-check-fail.rs:19:32
    |
-LL |           let _x: Simd<u32, 4> = simd_masked_load(
-   |  ________________________________^
-LL | |             Simd::<u8, 4>([1, 0, 1, 1]),
-LL | |             arr.as_ptr(),
-LL | |             default
-   | |             ------- this argument influences the return type of `simd_masked_load`
-LL | |         );
-   | |_________^
+LL |         let _x: Simd<u32, 4> = simd_masked_load(Simd::<u8, 4>([1, 0, 1, 1]), arr.as_ptr(), default);
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^
+   |                                                                                            |
+   |                                                                                            this argument influences the return type of `simd_masked_load`
 note: function defined here
-  --> $DIR/masked-load-store-check-fail.rs:5:11
-   |
-LL | unsafe fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
-   |           ^^^^^^^^^^^^^^^^                               ---------
+  --> $SRC_DIR/core/src/intrinsics/simd.rs:LL:COL
 
 error: aborting due to 2 previous errors
 

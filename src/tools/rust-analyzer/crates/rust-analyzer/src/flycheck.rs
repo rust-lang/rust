@@ -244,8 +244,14 @@ struct FlycheckActor {
     /// The receiver side of the channel mentioned above.
     command_receiver: Option<Receiver<CargoCheckMessage>>,
     diagnostics_cleared_for: FxHashSet<Arc<PackageId>>,
-    diagnostics_cleared_for_all: bool,
-    diagnostics_received: bool,
+    diagnostics_received: DiagnosticsReceived,
+}
+
+#[derive(PartialEq)]
+enum DiagnosticsReceived {
+    Yes,
+    No,
+    YesAndClearedForAll,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -276,8 +282,7 @@ impl FlycheckActor {
             command_handle: None,
             command_receiver: None,
             diagnostics_cleared_for: Default::default(),
-            diagnostics_cleared_for_all: false,
-            diagnostics_received: false,
+            diagnostics_received: DiagnosticsReceived::No,
         }
     }
 
@@ -354,7 +359,7 @@ impl FlycheckActor {
                             error
                         );
                     }
-                    if !self.diagnostics_received {
+                    if self.diagnostics_received == DiagnosticsReceived::No {
                         tracing::trace!(flycheck_id = self.id, "clearing diagnostics");
                         // We finished without receiving any diagnostics.
                         // Clear everything for good measure
@@ -396,7 +401,7 @@ impl FlycheckActor {
                             package_id = package_id.as_ref().map(|it| &it.repr),
                             "diagnostic received"
                         );
-                        self.diagnostics_received = true;
+                        self.diagnostics_received = DiagnosticsReceived::Yes;
                         if let Some(package_id) = &package_id {
                             if self.diagnostics_cleared_for.insert(package_id.clone()) {
                                 tracing::trace!(
@@ -409,8 +414,10 @@ impl FlycheckActor {
                                     package_id: Some(package_id.clone()),
                                 });
                             }
-                        } else if !self.diagnostics_cleared_for_all {
-                            self.diagnostics_cleared_for_all = true;
+                        } else if self.diagnostics_received
+                            != DiagnosticsReceived::YesAndClearedForAll
+                        {
+                            self.diagnostics_received = DiagnosticsReceived::YesAndClearedForAll;
                             self.send(FlycheckMessage::ClearDiagnostics {
                                 id: self.id,
                                 package_id: None,
@@ -445,8 +452,7 @@ impl FlycheckActor {
 
     fn clear_diagnostics_state(&mut self) {
         self.diagnostics_cleared_for.clear();
-        self.diagnostics_cleared_for_all = false;
-        self.diagnostics_received = false;
+        self.diagnostics_received = DiagnosticsReceived::No;
     }
 
     /// Construct a `Command` object for checking the user's code. If the user

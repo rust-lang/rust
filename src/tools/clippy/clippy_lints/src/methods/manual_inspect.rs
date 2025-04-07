@@ -14,14 +14,14 @@ use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use super::MANUAL_INSPECT;
 
 #[expect(clippy::too_many_lines)]
-pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name: &str, name_span: Span, msrv: &Msrv) {
+pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name: &str, name_span: Span, msrv: Msrv) {
     if let ExprKind::Closure(c) = arg.kind
         && matches!(c.kind, ClosureKind::Closure)
         && let typeck = cx.typeck_results()
         && let Some(fn_id) = typeck.type_dependent_def_id(expr.hir_id)
         && (is_diag_trait_item(cx, fn_id, sym::Iterator)
-            || (msrv.meets(msrvs::OPTION_RESULT_INSPECT)
-                && (is_diag_item_method(cx, fn_id, sym::Option) || is_diag_item_method(cx, fn_id, sym::Result))))
+            || ((is_diag_item_method(cx, fn_id, sym::Option) || is_diag_item_method(cx, fn_id, sym::Result))
+                && msrv.meets(cx, msrvs::OPTION_RESULT_INSPECT)))
         && let body = cx.tcx.hir_body(c.body)
         && let [param] = body.params
         && let PatKind::Binding(BindingMode(ByRef::No, Mutability::Not), arg_id, _, None) = param.pat.kind

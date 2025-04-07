@@ -1,17 +1,9 @@
-error[E0601]: `main` function not found in crate `reverse_range`
-  --> $DIR/reverse_range.rs:14:78
+error[E0080]: evaluation of constant value failed
+  --> $DIR/reverse_range.rs:7:36
    |
 LL | const NONE: pattern_type!(u8 is 1..0) = unsafe { std::mem::transmute(3_u8) };
-   |                                                                              ^ consider adding a `main` function to `$DIR/reverse_range.rs`
+   |                                    ^ evaluation panicked: exclusive range end at minimum value of type
 
-
-assertion failed: end <= max_value
-error: the compiler unexpectedly panicked. this is a bug.
-
-query stack during panic:
-#0 [eval_to_allocation_raw] const-evaluating + checking `NONE`
-#1 [eval_to_const_value_raw] simplifying constant for the type system `NONE`
-... and 1 other queries... use `env RUST_BACKTRACE=1` to see the full query stack
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0601`.
+For more information about this error, try `rustc --explain E0080`.

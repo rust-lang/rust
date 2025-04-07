@@ -23,19 +23,13 @@ pub struct Preorder<'a, 'tcx> {
     body: &'a Body<'tcx>,
     visited: DenseBitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
-    root_is_start_block: bool,
 }
 
 impl<'a, 'tcx> Preorder<'a, 'tcx> {
     pub fn new(body: &'a Body<'tcx>, root: BasicBlock) -> Preorder<'a, 'tcx> {
         let worklist = vec![root];
 
-        Preorder {
-            body,
-            visited: DenseBitSet::new_empty(body.basic_blocks.len()),
-            worklist,
-            root_is_start_block: root == START_BLOCK,
-        }
+        Preorder { body, visited: DenseBitSet::new_empty(body.basic_blocks.len()), worklist }
     }
 }
 
@@ -71,15 +65,11 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // All the blocks, minus the number of blocks we've visited.
-        let upper = self.body.basic_blocks.len() - self.visited.count();
+        // The worklist might be only things already visited.
+        let lower = 0;
 
-        let lower = if self.root_is_start_block {
-            // We will visit all remaining blocks exactly once.
-            upper
-        } else {
-            self.worklist.len()
-        };
+        // This is extremely loose, but it's not worth a popcnt loop to do better.
+        let upper = self.body.basic_blocks.len();
 
         (lower, Some(upper))
     }
@@ -108,7 +98,6 @@ pub struct Postorder<'a, 'tcx> {
     basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
     visited: DenseBitSet<BasicBlock>,
     visit_stack: Vec<(BasicBlock, Successors<'a>)>,
-    root_is_start_block: bool,
     /// A non-empty `extra` allows for a precise calculation of the successors.
     extra: Option<(TyCtxt<'tcx>, Instance<'tcx>)>,
 }
@@ -123,7 +112,6 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
             basic_blocks,
             visited: DenseBitSet::new_empty(basic_blocks.len()),
             visit_stack: Vec::new(),
-            root_is_start_block: root == START_BLOCK,
             extra,
         };
 
@@ -211,16 +199,13 @@ impl<'tcx> Iterator for Postorder<'_, 'tcx> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // All the blocks, minus the number of blocks we've visited.
-        let upper = self.basic_blocks.len() - self.visited.count();
+        // These bounds are not at all tight, but that's fine.
+        // It's not worth a popcnt loop in `DenseBitSet` to improve the upper,
+        // and in mono-reachable we can't be precise anyway.
+        // Leaning on amortized growth is fine.
 
-        let lower = if self.root_is_start_block {
-            // We will visit all remaining blocks exactly once.
-            upper
-        } else {
-            self.visit_stack.len()
-        };
-
+        let lower = self.visit_stack.len();
+        let upper = self.basic_blocks.len();
         (lower, Some(upper))
     }
 }

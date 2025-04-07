@@ -163,12 +163,19 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 }
             }
 
-            ItemKind::Trait(_, _, _, self_bounds, ..) | ItemKind::TraitAlias(_, self_bounds) => {
-                is_trait = Some(self_bounds);
+            ItemKind::Trait(_, _, _, _, self_bounds, ..)
+            | ItemKind::TraitAlias(_, _, self_bounds) => {
+                is_trait = Some((self_bounds, item.span));
             }
             _ => {}
         }
     };
+
+    if let Node::TraitItem(item) = node {
+        let mut bounds = Vec::new();
+        icx.lowerer().add_default_trait_item_bounds(item, &mut bounds);
+        predicates.extend(bounds);
+    }
 
     let generics = tcx.generics_of(def_id);
 
@@ -180,10 +187,17 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         let mut bounds = Vec::new();
         icx.lowerer().lower_bounds(
             tcx.types.self_param,
-            self_bounds,
+            self_bounds.0,
             &mut bounds,
             ty::List::empty(),
             PredicateFilter::All,
+        );
+        icx.lowerer().add_default_super_traits(
+            def_id,
+            &mut bounds,
+            self_bounds.0,
+            hir_generics,
+            self_bounds.1,
         );
         predicates.extend(bounds);
     }
@@ -209,8 +223,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             GenericParamKind::Type { .. } => {
                 let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
                 let mut bounds = Vec::new();
-                // Params are implicitly sized unless a `?Sized` bound is found
-                icx.lowerer().add_sized_bound(
+                // Implicit bounds are added to type params unless a `?Trait` bound is found
+                icx.lowerer().add_default_traits(
                     &mut bounds,
                     param_ty,
                     &[],
@@ -223,10 +237,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             }
             hir::GenericParamKind::Const { .. } => {
                 let param_def_id = param.def_id.to_def_id();
-                let ct_ty = tcx
-                    .type_of(param_def_id)
-                    .no_bound_vars()
-                    .expect("const parameters cannot be generic");
+                let ct_ty = tcx.type_of(param_def_id).instantiate_identity();
                 let ct = icx.lowerer().lower_const_param(param_def_id, param.hir_id);
                 predicates
                     .insert((ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx), param.span));
@@ -510,7 +521,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
         if matches!(def_kind, DefKind::AnonConst)
             && tcx.features().generic_const_exprs()
             && let Some(defaulted_param_def_id) =
-                tcx.hir().opt_const_param_default_param_def_id(tcx.local_def_id_to_hir_id(def_id))
+                tcx.hir_opt_const_param_default_param_def_id(tcx.local_def_id_to_hir_id(def_id))
         {
             // In `generics_of` we set the generics' parent to be our parent's parent which means that
             // we lose out on the predicates of our actual parent if we dont return those predicates here.
@@ -618,7 +629,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     let (generics, superbounds) = match item.kind {
         hir::ItemKind::Trait(.., generics, supertraits, _) => (generics, supertraits),
-        hir::ItemKind::TraitAlias(generics, supertraits) => (generics, supertraits),
+        hir::ItemKind::TraitAlias(_, generics, supertraits) => (generics, supertraits),
         _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
     };
 
@@ -627,6 +638,22 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     let self_param_ty = tcx.types.self_param;
     let mut bounds = Vec::new();
     icx.lowerer().lower_bounds(self_param_ty, superbounds, &mut bounds, ty::List::empty(), filter);
+    match filter {
+        PredicateFilter::All
+        | PredicateFilter::SelfOnly
+        | PredicateFilter::SelfTraitThatDefines(_)
+        | PredicateFilter::SelfAndAssociatedTypeBounds => {
+            icx.lowerer().add_default_super_traits(
+                trait_def_id,
+                &mut bounds,
+                superbounds,
+                generics,
+                item.span,
+            );
+        }
+        //`ConstIfConst` is only interested in `~const` bounds.
+        PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
+    }
 
     let where_bounds_that_match =
         icx.probe_ty_param_bounds_in_generics(generics, item.owner_id.def_id, filter);
@@ -940,12 +967,6 @@ impl<'tcx> ItemCtxt<'tcx> {
     }
 }
 
-/// Compute the conditions that need to hold for a conditionally-const item to be const.
-/// That is, compute the set of `~const` where clauses for a given item.
-///
-/// This query also computes the `~const` where clauses for associated types, which are
-/// not "const", but which have item bounds which may be `~const`. These must hold for
-/// the `~const` item bound to hold.
 pub(super) fn const_conditions<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
@@ -968,7 +989,7 @@ pub(super) fn const_conditions<'tcx>(
         Node::Item(item) => match item.kind {
             hir::ItemKind::Impl(impl_) => (impl_.generics, None, false),
             hir::ItemKind::Fn { generics, .. } => (generics, None, false),
-            hir::ItemKind::Trait(_, _, generics, supertraits, _) => {
+            hir::ItemKind::Trait(_, _, _, generics, supertraits, _) => {
                 (generics, Some((item.owner_id.def_id, supertraits)), false)
             }
             _ => bug!("const_conditions called on wrong item: {def_id:?}"),
@@ -1063,7 +1084,9 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
     if !tcx.is_conditionally_const(def_id) {
-        bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
+        bug!(
+            "explicit_implied_const_bounds invoked for item that is not conditionally const: {def_id:?}"
+        );
     }
 
     let bounds = match tcx.opt_rpitit_info(def_id.to_def_id()) {

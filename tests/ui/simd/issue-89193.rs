@@ -3,15 +3,14 @@
 // Test that simd gather instructions on slice of usize don't cause crash
 // See issue #89183 - https://github.com/rust-lang/rust/issues/89193
 
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::simd_gather;
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct x4<T>(pub [T; 4]);
-
-#[rustc_intrinsic]
-unsafe fn simd_gather<T, U, V>(x: T, y: U, z: V) -> T;
 
 fn main() {
     let x: [usize; 4] = [10, 11, 12, 13];
@@ -22,12 +21,8 @@ fn main() {
 
     unsafe {
         let pointer = x.as_ptr();
-        let pointers =  x4([
-            pointer.offset(0),
-            pointer.offset(1),
-            pointer.offset(2),
-            pointer.offset(3)
-        ]);
+        let pointers =
+            x4([pointer.offset(0), pointer.offset(1), pointer.offset(2), pointer.offset(3)]);
         let result = simd_gather(default, pointers, mask);
         assert_eq!(result, expected);
     }
@@ -39,12 +34,8 @@ fn main() {
 
     unsafe {
         let pointer = x.as_ptr();
-        let pointers =  x4([
-            pointer.offset(0),
-            pointer.offset(1),
-            pointer.offset(2),
-            pointer.offset(3)
-        ]);
+        let pointers =
+            x4([pointer.offset(0), pointer.offset(1), pointer.offset(2), pointer.offset(3)]);
         let result = simd_gather(default, pointers, mask);
         assert_eq!(result, expected);
     }

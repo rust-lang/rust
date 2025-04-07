@@ -17,10 +17,9 @@ pub(super) fn check<'tcx>(
     recv: &Expr<'_>,
     param: &'tcx Param<'tcx>,
     body: &Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
-    if msrv.meets(msrvs::MATCHES_MACRO)
-        && is_trait_method(cx, expr, sym::Iterator)
+    if is_trait_method(cx, expr, sym::Iterator)
         && let PatKind::Binding(_, arg, _, _) = param.pat.kind
         && let ExprKind::Lit(lit_kind) = recv.kind
         && let LitKind::Str(val, _) = lit_kind.node
@@ -33,6 +32,7 @@ pub(super) fn check<'tcx>(
             (false, true) => lhs,
             _ => return,
         }
+        && msrv.meets(cx, msrvs::MATCHES_MACRO)
         && !is_from_proc_macro(cx, expr)
         && let Some(scrutinee_snip) = scrutinee.span.get_source_text(cx)
     {

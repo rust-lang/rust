@@ -1,0 +1,22 @@
+error: expected unsuffixed literal, found `<`
+  --> $DIR/generics.rs:6:23
+   |
+LL | #[define_opaque(Tait::<()>)]
+   |                       ^
+
+error: expected one of `(`, `,`, `::`, or `=`, found `<`
+  --> $DIR/generics.rs:10:21
+   |
+LL | #[define_opaque(Tait<()>)]
+   |                     ^ expected one of `(`, `,`, `::`, or `=`
+
+error: unconstrained opaque type
+  --> $DIR/generics.rs:3:16
+   |
+LL | type Tait<T> = impl Sized;
+   |                ^^^^^^^^^^
+   |
+   = note: `Tait` must be used in combination with a concrete type within the same crate
+
+error: aborting due to 3 previous errors
+

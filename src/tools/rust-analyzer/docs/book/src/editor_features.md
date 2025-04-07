@@ -1,6 +1,5 @@
 # Editor Features
 
-
 ## VS Code
 
 ### Color configurations
@@ -118,7 +117,7 @@ Or it is possible to specify vars more granularly:
 "rust-analyzer.runnables.extraEnv": [
     {
         // "mask": null, // null mask means that this rule will be applied for all runnables
-        env: {
+        "env": {
                 "APP_ID": "1",
                 "APP_DATA": "asdf"
         }
@@ -145,7 +144,7 @@ If needed, you can set different values for different platforms:
 "rust-analyzer.runnables.extraEnv": [
     {
         "platform": "win32", // windows only
-        env: {
+        "env": {
                 "APP_DATA": "windows specific data"
         }
     },

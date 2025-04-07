@@ -18,7 +18,7 @@ LL |     let _bad1 = "\x0033[0m";
    |                   ++
 
 error: octal-looking escape in a literal
-  --> tests/ui/octal_escapes.rs:6:19
+  --> tests/ui/octal_escapes.rs:7:19
    |
 LL |     let _bad2 = b"\033[0m";
    |                   ^^^^
@@ -34,7 +34,7 @@ LL |     let _bad2 = b"\x0033[0m";
    |                    ++
 
 error: octal-looking escape in a literal
-  --> tests/ui/octal_escapes.rs:7:20
+  --> tests/ui/octal_escapes.rs:9:20
    |
 LL |     let _bad3 = "\\\033[0m";
    |                    ^^^^
@@ -50,7 +50,7 @@ LL |     let _bad3 = "\\\x0033[0m";
    |                     ++
 
 error: octal-looking escape in a literal
-  --> tests/ui/octal_escapes.rs:9:18
+  --> tests/ui/octal_escapes.rs:12:18
    |
 LL |     let _bad4 = "\01234567";
    |                  ^^^^
@@ -66,7 +66,7 @@ LL |     let _bad4 = "\x001234567";
    |                   ++
 
 error: octal-looking escape in a literal
-  --> tests/ui/octal_escapes.rs:10:20
+  --> tests/ui/octal_escapes.rs:14:20
    |
 LL |     let _bad5 = "\0\03";
    |                    ^^^
@@ -81,7 +81,7 @@ LL |     let _bad5 = "\0\x0003";
    |                     +++
 
 error: octal-looking escape in a literal
-  --> tests/ui/octal_escapes.rs:11:23
+  --> tests/ui/octal_escapes.rs:16:23
    |
 LL |     let _bad6 = "Text-\055\077-MoreText";
    |                       ^^^^
@@ -97,7 +97,7 @@ LL |     let _bad6 = "Text-\x0055\077-MoreText";
    |                        ++
 
 error: octal-looking escape in a literal
-  --> tests/ui/octal_escapes.rs:11:27
+  --> tests/ui/octal_escapes.rs:16:27
    |
 LL |     let _bad6 = "Text-\055\077-MoreText";
    |                           ^^^^
@@ -113,7 +113,7 @@ LL |     let _bad6 = "Text-\055\x0077-MoreText";
    |                            ++
 
 error: octal-looking escape in a literal
-  --> tests/ui/octal_escapes.rs:14:31
+  --> tests/ui/octal_escapes.rs:20:31
    |
 LL |     let _bad7 = "EvenMoreText-\01\02-ShortEscapes";
    |                               ^^^
@@ -128,7 +128,7 @@ LL |     let _bad7 = "EvenMoreText-\x0001\02-ShortEscapes";
    |                                +++
 
 error: octal-looking escape in a literal
-  --> tests/ui/octal_escapes.rs:14:34
+  --> tests/ui/octal_escapes.rs:20:34
    |
 LL |     let _bad7 = "EvenMoreText-\01\02-ShortEscapes";
    |                                  ^^^
@@ -143,7 +143,7 @@ LL |     let _bad7 = "EvenMoreText-\01\x0002-ShortEscapes";
    |                                   +++
 
 error: octal-looking escape in a literal
-  --> tests/ui/octal_escapes.rs:17:19
+  --> tests/ui/octal_escapes.rs:24:19
    |
 LL |     let _bad8 = "锈\01锈";
    |                    ^^^
@@ -158,7 +158,7 @@ LL |     let _bad8 = "锈\x0001锈";
    |                     +++
 
 error: octal-looking escape in a literal
-  --> tests/ui/octal_escapes.rs:18:19
+  --> tests/ui/octal_escapes.rs:26:19
    |
 LL |     let _bad9 = "锈\011锈";
    |                    ^^^^

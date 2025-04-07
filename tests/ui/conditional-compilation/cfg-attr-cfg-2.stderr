@@ -1,5 +1,5 @@
 error[E0601]: `main` function not found in crate `cfg_attr_cfg_2`
-  --> $DIR/cfg-attr-cfg-2.rs:8:14
+  --> $DIR/cfg-attr-cfg-2.rs:7:14
    |
 LL | fn main() { }
    |              ^ consider adding a `main` function to `$DIR/cfg-attr-cfg-2.rs`

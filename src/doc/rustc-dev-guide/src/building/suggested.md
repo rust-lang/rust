@@ -120,10 +120,59 @@ create a `.vim/coc-settings.json`. The settings can be edited with
 [`src/etc/rust_analyzer_settings.json`].
 
 Another way is without a plugin, and creating your own logic in your
-configuration. To do this you must translate the JSON to Lua yourself. The
-translation is 1:1 and fairly straight-forward. It must be put in the
-`["rust-analyzer"]` key of the setup table, which is [shown
-here](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#rust_analyzer).
+configuration. The following code will work for any checkout of rust-lang/rust (newer than Febuary 2025):
+
+```lua
+local function expand_config_variables(option)
+    local var_placeholders = {
+        ['${workspaceFolder}'] = function(_)
+            return vim.lsp.buf.list_workspace_folders()[1]
+        end,
+    }
+
+    if type(option) == "table" then
+        local mt = getmetatable(option)
+        local result = {}
+        for k, v in pairs(option) do
+            result[expand_config_variables(k)] = expand_config_variables(v)
+        end
+        return setmetatable(result, mt)
+    end
+    if type(option) ~= "string" then
+        return option
+    end
+    local ret = option
+    for key, fn in pairs(var_placeholders) do
+        ret = ret:gsub(key, fn)
+    end
+    return ret
+end
+lspconfig.rust_analyzer.setup {
+    root_dir = function()
+        local default = lspconfig.rust_analyzer.config_def.default_config.root_dir()
+        -- the default root detection uses the cargo workspace root.
+        -- but for rust-lang/rust, the standard library is in its own workspace.
+        -- use the git root instead.
+        local compiler_config = vim.fs.joinpath(default, "../src/bootstrap/defaults/config.compiler.toml")
+        if vim.fs.basename(default) == "library" and vim.uv.fs_stat(compiler_config) then
+            return vim.fs.dirname(default)
+        end
+        return default
+    end,
+    on_init = function(client)
+        local path = client.workspace_folders[1].name
+        local config = vim.fs.joinpath(path, "src/etc/rust_analyzer_zed.json")
+        if vim.uv.fs_stat(config) then
+            -- load rust-lang/rust settings
+            local file = io.open(config)
+            local json = vim.json.decode(file:read("*a"))
+            client.config.settings["rust-analyzer"] = expand_config_variables(json.lsp["rust-analyzer"].initialization_options)
+            client.notify("workspace/didChangeConfiguration", { settings = client.config.settings })
+        end
+        return true
+    end
+}
+```
 
 If you would like to use the build task that is described above, you may either
 make your own command in your config, or you can install a plugin such as
@@ -280,7 +329,7 @@ subsequent rebuilds:
 ```
 
 If you don't want to include the flag with every command, you can enable it in
-the `config.toml`:
+the `bootstrap.toml`:
 
 ```toml
 [rust]
@@ -359,20 +408,20 @@ ln -s ./src/tools/nix-dev-shell/envrc-shell ./.envrc # Use nix-shell
 ### Note
 
 Note that when using nix on a not-NixOS distribution, it may be necessary to set
-**`patch-binaries-for-nix = true` in `config.toml`**. Bootstrap tries to detect
+**`patch-binaries-for-nix = true` in `bootstrap.toml`**. Bootstrap tries to detect
 whether it's running in nix and enable patching automatically, but this
 detection can have false negatives.
 
-You can also use your nix shell to manage `config.toml`:
+You can also use your nix shell to manage `bootstrap.toml`:
 
 ```nix
 let
   config = pkgs.writeText "rustc-config" ''
-    # Your config.toml content goes here
+    # Your bootstrap.toml content goes here
   ''
 pkgs.mkShell {
   /* ... */
-  # This environment variable tells bootstrap where our config.toml is.
+  # This environment variable tells bootstrap where our bootstrap.toml is.
   RUST_BOOTSTRAP_CONFIG = config;
 }
 ```

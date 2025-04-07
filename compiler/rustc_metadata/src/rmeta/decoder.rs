@@ -2,7 +2,7 @@
 
 use std::iter::TrustedLen;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
@@ -11,7 +11,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::owned_slice::OwnedSlice;
-use rustc_data_structures::sync::{Lock, OnceLock};
+use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
@@ -386,13 +386,11 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
+impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
-    type I = TyCtxt<'tcx>;
-
     #[inline]
-    fn interner(&self) -> Self::I {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx()
     }
 
@@ -1055,15 +1053,15 @@ impl<'a> CrateMetadataRef<'a> {
                     attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
                 (
                     trait_name,
-                    SyntaxExtensionKind::Derive(Box::new(DeriveProcMacro { client })),
+                    SyntaxExtensionKind::Derive(Arc::new(DeriveProcMacro { client })),
                     helper_attrs,
                 )
             }
             ProcMacro::Attr { name, client } => {
-                (name, SyntaxExtensionKind::Attr(Box::new(AttrProcMacro { client })), Vec::new())
+                (name, SyntaxExtensionKind::Attr(Arc::new(AttrProcMacro { client })), Vec::new())
             }
             ProcMacro::Bang { name, client } => {
-                (name, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })), Vec::new())
+                (name, SyntaxExtensionKind::Bang(Arc::new(BangProcMacro { client })), Vec::new())
             }
         };
 
@@ -1071,7 +1069,6 @@ impl<'a> CrateMetadataRef<'a> {
         let attrs: Vec<_> = self.get_item_attrs(id, sess).collect();
         SyntaxExtension::new(
             sess,
-            tcx.features(),
             kind,
             self.get_span(id, sess),
             helper_attrs,
@@ -1117,7 +1114,6 @@ impl<'a> CrateMetadataRef<'a> {
                         value: self.get_default_field(did.index),
                     })
                     .collect(),
-                adt_kind,
                 parent_did,
                 None,
                 data.is_non_exhaustive,
@@ -1322,7 +1318,7 @@ impl<'a> CrateMetadataRef<'a> {
             .expect("argument names not encoded for a function")
             .decode((self, sess))
             .nth(0)
-            .is_some_and(|ident| ident.name == kw::SelfLower)
+            .is_some_and(|ident| matches!(ident, Some(Ident { name: kw::SelfLower, .. })))
     }
 
     fn get_associated_item_or_field_def_ids(self, id: DefIndex) -> impl Iterator<Item = DefId> {

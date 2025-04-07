@@ -1,2 +1,1 @@
-//@ error-pattern:expected
-use foo::{bar}::baz
+use foo::{bar}::baz //~ ERROR expected `;`, found `::`

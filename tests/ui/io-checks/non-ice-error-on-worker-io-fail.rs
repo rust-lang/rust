@@ -16,8 +16,6 @@
 // rely on the checking of the normalized stderr output as our actual
 // "verification" of the diagnostic).
 
-//@ error-pattern: error
-
 // On Mac OS X, we get an error like the below
 //@ normalize-stderr: "failed to write bytecode to ./does-not-exist/output.non_ice_error_on_worker_io_fail.*" -> "io error modifying ./does-not-exist/"
 
@@ -29,3 +27,5 @@
 //@ ignore-arm - the file-system issues do not replicate here, at least on armhf-gnu
 
 #![crate_type = "lib"]
+
+//~? ERROR /does-not-exist/

@@ -1,11 +1,11 @@
-use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::PrintState;
 use rustc_ast_pretty::pprust::state::State as Printer;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::ParseSess;
-use rustc_span::Span;
 use rustc_span::symbol::{Ident, Symbol, kw};
+use rustc_span::{FileName, Span};
 
 /// Render a macro matcher in a format suitable for displaying to the user
 /// as part of an item declaration.
@@ -63,7 +63,7 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
 
     // Create a Parser.
     let psess = ParseSess::new(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec());
-    let file_name = source_map.span_to_filename(span);
+    let file_name = FileName::macro_expansion_source_code(&snippet);
     let mut parser =
         match rustc_parse::new_parser_from_source_str(&psess, file_name, snippet.clone()) {
             Ok(parser) => parser,
@@ -137,15 +137,10 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
                 (Dollar, token::Ident(..)) => (false, DollarIdent),
                 (DollarIdent, token::Colon) => (false, DollarIdentColon),
                 (DollarIdentColon, token::Ident(..)) => (false, Other),
-                (
-                    DollarParen,
-                    token::BinOp(BinOpToken::Plus | BinOpToken::Star) | token::Question,
-                ) => (false, Other),
+                (DollarParen, token::Plus | token::Star | token::Question) => (false, Other),
                 (DollarParen, _) => (false, DollarParenSep),
-                (DollarParenSep, token::BinOp(BinOpToken::Plus | BinOpToken::Star)) => {
-                    (false, Other)
-                }
-                (Pound, token::Not) => (false, PoundBang),
+                (DollarParenSep, token::Plus | token::Star) => (false, Other),
+                (Pound, token::Bang) => (false, PoundBang),
                 (_, token::Ident(symbol, IdentIsRaw::No))
                     if !usually_needs_space_between_keyword_and_open_delim(*symbol, tt.span) =>
                 {

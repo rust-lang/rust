@@ -17,14 +17,14 @@ pub(super) fn is_word(nmi: &MetaItemInner, expected: Symbol) -> bool {
 }
 
 pub(super) fn is_lint_level(symbol: Symbol, attr_id: AttrId) -> bool {
-    Level::from_symbol(symbol, Some(attr_id)).is_some()
+    Level::from_symbol(symbol, || Some(attr_id)).is_some()
 }
 
 pub(super) fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if let ItemKind::Fn { body: eid, .. } = item.kind {
         is_relevant_expr(cx, cx.tcx.typeck_body(eid), cx.tcx.hir_body(eid).value)
     } else {
-        true
+        false
     }
 }
 

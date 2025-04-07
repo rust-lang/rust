@@ -71,7 +71,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for HighlightBuilder<'tcx> {
+        impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for HighlightBuilder<'tcx> {
             fn visit_region(&mut self, r: ty::Region<'tcx>) {
                 if !r.has_name() && self.counter <= 3 {
                     self.highlight.highlighting_region(r, self.counter);

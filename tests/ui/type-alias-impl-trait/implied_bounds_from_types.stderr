@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/implied_bounds_from_types.rs:21:9
+  --> $DIR/implied_bounds_from_types.rs:18:9
    |
 LL | impl<'a> Convert<'a> for () {
    |      -- lifetime `'a` defined here

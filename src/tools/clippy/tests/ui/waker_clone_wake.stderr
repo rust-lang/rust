@@ -8,7 +8,7 @@ LL |     cx.waker().clone().wake();
    = help: to override `-D warnings` add `#[allow(clippy::waker_clone_wake)]`
 
 error: cloning a `Waker` only to wake it
-  --> tests/ui/waker_clone_wake.rs:17:5
+  --> tests/ui/waker_clone_wake.rs:18:5
    |
 LL |     mac!(cx).clone().wake();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `mac!(cx).wake_by_ref()`

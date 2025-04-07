@@ -13,8 +13,7 @@ use rustc_span::{Span, Symbol};
 use smallvec::SmallVec;
 
 use super::{ConstValue, SourceInfo};
-use crate::ty::fold::fold_regions;
-use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
+use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt, fold_regions};
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]

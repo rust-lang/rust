@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/branches3.rs:8:10
+  --> $DIR/branches3.rs:9:10
    |
 LL |         |s| s.len()
    |          ^  - type must be known at this point
@@ -10,7 +10,7 @@ LL |         |s: /* Type */| s.len()
    |           ++++++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/branches3.rs:15:10
+  --> $DIR/branches3.rs:18:10
    |
 LL |         |s| s.len()
    |          ^  - type must be known at this point
@@ -21,7 +21,7 @@ LL |         |s: /* Type */| s.len()
    |           ++++++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/branches3.rs:23:10
+  --> $DIR/branches3.rs:26:10
    |
 LL |         |s| s.len()
    |          ^  - type must be known at this point
@@ -32,7 +32,7 @@ LL |         |s: /* Type */| s.len()
    |           ++++++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/branches3.rs:30:10
+  --> $DIR/branches3.rs:33:10
    |
 LL |         |s| s.len()
    |          ^  - type must be known at this point

@@ -1,5 +1,4 @@
-//! Codegen of intrinsics. This includes `extern "rust-intrinsic"`,
-//! functions marked with the `#[rustc_intrinsic]` attribute
+//! Codegen of intrinsics. This includes functions marked with the `#[rustc_intrinsic]` attribute
 //! and LLVM intrinsics that have symbol names starting with `llvm.`.
 
 macro_rules! intrinsic_args {
@@ -53,7 +52,7 @@ fn report_atomic_type_validation_error<'tcx>(
 
 pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Type {
     let (element, count) = match layout.backend_repr {
-        BackendRepr::Vector { element, count } => (element, count),
+        BackendRepr::SimdVector { element, count } => (element, count),
         _ => unreachable!(),
     };
 
@@ -1031,7 +1030,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = src.layout();
             match layout.ty.kind() {
-                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                ty::Int(_) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, source_info.span, layout.ty);
                     return Ok(());
@@ -1052,7 +1051,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = src.layout();
             match layout.ty.kind() {
-                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                ty::Uint(_) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, source_info.span, layout.ty);
                     return Ok(());
@@ -1073,7 +1072,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = src.layout();
             match layout.ty.kind() {
-                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                ty::Int(_) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, source_info.span, layout.ty);
                     return Ok(());
@@ -1094,7 +1093,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = src.layout();
             match layout.ty.kind() {
-                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                ty::Uint(_) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, source_info.span, layout.ty);
                     return Ok(());

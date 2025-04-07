@@ -58,9 +58,7 @@ pub struct FromOverInto {
 
 impl FromOverInto {
     pub fn new(conf: &'static Conf) -> Self {
-        FromOverInto {
-            msrv: conf.msrv.clone(),
-        }
+        FromOverInto { msrv: conf.msrv }
     }
 }
 
@@ -77,12 +75,12 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && let Some(into_trait_seg) = hir_trait_ref.path.segments.last()
             // `impl Into<target_ty> for self_ty`
             && let Some(GenericArgs { args: [GenericArg::Type(target_ty)], .. }) = into_trait_seg.args
-            && self.msrv.meets(msrvs::RE_REBALANCING_COHERENCE)
             && span_is_local(item.span)
             && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
-                                                  .map(ty::EarlyBinder::instantiate_identity)
+            .map(ty::EarlyBinder::instantiate_identity)
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
             && !matches!(middle_trait_ref.args.type_at(1).kind(), ty::Alias(ty::Opaque, _))
+            && self.msrv.meets(cx, msrvs::RE_REBALANCING_COHERENCE)
         {
             span_lint_and_then(
                 cx,
@@ -114,8 +112,6 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 /// Finds the occurrences of `Self` and `self`
@@ -180,8 +176,8 @@ fn convert_to_from(
         return None;
     };
     let body = cx.tcx.hir_body(body_id);
-    let [input] = body.params else { return None };
-    let PatKind::Binding(.., self_ident, None) = input.pat.kind else {
+    let [self_param] = body.params else { return None };
+    let PatKind::Binding(.., self_ident, None) = self_param.pat.kind else {
         return None;
     };
 
@@ -198,12 +194,12 @@ fn convert_to_from(
         // impl Into<T> for U  ->  impl Into<T> for T
         //                  ~                       ~
         (self_ty.span, into.to_owned()),
-        // fn into(self) -> T  ->  fn from(self) -> T
-        //    ~~~~                    ~~~~
+        // fn into(self: U) -> T  ->  fn from(self) -> T
+        //    ~~~~                       ~~~~
         (impl_item.ident.span, String::from("from")),
-        // fn into([mut] self) -> T  ->  fn into([mut] v: T) -> T
-        //               ~~~~                          ~~~~
-        (self_ident.span, format!("val: {from}")),
+        // fn into([mut] self: U) -> T  ->  fn into([mut] val: T) -> T
+        //               ~~~~~~~                          ~~~~~~
+        (self_ident.span.to(self_param.ty_span), format!("val: {from}")),
     ];
 
     if let FnRetTy::Return(_) = sig.decl.output {

@@ -6,8 +6,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::fold::fold_regions;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, fold_regions};
 use rustc_span::Span;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -161,7 +160,7 @@ fn fn_sig_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Spa
 }
 
 fn impl_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Span> {
-    let item = tcx.hir().expect_item(def_id);
+    let item = tcx.hir_expect_item(def_id);
     if let hir::ItemKind::Impl(impl_) = item.kind {
         let trait_args = impl_
             .of_trait

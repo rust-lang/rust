@@ -35,10 +35,10 @@ impl Step for BuildManifest {
         // (https://github.com/rust-lang/promote-release).
         let mut cmd = builder.tool_cmd(Tool::BuildManifest);
         let sign = builder.config.dist_sign_folder.as_ref().unwrap_or_else(|| {
-            panic!("\n\nfailed to specify `dist.sign-folder` in `config.toml`\n\n")
+            panic!("\n\nfailed to specify `dist.sign-folder` in `bootstrap.toml`\n\n")
         });
         let addr = builder.config.dist_upload_addr.as_ref().unwrap_or_else(|| {
-            panic!("\n\nfailed to specify `dist.upload-addr` in `config.toml`\n\n")
+            panic!("\n\nfailed to specify `dist.upload-addr` in `bootstrap.toml`\n\n")
         });
 
         let today = command("date").arg("+%Y-%m-%d").run_capture_stdout(builder).stdout();
@@ -365,5 +365,30 @@ impl Step for FeaturesStatusDump {
         cmd.arg(builder.out.join("features-status-dump.json"));
 
         cmd.run(builder);
+    }
+}
+
+/// Dummy step that can be used to deliberately trigger bootstrap's step cycle
+/// detector, for automated and manual testing.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct CyclicStep {
+    n: u32,
+}
+
+impl Step for CyclicStep {
+    type Output = ();
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("cyclic-step")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        // Start with n=2, so that we build up a few stack entries before panicking.
+        run.builder.ensure(CyclicStep { n: 2 })
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        // When n=0, the step will try to ensure itself, causing a step cycle.
+        builder.ensure(CyclicStep { n: self.n.saturating_sub(1) })
     }
 }

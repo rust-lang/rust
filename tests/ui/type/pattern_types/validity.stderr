@@ -1,22 +1,22 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/validity.rs:8:1
+  --> $DIR/validity.rs:10:1
    |
 LL | const BAD: pattern_type!(u32 is 1..) = unsafe { std::mem::transmute(0) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               00 00 00 00                                     │ ....
+               HEX_DUMP
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/validity.rs:11:1
+  --> $DIR/validity.rs:13:1
    |
 LL | const BAD_UNINIT: pattern_type!(u32 is 1..) =
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/validity.rs:15:1
+  --> $DIR/validity.rs:17:1
    |
 LL | const BAD_PTR: pattern_type!(usize is 1..) = unsafe { std::mem::transmute(&42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
@@ -25,53 +25,53 @@ LL | const BAD_PTR: pattern_type!(usize is 1..) = unsafe { std::mem::transmute(&
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/validity.rs:18:1
+  --> $DIR/validity.rs:20:1
    |
 LL | const BAD_AGGREGATE: (pattern_type!(u32 is 1..), u32) = (unsafe { std::mem::transmute(0) }, 0);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               00 00 00 00 00 00 00 00                         │ ........
+               HEX_DUMP
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/validity.rs:24:1
+  --> $DIR/validity.rs:26:1
    |
 LL | const BAD_FOO: Foo = Foo(Bar(unsafe { std::mem::transmute(0) }));
    | ^^^^^^^^^^^^^^^^^^ constructing invalid value at .0.0: encountered 0, but expected something greater or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               00 00 00 00                                     │ ....
+               HEX_DUMP
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/validity.rs:27:1
+  --> $DIR/validity.rs:29:1
    |
 LL | const CHAR_UNINIT: pattern_type!(char is 'A'..'Z') =
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/validity.rs:31:1
+  --> $DIR/validity.rs:33:1
    |
 LL | const CHAR_OOB_PAT: pattern_type!(char is 'A'..'Z') = unsafe { std::mem::transmute('a') };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 97, but expected something in the range 65..=89
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               61 00 00 00                                     │ a...
+               HEX_DUMP
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/validity.rs:34:1
+  --> $DIR/validity.rs:36:1
    |
 LL | const CHAR_OOB: pattern_type!(char is 'A'..'Z') = unsafe { std::mem::transmute(u32::MAX) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0xffffffff, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ff ff ff ff                                     │ ....
+               HEX_DUMP
            }
 
 error: aborting due to 8 previous errors

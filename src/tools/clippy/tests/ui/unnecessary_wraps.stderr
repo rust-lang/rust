@@ -32,9 +32,9 @@ error: this function's return value is unnecessarily wrapped by `Option`
    |
 LL | / fn func2(a: bool, b: bool) -> Option<i32> {
 LL | |
+LL | |
 LL | |     if a && b {
-LL | |         return Some(10);
-LL | |     }
+...  |
 LL | |     if a { Some(20) } else { Some(30) }
 LL | | }
    | |_^
@@ -52,9 +52,10 @@ LL ~     if a { 20 } else { 30 }
    |
 
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> tests/ui/unnecessary_wraps.rs:43:1
+  --> tests/ui/unnecessary_wraps.rs:44:1
    |
 LL | / fn func5() -> Option<i32> {
+LL | |
 LL | |
 LL | |     Some(1)
 LL | | }
@@ -72,9 +73,10 @@ LL +     1
    |
 
 error: this function's return value is unnecessarily wrapped by `Result`
-  --> tests/ui/unnecessary_wraps.rs:54:1
+  --> tests/ui/unnecessary_wraps.rs:56:1
    |
 LL | / fn func7() -> Result<i32, ()> {
+LL | |
 LL | |
 LL | |     Ok(1)
 LL | | }
@@ -92,9 +94,10 @@ LL +     1
    |
 
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> tests/ui/unnecessary_wraps.rs:83:5
+  --> tests/ui/unnecessary_wraps.rs:86:5
    |
 LL | /     fn func12() -> Option<i32> {
+LL | |
 LL | |
 LL | |         Some(1)
 LL | |     }
@@ -112,12 +115,12 @@ LL +         1
    |
 
 error: this function's return value is unnecessary
-  --> tests/ui/unnecessary_wraps.rs:111:1
+  --> tests/ui/unnecessary_wraps.rs:115:1
    |
 LL | / fn issue_6640_1(a: bool, b: bool) -> Option<()> {
 LL | |
+LL | |
 LL | |     if a && b {
-LL | |         return Some(());
 ...  |
 LL | | }
    | |_^
@@ -139,12 +142,12 @@ LL ~         return ;
    |
 
 error: this function's return value is unnecessary
-  --> tests/ui/unnecessary_wraps.rs:125:1
+  --> tests/ui/unnecessary_wraps.rs:130:1
    |
 LL | / fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
 LL | |
+LL | |
 LL | |     if a && b {
-LL | |         return Ok(());
 ...  |
 LL | | }
    | |_^

@@ -10,7 +10,7 @@ LL + use std::marker::PhantomData;
    |
 
 error[E0412]: cannot find type `VAL` in this scope
-  --> tests/ui/crashes/ice-6252.rs:11:63
+  --> tests/ui/crashes/ice-6252.rs:12:63
    |
 LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
    |                                                               ^^^ not found in this scope
@@ -21,7 +21,7 @@ LL | impl<N, M, VAL> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
    |          +++++
 
 error[E0046]: not all trait items implemented, missing: `VAL`
-  --> tests/ui/crashes/ice-6252.rs:11:1
+  --> tests/ui/crashes/ice-6252.rs:12:1
    |
 LL |     const VAL: T;
    |     ------------ `VAL` from trait

@@ -13,7 +13,7 @@ LL +     create_dir_all("foo");
    |
 
 error: calling `std::fs::create_dir` where there may be a better way
-  --> tests/ui/create_dir.rs:11:5
+  --> tests/ui/create_dir.rs:12:5
    |
 LL |     std::fs::create_dir("bar").unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

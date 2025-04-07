@@ -6,13 +6,18 @@ use std::iter::repeat;
 
 fn main() {
     let _: String = std::iter::repeat("test").take(10).collect();
+    //~^ manual_str_repeat
     let _: String = std::iter::repeat('x').take(10).collect();
+    //~^ manual_str_repeat
     let _: String = std::iter::repeat('\'').take(10).collect();
+    //~^ manual_str_repeat
     let _: String = std::iter::repeat('"').take(10).collect();
+    //~^ manual_str_repeat
 
     let x = "test";
     let count = 10;
     let _ = repeat(x).take(count + 2).collect::<String>();
+    //~^ manual_str_repeat
 
     macro_rules! m {
         ($e:expr) => {{ $e }};
@@ -22,6 +27,7 @@ fn main() {
 
     let x = &x;
     let _: String = repeat(*x).take(count).collect();
+    //~^ manual_str_repeat
 
     macro_rules! repeat_m {
         ($e:expr) => {{ repeat($e) }};
@@ -31,6 +37,7 @@ fn main() {
 
     let x: Box<str> = Box::from("test");
     let _: String = repeat(x).take(count).collect();
+    //~^ manual_str_repeat
 
     #[derive(Clone)]
     struct S;
@@ -43,9 +50,11 @@ fn main() {
     let _: String = repeat(Box::new(S)).take(count).collect();
 
     let _: String = repeat(Cow::Borrowed("test")).take(count).collect();
+    //~^ manual_str_repeat
 
     let x = "x".to_owned();
     let _: String = repeat(x).take(count).collect();
+    //~^ manual_str_repeat
 
     let x = 'x';
     // Don't lint, not char literal
@@ -61,4 +70,5 @@ fn _msrv_1_15() {
 #[clippy::msrv = "1.16"]
 fn _msrv_1_16() {
     let _: String = std::iter::repeat("test").take(10).collect();
+    //~^ manual_str_repeat
 }

@@ -100,6 +100,23 @@ fn check(
 }
 
 #[test]
+fn unbalanced_brace() {
+    check(
+        Edition::CURRENT,
+        Edition::CURRENT,
+        r#"
+() => { { }
+"#,
+        r#""#,
+        expect![[r#"
+            SUBTREE $$ 1:0@0..0#2 1:0@0..0#2
+              SUBTREE {} 0:0@9..10#2 0:0@11..12#2
+
+            {}"#]],
+    );
+}
+
+#[test]
 fn token_mapping_smoke_test() {
     check(
         Edition::CURRENT,

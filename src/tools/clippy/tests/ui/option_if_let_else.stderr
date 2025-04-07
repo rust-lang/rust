@@ -1,7 +1,8 @@
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:12:5
+  --> tests/ui/option_if_let_else.rs:13:5
    |
 LL | /     if let Some(x) = string {
+LL | |
 LL | |         (true, x)
 LL | |     } else {
 LL | |         (false, "hello")
@@ -12,22 +13,23 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::option_if_let_else)]`
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:30:13
+  --> tests/ui/option_if_let_else.rs:32:13
    |
 LL |     let _ = if let Some(s) = *string { s.len() } else { 0 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `string.map_or(0, |s| s.len())`
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:31:13
+  --> tests/ui/option_if_let_else.rs:34:13
    |
 LL |     let _ = if let Some(s) = &num { s } else { &0 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `num.as_ref().map_or(&0, |s| s)`
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:32:13
+  --> tests/ui/option_if_let_else.rs:36:13
    |
 LL |       let _ = if let Some(s) = &mut num {
    |  _____________^
+LL | |
 LL | |         *s += 1;
 LL | |         s
 LL | |     } else {
@@ -38,22 +40,24 @@ LL | |     };
 help: try
    |
 LL ~     let _ = num.as_mut().map_or(&0, |s| {
+LL +
 LL +         *s += 1;
 LL +         s
 LL ~     });
    |
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:38:13
+  --> tests/ui/option_if_let_else.rs:43:13
    |
 LL |     let _ = if let Some(ref s) = num { s } else { &0 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `num.as_ref().map_or(&0, |s| s)`
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:39:13
+  --> tests/ui/option_if_let_else.rs:45:13
    |
 LL |       let _ = if let Some(mut s) = num {
    |  _____________^
+LL | |
 LL | |         s += 1;
 LL | |         s
 LL | |     } else {
@@ -64,16 +68,18 @@ LL | |     };
 help: try
    |
 LL ~     let _ = num.map_or(0, |mut s| {
+LL +
 LL +         s += 1;
 LL +         s
 LL ~     });
    |
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:45:13
+  --> tests/ui/option_if_let_else.rs:52:13
    |
 LL |       let _ = if let Some(ref mut s) = num {
    |  _____________^
+LL | |
 LL | |         *s += 1;
 LL | |         s
 LL | |     } else {
@@ -84,15 +90,17 @@ LL | |     };
 help: try
    |
 LL ~     let _ = num.as_mut().map_or(&0, |s| {
+LL +
 LL +         *s += 1;
 LL +         s
 LL ~     });
    |
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:54:5
+  --> tests/ui/option_if_let_else.rs:62:5
    |
 LL | /     if let Some(x) = arg {
+LL | |
 LL | |         let y = x * x;
 LL | |         y * y
 LL | |     } else {
@@ -103,30 +111,33 @@ LL | |     }
 help: try
    |
 LL ~     arg.map_or(13, |x| {
+LL +
 LL +         let y = x * x;
 LL +         y * y
 LL +     })
    |
 
 error: use Option::map_or_else instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:67:13
-   |
-LL |       let _ = if let Some(x) = arg {
-   |  _____________^
-LL | |         x
-LL | |     } else {
-...  |
-LL | |     };
-   | |_____^ help: try: `arg.map_or_else(side_effect, |x| x)`
-
-error: use Option::map_or_else instead of an if let/else
   --> tests/ui/option_if_let_else.rs:76:13
    |
 LL |       let _ = if let Some(x) = arg {
    |  _____________^
+LL | |
+LL | |         x
+LL | |     } else {
+LL | |         // map_or_else must be suggested
+LL | |         side_effect()
+LL | |     };
+   | |_____^ help: try: `arg.map_or_else(side_effect, |x| x)`
+
+error: use Option::map_or_else instead of an if let/else
+  --> tests/ui/option_if_let_else.rs:86:13
+   |
+LL |       let _ = if let Some(x) = arg {
+   |  _____________^
+LL | |
 LL | |         x * x * x * x
 LL | |     } else {
-LL | |         let mut y = 1;
 ...  |
 LL | |         y
 LL | |     };
@@ -143,9 +154,10 @@ LL ~     }, |x| x * x * x * x);
    |
 
 error: use Option::map_or_else instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:109:13
+  --> tests/ui/option_if_let_else.rs:120:13
    |
 LL | /             if let Some(idx) = s.find('.') {
+LL | |
 LL | |                 vec![s[..idx].to_string(), s[idx..].to_string()]
 LL | |             } else {
 LL | |                 vec![s.to_string()]
@@ -153,13 +165,13 @@ LL | |             }
    | |_____________^ help: try: `s.find('.').map_or_else(|| vec![s.to_string()], |idx| vec![s[..idx].to_string(), s[idx..].to_string()])`
 
 error: use Option::map_or_else instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:120:5
+  --> tests/ui/option_if_let_else.rs:132:5
    |
 LL | /     if let Ok(binding) = variable {
+LL | |
 LL | |         println!("Ok {binding}");
 LL | |         true
-LL | |     } else {
-LL | |         println!("Err");
+...  |
 LL | |         false
 LL | |     }
    | |_____^
@@ -170,25 +182,26 @@ LL ~     variable.map_or_else(|_| {
 LL +         println!("Err");
 LL +         false
 LL +     }, |binding| {
+LL +
 LL +         println!("Ok {binding}");
 LL +         true
 LL +     })
    |
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:144:13
+  --> tests/ui/option_if_let_else.rs:157:13
    |
 LL |     let _ = if let Some(x) = optional { x + 2 } else { 5 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `optional.map_or(5, |x| x + 2)`
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:154:13
+  --> tests/ui/option_if_let_else.rs:168:13
    |
 LL |       let _ = if let Some(x) = Some(0) {
    |  _____________^
+LL | |
 LL | |         loop {
 LL | |             if x == 0 {
-LL | |                 break x;
 ...  |
 LL | |         0
 LL | |     };
@@ -204,16 +217,17 @@ LL ~         });
    |
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:182:13
+  --> tests/ui/option_if_let_else.rs:197:13
    |
 LL |     let _ = if let Some(x) = Some(0) { s.len() + x } else { s.len() };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(0).map_or(s.len(), |x| s.len() + x)`
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:186:13
+  --> tests/ui/option_if_let_else.rs:202:13
    |
 LL |       let _ = if let Some(x) = Some(0) {
    |  _____________^
+LL | |
 LL | |         let s = s;
 LL | |         s.len() + x
 LL | |     } else {
@@ -224,82 +238,90 @@ LL | |     };
 help: try
    |
 LL ~     let _ = Some(0).map_or(1, |x| {
+LL +
 LL +         let s = s;
 LL +         s.len() + x
 LL ~     });
    |
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:225:13
+  --> tests/ui/option_if_let_else.rs:242:13
    |
 LL |       let _ = match s {
    |  _____________^
+LL | |
 LL | |         Some(string) => string.len(),
 LL | |         None => 1,
 LL | |     };
    | |_____^ help: try: `s.map_or(1, |string| string.len())`
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:229:13
+  --> tests/ui/option_if_let_else.rs:247:13
    |
 LL |       let _ = match Some(10) {
    |  _____________^
+LL | |
 LL | |         Some(a) => a + 1,
 LL | |         None => 5,
 LL | |     };
    | |_____^ help: try: `Some(10).map_or(5, |a| a + 1)`
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:235:13
+  --> tests/ui/option_if_let_else.rs:254:13
    |
 LL |       let _ = match res {
    |  _____________^
+LL | |
 LL | |         Ok(a) => a + 1,
 LL | |         _ => 1,
 LL | |     };
    | |_____^ help: try: `res.map_or(1, |a| a + 1)`
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:239:13
+  --> tests/ui/option_if_let_else.rs:259:13
    |
 LL |       let _ = match res {
    |  _____________^
+LL | |
 LL | |         Err(_) => 1,
 LL | |         Ok(a) => a + 1,
 LL | |     };
    | |_____^ help: try: `res.map_or(1, |a| a + 1)`
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:243:13
+  --> tests/ui/option_if_let_else.rs:264:13
    |
 LL |     let _ = if let Ok(a) = res { a + 1 } else { 5 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `res.map_or(5, |a| a + 1)`
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:260:17
+  --> tests/ui/option_if_let_else.rs:282:17
    |
 LL |           let _ = match initial {
    |  _________________^
+LL | |
 LL | |             Some(value) => do_something(value),
 LL | |             None => 42,
 LL | |         };
    | |_________^ help: try: `initial.as_ref().map_or(42, |value| do_something(value))`
 
 error: use Option::map_or instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:267:17
+  --> tests/ui/option_if_let_else.rs:290:17
    |
 LL |           let _ = match initial {
    |  _________________^
+LL | |
 LL | |             Some(value) => do_something2(value),
 LL | |             None => 42,
 LL | |         };
    | |_________^ help: try: `initial.as_mut().map_or(42, |value| do_something2(value))`
 
 error: use Option::map_or_else instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:290:24
+  --> tests/ui/option_if_let_else.rs:314:24
    |
 LL |       let mut _hashmap = if let Some(hm) = &opt {
    |  ________________________^
+LL | |
 LL | |         hm.clone()
 LL | |     } else {
 LL | |         HashMap::new()
@@ -307,7 +329,7 @@ LL | |     };
    | |_____^ help: try: `opt.as_ref().map_or_else(HashMap::new, |hm| hm.clone())`
 
 error: use Option::map_or_else instead of an if let/else
-  --> tests/ui/option_if_let_else.rs:296:19
+  --> tests/ui/option_if_let_else.rs:321:19
    |
 LL |     let mut _hm = if let Some(hm) = &opt { hm.clone() } else { new_map!() };
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `opt.as_ref().map_or_else(|| new_map!(), |hm| hm.clone())`

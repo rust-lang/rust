@@ -2,9 +2,6 @@
 //@[ascii] compile-flags: --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
 //@[unicode] compile-flags: -Zunstable-options --json=diagnostic-unicode --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
 
-// The regex below normalizes the long type file name to make it suitable for compare-modes.
-//@ normalize-stderr: "'\$TEST_BUILD_DIR/.*\.long-type-\d+.txt'" -> "'$$TEST_BUILD_DIR/$$FILE.long-type-hash.txt'"
-
 mod a {
     // Force the "short path for unique types" machinery to trip up
     pub struct Atype;

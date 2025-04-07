@@ -6,7 +6,7 @@ use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
     db::ExpandDatabase, symbols::FileSymbol, AssocItem, FieldSource, HasContainer, HasCrate,
-    HasSource, HirDisplay, HirFileId, HirFileIdExt, InFile, LocalSource, ModuleSource,
+    HasSource, HirDisplay, HirFileId, InFile, LocalSource, ModuleSource,
 };
 use ide_db::{
     defs::Definition,
@@ -116,7 +116,9 @@ impl NavigationTarget {
                             SymbolKind::Module,
                         );
                         res.docs = module.docs(db);
-                        res.description = Some(module.display(db, edition).to_string());
+                        res.description = Some(
+                            module.display(db, module.krate().to_display_target(db)).to_string(),
+                        );
                         res
                     },
                 )
@@ -183,6 +185,7 @@ impl TryToNav for FileSymbol {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
         let edition =
             self.def.module(db).map(|it| it.krate().edition(db)).unwrap_or(Edition::CURRENT);
+        let display_target = self.def.krate(db).to_display_target(db);
         Some(
             orig_range_with_focus_r(
                 db,
@@ -203,16 +206,34 @@ impl TryToNav for FileSymbol {
                     focus_range,
                     container_name: self.container_name.clone(),
                     description: match self.def {
-                        hir::ModuleDef::Module(it) => Some(it.display(db, edition).to_string()),
-                        hir::ModuleDef::Function(it) => Some(it.display(db, edition).to_string()),
-                        hir::ModuleDef::Adt(it) => Some(it.display(db, edition).to_string()),
-                        hir::ModuleDef::Variant(it) => Some(it.display(db, edition).to_string()),
-                        hir::ModuleDef::Const(it) => Some(it.display(db, edition).to_string()),
-                        hir::ModuleDef::Static(it) => Some(it.display(db, edition).to_string()),
-                        hir::ModuleDef::Trait(it) => Some(it.display(db, edition).to_string()),
-                        hir::ModuleDef::TraitAlias(it) => Some(it.display(db, edition).to_string()),
-                        hir::ModuleDef::TypeAlias(it) => Some(it.display(db, edition).to_string()),
-                        hir::ModuleDef::Macro(it) => Some(it.display(db, edition).to_string()),
+                        hir::ModuleDef::Module(it) => {
+                            Some(it.display(db, display_target).to_string())
+                        }
+                        hir::ModuleDef::Function(it) => {
+                            Some(it.display(db, display_target).to_string())
+                        }
+                        hir::ModuleDef::Adt(it) => Some(it.display(db, display_target).to_string()),
+                        hir::ModuleDef::Variant(it) => {
+                            Some(it.display(db, display_target).to_string())
+                        }
+                        hir::ModuleDef::Const(it) => {
+                            Some(it.display(db, display_target).to_string())
+                        }
+                        hir::ModuleDef::Static(it) => {
+                            Some(it.display(db, display_target).to_string())
+                        }
+                        hir::ModuleDef::Trait(it) => {
+                            Some(it.display(db, display_target).to_string())
+                        }
+                        hir::ModuleDef::TraitAlias(it) => {
+                            Some(it.display(db, display_target).to_string())
+                        }
+                        hir::ModuleDef::TypeAlias(it) => {
+                            Some(it.display(db, display_target).to_string())
+                        }
+                        hir::ModuleDef::Macro(it) => {
+                            Some(it.display(db, display_target).to_string())
+                        }
                         hir::ModuleDef::BuiltinType(_) => None,
                     },
                     docs: None,
@@ -353,12 +374,11 @@ impl ToNavFromAst for hir::TraitAlias {
 
 impl<D> TryToNav for D
 where
-    D: HasSource + ToNavFromAst + Copy + HasDocs + HirDisplay,
+    D: HasSource + ToNavFromAst + Copy + HasDocs + HirDisplay + HasCrate,
     D::Ast: ast::HasName,
 {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
         let src = self.source(db)?;
-        let edition = src.file_id.original_file(db).edition();
         Some(
             NavigationTarget::from_named(
                 db,
@@ -367,7 +387,8 @@ where
             )
             .map(|mut res| {
                 res.docs = self.docs(db);
-                res.description = Some(self.display(db, edition).to_string());
+                res.description =
+                    Some(self.display(db, self.krate(db).to_display_target(db)).to_string());
                 res.container_name = self.container_name(db);
                 res
             }),
@@ -439,7 +460,8 @@ impl TryToNav for hir::ExternCrateDecl {
         let focus = value
             .rename()
             .map_or_else(|| value.name_ref().map(Either::Left), |it| it.name().map(Either::Right));
-        let edition = self.module(db).krate().edition(db);
+        let krate = self.module(db).krate();
+        let edition = krate.edition(db);
 
         Some(orig_range_with_focus(db, file_id, value.syntax(), focus).map(
             |(FileRange { file_id, range: full_range }, focus_range)| {
@@ -455,7 +477,7 @@ impl TryToNav for hir::ExternCrateDecl {
                 );
 
                 res.docs = self.docs(db);
-                res.description = Some(self.display(db, edition).to_string());
+                res.description = Some(self.display(db, krate.to_display_target(db)).to_string());
                 res.container_name = container_name(db, *self, edition);
                 res
             },
@@ -466,14 +488,15 @@ impl TryToNav for hir::ExternCrateDecl {
 impl TryToNav for hir::Field {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
         let src = self.source(db)?;
-        let edition = self.parent_def(db).module(db).krate().edition(db);
+        let krate = self.parent_def(db).module(db).krate();
 
         let field_source = match &src.value {
             FieldSource::Named(it) => {
                 NavigationTarget::from_named(db, src.with_value(it), SymbolKind::Field).map(
                     |mut res| {
                         res.docs = self.docs(db);
-                        res.description = Some(self.display(db, edition).to_string());
+                        res.description =
+                            Some(self.display(db, krate.to_display_target(db)).to_string());
                         res
                     },
                 )

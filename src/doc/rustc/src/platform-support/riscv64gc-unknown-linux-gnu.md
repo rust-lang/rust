@@ -26,7 +26,7 @@ These targets are distributed through `rustup`, and otherwise require no
 special configuration.
 
 If you need to build your own Rust for some reason though, the targets can be
-enabled in `config.toml`. For example:
+enabled in `bootstrap.toml`. For example:
 
 ```toml
 [build]
@@ -65,7 +65,7 @@ section below.
 
 A RISC-V toolchain can be obtained for Windows/Mac/Linux from the
 [`riscv-gnu-toolchain`](https://github.com/riscv-collab/riscv-gnu-toolchain)
-repostory. Binaries are available via
+repository. Binaries are available via
 [embecosm](https://www.embecosm.com/resources/tool-chain-downloads/#riscv-linux),
 and may also be available from your OS's package manager.
 

@@ -11,30 +11,38 @@ pub struct S<'a> {
 
 pub fn positives(mut a: usize, b: &mut u32, mut s: S) {
     a = a;
-    //~^ ERROR: self-assignment of `a` to `a`
-    //~| NOTE: `-D clippy::self-assignment` implied by `-D warnings`
+    //~^ self_assignment
+
     *b = *b;
-    //~^ ERROR: self-assignment of `*b` to `*b`
+    //~^ self_assignment
+
     s = s;
-    //~^ ERROR: self-assignment of `s` to `s`
+    //~^ self_assignment
+
     s.a = s.a;
-    //~^ ERROR: self-assignment of `s.a` to `s.a`
+    //~^ self_assignment
+
     s.b[9] = s.b[5 + 4];
-    //~^ ERROR: self-assignment of `s.b[5 + 4]` to `s.b[9]`
+    //~^ self_assignment
+
     s.c[0][1] = s.c[0][1];
-    //~^ ERROR: self-assignment of `s.c[0][1]` to `s.c[0][1]`
+    //~^ self_assignment
+
     s.b[a] = s.b[a];
-    //~^ ERROR: self-assignment of `s.b[a]` to `s.b[a]`
+    //~^ self_assignment
+
     *s.e = *s.e;
-    //~^ ERROR: self-assignment of `*s.e` to `*s.e`
+    //~^ self_assignment
+
     s.b[a + 10] = s.b[10 + a];
-    //~^ ERROR: self-assignment of `s.b[10 + a]` to `s.b[a + 10]`
+    //~^ self_assignment
 
     let mut t = (0, 1);
     t.1 = t.1;
-    //~^ ERROR: self-assignment of `t.1` to `t.1`
+    //~^ self_assignment
+
     t.0 = (t.0);
-    //~^ ERROR: self-assignment of `(t.0)` to `t.0`
+    //~^ self_assignment
 }
 
 pub fn negatives_not_equal(mut a: usize, b: &mut usize, mut s: S) {

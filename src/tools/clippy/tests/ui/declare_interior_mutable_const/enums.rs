@@ -9,7 +9,8 @@ enum OptionalCell {
 }
 
 // a constant with enums should be linted only when the used variant is unfrozen (#3962).
-const UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(true)); //~ ERROR: interior mutable
+const UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(true));
+//~^ declare_interior_mutable_const
 const FROZEN_VARIANT: OptionalCell = OptionalCell::Frozen;
 
 const fn unfrozen_variant() -> OptionalCell {
@@ -20,7 +21,8 @@ const fn frozen_variant() -> OptionalCell {
     OptionalCell::Frozen
 }
 
-const UNFROZEN_VARIANT_FROM_FN: OptionalCell = unfrozen_variant(); //~ ERROR: interior mutable
+const UNFROZEN_VARIANT_FROM_FN: OptionalCell = unfrozen_variant();
+//~^ declare_interior_mutable_const
 const FROZEN_VARIANT_FROM_FN: OptionalCell = frozen_variant();
 
 enum NestedInnermost {
@@ -43,7 +45,7 @@ struct NestedOutermost {
 
 // a constant with enums should be linted according to its value, no matter how structs involve.
 const NESTED_UNFROZEN_VARIANT: NestedOutermost = NestedOutermost {
-    //~^ ERROR: interior mutable
+    //~^ declare_interior_mutable_const
     outer: NestedOuter::NestedInner(NestedInner {
         inner: NestedInnermost::Unfrozen(AtomicUsize::new(2)),
     }),
@@ -57,11 +59,14 @@ const NESTED_FROZEN_VARIANT: NestedOutermost = NestedOutermost {
 trait AssocConsts {
     // When there's no default value, lint it only according to its type.
     // Further details are on the corresponding code (`NonCopyConst::check_trait_item`).
-    const TO_BE_UNFROZEN_VARIANT: OptionalCell; //~ ERROR: interior mutable
-    const TO_BE_FROZEN_VARIANT: OptionalCell; //~ ERROR: interior mutable
+    const TO_BE_UNFROZEN_VARIANT: OptionalCell;
+    //~^ declare_interior_mutable_const
+    const TO_BE_FROZEN_VARIANT: OptionalCell;
+    //~^ declare_interior_mutable_const
 
     // Lint default values accordingly.
-    const DEFAULTED_ON_UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(false)); //~ ERROR: interior mutable
+    const DEFAULTED_ON_UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(false));
+    //~^ declare_interior_mutable_const
     const DEFAULTED_ON_FROZEN_VARIANT: OptionalCell = OptionalCell::Frozen;
 }
 
@@ -87,7 +92,8 @@ trait AssocTypes {
 impl AssocTypes for u64 {
     type ToBeUnfrozen = AtomicUsize;
 
-    const TO_BE_UNFROZEN_VARIANT: Option<Self::ToBeUnfrozen> = Some(Self::ToBeUnfrozen::new(4)); //~ ERROR: interior mutable
+    const TO_BE_UNFROZEN_VARIANT: Option<Self::ToBeUnfrozen> = Some(Self::ToBeUnfrozen::new(4));
+    //~^ declare_interior_mutable_const
     const TO_BE_FROZEN_VARIANT: Option<Self::ToBeUnfrozen> = None;
 }
 
@@ -99,25 +105,30 @@ enum BothOfCellAndGeneric<T> {
 }
 
 impl<T> BothOfCellAndGeneric<T> {
-    const UNFROZEN_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null())); //~ ERROR: interior mutable
+    const UNFROZEN_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null()));
+    //~^ declare_interior_mutable_const
 
     // This is a false positive. The argument about this is on `is_value_unfrozen_raw`
-    const GENERIC_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Generic(std::ptr::null()); //~ ERROR: interior mutable
+    const GENERIC_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Generic(std::ptr::null());
+    //~^ declare_interior_mutable_const
 
     const FROZEN_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Frozen(5);
 
     // This is what is likely to be a false negative when one tries to fix
     // the `GENERIC_VARIANT` false positive.
-    const NO_ENUM: Cell<*const T> = Cell::new(std::ptr::null()); //~ ERROR: interior mutable
+    const NO_ENUM: Cell<*const T> = Cell::new(std::ptr::null());
+    //~^ declare_interior_mutable_const
 }
 
 // associated types here is basically the same as the one above.
 trait BothOfCellAndGenericWithAssocType {
     type AssocType;
 
-    const UNFROZEN_VARIANT: BothOfCellAndGeneric<Self::AssocType> = //~ ERROR: interior mutable
+    const UNFROZEN_VARIANT: BothOfCellAndGeneric<Self::AssocType> =
+        //~^ declare_interior_mutable_const
         BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null()));
-    const GENERIC_VARIANT: BothOfCellAndGeneric<Self::AssocType> = BothOfCellAndGeneric::Generic(std::ptr::null()); //~ ERROR: interior mutable
+    const GENERIC_VARIANT: BothOfCellAndGeneric<Self::AssocType> = BothOfCellAndGeneric::Generic(std::ptr::null());
+    //~^ declare_interior_mutable_const
     const FROZEN_VARIANT: BothOfCellAndGeneric<Self::AssocType> = BothOfCellAndGeneric::Frozen(5);
 }
 

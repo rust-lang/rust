@@ -248,7 +248,7 @@ pub enum InvalidMetaKind {
 }
 
 impl IntoDiagArg for InvalidMetaKind {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(match self {
             InvalidMetaKind::SliceTooBig => "slice_too_big",
             InvalidMetaKind::TooBig => "too_big",
@@ -282,7 +282,7 @@ pub struct Misalignment {
 macro_rules! impl_into_diag_arg_through_debug {
     ($($ty:ty),*$(,)?) => {$(
         impl IntoDiagArg for $ty {
-            fn into_diag_arg(self) -> DiagArgValue {
+            fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
                 DiagArgValue::Str(Cow::Owned(format!("{self:?}")))
             }
         }
@@ -401,7 +401,7 @@ pub enum PointerKind {
 }
 
 impl IntoDiagArg for PointerKind {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(
             match self {
                 Self::Ref(_) => "ref",
@@ -666,7 +666,7 @@ macro_rules! err_ub_custom {
                 msg: || $msg,
                 add_args: Box::new(move |mut set_arg| {
                     $($(
-                        set_arg(stringify!($name).into(), rustc_errors::IntoDiagArg::into_diag_arg($name));
+                        set_arg(stringify!($name).into(), rustc_errors::IntoDiagArg::into_diag_arg($name, &mut None));
                     )*)?
                 })
             }

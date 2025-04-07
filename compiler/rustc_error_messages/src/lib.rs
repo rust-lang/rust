@@ -4,7 +4,6 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(type_alias_impl_trait)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;
@@ -107,8 +106,8 @@ impl From<Vec<FluentError>> for TranslationBundleError {
 /// (overriding any conflicting messages).
 #[instrument(level = "trace")]
 pub fn fluent_bundle(
-    mut user_provided_sysroot: Option<PathBuf>,
-    mut sysroot_candidates: Vec<PathBuf>,
+    sysroot: PathBuf,
+    sysroot_candidates: Vec<PathBuf>,
     requested_locale: Option<LanguageIdentifier>,
     additional_ftl_path: Option<&Path>,
     with_directionality_markers: bool,
@@ -142,7 +141,7 @@ pub fn fluent_bundle(
     // If the user requests the default locale then don't try to load anything.
     if let Some(requested_locale) = requested_locale {
         let mut found_resources = false;
-        for sysroot in user_provided_sysroot.iter_mut().chain(sysroot_candidates.iter_mut()) {
+        for mut sysroot in Some(sysroot).into_iter().chain(sysroot_candidates.into_iter()) {
             sysroot.push("share");
             sysroot.push("locale");
             sysroot.push(requested_locale.to_string());
@@ -209,6 +208,7 @@ pub type LazyFallbackBundle = Arc<LazyLock<FluentBundle, impl FnOnce() -> Fluent
 
 /// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
 #[instrument(level = "trace", skip(resources))]
+#[cfg_attr(not(bootstrap), define_opaque(LazyFallbackBundle))]
 pub fn fallback_fluent_bundle(
     resources: Vec<&'static str>,
     with_directionality_markers: bool,

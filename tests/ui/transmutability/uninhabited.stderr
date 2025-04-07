@@ -2,25 +2,19 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/uninhabited.rs:41:9
    |
 LL |         assert!(false);
-   |         ^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: false', $DIR/uninhabited.rs:41:9
-   |
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |         ^^^^^^^^^^^^^^ evaluation panicked: assertion failed: false
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/uninhabited.rs:63:9
    |
 LL |         assert!(false);
-   |         ^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: false', $DIR/uninhabited.rs:63:9
-   |
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |         ^^^^^^^^^^^^^^ evaluation panicked: assertion failed: false
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/uninhabited.rs:87:9
    |
 LL |         assert!(false);
-   |         ^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: false', $DIR/uninhabited.rs:87:9
-   |
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |         ^^^^^^^^^^^^^^ evaluation panicked: assertion failed: false
 
 error[E0277]: `()` cannot be safely transmuted into `void::Void`
   --> $DIR/uninhabited.rs:29:41

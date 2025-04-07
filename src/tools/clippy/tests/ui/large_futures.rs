@@ -8,21 +8,21 @@ async fn big_fut(_arg: [u8; 1024 * 16]) {}
 async fn wait() {
     let f = async {
         big_fut([0u8; 1024 * 16]).await;
-        //~^ ERROR: large future with a size of 16385 bytes
-        //~| NOTE: `-D clippy::large-futures` implied by `-D warnings`
+        //~^ large_futures
     };
     f.await
-    //~^ ERROR: large future with a size of 16386 bytes
+    //~^ large_futures
 }
 async fn calls_fut(fut: impl std::future::Future<Output = ()>) {
     loop {
         wait().await;
-        //~^ ERROR: large future with a size of 16387 bytes
+        //~^ large_futures
+
         if true {
             return fut.await;
         } else {
             wait().await;
-            //~^ ERROR: large future with a size of 16387 bytes
+            //~^ large_futures
         }
     }
 }
@@ -30,9 +30,10 @@ async fn calls_fut(fut: impl std::future::Future<Output = ()>) {
 pub async fn test() {
     let fut = big_fut([0u8; 1024 * 16]);
     foo().await;
-    //~^ ERROR: large future with a size of 65540 bytes
+    //~^ large_futures
+
     calls_fut(fut).await;
-    //~^ ERROR: large future with a size of 49159 bytes
+    //~^ large_futures
 }
 
 pub fn foo() -> impl std::future::Future<Output = ()> {
@@ -45,7 +46,8 @@ pub fn foo() -> impl std::future::Future<Output = ()> {
 
 pub async fn lines() {
     async {
-        //~^ ERROR: large future with a size of 65540 bytes
+        //~^ large_futures
+
         let x = [0i32; 1024 * 16];
         async {}.await;
         println!("{:?}", x);
@@ -57,6 +59,7 @@ pub async fn macro_expn() {
     macro_rules! macro_ {
         () => {
             async {
+                //~^ large_futures
                 let x = [0i32; 1024 * 16];
                 async {}.await;
                 println!("macro: {:?}", x);

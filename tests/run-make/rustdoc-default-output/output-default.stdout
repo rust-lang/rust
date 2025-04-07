@@ -153,7 +153,7 @@ Options:
         --generate-redirect-map 
                         Generate JSON file at the top level instead of
                         generating HTML redirection files
-        --emit [unversioned-shared-resources,toolchain-shared-resources,invocation-specific]
+        --emit [unversioned-shared-resources,toolchain-shared-resources,invocation-specific,dep-info]
                         Comma separated list of types of output for rustdoc to
                         emit
         --no-run        Compile doctests without running them

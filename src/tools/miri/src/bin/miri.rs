@@ -29,8 +29,8 @@ use std::num::NonZero;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::{Arc, Once};
 use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
+use std::sync::{Arc, Once};
 
 use miri::{
     BacktraceStyle, BorrowTrackerMethod, MiriConfig, MiriEntryFnType, ProvenanceMode, RetagFields,
@@ -720,8 +720,8 @@ fn main() {
 
     // Ensure we have parallelism for many-seeds mode.
     if many_seeds.is_some() && !rustc_args.iter().any(|arg| arg.starts_with("-Zthreads=")) {
-        // Clamp to 10 threads; things get a lot less efficient beyond that due to lock contention.
-        let threads = std::thread::available_parallelism().map_or(1, |n| n.get()).min(10);
+        // Clamp to 20 threads; things get a less efficient beyond that due to lock contention.
+        let threads = std::thread::available_parallelism().map_or(1, |n| n.get()).min(20);
         rustc_args.push(format!("-Zthreads={threads}"));
     }
     let many_seeds =

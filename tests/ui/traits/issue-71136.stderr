@@ -8,7 +8,6 @@ LL |     the_foos: Vec<Foo>,
    |     ^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `Foo`
    |
    = note: required for `Vec<Foo>` to implement `Clone`
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Foo` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

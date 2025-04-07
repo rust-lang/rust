@@ -256,7 +256,6 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "pmuv3") => Some(LLVMFeature::new("perfmon")),
         ("aarch64", "paca") => Some(LLVMFeature::new("pauth")),
         ("aarch64", "pacg") => Some(LLVMFeature::new("pauth")),
-        ("aarch64", "pauth-lr") if get_version().0 < 19 => None,
         // Before LLVM 20 those two features were packaged together as b16b16
         ("aarch64", "sve-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
         ("aarch64", "sme-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
@@ -270,17 +269,10 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "fhm") => Some(LLVMFeature::new("fp16fml")),
         ("aarch64", "fp16") => Some(LLVMFeature::new("fullfp16")),
         // Filter out features that are not supported by the current LLVM version
-        ("aarch64", "fpmr") if get_version().0 != 18 => None,
+        ("aarch64", "fpmr") => None, // only existed in 18
         ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
-        // In LLVM 18, `unaligned-scalar-mem` was merged with `unaligned-vector-mem` into a single
-        // feature called `fast-unaligned-access`. In LLVM 19, it was split back out.
-        ("riscv32" | "riscv64", "unaligned-scalar-mem") if get_version().0 == 18 => {
-            Some(LLVMFeature::new("fast-unaligned-access"))
-        }
         // Filter out features that are not supported by the current LLVM version
-        ("riscv32" | "riscv64", "zaamo") if get_version().0 < 19 => None,
-        ("riscv32" | "riscv64", "zabha") if get_version().0 < 19 => None,
-        ("riscv32" | "riscv64", "zalrsc") if get_version().0 < 19 => None,
+        ("riscv32" | "riscv64", "zacas") if get_version().0 < 20 => None,
         // Enable the evex512 target feature if an avx512 target feature is enabled.
         ("x86", s) if s.starts_with("avx512") => {
             Some(LLVMFeature::with_dependency(s, TargetFeatureFoldStrength::EnableOnly("evex512")))
@@ -291,11 +283,17 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("sparc", "leoncasa") => Some(LLVMFeature::new("hasleoncasa")),
         // In LLVM 19, there is no `v8plus` feature and `v9` means "SPARC-V9 instruction available and SPARC-V8+ ABI used".
         // https://github.com/llvm/llvm-project/blob/llvmorg-19.1.0/llvm/lib/Target/Sparc/MCTargetDesc/SparcELFObjectWriter.cpp#L27-L28
-        // Before LLVM 19, there is no `v8plus` feature and `v9` means "SPARC-V9 instruction available".
+        // Before LLVM 19, there was no `v8plus` feature and `v9` means "SPARC-V9 instruction available".
         // https://github.com/llvm/llvm-project/blob/llvmorg-18.1.0/llvm/lib/Target/Sparc/MCTargetDesc/SparcELFObjectWriter.cpp#L26
         ("sparc", "v8plus") if get_version().0 == 19 => Some(LLVMFeature::new("v9")),
-        ("sparc", "v8plus") if get_version().0 < 19 => None,
         ("powerpc", "power8-crypto") => Some(LLVMFeature::new("crypto")),
+        // These new `amx` variants and `movrs` were introduced in LLVM20
+        ("x86", "amx-avx512" | "amx-fp8" | "amx-movrs" | "amx-tf32" | "amx-transpose")
+            if get_version().0 < 20 =>
+        {
+            None
+        }
+        ("x86", "movrs") if get_version().0 < 20 => None,
         (_, s) => Some(LLVMFeature::new(s)),
     }
 }
@@ -304,44 +302,44 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 /// Must express features in the way Rust understands them.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
-pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-    let mut features: FxHashSet<Symbol> = Default::default();
-
+pub(crate) fn target_features_cfg(sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
     // Add base features for the target.
     // We do *not* add the -Ctarget-features there, and instead duplicate the logic for that below.
     // The reason is that if LLVM considers a feature implied but we do not, we don't want that to
     // show up in `cfg`. That way, `cfg` is entirely under our control -- except for the handling of
-    // the target CPU, that is still expanded to target features (with all their implied features) by
-    // LLVM.
+    // the target CPU, that is still expanded to target features (with all their implied features)
+    // by LLVM.
     let target_machine = create_informational_target_machine(sess, true);
-    // Compute which of the known target features are enabled in the 'base' target machine.
-    // We only consider "supported" features; "forbidden" features are not reflected in `cfg` as of now.
-    features.extend(
-        sess.target
-            .rust_target_features()
-            .iter()
-            .filter(|(feature, _, _)| {
-                // skip checking special features, as LLVM may not understand them
-                if RUSTC_SPECIAL_FEATURES.contains(feature) {
-                    return true;
-                }
-                // check that all features in a given smallvec are enabled
-                if let Some(feat) = to_llvm_features(sess, feature) {
-                    for llvm_feature in feat {
-                        let cstr = SmallCStr::new(llvm_feature);
-                        if !unsafe { llvm::LLVMRustHasFeature(&target_machine, cstr.as_ptr()) } {
-                            return false;
-                        }
+    // Compute which of the known target features are enabled in the 'base' target machine. We only
+    // consider "supported" features; "forbidden" features are not reflected in `cfg` as of now.
+    let mut features: FxHashSet<Symbol> = sess
+        .target
+        .rust_target_features()
+        .iter()
+        .filter(|(feature, _, _)| {
+            // skip checking special features, as LLVM may not understand them
+            if RUSTC_SPECIAL_FEATURES.contains(feature) {
+                return true;
+            }
+            if let Some(feat) = to_llvm_features(sess, feature) {
+                for llvm_feature in feat {
+                    let cstr = SmallCStr::new(llvm_feature);
+                    // `LLVMRustHasFeature` is moderately expensive. On targets with many
+                    // features (e.g. x86) these calls take a non-trivial fraction of runtime
+                    // when compiling very small programs.
+                    if !unsafe { llvm::LLVMRustHasFeature(target_machine.raw(), cstr.as_ptr()) } {
+                        return false;
                     }
-                    true
-                } else {
-                    false
                 }
-            })
-            .map(|(feature, _, _)| Symbol::intern(feature)),
-    );
+                true
+            } else {
+                false
+            }
+        })
+        .map(|(feature, _, _)| Symbol::intern(feature))
+        .collect();
 
-    // Add enabled features
+    // Add enabled and remove disabled features.
     for (enabled, feature) in
         sess.opts.cg.target_feature.split(',').filter_map(|s| match s.chars().next() {
             Some('+') => Some((true, Symbol::intern(&s[1..]))),
@@ -357,7 +355,7 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
             #[allow(rustc::potential_query_instability)]
             features.extend(
                 sess.target
-                    .implied_target_features(std::iter::once(feature.as_str()))
+                    .implied_target_features(feature.as_str())
                     .iter()
                     .map(|s| Symbol::intern(s)),
             );
@@ -368,11 +366,7 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
             // `features.contains` below.
             #[allow(rustc::potential_query_instability)]
             features.retain(|f| {
-                if sess
-                    .target
-                    .implied_target_features(std::iter::once(f.as_str()))
-                    .contains(&feature.as_str())
-                {
+                if sess.target.implied_target_features(f.as_str()).contains(&feature.as_str()) {
                     // If `f` if implies `feature`, then `!feature` implies `!f`, so we have to
                     // remove `f`. (This is the standard logical contraposition principle.)
                     false
@@ -384,25 +378,31 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
         }
     }
 
-    // Filter enabled features based on feature gates
-    sess.target
-        .rust_target_features()
-        .iter()
-        .filter_map(|(feature, gate, _)| {
-            // The `allow_unstable` set is used by rustc internally to determined which target
-            // features are truly available, so we want to return even perma-unstable "forbidden"
-            // features.
-            if allow_unstable
-                || (gate.in_cfg() && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
-            {
-                Some(*feature)
-            } else {
-                None
-            }
-        })
-        .filter(|feature| features.contains(&Symbol::intern(feature)))
-        .map(|feature| Symbol::intern(feature))
-        .collect()
+    // Filter enabled features based on feature gates.
+    let f = |allow_unstable| {
+        sess.target
+            .rust_target_features()
+            .iter()
+            .filter_map(|(feature, gate, _)| {
+                // The `allow_unstable` set is used by rustc internally to determined which target
+                // features are truly available, so we want to return even perma-unstable
+                // "forbidden" features.
+                if allow_unstable
+                    || (gate.in_cfg()
+                        && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
+                {
+                    Some(Symbol::intern(feature))
+                } else {
+                    None
+                }
+            })
+            .filter(|feature| features.contains(&feature))
+            .collect()
+    };
+
+    let target_features = f(false);
+    let unstable_target_features = f(true);
+    (target_features, unstable_target_features)
 }
 
 pub(crate) fn print_version() {
@@ -451,8 +451,8 @@ pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
     require_inited();
     let tm = create_informational_target_machine(sess, false);
     match req.kind {
-        PrintKind::TargetCPUs => print_target_cpus(sess, &tm, out),
-        PrintKind::TargetFeatures => print_target_features(sess, &tm, out),
+        PrintKind::TargetCPUs => print_target_cpus(sess, tm.raw(), out),
+        PrintKind::TargetFeatures => print_target_features(sess, tm.raw(), out),
         _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
     }
 }
@@ -679,7 +679,7 @@ pub(crate) fn global_llvm_features(
         for feature in sess.opts.cg.target_feature.split(',') {
             if let Some(feature) = feature.strip_prefix('+') {
                 all_rust_features.extend(
-                    UnordSet::from(sess.target.implied_target_features(std::iter::once(feature)))
+                    UnordSet::from(sess.target.implied_target_features(feature))
                         .to_sorted_stable_ord()
                         .iter()
                         .map(|&&s| (true, s)),

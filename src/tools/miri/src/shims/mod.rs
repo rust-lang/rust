@@ -1,5 +1,6 @@
 #![warn(clippy::arithmetic_side_effects)]
 
+mod aarch64;
 mod alloc;
 mod backtrace;
 mod files;

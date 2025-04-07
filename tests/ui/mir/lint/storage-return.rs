@@ -13,7 +13,7 @@ fn main() {
         {
             StorageLive(a);
             RET = a;
-            Return()
+            Return() //~ ERROR broken MIR
         }
     }
 }

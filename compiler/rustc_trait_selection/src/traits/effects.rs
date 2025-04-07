@@ -31,6 +31,8 @@ pub fn evaluate_host_effect_obligation<'tcx>(
         );
     }
 
+    let ref obligation = selcx.infcx.resolve_vars_if_possible(obligation.clone());
+
     // Force ambiguity for infer self ty.
     if obligation.predicate.self_ty().is_ty_var() {
         return Err(EvaluationFailure::Ambiguous);
@@ -103,10 +105,6 @@ fn match_candidate<'tcx>(
     );
 
     more_nested(selcx, &mut nested);
-
-    for nested in &mut nested {
-        nested.set_depth_from_parent(obligation.recursion_depth);
-    }
 
     Ok(nested)
 }
@@ -261,7 +259,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
                 .all_fields()
                 .map(|field| ty::TraitRef::new(tcx, destruct_def_id, [field.ty(tcx, args)]))
                 .collect();
-            match adt_def.destructor(tcx).map(|dtor| dtor.constness) {
+            match adt_def.destructor(tcx).map(|dtor| tcx.constness(dtor.did)) {
                 // `Drop` impl exists, but it's not const. Type cannot be `~const Destruct`.
                 Some(hir::Constness::NotConst) => return Err(EvaluationFailure::NoSolution),
                 // `Drop` impl exists, and it's const. Require `Ty: ~const Drop` to hold.
@@ -375,10 +373,6 @@ fn evaluate_host_effect_from_selection_candiate<'tcx>(
                                 )
                             }),
                     );
-
-                    for nested in &mut nested {
-                        nested.set_depth_from_parent(obligation.recursion_depth);
-                    }
 
                     Ok(nested)
                 }

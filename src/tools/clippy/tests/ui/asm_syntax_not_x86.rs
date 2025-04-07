@@ -1,5 +1,6 @@
 //@ignore-target: i686 x86
 //@needs-asm-support
+//@check-pass
 
 #[warn(clippy::inline_asm_x86_intel_syntax)]
 #[warn(clippy::inline_asm_x86_att_syntax)]

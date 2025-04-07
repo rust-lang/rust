@@ -19,7 +19,6 @@ pub const IDENT: [&str; 3] = ["rustc_span", "symbol", "Ident"];
 pub const IDENT_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Ident", "as_str"];
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
-pub const LATE_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "LateLintPass"];
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
 pub const SYMBOL: [&str; 3] = ["rustc_span", "symbol", "Symbol"];
 pub const SYMBOL_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Symbol", "as_str"];
@@ -28,16 +27,12 @@ pub const SYM_MODULE: [&str; 3] = ["rustc_span", "symbol", "sym"];
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];
 
 // Paths in `core`/`alloc`/`std`. This should be avoided and cleaned up by adding diagnostic items.
-pub const ABORT: [&str; 3] = ["std", "process", "abort"];
-pub const CHILD: [&str; 3] = ["std", "process", "Child"];
-pub const CHILD_ID: [&str; 4] = ["std", "process", "Child", "id"];
-pub const CHILD_KILL: [&str; 4] = ["std", "process", "Child", "kill"];
-pub const PANIC_ANY: [&str; 3] = ["std", "panic", "panic_any"];
 pub const CHAR_IS_ASCII: [&str; 5] = ["core", "char", "methods", "<impl char>", "is_ascii"];
-pub const STDIN: [&str; 4] = ["std", "io", "stdio", "Stdin"];
+pub const IO_ERROR_NEW: [&str; 5] = ["std", "io", "error", "Error", "new"];
+pub const IO_ERRORKIND_OTHER: [&str; 5] = ["std", "io", "error", "ErrorKind", "Other"];
 
 // Paths in clippy itself
-pub const MSRV: [&str; 3] = ["clippy_utils", "msrvs", "Msrv"];
+pub const MSRV_STACK: [&str; 3] = ["clippy_utils", "msrvs", "MsrvStack"];
 
 // Paths in external crates
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates

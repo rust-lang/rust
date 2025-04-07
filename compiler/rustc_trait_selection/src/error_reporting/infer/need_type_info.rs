@@ -18,7 +18,7 @@ use rustc_middle::ty::{
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
 };
 use rustc_span::{BytePos, DUMMY_SP, FileName, Ident, Span, sym};
-use rustc_type_ir::visit::TypeVisitableExt;
+use rustc_type_ir::TypeVisitableExt;
 use tracing::{debug, instrument, warn};
 
 use super::nice_region_error::placeholder_error::Highlighted;
@@ -137,7 +137,7 @@ impl InferenceDiagnosticsParentData {
 }
 
 impl IntoDiagArg for UnderspecifiedArgKind {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         let kind = match self {
             Self::Type { .. } => "type",
             Self::Const { is_parameter: true } => "const_with_param",
@@ -1051,7 +1051,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                             None?
                         }
                         let args = self.node_args_opt(expr.hir_id)?;
-                        let span = tcx.hir().span(segment.hir_id);
+                        let span = tcx.hir_span(segment.hir_id);
                         let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
                         InsertableGenericArgs {
                             insert_span,
@@ -1110,7 +1110,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 if generics.has_impl_trait() {
                     return None;
                 }
-                let span = tcx.hir().span(segment.hir_id);
+                let span = tcx.hir_span(segment.hir_id);
                 let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
                 Some(InsertableGenericArgs {
                     insert_span,
@@ -1144,7 +1144,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     if !segment.infer_args || generics.has_impl_trait() {
                         do yeet ();
                     }
-                    let span = tcx.hir().span(segment.hir_id);
+                    let span = tcx.hir_span(segment.hir_id);
                     let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
                     InsertableGenericArgs {
                         insert_span,
@@ -1351,7 +1351,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             && !has_impl_trait(def_id)
             // FIXME(fn_delegation): In delegation item argument spans are equal to last path
             // segment. This leads to ICE's when emitting `multipart_suggestion`.
-            && tcx.hir().opt_delegation_sig_id(expr.hir_id.owner.def_id).is_none()
+            && tcx.hir_opt_delegation_sig_id(expr.hir_id.owner.def_id).is_none()
         {
             let successor =
                 method_args.get(0).map_or_else(|| (")", span.hi()), |arg| (", ", arg.span.lo()));

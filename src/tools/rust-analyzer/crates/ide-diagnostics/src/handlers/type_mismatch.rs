@@ -45,10 +45,10 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
         format!(
             "expected {}, found {}",
             d.expected
-                .display(ctx.sema.db, ctx.edition)
+                .display(ctx.sema.db, ctx.display_target)
                 .with_closure_style(ClosureStyle::ClosureWithId),
             d.actual
-                .display(ctx.sema.db, ctx.edition)
+                .display(ctx.sema.db, ctx.display_target)
                 .with_closure_style(ClosureStyle::ClosureWithId),
         ),
         display_range,
@@ -306,8 +306,8 @@ fn str_ref_to_owned(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let expected = d.expected.display(ctx.sema.db, ctx.edition);
-    let actual = d.actual.display(ctx.sema.db, ctx.edition);
+    let expected = d.expected.display(ctx.sema.db, ctx.display_target);
+    let actual = d.actual.display(ctx.sema.db, ctx.display_target);
 
     // FIXME do this properly
     if expected.to_string() != "String" || actual.to_string() != "&str" {

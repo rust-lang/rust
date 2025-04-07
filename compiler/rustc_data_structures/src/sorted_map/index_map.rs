@@ -147,7 +147,7 @@ impl<I: Idx, K: Ord, V> FromIterator<(K, V)> for SortedIndexMultiMap<I, K, V> {
     where
         J: IntoIterator<Item = (K, V)>,
     {
-        let items = IndexVec::from_iter(iter);
+        let items = IndexVec::<I, _>::from_iter(iter);
         let mut idx_sorted_by_item_key: Vec<_> = items.indices().collect();
 
         // `sort_by_key` is stable, so insertion order is preserved for duplicate items.

@@ -30,7 +30,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
             (
                 format!("`fn {redundant_assoc_item_name}`"),
                 function.source(db).map(|it| it.syntax().text_range()).unwrap_or(default_range),
-                format!("\n    {};", function.display(db, ctx.edition)),
+                format!("\n    {};", function.display(db, ctx.display_target)),
             )
         }
         hir::AssocItem::Const(id) => {
@@ -38,7 +38,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
             (
                 format!("`const {redundant_assoc_item_name}`"),
                 constant.source(db).map(|it| it.syntax().text_range()).unwrap_or(default_range),
-                format!("\n    {};", constant.display(db, ctx.edition)),
+                format!("\n    {};", constant.display(db, ctx.display_target)),
             )
         }
         hir::AssocItem::TypeAlias(id) => {

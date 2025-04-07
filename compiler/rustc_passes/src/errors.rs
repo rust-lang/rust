@@ -583,13 +583,6 @@ pub(crate) struct NoMangle {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_repr_ident, code = E0565)]
-pub(crate) struct ReprIdent {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_repr_conflicting, code = E0566)]
 pub(crate) struct ReprConflicting {
     #[primary_span]
@@ -737,31 +730,6 @@ pub(crate) struct Linkage {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_empty_confusables)]
-pub(crate) struct EmptyConfusables {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_incorrect_meta_item, code = E0539)]
-pub(crate) struct IncorrectMetaItem {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub suggestion: IncorrectMetaItemSuggestion,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(passes_incorrect_meta_item_suggestion, applicability = "maybe-incorrect")]
-pub(crate) struct IncorrectMetaItemSuggestion {
-    #[suggestion_part(code = "\"")]
-    pub lo: Span,
-    #[suggestion_part(code = "\"")]
-    pub hi: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_stability_promotable)]
 pub(crate) struct StabilityPromotable {
     #[primary_span]
@@ -802,8 +770,8 @@ pub(crate) enum UnusedNote {
     NoLints { name: Symbol },
     #[note(passes_unused_default_method_body_const_note)]
     DefaultMethodBodyConst,
-    #[note(passes_unused_linker_warnings_note)]
-    LinkerWarningsBinaryCrateOnly,
+    #[note(passes_unused_linker_messages_note)]
+    LinkerMessagesBinaryCrateOnly,
 }
 
 #[derive(LintDiagnostic)]
@@ -1037,10 +1005,10 @@ pub(crate) struct LayoutHomogeneousAggregate {
 
 #[derive(Diagnostic)]
 #[diag(passes_layout_of)]
-pub(crate) struct LayoutOf {
+pub(crate) struct LayoutOf<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub normalized_ty: String,
+    pub normalized_ty: Ty<'tcx>,
     pub ty_layout: String,
 }
 
@@ -1380,12 +1348,12 @@ pub(crate) struct DuplicateLangItem {
     pub local_span: Option<Span>,
     pub lang_item_name: Symbol,
     pub crate_name: Symbol,
-    pub dependency_of: Symbol,
+    pub dependency_of: Option<Symbol>,
     pub is_local: bool,
     pub path: String,
     pub first_defined_span: Option<Span>,
-    pub orig_crate_name: Symbol,
-    pub orig_dependency_of: Symbol,
+    pub orig_crate_name: Option<Symbol>,
+    pub orig_dependency_of: Option<Symbol>,
     pub orig_is_local: bool,
     pub orig_path: String,
     pub(crate) duplicate: Duplicate,
@@ -1406,10 +1374,16 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for DuplicateLangItem {
         diag.code(E0152);
         diag.arg("lang_item_name", self.lang_item_name);
         diag.arg("crate_name", self.crate_name);
-        diag.arg("dependency_of", self.dependency_of);
+        if let Some(dependency_of) = self.dependency_of {
+            diag.arg("dependency_of", dependency_of);
+        }
         diag.arg("path", self.path);
-        diag.arg("orig_crate_name", self.orig_crate_name);
-        diag.arg("orig_dependency_of", self.orig_dependency_of);
+        if let Some(orig_crate_name) = self.orig_crate_name {
+            diag.arg("orig_crate_name", orig_crate_name);
+        }
+        if let Some(orig_dependency_of) = self.orig_dependency_of {
+            diag.arg("orig_dependency_of", orig_dependency_of);
+        }
         diag.arg("orig_path", self.orig_path);
         if let Some(span) = self.local_span {
             diag.span(span);
@@ -1417,7 +1391,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for DuplicateLangItem {
         if let Some(span) = self.first_defined_span {
             diag.span_note(span, fluent::passes_first_defined_span);
         } else {
-            if self.orig_dependency_of.is_empty() {
+            if self.orig_dependency_of.is_none() {
                 diag.note(fluent::passes_first_defined_crate);
             } else {
                 diag.note(fluent::passes_first_defined_crate_depends);
@@ -1467,20 +1441,17 @@ pub(crate) struct OnlyHasEffectOn {
     pub target_name: String,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(passes_inline_ignored_for_exported)]
+#[help]
+pub(crate) struct InlineIgnoredForExported {}
+
 #[derive(Diagnostic)]
 #[diag(passes_object_lifetime_err)]
 pub(crate) struct ObjectLifetimeErr {
     #[primary_span]
     pub span: Span,
     pub repr: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_unrecognized_repr_hint, code = E0552)]
-#[help]
-pub(crate) struct UnrecognizedReprHint {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1590,6 +1561,45 @@ pub(crate) struct MissingConstStabAttr<'a> {
 pub(crate) struct TraitImplConstStable {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_trait_impl_const_stability_mismatch)]
+pub(crate) struct TraitImplConstStabilityMismatch {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub impl_stability: ImplConstStability,
+    #[subdiagnostic]
+    pub trait_stability: TraitConstStability,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum TraitConstStability {
+    #[note(passes_trait_impl_const_stability_mismatch_trait_stable)]
+    Stable {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(passes_trait_impl_const_stability_mismatch_trait_unstable)]
+    Unstable {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ImplConstStability {
+    #[note(passes_trait_impl_const_stability_mismatch_impl_stable)]
+    Stable {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(passes_trait_impl_const_stability_mismatch_impl_unstable)]
+    Unstable {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(Diagnostic)]
@@ -1901,4 +1911,20 @@ pub(crate) struct NoSanitize<'a> {
     pub defn_span: Span,
     pub accepted_kind: &'a str,
     pub attr_str: &'a str,
+}
+
+// FIXME(jdonszelmann): move back to rustc_attr
+#[derive(Diagnostic)]
+#[diag(passes_rustc_const_stable_indirect_pairing)]
+pub(crate) struct RustcConstStableIndirectPairing {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_unsupported_attributes_in_where)]
+#[help]
+pub(crate) struct UnsupportedAttributesInWhere {
+    #[primary_span]
+    pub span: MultiSpan,
 }

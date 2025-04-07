@@ -11,13 +11,13 @@ LL |     type Bar<T> = impl Sized;
    |                   ^^^^^^^^^^
 
 error[E0792]: expected generic type parameter, found `u32`
-  --> $DIR/multi-error.rs:19:9
+  --> $DIR/multi-error.rs:17:17
    |
 LL |     type Bar<T> = impl Sized;
    |              - this generic parameter must be used with a generic type parameter
-...
-LL |         ((), ())
-   |         ^^^^^^^^
+LL |     type Baz = impl Sized;
+LL |     fn foo() -> (Self::Bar<u32>, Self::Baz) {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -38,7 +38,7 @@ impl MemoryUsage {
                 // approximate that by using the Commit Charge value.
 
                 use windows_sys::Win32::System::{Threading::*, ProcessStatus::*};
-                use std::mem::{MaybeUninit, size_of};
+                use std::mem::MaybeUninit;
 
                 let proc = unsafe { GetCurrentProcess() };
                 let mut mem_counters = MaybeUninit::uninit();

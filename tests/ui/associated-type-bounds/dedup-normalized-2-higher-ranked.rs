@@ -1,3 +1,8 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
+
 // We try to prove `for<'b> T::Rigid: Bound<'b, ?0>` and have 2 candidates from where-clauses:
 //
 // - `for<'a> Bound<'a, String>`
@@ -21,7 +26,7 @@ fn impls<T: for<'b> Bound<'b, U>, U>(_: T) {}
 
 fn test<P: Trait>(rigid: P::Rigid) {
     impls(rigid);
-    //~^ ERROR type annotations needed
+    //[current]~^ ERROR type annotations needed
 }
 
 fn main() {}

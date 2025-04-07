@@ -12,5 +12,5 @@ libc = "0.2.73"
 # tidy-alphabetical-start
 # Pinned so `cargo update` bumps don't cause breakage. Please also update the
 # pinned `cc` in `rustc_codegen_ssa` if you update `cc` here.
-cc = "=1.2.13"
+cc = "=1.2.16"
 # tidy-alphabetical-end

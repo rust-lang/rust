@@ -1,5 +1,3 @@
-//@ error-pattern: borrow of moved value
-
 use std::sync::Arc;
 use std::thread;
 
@@ -11,7 +9,7 @@ fn main() {
         assert_eq!((*arc_v)[3], 4);
     });
 
-    assert_eq!((*arc_v)[2], 3);
+    assert_eq!((*arc_v)[2], 3); //~ ERROR borrow of moved value: `arc_v`
 
     println!("{:?}", *arc_v);
 }

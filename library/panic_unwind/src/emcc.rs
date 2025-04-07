@@ -9,7 +9,7 @@
 use alloc::boxed::Box;
 use core::any::Any;
 use core::sync::atomic::{AtomicBool, Ordering};
-use core::{intrinsics, mem, ptr};
+use core::{intrinsics, ptr};
 
 use unwind as uw;
 
@@ -97,7 +97,7 @@ pub(crate) unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
 
 pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     unsafe {
-        let exception = __cxa_allocate_exception(mem::size_of::<Exception>()) as *mut Exception;
+        let exception = __cxa_allocate_exception(size_of::<Exception>()) as *mut Exception;
         if exception.is_null() {
             return uw::_URC_FATAL_PHASE1_ERROR as u32;
         }

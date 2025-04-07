@@ -1,6 +1,5 @@
-#![feature(rustc_attrs)]
 #![allow(dead_code)]
-fn main() { #![rustc_error] // rust-lang/rust#49855
+fn main() {
     // Original borrow ends at end of function
     let mut x = 1;
     let y = &mut x;

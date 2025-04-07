@@ -6,6 +6,6 @@ mod m1 {
 
 pub use m1::x;
 
-//@ has "$.index[*][?(@.name=='x' && @.inner.function)]"
-//@ has "$.index[*].inner[?(@.use.name=='x')].use.source" '"m1::x"'
-//@ !has "$.index[*][?(@.name=='m1')]"
+//@ has "$.index[?(@.name=='x' && @.inner.function)]"
+//@ has "$.index[?(@.inner.use.name=='x')].inner.use.source" '"m1::x"'
+//@ !has "$.index[?(@.name=='m1')]"

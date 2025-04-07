@@ -11,9 +11,7 @@ use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{
-    self, BinOpToken, CommentKind, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind,
-};
+use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
@@ -26,7 +24,6 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::IdentPrinter;
 use rustc_span::{BytePos, CharPos, DUMMY_SP, FileName, Ident, Pos, Span, Symbol, kw, sym};
-use thin_vec::ThinVec;
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
@@ -319,7 +316,7 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
         (tt1, Tok(Token { kind: Comma | Semi | Dot, .. }, _)) if !is_punct(tt1) => false,
 
         // IDENT + `!`: `println!()`, but `if !x { ... }` needs a space after the `if`
-        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Tok(Token { kind: Not, .. }, _))
+        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Tok(Token { kind: Bang, .. }, _))
             if !Ident::new(*sym, *span).is_reserved() || matches!(is_raw, IdentIsRaw::Yes) =>
         {
             false
@@ -341,21 +338,6 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
         (Tok(Token { kind: Pound, .. }, _), Del(_, _, Bracket, _)) => false,
 
         _ => true,
-    }
-}
-
-fn binop_to_string(op: BinOpToken) -> &'static str {
-    match op {
-        token::Plus => "+",
-        token::Minus => "-",
-        token::Star => "*",
-        token::Slash => "/",
-        token::Percent => "%",
-        token::Caret => "^",
-        token::And => "&",
-        token::Or => "|",
-        token::Shl => "<<",
-        token::Shr => ">>",
     }
 }
 
@@ -596,11 +578,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         let mut printed = false;
         for attr in attrs {
             if attr.style == kind {
-                self.print_attribute_inline(attr, is_inline);
-                if is_inline {
-                    self.nbsp();
+                if self.print_attribute_inline(attr, is_inline) {
+                    if is_inline {
+                        self.nbsp();
+                    }
+                    printed = true;
                 }
-                printed = true;
             }
         }
         if printed && trailing_hardbreak && !is_inline {
@@ -609,7 +592,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         printed
     }
 
-    fn print_attribute_inline(&mut self, attr: &ast::Attribute, is_inline: bool) {
+    fn print_attribute_inline(&mut self, attr: &ast::Attribute, is_inline: bool) -> bool {
+        if attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace) {
+            // It's not a valid identifier, so avoid printing it
+            // to keep the printed code reasonably parse-able.
+            return false;
+        }
         if !is_inline {
             self.hardbreak_if_not_bol();
         }
@@ -628,6 +616,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.hardbreak()
             }
         }
+        true
     }
 
     fn print_attr_item(&mut self, item: &ast::AttrItem, span: Span) {
@@ -913,12 +902,30 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::Ne => "!=".into(),
             token::Ge => ">=".into(),
             token::Gt => ">".into(),
-            token::Not => "!".into(),
+            token::Bang => "!".into(),
             token::Tilde => "~".into(),
             token::OrOr => "||".into(),
             token::AndAnd => "&&".into(),
-            token::BinOp(op) => binop_to_string(op).into(),
-            token::BinOpEq(op) => format!("{}=", binop_to_string(op)).into(),
+            token::Plus => "+".into(),
+            token::Minus => "-".into(),
+            token::Star => "*".into(),
+            token::Slash => "/".into(),
+            token::Percent => "%".into(),
+            token::Caret => "^".into(),
+            token::And => "&".into(),
+            token::Or => "|".into(),
+            token::Shl => "<<".into(),
+            token::Shr => ">>".into(),
+            token::PlusEq => "+=".into(),
+            token::MinusEq => "-=".into(),
+            token::StarEq => "*=".into(),
+            token::SlashEq => "/=".into(),
+            token::PercentEq => "%=".into(),
+            token::CaretEq => "^=".into(),
+            token::AndEq => "&=".into(),
+            token::OrEq => "|=".into(),
+            token::ShlEq => "<<=".into(),
+            token::ShrEq => ">>=".into(),
 
             /* Structural symbols */
             token::At => "@".into(),
@@ -1329,6 +1336,9 @@ impl<'a> State<'a> {
                 self.print_outer_attributes(&loc.attrs);
                 self.space_if_not_bol();
                 self.ibox(INDENT_UNIT);
+                if loc.super_.is_some() {
+                    self.word_nbsp("super");
+                }
                 self.word_nbsp("let");
 
                 self.ibox(INDENT_UNIT);
@@ -1615,9 +1625,9 @@ impl<'a> State<'a> {
     fn print_pat(&mut self, pat: &ast::Pat) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
-        /* Pat isn't normalized, but the beauty of it
-        is that it doesn't matter */
+        /* Pat isn't normalized, but the beauty of it is that it doesn't matter */
         match &pat.kind {
+            PatKind::Missing => unreachable!(),
             PatKind::Wild => self.word("_"),
             PatKind::Never => self.word("!"),
             PatKind::Ident(BindingMode(by_ref, mutbl), ident, sub) => {
@@ -1782,6 +1792,13 @@ impl<'a> State<'a> {
                 self.print_mutability(*m, false);
                 self.word("self")
             }
+            SelfKind::Pinned(lt, m) => {
+                self.word("&");
+                self.print_opt_lifetime(lt);
+                self.word("pin ");
+                self.print_mutability(*m, true);
+                self.word("self")
+            }
             SelfKind::Explicit(typ, m) => {
                 self.print_mutability(*m, false);
                 self.word("self");
@@ -1932,12 +1949,7 @@ impl<'a> State<'a> {
                 if let Some(eself) = input.to_self() {
                     self.print_explicit_self(&eself);
                 } else {
-                    let invalid = if let PatKind::Ident(_, ident, _) = input.pat.kind {
-                        ident.name == kw::Empty
-                    } else {
-                        false
-                    };
-                    if !invalid {
+                    if !matches!(input.pat.kind, PatKind::Missing) {
                         self.print_pat(&input.pat);
                         self.word(":");
                         self.space();
@@ -1970,15 +1982,7 @@ impl<'a> State<'a> {
     ) {
         self.ibox(INDENT_UNIT);
         self.print_formal_generic_params(generic_params);
-        let generics = ast::Generics {
-            params: ThinVec::new(),
-            where_clause: ast::WhereClause {
-                has_where_token: false,
-                predicates: ThinVec::new(),
-                span: DUMMY_SP,
-            },
-            span: DUMMY_SP,
-        };
+        let generics = ast::Generics::default();
         let header = ast::FnHeader { safety, ext, ..ast::FnHeader::default() };
         self.print_fn(decl, header, name, &generics);
         self.end();
@@ -2048,7 +2052,7 @@ impl<'a> State<'a> {
     }
 
     fn print_attribute(&mut self, attr: &ast::Attribute) {
-        self.print_attribute_inline(attr, false)
+        self.print_attribute_inline(attr, false);
     }
 
     fn print_meta_list_item(&mut self, item: &ast::MetaItemInner) {

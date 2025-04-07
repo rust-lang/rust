@@ -3,10 +3,12 @@
 
 use derive_where::derive_where;
 use rustc_type_ir::data_structures::HashMap;
-use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::{self as ty, Interner, Movability, Mutability, Upcast as _, elaborate};
+use rustc_type_ir::{
+    self as ty, Interner, Movability, Mutability, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    Upcast as _, elaborate,
+};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 
@@ -18,7 +20,7 @@ use crate::solve::{AdtDestructorKind, EvalCtxt, Goal, NoSolution};
 pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<D, I>(
     ecx: &EvalCtxt<'_, D>,
     ty: I::Ty,
-) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
+) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -33,14 +35,18 @@ where
         | ty::FnPtr(..)
         | ty::Error(_)
         | ty::Never
-        | ty::Char => Ok(vec![]),
+        | ty::Char => Ok(ty::Binder::dummy(vec![])),
+
+        // This branch is only for `experimental_default_bounds`.
+        // Other foreign types were rejected earlier in
+        // `disqualify_auto_trait_candidate_due_to_possible_impl`.
+        ty::Foreign(..) => Ok(ty::Binder::dummy(vec![])),
 
         // Treat `str` like it's defined as `struct str([u8]);`
-        ty::Str => Ok(vec![ty::Binder::dummy(Ty::new_slice(cx, Ty::new_u8(cx)))]),
+        ty::Str => Ok(ty::Binder::dummy(vec![Ty::new_slice(cx, Ty::new_u8(cx))])),
 
         ty::Dynamic(..)
         | ty::Param(..)
-        | ty::Foreign(..)
         | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
         | ty::Placeholder(..)
         | ty::Bound(..)
@@ -49,53 +55,49 @@ where
         }
 
         ty::RawPtr(element_ty, _) | ty::Ref(_, element_ty, _) => {
-            Ok(vec![ty::Binder::dummy(element_ty)])
+            Ok(ty::Binder::dummy(vec![element_ty]))
         }
 
         ty::Pat(element_ty, _) | ty::Array(element_ty, _) | ty::Slice(element_ty) => {
-            Ok(vec![ty::Binder::dummy(element_ty)])
+            Ok(ty::Binder::dummy(vec![element_ty]))
         }
 
         ty::Tuple(tys) => {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-            Ok(tys.iter().map(ty::Binder::dummy).collect())
+            Ok(ty::Binder::dummy(tys.to_vec()))
         }
 
-        ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
+        ty::Closure(_, args) => Ok(ty::Binder::dummy(vec![args.as_closure().tupled_upvars_ty()])),
 
         ty::CoroutineClosure(_, args) => {
-            Ok(vec![ty::Binder::dummy(args.as_coroutine_closure().tupled_upvars_ty())])
+            Ok(ty::Binder::dummy(vec![args.as_coroutine_closure().tupled_upvars_ty()]))
         }
 
         ty::Coroutine(_, args) => {
             let coroutine_args = args.as_coroutine();
-            Ok(vec![
-                ty::Binder::dummy(coroutine_args.tupled_upvars_ty()),
-                ty::Binder::dummy(coroutine_args.witness()),
-            ])
+            Ok(ty::Binder::dummy(vec![coroutine_args.tupled_upvars_ty(), coroutine_args.witness()]))
         }
 
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .cx()
-            .bound_coroutine_hidden_types(def_id)
-            .into_iter()
-            .map(|bty| bty.instantiate(cx, args))
-            .collect()),
+            .coroutine_hidden_types(def_id)
+            .instantiate(cx, args)
+            .map_bound(|tys| tys.to_vec())),
 
-        ty::UnsafeBinder(bound_ty) => Ok(vec![bound_ty.into()]),
+        ty::UnsafeBinder(bound_ty) => Ok(bound_ty.map_bound(|ty| vec![ty])),
 
         // For `PhantomData<T>`, we pass `T`.
-        ty::Adt(def, args) if def.is_phantom_data() => Ok(vec![ty::Binder::dummy(args.type_at(0))]),
+        ty::Adt(def, args) if def.is_phantom_data() => Ok(ty::Binder::dummy(vec![args.type_at(0)])),
 
         ty::Adt(def, args) => {
-            Ok(def.all_field_tys(cx).iter_instantiated(cx, args).map(ty::Binder::dummy).collect())
+            Ok(ty::Binder::dummy(def.all_field_tys(cx).iter_instantiated(cx, args).collect()))
         }
 
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
-            Ok(vec![ty::Binder::dummy(cx.type_of(def_id).instantiate(cx, args))])
+            Ok(ty::Binder::dummy(vec![cx.type_of(def_id).instantiate(cx, args)]))
         }
     }
 }
@@ -104,7 +106,7 @@ where
 pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<D, I>(
     ecx: &EvalCtxt<'_, D>,
     ty: I::Ty,
-) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
+) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -130,7 +132,7 @@ where
         | ty::CoroutineClosure(..)
         | ty::Never
         | ty::Dynamic(_, _, ty::DynStar)
-        | ty::Error(_) => Ok(vec![]),
+        | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
         ty::Str
         | ty::Slice(_)
@@ -145,11 +147,11 @@ where
             panic!("unexpected type `{ty:?}`")
         }
 
-        ty::UnsafeBinder(bound_ty) => Ok(vec![bound_ty.into()]),
+        ty::UnsafeBinder(bound_ty) => Ok(bound_ty.map_bound(|ty| vec![ty])),
 
         // impl Sized for ()
         // impl Sized for (T1, T2, .., Tn) where Tn: Sized if n >= 1
-        ty::Tuple(tys) => Ok(tys.last().map_or_else(Vec::new, |ty| vec![ty::Binder::dummy(ty)])),
+        ty::Tuple(tys) => Ok(ty::Binder::dummy(tys.last().map_or_else(Vec::new, |ty| vec![ty]))),
 
         // impl Sized for Adt<Args...> where sized_constraint(Adt)<Args...>: Sized
         //   `sized_constraint(Adt)` is the deepest struct trail that can be determined
@@ -162,9 +164,9 @@ where
         //   if the ADT is sized for all possible args.
         ty::Adt(def, args) => {
             if let Some(sized_crit) = def.sized_constraint(ecx.cx()) {
-                Ok(vec![ty::Binder::dummy(sized_crit.instantiate(ecx.cx(), args))])
+                Ok(ty::Binder::dummy(vec![sized_crit.instantiate(ecx.cx(), args)]))
             } else {
-                Ok(vec![])
+                Ok(ty::Binder::dummy(vec![]))
             }
         }
     }
@@ -174,14 +176,14 @@ where
 pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<D, I>(
     ecx: &EvalCtxt<'_, D>,
     ty: I::Ty,
-) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>
+) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     match ty.kind() {
         // impl Copy/Clone for FnDef, FnPtr
-        ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Ok(vec![]),
+        ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
         // Implementations are provided in core
         ty::Uint(_)
@@ -197,7 +199,7 @@ where
 
         // Cannot implement in core, as we can't be generic over patterns yet,
         // so we'd have to list all patterns and type combinations.
-        ty::Pat(ty, ..) => Ok(vec![ty::Binder::dummy(ty)]),
+        ty::Pat(ty, ..) => Ok(ty::Binder::dummy(vec![ty])),
 
         ty::Dynamic(..)
         | ty::Str
@@ -215,14 +217,14 @@ where
         }
 
         // impl Copy/Clone for (T1, T2, .., Tn) where T1: Copy/Clone, T2: Copy/Clone, .. Tn: Copy/Clone
-        ty::Tuple(tys) => Ok(tys.iter().map(ty::Binder::dummy).collect()),
+        ty::Tuple(tys) => Ok(ty::Binder::dummy(tys.to_vec())),
 
         // impl Copy/Clone for Closure where Self::TupledUpvars: Copy/Clone
-        ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
+        ty::Closure(_, args) => Ok(ty::Binder::dummy(vec![args.as_closure().tupled_upvars_ty()])),
 
         // impl Copy/Clone for CoroutineClosure where Self::TupledUpvars: Copy/Clone
         ty::CoroutineClosure(_, args) => {
-            Ok(vec![ty::Binder::dummy(args.as_coroutine_closure().tupled_upvars_ty())])
+            Ok(ty::Binder::dummy(vec![args.as_coroutine_closure().tupled_upvars_ty()]))
         }
 
         // only when `coroutine_clone` is enabled and the coroutine is movable
@@ -232,10 +234,7 @@ where
             Movability::Movable => {
                 if ecx.cx().features().coroutine_clone() {
                     let coroutine = args.as_coroutine();
-                    Ok(vec![
-                        ty::Binder::dummy(coroutine.tupled_upvars_ty()),
-                        ty::Binder::dummy(coroutine.witness()),
-                    ])
+                    Ok(ty::Binder::dummy(vec![coroutine.tupled_upvars_ty(), coroutine.witness()]))
                 } else {
                     Err(NoSolution)
                 }
@@ -247,10 +246,9 @@ where
         // impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .cx()
-            .bound_coroutine_hidden_types(def_id)
-            .into_iter()
-            .map(|bty| bty.instantiate(ecx.cx(), args))
-            .collect()),
+            .coroutine_hidden_types(def_id)
+            .instantiate(ecx.cx(), args)
+            .map_bound(|tys| tys.to_vec())),
     }
 }
 

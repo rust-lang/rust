@@ -2,7 +2,9 @@
 //@ ignore-emscripten
 
 #![allow(non_camel_case_types)]
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
+
+use std::intrinsics::simd::{simd_saturating_add, simd_saturating_sub};
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -11,13 +13,6 @@ struct u32x4(pub [u32; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct I32<const N: usize>([i32; N]);
-
-#[rustc_intrinsic]
-unsafe fn simd_saturating_add<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_saturating_sub<T>(x: T, y: T) -> T;
-
 
 fn main() {
     // unsigned

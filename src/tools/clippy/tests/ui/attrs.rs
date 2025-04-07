@@ -3,8 +3,7 @@
 #![allow(clippy::missing_docs_in_private_items, clippy::panic, clippy::unreachable)]
 
 #[inline(always)]
-//~^ ERROR: you have declared `#[inline(always)]` on `test_attr_lint`. This is usually a b
-//~| NOTE: `-D clippy::inline-always` implied by `-D warnings`
+//~^ inline_always
 fn test_attr_lint() {
     assert!(true)
 }
@@ -25,12 +24,11 @@ fn empty_and_false_positive_stmt() {
 }
 
 #[deprecated(since = "forever")]
-//~^ ERROR: the since field must contain a semver-compliant version
-//~| NOTE: `-D clippy::deprecated-semver` implied by `-D warnings`
+//~^ deprecated_semver
 pub const SOME_CONST: u8 = 42;
 
 #[deprecated(since = "1")]
-//~^ ERROR: the since field must contain a semver-compliant version
+//~^ deprecated_semver
 pub const ANOTHER_CONST: u8 = 23;
 
 #[deprecated(since = "0.1.1")]

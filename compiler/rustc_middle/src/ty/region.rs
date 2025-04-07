@@ -26,7 +26,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Region<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::visit::Flags for Region<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Region<'tcx> {
     fn flags(&self) -> TypeFlags {
         self.type_flags()
     }
@@ -400,9 +400,7 @@ impl LateParamRegionKind {
 
     pub fn is_named(&self) -> bool {
         match *self {
-            LateParamRegionKind::Named(_, name) => {
-                name != kw::UnderscoreLifetime && name != kw::Empty
-            }
+            LateParamRegionKind::Named(_, name) => name != kw::UnderscoreLifetime,
             _ => false,
         }
     }
@@ -475,7 +473,7 @@ impl core::fmt::Debug for BoundRegion {
 impl BoundRegionKind {
     pub fn is_named(&self) -> bool {
         match *self {
-            BoundRegionKind::Named(_, name) => name != kw::UnderscoreLifetime && name != kw::Empty,
+            BoundRegionKind::Named(_, name) => name != kw::UnderscoreLifetime,
             _ => false,
         }
     }

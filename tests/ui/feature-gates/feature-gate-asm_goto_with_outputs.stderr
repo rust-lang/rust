@@ -1,5 +1,5 @@
 error[E0658]: using both label and output operands for inline assembly is unstable
-  --> $DIR/feature-gate-asm_goto_with_outputs.rs:10:52
+  --> $DIR/feature-gate-asm_goto_with_outputs.rs:8:52
    |
 LL |         asm!("mov {}, 1", "jmp {}", out(reg) _out, label {});
    |                                                    ^^^^^^^^

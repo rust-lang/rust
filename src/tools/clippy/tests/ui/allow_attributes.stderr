@@ -8,13 +8,13 @@ LL | #[allow(dead_code)]
    = help: to override `-D warnings` add `#[allow(clippy::allow_attributes)]`
 
 error: #[allow] attribute found
-  --> tests/ui/allow_attributes.rs:22:30
+  --> tests/ui/allow_attributes.rs:23:30
    |
 LL | #[cfg_attr(panic = "unwind", allow(dead_code))]
    |                              ^^^^^ help: replace it with: `expect`
 
 error: #[allow] attribute found
-  --> tests/ui/allow_attributes.rs:53:7
+  --> tests/ui/allow_attributes.rs:55:7
    |
 LL |     #[allow(unused)]
    |       ^^^^^ help: replace it with: `expect`

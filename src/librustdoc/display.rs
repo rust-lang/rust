@@ -22,7 +22,7 @@ where
         let mut iter = self.into_iter();
         let Some(first) = iter.next() else { return Ok(()) };
         first.fmt(f)?;
-        while let Some(item) = iter.next() {
+        for item in iter {
             f.write_str(sep)?;
             item.fmt(f)?;
         }

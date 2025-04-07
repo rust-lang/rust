@@ -2,19 +2,17 @@
 
 #![feature(impl_trait_in_assoc_type, type_alias_impl_trait)]
 
-mod foo {
-    pub trait Callable {
-        type Output;
-        fn call() -> Self::Output;
-    }
-
-    pub type OutputHelper = impl Sized;
-    impl<'a> Callable for &'a () {
-        type Output = OutputHelper;
-        fn call() -> Self::Output {}
-    }
+pub trait Callable {
+    type Output;
+    fn call() -> Self::Output;
 }
-use foo::*;
+
+pub type OutputHelper = impl Sized;
+impl<'a> Callable for &'a () {
+    type Output = OutputHelper;
+    #[define_opaque(OutputHelper)]
+    fn call() -> Self::Output {}
+}
 
 fn test<'a>() -> impl Sized {
     <&'a () as Callable>::call()

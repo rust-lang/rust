@@ -1,0 +1,10 @@
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/ice-isssue-128190.rs:4:6
+   |
+LL | fn a(&self) {}
+   |      ^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: aborting due to 1 previous error
+

@@ -50,9 +50,7 @@ pub struct ManualRetain {
 
 impl ManualRetain {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -66,13 +64,11 @@ impl<'tcx> LateLintPass<'tcx> for ManualRetain {
             && let Some(collect_def_id) = cx.typeck_results().type_dependent_def_id(collect_expr.hir_id)
             && cx.tcx.is_diagnostic_item(sym::iterator_collect_fn, collect_def_id)
         {
-            check_into_iter(cx, left_expr, target_expr, expr.span, &self.msrv);
-            check_iter(cx, left_expr, target_expr, expr.span, &self.msrv);
-            check_to_owned(cx, left_expr, target_expr, expr.span, &self.msrv);
+            check_into_iter(cx, left_expr, target_expr, expr.span, self.msrv);
+            check_iter(cx, left_expr, target_expr, expr.span, self.msrv);
+            check_to_owned(cx, left_expr, target_expr, expr.span, self.msrv);
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn check_into_iter(
@@ -80,7 +76,7 @@ fn check_into_iter(
     left_expr: &hir::Expr<'_>,
     target_expr: &hir::Expr<'_>,
     parent_expr_span: Span,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if let hir::ExprKind::MethodCall(_, into_iter_expr, [_], _) = &target_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
@@ -123,7 +119,7 @@ fn check_iter(
     left_expr: &hir::Expr<'_>,
     target_expr: &hir::Expr<'_>,
     parent_expr_span: Span,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if let hir::ExprKind::MethodCall(_, filter_expr, [], _) = &target_expr.kind
         && let Some(copied_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
@@ -181,10 +177,9 @@ fn check_to_owned(
     left_expr: &hir::Expr<'_>,
     target_expr: &hir::Expr<'_>,
     parent_expr_span: Span,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
-    if msrv.meets(msrvs::STRING_RETAIN)
-        && let hir::ExprKind::MethodCall(_, filter_expr, [], _) = &target_expr.kind
+    if let hir::ExprKind::MethodCall(_, filter_expr, [], _) = &target_expr.kind
         && let Some(to_owned_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
         && cx.tcx.is_diagnostic_item(sym::to_owned_method, to_owned_def_id)
         && let hir::ExprKind::MethodCall(_, chars_expr, [_], _) = &filter_expr.kind
@@ -200,6 +195,7 @@ fn check_to_owned(
         && let hir::ExprKind::Closure(closure) = closure_expr.kind
         && let filter_body = cx.tcx.hir_body(closure.body)
         && let [filter_params] = filter_body.params
+        && msrv.meets(cx, msrvs::STRING_RETAIN)
     {
         if let hir::PatKind::Ref(pat, _) = filter_params.pat.kind {
             make_span_lint_and_sugg(
@@ -253,7 +249,7 @@ fn match_acceptable_sym(cx: &LateContext<'_>, collect_def_id: DefId) -> bool {
         .any(|&method| cx.tcx.is_diagnostic_item(method, collect_def_id))
 }
 
-fn match_acceptable_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>, msrv: &Msrv) -> bool {
+fn match_acceptable_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>, msrv: Msrv) -> bool {
     let ty = cx.typeck_results().expr_ty(expr).peel_refs();
     let required = match get_type_diagnostic_name(cx, ty) {
         Some(sym::BinaryHeap) => msrvs::BINARY_HEAP_RETAIN,
@@ -264,7 +260,7 @@ fn match_acceptable_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>, msrv: &Msrv
         Some(sym::Vec | sym::VecDeque) => return true,
         _ => return false,
     };
-    msrv.meets(required)
+    msrv.meets(cx, required)
 }
 
 fn match_map_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {

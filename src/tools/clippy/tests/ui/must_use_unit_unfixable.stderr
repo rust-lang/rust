@@ -1,0 +1,28 @@
+error: this unit-returning function has a `#[must_use]` attribute
+  --> tests/ui/must_use_unit_unfixable.rs:4:1
+   |
+LL | fn issue_12320() {}
+   | ^^^^^^^^^^^^^^^^
+   |
+help: remove `must_use`
+  --> tests/ui/must_use_unit_unfixable.rs:3:19
+   |
+LL | #[cfg_attr(all(), must_use, deprecated)]
+   |                   ^^^^^^^^
+   = note: `-D clippy::must-use-unit` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::must_use_unit)]`
+
+error: this unit-returning function has a `#[must_use]` attribute
+  --> tests/ui/must_use_unit_unfixable.rs:8:1
+   |
+LL | fn issue_12320_2() {}
+   | ^^^^^^^^^^^^^^^^^^
+   |
+help: remove `must_use`
+  --> tests/ui/must_use_unit_unfixable.rs:7:44
+   |
+LL | #[cfg_attr(all(), deprecated, doc = "foo", must_use)]
+   |                                            ^^^^^^^^
+
+error: aborting due to 2 previous errors
+

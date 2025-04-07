@@ -1,16 +1,19 @@
 use crate::ClippyConfiguration;
 use crate::types::{
-    DisallowedPath, MacroMatcher, MatchLintBehaviour, PubUnderscoreFieldsBehaviour, Rename, SourceItemOrdering,
-    SourceItemOrderingCategory, SourceItemOrderingModuleItemGroupings, SourceItemOrderingModuleItemKind,
-    SourceItemOrderingTraitAssocItemKind, SourceItemOrderingTraitAssocItemKinds,
+    DisallowedPath, DisallowedPathWithoutReplacement, MacroMatcher, MatchLintBehaviour, PubUnderscoreFieldsBehaviour,
+    Rename, SourceItemOrdering, SourceItemOrderingCategory, SourceItemOrderingModuleItemGroupings,
+    SourceItemOrderingModuleItemKind, SourceItemOrderingTraitAssocItemKind, SourceItemOrderingTraitAssocItemKinds,
+    SourceItemOrderingWithinModuleItemGroupings,
 };
 use clippy_utils::msrvs::Msrv;
+use itertools::Itertools;
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
 use serde::de::{IgnoredAny, IntoDeserializer, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
+use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Range;
 use std::path::PathBuf;
@@ -79,6 +82,7 @@ const DEFAULT_SOURCE_ITEM_ORDERING: &[SourceItemOrderingCategory] = {
 #[derive(Default)]
 struct TryConf {
     conf: Conf,
+    value_spans: HashMap<String, Range<usize>>,
     errors: Vec<ConfError>,
     warnings: Vec<ConfError>,
 }
@@ -87,6 +91,7 @@ impl TryConf {
     fn from_toml_error(file: &SourceFile, error: &toml::de::Error) -> Self {
         Self {
             conf: Conf::default(),
+            value_spans: HashMap::default(),
             errors: vec![ConfError::from_toml(file, error)],
             warnings: vec![],
         }
@@ -210,6 +215,7 @@ macro_rules! define_Conf {
             }
 
             fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error> where V: MapAccess<'de> {
+                let mut value_spans = HashMap::new();
                 let mut errors = Vec::new();
                 let mut warnings = Vec::new();
                 $(let mut $name = None;)*
@@ -232,6 +238,7 @@ macro_rules! define_Conf {
                                     }
                                     None => {
                                         $name = Some(value);
+                                        value_spans.insert(name.get_ref().as_str().to_string(), value_span);
                                         // $new_conf is the same as one of the defined `$name`s, so
                                         // this variable is defined in line 2 of this function.
                                         $(match $new_conf {
@@ -250,7 +257,7 @@ macro_rules! define_Conf {
                     }
                 }
                 let conf = Conf { $($name: $name.unwrap_or_else(defaults::$name),)* };
-                Ok(TryConf { conf, errors, warnings })
+                Ok(TryConf { conf, value_spans, errors, warnings })
             }
         }
 
@@ -288,6 +295,9 @@ define_Conf! {
     /// Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
     #[lints(dbg_macro)]
     allow_dbg_in_tests: bool = false,
+    /// Whether `expect` should be allowed in code always evaluated at compile time
+    #[lints(expect_used)]
+    allow_expect_in_consts: bool = true,
     /// Whether `expect` should be allowed in test functions or `#[cfg(test)]`
     #[lints(expect_used)]
     allow_expect_in_tests: bool = false,
@@ -298,7 +308,7 @@ define_Conf! {
     #[lints(uninlined_format_args)]
     allow_mixed_uninlined_format_args: bool = true,
     /// Whether to allow `r#""#` when `r""` can be used
-    #[lints(unnecessary_raw_string_hashes)]
+    #[lints(needless_raw_string_hashes)]
     allow_one_hash_in_raw_strings: bool = false,
     /// Whether `panic` should be allowed in test functions or `#[cfg(test)]`
     #[lints(panic)]
@@ -325,6 +335,9 @@ define_Conf! {
     #[lints(renamed_function_params)]
     allow_renamed_params_for: Vec<String> =
         DEFAULT_ALLOWED_TRAITS_WITH_RENAMED_PARAMS.iter().map(ToString::to_string).collect(),
+    /// Whether `unwrap` should be allowed in code always evaluated at compile time
+    #[lints(unwrap_used)]
+    allow_unwrap_in_consts: bool = true,
     /// Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
     #[lints(unwrap_used)]
     allow_unwrap_in_tests: bool = false,
@@ -432,6 +445,7 @@ define_Conf! {
         linkedlist,
         needless_pass_by_ref_mut,
         option_option,
+        owned_cow,
         rc_buffer,
         rc_mutex,
         redundant_allocation,
@@ -448,7 +462,7 @@ define_Conf! {
     avoid_breaking_exported_api: bool = true,
     /// The list of types which may not be held across an await point.
     #[lints(await_holding_invalid_type)]
-    await_holding_invalid_types: Vec<DisallowedPath> = Vec::new(),
+    await_holding_invalid_types: Vec<DisallowedPathWithoutReplacement> = Vec::new(),
     /// DEPRECATED LINT: BLACKLISTED_NAME.
     ///
     /// Use the Disallowed Names lint instead
@@ -457,6 +471,9 @@ define_Conf! {
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     #[lints(cargo_common_metadata)]
     cargo_ignore_publish: bool = false,
+    /// Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
+    #[lints(incompatible_msrv)]
+    check_incompatible_msrv_in_tests: bool = false,
     /// Whether to also run the listed lints on private items.
     #[lints(missing_errors_doc, missing_panics_doc, missing_safety_doc, unnecessary_safety_doc)]
     check_private_items: bool = false,
@@ -586,6 +603,13 @@ define_Conf! {
     /// The named groupings of different source item kinds within modules.
     #[lints(arbitrary_source_item_ordering)]
     module_item_order_groupings: SourceItemOrderingModuleItemGroupings = DEFAULT_MODULE_ITEM_ORDERING_GROUPS.into(),
+    /// Whether the items within module groups should be ordered alphabetically or not.
+    ///
+    /// This option can be configured to "all", "none", or a list of specific grouping names that should be checked
+    /// (e.g. only "enums").
+    #[lints(arbitrary_source_item_ordering)]
+    module_items_ordered_within_groupings: SourceItemOrderingWithinModuleItemGroupings =
+        SourceItemOrderingWithinModuleItemGroupings::None,
     /// The minimum rust version that the project supports. Defaults to the `rust-version` field in `Cargo.toml`
     #[default_text = "current version"]
     #[lints(
@@ -607,15 +631,21 @@ define_Conf! {
         from_over_into,
         if_then_some_else_none,
         index_refutable_slice,
+        io_other_error,
         iter_kv_map,
         legacy_numeric_constants,
+        lines_filter_map_ok,
         manual_bits,
         manual_c_str_literals,
         manual_clamp,
+        manual_div_ceil,
+        manual_flatten,
         manual_hash_one,
         manual_is_ascii_check,
         manual_let_else,
+        manual_midpoint,
         manual_non_exhaustive,
+        manual_option_as_slice,
         manual_pattern_char_comparison,
         manual_range_contains,
         manual_rem_euclid,
@@ -630,6 +660,7 @@ define_Conf! {
         map_unwrap_or,
         map_with_unused_argument_over_ranges,
         match_like_matches_macro,
+        mem_replace_option_with_some,
         mem_replace_with_default,
         missing_const_for_fn,
         needless_borrow,
@@ -637,8 +668,10 @@ define_Conf! {
         option_as_ref_deref,
         option_map_unwrap_or,
         ptr_as_ptr,
+        question_mark,
         redundant_field_names,
         redundant_static_lifetimes,
+        repeat_vec_with_capacity,
         same_item_push,
         seek_from_current,
         seek_rewind,
@@ -652,7 +685,7 @@ define_Conf! {
         unused_trait_names,
         use_self,
     )]
-    msrv: Msrv = Msrv::empty(),
+    msrv: Msrv = Msrv::default(),
     /// The minimum size (in bytes) to consider a type for passing by reference instead of by value.
     #[lints(large_types_passed_by_value)]
     pass_by_value_size_limit: u64 = 256,
@@ -797,6 +830,36 @@ fn deserialize(file: &SourceFile) -> TryConf {
                 &mut conf.conf.allow_renamed_params_for,
                 DEFAULT_ALLOWED_TRAITS_WITH_RENAMED_PARAMS,
             );
+
+            // Confirms that the user has not accidentally configured ordering requirements for groups that
+            // aren't configured.
+            if let SourceItemOrderingWithinModuleItemGroupings::Custom(groupings) =
+                &conf.conf.module_items_ordered_within_groupings
+            {
+                for grouping in groupings {
+                    if !conf.conf.module_item_order_groupings.is_grouping(grouping) {
+                        // Since this isn't fixable by rustfix, don't emit a `Suggestion`. This just adds some useful
+                        // info for the user instead.
+
+                        let names = conf.conf.module_item_order_groupings.grouping_names();
+                        let suggestion = suggest_candidate(grouping, names.iter().map(String::as_str))
+                            .map(|s| format!(" perhaps you meant `{s}`?"))
+                            .unwrap_or_default();
+                        let names = names.iter().map(|s| format!("`{s}`")).join(", ");
+                        let message = format!(
+                            "unknown ordering group: `{grouping}` was not specified in `module-items-ordered-within-groupings`,{suggestion} expected one of: {names}"
+                        );
+
+                        let span = conf
+                            .value_spans
+                            .get("module_item_order_groupings")
+                            .cloned()
+                            .unwrap_or_default();
+                        conf.errors.push(ConfError::spanned(file, message, None, span));
+                    }
+                }
+            }
+
             // TODO: THIS SHOULD BE TESTED, this comment will be gone soon
             if conf.conf.allowed_idents_below_min_chars.iter().any(|e| e == "..") {
                 conf.conf
@@ -842,6 +905,7 @@ impl Conf {
 
         let TryConf {
             mut conf,
+            value_spans: _,
             errors,
             warnings,
         } = match path {
@@ -932,17 +996,10 @@ impl serde::de::Error for FieldError {
             }
         }
 
-        let suggestion = expected
-            .iter()
-            .filter_map(|expected| {
-                let dist = edit_distance(field, expected, 4)?;
-                Some((dist, expected))
-            })
-            .min_by_key(|&(dist, _)| dist)
-            .map(|(_, suggestion)| Suggestion {
-                message: "perhaps you meant",
-                suggestion,
-            });
+        let suggestion = suggest_candidate(field, expected).map(|suggestion| Suggestion {
+            message: "perhaps you meant",
+            suggestion,
+        });
 
         Self { error: msg, suggestion }
     }
@@ -978,6 +1035,22 @@ fn calculate_dimensions(fields: &[&str]) -> (usize, Vec<usize>) {
         .collect::<Vec<_>>();
 
     (rows, column_widths)
+}
+
+/// Given a user-provided value that couldn't be matched to a known option, finds the most likely
+/// candidate among candidates that the user might have meant.
+fn suggest_candidate<'a, I>(value: &str, candidates: I) -> Option<&'a str>
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    candidates
+        .into_iter()
+        .filter_map(|expected| {
+            let dist = edit_distance(value, expected, 4)?;
+            Some((dist, expected))
+        })
+        .min_by_key(|&(dist, _)| dist)
+        .map(|(_, suggestion)| suggestion)
 }
 
 #[cfg(test)]

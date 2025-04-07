@@ -177,9 +177,9 @@ async function hasToolchainFileWithRaDeclared(uri: vscode.Uri): Promise<boolean>
             await vscode.workspace.fs.readFile(uri),
         );
         return (
-            toolchainFileContents.match(/components\s*=\s*\[.*\"rust-analyzer\".*\]/g)?.length === 1
+            toolchainFileContents.match(/components\s*=\s*\[.*"rust-analyzer".*\]/g)?.length === 1
         );
-    } catch (e) {
+    } catch (_) {
         return false;
     }
 }

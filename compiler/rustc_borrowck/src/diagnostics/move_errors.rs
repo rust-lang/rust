@@ -502,7 +502,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 let upvar = &self.upvars[upvar_field.unwrap().index()];
                 let upvar_hir_id = upvar.get_root_variable();
                 let upvar_name = upvar.to_string(tcx);
-                let upvar_span = tcx.hir().span(upvar_hir_id);
+                let upvar_span = tcx.hir_span(upvar_hir_id);
 
                 let place_name = self.describe_any_place(move_place.as_ref());
 
@@ -596,10 +596,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         self.suggest_cloning(err, place_ty, expr, None);
                     }
 
-                    let ty = self.infcx.tcx.short_string(place_ty, err.long_ty_path());
                     err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
                         is_partial_move: false,
-                        ty,
+                        ty: place_ty,
                         place: &place_desc,
                         span,
                     });
@@ -629,10 +628,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     self.suggest_cloning(err, place_ty, expr, Some(use_spans));
                 }
 
-                let ty = self.infcx.tcx.short_string(place_ty, err.long_ty_path());
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
                     is_partial_move: false,
-                    ty,
+                    ty: place_ty,
                     place: &place_desc,
                     span: use_span,
                 });
@@ -833,10 +831,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     self.suggest_cloning(err, bind_to.ty, expr, None);
                 }
 
-                let ty = self.infcx.tcx.short_string(bind_to.ty, err.long_ty_path());
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
                     is_partial_move: false,
-                    ty,
+                    ty: bind_to.ty,
                     place: place_desc,
                     span: binding_span,
                 });

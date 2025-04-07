@@ -19,7 +19,6 @@ use hir_expand::{
 use intern::{sym, Interned};
 use itertools::{izip, Itertools};
 use la_arena::Idx;
-use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{Edition, EditionedFileId, FileAstId, SyntaxContextId};
 use syntax::ast;
@@ -55,8 +54,8 @@ use crate::{
     UnresolvedMacro, UseId, UseLoc,
 };
 
-static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
-static FIXED_POINT_LIMIT: Limit = Limit::new(8192);
+const GLOB_RECURSION_LIMIT: usize = 100;
+const FIXED_POINT_LIMIT: usize = 8192;
 
 pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeId) -> DefMap {
     let crate_graph = db.crate_graph();
@@ -393,7 +392,7 @@ impl DefCollector<'_> {
                 }
 
                 i += 1;
-                if FIXED_POINT_LIMIT.check(i).is_err() {
+                if i > FIXED_POINT_LIMIT {
                     tracing::error!("name resolution is stuck");
                     break 'resolve_attr;
                 }
@@ -993,7 +992,7 @@ impl DefCollector<'_> {
         import: Option<ImportOrExternCrate>,
         depth: usize,
     ) {
-        if GLOB_RECURSION_LIMIT.check(depth).is_err() {
+        if depth > GLOB_RECURSION_LIMIT {
             // prevent stack overflows (but this shouldn't be possible)
             panic!("infinite recursion in glob imports!");
         }
@@ -1470,8 +1469,7 @@ impl DefCollector<'_> {
         depth: usize,
         container: ItemContainerId,
     ) {
-        let recursion_limit = Limit::new(self.def_map.recursion_limit() as usize);
-        if recursion_limit.check(depth).is_err() {
+        if depth > self.def_map.recursion_limit() as usize {
             cov_mark::hit!(macro_expansion_overflow);
             tracing::warn!("macro expansion is too deep");
             return;
@@ -1499,7 +1497,6 @@ impl DefCollector<'_> {
 
     fn finish(mut self) -> DefMap {
         // Emit diagnostics for all remaining unexpanded macros.
-
         let _p = tracing::info_span!("DefCollector::finish").entered();
 
         for directive in &self.unresolved_macros {

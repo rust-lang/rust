@@ -28,13 +28,14 @@ struct Counter2 {
 
 impl Data2 {
     fn iter(&self) -> Counter2 {
-        //~^ ERROR: this method is named `iter` but its return type does not implement `Iterat
-        //~| NOTE: `-D clippy::iter-not-returning-iterator` implied by `-D warnings`
+        //~^ iter_not_returning_iterator
+
         todo!()
     }
 
     fn iter_mut(&self) -> Counter2 {
-        //~^ ERROR: this method is named `iter_mut` but its return type does not implement `It
+        //~^ iter_not_returning_iterator
+
         todo!()
     }
 }
@@ -51,7 +52,7 @@ impl Iterator for Counter {
 trait Iter {
     type I;
     fn iter(&self) -> Self::I;
-    //~^ ERROR: this method is named `iter` but its return type does not implement `Iterat
+    //~^ iter_not_returning_iterator
 }
 
 impl Iter for () {

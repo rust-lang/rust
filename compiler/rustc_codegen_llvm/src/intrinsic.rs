@@ -14,6 +14,7 @@ use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 use tracing::debug;
@@ -470,7 +471,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let layout = self.layout_of(tp_ty).layout;
                 let use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
-                    Vector { .. } => false,
+                    SimdVector { .. } => false,
                     Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
@@ -649,7 +650,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn type_test(&mut self, pointer: Self::Value, typeid: Self::Metadata) -> Self::Value {
         // Test the called operand using llvm.type.test intrinsic. The LowerTypeTests link-time
         // optimization pass replaces calls to this intrinsic with code to test type membership.
-        let typeid = unsafe { llvm::LLVMMetadataAsValue(&self.llcx, typeid) };
+        let typeid = self.get_metadata_value(typeid);
         self.call_intrinsic("llvm.type.test", &[pointer, typeid])
     }
 
@@ -659,7 +660,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         vtable_byte_offset: u64,
         typeid: &'ll Metadata,
     ) -> Self::Value {
-        let typeid = unsafe { llvm::LLVMMetadataAsValue(&self.llcx, typeid) };
+        let typeid = self.get_metadata_value(typeid);
         let vtable_byte_offset = self.const_i32(vtable_byte_offset as i32);
         let type_checked_load =
             self.call_intrinsic("llvm.type.checked.load", &[llvtable, vtable_byte_offset, typeid]);
@@ -812,7 +813,10 @@ fn codegen_msvc_try<'ll>(
         let type_name = bx.const_bytes(b"rust_panic\0");
         let type_info =
             bx.const_struct(&[type_info_vtable, bx.const_null(bx.type_ptr()), type_name], false);
-        let tydesc = bx.declare_global("__rust_panic_type_info", bx.val_ty(type_info));
+        let tydesc = bx.declare_global(
+            &mangle_internal_symbol(bx.tcx, "__rust_panic_type_info"),
+            bx.val_ty(type_info),
+        );
 
         llvm::set_linkage(tydesc, llvm::Linkage::LinkOnceODRLinkage);
         if bx.cx.tcx.sess.target.supports_comdat() {
@@ -1329,7 +1333,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         ));
     }
 
-    if name == sym::simd_shuffle_generic {
+    if name == sym::simd_shuffle_const_generic {
         let idx = fn_args[2].expect_const().to_value().valtree.unwrap_branch();
         let n = idx.len() as u64;
 
@@ -1581,8 +1585,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_fma => ("fma", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
             sym::simd_relaxed_fma => ("fmuladd", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
-            sym::simd_fpowi => ("powi", bx.type_func(&[vec_ty, bx.type_i32()], vec_ty)),
-            sym::simd_fpow => ("pow", bx.type_func(&[vec_ty, vec_ty], vec_ty)),
             sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
@@ -1615,8 +1617,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             | sym::simd_flog
             | sym::simd_floor
             | sym::simd_fma
-            | sym::simd_fpow
-            | sym::simd_fpowi
             | sym::simd_fsin
             | sym::simd_fsqrt
             | sym::simd_relaxed_fma

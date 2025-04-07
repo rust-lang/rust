@@ -173,7 +173,13 @@ fn parse_repr_tt(tt: &TopSubtree) -> Option<ReprOptions> {
         }
     }
 
-    Some(ReprOptions { int, align: max_align, pack: min_pack, flags, field_shuffle_seed: Hash64::ZERO })
+    Some(ReprOptions {
+        int,
+        align: max_align,
+        pack: min_pack,
+        flags,
+        field_shuffle_seed: Hash64::ZERO,
+    })
 }
 
 impl StructData {

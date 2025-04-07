@@ -6,7 +6,6 @@ use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
-use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -163,14 +162,9 @@ fn extract_else_block(mut block: &str) -> String {
     block.trim_end().to_string()
 }
 
-fn make_sugg<'a>(
-    cx: &EarlyContext<'_>,
-    els_span: Span,
-    default: &'a str,
-    indent_relative_to: Option<Span>,
-) -> Cow<'a, str> {
+fn make_sugg(cx: &EarlyContext<'_>, els_span: Span, default: &str, indent_relative_to: Option<Span>) -> String {
     let extracted = extract_else_block(&snippet(cx, els_span, default));
     let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
 
-    reindent_multiline(extracted.into(), false, indent)
+    reindent_multiline(&extracted, false, indent)
 }

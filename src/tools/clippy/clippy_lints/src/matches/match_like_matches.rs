@@ -42,7 +42,7 @@ pub(super) fn check_match<'tcx>(
         cx,
         scrutinee,
         arms.iter()
-            .map(|arm| (cx.tcx.hir().attrs(arm.hir_id), Some(arm.pat), arm.body, arm.guard)),
+            .map(|arm| (cx.tcx.hir_attrs(arm.hir_id), Some(arm.pat), arm.body, arm.guard)),
         e,
         false,
     )

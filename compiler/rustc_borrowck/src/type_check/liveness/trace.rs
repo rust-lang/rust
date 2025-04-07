@@ -4,7 +4,6 @@ use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::for_liveness;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, HasLocalDecls, Local, Location};
-use rustc_middle::span_bug;
 use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::relate::Relate;
 use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
@@ -12,7 +11,7 @@ use rustc_mir_dataflow::ResultsCursor;
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::query::dropck_outlives;
@@ -40,17 +39,15 @@ use crate::type_check::{NormalizeLocation, TypeChecker};
 /// this respects `#[may_dangle]` annotations).
 pub(super) fn trace<'a, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body: &Body<'tcx>,
     location_map: &DenseLocationMap,
     flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     relevant_live_locals: Vec<Local>,
     boring_locals: Vec<Local>,
 ) {
-    let local_use_map = &LocalUseMap::build(&relevant_live_locals, location_map, body);
+    let local_use_map = &LocalUseMap::build(&relevant_live_locals, location_map, typeck.body);
     let cx = LivenessContext {
         typeck,
-        body,
         flow_inits,
         location_map,
         local_use_map,
@@ -70,13 +67,12 @@ pub(super) fn trace<'a, 'tcx>(
 /// Contextual state for the type-liveness coroutine.
 struct LivenessContext<'a, 'typeck, 'b, 'tcx> {
     /// Current type-checker, giving us our inference context etc.
+    ///
+    /// This also stores the body we're currently analyzing.
     typeck: &'a mut TypeChecker<'typeck, 'tcx>,
 
     /// Defines the `PointIndex` mapping
     location_map: &'a DenseLocationMap,
-
-    /// MIR we are analyzing.
-    body: &'a Body<'tcx>,
 
     /// Mapping to/from the various indices used for initialization tracking.
     move_data: &'a MoveData<'tcx>,
@@ -140,7 +136,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
             self.compute_use_live_points_for(local);
             self.compute_drop_live_points_for(local);
 
-            let local_ty = self.cx.body.local_decls[local].ty;
+            let local_ty = self.cx.body().local_decls[local].ty;
 
             if !self.use_live_at.is_empty() {
                 self.cx.add_use_live_facts_for(local_ty, &self.use_live_at);
@@ -165,8 +161,8 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
     /// and can therefore safely be dropped.
     fn dropck_boring_locals(&mut self, boring_locals: Vec<Local>) {
         for local in boring_locals {
-            let local_ty = self.cx.body.local_decls[local].ty;
-            let local_span = self.cx.body.local_decls[local].source_info.span;
+            let local_ty = self.cx.body().local_decls[local].ty;
+            let local_span = self.cx.body().local_decls[local].source_info.span;
             let drop_data = self.cx.drop_data.entry(local_ty).or_insert_with({
                 let typeck = &self.cx.typeck;
                 move || LivenessContext::compute_drop_data(typeck, local_ty, local_span)
@@ -174,7 +170,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
 
             drop_data.dropck_result.report_overflows(
                 self.cx.typeck.infcx.tcx,
-                self.cx.body.local_decls[local].source_info.span,
+                self.cx.typeck.body.local_decls[local].source_info.span,
                 local_ty,
             );
         }
@@ -203,7 +199,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
                 .var_dropped_at
                 .iter()
                 .filter_map(|&(local, location_index)| {
-                    let local_ty = self.cx.body.local_decls[local].ty;
+                    let local_ty = self.cx.body().local_decls[local].ty;
                     if relevant_live_locals.contains(&local) || !local_ty.has_free_regions() {
                         return None;
                     }
@@ -279,9 +275,9 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
 
                 let block = self.cx.location_map.to_location(block_start).block;
                 self.stack.extend(
-                    self.cx.body.basic_blocks.predecessors()[block]
+                    self.cx.body().basic_blocks.predecessors()[block]
                         .iter()
-                        .map(|&pred_bb| self.cx.body.terminator_loc(pred_bb))
+                        .map(|&pred_bb| self.cx.body().terminator_loc(pred_bb))
                         .map(|pred_loc| self.cx.location_map.point_from_location(pred_loc)),
                 );
             }
@@ -306,7 +302,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
         // Find the drops where `local` is initialized.
         for drop_point in self.cx.local_use_map.drops(local) {
             let location = self.cx.location_map.to_location(drop_point);
-            debug_assert_eq!(self.cx.body.terminator_loc(location.block), location,);
+            debug_assert_eq!(self.cx.body().terminator_loc(location.block), location,);
 
             if self.cx.initialized_at_terminator(location.block, mpi)
                 && self.drop_live_at.insert(drop_point)
@@ -352,7 +348,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
         // block. One of them may be either a definition or use
         // live point.
         let term_location = self.cx.location_map.to_location(term_point);
-        debug_assert_eq!(self.cx.body.terminator_loc(term_location.block), term_location,);
+        debug_assert_eq!(self.cx.body().terminator_loc(term_location.block), term_location,);
         let block = term_location.block;
         let entry_point = self.cx.location_map.entry_point(term_location.block);
         for p in (entry_point..term_point).rev() {
@@ -377,7 +373,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
             }
         }
 
-        let body = self.cx.body;
+        let body = self.cx.typeck.body;
         for &pred_block in body.basic_blocks.predecessors()[block].iter() {
             debug!("compute_drop_live_points_for_block: pred_block = {:?}", pred_block,);
 
@@ -404,7 +400,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
                 continue;
             }
 
-            let pred_term_loc = self.cx.body.terminator_loc(pred_block);
+            let pred_term_loc = self.cx.body().terminator_loc(pred_block);
             let pred_term_point = self.cx.location_map.point_from_location(pred_term_loc);
 
             // If the terminator of this predecessor either *assigns*
@@ -464,6 +460,9 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
 }
 
 impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
+    fn body(&self) -> &Body<'tcx> {
+        self.typeck.body
+    }
     /// Returns `true` if the local variable (or some part of it) is initialized at the current
     /// cursor position. Callers should call one of the `seek` methods immediately before to point
     /// the cursor to the desired location.
@@ -482,7 +481,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     /// DROP of some local variable will have an effect -- note that
     /// drops, as they may unwind, are always terminators.
     fn initialized_at_terminator(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        self.flow_inits.seek_before_primary_effect(self.body.terminator_loc(block));
+        self.flow_inits.seek_before_primary_effect(self.body().terminator_loc(block));
         self.initialized_at_curr_loc(mpi)
     }
 
@@ -492,7 +491,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     /// **Warning:** Does not account for the result of `Call`
     /// instructions.
     fn initialized_at_exit(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        self.flow_inits.seek_after_primary_effect(self.body.terminator_loc(block));
+        self.flow_inits.seek_after_primary_effect(self.body().terminator_loc(block));
         self.initialized_at_curr_loc(mpi)
     }
 
@@ -527,7 +526,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
             values::pretty_print_points(self.location_map, live_at.iter()),
         );
 
-        let local_span = self.body.local_decls()[dropped_local].source_info.span;
+        let local_span = self.body().local_decls()[dropped_local].source_info.span;
         let drop_data = self.drop_data.entry(dropped_ty).or_insert_with({
             let typeck = &self.typeck;
             move || Self::compute_drop_data(typeck, dropped_ty, local_span)
@@ -545,7 +544,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
 
         drop_data.dropck_result.report_overflows(
             self.typeck.infcx.tcx,
-            self.body.source_info(*drop_locations.first().unwrap()).span,
+            self.typeck.body.source_info(*drop_locations.first().unwrap()).span,
             dropped_ty,
         );
 
@@ -608,10 +607,10 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
             Ok(TypeOpOutput { output, constraints, .. }) => {
                 DropData { dropck_result: output, region_constraint_data: constraints }
             }
-            Err(_) => {
+            Err(ErrorGuaranteed { .. }) => {
                 // We don't run dropck on HIR, and dropck looks inside fields of
                 // types, so there's no guarantee that it succeeds. We also
-                // can't rely on the the `ErrorGuaranteed` from `fully_perform` here
+                // can't rely on the `ErrorGuaranteed` from `fully_perform` here
                 // because it comes from delay_span_bug.
                 //
                 // Do this inside of a probe because we don't particularly care (or want)
@@ -631,10 +630,10 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                         }
                     };
 
+                    // Could have no errors if a type lowering error, say, caused the query
+                    // to fail.
                     if !errors.is_empty() {
                         typeck.infcx.err_ctxt().report_fulfillment_errors(errors);
-                    } else {
-                        span_bug!(span, "Rerunning drop data query produced no error.");
                     }
                 });
                 DropData { dropck_result: Default::default(), region_constraint_data: None }

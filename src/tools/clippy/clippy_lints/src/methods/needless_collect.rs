@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
@@ -9,9 +11,9 @@ use clippy_utils::{
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
+use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{
-    BindingMode, Block, Expr, ExprKind, HirId, HirIdSet, LetStmt, Mutability, Node, PatKind, Stmt, StmtKind,
+    BindingMode, Block, Expr, ExprKind, HirId, HirIdSet, LetStmt, Mutability, Node, Pat, PatKind, Stmt, StmtKind,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
@@ -100,6 +102,12 @@ pub(super) fn check<'tcx>(
                 let mut used_count_visitor = UsedCountVisitor { cx, id, count: 0 };
                 walk_block(&mut used_count_visitor, block);
                 if used_count_visitor.count > 1 {
+                    return;
+                }
+
+                if let IterFunctionKind::IntoIter(hir_id) = iter_call.func
+                    && !check_iter_expr_used_only_as_iterator(cx, hir_id, block)
+                {
                     return;
                 }
 
@@ -253,7 +261,7 @@ struct IterFunction {
 impl IterFunction {
     fn get_iter_method(&self, cx: &LateContext<'_>) -> String {
         match &self.func {
-            IterFunctionKind::IntoIter => String::new(),
+            IterFunctionKind::IntoIter(_) => String::new(),
             IterFunctionKind::Len => String::from(".count()"),
             IterFunctionKind::IsEmpty => String::from(".next().is_none()"),
             IterFunctionKind::Contains(span) => {
@@ -268,7 +276,7 @@ impl IterFunction {
     }
     fn get_suggestion_text(&self) -> &'static str {
         match &self.func {
-            IterFunctionKind::IntoIter => {
+            IterFunctionKind::IntoIter(_) => {
                 "use the original Iterator instead of collecting it and then producing a new one"
             },
             IterFunctionKind::Len => {
@@ -284,7 +292,7 @@ impl IterFunction {
     }
 }
 enum IterFunctionKind {
-    IntoIter,
+    IntoIter(HirId),
     Len,
     IsEmpty,
     Contains(Span),
@@ -343,7 +351,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                     }
                     match method_name.ident.name.as_str() {
                         "into_iter" => self.uses.push(Some(IterFunction {
-                            func: IterFunctionKind::IntoIter,
+                            func: IterFunctionKind::IntoIter(expr.hir_id),
                             span: expr.span,
                         })),
                         "len" => self.uses.push(Some(IterFunction {
@@ -519,4 +527,62 @@ fn get_captured_ids(cx: &LateContext<'_>, ty: Ty<'_>) -> HirIdSet {
     get_captured_ids_recursive(cx, ty, &mut set);
 
     set
+}
+
+struct IteratorMethodCheckVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    hir_id_of_expr: HirId,
+    hir_id_of_let_binding: Option<HirId>,
+}
+
+impl<'tcx> Visitor<'tcx> for IteratorMethodCheckVisitor<'_, 'tcx> {
+    type Result = ControlFlow<()>;
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> ControlFlow<()> {
+        if let ExprKind::MethodCall(_method_name, recv, _args, _) = &expr.kind
+            && (recv.hir_id == self.hir_id_of_expr
+                || self
+                    .hir_id_of_let_binding
+                    .is_some_and(|hid| path_to_local_id(recv, hid)))
+            && !is_trait_method(self.cx, expr, sym::Iterator)
+        {
+            return ControlFlow::Break(());
+        } else if let ExprKind::Assign(place, value, _span) = &expr.kind
+            && value.hir_id == self.hir_id_of_expr
+            && let Some(id) = path_to_local(place)
+        {
+            // our iterator was directly assigned to a variable
+            self.hir_id_of_let_binding = Some(id);
+        }
+        walk_expr(self, expr)
+    }
+    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'tcx>) -> ControlFlow<()> {
+        if let StmtKind::Let(LetStmt {
+            init: Some(expr),
+            pat:
+                Pat {
+                    kind: PatKind::Binding(BindingMode::NONE | BindingMode::MUT, id, _, None),
+                    ..
+                },
+            ..
+        }) = &stmt.kind
+            && expr.hir_id == self.hir_id_of_expr
+        {
+            // our iterator was directly assigned to a variable
+            self.hir_id_of_let_binding = Some(*id);
+        }
+        walk_stmt(self, stmt)
+    }
+}
+
+fn check_iter_expr_used_only_as_iterator<'tcx>(
+    cx: &LateContext<'tcx>,
+    hir_id_of_expr: HirId,
+    block: &'tcx Block<'tcx>,
+) -> bool {
+    let mut visitor = IteratorMethodCheckVisitor {
+        cx,
+        hir_id_of_expr,
+        hir_id_of_let_binding: None,
+    };
+    visitor.visit_block(block).is_continue()
 }

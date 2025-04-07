@@ -1825,7 +1825,7 @@ macro_rules! impl_int {
     ($($t:ty)*) => {
         $(
             impl $t {
-                pub const fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
+                pub const fn from_ne_bytes(bytes: [u8; size_of::<Self>()]) -> Self {
                     unsafe { mem::transmute(bytes) }
                 }
             }
@@ -1874,6 +1874,7 @@ pub mod prelude {
             marker::Sized,                           // :sized
             marker::Sync,                            // :sync
             mem::drop,                               // :drop
+            mem::size_of,                            // :size_of
             ops::Drop,                               // :drop
             ops::{AsyncFn, AsyncFnMut, AsyncFnOnce}, // :async_fn
             ops::{Fn, FnMut, FnOnce},                // :fn
@@ -1893,6 +1894,10 @@ pub mod prelude {
     }
 
     pub mod rust_2021 {
+        pub use super::v1::*;
+    }
+
+    pub mod rust_2024 {
         pub use super::v1::*;
     }
 }

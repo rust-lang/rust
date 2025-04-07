@@ -11,7 +11,7 @@ on:
 
 jobs:
   publish:
-    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event.action == 'workflow_dispatch' }}
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
     name: publish
     runs-on: ubuntu-latest
     steps:

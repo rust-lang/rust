@@ -19,8 +19,16 @@ use crate::ty::{
     TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 
+impl IntoDiagArg for Ty<'_> {
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
+        ty::tls::with(|tcx| {
+            let ty = tcx.short_string(self, path);
+            rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(ty))
+        })
+    }
+}
+
 into_diag_arg_using_display! {
-    Ty<'_>,
     ty::Region<'_>,
 }
 
@@ -134,8 +142,8 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     if let Some((name, term)) = associated_ty {
         // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
         // That should be extracted into a helper function.
-        if constraint.ends_with('>') {
-            constraint = format!("{}, {} = {}>", &constraint[..constraint.len() - 1], name, term);
+        if let Some(stripped) = constraint.strip_suffix('>') {
+            constraint = format!("{stripped}, {name} = {term}>");
         } else {
             constraint.push_str(&format!("<{name} = {term}>"));
         }
@@ -633,21 +641,19 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
                 }
             }
 
-            Alias(Projection, AliasTy { def_id, .. }) => {
-                if self.tcx.def_kind(def_id) != DefKind::AssocTy {
-                    return ControlFlow::Break(());
-                }
+            Alias(Projection, AliasTy { def_id, .. })
+                if self.tcx.def_kind(def_id) != DefKind::AssocTy =>
+            {
+                return ControlFlow::Break(());
             }
 
-            Param(param) => {
-                // FIXME: It would be nice to make this not use string manipulation,
-                // but it's pretty hard to do this, since `ty::ParamTy` is missing
-                // sufficient info to determine if it is synthetic, and we don't
-                // always have a convenient way of getting `ty::Generics` at the call
-                // sites we invoke `IsSuggestable::is_suggestable`.
-                if param.name.as_str().starts_with("impl ") {
-                    return ControlFlow::Break(());
-                }
+            // FIXME: It would be nice to make this not use string manipulation,
+            // but it's pretty hard to do this, since `ty::ParamTy` is missing
+            // sufficient info to determine if it is synthetic, and we don't
+            // always have a convenient way of getting `ty::Generics` at the call
+            // sites we invoke `IsSuggestable::is_suggestable`.
+            Param(param) if param.name.as_str().starts_with("impl ") => {
+                return ControlFlow::Break(());
             }
 
             _ => {}
@@ -725,17 +731,13 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
                 }
             }
 
-            Param(param) => {
-                // FIXME: It would be nice to make this not use string manipulation,
-                // but it's pretty hard to do this, since `ty::ParamTy` is missing
-                // sufficient info to determine if it is synthetic, and we don't
-                // always have a convenient way of getting `ty::Generics` at the call
-                // sites we invoke `IsSuggestable::is_suggestable`.
-                if param.name.as_str().starts_with("impl ") {
-                    return Err(());
-                }
-
-                t
+            // FIXME: It would be nice to make this not use string manipulation,
+            // but it's pretty hard to do this, since `ty::ParamTy` is missing
+            // sufficient info to determine if it is synthetic, and we don't
+            // always have a convenient way of getting `ty::Generics` at the call
+            // sites we invoke `IsSuggestable::is_suggestable`.
+            Param(param) if param.name.as_str().starts_with("impl ") => {
+                return Err(());
             }
 
             _ => t,

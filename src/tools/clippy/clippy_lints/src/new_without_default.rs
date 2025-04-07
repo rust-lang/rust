@@ -97,14 +97,14 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                         {
                             if self.impling_types.is_none() {
                                 let mut impls = HirIdSet::default();
-                                cx.tcx.for_each_impl(default_trait_id, |d| {
+                                for &d in cx.tcx.local_trait_impls(default_trait_id) {
                                     let ty = cx.tcx.type_of(d).instantiate_identity();
                                     if let Some(ty_def) = ty.ty_adt_def() {
                                         if let Some(local_def_id) = ty_def.did().as_local() {
                                             impls.insert(cx.tcx.local_def_id_to_hir_id(local_def_id));
                                         }
                                     }
-                                });
+                                }
                                 self.impling_types = Some(impls);
                             }
 

@@ -1,6 +1,6 @@
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::fold::TypeFoldable;
@@ -20,7 +20,10 @@ use crate::{self as ty, Interner};
 /// t-types for help.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
 pub enum TypingMode<I: Interner> {
     /// When checking whether impls overlap, we check whether any obligations
     /// are guaranteed to never hold when unifying the impls. This requires us
@@ -63,6 +66,14 @@ pub enum TypingMode<I: Interner> {
     /// }
     /// ```
     Analysis { defining_opaque_types: I::DefiningOpaqueTypes },
+    /// The behavior during MIR borrowck is identical to `TypingMode::Analysis`
+    /// except that the initial value for opaque types is the type computed during
+    /// HIR typeck with unique unconstrained region inference variables.
+    ///
+    /// This is currently only used with by the new solver as it results in new
+    /// non-universal defining uses of opaque types, which is a breaking change.
+    /// See tests/ui/impl-trait/non-defining-use/as-projection-term.rs.
+    Borrowck { defining_opaque_types: I::DefiningOpaqueTypes },
     /// Any analysis after borrowck for a given body should be able to use all the
     /// hidden types defined by borrowck, without being able to define any new ones.
     ///
@@ -92,6 +103,10 @@ impl<I: Interner> TypingMode<I> {
         TypingMode::Analysis { defining_opaque_types: cx.opaque_types_defined_by(body_def_id) }
     }
 
+    pub fn borrowck(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
+        TypingMode::Borrowck { defining_opaque_types: cx.opaque_types_defined_by(body_def_id) }
+    }
+
     pub fn post_borrowck_analysis(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
         TypingMode::PostBorrowckAnalysis {
             defined_opaque_types: cx.opaque_types_defined_by(body_def_id),
@@ -99,6 +114,7 @@ impl<I: Interner> TypingMode<I> {
     }
 }
 
+#[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_infer_ctxt_like")]
 pub trait InferCtxtLike: Sized {
     type Interner: Interner;
     fn cx(&self) -> Self::Interner;
@@ -151,7 +167,7 @@ pub trait InferCtxtLike: Sized {
         value: ty::Binder<Self::Interner, T>,
     ) -> T;
 
-    fn enter_forall<T: TypeFoldable<Self::Interner> + Copy, U>(
+    fn enter_forall<T: TypeFoldable<Self::Interner>, U>(
         &self,
         value: ty::Binder<Self::Interner, T>,
         f: impl FnOnce(T) -> U,

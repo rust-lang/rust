@@ -84,7 +84,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                     AbiParam::new(scalar_to_clif_type(tcx, scalar)),
                     attrs
                 )],
-                BackendRepr::Vector { .. } => {
+                BackendRepr::SimdVector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout);
                     smallvec![AbiParam::new(vector_ty)]
                 }
@@ -135,7 +135,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 BackendRepr::Scalar(scalar) => {
                     (None, vec![AbiParam::new(scalar_to_clif_type(tcx, scalar))])
                 }
-                BackendRepr::Vector { .. } => {
+                BackendRepr::SimdVector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout);
                     (None, vec![AbiParam::new(vector_ty)])
                 }

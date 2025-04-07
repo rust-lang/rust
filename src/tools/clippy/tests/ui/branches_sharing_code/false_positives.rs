@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![allow(dead_code)]
 #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
 

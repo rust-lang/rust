@@ -44,6 +44,21 @@ LL + #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:26:1
+   |
+LL | #[coverage = "off"]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL - #[coverage = "off"]
+LL + #[coverage(off)]
+   |
+LL - #[coverage = "off"]
+LL + #[coverage(on)]
+   |
+
+error: malformed `coverage` attribute input
   --> $DIR/name-value.rs:29:5
    |
 LL |     #[coverage = "off"]
@@ -59,7 +74,7 @@ LL +     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:26:1
+  --> $DIR/name-value.rs:35:1
    |
 LL | #[coverage = "off"]
    | ^^^^^^^^^^^^^^^^^^^
@@ -104,7 +119,7 @@ LL +     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:35:1
+  --> $DIR/name-value.rs:50:1
    |
 LL | #[coverage = "off"]
    | ^^^^^^^^^^^^^^^^^^^
@@ -146,21 +161,6 @@ LL +     #[coverage(off)]
    |
 LL -     #[coverage = "off"]
 LL +     #[coverage(on)]
-   |
-
-error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:50:1
-   |
-LL | #[coverage = "off"]
-   | ^^^^^^^^^^^^^^^^^^^
-   |
-help: the following are the possible correct uses
-   |
-LL - #[coverage = "off"]
-LL + #[coverage(off)]
-   |
-LL - #[coverage = "off"]
-LL + #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input

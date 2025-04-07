@@ -772,8 +772,6 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             sym::simd_floor => "floor",
             sym::simd_fma => "fma",
             sym::simd_relaxed_fma => "fma", // FIXME: this should relax to non-fused multiply-add when necessary
-            sym::simd_fpowi => "__builtin_powi",
-            sym::simd_fpow => "pow",
             sym::simd_fsin => "sin",
             sym::simd_fsqrt => "sqrt",
             sym::simd_round => "round",
@@ -788,24 +786,16 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let mut vector_elements = vec![];
         for i in 0..in_len {
             let index = bx.context.new_rvalue_from_long(bx.ulong_type, i as i64);
-            // we have to treat fpowi specially, since fpowi's second argument is always an i32
             let mut arguments = vec![];
-            if name == sym::simd_fpowi {
-                arguments = vec![
-                    bx.extract_element(args[0].immediate(), index).to_rvalue(),
-                    args[1].immediate(),
-                ];
-            } else {
-                for arg in args {
-                    let mut element = bx.extract_element(arg.immediate(), index).to_rvalue();
-                    // FIXME: it would probably be better to not have casts here and use the proper
-                    // instructions.
-                    if let Some(typ) = cast_type {
-                        element = bx.context.new_cast(None, element, typ);
-                    }
-                    arguments.push(element);
+            for arg in args {
+                let mut element = bx.extract_element(arg.immediate(), index).to_rvalue();
+                // FIXME: it would probably be better to not have casts here and use the proper
+                // instructions.
+                if let Some(typ) = cast_type {
+                    element = bx.context.new_cast(None, element, typ);
                 }
-            };
+                arguments.push(element);
+            }
             let mut result = bx.context.new_call(None, function, &arguments);
             if cast_type.is_some() {
                 result = bx.context.new_cast(None, result, elem_ty);
@@ -829,8 +819,6 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             | sym::simd_floor
             | sym::simd_fma
             | sym::simd_relaxed_fma
-            | sym::simd_fpow
-            | sym::simd_fpowi
             | sym::simd_fsin
             | sym::simd_fsqrt
             | sym::simd_round

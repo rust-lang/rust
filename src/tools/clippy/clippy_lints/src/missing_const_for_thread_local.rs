@@ -49,9 +49,7 @@ pub struct MissingConstForThreadLocal {
 
 impl MissingConstForThreadLocal {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -91,11 +89,11 @@ fn is_unreachable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 #[inline]
-fn initializer_can_be_made_const(cx: &LateContext<'_>, defid: rustc_span::def_id::DefId, msrv: &Msrv) -> bool {
+fn initializer_can_be_made_const(cx: &LateContext<'_>, defid: rustc_span::def_id::DefId, msrv: Msrv) -> bool {
     // Building MIR for `fn`s with unsatisfiable preds results in ICE.
     if !fn_has_unsatisfiable_preds(cx, defid)
         && let mir = cx.tcx.optimized_mir(defid)
-        && let Ok(()) = is_min_const_fn(cx.tcx, mir, msrv)
+        && let Ok(()) = is_min_const_fn(cx, mir, msrv)
     {
         return true;
     }
@@ -113,8 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForThreadLocal {
         local_defid: rustc_span::def_id::LocalDefId,
     ) {
         let defid = local_defid.to_def_id();
-        if self.msrv.meets(msrvs::THREAD_LOCAL_CONST_INIT)
-            && is_thread_local_initializer(cx, fn_kind, span).unwrap_or(false)
+        if is_thread_local_initializer(cx, fn_kind, span).unwrap_or(false)
             // Some implementations of `thread_local!` include an initializer fn.
             // In the case of a const initializer, the init fn is also const,
             // so we can skip the lint in that case. This occurs only on some
@@ -131,11 +128,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForThreadLocal {
             // https://github.com/rust-lang/rust-clippy/issues/12637
             // we ensure that this is reachable before we check in mir
             && !is_unreachable(cx, ret_expr)
-            && initializer_can_be_made_const(cx, defid, &self.msrv)
+            && initializer_can_be_made_const(cx, defid, self.msrv)
             // we know that the function is const-qualifiable, so now
             // we need only to get the initializer expression to span-lint it.
             && let initializer_snippet = snippet(cx, ret_expr.span, "thread_local! { ... }")
             && initializer_snippet != "thread_local! { ... }"
+            && self.msrv.meets(cx, msrvs::THREAD_LOCAL_CONST_INIT)
         {
             span_lint_and_sugg(
                 cx,
@@ -148,6 +146,4 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForThreadLocal {
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }

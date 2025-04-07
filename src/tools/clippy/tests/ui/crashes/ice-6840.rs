@@ -1,3 +1,4 @@
+//@ check-pass
 //! This is a reproducer for the ICE 6840: https://github.com/rust-lang/rust-clippy/issues/6840.
 //! The ICE is caused by `TyCtxt::layout_of` and `is_normalizable` not being strict enough
 #![allow(dead_code)]

@@ -150,9 +150,85 @@ if foo_span.in_external_macro(cx.sess().source_map()) {
 }
 ```
 
+### The `is_from_proc_macro` function
+A common point of confusion is the existence of [`is_from_proc_macro`]
+and how it differs from the other [`in_external_macro`]/[`from_expansion`] functions.
+
+While [`in_external_macro`] and [`from_expansion`] both work perfectly fine for detecting expanded code
+from *declarative* macros (i.e. `macro_rules!` and macros 2.0),
+detecting *proc macro*-generated code is a bit more tricky, as proc macros can (and often do)
+freely manipulate the span of returned tokens.
+
+In practice, this often happens through the use of [`quote::quote_spanned!`] with a span from the input tokens. 
+
+In those cases, there is no *reliable* way for the compiler (and tools like Clippy)
+to distinguish code that comes from such a proc macro from code that the user wrote directly,
+and [`in_external_macro`] will return `false`.
+
+This is usually not an issue for the compiler and actually helps proc macro authors create better error messages,
+as it allows associating parts of the expansion with parts of the macro input and lets the compiler
+point the user to the relevant code in case of a compile error.
+
+However, for Clippy this is inconvenient, because most of the time *we don't* want
+to lint proc macro-generated code and this makes it impossible to tell what is and isn't proc macro code.
+
+> NOTE: this is specifically only an issue when a proc macro explicitly sets the span to that of an **input span**.
+>
+> For example, other common ways of creating `TokenStream`s, such as `"fn foo() {...}".parse::<TokenStream>()`,
+> sets each token's span to `Span::call_site()`, which already marks the span as coming from a proc macro
+> and the usual span methods have no problem detecting that as a macro span.
+
+As such, Clippy has its own `is_from_proc_macro` function which tries to *approximate*
+whether a span comes from a proc macro, by checking whether the source text at the given span
+lines up with the given AST node.
+
+This function is typically used in combination with the other mentioned macro span functions,
+but is usually called much later into the condition chain as it's a bit heavier than most other conditions,
+so that the other cheaper conditions can fail faster. For example, the `borrow_deref_ref` lint:
+```rs
+impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &rustc_hir::Expr<'tcx>) {
+        if let ... = ...
+            && ...
+            && !e.span.from_expansion()
+            && ...
+            && ...
+            && !is_from_proc_macro(cx, e)
+            && ...
+        {
+            ...
+        }
+    }
+}
+```
+
+### Testing lints with macro expansions
+To test that all of these cases are handled correctly in your lint,
+we have a helper auxiliary crate that exposes various macros, used by tests like so:
+```rust
+//@aux-build:proc_macros.rs
+
+extern crate proc_macros;
+
+fn main() {
+    proc_macros::external!{ code_that_should_trigger_your_lint }
+    proc_macros::with_span!{ span code_that_should_trigger_your_lint }
+}
+```
+This exercises two cases:
+- `proc_macros::external!` is a simple proc macro that echos the input tokens back but with a macro span:
+this represents the usual, common case where an external macro expands to code that your lint would trigger,
+and is correctly handled by `in_external_macro` and `Span::from_expansion`.
+
+- `proc_macros::with_span!` echos back the input tokens starting from the second token
+with the span of the first token: this is where the other functions will fail and `is_from_proc_macro` is needed
+
+
 [`ctxt`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/struct.Span.html#method.ctxt
 [expansion]: https://rustc-dev-guide.rust-lang.org/macro-expansion.html#expansion-and-ast-integration
 [`from_expansion`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
 [`in_external_macro`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/struct.Span.html#method.in_external_macro
 [Span]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/struct.Span.html
 [SyntaxContext]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_span/hygiene/struct.SyntaxContext.html
+[`is_from_proc_macro`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/fn.is_from_proc_macro.html
+[`quote::quote_spanned!`]: https://docs.rs/quote/latest/quote/macro.quote_spanned.html

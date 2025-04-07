@@ -203,7 +203,7 @@ We'll talk about suggestions more in depth in a [later chapter](emitting_lints.m
 Use `cargo bless` to automatically generate the `.fixed` file after running
 the tests.
 
-[`rustfix`]: https://github.com/rust-lang/rustfix
+[`rustfix`]: https://github.com/rust-lang/cargo/tree/master/crates/rustfix
 [`span_lint_and_sugg`]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_sugg.html
 
 ## Testing Manually

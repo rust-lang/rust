@@ -30,11 +30,14 @@ mod rustc_warn {
     #[expect(dead_code)]
     //~^ ERROR: this lint expectation is unfulfilled
     //~| NOTE: `-D unfulfilled-lint-expectations` implied by `-D warnings`
+    //~| HELP: to override `-D warnings` add `#[allow(unfulfilled_lint_expectations)]`
     pub fn rustc_lints() {
         let x = 42;
 
         #[expect(invalid_nan_comparisons)]
         //~^ ERROR: this lint expectation is unfulfilled
+        //~| NOTE: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+        //~| ERROR: this lint expectation is unfulfilled
         let _b = x == 5;
     }
 }

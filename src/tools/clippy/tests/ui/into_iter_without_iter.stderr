@@ -109,9 +109,9 @@ error: `IntoIterator` implemented for a reference type without an `iter` method
   --> tests/ui/into_iter_without_iter.rs:120:9
    |
 LL | /         impl<'a> IntoIterator for &'a Issue12037 {
+LL | |
 LL | |             type IntoIter = std::slice::Iter<'a, u8>;
 LL | |             type Item = &'a u8;
-LL | |             fn into_iter(self) -> Self::IntoIter {
 ...  |
 LL | |         }
    | |_________^

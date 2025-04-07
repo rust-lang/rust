@@ -1,11 +1,11 @@
 error: this `if` has the same condition as a previous `if`
-  --> tests/ui/ifs_same_cond.rs:14:15
+  --> tests/ui/ifs_same_cond.rs:9:15
    |
 LL |     } else if b {
    |               ^
    |
 note: same as this
-  --> tests/ui/ifs_same_cond.rs:13:8
+  --> tests/ui/ifs_same_cond.rs:8:8
    |
 LL |     if b {
    |        ^
@@ -13,37 +13,37 @@ LL |     if b {
    = help: to override `-D warnings` add `#[allow(clippy::ifs_same_cond)]`
 
 error: this `if` has the same condition as a previous `if`
-  --> tests/ui/ifs_same_cond.rs:19:15
+  --> tests/ui/ifs_same_cond.rs:14:15
    |
 LL |     } else if a == 1 {
    |               ^^^^^^
    |
 note: same as this
-  --> tests/ui/ifs_same_cond.rs:18:8
+  --> tests/ui/ifs_same_cond.rs:13:8
    |
 LL |     if a == 1 {
    |        ^^^^^^
 
 error: this `if` has the same condition as a previous `if`
-  --> tests/ui/ifs_same_cond.rs:25:15
+  --> tests/ui/ifs_same_cond.rs:20:15
    |
 LL |     } else if 2 * a == 1 {
    |               ^^^^^^^^^^
    |
 note: same as this
-  --> tests/ui/ifs_same_cond.rs:23:8
+  --> tests/ui/ifs_same_cond.rs:18:8
    |
 LL |     if 2 * a == 1 {
    |        ^^^^^^^^^^
 
 error: this `if` has the same condition as a previous `if`
-  --> tests/ui/ifs_same_cond.rs:58:15
+  --> tests/ui/ifs_same_cond.rs:53:15
    |
 LL |     } else if a.contains("ah") {
    |               ^^^^^^^^^^^^^^^^
    |
 note: same as this
-  --> tests/ui/ifs_same_cond.rs:57:8
+  --> tests/ui/ifs_same_cond.rs:52:8
    |
 LL |     if a.contains("ah") {
    |        ^^^^^^^^^^^^^^^^

@@ -8,7 +8,7 @@ LL |         0xd_e_adbee_f_usize,
    = help: to override `-D warnings` add `#[allow(clippy::unusual_byte_groupings)]`
 
 error: digit groups should be smaller
-  --> tests/ui/large_digit_groups.rs:23:9
+  --> tests/ui/large_digit_groups.rs:24:9
    |
 LL |         1_23456_f32,
    |         ^^^^^^^^^^^ help: consider: `123_456_f32`
@@ -17,19 +17,19 @@ LL |         1_23456_f32,
    = help: to override `-D warnings` add `#[allow(clippy::large_digit_groups)]`
 
 error: digit groups should be smaller
-  --> tests/ui/large_digit_groups.rs:24:9
+  --> tests/ui/large_digit_groups.rs:26:9
    |
 LL |         1_23456.12_f32,
    |         ^^^^^^^^^^^^^^ help: consider: `123_456.12_f32`
 
 error: digit groups should be smaller
-  --> tests/ui/large_digit_groups.rs:25:9
+  --> tests/ui/large_digit_groups.rs:28:9
    |
 LL |         1_23456.12345_f64,
    |         ^^^^^^^^^^^^^^^^^ help: consider: `123_456.123_45_f64`
 
 error: digit groups should be smaller
-  --> tests/ui/large_digit_groups.rs:26:9
+  --> tests/ui/large_digit_groups.rs:30:9
    |
 LL |         1_23456.12345_6_f64,
    |         ^^^^^^^^^^^^^^^^^^^ help: consider: `123_456.123_456_f64`

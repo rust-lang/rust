@@ -6,6 +6,7 @@ fn main() {
     let x = [1, 2, 3, 4];
     let index: usize = 1;
     &x[index..];
+    //~^ indexing_slicing
 }
 
 #[cfg(test)]

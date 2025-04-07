@@ -36,7 +36,7 @@ If you don't already have a suitable toolchain, you can download from [here](htt
 
 ### Configure rust
 
-The target can be built by enabling it for a `rustc` build, by placing the following in `config.toml`:
+The target can be built by enabling it for a `rustc` build, by placing the following in `bootstrap.toml`:
 
 ```toml
 [build]

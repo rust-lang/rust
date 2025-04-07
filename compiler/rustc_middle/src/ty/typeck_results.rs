@@ -158,7 +158,7 @@ pub struct TypeckResults<'tcx> {
     /// We also store the type here, so that the compiler can use it as a hint
     /// for figuring out hidden types, even if they are only set in dead code
     /// (which doesn't show up in MIR).
-    pub concrete_opaque_types: FxIndexMap<ty::OpaqueTypeKey<'tcx>, ty::OpaqueHiddenType<'tcx>>,
+    pub concrete_opaque_types: FxIndexMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
@@ -197,12 +197,6 @@ pub struct TypeckResults<'tcx> {
     /// formatting modified file tests/ui/coroutine/retain-resume-ref.rs
     pub coroutine_stalled_predicates: FxIndexSet<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>,
 
-    /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
-    /// as `&[u8]`, depending on the pattern in which they are used.
-    /// This hashset records all instances where we behave
-    /// like this to allow `const_to_pat` to reliably handle this situation.
-    pub treat_byte_string_as_slice: ItemLocalSet,
-
     /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
     /// on closure size.
     pub closure_size_eval: LocalDefIdMap<ClosureSizeProfileData<'tcx>>,
@@ -237,7 +231,6 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),
             coroutine_stalled_predicates: Default::default(),
-            treat_byte_string_as_slice: Default::default(),
             closure_size_eval: Default::default(),
             offset_of_data: Default::default(),
         }
@@ -310,7 +303,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn node_type(&self, id: HirId) -> Ty<'tcx> {
         self.node_type_opt(id).unwrap_or_else(|| {
-            bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir().node_to_string(id)))
+            bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir_id_to_string(id)))
         })
     }
 
@@ -394,8 +387,10 @@ impl<'tcx> TypeckResults<'tcx> {
         matches!(self.type_dependent_defs().get(expr.hir_id), Some(Ok((DefKind::AssocFn, _))))
     }
 
-    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {
-        self.pat_binding_modes().get(id).copied().or_else(|| {
+    /// Returns the computed binding mode for a `PatKind::Binding` pattern
+    /// (after match ergonomics adjustments).
+    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> BindingMode {
+        self.pat_binding_modes().get(id).copied().unwrap_or_else(|| {
             s.dcx().span_bug(sp, "missing binding mode");
         })
     }
@@ -552,7 +547,7 @@ fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
     ty::tls::with(|tcx| {
         bug!(
             "node {} cannot be placed in TypeckResults with hir_owner {:?}",
-            tcx.hir().node_to_string(hir_id),
+            tcx.hir_id_to_string(hir_id),
             hir_owner
         )
     });

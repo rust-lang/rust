@@ -1,11 +1,11 @@
-error: item does not constrain `FooX::{opaque#0}`, but has it in its signature
-  --> $DIR/nested-tait-inference3.rs:12:4
+error: item does not constrain `FooX::{opaque#0}`
+  --> $DIR/nested-tait-inference3.rs:13:4
    |
 LL | fn foo() -> impl Foo<FooX> {
    |    ^^^
    |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
   --> $DIR/nested-tait-inference3.rs:6:13
    |
 LL | type FooX = impl Debug;

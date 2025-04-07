@@ -8,5 +8,5 @@
 pub fn main(argc: isize, argv: *const *const u8) -> isize {
     // This should trigger the lint
     loop {}
-    //~^ ERROR: empty `loop {}` wastes CPU cycles
+    //~^ empty_loop
 }

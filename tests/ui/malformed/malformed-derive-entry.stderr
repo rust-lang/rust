@@ -24,7 +24,6 @@ LL | #[derive(Copy(Bad))]
    |
 note: required by a bound in `Copy`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
-   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Test1` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -39,7 +38,6 @@ LL | #[derive(Copy="bad")]
    |
 note: required by a bound in `Copy`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
-   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Test2` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

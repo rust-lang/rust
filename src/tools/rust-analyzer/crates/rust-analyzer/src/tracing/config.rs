@@ -31,7 +31,7 @@ pub struct Config<T> {
     /// that specify level.
     pub chalk_filter: Option<String>,
     /// Filtering syntax, set in a shell:
-    /// ```
+    /// ```text
     /// env RA_PROFILE=*             // dump everything
     /// env RA_PROFILE=foo|bar|baz   // enabled only selected entries
     /// env RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10
@@ -39,7 +39,7 @@ pub struct Config<T> {
     pub profile_filter: Option<String>,
 
     /// Filtering syntax, set in a shell:
-    /// ```
+    /// ```text
     /// env RA_PROFILE_JSON=foo|bar|baz
     /// ```
     pub json_profile_filter: Option<String>,

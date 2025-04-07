@@ -99,7 +99,7 @@ impl StdReexports {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             prev_span: Span::default(),
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
         }
     }
 }
@@ -110,7 +110,7 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
     fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'tcx>, _: HirId) {
         if let Res::Def(_, def_id) = path.res
             && let Some(first_segment) = get_first_segment(path)
-            && is_stable(cx, def_id, &self.msrv)
+            && is_stable(cx, def_id, self.msrv)
             && !path.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, &first_segment.ident)
         {
@@ -153,8 +153,6 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 /// Returns the first named segment of a [`Path`].
@@ -174,7 +172,7 @@ fn get_first_segment<'tcx>(path: &Path<'tcx>) -> Option<&'tcx PathSegment<'tcx>>
 /// or now stable moves that were once unstable.
 ///
 /// Does not catch individually moved items
-fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: &Msrv) -> bool {
+fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: Msrv) -> bool {
     loop {
         if let Some(stability) = cx.tcx.lookup_stability(def_id)
             && let StabilityLevel::Stable {
@@ -183,8 +181,8 @@ fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: &Msrv) -> bool {
             } = stability.level
         {
             let stable = match since {
-                StableSince::Version(v) => msrv.meets(v),
-                StableSince::Current => msrv.current().is_none(),
+                StableSince::Version(v) => msrv.meets(cx, v),
+                StableSince::Current => msrv.current(cx).is_none(),
                 StableSince::Err => false,
             };
 

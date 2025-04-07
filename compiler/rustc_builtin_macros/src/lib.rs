@@ -5,6 +5,7 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -18,10 +19,11 @@
 #![feature(rustdoc_internals)]
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 extern crate proc_macro;
+
+use std::sync::Arc;
 
 use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
@@ -39,6 +41,7 @@ mod compile_error;
 mod concat;
 mod concat_bytes;
 mod concat_idents;
+mod define_opaque;
 mod derive;
 mod deriving;
 mod edition_panic;
@@ -66,13 +69,13 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);
     macro register_bang($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyBang(Box::new($f as MacroExpanderFn)));)*
+        $(register(sym::$name, SyntaxExtensionKind::LegacyBang(Arc::new($f as MacroExpanderFn)));)*
     }
     macro register_attr($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyAttr(Box::new($f)));)*
+        $(register(sym::$name, SyntaxExtensionKind::LegacyAttr(Arc::new($f)));)*
     }
     macro register_derive($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyDerive(Box::new(BuiltinDerive($f))));)*
+        $(register(sym::$name, SyntaxExtensionKind::LegacyDerive(Arc::new(BuiltinDerive($f))));)*
     }
 
     register_bang! {
@@ -114,6 +117,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
         cfg_eval: cfg_eval::expand,
+        define_opaque: define_opaque::expand,
         derive: derive::Expander { is_const: false },
         derive_const: derive::Expander { is_const: true },
         global_allocator: global_allocator::expand,
@@ -137,9 +141,9 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     }
 
     let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
-    register(sym::quote, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })));
-    let requires = SyntaxExtensionKind::Attr(Box::new(contracts::ExpandRequires));
+    register(sym::quote, SyntaxExtensionKind::Bang(Arc::new(BangProcMacro { client })));
+    let requires = SyntaxExtensionKind::Attr(Arc::new(contracts::ExpandRequires));
     register(sym::contracts_requires, requires);
-    let ensures = SyntaxExtensionKind::Attr(Box::new(contracts::ExpandEnsures));
+    let ensures = SyntaxExtensionKind::Attr(Arc::new(contracts::ExpandEnsures));
     register(sym::contracts_ensures, ensures);
 }

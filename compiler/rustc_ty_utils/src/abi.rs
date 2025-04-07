@@ -55,31 +55,6 @@ fn fn_sig_for_fn_abi<'tcx>(
                 sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
             }
 
-            // Modify `fn() -> impl Future` to `fn() -> dyn* Future`.
-            if let ty::InstanceKind::ReifyShim(def_id, _) = instance.def
-                && let Some((rpitit_def_id, fn_args)) =
-                    tcx.return_position_impl_trait_in_trait_shim_data(def_id)
-            {
-                let fn_args = fn_args.instantiate(tcx, args);
-                let rpitit_args =
-                    fn_args.extend_to(tcx, rpitit_def_id, |param, _| match param.kind {
-                        ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                        ty::GenericParamDefKind::Type { .. }
-                        | ty::GenericParamDefKind::Const { .. } => {
-                            unreachable!("rpitit should have no addition ty/ct")
-                        }
-                    });
-                let dyn_star_ty = Ty::new_dynamic(
-                    tcx,
-                    tcx.item_bounds_to_existential_predicates(rpitit_def_id, rpitit_args),
-                    tcx.lifetimes.re_erased,
-                    ty::DynStar,
-                );
-                let mut inputs_and_output = sig.inputs_and_output.to_vec();
-                *inputs_and_output.last_mut().unwrap() = dyn_star_ty;
-                sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
-            }
-
             sig
         }
         ty::Closure(def_id, args) => {
@@ -269,7 +244,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: ExternAbi, c_variadic: bool) -> Conv {
     use rustc_abi::ExternAbi::*;
     match tcx.sess.target.adjust_abi(abi, c_variadic) {
-        RustIntrinsic | Rust | RustCall => Conv::Rust,
+        Rust | RustCall => Conv::Rust,
 
         // This is intentionally not using `Conv::Cold`, as that has to preserve
         // even SIMD registers, which is generally not a good trade-off.
@@ -309,15 +284,11 @@ fn fn_abi_of_fn_ptr<'tcx>(
     query: ty::PseudoCanonicalInput<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let ty::PseudoCanonicalInput { typing_env, value: (sig, extra_args) } = query;
-
-    let cx = LayoutCx::new(tcx, typing_env);
     fn_abi_new_uncached(
-        &cx,
+        &LayoutCx::new(tcx, typing_env),
         tcx.instantiate_bound_regions_with_erased(sig),
         extra_args,
         None,
-        None,
-        false,
     )
 }
 
@@ -326,19 +297,11 @@ fn fn_abi_of_instance<'tcx>(
     query: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let ty::PseudoCanonicalInput { typing_env, value: (instance, extra_args) } = query;
-
-    let sig = fn_sig_for_fn_abi(tcx, instance, typing_env);
-
-    let caller_location =
-        instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty());
-
     fn_abi_new_uncached(
         &LayoutCx::new(tcx, typing_env),
-        sig,
+        fn_sig_for_fn_abi(tcx, instance, typing_env),
         extra_args,
-        caller_location,
-        Some(instance.def_id()),
-        matches!(instance.def, ty::InstanceKind::Virtual(..)),
+        Some(instance),
     )
 }
 
@@ -448,10 +411,7 @@ fn fn_abi_sanity_check<'tcx>(
     ) {
         let tcx = cx.tcx();
 
-        if spec_abi == ExternAbi::Rust
-            || spec_abi == ExternAbi::RustCall
-            || spec_abi == ExternAbi::RustCold
-        {
+        if spec_abi.is_rustic_abi() {
             if arg.layout.is_zst() {
                 // Casting closures to function pointers depends on ZST closure types being
                 // omitted entirely in the calling convention.
@@ -472,7 +432,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // `layout.backend_repr` and ignore everything else. We should just reject
                 //`Aggregate` entirely here, but some targets need to be fixed first.
                 match arg.layout.backend_repr {
-                    BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => {}
+                    BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => {}
                     BackendRepr::ScalarPair(..) => {
                         panic!("`PassMode::Direct` used for ScalarPair type {}", arg.layout.ty)
                     }
@@ -547,19 +507,25 @@ fn fn_abi_sanity_check<'tcx>(
     fn_arg_sanity_check(cx, fn_abi, spec_abi, &fn_abi.ret);
 }
 
-// FIXME(eddyb) perhaps group the signature/type-containing (or all of them?)
-// arguments of this method, into a separate `struct`.
-#[tracing::instrument(level = "debug", skip(cx, caller_location, fn_def_id, force_thin_self_ptr))]
+#[tracing::instrument(level = "debug", skip(cx, instance))]
 fn fn_abi_new_uncached<'tcx>(
     cx: &LayoutCx<'tcx>,
     sig: ty::FnSig<'tcx>,
     extra_args: &[Ty<'tcx>],
-    caller_location: Option<Ty<'tcx>>,
-    fn_def_id: Option<DefId>,
-    // FIXME(eddyb) replace this with something typed, like an `enum`.
-    force_thin_self_ptr: bool,
+    instance: Option<ty::Instance<'tcx>>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let tcx = cx.tcx();
+    let (caller_location, determined_fn_def_id, is_virtual_call) = if let Some(instance) = instance
+    {
+        let is_virtual_call = matches!(instance.def, ty::InstanceKind::Virtual(..));
+        (
+            instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty()),
+            if is_virtual_call { None } else { Some(instance.def_id()) },
+            is_virtual_call,
+        )
+    } else {
+        (None, None, false)
+    };
     let sig = tcx.normalize_erasing_regions(cx.typing_env, sig);
 
     let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
@@ -568,16 +534,11 @@ fn fn_abi_new_uncached<'tcx>(
     let extra_args = if sig.abi == ExternAbi::RustCall {
         assert!(!sig.c_variadic && extra_args.is_empty());
 
-        if let Some(input) = sig.inputs().last() {
-            if let ty::Tuple(tupled_arguments) = input.kind() {
-                inputs = &sig.inputs()[0..sig.inputs().len() - 1];
-                tupled_arguments
-            } else {
-                bug!(
-                    "argument to function with \"rust-call\" ABI \
-                        is not a tuple"
-                );
-            }
+        if let Some(input) = sig.inputs().last()
+            && let ty::Tuple(tupled_arguments) = input.kind()
+        {
+            inputs = &sig.inputs()[0..sig.inputs().len() - 1];
+            tupled_arguments
         } else {
             bug!(
                 "argument to function with \"rust-call\" ABI \
@@ -590,7 +551,7 @@ fn fn_abi_new_uncached<'tcx>(
     };
 
     let is_drop_in_place =
-        fn_def_id.is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::DropInPlace));
+        determined_fn_def_id.is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::DropInPlace));
 
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, &'tcx FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
@@ -603,7 +564,7 @@ fn fn_abi_new_uncached<'tcx>(
         });
 
         let layout = cx.layout_of(ty).map_err(|err| &*tcx.arena.alloc(FnAbiError::Layout(*err)))?;
-        let layout = if force_thin_self_ptr && arg_idx == Some(0) {
+        let layout = if is_virtual_call && arg_idx == Some(0) {
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
             // or `&/&mut dyn Trait` because this is special-cased elsewhere in codegen
@@ -646,9 +607,22 @@ fn fn_abi_new_uncached<'tcx>(
         c_variadic: sig.c_variadic,
         fixed_count: inputs.len() as u32,
         conv,
-        can_unwind: fn_can_unwind(cx.tcx(), fn_def_id, sig.abi),
+        can_unwind: fn_can_unwind(
+            tcx,
+            // Since `#[rustc_nounwind]` can change unwinding, we cannot infer unwinding by `fn_def_id` for a virtual call.
+            determined_fn_def_id,
+            sig.abi,
+        ),
     };
-    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi, fn_def_id);
+    fn_abi_adjust_for_abi(
+        cx,
+        &mut fn_abi,
+        sig.abi,
+        // If this is a virtual call, we cannot pass the `fn_def_id`, as it might call other
+        // functions from vtable. Internally, `deduced_param_attrs` attempts to infer attributes by
+        // visit the function body.
+        determined_fn_def_id,
+    );
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
     fn_abi_sanity_check(cx, &fn_abi, sig.abi);
     Ok(tcx.arena.alloc(fn_abi))
@@ -685,8 +659,8 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
     let tcx = cx.tcx();
 
-    if abi == ExternAbi::Rust || abi == ExternAbi::RustCall || abi == ExternAbi::RustIntrinsic {
-        fn_abi.adjust_for_rust_abi(cx, abi);
+    if abi.is_rustic_abi() {
+        fn_abi.adjust_for_rust_abi(cx);
 
         // Look up the deduced parameter attributes for this function, if we have its def ID and
         // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes

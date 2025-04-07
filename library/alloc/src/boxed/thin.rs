@@ -9,9 +9,8 @@ use core::intrinsics::const_allocate;
 use core::marker::PhantomData;
 #[cfg(not(no_global_oom_handling))]
 use core::marker::Unsize;
-use core::mem;
 #[cfg(not(no_global_oom_handling))]
-use core::mem::SizedTypeProperties;
+use core::mem::{self, SizedTypeProperties};
 use core::ops::{Deref, DerefMut};
 use core::ptr::{self, NonNull, Pointee};
 
@@ -30,7 +29,6 @@ use crate::alloc::{self, Layout, LayoutError};
 /// let five = ThinBox::new(5);
 /// let thin_slice = ThinBox::<[i32]>::new_unsize([1, 2, 3, 4]);
 ///
-/// use std::mem::{size_of, size_of_val};
 /// let size_of_ptr = size_of::<*const ()>();
 /// assert_eq!(size_of_ptr, size_of_val(&five));
 /// assert_eq!(size_of_ptr, size_of_val(&thin_slice));
@@ -114,7 +112,7 @@ impl<Dyn: ?Sized> ThinBox<Dyn> {
     where
         T: Unsize<Dyn>,
     {
-        if mem::size_of::<T>() == 0 {
+        if size_of::<T>() == 0 {
             let ptr = WithOpaqueHeader::new_unsize_zst::<Dyn, T>(value);
             ThinBox { ptr, _marker: PhantomData }
         } else {
@@ -283,9 +281,7 @@ impl<H> WithHeader<H> {
             let ptr = if layout.size() == 0 {
                 // Some paranoia checking, mostly so that the ThinBox tests are
                 // more able to catch issues.
-                debug_assert!(
-                    value_offset == 0 && mem::size_of::<T>() == 0 && mem::size_of::<H>() == 0
-                );
+                debug_assert!(value_offset == 0 && size_of::<T>() == 0 && size_of::<H>() == 0);
                 layout.dangling()
             } else {
                 let ptr = alloc::alloc(layout);
@@ -315,7 +311,7 @@ impl<H> WithHeader<H> {
         Dyn: Pointee<Metadata = H> + ?Sized,
         T: Unsize<Dyn>,
     {
-        assert!(mem::size_of::<T>() == 0);
+        assert!(size_of::<T>() == 0);
 
         const fn max(a: usize, b: usize) -> usize {
             if a > b { a } else { b }
@@ -329,18 +325,16 @@ impl<H> WithHeader<H> {
             // FIXME: just call `WithHeader::alloc_layout` with size reset to 0.
             // Currently that's blocked on `Layout::extend` not being `const fn`.
 
-            let alloc_align =
-                max(mem::align_of::<T>(), mem::align_of::<<Dyn as Pointee>::Metadata>());
+            let alloc_align = max(align_of::<T>(), align_of::<<Dyn as Pointee>::Metadata>());
 
-            let alloc_size =
-                max(mem::align_of::<T>(), mem::size_of::<<Dyn as Pointee>::Metadata>());
+            let alloc_size = max(align_of::<T>(), size_of::<<Dyn as Pointee>::Metadata>());
 
             unsafe {
                 // SAFETY: align is power of two because it is the maximum of two alignments.
                 let alloc: *mut u8 = const_allocate(alloc_size, alloc_align);
 
                 let metadata_offset =
-                    alloc_size.checked_sub(mem::size_of::<<Dyn as Pointee>::Metadata>()).unwrap();
+                    alloc_size.checked_sub(size_of::<<Dyn as Pointee>::Metadata>()).unwrap();
                 // SAFETY: adding offset within the allocation.
                 let metadata_ptr: *mut <Dyn as Pointee>::Metadata =
                     alloc.add(metadata_offset).cast();
@@ -421,7 +415,7 @@ impl<H> WithHeader<H> {
     }
 
     const fn header_size() -> usize {
-        mem::size_of::<H>()
+        size_of::<H>()
     }
 
     fn alloc_layout(value_layout: Layout) -> Result<(Layout, usize), LayoutError> {

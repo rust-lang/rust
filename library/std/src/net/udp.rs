@@ -4,7 +4,8 @@
         target_os = "emscripten",
         all(target_os = "wasi", target_env = "p1"),
         target_env = "sgx",
-        target_os = "xous"
+        target_os = "xous",
+        target_os = "trusty",
     ))
 ))]
 mod tests;

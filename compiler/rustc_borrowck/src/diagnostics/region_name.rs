@@ -194,8 +194,8 @@ impl Display for RegionName {
 }
 
 impl rustc_errors::IntoDiagArg for RegionName {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
-        self.to_string().into_diag_arg()
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
+        self.to_string().into_diag_arg(path)
     }
 }
 
@@ -291,7 +291,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         match *error_region {
             ty::ReEarlyParam(ebr) => ebr.has_name().then(|| {
                 let def_id = tcx.generics_of(self.mir_def_id()).region_param(ebr, tcx).def_id;
-                let span = tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP);
+                let span = tcx.hir_span_if_local(def_id).unwrap_or(DUMMY_SP);
                 RegionName { name: ebr.name, source: RegionNameSource::NamedEarlyParamRegion(span) }
             }),
 
@@ -302,7 +302,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             ty::ReLateParam(late_param) => match late_param.kind {
                 ty::LateParamRegionKind::Named(region_def_id, name) => {
                     // Get the span to point to, even if we don't use the name.
-                    let span = tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
+                    let span = tcx.hir_span_if_local(region_def_id).unwrap_or(DUMMY_SP);
                     debug!(
                         "bound region named: {:?}, is_named: {:?}",
                         name,
@@ -343,7 +343,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         }
                     };
                     let hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }) =
-                        tcx.hir().expect_expr(self.mir_hir_id()).kind
+                        tcx.hir_expect_expr(self.mir_hir_id()).kind
                     else {
                         bug!("Closure is not defined by a closure expr");
                     };

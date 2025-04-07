@@ -112,7 +112,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     items.extend(doc.inlined_foreigns.iter().flat_map(|((_, renamed), (res, local_import_id))| {
         let Some(def_id) = res.opt_def_id() else { return Vec::new() };
         let name = renamed.unwrap_or_else(|| cx.tcx.item_name(def_id));
-        let import = cx.tcx.hir().expect_item(*local_import_id);
+        let import = cx.tcx.hir_expect_item(*local_import_id);
         match import.kind {
             hir::ItemKind::Use(path, kind) => {
                 let hir::UsePath { segments, span, .. } = *path;
@@ -125,7 +125,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     items.extend(doc.items.values().flat_map(|(item, renamed, _)| {
         // Now we actually lower the imports, skipping everything else.
         if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
-            let name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
+            let name = renamed.unwrap_or(kw::Empty); // using kw::Empty is a bit of a hack
             clean_use_statement(item, name, path, hir::UseKind::Glob, cx, &mut inserted)
         } else {
             // skip everything else
@@ -210,7 +210,7 @@ fn generate_item_with_correct_attrs(
 
     let name = renamed.or(Some(name));
     let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, cfg);
-    item.inline_stmt_id = import_id;
+    item.inner.inline_stmt_id = import_id;
     item
 }
 
@@ -231,7 +231,7 @@ fn clean_generic_bound<'tcx>(
             GenericBound::TraitBound(clean_poly_trait_ref(t, cx), t.modifiers)
         }
         hir::GenericBound::Use(args, ..) => {
-            GenericBound::Use(args.iter().map(|arg| arg.name()).collect())
+            GenericBound::Use(args.iter().map(|arg| clean_precise_capturing_arg(arg, cx)).collect())
         }
     })
 }
@@ -284,6 +284,18 @@ fn clean_lifetime(lifetime: &hir::Lifetime, cx: &DocContext<'_>) -> Lifetime {
         return *lt;
     }
     Lifetime(lifetime.ident.name)
+}
+
+pub(crate) fn clean_precise_capturing_arg(
+    arg: &hir::PreciseCapturingArg<'_>,
+    cx: &DocContext<'_>,
+) -> PreciseCapturingArg {
+    match arg {
+        hir::PreciseCapturingArg::Lifetime(lt) => {
+            PreciseCapturingArg::Lifetime(clean_lifetime(lt, cx))
+        }
+        hir::PreciseCapturingArg::Param(param) => PreciseCapturingArg::Param(param.ident.name),
+    }
 }
 
 pub(crate) fn clean_const<'tcx>(
@@ -741,7 +753,7 @@ pub(crate) fn clean_generics<'tcx>(
     for p in gens.params.iter().filter(|p| !is_impl_trait(p) && !is_elided_lifetime(p)) {
         let mut p = clean_generic_param(cx, Some(gens), p);
         match &mut p.kind {
-            GenericParamDefKind::Lifetime { ref mut outlives } => {
+            GenericParamDefKind::Lifetime { outlives } => {
                 if let Some(region_pred) = region_predicates.get_mut(&Lifetime(p.name)) {
                     // We merge bounds in the `where` clause.
                     for outlive in outlives.drain(..) {
@@ -828,30 +840,26 @@ fn clean_ty_generics<'tcx>(
         .iter()
         .flat_map(|(pred, _)| {
             let mut projection = None;
-            let param_idx = (|| {
+            let param_idx = {
                 let bound_p = pred.kind();
                 match bound_p.skip_binder() {
-                    ty::ClauseKind::Trait(pred) => {
-                        if let ty::Param(param) = pred.self_ty().kind() {
-                            return Some(param.index);
-                        }
+                    ty::ClauseKind::Trait(pred) if let ty::Param(param) = pred.self_ty().kind() => {
+                        Some(param.index)
                     }
-                    ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
-                        if let ty::Param(param) = ty.kind() {
-                            return Some(param.index);
-                        }
+                    ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg))
+                        if let ty::Param(param) = ty.kind() =>
+                    {
+                        Some(param.index)
                     }
-                    ty::ClauseKind::Projection(p) => {
-                        if let ty::Param(param) = p.projection_term.self_ty().kind() {
-                            projection = Some(bound_p.rebind(p));
-                            return Some(param.index);
-                        }
+                    ty::ClauseKind::Projection(p)
+                        if let ty::Param(param) = p.projection_term.self_ty().kind() =>
+                    {
+                        projection = Some(bound_p.rebind(p));
+                        Some(param.index)
                     }
-                    _ => (),
+                    _ => None,
                 }
-
-                None
-            })();
+            };
 
             if let Some(param_idx) = param_idx
                 && let Some(bounds) = impl_trait.get_mut(&param_idx)
@@ -990,7 +998,7 @@ fn clean_proc_macro<'tcx>(
     kind: MacroKind,
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
-    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    let attrs = cx.tcx.hir_attrs(item.hir_id());
     if kind == MacroKind::Derive
         && let Some(derive_name) =
             hir_attr_lists(attrs, sym::proc_macro_derive).find_map(|mi| mi.ident())
@@ -1023,7 +1031,7 @@ fn clean_fn_or_proc_macro<'tcx>(
     name: &mut Symbol,
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
-    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    let attrs = cx.tcx.hir_attrs(item.hir_id());
     let macro_kind = attrs.iter().find_map(|a| {
         if a.has_name(sym::proc_macro) {
             Some(MacroKind::Bang)
@@ -1080,7 +1088,7 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attrib
 
 enum FunctionArgs<'tcx> {
     Body(hir::BodyId),
-    Names(&'tcx [Ident]),
+    Names(&'tcx [Option<Ident>]),
 }
 
 fn clean_function<'tcx>(
@@ -1109,13 +1117,15 @@ fn clean_function<'tcx>(
 fn clean_args_from_types_and_names<'tcx>(
     cx: &mut DocContext<'tcx>,
     types: &[hir::Ty<'tcx>],
-    names: &[Ident],
+    names: &[Option<Ident>],
 ) -> Arguments {
-    fn nonempty_name(ident: &Ident) -> Option<Symbol> {
-        if ident.name == kw::Underscore || ident.name == kw::Empty {
-            None
-        } else {
+    fn nonempty_name(ident: &Option<Ident>) -> Option<Symbol> {
+        if let Some(ident) = ident
+            && ident.name != kw::Underscore
+        {
             Some(ident.name)
+        } else {
+            None
         }
     }
 
@@ -1208,11 +1218,11 @@ fn clean_poly_fn_sig<'tcx>(
                 .iter()
                 .map(|t| Argument {
                     type_: clean_middle_ty(t.map_bound(|t| *t), cx, None, None),
-                    name: names
-                        .next()
-                        .map(|i| i.name)
-                        .filter(|i| !i.is_empty())
-                        .unwrap_or(kw::Underscore),
+                    name: if let Some(Some(ident)) = names.next() {
+                        ident.name
+                    } else {
+                        kw::Underscore
+                    },
                     is_const: false,
                 })
                 .collect(),
@@ -1378,12 +1388,12 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                     tcx.fn_sig(assoc_item.def_id).instantiate_identity().input(0).skip_binder();
                 if self_arg_ty == self_ty {
                     item.decl.inputs.values[0].type_ = SelfTy;
-                } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind() {
-                    if ty == self_ty {
-                        match item.decl.inputs.values[0].type_ {
-                            BorrowedRef { ref mut type_, .. } => **type_ = SelfTy,
-                            _ => unreachable!(),
-                        }
+                } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind()
+                    && ty == self_ty
+                {
+                    match item.decl.inputs.values[0].type_ {
+                        BorrowedRef { ref mut type_, .. } => **type_ = SelfTy,
+                        _ => unreachable!(),
                     }
                 }
             }
@@ -1479,6 +1489,9 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                             GenericArgs::Parenthesized { .. } => {
                                 // The only time this happens is if we're inside the rustdoc for Fn(),
                                 // which only has one associated type, which is not a GAT, so whatever.
+                            }
+                            GenericArgs::ReturnTypeNotation => {
+                                // Never move these.
                             }
                         }
                         bounds.extend(mem::take(pred_bounds));
@@ -1618,8 +1631,7 @@ fn first_non_private<'tcx>(
                 if let Some(use_def_id) = reexp.id()
                     && let Some(local_use_def_id) = use_def_id.as_local()
                     && let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(local_use_def_id)
-                    && !item.ident.name.is_empty()
-                    && let hir::ItemKind::Use(path, _) = item.kind
+                    && let hir::ItemKind::Use(path, hir::UseKind::Single(_)) = item.kind
                 {
                     for res in &path.res {
                         if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
@@ -1760,11 +1772,11 @@ fn maybe_expand_private_type_alias<'tcx>(
     let alias = if !cx.cache.effective_visibilities.is_exported(cx.tcx, def_id.to_def_id())
         && !cx.current_type_aliases.contains_key(&def_id.to_def_id())
     {
-        &cx.tcx.hir().expect_item(def_id).kind
+        &cx.tcx.hir_expect_item(def_id).kind
     } else {
         return None;
     };
-    let hir::ItemKind::TyAlias(ty, generics) = alias else { return None };
+    let hir::ItemKind::TyAlias(_, ty, generics) = alias else { return None };
 
     let final_seg = &path.segments.last().expect("segments were empty");
     let mut args = DefIdMap::default();
@@ -1931,14 +1943,11 @@ fn clean_trait_object_lifetime_bound<'tcx>(
     // latter contrary to `clean_middle_region`.
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
-        ty::ReEarlyParam(region) if region.name != kw::Empty => Some(Lifetime(region.name)),
-        ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(_, name), .. })
-            if name != kw::Empty =>
-        {
+        ty::ReEarlyParam(region) => Some(Lifetime(region.name)),
+        ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(_, name), .. }) => {
             Some(Lifetime(name))
         }
-        ty::ReEarlyParam(_)
-        | ty::ReBound(..)
+        ty::ReBound(..)
         | ty::ReLateParam(_)
         | ty::ReVar(_)
         | ty::RePlaceholder(_)
@@ -2331,25 +2340,22 @@ fn clean_middle_opaque_bounds<'tcx>(
             let bindings: ThinVec<_> = bounds
                 .iter()
                 .filter_map(|(bound, _)| {
-                    if let ty::ClauseKind::Projection(proj) = bound.kind().skip_binder() {
-                        if proj.projection_term.trait_ref(cx.tcx) == trait_ref.skip_binder() {
-                            Some(AssocItemConstraint {
-                                assoc: projection_to_path_segment(
-                                    // FIXME: This needs to be made resilient for `AliasTerm`s that
-                                    // are associated consts.
-                                    bound.kind().rebind(proj.projection_term.expect_ty(cx.tcx)),
-                                    cx,
-                                ),
-                                kind: AssocItemConstraintKind::Equality {
-                                    term: clean_middle_term(bound.kind().rebind(proj.term), cx),
-                                },
-                            })
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
+                    if let ty::ClauseKind::Projection(proj) = bound.kind().skip_binder()
+                        && proj.projection_term.trait_ref(cx.tcx) == trait_ref.skip_binder()
+                    {
+                        return Some(AssocItemConstraint {
+                            assoc: projection_to_path_segment(
+                                // FIXME: This needs to be made resilient for `AliasTerm`s that
+                                // are associated consts.
+                                bound.kind().rebind(proj.projection_term.expect_ty(cx.tcx)),
+                                cx,
+                            ),
+                            kind: AssocItemConstraintKind::Equality {
+                                term: clean_middle_term(bound.kind().rebind(proj.term), cx),
+                            },
+                        });
                     }
+                    None
                 })
                 .collect();
 
@@ -2371,7 +2377,18 @@ fn clean_middle_opaque_bounds<'tcx>(
     }
 
     if let Some(args) = cx.tcx.rendered_precise_capturing_args(impl_trait_def_id) {
-        bounds.push(GenericBound::Use(args.to_vec()));
+        bounds.push(GenericBound::Use(
+            args.iter()
+                .map(|arg| match arg {
+                    hir::PreciseCapturingArgKind::Lifetime(lt) => {
+                        PreciseCapturingArg::Lifetime(Lifetime(*lt))
+                    }
+                    hir::PreciseCapturingArgKind::Param(param) => {
+                        PreciseCapturingArg::Param(*param)
+                    }
+                })
+                .collect(),
+        ));
     }
 
     ImplTrait(bounds)
@@ -2537,37 +2554,42 @@ fn clean_generic_args<'tcx>(
     generic_args: &hir::GenericArgs<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> GenericArgs {
-    // FIXME(return_type_notation): Fix RTN parens rendering
-    if let Some((inputs, output)) = generic_args.paren_sugar_inputs_output() {
-        let inputs = inputs.iter().map(|x| clean_ty(x, cx)).collect::<ThinVec<_>>().into();
-        let output = match output.kind {
-            hir::TyKind::Tup(&[]) => None,
-            _ => Some(Box::new(clean_ty(output, cx))),
-        };
-        GenericArgs::Parenthesized { inputs, output }
-    } else {
-        let args = generic_args
-            .args
-            .iter()
-            .map(|arg| match arg {
-                hir::GenericArg::Lifetime(lt) if !lt.is_anonymous() => {
-                    GenericArg::Lifetime(clean_lifetime(lt, cx))
-                }
-                hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
-                hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty.as_unambig_ty(), cx)),
-                hir::GenericArg::Const(ct) => {
-                    GenericArg::Const(Box::new(clean_const(ct.as_unambig_ct(), cx)))
-                }
-                hir::GenericArg::Infer(_inf) => GenericArg::Infer,
-            })
-            .collect::<ThinVec<_>>()
-            .into();
-        let constraints = generic_args
-            .constraints
-            .iter()
-            .map(|c| clean_assoc_item_constraint(c, cx))
-            .collect::<ThinVec<_>>();
-        GenericArgs::AngleBracketed { args, constraints }
+    match generic_args.parenthesized {
+        hir::GenericArgsParentheses::No => {
+            let args = generic_args
+                .args
+                .iter()
+                .map(|arg| match arg {
+                    hir::GenericArg::Lifetime(lt) if !lt.is_anonymous() => {
+                        GenericArg::Lifetime(clean_lifetime(lt, cx))
+                    }
+                    hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
+                    hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty.as_unambig_ty(), cx)),
+                    hir::GenericArg::Const(ct) => {
+                        GenericArg::Const(Box::new(clean_const(ct.as_unambig_ct(), cx)))
+                    }
+                    hir::GenericArg::Infer(_inf) => GenericArg::Infer,
+                })
+                .collect();
+            let constraints = generic_args
+                .constraints
+                .iter()
+                .map(|c| clean_assoc_item_constraint(c, cx))
+                .collect::<ThinVec<_>>();
+            GenericArgs::AngleBracketed { args, constraints }
+        }
+        hir::GenericArgsParentheses::ParenSugar => {
+            let Some((inputs, output)) = generic_args.paren_sugar_inputs_output() else {
+                bug!();
+            };
+            let inputs = inputs.iter().map(|x| clean_ty(x, cx)).collect();
+            let output = match output.kind {
+                hir::TyKind::Tup(&[]) => None,
+                _ => Some(Box::new(clean_ty(output, cx))),
+            };
+            GenericArgs::Parenthesized { inputs, output }
+        }
+        hir::GenericArgsParentheses::ReturnTypeNotation => GenericArgs::ReturnTypeNotation,
     }
 }
 
@@ -2688,7 +2710,7 @@ fn filter_doc_attr_ident(ident: Symbol, is_inline: bool) -> bool {
 /// Before calling this function, make sure `normal` is a `#[doc]` attribute.
 fn filter_doc_attr(args: &mut hir::AttrArgs, is_inline: bool) {
     match args {
-        hir::AttrArgs::Delimited(ref mut args) => {
+        hir::AttrArgs::Delimited(args) => {
             let tokens = filter_tokens_from_list(&args.tokens, |token| {
                 !matches!(
                     token,
@@ -2737,25 +2759,26 @@ fn add_without_unwanted_attributes<'hir>(
     import_parent: Option<DefId>,
 ) {
     for attr in new_attrs {
-        if matches!(attr.kind, hir::AttrKind::DocComment(..)) {
+        if attr.is_doc_comment() {
             attrs.push((Cow::Borrowed(attr), import_parent));
             continue;
         }
         let mut attr = attr.clone();
-        match attr.kind {
-            hir::AttrKind::Normal(ref mut normal) => {
-                if let [ident] = &*normal.path.segments {
-                    let ident = ident.name;
-                    if ident == sym::doc {
-                        filter_doc_attr(&mut normal.args, is_inline);
-                        attrs.push((Cow::Owned(attr), import_parent));
-                    } else if is_inline || ident != sym::cfg {
-                        // If it's not a `cfg()` attribute, we keep it.
-                        attrs.push((Cow::Owned(attr), import_parent));
-                    }
+        match attr {
+            hir::Attribute::Unparsed(ref mut normal) if let [ident] = &*normal.path.segments => {
+                let ident = ident.name;
+                if ident == sym::doc {
+                    filter_doc_attr(&mut normal.args, is_inline);
+                    attrs.push((Cow::Owned(attr), import_parent));
+                } else if is_inline || ident != sym::cfg_trace {
+                    // If it's not a `cfg()` attribute, we keep it.
+                    attrs.push((Cow::Owned(attr), import_parent));
                 }
             }
-            _ => unreachable!(),
+            hir::Attribute::Parsed(..) if is_inline => {
+                attrs.push((Cow::Owned(attr), import_parent));
+            }
+            _ => {}
         }
     }
 }
@@ -2769,20 +2792,24 @@ fn clean_maybe_renamed_item<'tcx>(
     use hir::ItemKind;
 
     let def_id = item.owner_id.to_def_id();
-    let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
+    let mut name = renamed.unwrap_or_else(|| {
+        // FIXME: using kw::Empty is a bit of a hack
+        cx.tcx.hir_opt_name(item.hir_id()).unwrap_or(kw::Empty)
+    });
+
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            ItemKind::Static(ty, mutability, body_id) => StaticItem(Static {
+            ItemKind::Static(_, ty, mutability, body_id) => StaticItem(Static {
                 type_: Box::new(clean_ty(ty, cx)),
                 mutability,
                 expr: Some(body_id),
             }),
-            ItemKind::Const(ty, generics, body_id) => ConstantItem(Box::new(Constant {
+            ItemKind::Const(_, ty, generics, body_id) => ConstantItem(Box::new(Constant {
                 generics: clean_generics(generics, cx),
                 type_: clean_ty(ty, cx),
                 kind: ConstantKind::Local { body: body_id, def_id },
             })),
-            ItemKind::TyAlias(hir_ty, generics) => {
+            ItemKind::TyAlias(_, hir_ty, generics) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
                 let rustdoc_ty = clean_ty(hir_ty, cx);
                 let type_ =
@@ -2815,34 +2842,34 @@ fn clean_maybe_renamed_item<'tcx>(
                 ));
                 return ret;
             }
-            ItemKind::Enum(ref def, generics) => EnumItem(Enum {
+            ItemKind::Enum(_, ref def, generics) => EnumItem(Enum {
                 variants: def.variants.iter().map(|v| clean_variant(v, cx)).collect(),
                 generics: clean_generics(generics, cx),
             }),
-            ItemKind::TraitAlias(generics, bounds) => TraitAliasItem(TraitAlias {
+            ItemKind::TraitAlias(_, generics, bounds) => TraitAliasItem(TraitAlias {
                 generics: clean_generics(generics, cx),
                 bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
             }),
-            ItemKind::Union(ref variant_data, generics) => UnionItem(Union {
+            ItemKind::Union(_, ref variant_data, generics) => UnionItem(Union {
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            ItemKind::Struct(ref variant_data, generics) => StructItem(Struct {
+            ItemKind::Struct(_, ref variant_data, generics) => StructItem(Struct {
                 ctor_kind: variant_data.ctor_kind(),
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
-            ItemKind::Macro(macro_def, MacroKind::Bang) => MacroItem(Macro {
+            ItemKind::Macro(_, macro_def, MacroKind::Bang) => MacroItem(Macro {
                 source: display_macro_source(cx, name, macro_def),
                 macro_rules: macro_def.macro_rules,
             }),
-            ItemKind::Macro(_, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
+            ItemKind::Macro(_, _, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
             // proc macros can have a name set by attributes
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
-            ItemKind::Trait(_, _, generics, bounds, item_ids) => {
+            ItemKind::Trait(_, _, _, generics, bounds, item_ids) => {
                 let items = item_ids
                     .iter()
                     .map(|ti| clean_trait_item(cx.tcx.hir_trait_item(ti.id), cx))
@@ -2855,7 +2882,7 @@ fn clean_maybe_renamed_item<'tcx>(
                     bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
                 }))
             }
-            ItemKind::ExternCrate(orig_name) => {
+            ItemKind::ExternCrate(orig_name, _) => {
                 return clean_extern_crate(item, name, orig_name, cx);
             }
             ItemKind::Use(path, kind) => {
@@ -2944,7 +2971,7 @@ fn clean_extern_crate<'tcx>(
     let cnum = cx.tcx.extern_mod_stmt_cnum(krate.owner_id.def_id).unwrap_or(LOCAL_CRATE);
     // this is the ID of the crate itself
     let crate_def_id = cnum.as_def_id();
-    let attrs = cx.tcx.hir().attrs(krate.hir_id());
+    let attrs = cx.tcx.hir_attrs(krate.hir_id());
     let ty_vis = cx.tcx.visibility(krate.owner_id);
     let please_inline = ty_vis.is_public()
         && attrs.iter().any(|a| {
@@ -2957,16 +2984,16 @@ fn clean_extern_crate<'tcx>(
         && !cx.is_json_output();
 
     let krate_owner_def_id = krate.owner_id.def_id;
-    if please_inline {
-        if let Some(items) = inline::try_inline(
+    if please_inline
+        && let Some(items) = inline::try_inline(
             cx,
             Res::Def(DefKind::Mod, crate_def_id),
             name,
             Some((attrs, Some(krate_owner_def_id))),
             &mut Default::default(),
-        ) {
-            return items;
-        }
+        )
+    {
+        return items;
     }
 
     vec![Item::from_def_id_and_parts(
@@ -3013,7 +3040,7 @@ fn clean_use_statement_inner<'tcx>(
     }
 
     let visibility = cx.tcx.visibility(import.owner_id);
-    let attrs = cx.tcx.hir().attrs(import.hir_id());
+    let attrs = cx.tcx.hir_attrs(import.hir_id());
     let inline_attr = hir_attr_lists(attrs, sym::doc).get_word_attr(sym::inline);
     let pub_underscore = visibility.is_public() && name == kw::Underscore;
     let current_mod = cx.tcx.parent_module_from_def_id(import.owner_id.def_id);

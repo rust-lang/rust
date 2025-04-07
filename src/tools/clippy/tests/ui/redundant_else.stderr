@@ -4,6 +4,7 @@ error: redundant else block
 LL |           } else {
    |  __________^
 LL | |
+LL | |
 LL | |             println!("yet don't pull down your hedge.");
 LL | |         }
    | |_________^
@@ -14,14 +15,16 @@ help: remove the `else` block and move the contents out
    |
 LL ~         }
 LL +
+LL + 
 LL +         println!("yet don't pull down your hedge.");
    |
 
 error: redundant else block
-  --> tests/ui/redundant_else.rs:18:10
+  --> tests/ui/redundant_else.rs:19:10
    |
 LL |           } else {
    |  __________^
+LL | |
 LL | |
 LL | |             println!("shall rise up with fleas.");
 LL | |         }
@@ -31,14 +34,16 @@ help: remove the `else` block and move the contents out
    |
 LL ~         }
 LL +
+LL + 
 LL +         println!("shall rise up with fleas.");
    |
 
 error: redundant else block
-  --> tests/ui/redundant_else.rs:28:10
+  --> tests/ui/redundant_else.rs:30:10
    |
 LL |           } else {
    |  __________^
+LL | |
 LL | |
 LL | |             println!("You may delay, but time will not.");
 LL | |         }
@@ -48,14 +53,16 @@ help: remove the `else` block and move the contents out
    |
 LL ~         }
 LL +
+LL + 
 LL +         println!("You may delay, but time will not.");
    |
 
 error: redundant else block
-  --> tests/ui/redundant_else.rs:38:6
+  --> tests/ui/redundant_else.rs:41:6
    |
 LL |       } else {
    |  ______^
+LL | |
 LL | |
 LL | |         println!("A fat kitchen makes a lean will.");
 LL | |     }
@@ -65,14 +72,16 @@ help: remove the `else` block and move the contents out
    |
 LL ~     }
 LL +
+LL + 
 LL +     println!("A fat kitchen makes a lean will.");
    |
 
 error: redundant else block
-  --> tests/ui/redundant_else.rs:46:10
+  --> tests/ui/redundant_else.rs:50:10
    |
 LL |           } else {
    |  __________^
+LL | |
 LL | |
 LL | |             1
 LL | |         }
@@ -82,14 +91,16 @@ help: remove the `else` block and move the contents out
    |
 LL ~         }
 LL +
+LL + 
 LL +         1
    |
 
 error: redundant else block
-  --> tests/ui/redundant_else.rs:57:10
+  --> tests/ui/redundant_else.rs:62:10
    |
 LL |           } else {
    |  __________^
+LL | |
 LL | |
 LL | |             2
 LL | |         }
@@ -99,14 +110,16 @@ help: remove the `else` block and move the contents out
    |
 LL ~         }
 LL +
+LL + 
 LL +         2
    |
 
 error: redundant else block
-  --> tests/ui/redundant_else.rs:67:10
+  --> tests/ui/redundant_else.rs:73:10
    |
 LL |           } else {
    |  __________^
+LL | |
 LL | |
 LL | |             1
 LL | |         }
@@ -116,6 +129,7 @@ help: remove the `else` block and move the contents out
    |
 LL ~         }
 LL +
+LL + 
 LL +         1
    |
 

@@ -47,7 +47,7 @@ windows-sys = { version = "0.52", features = [
 ] }
 
 [dev-dependencies]
-ui_test = "0.28.0"
+ui_test = "0.29.1"
 colored = "2"
 rustc_version = "0.4"
 regex = "1.5.5"
@@ -66,6 +66,10 @@ harness = false
 default = ["stack-cache"]
 stack-cache = []
 stack-cache-consistency-check = ["stack-cache"]
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(bootstrap)']
 
 # Be aware that this file is inside a workspace when used via the
 # submodule in the rustc repo. That means there are many cargo features

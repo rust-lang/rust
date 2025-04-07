@@ -12,7 +12,6 @@
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
 #![feature(file_buffered)]
-#![feature(hash_raw_entry)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
@@ -20,7 +19,6 @@
 #![feature(rustdoc_internals)]
 #![feature(slice_as_array)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::any::Any;
@@ -29,8 +27,9 @@ use std::mem::ManuallyDrop;
 
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
+use context::SimpleCx;
 use errors::{AutoDiffWithoutLTO, ParseTargetMachineConfig};
-pub(crate) use llvm_util::target_features_cfg;
+use llvm_util::target_features_cfg;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
@@ -72,9 +71,7 @@ mod debuginfo;
 mod declare;
 mod errors;
 mod intrinsic;
-// FIXME(Zalathar): Fix all the unreachable-pub warnings that would occur if
-// this isn't pub, then make it not pub.
-pub mod llvm;
+mod llvm;
 mod llvm_util;
 mod mono_item;
 mod type_;
@@ -116,9 +113,11 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         kind: AllocatorKind,
         alloc_error_handler_kind: AllocatorKind,
     ) -> ModuleLlvm {
-        let mut module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
+        let module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
+        let cx =
+            SimpleCx::new(module_llvm.llmod(), &module_llvm.llcx, tcx.data_layout.pointer_size);
         unsafe {
-            allocator::codegen(tcx, &mut module_llvm, module_name, kind, alloc_error_handler_kind);
+            allocator::codegen(tcx, cx, module_name, kind, alloc_error_handler_kind);
         }
         module_llvm
     }
@@ -194,7 +193,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,
         dcx: DiagCtxtHandle<'_>,
-        module: &ModuleCodegen<Self::Module>,
+        module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
         unsafe { back::write::optimize(cgcx, dcx, module, config) }
@@ -339,8 +338,8 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::print_version();
     }
 
-    fn target_features_cfg(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-        target_features_cfg(sess, allow_unstable)
+    fn target_features_cfg(&self, sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
+        target_features_cfg(sess)
     }
 
     fn codegen_crate<'tcx>(

@@ -27,7 +27,6 @@ LL |     println!(concat!("{r#", "type}"));
    |              ^^^^^^^^^^^^^^^^^^^^^^^ raw identifier used here in format string
    |
    = note: identifiers in format strings can be keywords and don't need to be prefixed with `r#`
-   = note: this error originates in the macro `concat` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid format string: raw identifiers are not supported
   --> $DIR/raw-idents.rs:11:16

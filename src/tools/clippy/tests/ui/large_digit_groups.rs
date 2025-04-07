@@ -20,10 +20,15 @@ fn main() {
     let _bad = (
         0b1_10110_i64,
         0xd_e_adbee_f_usize,
+        //~^ unusual_byte_groupings
         1_23456_f32,
+        //~^ large_digit_groups
         1_23456.12_f32,
+        //~^ large_digit_groups
         1_23456.12345_f64,
+        //~^ large_digit_groups
         1_23456.12345_6_f64,
+        //~^ large_digit_groups
     );
     // Ignore literals in macros
     let _ = mac!();

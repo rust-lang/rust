@@ -15,6 +15,7 @@
 //!
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
+#![cfg_attr(test, allow(unused))]
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -27,6 +28,7 @@ use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
 use build_helper::exit;
+use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
@@ -35,14 +37,16 @@ use crate::core::builder;
 use crate::core::builder::Kind;
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, Target, TargetSelection, flags};
 use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, command};
-use crate::utils::helpers::{self, dir_is_empty, exe, libdir, output, set_file_times, symlink_dir};
+use crate::utils::helpers::{
+    self, dir_is_empty, exe, libdir, output, set_file_times, split_debuginfo, symlink_dir,
+};
 
 mod core;
 mod utils;
 
 pub use core::builder::PathSet;
-pub use core::config::Config;
 pub use core::config::flags::{Flags, Subcommand};
+pub use core::config::{ChangeId, Config};
 
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
@@ -74,7 +78,7 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 
 /// Extra `--check-cfg` to add when building the compiler or tools
 /// (Mode restriction, config name, config values (if any))
-#[allow(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
+#[expect(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
 const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (None, "bootstrap", None),
     (Some(Mode::Rustc), "llvm_enzyme", None),
@@ -92,10 +96,27 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
 /// Each compiler has a `stage` that it is associated with and a `host` that
 /// corresponds to the platform the compiler runs on. This structure is used as
 /// a parameter to many methods below.
-#[derive(Eq, PartialOrd, Ord, PartialEq, Clone, Copy, Hash, Debug)]
+#[derive(Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub struct Compiler {
     stage: u32,
     host: TargetSelection,
+    /// Indicates whether the compiler was forced to use a specific stage.
+    /// This field is ignored in `Hash` and `PartialEq` implementations as only the `stage`
+    /// and `host` fields are relevant for those.
+    forced_compiler: bool,
+}
+
+impl std::hash::Hash for Compiler {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.stage.hash(state);
+        self.host.hash(state);
+    }
+}
+
+impl PartialEq for Compiler {
+    fn eq(&self, other: &Self) -> bool {
+        self.stage == other.stage && self.host == other.host
+    }
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -125,7 +146,7 @@ pub enum GitRepo {
 /// organize).
 #[derive(Clone)]
 pub struct Build {
-    /// User-specified configuration from `config.toml`.
+    /// User-specified configuration from `bootstrap.toml`.
     config: Config,
 
     // Version information
@@ -185,7 +206,6 @@ struct Crate {
     name: String,
     deps: HashSet<String>,
     path: PathBuf,
-    has_lib: bool,
     features: Vec<String>,
 }
 
@@ -237,7 +257,7 @@ pub enum Mode {
     /// Build a tool which uses the locally built rustc and the target std,
     /// placing the output in the "stageN-tools" directory. This is used for
     /// anything that needs a fully functional rustc, such as rustdoc, clippy,
-    /// cargo, rls, rustfmt, miri, etc.
+    /// cargo, rustfmt, miri, etc.
     ToolRustc,
 }
 
@@ -255,6 +275,35 @@ impl Mode {
 pub enum CLang {
     C,
     Cxx,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileType {
+    /// An executable binary file (like a `.exe`).
+    Executable,
+    /// A native, binary library file (like a `.so`, `.dll`, `.a`, `.lib` or `.o`).
+    NativeLibrary,
+    /// An executable (non-binary) script file (like a `.py` or `.sh`).
+    Script,
+    /// Any other regular file that is non-executable.
+    Regular,
+}
+
+impl FileType {
+    /// Get Unix permissions appropriate for this file type.
+    pub fn perms(self) -> u32 {
+        match self {
+            FileType::Executable | FileType::Script => 0o755,
+            FileType::Regular | FileType::NativeLibrary => 0o644,
+        }
+    }
+
+    pub fn could_have_split_debuginfo(self) -> bool {
+        match self {
+            FileType::Executable | FileType::NativeLibrary => true,
+            FileType::Script | FileType::Regular => false,
+        }
+    }
 }
 
 macro_rules! forward {
@@ -521,7 +570,7 @@ impl Build {
     /// This avoids contributors checking in a submodule change by accident.
     fn update_existing_submodules(&self) {
         // Avoid running git when there isn't a git checkout, or the user has
-        // explicitly disabled submodules in `config.toml`.
+        // explicitly disabled submodules in `bootstrap.toml`.
         if !self.config.submodules() {
             return;
         }
@@ -654,7 +703,7 @@ impl Build {
     }
 
     /// Gets the space-separated set of activated features for the standard library.
-    /// This can be configured with the `std-features` key in config.toml.
+    /// This can be configured with the `std-features` key in bootstrap.toml.
     fn std_features(&self, target: TargetSelection) -> String {
         let mut features: BTreeSet<&str> =
             self.config.rust_std_features.iter().map(|s| s.as_str()).collect();
@@ -699,7 +748,7 @@ impl Build {
             features.push("llvm");
         }
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
-        if self.config.rust_randomize_layout {
+        if self.config.rust_randomize_layout && check("rustc_randomized_layouts") {
             features.push("rustc_randomized_layouts");
         }
 
@@ -1200,6 +1249,16 @@ Executed at: {executed_at}"#,
             return PathBuf::new();
         }
         self.cc.borrow()[&target].path().into()
+    }
+
+    /// Returns the internal `cc::Tool` for the C compiler.
+    fn cc_tool(&self, target: TargetSelection) -> Tool {
+        self.cc.borrow()[&target].clone()
+    }
+
+    /// Returns the internal `cc::Tool` for the C++ compiler.
+    fn cxx_tool(&self, target: TargetSelection) -> Tool {
+        self.cxx.borrow()[&target].clone()
     }
 
     /// Returns C flags that `cc-rs` thinks should be enabled for the
@@ -1717,8 +1776,18 @@ Executed at: {executed_at}"#,
     /// Attempts to use hard links if possible, falling back to copying.
     /// You can neither rely on this being a copy nor it being a link,
     /// so do not write to dst.
-    pub fn copy_link(&self, src: &Path, dst: &Path) {
+    pub fn copy_link(&self, src: &Path, dst: &Path, file_type: FileType) {
         self.copy_link_internal(src, dst, false);
+
+        if file_type.could_have_split_debuginfo() {
+            if let Some(dbg_file) = split_debuginfo(src) {
+                self.copy_link_internal(
+                    &dbg_file,
+                    &dst.with_extension(dbg_file.extension().unwrap()),
+                    false,
+                );
+            }
+        }
     }
 
     fn copy_link_internal(&self, src: &Path, dst: &Path, dereference_symlinks: bool) {
@@ -1781,7 +1850,7 @@ Executed at: {executed_at}"#,
                 t!(fs::create_dir_all(&dst));
                 self.cp_link_r(&path, &dst);
             } else {
-                self.copy_link(&path, &dst);
+                self.copy_link(&path, &dst, FileType::Regular);
             }
         }
     }
@@ -1817,7 +1886,7 @@ Executed at: {executed_at}"#,
                     self.cp_link_filtered_recurse(&path, &dst, &relative, filter);
                 } else {
                     let _ = fs::remove_file(&dst);
-                    self.copy_link(&path, &dst);
+                    self.copy_link(&path, &dst, FileType::Regular);
                 }
             }
         }
@@ -1826,10 +1895,10 @@ Executed at: {executed_at}"#,
     fn copy_link_to_folder(&self, src: &Path, dest_folder: &Path) {
         let file_name = src.file_name().unwrap();
         let dest = dest_folder.join(file_name);
-        self.copy_link(src, &dest);
+        self.copy_link(src, &dest, FileType::Regular);
     }
 
-    fn install(&self, src: &Path, dstdir: &Path, perms: u32) {
+    fn install(&self, src: &Path, dstdir: &Path, file_type: FileType) {
         if self.config.dry_run() {
             return;
         }
@@ -1839,8 +1908,16 @@ Executed at: {executed_at}"#,
         if !src.exists() {
             panic!("ERROR: File \"{}\" not found!", src.display());
         }
+
         self.copy_link_internal(src, &dst, true);
-        chmod(&dst, perms);
+        chmod(&dst, file_type.perms());
+
+        // If this file can have debuginfo, look for split debuginfo and install it too.
+        if file_type.could_have_split_debuginfo() {
+            if let Some(dbg_file) = split_debuginfo(src) {
+                self.install(&dbg_file, dstdir, FileType::Regular);
+            }
+        }
     }
 
     fn read(&self, path: &Path) -> String {
@@ -1898,7 +1975,7 @@ Couldn't find required command: ninja (or ninja-build)
 
 You should install ninja as described at
 <https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages>,
-or set `ninja = false` in the `[llvm]` section of `config.toml`.
+or set `ninja = false` in the `[llvm]` section of `bootstrap.toml`.
 Alternatively, set `download-ci-llvm = true` in that `[llvm]` section
 to download LLVM rather than building it.
 "
@@ -1964,6 +2041,14 @@ fn chmod(path: &Path, perms: u32) {
 fn chmod(_path: &Path, _perms: u32) {}
 
 impl Compiler {
+    pub fn new(stage: u32, host: TargetSelection) -> Self {
+        Self { stage, host, forced_compiler: false }
+    }
+
+    pub fn forced_compiler(&mut self, forced_compiler: bool) {
+        self.forced_compiler = forced_compiler;
+    }
+
     pub fn with_stage(mut self, stage: u32) -> Compiler {
         self.stage = stage;
         self
@@ -1972,6 +2057,11 @@ impl Compiler {
     /// Returns `true` if this is a snapshot compiler for `build`'s configuration
     pub fn is_snapshot(&self, build: &Build) -> bool {
         self.stage == 0 && self.host == build.build
+    }
+
+    /// Indicates whether the compiler was forced to use a specific stage.
+    pub fn is_forced_compiler(&self) -> bool {
+        self.forced_compiler
     }
 }
 

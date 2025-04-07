@@ -1,17 +1,14 @@
 // Checks that we correctly codegen extern "C" functions returning structs.
 // See issues #52638 and #86163.
 
+//@ add-core-stubs
 //@ compile-flags: -Copt-level=3 --target=sparc64-unknown-linux-gnu --crate-type=rlib
 //@ needs-llvm-components: sparc
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(C)]
 pub struct Bool {

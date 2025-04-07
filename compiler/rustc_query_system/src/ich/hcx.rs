@@ -129,3 +129,4 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
 }
 
 impl<'a> rustc_session::HashStableContext for StableHashingContext<'a> {}
+impl<'a> rustc_attr_data_structures::HashStableContext for StableHashingContext<'a> {}

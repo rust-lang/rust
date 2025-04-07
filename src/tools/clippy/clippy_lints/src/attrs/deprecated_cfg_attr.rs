@@ -1,12 +1,12 @@
 use super::{Attribute, DEPRECATED_CFG_ATTR, DEPRECATED_CLIPPY_CFG_ATTR, unnecessary_clippy_cfg};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::msrvs::{self, MsrvStack};
 use rustc_ast::AttrStyle;
 use rustc_errors::Applicability;
 use rustc_lint::EarlyContext;
 use rustc_span::sym;
 
-pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &Msrv) {
+pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &MsrvStack) {
     // check cfg_attr
     if attr.has_name(sym::cfg_attr)
         && let Some(items) = attr.meta_item_list()

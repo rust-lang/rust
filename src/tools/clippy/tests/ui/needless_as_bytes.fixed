@@ -16,11 +16,13 @@ impl S {
 fn main() {
     if "some string".is_empty() {
         //~^ needless_as_bytes
+
         println!("len = {}", "some string".len());
         //~^ needless_as_bytes
     }
     if "some string".is_empty() {
         //~^ needless_as_bytes
+
         println!("len = {}", "some string".len());
         //~^ needless_as_bytes
     }
@@ -28,11 +30,13 @@ fn main() {
     let s = String::from("yet another string");
     if s.is_empty() {
         //~^ needless_as_bytes
+
         println!("len = {}", s.len());
         //~^ needless_as_bytes
     }
     if s.is_empty() {
         //~^ needless_as_bytes
+
         println!("len = {}", s.len());
         //~^ needless_as_bytes
     }

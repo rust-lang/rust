@@ -9,7 +9,7 @@ LL |     /// Check for lint formulations that are correct
    = help: to override `-D warnings` add `#[allow(clippy::almost_standard_lint_formulation)]`
 
 error: non-standard lint formulation
-  --> tests/ui-internal/check_formulation.rs:33:5
+  --> tests/ui-internal/check_formulation.rs:34:5
    |
 LL |     /// Detects uses of incorrect formulations
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

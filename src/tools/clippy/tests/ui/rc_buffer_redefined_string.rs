@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![warn(clippy::rc_buffer)]
 
 use std::rc::Rc;

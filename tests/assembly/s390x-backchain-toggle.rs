@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: enable-backchain disable-backchain
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3 --crate-type=lib --target=s390x-unknown-linux-gnu
@@ -8,8 +9,8 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 extern "C" {
     fn extern_func();

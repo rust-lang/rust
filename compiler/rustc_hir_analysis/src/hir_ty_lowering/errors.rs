@@ -151,6 +151,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             qself: &qself_str,
             label: None,
             sugg: None,
+            // Try to get the span of the identifier within the path's syntax context
+            // (if that's different).
+            within_macro_span: assoc_name.span.within_macro(span, tcx.sess.source_map()),
         };
 
         if is_dummy {
@@ -385,14 +388,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         })
     }
 
-    pub(super) fn report_ambiguous_assoc_ty(
+    pub(super) fn report_ambiguous_assoc(
         &self,
         span: Span,
         types: &[String],
         traits: &[String],
         name: Symbol,
+        kind: ty::AssocKind,
     ) -> ErrorGuaranteed {
-        let mut err = struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated type");
+        let kind_str = assoc_kind_str(kind);
+        let mut err =
+            struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated {kind_str}");
         if self
             .tcx()
             .resolutions(())
@@ -417,7 +423,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         span,
                         format!(
                             "if there were a type named `Type` that implements a trait named \
-                             `Trait` with associated type `{name}`, you could use the \
+                             `Trait` with associated {kind_str} `{name}`, you could use the \
                              fully-qualified path",
                         ),
                         format!("<Type as Trait>::{name}"),
@@ -440,7 +446,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         span,
                         format!(
                             "if there were a type named `Example` that implemented one of the \
-                             traits with associated type `{name}`, you could use the \
+                             traits with associated {kind_str} `{name}`, you could use the \
                              fully-qualified path",
                         ),
                         traits.iter().map(|trait_str| format!("<Example as {trait_str}>::{name}")),
@@ -451,7 +457,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     err.span_suggestion_verbose(
                         span,
                         format!(
-                            "if there were a trait named `Example` with associated type `{name}` \
+                            "if there were a trait named `Example` with associated {kind_str} `{name}` \
                              implemented for `{type_str}`, you could use the fully-qualified path",
                         ),
                         format!("<{type_str} as Example>::{name}"),
@@ -462,7 +468,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     err.span_suggestions(
                         span,
                         format!(
-                            "if there were a trait named `Example` with associated type `{name}` \
+                            "if there were a trait named `Example` with associated {kind_str} `{name}` \
                              implemented for one of the types, you could use the fully-qualified \
                              path",
                         ),
@@ -491,7 +497,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         err.emit()
     }
 
-    pub(crate) fn complain_about_ambiguous_inherent_assoc_ty(
+    pub(crate) fn complain_about_ambiguous_inherent_assoc(
         &self,
         name: Ident,
         candidates: Vec<DefId>,
@@ -552,13 +558,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     // FIXME(inherent_associated_types): Find similarly named associated types and suggest them.
-    pub(crate) fn complain_about_inherent_assoc_ty_not_found(
+    pub(crate) fn complain_about_inherent_assoc_not_found(
         &self,
         name: Ident,
         self_ty: Ty<'tcx>,
         candidates: Vec<(DefId, (DefId, DefId))>,
         fulfillment_errors: Vec<FulfillmentError<'tcx>>,
         span: Span,
+        kind: ty::AssocKind,
     ) -> ErrorGuaranteed {
         // FIXME(fmease): This was copied in parts from an old version of `rustc_hir_typeck::method::suggest`.
         // Either
@@ -568,12 +575,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let tcx = self.tcx();
 
+        let kind_str = assoc_kind_str(kind);
         let adt_did = self_ty.ty_adt_def().map(|def| def.did());
         let add_def_label = |err: &mut Diag<'_>| {
             if let Some(did) = adt_did {
                 err.span_label(
                     tcx.def_span(did),
-                    format!("associated item `{name}` not found for this {}", tcx.def_descr(did)),
+                    format!(
+                        "associated {kind_str} `{name}` not found for this {}",
+                        tcx.def_descr(did)
+                    ),
                 );
             }
         };
@@ -600,11 +611,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.dcx(),
                 name.span,
                 E0220,
-                "associated type `{name}` not found for `{self_ty}` in the current scope"
+                "associated {kind_str} `{name}` not found for `{self_ty}` in the current scope"
             );
             err.span_label(name.span, format!("associated item not found in `{self_ty}`"));
             err.note(format!(
-                "the associated type was found for\n{type_candidates}{additional_types}",
+                "the associated {kind_str} was found for\n{type_candidates}{additional_types}",
             ));
             add_def_label(&mut err);
             return err.emit();
@@ -685,7 +696,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut err = self.dcx().struct_span_err(
             name.span,
-            format!("the associated type `{name}` exists for `{self_ty}`, but its trait bounds were not satisfied")
+            format!("the associated {kind_str} `{name}` exists for `{self_ty}`, but its trait bounds were not satisfied")
         );
         if !bounds.is_empty() {
             err.note(format!(
@@ -695,7 +706,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
         err.span_label(
             name.span,
-            format!("associated type cannot be referenced on `{self_ty}` due to unsatisfied trait bounds")
+            format!("associated {kind_str} cannot be referenced on `{self_ty}` due to unsatisfied trait bounds")
         );
 
         for (span, mut bounds) in bound_spans {
@@ -789,7 +800,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 Some(args.constraints.iter().filter_map(|constraint| {
                     let ident = constraint.ident;
-                    let trait_def = path.res.def_id();
+
+                    let Res::Def(DefKind::Trait, trait_def) = path.res else {
+                        return None;
+                    };
+
                     let assoc_item = tcx.associated_items(trait_def).find_by_name_and_kind(
                         tcx,
                         ident,
@@ -867,7 +882,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             let rename_message = if is_shadowed { ", consider renaming it" } else { "" };
 
-            if let Some(sp) = tcx.hir().span_if_local(item.def_id) {
+            if let Some(sp) = tcx.hir_span_if_local(item.def_id) {
                 err.span_label(
                     sp,
                     format!("`{}{}` defined here{}", prefix, item.name, rename_message),
@@ -886,12 +901,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .iter()
                 .map(|(item, _)| format!("{} = Type", item.name))
                 .collect();
-            let code = if snippet.ends_with('>') {
+            let code = if let Some(snippet) = snippet.strip_suffix('>') {
                 // The user wrote `Trait<'a>` or similar and we don't have a type we can
                 // suggest, but at least we can clue them to the correct syntax
                 // `Trait<'a, Item = Type>` while accounting for the `<'a>` in the
                 // suggestion.
-                format!("{}, {}>", &snippet[..snippet.len() - 1], types.join(", "))
+                format!("{}, {}>", snippet, types.join(", "))
             } else if in_expr_or_pat {
                 // The user wrote `Iterator`, so we don't have a type we can suggest, but at
                 // least we can clue them to the correct syntax `Iterator::<Item = Type>`.
@@ -1366,7 +1381,7 @@ pub(crate) fn fn_trait_to_string(
         .find_map(|c| {
             if c.ident.name == sym::Output
                 && let Some(ty) = c.ty()
-                && ty.span != tcx.hir().span(trait_segment.hir_id)
+                && ty.span != tcx.hir_span(trait_segment.hir_id)
             {
                 tcx.sess.source_map().span_to_snippet(ty.span).ok()
             } else {
@@ -1505,7 +1520,7 @@ fn generics_args_err_extend<'a>(
                 })
                 .collect();
             if args.len() > 1
-                && let Some(span) = args.into_iter().last()
+                && let Some(span) = args.into_iter().next_back()
             {
                 err.note(
                     "generic arguments are not allowed on both an enum and its variant's path \
@@ -1610,7 +1625,7 @@ fn generics_args_err_extend<'a>(
     }
 }
 
-pub(super) fn assoc_kind_str(kind: ty::AssocKind) -> &'static str {
+pub(crate) fn assoc_kind_str(kind: ty::AssocKind) -> &'static str {
     match kind {
         ty::AssocKind::Fn => "function",
         ty::AssocKind::Const => "constant",

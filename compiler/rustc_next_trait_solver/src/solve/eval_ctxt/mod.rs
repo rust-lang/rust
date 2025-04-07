@@ -2,15 +2,18 @@ use std::ops::ControlFlow;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir::data_structures::{HashMap, HashSet, ensure_sufficient_stack};
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
-use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
-use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use rustc_type_ir::{self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypingMode};
+use rustc_type_ir::search_graph::PathKind;
+use rustc_type_ir::{
+    self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode,
+};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{instrument, trace};
 
@@ -20,11 +23,50 @@ use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
     CanonicalInput, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluationKind, GoalSource,
-    HasChanged, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryResult,
+    HasChanged, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryInput,
+    QueryResult,
 };
 
 pub(super) mod canonical;
 mod probe;
+
+/// The kind of goal we're currently proving.
+///
+/// This has effects on cycle handling handling and on how we compute
+/// query responses, see the variant descriptions for more info.
+#[derive(Debug, Copy, Clone)]
+enum CurrentGoalKind {
+    Misc,
+    /// We're proving an trait goal for a coinductive trait, either an auto trait or `Sized`.
+    ///
+    /// These are currently the only goals whose impl where-clauses are considered to be
+    /// productive steps.
+    CoinductiveTrait,
+    /// Unlike other goals, `NormalizesTo` goals act like functions with the expected term
+    /// always being fully unconstrained. This would weaken inference however, as the nested
+    /// goals never get the inference constraints from the actual normalized-to type.
+    ///
+    /// Because of this we return any ambiguous nested goals from `NormalizesTo` to the
+    /// caller when then adds these to its own context. The caller is always an `AliasRelate`
+    /// goal so this never leaks out of the solver.
+    NormalizesTo,
+}
+
+impl CurrentGoalKind {
+    fn from_query_input<I: Interner>(cx: I, input: QueryInput<I, I::Predicate>) -> CurrentGoalKind {
+        match input.goal.predicate.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
+                if cx.trait_is_coinductive(pred.trait_ref.def_id) {
+                    CurrentGoalKind::CoinductiveTrait
+                } else {
+                    CurrentGoalKind::Misc
+                }
+            }
+            ty::PredicateKind::NormalizesTo(_) => CurrentGoalKind::NormalizesTo,
+            _ => CurrentGoalKind::Misc,
+        }
+    }
+}
 
 pub struct EvalCtxt<'a, D, I = <D as SolverDelegate>::Interner>
 where
@@ -51,14 +93,10 @@ where
     /// The variable info for the `var_values`, only used to make an ambiguous response
     /// with no constraints.
     variables: I::CanonicalVars,
-    /// Whether we're currently computing a `NormalizesTo` goal. Unlike other goals,
-    /// `NormalizesTo` goals act like functions with the expected term always being
-    /// fully unconstrained. This would weaken inference however, as the nested goals
-    /// never get the inference constraints from the actual normalized-to type. Because
-    /// of this we return any ambiguous nested goals from `NormalizesTo` to the caller
-    /// when then adds these to its own context. The caller is always an `AliasRelate`
-    /// goal so this never leaks out of the solver.
-    is_normalizes_to_goal: bool,
+
+    /// What kind of goal we're currently computing, see the enum definition
+    /// for more info.
+    current_goal_kind: CurrentGoalKind,
     pub(super) var_values: CanonicalVarValues<I>,
 
     predefined_opaques_in_body: I::PredefinedOpaques,
@@ -93,7 +131,10 @@ where
 
 #[derive_where(Clone, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
 struct NestedGoals<I: Interner> {
     /// These normalizes-to goals are treated specially during the evaluation
     /// loop. In each iteration we take the RHS of the projection, replace it with
@@ -226,8 +267,49 @@ where
         self.delegate.typing_mode()
     }
 
-    pub(super) fn set_is_normalizes_to_goal(&mut self) {
-        self.is_normalizes_to_goal = true;
+    /// Computes the `PathKind` for the step from the current goal to the
+    /// nested goal required due to `source`.
+    ///
+    /// See #136824 for a more detailed reasoning for this behavior. We
+    /// consider cycles to be coinductive if they 'step into' a where-clause
+    /// of a coinductive trait. We will likely extend this function in the future
+    /// and will need to clearly document it in the rustc-dev-guide before
+    /// stabilization.
+    pub(super) fn step_kind_for_source(&self, source: GoalSource) -> PathKind {
+        match source {
+            // We treat these goals as unknown for now. It is likely that most miscellaneous
+            // nested goals will be converted to an inductive variant in the future.
+            //
+            // Having unknown cycles is always the safer option, as changing that to either
+            // succeed or hard error is backwards compatible. If we incorrectly treat a cycle
+            // as inductive even though it should not be, it may be unsound during coherence and
+            // fixing it may cause inference breakage or introduce ambiguity.
+            GoalSource::Misc => PathKind::Unknown,
+            GoalSource::NormalizeGoal(path_kind) => path_kind,
+            GoalSource::ImplWhereBound => {
+                // We currently only consider a cycle coinductive if it steps
+                // into a where-clause of a coinductive trait.
+                //
+                // We probably want to make all traits coinductive in the future,
+                // so we treat cycles involving their where-clauses as ambiguous.
+                if let CurrentGoalKind::CoinductiveTrait = self.current_goal_kind {
+                    PathKind::Coinductive
+                } else {
+                    PathKind::Unknown
+                }
+            }
+            // Relating types is always unproductive. If we were to map proof trees to
+            // corecursive functions as explained in #136824, relating types never
+            // introduces a constructor which could cause the recursion to be guarded.
+            GoalSource::TypeRelating => PathKind::Inductive,
+            // Instantiating a higher ranked goal can never cause the recursion to be
+            // guarded and is therefore unproductive.
+            GoalSource::InstantiateHigherRanked => PathKind::Inductive,
+            // These goal sources are likely unproductive and can be changed to
+            // `PathKind::Inductive`. Keeping them as unknown until we're confident
+            // about this and have an example where it is necessary.
+            GoalSource::AliasBoundConstCondition | GoalSource::AliasWellFormed => PathKind::Unknown,
+        }
     }
 
     /// Creates a root evaluation context and search graph. This should only be
@@ -256,7 +338,7 @@ where
             max_input_universe: ty::UniverseIndex::ROOT,
             variables: Default::default(),
             var_values: CanonicalVarValues::dummy(),
-            is_normalizes_to_goal: false,
+            current_goal_kind: CurrentGoalKind::Misc,
             origin_span,
             tainted: Ok(()),
         };
@@ -294,7 +376,7 @@ where
             delegate,
             variables: canonical_input.canonical.variables,
             var_values,
-            is_normalizes_to_goal: false,
+            current_goal_kind: CurrentGoalKind::from_query_input(cx, input),
             predefined_opaques_in_body: input.predefined_opaques_in_body,
             max_input_universe: canonical_input.canonical.max_universe,
             search_graph,
@@ -305,7 +387,8 @@ where
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
-            ecx.delegate.inject_new_hidden_type_unchecked(key, ty, ecx.origin_span);
+            let prev = ecx.delegate.register_hidden_type_in_storage(key, ty, ecx.origin_span);
+            assert_eq!(prev, None);
         }
 
         if !ecx.nested_goals.is_empty() {
@@ -340,6 +423,7 @@ where
         cx: I,
         search_graph: &'a mut SearchGraph<D>,
         canonical_input: CanonicalInput<I>,
+        step_kind_from_parent: PathKind,
         goal_evaluation: &mut ProofTreeBuilder<D>,
     ) -> QueryResult<I> {
         let mut canonical_goal_evaluation =
@@ -352,6 +436,7 @@ where
             search_graph.with_new_goal(
                 cx,
                 canonical_input,
+                step_kind_from_parent,
                 &mut canonical_goal_evaluation,
                 |search_graph, canonical_goal_evaluation| {
                     EvalCtxt::enter_canonical(
@@ -395,12 +480,10 @@ where
     /// `NormalizesTo` is only used by `AliasRelate`, all other callsites
     /// should use [`EvalCtxt::evaluate_goal`] which discards that empty
     /// storage.
-    // FIXME(-Znext-solver=coinduction): `_source` is currently unused but will
-    // be necessary once we implement the new coinduction approach.
     pub(super) fn evaluate_goal_raw(
         &mut self,
         goal_evaluation_kind: GoalEvaluationKind,
-        _source: GoalSource,
+        source: GoalSource,
         goal: Goal<I, I::Predicate>,
     ) -> Result<(NestedNormalizationGoals<I>, HasChanged, Certainty), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
@@ -410,6 +493,7 @@ where
             self.cx(),
             self.search_graph,
             canonical_goal,
+            self.step_kind_for_source(source),
             &mut goal_evaluation,
         );
         let response = match canonical_response {
@@ -555,7 +639,7 @@ where
 
             let (NestedNormalizationGoals(nested_goals), _, certainty) = self.evaluate_goal_raw(
                 GoalEvaluationKind::Nested,
-                GoalSource::Misc,
+                GoalSource::TypeRelating,
                 unconstrained_goal,
             )?;
             // Add the nested goals from normalization to our own nested goals.
@@ -630,8 +714,11 @@ where
 
     #[instrument(level = "trace", skip(self))]
     pub(super) fn add_normalizes_to_goal(&mut self, mut goal: Goal<I, ty::NormalizesTo<I>>) {
-        goal.predicate =
-            goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(self, goal.param_env));
+        goal.predicate = goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(
+            self,
+            GoalSource::TypeRelating,
+            goal.param_env,
+        ));
         self.inspect.add_normalizes_to_goal(self.delegate, self.max_input_universe, goal);
         self.nested_goals.normalizes_to_goals.push(goal);
     }
@@ -639,7 +726,7 @@ where
     #[instrument(level = "debug", skip(self))]
     pub(super) fn add_goal(&mut self, source: GoalSource, mut goal: Goal<I, I::Predicate>) {
         goal.predicate =
-            goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(self, goal.param_env));
+            goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(self, source, goal.param_env));
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
         self.nested_goals.goals.push((source, goal));
     }
@@ -885,7 +972,17 @@ where
         rhs: T,
     ) -> Result<(), NoSolution> {
         let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
-        self.add_goals(GoalSource::Misc, goals);
+        for &goal in goals.iter() {
+            let source = match goal.predicate.kind().skip_binder() {
+                ty::PredicateKind::Subtype { .. } | ty::PredicateKind::AliasRelate(..) => {
+                    GoalSource::TypeRelating
+                }
+                // FIXME(-Znext-solver=coinductive): should these WF goals also be unproductive?
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => GoalSource::Misc,
+                p => unreachable!("unexpected nested goal in `relate`: {p:?}"),
+            };
+            self.add_goal(source, goal);
+        }
         Ok(())
     }
 
@@ -913,7 +1010,7 @@ where
 
     /// `enter_forall`, but takes `&mut self` and passes it back through the
     /// callback since it can't be aliased during the call.
-    pub(super) fn enter_forall<T: TypeFoldable<I> + Copy, U>(
+    pub(super) fn enter_forall<T: TypeFoldable<I>, U>(
         &mut self,
         value: ty::Binder<I, T>,
         f: impl FnOnce(&mut Self, T) -> U,
@@ -974,16 +1071,12 @@ where
         self.delegate.fetch_eligible_assoc_item(goal_trait_ref, trait_assoc_def_id, impl_def_id)
     }
 
-    pub(super) fn insert_hidden_type(
+    pub(super) fn register_hidden_type_in_storage(
         &mut self,
         opaque_type_key: ty::OpaqueTypeKey<I>,
-        param_env: I::ParamEnv,
         hidden_ty: I::Ty,
-    ) -> Result<(), NoSolution> {
-        let mut goals = Vec::new();
-        self.delegate.insert_hidden_type(opaque_type_key, param_env, hidden_ty, &mut goals)?;
-        self.add_goals(GoalSource::Misc, goals);
-        Ok(())
+    ) -> Option<I::Ty> {
+        self.delegate.register_hidden_type_in_storage(opaque_type_key, hidden_ty, self.origin_span)
     }
 
     pub(super) fn add_item_bounds_for_hidden_type(
@@ -1037,12 +1130,11 @@ where
 
     pub(super) fn is_transmutable(
         &mut self,
-        param_env: I::ParamEnv,
         dst: I::Ty,
         src: I::Ty,
         assume: I::Const,
     ) -> Result<Certainty, NoSolution> {
-        self.delegate.is_transmutable(param_env, dst, src, assume)
+        self.delegate.is_transmutable(dst, src, assume)
     }
 }
 
@@ -1053,6 +1145,13 @@ where
 ///
 /// This is a performance optimization to more eagerly detect cycles during trait
 /// solving. See tests/ui/traits/next-solver/cycles/cycle-modulo-ambig-aliases.rs.
+///
+/// The emitted goals get evaluated in the context of the parent goal; by
+/// replacing aliases in nested goals we essentially pull the normalization out of
+/// the nested goal. We want to treat the goal as if the normalization still happens
+/// inside of the nested goal by inheriting the `step_kind` of the nested goal and
+/// storing it in the `GoalSource` of the emitted `AliasRelate` goals.
+/// This is necessary for tests/ui/sized/coinductive-1.rs to compile.
 struct ReplaceAliasWithInfer<'me, 'a, D, I>
 where
     D: SolverDelegate<Interner = I>,
@@ -1060,6 +1159,7 @@ where
 {
     ecx: &'me mut EvalCtxt<'a, D>,
     param_env: I::ParamEnv,
+    normalization_goal_source: GoalSource,
     cache: HashMap<I::Ty, I::Ty>,
 }
 
@@ -1068,8 +1168,18 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn new(ecx: &'me mut EvalCtxt<'a, D>, param_env: I::ParamEnv) -> Self {
-        ReplaceAliasWithInfer { ecx, param_env, cache: Default::default() }
+    fn new(
+        ecx: &'me mut EvalCtxt<'a, D>,
+        for_goal_source: GoalSource,
+        param_env: I::ParamEnv,
+    ) -> Self {
+        let step_kind = ecx.step_kind_for_source(for_goal_source);
+        ReplaceAliasWithInfer {
+            ecx,
+            param_env,
+            normalization_goal_source: GoalSource::NormalizeGoal(step_kind),
+            cache: Default::default(),
+        }
     }
 }
 
@@ -1092,7 +1202,7 @@ where
                     ty::AliasRelationDirection::Equate,
                 );
                 self.ecx.add_goal(
-                    GoalSource::Misc,
+                    self.normalization_goal_source,
                     Goal::new(self.cx(), self.param_env, normalizes_to),
                 );
                 infer_ty
@@ -1121,7 +1231,7 @@ where
                     ty::AliasRelationDirection::Equate,
                 );
                 self.ecx.add_goal(
-                    GoalSource::Misc,
+                    self.normalization_goal_source,
                     Goal::new(self.cx(), self.param_env, normalizes_to),
                 );
                 infer_ct

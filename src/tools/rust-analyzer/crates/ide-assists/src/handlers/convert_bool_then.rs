@@ -8,8 +8,9 @@ use ide_db::{
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{self, edit::AstNodeEdit, make, HasArgList},
-    ted, AstNode, SyntaxNode,
+    ast::{self, edit::AstNodeEdit, syntax_factory::SyntaxFactory, HasArgList},
+    syntax_editor::SyntaxEditor,
+    AstNode, SyntaxNode,
 };
 
 use crate::{
@@ -76,9 +77,9 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
         "Convert `if` expression to `bool::then` call",
         target,
         |builder| {
-            let closure_body = closure_body.clone_for_update();
+            let closure_body = closure_body.clone_subtree();
+            let mut editor = SyntaxEditor::new(closure_body.syntax().clone());
             // Rewrite all `Some(e)` in tail position to `e`
-            let mut replacements = Vec::new();
             for_each_tail_expr(&closure_body, &mut |e| {
                 let e = match e {
                     ast::Expr::BreakExpr(e) => e.expr(),
@@ -88,12 +89,16 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
                 if let Some(ast::Expr::CallExpr(call)) = e {
                     if let Some(arg_list) = call.arg_list() {
                         if let Some(arg) = arg_list.args().next() {
-                            replacements.push((call.syntax().clone(), arg.syntax().clone()));
+                            editor.replace(call.syntax(), arg.syntax());
                         }
                     }
                 }
             });
-            replacements.into_iter().for_each(|(old, new)| ted::replace(old, new));
+            let edit = editor.finish();
+            let closure_body = ast::Expr::cast(edit.new_root().clone()).unwrap();
+
+            let mut editor = builder.make_editor(expr.syntax());
+            let make = SyntaxFactory::new();
             let closure_body = match closure_body {
                 ast::Expr::BlockExpr(block) => unwrap_trivial_block(block),
                 e => e,
@@ -119,11 +124,18 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
                     | ast::Expr::WhileExpr(_)
                     | ast::Expr::YieldExpr(_)
             );
-            let cond = if invert_cond { invert_boolean_expression(cond) } else { cond };
-            let cond = if parenthesize { make::expr_paren(cond) } else { cond };
-            let arg_list = make::arg_list(Some(make::expr_closure(None, closure_body)));
-            let mcall = make::expr_method_call(cond, make::name_ref("then"), arg_list);
-            builder.replace(target, mcall.to_string());
+            let cond = if invert_cond {
+                invert_boolean_expression(&make, cond)
+            } else {
+                cond.clone_for_update()
+            };
+            let cond = if parenthesize { make.expr_paren(cond).into() } else { cond };
+            let arg_list = make.arg_list(Some(make.expr_closure(None, closure_body).into()));
+            let mcall = make.expr_method_call(cond, make.name_ref("then"), arg_list);
+            editor.replace(expr.syntax(), mcall.syntax());
+
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }
@@ -173,16 +185,17 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
         "Convert `bool::then` call to `if`",
         target,
         |builder| {
-            let closure_body = match closure_body {
+            let mapless_make = SyntaxFactory::without_mappings();
+            let closure_body = match closure_body.reset_indent() {
                 ast::Expr::BlockExpr(block) => block,
-                e => make::block_expr(None, Some(e)),
+                e => mapless_make.block_expr(None, Some(e)),
             };
 
-            let closure_body = closure_body.clone_for_update();
+            let closure_body = closure_body.clone_subtree();
+            let mut editor = SyntaxEditor::new(closure_body.syntax().clone());
             // Wrap all tails in `Some(...)`
-            let none_path = make::expr_path(make::ext::ident_path("None"));
-            let some_path = make::expr_path(make::ext::ident_path("Some"));
-            let mut replacements = Vec::new();
+            let none_path = mapless_make.expr_path(mapless_make.ident_path("None"));
+            let some_path = mapless_make.expr_path(mapless_make.ident_path("Some"));
             for_each_tail_expr(&ast::Expr::BlockExpr(closure_body.clone()), &mut |e| {
                 let e = match e {
                     ast::Expr::BreakExpr(e) => e.expr(),
@@ -190,28 +203,37 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
                     _ => Some(e.clone()),
                 };
                 if let Some(expr) = e {
-                    replacements.push((
+                    editor.replace(
                         expr.syntax().clone(),
-                        make::expr_call(some_path.clone(), make::arg_list(Some(expr)))
+                        mapless_make
+                            .expr_call(some_path.clone(), mapless_make.arg_list(Some(expr)))
                             .syntax()
-                            .clone_for_update(),
-                    ));
+                            .clone(),
+                    );
                 }
             });
-            replacements.into_iter().for_each(|(old, new)| ted::replace(old, new));
+            let edit = editor.finish();
+            let closure_body = ast::BlockExpr::cast(edit.new_root().clone()).unwrap();
+
+            let mut editor = builder.make_editor(mcall.syntax());
+            let make = SyntaxFactory::new();
 
             let cond = match &receiver {
                 ast::Expr::ParenExpr(expr) => expr.expr().unwrap_or(receiver),
                 _ => receiver,
             };
-            let if_expr = make::expr_if(
-                cond,
-                closure_body.reset_indent(),
-                Some(ast::ElseBranch::Block(make::block_expr(None, Some(none_path)))),
-            )
-            .indent(mcall.indent_level());
+            let if_expr = make
+                .expr_if(
+                    cond,
+                    closure_body,
+                    Some(ast::ElseBranch::Block(make.block_expr(None, Some(none_path)))),
+                )
+                .indent(mcall.indent_level())
+                .clone_for_update();
+            editor.replace(mcall.syntax().clone(), if_expr.syntax().clone());
 
-            builder.replace(target, if_expr.to_string());
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }

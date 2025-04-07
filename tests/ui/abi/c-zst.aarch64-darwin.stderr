@@ -9,7 +9,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Memory {
+                           backend_repr: Memory {
                                sized: true,
                            },
                            fields: Arbitrary {
@@ -38,7 +38,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {

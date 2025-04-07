@@ -1,5 +1,5 @@
-error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, fn(&u64) -> &u64 {identity::<u64>}>, {closure@hrtb-doesnt-borrow-self-2.rs:111:30}>`, but its trait bounds were not satisfied
-  --> $DIR/hrtb-doesnt-borrow-self-2.rs:112:24
+error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, fn(&u64) -> &u64 {identity::<u64>}>, {closure@hrtb-doesnt-borrow-self-2.rs:109:30}>`, but its trait bounds were not satisfied
+  --> $DIR/hrtb-doesnt-borrow-self-2.rs:110:24
    |
 LL | pub struct Filter<S, F> {
    | ----------------------- method `countx` not found for this struct because it doesn't satisfy `_: StreamExt`
@@ -8,16 +8,16 @@ LL |     let count = filter.countx();
    |                        ^^^^^^ method cannot be called due to unsatisfied trait bounds
    |
 note: the following trait bounds were not satisfied:
-      `&'a mut &Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:111:30: 111:37}>: Stream`
-      `&'a mut &mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:111:30: 111:37}>: Stream`
-      `&'a mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:111:30: 111:37}>: Stream`
-  --> $DIR/hrtb-doesnt-borrow-self-2.rs:98:50
+      `&'a mut &Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:109:30: 109:37}>: Stream`
+      `&'a mut &mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:109:30: 109:37}>: Stream`
+      `&'a mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/hrtb-doesnt-borrow-self-2.rs:109:30: 109:37}>: Stream`
+  --> $DIR/hrtb-doesnt-borrow-self-2.rs:96:50
    |
 LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
    |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `StreamExt` defines an item `countx`, perhaps you need to implement it
-  --> $DIR/hrtb-doesnt-borrow-self-2.rs:66:1
+  --> $DIR/hrtb-doesnt-borrow-self-2.rs:64:1
    |
 LL | pub trait StreamExt
    | ^^^^^^^^^^^^^^^^^^^

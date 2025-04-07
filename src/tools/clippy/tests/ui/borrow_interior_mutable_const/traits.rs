@@ -12,7 +12,8 @@ trait ConcreteTypes {
     const STRING: String;
 
     fn function() {
-        let _ = &Self::ATOMIC; //~ ERROR: interior mutability
+        let _ = &Self::ATOMIC;
+        //~^ borrow_interior_mutable_const
         let _ = &Self::STRING;
     }
 }
@@ -23,7 +24,8 @@ impl ConcreteTypes for u64 {
 
     fn function() {
         // Lint this again since implementers can choose not to borrow it.
-        let _ = &Self::ATOMIC; //~ ERROR: interior mutability
+        let _ = &Self::ATOMIC;
+        //~^ borrow_interior_mutable_const
         let _ = &Self::STRING;
     }
 }
@@ -48,7 +50,8 @@ impl<T: ConstDefault> GenericTypes<T, AtomicUsize> for Vec<T> {
 
     fn function() {
         let _ = &Self::TO_REMAIN_GENERIC;
-        let _ = &Self::TO_BE_CONCRETE; //~ ERROR: interior mutability
+        let _ = &Self::TO_BE_CONCRETE;
+        //~^ borrow_interior_mutable_const
     }
 }
 
@@ -83,8 +86,10 @@ impl<T: ConstDefault> AssocTypes for Vec<T> {
 
     fn function() {
         let _ = &Self::TO_BE_FROZEN;
-        let _ = &Self::TO_BE_UNFROZEN; //~ ERROR: interior mutability
-        let _ = &Self::WRAPPED_TO_BE_UNFROZEN; //~ ERROR: interior mutability
+        let _ = &Self::TO_BE_UNFROZEN;
+        //~^ borrow_interior_mutable_const
+        let _ = &Self::WRAPPED_TO_BE_UNFROZEN;
+        //~^ borrow_interior_mutable_const
         let _ = &Self::WRAPPED_TO_BE_GENERIC_PARAM;
     }
 }
@@ -106,7 +111,8 @@ where
 
     fn function() {
         let _ = &Self::NOT_BOUNDED;
-        let _ = &Self::BOUNDED; //~ ERROR: interior mutability
+        let _ = &Self::BOUNDED;
+        //~^ borrow_interior_mutable_const
     }
 }
 
@@ -119,7 +125,8 @@ where
 
     fn function() {
         let _ = &Self::NOT_BOUNDED;
-        let _ = &Self::BOUNDED; //~ ERROR: interior mutability
+        let _ = &Self::BOUNDED;
+        //~^ borrow_interior_mutable_const
     }
 }
 
@@ -148,8 +155,10 @@ impl SelfType for AtomicUsize {
     const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21));
 
     fn function() {
-        let _ = &Self::SELF; //~ ERROR: interior mutability
-        let _ = &Self::WRAPPED_SELF; //~ ERROR: interior mutability
+        let _ = &Self::SELF;
+        //~^ borrow_interior_mutable_const
+        let _ = &Self::WRAPPED_SELF;
+        //~^ borrow_interior_mutable_const
     }
 }
 
@@ -158,8 +167,10 @@ trait BothOfCellAndGeneric<T> {
     const INDIRECT: Cell<*const T>;
 
     fn function() {
-        let _ = &Self::DIRECT; //~ ERROR: interior mutability
-        let _ = &Self::INDIRECT; //~ ERROR: interior mutability
+        let _ = &Self::DIRECT;
+        //~^ borrow_interior_mutable_const
+        let _ = &Self::INDIRECT;
+        //~^ borrow_interior_mutable_const
     }
 }
 
@@ -168,8 +179,10 @@ impl<T: ConstDefault> BothOfCellAndGeneric<T> for Vec<T> {
     const INDIRECT: Cell<*const T> = Cell::new(std::ptr::null());
 
     fn function() {
-        let _ = &Self::DIRECT; //~ ERROR: interior mutability
-        let _ = &Self::INDIRECT; //~ ERROR: interior mutability
+        let _ = &Self::DIRECT;
+        //~^ borrow_interior_mutable_const
+        let _ = &Self::INDIRECT;
+        //~^ borrow_interior_mutable_const
     }
 }
 
@@ -188,15 +201,19 @@ where
     const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19);
 
     fn function() {
-        let _ = &Self::ATOMIC; //~ ERROR: interior mutability
+        let _ = &Self::ATOMIC;
+        //~^ borrow_interior_mutable_const
         let _ = &Self::COW;
         let _ = &Self::GENERIC_TYPE;
         let _ = &Self::ASSOC_TYPE;
-        let _ = &Self::BOUNDED_ASSOC_TYPE; //~ ERROR: interior mutability
+        let _ = &Self::BOUNDED_ASSOC_TYPE;
+        //~^ borrow_interior_mutable_const
     }
 }
 
 fn main() {
-    u64::ATOMIC.store(5, Ordering::SeqCst); //~ ERROR: interior mutability
-    assert_eq!(u64::ATOMIC.load(Ordering::SeqCst), 9); //~ ERROR: interior mutability
+    u64::ATOMIC.store(5, Ordering::SeqCst);
+    //~^ borrow_interior_mutable_const
+    assert_eq!(u64::ATOMIC.load(Ordering::SeqCst), 9);
+    //~^ borrow_interior_mutable_const
 }

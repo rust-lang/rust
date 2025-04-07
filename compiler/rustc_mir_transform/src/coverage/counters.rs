@@ -50,7 +50,7 @@ fn make_node_flow_priority_list(
     // A "reloop" node has exactly one out-edge, which jumps back to the top
     // of an enclosing loop. Reloop nodes are typically visited more times
     // than loop-exit nodes, so try to avoid giving them physical counters.
-    let is_reloop_node = IndexVec::from_fn_n(
+    let is_reloop_node = IndexVec::<BasicCoverageBlock, _>::from_fn_n(
         |node| match graph.successors[node].as_slice() {
             &[succ] => graph.dominates(succ, node),
             _ => false,

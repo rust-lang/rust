@@ -30,7 +30,7 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 39;
+pub const FORMAT_VERSION: u32 = 43;
 
 /// The root of the emitted JSON blob.
 ///
@@ -120,7 +120,23 @@ pub struct Item {
     pub docs: Option<String>,
     /// This mapping resolves [intra-doc links](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md) from the docstring to their IDs
     pub links: HashMap<String, Id>,
-    /// Stringified versions of the attributes on this item (e.g. `"#[inline]"`)
+    /// Attributes on this item.
+    ///
+    /// Does not include `#[deprecated]` attributes: see the [`Self::deprecation`] field instead.
+    ///
+    /// Some attributes appear in pretty-printed Rust form, regardless of their formatting
+    /// in the original source code. For example:
+    /// - `#[non_exhaustive]` and `#[must_use]` are represented as themselves.
+    /// - `#[no_mangle]` and `#[export_name]` are also represented as themselves.
+    /// - `#[repr(C)]` and other reprs also appear as themselves,
+    ///   though potentially with a different order: e.g. `repr(i8, C)` may become `repr(C, i8)`.
+    ///   Multiple repr attributes on the same item may be combined into an equivalent single attr.
+    ///
+    /// Other attributes may appear debug-printed. For example:
+    /// - `#[inline]` becomes something similar to `#[attr="Inline(Hint)"]`.
+    ///
+    /// As an internal implementation detail subject to change, this debug-printing format
+    /// is currently equivalent to the HIR pretty-printing of parsed attributes.
     pub attrs: Vec<String>,
     /// Information about the item’s deprecation, if present.
     pub deprecation: Option<Deprecation>,
@@ -227,6 +243,8 @@ pub enum GenericArgs {
         /// The output type provided after the `->`, if present.
         output: Option<Type>,
     },
+    /// `T::method(..)`
+    ReturnTypeNotation,
 }
 
 /// One argument in a list of generic arguments to a path segment.
@@ -907,7 +925,7 @@ pub enum GenericBound {
     /// ```
     Outlives(String),
     /// `use<'a, T>` precise-capturing bound syntax
-    Use(Vec<String>),
+    Use(Vec<PreciseCapturingArg>),
 }
 
 /// A set of modifiers applied to a trait.
@@ -923,6 +941,22 @@ pub enum TraitBoundModifier {
     /// Indicates that the trait bound must be applicable in both a run-time and a compile-time
     /// context.
     MaybeConst,
+}
+
+/// One precise capturing argument. See [the rust reference](https://doc.rust-lang.org/reference/types/impl-trait.html#precise-capturing).
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PreciseCapturingArg {
+    /// A lifetime.
+    /// ```rust
+    /// pub fn hello<'a, T, const N: usize>() -> impl Sized + use<'a, T, N> {}
+    /// //                                                        ^^
+    Lifetime(String),
+    /// A type or constant parameter.
+    /// ```rust
+    /// pub fn hello<'a, T, const N: usize>() -> impl Sized + use<'a, T, N> {}
+    /// //                                                            ^  ^
+    Param(String),
 }
 
 /// Either a type or a constant, usually stored as the right-hand side of an equation in places like

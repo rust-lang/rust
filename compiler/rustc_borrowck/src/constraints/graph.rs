@@ -1,11 +1,8 @@
 use rustc_data_structures::graph;
 use rustc_index::IndexVec;
-use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::{RegionVid, VarianceDiagInfo};
-use rustc_span::DUMMY_SP;
+use rustc_middle::ty::RegionVid;
 
 use crate::constraints::{OutlivesConstraint, OutlivesConstraintIndex, OutlivesConstraintSet};
-use crate::type_check::Locations;
 
 /// The construct graph organizes the constraints by their end-points.
 /// It can be used to view a `R1: R2` constraint as either an edge `R1
@@ -23,8 +20,8 @@ pub(crate) type ReverseConstraintGraph = ConstraintGraph<Reverse>;
 /// Marker trait that controls whether a `R1: R2` constraint
 /// represents an edge `R1 -> R2` or `R2 -> R1`.
 pub(crate) trait ConstraintGraphDirection: Copy + 'static {
-    fn start_region(c: &OutlivesConstraint<'_>) -> RegionVid;
-    fn end_region(c: &OutlivesConstraint<'_>) -> RegionVid;
+    fn start_region(sup: RegionVid, sub: RegionVid) -> RegionVid;
+    fn end_region(sup: RegionVid, sub: RegionVid) -> RegionVid;
     fn is_normal() -> bool;
 }
 
@@ -36,12 +33,12 @@ pub(crate) trait ConstraintGraphDirection: Copy + 'static {
 pub(crate) struct Normal;
 
 impl ConstraintGraphDirection for Normal {
-    fn start_region(c: &OutlivesConstraint<'_>) -> RegionVid {
-        c.sup
+    fn start_region(sup: RegionVid, _sub: RegionVid) -> RegionVid {
+        sup
     }
 
-    fn end_region(c: &OutlivesConstraint<'_>) -> RegionVid {
-        c.sub
+    fn end_region(_sup: RegionVid, sub: RegionVid) -> RegionVid {
+        sub
     }
 
     fn is_normal() -> bool {
@@ -57,12 +54,12 @@ impl ConstraintGraphDirection for Normal {
 pub(crate) struct Reverse;
 
 impl ConstraintGraphDirection for Reverse {
-    fn start_region(c: &OutlivesConstraint<'_>) -> RegionVid {
-        c.sub
+    fn start_region(_sup: RegionVid, sub: RegionVid) -> RegionVid {
+        sub
     }
 
-    fn end_region(c: &OutlivesConstraint<'_>) -> RegionVid {
-        c.sup
+    fn end_region(sup: RegionVid, _sub: RegionVid) -> RegionVid {
+        sup
     }
 
     fn is_normal() -> bool {
@@ -84,7 +81,7 @@ impl<D: ConstraintGraphDirection> ConstraintGraph<D> {
         let mut next_constraints = IndexVec::from_elem(None, &set.outlives);
 
         for (idx, constraint) in set.outlives.iter_enumerated().rev() {
-            let head = &mut first_constraints[D::start_region(constraint)];
+            let head = &mut first_constraints[D::start_region(constraint.sup, constraint.sub)];
             let next = &mut next_constraints[idx];
             debug_assert!(next.is_none());
             *next = *head;
@@ -105,63 +102,57 @@ impl<D: ConstraintGraphDirection> ConstraintGraph<D> {
         RegionGraph::new(set, self, static_region)
     }
 
+    pub(crate) fn is_normal(&self) -> bool {
+        D::is_normal()
+    }
+
     /// Given a region `R`, iterate over all constraints `R: R1`.
-    pub(crate) fn outgoing_edges<'a, 'tcx>(
+    pub(crate) fn outgoing_edges_from_graph<'a, 'tcx>(
         &'a self,
         region_sup: RegionVid,
         constraints: &'a OutlivesConstraintSet<'tcx>,
-        static_region: RegionVid,
-    ) -> Edges<'a, 'tcx, D> {
-        //if this is the `'static` region and the graph's direction is normal,
-        //then setup the Edges iterator to return all regions #53178
-        if region_sup == static_region && D::is_normal() {
-            Edges {
-                graph: self,
-                constraints,
-                pointer: None,
-                next_static_idx: Some(0),
-                static_region,
-            }
-        } else {
-            //otherwise, just setup the iterator as normal
-            let first = self.first_constraints[region_sup];
-            Edges { graph: self, constraints, pointer: first, next_static_idx: None, static_region }
-        }
+    ) -> EdgesFromGraph<'a, 'tcx, D> {
+        EdgesFromGraph { graph: self, constraints, pointer: self.first_constraints[region_sup] }
+    }
+
+    /// Returns all regions (#53178).
+    pub(crate) fn outgoing_edges_from_static(&self) -> EdgesFromStatic {
+        EdgesFromStatic { next_static_idx: 0, end_static_idx: self.first_constraints.len() }
     }
 }
 
-pub(crate) struct Edges<'a, 'tcx, D: ConstraintGraphDirection> {
+pub(crate) struct EdgesFromGraph<'a, 'tcx, D: ConstraintGraphDirection> {
     graph: &'a ConstraintGraph<D>,
     constraints: &'a OutlivesConstraintSet<'tcx>,
     pointer: Option<OutlivesConstraintIndex>,
-    next_static_idx: Option<usize>,
-    static_region: RegionVid,
 }
 
-impl<'a, 'tcx, D: ConstraintGraphDirection> Iterator for Edges<'a, 'tcx, D> {
-    type Item = OutlivesConstraint<'tcx>;
+impl<'a, 'tcx, D: ConstraintGraphDirection> Iterator for EdgesFromGraph<'a, 'tcx, D> {
+    type Item = &'a OutlivesConstraint<'tcx>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(p) = self.pointer {
             self.pointer = self.graph.next_constraints[p];
+            Some(&self.constraints[p])
+        } else {
+            None
+        }
+    }
+}
 
-            Some(self.constraints[p])
-        } else if let Some(next_static_idx) = self.next_static_idx {
-            self.next_static_idx = if next_static_idx == (self.graph.first_constraints.len() - 1) {
-                None
-            } else {
-                Some(next_static_idx + 1)
-            };
+pub(crate) struct EdgesFromStatic {
+    next_static_idx: usize,
+    end_static_idx: usize,
+}
 
-            Some(OutlivesConstraint {
-                sup: self.static_region,
-                sub: next_static_idx.into(),
-                locations: Locations::All(DUMMY_SP),
-                span: DUMMY_SP,
-                category: ConstraintCategory::Internal,
-                variance_info: VarianceDiagInfo::default(),
-                from_closure: false,
-            })
+impl Iterator for EdgesFromStatic {
+    type Item = RegionVid;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next_static_idx < self.end_static_idx {
+            let ret = RegionVid::from_usize(self.next_static_idx);
+            self.next_static_idx += 1;
+            Some(ret)
         } else {
             None
         }
@@ -193,21 +184,38 @@ impl<'a, 'tcx, D: ConstraintGraphDirection> RegionGraph<'a, 'tcx, D> {
     /// Given a region `R`, iterate over all regions `R1` such that
     /// there exists a constraint `R: R1`.
     pub(crate) fn outgoing_regions(&self, region_sup: RegionVid) -> Successors<'a, 'tcx, D> {
-        Successors {
-            edges: self.constraint_graph.outgoing_edges(region_sup, self.set, self.static_region),
+        // If this is the `'static` region and the graph's direction is normal,
+        // then setup the Edges iterator to return all regions (#53178).
+        if region_sup == self.static_region && D::is_normal() {
+            Successors::FromStatic(self.constraint_graph.outgoing_edges_from_static())
+        } else {
+            // Otherwise, just setup the iterator as normal.
+            Successors::FromGraph(
+                self.constraint_graph.outgoing_edges_from_graph(region_sup, self.set),
+            )
         }
     }
 }
 
-pub(crate) struct Successors<'a, 'tcx, D: ConstraintGraphDirection> {
-    edges: Edges<'a, 'tcx, D>,
+pub(crate) enum Successors<'a, 'tcx, D: ConstraintGraphDirection> {
+    FromStatic(EdgesFromStatic),
+    FromGraph(EdgesFromGraph<'a, 'tcx, D>),
 }
 
 impl<'a, 'tcx, D: ConstraintGraphDirection> Iterator for Successors<'a, 'tcx, D> {
     type Item = RegionVid;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.edges.next().map(|c| D::end_region(&c))
+        match self {
+            Successors::FromStatic(edges) => {
+                // No `D::end_region` call needed here: static successors are only possible when
+                // the direction is `Normal`, so we can directly use what would be the `sub` value.
+                edges.next()
+            }
+            Successors::FromGraph(edges) => {
+                edges.next().map(|constraint| D::end_region(constraint.sup, constraint.sub))
+            }
+        }
     }
 }
 

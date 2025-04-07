@@ -211,8 +211,9 @@ impl ChangeFixture {
                     From::from(meta.cfg.clone()),
                     Some(From::from(meta.cfg)),
                     meta.env,
-                    false,
                     origin,
+                    false,
+                    None,
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none(), "multiple crates with same name: {crate_name}");
@@ -249,8 +250,9 @@ impl ChangeFixture {
                 From::from(default_cfg.clone()),
                 Some(From::from(default_cfg)),
                 default_env,
-                false,
                 CrateOrigin::Local { repo: None, name: None },
+                false,
+                None,
             );
         } else {
             for (from, to, prelude) in crate_deps {
@@ -286,8 +288,9 @@ impl ChangeFixture {
                     String::from("__ra_is_test_fixture"),
                     String::from("__ra_is_test_fixture"),
                 )]),
-                false,
                 CrateOrigin::Lang(LangCrateOrigin::Core),
+                false,
+                None,
             );
 
             for krate in all_crates {
@@ -333,8 +336,9 @@ impl ChangeFixture {
                     String::from("__ra_is_test_fixture"),
                     String::from("__ra_is_test_fixture"),
                 )]),
-                true,
                 CrateOrigin::Local { repo: None, name: None },
+                true,
+                None,
             );
             proc_macros.insert(proc_macros_crate, Ok(proc_macro));
 
@@ -362,7 +366,6 @@ impl ChangeFixture {
             crate_graph
                 .iter()
                 .zip(iter::repeat(From::from(CrateWorkspaceData {
-                    proc_macro_cwd: None,
                     data_layout: target_data_layout,
                     toolchain,
                 })))

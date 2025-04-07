@@ -24,7 +24,7 @@ LL |         let _ = boxed_slice.get(1).unwrap();
    = help: to override `-D warnings` add `#[allow(clippy::unwrap_used)]`
 
 error: called `.get().unwrap()` on a slice
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:39:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:41:17
    |
 LL |         let _ = some_slice.get(0).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +36,7 @@ LL +         let _ = &some_slice[0];
    |
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:39:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:41:17
    |
 LL |         let _ = some_slice.get(0).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |         let _ = some_slice.get(0).unwrap();
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get().unwrap()` on a Vec
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:40:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:44:17
    |
 LL |         let _ = some_vec.get(0).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -57,7 +57,7 @@ LL +         let _ = &some_vec[0];
    |
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:40:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:44:17
    |
 LL |         let _ = some_vec.get(0).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ LL |         let _ = some_vec.get(0).unwrap();
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get().unwrap()` on a VecDeque
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:41:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:47:17
    |
 LL |         let _ = some_vecdeque.get(0).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -78,7 +78,7 @@ LL +         let _ = &some_vecdeque[0];
    |
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:41:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:47:17
    |
 LL |         let _ = some_vecdeque.get(0).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -87,7 +87,7 @@ LL |         let _ = some_vecdeque.get(0).unwrap();
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get().unwrap()` on a HashMap
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:42:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:50:17
    |
 LL |         let _ = some_hashmap.get(&1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -99,7 +99,7 @@ LL +         let _ = &some_hashmap[&1];
    |
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:42:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:50:17
    |
 LL |         let _ = some_hashmap.get(&1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -108,7 +108,7 @@ LL |         let _ = some_hashmap.get(&1).unwrap();
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get().unwrap()` on a BTreeMap
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:43:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:53:17
    |
 LL |         let _ = some_btreemap.get(&1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,7 +120,7 @@ LL +         let _ = &some_btreemap[&1];
    |
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:43:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:53:17
    |
 LL |         let _ = some_btreemap.get(&1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -129,7 +129,7 @@ LL |         let _ = some_btreemap.get(&1).unwrap();
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get().unwrap()` on a slice
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:47:21
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:59:21
    |
 LL |         let _: u8 = *boxed_slice.get(1).unwrap();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -141,7 +141,7 @@ LL +         let _: u8 = boxed_slice[1];
    |
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:47:22
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:59:22
    |
 LL |         let _: u8 = *boxed_slice.get(1).unwrap();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -150,7 +150,7 @@ LL |         let _: u8 = *boxed_slice.get(1).unwrap();
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get_mut().unwrap()` on a slice
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:52:9
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:66:9
    |
 LL |         *boxed_slice.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -162,7 +162,7 @@ LL +         boxed_slice[0] = 1;
    |
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:52:10
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:66:10
    |
 LL |         *boxed_slice.get_mut(0).unwrap() = 1;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -171,7 +171,7 @@ LL |         *boxed_slice.get_mut(0).unwrap() = 1;
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get_mut().unwrap()` on a slice
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:53:9
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:69:9
    |
 LL |         *some_slice.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -183,7 +183,7 @@ LL +         some_slice[0] = 1;
    |
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:53:10
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:69:10
    |
 LL |         *some_slice.get_mut(0).unwrap() = 1;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -192,7 +192,7 @@ LL |         *some_slice.get_mut(0).unwrap() = 1;
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get_mut().unwrap()` on a Vec
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:54:9
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:72:9
    |
 LL |         *some_vec.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -204,7 +204,7 @@ LL +         some_vec[0] = 1;
    |
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:54:10
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:72:10
    |
 LL |         *some_vec.get_mut(0).unwrap() = 1;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -213,7 +213,7 @@ LL |         *some_vec.get_mut(0).unwrap() = 1;
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get_mut().unwrap()` on a VecDeque
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:55:9
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:75:9
    |
 LL |         *some_vecdeque.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -225,7 +225,7 @@ LL +         some_vecdeque[0] = 1;
    |
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:55:10
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:75:10
    |
 LL |         *some_vecdeque.get_mut(0).unwrap() = 1;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -234,7 +234,7 @@ LL |         *some_vecdeque.get_mut(0).unwrap() = 1;
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get().unwrap()` on a Vec
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:67:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:89:17
    |
 LL |         let _ = some_vec.get(0..1).unwrap().to_vec();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -246,7 +246,7 @@ LL +         let _ = some_vec[0..1].to_vec();
    |
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:67:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:89:17
    |
 LL |         let _ = some_vec.get(0..1).unwrap().to_vec();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -255,7 +255,7 @@ LL |         let _ = some_vec.get(0..1).unwrap().to_vec();
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get_mut().unwrap()` on a Vec
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:68:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:92:17
    |
 LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -267,7 +267,7 @@ LL +         let _ = some_vec[0..1].to_vec();
    |
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:68:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:92:17
    |
 LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -276,7 +276,7 @@ LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
    = help: consider using `expect()` to provide a better panic message
 
 error: called `.get().unwrap()` on a slice
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:75:13
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:101:13
    |
 LL |     let _ = boxed_slice.get(1).unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -288,7 +288,7 @@ LL +     let _ = &boxed_slice[1];
    |
 
 error: called `.get().unwrap()` on a slice
-  --> tests/ui-toml/unwrap_used/unwrap_used.rs:94:17
+  --> tests/ui-toml/unwrap_used/unwrap_used.rs:121:17
    |
 LL |         let _ = Box::new([0]).get(1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

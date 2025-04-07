@@ -26,20 +26,32 @@ symbols! {
     // documents (such as the Rust Reference) about whether it is a keyword
     // (e.g. `_`).
     //
-    // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*` predicates and
-    // `used_keywords`.
-    // But this should rarely be necessary if the keywords are kept in alphabetic order.
+    // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*`
+    // predicates and `used_keywords`. Also consider adding new keywords to the
+    // `ui/parser/raw/raw-idents.rs` test.
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
-        // Matching predicates: `is_any_keyword`, `is_special`/`is_reserved`
+        // Matching predicates: `is_special`/`is_reserved`
+        //
+        // Notes about `kw::Empty`:
+        // - Its use can blur the lines between "empty symbol" and "no symbol".
+        //   Using `Option<Symbol>` is preferable, where possible, because that
+        //   is unambiguous.
+        // - For dummy symbols that are never used and absolutely must be
+        //   present, it's better to use `sym::dummy` than `kw::Empty`, because
+        //   it's clearer that it's intended as a dummy value, and more likely
+        //   to be detected if it accidentally does get used.
+        // tidy-alphabetical-start
+        DollarCrate:        "$crate",
         Empty:              "",
         PathRoot:           "{{root}}",
-        DollarCrate:        "$crate",
         Underscore:         "_",
+        // tidy-alphabetical-end
 
         // Keywords that are used in stable Rust.
-        // Matching predicates: `is_any_keyword`, `is_used_keyword_always`/`is_reserved`
+        // Matching predicates: `is_used_keyword_always`/`is_reserved`
+        // tidy-alphabetical-start
         As:                 "as",
         Break:              "break",
         Const:              "const",
@@ -75,9 +87,11 @@ symbols! {
         Use:                "use",
         Where:              "where",
         While:              "while",
+        // tidy-alphabetical-end
 
         // Keywords that are used in unstable Rust or reserved for future use.
-        // Matching predicates: `is_any_keyword`, `is_unused_keyword_always`/`is_reserved`
+        // Matching predicates: `is_unused_keyword_always`/`is_reserved`
+        // tidy-alphabetical-start
         Abstract:           "abstract",
         Become:             "become",
         Box:                "box",
@@ -90,41 +104,48 @@ symbols! {
         Unsized:            "unsized",
         Virtual:            "virtual",
         Yield:              "yield",
+        // tidy-alphabetical-end
 
         // Edition-specific keywords that are used in stable Rust.
-        // Matching predicates: `is_any_keyword`, `is_used_keyword_conditional`/`is_reserved` (if
+        // Matching predicates: `is_used_keyword_conditional`/`is_reserved` (if
         // the edition suffices)
+        // tidy-alphabetical-start
         Async:              "async", // >= 2018 Edition only
         Await:              "await", // >= 2018 Edition only
         Dyn:                "dyn", // >= 2018 Edition only
+        // tidy-alphabetical-end
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
-        // Matching predicates: `is_any_keyword`, `is_unused_keyword_conditional`/`is_reserved` (if
+        // Matching predicates: `is_unused_keyword_conditional`/`is_reserved` (if
         // the edition suffices)
+        // tidy-alphabetical-start
         Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
-
-        // NOTE: When adding new keywords, consider adding them to the ui/parser/raw/raw-idents.rs test.
+        // tidy-alphabetical-end
 
         // "Lifetime keywords": regular keywords with a leading `'`.
-        // Matching predicates: `is_any_keyword`
-        UnderscoreLifetime: "'_",
+        // Matching predicates: none
+        // tidy-alphabetical-start
         StaticLifetime:     "'static",
+        UnderscoreLifetime: "'_",
+        // tidy-alphabetical-end
 
         // Weak keywords, have special meaning only in specific contexts.
-        // Matching predicates: `is_any_keyword`
+        // Matching predicates: `is_weak`
+        // tidy-alphabetical-start
         Auto:               "auto",
         Builtin:            "builtin",
         Catch:              "catch",
+        ContractEnsures:    "contract_ensures",
+        ContractRequires:   "contract_requires",
         Default:            "default",
         MacroRules:         "macro_rules",
         Raw:                "raw",
         Reuse:              "reuse",
-        ContractEnsures:  "contract_ensures",
-        ContractRequires: "contract_requires",
         Safe:               "safe",
         Union:              "union",
         Yeet:               "yeet",
+        // tidy-alphabetical-end
     }
 
     // Pre-interned symbols that can be referred to with `rustc_span::sym::*`.
@@ -308,6 +329,9 @@ symbols! {
         RangeFull,
         RangeInclusive,
         RangeInclusiveCopy,
+        RangeMax,
+        RangeMin,
+        RangeSub,
         RangeTo,
         RangeToInclusive,
         Rc,
@@ -579,6 +603,7 @@ symbols! {
         cfg_accessible,
         cfg_attr,
         cfg_attr_multi,
+        cfg_attr_trace: "<cfg_attr>", // must not be a valid identifier
         cfg_boolean_literals,
         cfg_contract_checks,
         cfg_doctest,
@@ -598,6 +623,7 @@ symbols! {
         cfg_target_has_atomic_equal_alignment,
         cfg_target_thread_local,
         cfg_target_vendor,
+        cfg_trace: "<cfg>", // must not be a valid identifier
         cfg_ub_checks,
         cfg_version,
         cfi,
@@ -774,8 +800,18 @@ symbols! {
         default_fn,
         default_lib_allocator,
         default_method_body_is_const,
+        // --------------------------
+        // Lang items which are used only for experiments with auto traits with default bounds.
+        // These lang items are not actually defined in core/std. Experiment is a part of
+        // `MCP: Low level components for async drop`(https://github.com/rust-lang/compiler-team/issues/727)
+        default_trait1,
+        default_trait2,
+        default_trait3,
+        default_trait4,
+        // --------------------------
         default_type_parameter_fallback,
         default_type_params,
+        define_opaque,
         delayed_bug_from_inside_query,
         deny,
         deprecated,
@@ -830,6 +866,7 @@ symbols! {
         drop_types_in_const,
         dropck_eyepatch,
         dropck_parametricity,
+        dummy: "<!dummy!>", // use this instead of `kw::Empty` for symbols that won't be used
         dummy_cgu_name,
         dylib,
         dyn_compatible_for_dispatch,
@@ -859,6 +896,7 @@ symbols! {
         eprint_macro,
         eprintln_macro,
         eq,
+        ergonomic_clones,
         ermsb_target_feature,
         exact_div,
         except,
@@ -957,6 +995,7 @@ symbols! {
         field_init_shorthand,
         file,
         file_options,
+        flags,
         float,
         float_to_int_unchecked,
         floorf128,
@@ -987,7 +1026,6 @@ symbols! {
         forbid,
         forget,
         format,
-        format_alignment,
         format_args,
         format_args_capture,
         format_args_macro,
@@ -1012,6 +1050,7 @@ symbols! {
         from_residual,
         from_size_align_unchecked,
         from_str_method,
+        from_u16,
         from_usize,
         from_yeet,
         fs_create_dir,
@@ -1037,6 +1076,7 @@ symbols! {
         generic_associated_types_extended,
         generic_const_exprs,
         generic_const_items,
+        generic_const_parameter_types,
         generic_param_attrs,
         generic_pattern_types,
         get_context,
@@ -1347,6 +1387,7 @@ symbols! {
         movbe_target_feature,
         move_ref_pattern,
         move_size_limit,
+        movrs_target_feature,
         mul,
         mul_assign,
         mul_with_overflow,
@@ -1358,6 +1399,7 @@ symbols! {
         naked,
         naked_asm,
         naked_functions,
+        naked_functions_target_feature,
         name,
         names,
         native_link_modifiers,
@@ -1521,6 +1563,7 @@ symbols! {
         pattern_complexity_limit,
         pattern_parentheses,
         pattern_type,
+        pattern_type_range_trait,
         pattern_types,
         permissions_from_mode,
         phantom_data,
@@ -1538,6 +1581,7 @@ symbols! {
         pointer_like,
         poll,
         poll_next,
+        position,
         post_dash_lto: "post-lto",
         postfix_match,
         powerpc_target_feature,
@@ -1553,6 +1597,7 @@ symbols! {
         precise_capturing,
         precise_capturing_in_traits,
         precise_pointer_size_matching,
+        precision,
         pref_align_of,
         prefetch_read_data,
         prefetch_read_instruction,
@@ -1624,6 +1669,7 @@ symbols! {
         quote,
         range_inclusive_new,
         raw_dylib,
+        raw_dylib_elf,
         raw_eq,
         raw_identifiers,
         raw_ref_op,
@@ -1711,6 +1757,7 @@ symbols! {
         rust_cold_cc,
         rust_eh_catch_typeinfo,
         rust_eh_personality,
+        rust_future,
         rust_logo,
         rust_out,
         rustc,
@@ -1737,6 +1784,7 @@ symbols! {
         rustc_deallocator,
         rustc_def_path,
         rustc_default_body_unstable,
+        rustc_delayed_bug_from_inside_query,
         rustc_deny_explicit_impl,
         rustc_deprecated_safe_2024,
         rustc_diagnostic_item,
@@ -1753,7 +1801,6 @@ symbols! {
         rustc_dump_user_args,
         rustc_dump_vtable,
         rustc_effective_visibility,
-        rustc_error,
         rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,
         rustc_force_inline,
@@ -1764,7 +1811,6 @@ symbols! {
         rustc_insignificant_dtor,
         rustc_intrinsic,
         rustc_intrinsic_const_stable_indirect,
-        rustc_intrinsic_must_be_overridden,
         rustc_layout,
         rustc_layout_scalar_valid_range_end,
         rustc_layout_scalar_valid_range_start,
@@ -1774,6 +1820,7 @@ symbols! {
         rustc_lint_opt_ty,
         rustc_lint_query_instability,
         rustc_lint_untracked_query_information,
+        rustc_macro_edition_2021,
         rustc_macro_transparency,
         rustc_main,
         rustc_mir,
@@ -1878,8 +1925,6 @@ symbols! {
         simd_fma,
         simd_fmax,
         simd_fmin,
-        simd_fpow,
-        simd_fpowi,
         simd_fsin,
         simd_fsqrt,
         simd_gather,
@@ -1916,7 +1961,7 @@ symbols! {
         simd_shl,
         simd_shr,
         simd_shuffle,
-        simd_shuffle_generic,
+        simd_shuffle_const_generic,
         simd_sub,
         simd_trunc,
         simd_with_exposed_provenance,
@@ -2004,6 +2049,7 @@ symbols! {
         sub_assign,
         sub_with_overflow,
         suggestion,
+        super_let,
         supertrait_item_shadowing,
         surface_async_drop_in_place,
         sym,
@@ -2085,8 +2131,11 @@ symbols! {
         type_ascribe,
         type_ascription,
         type_changing_struct_update,
+        type_const,
         type_id,
+        type_ir_infer_ctxt_like,
         type_ir_inherent,
+        type_ir_interner,
         type_length_limit,
         type_macros,
         type_name,
@@ -2181,6 +2230,7 @@ symbols! {
         unwrap,
         unwrap_binder,
         unwrap_or,
+        use_cloned,
         use_extern_macros,
         use_nested_groups,
         used,
@@ -2236,7 +2286,9 @@ symbols! {
         wasm_abi,
         wasm_import_module,
         wasm_target_feature,
+        where_clause_attrs,
         while_let,
+        width,
         windows,
         windows_subsystem,
         with_negative_coherence,
@@ -2295,9 +2347,21 @@ impl Ident {
         Ident::new(name, DUMMY_SP)
     }
 
+    /// This is best avoided, because it blurs the lines between "empty
+    /// identifier" and "no identifier". Using `Option<Ident>` is preferable,
+    /// where possible, because that is unambiguous.
     #[inline]
     pub fn empty() -> Ident {
         Ident::with_dummy_span(kw::Empty)
+    }
+
+    // For dummy identifiers that are never used and absolutely must be
+    // present, it's better to use `Ident::dummy` than `Ident::Empty`, because
+    // it's clearer that it's intended as a dummy value, and more likely to be
+    // detected if it accidentally does get used.
+    #[inline]
+    pub fn dummy() -> Ident {
+        Ident::with_dummy_span(sym::dummy)
     }
 
     /// Maps a string to an identifier with a dummy span.
@@ -2643,11 +2707,6 @@ pub mod sym {
 }
 
 impl Symbol {
-    /// Don't use this unless you're doing something very loose and heuristic-y.
-    pub fn is_any_keyword(self) -> bool {
-        self >= kw::As && self <= kw::Yeet
-    }
-
     fn is_special(self) -> bool {
         self <= kw::Underscore
     }
@@ -2656,12 +2715,12 @@ impl Symbol {
         self >= kw::As && self <= kw::While
     }
 
-    fn is_used_keyword_conditional(self, edition: impl FnOnce() -> Edition) -> bool {
-        (self >= kw::Async && self <= kw::Dyn) && edition() >= Edition::Edition2018
-    }
-
     fn is_unused_keyword_always(self) -> bool {
         self >= kw::Abstract && self <= kw::Yield
+    }
+
+    fn is_used_keyword_conditional(self, edition: impl FnOnce() -> Edition) -> bool {
+        (self >= kw::Async && self <= kw::Dyn) && edition() >= Edition::Edition2018
     }
 
     fn is_unused_keyword_conditional(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
@@ -2675,6 +2734,10 @@ impl Symbol {
             || self.is_unused_keyword_always()
             || self.is_used_keyword_conditional(edition)
             || self.is_unused_keyword_conditional(edition)
+    }
+
+    pub fn is_weak(self) -> bool {
+        self >= kw::Auto && self <= kw::Yeet
     }
 
     /// A keyword or reserved identifier that can be used as a path segment.
@@ -2704,11 +2767,6 @@ impl Symbol {
 }
 
 impl Ident {
-    /// Don't use this unless you're doing something very loose and heuristic-y.
-    pub fn is_any_keyword(self) -> bool {
-        self.name.is_any_keyword()
-    }
-
     /// Returns `true` for reserved identifiers used internally for elided lifetimes,
     /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
@@ -2758,7 +2816,7 @@ impl Ident {
 /// *Note:* Please update this if a new keyword is added beyond the current
 /// range.
 pub fn used_keywords(edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
-    (kw::Empty.as_u32()..kw::Yeet.as_u32())
+    (kw::DollarCrate.as_u32()..kw::Yeet.as_u32())
         .filter_map(|kw| {
             let kw = Symbol::new(kw);
             if kw.is_used_keyword_always() || kw.is_used_keyword_conditional(edition) {

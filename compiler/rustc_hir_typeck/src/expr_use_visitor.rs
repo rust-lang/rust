@@ -1,6 +1,9 @@
 //! A different sort of visitor for walking fn bodies. Unlike the
 //! normal visitor, which just walks the entire body in one shot, the
 //! `ExprUseVisitor` determines how expressions are being used.
+//!
+//! In the compiler, this is only used for upvar inference, but there
+//! are many uses within clippy.
 
 use std::cell::{Ref, RefCell};
 use std::ops::Deref;
@@ -20,12 +23,12 @@ use rustc_middle::hir::place::ProjectionKind;
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{
-    self, AdtKind, BorrowKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, adjustment,
+    self, BorrowKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, adjustment,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::infer::InferCtxtExt;
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::fn_ctxt::FnCtxt;
 
@@ -35,7 +38,19 @@ pub trait Delegate<'tcx> {
     /// The value found at `place` is moved, depending
     /// on `mode`. Where `diag_expr_id` is the id used for diagnostics for `place`.
     ///
-    /// Use of a `Copy` type in a ByValue context is considered a use
+    /// If the value is `Copy`, [`copy`][Self::copy] is called instead, which
+    /// by default falls back to [`borrow`][Self::borrow].
+    ///
+    /// The parameter `diag_expr_id` indicates the HIR id that ought to be used for
+    /// diagnostics. Around pattern matching such as `let pat = expr`, the diagnostic
+    /// id will be the id of the expression `expr` but the place itself will have
+    /// the id of the binding in the pattern `pat`.
+    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId);
+
+    /// The value found at `place` is used, depending
+    /// on `mode`. Where `diag_expr_id` is the id used for diagnostics for `place`.
+    ///
+    /// Use of a `Copy` type in a ByUse context is considered a use
     /// by `ImmBorrow` and `borrow` is called instead. This is because
     /// a shared borrow is the "minimum access" that would be needed
     /// to perform a copy.
@@ -45,7 +60,7 @@ pub trait Delegate<'tcx> {
     /// diagnostics. Around pattern matching such as `let pat = expr`, the diagnostic
     /// id will be the id of the expression `expr` but the place itself will have
     /// the id of the binding in the pattern `pat`.
-    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId);
+    fn use_cloned(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId);
 
     /// The value found at `place` is being borrowed with kind `bk`.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
@@ -58,6 +73,10 @@ pub trait Delegate<'tcx> {
 
     /// The value found at `place` is being copied.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
+    ///
+    /// If an implementation is not provided, use of a `Copy` type in a ByValue context is instead
+    /// considered a use by `ImmBorrow` and `borrow` is called instead. This is because a shared
+    /// borrow is the "minimum access" that would be needed to perform a copy.
     fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         // In most cases, copying data from `x` is equivalent to doing `*&x`, so by default
         // we treat a copy of `x` as a borrow of `x`.
@@ -91,6 +110,10 @@ impl<'tcx, D: Delegate<'tcx>> Delegate<'tcx> for &mut D {
         (**self).consume(place_with_id, diag_expr_id)
     }
 
+    fn use_cloned(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        (**self).use_cloned(place_with_id, diag_expr_id)
+    }
+
     fn borrow(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
@@ -122,6 +145,8 @@ impl<'tcx, D: Delegate<'tcx>> Delegate<'tcx> for &mut D {
     }
 }
 
+/// This trait makes `ExprUseVisitor` usable with both [`FnCtxt`]
+/// and [`LateContext`], depending on where in the compiler it is used.
 pub trait TypeInformationCtxt<'tcx> {
     type TypeckResults<'a>: Deref<Target = ty::TypeckResults<'tcx>>
     where
@@ -135,13 +160,15 @@ pub trait TypeInformationCtxt<'tcx> {
 
     fn try_structurally_resolve_type(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
 
-    fn report_error(&self, span: Span, msg: impl ToString) -> Self::Error;
+    fn report_bug(&self, span: Span, msg: impl ToString) -> Self::Error;
 
     fn error_reported_in_ty(&self, ty: Ty<'tcx>) -> Result<(), Self::Error>;
 
     fn tainted_by_errors(&self) -> Result<(), Self::Error>;
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool;
+
+    fn type_is_use_cloned_modulo_regions(&self, ty: Ty<'tcx>) -> bool;
 
     fn body_owner_def_id(&self) -> LocalDefId;
 
@@ -168,7 +195,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
         (**self).try_structurally_resolve_type(sp, ty)
     }
 
-    fn report_error(&self, span: Span, msg: impl ToString) -> Self::Error {
+    fn report_bug(&self, span: Span, msg: impl ToString) -> Self::Error {
         self.dcx().span_delayed_bug(span, msg.to_string())
     }
 
@@ -182,6 +209,10 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
         self.infcx.type_is_copy_modulo_regions(self.param_env, ty)
+    }
+
+    fn type_is_use_cloned_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        self.infcx.type_is_use_cloned_modulo_regions(self.param_env, ty)
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {
@@ -214,7 +245,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
         t
     }
 
-    fn report_error(&self, span: Span, msg: impl ToString) -> ! {
+    fn report_bug(&self, span: Span, msg: impl ToString) -> ! {
         span_bug!(span, "{}", msg.to_string())
     }
 
@@ -230,6 +261,10 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
         self.0.type_is_copy_modulo_regions(ty)
     }
 
+    fn type_is_use_cloned_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        self.0.type_is_use_cloned_modulo_regions(ty)
+    }
+
     fn body_owner_def_id(&self) -> LocalDefId {
         self.1
     }
@@ -239,9 +274,9 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
     }
 }
 
-/// The ExprUseVisitor type
+/// A visitor that reports how each expression is being used.
 ///
-/// This is the code that actually walks the tree.
+/// See [module-level docs][self] and [`Delegate`] for details.
 pub struct ExprUseVisitor<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> {
     cx: Cx,
     /// We use a `RefCell` here so that delegates can mutate themselves, but we can
@@ -285,11 +320,27 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         Ok(())
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn consume_or_copy(&self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
-        debug!("delegate_consume(place_with_id={:?})", place_with_id);
-
         if self.cx.type_is_copy_modulo_regions(place_with_id.place.ty()) {
             self.delegate.borrow_mut().copy(place_with_id, diag_expr_id);
+        } else {
+            self.delegate.borrow_mut().consume(place_with_id, diag_expr_id);
+        }
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    pub fn consume_clone_or_copy(&self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        // `x.use` will do one of the following
+        // * if it implements `Copy`, it will be a copy
+        // * if it implements `UseCloned`, it will be a call to `clone`
+        // * otherwise, it is a move
+        //
+        // we do a conservative approximation of this, treating it as a move unless we know that it implements copy or `UseCloned`
+        if self.cx.type_is_copy_modulo_regions(place_with_id.place.ty()) {
+            self.delegate.borrow_mut().copy(place_with_id, diag_expr_id);
+        } else if self.cx.type_is_use_cloned_modulo_regions(place_with_id.place.ty()) {
+            self.delegate.borrow_mut().use_cloned(place_with_id, diag_expr_id);
         } else {
             self.delegate.borrow_mut().consume(place_with_id, diag_expr_id);
         }
@@ -304,11 +355,18 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     }
 
     // FIXME: It's suspicious that this is public; clippy should probably use `walk_expr`.
+    #[instrument(skip(self), level = "debug")]
     pub fn consume_expr(&self, expr: &hir::Expr<'_>) -> Result<(), Cx::Error> {
-        debug!("consume_expr(expr={:?})", expr);
-
         let place_with_id = self.cat_expr(expr)?;
         self.consume_or_copy(&place_with_id, place_with_id.hir_id);
+        self.walk_expr(expr)?;
+        Ok(())
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    pub fn consume_or_clone_expr(&self, expr: &hir::Expr<'_>) -> Result<(), Cx::Error> {
+        let place_with_id = self.cat_expr(expr)?;
+        self.consume_clone_or_copy(&place_with_id, place_with_id.hir_id);
         self.walk_expr(expr)?;
         Ok(())
     }
@@ -320,17 +378,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         Ok(())
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn borrow_expr(&self, expr: &hir::Expr<'_>, bk: ty::BorrowKind) -> Result<(), Cx::Error> {
-        debug!("borrow_expr(expr={:?}, bk={:?})", expr, bk);
-
         let place_with_id = self.cat_expr(expr)?;
         self.delegate.borrow_mut().borrow(&place_with_id, place_with_id.hir_id, bk);
         self.walk_expr(expr)
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn walk_expr(&self, expr: &hir::Expr<'_>) -> Result<(), Cx::Error> {
-        debug!("walk_expr(expr={:?})", expr);
-
         self.walk_adjustment(expr)?;
 
         match expr.kind {
@@ -364,6 +420,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 // callee(args)
                 self.consume_expr(callee)?;
                 self.consume_exprs(args)?;
+            }
+
+            hir::ExprKind::Use(expr, _) => {
+                self.consume_or_clone_expr(expr)?;
             }
 
             hir::ExprKind::MethodCall(.., receiver, args, _) => {
@@ -551,6 +611,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         for pat in pats {
             self.cat_pattern(discr_place.clone(), pat, &mut |place, pat| {
                 match &pat.kind {
+                    PatKind::Missing => unreachable!(),
                     PatKind::Binding(.., opt_sub_pat) => {
                         // If the opt_sub_pat is None, then the binding does not count as
                         // a wildcard for the purpose of borrowing discr.
@@ -673,9 +734,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
     /// Indicates that the value of `blk` will be consumed, meaning either copied or moved
     /// depending on its type.
+    #[instrument(skip(self), level = "debug")]
     fn walk_block(&self, blk: &hir::Block<'_>) -> Result<(), Cx::Error> {
-        debug!("walk_block(blk.hir_id={})", blk.hir_id);
-
         for stmt in blk.stmts {
             self.walk_stmt(stmt)?;
         }
@@ -801,7 +861,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     }
 
     /// Walks the autoref `autoref` applied to the autoderef'd
-    /// `expr`. `base_place` is the mem-categorized form of `expr`
+    /// `expr`. `base_place` is `expr` represented as a place,
     /// after all relevant autoderefs have occurred.
     fn walk_autoref(
         &self,
@@ -882,61 +942,56 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     }
 
     /// The core driver for walking a pattern
+    #[instrument(skip(self), level = "debug")]
     fn walk_pat(
         &self,
         discr_place: &PlaceWithHirId<'tcx>,
         pat: &hir::Pat<'_>,
         has_guard: bool,
     ) -> Result<(), Cx::Error> {
-        debug!("walk_pat(discr_place={:?}, pat={:?}, has_guard={:?})", discr_place, pat, has_guard);
-
         let tcx = self.cx.tcx();
         self.cat_pattern(discr_place.clone(), pat, &mut |place, pat| {
             match pat.kind {
                 PatKind::Binding(_, canonical_id, ..) => {
                     debug!("walk_pat: binding place={:?} pat={:?}", place, pat);
-                    if let Some(bm) = self
+                    let bm = self
                         .cx
                         .typeck_results()
-                        .extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
-                    {
-                        debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
+                        .extract_binding_mode(tcx.sess, pat.hir_id, pat.span);
+                    debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
-                        // pat_ty: the type of the binding being produced.
-                        let pat_ty = self.node_ty(pat.hir_id)?;
-                        debug!("walk_pat: pat_ty={:?}", pat_ty);
+                    // pat_ty: the type of the binding being produced.
+                    let pat_ty = self.node_ty(pat.hir_id)?;
+                    debug!("walk_pat: pat_ty={:?}", pat_ty);
 
-                        let def = Res::Local(canonical_id);
-                        if let Ok(ref binding_place) =
-                            self.cat_res(pat.hir_id, pat.span, pat_ty, def)
-                        {
-                            self.delegate.borrow_mut().bind(binding_place, binding_place.hir_id);
+                    let def = Res::Local(canonical_id);
+                    if let Ok(ref binding_place) = self.cat_res(pat.hir_id, pat.span, pat_ty, def) {
+                        self.delegate.borrow_mut().bind(binding_place, binding_place.hir_id);
+                    }
+
+                    // Subtle: MIR desugaring introduces immutable borrows for each pattern
+                    // binding when lowering pattern guards to ensure that the guard does not
+                    // modify the scrutinee.
+                    if has_guard {
+                        self.delegate.borrow_mut().borrow(
+                            place,
+                            discr_place.hir_id,
+                            BorrowKind::Immutable,
+                        );
+                    }
+
+                    // It is also a borrow or copy/move of the value being matched.
+                    // In a cases of pattern like `let pat = upvar`, don't use the span
+                    // of the pattern, as this just looks confusing, instead use the span
+                    // of the discriminant.
+                    match bm.0 {
+                        hir::ByRef::Yes(m) => {
+                            let bk = ty::BorrowKind::from_mutbl(m);
+                            self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
                         }
-
-                        // Subtle: MIR desugaring introduces immutable borrows for each pattern
-                        // binding when lowering pattern guards to ensure that the guard does not
-                        // modify the scrutinee.
-                        if has_guard {
-                            self.delegate.borrow_mut().borrow(
-                                place,
-                                discr_place.hir_id,
-                                BorrowKind::Immutable,
-                            );
-                        }
-
-                        // It is also a borrow or copy/move of the value being matched.
-                        // In a cases of pattern like `let pat = upvar`, don't use the span
-                        // of the pattern, as this just looks confusing, instead use the span
-                        // of the discriminant.
-                        match bm.0 {
-                            hir::ByRef::Yes(m) => {
-                                let bk = ty::BorrowKind::from_mutbl(m);
-                                self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
-                            }
-                            hir::ByRef::No => {
-                                debug!("walk_pat binding consuming pat");
-                                self.consume_or_copy(place, discr_place.hir_id);
-                            }
+                        hir::ByRef::No => {
+                            debug!("walk_pat binding consuming pat");
+                            self.consume_or_copy(place, discr_place.hir_id);
                         }
                     }
                 }
@@ -986,6 +1041,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     ///
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
     /// closure as the DefId.
+    #[instrument(skip(self), level = "debug")]
     fn walk_captures(&self, closure_expr: &hir::Closure<'_>) -> Result<(), Cx::Error> {
         fn upvar_is_local_variable(
             upvars: Option<&FxIndexMap<HirId, hir::Upvar>>,
@@ -994,8 +1050,6 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         ) -> bool {
             upvars.map(|upvars| !upvars.contains_key(&upvar_id)).unwrap_or(body_owner_is_closure)
         }
-
-        debug!("walk_captures({:?})", closure_expr);
 
         let tcx = self.cx.tcx();
         let closure_def_id = closure_expr.def_id;
@@ -1089,6 +1143,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         ty::UpvarCapture::ByValue => {
                             self.consume_or_copy(&place_with_id, place_with_id.hir_id);
                         }
+                        ty::UpvarCapture::ByUse => {
+                            self.consume_clone_or_copy(&place_with_id, place_with_id.hir_id);
+                        }
                         ty::UpvarCapture::ByRef(upvar_borrow) => {
                             self.delegate.borrow_mut().borrow(
                                 &place_with_id,
@@ -1105,55 +1162,17 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     }
 }
 
-/// The job of the categorization methods is to analyze an expression to
-/// determine what kind of memory is used in evaluating it (for example,
-/// where dereferences occur and what kind of pointer is dereferenced;
-/// whether the memory is mutable, etc.).
+/// The job of the methods whose name starts with `cat_` is to analyze
+/// expressions and construct the corresponding [`Place`]s. The `cat`
+/// stands for "categorize", this is a leftover from long ago when
+/// places were called "categorizations".
 ///
-/// Categorization effectively transforms all of our expressions into
-/// expressions of the following forms (the actual enum has many more
-/// possibilities, naturally, but they are all variants of these base
-/// forms):
-/// ```ignore (not-rust)
-/// E = rvalue    // some computed rvalue
-///   | x         // address of a local variable or argument
-///   | *E        // deref of a ptr
-///   | E.comp    // access to an interior component
-/// ```
-/// Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
-/// address where the result is to be found. If Expr is a place, then this
-/// is the address of the place. If `Expr` is an rvalue, this is the address of
-/// some temporary spot in memory where the result is stored.
-///
-/// Now, `cat_expr()` classifies the expression `Expr` and the address `A = ToAddr(Expr)`
-/// as follows:
-///
-/// - `cat`: what kind of expression was this? This is a subset of the
-///   full expression forms which only includes those that we care about
-///   for the purpose of the analysis.
-/// - `mutbl`: mutability of the address `A`.
-/// - `ty`: the type of data found at the address `A`.
-///
-/// The resulting categorization tree differs somewhat from the expressions
-/// themselves. For example, auto-derefs are explicit. Also, an index `a[b]` is
-/// decomposed into two operations: a dereference to reach the array data and
-/// then an index to jump forward to the relevant item.
-///
-/// ## By-reference upvars
-///
-/// One part of the codegen which may be non-obvious is that we translate
-/// closure upvars into the dereference of a borrowed pointer; this more closely
-/// resembles the runtime codegen. So, for example, if we had:
-///
-///     let mut x = 3;
-///     let y = 5;
-///     let inc = || x += y;
-///
-/// Then when we categorize `x` (*within* the closure) we would yield a
-/// result of `*x'`, effectively, where `x'` is a `Categorization::Upvar` reference
-/// tied to `x`. The type of `x'` will be a borrowed pointer.
+/// Note that a [`Place`] differs somewhat from the expression itself. For
+/// example, auto-derefs are explicit. Also, an index `a[b]` is decomposed into
+/// two operations: a dereference to reach the array data and then an index to
+/// jump forward to the relevant item.
 impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx, Cx, D> {
-    fn resolve_type_vars_or_error(
+    fn resolve_type_vars_or_bug(
         &self,
         id: HirId,
         ty: Option<Ty<'tcx>>,
@@ -1163,10 +1182,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 let ty = self.cx.resolve_vars_if_possible(ty);
                 self.cx.error_reported_in_ty(ty)?;
                 if ty.is_ty_var() {
-                    debug!("resolve_type_vars_or_error: infer var from {:?}", ty);
-                    Err(self
-                        .cx
-                        .report_error(self.cx.tcx().hir().span(id), "encountered type variable"))
+                    debug!("resolve_type_vars_or_bug: infer var from {:?}", ty);
+                    Err(self.cx.report_bug(self.cx.tcx().hir_span(id), "encountered type variable"))
                 } else {
                     Ok(ty)
                 }
@@ -1174,24 +1191,21 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             None => {
                 // FIXME: We shouldn't be relying on the infcx being tainted.
                 self.cx.tainted_by_errors()?;
-                bug!(
-                    "no type for node {} in mem_categorization",
-                    self.cx.tcx().hir().node_to_string(id)
-                );
+                bug!("no type for node {} in ExprUseVisitor", self.cx.tcx().hir_id_to_string(id));
             }
         }
     }
 
     fn node_ty(&self, hir_id: HirId) -> Result<Ty<'tcx>, Cx::Error> {
-        self.resolve_type_vars_or_error(hir_id, self.cx.typeck_results().node_type_opt(hir_id))
+        self.resolve_type_vars_or_bug(hir_id, self.cx.typeck_results().node_type_opt(hir_id))
     }
 
     fn expr_ty(&self, expr: &hir::Expr<'_>) -> Result<Ty<'tcx>, Cx::Error> {
-        self.resolve_type_vars_or_error(expr.hir_id, self.cx.typeck_results().expr_ty_opt(expr))
+        self.resolve_type_vars_or_bug(expr.hir_id, self.cx.typeck_results().expr_ty_opt(expr))
     }
 
     fn expr_ty_adjusted(&self, expr: &hir::Expr<'_>) -> Result<Ty<'tcx>, Cx::Error> {
-        self.resolve_type_vars_or_error(
+        self.resolve_type_vars_or_bug(
             expr.hir_id,
             self.cx.typeck_results().expr_ty_adjusted_opt(expr),
         )
@@ -1226,7 +1240,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         self.pat_ty_unadjusted(pat)
     }
 
-    /// Like `TypeckResults::pat_ty`, but ignores implicit `&` patterns.
+    /// Like [`Self::pat_ty_adjusted`], but ignores implicit `&` patterns.
     fn pat_ty_unadjusted(&self, pat: &hir::Pat<'_>) -> Result<Ty<'tcx>, Cx::Error> {
         let base_ty = self.node_ty(pat.hir_id)?;
         trace!(?base_ty);
@@ -1256,7 +1270,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                             debug!("By-ref binding of non-derefable type");
                             Err(self
                                 .cx
-                                .report_error(pat.span, "by-ref binding of non-derefable type"))
+                                .report_bug(pat.span, "by-ref binding of non-derefable type"))
                         }
                     }
                 } else {
@@ -1390,6 +1404,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Call(..)
+            | hir::ExprKind::Use(..)
             | hir::ExprKind::Assign(..)
             | hir::ExprKind::AssignOp(..)
             | hir::ExprKind::Closure { .. }
@@ -1451,7 +1466,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 }
             }
 
-            def => span_bug!(span, "unexpected definition in memory categorization: {:?}", def),
+            def => span_bug!(span, "unexpected definition in ExprUseVisitor: {:?}", def),
         }
     }
 
@@ -1493,10 +1508,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         if node_ty != place_ty
             && self
                 .cx
-                .try_structurally_resolve_type(
-                    self.cx.tcx().hir().span(base_place.hir_id),
-                    place_ty,
-                )
+                .try_structurally_resolve_type(self.cx.tcx().hir_span(base_place.hir_id), place_ty)
                 .is_impl_trait()
         {
             projections.push(Projection { kind: ProjectionKind::OpaqueCast, ty: node_ty });
@@ -1535,17 +1547,14 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let base_curr_ty = base_place.place.ty();
         let deref_ty = match self
             .cx
-            .try_structurally_resolve_type(
-                self.cx.tcx().hir().span(base_place.hir_id),
-                base_curr_ty,
-            )
+            .try_structurally_resolve_type(self.cx.tcx().hir_span(base_place.hir_id), base_curr_ty)
             .builtin_deref(true)
         {
             Some(ty) => ty,
             None => {
                 debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
-                return Err(self.cx.report_error(
-                    self.cx.tcx().hir().span(node),
+                return Err(self.cx.report_bug(
+                    self.cx.tcx().hir_span(node),
                     "explicit deref of non-derefable type",
                 ));
             }
@@ -1569,7 +1578,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let ty::Adt(adt_def, _) = self.cx.try_structurally_resolve_type(span, ty).kind() else {
             return Err(self
                 .cx
-                .report_error(span, "struct or tuple struct pattern not applied to an ADT"));
+                .report_bug(span, "struct or tuple struct pattern not applied to an ADT"));
         };
 
         match res {
@@ -1615,7 +1624,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let ty = self.cx.typeck_results().node_type(pat_hir_id);
         match self.cx.try_structurally_resolve_type(span, ty).kind() {
             ty::Tuple(args) => Ok(args.len()),
-            _ => Err(self.cx.report_error(span, "tuple pattern not applied to a tuple")),
+            _ => Err(self.cx.report_bug(span, "tuple pattern not applied to a tuple")),
         }
     }
 
@@ -1780,7 +1789,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 let ty = self.pat_ty_adjusted(subpat)?;
                 let ty = Ty::new_ref(self.cx.tcx(), re_erased, ty, mutability);
                 // A deref pattern generates a temporary.
-                let place = self.cat_rvalue(pat.hir_id, ty);
+                let base = self.cat_rvalue(pat.hir_id, ty);
+                let place = self.cat_deref(pat.hir_id, base)?;
                 self.cat_pattern(place, subpat, op)?;
             }
 
@@ -1793,7 +1803,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     debug!("explicit index of non-indexable type {:?}", place_with_id);
                     return Err(self
                         .cx
-                        .report_error(pat.span, "explicit index of non-indexable type"));
+                        .report_bug(pat.span, "explicit index of non-indexable type"));
                 };
                 let elt_place = self.cat_projection(
                     pat.hir_id,
@@ -1823,6 +1833,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             | PatKind::Expr(..)
             | PatKind::Range(..)
             | PatKind::Never
+            | PatKind::Missing
             | PatKind::Wild
             | PatKind::Err(_) => {
                 // always ok
@@ -1838,14 +1849,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             // to assume that more cases will be added to the variant in the future. This mean
             // that we should handle non-exhaustive SingleVariant the same way we would handle
             // a MultiVariant.
-            // If the variant is not local it must be defined in another crate.
-            let is_non_exhaustive = match def.adt_kind() {
-                AdtKind::Struct | AdtKind::Union => {
-                    def.non_enum_variant().is_field_list_non_exhaustive()
-                }
-                AdtKind::Enum => def.is_variant_list_non_exhaustive(),
-            };
-            def.variants().len() > 1 || (!def.did().is_local() && is_non_exhaustive)
+            def.variants().len() > 1 || def.variant_list_has_applicable_non_exhaustive()
         } else {
             false
         }

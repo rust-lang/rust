@@ -98,10 +98,7 @@ pub(super) fn check(
             ]),
             ("None", "unwrap_or_else", _) => match args[0].kind {
                 hir::ExprKind::Closure(hir::Closure { body, .. }) => Some(vec![
-                    (
-                        expr.span.with_hi(cx.tcx.hir_body(*body).value.span.lo()),
-                        String::new(),
-                    ),
+                    (expr.span.with_hi(cx.tcx.hir_body(*body).value.span.lo()), String::new()),
                     (expr.span.with_lo(args[0].span.hi()), String::new()),
                 ]),
                 _ => None,

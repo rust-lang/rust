@@ -1,3 +1,4 @@
+//@ check-pass
 //@aux-build:once_cell.rs
 //@aux-build:lazy_static.rs
 

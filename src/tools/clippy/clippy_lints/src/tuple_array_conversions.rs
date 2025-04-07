@@ -47,15 +47,13 @@ pub struct TupleArrayConversions {
 }
 impl TupleArrayConversions {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
 impl LateLintPass<'_> for TupleArrayConversions {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if expr.span.in_external_macro(cx.sess().source_map()) || !self.msrv.meets(msrvs::TUPLE_ARRAY_CONVERSIONS) {
+        if expr.span.in_external_macro(cx.sess().source_map()) || !self.msrv.meets(cx, msrvs::TUPLE_ARRAY_CONVERSIONS) {
             return;
         }
 
@@ -65,8 +63,6 @@ impl LateLintPass<'_> for TupleArrayConversions {
             _ => {},
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &'tcx [Expr<'tcx>]) {

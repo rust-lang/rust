@@ -10,6 +10,7 @@ hir_typeck_address_of_temporary_taken = cannot take address of a temporary
 hir_typeck_arg_mismatch_indeterminate = argument type mismatch was detected, but rustc had trouble determining where
     .note = we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new
 
+hir_typeck_as_deref_suggestion = consider using `as_deref` here
 hir_typeck_base_expression_double_dot = base expression required after `..`
 hir_typeck_base_expression_double_dot_add_expr = add a base expression here
 hir_typeck_base_expression_double_dot_enable_default_field_values =
@@ -26,6 +27,9 @@ hir_typeck_cannot_cast_to_bool = cannot cast `{$expr_ty}` as `bool`
     .suggestion = compare with zero instead
     .help = compare with zero instead
     .label = unsupported cast
+
+hir_typeck_cant_dereference = type `{$ty}` cannot be dereferenced
+hir_typeck_cant_dereference_label = can't be dereferenced
 
 hir_typeck_cast_enum_drop = cannot cast enum `{$expr_ty}` into integer `{$cast_ty}` because it implements `Drop`
 
@@ -72,6 +76,9 @@ hir_typeck_dependency_on_unit_never_type_fallback = this function depends on nev
 
 hir_typeck_deref_is_empty = this expression `Deref`s to `{$deref_ty}` which implements `is_empty`
 
+hir_typeck_expected_array_or_slice = expected an array or slice, found `{$ty}`
+hir_typeck_expected_array_or_slice_label = pattern cannot match with input type `{$ty}`
+
 hir_typeck_expected_default_return_type = expected `()` because of default return type
 
 hir_typeck_expected_return_type = expected `{$expected}` because of return type
@@ -112,7 +119,11 @@ hir_typeck_int_to_fat = cannot cast `{$expr_ty}` to a pointer that {$known_wide 
 hir_typeck_int_to_fat_label = creating a `{$cast_ty}` requires both an address and {$metadata}
 hir_typeck_int_to_fat_label_nightly = consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
 
-hir_typeck_invalid_callee = expected function, found {$ty}
+hir_typeck_invalid_callee = expected function, found {$found}
+hir_typeck_invalid_defined = `{$path}` defined here
+hir_typeck_invalid_defined_kind = {$kind} `{$path}` defined here
+hir_typeck_invalid_fn_defined = `{$func}` defined here returns `{$ty}`
+hir_typeck_invalid_local = `{$local_name}` has type `{$ty}`
 
 hir_typeck_lossy_provenance_int2ptr =
     strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`
@@ -142,6 +153,12 @@ hir_typeck_no_associated_item = no {$item_kind} named `{$item_name}` found for {
     *[other] {" "}in the current scope
 }
 
+hir_typeck_no_field_on_type = no field `{$field}` on type `{$ty}`
+
+hir_typeck_no_field_on_variant = no field named `{$field}` on enum variant `{$container}::{$ident}`
+hir_typeck_no_field_on_variant_enum = this enum variant...
+hir_typeck_no_field_on_variant_field = ...does not have this field
+
 hir_typeck_note_caller_chooses_ty_for_ty_param = the caller chooses a type for `{$ty_param_name}` which can be different from `{$found_ty}`
 
 hir_typeck_note_edition_guide = for more on editions, read https://doc.rust-lang.org/edition-guide
@@ -154,10 +171,13 @@ hir_typeck_pass_to_variadic_function = can't pass `{$ty}` to variadic function
     .suggestion = cast the value to `{$cast_ty}`
     .teach_help = certain types, like `{$ty}`, must be casted before passing them to a variadic function, because of arcane ABI rules dictated by the C standard
 
-hir_typeck_ptr_cast_add_auto_to_object = adding {$traits_len ->
-    [1] an auto trait {$traits}
+hir_typeck_ptr_cast_add_auto_to_object = cannot add {$traits_len ->
+    [1] auto trait {$traits}
     *[other] auto traits {$traits}
-} to a trait object in a pointer cast may cause UB later on
+} to dyn bound via pointer cast
+    .note = this could allow UB elsewhere
+    .help = use `transmute` if you're sure this is sound
+    .label = unsupported cast
 
 hir_typeck_remove_semi_for_coerce = you might have meant to return the `match` expression
 hir_typeck_remove_semi_for_coerce_expr = this could be implicitly returned but it is a statement, not a tail expression
@@ -182,6 +202,8 @@ hir_typeck_rustcall_incorrect_args =
 hir_typeck_self_ctor_from_outer_item = can't reference `Self` constructor from outer item
     .label = the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
     .suggestion = replace `Self` with the actual type
+
+hir_typeck_slicing_suggestion = consider slicing here
 
 hir_typeck_struct_expr_non_exhaustive =
     cannot create non-exhaustive {$what} using struct expression

@@ -6,7 +6,7 @@ This is a guide for how to profile rustc with [perf](https://perf.wiki.kernel.or
 
 - Get a clean checkout of rust-lang/master, or whatever it is you want
   to profile.
-- Set the following settings in your `config.toml`:
+- Set the following settings in your `bootstrap.toml`:
   - `debuginfo-level = 1` - enables line debuginfo
   - `jemalloc = false` - lets you do memory use profiling with valgrind
   - leave everything else the defaults
@@ -51,6 +51,13 @@ you made in the beginning. But there are some things to be aware of:
     - Though usually I just do `touch src/lib.rs` and rebuild instead. =)
 - You probably don't want incremental messing about with your
   profile. So something like `CARGO_INCREMENTAL=0` can be helpful.
+
+In case to avoid the issue of `addr2line xxx/elf: could not read first record` when reading
+collected data from `cargo`, you may need use the latest version of `addr2line`:
+
+```bash
+cargo install addr2line --features="bin"
+```
 
 ### Gathering a perf profile from a `perf.rust-lang.org` test
 

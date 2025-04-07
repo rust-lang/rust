@@ -29,9 +29,13 @@ fn main() {
     let b = &[1, 2, 3];
 
     let _ = a as *const _ as usize == b as *const _ as usize;
+    //~^ ptr_eq
     let _ = a as *const _ == b as *const _;
+    //~^ ptr_eq
     let _ = a.as_ptr() == b as *const _;
+    //~^ ptr_eq
     let _ = a.as_ptr() == b.as_ptr();
+    //~^ ptr_eq
 
     // Do not lint
 
@@ -42,7 +46,9 @@ fn main() {
     let b = &mut [1, 2, 3];
 
     let _ = a.as_mut_ptr() == b as *mut [i32] as *mut _;
+    //~^ ptr_eq
     let _ = a.as_mut_ptr() == b.as_mut_ptr();
+    //~^ ptr_eq
 
     let _ = a == b;
     let _ = core::ptr::eq(a, b);

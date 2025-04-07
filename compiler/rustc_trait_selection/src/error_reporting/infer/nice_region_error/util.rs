@@ -3,8 +3,7 @@
 
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::ty::fold::fold_regions;
-use rustc_middle::ty::{self, Binder, Region, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Binder, Region, Ty, TyCtxt, TypeFoldable, fold_regions};
 use rustc_span::Span;
 use tracing::instrument;
 
@@ -52,7 +51,6 @@ pub fn find_param_with_region<'tcx>(
         _ => return None, // not a free region
     };
 
-    let hir = &tcx.hir();
     let def_id = id.as_local()?;
 
     // FIXME: use def_kind
@@ -94,7 +92,7 @@ pub fn find_param_with_region<'tcx>(
             });
             found_anon_region.then(|| {
                 let ty_hir_id = fn_decl.inputs[index].hir_id;
-                let param_ty_span = hir.span(ty_hir_id);
+                let param_ty_span = tcx.hir_span(ty_hir_id);
                 let is_first = index == 0;
                 AnonymousParamInfo { param, param_ty: new_param_ty, param_ty_span, kind, is_first }
             })

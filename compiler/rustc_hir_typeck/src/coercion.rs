@@ -37,7 +37,6 @@
 
 use std::ops::Deref;
 
-use rustc_abi::ExternAbi;
 use rustc_attr_parsing::InlineAttr;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
@@ -51,15 +50,12 @@ use rustc_infer::traits::{
     PredicateObligations,
 };
 use rustc_middle::span_bug;
-use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
-use rustc_session::parse::feature_err;
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span, sym};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -610,8 +606,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target])
         )];
 
-        let mut has_unsized_tuple_coercion = false;
-
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
         // inference might unify those two inner type variables later.
@@ -690,29 +684,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // be silent, as it causes a type mismatch later.
                 }
 
-                Ok(Some(impl_source)) => {
-                    // Some builtin coercions are still unstable so we detect
-                    // these here and emit a feature error if coercion doesn't fail
-                    // due to another reason.
-                    match impl_source {
-                        traits::ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => {
-                            has_unsized_tuple_coercion = true;
-                        }
-                        _ => {}
-                    }
-                    queue.extend(impl_source.nested_obligations())
-                }
+                Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
             }
-        }
-
-        if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion() {
-            feature_err(
-                &self.tcx.sess,
-                sym::unsized_tuple_coercion,
-                self.cause.span,
-                "unsized tuple coercion is not stable enough for use and is subject to change",
-            )
-            .emit();
         }
 
         Ok(coercion)
@@ -1266,10 +1239,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         if let (Some(a_sig), Some(b_sig)) = (a_sig, b_sig) {
-            // Intrinsics are not coercible to function pointers.
-            if a_sig.abi() == ExternAbi::RustIntrinsic || b_sig.abi() == ExternAbi::RustIntrinsic {
-                return Err(TypeError::IntrinsicCast);
-            }
             // The signature must match.
             let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
             let sig = self

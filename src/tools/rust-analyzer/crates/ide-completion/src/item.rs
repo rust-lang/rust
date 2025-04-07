@@ -149,9 +149,9 @@ pub struct CompletionRelevance {
     /// This is set when the identifier being completed matches up with the name that is expected,
     /// like in a function argument.
     ///
-    /// ```
+    /// ```ignore
     /// fn f(spam: String) {}
-    /// fn main {
+    /// fn main() {
     ///     let spam = 92;
     ///     f($0) // name of local matches the name of param
     /// }
@@ -161,7 +161,7 @@ pub struct CompletionRelevance {
     pub type_match: Option<CompletionRelevanceTypeMatch>,
     /// Set for local variables.
     ///
-    /// ```
+    /// ```ignore
     /// fn foo(a: u32) {
     ///     let b = 0;
     ///     $0 // `a` and `b` are local
@@ -195,7 +195,7 @@ pub struct CompletionRelevanceTraitInfo {
 pub enum CompletionRelevanceTypeMatch {
     /// This is set in cases like these:
     ///
-    /// ```
+    /// ```ignore
     /// enum Option<T> { Some(T), None }
     /// fn f(a: Option<u32>) {}
     /// fn main {
@@ -205,9 +205,9 @@ pub enum CompletionRelevanceTypeMatch {
     CouldUnify,
     /// This is set in cases where the type matches the expected type, like:
     ///
-    /// ```
+    /// ```ignore
     /// fn f(spam: String) {}
-    /// fn main {
+    /// fn main() {
     ///     let foo = String::new();
     ///     f($0) // type of local matches the type of param
     /// }
@@ -221,7 +221,7 @@ pub enum CompletionRelevancePostfixMatch {
     NonExact,
     /// This is set in cases like these:
     ///
-    /// ```
+    /// ```ignore
     /// (a > b).not$0
     /// ```
     ///
@@ -252,14 +252,16 @@ impl CompletionRelevance {
     /// Provides a relevance score. Higher values are more relevant.
     ///
     /// The absolute value of the relevance score is not meaningful, for
-    /// example a value of 0 doesn't mean "not relevant", rather
+    /// example a value of BASE_SCORE doesn't mean "not relevant", rather
     /// it means "least relevant". The score value should only be used
     /// for relative ordering.
     ///
     /// See is_relevant if you need to make some judgement about score
     /// in an absolute sense.
+    const BASE_SCORE: u32 = u32::MAX / 2;
+
     pub fn score(self) -> u32 {
-        let mut score = !0 / 2;
+        let mut score = Self::BASE_SCORE;
         let CompletionRelevance {
             exact_name_match,
             type_match,
@@ -350,7 +352,7 @@ impl CompletionRelevance {
     /// some threshold such that we think it is especially likely
     /// to be relevant.
     pub fn is_relevant(&self) -> bool {
-        self.score() > 0
+        self.score() > Self::BASE_SCORE
     }
 }
 

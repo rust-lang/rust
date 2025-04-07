@@ -451,3 +451,6 @@ impl<'a> Decodable<MemDecoder<'a>> for IntEncodedWithFixedSize {
         IntEncodedWithFixedSize(u64::from_le_bytes(bytes))
     }
 }
+
+#[cfg(test)]
+mod tests;

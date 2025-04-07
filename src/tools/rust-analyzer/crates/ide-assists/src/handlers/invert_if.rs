@@ -6,7 +6,7 @@ use syntax::{
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::invert_boolean_expression,
+    utils::invert_boolean_expression_legacy,
     AssistId, AssistKind,
 };
 
@@ -48,7 +48,7 @@ pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
     };
 
     acc.add(AssistId("invert_if", AssistKind::RefactorRewrite), "Invert if", if_range, |edit| {
-        let flip_cond = invert_boolean_expression(cond.clone());
+        let flip_cond = invert_boolean_expression_legacy(cond.clone());
         edit.replace_ast(cond, flip_cond);
 
         let else_node = else_block.syntax();

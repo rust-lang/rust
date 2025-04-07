@@ -108,7 +108,7 @@ use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use rand::{RngCore, thread_rng};
+use rand::{RngCore, rng};
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::svh::Svh;
@@ -445,7 +445,7 @@ fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bo
 fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
     let timestamp = timestamp_to_string(SystemTime::now());
     debug!("generate_session_dir_path: timestamp = {}", timestamp);
-    let random_number = thread_rng().next_u32();
+    let random_number = rng().next_u32();
     debug!("generate_session_dir_path: random_number = {}", random_number);
 
     // Chop the first 3 characters off the timestamp. Those 3 bytes will be zero for a while.

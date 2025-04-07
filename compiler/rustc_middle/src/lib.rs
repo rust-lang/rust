@@ -29,6 +29,7 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::potential_query_instability)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(allocator_api)]
@@ -44,7 +45,6 @@
 #![feature(decl_macro)]
 #![feature(discriminant_kind)]
 #![feature(extern_types)]
-#![feature(extract_if)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
@@ -62,7 +62,6 @@
 #![feature(try_trait_v2_yeet)]
 #![feature(type_alias_impl_trait)]
 #![feature(yeet_expr)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 #[cfg(test)]

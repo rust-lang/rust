@@ -29,37 +29,37 @@ LL | pub fn test14(_display: &Box<dyn Display>) {}
    |                         ^^^^^^^^^^^^^^^^^ help: try: `&dyn Display`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> tests/ui/borrow_box.rs:98:25
+  --> tests/ui/borrow_box.rs:99:25
    |
 LL | pub fn test15(_display: &Box<dyn Display + Send>) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&(dyn Display + Send)`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> tests/ui/borrow_box.rs:100:29
+  --> tests/ui/borrow_box.rs:102:29
    |
 LL | pub fn test16<'a>(_display: &'a Box<dyn Display + 'a>) {}
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&'a (dyn Display + 'a)`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> tests/ui/borrow_box.rs:103:25
+  --> tests/ui/borrow_box.rs:105:25
    |
 LL | pub fn test17(_display: &Box<impl Display>) {}
    |                         ^^^^^^^^^^^^^^^^^^ help: try: `&impl Display`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> tests/ui/borrow_box.rs:105:25
+  --> tests/ui/borrow_box.rs:108:25
    |
 LL | pub fn test18(_display: &Box<impl Display + Send>) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&(impl Display + Send)`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> tests/ui/borrow_box.rs:107:29
+  --> tests/ui/borrow_box.rs:111:29
    |
 LL | pub fn test19<'a>(_display: &'a Box<impl Display + 'a>) {}
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&'a (impl Display + 'a)`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> tests/ui/borrow_box.rs:113:25
+  --> tests/ui/borrow_box.rs:117:25
    |
 LL | pub fn test20(_display: &Box<(dyn Display + Send)>) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&(dyn Display + Send)`

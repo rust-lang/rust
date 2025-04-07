@@ -330,4 +330,34 @@ fn main() {
 ",
         )
     }
+
+    #[test]
+    fn completes_let_with_space() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    $0
+}
+"#,
+            r#"
+fn main() {
+    let $0
+}
+"#,
+        );
+        check_edit(
+            "letm",
+            r#"
+fn main() {
+    $0
+}
+"#,
+            r#"
+fn main() {
+    let mut $0
+}
+"#,
+        );
+    }
 }

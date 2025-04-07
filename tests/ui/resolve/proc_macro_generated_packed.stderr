@@ -6,8 +6,8 @@ LL | #[derive(PartialEq)]
 ...
 LL | struct Dealigned<T>(u8, T);
    |                         ^
-   |
-   = 
+
+
 Box<dyn Any>
 query stack during panic:
 #0 [mir_built] building MIR for `<impl at $DIR/proc_macro_generated_packed.rs:15:10: 15:19>::eq`

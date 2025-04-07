@@ -5,7 +5,6 @@ LL |     format!(concat!("abc}"));
    |             ^^^^^^^^^^^^^^^ unmatched `}` in format string
    |
    = note: if you intended to print `}`, you can escape it using `}}`
-   = note: this error originates in the macro `concat` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid format string: unmatched `}` found
   --> $DIR/format-expanded-string.rs:22:34

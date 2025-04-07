@@ -1,4 +1,3 @@
-//@ ignore-stage1 FIXME: this line can be removed once these new error messages are in stage 0 rustc
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
 extern crate rustc_data_structures;
 //~^ use of unstable library feature `rustc_private`

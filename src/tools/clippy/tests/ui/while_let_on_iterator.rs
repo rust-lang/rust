@@ -13,16 +13,19 @@
 fn base() {
     let mut iter = 1..20;
     while let Option::Some(x) = iter.next() {
+        //~^ while_let_on_iterator
         println!("{}", x);
     }
 
     let mut iter = 1..20;
     while let Some(x) = iter.next() {
+        //~^ while_let_on_iterator
         println!("{}", x);
     }
 
     let mut iter = 1..20;
     while let Some(_) = iter.next() {}
+    //~^ while_let_on_iterator
 
     let mut iter = 1..20;
     while let None = iter.next() {} // this is fine (if nonsensical)
@@ -99,6 +102,7 @@ fn refutable2() {
 
         let mut it = v.windows(2);
         while let Some([..]) = it.next() {}
+        //~^ while_let_on_iterator
 
         let v = vec![[1], [2], [3]];
         let mut it = v.iter();
@@ -106,6 +110,7 @@ fn refutable2() {
 
         let mut it = v.iter();
         while let Some([_x]) = it.next() {}
+        //~^ while_let_on_iterator
     }
 
     // binding
@@ -119,6 +124,7 @@ fn refutable2() {
         let v = vec![[1], [2], [3]];
         let mut it = v.iter();
         while let Some(x @ [_]) = it.next() {
+            //~^ while_let_on_iterator
             println!("{:?}", x);
         }
     }
@@ -139,6 +145,7 @@ fn nested_loops() {
     loop {
         let mut y = a.iter();
         while let Some(_) = y.next() {
+            //~^ while_let_on_iterator
             // use a for loop here
         }
     }
@@ -196,6 +203,7 @@ fn issue6491() {
     let mut it = 1..40;
     while let Some(n) = it.next() {
         while let Some(m) = it.next() {
+            //~^ while_let_on_iterator
             if m % 10 == 0 {
                 break;
             }
@@ -207,8 +215,10 @@ fn issue6491() {
     // This is fine, inner loop uses a new iterator.
     let mut it = 1..40;
     while let Some(n) = it.next() {
+        //~^ while_let_on_iterator
         let mut it = 1..40;
         while let Some(m) = it.next() {
+            //~^ while_let_on_iterator
             if m % 10 == 0 {
                 break;
             }
@@ -218,6 +228,7 @@ fn issue6491() {
         // Weird binding shouldn't change anything.
         let (mut it, _) = (1..40, 0);
         while let Some(m) = it.next() {
+            //~^ while_let_on_iterator
             if m % 10 == 0 {
                 break;
             }
@@ -227,6 +238,7 @@ fn issue6491() {
         // Used after the loop, needs &mut.
         let mut it = 1..40;
         while let Some(m) = it.next() {
+            //~^ while_let_on_iterator
             if m % 10 == 0 {
                 break;
             }
@@ -244,6 +256,7 @@ fn issue6231() {
     let mut opt = Some(0);
     while let Some(n) = opt.take().or_else(|| it.next()) {
         while let Some(m) = it.next() {
+            //~^ while_let_on_iterator
             if n % 10 == 0 {
                 break;
             }
@@ -259,6 +272,7 @@ fn issue1924() {
         fn f(&mut self) -> Option<u32> {
             // Used as a field.
             while let Some(i) = self.0.next() {
+                //~^ while_let_on_iterator
                 if !(3..8).contains(&i) {
                     return Some(i);
                 }
@@ -291,6 +305,7 @@ fn issue1924() {
             }
             // This one is fine, a different field is borrowed
             while let Some(i) = self.0.0.0.next() {
+                //~^ while_let_on_iterator
                 if i == 1 {
                     return self.0.1.take();
                 } else {
@@ -320,6 +335,7 @@ fn issue1924() {
     // Needs &mut, field of the iterator is accessed after the loop
     let mut it = S2(1..40, 0);
     while let Some(n) = it.next() {
+        //~^ while_let_on_iterator
         if n == 0 {
             break;
         }
@@ -332,6 +348,7 @@ fn issue7249() {
     let mut x = || {
         // Needs &mut, the closure can be called multiple times
         while let Some(x) = it.next() {
+            //~^ while_let_on_iterator
             if x % 2 == 0 {
                 break;
             }
@@ -346,6 +363,7 @@ fn issue7510() {
     let it = &mut it;
     // Needs to reborrow `it` as the binding isn't mutable
     while let Some(x) = it.next() {
+        //~^ while_let_on_iterator
         if x % 2 == 0 {
             break;
         }
@@ -357,6 +375,7 @@ fn issue7510() {
     let it = S(&mut it);
     // Needs to reborrow `it.0` as the binding isn't mutable
     while let Some(x) = it.0.next() {
+        //~^ while_let_on_iterator
         if x % 2 == 0 {
             break;
         }
@@ -392,6 +411,7 @@ fn custom_deref() {
 
     let mut s = S2(S1 { x: 0..10 });
     while let Some(x) = s.x.next() {
+        //~^ while_let_on_iterator
         println!("{}", x);
     }
 }
@@ -399,6 +419,7 @@ fn custom_deref() {
 fn issue_8113() {
     let mut x = [0..10];
     while let Some(x) = x[0].next() {
+        //~^ while_let_on_iterator
         println!("{}", x);
     }
 }
@@ -407,6 +428,7 @@ fn fn_once_closure() {
     let mut it = 0..10;
     (|| {
         while let Some(x) = it.next() {
+            //~^ while_let_on_iterator
             if x % 2 == 0 {
                 break;
             }
@@ -417,6 +439,7 @@ fn fn_once_closure() {
     let mut it = 0..10;
     f(|| {
         while let Some(x) = it.next() {
+            //~^ while_let_on_iterator
             if x % 2 == 0 {
                 break;
             }
@@ -427,6 +450,7 @@ fn fn_once_closure() {
     let mut it = 0..10;
     f2(|| {
         while let Some(x) = it.next() {
+            //~^ while_let_on_iterator
             if x % 2 == 0 {
                 break;
             }
@@ -437,6 +461,7 @@ fn fn_once_closure() {
     f3(|| {
         let mut it = 0..10;
         while let Some(x) = it.next() {
+            //~^ while_let_on_iterator
             if x % 2 == 0 {
                 break;
             }
@@ -449,6 +474,7 @@ fn fn_once_closure() {
     let mut it = 0..10;
     f4(|| {
         while let Some(x) = it.next() {
+            //~^ while_let_on_iterator
             if x % 2 == 0 {
                 break;
             }
@@ -459,6 +485,7 @@ fn fn_once_closure() {
 fn issue13123() {
     let mut it = 0..20;
     'label: while let Some(n) = it.next() {
+        //~^ while_let_on_iterator
         if n % 25 == 0 {
             break 'label;
         }
@@ -468,6 +495,7 @@ fn issue13123() {
 fn main() {
     let mut it = 0..20;
     while let Some(..) = it.next() {
+        //~^ while_let_on_iterator
         println!("test");
     }
 }

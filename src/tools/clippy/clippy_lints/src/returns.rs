@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::visitors::{Descend, for_each_expr};
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
     binary_expr_needs_parentheses, fn_def_id, is_from_proc_macro, is_inside_let_else, is_res_lang_ctor,
     leaks_droppable_temporary_with_limited_lifetime, path_res, path_to_local_id, span_contains_cfg,
@@ -21,6 +21,7 @@ use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::edition::Edition;
 use rustc_span::{BytePos, Pos, Span, sym};
 use std::borrow::Cow;
 use std::fmt::Display;
@@ -230,11 +231,11 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             && let Some(stmt) = block.stmts.iter().last()
             && let StmtKind::Let(local) = &stmt.kind
             && local.ty.is_none()
-            && cx.tcx.hir().attrs(local.hir_id).is_empty()
+            && cx.tcx.hir_attrs(local.hir_id).is_empty()
             && let Some(initexpr) = &local.init
             && let PatKind::Binding(_, local_id, _, _) = local.pat.kind
             && path_to_local_id(retexpr, local_id)
-            && !last_statement_borrows(cx, initexpr)
+            && (cx.sess().edition() >= Edition::Edition2024 || !last_statement_borrows(cx, initexpr))
             && !initexpr.span.in_external_macro(cx.sess().source_map())
             && !retexpr.span.in_external_macro(cx.sess().source_map())
             && !local.span.from_expansion()
@@ -400,10 +401,10 @@ fn check_final_expr<'tcx>(
             // This allows the addition of attributes, like `#[allow]` (See: clippy#9361)
             // `#[expect(clippy::needless_return)]` needs to be handled separately to
             // actually fulfill the expectation (clippy::#12998)
-            match cx.tcx.hir().attrs(expr.hir_id) {
+            match cx.tcx.hir_attrs(expr.hir_id) {
                 [] => {},
                 [attr] => {
-                    if matches!(Level::from_attr(attr), Some(Level::Expect(_)))
+                    if matches!(Level::from_attr(attr), Some((Level::Expect, _)))
                         && let metas = attr.meta_item_list()
                         && let Some(lst) = metas
                         && let [MetaItemInner::MetaItem(meta_item), ..] = lst.as_slice()
@@ -482,7 +483,7 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
         {
             ControlFlow::Break(())
         } else {
-            ControlFlow::Continue(Descend::from(!e.span.from_expansion()))
+            ControlFlow::Continue(())
         }
     })
     .is_some()

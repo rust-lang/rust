@@ -90,9 +90,6 @@ ENV HOST_TARGET x86_64-unknown-linux-gnu
 #ENV FORCE_CI_RUSTC 1
 
 COPY scripts/shared.sh /scripts/
-COPY scripts/build-gccjit.sh /scripts/
-
-RUN /scripts/build-gccjit.sh /scripts
 
 # For now, we need to use `--unsafe-perm=true` to go around an issue when npm tries
 # to create a new folder. For reference:

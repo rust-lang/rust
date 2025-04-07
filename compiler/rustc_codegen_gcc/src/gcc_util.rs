@@ -48,7 +48,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     for feature in sess.opts.cg.target_feature.split(',') {
         if let Some(feature) = feature.strip_prefix('+') {
             all_rust_features.extend(
-                UnordSet::from(sess.target.implied_target_features(std::iter::once(feature)))
+                UnordSet::from(sess.target.implied_target_features(feature))
                     .to_sorted_stable_ord()
                     .iter()
                     .map(|&&s| (true, s)),

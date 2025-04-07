@@ -13,6 +13,7 @@ impl<T> Allocator for DefaultAllocator {
 
 type A = impl Fn(<DefaultAllocator as Allocator>::Buffer);
 
+#[define_opaque(A)]
 fn foo() -> A {
     |_| ()
 }

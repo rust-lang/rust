@@ -14,7 +14,7 @@ use crate::ast::{
     PathSegment, Safety,
 };
 use crate::ptr::P;
-use crate::token::{self, CommentKind, Delimiter, Token};
+use crate::token::{self, CommentKind, Delimiter, InvisibleOrigin, MetaVarKind, Token};
 use crate::tokenstream::{
     DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
 };
@@ -405,11 +405,17 @@ impl MetaItem {
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments, tokens: None }
             }
-            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &**nt {
-                token::Nonterminal::NtMeta(item) => return item.meta(item.path.span),
-                token::Nonterminal::NtPath(path) => (**path).clone(),
-                _ => return None,
-            },
+            Some(TokenTree::Delimited(
+                _span,
+                _spacing,
+                Delimiter::Invisible(InvisibleOrigin::MetaVar(
+                    MetaVarKind::Meta { .. } | MetaVarKind::Path,
+                )),
+                _stream,
+            )) => {
+                // This path is currently unreachable in the test suite.
+                unreachable!()
+            }
             Some(TokenTree::Token(
                 Token { kind: token::OpenDelim(_) | token::CloseDelim(_), .. },
                 _,
@@ -560,6 +566,14 @@ impl MetaItemInner {
     pub fn lit(&self) -> Option<&MetaItemLit> {
         match self {
             MetaItemInner::Lit(lit) => Some(lit),
+            _ => None,
+        }
+    }
+
+    /// Returns the bool if `self` is a boolean `MetaItemInner::Literal`.
+    pub fn boolean_literal(&self) -> Option<bool> {
+        match self {
+            MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => Some(*b),
             _ => None,
         }
     }

@@ -121,18 +121,11 @@ impl CfgEval<'_> {
                     let item = parser.parse_item(ForceCollect::Yes)?.unwrap();
                     Annotatable::Item(self.flat_map_item(item).pop().unwrap())
                 }
-                Annotatable::AssocItem(_, AssocCtxt::Trait) => {
+                Annotatable::AssocItem(_, ctxt) => {
                     let item = parser.parse_trait_item(ForceCollect::Yes)?.unwrap().unwrap();
                     Annotatable::AssocItem(
-                        self.flat_map_assoc_item(item, AssocCtxt::Trait).pop().unwrap(),
-                        AssocCtxt::Trait,
-                    )
-                }
-                Annotatable::AssocItem(_, AssocCtxt::Impl) => {
-                    let item = parser.parse_impl_item(ForceCollect::Yes)?.unwrap().unwrap();
-                    Annotatable::AssocItem(
-                        self.flat_map_assoc_item(item, AssocCtxt::Impl).pop().unwrap(),
-                        AssocCtxt::Impl,
+                        self.flat_map_assoc_item(item, ctxt).pop().unwrap(),
+                        ctxt,
                     )
                 }
                 Annotatable::ForeignItem(_) => {
@@ -140,8 +133,9 @@ impl CfgEval<'_> {
                     Annotatable::ForeignItem(self.flat_map_foreign_item(item).pop().unwrap())
                 }
                 Annotatable::Stmt(_) => {
-                    let stmt =
-                        parser.parse_stmt_without_recovery(false, ForceCollect::Yes)?.unwrap();
+                    let stmt = parser
+                        .parse_stmt_without_recovery(false, ForceCollect::Yes, false)?
+                        .unwrap();
                     Annotatable::Stmt(P(self.flat_map_stmt(stmt).pop().unwrap()))
                 }
                 Annotatable::Expr(_) => {
