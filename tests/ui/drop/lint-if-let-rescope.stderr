@@ -11,12 +11,8 @@ LL |     if let Some(_value) = droppy().get() {
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
-LL | / impl Drop for Droppy {
-LL | |     fn drop(&mut self) {
-LL | |         println!("dropped");
-LL | |     }
-LL | | }
-   | |_^
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:32:5
    |
@@ -55,21 +51,13 @@ LL |     } else if let Some(_value) = droppy().get() {
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
-LL | / impl Drop for Droppy {
-LL | |     fn drop(&mut self) {
-LL | |         println!("dropped");
-LL | |     }
-LL | | }
-   | |_^
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
-LL | / impl Drop for Droppy {
-LL | |     fn drop(&mut self) {
-LL | |         println!("dropped");
-LL | |     }
-LL | | }
-   | |_^
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:42:5
    |
@@ -105,12 +93,8 @@ LL |     } else if let Some(_value) = droppy().get() {
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
-LL | / impl Drop for Droppy {
-LL | |     fn drop(&mut self) {
-LL | |         println!("dropped");
-LL | |     }
-LL | | }
-   | |_^
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:54:5
    |
@@ -140,12 +124,8 @@ LL |     if let Some(1) = { if let Some(_value) = Droppy.get() { Some(1) } else 
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
-LL | / impl Drop for Droppy {
-LL | |     fn drop(&mut self) {
-LL | |         println!("dropped");
-LL | |     }
-LL | | }
-   | |_^
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:58:69
    |
@@ -170,12 +150,8 @@ LL |     if (if let Some(_value) = droppy().get() { true } else { false }) {
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
-LL | / impl Drop for Droppy {
-LL | |     fn drop(&mut self) {
-LL | |         println!("dropped");
-LL | |     }
-LL | | }
-   | |_^
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:72:53
    |
@@ -200,12 +176,8 @@ LL |     } else if (((if let Some(_value) = droppy().get() { true } else { false
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
-LL | / impl Drop for Droppy {
-LL | |     fn drop(&mut self) {
-LL | |         println!("dropped");
-LL | |     }
-LL | | }
-   | |_^
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:78:62
    |
@@ -230,12 +202,8 @@ LL |     while (if let Some(_value) = droppy().get() { false } else { true }) {
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
-LL | / impl Drop for Droppy {
-LL | |     fn drop(&mut self) {
-LL | |         println!("dropped");
-LL | |     }
-LL | | }
-   | |_^
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:90:57
    |

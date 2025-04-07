@@ -143,25 +143,11 @@ pub fn ty_dtor_span<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Span> {
         | ty::UnsafeBinder(_) => None,
 
         ty::Adt(adt_def, _) => {
-            let did = adt_def.did();
-            let try_local_did_span = |did: DefId| {
-                if let Some(local) = did.as_local() {
-                    tcx.source_span(local)
-                } else {
-                    tcx.def_span(did)
-                }
-            };
-            let dtor = if let Some(dtor) = tcx.adt_destructor(did) {
-                dtor.did
-            } else if let Some(dtor) = tcx.adt_async_destructor(did) {
-                return Some(tcx.source_span(dtor.impl_did));
+            if let Some(dtor) = tcx.adt_destructor(adt_def.did()) {
+                Some(tcx.def_span(tcx.parent(dtor.did)))
             } else {
-                return Some(try_local_did_span(did));
-            };
-            let def_key = tcx.def_key(dtor);
-            let Some(parent_index) = def_key.parent else { return Some(try_local_did_span(dtor)) };
-            let parent_did = DefId { index: parent_index, krate: dtor.krate };
-            Some(try_local_did_span(parent_did))
+                Some(tcx.def_span(adt_def.did()))
+            }
         }
         ty::Coroutine(did, _)
         | ty::CoroutineWitness(did, _)
