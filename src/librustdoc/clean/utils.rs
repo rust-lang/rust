@@ -304,6 +304,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
     Symbol::intern(&match &p.kind {
         // FIXME(never_patterns): does this make sense?
+        PatKind::Missing => unreachable!(),
         PatKind::Wild
         | PatKind::Err(_)
         | PatKind::Never
