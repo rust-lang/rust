@@ -7,6 +7,14 @@ use syntax::{
 
 use crate::NavigationTarget;
 
+// Feature: Children Modules
+//
+// Navigates to the children modules of the current module.
+//
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Locate children modules** |
+
 /// This returns `Vec` because a module may be included from several places.
 pub(crate) fn children_modules(db: &RootDatabase, position: FilePosition) -> Vec<NavigationTarget> {
     let sema = Semantics::new(db);
@@ -104,7 +112,6 @@ mod foo;
   //^^^
 mod bar;
   //^^^
-  
 //- /foo.rs
 // empty
 
