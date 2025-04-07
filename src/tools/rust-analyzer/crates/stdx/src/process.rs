@@ -54,6 +54,9 @@ pub fn streaming_output(
     Ok((stdout, stderr))
 }
 
+/// # Panics
+///
+/// Panics if `cmd` is not configured to have `stdout` and `stderr` as `piped`.
 pub fn spawn_with_streaming_output(
     mut cmd: Command,
     on_stdout_line: &mut dyn FnMut(&str),

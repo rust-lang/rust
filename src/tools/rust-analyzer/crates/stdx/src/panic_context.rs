@@ -16,7 +16,7 @@ impl Drop for PanicContext {
 }
 
 pub fn enter(frame: String) -> PanicContext {
-    #[allow(clippy::print_stderr)]
+    #[expect(clippy::print_stderr, reason = "already panicking anyway")]
     fn set_hook() {
         let default_hook = panic::take_hook();
         panic::set_hook(Box::new(move |panic_info| {

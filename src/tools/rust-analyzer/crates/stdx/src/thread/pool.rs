@@ -38,7 +38,11 @@ struct Job {
 }
 
 impl Pool {
-    pub fn new(threads: usize) -> Pool {
+    /// # Panics
+    ///
+    /// Panics if job panics
+    #[must_use]
+    pub fn new(threads: usize) -> Self {
         const STACK_SIZE: usize = 8 * 1024 * 1024;
         const INITIAL_INTENT: ThreadIntent = ThreadIntent::Worker;
 
@@ -63,7 +67,7 @@ impl Pool {
                             }
                             extant_tasks.fetch_add(1, Ordering::SeqCst);
                             // discard the panic, we should've logged the backtrace already
-                            _ = panic::catch_unwind(job.f);
+                            drop(panic::catch_unwind(job.f));
                             extant_tasks.fetch_sub(1, Ordering::SeqCst);
                         }
                     }
@@ -73,9 +77,12 @@ impl Pool {
             handles.push(handle);
         }
 
-        Pool { _handles: handles.into_boxed_slice(), extant_tasks, job_sender }
+        Self { _handles: handles.into_boxed_slice(), extant_tasks, job_sender }
     }
 
+    /// # Panics
+    ///
+    /// Panics if job panics
     pub fn spawn<F>(&self, intent: ThreadIntent, f: F)
     where
         F: FnOnce() + Send + UnwindSafe + 'static,
@@ -84,14 +91,20 @@ impl Pool {
             if cfg!(debug_assertions) {
                 intent.assert_is_used_on_current_thread();
             }
-            f()
+            f();
         });
 
         let job = Job { requested_intent: intent, f };
         self.job_sender.send(job).unwrap();
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.extant_tasks.load(Ordering::SeqCst)
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }

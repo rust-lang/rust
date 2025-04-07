@@ -1,9 +1,9 @@
-//! An opaque façade around platform-specific QoS APIs.
+//! An opaque façade around platform-specific `QoS` APIs.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 // Please maintain order from least to most priority for the derived `Ord` impl.
 pub enum ThreadIntent {
-    /// Any thread which does work that isn’t in the critical path of the user typing
+    /// Any thread which does work that isn't in the critical path of the user typing
     /// (e.g. processing Go To Definition).
     Worker,
 
@@ -34,6 +34,7 @@ use imp::QoSClass;
 
 const IS_QOS_AVAILABLE: bool = imp::IS_QOS_AVAILABLE;
 
+#[expect(clippy::semicolon_if_nothing_returned, reason = "thin wrapper")]
 fn set_current_thread_qos_class(class: QoSClass) {
     imp::set_current_thread_qos_class(class)
 }
@@ -63,7 +64,7 @@ mod imp {
         ///
         /// * **You do not care about how long it takes for work to finish.**
         /// * **You do not care about work being deferred temporarily.**
-        ///   (e.g. if the device’s battery is in a critical state)
+        ///   (e.g. if the device's battery is in a critical state)
         ///
         /// Examples:
         ///
@@ -84,7 +85,7 @@ mod imp {
         /// All other work is prioritized over background tasks.
         Background,
 
-        /// TLDR: tasks that don’t block using your app
+        /// TLDR: tasks that don't block using your app
         ///
         /// Contract:
         ///
@@ -110,7 +111,7 @@ mod imp {
         /// for tasks using this class.
         ///
         /// This QoS class provides a balance between
-        /// performance, responsiveness and efficiency.
+        /// performance, responsiveness, and efficiency.
         Utility,
 
         /// TLDR: tasks that block using your app
@@ -126,10 +127,10 @@ mod imp {
         /// * in a video editor:
         ///   opening a saved project
         /// * in a browser:
-        ///   loading a list of the user’s bookmarks and top sites
+        ///   loading a list of the user's bookmarks and top sites
         ///   when a new tab is created
         /// * in a collaborative word processor:
-        ///   running a search on the document’s content
+        ///   running a search on the document's content
         ///
         /// Use this QoS class for tasks which were initiated by the user
         /// and block the usage of your app while they are in progress.
@@ -208,7 +209,7 @@ mod imp {
             }
 
             _ => {
-                // `pthread_set_qos_class_self_np`’s documentation
+                // `pthread_set_qos_class_self_np`'s documentation
                 // does not mention any other errors.
                 unreachable!("`pthread_set_qos_class_self_np` returned unexpected error {errno}")
             }
@@ -223,7 +224,7 @@ mod imp {
         };
 
         if code != 0 {
-            // `pthread_get_qos_class_np`’s documentation states that
+            // `pthread_get_qos_class_np`'s documentation states that
             // an error value is placed into errno if the return code is not zero.
             // However, it never states what errors are possible.
             // Inspecting the source[0] shows that, as of this writing, it always returns zero.
