@@ -142,43 +142,34 @@ pub fn extract_rendered(output: &str) -> String {
 }
 
 pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
-    output.lines().flat_map(|line| parse_line(file_name, line, output, proc_res)).collect()
-}
-
-fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
-    // The compiler sometimes intermingles non-JSON stuff into the
-    // output.  This hack just skips over such lines. Yuck.
-    if line.starts_with('{') {
-        match serde_json::from_str::<Diagnostic>(line) {
-            Ok(diagnostic) => {
-                let mut expected_errors = vec![];
-                push_expected_errors(&mut expected_errors, &diagnostic, &[], file_name);
-                expected_errors
-            }
-            Err(error) => {
-                // Ignore the future compat report message - this is handled
-                // by `extract_rendered`
-                if serde_json::from_str::<FutureIncompatReport>(line).is_ok() {
-                    vec![]
-                } else {
-                    proc_res.fatal(
+    let mut errors = Vec::new();
+    for line in output.lines() {
+        // The compiler sometimes intermingles non-JSON stuff into the
+        // output.  This hack just skips over such lines. Yuck.
+        if line.starts_with('{') {
+            match serde_json::from_str::<Diagnostic>(line) {
+                Ok(diagnostic) => push_actual_errors(&mut errors, &diagnostic, &[], file_name),
+                Err(error) => {
+                    // Ignore the future compat report message - this is handled
+                    // by `extract_rendered`
+                    if serde_json::from_str::<FutureIncompatReport>(line).is_err() {
+                        proc_res.fatal(
                         Some(&format!(
-                            "failed to decode compiler output as json: \
-                         `{}`\nline: {}\noutput: {}",
+                            "failed to decode compiler output as json: `{}`\nline: {}\noutput: {}",
                             error, line, output
                         )),
                         || (),
                     );
+                    }
                 }
             }
         }
-    } else {
-        vec![]
     }
+    errors
 }
 
-fn push_expected_errors(
-    expected_errors: &mut Vec<Error>,
+fn push_actual_errors(
+    errors: &mut Vec<Error>,
     diagnostic: &Diagnostic,
     default_spans: &[&DiagnosticSpan],
     file_name: &str,
@@ -236,10 +227,10 @@ fn push_expected_errors(
         }
     };
 
-    // Convert multi-line messages into multiple expected
-    // errors. We expect to replace these with something
-    // more structured shortly anyhow.
+    // Convert multi-line messages into multiple errors.
+    // We expect to replace these with something more structured anyhow.
     let mut message_lines = diagnostic.message.lines();
+    let kind = ErrorKind::from_str(&diagnostic.level).ok();
     if let Some(first_line) = message_lines.next() {
         let ignore = |s| {
             static RE: OnceLock<Regex> = OnceLock::new();
@@ -250,27 +241,23 @@ fn push_expected_errors(
         };
 
         if primary_spans.is_empty() && !ignore(first_line) {
-            let msg = with_code(None, first_line);
-            let kind = ErrorKind::from_str(&diagnostic.level).ok();
-            expected_errors.push(Error { line_num: None, kind, msg });
+            errors.push(Error { line_num: None, kind, msg: with_code(None, first_line) });
         } else {
             for span in primary_spans {
-                let msg = with_code(Some(span), first_line);
-                let kind = ErrorKind::from_str(&diagnostic.level).ok();
-                expected_errors.push(Error { line_num: Some(span.line_start), kind, msg });
+                errors.push(Error {
+                    line_num: Some(span.line_start),
+                    kind,
+                    msg: with_code(Some(span), first_line),
+                });
             }
         }
     }
     for next_line in message_lines {
         if primary_spans.is_empty() {
-            expected_errors.push(Error {
-                line_num: None,
-                kind: None,
-                msg: with_code(None, next_line),
-            });
+            errors.push(Error { line_num: None, kind: None, msg: with_code(None, next_line) });
         } else {
             for span in primary_spans {
-                expected_errors.push(Error {
+                errors.push(Error {
                     line_num: Some(span.line_start),
                     kind: None,
                     msg: with_code(Some(span), next_line),
@@ -283,7 +270,7 @@ fn push_expected_errors(
     for span in primary_spans {
         if let Some(ref suggested_replacement) = span.suggested_replacement {
             for (index, line) in suggested_replacement.lines().enumerate() {
-                expected_errors.push(Error {
+                errors.push(Error {
                     line_num: Some(span.line_start + index),
                     kind: Some(ErrorKind::Suggestion),
                     msg: line.to_string(),
@@ -295,13 +282,13 @@ fn push_expected_errors(
     // Add notes for the backtrace
     for span in primary_spans {
         if let Some(frame) = &span.expansion {
-            push_backtrace(expected_errors, frame, file_name);
+            push_backtrace(errors, frame, file_name);
         }
     }
 
     // Add notes for any labels that appear in the message.
     for span in spans_in_this_file.iter().filter(|span| span.label.is_some()) {
-        expected_errors.push(Error {
+        errors.push(Error {
             line_num: Some(span.line_start),
             kind: Some(ErrorKind::Note),
             msg: span.label.clone().unwrap(),
@@ -310,17 +297,17 @@ fn push_expected_errors(
 
     // Flatten out the children.
     for child in &diagnostic.children {
-        push_expected_errors(expected_errors, child, primary_spans, file_name);
+        push_actual_errors(errors, child, primary_spans, file_name);
     }
 }
 
 fn push_backtrace(
-    expected_errors: &mut Vec<Error>,
+    errors: &mut Vec<Error>,
     expansion: &DiagnosticSpanMacroExpansion,
     file_name: &str,
 ) {
     if Path::new(&expansion.span.file_name) == Path::new(&file_name) {
-        expected_errors.push(Error {
+        errors.push(Error {
             line_num: Some(expansion.span.line_start),
             kind: Some(ErrorKind::Note),
             msg: format!("in this expansion of {}", expansion.macro_decl_name),
@@ -328,6 +315,6 @@ fn push_backtrace(
     }
 
     if let Some(previous_expansion) = &expansion.span.expansion {
-        push_backtrace(expected_errors, previous_expansion, file_name);
+        push_backtrace(errors, previous_expansion, file_name);
     }
 }
