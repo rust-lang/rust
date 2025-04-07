@@ -3986,8 +3986,8 @@ impl<'hir> Item<'hir> {
         expect_static, (Ident, &'hir Ty<'hir>, Mutability, BodyId),
             ItemKind::Static(ident, ty, mutbl, body), (*ident, ty, *mutbl, *body);
 
-        expect_const, (Ident, &'hir Ty<'hir>, &'hir Generics<'hir>, BodyId),
-            ItemKind::Const(ident, ty, generics, body), (*ident, ty, generics, *body);
+        expect_const, (Ident, &'hir Ty<'hir>, &'hir Generics<'hir>, BodyId, Option<&'hir ConstArg<'hir>>),
+            ItemKind::Const(ident, ty, generics, body, ct), (*ident, ty, generics, *body, *ct);
 
         expect_fn, (Ident, &FnSig<'hir>, &'hir Generics<'hir>, BodyId),
             ItemKind::Fn { ident, sig, generics, body, .. }, (*ident, sig, generics, *body);
@@ -4157,7 +4157,7 @@ pub enum ItemKind<'hir> {
     /// A `static` item.
     Static(Ident, &'hir Ty<'hir>, Mutability, BodyId),
     /// A `const` item.
-    Const(Ident, &'hir Ty<'hir>, &'hir Generics<'hir>, BodyId),
+    Const(Ident, &'hir Ty<'hir>, &'hir Generics<'hir>, BodyId, Option<&'hir ConstArg<'hir>>),
     /// A function declaration.
     Fn {
         ident: Ident,
@@ -4252,7 +4252,7 @@ impl ItemKind<'_> {
         Some(match self {
             ItemKind::Fn { generics, .. }
             | ItemKind::TyAlias(_, _, generics)
-            | ItemKind::Const(_, _, generics, _)
+            | ItemKind::Const(_, _, generics, _, _)
             | ItemKind::Enum(_, _, generics)
             | ItemKind::Struct(_, _, generics)
             | ItemKind::Union(_, _, generics)
@@ -4455,7 +4455,7 @@ impl<'hir> OwnerNode<'hir> {
             OwnerNode::Item(Item {
                 kind:
                     ItemKind::Static(_, _, _, body)
-                    | ItemKind::Const(_, _, _, body)
+                    | ItemKind::Const(_, _, _, body, _)
                     | ItemKind::Fn { body, .. },
                 ..
             })
@@ -4681,7 +4681,7 @@ impl<'hir> Node<'hir> {
             Node::Item(it) => match it.kind {
                 ItemKind::TyAlias(_, ty, _)
                 | ItemKind::Static(_, ty, _, _)
-                | ItemKind::Const(_, ty, _, _) => Some(ty),
+                | ItemKind::Const(_, ty, _, _, _) => Some(ty),
                 ItemKind::Impl(impl_item) => Some(&impl_item.self_ty),
                 _ => None,
             },
@@ -4712,7 +4712,7 @@ impl<'hir> Node<'hir> {
             Node::Item(Item {
                 owner_id,
                 kind:
-                    ItemKind::Const(_, _, _, body)
+                    ItemKind::Const(_, _, _, body, _)
                     | ItemKind::Static(.., body)
                     | ItemKind::Fn { body, .. },
                 ..

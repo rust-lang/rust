@@ -310,7 +310,7 @@ impl<'tcx> NonCopyConst<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'_>) {
-        if let ItemKind::Const(.., body_id) = it.kind {
+        if let ItemKind::Const(.., body_id,_) = it.kind {
             let ty = cx.tcx.type_of(it.owner_id).instantiate_identity();
             if !ignored_macro(cx, it)
                 && self.interior_mut.is_interior_mut_ty(cx, ty)

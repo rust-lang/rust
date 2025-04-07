@@ -608,7 +608,7 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(); // end the outer cbox
             }
-            hir::ItemKind::Const(ident, ty, generics, expr) => {
+            hir::ItemKind::Const(ident, ty, generics, expr, _ct) => {
                 self.head("const");
                 self.print_ident(ident);
                 self.print_generic_params(generics.params);

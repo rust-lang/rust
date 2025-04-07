@@ -2804,7 +2804,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 mutability,
                 expr: Some(body_id),
             }),
-            ItemKind::Const(_, ty, generics, body_id) => ConstantItem(Box::new(Constant {
+            ItemKind::Const(_, ty, generics, body_id, _) => ConstantItem(Box::new(Constant {
                 generics: clean_generics(generics, cx),
                 type_: clean_ty(ty, cx),
                 kind: ConstantKind::Local { body: body_id, def_id },

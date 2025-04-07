@@ -628,7 +628,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 intravisit::walk_item(self, item);
             }
             hir::ItemKind::TyAlias(_, _, generics)
-            | hir::ItemKind::Const(_, _, generics, _)
+            | hir::ItemKind::Const(_, _, generics,_, _)
             | hir::ItemKind::Enum(_, _, generics)
             | hir::ItemKind::Struct(_, _, generics)
             | hir::ItemKind::Union(_, _, generics)
