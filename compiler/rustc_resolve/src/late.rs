@@ -20,9 +20,7 @@ use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
-use rustc_errors::{
-    Applicability, DiagArgValue, ErrorGuaranteed, IntoDiagArg, StashKey, Suggestions,
-};
+use rustc_errors::{Applicability, DiagArgValue, ErrorGuaranteed, IntoDiagArg, Suggestions};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
@@ -4340,29 +4338,6 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             finalize,
         ) {
             Ok(Some(partial_res)) if let Some(res) = partial_res.full_res() => {
-                // if we also have an associated type that matches the ident, stash a suggestion
-                if let Some(items) = self.diag_metadata.current_trait_assoc_items
-                    && let [Segment { ident, .. }] = path
-                    && items.iter().any(|item| {
-                        if let AssocItemKind::Type(alias) = &item.kind
-                            && alias.ident == *ident
-                        {
-                            true
-                        } else {
-                            false
-                        }
-                    })
-                {
-                    let mut diag = self.r.tcx.dcx().struct_allow("");
-                    diag.span_suggestion_verbose(
-                        path_span.shrink_to_lo(),
-                        "there is an associated type with the same name",
-                        "Self::",
-                        Applicability::MaybeIncorrect,
-                    );
-                    diag.stash(path_span, StashKey::AssociatedTypeSuggestion);
-                }
-
                 if source.is_expected(res) || res == Res::Err {
                     partial_res
                 } else {

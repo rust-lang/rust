@@ -7,8 +7,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions,
-    pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, pluralize,
+    struct_span_code_err,
 };
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
@@ -2446,15 +2446,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 obligation.cause.code(),
             );
             self.suggest_unsized_bound_if_applicable(err, obligation);
-            if let Some(span) = err.span.primary_span()
-                && let Some(mut diag) =
-                    self.dcx().steal_non_err(span, StashKey::AssociatedTypeSuggestion)
-                && let Suggestions::Enabled(ref mut s1) = err.suggestions
-                && let Suggestions::Enabled(ref mut s2) = diag.suggestions
-            {
-                s1.append(s2);
-                diag.cancel()
-            }
         }
     }
 

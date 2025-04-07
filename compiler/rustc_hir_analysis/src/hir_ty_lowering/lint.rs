@@ -1,6 +1,6 @@
 use rustc_ast::TraitObjectSyntax;
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, EmissionGuarantee, ErrorGuaranteed, StashKey, Suggestions};
+use rustc_errors::{Diag, EmissionGuarantee, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
@@ -100,16 +100,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 poly_trait_ref.trait_ref.trait_def_id(),
                 &mut diag,
             );
-            // In case there is an associated type with the same name
-            // Add the suggestion to this error
-            if let Some(mut sugg) =
-                tcx.dcx().steal_non_err(self_ty.span, StashKey::AssociatedTypeSuggestion)
-                && let Suggestions::Enabled(ref mut s1) = diag.suggestions
-                && let Suggestions::Enabled(ref mut s2) = sugg.suggestions
-            {
-                s1.append(s2);
-                sugg.cancel();
-            }
             Some(diag.emit())
         } else {
             tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
