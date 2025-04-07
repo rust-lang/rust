@@ -782,9 +782,16 @@ impl<'a> Parser<'a> {
             // Recovery is disabled when parsing macro arguments, so it must
             // also be disabled when reparsing pasted macro arguments,
             // otherwise we get inconsistent results (e.g. #137874).
-            let res = self.with_recovery(Recovery::Forbidden, |this| {
-                f(this).expect("failed to reparse {mv_kind:?}")
-            });
+            let res = self.with_recovery(Recovery::Forbidden, |this| f(this));
+
+            let res = match res {
+                Ok(res) => res,
+                Err(err) => {
+                    // This can occur in unusual error cases, e.g. #139445.
+                    err.delay_as_bug();
+                    return None;
+                }
+            };
 
             if let token::CloseDelim(delim) = self.token.kind
                 && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)) = delim
