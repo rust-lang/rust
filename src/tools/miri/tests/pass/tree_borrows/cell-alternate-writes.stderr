@@ -2,11 +2,15 @@
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
 | Act |    └─┬──<TAG=root of the allocation>
-| ReIM|      └────<TAG=data, x, y>
+| ReIM|      └─┬──<TAG=data>
+| Cel |        ├────<TAG=x>
+| Cel |        └────<TAG=y>
 ──────────────────────────────────────────────────
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
 | Act |    └─┬──<TAG=root of the allocation>
-| Act |      └────<TAG=data, x, y>
+| Act |      └─┬──<TAG=data>
+| Cel |        ├────<TAG=x>
+| Cel |        └────<TAG=y>
 ──────────────────────────────────────────────────
