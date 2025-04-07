@@ -11,6 +11,8 @@ allow-unauthenticated = [
 
 [merge-conflicts]
 
+[canonicalize-issue-links]
+
 # Have rustbot inform users about the *No Merge Policy*
 [no-merges]
 exclude_titles = ["Rustup"] # exclude syncs from rust-lang/rust
