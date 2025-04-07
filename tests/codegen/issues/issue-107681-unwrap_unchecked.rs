@@ -1,5 +1,4 @@
 //@ compile-flags: -Copt-level=3
-//@ min-llvm-version: 19
 
 // Test for #107681.
 // Make sure we don't create `br` or `select` instructions.

@@ -5,8 +5,9 @@ LL |     x[1i32];
    |       ^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `SliceIndex<[i32]>` is not implemented for `i32`
-           but it is implemented for `usize`
-   = help: for that trait implementation, expected `usize`, found `i32`
+   = help: the following other types implement trait `SliceIndex<T>`:
+             `usize` implements `SliceIndex<ByteStr>`
+             `usize` implements `SliceIndex<[T]>`
    = note: required for `[i32]` to implement `Index<i32>`
 
 error[E0277]: the type `[i32]` cannot be indexed by `RangeTo<i32>`
@@ -17,6 +18,7 @@ LL |     x[..1i32];
    |
    = help: the trait `SliceIndex<[i32]>` is not implemented for `RangeTo<i32>`
    = help: the following other types implement trait `SliceIndex<T>`:
+             `RangeTo<usize>` implements `SliceIndex<ByteStr>`
              `RangeTo<usize>` implements `SliceIndex<[T]>`
              `RangeTo<usize>` implements `SliceIndex<str>`
    = note: required for `[i32]` to implement `Index<RangeTo<i32>>`

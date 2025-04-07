@@ -341,9 +341,8 @@ fn bounds_from_generic_predicates<'tcx>(
             ty::ClauseKind::Trait(trait_predicate) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
-                if Some(def_id) != tcx.lang_items().sized_trait() {
-                    // Type params are `Sized` by default, do not add that restriction to the list
-                    // if it is a positive requirement.
+                if !tcx.is_default_trait(def_id) {
+                    // Do not add that restriction to the list if it is a positive requirement.
                     entry.push(trait_predicate.def_id());
                 }
             }

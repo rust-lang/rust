@@ -610,6 +610,8 @@ fn enable_autodiff_settings(ad: &[config::AutoDiff], module: &mut ModuleCodegen<
             }
             // We handle this below
             config::AutoDiff::PrintModAfter => {}
+            // We handle this below
+            config::AutoDiff::PrintModFinal => {}
             // This is required and already checked
             config::AutoDiff::Enable => {}
         }
@@ -657,14 +659,20 @@ pub(crate) fn run_pass_manager(
     }
 
     if cfg!(llvm_enzyme) && enable_ad {
+        // This is the post-autodiff IR, mainly used for testing and educational purposes.
+        if config.autodiff.contains(&config::AutoDiff::PrintModAfter) {
+            unsafe { llvm::LLVMDumpModule(module.module_llvm.llmod()) };
+        }
+
         let opt_stage = llvm::OptStage::FatLTO;
         let stage = write::AutodiffStage::PostAD;
         unsafe {
             write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage)?;
         }
 
-        // This is the final IR, so people should be able to inspect the optimized autodiff output.
-        if config.autodiff.contains(&config::AutoDiff::PrintModAfter) {
+        // This is the final IR, so people should be able to inspect the optimized autodiff output,
+        // for manual inspection.
+        if config.autodiff.contains(&config::AutoDiff::PrintModFinal) {
             unsafe { llvm::LLVMDumpModule(module.module_llvm.llmod()) };
         }
     }

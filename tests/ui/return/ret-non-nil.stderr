@@ -1,5 +1,5 @@
 error[E0069]: `return;` in a function whose return type is not `()`
-  --> $DIR/ret-non-nil.rs:5:19
+  --> $DIR/ret-non-nil.rs:3:19
    |
 LL | fn g() -> isize { return; }
    |           -----   ^^^^^^ return type is not `()`

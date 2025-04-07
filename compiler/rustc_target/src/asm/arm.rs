@@ -68,7 +68,7 @@ impl ArmInlineAsmRegClass {
 
 // This uses the same logic as useR7AsFramePointer in LLVM
 fn frame_pointer_is_r7(target_features: &FxIndexSet<Symbol>, target: &Target) -> bool {
-    target.is_like_osx || (!target.is_like_windows && target_features.contains(&sym::thumb_mode))
+    target.is_like_darwin || (!target.is_like_windows && target_features.contains(&sym::thumb_mode))
 }
 
 fn frame_pointer_r11(

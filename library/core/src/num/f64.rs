@@ -1503,4 +1503,54 @@ impl f64 {
         // SAFETY: this is actually a safe intrinsic
         unsafe { intrinsics::copysignf64(self, sign) }
     }
+
+    /// Float addition that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[inline]
+    pub fn algebraic_add(self, rhs: f64) -> f64 {
+        intrinsics::fadd_algebraic(self, rhs)
+    }
+
+    /// Float subtraction that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[inline]
+    pub fn algebraic_sub(self, rhs: f64) -> f64 {
+        intrinsics::fsub_algebraic(self, rhs)
+    }
+
+    /// Float multiplication that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[inline]
+    pub fn algebraic_mul(self, rhs: f64) -> f64 {
+        intrinsics::fmul_algebraic(self, rhs)
+    }
+
+    /// Float division that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[inline]
+    pub fn algebraic_div(self, rhs: f64) -> f64 {
+        intrinsics::fdiv_algebraic(self, rhs)
+    }
+
+    /// Float remainder that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[inline]
+    pub fn algebraic_rem(self, rhs: f64) -> f64 {
+        intrinsics::frem_algebraic(self, rhs)
+    }
 }

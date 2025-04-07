@@ -10,18 +10,15 @@ use std::future::Future;
 type FutNothing<'a> = impl 'a + Future<Output = ()>;
 
 async fn operation(_: &mut ()) -> () {
-    //~^ ERROR: concrete type differs from previous
     call(operation).await
-    //~^ ERROR: expected generic lifetime parameter, found `'any`
+    //~^ ERROR: concrete type differs from previous
 }
 
 #[define_opaque(FutNothing)]
 async fn call<F>(_f: F)
-//~^ ERROR item does not constrain
+//~^ ERROR item does not constrain `FutNothing::{opaque#0}`
 where
     for<'any> F: FnMut(&'any mut ()) -> FutNothing<'any>,
-{
-    //~^ ERROR: expected generic lifetime parameter, found `'any`
-}
+{}
 
 fn main() {}

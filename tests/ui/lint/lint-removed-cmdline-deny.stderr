@@ -14,13 +14,13 @@ error: lint `raw_pointer_derive` has been removed: using derive with raw pointer
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: unused variable: `unused`
-  --> $DIR/lint-removed-cmdline-deny.rs:13:17
+  --> $DIR/lint-removed-cmdline-deny.rs:12:17
    |
 LL | fn main() { let unused = (); }
    |                 ^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused`
    |
 note: the lint level is defined here
-  --> $DIR/lint-removed-cmdline-deny.rs:12:8
+  --> $DIR/lint-removed-cmdline-deny.rs:11:8
    |
 LL | #[deny(warnings)]
    |        ^^^^^^^^

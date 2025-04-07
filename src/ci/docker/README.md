@@ -14,9 +14,9 @@ To run a specific CI job locally, you can use the `citool` Rust crate:
 cargo run --manifest-path src/ci/citool/Cargo.toml run-local <job-name>
 ```
 
-For example, to run the `x86_64-gnu-llvm-18-1` job:
+For example, to run the `x86_64-gnu-llvm-19-1` job:
 ```
-cargo run --manifest-path src/ci/citool/Cargo.toml run-local x86_64-gnu-llvm-18-1
+cargo run --manifest-path src/ci/citool/Cargo.toml run-local x86_64-gnu-llvm-19-1
 ```
 
 The job will output artifacts in an `obj/<image-name>` dir at the root of a repository. Note
@@ -27,10 +27,10 @@ Docker image executed in the given CI job.
 while locally, to the `obj/<image-name>` directory. This is primarily to prevent
 strange linker errors when using multiple Docker images.
 
-For some Linux workflows (for example `x86_64-gnu-llvm-18-N`), the process is more involved. You will need to see which script is executed for the given workflow inside the [`jobs.yml`](../github-actions/jobs.yml) file and pass it through the `DOCKER_SCRIPT` environment variable. For example, to reproduce the `x86_64-gnu-llvm-18-3` workflow, you can run the following script:
+For some Linux workflows (for example `x86_64-gnu-llvm-19-N`), the process is more involved. You will need to see which script is executed for the given workflow inside the [`jobs.yml`](../github-actions/jobs.yml) file and pass it through the `DOCKER_SCRIPT` environment variable. For example, to reproduce the `x86_64-gnu-llvm-19-3` workflow, you can run the following script:
 
 ```
-DOCKER_SCRIPT=x86_64-gnu-llvm3.sh ./src/ci/docker/run.sh x86_64-gnu-llvm-18
+DOCKER_SCRIPT=x86_64-gnu-llvm3.sh ./src/ci/docker/run.sh x86_64-gnu-llvm-19
 ```
 
 ## Local Development

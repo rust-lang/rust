@@ -838,7 +838,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 | PredicateFilter::SelfOnly
                 | PredicateFilter::SelfAndAssociatedTypeBounds => {
                     match constness {
-                        hir::BoundConstness::Always(span) => {
+                        hir::BoundConstness::Always(_) => {
                             if polarity == ty::PredicatePolarity::Positive {
                                 bounds.push((
                                     poly_trait_ref
@@ -864,7 +864,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // in `lower_assoc_item_constraint`.
                 PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {
                     match constness {
-                        hir::BoundConstness::Maybe(span) => {
+                        hir::BoundConstness::Maybe(_) => {
                             if polarity == ty::PredicatePolarity::Positive {
                                 bounds.push((
                                     poly_trait_ref

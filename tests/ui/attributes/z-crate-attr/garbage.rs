@@ -1,4 +1,7 @@
 // Show diagnostics for invalid tokens
 //@ compile-flags: -Zcrate-attr=`%~@$#
-//@ error-pattern:unknown start of token
+
 fn main() {}
+
+//~? ERROR unknown start of token: `
+//~? ERROR expected identifier, found `%`

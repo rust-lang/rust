@@ -1,14 +1,14 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/recursive-fn-tait.rs:16:5
+  --> $DIR/recursive-fn-tait.rs:15:6
    |
-LL |     move |x: usize| m(n(x))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `{closure@$DIR/recursive-fn-tait.rs:8:5: 8:16}`, got `{closure@$DIR/recursive-fn-tait.rs:16:5: 16:20}`
+LL | ) -> Diff {
+   |      ^^^^ expected `{closure@$DIR/recursive-fn-tait.rs:8:5: 8:16}`, got `{closure@$DIR/recursive-fn-tait.rs:17:5: 17:20}`
    |
 note: previous use here
-  --> $DIR/recursive-fn-tait.rs:8:5
+  --> $DIR/recursive-fn-tait.rs:7:18
    |
-LL |     |_: usize |loop {}
-   |     ^^^^^^^^^^^^^^^^^^
+LL | pub fn lift() -> Diff {
+   |                  ^^^^
 
 error: aborting due to 1 previous error
 

@@ -1,26 +1,14 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/normalize-hidden-types.rs:27:20
+  --> $DIR/normalize-hidden-types.rs:38:22
    |
-LL |     fn define() -> Opaque {
-   |                    ^^^^^^ expected `*const (dyn FnOnce(()) + 'static)`, got `*const dyn for<'a> FnOnce(<u8 as Trait>::Gat<'a>)`
+LL |     fn define_2() -> Opaque { dyn_hoops::<u8>(0) }
+   |                      ^^^^^^ expected `*const dyn for<'a> FnOnce(<u8 as Trait>::Gat<'a>)`, got `*const dyn FnOnce(())`
    |
 note: previous use here
-  --> $DIR/normalize-hidden-types.rs:28:9
-   |
-LL |         dyn_hoops::<_>(0)
-   |         ^^^^^^^^^^^^^^^^^
-
-error: concrete type differs from previous defining opaque type use
   --> $DIR/normalize-hidden-types.rs:36:22
    |
 LL |     fn define_1() -> Opaque { dyn_hoops::<_>(0) }
-   |                      ^^^^^^ expected `*const (dyn FnOnce(()) + 'static)`, got `*const dyn for<'a> FnOnce(<u8 as Trait>::Gat<'a>)`
-   |
-note: previous use here
-  --> $DIR/normalize-hidden-types.rs:36:31
-   |
-LL |     fn define_1() -> Opaque { dyn_hoops::<_>(0) }
-   |                               ^^^^^^^^^^^^^^^^^
+   |                      ^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/normalize-hidden-types.rs:47:25
@@ -38,18 +26,6 @@ LL |         let _: Opaque = dyn_hoops::<u8>(0);
    = help: consider constraining the associated type `<u8 as Trait>::Gat<'_>` to `()` or calling a method that returns `<u8 as Trait>::Gat<'_>`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/normalize-hidden-types.rs:57:25
-   |
-LL |         let _: Opaque = dyn_hoops::<_>(0);
-   |                         ^^^^^^^^^^^^^^^^^ expected `*const (dyn FnOnce(()) + 'static)`, got `*const dyn for<'a> FnOnce(<u8 as Trait>::Gat<'a>)`
-   |
-note: previous use here
-  --> $DIR/normalize-hidden-types.rs:58:9
-   |
-LL |         None
-   |         ^^^^
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

@@ -3,9 +3,11 @@
 //@ compile-flags: -Ctarget-feature=-neon
 // For now this is just a warning.
 //@ build-pass
-//@error-pattern: must be enabled to ensure that the ABI
+
 #![feature(no_core, lang_items)]
 #![no_core]
 
 #[lang = "sized"]
 pub trait Sized {}
+
+//~? WARN target feature `neon` must be enabled to ensure that the ABI of the current target can be implemented correctly

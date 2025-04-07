@@ -73,12 +73,12 @@ check-aux:
 		$(BOOTSTRAP) miri --stage 2 library/std \
 		$(BOOTSTRAP_ARGS) \
 		--no-doc -- \
-		--skip fs:: --skip net:: --skip process:: --skip sys::pal::
+		--skip fs:: --skip net:: --skip process:: --skip sys::fd:: --skip sys::pal::
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
 		$(BOOTSTRAP) miri --stage 2 library/std \
 		$(BOOTSTRAP_ARGS) \
 		--doc -- \
-		--skip fs:: --skip net:: --skip process:: --skip sys::pal::
+		--skip fs:: --skip net:: --skip process:: --skip sys::fd:: --skip sys::pal::
 	# Also test some very target-specific modules on other targets
 	# (making sure to cover an i686 target as well).
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" BOOTSTRAP_SKIP_TARGET_SANITY=1 \
@@ -120,10 +120,6 @@ ci-msvc: ci-msvc-py ci-msvc-ps1
 # Set of tests that should represent half of the time of the test suite.
 # Used to split tests across multiple CI runners.
 # Test both x and bootstrap entrypoints.
-ci-mingw-x-1:
-	$(Q)$(CFG_SRC_DIR)/x test --stage 2 $(SKIP_COMPILER) $(TEST_SET2)
-ci-mingw-x-2:
-	$(Q)$(CFG_SRC_DIR)/x test --stage 2 $(SKIP_SRC) $(TEST_SET2)
 ci-mingw-x:
 	$(Q)$(CFG_SRC_DIR)/x test --stage 2 $(TEST_SET1)
 ci-mingw-bootstrap:

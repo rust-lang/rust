@@ -32,9 +32,9 @@ aot.issue-59326
 aot.neon
 aot.gen_block_iterate
 aot.raw-dylib
+test.sysroot
 
 testsuite.extended_sysroot
 test.rust-random/rand
-test.sysroot
 test.regex
 test.portable-simd

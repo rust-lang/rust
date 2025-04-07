@@ -4,8 +4,11 @@
 //@ check-pass
 //@ compile-flags: --force-warn foo-qux
 
-//@ error-pattern: unknown lint: `foo_qux`
 //@ error-pattern: requested on the command line with `--force-warn foo_qux`
 //@ error-pattern: `#[warn(unknown_lints)]` on by default
 
 fn main() {}
+
+//~? WARN unknown lint: `foo_qux`
+//~? WARN unknown lint: `foo_qux`
+//~? WARN unknown lint: `foo_qux`

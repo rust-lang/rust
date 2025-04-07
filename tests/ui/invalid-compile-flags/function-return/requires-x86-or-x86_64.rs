@@ -13,8 +13,9 @@
 //@[aarch64] check-fail
 //@[aarch64] needs-llvm-components: aarch64
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
-//@[aarch64] error-pattern: `-Zfunction-return` (except `keep`) is only supported on x86 and x86_64
 
 #![feature(no_core)]
 #![no_core]
 #![no_main]
+
+//[aarch64]~? ERROR `-Zfunction-return` (except `keep`) is only supported on x86 and x86_64

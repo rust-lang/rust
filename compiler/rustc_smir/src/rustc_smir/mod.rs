@@ -21,6 +21,7 @@ use stable_mir::{CtorKind, ItemKind};
 use tracing::debug;
 
 use crate::rustc_internal::IndexMap;
+use crate::stable_mir;
 
 mod alloc;
 mod builder;

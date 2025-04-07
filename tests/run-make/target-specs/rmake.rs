@@ -14,7 +14,7 @@ fn main() {
         .input("foo.rs")
         .target("my-invalid-platform.json")
         .run_fail()
-        .assert_stderr_contains("Error loading target specification");
+        .assert_stderr_contains("error loading target specification");
     rustc()
         .input("foo.rs")
         .target("my-incomplete-platform.json")

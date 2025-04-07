@@ -384,6 +384,12 @@ static inline void AddAttributes(T *t, unsigned Index, LLVMAttributeRef *Attrs,
   t->setAttributes(PALNew);
 }
 
+extern "C" bool LLVMRustHasAttributeAtIndex(LLVMValueRef Fn, unsigned Index,
+                                            LLVMRustAttributeKind RustAttr) {
+  Function *F = unwrap<Function>(Fn);
+  return F->hasParamAttribute(Index, fromRust(RustAttr));
+}
+
 extern "C" void LLVMRustAddFunctionAttributes(LLVMValueRef Fn, unsigned Index,
                                               LLVMAttributeRef *Attrs,
                                               size_t AttrsLen) {
@@ -467,12 +473,8 @@ extern "C" LLVMAttributeRef
 LLVMRustCreateRangeAttribute(LLVMContextRef C, unsigned NumBits,
                              const uint64_t LowerWords[],
                              const uint64_t UpperWords[]) {
-#if LLVM_VERSION_GE(19, 0)
   return LLVMCreateConstantRangeAttribute(C, Attribute::Range, NumBits,
                                           LowerWords, UpperWords);
-#else
-  report_fatal_error("LLVM 19.0 is required for Range Attribute");
-#endif
 }
 
 // These values **must** match ffi::AllocKindFlags.
@@ -634,6 +636,10 @@ static InlineAsm::AsmDialect fromRust(LLVMRustAsmDialect Dialect) {
   default:
     report_fatal_error("bad AsmDialect.");
   }
+}
+
+extern "C" uint64_t LLVMRustGetArrayNumElements(LLVMTypeRef Ty) {
+  return unwrap(Ty)->getArrayNumElements();
 }
 
 extern "C" LLVMValueRef
@@ -1591,43 +1597,6 @@ extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B, LLVMValueRef Dst,
                                       MaybeAlign(DstAlign), IsVolatile));
 }
 
-// Polyfill for `LLVMBuildCallBr`, which was added in LLVM 19.
-// <https://github.com/llvm/llvm-project/commit/584253c4e2f788f870488fc32193b52d67ddaccc>
-// FIXME: Remove when Rust's minimum supported LLVM version reaches 19.
-#if LLVM_VERSION_LT(19, 0)
-DEFINE_SIMPLE_CONVERSION_FUNCTIONS(OperandBundleDef, LLVMOperandBundleRef)
-
-extern "C" LLVMValueRef
-LLVMBuildCallBr(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
-                LLVMBasicBlockRef DefaultDest, LLVMBasicBlockRef *IndirectDests,
-                unsigned NumIndirectDests, LLVMValueRef *Args, unsigned NumArgs,
-                LLVMOperandBundleRef *Bundles, unsigned NumBundles,
-                const char *Name) {
-  Value *Callee = unwrap(Fn);
-  FunctionType *FTy = unwrap<FunctionType>(Ty);
-
-  // FIXME: Is there a way around this?
-  std::vector<BasicBlock *> IndirectDestsUnwrapped;
-  IndirectDestsUnwrapped.reserve(NumIndirectDests);
-  for (unsigned i = 0; i < NumIndirectDests; ++i) {
-    IndirectDestsUnwrapped.push_back(unwrap(IndirectDests[i]));
-  }
-
-  // FIXME: Is there a way around this?
-  SmallVector<OperandBundleDef> OpBundles;
-  OpBundles.reserve(NumBundles);
-  for (unsigned i = 0; i < NumBundles; ++i) {
-    OpBundles.push_back(*unwrap(Bundles[i]));
-  }
-
-  return wrap(
-      unwrap(B)->CreateCallBr(FTy, Callee, unwrap(DefaultDest),
-                              ArrayRef<BasicBlock *>(IndirectDestsUnwrapped),
-                              ArrayRef<Value *>(unwrap(Args), NumArgs),
-                              ArrayRef<OperandBundleDef>(OpBundles), Name));
-}
-#endif
-
 extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
                                                LLVMBasicBlockRef BB) {
   auto Point = unwrap(BB)->getFirstInsertionPt();
@@ -1771,24 +1740,6 @@ extern "C" LLVMValueRef LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS,
   return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS), unwrap(RHS)));
 }
 
-#if LLVM_VERSION_LT(19, 0)
-enum {
-  LLVMGEPFlagInBounds = (1 << 0),
-  LLVMGEPFlagNUSW = (1 << 1),
-  LLVMGEPFlagNUW = (1 << 2),
-};
-extern "C" LLVMValueRef
-LLVMBuildGEPWithNoWrapFlags(LLVMBuilderRef B, LLVMTypeRef Ty,
-                            LLVMValueRef Pointer, LLVMValueRef *Indices,
-                            unsigned NumIndices, const char *Name,
-                            unsigned NoWrapFlags) {
-  if (NoWrapFlags & LLVMGEPFlagInBounds)
-    return LLVMBuildInBoundsGEP2(B, Ty, Pointer, Indices, NumIndices, Name);
-  else
-    return LLVMBuildGEP2(B, Ty, Pointer, Indices, NumIndices, Name);
-}
-#endif
-
 // Transfers ownership of DiagnosticHandler unique_ptr to the caller.
 extern "C" DiagnosticHandler *
 LLVMRustContextGetDiagnosticHandler(LLVMContextRef C) {
@@ -1856,11 +1807,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
         }
       }
       if (DiagnosticHandlerCallback) {
-#if LLVM_VERSION_GE(19, 0)
         DiagnosticHandlerCallback(&DI, DiagnosticHandlerContext);
-#else
-        DiagnosticHandlerCallback(DI, DiagnosticHandlerContext);
-#endif
         return true;
       }
       return false;
@@ -2008,21 +1955,3 @@ extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
   MD.NoHWAddress = true;
   GV.setSanitizerMetadata(MD);
 }
-
-// Operations on composite constants.
-// These are clones of LLVM api functions that will become available in future
-// releases. They can be removed once Rust's minimum supported LLVM version
-// supports them. See https://github.com/rust-lang/rust/issues/121868 See
-// https://llvm.org/doxygen/group__LLVMCCoreValueConstantComposite.html
-
-// FIXME: Remove when Rust's minimum supported LLVM version reaches 19.
-// https://github.com/llvm/llvm-project/commit/e1405e4f71c899420ebf8262d5e9745598419df8
-#if LLVM_VERSION_LT(19, 0)
-extern "C" LLVMValueRef LLVMConstStringInContext2(LLVMContextRef C,
-                                                  const char *Str,
-                                                  size_t Length,
-                                                  bool DontNullTerminate) {
-  return wrap(ConstantDataArray::getString(*unwrap(C), StringRef(Str, Length),
-                                           !DontNullTerminate));
-}
-#endif

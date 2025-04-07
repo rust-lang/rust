@@ -8,4 +8,4 @@
 struct A;
 struct B;
 
-pub const S: A = B;
+pub const S: A = B; //~ ERROR mismatched types

@@ -474,13 +474,13 @@ pub fn linker_flags(
                 if stage == 0 && target.is_windows() {
                     args.push("-Clink-arg=-fuse-ld=lld".to_string());
                 } else {
-                    args.push("-Clinker-flavor=gnu-lld-cc".to_string());
+                    args.push("-Zlinker-features=+lld".to_string());
                 }
                 // FIXME(kobzol): remove this flag once MCP510 gets stabilized
                 args.push("-Zunstable-options".to_string());
             }
             LldMode::SelfContained => {
-                args.push("-Clinker-flavor=gnu-lld-cc".to_string());
+                args.push("-Zlinker-features=+lld".to_string());
                 args.push("-Clink-self-contained=+linker".to_string());
                 // FIXME(kobzol): remove this flag once MCP510 gets stabilized
                 args.push("-Zunstable-options".to_string());

@@ -1,5 +1,5 @@
 error[E0259]: the name `core` is defined multiple times
-  --> $DIR/weak-lang-item.rs:9:1
+  --> $DIR/weak-lang-item.rs:7:1
    |
 LL | extern crate core;
    | ^^^^^^^^^^^^^^^^^^ `core` reimported here

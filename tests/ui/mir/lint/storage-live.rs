@@ -20,7 +20,7 @@ fn multiple_storage() {
         let a: usize;
         {
             StorageLive(a);
-            StorageLive(a);
+            StorageLive(a); //~ ERROR broken MIR
             Return()
         }
     }

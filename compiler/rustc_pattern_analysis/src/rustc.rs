@@ -135,7 +135,10 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// Returns the hidden type corresponding to this key if the body under analysis is allowed to
     /// know it.
     fn reveal_opaque_key(&self, key: OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>> {
-        self.typeck_results.concrete_opaque_types.get(&key).map(|x| x.ty)
+        self.typeck_results
+            .concrete_opaque_types
+            .get(&key.def_id)
+            .map(|x| ty::EarlyBinder::bind(x.ty).instantiate(self.tcx, key.args))
     }
     // This can take a non-revealed `Ty` because it reveals opaques itself.
     pub fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {

@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `main`
-  --> $DIR/import3.rs:2:5
+  --> $DIR/import3.rs:1:5
    |
 LL | use main::bar;
    |     ^^^^ use of unresolved module or unlinked crate `main`

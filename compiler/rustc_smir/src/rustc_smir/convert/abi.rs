@@ -14,6 +14,7 @@ use stable_mir::target::MachineSize as Size;
 use stable_mir::ty::{Align, IndexedVal, VariantIdx};
 
 use crate::rustc_smir::{Stable, Tables};
+use crate::stable_mir;
 
 impl<'tcx> Stable<'tcx> for rustc_abi::VariantIdx {
     type T = VariantIdx;

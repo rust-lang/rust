@@ -335,6 +335,9 @@ But for strict testing, try to use the `ERROR` annotation as much as possible,
 including `//~?` annotations for diagnostics without span.
 For compile time diagnostics `error-pattern` should very rarely be necessary.
 
+Per-line annotations (`//~`) are still checked in tests using `error-pattern`,
+to opt out of these checks in exceptional cases use `//@ compile-flags: --error-format=human`.
+
 ### Error levels
 
 The error levels that you can have are:
@@ -447,6 +450,14 @@ reasons, including:
 2. Providing a sentinel that will fail if the bug is incidentally fixed. This
    can alert the developer so they know that the associated issue has been fixed
    and can possibly be closed.
+
+This directive takes comma-separated issue numbers as arguments, or `"unknown"`:
+
+- `//@ known-bug: #123, #456` (when the issues are on rust-lang/rust)
+- `//@ known-bug: rust-lang/chalk#123456`
+  (allows arbitrary text before the `#`, which is useful when the issue is on another repo)
+- `//@ known-bug: unknown`
+  (when there is no known issue yet; preferrably open one if it does not already exist)
 
 Do not include [error annotations](#error-annotations) in a test with
 `known-bug`. The test should still include other normal directives and

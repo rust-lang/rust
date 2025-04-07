@@ -16,7 +16,8 @@
           StorageLive(_2);
           _4 = const main::promoted[0];
           _2 = &(*_4);
-          _1 = copy (*_2);
+-         _1 = copy (*_2);
++         _1 = const 4_i32;
           StorageDead(_2);
           _0 = const ();
           StorageDead(_1);

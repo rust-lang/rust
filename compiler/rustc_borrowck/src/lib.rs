@@ -35,7 +35,7 @@ use rustc_infer::infer::{
 };
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt, TypingMode, fold_regions};
+use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{
     EverInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,
@@ -170,12 +170,6 @@ fn do_mir_borrowck<'tcx>(
     let mut promoted = input_promoted.to_owned();
     let free_regions = nll::replace_regions_in_mir(&infcx, &mut body_owned, &mut promoted);
     let body = &body_owned; // no further changes
-
-    // FIXME(-Znext-solver): A bit dubious that we're only registering
-    // predefined opaques in the typeck root.
-    if infcx.next_trait_solver() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
-        infcx.register_predefined_opaques_for_next_solver(def);
-    }
 
     let location_table = PoloniusLocationTable::new(body);
 
@@ -431,7 +425,12 @@ pub(crate) struct BorrowckInferCtxt<'tcx> {
 
 impl<'tcx> BorrowckInferCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        let infcx = tcx.infer_ctxt().build(TypingMode::analysis_in_body(tcx, def_id));
+        let typing_mode = if tcx.use_typing_mode_borrowck() {
+            TypingMode::borrowck(tcx, def_id)
+        } else {
+            TypingMode::analysis_in_body(tcx, def_id)
+        };
+        let infcx = tcx.infer_ctxt().build(typing_mode);
         let param_env = tcx.param_env(def_id);
         BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()), param_env }
     }
@@ -477,29 +476,6 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
         }
 
         next_region
-    }
-
-    /// With the new solver we prepopulate the opaque type storage during
-    /// MIR borrowck with the hidden types from HIR typeck. This is necessary
-    /// to avoid ambiguities as earlier goals can rely on the hidden type
-    /// of an opaque which is only constrained by a later goal.
-    fn register_predefined_opaques_for_next_solver(&self, def_id: LocalDefId) {
-        let tcx = self.tcx;
-        // OK to use the identity arguments for each opaque type key, since
-        // we remap opaques from HIR typeck back to their definition params.
-        for data in tcx.typeck(def_id).concrete_opaque_types.iter().map(|(k, v)| (*k, *v)) {
-            // HIR typeck did not infer the regions of the opaque, so we instantiate
-            // them with fresh inference variables.
-            let (key, hidden_ty) = fold_regions(tcx, data, |_, _| {
-                self.next_nll_region_var_in_universe(
-                    NllRegionVariableOrigin::Existential { from_forall: false },
-                    ty::UniverseIndex::ROOT,
-                )
-            });
-
-            let prev = self.register_hidden_type_in_storage(key, hidden_ty);
-            assert_eq!(prev, None);
-        }
     }
 }
 

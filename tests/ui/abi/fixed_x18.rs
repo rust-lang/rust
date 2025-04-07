@@ -23,3 +23,5 @@
 
 #[lang = "sized"]
 trait Sized {}
+
+//~? ERROR the `-Zfixed-x18` flag is not supported on the `

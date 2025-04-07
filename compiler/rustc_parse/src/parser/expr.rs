@@ -14,14 +14,14 @@ use rustc_ast::util::classify;
 use rustc_ast::util::parser::{AssocOp, ExprPrecedence, Fixity, prec_let_scrutinee_needs_par};
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
-    self as ast, AnonConst, Arm, AttrStyle, AttrVec, BinOp, BinOpKind, BlockCheckMode, CaptureBy,
-    ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl, FnRetTy, Label, MacCall,
-    MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind,
-    YieldKind,
+    self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
+    BlockCheckMode, CaptureBy, ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl,
+    FnRetTy, Label, MacCall, MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty, TyKind,
+    UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
-use rustc_lexer::unescape::unescape_char;
+use rustc_literal_escaper::unescape_char;
 use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
 use rustc_session::lint::BuiltinLintDiag;
@@ -359,7 +359,7 @@ impl<'a> Parser<'a> {
             (
                 Some(
                     AssocOp::Binary(BinOpKind::Shr | BinOpKind::Gt | BinOpKind::Ge)
-                    | AssocOp::AssignOp(BinOpKind::Shr),
+                    | AssocOp::AssignOp(AssignOpKind::ShrAssign),
                 ),
                 _,
             ) if self.restrictions.contains(Restrictions::CONST_EXPR) => {
@@ -3914,8 +3914,8 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(errors::LeftArrowOperator { span });
     }
 
-    fn mk_assign_op(&self, binop: BinOp, lhs: P<Expr>, rhs: P<Expr>) -> ExprKind {
-        ExprKind::AssignOp(binop, lhs, rhs)
+    fn mk_assign_op(&self, assign_op: AssignOp, lhs: P<Expr>, rhs: P<Expr>) -> ExprKind {
+        ExprKind::AssignOp(assign_op, lhs, rhs)
     }
 
     fn mk_range(
