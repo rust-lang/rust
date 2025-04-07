@@ -7,7 +7,6 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefIdSet;
 
 use crate::common::CodegenCx;
-use crate::coverageinfo::mapgen::GlobalFileTable;
 use crate::coverageinfo::mapgen::covfun::{CovfunRecord, prepare_covfun_record};
 use crate::llvm;
 
@@ -21,7 +20,6 @@ use crate::llvm;
 /// its embedded coverage data.
 pub(crate) fn prepare_covfun_records_for_unused_functions<'tcx>(
     cx: &CodegenCx<'_, 'tcx>,
-    global_file_table: &mut GlobalFileTable,
     covfun_records: &mut Vec<CovfunRecord<'tcx>>,
 ) {
     assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
@@ -33,7 +31,7 @@ pub(crate) fn prepare_covfun_records_for_unused_functions<'tcx>(
     // Try to create a covfun record for each unused function.
     let mut name_globals = Vec::with_capacity(unused_instances.len());
     covfun_records.extend(unused_instances.into_iter().filter_map(|unused| try {
-        let record = prepare_covfun_record(cx.tcx, global_file_table, unused.instance, false)?;
+        let record = prepare_covfun_record(cx.tcx, unused.instance, false)?;
         // If successful, also store its symbol name in a global constant.
         name_globals.push(cx.const_str(unused.symbol_name.name).0);
         record

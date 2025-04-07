@@ -5,6 +5,7 @@
 //! [^win]: On Windows the section name is `.lcovfun`.
 
 use std::ffi::CString;
+use std::sync::Arc;
 
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{
@@ -15,7 +16,7 @@ use rustc_middle::mir::coverage::{
     MappingKind, Op,
 };
 use rustc_middle::ty::{Instance, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{SourceFile, Span};
 use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
@@ -37,9 +38,16 @@ pub(crate) struct CovfunRecord<'tcx> {
     regions: ffi::Regions,
 }
 
+impl<'tcx> CovfunRecord<'tcx> {
+    /// Iterator that yields all source files referred to by this function's
+    /// coverage mappings. Used to build the global file table for the CGU.
+    pub(crate) fn all_source_files(&self) -> impl Iterator<Item = &SourceFile> {
+        self.virtual_file_mapping.local_file_table.iter().map(Arc::as_ref)
+    }
+}
+
 pub(crate) fn prepare_covfun_record<'tcx>(
     tcx: TyCtxt<'tcx>,
-    global_file_table: &mut GlobalFileTable,
     instance: Instance<'tcx>,
     is_used: bool,
 ) -> Option<CovfunRecord<'tcx>> {
@@ -57,7 +65,7 @@ pub(crate) fn prepare_covfun_record<'tcx>(
         regions: ffi::Regions::default(),
     };
 
-    fill_region_tables(tcx, global_file_table, fn_cov_info, ids_info, &mut covfun);
+    fill_region_tables(tcx, fn_cov_info, ids_info, &mut covfun);
 
     if covfun.regions.has_no_regions() {
         debug!(?covfun, "function has no mappings to embed; skipping");
@@ -92,7 +100,6 @@ fn prepare_expressions(ids_info: &CoverageIdsInfo) -> Vec<ffi::CounterExpression
 /// Populates the mapping region tables in the current function's covfun record.
 fn fill_region_tables<'tcx>(
     tcx: TyCtxt<'tcx>,
-    global_file_table: &mut GlobalFileTable,
     fn_cov_info: &'tcx FunctionCoverageInfo,
     ids_info: &'tcx CoverageIdsInfo,
     covfun: &mut CovfunRecord<'tcx>,
@@ -106,11 +113,7 @@ fn fill_region_tables<'tcx>(
     };
     let source_file = source_map.lookup_source_file(first_span.lo());
 
-    // Look up the global file ID for that file.
-    let global_file_id = global_file_table.global_file_id_for_file(&source_file);
-
-    // Associate that global file ID with a local file ID for this function.
-    let local_file_id = covfun.virtual_file_mapping.local_id_for_global(global_file_id);
+    let local_file_id = covfun.virtual_file_mapping.push_file(&source_file);
 
     // In rare cases, _all_ of a function's spans are discarded, and coverage
     // codegen needs to handle that gracefully to avoid #133606.
@@ -179,7 +182,7 @@ fn fill_region_tables<'tcx>(
 /// as a global variable in the `__llvm_covfun` section.
 pub(crate) fn generate_covfun_record<'tcx>(
     cx: &CodegenCx<'_, 'tcx>,
-    filenames_hash: u64,
+    global_file_table: &GlobalFileTable,
     covfun: &CovfunRecord<'tcx>,
 ) {
     let &CovfunRecord {
@@ -191,12 +194,19 @@ pub(crate) fn generate_covfun_record<'tcx>(
         ref regions,
     } = covfun;
 
+    let Some(local_file_table) = virtual_file_mapping.resolve_all(global_file_table) else {
+        debug_assert!(
+            false,
+            "all local files should be present in the global file table: \
+                global_file_table = {global_file_table:?}, \
+                virtual_file_mapping = {virtual_file_mapping:?}"
+        );
+        return;
+    };
+
     // Encode the function's coverage mappings into a buffer.
-    let coverage_mapping_buffer = llvm_cov::write_function_mappings_to_buffer(
-        &virtual_file_mapping.to_vec(),
-        expressions,
-        regions,
-    );
+    let coverage_mapping_buffer =
+        llvm_cov::write_function_mappings_to_buffer(&local_file_table, expressions, regions);
 
     // A covfun record consists of four target-endian integers, followed by the
     // encoded mapping data in bytes. Note that the length field is 32 bits.
@@ -209,7 +219,7 @@ pub(crate) fn generate_covfun_record<'tcx>(
             cx.const_u64(func_name_hash),
             cx.const_u32(coverage_mapping_buffer.len() as u32),
             cx.const_u64(source_hash),
-            cx.const_u64(filenames_hash),
+            cx.const_u64(global_file_table.filenames_hash),
             cx.const_bytes(&coverage_mapping_buffer),
         ],
         // This struct needs to be packed, so that the 32-bit length field
