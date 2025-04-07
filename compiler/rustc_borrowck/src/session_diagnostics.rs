@@ -1,7 +1,7 @@
 use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::{GenericArg, Ty};
+use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
 use crate::diagnostics::RegionName;
@@ -292,19 +292,6 @@ pub(crate) struct MoveBorrow<'a> {
     pub span: Span,
     #[label]
     pub borrow_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(borrowck_opaque_type_lifetime_mismatch)]
-pub(crate) struct LifetimeMismatchOpaqueParam<'tcx> {
-    pub arg: GenericArg<'tcx>,
-    pub prev: GenericArg<'tcx>,
-    #[primary_span]
-    #[label]
-    #[note]
-    pub span: Span,
-    #[label(borrowck_prev_lifetime_label)]
-    pub prev_span: Span,
 }
 
 #[derive(Subdiagnostic)]
