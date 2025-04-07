@@ -4589,6 +4589,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "derive-where",
+ "ena",
  "indexmap",
  "rustc-hash 1.1.0",
  "rustc_ast_ir",
