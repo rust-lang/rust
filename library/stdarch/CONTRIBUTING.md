@@ -16,7 +16,7 @@ The above tests do in fact require nightly rust to be the default on your system
 If any of the above steps don't work, [please let us know][new]!
 
 Next up you can [find an issue][issues] to help out on, we've selected a few
-with the [`help wanted`][help] and [`impl-period`][impl] tags which could
+with the [`help wanted`][help] tag which could
 particularly use some help. You may be most interested in [#40][vendor],
 implementing all vendor intrinsics on x86. That issue's got some good pointers
 about where to get started!
