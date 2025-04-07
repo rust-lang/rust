@@ -210,8 +210,11 @@ fn expand_subtree(
             }
             Op::Ignore { name, id } => {
                 // Expand the variable, but ignore the result. This registers the repetition count.
-                // FIXME: Any emitted errors are dropped.
-                let _ = ctx.bindings.get_fragment(name, *id, &mut ctx.nesting, marker);
+                let e = ctx.bindings.get_fragment(name, *id, &mut ctx.nesting, marker).err();
+                // FIXME: The error gets dropped if there were any previous errors.
+                // This should be reworked in a way where the errors can be combined
+                // and reported rather than storing the first error encountered.
+                err = err.or(e);
             }
             Op::Index { depth } => {
                 let index =
@@ -239,9 +242,7 @@ fn expand_subtree(
                 let mut binding = match ctx.bindings.get(name, ctx.call_site) {
                     Ok(b) => b,
                     Err(e) => {
-                        if err.is_none() {
-                            err = Some(e);
-                        }
+                        err = err.or(Some(e));
                         continue;
                     }
                 };
