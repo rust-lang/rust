@@ -750,7 +750,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) -> V::Res
             try_visit!(visitor.visit_pat(subpattern));
             try_visit!(visitor.visit_expr(guard_condition));
         }
-        PatKind::Wild | PatKind::Rest | PatKind::Never => {}
+        PatKind::Missing | PatKind::Wild | PatKind::Rest | PatKind::Never => {}
         PatKind::Err(_guar) => {}
         PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
             walk_list!(visitor, visit_pat, elems);

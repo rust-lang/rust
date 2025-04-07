@@ -920,6 +920,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::Constant { .. }
             | PatKind::Range { .. }
+            | PatKind::Missing
             | PatKind::Wild
             | PatKind::Never
             | PatKind::Error(_) => {}
