@@ -8,6 +8,7 @@
 //! Note: any changes to the constness of intrinsics should be discussed with the language team.
 //! This includes changes in the stability of the constness.
 //!
+//! //FIXME(#132735) "old" style intrinsics support has been removed
 //! In order to make an intrinsic usable at compile-time, it needs to be declared in the "new"
 //! style, i.e. as a `#[rustc_intrinsic]` function, not inside an `extern` block. Then copy the
 //! implementation from <https://github.com/rust-lang/miri/blob/master/src/intrinsics> to

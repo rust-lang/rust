@@ -207,7 +207,7 @@ impl<'tcx> Collector<'tcx> {
 
         let sess = self.tcx.sess;
 
-        if matches!(abi, ExternAbi::Rust | ExternAbi::RustIntrinsic) {
+        if matches!(abi, ExternAbi::Rust) {
             return;
         }
 

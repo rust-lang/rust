@@ -21,14 +21,12 @@ impl<T> Copy for *mut T {}
 fn size_of<T>() -> usize {
     loop {}
 }
-
-extern "rust-intrinsic" {
-    fn catch_unwind(
-        try_fn: fn(_: *mut u8),
-        data: *mut u8,
-        catch_fn: fn(_: *mut u8, _: *mut u8),
-    ) -> i32;
-}
+#[rustc_intrinsic]
+unsafe fn catch_unwind(
+    try_fn: fn(_: *mut u8),
+    data: *mut u8,
+    catch_fn: fn(_: *mut u8, _: *mut u8),
+) -> i32;
 
 // CHECK-LABEL: @ptr_size
 #[no_mangle]

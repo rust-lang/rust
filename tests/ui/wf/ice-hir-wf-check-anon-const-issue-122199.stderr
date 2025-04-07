@@ -53,6 +53,12 @@ LL | trait Trait<const N: Trait = bar> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
+error: defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:6:12
+   |
+LL |     fn fnc<const N: Trait = u32>(&self) -> Trait {
+   |            ^^^^^^^^^^^^^^^^^^^^
+
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:6:44
    |
@@ -65,12 +71,6 @@ help: if this is a dyn-compatible trait, use `dyn`
    |
 LL |     fn fnc<const N: Trait = u32>(&self) -> dyn Trait {
    |                                            +++
-
-error: defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:6:12
-   |
-LL |     fn fnc<const N: Trait = u32>(&self) -> Trait {
-   |            ^^^^^^^^^^^^^^^^^^^^
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:6:21

@@ -611,6 +611,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         for pat in pats {
             self.cat_pattern(discr_place.clone(), pat, &mut |place, pat| {
                 match &pat.kind {
+                    PatKind::Missing => unreachable!(),
                     PatKind::Binding(.., opt_sub_pat) => {
                         // If the opt_sub_pat is None, then the binding does not count as
                         // a wildcard for the purpose of borrowing discr.
@@ -1832,6 +1833,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             | PatKind::Expr(..)
             | PatKind::Range(..)
             | PatKind::Never
+            | PatKind::Missing
             | PatKind::Wild
             | PatKind::Err(_) => {
                 // always ok

@@ -211,7 +211,7 @@ declare_features! (
     (internal, custom_mir, "1.65.0", None),
     /// Outputs useful `assert!` messages
     (unstable, generic_assert, "1.63.0", None),
-    /// Allows using the `rust-intrinsic`'s "ABI".
+    /// Allows using the #[rustc_intrinsic] attribute.
     (internal, intrinsics, "1.0.0", None),
     /// Allows using `#[lang = ".."]` attribute for linking items to special compiler logic.
     (internal, lang_items, "1.0.0", None),
@@ -630,7 +630,7 @@ declare_features! (
     /// Allows string patterns to dereference values to match them.
     (unstable, string_deref_patterns, "1.67.0", Some(87121)),
     /// Allows `super let` statements.
-    (incomplete, super_let, "CURRENT_RUSTC_VERSION", Some(139076)),
+    (unstable, super_let, "CURRENT_RUSTC_VERSION", Some(139076)),
     /// Allows subtrait items to shadow supertrait items.
     (unstable, supertrait_item_shadowing, "1.86.0", Some(89151)),
     /// Allows using `#[thread_local]` on `static` items.

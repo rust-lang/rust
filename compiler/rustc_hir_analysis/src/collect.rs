@@ -42,7 +42,6 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 
-use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
 use crate::hir_ty_lowering::errors::assoc_kind_str;
 use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer, RegionInferReason};
@@ -1704,18 +1703,13 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     abi: ExternAbi,
     safety: hir::Safety,
 ) -> ty::PolyFnSig<'tcx> {
-    let safety = if abi == ExternAbi::RustIntrinsic {
-        intrinsic_operation_unsafety(tcx, def_id)
-    } else {
-        safety
-    };
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let fty =
         ItemCtxt::new(tcx, def_id).lowerer().lower_fn_ty(hir_id, safety, abi, decl, None, None);
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw
-    if abi != ExternAbi::RustIntrinsic && !tcx.features().simd_ffi() {
+    if !tcx.features().simd_ffi() {
         let check = |hir_ty: &hir::Ty<'_>, ty: Ty<'_>| {
             if ty.is_simd() {
                 let snip = tcx

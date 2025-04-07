@@ -970,7 +970,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
 
         // Normalize only after registering in `user_provided_sigs`.
-        self.normalize(self.tcx.hir_span(hir_id), result)
+        self.normalize(self.tcx.def_span(expr_def_id), result)
     }
 
     /// Invoked when we are translating the coroutine that results

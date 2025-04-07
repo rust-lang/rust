@@ -871,7 +871,6 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
             ExternAbi::CCmseNonSecureCall => Abi::CCmseNonSecureCall,
             ExternAbi::CCmseNonSecureEntry => Abi::CCmseNonSecureEntry,
             ExternAbi::System { unwind } => Abi::System { unwind },
-            ExternAbi::RustIntrinsic => Abi::RustIntrinsic,
             ExternAbi::RustCall => Abi::RustCall,
             ExternAbi::Unadjusted => Abi::Unadjusted,
             ExternAbi::RustCold => Abi::RustCold,

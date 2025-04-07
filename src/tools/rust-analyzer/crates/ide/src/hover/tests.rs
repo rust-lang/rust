@@ -6945,9 +6945,8 @@ fn hover_feature() {
             Various intrinsics have native MIR operations that they correspond to. Instead of requiring
             backends to implement both the intrinsic and the MIR operation, the `lower_intrinsics` pass
             will convert the calls to the MIR operation. Backends do not need to know about these intrinsics
-            at all. These intrinsics only make sense without a body, and can either be declared as a "rust-intrinsic"
-            or as a `#[rustc_intrinsic]`. The body is never used, as calls to the intrinsic do not exist
-            anymore after MIR analyses.
+            at all. These intrinsics only make sense without a body, and can be as a `#[rustc_intrinsic]`. 
+            The body is never used, as calls to the intrinsic do not exist anymore after MIR analyses.
 
             ## Intrinsics without fallback logic
 
@@ -6959,29 +6958,6 @@ fn hover_feature() {
             Use `loop {}` for the body or call the intrinsic recursively and add
             `#[rustc_intrinsic_must_be_overridden]` to the function to ensure that backends don't
             invoke the body.
-
-            ### Legacy extern ABI based intrinsics
-
-            These are imported as if they were FFI functions, with the special
-            `rust-intrinsic` ABI. For example, if one was in a freestanding
-            context, but wished to be able to `transmute` between types, and
-            perform efficient pointer arithmetic, one would import those functions
-            via a declaration like
-
-            ```rust
-            #![feature(intrinsics)]
-            #![allow(internal_features)]
-            # fn main() {}
-
-            extern "rust-intrinsic" {
-                fn transmute<T, U>(x: T) -> U;
-
-                fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
-            }
-            ```
-
-            As with any other FFI functions, these are by default always `unsafe` to call.
-            You can add `#[rustc_safe_intrinsic]` to the intrinsic to make it safe to call.
 
         "#]],
     )
