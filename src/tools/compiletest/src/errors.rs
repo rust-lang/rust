@@ -53,6 +53,10 @@ pub struct Error {
     /// `None` if not specified or unknown message kind.
     pub kind: Option<ErrorKind>,
     pub msg: String,
+    /// For some `Error`s, like secondary lines of multi-line diagnostics, line annotations
+    /// are not mandatory, even if they would otherwise be mandatory for primary errors.
+    /// Only makes sense for "actual" errors, not for "expected" errors.
+    pub require_annotation: bool,
 }
 
 impl Error {
@@ -182,7 +186,7 @@ fn parse_expected(
         kind,
         msg
     );
-    Some((follow_prev, Error { line_num, kind, msg }))
+    Some((follow_prev, Error { line_num, kind, msg, require_annotation: true }))
 }
 
 #[cfg(test)]

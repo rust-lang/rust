@@ -231,36 +231,42 @@ fn push_actual_errors(
     // We expect to replace these with something more structured anyhow.
     let mut message_lines = diagnostic.message.lines();
     let kind = ErrorKind::from_str(&diagnostic.level).ok();
-    if let Some(first_line) = message_lines.next() {
-        let ignore = |s| {
-            static RE: OnceLock<Regex> = OnceLock::new();
-            RE.get_or_init(|| {
-                Regex::new(r"aborting due to \d+ previous errors?|\d+ warnings? emitted").unwrap()
-            })
-            .is_match(s)
-        };
-
-        if primary_spans.is_empty() && !ignore(first_line) {
-            errors.push(Error { line_num: None, kind, msg: with_code(None, first_line) });
+    let first_line = message_lines.next().unwrap_or(&diagnostic.message);
+    if primary_spans.is_empty() {
+        static RE: OnceLock<Regex> = OnceLock::new();
+        let re_init =
+            || Regex::new(r"aborting due to \d+ previous errors?|\d+ warnings? emitted").unwrap();
+        errors.push(Error {
+            line_num: None,
+            kind,
+            msg: with_code(None, first_line),
+            require_annotation: !RE.get_or_init(re_init).is_match(first_line),
+        });
+    } else {
+        for span in primary_spans {
+            errors.push(Error {
+                line_num: Some(span.line_start),
+                kind,
+                msg: with_code(Some(span), first_line),
+                require_annotation: true,
+            });
+        }
+    }
+    for next_line in message_lines {
+        if primary_spans.is_empty() {
+            errors.push(Error {
+                line_num: None,
+                kind,
+                msg: with_code(None, next_line),
+                require_annotation: false,
+            });
         } else {
             for span in primary_spans {
                 errors.push(Error {
                     line_num: Some(span.line_start),
                     kind,
-                    msg: with_code(Some(span), first_line),
-                });
-            }
-        }
-    }
-    for next_line in message_lines {
-        if primary_spans.is_empty() {
-            errors.push(Error { line_num: None, kind: None, msg: with_code(None, next_line) });
-        } else {
-            for span in primary_spans {
-                errors.push(Error {
-                    line_num: Some(span.line_start),
-                    kind: None,
                     msg: with_code(Some(span), next_line),
+                    require_annotation: false,
                 });
             }
         }
@@ -274,6 +280,7 @@ fn push_actual_errors(
                     line_num: Some(span.line_start + index),
                     kind: Some(ErrorKind::Suggestion),
                     msg: line.to_string(),
+                    require_annotation: true,
                 });
             }
         }
@@ -292,6 +299,7 @@ fn push_actual_errors(
             line_num: Some(span.line_start),
             kind: Some(ErrorKind::Note),
             msg: span.label.clone().unwrap(),
+            require_annotation: true,
         });
     }
 
@@ -311,6 +319,7 @@ fn push_backtrace(
             line_num: Some(expansion.span.line_start),
             kind: Some(ErrorKind::Note),
             msg: format!("in this expansion of {}", expansion.macro_decl_name),
+            require_annotation: true,
         });
     }
 
