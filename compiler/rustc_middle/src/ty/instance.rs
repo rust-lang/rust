@@ -71,7 +71,7 @@ pub enum InstanceKind<'tcx> {
     /// - coroutines
     Item(DefId),
 
-    /// An intrinsic `fn` item (with `"rust-intrinsic"` ABI).
+    /// An intrinsic `fn` item (with`#[rustc_instrinsic]`).
     ///
     /// Alongside `Virtual`, this is the only `InstanceKind` that does not have its own callable MIR.
     /// Instead, codegen and const eval "magically" evaluate calls to intrinsics purely in the

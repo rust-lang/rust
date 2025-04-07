@@ -153,11 +153,10 @@ pub fn discriminant<T>(t: T) {
     core::intrinsics::discriminant_value(&E::B);
 }
 
-extern "rust-intrinsic" {
-    // Cannot use `std::intrinsics::copy_nonoverlapping` as that is a wrapper function
-    #[rustc_nounwind]
-    fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-}
+// Cannot use `std::intrinsics::copy_nonoverlapping` as that is a wrapper function
+#[rustc_nounwind]
+#[rustc_intrinsic]
+unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
 // EMIT_MIR lower_intrinsics.f_copy_nonoverlapping.LowerIntrinsics.diff
 pub fn f_copy_nonoverlapping() {
