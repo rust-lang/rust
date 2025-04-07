@@ -12,7 +12,6 @@ use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisi
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
     self, BottomUpFolder, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt, TypingMode, Upcast,
@@ -995,6 +994,26 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
     }
 }
 
+/// Gets the string for an explicit self declaration, e.g. "self", "&self",
+/// etc.
+fn get_self_string<'tcx, P>(self_arg_ty: Ty<'tcx>, is_self_ty: P) -> String
+where
+    P: Fn(Ty<'tcx>) -> bool,
+{
+    if is_self_ty(self_arg_ty) {
+        "self".to_owned()
+    } else if let ty::Ref(_, ty, mutbl) = self_arg_ty.kind()
+        && is_self_ty(*ty)
+    {
+        match mutbl {
+            hir::Mutability::Not => "&self".to_owned(),
+            hir::Mutability::Mut => "&mut self".to_owned(),
+        }
+    } else {
+        format!("self: {self_arg_ty}")
+    }
+}
+
 fn report_trait_method_mismatch<'tcx>(
     infcx: &InferCtxt<'tcx>,
     mut cause: ObligationCause<'tcx>,
@@ -1020,12 +1039,7 @@ fn report_trait_method_mismatch<'tcx>(
             if trait_m.fn_has_self_parameter =>
         {
             let ty = trait_sig.inputs()[0];
-            let sugg = match ExplicitSelf::determine(ty, |ty| ty == impl_trait_ref.self_ty()) {
-                ExplicitSelf::ByValue => "self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
-                _ => format!("self: {ty}"),
-            };
+            let sugg = get_self_string(ty, |ty| ty == impl_trait_ref.self_ty());
 
             // When the `impl` receiver is an arbitrary self type, like `self: Box<Self>`, the
             // span points only at the type `Box<Self`>, but we want to cover the whole
@@ -1208,7 +1222,7 @@ fn extract_spans_for_error_reporting<'tcx>(
         TypeError::ArgumentMutability(i) | TypeError::ArgumentSorts(ExpectedFound { .. }, i) => {
             (impl_args.nth(i).unwrap(), trait_args.and_then(|mut args| args.nth(i)))
         }
-        _ => (cause.span, tcx.hir().span_if_local(trait_m.def_id)),
+        _ => (cause.span, tcx.hir_span_if_local(trait_m.def_id)),
     }
 }
 
@@ -1238,12 +1252,7 @@ fn compare_self_type<'tcx>(
             .build_with_typing_env(ty::TypingEnv::non_body_analysis(tcx, method.def_id));
         let self_arg_ty = tcx.liberate_late_bound_regions(method.def_id, self_arg_ty);
         let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty);
-        match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
-            ExplicitSelf::ByValue => "self".to_owned(),
-            ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
-            ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
-            _ => format!("self: {self_arg_ty}"),
-        }
+        get_self_string(self_arg_ty, can_eq_self)
     };
 
     match (trait_m.fn_has_self_parameter, impl_m.fn_has_self_parameter) {
@@ -1261,7 +1270,7 @@ fn compare_self_type<'tcx>(
                 self_descr
             );
             err.span_label(impl_m_span, format!("`{self_descr}` used in impl"));
-            if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
+            if let Some(span) = tcx.hir_span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("trait method declared without `{self_descr}`"));
             } else {
                 err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
@@ -1281,7 +1290,7 @@ fn compare_self_type<'tcx>(
                 self_descr
             );
             err.span_label(impl_m_span, format!("expected `{self_descr}` in impl"));
-            if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
+            if let Some(span) = tcx.hir_span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("`{self_descr}` used in trait"));
             } else {
                 err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
@@ -1389,7 +1398,7 @@ fn compare_number_of_generics<'tcx>(
                     .collect();
                 (Some(arg_spans), impl_trait_spans)
             } else {
-                let trait_span = tcx.hir().span_if_local(trait_.def_id);
+                let trait_span = tcx.hir_span_if_local(trait_.def_id);
                 (trait_span.map(|s| vec![s]), vec![])
             };
 
@@ -1481,7 +1490,7 @@ fn compare_number_of_method_arguments<'tcx>(
                     }
                 })
             })
-            .or_else(|| tcx.hir().span_if_local(trait_m.def_id));
+            .or_else(|| tcx.hir_span_if_local(trait_m.def_id));
 
         let (impl_m_sig, _) = &tcx.hir_expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
         let pos = impl_number_args.saturating_sub(1);
@@ -2366,7 +2375,7 @@ fn try_report_async_mismatch<'tcx>(
             return Err(tcx.sess.dcx().emit_err(MethodShouldReturnFuture {
                 span: tcx.def_span(impl_m.def_id),
                 method_name: tcx.item_ident(impl_m.def_id),
-                trait_item_span: tcx.hir().span_if_local(trait_m.def_id),
+                trait_item_span: tcx.hir_span_if_local(trait_m.def_id),
             }));
         }
     }

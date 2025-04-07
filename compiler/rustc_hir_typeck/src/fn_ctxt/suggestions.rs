@@ -351,7 +351,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if self.suggest_fn_call(err, expr, found, |output| self.may_coerce(output, expected))
             && let ty::FnDef(def_id, ..) = *found.kind()
-            && let Some(sp) = self.tcx.hir().span_if_local(def_id)
+            && let Some(sp) = self.tcx.hir_span_if_local(def_id)
         {
             let name = self.tcx.item_name(def_id);
             let kind = self.tcx.def_kind(def_id);
@@ -407,7 +407,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         vec![(expr.span.shrink_to_hi(), format!(".{}()", conversion_method.name))]
                     };
                     let struct_pat_shorthand_field =
-                        self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr);
+                        self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr);
                     if let Some(name) = struct_pat_shorthand_field {
                         sugg.insert(0, (expr.span.shrink_to_lo(), format!("{name}: ")));
                     }
@@ -449,7 +449,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
 
             let prefix_wrap = |sugg: &str| {
-                if let Some(name) = self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+                if let Some(name) = self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
                     format!(": {}{}", name, sugg)
                 } else {
                     sugg.to_string()
@@ -671,7 +671,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         _ => {
                             let prefix = if let Some(name) =
-                                self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr)
+                                self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr)
                             {
                                 format!("{}: ", name)
                             } else {
@@ -1153,7 +1153,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         if can_return
             && let Some(span) = expr.span.find_ancestor_inside(
-                self.tcx.hir().span_with_body(self.tcx.local_def_id_to_hir_id(fn_id)),
+                self.tcx.hir_span_with_body(self.tcx.local_def_id_to_hir_id(fn_id)),
             )
         {
             // When the expr is in a match arm's body, we shouldn't add semicolon ';' at the end.
@@ -1275,7 +1275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
                 .must_apply_modulo_regions()
         {
-            let suggestion = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+            let suggestion = match self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
                 Some(ident) => format!(": {ident}.clone()"),
                 None => ".clone()".to_string(),
             };
@@ -1381,7 +1381,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (span.shrink_to_hi(), ").into()".to_owned()),
                 ]
             };
-            if let Some(name) = self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+            if let Some(name) = self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
                 sugg.insert(0, (expr.span.shrink_to_lo(), format!("{}: ", name)));
             }
             diag.multipart_suggestion(
@@ -1436,7 +1436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        let suggestion = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+        let suggestion = match self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
             Some(ident) => format!(": {ident}.is_some()"),
             None => ".is_some()".to_string(),
         };
@@ -2032,7 +2032,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         };
 
-        let sugg = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+        let sugg = match self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
             Some(ident) => format!(": {ident}{sugg}"),
             None => sugg.to_string(),
         };
@@ -2289,7 +2289,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Unroll desugaring, to make sure this works for `for` loops etc.
                 loop {
                     parent = self.tcx.parent_hir_id(id);
-                    let parent_span = self.tcx.hir().span(parent);
+                    let parent_span = self.tcx.hir_span(parent);
                     if parent_span.find_ancestor_inside(expr.span).is_some() {
                         // The parent node is part of the same span, so is the result of the
                         // same expansion/desugaring and not the 'real' parent node.
@@ -2378,7 +2378,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .collect();
 
             let suggestions_for = |variant: &_, ctor_kind, field_name| {
-                let prefix = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+                let prefix = match self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
                     Some(ident) => format!("{ident}: "),
                     None => String::new(),
                 };
@@ -2700,8 +2700,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ));
                     }
 
-                    let prefix = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr)
-                    {
+                    let prefix = match self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
                         Some(ident) => format!("{ident}: "),
                         None => String::new(),
                     };
@@ -2911,7 +2910,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
 
                         let prefix =
-                            match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+                            match self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
                                 Some(ident) => format!("{ident}: "),
                                 None => String::new(),
                             };
@@ -3478,30 +3477,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs_ty: Ty<'tcx>,
         rhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_expr: &'tcx hir::Expr<'tcx>,
-        op: hir::BinOp,
     ) {
-        match op.node {
-            hir::BinOpKind::Eq => {
-                if let Some(partial_eq_def_id) = self.infcx.tcx.lang_items().eq_trait()
-                    && self
-                        .infcx
-                        .type_implements_trait(partial_eq_def_id, [rhs_ty, lhs_ty], self.param_env)
-                        .must_apply_modulo_regions()
-                {
-                    let sm = self.tcx.sess.source_map();
-                    if let Ok(rhs_snippet) = sm.span_to_snippet(rhs_expr.span)
-                        && let Ok(lhs_snippet) = sm.span_to_snippet(lhs_expr.span)
-                    {
-                        err.note(format!("`{rhs_ty}` implements `PartialEq<{lhs_ty}>`"));
-                        err.multipart_suggestion(
-                            "consider swapping the equality",
-                            vec![(lhs_expr.span, rhs_snippet), (rhs_expr.span, lhs_snippet)],
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                }
+        if let Some(partial_eq_def_id) = self.infcx.tcx.lang_items().eq_trait()
+            && self
+                .infcx
+                .type_implements_trait(partial_eq_def_id, [rhs_ty, lhs_ty], self.param_env)
+                .must_apply_modulo_regions()
+        {
+            let sm = self.tcx.sess.source_map();
+            if let Ok(rhs_snippet) = sm.span_to_snippet(rhs_expr.span)
+                && let Ok(lhs_snippet) = sm.span_to_snippet(lhs_expr.span)
+            {
+                err.note(format!("`{rhs_ty}` implements `PartialEq<{lhs_ty}>`"));
+                err.multipart_suggestion(
+                    "consider swapping the equality",
+                    vec![(lhs_expr.span, rhs_snippet), (rhs_expr.span, lhs_snippet)],
+                    Applicability::MaybeIncorrect,
+                );
             }
-            _ => {}
         }
     }
 }

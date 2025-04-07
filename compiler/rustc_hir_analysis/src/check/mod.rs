@@ -243,7 +243,7 @@ fn missing_items_err(
             tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity(),
         ));
         let code = format!("{padding}{snippet}\n{padding}");
-        if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
+        if let Some(span) = tcx.hir_span_if_local(trait_item.def_id) {
             missing_trait_item_label
                 .push(errors::MissingTraitItemLabel { span, item: trait_item.name });
             missing_trait_item.push(errors::MissingTraitItemSuggestion {
@@ -341,9 +341,8 @@ fn bounds_from_generic_predicates<'tcx>(
             ty::ClauseKind::Trait(trait_predicate) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
-                if Some(def_id) != tcx.lang_items().sized_trait() {
-                    // Type params are `Sized` by default, do not add that restriction to the list
-                    // if it is a positive requirement.
+                if !tcx.is_default_trait(def_id) {
+                    // Do not add that restriction to the list if it is a positive requirement.
                     entry.push(trait_predicate.def_id());
                 }
             }
@@ -534,7 +533,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, d
     let variant_spans: Vec<_> = adt
         .variants()
         .iter()
-        .map(|variant| tcx.hir().span_if_local(variant.def_id).unwrap())
+        .map(|variant| tcx.hir_span_if_local(variant.def_id).unwrap())
         .collect();
     let (mut spans, mut many) = (Vec::new(), None);
     if let [start @ .., end] = &*variant_spans {

@@ -85,7 +85,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 /// Intermediate format to store the hir_id pointing to the use that resulted in the
 /// corresponding place being captured and a String which contains the captured value's
 /// name (i.e: a.b.c)
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 enum UpvarMigrationInfo {
     /// We previously captured all of `x`, but now we capture some sub-path.
     CapturingPrecise { source_expr: Option<HirId>, var_name: String },
@@ -635,7 +635,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (place, capture_kind) = truncate_capture_for_optimization(place, capture_kind);
 
                 let usage_span = if let Some(usage_expr) = capture_info.path_expr_id {
-                    self.tcx.hir().span(usage_expr)
+                    self.tcx.hir_span(usage_expr)
                 } else {
                     unreachable!()
                 };
@@ -986,7 +986,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         for lint_note in diagnostics_info.iter() {
                             match &lint_note.captures_info {
                                 UpvarMigrationInfo::CapturingPrecise { source_expr: Some(capture_expr_id), var_name: captured_name } => {
-                                    let cause_span = self.tcx.hir().span(*capture_expr_id);
+                                    let cause_span = self.tcx.hir_span(*capture_expr_id);
                                     lint.span_label(cause_span, format!("in Rust 2018, this closure captures all of `{}`, but in Rust 2021, it will only capture `{}`",
                                         self.tcx.hir_name(*var_hir_id),
                                         captured_name,
@@ -1047,13 +1047,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "add a dummy let to cause {migrated_variables_concat} to be fully captured"
                     );
 
-                    let closure_span = self.tcx.hir().span_with_body(closure_hir_id);
+                    let closure_span = self.tcx.hir_span_with_body(closure_hir_id);
                     let mut closure_body_span = {
                         // If the body was entirely expanded from a macro
                         // invocation, i.e. the body is not contained inside the
                         // closure span, then we walk up the expansion until we
                         // find the span before the expansion.
-                        let s = self.tcx.hir().span_with_body(body_id.hir_id);
+                        let s = self.tcx.hir_span_with_body(body_id.hir_id);
                         s.find_ancestor_inside(closure_span).unwrap_or(s)
                     };
 
@@ -1396,14 +1396,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 FxIndexSet::default()
             };
 
-            // Combine all the captures responsible for needing migrations into one HashSet
+            // Combine all the captures responsible for needing migrations into one IndexSet
             let mut capture_diagnostic = drop_reorder_diagnostic.clone();
             for key in auto_trait_diagnostic.keys() {
                 capture_diagnostic.insert(key.clone());
             }
 
             let mut capture_diagnostic = capture_diagnostic.into_iter().collect::<Vec<_>>();
-            capture_diagnostic.sort();
+            capture_diagnostic.sort_by_cached_key(|info| match info {
+                UpvarMigrationInfo::CapturingPrecise { source_expr: _, var_name } => {
+                    (0, Some(var_name.clone()))
+                }
+                UpvarMigrationInfo::CapturingNothing { use_span: _ } => (1, None),
+            });
             for captures_info in capture_diagnostic {
                 // Get the auto trait reasons of why migration is needed because of that capture, if there are any
                 let capture_trait_reasons =
@@ -1752,8 +1757,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let capture_str = construct_capture_info_string(self.tcx, place, capture_info);
                 let output_str = format!("Capturing {capture_str}");
 
-                let span =
-                    capture_info.path_expr_id.map_or(closure_span, |e| self.tcx.hir().span(e));
+                let span = capture_info.path_expr_id.map_or(closure_span, |e| self.tcx.hir_span(e));
                 diag.span_note(span, output_str);
             }
             diag.emit();
@@ -1780,10 +1784,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if capture.info.path_expr_id != capture.info.capture_kind_expr_id {
                             let path_span = capture_info
                                 .path_expr_id
-                                .map_or(closure_span, |e| self.tcx.hir().span(e));
+                                .map_or(closure_span, |e| self.tcx.hir_span(e));
                             let capture_kind_span = capture_info
                                 .capture_kind_expr_id
-                                .map_or(closure_span, |e| self.tcx.hir().span(e));
+                                .map_or(closure_span, |e| self.tcx.hir_span(e));
 
                             let mut multi_span: MultiSpan =
                                 MultiSpan::from_spans(vec![path_span, capture_kind_span]);
@@ -1799,7 +1803,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             let span = capture_info
                                 .path_expr_id
-                                .map_or(closure_span, |e| self.tcx.hir().span(e));
+                                .map_or(closure_span, |e| self.tcx.hir_span(e));
 
                             diag.span_note(span, output_str);
                         };
@@ -1828,8 +1832,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut is_mutbl = bm.1;
 
         for pointer_ty in place.deref_tys() {
-            match self.structurally_resolve_type(self.tcx.hir().span(var_hir_id), pointer_ty).kind()
-            {
+            match self.structurally_resolve_type(self.tcx.hir_span(var_hir_id), pointer_ty).kind() {
                 // We don't capture derefs of raw ptrs
                 ty::RawPtr(_, _) => unreachable!(),
 
@@ -1844,7 +1847,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Adt(def, ..) if def.is_box() => {}
 
                 unexpected_ty => span_bug!(
-                    self.tcx.hir().span(var_hir_id),
+                    self.tcx.hir_span(var_hir_id),
                     "deref of unexpected pointer type {:?}",
                     unexpected_ty
                 ),
@@ -1975,14 +1978,14 @@ fn drop_location_span(tcx: TyCtxt<'_>, hir_id: HirId) -> Span {
     let owner_node = tcx.hir_node(owner_id);
     let owner_span = match owner_node {
         hir::Node::Item(item) => match item.kind {
-            hir::ItemKind::Fn { body: owner_id, .. } => tcx.hir().span(owner_id.hir_id),
+            hir::ItemKind::Fn { body: owner_id, .. } => tcx.hir_span(owner_id.hir_id),
             _ => {
                 bug!("Drop location span error: need to handle more ItemKind '{:?}'", item.kind);
             }
         },
-        hir::Node::Block(block) => tcx.hir().span(block.hir_id),
-        hir::Node::TraitItem(item) => tcx.hir().span(item.hir_id()),
-        hir::Node::ImplItem(item) => tcx.hir().span(item.hir_id()),
+        hir::Node::Block(block) => tcx.hir_span(block.hir_id),
+        hir::Node::TraitItem(item) => tcx.hir_span(item.hir_id()),
+        hir::Node::ImplItem(item) => tcx.hir_span(item.hir_id()),
         _ => {
             bug!("Drop location span error: need to handle more Node '{:?}'", owner_node);
         }
@@ -2325,8 +2328,9 @@ fn should_do_rust_2021_incompatible_closure_captures_analysis(
         return false;
     }
 
-    let (level, _) =
-        tcx.lint_level_at_node(lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES, closure_id);
+    let level = tcx
+        .lint_level_at_node(lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES, closure_id)
+        .level;
 
     !matches!(level, lint::Level::Allow)
 }

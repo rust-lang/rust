@@ -9,7 +9,7 @@ use std::thread::panicking;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{FluentValue, fluent_value_from_str_list_sep_by_and};
-use rustc_lint_defs::Applicability;
+use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
@@ -296,6 +296,7 @@ pub struct DiagInner {
 
     pub messages: Vec<(DiagMessage, Style)>,
     pub code: Option<ErrCode>,
+    pub lint_id: Option<LintExpectationId>,
     pub span: MultiSpan,
     pub children: Vec<Subdiag>,
     pub suggestions: Suggestions,
@@ -324,6 +325,7 @@ impl DiagInner {
     pub fn new_with_messages(level: Level, messages: Vec<(DiagMessage, Style)>) -> Self {
         DiagInner {
             level,
+            lint_id: None,
             messages,
             code: None,
             span: MultiSpan::new(),
@@ -346,7 +348,7 @@ impl DiagInner {
         match self.level {
             Level::Bug | Level::Fatal | Level::Error | Level::DelayedBug => true,
 
-            Level::ForceWarning(_)
+            Level::ForceWarning
             | Level::Warning
             | Level::Note
             | Level::OnceNote
@@ -354,7 +356,7 @@ impl DiagInner {
             | Level::OnceHelp
             | Level::FailureNote
             | Level::Allow
-            | Level::Expect(_) => false,
+            | Level::Expect => false,
         }
     }
 
@@ -365,7 +367,7 @@ impl DiagInner {
 
     pub(crate) fn is_force_warn(&self) -> bool {
         match self.level {
-            Level::ForceWarning(_) => {
+            Level::ForceWarning => {
                 assert!(self.is_lint.is_some());
                 true
             }
@@ -1256,6 +1258,17 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     #[rustc_lint_diagnostics]
     pub fn code(&mut self, code: ErrCode) -> &mut Self {
         self.code = Some(code);
+        self
+    } }
+
+    with_fn! { with_lint_id,
+    /// Add an argument.
+    #[rustc_lint_diagnostics]
+    pub fn lint_id(
+        &mut self,
+        id: LintExpectationId,
+    ) -> &mut Self {
+        self.lint_id = Some(id);
         self
     } }
 

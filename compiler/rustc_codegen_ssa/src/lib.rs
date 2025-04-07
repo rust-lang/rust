@@ -7,7 +7,6 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(debug_closure_helpers)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
@@ -34,7 +33,7 @@ use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::CrateNum;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::lint::LintLevelSource;
+use rustc_middle::lint::LevelAndSource;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -45,7 +44,6 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_session::cstore::{self, CrateSource};
-use rustc_session::lint::Level;
 use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_session::utils::NativeLibKind;
 use rustc_span::Symbol;
@@ -341,7 +339,7 @@ impl CodegenResults {
 /// Instead, encode exactly the information we need.
 #[derive(Copy, Clone, Debug, Encodable, Decodable)]
 pub struct CodegenLintLevels {
-    linker_messages: (Level, LintLevelSource),
+    linker_messages: LevelAndSource,
 }
 
 impl CodegenLintLevels {

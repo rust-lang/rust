@@ -1,5 +1,5 @@
 //@ error-pattern: return
 
-fn f() -> isize { }
+fn f() -> isize { } //~ ERROR mismatched types
 
 fn main() { f(); }

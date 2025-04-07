@@ -12,6 +12,7 @@ edition = "2024"
 path = "lib.rs"
 test = false
 bench = false
+doc = false
 
 [[test]]
 name = "coretests"

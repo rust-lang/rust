@@ -570,6 +570,14 @@ impl MetaItemInner {
         }
     }
 
+    /// Returns the bool if `self` is a boolean `MetaItemInner::Literal`.
+    pub fn boolean_literal(&self) -> Option<bool> {
+        match self {
+            MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => Some(*b),
+            _ => None,
+        }
+    }
+
     /// Returns the `MetaItem` if `self` is a `MetaItemInner::MetaItem` or if it's
     /// `MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(_), .. })`.
     pub fn meta_item_or_bool(&self) -> Option<&MetaItemInner> {

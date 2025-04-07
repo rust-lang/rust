@@ -11,6 +11,7 @@ use tracing::*;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
+use crate::executor::{CollectedTestDesc, ShouldPanic};
 use crate::header::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::header::needs::CachedNeedsConditions;
 use crate::util::static_regex;
@@ -1355,15 +1356,15 @@ where
     Some((min, max))
 }
 
-pub fn make_test_description<R: Read>(
+pub(crate) fn make_test_description<R: Read>(
     config: &Config,
     cache: &HeadersCache,
-    name: test::TestName,
+    name: String,
     path: &Path,
     src: R,
     test_revision: Option<&str>,
     poisoned: &mut bool,
-) -> test::TestDesc {
+) -> CollectedTestDesc {
     let mut ignore = false;
     let mut ignore_message = None;
     let mut should_fail = false;
@@ -1387,10 +1388,7 @@ pub fn make_test_description<R: Read>(
                     match $e {
                         IgnoreDecision::Ignore { reason } => {
                             ignore = true;
-                            // The ignore reason must be a &'static str, so we have to leak memory to
-                            // create it. This is fine, as the header is parsed only at the start of
-                            // compiletest so it won't grow indefinitely.
-                            ignore_message = Some(&*Box::leak(Box::<str>::from(reason)));
+                            ignore_message = Some(reason.into());
                         }
                         IgnoreDecision::Error { message } => {
                             eprintln!("error: {}:{line_number}: {message}", path.display());
@@ -1431,25 +1429,12 @@ pub fn make_test_description<R: Read>(
     // since we run the pretty printer across all tests by default.
     // If desired, we could add a `should-fail-pretty` annotation.
     let should_panic = match config.mode {
-        crate::common::Pretty => test::ShouldPanic::No,
-        _ if should_fail => test::ShouldPanic::Yes,
-        _ => test::ShouldPanic::No,
+        crate::common::Pretty => ShouldPanic::No,
+        _ if should_fail => ShouldPanic::Yes,
+        _ => ShouldPanic::No,
     };
 
-    test::TestDesc {
-        name,
-        ignore,
-        ignore_message,
-        source_file: "",
-        start_line: 0,
-        start_col: 0,
-        end_line: 0,
-        end_col: 0,
-        should_panic,
-        compile_fail: false,
-        no_run: false,
-        test_type: test::TestType::Unknown,
-    }
+    CollectedTestDesc { name, ignore, ignore_message, should_panic }
 }
 
 fn ignore_cdb(config: &Config, line: &str) -> IgnoreDecision {

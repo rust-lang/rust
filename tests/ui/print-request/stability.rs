@@ -16,19 +16,18 @@
 
 //@ revisions: all_target_specs_json
 //@[all_target_specs_json] compile-flags: --print=all-target-specs-json
-//@[all_target_specs_json] error-pattern: the `-Z unstable-options` flag must also be passed
+
+//@ revisions: crate_root_lint_levels
+//@[crate_root_lint_levels] compile-flags: --print=crate-root-lint-levels
 
 //@ revisions: check_cfg
 //@[check_cfg] compile-flags: --print=check-cfg
-//@[check_cfg] error-pattern: the `-Z unstable-options` flag must also be passed
 
 //@ revisions: supported_crate_types
 //@[supported_crate_types] compile-flags: --print=supported-crate-types
-//@[supported_crate_types] error-pattern: the `-Z unstable-options` flag must also be passed
 
 //@ revisions: target_spec_json
 //@[target_spec_json] compile-flags: --print=target-spec-json
-//@[target_spec_json] error-pattern: the `-Z unstable-options` flag must also be passed
 
 // =======================
 // Stable print requests
@@ -105,3 +104,9 @@
 //@[tls_models] check-pass
 
 fn main() {}
+
+//[all_target_specs_json]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `all-target-specs-json` print option
+//[crate_root_lint_levels]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `crate-root-lint-levels` print option
+//[check_cfg]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `check-cfg` print option
+//[supported_crate_types]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `supported-crate-types` print option
+//[target_spec_json]~? ERROR the `-Z unstable-options` flag must also be passed to enable the `target-spec-json` print option

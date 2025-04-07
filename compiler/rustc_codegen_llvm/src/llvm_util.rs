@@ -256,7 +256,6 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "pmuv3") => Some(LLVMFeature::new("perfmon")),
         ("aarch64", "paca") => Some(LLVMFeature::new("pauth")),
         ("aarch64", "pacg") => Some(LLVMFeature::new("pauth")),
-        ("aarch64", "pauth-lr") if get_version().0 < 19 => None,
         // Before LLVM 20 those two features were packaged together as b16b16
         ("aarch64", "sve-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
         ("aarch64", "sme-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
@@ -270,20 +269,9 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "fhm") => Some(LLVMFeature::new("fp16fml")),
         ("aarch64", "fp16") => Some(LLVMFeature::new("fullfp16")),
         // Filter out features that are not supported by the current LLVM version
-        ("aarch64", "fpmr") if get_version().0 != 18 => None,
+        ("aarch64", "fpmr") => None, // only existed in 18
         ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
-        // In LLVM 18, `unaligned-scalar-mem` was merged with `unaligned-vector-mem` into a single
-        // feature called `fast-unaligned-access`. In LLVM 19, it was split back out.
-        ("riscv32" | "riscv64", "unaligned-scalar-mem" | "unaligned-vector-mem")
-            if get_version().0 == 18 =>
-        {
-            Some(LLVMFeature::new("fast-unaligned-access"))
-        }
         // Filter out features that are not supported by the current LLVM version
-        ("riscv32" | "riscv64", "zaamo") if get_version().0 < 19 => None,
-        ("riscv32" | "riscv64", "zabha") if get_version().0 < 19 => None,
-        ("riscv32" | "riscv64", "zalrsc") if get_version().0 < 19 => None,
-        ("riscv32" | "riscv64", "zama16b") if get_version().0 < 19 => None,
         ("riscv32" | "riscv64", "zacas") if get_version().0 < 20 => None,
         // Enable the evex512 target feature if an avx512 target feature is enabled.
         ("x86", s) if s.starts_with("avx512") => {
@@ -295,10 +283,9 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("sparc", "leoncasa") => Some(LLVMFeature::new("hasleoncasa")),
         // In LLVM 19, there is no `v8plus` feature and `v9` means "SPARC-V9 instruction available and SPARC-V8+ ABI used".
         // https://github.com/llvm/llvm-project/blob/llvmorg-19.1.0/llvm/lib/Target/Sparc/MCTargetDesc/SparcELFObjectWriter.cpp#L27-L28
-        // Before LLVM 19, there is no `v8plus` feature and `v9` means "SPARC-V9 instruction available".
+        // Before LLVM 19, there was no `v8plus` feature and `v9` means "SPARC-V9 instruction available".
         // https://github.com/llvm/llvm-project/blob/llvmorg-18.1.0/llvm/lib/Target/Sparc/MCTargetDesc/SparcELFObjectWriter.cpp#L26
         ("sparc", "v8plus") if get_version().0 == 19 => Some(LLVMFeature::new("v9")),
-        ("sparc", "v8plus") if get_version().0 < 19 => None,
         ("powerpc", "power8-crypto") => Some(LLVMFeature::new("crypto")),
         // These new `amx` variants and `movrs` were introduced in LLVM20
         ("x86", "amx-avx512" | "amx-fp8" | "amx-movrs" | "amx-tf32" | "amx-transpose")

@@ -1446,6 +1446,9 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	align-items: center;
 	cursor: pointer;
 }
+.setting-check input {
+	flex-shrink: 0,
+}
 
 .setting-radio input:checked {
 	box-shadow: inset 0 0 0 3px var(--main-background-color);

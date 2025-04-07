@@ -28,7 +28,7 @@ fn test_rpath_relative() {
     if cfg!(target_os = "macos") {
         let config = &mut RPathConfig {
             libs: &[],
-            is_like_osx: true,
+            is_like_darwin: true,
             linker_is_gnu: false,
             out_filename: PathBuf::from("bin/rustc"),
         };
@@ -38,7 +38,7 @@ fn test_rpath_relative() {
         let config = &mut RPathConfig {
             libs: &[],
             out_filename: PathBuf::from("bin/rustc"),
-            is_like_osx: false,
+            is_like_darwin: false,
             linker_is_gnu: true,
         };
         let res = get_rpath_relative_to_output(config, Path::new("lib/libstd.so"));
@@ -51,7 +51,7 @@ fn test_rpath_relative_issue_119571() {
     let config = &mut RPathConfig {
         libs: &[],
         out_filename: PathBuf::from("rustc"),
-        is_like_osx: false,
+        is_like_darwin: false,
         linker_is_gnu: true,
     };
     // Should not panic when out_filename only contains filename.

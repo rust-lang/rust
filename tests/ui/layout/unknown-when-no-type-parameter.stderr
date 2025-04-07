@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/unknown-when-no-type-parameter.rs:11:10
+  --> $DIR/unknown-when-no-type-parameter.rs:10:10
    |
 LL |     [(); size_of::<<() as Project>::Assoc>()];
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `<() as Project>::Assoc` has an unknown layout

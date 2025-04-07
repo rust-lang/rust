@@ -357,7 +357,7 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
     match op {
         AssocOp::Binary(op) => format!("{lhs} {} {rhs}", op.as_str()),
         AssocOp::Assign => format!("{lhs} = {rhs}"),
-        AssocOp::AssignOp(op) => format!("{lhs} {}= {rhs}", op.as_str()),
+        AssocOp::AssignOp(op) => format!("{lhs} {} {rhs}", op.as_str()),
         AssocOp::Cast => format!("{lhs} as {rhs}"),
         AssocOp::Range(limits) => format!("{lhs}{}{rhs}", limits.as_str()),
     }
@@ -839,8 +839,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
         if let PlaceBase::Local(id) = cmt.place.base {
-            let map = self.cx.tcx.hir();
-            let span = map.span(cmt.hir_id);
+            let span = self.cx.tcx.hir_span(cmt.hir_id);
             let start_span = Span::new(self.next_pos, span.lo(), span.ctxt(), None);
             let mut start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
 

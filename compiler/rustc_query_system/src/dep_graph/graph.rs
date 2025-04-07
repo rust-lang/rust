@@ -50,7 +50,7 @@ rustc_index::newtype_index! {
 rustc_data_structures::static_assert_size!(Option<DepNodeIndex>, 4);
 
 impl DepNodeIndex {
-    const SINGLETON_DEPENDENCYLESS_ANON_NODE: DepNodeIndex = DepNodeIndex::ZERO;
+    const SINGLETON_ZERO_DEPS_ANON_NODE: DepNodeIndex = DepNodeIndex::ZERO;
     pub const FOREVER_RED_NODE: DepNodeIndex = DepNodeIndex::from_u32(1);
 }
 
@@ -140,13 +140,13 @@ impl<D: Deps> DepGraph<D> {
 
         let colors = DepNodeColorMap::new(prev_graph_node_count);
 
-        // Instantiate a dependy-less node only once for anonymous queries.
+        // Instantiate a node with zero dependencies only once for anonymous queries.
         let _green_node_index = current.alloc_node(
-            DepNode { kind: D::DEP_KIND_NULL, hash: current.anon_id_seed.into() },
+            DepNode { kind: D::DEP_KIND_ANON_ZERO_DEPS, hash: current.anon_id_seed.into() },
             EdgesVec::new(),
             Fingerprint::ZERO,
         );
-        assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
+        assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_ZERO_DEPS_ANON_NODE);
 
         // Instantiate a dependy-less red node only once for anonymous queries.
         let red_node_index = current.alloc_node(
@@ -407,7 +407,7 @@ impl<D: Deps> DepGraphData<D> {
                 // going to be (i.e. equal to the precomputed
                 // `SINGLETON_DEPENDENCYLESS_ANON_NODE`). As a consequence we can skip creating
                 // a `StableHasher` and sending the node through interning.
-                DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE
+                DepNodeIndex::SINGLETON_ZERO_DEPS_ANON_NODE
             }
             1 => {
                 // When there is only one dependency, don't bother creating a node.

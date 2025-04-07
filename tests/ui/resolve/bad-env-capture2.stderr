@@ -1,5 +1,5 @@
 error[E0434]: can't capture dynamic environment in a fn item
-  --> $DIR/bad-env-capture2.rs:3:27
+  --> $DIR/bad-env-capture2.rs:2:27
    |
 LL |     fn bar() { log(debug, x); }
    |                           ^
@@ -7,13 +7,13 @@ LL |     fn bar() { log(debug, x); }
    = help: use the `|| { ... }` closure form instead
 
 error[E0425]: cannot find value `debug` in this scope
-  --> $DIR/bad-env-capture2.rs:3:20
+  --> $DIR/bad-env-capture2.rs:2:20
    |
 LL |     fn bar() { log(debug, x); }
    |                    ^^^^^ not found in this scope
 
 error[E0425]: cannot find function `log` in this scope
-  --> $DIR/bad-env-capture2.rs:3:16
+  --> $DIR/bad-env-capture2.rs:2:16
    |
 LL |     fn bar() { log(debug, x); }
    |                ^^^ not found in this scope

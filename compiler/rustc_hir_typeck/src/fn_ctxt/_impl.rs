@@ -157,7 +157,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Lots of that diagnostics code relies on subtle effects of re-lowering, so we'll
                 // let it keep doing that and just ensure that compilation won't succeed.
                 self.dcx().span_delayed_bug(
-                    self.tcx.hir().span(id),
+                    self.tcx.hir_span(id),
                     format!("`{prev}` overridden by `{ty}` for {id:?} in {:?}", self.body_id),
                 );
             }
@@ -532,7 +532,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ct = self.lowerer().lower_const_arg(const_arg, feed);
         self.register_wf_obligation(
             ct.into(),
-            self.tcx.hir().span(const_arg.hir_id),
+            self.tcx.hir_span(const_arg.hir_id),
             ObligationCauseCode::WellFormed(None),
         );
         ct

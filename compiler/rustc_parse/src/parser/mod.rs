@@ -512,6 +512,14 @@ impl<'a> Parser<'a> {
         self
     }
 
+    #[inline]
+    fn with_recovery<T>(&mut self, recovery: Recovery, f: impl FnOnce(&mut Self) -> T) -> T {
+        let old = mem::replace(&mut self.recovery, recovery);
+        let res = f(self);
+        self.recovery = old;
+        res
+    }
+
     /// Whether the parser is allowed to recover from broken code.
     ///
     /// If this returns false, recovering broken code into valid code (especially if this recovery does lookahead)
@@ -770,7 +778,14 @@ impl<'a> Parser<'a> {
             && match_mv_kind(mv_kind)
         {
             self.bump();
-            let res = f(self).expect("failed to reparse {mv_kind:?}");
+
+            // Recovery is disabled when parsing macro arguments, so it must
+            // also be disabled when reparsing pasted macro arguments,
+            // otherwise we get inconsistent results (e.g. #137874).
+            let res = self.with_recovery(Recovery::Forbidden, |this| {
+                f(this).expect("failed to reparse {mv_kind:?}")
+            });
+
             if let token::CloseDelim(delim) = self.token.kind
                 && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)) = delim
                 && match_mv_kind(mv_kind)

@@ -5,11 +5,10 @@
       let mut _0: ();
       let _1: main::Un;
       let mut _2: u32;
-      let mut _3: u32;
       scope 1 {
           debug un => _1;
           scope 3 (inlined std::mem::drop::<u32>) {
-              debug _x => _3;
+              debug _x => _2;
           }
       }
       scope 2 (inlined val) {
@@ -17,13 +16,10 @@
   
       bb0: {
           StorageLive(_1);
-          StorageLive(_2);
-          nop;
           _1 = Un { us: const 1_u32 };
+          StorageLive(_2);
+          _2 = copy (_1.0: u32);
           StorageDead(_2);
-          StorageLive(_3);
-          _3 = copy (_1.0: u32);
-          StorageDead(_3);
           StorageDead(_1);
           return;
       }

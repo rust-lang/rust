@@ -4,7 +4,7 @@ error: constant evaluation is taking a long time
    = note: this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
            If your compilation actually takes a long time, you can safely allow the lint.
 help: the constant being evaluated
-  --> $DIR/timeout.rs:8:1
+  --> $DIR/timeout.rs:7:1
    |
 LL | static ROOK_ATTACKS_TABLE: () = {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

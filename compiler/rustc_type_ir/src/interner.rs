@@ -149,6 +149,8 @@ pub trait Interner:
     ) -> Option<Self::VariancesOf>;
 
     fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
+    fn type_of_opaque_hir_typeck(self, def_id: Self::LocalDefId)
+    -> ty::EarlyBinder<Self, Self::Ty>;
 
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::DefId) -> Self::AdtDef;
@@ -258,6 +260,8 @@ pub trait Interner:
     fn require_lang_item(self, lang_item: TraitSolverLangItem) -> Self::DefId;
 
     fn is_lang_item(self, def_id: Self::DefId, lang_item: TraitSolverLangItem) -> bool;
+
+    fn is_default_trait(self, def_id: Self::DefId) -> bool;
 
     fn as_lang_item(self, def_id: Self::DefId) -> Option<TraitSolverLangItem>;
 

@@ -12,6 +12,7 @@ use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_cod
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg, LangItem};
+use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{
     DynCompatibilityViolation, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation, SelectionError,
@@ -144,7 +145,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
-            predicate: ty::Predicate<'tcx>,
+            goal: Goal<'tcx, ty::Predicate<'tcx>>,
             index: Option<usize>, // None if this is an old error
         }
 
@@ -152,15 +153,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .reported_trait_errors
             .borrow()
             .iter()
-            .map(|(&span, predicates)| {
-                (
-                    span,
-                    predicates
-                        .0
-                        .iter()
-                        .map(|&predicate| ErrorDescriptor { predicate, index: None })
-                        .collect(),
-                )
+            .map(|(&span, goals)| {
+                (span, goals.0.iter().map(|&goal| ErrorDescriptor { goal, index: None }).collect())
             })
             .collect();
 
@@ -186,10 +180,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 span = expn_data.call_site;
             }
 
-            error_map.entry(span).or_default().push(ErrorDescriptor {
-                predicate: error.obligation.predicate,
-                index: Some(index),
-            });
+            error_map
+                .entry(span)
+                .or_default()
+                .push(ErrorDescriptor { goal: error.obligation.as_goal(), index: Some(index) });
         }
 
         // We do this in 2 passes because we want to display errors in order, though
@@ -210,9 +204,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             continue;
                         }
 
-                        if self.error_implies(error2.predicate, error.predicate)
+                        if self.error_implies(error2.goal, error.goal)
                             && !(error2.index >= error.index
-                                && self.error_implies(error.predicate, error2.predicate))
+                                && self.error_implies(error.goal, error2.goal))
                         {
                             info!("skipping {:?} (implied by {:?})", error, error2);
                             is_suppressed[index] = true;
@@ -243,7 +237,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .entry(span)
                         .or_insert_with(|| (vec![], guar))
                         .0
-                        .push(error.obligation.predicate);
+                        .push(error.obligation.as_goal());
                 }
             }
         }
@@ -398,7 +392,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
 
         if !self.tcx.is_impl_trait_in_trait(trait_item_def_id) {
-            if let Some(span) = self.tcx.hir().span_if_local(trait_item_def_id) {
+            if let Some(span) = self.tcx.hir_span_if_local(trait_item_def_id) {
                 let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
                 err.span_label(span, format!("definition of `{item_name}` from trait"));
             }

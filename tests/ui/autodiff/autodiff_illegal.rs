@@ -177,4 +177,11 @@ fn f21(x: f32) -> f32 {
     unimplemented!()
 }
 
+struct DoesNotImplDefault;
+#[autodiff(df22, Forward, Dual)]
+pub fn f22() -> DoesNotImplDefault {
+    //~^^ ERROR the function or associated item `default` exists for tuple `(DoesNotImplDefault, DoesNotImplDefault)`, but its trait bounds were not satisfied
+    unimplemented!()
+}
+
 fn main() {}

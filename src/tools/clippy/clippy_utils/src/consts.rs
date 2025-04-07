@@ -15,7 +15,7 @@ use rustc_apfloat::ieee::{Half, Quad};
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
-    BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, PatExpr, PatExprKind, QPath, UnOp,
+    BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, PatExpr, PatExprKind, QPath, UnOp,
 };
 use rustc_lexer::tokenize;
 use rustc_lint::LateContext;
@@ -506,7 +506,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 UnOp::Deref => Some(if let Constant::Ref(r) = o { *r } else { o }),
             }),
             ExprKind::If(cond, then, ref otherwise) => self.ifthenelse(cond, then, *otherwise),
-            ExprKind::Binary(op, left, right) => self.binop(op, left, right),
+            ExprKind::Binary(op, left, right) => self.binop(op.node, left, right),
             ExprKind::Call(callee, []) => {
                 // We only handle a few const functions for now.
                 if let ExprKind::Path(qpath) = &callee.kind
@@ -744,7 +744,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         }
     }
 
-    fn binop(&self, op: BinOp, left: &Expr<'_>, right: &Expr<'_>) -> Option<Constant<'tcx>> {
+    fn binop(&self, op: BinOpKind, left: &Expr<'_>, right: &Expr<'_>) -> Option<Constant<'tcx>> {
         let l = self.expr(left)?;
         let r = self.expr(right);
         match (l, r) {
@@ -757,7 +757,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
 
                     // Using / or %, where the left-hand argument is the smallest integer of a signed integer type and
                     // the right-hand argument is -1 always panics, even with overflow-checks disabled
-                    if let BinOpKind::Div | BinOpKind::Rem = op.node
+                    if let BinOpKind::Div | BinOpKind::Rem = op
                         && l == ty_min_value
                         && r == -1
                     {
@@ -765,7 +765,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     }
 
                     let zext = |n: i128| Constant::Int(unsext(self.tcx, n, ity));
-                    match op.node {
+                    match op {
                         // When +, * or binary - create a value greater than the maximum value, or less than
                         // the minimum value that can be stored, it panics.
                         BinOpKind::Add => l.checked_add(r).and_then(|n| ity.ensure_fits(n)).map(zext),
@@ -792,7 +792,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 ty::Uint(ity) => {
                     let bits = ity.bits();
 
-                    match op.node {
+                    match op {
                         BinOpKind::Add => l.checked_add(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
                         BinOpKind::Sub => l.checked_sub(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
                         BinOpKind::Mul => l.checked_mul(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
@@ -815,7 +815,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 _ => None,
             },
             // FIXME(f16_f128): add these types when binary operations are available on all platforms
-            (Constant::F32(l), Some(Constant::F32(r))) => match op.node {
+            (Constant::F32(l), Some(Constant::F32(r))) => match op {
                 BinOpKind::Add => Some(Constant::F32(l + r)),
                 BinOpKind::Sub => Some(Constant::F32(l - r)),
                 BinOpKind::Mul => Some(Constant::F32(l * r)),
@@ -829,7 +829,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 BinOpKind::Gt => Some(Constant::Bool(l > r)),
                 _ => None,
             },
-            (Constant::F64(l), Some(Constant::F64(r))) => match op.node {
+            (Constant::F64(l), Some(Constant::F64(r))) => match op {
                 BinOpKind::Add => Some(Constant::F64(l + r)),
                 BinOpKind::Sub => Some(Constant::F64(l - r)),
                 BinOpKind::Mul => Some(Constant::F64(l * r)),
@@ -843,7 +843,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 BinOpKind::Gt => Some(Constant::Bool(l > r)),
                 _ => None,
             },
-            (l, r) => match (op.node, l, r) {
+            (l, r) => match (op, l, r) {
                 (BinOpKind::And, Constant::Bool(false), _) => Some(Constant::Bool(false)),
                 (BinOpKind::Or, Constant::Bool(true), _) => Some(Constant::Bool(true)),
                 (BinOpKind::And, Constant::Bool(true), Some(r)) | (BinOpKind::Or, Constant::Bool(false), Some(r)) => {

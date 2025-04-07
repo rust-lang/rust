@@ -3,7 +3,6 @@
 use std::borrow::Cow;
 use std::ffi::OsString;
 use std::io::Error;
-use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
@@ -736,14 +735,6 @@ pub enum ExtractBundledLibsError<'a> {
 
     #[diag(codegen_ssa_extract_bundled_libs_write_file)]
     ExtractSection { rlib: &'a Path, error: Box<dyn std::error::Error> },
-}
-
-#[derive(Diagnostic)]
-pub(crate) enum AppleDeploymentTarget {
-    #[diag(codegen_ssa_apple_deployment_target_invalid)]
-    Invalid { env_var: &'static str, error: ParseIntError },
-    #[diag(codegen_ssa_apple_deployment_target_too_low)]
-    TooLow { env_var: &'static str, version: String, os_min: String },
 }
 
 #[derive(Diagnostic)]

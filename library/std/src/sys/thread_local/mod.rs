@@ -30,9 +30,9 @@ cfg_if::cfg_if! {
         target_os = "zkvm",
         target_os = "trusty",
     ))] {
-        mod statik;
-        pub use statik::{EagerStorage, LazyStorage, thread_local_inner};
-        pub(crate) use statik::{LocalPointer, local_pointer};
+        mod no_threads;
+        pub use no_threads::{EagerStorage, LazyStorage, thread_local_inner};
+        pub(crate) use no_threads::{LocalPointer, local_pointer};
     } else if #[cfg(target_thread_local)] {
         mod native;
         pub use native::{EagerStorage, LazyStorage, thread_local_inner};
@@ -138,6 +138,7 @@ pub(crate) mod key {
                 not(target_family = "wasm"),
                 target_family = "unix",
             ),
+            all(not(target_thread_local), target_vendor = "apple"),
             target_os = "teeos",
             all(target_os = "wasi", target_env = "p1", target_feature = "atomics"),
         ))] {

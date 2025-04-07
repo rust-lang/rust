@@ -8,7 +8,7 @@ use clippy_utils::{
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind, QPath};
+use rustc_hir::{AssignOpKind, BinOp, BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -366,7 +366,7 @@ fn subtracts_one<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a Exp
     match peel_blocks_with_stmt(expr).kind {
         ExprKind::AssignOp(ref op1, target, value) => {
             // Check if literal being subtracted is one
-            (BinOpKind::Sub == op1.node && is_integer_literal(value, 1)).then_some(target)
+            (AssignOpKind::SubAssign == op1.node && is_integer_literal(value, 1)).then_some(target)
         },
         ExprKind::Assign(target, value, _) => {
             if let ExprKind::Binary(ref op1, left1, right1) = value.kind

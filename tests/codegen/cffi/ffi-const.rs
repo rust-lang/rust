@@ -9,8 +9,7 @@ pub fn bar() {
 extern "C" {
     // CHECK-LABEL: declare{{.*}}void @foo()
     // CHECK-SAME: [[ATTRS:#[0-9]+]]
-    // The attribute changed from `readnone` to `memory(none)` with LLVM 16.0.
-    // CHECK-DAG: attributes [[ATTRS]] = { {{.*}}{{readnone|memory\(none\)}}{{.*}} }
+    // CHECK-DAG: attributes [[ATTRS]] = { {{.*}}memory(none){{.*}} }
     #[ffi_const]
     pub fn foo();
 }

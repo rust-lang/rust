@@ -346,8 +346,6 @@ impl Step for Llvm {
             .define("LLVM_INCLUDE_DOCS", "OFF")
             .define("LLVM_INCLUDE_BENCHMARKS", "OFF")
             .define("LLVM_INCLUDE_TESTS", enable_tests)
-            // FIXME: remove this when minimal llvm is 19
-            .define("LLVM_ENABLE_TERMINFO", "OFF")
             .define("LLVM_ENABLE_LIBEDIT", "OFF")
             .define("LLVM_ENABLE_BINDINGS", "OFF")
             .define("LLVM_ENABLE_Z3_SOLVER", "OFF")
@@ -610,11 +608,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = get_llvm_version(builder, llvm_config);
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 18 {
+        if major >= 19 {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {version}, need >=18\n\n")
+    panic!("\n\nbad LLVM version: {version}, need >=19\n\n")
 }
 
 fn configure_cmake(

@@ -430,7 +430,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             let val_llty = self.val_ty(v);
 
             let g = self.get_static_inner(def_id, val_llty);
-            let llty = llvm::LLVMGlobalGetValueType(g);
+            let llty = self.get_type_of_global(g);
 
             let g = if val_llty == llty {
                 g

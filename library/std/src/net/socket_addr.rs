@@ -101,7 +101,7 @@ use crate::{io, iter, option, slice, vec};
 /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
 /// ```
 ///
-/// [`TcpStream::connect`] is an example of an function that utilizes
+/// [`TcpStream::connect`] is an example of a function that utilizes
 /// `ToSocketAddrs` as a trait bound on its parameter in order to accept
 /// different types:
 ///

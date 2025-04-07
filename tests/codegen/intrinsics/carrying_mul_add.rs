@@ -1,7 +1,6 @@
 //@ revisions: RAW OPT
 //@ compile-flags: -C opt-level=1
 //@[RAW] compile-flags: -C no-prepopulate-passes
-//@[OPT] min-llvm-version: 19
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]

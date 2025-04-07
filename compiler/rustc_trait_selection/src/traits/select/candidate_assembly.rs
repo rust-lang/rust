@@ -692,6 +692,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let def_id = obligation.predicate.def_id();
 
+        let mut check_impls = || {
+            // Only consider auto impls if there are no manual impls for the root of `self_ty`.
+            //
+            // For example, we only consider auto candidates for `&i32: Auto` if no explicit impl
+            // for `&SomeType: Auto` exists. Due to E0321 the only crate where impls
+            // for `&SomeType: Auto` can be defined is the crate where `Auto` has been defined.
+            //
+            // Generally, we have to guarantee that for all `SimplifiedType`s the only crate
+            // which may define impls for that type is either the crate defining the type
+            // or the trait. This should be guaranteed by the orphan check.
+            let mut has_impl = false;
+            self.tcx().for_each_relevant_impl(def_id, self_ty, |_| has_impl = true);
+            if !has_impl {
+                candidates.vec.push(AutoImplCandidate)
+            }
+        };
+
         if self.tcx().trait_is_auto(def_id) {
             match *self_ty.kind() {
                 ty::Dynamic(..) => {
@@ -705,6 +722,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // we don't add any `..` impl. Default traits could
                     // still be provided by a manual implementation for
                     // this trait and type.
+
+                    // Backward compatibility for default auto traits.
+                    // Test: ui/traits/default_auto_traits/extern-types.rs
+                    if self.tcx().is_default_trait(def_id) {
+                        check_impls()
+                    }
                 }
                 ty::Param(..)
                 | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
@@ -805,20 +828,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         return;
                     }
 
-                    // Only consider auto impls if there are no manual impls for the root of `self_ty`.
-                    //
-                    // For example, we only consider auto candidates for `&i32: Auto` if no explicit impl
-                    // for `&SomeType: Auto` exists. Due to E0321 the only crate where impls
-                    // for `&SomeType: Auto` can be defined is the crate where `Auto` has been defined.
-                    //
-                    // Generally, we have to guarantee that for all `SimplifiedType`s the only crate
-                    // which may define impls for that type is either the crate defining the type
-                    // or the trait. This should be guaranteed by the orphan check.
-                    let mut has_impl = false;
-                    self.tcx().for_each_relevant_impl(def_id, self_ty, |_| has_impl = true);
-                    if !has_impl {
-                        candidates.vec.push(AutoImplCandidate)
-                    }
+                    check_impls();
                 }
                 ty::Error(_) => {
                     candidates.vec.push(AutoImplCandidate);

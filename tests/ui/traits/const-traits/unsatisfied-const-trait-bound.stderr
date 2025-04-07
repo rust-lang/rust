@@ -28,7 +28,7 @@ note: required by a bound in `require`
   --> $DIR/unsatisfied-const-trait-bound.rs:8:15
    |
 LL | fn require<T: const Trait>() {}
-   |               ^^^^^ required by this bound in `require`
+   |               ^^^^^^^^^^^ required by this bound in `require`
 
 error: aborting due to 4 previous errors
 

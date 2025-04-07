@@ -14,7 +14,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, Symbol, source_map, sym};
+use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -223,7 +223,7 @@ impl TypeLimits {
 fn lint_nan<'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx hir::Expr<'tcx>,
-    binop: hir::BinOp,
+    binop: hir::BinOpKind,
     l: &'tcx hir::Expr<'tcx>,
     r: &'tcx hir::Expr<'tcx>,
 ) {
@@ -262,19 +262,19 @@ fn lint_nan<'tcx>(
         InvalidNanComparisons::EqNe { suggestion }
     }
 
-    let lint = match binop.node {
+    let lint = match binop {
         hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, l) => {
             eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
                 nan_plus_binop: l_span.until(r_span),
                 float: r_span.shrink_to_hi(),
-                neg: (binop.node == hir::BinOpKind::Ne).then(|| r_span.shrink_to_lo()),
+                neg: (binop == hir::BinOpKind::Ne).then(|| r_span.shrink_to_lo()),
             })
         }
         hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, r) => {
             eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
                 nan_plus_binop: l_span.shrink_to_hi().to(r_span),
                 float: l_span.shrink_to_hi(),
-                neg: (binop.node == hir::BinOpKind::Ne).then(|| l_span.shrink_to_lo()),
+                neg: (binop == hir::BinOpKind::Ne).then(|| l_span.shrink_to_lo()),
             })
         }
         hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Gt | hir::BinOpKind::Ge
@@ -560,11 +560,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                 }
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
-                if is_comparison(binop) {
-                    if !check_limits(cx, binop, l, r) {
+                if is_comparison(binop.node) {
+                    if !check_limits(cx, binop.node, l, r) {
                         cx.emit_span_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
                     } else {
-                        lint_nan(cx, e, binop, l, r);
+                        lint_nan(cx, e, binop.node, l, r);
                         let cmpop = ComparisonOp::BinOp(binop.node);
                         lint_wide_pointer(cx, e, cmpop, l, r);
                         lint_fn_pointer(cx, e, cmpop, l, r);
@@ -591,8 +591,8 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             _ => {}
         };
 
-        fn is_valid<T: PartialOrd>(binop: hir::BinOp, v: T, min: T, max: T) -> bool {
-            match binop.node {
+        fn is_valid<T: PartialOrd>(binop: hir::BinOpKind, v: T, min: T, max: T) -> bool {
+            match binop {
                 hir::BinOpKind::Lt => v > min && v <= max,
                 hir::BinOpKind::Le => v >= min && v < max,
                 hir::BinOpKind::Gt => v >= min && v < max,
@@ -602,22 +602,19 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             }
         }
 
-        fn rev_binop(binop: hir::BinOp) -> hir::BinOp {
-            source_map::respan(
-                binop.span,
-                match binop.node {
-                    hir::BinOpKind::Lt => hir::BinOpKind::Gt,
-                    hir::BinOpKind::Le => hir::BinOpKind::Ge,
-                    hir::BinOpKind::Gt => hir::BinOpKind::Lt,
-                    hir::BinOpKind::Ge => hir::BinOpKind::Le,
-                    _ => return binop,
-                },
-            )
+        fn rev_binop(binop: hir::BinOpKind) -> hir::BinOpKind {
+            match binop {
+                hir::BinOpKind::Lt => hir::BinOpKind::Gt,
+                hir::BinOpKind::Le => hir::BinOpKind::Ge,
+                hir::BinOpKind::Gt => hir::BinOpKind::Lt,
+                hir::BinOpKind::Ge => hir::BinOpKind::Le,
+                _ => binop,
+            }
         }
 
         fn check_limits(
             cx: &LateContext<'_>,
-            binop: hir::BinOp,
+            binop: hir::BinOpKind,
             l: &hir::Expr<'_>,
             r: &hir::Expr<'_>,
         ) -> bool {
@@ -659,9 +656,9 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             }
         }
 
-        fn is_comparison(binop: hir::BinOp) -> bool {
+        fn is_comparison(binop: hir::BinOpKind) -> bool {
             matches!(
-                binop.node,
+                binop,
                 hir::BinOpKind::Eq
                     | hir::BinOpKind::Lt
                     | hir::BinOpKind::Le
@@ -1403,7 +1400,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             CItemKind::Definition => "fn",
         };
         let span_note = if let ty::Adt(def, _) = ty.kind()
-            && let Some(sp) = self.cx.tcx.hir().span_if_local(def.did())
+            && let Some(sp) = self.cx.tcx.hir_span_if_local(def.did())
         {
             Some(sp)
         } else {

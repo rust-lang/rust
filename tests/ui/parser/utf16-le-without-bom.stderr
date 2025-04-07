@@ -1,5 +1,5 @@
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:5:2
+  --> $DIR/utf16-le-without-bom.rs:6:2
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |  ^
@@ -7,7 +7,7 @@ LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:5:4
+  --> $DIR/utf16-le-without-bom.rs:6:4
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |    ^
@@ -15,7 +15,7 @@ LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:5:6
+  --> $DIR/utf16-le-without-bom.rs:6:6
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |      ^
@@ -23,7 +23,7 @@ LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:5:8
+  --> $DIR/utf16-le-without-bom.rs:6:8
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |        ^
@@ -31,7 +31,7 @@ LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:5:10
+  --> $DIR/utf16-le-without-bom.rs:6:10
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |          ^
@@ -39,7 +39,7 @@ LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:5:12
+  --> $DIR/utf16-le-without-bom.rs:6:12
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |            ^
@@ -47,7 +47,7 @@ LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:5:14
+  --> $DIR/utf16-le-without-bom.rs:6:14
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |              ^
@@ -55,7 +55,7 @@ LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:5:16
+  --> $DIR/utf16-le-without-bom.rs:6:16
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |                ^
@@ -63,7 +63,7 @@ LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:5:18
+  --> $DIR/utf16-le-without-bom.rs:6:18
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |                  ^
@@ -71,7 +71,7 @@ LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:5:20
+  --> $DIR/utf16-le-without-bom.rs:6:20
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |                    ^
@@ -79,7 +79,7 @@ LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:5:22
+  --> $DIR/utf16-le-without-bom.rs:6:22
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |                      ^
@@ -87,7 +87,7 @@ LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:5:24
+  --> $DIR/utf16-le-without-bom.rs:6:24
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |                        ^
@@ -95,7 +95,7 @@ LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/utf16-le-without-bom.rs:6:1
+  --> $DIR/utf16-le-without-bom.rs:7:1
    |
 LL | ␀
    | ^
@@ -103,7 +103,7 @@ LL | ␀
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: expected one of `!` or `::`, found `n`
-  --> $DIR/utf16-le-without-bom.rs:5:3
+  --> $DIR/utf16-le-without-bom.rs:6:3
    |
 LL | f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |   ^ expected one of `!` or `::`

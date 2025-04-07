@@ -63,6 +63,7 @@ mod fmt;
 mod heap;
 mod linked_list;
 mod misc_tests;
+mod num;
 mod rc;
 mod slice;
 mod sort;

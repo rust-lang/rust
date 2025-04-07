@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `y::x`
-  --> $DIR/import-loop.rs:6:13
+  --> $DIR/import-loop.rs:4:13
    |
 LL |     pub use y::x;
    |             ^^^^ no `x` in `y`
