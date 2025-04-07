@@ -335,8 +335,9 @@ But for strict testing, try to use the `ERROR` annotation as much as possible,
 including `//~?` annotations for diagnostics without span.
 For compile time diagnostics `error-pattern` should very rarely be necessary.
 
-Per-line annotations (`//~`) are still checked in tests using `error-pattern`,
-to opt out of these checks in exceptional cases use `//@ compile-flags: --error-format=human`.
+Per-line annotations (`//~`) are still checked in tests using `error-pattern`.
+To opt out of these checks, use `//@ compile-flags: --error-format=human`.
+Do that only in exceptional cases.
 
 ### Error levels
 
