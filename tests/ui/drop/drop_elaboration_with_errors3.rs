@@ -1,4 +1,4 @@
-//@ known-bug: #135668
+// Regression test for #135668
 //@ compile-flags: --edition=2021
 use std::future::Future;
 
@@ -12,6 +12,7 @@ async fn create_task() -> impl Sized {
 
 async fn documentation() {
     include_str!("nonexistent");
+    //~^ ERROR couldn't read `$DIR/nonexistent`: No such file or directory
 }
 
 fn bind<F>(_filter: F) -> impl Sized
@@ -36,3 +37,5 @@ where
 {
     type Assoc = F;
 }
+
+fn main() {}
