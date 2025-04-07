@@ -894,3 +894,22 @@ fn test_total_cmp() {
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f64::INFINITY));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&s_nan()));
 }
+
+#[test]
+fn test_algebraic() {
+    let a: f64 = 123.0;
+    let b: f64 = 456.0;
+
+    // Check that individual operations match their primitive counterparts.
+    //
+    // This is a check of current implementations and does NOT imply any form of
+    // guarantee about future behavior. The compiler reserves the right to make
+    // these operations inexact matches in the future.
+    let eps = if cfg!(miri) { 1e-6 } else { 0.0 };
+
+    assert_approx_eq!(a.algebraic_add(b), a + b, eps);
+    assert_approx_eq!(a.algebraic_sub(b), a - b, eps);
+    assert_approx_eq!(a.algebraic_mul(b), a * b, eps);
+    assert_approx_eq!(a.algebraic_div(b), a / b, eps);
+    assert_approx_eq!(a.algebraic_rem(b), a % b, eps);
+}

@@ -12,6 +12,7 @@ pub mod anonymous_pipe;
 pub mod backtrace;
 pub mod cmath;
 pub mod exit_guard;
+pub mod fd;
 pub mod fs;
 pub mod io;
 pub mod net;

@@ -1,6 +1,0 @@
-error: invalid `--check-cfg` argument: `cfg(true)`
-   |
-   = note: `true` is a boolean literal
-   = note: `cfg()` arguments must be simple identifiers, `any()` or `values(...)`
-   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
-

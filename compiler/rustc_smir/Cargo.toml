@@ -14,6 +14,6 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 scoped-tls = "1.0"
-stable_mir = {path = "../stable_mir" }
+serde = { version = "1.0.125", features = [ "derive" ] }
 tracing = "0.1"
 # tidy-alphabetical-end

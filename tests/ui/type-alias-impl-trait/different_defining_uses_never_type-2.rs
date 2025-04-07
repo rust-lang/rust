@@ -12,7 +12,6 @@ fn foo<'a, 'b>() -> Tait<'a> {
     }
     let x: Tait<'a> = ();
     x
-    //~^ ERROR concrete type differs from previous defining opaque type use
 }
 
 fn main() {}

@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/out_of_bounds_read.rs:10:33
+  --> $DIR/out_of_bounds_read.rs:8:33
    |
 LL |     const _READ: u32 = unsafe { ptr::read(PAST_END_PTR) };
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
@@ -8,7 +8,7 @@ note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/out_of_bounds_read.rs:11:39
+  --> $DIR/out_of_bounds_read.rs:10:39
    |
 LL |     const _CONST_READ: u32 = unsafe { PAST_END_PTR.read() };
    |                                       ^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes

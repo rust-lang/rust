@@ -206,6 +206,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn type_of(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         self.type_of(def_id)
     }
+    fn type_of_opaque_hir_typeck(self, def_id: LocalDefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
+        self.type_of_opaque_hir_typeck(def_id)
+    }
 
     type AdtDef = ty::AdtDef<'tcx>;
     fn adt_def(self, adt_def_id: DefId) -> Self::AdtDef {
@@ -444,6 +447,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn is_lang_item(self, def_id: DefId, lang_item: TraitSolverLangItem) -> bool {
         self.is_lang_item(def_id, trait_lang_item_to_lang_item(lang_item))
+    }
+
+    fn is_default_trait(self, def_id: DefId) -> bool {
+        self.is_default_trait(def_id)
     }
 
     fn as_lang_item(self, def_id: DefId) -> Option<TraitSolverLangItem> {
@@ -1539,6 +1546,25 @@ impl<'tcx> TyCtxt<'tcx> {
         self.reserve_and_set_memory_dedup(alloc, salt)
     }
 
+    pub fn default_traits(self) -> &'static [rustc_hir::LangItem] {
+        match self.sess.opts.unstable_opts.experimental_default_bounds {
+            true => &[
+                LangItem::Sized,
+                LangItem::DefaultTrait1,
+                LangItem::DefaultTrait2,
+                LangItem::DefaultTrait3,
+                LangItem::DefaultTrait4,
+            ],
+            false => &[LangItem::Sized],
+        }
+    }
+
+    pub fn is_default_trait(self, def_id: DefId) -> bool {
+        self.default_traits()
+            .iter()
+            .any(|&default_trait| self.lang_items().get(default_trait) == Some(def_id))
+    }
+
     /// Returns a range of the start/end indices specified with the
     /// `rustc_layout_scalar_valid_range` attribute.
     // FIXME(eddyb) this is an awkward spot for this method, maybe move it?
@@ -1781,10 +1807,15 @@ impl<'tcx> TyCtxt<'tcx> {
         // - needs_metadata: for putting into crate metadata.
         // - instrument_coverage: for putting into coverage data (see
         //   `hash_mir_source`).
+        // - metrics_dir: metrics use the strict version hash in the filenames
+        //   for dumped metrics files to prevent overwriting distinct metrics
+        //   for similar source builds (may change in the future, this is part
+        //   of the proof of concept impl for the metrics initiative project goal)
         cfg!(debug_assertions)
             || self.sess.opts.incremental.is_some()
             || self.needs_metadata()
             || self.sess.instrument_coverage()
+            || self.sess.opts.unstable_opts.metrics_dir.is_some()
     }
 
     #[inline]
@@ -3022,8 +3053,8 @@ impl<'tcx> TyCtxt<'tcx> {
         span: impl Into<MultiSpan>,
         decorator: impl for<'a> LintDiagnostic<'a, ()>,
     ) {
-        let (level, src) = self.lint_level_at_node(lint, hir_id);
-        lint_level(self.sess, lint, level, src, Some(span.into()), |lint| {
+        let level = self.lint_level_at_node(lint, hir_id);
+        lint_level(self.sess, lint, level, Some(span.into()), |lint| {
             decorator.decorate_lint(lint);
         })
     }
@@ -3040,8 +3071,8 @@ impl<'tcx> TyCtxt<'tcx> {
         span: impl Into<MultiSpan>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
-        let (level, src) = self.lint_level_at_node(lint, hir_id);
-        lint_level(self.sess, lint, level, src, Some(span.into()), decorate);
+        let level = self.lint_level_at_node(lint, hir_id);
+        lint_level(self.sess, lint, level, Some(span.into()), decorate);
     }
 
     /// Find the crate root and the appropriate span where `use` and outer attributes can be
@@ -3108,8 +3139,8 @@ impl<'tcx> TyCtxt<'tcx> {
         id: HirId,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
-        let (level, src) = self.lint_level_at_node(lint, id);
-        lint_level(self.sess, lint, level, src, None, decorate);
+        let level = self.lint_level_at_node(lint, id);
+        lint_level(self.sess, lint, level, None, decorate);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {
@@ -3246,6 +3277,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn next_trait_solver_in_coherence(self) -> bool {
         self.sess.opts.unstable_opts.next_solver.coherence
+    }
+
+    #[allow(rustc::bad_opt_access)]
+    pub fn use_typing_mode_borrowck(self) -> bool {
+        self.next_trait_solver_globally() || self.sess.opts.unstable_opts.typing_mode_borrowck
     }
 
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {

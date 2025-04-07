@@ -1,5 +1,5 @@
 error: format argument must be a string literal
-  --> $DIR/unreachable-arg.rs:15:18
+  --> $DIR/unreachable-arg.rs:14:18
    |
 LL |     unreachable!(a);
    |                  ^

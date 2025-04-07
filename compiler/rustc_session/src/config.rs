@@ -50,6 +50,7 @@ pub const PRINT_KINDS: &[(&str, PrintKind)] = &[
     ("check-cfg", PrintKind::CheckCfg),
     ("code-models", PrintKind::CodeModels),
     ("crate-name", PrintKind::CrateName),
+    ("crate-root-lint-levels", PrintKind::CrateRootLintLevels),
     ("deployment-target", PrintKind::DeploymentTarget),
     ("file-names", PrintKind::FileNames),
     ("host-tuple", PrintKind::HostTuple),
@@ -236,10 +237,12 @@ pub enum AutoDiff {
     PrintPerf,
     /// Print intermediate IR generation steps
     PrintSteps,
-    /// Print the whole module, before running opts.
+    /// Print the module, before running autodiff.
     PrintModBefore,
-    /// Print the module after Enzyme differentiated everything.
+    /// Print the module after running autodiff.
     PrintModAfter,
+    /// Print the module after running autodiff and optimizations.
+    PrintModFinal,
 
     /// Enzyme's loose type debug helper (can cause incorrect gradients!!)
     /// Usable in cases where Enzyme errors with `can not deduce type of X`.
@@ -881,6 +884,7 @@ pub enum PrintKind {
     CheckCfg,
     CodeModels,
     CrateName,
+    CrateRootLintLevels,
     DeploymentTarget,
     FileNames,
     HostTuple,
@@ -1423,10 +1427,12 @@ pub fn build_target_config(
             }
             target
         }
-        Err(e) => early_dcx.early_fatal(format!(
-            "Error loading target specification: {e}. \
-                     Run `rustc --print target-list` for a list of built-in targets"
-        )),
+        Err(e) => {
+            let mut err =
+                early_dcx.early_struct_fatal(format!("error loading target specification: {e}"));
+            err.help("run `rustc --print target-list` for a list of built-in targets");
+            err.emit();
+        }
     }
 }
 
@@ -1698,7 +1704,7 @@ pub fn get_cmd_lint_options(
     let mut lint_opts_with_position = vec![];
     let mut describe_lints = false;
 
-    for level in [lint::Allow, lint::Warn, lint::ForceWarn(None), lint::Deny, lint::Forbid] {
+    for level in [lint::Allow, lint::Warn, lint::ForceWarn, lint::Deny, lint::Forbid] {
         for (arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
             if lint_name == "help" {
                 describe_lints = true;
@@ -2067,6 +2073,7 @@ fn check_print_request_stability(
     match print_kind {
         PrintKind::AllTargetSpecsJson
         | PrintKind::CheckCfg
+        | PrintKind::CrateRootLintLevels
         | PrintKind::SupportedCrateTypes
         | PrintKind::TargetSpecJson
             if !unstable_opts.unstable_options =>

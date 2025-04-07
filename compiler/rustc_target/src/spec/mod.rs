@@ -60,6 +60,7 @@ pub mod crt_objects;
 mod base;
 mod json;
 
+pub use base::apple;
 pub use base::avr::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.
@@ -81,7 +82,7 @@ pub enum Lld {
 /// of classes that we call "linker flavors".
 ///
 /// Technically, it's not even necessary, we can nearly always infer the flavor from linker name
-/// and target properties like `is_like_windows`/`is_like_osx`/etc. However, the PRs originally
+/// and target properties like `is_like_windows`/`is_like_darwin`/etc. However, the PRs originally
 /// introducing `-Clinker-flavor` (#40018 and friends) were aiming to reduce this kind of inference
 /// and provide something certain and explicitly specified instead, and that design goal is still
 /// relevant now.
@@ -2406,7 +2407,7 @@ pub struct TargetOptions {
     /// in particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
     /// Also indicates whether to use Apple-specific ABI changes, such as extending function
     /// parameters to 32-bits.
-    pub is_like_osx: bool,
+    pub is_like_darwin: bool,
     /// Whether the target toolchain is like Solaris's.
     /// Only useful for compiling against Illumos/Solaris,
     /// as they have a different set of linker flags. Defaults to false.
@@ -2700,7 +2701,7 @@ fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'stati
 impl TargetOptions {
     pub fn supports_comdat(&self) -> bool {
         // XCOFF and MachO don't support COMDAT.
-        !self.is_like_aix && !self.is_like_osx
+        !self.is_like_aix && !self.is_like_darwin
     }
 }
 
@@ -2804,7 +2805,7 @@ impl Default for TargetOptions {
             families: cvs![],
             abi_return_struct_as_int: false,
             is_like_aix: false,
-            is_like_osx: false,
+            is_like_darwin: false,
             is_like_solaris: false,
             is_like_windows: false,
             is_like_msvc: false,
@@ -3070,9 +3071,9 @@ impl Target {
         }
 
         check_eq!(
-            self.is_like_osx,
+            self.is_like_darwin,
             self.vendor == "apple",
-            "`is_like_osx` must be set if and only if `vendor` is `apple`"
+            "`is_like_darwin` must be set if and only if `vendor` is `apple`"
         );
         check_eq!(
             self.is_like_solaris,
@@ -3098,9 +3099,9 @@ impl Target {
 
         // Check that default linker flavor is compatible with some other key properties.
         check_eq!(
-            self.is_like_osx,
+            self.is_like_darwin,
             matches!(self.linker_flavor, LinkerFlavor::Darwin(..)),
-            "`linker_flavor` must be `darwin` if and only if `is_like_osx` is set"
+            "`linker_flavor` must be `darwin` if and only if `is_like_darwin` is set"
         );
         check_eq!(
             self.is_like_msvc,
@@ -3516,7 +3517,7 @@ impl Target {
                     Err("the `i586-pc-windows-msvc` target has been removed. Use the `i686-pc-windows-msvc` target instead.\n\
                         Windows 10 (the minimum required OS version) requires a CPU baseline of at least i686 so you can safely switch".into())
                 } else {
-                    Err(format!("Could not find specification for target {target_tuple:?}"))
+                    Err(format!("could not find specification for target {target_tuple:?}"))
                 }
             }
             TargetTuple::TargetJson { ref contents, .. } => {

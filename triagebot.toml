@@ -1002,7 +1002,7 @@ message = "Changes to the size of AST and/or HIR nodes."
 cc = ["@nnethercote"]
 
 [mentions."compiler/rustc_sanitizers"]
-cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+cc = ["@rcvalle"]
 
 [mentions."src/doc/rustc/src/exploit-mitigations.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
@@ -1038,7 +1038,7 @@ cc = ["@Urgau"]
 cc = ["@Noratrieb"]
 
 [mentions."tests/codegen/sanitizer"]
-cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+cc = ["@rcvalle"]
 
 [mentions."tests/codegen/split-lto-unit.rs"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
@@ -1050,7 +1050,7 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."tests/ui/sanitizer"]
-cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+cc = ["@rcvalle"]
 
 [mentions."tests/ui/stack-protector"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
@@ -1125,6 +1125,7 @@ contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 users_on_vacation = [
     "jyn514",
     "saethlin",
+    "Noratrieb",
 ]
 
 [[assign.warn_non_default_branch.exceptions]]
@@ -1142,7 +1143,6 @@ compiler_leads = [
 ]
 compiler = [
     "@BoxyUwU",
-    "@cjgillot",
     "@compiler-errors",
     "@davidtwco",
     "@estebank",
@@ -1191,13 +1191,13 @@ docs = [
     "@ehuss",
     "@GuillaumeGomez",
 ]
-
 codegen = [
+    "@dianqk",
     "@saethlin",
     "@workingjubilee",
 ]
 query-system = [
-    "@cjgillot",
+    "@oli-obk",
 ]
 incremental = [
     "@wesleywiser",
@@ -1278,10 +1278,12 @@ project-stable-mir = [
     "@oli-obk",
     "@scottmcm",
 ]
-
 project-exploit-mitigations = [
     "@cuviper",
     "@rcvalle",
+]
+compiletest = [
+    "@jieyouxu",
 ]
 
 [assign.owners]

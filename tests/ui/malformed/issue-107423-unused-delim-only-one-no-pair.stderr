@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-107423-unused-delim-only-one-no-pair.rs:7:11
+  --> $DIR/issue-107423-unused-delim-only-one-no-pair.rs:4:11
    |
 LL | fn a(){{{
    |       ---^

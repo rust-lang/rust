@@ -1,0 +1,20 @@
+
+running 1 test
+test $DIR/edition-2024-error-output.rs - (line 12) ... FAILED
+
+failures:
+
+---- $DIR/edition-2024-error-output.rs - (line 12) stdout ----
+
+thread 'main' panicked at $TMP:6:1:
+assertion `left == right` failed
+  left: 4
+ right: 5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    $DIR/edition-2024-error-output.rs - (line 12)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

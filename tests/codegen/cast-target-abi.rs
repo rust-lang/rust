@@ -1,7 +1,6 @@
 // ignore-tidy-linelength
 //@ add-core-stubs
 //@ revisions:aarch64 loongarch64 powerpc64 sparc64 x86_64
-//@ min-llvm-version: 19
 //@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes -Zlint-llvm-ir
 
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu

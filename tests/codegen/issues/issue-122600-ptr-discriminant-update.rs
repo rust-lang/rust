@@ -1,5 +1,4 @@
 //@ compile-flags: -Copt-level=3
-//@ min-llvm-version: 19
 
 #![crate_type = "lib"]
 
@@ -37,6 +36,8 @@ pub unsafe fn update(s: *mut State) {
     // CHECK-NOT: store
     // CHECK-NOT: memcpy
     // CHECK-NOT: 75{{3|4}}
+
+    // CHECK: ret
     let State::A(v) = s.read() else { std::hint::unreachable_unchecked() };
     s.write(State::B(v));
 }

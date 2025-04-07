@@ -89,6 +89,7 @@ rustc_query_append!(define_dep_nodes![
     /// We use this to create a forever-red node.
     [] fn Red() -> (),
     [] fn SideEffect() -> (),
+    [] fn AnonZeroDeps() -> (),
     [] fn TraitSelect() -> (),
     [] fn CompileCodegenUnit() -> (),
     [] fn CompileMonoItem() -> (),

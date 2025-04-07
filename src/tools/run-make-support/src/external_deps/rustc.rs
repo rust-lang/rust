@@ -22,12 +22,6 @@ pub fn bare_rustc() -> Rustc {
     Rustc::bare()
 }
 
-/// Construct a new `rustc` aux-build invocation.
-#[track_caller]
-pub fn aux_build() -> Rustc {
-    Rustc::new_aux_build()
-}
-
 /// A `rustc` invocation builder.
 #[derive(Debug)]
 #[must_use]
@@ -64,14 +58,6 @@ impl Rustc {
     #[track_caller]
     pub fn bare() -> Self {
         let cmd = setup_common();
-        Self { cmd }
-    }
-
-    /// Construct a new `rustc` invocation with `aux_build` preset (setting `--crate-type=lib`).
-    #[track_caller]
-    pub fn new_aux_build() -> Self {
-        let mut cmd = setup_common();
-        cmd.arg("--crate-type=lib");
         Self { cmd }
     }
 

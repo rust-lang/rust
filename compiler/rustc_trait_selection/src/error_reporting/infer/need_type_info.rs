@@ -1051,7 +1051,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                             None?
                         }
                         let args = self.node_args_opt(expr.hir_id)?;
-                        let span = tcx.hir().span(segment.hir_id);
+                        let span = tcx.hir_span(segment.hir_id);
                         let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
                         InsertableGenericArgs {
                             insert_span,
@@ -1110,7 +1110,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 if generics.has_impl_trait() {
                     return None;
                 }
-                let span = tcx.hir().span(segment.hir_id);
+                let span = tcx.hir_span(segment.hir_id);
                 let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
                 Some(InsertableGenericArgs {
                     insert_span,
@@ -1144,7 +1144,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     if !segment.infer_args || generics.has_impl_trait() {
                         do yeet ();
                     }
-                    let span = tcx.hir().span(segment.hir_id);
+                    let span = tcx.hir_span(segment.hir_id);
                     let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
                     InsertableGenericArgs {
                         insert_span,

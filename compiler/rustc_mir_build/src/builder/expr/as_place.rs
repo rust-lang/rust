@@ -159,7 +159,7 @@ fn find_capture_matching_projections<'a, 'tcx>(
 ) -> Option<(usize, &'a Capture<'tcx>)> {
     let hir_projections = convert_to_hir_projections_and_truncate_for_capture(projections);
 
-    upvars.get_by_key_enumerated(var_hir_id.0).find(|(_, capture)| {
+    upvars.get_by_key_enumerated(var_hir_id.0.local_id).find(|(_, capture)| {
         let possible_ancestor_proj_kinds: Vec<_> =
             capture.captured_place.place.projections.iter().map(|proj| proj.kind).collect();
         is_ancestor_or_same_capture(&possible_ancestor_proj_kinds, &hir_projections)
@@ -258,7 +258,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
                 self.projection
             ),
             PlaceBase::Upvar { var_hir_id, closure_def_id: _ } => span_bug!(
-                cx.tcx.hir().span(var_hir_id.0),
+                cx.tcx.hir_span(var_hir_id.0),
                 "could not resolve upvar: {var_hir_id:?} + {:?}",
                 self.projection
             ),

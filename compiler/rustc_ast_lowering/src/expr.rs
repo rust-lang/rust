@@ -74,14 +74,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // Merge attributes into the inner expression.
                     if !e.attrs.is_empty() {
                         let old_attrs = self.attrs.get(&ex.hir_id.local_id).copied().unwrap_or(&[]);
-                        self.attrs.insert(
-                            ex.hir_id.local_id,
-                            &*self.arena.alloc_from_iter(
-                                self.lower_attrs_vec(&e.attrs, e.span)
-                                    .into_iter()
-                                    .chain(old_attrs.iter().cloned()),
-                            ),
+                        let attrs = &*self.arena.alloc_from_iter(
+                            self.lower_attrs_vec(&e.attrs, e.span)
+                                .into_iter()
+                                .chain(old_attrs.iter().cloned()),
                         );
+                        if attrs.is_empty() {
+                            return ex;
+                        }
+
+                        self.attrs.insert(ex.hir_id.local_id, attrs);
                     }
                     return ex;
                 }
@@ -274,7 +276,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Assign(el, er, span) => self.lower_expr_assign(el, er, *span, e.span),
                 ExprKind::AssignOp(op, el, er) => hir::ExprKind::AssignOp(
-                    self.lower_binop(*op),
+                    self.lower_assign_op(*op),
                     self.lower_expr(el),
                     self.lower_expr(er),
                 ),
@@ -441,6 +443,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_binop(&mut self, b: BinOp) -> BinOp {
         Spanned { node: b.node, span: self.lower_span(b.span) }
+    }
+
+    fn lower_assign_op(&mut self, a: AssignOp) -> AssignOp {
+        Spanned { node: a.node, span: self.lower_span(a.span) }
     }
 
     fn lower_legacy_const_generics(

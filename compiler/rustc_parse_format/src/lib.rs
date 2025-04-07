@@ -18,7 +18,7 @@
 pub use Alignment::*;
 pub use Count::*;
 pub use Position::*;
-use rustc_lexer::unescape;
+use rustc_literal_escaper::{Mode, unescape_unicode};
 
 // Note: copied from rustc_span
 /// Range inside of a `Span` used for diagnostics when we only have access to relative positions.
@@ -1094,11 +1094,9 @@ fn find_width_map_from_snippet(
 fn unescape_string(string: &str) -> Option<String> {
     let mut buf = String::new();
     let mut ok = true;
-    unescape::unescape_unicode(string, unescape::Mode::Str, &mut |_, unescaped_char| {
-        match unescaped_char {
-            Ok(c) => buf.push(c),
-            Err(_) => ok = false,
-        }
+    unescape_unicode(string, Mode::Str, &mut |_, unescaped_char| match unescaped_char {
+        Ok(c) => buf.push(c),
+        Err(_) => ok = false,
     });
 
     ok.then_some(buf)

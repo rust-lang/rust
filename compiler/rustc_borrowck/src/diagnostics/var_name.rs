@@ -70,7 +70,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("get_upvar_name_and_span_for_region: upvar_hir_id={upvar_hir_id:?}");
 
         let upvar_name = tcx.hir_name(upvar_hir_id);
-        let upvar_span = tcx.hir().span(upvar_hir_id);
+        let upvar_span = tcx.hir_span(upvar_hir_id);
         debug!(
             "get_upvar_name_and_span_for_region: upvar_name={upvar_name:?} upvar_span={upvar_span:?}",
         );

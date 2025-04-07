@@ -24,6 +24,7 @@ fn main() {
     let foo = Foo { bar: 1, baz: 10 };
     unsafe {
         let oof: Oof = mem::transmute(foo);
+        //~^ ERROR cannot transmute between types of different sizes, or dependently-sized types
         println!("{:?}", oof);
     }
 }

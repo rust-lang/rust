@@ -264,8 +264,15 @@ trait_selection_oc_no_diverge = `else` clause of `let...else` does not diverge
 trait_selection_oc_no_else = `if` may be missing an `else` clause
 trait_selection_oc_try_compat = `?` operator has incompatible types
 trait_selection_oc_type_compat = type not compatible with trait
+
 trait_selection_opaque_captures_lifetime = hidden type for `{$opaque_ty}` captures lifetime that does not appear in bounds
     .label = opaque type defined here
+trait_selection_opaque_type_non_generic_param =
+    expected generic {$kind} parameter, found `{$ty}`
+    .label = {STREQ($ty, "'static") ->
+        [true] cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+        *[other] this generic parameter must be used with a generic {$kind} parameter
+    }
 
 trait_selection_outlives_bound = lifetime of the source pointer does not outlive lifetime bound of the object type
 trait_selection_outlives_content = lifetime of reference outlives lifetime of borrowed content...

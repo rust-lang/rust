@@ -720,7 +720,7 @@ impl<'tcx> Instance<'tcx> {
             ty::TypingEnv::fully_monomorphized(),
             def_id,
             args,
-            ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
+            ty.ty_adt_def().and_then(|adt| tcx.hir_span_if_local(adt.did())).unwrap_or(DUMMY_SP),
         )
     }
 
@@ -732,7 +732,7 @@ impl<'tcx> Instance<'tcx> {
             ty::TypingEnv::fully_monomorphized(),
             def_id,
             args,
-            ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
+            ty.ty_adt_def().and_then(|adt| tcx.hir_span_if_local(adt.did())).unwrap_or(DUMMY_SP),
         )
     }
 

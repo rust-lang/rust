@@ -99,6 +99,34 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
         runner.run_out_command("gen_block_iterate", &[]);
     }),
     TestCase::build_bin_and_run("aot.raw-dylib", "example/raw-dylib.rs", &[]),
+    TestCase::custom("test.sysroot", &|runner| {
+        apply_patches(
+            &runner.dirs,
+            "sysroot_tests",
+            &runner.stdlib_source.join("library"),
+            &SYSROOT_TESTS_SRC.to_path(&runner.dirs),
+        );
+
+        SYSROOT_TESTS.clean(&runner.dirs);
+
+        let mut target_compiler = runner.target_compiler.clone();
+        // coretests and alloctests produce a bunch of warnings. When running
+        // in rust's CI warnings are denied, so we have to override that here.
+        target_compiler.rustflags.push("--cap-lints=allow".to_owned());
+        // The standard library may have been compiled with -Zrandomize-layout.
+        target_compiler.rustflags.extend(["--cfg".to_owned(), "randomized_layouts".to_owned()]);
+
+        if runner.is_native {
+            let mut test_cmd = SYSROOT_TESTS.test(&target_compiler, &runner.dirs);
+            test_cmd.args(["-p", "coretests", "-p", "alloctests", "--tests", "--", "-q"]);
+            spawn_and_wait(test_cmd);
+        } else {
+            eprintln!("Cross-Compiling: Not running tests");
+            let mut build_cmd = SYSROOT_TESTS.build(&target_compiler, &runner.dirs);
+            build_cmd.args(["-p", "coretests", "-p", "alloctests", "--tests"]);
+            spawn_and_wait(build_cmd);
+        }
+    }),
 ];
 
 pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
@@ -143,27 +171,6 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             eprintln!("Cross-Compiling: Not running tests");
             let mut build_cmd = RAND.build(&runner.target_compiler, &runner.dirs);
             build_cmd.arg("--workspace").arg("--tests");
-            spawn_and_wait(build_cmd);
-        }
-    }),
-    TestCase::custom("test.sysroot", &|runner| {
-        apply_patches(
-            &runner.dirs,
-            "sysroot_tests",
-            &runner.stdlib_source.join("library"),
-            &SYSROOT_TESTS_SRC.to_path(&runner.dirs),
-        );
-
-        SYSROOT_TESTS.clean(&runner.dirs);
-
-        if runner.is_native {
-            let mut test_cmd = SYSROOT_TESTS.test(&runner.target_compiler, &runner.dirs);
-            test_cmd.args(["-p", "coretests", "-p", "alloctests", "--", "-q"]);
-            spawn_and_wait(test_cmd);
-        } else {
-            eprintln!("Cross-Compiling: Not running tests");
-            let mut build_cmd = SYSROOT_TESTS.build(&runner.target_compiler, &runner.dirs);
-            build_cmd.args(["-p", "coretests", "-p", "alloctests", "--tests"]);
             spawn_and_wait(build_cmd);
         }
     }),

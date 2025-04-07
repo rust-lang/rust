@@ -1,23 +1,23 @@
 error: expected type, found `,`
-  --> $DIR/issue-86053-1.rs:10:47
+  --> $DIR/issue-86053-1.rs:6:47
    |
 LL | fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
    |                                               ^ expected type
 
 error: unexpected `self` parameter in function
-  --> $DIR/issue-86053-1.rs:10:51
+  --> $DIR/issue-86053-1.rs:6:51
    |
 LL | fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
    |                                                   ^^^^ must be the first parameter of an associated function
 
 error: unexpected `self` parameter in function
-  --> $DIR/issue-86053-1.rs:10:58
+  --> $DIR/issue-86053-1.rs:6:58
    |
 LL | fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
    |                                                          ^^^^ must be the first parameter of an associated function
 
 error: unexpected `self` parameter in function
-  --> $DIR/issue-86053-1.rs:10:67
+  --> $DIR/issue-86053-1.rs:6:67
    |
 LL | fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
    |                                                                   ^^^^ must be the first parameter of an associated function

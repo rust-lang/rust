@@ -79,6 +79,7 @@ builtin_macros_autodiff_ret_activity = invalid return activity {$act} in {$mode}
 builtin_macros_autodiff_ty_activity = {$act} can not be used for this type
 builtin_macros_autodiff_unknown_activity = did not recognize Activity: `{$act}`
 
+builtin_macros_autodiff_width = autodiff width must fit u32, but is {$width}
 builtin_macros_bad_derive_target = `derive` may only be applied to `struct`s, `enum`s and `union`s
     .label = not applicable here
     .label2 = not a `struct`, `enum` or `union`

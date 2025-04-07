@@ -47,45 +47,78 @@ const fn bitset_search<
     (word & (1 << (needle % 64) as u64)) != 0
 }
 
-fn decode_prefix_sum(short_offset_run_header: u32) -> u32 {
-    short_offset_run_header & ((1 << 21) - 1)
+#[repr(transparent)]
+struct ShortOffsetRunHeader(u32);
+
+impl ShortOffsetRunHeader {
+    const fn new(start_index: usize, prefix_sum: u32) -> Self {
+        assert!(start_index < (1 << 11));
+        assert!(prefix_sum < (1 << 21));
+
+        Self((start_index as u32) << 21 | prefix_sum)
+    }
+
+    #[inline]
+    const fn start_index(&self) -> usize {
+        (self.0 >> 21) as usize
+    }
+
+    #[inline]
+    const fn prefix_sum(&self) -> u32 {
+        self.0 & ((1 << 21) - 1)
+    }
 }
 
-fn decode_length(short_offset_run_header: u32) -> usize {
-    (short_offset_run_header >> 21) as usize
-}
-
+/// # Safety
+///
+/// - The last element of `short_offset_runs` must be greater than `std::char::MAX`.
+/// - The start indices of all elements in `short_offset_runs` must be less than `OFFSETS`.
 #[inline(always)]
-fn skip_search<const SOR: usize, const OFFSETS: usize>(
-    needle: u32,
-    short_offset_runs: &[u32; SOR],
+unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
+    needle: char,
+    short_offset_runs: &[ShortOffsetRunHeader; SOR],
     offsets: &[u8; OFFSETS],
 ) -> bool {
-    // Note that this *cannot* be past the end of the array, as the last
-    // element is greater than std::char::MAX (the largest possible needle).
-    //
-    // So, we cannot have found it (i.e. Ok(idx) + 1 != length) and the correct
-    // location cannot be past it, so Err(idx) != length either.
-    //
-    // This means that we can avoid bounds checking for the accesses below, too.
+    let needle = needle as u32;
+
     let last_idx =
-        match short_offset_runs.binary_search_by_key(&(needle << 11), |header| header << 11) {
+        match short_offset_runs.binary_search_by_key(&(needle << 11), |header| (header.0 << 11)) {
             Ok(idx) => idx + 1,
             Err(idx) => idx,
         };
+    // SAFETY: `last_idx` *cannot* be past the end of the array, as the last
+    // element is greater than `std::char::MAX` (the largest possible needle)
+    // as guaranteed by the caller.
+    //
+    // So, we cannot have found it (i.e. `Ok(idx) => idx + 1 != length`) and the
+    // correct location cannot be past it, so `Err(idx) => idx != length` either.
+    //
+    // This means that we can avoid bounds checking for the accesses below, too.
+    //
+    // We need to use `intrinsics::assume` since the `panic_nounwind` contained
+    // in `hint::assert_unchecked` may not be optimized out.
+    unsafe { crate::intrinsics::assume(last_idx < SOR) };
 
-    let mut offset_idx = decode_length(short_offset_runs[last_idx]);
+    let mut offset_idx = short_offset_runs[last_idx].start_index();
     let length = if let Some(next) = short_offset_runs.get(last_idx + 1) {
-        decode_length(*next) - offset_idx
+        (*next).start_index() - offset_idx
     } else {
         offsets.len() - offset_idx
     };
+
     let prev =
-        last_idx.checked_sub(1).map(|prev| decode_prefix_sum(short_offset_runs[prev])).unwrap_or(0);
+        last_idx.checked_sub(1).map(|prev| short_offset_runs[prev].prefix_sum()).unwrap_or(0);
 
     let total = needle - prev;
     let mut prefix_sum = 0;
     for _ in 0..(length - 1) {
+        // SAFETY: It is guaranteed that `length <= OFFSETS - offset_idx`,
+        // so it follows that `length - 1 + offset_idx < OFFSETS`, therefore
+        // `offset_idx < OFFSETS` is always true in this loop.
+        //
+        // We need to use `intrinsics::assume` since the `panic_nounwind` contained
+        // in `hint::assert_unchecked` may not be optimized out.
+        unsafe { crate::intrinsics::assume(offset_idx < OFFSETS) };
         let offset = offsets[offset_idx];
         prefix_sum += offset as u32;
         if prefix_sum > total {
@@ -100,15 +133,36 @@ pub const UNICODE_VERSION: (u8, u8, u8) = (16, 0, 0);
 
 #[rustfmt::skip]
 pub mod alphabetic {
-    static SHORT_OFFSET_RUNS: [u32; 53] = [
-        706, 33559113, 876615277, 956309270, 1166025910, 1314925568, 1319120901, 1398813696,
-        1449151936, 1451271309, 1455465997, 1463867300, 1652619520, 1663105646, 1665203518,
-        1711342208, 1797326647, 1895898848, 2560697242, 2583768976, 2594255920, 2600551419,
-        2608940615, 2613141760, 2615240704, 2619435577, 2621533504, 2652997624, 2688650454,
-        2692853744, 2699145507, 2713826044, 2734799872, 2736903168, 2757875366, 2835472128,
-        2883707536, 2934039760, 2942429152, 2955013632, 2988568880, 3126984704, 3139610336,
-        3141711674, 3145911970, 3154308065, 3158503006, 3162699776, 3164797470, 3166896128,
-        3168998219, 3171099568, 3176407984,
+    use super::ShortOffsetRunHeader;
+
+    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 53] = [
+        ShortOffsetRunHeader::new(0, 706), ShortOffsetRunHeader::new(16, 4681),
+        ShortOffsetRunHeader::new(418, 5741), ShortOffsetRunHeader::new(456, 7958),
+        ShortOffsetRunHeader::new(556, 9398), ShortOffsetRunHeader::new(627, 11264),
+        ShortOffsetRunHeader::new(629, 12293), ShortOffsetRunHeader::new(667, 13312),
+        ShortOffsetRunHeader::new(691, 19904), ShortOffsetRunHeader::new(692, 42125),
+        ShortOffsetRunHeader::new(694, 42509), ShortOffsetRunHeader::new(698, 55204),
+        ShortOffsetRunHeader::new(788, 63744), ShortOffsetRunHeader::new(793, 64110),
+        ShortOffsetRunHeader::new(794, 64830), ShortOffsetRunHeader::new(816, 66176),
+        ShortOffsetRunHeader::new(857, 67383), ShortOffsetRunHeader::new(904, 73440),
+        ShortOffsetRunHeader::new(1221, 74650), ShortOffsetRunHeader::new(1232, 77712),
+        ShortOffsetRunHeader::new(1237, 78896), ShortOffsetRunHeader::new(1240, 82939),
+        ShortOffsetRunHeader::new(1244, 83527), ShortOffsetRunHeader::new(1246, 90368),
+        ShortOffsetRunHeader::new(1247, 92160), ShortOffsetRunHeader::new(1249, 92729),
+        ShortOffsetRunHeader::new(1250, 93504), ShortOffsetRunHeader::new(1265, 100344),
+        ShortOffsetRunHeader::new(1282, 101590), ShortOffsetRunHeader::new(1284, 110576),
+        ShortOffsetRunHeader::new(1287, 110883), ShortOffsetRunHeader::new(1294, 111356),
+        ShortOffsetRunHeader::new(1304, 113664), ShortOffsetRunHeader::new(1305, 119808),
+        ShortOffsetRunHeader::new(1315, 120486), ShortOffsetRunHeader::new(1352, 122624),
+        ShortOffsetRunHeader::new(1375, 123536), ShortOffsetRunHeader::new(1399, 124112),
+        ShortOffsetRunHeader::new(1403, 124896), ShortOffsetRunHeader::new(1409, 126464),
+        ShortOffsetRunHeader::new(1425, 127280), ShortOffsetRunHeader::new(1491, 131072),
+        ShortOffsetRunHeader::new(1497, 173792), ShortOffsetRunHeader::new(1498, 177978),
+        ShortOffsetRunHeader::new(1500, 183970), ShortOffsetRunHeader::new(1504, 191457),
+        ShortOffsetRunHeader::new(1506, 192094), ShortOffsetRunHeader::new(1508, 194560),
+        ShortOffsetRunHeader::new(1509, 195102), ShortOffsetRunHeader::new(1510, 196608),
+        ShortOffsetRunHeader::new(1511, 201547), ShortOffsetRunHeader::new(1512, 205744),
+        ShortOffsetRunHeader::new(1514, 1319856),
     ];
     static OFFSETS: [u8; 1515] = [
         65, 26, 6, 26, 47, 1, 10, 1, 4, 1, 5, 23, 1, 31, 1, 0, 4, 12, 14, 5, 7, 1, 1, 1, 86, 1, 29,
@@ -169,22 +223,44 @@ pub mod alphabetic {
         0, 0, 0, 0, 5, 0, 0,
     ];
     pub fn lookup(c: char) -> bool {
-        super::skip_search(
-            c as u32,
-            &SHORT_OFFSET_RUNS,
-            &OFFSETS,
-        )
+        const {
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+            let mut i = 0;
+            while i < SHORT_OFFSET_RUNS.len() {
+                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+                i += 1;
+            }
+        }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
+        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
     }
 }
 
 #[rustfmt::skip]
 pub mod case_ignorable {
-    static SHORT_OFFSET_RUNS: [u32; 37] = [
-        688, 44045149, 572528402, 576724925, 807414908, 878718981, 903913493, 929080568, 933275148,
-        937491230, 1138818560, 1147208189, 1210124160, 1222707713, 1235291428, 1260457643,
-        1277237295, 1537284411, 1545673776, 1604394739, 1667314736, 1692492062, 1700883184,
-        1709272384, 1721855823, 1730260976, 1747041437, 1759629056, 1768018279, 1776409088,
-        1797382144, 1822548654, 1856103659, 1864493264, 1872884731, 1882062849, 1887371760,
+    use super::ShortOffsetRunHeader;
+
+    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 37] = [
+        ShortOffsetRunHeader::new(0, 688), ShortOffsetRunHeader::new(21, 4957),
+        ShortOffsetRunHeader::new(273, 5906), ShortOffsetRunHeader::new(275, 8125),
+        ShortOffsetRunHeader::new(385, 11388), ShortOffsetRunHeader::new(419, 12293),
+        ShortOffsetRunHeader::new(431, 40981), ShortOffsetRunHeader::new(443, 42232),
+        ShortOffsetRunHeader::new(445, 42508), ShortOffsetRunHeader::new(447, 64286),
+        ShortOffsetRunHeader::new(543, 65024), ShortOffsetRunHeader::new(547, 66045),
+        ShortOffsetRunHeader::new(577, 67456), ShortOffsetRunHeader::new(583, 68097),
+        ShortOffsetRunHeader::new(589, 68900), ShortOffsetRunHeader::new(601, 69291),
+        ShortOffsetRunHeader::new(609, 71727), ShortOffsetRunHeader::new(733, 71995),
+        ShortOffsetRunHeader::new(737, 72752), ShortOffsetRunHeader::new(765, 73459),
+        ShortOffsetRunHeader::new(795, 78896), ShortOffsetRunHeader::new(807, 90398),
+        ShortOffsetRunHeader::new(811, 92912), ShortOffsetRunHeader::new(815, 93504),
+        ShortOffsetRunHeader::new(821, 94031), ShortOffsetRunHeader::new(825, 110576),
+        ShortOffsetRunHeader::new(833, 113821), ShortOffsetRunHeader::new(839, 118528),
+        ShortOffsetRunHeader::new(843, 119143), ShortOffsetRunHeader::new(847, 121344),
+        ShortOffsetRunHeader::new(857, 122880), ShortOffsetRunHeader::new(869, 123566),
+        ShortOffsetRunHeader::new(885, 124139), ShortOffsetRunHeader::new(889, 125136),
+        ShortOffsetRunHeader::new(893, 127995), ShortOffsetRunHeader::new(897, 917505),
+        ShortOffsetRunHeader::new(899, 2032112),
     ];
     static OFFSETS: [u8; 905] = [
         39, 1, 6, 1, 11, 1, 35, 1, 1, 1, 71, 1, 4, 1, 1, 1, 4, 1, 2, 2, 0, 192, 4, 2, 4, 1, 9, 2,
@@ -222,20 +298,36 @@ pub mod case_ignorable {
         1, 61, 4, 0, 5, 254, 2, 0, 7, 109, 8, 0, 5, 0, 1, 30, 96, 128, 240, 0,
     ];
     pub fn lookup(c: char) -> bool {
-        super::skip_search(
-            c as u32,
-            &SHORT_OFFSET_RUNS,
-            &OFFSETS,
-        )
+        const {
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+            let mut i = 0;
+            while i < SHORT_OFFSET_RUNS.len() {
+                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+                i += 1;
+            }
+        }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
+        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
     }
 }
 
 #[rustfmt::skip]
 pub mod cased {
-    static SHORT_OFFSET_RUNS: [u32; 22] = [
-        4256, 115348384, 136322176, 144711446, 163587254, 320875520, 325101120, 350268208,
-        392231680, 404815649, 413205504, 421595008, 467733632, 484513952, 501313088, 505533440,
-        509728422, 587325184, 635559984, 648145152, 652341552, 657650058,
+    use super::ShortOffsetRunHeader;
+
+    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 22] = [
+        ShortOffsetRunHeader::new(0, 4256), ShortOffsetRunHeader::new(55, 5024),
+        ShortOffsetRunHeader::new(65, 7296), ShortOffsetRunHeader::new(69, 7958),
+        ShortOffsetRunHeader::new(78, 9398), ShortOffsetRunHeader::new(153, 11264),
+        ShortOffsetRunHeader::new(155, 42560), ShortOffsetRunHeader::new(167, 43824),
+        ShortOffsetRunHeader::new(187, 64256), ShortOffsetRunHeader::new(193, 65313),
+        ShortOffsetRunHeader::new(197, 66560), ShortOffsetRunHeader::new(201, 67456),
+        ShortOffsetRunHeader::new(223, 68736), ShortOffsetRunHeader::new(231, 71840),
+        ShortOffsetRunHeader::new(239, 93760), ShortOffsetRunHeader::new(241, 119808),
+        ShortOffsetRunHeader::new(243, 120486), ShortOffsetRunHeader::new(280, 122624),
+        ShortOffsetRunHeader::new(303, 122928), ShortOffsetRunHeader::new(309, 125184),
+        ShortOffsetRunHeader::new(311, 127280), ShortOffsetRunHeader::new(313, 1241482),
     ];
     static OFFSETS: [u8; 319] = [
         65, 26, 6, 26, 47, 1, 10, 1, 4, 1, 5, 23, 1, 31, 1, 195, 1, 4, 4, 208, 1, 36, 7, 2, 30, 5,
@@ -252,39 +344,67 @@ pub mod cased {
         8, 0, 10, 1, 20, 6, 6, 0, 62, 0, 68, 0, 26, 6, 26, 6, 26, 0,
     ];
     pub fn lookup(c: char) -> bool {
-        super::skip_search(
-            c as u32,
-            &SHORT_OFFSET_RUNS,
-            &OFFSETS,
-        )
+        const {
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+            let mut i = 0;
+            while i < SHORT_OFFSET_RUNS.len() {
+                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+                i += 1;
+            }
+        }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
+        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
     }
 }
 
 #[rustfmt::skip]
 pub mod cc {
-    static SHORT_OFFSET_RUNS: [u32; 1] = [
-        1114272,
+    use super::ShortOffsetRunHeader;
+
+    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 1] = [
+        ShortOffsetRunHeader::new(0, 1114272),
     ];
     static OFFSETS: [u8; 5] = [
         0, 32, 95, 33, 0,
     ];
     pub fn lookup(c: char) -> bool {
-        super::skip_search(
-            c as u32,
-            &SHORT_OFFSET_RUNS,
-            &OFFSETS,
-        )
+        const {
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+            let mut i = 0;
+            while i < SHORT_OFFSET_RUNS.len() {
+                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+                i += 1;
+            }
+        }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
+        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
     }
 }
 
 #[rustfmt::skip]
 pub mod grapheme_extend {
-    static SHORT_OFFSET_RUNS: [u32; 34] = [
-        768, 2098307, 6292881, 10490717, 522196754, 526393356, 723528943, 731918378, 744531567,
-        752920578, 769719070, 908131840, 912326558, 920715773, 924912129, 937495844, 962662059,
-        971053103, 1256266800, 1323376371, 1386296384, 1407279390, 1415670512, 1424060239,
-        1432468637, 1449250560, 1453445477, 1461836288, 1487003648, 1512170158, 1541530860,
-        1549920464, 1559101472, 1568604656,
+    use super::ShortOffsetRunHeader;
+
+    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 34] = [
+        ShortOffsetRunHeader::new(0, 768), ShortOffsetRunHeader::new(1, 1155),
+        ShortOffsetRunHeader::new(3, 1425), ShortOffsetRunHeader::new(5, 4957),
+        ShortOffsetRunHeader::new(249, 5906), ShortOffsetRunHeader::new(251, 8204),
+        ShortOffsetRunHeader::new(345, 11503), ShortOffsetRunHeader::new(349, 12330),
+        ShortOffsetRunHeader::new(355, 42607), ShortOffsetRunHeader::new(359, 43010),
+        ShortOffsetRunHeader::new(367, 64286), ShortOffsetRunHeader::new(433, 65024),
+        ShortOffsetRunHeader::new(435, 65438), ShortOffsetRunHeader::new(439, 66045),
+        ShortOffsetRunHeader::new(441, 68097), ShortOffsetRunHeader::new(447, 68900),
+        ShortOffsetRunHeader::new(459, 69291), ShortOffsetRunHeader::new(463, 71727),
+        ShortOffsetRunHeader::new(599, 72752), ShortOffsetRunHeader::new(631, 73459),
+        ShortOffsetRunHeader::new(661, 78912), ShortOffsetRunHeader::new(671, 90398),
+        ShortOffsetRunHeader::new(675, 92912), ShortOffsetRunHeader::new(679, 94031),
+        ShortOffsetRunHeader::new(683, 113821), ShortOffsetRunHeader::new(691, 118528),
+        ShortOffsetRunHeader::new(693, 119141), ShortOffsetRunHeader::new(697, 121344),
+        ShortOffsetRunHeader::new(709, 122880), ShortOffsetRunHeader::new(721, 123566),
+        ShortOffsetRunHeader::new(735, 124140), ShortOffsetRunHeader::new(739, 125136),
+        ShortOffsetRunHeader::new(743, 917536), ShortOffsetRunHeader::new(747, 2032112),
     ];
     static OFFSETS: [u8; 751] = [
         0, 112, 0, 7, 0, 45, 1, 1, 1, 2, 1, 2, 1, 1, 72, 11, 48, 21, 16, 1, 101, 7, 2, 6, 2, 2, 1,
@@ -319,12 +439,20 @@ pub mod grapheme_extend {
     pub fn lookup(c: char) -> bool {
         (c as u32) >= 0x300 && lookup_slow(c)
     }
+
+    #[inline(never)]
     fn lookup_slow(c: char) -> bool {
-        super::skip_search(
-            c as u32,
-            &SHORT_OFFSET_RUNS,
-            &OFFSETS,
-        )
+        const {
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+            let mut i = 0;
+            while i < SHORT_OFFSET_RUNS.len() {
+                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+                i += 1;
+            }
+        }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
+        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
     }
 }
 
@@ -436,13 +564,30 @@ pub mod lowercase {
 
 #[rustfmt::skip]
 pub mod n {
-    static SHORT_OFFSET_RUNS: [u32; 42] = [
-        1632, 18876774, 31461440, 102765417, 111154926, 115349830, 132128880, 165684320, 186656630,
-        195046653, 199241735, 203436434, 216049184, 241215536, 249605104, 274792208, 278987015,
-        283181793, 295766104, 320933114, 383848032, 396432464, 438376016, 446765280, 463543280,
-        471932752, 488711168, 497115440, 501312096, 505507184, 522284672, 526503152, 530698944,
-        534894542, 547479872, 551674608, 555869424, 560064711, 568454257, 576844032, 597818352,
-        603126778,
+    use super::ShortOffsetRunHeader;
+
+    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 42] = [
+        ShortOffsetRunHeader::new(0, 1632), ShortOffsetRunHeader::new(9, 2406),
+        ShortOffsetRunHeader::new(15, 4160), ShortOffsetRunHeader::new(49, 4969),
+        ShortOffsetRunHeader::new(53, 5870), ShortOffsetRunHeader::new(55, 6470),
+        ShortOffsetRunHeader::new(63, 8304), ShortOffsetRunHeader::new(79, 9312),
+        ShortOffsetRunHeader::new(89, 10102), ShortOffsetRunHeader::new(93, 11517),
+        ShortOffsetRunHeader::new(95, 12295), ShortOffsetRunHeader::new(97, 12690),
+        ShortOffsetRunHeader::new(103, 42528), ShortOffsetRunHeader::new(115, 43056),
+        ShortOffsetRunHeader::new(119, 44016), ShortOffsetRunHeader::new(131, 65296),
+        ShortOffsetRunHeader::new(133, 65799), ShortOffsetRunHeader::new(135, 66273),
+        ShortOffsetRunHeader::new(141, 67672), ShortOffsetRunHeader::new(153, 68858),
+        ShortOffsetRunHeader::new(183, 69216), ShortOffsetRunHeader::new(189, 70736),
+        ShortOffsetRunHeader::new(209, 71248), ShortOffsetRunHeader::new(213, 71904),
+        ShortOffsetRunHeader::new(221, 72688), ShortOffsetRunHeader::new(225, 73552),
+        ShortOffsetRunHeader::new(233, 74752), ShortOffsetRunHeader::new(237, 90416),
+        ShortOffsetRunHeader::new(239, 92768), ShortOffsetRunHeader::new(241, 93552),
+        ShortOffsetRunHeader::new(249, 93824), ShortOffsetRunHeader::new(251, 118000),
+        ShortOffsetRunHeader::new(253, 119488), ShortOffsetRunHeader::new(255, 120782),
+        ShortOffsetRunHeader::new(261, 123200), ShortOffsetRunHeader::new(263, 123632),
+        ShortOffsetRunHeader::new(265, 124144), ShortOffsetRunHeader::new(267, 125127),
+        ShortOffsetRunHeader::new(271, 126065), ShortOffsetRunHeader::new(275, 127232),
+        ShortOffsetRunHeader::new(285, 130032), ShortOffsetRunHeader::new(287, 1244154),
     ];
     static OFFSETS: [u8; 289] = [
         48, 10, 120, 2, 5, 1, 2, 3, 0, 10, 134, 10, 198, 10, 0, 10, 118, 10, 4, 6, 108, 10, 118,
@@ -459,11 +604,17 @@ pub mod n {
         10, 247, 10, 0, 9, 128, 10, 0, 59, 1, 3, 1, 4, 76, 45, 1, 15, 0, 13, 0, 10, 0,
     ];
     pub fn lookup(c: char) -> bool {
-        super::skip_search(
-            c as u32,
-            &SHORT_OFFSET_RUNS,
-            &OFFSETS,
-        )
+        const {
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+            let mut i = 0;
+            while i < SHORT_OFFSET_RUNS.len() {
+                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+                i += 1;
+            }
+        }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
+        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
     }
 }
 

@@ -2058,7 +2058,7 @@ fn rewrite_assignment(
     context: &RewriteContext<'_>,
     lhs: &ast::Expr,
     rhs: &ast::Expr,
-    op: Option<&ast::BinOp>,
+    op: Option<&ast::AssignOp>,
     shape: Shape,
 ) -> RewriteResult {
     let operator_str = match op {

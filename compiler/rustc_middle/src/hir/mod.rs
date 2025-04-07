@@ -210,13 +210,12 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_attr_map = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
-    providers.def_span = |tcx, def_id| tcx.hir().span(tcx.local_def_id_to_hir_id(def_id));
+    providers.def_span = |tcx, def_id| tcx.hir_span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
         tcx.hir_opt_ident_span(hir_id)
     };
     providers.fn_arg_names = |tcx, def_id| {
-        let hir = tcx.hir();
         if let Some(body_id) = tcx.hir_node_by_def_id(def_id).body_id() {
             tcx.arena.alloc_from_iter(tcx.hir_body_param_names(body_id))
         } else if let Node::TraitItem(&TraitItem {
@@ -231,7 +230,7 @@ pub fn provide(providers: &mut Providers) {
             idents
         } else {
             span_bug!(
-                hir.span(tcx.local_def_id_to_hir_id(def_id)),
+                tcx.hir_span(tcx.local_def_id_to_hir_id(def_id)),
                 "fn_arg_names: unexpected item {:?}",
                 def_id
             );

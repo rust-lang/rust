@@ -1,5 +1,5 @@
 error: item does not constrain `FutNothing::{opaque#0}`
-  --> $DIR/hkl_forbidden4.rs:19:10
+  --> $DIR/hkl_forbidden4.rs:18:10
    |
 LL | async fn call<F>(_f: F)
    |          ^^^^
@@ -12,37 +12,16 @@ LL | type FutNothing<'a> = impl 'a + Future<Output = ()>;
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: concrete type differs from previous defining opaque type use
+  --> $DIR/hkl_forbidden4.rs:13:5
+   |
+LL |     call(operation).await
+   |     ^^^^^^^^^^^^^^^ expected `{async fn body of operation()}`, got `FutNothing<'_>`
+   |
+note: previous use here
   --> $DIR/hkl_forbidden4.rs:12:1
    |
 LL | async fn operation(_: &mut ()) -> () {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `FutNothing<'_>`, got `{async fn body of operation()}`
-   |
-note: previous use here
-  --> $DIR/hkl_forbidden4.rs:14:5
-   |
-LL |     call(operation).await
-   |     ^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0792]: expected generic lifetime parameter, found `'any`
-  --> $DIR/hkl_forbidden4.rs:14:5
-   |
-LL | async fn operation(_: &mut ()) -> () {
-   |                       - this generic parameter must be used with a generic lifetime parameter
-LL |
-LL |     call(operation).await
-   |     ^^^^^^^^^^^^^^^
+error: aborting due to 2 previous errors
 
-error[E0792]: expected generic lifetime parameter, found `'any`
-  --> $DIR/hkl_forbidden4.rs:23:1
-   |
-LL |   type FutNothing<'a> = impl 'a + Future<Output = ()>;
-   |                   -- this generic parameter must be used with a generic lifetime parameter
-...
-LL | / {
-LL | |
-LL | | }
-   | |_^
-
-error: aborting due to 4 previous errors
-
-For more information about this error, try `rustc --explain E0792`.

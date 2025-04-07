@@ -19,8 +19,8 @@ pub mod write;
 ///
 /// Certain optimizations also depend on the deployment target.
 pub fn versioned_llvm_target(sess: &Session) -> Cow<'_, str> {
-    if sess.target.is_like_osx {
-        apple::add_version_to_llvm_target(&sess.target.llvm_target, apple::deployment_target(sess))
+    if sess.target.is_like_darwin {
+        apple::add_version_to_llvm_target(&sess.target.llvm_target, sess.apple_deployment_target())
             .into()
     } else {
         // FIXME(madsmtm): Certain other targets also include a version,

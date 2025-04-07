@@ -598,7 +598,7 @@ impl Target {
         key!(families, target_families);
         key!(abi_return_struct_as_int, bool);
         key!(is_like_aix, bool);
-        key!(is_like_osx, bool);
+        key!(is_like_darwin, bool);
         key!(is_like_solaris, bool);
         key!(is_like_windows, bool);
         key!(is_like_msvc, bool);
@@ -777,7 +777,7 @@ impl ToJson for Target {
         target_option_val!(families, "target-family");
         target_option_val!(abi_return_struct_as_int);
         target_option_val!(is_like_aix);
-        target_option_val!(is_like_osx);
+        target_option_val!(is_like_darwin);
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);
         target_option_val!(is_like_msvc);

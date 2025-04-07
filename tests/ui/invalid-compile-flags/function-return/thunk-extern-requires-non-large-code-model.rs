@@ -14,8 +14,9 @@
 
 //@[large] check-fail
 //@[large] compile-flags: -Ccode-model=large
-//@[large] error-pattern: `-Zfunction-return=thunk-extern` is only supported on non-large code models
 
 #![feature(no_core)]
 #![no_core]
 #![no_main]
+
+//[large]~? ERROR `-Zfunction-return=thunk-extern` is only supported on non-large code models

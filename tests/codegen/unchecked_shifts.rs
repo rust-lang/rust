@@ -1,7 +1,4 @@
-//@ revisions: LLVM18 LLVM19PLUS
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
-//@[LLVM18] exact-llvm-major-version: 18
-//@[LLVM19PLUS] min-llvm-version: 19
 
 // This runs mir-opts to inline the standard library call, but doesn't run LLVM
 // optimizations so it doesn't need to worry about them adding more flags.
@@ -24,8 +21,7 @@ pub unsafe fn unchecked_shl_unsigned_same(a: u32, b: u32) -> u32 {
 #[no_mangle]
 pub unsafe fn unchecked_shl_unsigned_smaller(a: u16, b: u32) -> u16 {
     // CHECK-NOT: assume
-    // LLVM18: %[[TRUNC:.+]] = trunc i32 %b to i16
-    // LLVM19PLUS: %[[TRUNC:.+]] = trunc nuw i32 %b to i16
+    // CHECK: %[[TRUNC:.+]] = trunc nuw i32 %b to i16
     // CHECK: shl i16 %a, %[[TRUNC]]
     a.unchecked_shl(b)
 }
@@ -53,8 +49,7 @@ pub unsafe fn unchecked_shr_signed_same(a: i32, b: u32) -> i32 {
 #[no_mangle]
 pub unsafe fn unchecked_shr_signed_smaller(a: i16, b: u32) -> i16 {
     // CHECK-NOT: assume
-    // LLVM18: %[[TRUNC:.+]] = trunc i32 %b to i16
-    // LLVM19PLUS: %[[TRUNC:.+]] = trunc nuw i32 %b to i16
+    // CHECK: %[[TRUNC:.+]] = trunc nuw i32 %b to i16
     // CHECK: ashr i16 %a, %[[TRUNC]]
     a.unchecked_shr(b)
 }
@@ -90,8 +85,7 @@ pub unsafe fn unchecked_shl_i128_u8(a: i128, b: u8) -> i128 {
 #[no_mangle]
 pub unsafe fn unchecked_shl_u8_i128(a: u8, b: i128) -> u8 {
     // CHECK-NOT: assume
-    // LLVM18: %[[TRUNC:.+]] = trunc i128 %b to i8
-    // LLVM19PLUS: %[[TRUNC:.+]] = trunc nuw i128 %b to i8
+    // CHECK: %[[TRUNC:.+]] = trunc nuw i128 %b to i8
     // CHECK: shl i8 %a, %[[TRUNC]]
     std::intrinsics::unchecked_shl(a, b)
 }
@@ -100,8 +94,7 @@ pub unsafe fn unchecked_shl_u8_i128(a: u8, b: i128) -> u8 {
 #[no_mangle]
 pub unsafe fn unchecked_shr_i8_u128(a: i8, b: u128) -> i8 {
     // CHECK-NOT: assume
-    // LLVM18: %[[TRUNC:.+]] = trunc i128 %b to i8
-    // LLVM19PLUS: %[[TRUNC:.+]] = trunc nuw i128 %b to i8
+    // CHECK: %[[TRUNC:.+]] = trunc nuw i128 %b to i8
     // CHECK: ashr i8 %a, %[[TRUNC]]
     std::intrinsics::unchecked_shr(a, b)
 }

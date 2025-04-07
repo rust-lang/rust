@@ -88,6 +88,8 @@ mod late;
 mod macros;
 pub mod rustdoc;
 
+pub use macros::registered_tools_ast;
+
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 #[derive(Debug)]

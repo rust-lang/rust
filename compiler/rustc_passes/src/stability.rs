@@ -726,7 +726,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
 
         annotator.annotate(
             CRATE_DEF_ID,
-            tcx.hir().span(CRATE_HIR_ID),
+            tcx.hir_span(CRATE_HIR_ID),
             None,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
@@ -980,7 +980,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                     // Calculating message for lint involves calling `self.def_path_str`,
                                     // which will by default invoke the expensive `visible_parent_map` query.
                                     // Skip all that work if the lint is allowed anyway.
-                                    if self.tcx.lint_level_at_node(DEPRECATED, id).0
+                                    if self.tcx.lint_level_at_node(DEPRECATED, id).level
                                         == lint::Level::Allow
                                     {
                                         return;
@@ -1099,7 +1099,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     if is_staged_api {
         let effective_visibilities = &tcx.effective_visibilities(());
         let mut missing = MissingStabilityAnnotations { tcx, effective_visibilities };
-        missing.check_missing_stability(CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID));
+        missing.check_missing_stability(CRATE_DEF_ID, tcx.hir_span(CRATE_HIR_ID));
         tcx.hir_walk_toplevel_module(&mut missing);
         tcx.hir_visit_all_item_likes_in_crate(&mut missing);
     }
