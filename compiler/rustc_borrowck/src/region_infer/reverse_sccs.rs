@@ -5,8 +5,9 @@ use rustc_data_structures::graph;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_middle::ty::RegionVid;
 
-use crate::RegionInferenceContext;
+use super::ConstraintSccs;
 use crate::constraints::ConstraintSccIndex;
+use crate::universal_regions::UniversalRegions;
 
 pub(crate) struct ReverseSccGraph {
     graph: VecGraph<ConstraintSccIndex>,
@@ -19,32 +20,14 @@ pub(crate) struct ReverseSccGraph {
 }
 
 impl ReverseSccGraph {
-    /// Find all universal regions that are required to outlive the given SCC.
-    pub(super) fn upper_bounds(&self, scc0: ConstraintSccIndex) -> impl Iterator<Item = RegionVid> {
-        let mut duplicates = FxIndexSet::default();
-        graph::depth_first_search(&self.graph, scc0)
-            .flat_map(move |scc1| {
-                self.scc_regions
-                    .get(&scc1)
-                    .map_or(&[][..], |range| &self.universal_regions[range.clone()])
-            })
-            .copied()
-            .filter(move |r| duplicates.insert(*r))
-    }
-}
-
-impl RegionInferenceContext<'_> {
-    /// Compute the reverse SCC-based constraint graph (lazily).
-    pub(super) fn compute_reverse_scc_graph(&mut self) {
-        if self.rev_scc_graph.is_some() {
-            return;
-        }
-
-        let graph = self.constraint_sccs.reverse();
-        let mut paired_scc_regions = self
-            .universal_regions()
+    pub(super) fn compute(
+        constraint_sccs: &ConstraintSccs,
+        universal_regions: &UniversalRegions<'_>,
+    ) -> Self {
+        let graph = constraint_sccs.reverse();
+        let mut paired_scc_regions = universal_regions
             .universal_regions_iter()
-            .map(|region| (self.constraint_sccs.scc(region), region))
+            .map(|region| (constraint_sccs.scc(region), region))
             .collect::<Vec<_>>();
         paired_scc_regions.sort();
         let universal_regions = paired_scc_regions.iter().map(|&(_, region)| region).collect();
@@ -56,7 +39,19 @@ impl RegionInferenceContext<'_> {
             scc_regions.insert(scc, start..start + chunk.len());
             start += chunk.len();
         }
+        ReverseSccGraph { graph, scc_regions, universal_regions }
+    }
 
-        self.rev_scc_graph = Some(ReverseSccGraph { graph, scc_regions, universal_regions });
+    /// Find all universal regions that are required to outlive the given SCC.
+    pub(super) fn upper_bounds(&self, scc0: ConstraintSccIndex) -> impl Iterator<Item = RegionVid> {
+        let mut duplicates = FxIndexSet::default();
+        graph::depth_first_search(&self.graph, scc0)
+            .flat_map(move |scc1| {
+                self.scc_regions
+                    .get(&scc1)
+                    .map_or(&[][..], |range| &self.universal_regions[range.clone()])
+            })
+            .copied()
+            .filter(move |r| duplicates.insert(*r))
     }
 }
