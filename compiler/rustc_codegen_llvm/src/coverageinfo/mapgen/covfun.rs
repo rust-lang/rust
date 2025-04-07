@@ -37,14 +37,6 @@ pub(crate) struct CovfunRecord<'tcx> {
     regions: ffi::Regions,
 }
 
-impl<'tcx> CovfunRecord<'tcx> {
-    /// FIXME(Zalathar): Make this the responsibility of the code that determines
-    /// which functions are unused.
-    pub(crate) fn mangled_function_name_if_unused(&self) -> Option<&'tcx str> {
-        (!self.is_used).then_some(self.mangled_function_name)
-    }
-}
-
 pub(crate) fn prepare_covfun_record<'tcx>(
     tcx: TyCtxt<'tcx>,
     global_file_table: &mut GlobalFileTable,
