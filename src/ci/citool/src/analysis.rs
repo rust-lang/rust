@@ -225,7 +225,7 @@ pub fn output_largest_duration_changes(job_metrics: &HashMap<JobName, JobMetrics
             });
         }
     }
-    changes.sort_by(|e1, e2| e1.change.partial_cmp(&e2.change).unwrap().reverse());
+    changes.sort_by(|e1, e2| e1.change.abs().partial_cmp(&e2.change.abs()).unwrap().reverse());
 
     println!("# Job duration changes");
     for (index, entry) in changes.into_iter().take(10).enumerate() {
