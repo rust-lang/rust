@@ -43,14 +43,24 @@ pub use crate::option::Option::{self, None, Some};
 #[doc(no_inline)]
 pub use crate::result::Result::{self, Err, Ok};
 
-// Re-exported built-in macros
+// Re-exported built-in macros and traits
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
 pub use core::prelude::v1::{
-    assert, cfg, column, compile_error, concat, env, file, format_args,
-    format_args_nl, include, include_bytes, include_str, line, log_syntax, module_path, option_env,
-    stringify, trace_macros, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
+    assert, assert_eq, assert_ne, cfg, column, compile_error, concat, debug_assert, debug_assert_eq, debug_assert_ne, env, file, format_args, include, include_bytes, include_str, line, matches,
+    module_path, option_env, panic, stringify, todo, r#try, unimplemented, unreachable, write,
+    writeln, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
 };
+
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[doc(no_inline)]
+pub use crate::{
+    dbg, eprint, eprintln, format, is_x86_feature_detected, print, println, thread_local, vec,
+};
+
+#[unstable(feature = "cfg_match", issue = "115585")]
+#[doc(no_inline)]
+pub use core::prelude::v1::cfg_match;
 
 #[unstable(
     feature = "concat_bytes",
@@ -59,6 +69,43 @@ pub use core::prelude::v1::{
 )]
 #[doc(no_inline)]
 pub use core::prelude::v1::concat_bytes;
+
+#[unstable(
+    feature = "concat_idents",
+    issue = "29599",
+    reason = "`concat_idents` is not stable enough for use and is subject to change"
+)]
+#[doc(no_inline)]
+pub use core::prelude::v1::concat_idents;
+
+#[unstable(feature = "const_format_args", issue = "none")]
+#[doc(no_inline)]
+pub use core::prelude::v1::const_format_args;
+
+#[unstable(
+    feature = "format_args_nl",
+    issue = "none",
+    reason = "`format_args_nl` is only for internal \
+              language use and is subject to change"
+)]
+#[doc(no_inline)]
+pub use core::prelude::v1::format_args_nl;
+
+#[unstable(
+    feature = "log_syntax",
+    issue = "29598",
+    reason = "`log_syntax!` is not stable enough for use and is subject to change"
+)]
+#[doc(no_inline)]
+pub use core::prelude::v1::log_syntax;
+
+#[unstable(
+    feature = "trace_macros",
+    issue = "29598",
+    reason = "`trace_macros` is not stable enough for use and is subject to change"
+)]
+#[doc(no_inline)]
+pub use core::prelude::v1::trace_macros;
 
 // Do not `doc(no_inline)` so that they become doc items on their own
 // (no public module for them to be re-exported from).
