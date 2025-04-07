@@ -1,5 +1,6 @@
 use std::hash::BuildHasherDefault;
 
+pub use ena::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_hash::FxHasher;
 pub use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
