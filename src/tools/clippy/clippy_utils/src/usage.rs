@@ -126,10 +126,10 @@ impl<'tcx> Visitor<'tcx> for BindingUsageFinder<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, _: HirId) -> Self::Result {
-        if let Res::Local(id) = path.res {
-            if self.binding_ids.contains(&id) {
-                return ControlFlow::Break(());
-            }
+        if let Res::Local(id) = path.res
+            && self.binding_ids.contains(&id)
+        {
+            return ControlFlow::Break(());
         }
 
         ControlFlow::Continue(())

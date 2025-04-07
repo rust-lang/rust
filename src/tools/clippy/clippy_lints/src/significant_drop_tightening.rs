@@ -124,8 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
                     diag.span_label(
                         apa.first_block_span,
                         format!(
-                            "temporary `{}` is currently being dropped at the end of its contained scope",
-                            first_bind_ident
+                            "temporary `{first_bind_ident}` is currently being dropped at the end of its contained scope"
                         ),
                     );
                 },
@@ -182,10 +181,10 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
                     }
                 }
                 for generic_arg in *b {
-                    if let GenericArgKind::Type(ty) = generic_arg.unpack() {
-                        if self.has_sig_drop_attr(ty) {
-                            return true;
-                        }
+                    if let GenericArgKind::Type(ty) = generic_arg.unpack()
+                        && self.has_sig_drop_attr(ty)
+                    {
+                        return true;
                     }
                 }
                 false
@@ -317,7 +316,7 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
                         }
                     },
                     hir::StmtKind::Semi(semi_expr) => {
-                        if has_drop(semi_expr, &apa.first_bind_ident, self.cx) {
+                        if has_drop(semi_expr, apa.first_bind_ident, self.cx) {
                             apa.has_expensive_expr_after_last_attr = false;
                             apa.last_stmt_span = DUMMY_SP;
                             return;
@@ -414,7 +413,7 @@ fn dummy_stmt_expr<'any>(expr: &'any hir::Expr<'any>) -> hir::Stmt<'any> {
     }
 }
 
-fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Option<Ident>, lcx: &LateContext<'_>) -> bool {
+fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: Option<Ident>, lcx: &LateContext<'_>) -> bool {
     if let hir::ExprKind::Call(fun, [first_arg]) = expr.kind
         && let hir::ExprKind::Path(hir::QPath::Resolved(_, fun_path)) = &fun.kind
         && let Res::Def(DefKind::Fn, did) = fun_path.res
@@ -424,7 +423,7 @@ fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Option<Ident>, lcx: &LateCo
             if let hir::ExprKind::Path(hir::QPath::Resolved(_, arg_path)) = &local_expr.kind
                 && let [first_arg_ps, ..] = arg_path.segments
                 && let Some(first_bind_ident) = first_bind_ident
-                && &first_arg_ps.ident == first_bind_ident
+                && first_arg_ps.ident == first_bind_ident
             {
                 true
             } else {

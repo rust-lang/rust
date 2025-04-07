@@ -1,5 +1,5 @@
 error: unnecessary `Debug` formatting in `println!` args
-  --> tests/ui/unnecessary_path_debug_formatting.rs:29:22
+  --> tests/ui/unnecessary_path_debug_formatting.rs:30:22
    |
 LL |     println!("{:?}", os_str);
    |                      ^^^^^^
@@ -10,7 +10,7 @@ LL |     println!("{:?}", os_str);
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_debug_formatting)]`
 
 error: unnecessary `Debug` formatting in `println!` args
-  --> tests/ui/unnecessary_path_debug_formatting.rs:30:22
+  --> tests/ui/unnecessary_path_debug_formatting.rs:31:22
    |
 LL |     println!("{:?}", os_string);
    |                      ^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     println!("{:?}", os_string);
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
 
 error: unnecessary `Debug` formatting in `println!` args
-  --> tests/ui/unnecessary_path_debug_formatting.rs:32:22
+  --> tests/ui/unnecessary_path_debug_formatting.rs:33:22
    |
 LL |     println!("{:?}", path);
    |                      ^^^^
@@ -28,7 +28,7 @@ LL |     println!("{:?}", path);
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
 
 error: unnecessary `Debug` formatting in `println!` args
-  --> tests/ui/unnecessary_path_debug_formatting.rs:33:22
+  --> tests/ui/unnecessary_path_debug_formatting.rs:34:22
    |
 LL |     println!("{:?}", path_buf);
    |                      ^^^^^^^^
@@ -37,7 +37,7 @@ LL |     println!("{:?}", path_buf);
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
 
 error: unnecessary `Debug` formatting in `println!` args
-  --> tests/ui/unnecessary_path_debug_formatting.rs:35:16
+  --> tests/ui/unnecessary_path_debug_formatting.rs:36:16
    |
 LL |     println!("{path:?}");
    |                ^^^^
@@ -46,7 +46,7 @@ LL |     println!("{path:?}");
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
 
 error: unnecessary `Debug` formatting in `println!` args
-  --> tests/ui/unnecessary_path_debug_formatting.rs:36:16
+  --> tests/ui/unnecessary_path_debug_formatting.rs:37:16
    |
 LL |     println!("{path_buf:?}");
    |                ^^^^^^^^
@@ -55,7 +55,7 @@ LL |     println!("{path_buf:?}");
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
 
 error: unnecessary `Debug` formatting in `format!` args
-  --> tests/ui/unnecessary_path_debug_formatting.rs:38:37
+  --> tests/ui/unnecessary_path_debug_formatting.rs:39:37
    |
 LL |     let _: String = format!("{:?}", path);
    |                                     ^^^^
@@ -64,7 +64,7 @@ LL |     let _: String = format!("{:?}", path);
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
 
 error: unnecessary `Debug` formatting in `format!` args
-  --> tests/ui/unnecessary_path_debug_formatting.rs:39:37
+  --> tests/ui/unnecessary_path_debug_formatting.rs:40:37
    |
 LL |     let _: String = format!("{:?}", path_buf);
    |                                     ^^^^^^^^
@@ -73,7 +73,7 @@ LL |     let _: String = format!("{:?}", path_buf);
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
 
 error: unnecessary `Debug` formatting in `println!` args
-  --> tests/ui/unnecessary_path_debug_formatting.rs:42:22
+  --> tests/ui/unnecessary_path_debug_formatting.rs:43:22
    |
 LL |     println!("{:?}", &*deref_path);
    |                      ^^^^^^^^^^^^

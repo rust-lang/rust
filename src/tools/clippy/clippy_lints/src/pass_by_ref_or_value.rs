@@ -178,19 +178,18 @@ impl PassByRefOrValue {
                         && size <= self.ref_min_size
                         && let hir::TyKind::Ref(_, MutTy { ty: decl_ty, .. }) = input.kind
                     {
-                        if let Some(typeck) = cx.maybe_typeck_results() {
+                        if let Some(typeck) = cx.maybe_typeck_results()
                             // Don't lint if a raw pointer is created.
                             // TODO: Limit the check only to raw pointers to the argument (or part of the argument)
                             //       which escape the current function.
-                            if typeck.node_types().items().any(|(_, &ty)| ty.is_raw_ptr())
+                            && (typeck.node_types().items().any(|(_, &ty)| ty.is_raw_ptr())
                                 || typeck
                                     .adjustments()
                                     .items()
                                     .flat_map(|(_, a)| a)
-                                    .any(|a| matches!(a.kind, Adjust::Pointer(PointerCoercion::UnsafeFnPointer)))
-                            {
-                                continue;
-                            }
+                                    .any(|a| matches!(a.kind, Adjust::Pointer(PointerCoercion::UnsafeFnPointer))))
+                        {
+                            continue;
                         }
                         let value_type = if fn_body.and_then(|body| body.params.get(index)).is_some_and(is_self) {
                             "self".into()
@@ -282,12 +281,11 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                 }
                 let attrs = cx.tcx.hir_attrs(hir_id);
                 for a in attrs {
-                    if let Some(meta_items) = a.meta_item_list() {
-                        if a.has_name(sym::proc_macro_derive)
-                            || (a.has_name(sym::inline) && attr::list_contains_name(&meta_items, sym::always))
-                        {
-                            return;
-                        }
+                    if let Some(meta_items) = a.meta_item_list()
+                        && (a.has_name(sym::proc_macro_derive)
+                            || (a.has_name(sym::inline) && attr::list_contains_name(&meta_items, sym::always)))
+                    {
+                        return;
                     }
                 }
             },
@@ -296,13 +294,13 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         // Exclude non-inherent impls
-        if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id) {
-            if matches!(
+        if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id)
+            && matches!(
                 item.kind,
                 ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
-            ) {
-                return;
-            }
+            )
+        {
+            return;
         }
 
         self.check_poly_fn(cx, def_id, decl, Some(span));

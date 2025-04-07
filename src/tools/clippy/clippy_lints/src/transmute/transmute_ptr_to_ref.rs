@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(
                     let sugg = if let Some(ty) = get_explicit_type(path) {
                         let ty_snip = snippet_with_applicability(cx, ty.span, "..", &mut app);
                         if msrv.meets(cx, msrvs::POINTER_CAST) {
-                            format!("{deref}{}.cast::<{ty_snip}>()", arg.maybe_par())
+                            format!("{deref}{}.cast::<{ty_snip}>()", arg.maybe_paren())
                         } else if from_ptr_ty.has_erased_regions() {
                             sugg::make_unop(deref, arg.as_ty(format!("{cast} () as {cast} {ty_snip}"))).to_string()
                         } else {
@@ -47,7 +47,7 @@ pub(super) fn check<'tcx>(
                     } else if *from_ptr_ty == *to_ref_ty {
                         if from_ptr_ty.has_erased_regions() {
                             if msrv.meets(cx, msrvs::POINTER_CAST) {
-                                format!("{deref}{}.cast::<{to_ref_ty}>()", arg.maybe_par())
+                                format!("{deref}{}.cast::<{to_ref_ty}>()", arg.maybe_paren())
                             } else {
                                 sugg::make_unop(deref, arg.as_ty(format!("{cast} () as {cast} {to_ref_ty}")))
                                     .to_string()

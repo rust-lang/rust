@@ -1,3 +1,4 @@
+mod char_indices_as_byte_indices;
 mod empty_loop;
 mod explicit_counter_loop;
 mod explicit_into_iter_loop;
@@ -740,6 +741,49 @@ declare_clippy_lint! {
     "manually filling a slice with a value"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of a character position yielded by `.chars().enumerate()` in a context where a **byte index** is expected,
+    /// such as an argument to a specific `str` method or indexing into a `str` or `String`.
+    ///
+    /// ### Why is this bad?
+    /// A character (more specifically, a Unicode scalar value) that is yielded by `str::chars` can take up multiple bytes,
+    /// so a character position does not necessarily have the same byte index at which the character is stored.
+    /// Thus, using the character position where a byte index is expected can unexpectedly return wrong values
+    /// or panic when the string consists of multibyte characters.
+    ///
+    /// For example, the character `a` in `äa` is stored at byte index 2 but has the character position 1.
+    /// Using the character position 1 to index into the string will lead to a panic as it is in the middle of the first character.
+    ///
+    /// Instead of `.chars().enumerate()`, the correct iterator to use is `.char_indices()`, which yields byte indices.
+    ///
+    /// This pattern is technically fine if the strings are known to only use the ASCII subset,
+    /// though in those cases it would be better to use `bytes()` directly to make the intent clearer,
+    /// but there is also no downside to just using `.char_indices()` directly and supporting non-ASCII strings.
+    ///
+    /// You may also want to read the [chapter on strings in the Rust Book](https://doc.rust-lang.org/book/ch08-02-strings.html)
+    /// which goes into this in more detail.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let s = "...";
+    /// for (idx, c) in s.chars().enumerate() {
+    ///     let _ = s[idx..]; // ⚠️ Panics for strings consisting of multibyte characters
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let s = "...";
+    /// for (idx, c) in s.char_indices() {
+    ///     let _ = s[idx..];
+    /// }
+    /// ```
+    #[clippy::version = "1.83.0"]
+    pub CHAR_INDICES_AS_BYTE_INDICES,
+    correctness,
+    "using the character position yielded by `.chars().enumerate()` in a context where a byte index is expected"
+}
+
 pub struct Loops {
     msrv: Msrv,
     enforce_iter_loop_reborrow: bool,
@@ -777,6 +821,7 @@ impl_lint_pass!(Loops => [
     UNUSED_ENUMERATE_INDEX,
     INFINITE_LOOP,
     MANUAL_SLICE_FILL,
+    CHAR_INDICES_AS_BYTE_INDICES,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -860,6 +905,7 @@ impl Loops {
         manual_flatten::check(cx, pat, arg, body, span, self.msrv);
         manual_find::check(cx, pat, arg, body, span, expr);
         unused_enumerate_index::check(cx, pat, arg, body);
+        char_indices_as_byte_indices::check(cx, pat, arg, body);
     }
 
     fn check_for_loop_arg(&self, cx: &LateContext<'_>, _: &Pat<'_>, arg: &Expr<'_>) {

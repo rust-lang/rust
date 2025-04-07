@@ -153,18 +153,18 @@ fn lint_implicit_returns(
         ExprKind::Loop(block, ..) => {
             let mut add_return = false;
             let _: Option<!> = for_each_expr_without_closures(block, |e| {
-                if let ExprKind::Break(dest, sub_expr) = e.kind {
-                    if dest.target_id.ok() == Some(expr.hir_id) {
-                        if call_site_span.is_none() && e.span.ctxt() == ctxt {
-                            // At this point sub_expr can be `None` in async functions which either diverge, or return
-                            // the unit type.
-                            if let Some(sub_expr) = sub_expr {
-                                lint_break(cx, e.hir_id, e.span, sub_expr.span);
-                            }
-                        } else {
-                            // the break expression is from a macro call, add a return to the loop
-                            add_return = true;
+                if let ExprKind::Break(dest, sub_expr) = e.kind
+                    && dest.target_id.ok() == Some(expr.hir_id)
+                {
+                    if call_site_span.is_none() && e.span.ctxt() == ctxt {
+                        // At this point sub_expr can be `None` in async functions which either diverge, or return
+                        // the unit type.
+                        if let Some(sub_expr) = sub_expr {
+                            lint_break(cx, e.hir_id, e.span, sub_expr.span);
                         }
+                    } else {
+                        // the break expression is from a macro call, add a return to the loop
+                        add_return = true;
                     }
                 }
                 ControlFlow::Continue(())

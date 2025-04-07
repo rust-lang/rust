@@ -192,10 +192,10 @@ impl BindInsteadOfMap {
     }
 
     fn is_variant(&self, cx: &LateContext<'_>, res: Res) -> bool {
-        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
-            if let Some(variant_id) = cx.tcx.lang_items().get(self.variant_lang_item) {
-                return cx.tcx.parent(id) == variant_id;
-            }
+        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res
+            && let Some(variant_id) = cx.tcx.lang_items().get(self.variant_lang_item)
+        {
+            return cx.tcx.parent(id) == variant_id;
         }
         false
     }

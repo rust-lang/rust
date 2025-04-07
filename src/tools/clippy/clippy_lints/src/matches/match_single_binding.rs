@@ -178,24 +178,24 @@ fn sugg_with_curlies<'a>(
     let mut indent = " ".repeat(indent_of(cx, ex.span).unwrap_or(0));
 
     let (mut cbrace_start, mut cbrace_end) = (String::new(), String::new());
-    if let Some(parent_expr) = get_parent_expr(cx, match_expr) {
-        if let ExprKind::Closure { .. } = parent_expr.kind {
-            cbrace_end = format!("\n{indent}}}");
-            // Fix body indent due to the closure
-            indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
-            cbrace_start = format!("{{\n{indent}");
-        }
+    if let Some(parent_expr) = get_parent_expr(cx, match_expr)
+        && let ExprKind::Closure { .. } = parent_expr.kind
+    {
+        cbrace_end = format!("\n{indent}}}");
+        // Fix body indent due to the closure
+        indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
+        cbrace_start = format!("{{\n{indent}");
     }
 
     // If the parent is already an arm, and the body is another match statement,
     // we need curly braces around suggestion
-    if let Node::Arm(arm) = &cx.tcx.parent_hir_node(match_expr.hir_id) {
-        if let ExprKind::Match(..) = arm.body.kind {
-            cbrace_end = format!("\n{indent}}}");
-            // Fix body indent due to the match
-            indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
-            cbrace_start = format!("{{\n{indent}");
-        }
+    if let Node::Arm(arm) = &cx.tcx.parent_hir_node(match_expr.hir_id)
+        && let ExprKind::Match(..) = arm.body.kind
+    {
+        cbrace_end = format!("\n{indent}}}");
+        // Fix body indent due to the match
+        indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
+        cbrace_start = format!("{{\n{indent}");
     }
 
     let assignment_str = assignment.map_or_else(String::new, |span| {

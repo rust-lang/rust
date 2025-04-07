@@ -9,16 +9,16 @@ use once_cell::sync::Lazy;
 fn main() {}
 
 static LAZY_FOO: Lazy<String> = Lazy::new(|| "foo".to_uppercase());
-//~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+//~^ ERROR: this type has been superseded by `LazyLock` in the standard library
 static LAZY_BAR: Lazy<String> = Lazy::new(|| {
-    //~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+    //~^ ERROR: this type has been superseded by `LazyLock` in the standard library
     let x = "bar";
     x.to_uppercase()
 });
 static LAZY_BAZ: Lazy<String> = { Lazy::new(|| "baz".to_uppercase()) };
-//~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+//~^ ERROR: this type has been superseded by `LazyLock` in the standard library
 static LAZY_QUX: Lazy<String> = {
-    //~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+    //~^ ERROR: this type has been superseded by `LazyLock` in the standard library
     if "qux".len() == 3 {
         Lazy::new(|| "qux".to_uppercase())
     } else if "qux".is_ascii() {
@@ -39,11 +39,11 @@ mod once_cell_lazy_with_fns {
     use once_cell::sync::Lazy;
 
     static LAZY_FOO: Lazy<String> = Lazy::new(|| "foo".to_uppercase());
-    //~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+    //~^ ERROR: this type has been superseded by `LazyLock` in the standard library
     static LAZY_BAR: Lazy<String> = Lazy::new(|| "bar".to_uppercase());
-    //~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+    //~^ ERROR: this type has been superseded by `LazyLock` in the standard library
     static mut LAZY_BAZ: Lazy<String> = Lazy::new(|| "baz".to_uppercase());
-    //~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+    //~^ ERROR: this type has been superseded by `LazyLock` in the standard library
 
     fn calling_replaceable_fns() {
         let _ = Lazy::force(&LAZY_FOO);

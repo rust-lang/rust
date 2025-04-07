@@ -281,10 +281,10 @@ fn path_from_array(exprs: &[Expr<'_>]) -> Option<Vec<String>> {
     exprs
         .iter()
         .map(|expr| {
-            if let ExprKind::Lit(lit) = &expr.kind {
-                if let LitKind::Str(sym, _) = lit.node {
-                    return Some((*sym.as_str()).to_owned());
-                }
+            if let ExprKind::Lit(lit) = &expr.kind
+                && let LitKind::Str(sym, _) = lit.node
+            {
+                return Some((*sym.as_str()).to_owned());
             }
 
             None

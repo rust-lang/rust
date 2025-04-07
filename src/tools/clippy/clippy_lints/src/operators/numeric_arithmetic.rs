@@ -75,10 +75,10 @@ impl Context {
             hir::BodyOwnerKind::Static(_) | hir::BodyOwnerKind::Const { .. } => {
                 let body_span = cx.tcx.hir_span_with_body(body_owner);
 
-                if let Some(span) = self.const_span {
-                    if span.contains(body_span) {
-                        return;
-                    }
+                if let Some(span) = self.const_span
+                    && span.contains(body_span)
+                {
+                    return;
                 }
                 self.const_span = Some(body_span);
             },
@@ -90,10 +90,10 @@ impl Context {
         let body_owner = cx.tcx.hir_body_owner(body.id());
         let body_span = cx.tcx.hir_span_with_body(body_owner);
 
-        if let Some(span) = self.const_span {
-            if span.contains(body_span) {
-                return;
-            }
+        if let Some(span) = self.const_span
+            && span.contains(body_span)
+        {
+            return;
         }
         self.const_span = None;
     }

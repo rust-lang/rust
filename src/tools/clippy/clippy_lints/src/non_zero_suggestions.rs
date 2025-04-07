@@ -82,11 +82,10 @@ fn check_non_zero_conversion(cx: &LateContext<'_>, expr: &Expr<'_>, applicabilit
         if let ty::Adt(adt_def, _) = receiver_ty.kind()
             && adt_def.is_struct()
             && cx.tcx.get_diagnostic_name(adt_def.did()) == Some(sym::NonZero)
+            && let Some(target_non_zero_type) = get_target_non_zero_type(target_ty)
         {
-            if let Some(target_non_zero_type) = get_target_non_zero_type(target_ty) {
-                let arg_snippet = get_arg_snippet(cx, arg, rcv_path);
-                suggest_non_zero_conversion(cx, expr, fn_name, target_non_zero_type, &arg_snippet, applicability);
-            }
+            let arg_snippet = get_arg_snippet(cx, arg, rcv_path);
+            suggest_non_zero_conversion(cx, expr, fn_name, target_non_zero_type, &arg_snippet, applicability);
         }
     }
 }

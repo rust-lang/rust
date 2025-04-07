@@ -244,10 +244,10 @@ fn never_loop_expr<'tcx>(
             });
             combine_seq(first, || {
                 // checks if break targets a block instead of a loop
-                if let ExprKind::Break(Destination { target_id: Ok(t), .. }, _) = expr.kind {
-                    if let Some((_, reachable)) = local_labels.iter_mut().find(|(label, _)| *label == t) {
-                        *reachable = true;
-                    }
+                if let ExprKind::Break(Destination { target_id: Ok(t), .. }, _) = expr.kind
+                    && let Some((_, reachable)) = local_labels.iter_mut().find(|(label, _)| *label == t)
+                {
+                    *reachable = true;
                 }
                 NeverLoopResult::Diverging
             })

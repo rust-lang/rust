@@ -81,3 +81,46 @@ fn issue_13584() {
     let p = &raw const *s;
     let _ = p as *const i8;
 }
+
+mod issue_9905 {
+    use std::{fs, io};
+
+    pub enum File {
+        Stdio,
+        File(fs::File),
+    }
+
+    impl io::Read for &'_ File {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            match self {
+                File::Stdio => io::stdin().read(buf),
+                File::File(file) => (&*file).read(buf),
+            }
+        }
+    }
+}
+
+mod issue_11346 {
+    struct Struct;
+
+    impl Struct {
+        fn foo(self: &mut &Self) {}
+    }
+
+    trait Trait {
+        fn bar(&mut self) {}
+    }
+
+    impl Trait for &Struct {}
+
+    fn bar() {
+        let s = &Struct;
+        (&*s).foo();
+        (&*s).bar();
+
+        let mut s = &Struct;
+        s.foo(); // To avoid a warning about `s` not needing to be mutable
+        s.foo();
+        //~^ borrow_deref_ref
+    }
+}

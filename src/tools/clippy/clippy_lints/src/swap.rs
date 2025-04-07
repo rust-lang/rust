@@ -133,7 +133,7 @@ fn generate_swap_warning<'tcx>(
                             applicability: &mut applicability,
                         }
                         .snippet_index_bindings(&[idx1, idx2, rhs1, rhs2]),
-                        slice.maybe_par(),
+                        slice.maybe_paren(),
                         snippet_with_context(cx, idx1.span, ctxt, "..", &mut applicability).0,
                         snippet_with_context(cx, idx2.span, ctxt, "..", &mut applicability).0,
                     ),
@@ -269,12 +269,11 @@ fn parse<'a, 'hir>(stmt: &'a Stmt<'hir>) -> Option<(ExprOrIdent<'hir>, &'a Expr<
         if let ExprKind::Assign(lhs, rhs, _) = expr.kind {
             return Some((ExprOrIdent::Expr(lhs), rhs));
         }
-    } else if let StmtKind::Let(expr) = stmt.kind {
-        if let Some(rhs) = expr.init {
-            if let PatKind::Binding(_, _, ident_l, _) = expr.pat.kind {
-                return Some((ExprOrIdent::Ident(ident_l), rhs));
-            }
-        }
+    } else if let StmtKind::Let(expr) = stmt.kind
+        && let Some(rhs) = expr.init
+        && let PatKind::Binding(_, _, ident_l, _) = expr.pat.kind
+    {
+        return Some((ExprOrIdent::Ident(ident_l), rhs));
     }
     None
 }

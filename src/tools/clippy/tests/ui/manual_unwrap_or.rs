@@ -216,8 +216,8 @@ fn result_unwrap_or() {
         Ok(s) => s,
         Err(s) => s,
     };
-    // could lint, but unused_variables takes care of it
     match Ok::<&str, &str>("Alice") {
+        //~^ manual_unwrap_or
         Ok(s) => s,
         Err(s) => "Bob",
     };
@@ -313,6 +313,19 @@ mod issue_13018 {
             Some(names) => names,
             None => &[],
         }
+    }
+}
+
+fn implicit_deref(v: Vec<String>) {
+    let _ = if let Some(s) = v.first() { s } else { "" };
+}
+
+fn allowed_manual_unwrap_or_zero() -> u32 {
+    if let Some(x) = Some(42) {
+        //~^ manual_unwrap_or
+        x
+    } else {
+        0
     }
 }
 

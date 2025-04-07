@@ -206,7 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
 
                         // avoid clippy::double_parens
                         if !is_in_fn_call_arg {
-                            hint = hint.maybe_par();
+                            hint = hint.maybe_paren();
                         }
 
                         diag.span_suggestion(full_expr.span, "try doing something like", hint, applicability);

@@ -139,12 +139,11 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
         // Const fns are not allowed as methods in a trait.
         {
             let parent = cx.tcx.hir_get_parent_item(hir_id).def_id;
-            if parent != CRATE_DEF_ID {
-                if let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(parent) {
-                    if let hir::ItemKind::Trait(..) = &item.kind {
-                        return;
-                    }
-                }
+            if parent != CRATE_DEF_ID
+                && let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(parent)
+                && let hir::ItemKind::Trait(..) = &item.kind
+            {
+                return;
             }
         }
 
@@ -156,9 +155,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             return;
         }
 
-        let mir = cx.tcx.optimized_mir(def_id);
+        let mir = cx.tcx.mir_drops_elaborated_and_const_checked(def_id);
 
-        if let Ok(()) = is_min_const_fn(cx, mir, self.msrv)
+        if let Ok(()) = is_min_const_fn(cx, &mir.borrow(), self.msrv)
             && let hir::Node::Item(hir::Item { vis_span, .. }) | hir::Node::ImplItem(hir::ImplItem { vis_span, .. }) =
                 cx.tcx.hir_node_by_def_id(def_id)
         {

@@ -1,5 +1,5 @@
 #![warn(clippy::manual_unwrap_or_default)]
-#![allow(clippy::unnecessary_literal_unwrap, clippy::manual_unwrap_or)]
+#![allow(clippy::unnecessary_literal_unwrap)]
 
 fn main() {
     let x: Option<Vec<String>> = None;
@@ -134,4 +134,14 @@ fn issue_12928() {
     let x = Some(Y(0, 0));
     let y = if let Some(Y(a, _)) = x { a } else { 0 };
     let y = if let Some(Y(a, ..)) = x { a } else { 0 };
+}
+
+// For symetry with `manual_unwrap_or` test
+fn allowed_manual_unwrap_or_zero() -> u32 {
+    if let Some(x) = Some(42) {
+        //~^ manual_unwrap_or_default
+        x
+    } else {
+        0
+    }
 }

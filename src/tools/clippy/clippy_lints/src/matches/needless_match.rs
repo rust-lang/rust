@@ -67,10 +67,10 @@ fn check_all_arms(cx: &LateContext<'_>, match_expr: &Expr<'_>, arms: &[Arm<'_>])
     for arm in arms {
         let arm_expr = peel_blocks_with_stmt(arm.body);
 
-        if let Some(guard_expr) = &arm.guard {
-            if guard_expr.can_have_side_effects() {
-                return false;
-            }
+        if let Some(guard_expr) = &arm.guard
+            && guard_expr.can_have_side_effects()
+        {
+            return false;
         }
 
         if let PatKind::Wild = arm.pat.kind {

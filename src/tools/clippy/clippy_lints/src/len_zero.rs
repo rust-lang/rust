@@ -180,7 +180,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             let mut applicability = Applicability::MachineApplicable;
 
             let lit1 = peel_ref_operators(cx, lt.init);
-            let lit_str = Sugg::hir_with_context(cx, lit1, lt.span.ctxt(), "_", &mut applicability).maybe_par();
+            let lit_str = Sugg::hir_with_context(cx, lit1, lt.span.ctxt(), "_", &mut applicability).maybe_paren();
 
             span_lint_and_sugg(
                 cx,
@@ -202,7 +202,11 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
                 expr.span,
                 lhs_expr,
                 peel_ref_operators(cx, rhs_expr),
-                (method.ident.name == sym::ne).then_some("!").unwrap_or_default(),
+                if method.ident.name == sym::ne {
+                    "!"
+                } else {
+                    Default::default()
+                },
             );
         }
 
@@ -523,10 +527,10 @@ fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>
 
     if let (&ExprKind::MethodCall(method_path, receiver, [], _), ExprKind::Lit(lit)) = (&method.kind, &lit.kind) {
         // check if we are in an is_empty() method
-        if let Some(name) = get_item_name(cx, method) {
-            if name.as_str() == "is_empty" {
-                return;
-            }
+        if let Some(name) = get_item_name(cx, method)
+            && name.as_str() == "is_empty"
+        {
+            return;
         }
 
         check_len(cx, span, method_path.ident.name, receiver, &lit.node, op, compare_to);
@@ -573,7 +577,7 @@ fn check_empty_expr(cx: &LateContext<'_>, span: Span, lit1: &Expr<'_>, lit2: &Ex
         let mut applicability = Applicability::MachineApplicable;
 
         let lit1 = peel_ref_operators(cx, lit1);
-        let lit_str = Sugg::hir_with_context(cx, lit1, span.ctxt(), "_", &mut applicability).maybe_par();
+        let lit_str = Sugg::hir_with_context(cx, lit1, span.ctxt(), "_", &mut applicability).maybe_paren();
 
         span_lint_and_sugg(
             cx,
@@ -588,11 +592,11 @@ fn check_empty_expr(cx: &LateContext<'_>, span: Span, lit1: &Expr<'_>, lit2: &Ex
 }
 
 fn is_empty_string(expr: &Expr<'_>) -> bool {
-    if let ExprKind::Lit(lit) = expr.kind {
-        if let LitKind::Str(lit, _) = lit.node {
-            let lit = lit.as_str();
-            return lit.is_empty();
-        }
+    if let ExprKind::Lit(lit) = expr.kind
+        && let LitKind::Str(lit, _) = lit.node
+    {
+        let lit = lit.as_str();
+        return lit.is_empty();
     }
     false
 }
