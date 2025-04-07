@@ -959,9 +959,9 @@ fn link_natively(
                 }
             }
 
-            let (level, src) = codegen_results.crate_info.lint_levels.linker_messages;
+            let level = codegen_results.crate_info.lint_levels.linker_messages;
             let lint = |msg| {
-                lint_level(sess, LINKER_MESSAGES, level, src, None, |diag| {
+                lint_level(sess, LINKER_MESSAGES, level, None, |diag| {
                     LinkerOutput { inner: msg }.decorate_lint(diag)
                 })
             };
@@ -1012,7 +1012,7 @@ fn link_natively(
         // On macOS the external `dsymutil` tool is used to create the packed
         // debug information. Note that this will read debug information from
         // the objects on the filesystem which we'll clean up later.
-        SplitDebuginfo::Packed if sess.target.is_like_osx => {
+        SplitDebuginfo::Packed if sess.target.is_like_darwin => {
             let prog = Command::new("dsymutil").arg(out_filename).output();
             match prog {
                 Ok(prog) => {
@@ -1043,7 +1043,7 @@ fn link_natively(
 
     let strip = sess.opts.cg.strip;
 
-    if sess.target.is_like_osx {
+    if sess.target.is_like_darwin {
         let stripcmd = "rust-objcopy";
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
@@ -1241,7 +1241,7 @@ fn add_sanitizer_libraries(
     // Everywhere else the runtimes are currently distributed as static
     // libraries which should be linked to executables only.
     if matches!(crate_type, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro)
-        && !(sess.target.is_like_osx || sess.target.is_like_msvc)
+        && !(sess.target.is_like_darwin || sess.target.is_like_msvc)
     {
         return;
     }
@@ -1294,7 +1294,7 @@ fn link_sanitizer_runtime(
     let channel =
         option_env!("CFG_RELEASE_CHANNEL").map(|channel| format!("-{channel}")).unwrap_or_default();
 
-    if sess.target.is_like_osx {
+    if sess.target.is_like_darwin {
         // On Apple platforms, the sanitizer is always built as a dylib, and
         // LLVM will link to `@rpath/*.dylib`, so we need to specify an
         // rpath to the library as well (the rpath should be absolute, see
@@ -2182,7 +2182,7 @@ fn add_rpath_args(
         let rpath_config = RPathConfig {
             libs: &*libs,
             out_filename: out_filename.to_path_buf(),
-            is_like_osx: sess.target.is_like_osx,
+            is_like_darwin: sess.target.is_like_darwin,
             linker_is_gnu: sess.target.linker_flavor.is_gnu(),
         };
         cmd.link_args(&rpath::get_rpath_linker_args(&rpath_config));
@@ -3044,7 +3044,7 @@ pub(crate) fn are_upstream_rust_objects_already_included(sess: &Session) -> bool
 /// - The deployment target.
 /// - The SDK version.
 fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
-    if !sess.target.is_like_osx {
+    if !sess.target.is_like_darwin {
         return;
     }
     let LinkerFlavor::Darwin(cc, _) = flavor else {
@@ -3115,8 +3115,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
             _ => bug!("invalid OS/ABI combination for Apple target: {target_os}, {target_abi}"),
         };
 
-        let (major, minor, patch) = apple::deployment_target(sess);
-        let min_version = format!("{major}.{minor}.{patch}");
+        let min_version = sess.apple_deployment_target().fmt_full().to_string();
 
         // The SDK version is used at runtime when compiling with a newer SDK / version of Xcode:
         // - By dyld to give extra warnings and errors, see e.g.:
@@ -3185,10 +3184,10 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
 
             // The presence of `-mmacosx-version-min` makes CC default to
             // macOS, and it sets the deployment target.
-            let (major, minor, patch) = apple::deployment_target(sess);
+            let version = sess.apple_deployment_target().fmt_full();
             // Intentionally pass this as a single argument, Clang doesn't
             // seem to like it otherwise.
-            cmd.cc_arg(&format!("-mmacosx-version-min={major}.{minor}.{patch}"));
+            cmd.cc_arg(&format!("-mmacosx-version-min={version}"));
 
             // macOS has no environment, so with these two, we've told CC the
             // four desired parameters.

@@ -4,20 +4,18 @@
 // the // ~ form.
 
 //@ aux-build:internal_unstable.rs
-//@ error-pattern:use of unstable library feature `function`
-//@ error-pattern:use of unstable library feature `struct_field`
-//@ error-pattern:use of unstable library feature `method`
-//@ error-pattern:use of unstable library feature `struct2_field`
 
 #[macro_use]
 extern crate internal_unstable;
 
 fn main() {
-    call_unstable_noallow!();
+    call_unstable_noallow!(); //~ ERROR use of unstable library feature `function`
 
-    construct_unstable_noallow!(0);
+    construct_unstable_noallow!(0); //~ ERROR use of unstable library feature `struct_field`
 
     |x: internal_unstable::Foo| { call_method_noallow!(x) };
+    //~^ ERROR use of unstable library feature `method`
 
     |x: internal_unstable::Bar| { access_field_noallow!(x) };
+    //~^ ERROR use of unstable library feature `struct2_field`
 }

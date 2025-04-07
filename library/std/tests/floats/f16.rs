@@ -955,6 +955,27 @@ fn test_total_cmp() {
 }
 
 #[test]
+fn test_algebraic() {
+    let a: f16 = 123.0;
+    let b: f16 = 456.0;
+
+    // Check that individual operations match their primitive counterparts.
+    //
+    // This is a check of current implementations and does NOT imply any form of
+    // guarantee about future behavior. The compiler reserves the right to make
+    // these operations inexact matches in the future.
+    let eps_add = if cfg!(miri) { 1e1 } else { 0.0 };
+    let eps_mul = if cfg!(miri) { 1e3 } else { 0.0 };
+    let eps_div = if cfg!(miri) { 1e0 } else { 0.0 };
+
+    assert_approx_eq!(a.algebraic_add(b), a + b, eps_add);
+    assert_approx_eq!(a.algebraic_sub(b), a - b, eps_add);
+    assert_approx_eq!(a.algebraic_mul(b), a * b, eps_mul);
+    assert_approx_eq!(a.algebraic_div(b), a / b, eps_div);
+    assert_approx_eq!(a.algebraic_rem(b), a % b, eps_div);
+}
+
+#[test]
 fn test_from() {
     assert_eq!(f16::from(false), 0.0);
     assert_eq!(f16::from(true), 1.0);

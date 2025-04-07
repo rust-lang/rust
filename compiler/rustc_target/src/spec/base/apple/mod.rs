@@ -1,9 +1,12 @@
 use std::borrow::Cow;
 use std::env;
+use std::fmt::{Display, from_fn};
+use std::num::ParseIntError;
+use std::str::FromStr;
 
 use crate::spec::{
     BinaryFormat, Cc, DebuginfoKind, FloatAbi, FramePointer, LinkerFlavor, Lld, RustcAbi,
-    SplitDebuginfo, StackProbeType, StaticCow, TargetOptions, cvs,
+    SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions, cvs,
 };
 
 #[cfg(test)]
@@ -115,7 +118,7 @@ pub(crate) fn base(
         function_sections: false,
         dynamic_linking: true,
         families: cvs!["unix"],
-        is_like_osx: true,
+        is_like_darwin: true,
         binary_format: BinaryFormat::MachO,
         // LLVM notes that macOS 10.11+ and iOS 9+ default
         // to v4, so we do the same.
@@ -220,5 +223,109 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
         // Otherwise if cross-compiling for a different OS/SDK (including Mac Catalyst), remove any part
         // of the linking environment that's wrong and reversed.
         cvs!["MACOSX_DEPLOYMENT_TARGET"]
+    }
+}
+
+/// Deployment target or SDK version.
+///
+/// The size of the numbers in here are limited by Mach-O's `LC_BUILD_VERSION`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct OSVersion {
+    pub major: u16,
+    pub minor: u8,
+    pub patch: u8,
+}
+
+impl FromStr for OSVersion {
+    type Err = ParseIntError;
+
+    /// Parse an OS version triple (SDK version or deployment target).
+    fn from_str(version: &str) -> Result<Self, ParseIntError> {
+        if let Some((major, minor)) = version.split_once('.') {
+            let major = major.parse()?;
+            if let Some((minor, patch)) = minor.split_once('.') {
+                Ok(Self { major, minor: minor.parse()?, patch: patch.parse()? })
+            } else {
+                Ok(Self { major, minor: minor.parse()?, patch: 0 })
+            }
+        } else {
+            Ok(Self { major: version.parse()?, minor: 0, patch: 0 })
+        }
+    }
+}
+
+impl OSVersion {
+    pub fn new(major: u16, minor: u8, patch: u8) -> Self {
+        Self { major, minor, patch }
+    }
+
+    pub fn fmt_pretty(self) -> impl Display {
+        let Self { major, minor, patch } = self;
+        from_fn(move |f| {
+            write!(f, "{major}.{minor}")?;
+            if patch != 0 {
+                write!(f, ".{patch}")?;
+            }
+            Ok(())
+        })
+    }
+
+    pub fn fmt_full(self) -> impl Display {
+        let Self { major, minor, patch } = self;
+        from_fn(move |f| write!(f, "{major}.{minor}.{patch}"))
+    }
+
+    /// Minimum operating system versions currently supported by `rustc`.
+    pub fn os_minimum_deployment_target(os: &str) -> Self {
+        // When bumping a version in here, remember to update the platform-support docs too.
+        //
+        // NOTE: The defaults may change in future `rustc` versions, so if you are looking for the
+        // default deployment target, prefer:
+        // ```
+        // $ rustc --print deployment-target
+        // ```
+        let (major, minor, patch) = match os {
+            "macos" => (10, 12, 0),
+            "ios" => (10, 0, 0),
+            "tvos" => (10, 0, 0),
+            "watchos" => (5, 0, 0),
+            "visionos" => (1, 0, 0),
+            _ => unreachable!("tried to get deployment target for non-Apple platform"),
+        };
+        Self { major, minor, patch }
+    }
+
+    /// The deployment target for the given target.
+    ///
+    /// This is similar to `os_minimum_deployment_target`, except that on certain targets it makes sense
+    /// to raise the minimum OS version.
+    ///
+    /// This matches what LLVM does, see in part:
+    /// <https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/TargetParser/Triple.cpp#L1900-L1932>
+    pub fn minimum_deployment_target(target: &Target) -> Self {
+        let (major, minor, patch) = match (&*target.os, &*target.arch, &*target.abi) {
+            ("macos", "aarch64", _) => (11, 0, 0),
+            ("ios", "aarch64", "macabi") => (14, 0, 0),
+            ("ios", "aarch64", "sim") => (14, 0, 0),
+            ("ios", _, _) if target.llvm_target.starts_with("arm64e") => (14, 0, 0),
+            // Mac Catalyst defaults to 13.1 in Clang.
+            ("ios", _, "macabi") => (13, 1, 0),
+            ("tvos", "aarch64", "sim") => (14, 0, 0),
+            ("watchos", "aarch64", "sim") => (7, 0, 0),
+            (os, _, _) => return Self::os_minimum_deployment_target(os),
+        };
+        Self { major, minor, patch }
+    }
+}
+
+/// Name of the environment variable used to fetch the deployment target on the given OS.
+pub fn deployment_target_env_var(os: &str) -> &'static str {
+    match os {
+        "macos" => "MACOSX_DEPLOYMENT_TARGET",
+        "ios" => "IPHONEOS_DEPLOYMENT_TARGET",
+        "watchos" => "WATCHOS_DEPLOYMENT_TARGET",
+        "tvos" => "TVOS_DEPLOYMENT_TARGET",
+        "visionos" => "XROS_DEPLOYMENT_TARGET",
+        _ => unreachable!("tried to get deployment target env var for non-Apple platform"),
     }
 }

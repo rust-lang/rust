@@ -14,6 +14,6 @@ fn two<T: Debug, U>(t: T, _: U) -> Two<T, U> {
 
 #[define_opaque(Two)]
 fn three<T, U: Debug>(_: T, u: U) -> Two<T, U> {
-    u
     //~^ ERROR concrete type differs
+    u
 }

@@ -203,6 +203,14 @@ mod autodiff {
     }
 
     #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_width)]
+    pub(crate) struct AutoDiffInvalidWidth {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) width: u128,
+    }
+
+    #[derive(Diagnostic)]
     #[diag(builtin_macros_autodiff)]
     pub(crate) struct AutoDiffInvalidApplication {
         #[primary_span]

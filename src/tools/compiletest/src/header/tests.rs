@@ -8,14 +8,15 @@ use super::{
     parse_normalize_rule,
 };
 use crate::common::{Config, Debugger, Mode};
+use crate::executor::{CollectedTestDesc, ShouldPanic};
 
 fn make_test_description<R: Read>(
     config: &Config,
-    name: test::TestName,
+    name: String,
     path: &Path,
     src: R,
     revision: Option<&str>,
-) -> test::TestDesc {
+) -> CollectedTestDesc {
     let cache = HeadersCache::load(config);
     let mut poisoned = false;
     let test = crate::header::make_test_description(
@@ -233,7 +234,7 @@ fn parse_rs(config: &Config, contents: &str) -> EarlyProps {
 }
 
 fn check_ignore(config: &Config, contents: &str) -> bool {
-    let tn = test::DynTestName(String::new());
+    let tn = String::new();
     let p = Path::new("a.rs");
     let d = make_test_description(&config, tn, p, std::io::Cursor::new(contents), None);
     d.ignore
@@ -242,13 +243,13 @@ fn check_ignore(config: &Config, contents: &str) -> bool {
 #[test]
 fn should_fail() {
     let config: Config = cfg().build();
-    let tn = test::DynTestName(String::new());
+    let tn = String::new();
     let p = Path::new("a.rs");
 
     let d = make_test_description(&config, tn.clone(), p, std::io::Cursor::new(""), None);
-    assert_eq!(d.should_panic, test::ShouldPanic::No);
+    assert_eq!(d.should_panic, ShouldPanic::No);
     let d = make_test_description(&config, tn, p, std::io::Cursor::new("//@ should-fail"), None);
-    assert_eq!(d.should_panic, test::ShouldPanic::Yes);
+    assert_eq!(d.should_panic, ShouldPanic::Yes);
 }
 
 #[test]

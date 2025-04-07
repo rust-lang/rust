@@ -9,6 +9,31 @@ note: ...which requires computing type of opaque `Bug::{opaque#0}`...
    |
 LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
    |                  ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires borrow-checking `CONST_BUG`...
+  --> $DIR/issue-53092-2.rs:8:1
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires promoting constants in MIR for `CONST_BUG`...
+  --> $DIR/issue-53092-2.rs:8:1
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires const checking `CONST_BUG`...
+  --> $DIR/issue-53092-2.rs:8:1
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires building MIR for `CONST_BUG`...
+  --> $DIR/issue-53092-2.rs:8:1
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires match-checking `CONST_BUG`...
+  --> $DIR/issue-53092-2.rs:8:1
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires type-checking `CONST_BUG`...
   --> $DIR/issue-53092-2.rs:8:1
    |

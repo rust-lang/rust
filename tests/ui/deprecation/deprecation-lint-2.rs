@@ -1,5 +1,4 @@
 //@ aux-build:deprecation-lint.rs
-//@ error-pattern: use of deprecated function
 
 #![deny(deprecated)]
 
@@ -9,5 +8,5 @@ extern crate deprecation_lint;
 use deprecation_lint::*;
 
 fn main() {
-    macro_test!();
+    macro_test!(); //~ ERROR use of deprecated function `deprecation_lint::deprecated`: text
 }

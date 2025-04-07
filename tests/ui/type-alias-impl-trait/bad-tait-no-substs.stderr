@@ -26,21 +26,8 @@ help: add missing generic argument
 LL |     Tuple(Alias<U>),
    |                +++
 
-error: item does not constrain `Alias::{opaque#0}`
-  --> $DIR/bad-tait-no-substs.rs:14:4
-   |
-LL | fn uwu(x: UninhabitedVariants) {
-   |    ^^^
-   |
-   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
-note: this opaque type is supposed to be constrained
-  --> $DIR/bad-tait-no-substs.rs:5:21
-   |
-LL | type Alias<'a, U> = impl Trait<U>;
-   |                     ^^^^^^^^^^^^^
-
 error[E0004]: non-exhaustive patterns: `UninhabitedVariants::Tuple(_)` not covered
-  --> $DIR/bad-tait-no-substs.rs:16:11
+  --> $DIR/bad-tait-no-substs.rs:15:11
    |
 LL |     match x {}
    |           ^ pattern `UninhabitedVariants::Tuple(_)` not covered
@@ -60,7 +47,7 @@ LL +         UninhabitedVariants::Tuple(_) => todo!(),
 LL ~     }
    |
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0004, E0106, E0107.
 For more information about an error, try `rustc --explain E0004`.

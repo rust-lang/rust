@@ -711,7 +711,7 @@ mod desc {
     pub(crate) const parse_list: &str = "a space-separated list of strings";
     pub(crate) const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
-    pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `LooseTypes`, `Inline`";
+    pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `LooseTypes`, `Inline`";
     pub(crate) const parse_comma_list: &str = "a comma-separated list of strings";
     pub(crate) const parse_opt_comma_list: &str = parse_comma_list;
     pub(crate) const parse_number: &str = "a number";
@@ -1359,6 +1359,7 @@ pub mod parse {
                 "PrintSteps" => AutoDiff::PrintSteps,
                 "PrintModBefore" => AutoDiff::PrintModBefore,
                 "PrintModAfter" => AutoDiff::PrintModAfter,
+                "PrintModFinal" => AutoDiff::PrintModFinal,
                 "LooseTypes" => AutoDiff::LooseTypes,
                 "Inline" => AutoDiff::Inline,
                 _ => {
@@ -2093,6 +2094,7 @@ options! {
         `=PrintSteps`
         `=PrintModBefore`
         `=PrintModAfter`
+        `=PrintModFinal`
         `=LooseTypes`
         `=Inline`
         Multiple options can be combined with commas."),
@@ -2187,6 +2189,8 @@ options! {
         "Use WebAssembly error handling for wasm32-unknown-emscripten"),
     enforce_type_length_limit: bool = (false, parse_bool, [TRACKED],
         "enforce the type length limit when monomorphizing instances in codegen"),
+    experimental_default_bounds: bool = (false, parse_bool, [TRACKED],
+        "enable default bounds for experimental group of auto traits"),
     export_executable_symbols: bool = (false, parse_bool, [TRACKED],
         "export symbols from executables, as if they were dynamic libraries"),
     external_clangrt: bool = (false, parse_bool, [UNTRACKED],
@@ -2441,6 +2445,8 @@ written to standard error output)"),
         "enable normalizing integer types (default: no)"),
     sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
         "additional ABI list files that control how shadow parameters are passed (comma separated)"),
+    sanitizer_kcfi_arity: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "enable KCFI arity indicator (default: no)"),
     sanitizer_memory_track_origins: usize = (0, parse_sanitizer_memory_track_origins, [TRACKED],
         "enable origins tracking in MemorySanitizer"),
     sanitizer_recover: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
@@ -2553,6 +2559,9 @@ written to standard error output)"),
         "in diagnostics, use heuristics to shorten paths referring to items"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
+    #[rustc_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_borrowck` instead of this field")]
+    typing_mode_borrowck: bool = (false, parse_bool, [TRACKED],
+        "enable `TypingMode::Borrowck`, changing the way opaque types are handled during MIR borrowck"),
     #[rustc_lint_opt_deny_field_access("use `Session::ub_checks` instead of this field")]
     ub_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit runtime checks for Undefined Behavior (default: -Cdebug-assertions)"),

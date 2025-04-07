@@ -411,9 +411,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
                 let res = this.binary_op(op, &a, &b)?;
                 // `binary_op` already called `generate_nan` if needed.
-                // Apply a relative error of 16ULP to simulate non-deterministic precision loss
+                // Apply a relative error of 4ULP to simulate non-deterministic precision loss
                 // due to optimizations.
-                let res = apply_random_float_error_to_imm(this, res, 4 /* log2(16) */)?;
+                let res = apply_random_float_error_to_imm(this, res, 2 /* log2(4) */)?;
                 this.write_immediate(*res, dest)?;
             }
 
@@ -464,9 +464,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if !float_finite(&res)? {
                     throw_ub_format!("`{intrinsic_name}` intrinsic produced non-finite value as result");
                 }
-                // Apply a relative error of 16ULP to simulate non-deterministic precision loss
+                // Apply a relative error of 4ULP to simulate non-deterministic precision loss
                 // due to optimizations.
-                let res = apply_random_float_error_to_imm(this, res, 4 /* log2(16) */)?;
+                let res = apply_random_float_error_to_imm(this, res, 2 /* log2(4) */)?;
                 this.write_immediate(*res, dest)?;
             }
 

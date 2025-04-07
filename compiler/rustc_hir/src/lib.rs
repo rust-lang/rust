@@ -11,6 +11,7 @@
 #![feature(debug_closure_helpers)]
 #![feature(exhaustive_patterns)]
 #![feature(let_chains)]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(variant_count)]

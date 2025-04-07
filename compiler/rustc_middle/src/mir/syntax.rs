@@ -1668,6 +1668,42 @@ pub enum BinOp {
     Offset,
 }
 
+// Assignment operators, e.g. `+=`. See comments on the corresponding variants
+// in `BinOp` for details.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum AssignOp {
+    AddAssign,
+    SubAssign,
+    MulAssign,
+    DivAssign,
+    RemAssign,
+    BitXorAssign,
+    BitAndAssign,
+    BitOrAssign,
+    ShlAssign,
+    ShrAssign,
+}
+
+// Sometimes `BinOp` and `AssignOp` need the same treatment. The operations
+// covered by `AssignOp` are a subset of those covered by `BinOp`, so it makes
+// sense to convert `AssignOp` to `BinOp`.
+impl From<AssignOp> for BinOp {
+    fn from(op: AssignOp) -> BinOp {
+        match op {
+            AssignOp::AddAssign => BinOp::Add,
+            AssignOp::SubAssign => BinOp::Sub,
+            AssignOp::MulAssign => BinOp::Mul,
+            AssignOp::DivAssign => BinOp::Div,
+            AssignOp::RemAssign => BinOp::Rem,
+            AssignOp::BitXorAssign => BinOp::BitXor,
+            AssignOp::BitAndAssign => BinOp::BitAnd,
+            AssignOp::BitOrAssign => BinOp::BitOr,
+            AssignOp::ShlAssign => BinOp::Shl,
+            AssignOp::ShrAssign => BinOp::Shr,
+        }
+    }
+}
+
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {

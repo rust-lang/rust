@@ -143,7 +143,6 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         };
         opts.security_attributes(&mut sa);
         let theirs = File::open(Path::new(&name), &opts)?;
-        let theirs = AnonPipe { inner: theirs.into_inner() };
 
         Ok(Pipes {
             ours: AnonPipe { inner: ours },

@@ -967,7 +967,8 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
         debug_assert!(!self.next_trait_solver());
         match self.typing_mode() {
-            TypingMode::Analysis { defining_opaque_types } => {
+            TypingMode::Analysis { defining_opaque_types }
+            | TypingMode::Borrowck { defining_opaque_types } => {
                 id.into().as_local().is_some_and(|def_id| defining_opaque_types.contains(&def_id))
             }
             // FIXME(#132279): This function is quite weird in post-analysis
@@ -1261,7 +1262,8 @@ impl<'tcx> InferCtxt<'tcx> {
             // to handle them without proper canonicalization. This means we may cause cycle
             // errors and fail to reveal opaques while inside of bodies. We should rename this
             // function and require explicit comments on all use-sites in the future.
-            ty::TypingMode::Analysis { defining_opaque_types: _ } => {
+            ty::TypingMode::Analysis { defining_opaque_types: _ }
+            | ty::TypingMode::Borrowck { defining_opaque_types: _ } => {
                 TypingMode::non_body_analysis()
             }
             mode @ (ty::TypingMode::Coherence

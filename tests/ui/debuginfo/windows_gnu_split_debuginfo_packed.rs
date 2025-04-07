@@ -1,6 +1,5 @@
 //@ revisions: aarch64_gl i686_g i686_gl i686_uwp_g x86_64_g x86_64_gl x86_64_uwp_g
 //@ compile-flags: --crate-type cdylib -Csplit-debuginfo=packed
-//@ error-pattern: error: `-Csplit-debuginfo=packed` is unstable on this platform
 
 //@[aarch64_gl] compile-flags: --target aarch64-pc-windows-gnullvm
 //@[aarch64_gl] needs-llvm-components: aarch64
@@ -27,3 +26,5 @@
 
 #![no_core]
 #![no_std]
+
+//~? ERROR `-Csplit-debuginfo=packed` is unstable on this platform

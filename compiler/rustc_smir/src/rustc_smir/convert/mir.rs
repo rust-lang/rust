@@ -9,6 +9,7 @@ use stable_mir::ty::{Allocation, ConstantKind, MirConst};
 use stable_mir::{Error, opaque};
 
 use crate::rustc_smir::{Stable, Tables, alloc};
+use crate::stable_mir;
 
 impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
     type T = stable_mir::mir::Body;

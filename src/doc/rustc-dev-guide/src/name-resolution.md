@@ -120,9 +120,9 @@ even though they should be visible by ordinary scoping rules. An example:
 fn do_something<T: Default>(val: T) { // <- New rib in both types and values (1)
     // `val` is accessible, as is the helper function
     // `T` is accessible
-    let helper = || { // New rib on `helper` (2) and another on the block (3)
+   let helper = || { // New rib on the block (2)
         // `val` is accessible here
-    }; // End of (3)
+    }; // End of (2), new rib on `helper` (3)
     // `val` is accessible, `helper` variable shadows `helper` function
     fn helper() { // <- New rib in both types and values (4)
         // `val` is not accessible here, (4) is not transparent for locals
@@ -130,7 +130,7 @@ fn do_something<T: Default>(val: T) { // <- New rib in both types and values (1)
     } // End of (4)
     let val = T::default(); // New rib (5)
     // `val` is the variable, not the parameter here
-} // End of (5), (2) and (1)
+} // End of (5), (3) and (1)
 ```
 
 Because the rules for different namespaces are a bit different, each namespace

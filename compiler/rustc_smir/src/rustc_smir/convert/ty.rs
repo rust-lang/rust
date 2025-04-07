@@ -7,6 +7,7 @@ use stable_mir::ty::{
 };
 
 use crate::rustc_smir::{Stable, Tables, alloc};
+use crate::stable_mir;
 
 impl<'tcx> Stable<'tcx> for ty::AliasTyKind {
     type T = stable_mir::ty::AliasKind;
@@ -887,6 +888,66 @@ impl<'tcx> Stable<'tcx> for rustc_session::cstore::ForeignModule {
         stable_mir::ty::ForeignModule {
             def_id: tables.foreign_module_def(self.def_id),
             abi: self.abi.stable(tables),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::AssocKind {
+    type T = stable_mir::ty::AssocKind;
+
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
+        use stable_mir::ty::AssocKind;
+        match self {
+            ty::AssocKind::Const => AssocKind::Const,
+            ty::AssocKind::Fn => AssocKind::Fn,
+            ty::AssocKind::Type => AssocKind::Type,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::AssocItemContainer {
+    type T = stable_mir::ty::AssocItemContainer;
+
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
+        use stable_mir::ty::AssocItemContainer;
+        match self {
+            ty::AssocItemContainer::Trait => AssocItemContainer::Trait,
+            ty::AssocItemContainer::Impl => AssocItemContainer::Impl,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::AssocItem {
+    type T = stable_mir::ty::AssocItem;
+
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        stable_mir::ty::AssocItem {
+            def_id: tables.assoc_def(self.def_id),
+            name: self.name.to_string(),
+            kind: self.kind.stable(tables),
+            container: self.container.stable(tables),
+            trait_item_def_id: self.trait_item_def_id.map(|did| tables.assoc_def(did)),
+            fn_has_self_parameter: self.fn_has_self_parameter,
+            opt_rpitit_info: self.opt_rpitit_info.map(|rpitit| rpitit.stable(tables)),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ImplTraitInTraitData {
+    type T = stable_mir::ty::ImplTraitInTraitData;
+
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        use stable_mir::ty::ImplTraitInTraitData;
+        match self {
+            ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id } => {
+                ImplTraitInTraitData::Trait {
+                    fn_def_id: tables.fn_def(*fn_def_id),
+                    opaque_def_id: tables.opaque_def(*opaque_def_id),
+                }
+            }
+            ty::ImplTraitInTraitData::Impl { fn_def_id } => {
+                ImplTraitInTraitData::Impl { fn_def_id: tables.fn_def(*fn_def_id) }
+            }
         }
     }
 }

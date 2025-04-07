@@ -1,6 +1,5 @@
 //@ check-fail
 //@ compile-flags: --crate-type lib -Cdebuginfo=2
-//@ error-pattern: recursion limit
 
 #![recursion_limit = "10"]
 macro_rules! link {
@@ -41,3 +40,5 @@ link!(J, K);
 link!(K, Bottom);
 
 fn main() {}
+
+//~? ERROR reached the recursion limit finding the struct tail for `Bottom`

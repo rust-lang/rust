@@ -72,6 +72,7 @@ where
             (ty::ImplPolarity::Reservation, _) => match ecx.typing_mode() {
                 TypingMode::Coherence => Certainty::AMBIGUOUS,
                 TypingMode::Analysis { .. }
+                | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => return Err(NoSolution),
             },
@@ -1086,6 +1087,25 @@ where
         goal: Goal<I, TraitPredicate<I>>,
     ) -> Option<Result<Candidate<I>, NoSolution>> {
         let self_ty = goal.predicate.self_ty();
+        let check_impls = || {
+            let mut disqualifying_impl = None;
+            self.cx().for_each_relevant_impl(
+                goal.predicate.def_id(),
+                goal.predicate.self_ty(),
+                |impl_def_id| {
+                    disqualifying_impl = Some(impl_def_id);
+                },
+            );
+            if let Some(def_id) = disqualifying_impl {
+                trace!(?def_id, ?goal, "disqualified auto-trait implementation");
+                // No need to actually consider the candidate here,
+                // since we do that in `consider_impl_candidate`.
+                return Some(Err(NoSolution));
+            } else {
+                None
+            }
+        };
+
         match self_ty.kind() {
             // Stall int and float vars until they are resolved to a concrete
             // numerical type. That's because the check for impls below treats
@@ -1095,6 +1115,10 @@ where
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
                 Some(self.forced_ambiguity(MaybeCause::Ambiguity))
             }
+
+            // Backward compatibility for default auto traits.
+            // Test: ui/traits/default_auto_traits/extern-types.rs
+            ty::Foreign(..) if self.cx().is_default_trait(goal.predicate.def_id()) => check_impls(),
 
             // These types cannot be structurally decomposed into constituent
             // types, and therefore have no built-in auto impl.
@@ -1156,24 +1180,7 @@ where
             | ty::Never
             | ty::Tuple(_)
             | ty::Adt(_, _)
-            | ty::UnsafeBinder(_) => {
-                let mut disqualifying_impl = None;
-                self.cx().for_each_relevant_impl(
-                    goal.predicate.def_id(),
-                    goal.predicate.self_ty(),
-                    |impl_def_id| {
-                        disqualifying_impl = Some(impl_def_id);
-                    },
-                );
-                if let Some(def_id) = disqualifying_impl {
-                    trace!(?def_id, ?goal, "disqualified auto-trait implementation");
-                    // No need to actually consider the candidate here,
-                    // since we do that in `consider_impl_candidate`.
-                    return Some(Err(NoSolution));
-                } else {
-                    None
-                }
-            }
+            | ty::UnsafeBinder(_) => check_impls(),
             ty::Error(_) => None,
         }
     }
@@ -1294,7 +1301,6 @@ where
                 .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
                 .map(|c| c.result)
                 .collect();
-
             return if let Some(response) = self.try_merge_responses(&where_bounds) {
                 Ok((response, Some(TraitGoalProvenVia::ParamEnv)))
             } else {
@@ -1315,9 +1321,18 @@ where
             };
         }
 
+        // If there are *only* global where bounds, then make sure to return that this
+        // is still reported as being proven-via the param-env so that rigid projections
+        // operate correctly.
+        let proven_via =
+            if candidates.iter().all(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
+                TraitGoalProvenVia::ParamEnv
+            } else {
+                TraitGoalProvenVia::Misc
+            };
         let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();
         if let Some(response) = self.try_merge_responses(&all_candidates) {
-            Ok((response, Some(TraitGoalProvenVia::Misc)))
+            Ok((response, Some(proven_via)))
         } else {
             self.flounder(&all_candidates).map(|r| (r, None))
         }

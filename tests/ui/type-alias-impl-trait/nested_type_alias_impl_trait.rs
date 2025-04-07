@@ -12,7 +12,7 @@ pub fn get_foo() -> Foo {
 
 #[define_opaque(Foot, Foo)]
 pub fn get_foot(_: Foo) -> Foot {
-    //~^ ERROR: item does not constrain `Foo::{opaque#0}`
+    //~^ ERROR item does not constrain `Foo::{opaque#0}`
     get_foo() //~ ERROR opaque type's hidden type cannot be another opaque type
 }
 

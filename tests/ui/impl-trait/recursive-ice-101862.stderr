@@ -1,3 +1,12 @@
+error[E0792]: expected generic type parameter, found `&str`
+  --> $DIR/recursive-ice-101862.rs:6:19
+   |
+LL | pub fn ice(x: impl AsRef<str>) -> impl IntoIterator<Item = ()> {
+   |               --------------- this generic parameter must be used with a generic type parameter
+LL |
+LL |     vec![].append(&mut ice(x.as_ref()));
+   |                   ^^^^^^^^^^^^^^^^^^^^
+
 warning: function cannot return without recursing
   --> $DIR/recursive-ice-101862.rs:4:1
    |
@@ -9,15 +18,6 @@ LL |     vec![].append(&mut ice(x.as_ref()));
    |
    = help: a `loop` may express intention better if this is on purpose
    = note: `#[warn(unconditional_recursion)]` on by default
-
-error[E0792]: expected generic type parameter, found `&str`
-  --> $DIR/recursive-ice-101862.rs:6:19
-   |
-LL | pub fn ice(x: impl AsRef<str>) -> impl IntoIterator<Item = ()> {
-   |               --------------- this generic parameter must be used with a generic type parameter
-LL |
-LL |     vec![].append(&mut ice(x.as_ref()));
-   |                   ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error; 1 warning emitted
 

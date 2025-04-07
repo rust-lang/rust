@@ -11,3 +11,5 @@ fn handler(_info: &core::panic::PanicInfo<'_>) -> ! {
 }
 
 fn main() {}
+
+//~? ERROR using `fn main` requires the standard library

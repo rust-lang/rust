@@ -214,7 +214,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
     file.set_sub_architecture(sub_architecture);
-    if sess.target.is_like_osx {
+    if sess.target.is_like_darwin {
         if macho_is_arm64e(&sess.target) {
             file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
         }
@@ -388,13 +388,13 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
 fn macho_object_build_version_for_target(sess: &Session) -> object::write::MachOBuildVersion {
     /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
     /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
-    fn pack_version((major, minor, patch): (u16, u8, u8)) -> u32 {
+    fn pack_version(apple::OSVersion { major, minor, patch }: apple::OSVersion) -> u32 {
         let (major, minor, patch) = (major as u32, minor as u32, patch as u32);
         (major << 16) | (minor << 8) | patch
     }
 
     let platform = apple::macho_platform(&sess.target);
-    let min_os = apple::deployment_target(sess);
+    let min_os = sess.apple_deployment_target();
 
     let mut build_version = object::write::MachOBuildVersion::default();
     build_version.platform = platform;

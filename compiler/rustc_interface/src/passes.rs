@@ -976,7 +976,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         tcx.par_hir_body_owners(|def_id| {
             if tcx.is_coroutine(def_id.to_def_id()) {
                 tcx.ensure_ok().mir_coroutine_witnesses(def_id);
-                tcx.ensure_ok().check_coroutine_obligations(
+                let _ = tcx.ensure_ok().check_coroutine_obligations(
                     tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
                 );
                 // Eagerly check the unsubstituted layout for cycles.

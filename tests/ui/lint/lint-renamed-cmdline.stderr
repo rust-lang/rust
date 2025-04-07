@@ -17,13 +17,13 @@ warning: lint `bare_trait_object` has been renamed to `bare_trait_objects`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: unused variable: `unused`
-  --> $DIR/lint-renamed-cmdline.rs:9:17
+  --> $DIR/lint-renamed-cmdline.rs:7:17
    |
 LL | fn main() { let unused = (); }
    |                 ^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused`
    |
 note: the lint level is defined here
-  --> $DIR/lint-renamed-cmdline.rs:8:8
+  --> $DIR/lint-renamed-cmdline.rs:6:8
    |
 LL | #[deny(unused)]
    |        ^^^^^^

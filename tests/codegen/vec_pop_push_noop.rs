@@ -1,6 +1,3 @@
-//@ revisions: llvm-pre-19 llvm-19
-//@ [llvm-19] min-llvm-version: 19
-//@ [llvm-pre-19] max-llvm-major-version: 18
 //@ compile-flags: -Copt-level=3
 
 #![crate_type = "lib"]

@@ -18,50 +18,50 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         scope 2 {
             debug x => _27;
         }
-        scope 17 (inlined <std::slice::Iter<'_, T> as Iterator>::next) {
+        scope 16 (inlined <std::slice::Iter<'_, T> as Iterator>::next) {
             let _13: std::ptr::NonNull<T>;
             let _15: std::ptr::NonNull<T>;
             let mut _18: bool;
             let mut _21: std::ptr::NonNull<T>;
             let mut _23: usize;
             let _25: &T;
-            scope 18 {
+            scope 17 {
                 let _14: *const T;
-                scope 19 {
+                scope 18 {
                     let _22: usize;
-                    scope 20 {
-                        scope 23 (inlined core::num::<impl usize>::unchecked_sub) {
-                            scope 24 (inlined core::ub_checks::check_language_ub) {
-                                scope 25 (inlined core::ub_checks::check_language_ub::runtime) {
+                    scope 19 {
+                        scope 22 (inlined core::num::<impl usize>::unchecked_sub) {
+                            scope 23 (inlined core::ub_checks::check_language_ub) {
+                                scope 24 (inlined core::ub_checks::check_language_ub::runtime) {
                                 }
                             }
                         }
-                        scope 26 (inlined without_provenance_mut::<T>) {
+                        scope 25 (inlined without_provenance_mut::<T>) {
                         }
                     }
-                    scope 21 (inlined std::ptr::const_ptr::<impl *const T>::addr) {
-                        scope 22 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
+                    scope 20 (inlined std::ptr::const_ptr::<impl *const T>::addr) {
+                        scope 21 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
                         }
                     }
-                    scope 27 (inlined <NonNull<T> as PartialEq>::eq) {
+                    scope 26 (inlined <NonNull<T> as PartialEq>::eq) {
                         let mut _16: *mut T;
                         let mut _17: *mut T;
+                        scope 27 (inlined NonNull::<T>::as_ptr) {
+                        }
                         scope 28 (inlined NonNull::<T>::as_ptr) {
                         }
-                        scope 29 (inlined NonNull::<T>::as_ptr) {
-                        }
                     }
-                    scope 30 (inlined NonNull::<T>::add) {
+                    scope 29 (inlined NonNull::<T>::add) {
                         let mut _19: *const T;
                         let mut _20: *const T;
-                        scope 31 (inlined NonNull::<T>::as_ptr) {
+                        scope 30 (inlined NonNull::<T>::as_ptr) {
                         }
                     }
-                    scope 32 (inlined NonNull::<T>::as_ref::<'_>) {
+                    scope 31 (inlined NonNull::<T>::as_ref::<'_>) {
                         let _24: *const T;
-                        scope 33 (inlined NonNull::<T>::as_ptr) {
+                        scope 32 (inlined NonNull::<T>::as_ptr) {
                         }
-                        scope 34 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                        scope 33 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
                         }
                     }
                 }
@@ -80,29 +80,27 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                     let _9: *const T;
                     scope 7 {
                     }
-                    scope 12 (inlined std::ptr::without_provenance::<T>) {
-                        scope 13 (inlined without_provenance_mut::<T>) {
+                    scope 11 (inlined std::ptr::without_provenance::<T>) {
+                        scope 12 (inlined without_provenance_mut::<T>) {
                         }
                     }
-                    scope 14 (inlined NonNull::<T>::as_ptr) {
+                    scope 13 (inlined NonNull::<T>::as_ptr) {
                     }
-                    scope 15 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
-                    }
-                }
-                scope 8 (inlined <NonNull<[T]> as From<&[T]>>::from) {
-                    scope 9 (inlined NonNull::<[T]>::from_ref) {
-                        let mut _4: *const [T];
+                    scope 14 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
                     }
                 }
-                scope 10 (inlined NonNull::<[T]>::cast::<T>) {
+                scope 8 (inlined NonNull::<[T]>::from_ref) {
+                    let mut _4: *const [T];
+                }
+                scope 9 (inlined NonNull::<[T]>::cast::<T>) {
                     let mut _5: *const T;
-                    scope 11 (inlined NonNull::<[T]>::as_ptr) {
+                    scope 10 (inlined NonNull::<[T]>::as_ptr) {
                     }
                 }
             }
         }
     }
-    scope 16 (inlined <std::slice::Iter<'_, T> as IntoIterator>::into_iter) {
+    scope 15 (inlined <std::slice::Iter<'_, T> as IntoIterator>::into_iter) {
     }
 
     bb0: {

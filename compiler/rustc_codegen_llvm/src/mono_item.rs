@@ -120,7 +120,7 @@ impl CodegenCx<'_, '_> {
         }
 
         // Match clang by only supporting COFF and ELF for now.
-        if self.tcx.sess.target.is_like_osx {
+        if self.tcx.sess.target.is_like_darwin {
             return false;
         }
 

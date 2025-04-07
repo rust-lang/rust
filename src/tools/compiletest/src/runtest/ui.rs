@@ -169,16 +169,9 @@ impl TestCx<'_> {
             self.props.error_patterns
         );
 
-        let check_patterns = should_run == WillExecute::No
-            && (!self.props.error_patterns.is_empty()
-                || !self.props.regex_error_patterns.is_empty());
         if !explicit && self.config.compare_mode.is_none() {
-            let check_annotations = !check_patterns || !expected_errors.is_empty();
-
-            if check_annotations {
-                // "//~ERROR comments"
-                self.check_expected_errors(expected_errors, &proc_res);
-            }
+            // "//~ERROR comments"
+            self.check_expected_errors(expected_errors, &proc_res);
         } else if explicit && !expected_errors.is_empty() {
             let msg = format!(
                 "line {}: cannot combine `--error-format` with {} annotations; use `error-pattern` instead",
@@ -188,7 +181,10 @@ impl TestCx<'_> {
             self.fatal(&msg);
         }
         let output_to_check = self.get_output(&proc_res);
-        if check_patterns {
+        if should_run == WillExecute::No
+            && (!self.props.error_patterns.is_empty()
+                || !self.props.regex_error_patterns.is_empty())
+        {
             // "// error-pattern" comments
             self.check_all_error_patterns(&output_to_check, &proc_res, pm);
         }

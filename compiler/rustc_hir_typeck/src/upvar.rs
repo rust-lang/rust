@@ -85,7 +85,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 /// Intermediate format to store the hir_id pointing to the use that resulted in the
 /// corresponding place being captured and a String which contains the captured value's
 /// name (i.e: a.b.c)
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 enum UpvarMigrationInfo {
     /// We previously captured all of `x`, but now we capture some sub-path.
     CapturingPrecise { source_expr: Option<HirId>, var_name: String },
@@ -1396,14 +1396,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 FxIndexSet::default()
             };
 
-            // Combine all the captures responsible for needing migrations into one HashSet
+            // Combine all the captures responsible for needing migrations into one IndexSet
             let mut capture_diagnostic = drop_reorder_diagnostic.clone();
             for key in auto_trait_diagnostic.keys() {
                 capture_diagnostic.insert(key.clone());
             }
 
             let mut capture_diagnostic = capture_diagnostic.into_iter().collect::<Vec<_>>();
-            capture_diagnostic.sort();
+            capture_diagnostic.sort_by_cached_key(|info| match info {
+                UpvarMigrationInfo::CapturingPrecise { source_expr: _, var_name } => {
+                    (0, Some(var_name.clone()))
+                }
+                UpvarMigrationInfo::CapturingNothing { use_span: _ } => (1, None),
+            });
             for captures_info in capture_diagnostic {
                 // Get the auto trait reasons of why migration is needed because of that capture, if there are any
                 let capture_trait_reasons =
@@ -2323,8 +2328,9 @@ fn should_do_rust_2021_incompatible_closure_captures_analysis(
         return false;
     }
 
-    let (level, _) =
-        tcx.lint_level_at_node(lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES, closure_id);
+    let level = tcx
+        .lint_level_at_node(lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES, closure_id)
+        .level;
 
     !matches!(level, lint::Level::Allow)
 }

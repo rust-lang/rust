@@ -91,13 +91,13 @@ fn annotation_level_for_level(level: Level) -> annotate_snippets::Level {
         Level::Bug | Level::Fatal | Level::Error | Level::DelayedBug => {
             annotate_snippets::Level::Error
         }
-        Level::ForceWarning(_) | Level::Warning => annotate_snippets::Level::Warning,
+        Level::ForceWarning | Level::Warning => annotate_snippets::Level::Warning,
         Level::Note | Level::OnceNote => annotate_snippets::Level::Note,
         Level::Help | Level::OnceHelp => annotate_snippets::Level::Help,
         // FIXME(#59346): Not sure how to map this level
         Level::FailureNote => annotate_snippets::Level::Error,
         Level::Allow => panic!("Should not call with Allow"),
-        Level::Expect(_) => panic!("Should not call with Expect"),
+        Level::Expect => panic!("Should not call with Expect"),
     }
 }
 

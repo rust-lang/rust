@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `a::foo`
-  --> $DIR/import4.rs:5:17
+  --> $DIR/import4.rs:2:17
    |
 LL | mod b { pub use a::foo; }
    |                 ^^^^^^ no `foo` in `a`
