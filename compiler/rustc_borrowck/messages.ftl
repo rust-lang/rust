@@ -156,12 +156,6 @@ borrowck_moved_due_to_usage_in_operator =
         *[false] operator
     }
 
-borrowck_opaque_type_lifetime_mismatch =
-    opaque type used twice with different lifetimes
-    .label = lifetime `{$arg}` used here
-    .prev_lifetime_label = lifetime `{$prev}` previously used here
-    .note = if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
-
 borrowck_partial_var_move_by_use_in_closure =
     variable {$is_partial ->
         [true] partially moved

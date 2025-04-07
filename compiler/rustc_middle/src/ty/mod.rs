@@ -883,12 +883,12 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         //
         // We erase regions when doing this during HIR typeck.
         let this = match defining_scope_kind {
-            DefiningScopeKind::HirTypeck => tcx.erase_regions(self),
+            DefiningScopeKind::HirTypeck => fold_regions(tcx, self, |_, _| tcx.lifetimes.re_erased),
             DefiningScopeKind::MirBorrowck => self,
         };
         let result = this.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span));
         if cfg!(debug_assertions) && matches!(defining_scope_kind, DefiningScopeKind::HirTypeck) {
-            assert_eq!(result.ty, tcx.erase_regions(result.ty));
+            assert_eq!(result.ty, fold_regions(tcx, result.ty, |_, _| tcx.lifetimes.re_erased));
         }
         result
     }
