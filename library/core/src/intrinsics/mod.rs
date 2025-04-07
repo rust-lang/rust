@@ -5,15 +5,11 @@
 //!
 //! # Const intrinsics
 //!
-//! Note: any changes to the constness of intrinsics should be discussed with the language team.
-//! This includes changes in the stability of the constness.
-//!
-//! //FIXME(#132735) "old" style intrinsics support has been removed
-//! In order to make an intrinsic usable at compile-time, it needs to be declared in the "new"
-//! style, i.e. as a `#[rustc_intrinsic]` function, not inside an `extern` block. Then copy the
-//! implementation from <https://github.com/rust-lang/miri/blob/master/src/intrinsics> to
+//! In order to make an intrinsic unstable usable at compile-time, copy the implementation from
+//! <https://github.com/rust-lang/miri/blob/master/src/intrinsics> to
 //! <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>
-//! and make the intrinsic declaration a `const fn`.
+//! and make the intrinsic declaration below a `const fn`. This should be done in coordination with
+//! wg-const-eval.
 //!
 //! If an intrinsic is supposed to be used from a `const fn` with a `rustc_const_stable` attribute,
 //! `#[rustc_intrinsic_const_stable_indirect]` needs to be added to the intrinsic. Such a change requires
