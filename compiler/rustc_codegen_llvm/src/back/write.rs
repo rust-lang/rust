@@ -439,12 +439,9 @@ fn report_inline_asm(
     let span = if cookie == 0 || matches!(cgcx.lto, Lto::Fat | Lto::Thin) {
         SpanData::default()
     } else {
-        let lo = BytePos::from_u32(cookie as u32);
-        let hi = BytePos::from_u32((cookie >> 32) as u32);
         SpanData {
-            lo,
-            // LLVM version < 19 silently truncates the cookie to 32 bits in some situations.
-            hi: if hi.to_u32() != 0 { hi } else { lo },
+            lo: BytePos::from_u32(cookie as u32),
+            hi: BytePos::from_u32((cookie >> 32) as u32),
             ctxt: SyntaxContext::root(),
             parent: None,
         }
