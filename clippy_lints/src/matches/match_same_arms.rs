@@ -253,6 +253,7 @@ fn iter_matching_struct_fields<'a>(
 impl<'a> NormalizedPat<'a> {
     fn from_pat(cx: &LateContext<'_>, arena: &'a DroplessArena, pat: &'a Pat<'_>) -> Self {
         match pat.kind {
+            PatKind::Missing => unreachable!(),
             PatKind::Wild | PatKind::Binding(.., None) => Self::Wild,
             PatKind::Binding(.., Some(pat))
             | PatKind::Box(pat)
