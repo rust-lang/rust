@@ -1,7 +1,6 @@
 //! These structs are a subset of the ones found in `rustc_errors::json`.
 
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use std::sync::OnceLock;
 
 use regex::Regex;
@@ -230,7 +229,7 @@ fn push_actual_errors(
     // Convert multi-line messages into multiple errors.
     // We expect to replace these with something more structured anyhow.
     let mut message_lines = diagnostic.message.lines();
-    let kind = ErrorKind::from_str(&diagnostic.level).ok();
+    let kind = Some(ErrorKind::from_compiler_str(&diagnostic.level));
     let first_line = message_lines.next().unwrap_or(&diagnostic.message);
     if primary_spans.is_empty() {
         static RE: OnceLock<Regex> = OnceLock::new();
@@ -240,7 +239,8 @@ fn push_actual_errors(
             line_num: None,
             kind,
             msg: with_code(None, first_line),
-            require_annotation: !RE.get_or_init(re_init).is_match(first_line),
+            require_annotation: diagnostic.level != "failure-note"
+                && !RE.get_or_init(re_init).is_match(first_line),
         });
     } else {
         for span in primary_spans {
