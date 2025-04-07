@@ -27,24 +27,18 @@ LL |     }
 note: `#2` invokes this custom destructor
   --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:9:1
    |
-LL | / impl std::ops::Drop for Drop {
-LL | |     fn drop(&mut self) {}
-LL | | }
-   | |_^
+LL | impl std::ops::Drop for Drop {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `#1` invokes this custom destructor
   --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:9:1
    |
-LL | / impl std::ops::Drop for Drop {
-LL | |     fn drop(&mut self) {}
-LL | | }
-   | |_^
+LL | impl std::ops::Drop for Drop {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `e` invokes this custom destructor
   --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:9:1
    |
-LL | / impl std::ops::Drop for Drop {
-LL | |     fn drop(&mut self) {}
-LL | | }
-   | |_^
+LL | impl std::ops::Drop for Drop {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 note: the lint level is defined here
   --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:6:9
