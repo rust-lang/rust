@@ -1,10 +1,10 @@
+use cranelift_codegen::Context;
 use cranelift_codegen::control::ControlPlane;
-use cranelift_codegen::ir::{Function, Signature};
+use cranelift_codegen::ir::Signature;
 use cranelift_codegen::isa::{TargetFrontendConfig, TargetIsa};
-use cranelift_codegen::{Context, FinalizedMachReloc};
 use cranelift_module::{
     DataDescription, DataId, FuncId, FuncOrDataId, Linkage, Module, ModuleDeclarations,
-    ModuleResult,
+    ModuleReloc, ModuleResult,
 };
 use cranelift_object::{ObjectModule, ObjectProduct};
 
@@ -101,10 +101,9 @@ impl<T: Module> Module for UnwindModule<T> {
     fn define_function_bytes(
         &mut self,
         _func_id: FuncId,
-        _func: &Function,
         _alignment: u64,
         _bytes: &[u8],
-        _relocs: &[FinalizedMachReloc],
+        _relocs: &[ModuleReloc],
     ) -> ModuleResult<()> {
         unimplemented!()
     }
