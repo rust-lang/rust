@@ -960,12 +960,16 @@ impl<'a> State<'a> {
 
     fn print_local(
         &mut self,
+        super_: bool,
         init: Option<&hir::Expr<'_>>,
         els: Option<&hir::Block<'_>>,
         decl: impl Fn(&mut Self),
     ) {
         self.space_if_not_bol();
         self.ibox(INDENT_UNIT);
+        if super_ {
+            self.word_nbsp("super");
+        }
         self.word_nbsp("let");
 
         self.ibox(INDENT_UNIT);
@@ -995,7 +999,9 @@ impl<'a> State<'a> {
         self.maybe_print_comment(st.span.lo());
         match st.kind {
             hir::StmtKind::Let(loc) => {
-                self.print_local(loc.init, loc.els, |this| this.print_local_decl(loc));
+                self.print_local(loc.super_.is_some(), loc.init, loc.els, |this| {
+                    this.print_local_decl(loc)
+                });
             }
             hir::StmtKind::Item(item) => self.ann.nested(self, Nested::Item(item)),
             hir::StmtKind::Expr(expr) => {
@@ -1488,7 +1494,7 @@ impl<'a> State<'a> {
 
                 // Print `let _t = $init;`:
                 let temp = Ident::from_str("_t");
-                self.print_local(Some(init), None, |this| this.print_ident(temp));
+                self.print_local(false, Some(init), None, |this| this.print_ident(temp));
                 self.word(";");
 
                 // Print `_t`:

@@ -1336,6 +1336,9 @@ impl<'a> State<'a> {
                 self.print_outer_attributes(&loc.attrs);
                 self.space_if_not_bol();
                 self.ibox(INDENT_UNIT);
+                if loc.super_.is_some() {
+                    self.word_nbsp("super");
+                }
                 self.word_nbsp("let");
 
                 self.ibox(INDENT_UNIT);
