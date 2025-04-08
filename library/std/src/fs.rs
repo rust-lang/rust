@@ -132,6 +132,13 @@ pub enum TryLockError {
     WouldBlock,
 }
 
+#[unstable(feature = "dirfd", issue = "120426")]
+#[cfg(target_family = "unix")]
+/// An object providing access to a directory on the filesystem.
+pub struct Dir {
+    inner: fs_imp::Dir,
+}
+
 /// Metadata information about a file.
 ///
 /// This structure is returned from the [`metadata`] or
@@ -1450,6 +1457,25 @@ impl Seek for Arc<File> {
     }
     fn stream_position(&mut self) -> io::Result<u64> {
         (&**self).stream_position()
+    }
+}
+
+#[unstable(feature = "dirfd", issue = "120426")]
+impl Dir {
+    /// Opens a file relative to this directory.
+    pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
+        self.inner.open(path).map(|f| File { inner: f })
+    }
+    /// Opens a file relative to this directory with the specified options.
+    pub fn open_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
+        self.inner.open_with(path, &opts.0).map(|f| File { inner: f })
+    }
+}
+
+#[unstable(feature = "dirfd", issue = "120426")]
+impl fmt::Debug for Dir {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
     }
 }
 

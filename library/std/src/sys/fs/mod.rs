@@ -46,6 +46,8 @@ pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> i
     f(path)
 }
 
+#[cfg(target_family = "unix")]
+pub use imp::Dir;
 pub use imp::{
     DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
     ReadDir,
