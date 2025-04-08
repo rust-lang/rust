@@ -5,6 +5,7 @@ pub static CRATES: &[&str] = &[
     // tidy-alphabetical-start
     "annotate-snippets",
     "anstyle",
+    "askama_parser",
     "basic-toml",
     "block-buffer",
     "bumpalo",
@@ -64,6 +65,7 @@ pub static CRATES: &[&str] = &[
     "wasm-bindgen-backend",
     "wasm-bindgen-macro-support",
     "wasm-bindgen-shared",
+    "winnow",
     "yoke",
     "zerofrom",
     "zerovec",
