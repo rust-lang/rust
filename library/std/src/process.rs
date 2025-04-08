@@ -1286,6 +1286,40 @@ pub struct Output {
     pub stderr: Vec<u8>,
 }
 
+impl Output {
+    /// Returns an error if a nonzero exit status was received.
+    ///
+    /// If the [`Command`] exited successfully,
+    /// `self` is returned.
+    ///
+    /// This is equivalent to calling [`exit_ok`](ExitStatus::exit_ok)
+    /// on [`Output.status`](Output::status).
+    ///
+    /// Note that this will throw away the [`Output::stderr`] field in the error case.
+    /// If the child process outputs useful informantion to stderr, you can:
+    /// * Use `cmd.stderr(Stdio::inherit())` to forward the
+    ///   stderr child process to the parent's stderr,
+    ///   usually printing it to console where the user can see it.
+    ///   This is usually correct for command-line applications.
+    /// * Capture `stderr` using a custom error type.
+    ///   This is usually correct for libraries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exit_status_error)]
+    /// # #[cfg(unix)] {
+    /// use std::process::Command;
+    /// assert!(Command::new("false").output().unwrap().exit_ok().is_err());
+    /// # }
+    /// ```
+    #[unstable(feature = "exit_status_error", issue = "84908")]
+    pub fn exit_ok(self) -> Result<Self, ExitStatusError> {
+        self.status.exit_ok()?;
+        Ok(self)
+    }
+}
+
 // If either stderr or stdout are valid utf8 strings it prints the valid
 // strings, otherwise it prints the byte sequence instead
 #[stable(feature = "process_output_debug", since = "1.7.0")]
