@@ -1303,6 +1303,16 @@ impl Output {
     ///   This is usually correct for command-line applications.
     /// * Capture `stderr` using a custom error type.
     ///   This is usually correct for libraries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exit_status_error)]
+    /// # #[cfg(unix)] {
+    /// use std::process::Command;
+    /// assert!(Command::new("false").output().unwrap().exit_ok().is_err());
+    /// # }
+    /// ```
     #[unstable(feature = "exit_status_error", issue = "84908")]
     pub fn exit_ok(self) -> Result<Self, ExitStatusError> {
         self.status.exit_ok()?;
