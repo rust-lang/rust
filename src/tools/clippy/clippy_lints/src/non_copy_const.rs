@@ -310,7 +310,7 @@ impl<'tcx> NonCopyConst<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'_>) {
-        if let ItemKind::Const(.., body_id,_) = it.kind {
+        if let ItemKind::Const(.., body_id, _) = it.kind {
             let ty = cx.tcx.type_of(it.owner_id).instantiate_identity();
             if !ignored_macro(cx, it)
                 && self.interior_mut.is_interior_mut_ty(cx, ty)
@@ -322,7 +322,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Const(_, body_id_opt) = &trait_item.kind {
+        if let TraitItemKind::Const(_, body_id_opt, _) = &trait_item.kind {
             let ty = cx.tcx.type_of(trait_item.owner_id).instantiate_identity();
 
             // Normalize assoc types because ones originated from generic params
@@ -349,7 +349,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
-        if let ImplItemKind::Const(_, body_id) = &impl_item.kind {
+        if let ImplItemKind::Const(_, body_id, _) = &impl_item.kind {
             let item_def_id = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
             let item = cx.tcx.hir_expect_item(item_def_id);
 

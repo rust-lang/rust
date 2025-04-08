@@ -814,8 +814,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
                         let body = expr.as_ref().map(|x| this.lower_const_body(i.span, Some(x)));
-
-                        hir::TraitItemKind::Const(ty, body)
+                        // TODO: make const arg instead of always using None
+                        hir::TraitItemKind::Const(ty, body, None)
                     },
                 );
 
@@ -1008,7 +1008,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
                         let body = this.lower_const_body(i.span, expr.as_deref());
                         this.lower_define_opaque(hir_id, &define_opaque);
-                        hir::ImplItemKind::Const(ty, body)
+                        // TODO: make const arg instead of always using None
+                        hir::ImplItemKind::Const(ty, body, None)
                     },
                 ),
             ),

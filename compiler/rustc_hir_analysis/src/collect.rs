@@ -799,7 +799,7 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             tcx.ensure_ok().fn_sig(def_id);
         }
 
-        hir::TraitItemKind::Const(ty, body_id) => {
+        hir::TraitItemKind::Const(ty, body_id, _ct) => {
             tcx.ensure_ok().type_of(def_id);
             if !tcx.dcx().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
                 && !(ty.is_suggestable_infer_ty() && body_id.is_some())
@@ -883,7 +883,7 @@ fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
                 "associated type",
             );
         }
-        hir::ImplItemKind::Const(ty, _) => {
+        hir::ImplItemKind::Const(ty, ..) => {
             // Account for `const T: _ = ..;`
             if !ty.is_suggestable_infer_ty() {
                 let mut visitor = HirPlaceholderCollector::default();

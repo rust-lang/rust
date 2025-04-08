@@ -911,7 +911,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(ti.span.lo());
         self.print_attrs_as_outer(self.attrs(ti.hir_id()));
         match ti.kind {
-            hir::TraitItemKind::Const(ty, default) => {
+            hir::TraitItemKind::Const(ty, default, _ct) => {
                 self.print_associated_const(ti.ident, ti.generics, ty, default);
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(arg_names)) => {
@@ -940,7 +940,7 @@ impl<'a> State<'a> {
         self.print_attrs_as_outer(self.attrs(ii.hir_id()));
 
         match ii.kind {
-            hir::ImplItemKind::Const(ty, expr) => {
+            hir::ImplItemKind::Const(ty, expr, _ct) => {
                 self.print_associated_const(ii.ident, ii.generics, ty, Some(expr));
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
