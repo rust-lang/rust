@@ -187,6 +187,48 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
+name = "askama"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a4e46abb203e00ef226442d452769233142bbfdd79c3941e84c8e61c4112543"
+dependencies = [
+ "askama_derive",
+ "itoa",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "askama_derive"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54398906821fd32c728135f7b351f0c7494ab95ae421d41b6f5a020e158f28a6"
+dependencies = [
+ "askama_parser",
+ "basic-toml",
+ "memchr",
+ "proc-macro2",
+ "quote",
+ "rustc-hash 2.1.1",
+ "serde",
+ "serde_derive",
+ "syn 2.0.100",
+]
+
+[[package]]
+name = "askama_parser"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf315ce6524c857bb129ff794935cf6d42c82a6cff60526fe2a63593de4d0d4f"
+dependencies = [
+ "memchr",
+ "serde",
+ "serde_derive",
+ "winnow 0.7.4",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1345,8 +1387,8 @@ name = "generate-copyright"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "askama",
  "cargo_metadata 0.18.1",
- "rinja",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -3069,9 +3111,7 @@ version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3dc4940d00595430b3d7d5a01f6222b5e5b51395d1120bdb28d854bb8abb17a5"
 dependencies = [
- "humansize",
  "itoa",
- "percent-encoding",
  "rinja_derive",
 ]
 
@@ -4628,6 +4668,7 @@ name = "rustdoc"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
+ "askama",
  "base64",
  "expect-test",
  "indexmap",
@@ -4636,7 +4677,6 @@ dependencies = [
  "pulldown-cmark 0.9.6",
  "pulldown-cmark-escape",
  "regex",
- "rinja",
  "rustdoc-json-types",
  "serde",
  "serde_json",
@@ -5426,7 +5466,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
@@ -6433,6 +6473,15 @@ name = "winnow"
 version = "0.5.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "winnow"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e97b544156e9bebe1a0ffbc03484fc1ffe3100cbce3ffb17eac35f7cdd7ab36"
 dependencies = [
  "memchr",
 ]
