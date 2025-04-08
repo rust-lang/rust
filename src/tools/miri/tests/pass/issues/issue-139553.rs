@@ -38,7 +38,7 @@ fn main() {
     //    call returns the channel state has tail.index = head.index, tail.block = NULL, and
     //    head.block != NULL.
     t1.join().unwrap();
-    // 6. The last sender (s1) is dropped here which also attempts to cleanup any data in the
+    // 6. The last sender (s2) is dropped here which also attempts to cleanup any data in the
     //    channel. It observes `tail.index = head.index` and so it doesn't attempt to cleanup any
     //    messages but it also observes that `head.block != NULL` and attempts to deallocate it.
     //    This is however already deallocated by `discard_all_messages`, leading to a double free.
