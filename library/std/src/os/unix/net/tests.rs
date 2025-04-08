@@ -170,6 +170,7 @@ fn long_path() {
 #[test]
 #[cfg(not(target_os = "nto"))]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin ignores timeout
 fn timeouts() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -198,6 +199,7 @@ fn timeouts() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin ignores timeout
 fn test_read_timeout() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -218,6 +220,7 @@ fn test_read_timeout() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin ignores timeout
 fn test_read_with_timeout() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -246,6 +249,7 @@ fn test_read_with_timeout() {
 // when passed zero Durations
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin ignores timeout
 fn test_unix_stream_timeout_zero_duration() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -416,7 +420,7 @@ fn abstract_namespace_not_allowed_connect() {
     assert!(UnixStream::connect("\0asdf").is_err());
 }
 
-#[cfg(any(target_os = "android", target_os = "linux"))]
+#[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[test]
 fn test_abstract_stream_connect() {
     let msg1 = b"hello";
@@ -447,7 +451,7 @@ fn test_abstract_stream_connect() {
     thread.join().unwrap();
 }
 
-#[cfg(any(target_os = "android", target_os = "linux"))]
+#[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[test]
 fn test_abstract_stream_iter() {
     let addr = or_panic!(SocketAddr::from_abstract_name(b"hidden"));
@@ -469,7 +473,7 @@ fn test_abstract_stream_iter() {
     thread.join().unwrap();
 }
 
-#[cfg(any(target_os = "android", target_os = "linux"))]
+#[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[test]
 fn test_abstract_datagram_bind_send_to_addr() {
     let addr1 = or_panic!(SocketAddr::from_abstract_name(b"ns1"));
@@ -490,7 +494,7 @@ fn test_abstract_datagram_bind_send_to_addr() {
     assert_eq!(addr.as_abstract_name().unwrap(), b"ns1");
 }
 
-#[cfg(any(target_os = "android", target_os = "linux"))]
+#[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[test]
 fn test_abstract_datagram_connect_addr() {
     let addr1 = or_panic!(SocketAddr::from_abstract_name(b"ns3"));
@@ -515,7 +519,7 @@ fn test_abstract_datagram_connect_addr() {
     or_panic!(bsock2.recv_from(&mut buf));
 }
 
-#[cfg(any(target_os = "android", target_os = "linux"))]
+#[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[test]
 fn test_abstract_name_too_long() {
     match SocketAddr::from_abstract_name(
@@ -529,7 +533,7 @@ fn test_abstract_name_too_long() {
     }
 }
 
-#[cfg(any(target_os = "android", target_os = "linux"))]
+#[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[test]
 fn test_abstract_no_pathname_and_not_unnamed() {
     let name = b"local";
@@ -660,7 +664,7 @@ fn test_send_vectored_fds_unix_stream() {
     }
 }
 
-#[cfg(any(target_os = "android", target_os = "linux"))]
+#[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_send_vectored_with_ancillary_to_unix_datagram() {
