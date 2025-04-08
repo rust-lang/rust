@@ -728,8 +728,9 @@ fn check_ptr_eq<'tcx>(
 
     let (left_var, right_var) = (peel_raw_casts(cx, left, left_ty), peel_raw_casts(cx, right, right_ty));
 
-    if let Some(left_snip) = left_var.span.get_source_text(cx)
-        && let Some(right_snip) = right_var.span.get_source_text(cx)
+    let mut app = Applicability::MachineApplicable;
+    let left_snip = Sugg::hir_with_context(cx, left_var, expr.span.ctxt(), "_", &mut app);
+    let right_snip = Sugg::hir_with_context(cx, right_var, expr.span.ctxt(), "_", &mut app);
     {
         let Some(top_crate) = std_or_core(cx) else { return };
         let invert = if op == BinOpKind::Eq { "" } else { "!" };
@@ -740,7 +741,7 @@ fn check_ptr_eq<'tcx>(
             format!("use `{top_crate}::ptr::eq` when comparing raw pointers"),
             "try",
             format!("{invert}{top_crate}::ptr::eq({left_snip}, {right_snip})"),
-            Applicability::MachineApplicable,
+            app,
         );
     }
 }
@@ -748,7 +749,8 @@ fn check_ptr_eq<'tcx>(
 // If the given expression is a cast to a usize, return the lhs of the cast
 // E.g., `foo as *const _ as usize` returns `foo as *const _`.
 fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if cx.typeck_results().expr_ty(cast_expr) == cx.tcx.types.usize
+    if !cast_expr.span.from_expansion()
+        && cx.typeck_results().expr_ty(cast_expr) == cx.tcx.types.usize
         && let ExprKind::Cast(expr, _) = cast_expr.kind
     {
         Some(expr)
@@ -759,7 +761,8 @@ fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>
 
 // Peel raw casts if the remaining expression can be coerced to it
 fn peel_raw_casts<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, expr_ty: Ty<'tcx>) -> &'tcx Expr<'tcx> {
-    if let ExprKind::Cast(inner, _) = expr.kind
+    if !expr.span.from_expansion()
+        && let ExprKind::Cast(inner, _) = expr.kind
         && let ty::RawPtr(target_ty, _) = expr_ty.kind()
         && let inner_ty = cx.typeck_results().expr_ty(inner)
         && let ty::RawPtr(inner_target_ty, _) | ty::Ref(_, inner_target_ty, _) = inner_ty.kind()
