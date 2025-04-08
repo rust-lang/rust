@@ -2,7 +2,7 @@
 
 use crate::prelude::*;
 
-pub(crate) fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> IntCC {
+fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> IntCC {
     use BinOp::*;
     use IntCC::*;
     match bin_op {
@@ -109,7 +109,7 @@ pub(crate) fn codegen_binop<'tcx>(
     }
 }
 
-pub(crate) fn codegen_bool_binop<'tcx>(
+fn codegen_bool_binop<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
@@ -389,7 +389,7 @@ pub(crate) fn codegen_float_binop<'tcx>(
     CValue::by_val(res, in_lhs.layout())
 }
 
-pub(crate) fn codegen_ptr_binop<'tcx>(
+fn codegen_ptr_binop<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,

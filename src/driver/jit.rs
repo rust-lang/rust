@@ -119,7 +119,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_args: Vec<String>) -> ! {
     std::process::exit(ret);
 }
 
-pub(crate) fn codegen_and_compile_fn<'tcx>(
+fn codegen_and_compile_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     cx: &mut crate::CodegenCx,
     cached_context: &mut Context,
