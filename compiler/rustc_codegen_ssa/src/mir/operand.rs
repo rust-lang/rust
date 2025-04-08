@@ -9,6 +9,7 @@ use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::{bug, span_bug};
+use rustc_session::config::OptLevel;
 use tracing::{debug, instrument};
 
 use super::place::{PlaceRef, PlaceValue};
@@ -496,6 +497,18 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     _ => (tag_imm, bx.cx().immediate_backend_type(tag_op.layout)),
                 };
 
+                // Layout ensures that we only get here for cases where the discriminant
+                // value and the variant index match, since that's all `Niche` can encode.
+                // But for emphasis and debugging, let's double-check one anyway.
+                debug_assert_eq!(
+                    self.layout
+                        .ty
+                        .discriminant_for_variant(bx.tcx(), untagged_variant)
+                        .unwrap()
+                        .val,
+                    u128::from(untagged_variant.as_u32()),
+                );
+
                 let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
 
                 // We have a subrange `niche_start..=niche_end` inside `range`.
@@ -537,6 +550,21 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                         relative_discr,
                         bx.cx().const_uint(tag_llty, relative_max as u64),
                     );
+
+                    // Thanks to parameter attributes and load metadata, LLVM already knows
+                    // the general valid range of the tag. It's possible, though, for there
+                    // to be an impossible value *in the middle*, which those ranges don't
+                    // communicate, so it's worth an `assume` to let the optimizer know.
+                    if niche_variants.contains(&untagged_variant)
+                        && bx.cx().sess().opts.optimize != OptLevel::No
+                    {
+                        let impossible =
+                            u64::from(untagged_variant.as_u32() - niche_variants.start().as_u32());
+                        let impossible = bx.cx().const_uint(tag_llty, impossible);
+                        let ne = bx.icmp(IntPredicate::IntNE, relative_discr, impossible);
+                        bx.assume(ne);
+                    }
+
                     (is_niche, cast_tag, niche_variants.start().as_u32() as u128)
                 };
 
@@ -553,7 +581,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 );
 
                 // In principle we could insert assumes on the possible range of `discr`, but
-                // currently in LLVM this seems to be a pessimization.
+                // currently in LLVM this isn't worth it because the original `tag` will
+                // have either a `range` parameter attribute or `!range` metadata,
+                // or come from a `transmute` that already `assume`d it.
 
                 discr
             }
