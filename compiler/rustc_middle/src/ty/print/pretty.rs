@@ -2520,7 +2520,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
 
         let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
-        match *region {
+        match region.kind() {
             ty::ReEarlyParam(ref data) => data.has_name(),
 
             ty::ReLateParam(ty::LateParamRegion { kind, .. }) => kind.is_named(),
@@ -2590,7 +2590,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         // the user might want to diagnose an error, but there is basically no way
         // to fit that into a short string. Hence the recommendation to use
         // `explain_region()` or `note_and_explain_region()`.
-        match *region {
+        match region.kind() {
             ty::ReEarlyParam(data) => {
                 p!(write("{}", data.name));
                 return Ok(());
@@ -2680,7 +2680,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         let name = &mut self.name;
-        let region = match *r {
+        let region = match r.kind() {
             ty::ReBound(db, br) if db >= self.current_index => {
                 *self.region_map.entry(br).or_insert_with(|| name(Some(db), self.current_index, br))
             }
@@ -2704,7 +2704,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
             }
             _ => return r,
         };
-        if let ty::ReBound(debruijn1, br) = *region {
+        if let ty::ReBound(debruijn1, br) = region.kind() {
             assert_eq!(debruijn1, ty::INNERMOST);
             ty::Region::new_bound(self.tcx, self.current_index, br)
         } else {

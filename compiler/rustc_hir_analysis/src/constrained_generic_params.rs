@@ -80,7 +80,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
-        if let ty::ReEarlyParam(data) = *r {
+        if let ty::ReEarlyParam(data) = r.kind() {
             self.parameters.push(Parameter::from(data));
         }
     }

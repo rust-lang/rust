@@ -442,7 +442,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateParam<'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReLateParam(fr) = *r {
+        if let ty::ReLateParam(fr) = r.kind() {
             ty::Region::new_late_param(
                 self.tcx,
                 fr.scope,

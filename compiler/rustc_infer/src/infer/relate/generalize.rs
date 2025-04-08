@@ -571,7 +571,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         assert_eq!(r, r2); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
 
-        match *r {
+        match r.kind() {
             // Never make variables for regions bound within the type itself,
             // nor for erased regions.
             ty::ReBound(..) | ty::ReErased => {

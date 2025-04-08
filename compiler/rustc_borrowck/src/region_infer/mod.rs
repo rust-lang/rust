@@ -141,13 +141,11 @@ impl RegionTracker {
 }
 
 pub struct RegionInferenceContext<'tcx> {
-    pub var_infos: VarInfos,
-
     /// Contains the definition for every region variable. Region
     /// variables are identified by their index (`RegionVid`). The
     /// definition contains information about where the region came
     /// from as well as its final inferred value.
-    definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    pub(crate) definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
 
     /// The liveness constraints added to each region. For most
     /// regions, these start out empty and steadily grow, though for
@@ -455,7 +453,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             Rc::new(member_constraints.into_mapped(|r| constraint_sccs.scc(r)));
 
         let mut result = Self {
-            var_infos,
             definitions,
             liveness_constraints,
             constraints,

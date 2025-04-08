@@ -1416,7 +1416,7 @@ fn recover_infer_ret_ty<'tcx>(
         GenericParamKind::Lifetime { .. } => true,
         _ => false,
     });
-    let fn_sig = fold_regions(tcx, fn_sig, |r, _| match *r {
+    let fn_sig = fold_regions(tcx, fn_sig, |r, _| match r.kind() {
         ty::ReErased => {
             if has_region_params {
                 ty::Region::new_error_with_message(

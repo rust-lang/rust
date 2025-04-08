@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use rustc_data_structures::intern::Interned;
 use rustc_errors::MultiSpan;
 use rustc_hir::def_id::DefId;
@@ -22,7 +20,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Region<'tcx> {
     type Kind = RegionKind<'tcx>;
 
     fn kind(self) -> RegionKind<'tcx> {
-        *self
+        *self.0.0
     }
 }
 
@@ -32,7 +30,7 @@ impl<'tcx> rustc_type_ir::Flags for Region<'tcx> {
     }
 
     fn outer_exclusive_binder(&self) -> ty::DebruijnIndex {
-        match **self {
+        match self.kind() {
             ty::ReBound(debruijn, _) => debruijn.shifted_in(1),
             _ => ty::INNERMOST,
         }
@@ -163,7 +161,7 @@ impl<'tcx> Region<'tcx> {
 
     pub fn get_name(self) -> Option<Symbol> {
         if self.has_name() {
-            match *self {
+            match self.kind() {
                 ty::ReEarlyParam(ebr) => Some(ebr.name),
                 ty::ReBound(_, br) => br.kind.get_name(),
                 ty::ReLateParam(fr) => fr.kind.get_name(),
@@ -185,7 +183,7 @@ impl<'tcx> Region<'tcx> {
 
     /// Is this region named by the user?
     pub fn has_name(self) -> bool {
-        match *self {
+        match self.kind() {
             ty::ReEarlyParam(ebr) => ebr.has_name(),
             ty::ReBound(_, br) => br.kind.is_named(),
             ty::ReLateParam(fr) => fr.kind.is_named(),
@@ -199,32 +197,32 @@ impl<'tcx> Region<'tcx> {
 
     #[inline]
     pub fn is_error(self) -> bool {
-        matches!(*self, ty::ReError(_))
+        matches!(self.kind(), ty::ReError(_))
     }
 
     #[inline]
     pub fn is_static(self) -> bool {
-        matches!(*self, ty::ReStatic)
+        matches!(self.kind(), ty::ReStatic)
     }
 
     #[inline]
     pub fn is_erased(self) -> bool {
-        matches!(*self, ty::ReErased)
+        matches!(self.kind(), ty::ReErased)
     }
 
     #[inline]
     pub fn is_bound(self) -> bool {
-        matches!(*self, ty::ReBound(..))
+        matches!(self.kind(), ty::ReBound(..))
     }
 
     #[inline]
     pub fn is_placeholder(self) -> bool {
-        matches!(*self, ty::RePlaceholder(..))
+        matches!(self.kind(), ty::RePlaceholder(..))
     }
 
     #[inline]
     pub fn bound_at_or_above_binder(self, index: ty::DebruijnIndex) -> bool {
-        match *self {
+        match self.kind() {
             ty::ReBound(debruijn, _) => debruijn >= index,
             _ => false,
         }
@@ -233,7 +231,7 @@ impl<'tcx> Region<'tcx> {
     pub fn type_flags(self) -> TypeFlags {
         let mut flags = TypeFlags::empty();
 
-        match *self {
+        match self.kind() {
             ty::ReVar(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
@@ -275,14 +273,14 @@ impl<'tcx> Region<'tcx> {
 
     /// True for free regions other than `'static`.
     pub fn is_param(self) -> bool {
-        matches!(*self, ty::ReEarlyParam(_) | ty::ReLateParam(_))
+        matches!(self.kind(), ty::ReEarlyParam(_) | ty::ReLateParam(_))
     }
 
     /// True for free region in the current context.
     ///
     /// This is the case for `'static` and param regions.
     pub fn is_free(self) -> bool {
-        match *self {
+        match self.kind() {
             ty::ReStatic | ty::ReEarlyParam(..) | ty::ReLateParam(..) => true,
             ty::ReVar(..)
             | ty::RePlaceholder(..)
@@ -316,15 +314,6 @@ impl<'tcx> Region<'tcx> {
             }) => Some(def_id),
             _ => None,
         }
-    }
-}
-
-impl<'tcx> Deref for Region<'tcx> {
-    type Target = RegionKind<'tcx>;
-
-    #[inline]
-    fn deref(&self) -> &RegionKind<'tcx> {
-        self.0.0
     }
 }
 

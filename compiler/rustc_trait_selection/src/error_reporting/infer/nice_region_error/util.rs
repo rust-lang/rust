@@ -42,7 +42,7 @@ pub fn find_param_with_region<'tcx>(
     anon_region: Region<'tcx>,
     replace_region: Region<'tcx>,
 ) -> Option<AnonymousParamInfo<'tcx>> {
-    let (id, kind) = match *anon_region {
+    let (id, kind) = match anon_region.kind() {
         ty::ReLateParam(late_param) => (late_param.scope, late_param.kind),
         ty::ReEarlyParam(ebr) => {
             let region_def = tcx.generics_of(generic_param_scope).region_param(ebr, tcx).def_id;

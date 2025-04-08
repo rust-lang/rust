@@ -69,7 +69,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
                     region_bound_pairs
                         .insert(ty::OutlivesPredicate(GenericKind::Alias(alias_b), r_a));
                 }
-                OutlivesBound::RegionSubRegion(r_a, r_b) => match (*r_a, *r_b) {
+                OutlivesBound::RegionSubRegion(r_a, r_b) => match (r_a.kind(), r_b.kind()) {
                     (
                         ty::ReStatic | ty::ReEarlyParam(_) | ty::ReLateParam(_),
                         ty::ReStatic | ty::ReEarlyParam(_) | ty::ReLateParam(_),

@@ -406,8 +406,8 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
             // started MIR borrowchecking with, so the region
             // constraints have already been taken. Use the data from
             // our `mbcx` instead.
-            |vid| mbcx.regioncx.var_infos[vid].origin,
-            |vid| mbcx.regioncx.var_infos[vid].universe,
+            |vid| RegionVariableOrigin::Nll(mbcx.regioncx.definitions[vid].origin),
+            |vid| mbcx.regioncx.definitions[vid].universe,
         )
     }
 }
@@ -487,7 +487,7 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
     let (sub_region, cause) = info?;
 
     debug!(?sub_region, "cause = {:#?}", cause);
-    let error = match (error_region, *sub_region) {
+    let error = match (error_region, sub_region.kind()) {
         (Some(error_region), ty::ReVar(vid)) => RegionResolutionError::SubSupConflict(
             vid,
             region_var_origin(vid),

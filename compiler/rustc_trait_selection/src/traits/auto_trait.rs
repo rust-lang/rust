@@ -382,7 +382,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     for (new_region, old_region) in
                         iter::zip(new_args.regions(), old_args.regions())
                     {
-                        match (*new_region, *old_region) {
+                        match (new_region.kind(), old_region.kind()) {
                             // If both predicates have an `ReBound` (a HRTB) in the
                             // same spot, we do nothing.
                             (ty::ReBound(_, _), ty::ReBound(_, _)) => {}
