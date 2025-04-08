@@ -2903,8 +2903,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         None
     }
 
-    /// Helper for [`Self::static_pattern_match`]. It does not recurse, meaning that it does not
-    /// handle or-patterns, or patterns for types with fields.
+    /// Helper for [`Self::static_pattern_match`], checking whether the value represented by the
+    /// `ValTree` matches the given pattern. This function does not recurse, meaning that it does
+    /// not handle or-patterns, or patterns for types with fields.
     fn static_pattern_match_inner(
         &self,
         valtree: ty::ValTree<'tcx>,
