@@ -7,6 +7,8 @@ test-stage = 2
 doc-stage = 2
 # When compiling from source, you usually want all tools.
 extended = true
+# Use libtest built from the source tree instead of the precompiled one from stage 0.
+compiletest-use-stage0-libtest = false
 
 # Most users installing from source want to build all parts of the project from source.
 [llvm]
