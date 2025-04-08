@@ -369,6 +369,69 @@ impl Step for RustAnalyzer {
     }
 }
 
+/// Compiletest is implicitly "checked" when it gets built in order to run tests,
+/// so this is mainly for people working on compiletest to run locally.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Compiletest {
+    pub target: TargetSelection,
+}
+
+impl Step for Compiletest {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/compiletest")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Compiletest { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let mode = if builder.config.compiletest_use_stage0_libtest {
+            Mode::ToolBootstrap
+        } else {
+            Mode::ToolStd
+        };
+
+        let compiler = builder.compiler(
+            if mode == Mode::ToolBootstrap { 0 } else { builder.top_stage },
+            builder.config.build,
+        );
+
+        if mode != Mode::ToolBootstrap {
+            builder.ensure(Rustc::new(self.target, builder));
+        }
+
+        let mut cargo = prepare_tool_cargo(
+            builder,
+            compiler,
+            mode,
+            self.target,
+            builder.kind,
+            "src/tools/compiletest",
+            SourceType::InTree,
+            &[],
+        );
+
+        cargo.allow_features("test");
+
+        // For ./x.py clippy, don't run with --all-targets because
+        // linting tests and benchmarks can produce very noisy results
+        if builder.kind != Kind::Clippy {
+            cargo.arg("--all-targets");
+        }
+
+        let stamp = BuildStamp::new(&builder.cargo_out(compiler, mode, self.target))
+            .with_prefix("compiletest-check");
+
+        let _guard = builder.msg_check("compiletest artifacts", self.target);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+    }
+}
+
 macro_rules! tool_check_step {
     (
         $name:ident {
@@ -464,7 +527,3 @@ tool_check_step!(Bootstrap { path: "src/bootstrap", default: false });
 // `run-make-support` will be built as part of suitable run-make compiletest test steps, but support
 // check to make it easier to work on.
 tool_check_step!(RunMakeSupport { path: "src/tools/run-make-support", default: false });
-
-// Compiletest is implicitly "checked" when it gets built in order to run tests,
-// so this is mainly for people working on compiletest to run locally.
-tool_check_step!(Compiletest { path: "src/tools/compiletest", default: false });
