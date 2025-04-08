@@ -2803,6 +2803,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// want to use the [`Default`] trait to generate values, you can
     /// pass [`Default::default`] as the second argument.
     ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
+    ///
     /// # Examples
     ///
     /// ```
@@ -3009,6 +3013,10 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// If you need more flexibility (or want to rely on [`Default`] instead of
     /// [`Clone`]), use [`Vec::resize_with`].
     /// If you only need to resize to a smaller size, use [`Vec::truncate`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
     ///
     /// # Examples
     ///
