@@ -3,10 +3,10 @@ use crate::io::prelude::*;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
 #[cfg(target_os = "android")]
 use crate::os::android::net::{SocketAddrExt, UnixSocketExt};
-#[cfg(target_os = "linux")]
-use crate::os::linux::net::{SocketAddrExt, UnixSocketExt};
 #[cfg(target_os = "cygwin")]
 use crate::os::cygwin::net::{SocketAddrExt, UnixSocketExt};
+#[cfg(target_os = "linux")]
+use crate::os::linux::net::{SocketAddrExt, UnixSocketExt};
 #[cfg(any(target_os = "android", target_os = "linux"))]
 use crate::os::unix::io::AsRawFd;
 use crate::test_helpers::tmpdir;
