@@ -602,21 +602,13 @@ impl<'a> Parser<'a> {
         let polarity = self.parse_polarity();
 
         // Parse both types and traits as a type, then reinterpret if necessary.
-        let err_path = |span| ast::Path::from_ident(Ident::new(kw::Empty, span));
         let ty_first = if self.token.is_keyword(kw::For) && self.look_ahead(1, |t| t != &token::Lt)
         {
             let span = self.prev_token.span.between(self.token.span);
-            self.dcx().emit_err(errors::MissingTraitInTraitImpl {
+            return Err(self.dcx().create_err(errors::MissingTraitInTraitImpl {
                 span,
                 for_span: span.to(self.token.span),
-            });
-
-            P(Ty {
-                kind: TyKind::Path(None, err_path(span)),
-                span,
-                id: DUMMY_NODE_ID,
-                tokens: None,
-            })
+            }));
         } else {
             self.parse_ty_with_generics_recovery(&generics)?
         };
@@ -671,7 +663,7 @@ impl<'a> Parser<'a> {
                                 span: ty_first.span,
                             });
                         }
-                        err_path(ty_first.span)
+                        ast::Path::from_ident(Ident::new(kw::Empty, ty_first.span))
                     }
                 };
                 let trait_ref = TraitRef { path, ref_id: ty_first.id };
