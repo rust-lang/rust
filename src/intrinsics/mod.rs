@@ -801,7 +801,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     // FIXME implement 128bit atomics
                     if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
                         // special case for compiler-builtins to avoid having to patch it
-                        crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
+                        crate::base::codegen_panic_nounwind(
+                            fx,
+                            "128bit atomics not yet supported",
+                            None,
+                        );
                         return Ok(());
                     } else {
                         fx.tcx
@@ -832,7 +836,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     // FIXME implement 128bit atomics
                     if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
                         // special case for compiler-builtins to avoid having to patch it
-                        crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
+                        crate::base::codegen_panic_nounwind(
+                            fx,
+                            "128bit atomics not yet supported",
+                            None,
+                        );
                         return Ok(());
                     } else {
                         fx.tcx

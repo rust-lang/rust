@@ -1316,7 +1316,12 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             fx.tcx
                 .dcx()
                 .warn(format!("unsupported x86 llvm intrinsic {}; replacing with trap", intrinsic));
-            crate::trap::trap_unimplemented(fx, intrinsic);
+            let msg = format!(
+                "{intrinsic} is not yet supported.\n\
+                 See https://github.com/rust-lang/rustc_codegen_cranelift/issues/171\n\
+                 Please open an issue at https://github.com/rust-lang/rustc_codegen_cranelift/issues"
+            );
+            crate::base::codegen_panic_nounwind(fx, &msg, None);
             return;
         }
     }
