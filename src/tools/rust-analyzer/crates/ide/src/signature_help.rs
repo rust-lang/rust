@@ -9,7 +9,7 @@ use hir::{
 };
 use ide_db::{
     FilePosition, FxIndexMap,
-    active_parameter::{callable_for_node, generic_def_for_node},
+    active_parameter::{callable_for_arg_list, generic_def_for_node},
     documentation::{Documentation, HasDocs},
 };
 use span::Edition;
@@ -17,7 +17,7 @@ use stdx::format_to;
 use syntax::{
     AstNode, Direction, NodeOrToken, SyntaxElementChildren, SyntaxNode, SyntaxToken, T, TextRange,
     TextSize, ToSmolStr, algo,
-    ast::{self, AstChildren, HasArgList},
+    ast::{self, AstChildren},
     match_ast,
 };
 
@@ -163,20 +163,8 @@ fn signature_help_for_call(
     edition: Edition,
     display_target: DisplayTarget,
 ) -> Option<SignatureHelp> {
-    // Find the calling expression and its NameRef
-    let mut nodes = arg_list.syntax().ancestors().skip(1);
-    let calling_node = loop {
-        if let Some(callable) = ast::CallableExpr::cast(nodes.next()?) {
-            let inside_callable = callable
-                .arg_list()
-                .is_some_and(|it| it.syntax().text_range().contains(token.text_range().start()));
-            if inside_callable {
-                break callable;
-            }
-        }
-    };
-
-    let (callable, active_parameter) = callable_for_node(sema, &calling_node, &token)?;
+    let (callable, active_parameter) =
+        callable_for_arg_list(sema, arg_list, token.text_range().start())?;
 
     let mut res =
         SignatureHelp { doc: None, signature: String::new(), parameters: vec![], active_parameter };

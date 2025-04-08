@@ -371,6 +371,17 @@ fn foo() {
 "#,
         expect![[r#"ty: Foo, name: ?"#]],
     );
+    check_expected_type_and_name(
+        r#"
+struct Foo { field: u32 }
+fn foo() {
+    Foo {
+        ..self::$0
+    }
+}
+"#,
+        expect!["ty: ?, name: ?"],
+    );
 }
 
 #[test]
