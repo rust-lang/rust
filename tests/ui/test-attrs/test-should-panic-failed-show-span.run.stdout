@@ -10,22 +10,16 @@ test should_panic_with_substring_panics_with_non_string_value - should panic ...
 failures:
 
 ---- should_panic_with_any_message_does_not_panic stdout ----
-note: test did not panic as expected at $DIR/test-should-panic-failed-show-span.rs:22:4
+note: test did not panic as expected at $DIR/test-should-panic-failed-show-span.rs:25:4
 ---- should_panic_with_message_does_not_panic stdout ----
-note: test did not panic as expected at $DIR/test-should-panic-failed-show-span.rs:28:4
+note: test did not panic as expected at $DIR/test-should-panic-failed-show-span.rs:31:4
 ---- should_panic_with_substring_panics_with_incorrect_string stdout ----
-
-thread 'should_panic_with_substring_panics_with_incorrect_string' panicked at $DIR/test-should-panic-failed-show-span.rs:35:5:
-ZOMGWTFBBQ
 note: panic did not contain expected string
       panic message: `"ZOMGWTFBBQ"`,
  expected substring: `"message"`
 ---- should_panic_with_substring_panics_with_non_string_value stdout ----
-
-thread 'should_panic_with_substring_panics_with_non_string_value' panicked at $DIR/test-should-panic-failed-show-span.rs:41:5:
-Box<dyn Any>
 note: expected panic with string value,
- found non-string value: `TypeId(0x56ced5e4a15bd89050bb9674fa2df013)`
+ found non-string value: `TypeId($HEX)`
      expected substring: `"message"`
 
 failures:
