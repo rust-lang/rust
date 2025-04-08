@@ -581,7 +581,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 );
 
                 // In principle we could insert assumes on the possible range of `discr`, but
-                // currently in LLVM this seems to be a pessimization.
+                // currently in LLVM this isn't worth it because the original `tag` will
+                // have either a `range` parameter attribute or `!range` metadata,
+                // or come from a `transmute` that already `assume`d it.
 
                 discr
             }

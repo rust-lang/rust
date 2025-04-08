@@ -3,6 +3,10 @@
 
 #![crate_type = "lib"]
 
+// This directly tests what we emit for these matches, rather than what happens
+// after optimization, so it doesn't need to worry about extra flags on the
+// instructions and is less susceptible to being broken on LLVM updates.
+
 // CHECK-LABEL: @option_match
 #[no_mangle]
 pub fn option_match(x: Option<i32>) -> u16 {
@@ -103,10 +107,22 @@ pub fn option_ordering_match(x: Option<Ordering>) -> char {
 // CHECK-LABEL: @option_nonzero_match(
 #[no_mangle]
 pub fn option_nonzero_match(x: Option<std::num::NonZero<u16>>) -> u16 {
+    // CHECK: %[[OUT:.+]] = alloca [2 x i8]
+
     // CHECK: %[[IS_NONE:.+]] = icmp eq i16 %x, 0
     // CHECK: %[[OPT_DISCR:.+]] = select i1 %[[IS_NONE]], i64 0, i64 1
     // CHECK: %[[OPT_DISCR_T:.+]] = trunc nuw i64 %[[OPT_DISCR]] to i1
     // CHECK: br i1 %[[OPT_DISCR_T]], label %[[BB_SOME:.+]], label %[[BB_NONE:.+]]
+
+    // CHECK: [[BB_SOME]]:
+    // CHECK: store i16 987, ptr %[[OUT]]
+
+    // CHECK: [[BB_NONE]]:
+    // CHECK: store i16 123, ptr %[[OUT]]
+
+    // CHECK: %[[RET:.+]] = load i16, ptr %[[OUT]]
+    // CHECK: ret i16 %[[RET]]
+
     match x {
         None => 123,
         Some(_) => 987,
