@@ -104,7 +104,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     ///     1. Directly from [`Builder::execute_cli`].
     ///     2. Indirectly by being called from other `Step`s using [`Builder::ensure`].
     ///
-    /// When called with [`Builder::execute_cli`] (as done by `Build::build`), this function executed twice:
+    /// When called with [`Builder::execute_cli`] (as done by `Build::build`), this function is executed twice:
     ///     - First in "dry-run" mode to validate certain things (like cyclic Step invocations,
     ///         directory creation, etc) super quickly.
     ///     - Then it's called again to run the actual, very expensive process.
