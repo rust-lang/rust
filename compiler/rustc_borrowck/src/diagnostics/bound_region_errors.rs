@@ -487,7 +487,7 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
     let (sub_region, cause) = info?;
 
     debug!(?sub_region, "cause = {:#?}", cause);
-    let error = match (error_region, *sub_region) {
+    let error = match (error_region, sub_region.kind()) {
         (Some(error_region), ty::ReVar(vid)) => RegionResolutionError::SubSupConflict(
             vid,
             region_var_origin(vid),

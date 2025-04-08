@@ -461,7 +461,7 @@ fn extract_def_id_from_arg<'tcx>(
     arg: ty::GenericArg<'tcx>,
 ) -> DefId {
     match arg.unpack() {
-        ty::GenericArgKind::Lifetime(re) => match *re {
+        ty::GenericArgKind::Lifetime(re) => match re.kind() {
             ty::ReEarlyParam(ebr) => generics.region_param(ebr, tcx).def_id,
             ty::ReBound(
                 _,
@@ -530,7 +530,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
         a: ty::Region<'tcx>,
         _: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        let def_id = match *a {
+        let def_id = match a.kind() {
             ty::ReEarlyParam(ebr) => self.generics.region_param(ebr, self.tcx).def_id,
             ty::ReBound(
                 _,

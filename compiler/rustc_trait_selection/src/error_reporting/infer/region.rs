@@ -299,7 +299,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.tcx.param_env(generic_param_scope),
                     terr,
                 );
-                match (*sub, *sup) {
+                match (sub.kind(), sup.kind()) {
                     (ty::RePlaceholder(_), ty::RePlaceholder(_)) => {}
                     (ty::RePlaceholder(_), _) => {
                         note_and_explain_region(
@@ -391,7 +391,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
             }
             infer::RelateParamBound(span, ty, opt_span) => {
-                let prefix = match *sub {
+                let prefix = match sub.kind() {
                     ty::ReStatic => note_and_explain::PrefixKind::TypeSatisfy,
                     _ => note_and_explain::PrefixKind::TypeOutlive,
                 };
@@ -1048,7 +1048,7 @@ pub(super) fn note_and_explain_region<'tcx>(
     suffix: &str,
     alt_span: Option<Span>,
 ) {
-    let (description, span) = match *region {
+    let (description, span) = match region.kind() {
         ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::RePlaceholder(_) | ty::ReStatic => {
             msg_span_from_named_region(tcx, generic_param_scope, region, alt_span)
         }
@@ -1085,7 +1085,7 @@ fn msg_span_from_named_region<'tcx>(
     region: ty::Region<'tcx>,
     alt_span: Option<Span>,
 ) -> (String, Option<Span>) {
-    match *region {
+    match region.kind() {
         ty::ReEarlyParam(br) => {
             let param_def_id = tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id;
             let span = tcx.def_span(param_def_id);
@@ -1185,7 +1185,7 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
     });
 
     // Explain the region we are capturing.
-    match *hidden_region {
+    match hidden_region.kind() {
         ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReStatic => {
             // Assuming regionck succeeded (*), we ought to always be
             // capturing *some* region from the fn header, and hence it

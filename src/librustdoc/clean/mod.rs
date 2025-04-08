@@ -320,7 +320,7 @@ pub(crate) fn clean_middle_const<'tcx>(
 }
 
 pub(crate) fn clean_middle_region(region: ty::Region<'_>) -> Option<Lifetime> {
-    match *region {
+    match region.kind() {
         ty::ReStatic => Some(Lifetime::statik()),
         _ if !region.has_name() => None,
         ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(_, name), .. }) => {
@@ -1941,7 +1941,7 @@ fn clean_trait_object_lifetime_bound<'tcx>(
     // Since there is a semantic difference between an implicitly elided (i.e. "defaulted") object
     // lifetime and an explicitly elided object lifetime (`'_`), we intentionally don't hide the
     // latter contrary to `clean_middle_region`.
-    match *region {
+    match region.kind() {
         ty::ReStatic => Some(Lifetime::statik()),
         ty::ReEarlyParam(region) => Some(Lifetime(region.name)),
         ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(_, name), .. }) => {
@@ -1972,7 +1972,7 @@ fn can_elide_trait_object_lifetime_bound<'tcx>(
     // > If there is a unique bound from the containing type then that is the default
     // If there is a default object lifetime and the given region is lexically equal to it, elide it.
     match default {
-        ObjectLifetimeDefault::Static => return *region == ty::ReStatic,
+        ObjectLifetimeDefault::Static => return region.kind() == ty::ReStatic,
         // FIXME(fmease): Don't compare lexically but respect de Bruijn indices etc. to handle shadowing correctly.
         ObjectLifetimeDefault::Arg(default) => return region.get_name() == default.get_name(),
         // > If there is more than one bound from the containing type then an explicit bound must be specified
@@ -1992,7 +1992,7 @@ fn can_elide_trait_object_lifetime_bound<'tcx>(
         // Note however that at the time of this writing it should be fine to disregard this subtlety
         // as we neither render const exprs faithfully anyway (hiding them in some places or using `_` instead)
         // nor show the contents of fn bodies.
-        [] => *region == ty::ReStatic,
+        [] => region.kind() == ty::ReStatic,
         // > If the trait is defined with a single lifetime bound then that bound is used.
         // > If 'static is used for any lifetime bound then 'static is used.
         // FIXME(fmease): Don't compare lexically but respect de Bruijn indices etc. to handle shadowing correctly.

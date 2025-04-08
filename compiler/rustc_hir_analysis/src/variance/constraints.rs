@@ -428,7 +428,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         region: ty::Region<'tcx>,
         variance: VarianceTermPtr<'a>,
     ) {
-        match *region {
+        match region.kind() {
             ty::ReEarlyParam(ref data) => {
                 self.add_constraint(current, data.index, variance);
             }

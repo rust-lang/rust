@@ -909,9 +909,9 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// if it is a placeholder. Handling placeholders requires access to the
     /// `MirTypeckRegionConstraints`.
     fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
-        if let ty::ReVar(..) = *r {
+        if let ty::ReVar(..) = r.kind() {
             r.as_var()
-        } else if let ty::ReError(guar) = *r {
+        } else if let ty::ReError(guar) = r.kind() {
             self.tainted_by_errors.set(Some(guar));
             // We use the `'static` `RegionVid` because `ReError` doesn't actually exist in the
             // `UniversalRegionIndices`. This is fine because 1) it is a fallback only used if

@@ -186,7 +186,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        fold_regions(tcx, ty, |region, _| match *region {
+        fold_regions(tcx, ty, |region, _| match region.kind() {
             ty::ReVar(vid) => {
                 let scc = self.constraint_sccs.scc(vid);
 

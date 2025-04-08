@@ -288,7 +288,7 @@ impl FlagComputation {
 
     fn add_region(&mut self, r: ty::Region<'_>) {
         self.add_flags(r.type_flags());
-        if let ty::ReBound(debruijn, _) = *r {
+        if let ty::ReBound(debruijn, _) = r.kind() {
             self.add_bound_var(debruijn);
         }
     }

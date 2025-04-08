@@ -797,7 +797,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseEscapingBoundRegions<'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReBound(debruijn, _) = *r
+        if let ty::ReBound(debruijn, _) = r.kind()
             && debruijn < self.binder
         {
             r

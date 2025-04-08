@@ -65,7 +65,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
         // We must not erase bound regions. `for<'a> fn(&'a ())` and
         // `fn(&'free ())` are different types: they may implement different
         // traits and have a different `TypeId`.
-        match *r {
+        match r.kind() {
             ty::ReBound(..) => r,
             _ => self.tcx.lifetimes.re_erased,
         }
