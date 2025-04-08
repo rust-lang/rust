@@ -117,7 +117,6 @@ pub mod cast;
 pub mod codec;
 pub mod error;
 pub mod fast_reject;
-pub mod flags;
 pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;
@@ -128,7 +127,6 @@ pub mod significant_drop_order;
 pub mod trait_def;
 pub mod util;
 pub mod vtable;
-pub mod walk;
 
 mod adt;
 mod assoc;
