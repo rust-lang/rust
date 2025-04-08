@@ -4,7 +4,8 @@
 //  - Other fields are not marked artificial
 //
 //
-//@ compile-flags: -C debuginfo=2 --edition=2018
+//@ compile-flags: -C debuginfo=2
+//@ edition: 2018
 //@ only-msvc
 
 async fn foo() {}

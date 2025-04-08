@@ -2,7 +2,7 @@
 
 // this test used to stack overflow due to infinite recursion.
 //@ check-pass
-//@ compile-flags: --edition=2018
+//@ edition: 2018
 
 use std::future::Future;
 

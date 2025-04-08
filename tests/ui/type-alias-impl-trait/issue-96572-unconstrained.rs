@@ -1,7 +1,7 @@
 #![feature(type_alias_impl_trait)]
 //@ check-pass
 //@ revisions: default edition2021
-//@[edition2021] compile-flags: --edition 2021
+//@[edition2021]edition: 2021
 
 fn main() {
     type T = impl Copy;
