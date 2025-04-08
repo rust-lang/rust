@@ -1,9 +1,12 @@
+//@ compile-flags: --test
+//@ run-flags: --test-threads=1 --nocapture
 //@ run-fail
 //@ check-run-results
-//@ compile-flags: --test
 //@ exec-env:RUST_BACKTRACE=0
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
-//@ run-flags: --test-threads=1
+//@ normalize-stdout: "TypeId\(0x[0-9a-f]+\)" -> "TypeId($$HEX)"
+//@ needs-threads
+//@ needs-unwind (panic)
 
 #[test]
 #[should_panic]
@@ -37,6 +40,7 @@ fn should_panic_with_substring_panics_with_incorrect_string() {
 
 #[test]
 #[should_panic = "message"]
+#[expect(non_fmt_panics)]
 fn should_panic_with_substring_panics_with_non_string_value() {
-    panic!(123); //~ WARNING panic message is not a string literal
+    panic!(123);
 }
