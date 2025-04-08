@@ -55,8 +55,19 @@ pub use core::prelude::v1::{
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
 pub use crate::{
-    dbg, eprint, eprintln, format, is_x86_feature_detected, print, println, thread_local, vec,
+    dbg, eprint, eprintln, format, is_x86_feature_detected, print, println, thread_local,
 };
+
+// The `vec` macro needs special handling, so that we don't export it *and* the `std::vec` module at
+// the same time. We only want the macro in the prelude.
+mod vec_macro_only {
+    #[allow(hidden_glob_reexports)]
+    mod vec {}
+    #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+    pub use crate::*;
+}
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+pub use self::vec_macro_only::vec;
 
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[doc(no_inline)]
