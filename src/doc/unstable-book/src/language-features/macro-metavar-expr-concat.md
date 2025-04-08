@@ -4,8 +4,8 @@ The tracking issue for this feature is: [#124225]
 
 ------------------------
 
-
-`#![feature(macro_metavar_expr_concat)]` provides a more powerful alternative to [`concat_idents!`].
+In stable Rust, there is no way to create new identifiers by joining identifiers to literals or other identifiers without using procedural macros such as [`paste`].
+ `#![feature(macro_metavar_expr_concat)]` introduces a way to do this, using the concat metavariable expression.
 
 > This feature is not to be confused with [`macro_metavar_expr`] or [`concat_idents`].
 
@@ -14,36 +14,35 @@ The tracking issue for this feature is: [#124225]
 
 ### Overview
 
-`macro_rules!` macros cannot create new identifiers and use them in ident positions.
-A common use case is the need to create new structs or functions. The following cannot be done[^1]:
+At this time, [declarative macros] cannot create new identifiers.
+A common use case is the need to create names for structs or functions. The following cannot be done on stable Rust[^1]:
 
 ```rust,compile_fail
 macro_rules! create_some_structs {
-  ($name:ident) => {
-      // Invalid syntax
-      struct First_$name;
-       // Also invalid syntax
-      struct Second_($name);
-      // Macros are not allowed in this position
-      // (This restriction is what makes `concat_idents!` useless)
-      struct concat_idents!(Third_, $name);
-  }
+    ($name:ident) => {
+        // Invalid syntax
+        pub struct First$name;
+        // Also invalid syntax
+        pub struct Second($name);
+        // Macros are not allowed in this position
+        // (This restriction is what makes `concat_idents!` useless)
+        pub struct concat_idents!(Third, $name);
+    }
 }
 # create_some_structs!(Thing);
 ```
 
-`#![feature(macro_metavar_expr_concat)]` provides the `concat` metavariable to concatenate idents in ident position:
+`#![feature(macro_metavar_expr_concat)]` provides the `concat` metavariable to concatenate idents:
 
 ```rust
 #![feature(macro_metavar_expr_concat)]
-# #![allow(non_camel_case_types, dead_code)]
 
 macro_rules! create_some_structs {
-  ($name:ident) => {
-      struct ${ concat(First_, $name) };
-      struct ${ concat(Second_, $name) };
-      struct ${ concat(Third_, $name) };
-  }
+    ($name:ident) => {
+        pub struct ${ concat(First, $name) };
+        pub struct ${ concat(Second, $name) };
+        pub struct ${ concat(Third, $name) };
+    }
 }
 
 create_some_structs!(Thing);
@@ -52,10 +51,9 @@ create_some_structs!(Thing);
 This macro invocation expands to:
 
 ```rust
-# #![allow(non_camel_case_types, dead_code)]
-struct First_Thing;
-struct Second_Thing;
-struct Third_Thing;
+pub struct FirstThing;
+pub struct SecondThing;
+pub struct ThirdThing;
 ```
 
 ### Syntax
@@ -69,16 +67,15 @@ This feature builds upon the metavariable expression syntax `${ .. }` as specifi
 
 ```rust
 #![feature(macro_metavar_expr_concat)]
-# #![allow(non_camel_case_types, dead_code)]
 
 macro_rules! make_getter {
-  ($name:ident, $field: ident, $ret:ty) => {
-      impl $name {
-          pub fn ${ concat(get_, $field) }(&self) -> &$ret {
-              &self.$field
-          }
-      }
-  }
+    ($name:ident, $field: ident, $ret:ty) => {
+        impl $name {
+            pub fn ${ concat(get_, $field) }(&self) -> &$ret {
+                &self.$field
+            }
+        }
+    }
 }
 
 pub struct Thing {
@@ -152,3 +149,4 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 [`macro_metavar_expr`]: ../language-features/macro-metavar-expr.md
 [`concat_idents`]: ../library-features/concat-idents.md
 [#124225]: https://github.com/rust-lang/rust/issues/124225
+[declarative macros]: https://doc.rust-lang.org/stable/reference/macros-by-example.html
