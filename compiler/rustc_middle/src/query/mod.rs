@@ -1153,11 +1153,10 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
-    /// Borrow-checks the function body. If this is a closure, returns
-    /// additional requirements that the closure's creator must verify.
-    query mir_borrowck(key: LocalDefId) -> &'tcx mir::BorrowCheckResult<'tcx> {
+    /// Borrow-checks the given typeck root, e.g. functions, const/static items,
+    /// and its children, e.g. closures, inline consts.
+    query mir_borrowck(key: LocalDefId) -> Result<&'tcx mir::ConcreteOpaqueTypes<'tcx>, ErrorGuaranteed> {
         desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if(tcx) { tcx.is_typeck_child(key.to_def_id()) }
     }
 
     /// Gets a complete map from all types to their inherent impls.

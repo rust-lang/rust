@@ -6,7 +6,6 @@ use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_infer::traits::query::type_op::DeeplyNormalize;
 use rustc_middle::bug;
-use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
 use rustc_middle::ty::{
     self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
 };
@@ -18,6 +17,7 @@ use crate::constraints::OutlivesConstraint;
 use crate::region_infer::TypeTest;
 use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::UniversalRegions;
+use crate::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
 
 pub(crate) struct ConstraintConversion<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
