@@ -24,7 +24,24 @@ impl TestCx<'_> {
         let pm = self.pass_mode();
         let should_run = self.should_run(pm);
         let emit_metadata = self.should_emit_metadata(pm);
-        let proc_res = self.compile_test(should_run, emit_metadata);
+        let mut proc_res = self.compile_test(should_run, emit_metadata);
+
+        if self.props.parallel_front_end_robustness {
+            // Ensure there is no ice during parallel front end.
+            self.check_no_compiler_crash(&proc_res, false);
+
+            // Repeated testing due to instability in multithreaded environments.
+            for _ in 0..50 {
+                proc_res = self.compile_test(should_run, emit_metadata);
+                self.check_no_compiler_crash(&proc_res, false);
+            }
+
+            // For the parallel front end, we are currently only concerned with whether
+            // deadlock or other ice problems occur. The correctness of the output is
+            // guaranteed by other compiler tests.
+            return;
+        }
+
         self.check_if_test_should_compile(self.props.fail_mode, pm, &proc_res);
         if matches!(proc_res.truncated, Truncated::Yes)
             && !self.props.dont_check_compiler_stdout
