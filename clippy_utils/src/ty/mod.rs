@@ -1109,7 +1109,7 @@ pub fn make_projection<'tcx>(
         assoc_ty: Symbol,
         args: GenericArgsRef<'tcx>,
     ) -> Option<AliasTy<'tcx>> {
-        let Some(assoc_item) = tcx.associated_items(container_id).find_by_name_and_kind(
+        let Some(assoc_item) = tcx.associated_items(container_id).find_by_ident_and_kind(
             tcx,
             Ident::with_dummy_span(assoc_ty),
             AssocKind::Type,
