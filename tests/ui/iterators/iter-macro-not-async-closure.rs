@@ -7,9 +7,7 @@
 // explanation is moved to the `help` instead of the span label.
 //
 //@ edition: 2024
-//@ revisions: narrow wide
-//@[narrow] compile-flags: --diagnostic-width=20
-//@[wide] compile-flags: --diagnostic-width=300
+//@ remap-src-base
 
 #![feature(yield_expr, iter_macro)]
 
@@ -31,8 +29,8 @@ fn main() {
 
     let x = pin!(call_async_once(f));
     //~^ ERROR AsyncFnOnce()` is not satisfied
-    //~^^ ERROR AsyncFnOnce()` is not satisfied
-    //~^^^ ERROR AsyncFnOnce()` is not satisfied
+    //~| ERROR AsyncFnOnce()` is not satisfied
+    //~| ERROR AsyncFnOnce()` is not satisfied
     x.poll(&mut Context::from_waker(Waker::noop()));
     //~^ ERROR AsyncFnOnce()` is not satisfied
 }
