@@ -718,7 +718,6 @@ name = "compiletest"
 version = "0.0.0"
 dependencies = [
  "anstyle-svg",
- "anyhow",
  "build_helper",
  "colored",
  "diff",
