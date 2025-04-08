@@ -256,8 +256,8 @@ impl SocketAddr {
 #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
 impl Sealed for SocketAddr {}
 
-#[doc(cfg(any(target_os = "android", target_os = "linux")))]
-#[cfg(any(doc, target_os = "android", target_os = "linux"))]
+#[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin")))]
+#[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
 impl linux_ext::addr::SocketAddrExt for SocketAddr {
     fn as_abstract_name(&self) -> Option<&[u8]> {
