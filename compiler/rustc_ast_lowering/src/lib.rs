@@ -1247,7 +1247,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     safety: self.lower_safety(f.safety, hir::Safety::Safe),
                     abi: self.lower_extern(f.ext),
                     decl: self.lower_fn_decl(&f.decl, t.id, t.span, FnDeclKind::Pointer, None),
-                    param_names: self.lower_fn_params_to_names(&f.decl),
+                    param_idents: self.lower_fn_params_to_idents(&f.decl),
                 }))
             }
             TyKind::UnsafeBinder(f) => {
@@ -1494,7 +1494,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }))
     }
 
-    fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Option<Ident>] {
+    fn lower_fn_params_to_idents(&mut self, decl: &FnDecl) -> &'hir [Option<Ident>] {
         self.arena.alloc_from_iter(decl.inputs.iter().map(|param| match param.pat.kind {
             PatKind::Missing => None,
             PatKind::Ident(_, ident, _) => Some(self.lower_ident(ident)),

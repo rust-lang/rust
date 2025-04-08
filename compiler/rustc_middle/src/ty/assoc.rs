@@ -199,8 +199,8 @@ impl AssocItems {
         self.items.get_by_key(name)
     }
 
-    /// Returns the associated item with the given name and `AssocKind`, if one exists.
-    pub fn find_by_name_and_kind(
+    /// Returns the associated item with the given ident and `AssocKind`, if one exists.
+    pub fn find_by_ident_and_kind(
         &self,
         tcx: TyCtxt<'_>,
         ident: Ident,
@@ -212,8 +212,8 @@ impl AssocItems {
             .find(|item| tcx.hygienic_eq(ident, item.ident(tcx), parent_def_id))
     }
 
-    /// Returns the associated item with the given name and any of `AssocKind`, if one exists.
-    pub fn find_by_name_and_kinds(
+    /// Returns the associated item with the given ident and any of `AssocKind`, if one exists.
+    pub fn find_by_ident_and_kinds(
         &self,
         tcx: TyCtxt<'_>,
         ident: Ident,
@@ -221,11 +221,11 @@ impl AssocItems {
         kinds: &[AssocKind],
         parent_def_id: DefId,
     ) -> Option<&ty::AssocItem> {
-        kinds.iter().find_map(|kind| self.find_by_name_and_kind(tcx, ident, *kind, parent_def_id))
+        kinds.iter().find_map(|kind| self.find_by_ident_and_kind(tcx, ident, *kind, parent_def_id))
     }
 
-    /// Returns the associated item with the given name in the given `Namespace`, if one exists.
-    pub fn find_by_name_and_namespace(
+    /// Returns the associated item with the given ident in the given `Namespace`, if one exists.
+    pub fn find_by_ident_and_namespace(
         &self,
         tcx: TyCtxt<'_>,
         ident: Ident,

@@ -1874,13 +1874,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     fn supertrait_hrtb_vars(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        assoc_name: Ident,
+        assoc_ident: Ident,
         assoc_kind: ty::AssocKind,
     ) -> Option<(Vec<ty::BoundVariableKind>, &'tcx ty::AssocItem)> {
         let trait_defines_associated_item_named = |trait_def_id: DefId| {
-            tcx.associated_items(trait_def_id).find_by_name_and_kind(
+            tcx.associated_items(trait_def_id).find_by_ident_and_kind(
                 tcx,
-                assoc_name,
+                assoc_ident,
                 assoc_kind,
                 trait_def_id,
             )
@@ -1904,7 +1904,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             if let Some(assoc_item) = trait_defines_associated_item_named(def_id) {
                 break Some((bound_vars.into_iter().collect(), assoc_item));
             }
-            let predicates = tcx.explicit_supertraits_containing_assoc_item((def_id, assoc_name));
+            let predicates = tcx.explicit_supertraits_containing_assoc_item((def_id, assoc_ident));
             let obligations = predicates.iter_identity_copied().filter_map(|(pred, _)| {
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {

@@ -423,11 +423,11 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &hir::TraitItem<'_>) {
-        if let hir::TraitItemKind::Fn(_, hir::TraitFn::Required(pnames)) = item.kind {
+        if let hir::TraitItemKind::Fn(_, hir::TraitFn::Required(param_idents)) = item.kind {
             self.check_snake_case(cx, "trait method", &item.ident);
-            for param_name in pnames {
-                if let Some(param_name) = param_name {
-                    self.check_snake_case(cx, "variable", param_name);
+            for param_ident in param_idents {
+                if let Some(param_ident) = param_ident {
+                    self.check_snake_case(cx, "variable", param_ident);
                 }
             }
         }

@@ -117,7 +117,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         all_candidates: impl Fn() -> I,
         qself: AssocItemQSelf,
         assoc_kind: ty::AssocKind,
-        assoc_name: Ident,
+        assoc_ident: Ident,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'tcx>>,
     ) -> ErrorGuaranteed
@@ -129,11 +129,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // First and foremost, provide a more user-friendly & “intuitive” error on kind mismatches.
         if let Some(assoc_item) = all_candidates().find_map(|r| {
             tcx.associated_items(r.def_id())
-                .filter_by_name_unhygienic(assoc_name.name)
-                .find(|item| tcx.hygienic_eq(assoc_name, item.ident(tcx), r.def_id()))
+                .filter_by_name_unhygienic(assoc_ident.name)
+                .find(|item| tcx.hygienic_eq(assoc_ident, item.ident(tcx), r.def_id()))
         }) {
             return self.complain_about_assoc_kind_mismatch(
-                assoc_item, assoc_kind, assoc_name, span, constraint,
+                assoc_item,
+                assoc_kind,
+                assoc_ident,
+                span,
+                constraint,
             );
         }
 
@@ -142,18 +146,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
         // valid span, so we point at the whole path segment instead.
-        let is_dummy = assoc_name.span == DUMMY_SP;
+        let is_dummy = assoc_ident.span == DUMMY_SP;
 
         let mut err = errors::AssocItemNotFound {
-            span: if is_dummy { span } else { assoc_name.span },
-            assoc_name,
+            span: if is_dummy { span } else { assoc_ident.span },
+            assoc_ident,
             assoc_kind: assoc_kind_str,
             qself: &qself_str,
             label: None,
             sugg: None,
             // Try to get the span of the identifier within the path's syntax context
             // (if that's different).
-            within_macro_span: assoc_name.span.within_macro(span, tcx.sess.source_map()),
+            within_macro_span: assoc_ident.span.within_macro(span, tcx.sess.source_map()),
         };
 
         if is_dummy {
@@ -169,10 +173,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .collect();
 
         if let Some(suggested_name) =
-            find_best_match_for_name(&all_candidate_names, assoc_name.name, None)
+            find_best_match_for_name(&all_candidate_names, assoc_ident.name, None)
         {
             err.sugg = Some(errors::AssocItemNotFoundSugg::Similar {
-                span: assoc_name.span,
+                span: assoc_ident.span,
                 assoc_kind: assoc_kind_str,
                 suggested_name,
             });
@@ -201,7 +205,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .collect();
 
         if let Some(suggested_name) =
-            find_best_match_for_name(&wider_candidate_names, assoc_name.name, None)
+            find_best_match_for_name(&wider_candidate_names, assoc_ident.name, None)
         {
             if let [best_trait] = visible_traits
                 .iter()
@@ -215,11 +219,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             {
                 let trait_name = tcx.def_path_str(best_trait);
                 err.label = Some(errors::AssocItemNotFoundLabel::FoundInOtherTrait {
-                    span: assoc_name.span,
+                    span: assoc_ident.span,
                     assoc_kind: assoc_kind_str,
                     trait_name: &trait_name,
                     suggested_name,
-                    identically_named: suggested_name == assoc_name.name,
+                    identically_named: suggested_name == assoc_ident.name,
                 });
                 if let AssocItemQSelf::TyParam(ty_param_def_id, ty_param_span) = qself
                     // Not using `self.item_def_id()` here as that would yield the opaque type itself if we're
@@ -246,7 +250,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // The type param already has a bound for `trait_name`, we just need to
                         // change the associated item.
                         err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTrait {
-                            span: assoc_name.span,
+                            span: assoc_ident.span,
                             assoc_kind: assoc_kind_str,
                             suggested_name,
                         });
@@ -265,7 +269,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         Applicability::MaybeIncorrect
                     };
 
-                    let identically_named = suggested_name == assoc_name.name;
+                    let identically_named = suggested_name == assoc_ident.name;
 
                     if let DefKind::TyAlias = tcx.def_kind(item_def_id)
                         && !tcx.type_alias_is_lazy(item_def_id)
@@ -273,7 +277,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTraitQPath {
                             lo: ty_param_span.shrink_to_lo(),
                             mi: ty_param_span.shrink_to_hi(),
-                            hi: (!identically_named).then_some(assoc_name.span),
+                            hi: (!identically_named).then_some(assoc_ident.span),
                             trait_ref,
                             identically_named,
                             suggested_name,
@@ -294,7 +298,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             // We suggested constraining a type parameter, but the associated item on it
                             // was also not an exact match, so we also suggest changing it.
                             err.span_suggestion_verbose(
-                                assoc_name.span,
+                                assoc_ident.span,
                                 fluent::hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg,
                                 suggested_name,
                                 Applicability::MaybeIncorrect,
@@ -311,13 +315,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // suggest using it.
         if let [candidate_name] = all_candidate_names.as_slice() {
             err.sugg = Some(errors::AssocItemNotFoundSugg::Other {
-                span: assoc_name.span,
+                span: assoc_ident.span,
                 qself: &qself_str,
                 assoc_kind: assoc_kind_str,
                 suggested_name: *candidate_name,
             });
         } else {
-            err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span: assoc_name.span });
+            err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span: assoc_ident.span });
         }
 
         self.dcx().emit_err(err)
@@ -805,7 +809,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         return None;
                     };
 
-                    let assoc_item = tcx.associated_items(trait_def).find_by_name_and_kind(
+                    let assoc_item = tcx.associated_items(trait_def).find_by_ident_and_kind(
                         tcx,
                         ident,
                         ty::AssocKind::Type,

@@ -104,7 +104,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                 let termination_trait = tcx.require_lang_item(LangItem::Termination, None);
                 let report = tcx
                     .associated_items(termination_trait)
-                    .find_by_name_and_kind(
+                    .find_by_ident_and_kind(
                         tcx,
                         Ident::from_str("report"),
                         AssocKind::Fn,

@@ -727,7 +727,7 @@ pub(crate) struct NoAssociatedItem {
     #[primary_span]
     pub span: Span,
     pub item_kind: &'static str,
-    pub item_name: Ident,
+    pub item_ident: Ident,
     pub ty_prefix: Cow<'static, str>,
     pub ty_str: String,
     pub trait_missing_method: bool,

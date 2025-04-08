@@ -451,7 +451,7 @@ define_tables! {
     rendered_const: Table<DefIndex, LazyValue<String>>,
     rendered_precise_capturing_args: Table<DefIndex, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
     asyncness: Table<DefIndex, ty::Asyncness>,
-    fn_arg_names: Table<DefIndex, LazyArray<Option<Ident>>>,
+    fn_arg_idents: Table<DefIndex, LazyArray<Option<Ident>>>,
     coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
     coroutine_for_closure: Table<DefIndex, RawDefId>,
     adt_destructor: Table<DefIndex, LazyValue<ty::Destructor>>,

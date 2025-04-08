@@ -363,10 +363,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         for hir_bound in hir_bounds {
             // In order to avoid cycles, when we're lowering `SelfTraitThatDefines`,
             // we skip over any traits that don't define the given associated type.
-            if let PredicateFilter::SelfTraitThatDefines(assoc_name) = predicate_filter {
+            if let PredicateFilter::SelfTraitThatDefines(assoc_ident) = predicate_filter {
                 if let Some(trait_ref) = hir_bound.trait_ref()
                     && let Some(trait_did) = trait_ref.trait_def_id()
-                    && self.tcx().trait_may_define_assoc_item(trait_did, assoc_name)
+                    && self.tcx().trait_may_define_assoc_item(trait_did, assoc_ident)
                 {
                     // Okay
                 } else {

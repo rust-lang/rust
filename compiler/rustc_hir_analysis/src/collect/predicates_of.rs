@@ -584,12 +584,12 @@ pub(super) fn explicit_super_predicates_of<'tcx>(
 
 pub(super) fn explicit_supertraits_containing_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (trait_def_id, assoc_name): (DefId, Ident),
+    (trait_def_id, assoc_ident): (DefId, Ident),
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     implied_predicates_with_filter(
         tcx,
         trait_def_id,
-        PredicateFilter::SelfTraitThatDefines(assoc_name),
+        PredicateFilter::SelfTraitThatDefines(assoc_ident),
     )
 }
 
@@ -617,7 +617,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     filter: PredicateFilter,
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     let Some(trait_def_id) = trait_def_id.as_local() else {
-        // if `assoc_name` is None, then the query should've been redirected to an
+        // if `assoc_ident` is None, then the query should've been redirected to an
         // external provider
         assert_matches!(filter, PredicateFilter::SelfTraitThatDefines(_));
         return tcx.explicit_super_predicates_of(trait_def_id);
@@ -834,11 +834,11 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
 #[instrument(level = "trace", skip(tcx))]
 pub(super) fn type_param_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (item_def_id, def_id, assoc_name): (LocalDefId, LocalDefId, Ident),
+    (item_def_id, def_id, assoc_ident): (LocalDefId, LocalDefId, Ident),
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     match tcx.opt_rpitit_info(item_def_id.to_def_id()) {
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
-            return tcx.type_param_predicates((opaque_def_id.expect_local(), def_id, assoc_name));
+            return tcx.type_param_predicates((opaque_def_id.expect_local(), def_id, assoc_ident));
         }
         Some(ty::ImplTraitInTraitData::Impl { .. }) => {
             unreachable!("should not be lowering bounds on RPITIT in impl")
@@ -863,7 +863,7 @@ pub(super) fn type_param_predicates<'tcx>(
 
     let result = if let Some(parent) = parent {
         let icx = ItemCtxt::new(tcx, parent);
-        icx.probe_ty_param_bounds(DUMMY_SP, def_id, assoc_name)
+        icx.probe_ty_param_bounds(DUMMY_SP, def_id, assoc_ident)
     } else {
         ty::EarlyBinder::bind(&[] as &[_])
     };
@@ -889,7 +889,7 @@ pub(super) fn type_param_predicates<'tcx>(
     let extra_predicates = extend.into_iter().chain(icx.probe_ty_param_bounds_in_generics(
         hir_generics,
         def_id,
-        PredicateFilter::SelfTraitThatDefines(assoc_name),
+        PredicateFilter::SelfTraitThatDefines(assoc_ident),
     ));
 
     let bounds =
@@ -908,7 +908,7 @@ pub(super) fn type_param_predicates<'tcx>(
         _ => unreachable!(),
     };
     assert_only_contains_predicates_from(
-        PredicateFilter::SelfTraitThatDefines(assoc_name),
+        PredicateFilter::SelfTraitThatDefines(assoc_ident),
         bounds,
         self_ty,
     );

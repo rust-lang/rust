@@ -497,7 +497,7 @@ pub(crate) fn build_impl(
                         };
                         let trait_item = tcx
                             .associated_items(associated_trait.def_id)
-                            .find_by_name_and_kind(
+                            .find_by_ident_and_kind(
                                 tcx,
                                 item.ident,
                                 assoc_kind,
@@ -524,7 +524,7 @@ pub(crate) fn build_impl(
                     if let Some(associated_trait) = associated_trait {
                         let trait_item = tcx
                             .associated_items(associated_trait.def_id)
-                            .find_by_name_and_kind(
+                            .find_by_ident_and_kind(
                                 tcx,
                                 item.ident(tcx),
                                 item.kind,
