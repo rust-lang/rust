@@ -32,9 +32,15 @@ fn helper() -> i32 {
         state = 'blk: {
             match state {
                 0 => match X {
-                    _ => break 'blk 1,
+                    _ => {
+                        assert!(!DROPPED.load(Ordering::Relaxed));
+                        break 'blk 1;
+                    }
                 },
-                _ => break 'a state,
+                _ => {
+                    assert!(DROPPED.load(Ordering::Relaxed));
+                    break 'a state;
+                }
             }
         };
     }
