@@ -53,7 +53,8 @@ Various intrinsics have native MIR operations that they correspond to. Instead o
 backends to implement both the intrinsic and the MIR operation, the `lower_intrinsics` pass
 will convert the calls to the MIR operation. Backends do not need to know about these intrinsics
 at all. These intrinsics only make sense without a body, and can be declared as a `#[rustc_intrinsic]`.
-The body is never used, as calls to the intrinsic do not exist anymore after MIR analyses.
+The body is never used as the lowering pass implements support for all backends, so we never have to
+use the fallback logic.
 
 ## Intrinsics without fallback logic
 
