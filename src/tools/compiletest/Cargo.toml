@@ -9,7 +9,6 @@ doctest = false
 [dependencies]
 # tidy-alphabetical-start
 anstyle-svg = "0.1.3"
-anyhow = "1"
 build_helper = { path = "../../build_helper" }
 colored = "2"
 diff = "0.1.10"
