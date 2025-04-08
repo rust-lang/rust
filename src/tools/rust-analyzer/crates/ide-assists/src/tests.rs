@@ -297,7 +297,9 @@ fn check_with_config(
 
     let assist = match assist_label {
         Some(label) => res.into_iter().find(|resolved| resolved.label == label),
-        None => res.pop(),
+        None if res.is_empty() => None,
+        // Pick the first as that is the one with the highest priority
+        None => Some(res.swap_remove(0)),
     };
 
     match (assist, expected) {

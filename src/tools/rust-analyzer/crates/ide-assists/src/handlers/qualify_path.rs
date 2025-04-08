@@ -10,7 +10,7 @@ use ide_db::{
 use syntax::Edition;
 use syntax::ast::HasGenericArgs;
 use syntax::{
-    AstNode, NodeOrToken, ast,
+    AstNode, ast,
     ast::{HasArgList, make},
 };
 
@@ -38,7 +38,7 @@ use crate::{
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
 pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
+    let (import_assets, syntax_under_caret, expected) = find_importable_node(ctx)?;
     let cfg = ctx.config.import_path_config();
 
     let mut proposed_imports: Vec<_> =
@@ -47,57 +47,50 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         return None;
     }
 
+    let range = ctx.sema.original_range(&syntax_under_caret).range;
+    let current_module = ctx.sema.scope(&syntax_under_caret).map(|scope| scope.module());
+
     let candidate = import_assets.import_candidate();
-    let qualify_candidate = match syntax_under_caret.clone() {
-        NodeOrToken::Node(syntax_under_caret) => match candidate {
-            ImportCandidate::Path(candidate) if !candidate.qualifier.is_empty() => {
-                cov_mark::hit!(qualify_path_qualifier_start);
-                let path = ast::Path::cast(syntax_under_caret)?;
-                let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
-                QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
-            }
-            ImportCandidate::Path(_) => {
-                cov_mark::hit!(qualify_path_unqualified_name);
-                let path = ast::Path::cast(syntax_under_caret)?;
-                let generics = path.segment()?.generic_arg_list();
-                QualifyCandidate::UnqualifiedName(generics)
-            }
-            ImportCandidate::TraitAssocItem(_) => {
-                cov_mark::hit!(qualify_path_trait_assoc_item);
-                let path = ast::Path::cast(syntax_under_caret)?;
-                let (qualifier, segment) = (path.qualifier()?, path.segment()?);
-                QualifyCandidate::TraitAssocItem(qualifier, segment)
-            }
-            ImportCandidate::TraitMethod(_) => {
-                cov_mark::hit!(qualify_path_trait_method);
-                let mcall_expr = ast::MethodCallExpr::cast(syntax_under_caret)?;
-                QualifyCandidate::TraitMethod(ctx.sema.db, mcall_expr)
-            }
-        },
-        // derive attribute path
-        NodeOrToken::Token(_) => QualifyCandidate::UnqualifiedName(None),
+    let qualify_candidate = match candidate {
+        ImportCandidate::Path(candidate) if !candidate.qualifier.is_empty() => {
+            cov_mark::hit!(qualify_path_qualifier_start);
+            let path = ast::Path::cast(syntax_under_caret)?;
+            let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
+            QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
+        }
+        ImportCandidate::Path(_) => {
+            cov_mark::hit!(qualify_path_unqualified_name);
+            let path = ast::Path::cast(syntax_under_caret)?;
+            let generics = path.segment()?.generic_arg_list();
+            QualifyCandidate::UnqualifiedName(generics)
+        }
+        ImportCandidate::TraitAssocItem(_) => {
+            cov_mark::hit!(qualify_path_trait_assoc_item);
+            let path = ast::Path::cast(syntax_under_caret)?;
+            let (qualifier, segment) = (path.qualifier()?, path.segment()?);
+            QualifyCandidate::TraitAssocItem(qualifier, segment)
+        }
+        ImportCandidate::TraitMethod(_) => {
+            cov_mark::hit!(qualify_path_trait_method);
+            let mcall_expr = ast::MethodCallExpr::cast(syntax_under_caret)?;
+            QualifyCandidate::TraitMethod(ctx.sema.db, mcall_expr)
+        }
     };
 
     // we aren't interested in different namespaces
     proposed_imports.sort_by(|a, b| a.import_path.cmp(&b.import_path));
     proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
 
-    let range = match &syntax_under_caret {
-        NodeOrToken::Node(node) => ctx.sema.original_range(node).range,
-        NodeOrToken::Token(token) => token.text_range(),
-    };
-    let current_module = ctx
-        .sema
-        .scope(&match syntax_under_caret {
-            NodeOrToken::Node(node) => node.clone(),
-            NodeOrToken::Token(t) => t.parent()?,
-        })
-        .map(|scope| scope.module());
     let current_edition =
         current_module.map(|it| it.krate().edition(ctx.db())).unwrap_or(Edition::CURRENT);
     // prioritize more relevant imports
     proposed_imports.sort_by_key(|import| {
-        Reverse(super::auto_import::relevance_score(ctx, import, current_module.as_ref()))
+        Reverse(super::auto_import::relevance_score(
+            ctx,
+            import,
+            expected.as_ref(),
+            current_module.as_ref(),
+        ))
     });
 
     let group_label = group_label(candidate);
@@ -353,7 +346,7 @@ pub mod PubMod3 {
 }
 "#,
             r#"
-PubMod3::PubStruct
+PubMod1::PubStruct
 
 pub mod PubMod1 {
     pub struct PubStruct;
