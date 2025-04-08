@@ -343,17 +343,13 @@ impl ParamConst {
 
     #[instrument(level = "debug")]
     pub fn find_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
-        let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
+        let mut candidates = env.const_arg_has_type_clauses().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
-            match clause.kind().skip_binder() {
-                ty::ClauseKind::ConstArgHasType(param_ct, ty) => {
-                    assert!(!(param_ct, ty).has_escaping_bound_vars());
+            let (param_ct, ty) = clause.skip_binder();
+            assert!(!(param_ct, ty).has_escaping_bound_vars());
 
-                    match param_ct.kind() {
-                        ty::ConstKind::Param(param_ct) if param_ct.index == self.index => Some(ty),
-                        _ => None,
-                    }
-                }
+            match param_ct.kind() {
+                ty::ConstKind::Param(param_ct) if param_ct.index == self.index => Some(ty),
                 _ => None,
             }
         });

@@ -17,7 +17,7 @@ use rustc_hir::{
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, AssocKind, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty};
+use rustc_middle::ty::{self, AssocKind, EarlyBinder, GenericArg, GenericArgKind, Ty};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, sym};
 
@@ -172,13 +172,13 @@ fn check_collect_into_intoiterator<'tcx>(
             if cx
                 .tcx
                 .param_env(id)
-                .caller_bounds()
-                .into_iter()
-                .filter_map(|p| {
-                    if let ClauseKind::Trait(t) = p.kind().skip_binder()
-                        && cx.tcx.is_diagnostic_item(sym::IntoIterator, t.trait_ref.def_id)
+                .trait_clauses()
+                .filter_map(|t| {
+                    if cx
+                        .tcx
+                        .is_diagnostic_item(sym::IntoIterator, t.skip_binder().trait_ref.def_id)
                     {
-                        Some(t.self_ty())
+                        Some(t.self_ty().skip_binder())
                     } else {
                         None
                     }

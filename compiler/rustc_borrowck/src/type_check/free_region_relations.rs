@@ -226,15 +226,13 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         // Normalize the assumptions we use to borrowck the program.
         let mut constraints = vec![];
         let mut known_type_outlives_obligations = vec![];
-        for bound in param_env.caller_bounds() {
-            if let Some(outlives) = bound.as_type_outlives_clause() {
-                self.normalize_and_push_type_outlives_obligation(
-                    outlives,
-                    span,
-                    &mut known_type_outlives_obligations,
-                    &mut constraints,
-                );
-            };
+        for outlives in param_env.type_outlives_clauses() {
+            self.normalize_and_push_type_outlives_obligation(
+                outlives,
+                span,
+                &mut known_type_outlives_obligations,
+                &mut constraints,
+            );
         }
 
         let unnormalized_input_output_tys = self

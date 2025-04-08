@@ -97,7 +97,7 @@ fn map_error<'tcx>(
             // This is sometimes not a compile error if there are trivially false where clauses.
             // See `tests/ui/layout/trivial-bounds-sized.rs` for an example.
             assert!(field.layout.is_unsized(), "invalid layout error {err:#?}");
-            if cx.typing_env.param_env.caller_bounds().is_empty() {
+            if cx.typing_env.param_env.trait_clauses().next().is_none() {
                 cx.tcx().dcx().delayed_bug(format!(
                     "encountered unexpected unsized field in layout of {ty:?}: {field:#?}"
                 ));
@@ -639,7 +639,8 @@ fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx>, layout: TyAndLayout<'tc
     // Ignore layouts that are done with non-empty environments or
     // non-monomorphic layouts, as the user only wants to see the stuff
     // resulting from the final codegen session.
-    if layout.ty.has_non_region_param() || !cx.typing_env.param_env.caller_bounds().is_empty() {
+    if layout.ty.has_non_region_param() || cx.typing_env.param_env.trait_clauses().next().is_some()
+    {
         return;
     }
 

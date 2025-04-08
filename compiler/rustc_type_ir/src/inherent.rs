@@ -513,7 +513,21 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 }
 
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
-    fn caller_bounds(self) -> impl SliceLike<Item = I::Clause>;
+    fn trait_clauses(self) -> impl Iterator<Item = I::Clause>;
+
+    fn region_outlives_clauses(self) -> impl Iterator<Item = I::Clause>;
+
+    fn type_outlives_clauses(self) -> impl Iterator<Item = I::Clause>;
+
+    fn projection_clauses(self) -> impl Iterator<Item = I::Clause>;
+
+    fn const_arg_has_type_clauses(self) -> impl Iterator<Item = I::Clause>;
+
+    fn well_formed_clauses(self) -> impl Iterator<Item = I::Clause>;
+
+    fn const_evaluatable_clauses(self) -> impl Iterator<Item = I::Clause>;
+
+    fn host_effect_clauses(self) -> impl Iterator<Item = I::Clause>;
 }
 
 pub trait Features<I: Interner>: Copy {

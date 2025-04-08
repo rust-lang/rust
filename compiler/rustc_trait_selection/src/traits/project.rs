@@ -716,7 +716,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
         obligation,
         candidate_set,
         ProjectionCandidate::ParamEnv,
-        obligation.param_env.caller_bounds().iter(),
+        obligation.param_env.projection_clauses(),
         false,
     );
 }
@@ -838,51 +838,46 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
     ctor: fn(ty::PolyProjectionPredicate<'tcx>) -> ProjectionCandidate<'tcx>,
-    env_predicates: impl Iterator<Item = ty::Clause<'tcx>>,
+    env_predicates: impl Iterator<Item = ty::PolyProjectionPredicate<'tcx>>,
     potentially_unnormalized_candidates: bool,
 ) {
     let infcx = selcx.infcx;
     let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
-    for predicate in env_predicates {
-        let bound_predicate = predicate.kind();
-        if let ty::ClauseKind::Projection(data) = predicate.kind().skip_binder() {
-            let data = bound_predicate.rebind(data);
-            if data.item_def_id() != obligation.predicate.def_id {
-                continue;
-            }
+    for data in env_predicates {
+        if data.item_def_id() != obligation.predicate.def_id {
+            continue;
+        }
 
-            if !drcx
-                .args_may_unify(obligation.predicate.args, data.skip_binder().projection_term.args)
-            {
-                continue;
-            }
+        if !drcx.args_may_unify(obligation.predicate.args, data.skip_binder().projection_term.args)
+        {
+            continue;
+        }
 
-            let is_match = infcx.probe(|_| {
-                selcx.match_projection_projections(
-                    obligation,
-                    data,
-                    potentially_unnormalized_candidates,
-                )
-            });
+        let is_match = infcx.probe(|_| {
+            selcx.match_projection_projections(
+                obligation,
+                data,
+                potentially_unnormalized_candidates,
+            )
+        });
 
-            match is_match {
-                ProjectionMatchesProjection::Yes => {
-                    candidate_set.push_candidate(ctor(data));
+        match is_match {
+            ProjectionMatchesProjection::Yes => {
+                candidate_set.push_candidate(ctor(data));
 
-                    if potentially_unnormalized_candidates
-                        && !obligation.predicate.has_non_region_infer()
-                    {
-                        // HACK: Pick the first trait def candidate for a fully
-                        // inferred predicate. This is to allow duplicates that
-                        // differ only in normalization.
-                        return;
-                    }
+                if potentially_unnormalized_candidates
+                    && !obligation.predicate.has_non_region_infer()
+                {
+                    // HACK: Pick the first trait def candidate for a fully
+                    // inferred predicate. This is to allow duplicates that
+                    // differ only in normalization.
+                    return;
                 }
-                ProjectionMatchesProjection::Ambiguous => {
-                    candidate_set.mark_ambiguous();
-                }
-                ProjectionMatchesProjection::No => {}
             }
+            ProjectionMatchesProjection::Ambiguous => {
+                candidate_set.mark_ambiguous();
+            }
+            ProjectionMatchesProjection::No => {}
         }
     }
 }

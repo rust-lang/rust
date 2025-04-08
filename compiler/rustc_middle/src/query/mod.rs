@@ -2437,7 +2437,7 @@ rustc_queries! {
         desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
     }
 
-    query reveal_opaque_types_in_bounds(key: ty::Clauses<'tcx>) -> ty::Clauses<'tcx> {
+    query reveal_opaque_types_in_bounds(key: ty::ParamEnv<'tcx>) -> ty::ParamEnv<'tcx> {
         desc { "revealing opaque types in `{:?}`", key }
     }
 

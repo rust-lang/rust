@@ -18,6 +18,9 @@ pub type ExistentialTraitRef<'tcx> = ir::ExistentialTraitRef<TyCtxt<'tcx>>;
 pub type ExistentialProjection<'tcx> = ir::ExistentialProjection<TyCtxt<'tcx>>;
 pub type TraitPredicate<'tcx> = ir::TraitPredicate<TyCtxt<'tcx>>;
 pub type HostEffectPredicate<'tcx> = ir::HostEffectPredicate<TyCtxt<'tcx>>;
+pub type ConstArgHasTypePredicate<'tcx> = (ty::Const<'tcx>, Ty<'tcx>);
+pub type WellFormedPredicate<'tcx> = ty::GenericArg<'tcx>;
+pub type ConstEvaluatablePredicate<'tcx> = ty::Const<'tcx>;
 pub type ClauseKind<'tcx> = ir::ClauseKind<TyCtxt<'tcx>>;
 pub type PredicateKind<'tcx> = ir::PredicateKind<TyCtxt<'tcx>>;
 pub type NormalizesTo<'tcx> = ir::NormalizesTo<TyCtxt<'tcx>>;
@@ -27,11 +30,15 @@ pub type OutlivesPredicate<'tcx, T> = ir::OutlivesPredicate<TyCtxt<'tcx>, T>;
 pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<'tcx, ty::Region<'tcx>>;
 pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<'tcx, Ty<'tcx>>;
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
+pub type PolyHostEffectPredicate<'tcx> = ty::Binder<'tcx, HostEffectPredicate<'tcx>>;
 pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<'tcx, RegionOutlivesPredicate<'tcx>>;
 pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<'tcx, TypeOutlivesPredicate<'tcx>>;
 pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 pub type PolyProjectionPredicate<'tcx> = ty::Binder<'tcx, ProjectionPredicate<'tcx>>;
+pub type PolyConstArgHasTypePredicate<'tcx> = ty::Binder<'tcx, ConstArgHasTypePredicate<'tcx>>;
+pub type PolyWellFormedPredicate<'tcx> = ty::Binder<'tcx, WellFormedPredicate<'tcx>>;
+pub type PolyConstEvaluatablePredicate<'tcx> = ty::Binder<'tcx, ConstEvaluatablePredicate<'tcx>>;
 
 /// A statement that can be proven by a trait solver. This includes things that may
 /// show up in where clauses, such as trait predicates and projection predicates,
@@ -199,7 +206,7 @@ impl<'tcx> Clause<'tcx> {
         })
     }
 
-    pub fn as_trait_clause(self) -> Option<ty::Binder<'tcx, TraitPredicate<'tcx>>> {
+    pub fn as_trait_clause(self) -> Option<PolyTraitPredicate<'tcx>> {
         let clause = self.kind();
         if let ty::ClauseKind::Trait(trait_clause) = clause.skip_binder() {
             Some(clause.rebind(trait_clause))
@@ -208,16 +215,16 @@ impl<'tcx> Clause<'tcx> {
         }
     }
 
-    pub fn as_projection_clause(self) -> Option<ty::Binder<'tcx, ProjectionPredicate<'tcx>>> {
+    pub fn as_region_outlives_clause(self) -> Option<PolyRegionOutlivesPredicate<'tcx>> {
         let clause = self.kind();
-        if let ty::ClauseKind::Projection(projection_clause) = clause.skip_binder() {
-            Some(clause.rebind(projection_clause))
+        if let ty::ClauseKind::RegionOutlives(o) = clause.skip_binder() {
+            Some(clause.rebind(o))
         } else {
             None
         }
     }
 
-    pub fn as_type_outlives_clause(self) -> Option<ty::Binder<'tcx, TypeOutlivesPredicate<'tcx>>> {
+    pub fn as_type_outlives_clause(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
         let clause = self.kind();
         if let ty::ClauseKind::TypeOutlives(o) = clause.skip_binder() {
             Some(clause.rebind(o))
@@ -226,12 +233,46 @@ impl<'tcx> Clause<'tcx> {
         }
     }
 
-    pub fn as_region_outlives_clause(
-        self,
-    ) -> Option<ty::Binder<'tcx, RegionOutlivesPredicate<'tcx>>> {
+    pub fn as_projection_clause(self) -> Option<PolyProjectionPredicate<'tcx>> {
         let clause = self.kind();
-        if let ty::ClauseKind::RegionOutlives(o) = clause.skip_binder() {
-            Some(clause.rebind(o))
+        if let ty::ClauseKind::Projection(projection_clause) = clause.skip_binder() {
+            Some(clause.rebind(projection_clause))
+        } else {
+            None
+        }
+    }
+
+    pub fn as_const_arg_has_type_clause(self) -> Option<PolyConstArgHasTypePredicate<'tcx>> {
+        let clause = self.kind();
+        if let ty::ClauseKind::ConstArgHasType(ct, ty) = clause.skip_binder() {
+            Some(clause.rebind((ct, ty)))
+        } else {
+            None
+        }
+    }
+
+    pub fn as_well_formed_clause(self) -> Option<PolyWellFormedPredicate<'tcx>> {
+        let clause = self.kind();
+        if let ty::ClauseKind::WellFormed(arg) = clause.skip_binder() {
+            Some(clause.rebind(arg))
+        } else {
+            None
+        }
+    }
+
+    pub fn as_const_evaluatable_clause(self) -> Option<PolyConstEvaluatablePredicate<'tcx>> {
+        let clause = self.kind();
+        if let ty::ClauseKind::ConstEvaluatable(ct) = clause.skip_binder() {
+            Some(clause.rebind(ct))
+        } else {
+            None
+        }
+    }
+
+    pub fn as_host_effect_clause(self) -> Option<PolyHostEffectPredicate<'tcx>> {
+        let clause = self.kind();
+        if let ty::ClauseKind::HostEffect(host_effect_clause) = clause.skip_binder() {
+            Some(clause.rebind(host_effect_clause))
         } else {
             None
         }

@@ -225,9 +225,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let bounds = stack
             .obligation
             .param_env
-            .caller_bounds()
-            .iter()
-            .filter_map(|p| p.as_trait_clause())
+            .trait_clauses()
             // Micro-optimization: filter out predicates relating to different traits.
             .filter(|p| p.def_id() == stack.obligation.predicate.def_id())
             .filter(|p| p.polarity() == stack.obligation.predicate.polarity());

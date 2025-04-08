@@ -41,6 +41,10 @@ where
         self.def_id()
     }
 
+    fn relevant_bounds_from_caller(goal: Goal<I, Self>) -> impl Iterator<Item = I::Clause> {
+        goal.param_env.trait_clauses()
+    }
+
     fn consider_additional_alias_assumptions(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
@@ -1270,7 +1274,7 @@ where
         // (including global ones) over everything else.
         let has_non_global_where_bounds = candidates.iter().any(|c| match c.source {
             CandidateSource::ParamEnv(idx) => {
-                let where_bound = goal.param_env.caller_bounds().get(idx).unwrap();
+                let where_bound = goal.param_env.trait_clauses().nth(idx).unwrap();
                 let ty::ClauseKind::Trait(trait_pred) = where_bound.kind().skip_binder() else {
                     unreachable!("expected trait-bound: {where_bound:?}");
                 };
@@ -1283,7 +1287,7 @@ where
                 //
                 // See ui/traits/next-solver/normalization-shadowing/global-trait-with-project.rs
                 // for an example where this is necessary.
-                for p in goal.param_env.caller_bounds().iter() {
+                for p in goal.param_env.projection_clauses() {
                     if let ty::ClauseKind::Projection(proj) = p.kind().skip_binder() {
                         if proj.projection_term.trait_ref(self.cx()) == trait_pred.trait_ref {
                             return true;

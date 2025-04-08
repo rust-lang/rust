@@ -225,7 +225,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         // Don't try to process any nested obligations involving predicates
         // that are already in the `ParamEnv` (modulo regions): we already
         // know that they must hold.
-        for predicate in param_env.caller_bounds() {
+        for predicate in param_env.all_clauses() {
             fresh_preds.insert(self.clean_pred(infcx, predicate.as_predicate()));
         }
 
@@ -240,9 +240,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             polarity: ty::PredicatePolarity::Positive,
         }));
 
-        let computed_preds = param_env.caller_bounds().iter().map(|c| c.as_predicate());
         let mut user_computed_preds: FxIndexSet<_> =
-            user_env.caller_bounds().iter().map(|c| c.as_predicate()).collect();
+            user_env.all_clauses().map(|c| c.as_predicate()).collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -315,8 +314,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 _ => panic!("Unexpected error for '{ty:?}': {result:?}"),
             };
 
-            let normalized_preds =
-                elaborate(tcx, computed_preds.clone().chain(user_computed_preds.iter().cloned()));
+            let computed_preds = param_env
+                .all_clauses()
+                .map(|c| c.as_predicate())
+                .chain(user_computed_preds.iter().cloned());
+            let normalized_preds = elaborate(tcx, computed_preds);
             new_env = ty::ParamEnv::new(
                 tcx.mk_clauses_from_iter(normalized_preds.filter_map(|p| p.as_clause())),
             );

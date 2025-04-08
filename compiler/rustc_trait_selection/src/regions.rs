@@ -29,21 +29,19 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
     ) -> Self {
         let mut bounds = vec![];
 
-        for bound in param_env.caller_bounds() {
-            if let Some(mut type_outlives) = bound.as_type_outlives_clause() {
-                if infcx.next_trait_solver() {
-                    match crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
-                        infcx.at(&ObligationCause::dummy(), param_env),
-                        type_outlives,
-                    ) {
-                        Ok(new) => type_outlives = new,
-                        Err(_) => {
-                            infcx.dcx().delayed_bug(format!("could not normalize `{bound}`"));
-                        }
+        for mut type_outlives in param_env.type_outlives_clauses() {
+            if infcx.next_trait_solver() {
+                match crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
+                    infcx.at(&ObligationCause::dummy(), param_env),
+                    type_outlives,
+                ) {
+                    Ok(new) => type_outlives = new,
+                    Err(_) => {
+                        infcx.dcx().delayed_bug(format!("could not normalize `{type_outlives}`"));
                     }
                 }
-                bounds.push(type_outlives);
             }
+            bounds.push(type_outlives);
         }
 
         // FIXME: This needs to be modified so that we normalize the known type

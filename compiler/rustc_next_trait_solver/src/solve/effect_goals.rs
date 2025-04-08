@@ -36,6 +36,10 @@ where
         self.def_id()
     }
 
+    fn relevant_bounds_from_caller(goal: Goal<I, Self>) -> impl Iterator<Item = I::Clause> {
+        goal.param_env.host_effect_clauses()
+    }
+
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         source: rustc_type_ir::solve::CandidateSource<I>,

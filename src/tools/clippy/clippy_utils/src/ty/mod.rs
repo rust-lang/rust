@@ -755,9 +755,9 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
         },
         ty::Alias(ty::Projection, proj) => match cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty) {
             Ok(normalized_ty) if normalized_ty != ty => ty_sig(cx, normalized_ty),
-            _ => sig_for_projection(cx, proj).or_else(|| sig_from_bounds(cx, ty, cx.param_env.caller_bounds(), None)),
+            _ => sig_for_projection(cx, proj).or_else(|| sig_from_bounds(cx, ty, cx.param_env.all_clauses(), None)),
         },
-        ty::Param(_) => sig_from_bounds(cx, ty, cx.param_env.caller_bounds(), None),
+        ty::Param(_) => sig_from_bounds(cx, ty, cx.param_env.all_clauses(), None),
         _ => None,
     }
 }

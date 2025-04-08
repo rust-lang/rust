@@ -1128,19 +1128,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     } else {
                         DefIdOrName::Name("type parameter")
                     };
-                    param_env.caller_bounds().iter().find_map(|pred| {
-                        if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
-                            && self
-                                .tcx
-                                .is_lang_item(proj.projection_term.def_id, LangItem::FnOnceOutput)
-                            && proj.projection_term.self_ty() == found
+                    param_env.projection_clauses().find_map(|proj| {
+                        if self.tcx.is_lang_item(proj.item_def_id(), LangItem::FnOnceOutput)
+                            && proj.skip_binder().self_ty() == found
                             // args tuple will always be args[1]
-                            && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
+                            && let ty::Tuple(args) = proj.skip_binder().projection_term.args.type_at(1).kind()
                         {
                             Some((
                                 name,
-                                pred.kind().rebind(proj.term.expect_type()),
-                                pred.kind().rebind(args.as_slice()),
+                                proj.map_bound(|proj| proj.term.expect_type()),
+                                proj.rebind(args.as_slice()),
                             ))
                         } else {
                             None

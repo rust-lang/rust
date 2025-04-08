@@ -79,10 +79,12 @@ pub use self::predicate::{
     AliasTerm, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
     ExistentialPredicateStableCmpExt, ExistentialProjection, ExistentialTraitRef,
     HostEffectPredicate, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
-    PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
+    PolyConstArgHasTypePredicate, PolyConstEvaluatablePredicate, PolyExistentialPredicate,
+    PolyExistentialProjection, PolyExistentialTraitRef, PolyHostEffectPredicate,
     PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
-    PolyTraitRef, PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
-    RegionOutlivesPredicate, SubtypePredicate, TraitPredicate, TraitRef, TypeOutlivesPredicate,
+    PolyTraitRef, PolyTypeOutlivesPredicate, PolyWellFormedPredicate, Predicate, PredicateKind,
+    ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, TraitPredicate, TraitRef,
+    TypeOutlivesPredicate,
 };
 pub use self::region::{
     BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region,
@@ -870,19 +872,13 @@ pub struct Placeholder<T> {
 }
 impl Placeholder<BoundVar> {
     pub fn find_const_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
-        let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
+        let mut candidates = env.const_arg_has_type_clauses().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
-            match clause.kind().skip_binder() {
-                ty::ClauseKind::ConstArgHasType(placeholder_ct, ty) => {
-                    assert!(!(placeholder_ct, ty).has_escaping_bound_vars());
+            let (placeholder_ct, ty) = clause.skip_binder();
+            assert!(!(placeholder_ct, ty).has_escaping_bound_vars());
 
-                    match placeholder_ct.kind() {
-                        ty::ConstKind::Placeholder(placeholder_ct) if placeholder_ct == self => {
-                            Some(ty)
-                        }
-                        _ => None,
-                    }
-                }
+            match placeholder_ct.kind() {
+                ty::ConstKind::Placeholder(placeholder_ct) if placeholder_ct == self => Some(ty),
                 _ => None,
             }
         });
@@ -989,8 +985,36 @@ pub struct ParamEnv<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn caller_bounds(self) -> impl inherent::SliceLike<Item = ty::Clause<'tcx>> {
-        self.caller_bounds()
+    fn trait_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
+        self.all_clauses().filter(|c| c.as_trait_clause().is_some())
+    }
+
+    fn region_outlives_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
+        self.all_clauses().filter(|c| c.as_region_outlives_clause().is_some())
+    }
+
+    fn type_outlives_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
+        self.all_clauses().filter(|c| c.as_type_outlives_clause().is_some())
+    }
+
+    fn projection_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
+        self.all_clauses().filter(|c| c.as_projection_clause().is_some())
+    }
+
+    fn const_arg_has_type_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
+        self.all_clauses().filter(|c| c.as_const_arg_has_type_clause().is_some())
+    }
+
+    fn well_formed_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
+        self.all_clauses().filter(|c| c.as_well_formed_clause().is_some())
+    }
+
+    fn const_evaluatable_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
+        self.all_clauses().filter(|c| c.as_const_evaluatable_clause().is_some())
+    }
+
+    fn host_effect_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
+        self.all_clauses().filter(|c| c.as_host_effect_clause().is_some())
     }
 }
 
@@ -1007,8 +1031,54 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 
     #[inline]
-    pub fn caller_bounds(self) -> Clauses<'tcx> {
-        self.caller_bounds
+    pub fn all_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
+        self.caller_bounds.iter()
+    }
+
+    #[inline]
+    pub fn trait_clauses(self) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
+        self.caller_bounds.iter().filter_map(|c| c.as_trait_clause())
+    }
+
+    #[inline]
+    pub fn region_outlives_clauses(
+        self,
+    ) -> impl Iterator<Item = PolyRegionOutlivesPredicate<'tcx>> {
+        self.caller_bounds.iter().filter_map(|c| c.as_region_outlives_clause())
+    }
+
+    #[inline]
+    pub fn type_outlives_clauses(self) -> impl Iterator<Item = PolyTypeOutlivesPredicate<'tcx>> {
+        self.caller_bounds.iter().filter_map(|c| c.as_type_outlives_clause())
+    }
+
+    #[inline]
+    pub fn projection_clauses(self) -> impl Iterator<Item = PolyProjectionPredicate<'tcx>> {
+        self.caller_bounds.iter().filter_map(|c| c.as_projection_clause())
+    }
+
+    #[inline]
+    pub fn const_arg_has_type_clauses(
+        self,
+    ) -> impl Iterator<Item = PolyConstArgHasTypePredicate<'tcx>> {
+        self.caller_bounds.iter().filter_map(|c| c.as_const_arg_has_type_clause())
+    }
+
+    #[inline]
+    pub fn well_formed_clauses(self) -> impl Iterator<Item = PolyWellFormedPredicate<'tcx>> {
+        self.caller_bounds.iter().filter_map(|c| c.as_well_formed_clause())
+    }
+
+    #[inline]
+    pub fn const_evaluatable_clauses(
+        self,
+    ) -> impl Iterator<Item = PolyConstEvaluatablePredicate<'tcx>> {
+        self.caller_bounds.iter().filter_map(|c| c.as_const_evaluatable_clause())
+    }
+
+    #[inline]
+    pub fn host_effect_clauses(self) -> impl Iterator<Item = PolyHostEffectPredicate<'tcx>> {
+        self.caller_bounds.iter().filter_map(|c| c.as_host_effect_clause())
     }
 
     /// Construct a trait environment with the given set of predicates.
@@ -1095,9 +1165,9 @@ impl<'tcx> TypingEnv<'tcx> {
         // No need to reveal opaques with the new solver enabled,
         // since we have lazy norm.
         let param_env = if tcx.next_trait_solver_globally() {
-            ParamEnv::new(param_env.caller_bounds())
+            param_env
         } else {
-            ParamEnv::new(tcx.reveal_opaque_types_in_bounds(param_env.caller_bounds()))
+            tcx.reveal_opaque_types_in_bounds(param_env)
         };
         TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env }
     }

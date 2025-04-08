@@ -117,12 +117,7 @@ fn evaluate_host_effect_from_bounds<'tcx>(
     let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
     let mut candidate = None;
 
-    for clause in obligation.param_env.caller_bounds() {
-        let bound_clause = clause.kind();
-        let ty::ClauseKind::HostEffect(data) = bound_clause.skip_binder() else {
-            continue;
-        };
-        let data = bound_clause.rebind(data);
+    for data in obligation.param_env.host_effect_clauses() {
         if data.skip_binder().trait_ref.def_id != obligation.predicate.trait_ref.def_id {
             continue;
         }

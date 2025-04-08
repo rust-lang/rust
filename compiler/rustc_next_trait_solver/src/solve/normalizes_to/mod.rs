@@ -104,6 +104,10 @@ where
         self.trait_def_id(cx)
     }
 
+    fn relevant_bounds_from_caller(goal: Goal<I, Self>) -> impl Iterator<Item = I::Clause> {
+        goal.param_env.projection_clauses()
+    }
+
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         source: CandidateSource<I>,

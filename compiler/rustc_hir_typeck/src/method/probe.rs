@@ -909,24 +909,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn assemble_inherent_candidates_from_param(&mut self, param_ty: ty::ParamTy) {
-        let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
-            let bound_predicate = predicate.kind();
-            match bound_predicate.skip_binder() {
-                ty::ClauseKind::Trait(trait_predicate) => {
-                    match *trait_predicate.trait_ref.self_ty().kind() {
-                        ty::Param(p) if p == param_ty => {
-                            Some(bound_predicate.rebind(trait_predicate.trait_ref))
-                        }
-                        _ => None,
-                    }
-                }
-                ty::ClauseKind::RegionOutlives(_)
-                | ty::ClauseKind::TypeOutlives(_)
-                | ty::ClauseKind::Projection(_)
-                | ty::ClauseKind::ConstArgHasType(_, _)
-                | ty::ClauseKind::WellFormed(_)
-                | ty::ClauseKind::ConstEvaluatable(_)
-                | ty::ClauseKind::HostEffect(..) => None,
+        let bounds = self.param_env.trait_clauses().filter_map(|trait_predicate| {
+            match *trait_predicate.self_ty().skip_binder().kind() {
+                ty::Param(p) if p == param_ty => Some(trait_predicate.map_bound(|p| p.trait_ref)),
+                _ => None,
             }
         });
 

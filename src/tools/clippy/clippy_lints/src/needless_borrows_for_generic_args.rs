@@ -177,28 +177,23 @@ fn needless_borrow_count<'tcx>(
     let drop_trait_def_id = cx.tcx.lang_items().drop_trait();
 
     let fn_sig = cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder();
-    let predicates = cx.tcx.param_env(fn_id).caller_bounds();
-    let projection_predicates = predicates
-        .iter()
-        .filter_map(|predicate| {
-            if let ClauseKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
-                Some(projection_predicate)
-            } else {
-                None
-            }
-        })
+    let projection_predicates = cx
+        .tcx
+        .param_env(fn_id)
+        .projection_clauses()
+        .map(|p| p.skip_binder())
         .collect::<Vec<_>>();
 
     let mut trait_with_ref_mut_self_method = false;
 
     // If no traits were found, or only the `Destruct`, `Sized`, or `Any` traits were found, return.
-    if predicates
-        .iter()
-        .filter_map(|predicate| {
-            if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
-                && trait_predicate.trait_ref.self_ty() == param_ty.to_ty(cx.tcx)
-            {
-                Some(trait_predicate.trait_ref.def_id)
+    if cx
+        .tcx
+        .param_env(fn_id)
+        .trait_clauses()
+        .filter_map(|trait_predicate| {
+            if trait_predicate.skip_binder().trait_ref.self_ty() == param_ty.to_ty(cx.tcx) {
+                Some(trait_predicate.def_id())
             } else {
                 None
             }
@@ -263,7 +258,7 @@ fn needless_borrow_count<'tcx>(
             return false;
         }
 
-        predicates.iter().all(|predicate| {
+        cx.tcx.param_env(fn_id).all_clauses().all(|predicate| {
             if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
                 && cx
                     .tcx

@@ -48,6 +48,9 @@ where
 
     fn trait_def_id(self, cx: I) -> I::DefId;
 
+    /// Returns relevant bounds from a `ParamEnv` (e.g. trait bounds when this is a trait goal).
+    fn relevant_bounds_from_caller(goal: Goal<I, Self>) -> impl Iterator<Item = I::Clause>;
+
     /// Try equating an assumption predicate against a goal's predicate. If it
     /// holds, then execute the `then` callback, which should do any additional
     /// work, then produce a response (typically by executing
@@ -485,7 +488,7 @@ where
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
     ) {
-        for (i, assumption) in goal.param_env.caller_bounds().iter().enumerate() {
+        for (i, assumption) in G::relevant_bounds_from_caller(goal).enumerate() {
             candidates.extend(G::probe_and_consider_implied_clause(
                 self,
                 CandidateSource::ParamEnv(i),

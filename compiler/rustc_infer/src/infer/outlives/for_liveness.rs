@@ -65,9 +65,9 @@ where
                 let outlives_bounds: Vec<_> = tcx
                     .item_bounds(def_id)
                     .iter_instantiated(tcx, args)
-                    .chain(param_env.caller_bounds())
-                    .filter_map(|clause| {
-                        let outlives = clause.as_type_outlives_clause()?;
+                    .filter_map(|clause| clause.as_type_outlives_clause())
+                    .chain(param_env.type_outlives_clauses())
+                    .filter_map(|outlives| {
                         if let Some(outlives) = outlives.no_bound_vars()
                             && outlives.0 == ty
                         {

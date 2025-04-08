@@ -15,7 +15,7 @@ use rustc_hir::{self as hir, HirId, ItemLocalMap};
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
 use rustc_infer::infer;
 use rustc_infer::traits::Obligation;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt, Upcast};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
@@ -296,16 +296,15 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         // HACK(eddyb) should get the original `Span`.
         let span = tcx.def_span(def_id);
 
-        ty::EarlyBinder::bind(tcx.arena.alloc_from_iter(
-            self.param_env.caller_bounds().iter().filter_map(|predicate| {
-                match predicate.kind().skip_binder() {
-                    ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
-                        Some((predicate, span))
-                    }
-                    _ => None,
-                }
-            }),
-        ))
+        ty::EarlyBinder::bind(tcx.arena.alloc_from_iter(self.param_env.trait_clauses().filter_map(
+            |predicate| {
+                predicate
+                    .self_ty()
+                    .skip_binder()
+                    .is_param(index)
+                    .then_some((predicate.upcast(tcx), span))
+            },
+        )))
     }
 
     fn lower_assoc_shared(

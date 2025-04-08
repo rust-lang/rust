@@ -117,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
 
-        let preds = traits::elaborate(cx.tcx, cx.param_env.caller_bounds().iter())
+        let preds = traits::elaborate(cx.tcx, cx.param_env.all_clauses())
             .filter(|p| !p.is_global())
             .filter_map(|pred| {
                 // Note that we do not want to deal with qualified predicates here.
