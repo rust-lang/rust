@@ -1,5 +1,3 @@
-//@ check-pass
-
 #![feature(generic_arg_infer)]
 
 // Test that if we defer repeat expr copy checks to end of typechecking they're
@@ -37,6 +35,7 @@ fn main() {
     let b: [Foo<_>; 2] = [Foo(PhantomData); _];
     tie(&a, b);
     let c = [NotCopy; _];
+    //~^ ERROR: type annotations needed for `[NotCopy; _]`
 
     // a is of type `?y`
     // b is of type `[Foo<?y>; 2]`
