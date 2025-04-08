@@ -810,7 +810,7 @@ impl<'test> TestCx<'test> {
         expect_help: bool,
         expect_note: bool,
     ) -> bool {
-        !actual_error.msg.is_empty()
+        actual_error.require_annotation
             && match actual_error.kind {
                 Some(ErrorKind::Help) => expect_help,
                 Some(ErrorKind::Note) => expect_note,
