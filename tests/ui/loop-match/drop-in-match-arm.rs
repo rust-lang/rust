@@ -6,14 +6,21 @@
 #![allow(incomplete_features)]
 #![feature(loop_match)]
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 fn main() {
     assert_eq!(helper(), 1);
+    assert!(DROPPED.load(Ordering::Relaxed));
 }
+
+static DROPPED: AtomicBool = AtomicBool::new(false);
 
 struct X;
 
 impl Drop for X {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+        DROPPED.store(true, Ordering::Relaxed);
+    }
 }
 
 #[no_mangle]
