@@ -979,16 +979,13 @@ impl Config {
 
     fn parse_env(nv: String) -> (String, String) {
         // nv is either FOO or FOO=BAR
-        let mut strs: Vec<String> = nv.splitn(2, '=').map(str::to_owned).collect();
-
-        match strs.len() {
-            1 => (strs.pop().unwrap(), String::new()),
-            2 => {
-                let end = strs.pop().unwrap();
-                (strs.pop().unwrap(), end)
-            }
-            n => panic!("Expected 1 or 2 strings, not {}", n),
-        }
+        // FIXME(Zalathar): The form without `=` seems to be unused; should
+        // we drop support for it?
+        let (name, value) = nv.split_once('=').unwrap_or((&nv, ""));
+        // Trim whitespace from the name, so that `//@ exec-env: FOO=BAR`
+        // sees the name as `FOO` and not ` FOO`.
+        let name = name.trim();
+        (name.to_owned(), value.to_owned())
     }
 
     fn parse_pp_exact(&self, line: &str, testfile: &Path) -> Option<PathBuf> {
