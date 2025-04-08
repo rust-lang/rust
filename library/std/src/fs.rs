@@ -2980,19 +2980,21 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 ///
 /// [changes]: io#platform-specific-behavior
 ///
-/// # Symlinks
-/// On UNIX systems, it is impossible to manipulate the permission bits of a symlink itself[^1].
-/// Because of this, on those systems, this function will update the permission bits
+/// ## Symlinks
+/// On UNIX-like systems, this function will update the permission bits
 /// of the file pointed to by the symlink.
 ///
 /// Note that this behavior can lead to privalage escalation vulnerabilites,
-/// where the ability to write a symlink in one directory allows you to
-/// cause the permissions of another directory to be modified.
+/// where the ability to create a symlink in one directory allows you to
+/// cause the permissions of another file or directory to be modified.
 ///
 /// For this reason, using this function with symlinks should be avoided.
 /// When possible, permissions should be set at creation time instead.
 ///
-/// [^1]: even if it were possible, the permissions on a symlink are ignored.
+/// # Rationale
+/// POSIX does not specify an `lchown` function,
+/// and symlinks can be followed regardless of what permission bits are set.
+///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
