@@ -14,7 +14,9 @@ use std::num::NonZero;
 use std::fmt;
 
 // Explicit import to avoid macro namespace collision.
-use super::{arena, client, DecodeMut, Encode, fxhash, Mark, Marked, Reader, server, Unmark, Writer};
+use super::{
+    DecodeMut, Encode, Mark, Marked, Reader, Unmark, Writer, arena, client, fxhash, server,
+};
 
 /// Handle for a symbol string stored within the Interner.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
