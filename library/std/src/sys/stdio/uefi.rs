@@ -184,13 +184,17 @@ unsafe fn simple_text_output(
 fn simple_text_input_read(
     stdin: *mut r_efi::protocols::simple_text_input::Protocol,
 ) -> io::Result<u16> {
-    loop {
-        match read_key_stroke(stdin) {
-            Ok(x) => return Ok(x.unicode_char),
-            Err(e) if e == r_efi::efi::Status::NOT_READY => wait_stdin(stdin)?,
-            Err(e) => return Err(io::Error::from_raw_os_error(e.as_usize())),
-        }
+    // Try reading any pending keys. Else wait for a new character
+    match read_key_stroke(stdin) {
+        Ok(x) => return Ok(x.unicode_char),
+        Err(e) if e == r_efi::efi::Status::NOT_READY => wait_stdin(stdin)?,
+        Err(e) => return Err(io::Error::from_raw_os_error(e.as_usize())),
     }
+
+    // Try reading a key after the wait.
+    read_key_stroke(stdin)
+        .map(|x| x.unicode_char)
+        .map_err(|e| io::Error::from_raw_os_error(e.as_usize()))
 }
 
 fn wait_stdin(stdin: *mut r_efi::protocols::simple_text_input::Protocol) -> io::Result<()> {
