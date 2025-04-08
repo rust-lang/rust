@@ -22,7 +22,7 @@ fn foo(x: Baz) -> i32 {
     };
 
     let ret = x.baz + 50;
-    core::intrinsics::contract_check_ensures(ret, injected_checker)
+    core::intrinsics::contract_check_ensures(injected_checker, ret)
 }
 
 struct Baz { baz: i32 }

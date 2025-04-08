@@ -3453,6 +3453,10 @@ pub const fn contract_checks() -> bool {
 ///
 /// Note that this function is a no-op during constant evaluation.
 #[unstable(feature = "contracts_internals", issue = "128044")]
+// Calls to this function get inserted by an AST expansion pass, which uses the equivalent of
+// `#[allow_internal_unstable]` to allow using `contracts_internals` functions. Const-checking
+// doesn't honor `#[allow_internal_unstable]`, so for the const feature gate we use the user-facing
+// `contracts` feature rather than the perma-unstable `contracts_internals`
 #[rustc_const_unstable(feature = "contracts", issue = "128044")]
 #[lang = "contract_check_requires"]
 #[rustc_intrinsic]
@@ -3478,12 +3482,15 @@ pub const fn contract_check_requires<C: Fn() -> bool + Copy>(cond: C) {
 /// Note that this function is a no-op during constant evaluation.
 #[cfg(not(bootstrap))]
 #[unstable(feature = "contracts_internals", issue = "128044")]
+// Similar to `contract_check_requires`, we need to use the user-facing
+// `contracts` feature rather than the perma-unstable `contracts_internals`.
+// Const-checking doesn't honor allow internal unstable logic used by contract expansion.
 #[rustc_const_unstable(feature = "contracts", issue = "128044")]
 #[lang = "contract_check_ensures"]
 #[rustc_intrinsic]
-pub const fn contract_check_ensures<Ret, C: Fn(&Ret) -> bool + Copy>(ret: Ret, cond: C) -> Ret {
+pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(cond: C, ret: Ret) -> Ret {
     const_eval_select!(
-        @capture[Ret, C: Fn(&Ret) -> bool + Copy] { ret: Ret, cond: C } -> Ret :
+        @capture[C: Fn(&Ret) -> bool + Copy, Ret] { cond: C, ret: Ret } -> Ret :
         if const {
             // Do nothing
             ret

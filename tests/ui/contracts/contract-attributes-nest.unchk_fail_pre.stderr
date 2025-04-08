@@ -7,16 +7,5 @@ LL | #![feature(contracts)]
    = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-warning: unreachable expression
-  --> $DIR/contract-attributes-nest.rs:23:1
-   |
-LL | #[core::contracts::ensures(|ret| *ret > 100)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unreachable expression
-...
-LL |         return x.baz + 50;
-   |         ----------------- any code following this expression is unreachable
-   |
-   = note: `#[warn(unreachable_code)]` on by default
-
-warning: 2 warnings emitted
+warning: 1 warning emitted
 

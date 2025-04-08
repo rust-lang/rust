@@ -401,11 +401,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         cond_hir_id: HirId,
     ) -> &'hir hir::Expr<'hir> {
         let cond_fn = self.expr_ident(span, cond_ident, cond_hir_id);
-        let span = self.mark_span_with_reason(DesugaringKind::Contract, span, None);
         let call_expr = self.expr_call_lang_item_fn_mut(
             span,
             hir::LangItem::ContractCheckEnsures,
-            arena_vec![self; *expr, *cond_fn],
+            arena_vec![self; *cond_fn, *expr],
         );
         self.arena.alloc(call_expr)
     }

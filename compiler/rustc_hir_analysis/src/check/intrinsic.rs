@@ -236,7 +236,7 @@ pub fn check_intrinsic_type(
         // where C: for<'a> Fn(&'a Ret) -> bool,
         //
         // so: two type params, 0 lifetime param, 0 const params, two inputs, no return
-        (2, 0, 0, vec![param(0), param(1)], param(0), hir::Safety::Safe)
+        (2, 0, 0, vec![param(0), param(1)], param(1), hir::Safety::Safe)
     } else {
         let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
         let (n_tps, n_cts, inputs, output) = match intrinsic_name {
