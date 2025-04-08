@@ -59,7 +59,19 @@ impl Evaluator<'_> {
 
         let function_data = self.db.function_data(def);
         let attrs = self.db.attrs(def.into());
-        let is_intrinsic = attrs.by_key(&sym::rustc_intrinsic).exists();
+        let is_intrinsic = attrs.by_key(&sym::rustc_intrinsic).exists()
+            // Keep this around for a bit until extern "rustc-intrinsic" abis are no longer used
+            || (match &function_data.abi {
+                Some(abi) => *abi == sym::rust_dash_intrinsic,
+                None => match def.lookup(self.db.upcast()).container {
+                    hir_def::ItemContainerId::ExternBlockId(block) => {
+                        let id = block.lookup(self.db.upcast()).id;
+                        id.item_tree(self.db.upcast())[id.value].abi.as_ref()
+                            == Some(&sym::rust_dash_intrinsic)
+                    }
+                    _ => false,
+                },
+            });
 
         if is_intrinsic {
             return self.exec_intrinsic(
