@@ -1765,7 +1765,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ident: Ident,
         is_anon_in_path: IsAnonInPath,
     ) -> &'hir hir::Lifetime {
-        debug_assert_ne!(ident.name, kw::Empty);
         let res = self.resolver.get_lifetime_res(id).unwrap_or(LifetimeRes::Error);
         let res = match res {
             LifetimeRes::Param { param, .. } => hir::LifetimeName::Param(param),
