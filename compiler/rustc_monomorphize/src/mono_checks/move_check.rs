@@ -148,11 +148,7 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
         span: Span,
     ) {
         let source_info = self.body.source_info(location);
-        for reported_span in &self.move_size_spans {
-            if reported_span.overlaps(span) {
-                return;
-            }
-        }
+
         let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
         let Some(lint_root) = lint_root else {
             // This happens when the issue is in a function from a foreign crate that
@@ -172,6 +168,12 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
             .map(|(_, call_site)| call_site)
             .unwrap_or(span);
 
+        for previously_reported_span in &self.move_size_spans {
+            if previously_reported_span.overlaps(reported_span) {
+                return;
+            }
+        }
+
         self.tcx.emit_node_span_lint(
             LARGE_ASSIGNMENTS,
             lint_root,
@@ -182,6 +184,7 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
                 limit: limit as u64,
             },
         );
+
         self.move_size_spans.push(reported_span);
     }
 }
