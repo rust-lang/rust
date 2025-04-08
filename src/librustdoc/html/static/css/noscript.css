@@ -43,6 +43,7 @@ nav.sub {
 	--settings-button-border-focus: #717171;
 	--sidebar-background-color: #f5f5f5;
 	--sidebar-background-color-hover: #e0e0e0;
+	--sidebar-border-color: #ddd;
 	--code-block-background-color: #f5f5f5;
 	--scrollbar-track-background-color: #dcdcdc;
 	--scrollbar-thumb-background-color: rgba(36, 37, 39, 0.6);
@@ -135,6 +136,8 @@ nav.sub {
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
 	--sidebar-resizer-hover: hsl(207, 90%, 66%);
 	--sidebar-resizer-active: hsl(207, 90%, 54%);
+	--sidebar-resizer-img-filter: opacity(66%);
+	--sidebar-resizer-img-hover-filter: none;
 }
 /* End theme: light */
 
@@ -149,6 +152,7 @@ nav.sub {
 		--settings-button-border-focus: #ffb900;
 		--sidebar-background-color: #505050;
 		--sidebar-background-color-hover: #676767;
+		--sidebar-border-color: #2A2A2A;
 		--code-block-background-color: #2A2A2A;
 		--scrollbar-track-background-color: #717171;
 		--scrollbar-thumb-background-color: rgba(32, 34, 37, .6);
@@ -244,6 +248,8 @@ nav.sub {
 		--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
 		--sidebar-resizer-hover: hsl(207, 30%, 54%);
 		--sidebar-resizer-active: hsl(207, 90%, 54%);
+		--sidebar-resizer-img-filter: opacity(66%);
+		--sidebar-resizer-img-hover-filter: none;
 	}
 /* End theme: dark */
 }
