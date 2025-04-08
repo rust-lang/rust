@@ -506,8 +506,14 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    #[cfg_attr(any(target_os = "android", target_os = "linux", target_os = "cygwin"), doc = "```no_run")]
-    #[cfg_attr(not(any(target_os = "android", target_os = "linux", target_os = "cygwin")), doc = "```ignore")]
+    #[cfg_attr(
+        any(target_os = "android", target_os = "linux", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "android", target_os = "linux", target_os = "cygwin")),
+        doc = "```ignore"
+    )]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary, AncillaryData};
     /// use std::io::IoSliceMut;
@@ -555,8 +561,14 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    #[cfg_attr(any(target_os = "android", target_os = "linux", target_os = "cygwin"), doc = "```no_run")]
-    #[cfg_attr(not(any(target_os = "android", target_os = "linux", target_os = "cygwin")), doc = "```ignore")]
+    #[cfg_attr(
+        any(target_os = "android", target_os = "linux", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "android", target_os = "linux", target_os = "cygwin")),
+        doc = "```ignore"
+    )]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary};
     /// use std::io::IoSlice;
