@@ -169,7 +169,7 @@ use crate::path::Path;
 use crate::sys::pipe::{AnonPipe, read2};
 use crate::sys::process as imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
-use crate::{fmt, fs, str};
+use crate::{fmt, format_args_nl, fs, str};
 
 /// Representation of a running or exited child process.
 ///
