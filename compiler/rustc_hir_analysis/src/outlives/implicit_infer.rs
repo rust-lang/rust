@@ -24,8 +24,8 @@ pub(super) fn infer_predicates(
 
     // If new predicates were added then we need to re-calculate
     // all crates since there could be new implied predicates.
-    loop {
-        let mut predicates_added = false;
+    for i in 0.. {
+        let mut predicates_added = vec![];
 
         // Visit all the crates and infer predicates
         for id in tcx.hir_free_items() {
@@ -83,14 +83,27 @@ pub(super) fn infer_predicates(
                 .get(&item_did.to_def_id())
                 .map_or(0, |p| p.as_ref().skip_binder().len());
             if item_required_predicates.len() > item_predicates_len {
-                predicates_added = true;
+                predicates_added.push(item_did);
                 global_inferred_outlives
                     .insert(item_did.to_def_id(), ty::EarlyBinder::bind(item_required_predicates));
             }
         }
 
-        if !predicates_added {
+        if predicates_added.is_empty() {
+            // We've reached a fixed point.
             break;
+        } else if !tcx.recursion_limit().value_within_limit(i) {
+            let msg = if let &[id] = &predicates_added[..] {
+                format!("overflow computing implied lifetime bounds for `{}`", tcx.def_path_str(id),)
+            } else {
+                "overflow computing implied lifetime bounds".to_string()
+            };
+            tcx.dcx()
+                .struct_span_fatal(
+                    predicates_added.iter().map(|id| tcx.def_span(*id)).collect::<Vec<_>>(),
+                    msg,
+                )
+                .emit();
         }
     }
 
