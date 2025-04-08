@@ -493,8 +493,8 @@ fn build_pat(
                 hir::StructKind::Record => {
                     let fields = fields
                         .into_iter()
-                        .map(|f| make.name_ref(f.name(db).as_str()))
-                        .map(|name_ref| make.record_pat_field_shorthand(name_ref));
+                        .map(|f| make.ident_pat(false, false, make.name(f.name(db).as_str())))
+                        .map(|ident| make.record_pat_field_shorthand(ident.into()));
                     let fields = make.record_pat_field_list(fields, None);
                     make.record_pat_with_fields(path, fields).into()
                 }
