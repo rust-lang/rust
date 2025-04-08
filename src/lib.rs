@@ -76,7 +76,6 @@ mod optimize;
 mod pointer;
 mod pretty_clif;
 mod toolchain;
-mod trap;
 mod unsize;
 mod unwind_module;
 mod value_and_place;
