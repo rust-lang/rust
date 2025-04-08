@@ -2205,8 +2205,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let fields = listify(&missing_mandatory_fields, |f| format!("`{f}`")).unwrap();
                 self.dcx()
                     .struct_span_err(
-                        span.shrink_to_hi(),
-                        format!("missing mandatory field{s} {fields}"),
+                        span.shrink_to_lo(),
+                        format!("missing field{s} {fields} in initializer"),
+                    )
+                    .with_span_label(
+                        span.shrink_to_lo(),
+                        "fields that do not have a defaulted value must be provided explicitly",
                     )
                     .emit();
                 return;

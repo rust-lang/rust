@@ -43,7 +43,7 @@ use std::iter::Peekable;
 use std::path::PathBuf;
 use std::{fs, str};
 
-use rinja::Template;
+use askama::Template;
 use rustc_attr_parsing::{
     ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel, StableSince,
 };

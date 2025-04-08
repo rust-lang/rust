@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::fmt::{self, Display, Write as _};
 use std::iter;
 
-use rinja::Template;
+use askama::Template;
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir as hir;
@@ -37,7 +37,7 @@ use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 
-/// Generates a Rinja template struct for rendering items with common methods.
+/// Generates an Askama template struct for rendering items with common methods.
 ///
 /// Usage:
 /// ```ignore (illustrative)
@@ -301,7 +301,7 @@ fn toggle_close(mut w: impl fmt::Write) {
     w.write_str("</details>").unwrap();
 }
 
-trait ItemTemplate<'a, 'cx: 'a>: rinja::Template + Display {
+trait ItemTemplate<'a, 'cx: 'a>: askama::Template + Display {
     fn item_and_cx(&self) -> (&'a clean::Item, &'a Context<'cx>);
 }
 
@@ -1867,7 +1867,7 @@ fn item_proc_macro(cx: &Context<'_>, it: &clean::Item, m: &clean::ProcMacro) -> 
                     }
                 }
             }
-            Ok(())
+            fmt::Result::Ok(())
         })?;
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
     })
@@ -1944,7 +1944,7 @@ fn item_constant(
                     }
                 }
             }
-            Ok(())
+            Ok::<(), fmt::Error>(())
         })?;
 
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))

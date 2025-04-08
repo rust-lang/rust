@@ -28,7 +28,7 @@
 #  - A new option
 #  - A change in the default values
 #
-# If the change-id does not match the version currently in use, x.py will 
+# If the change-id does not match the version currently in use, x.py will
 # display the changes made to the bootstrap.
 # To suppress these warnings, you can set change-id = "ignore".
 #change-id = <latest change id in src/bootstrap/src/utils/change_tracker.rs>
@@ -441,6 +441,9 @@
 
 # What custom diff tool to use for displaying compiletest tests.
 #compiletest-diff-tool = <none>
+
+# Whether to use the precompiled stage0 libtest with compiletest.
+#compiletest-use-stage0-libtest = true
 
 # Indicates whether ccache is used when building certain artifacts (e.g. LLVM).
 # Set to `true` to use the first `ccache` in PATH, or set an absolute path to use

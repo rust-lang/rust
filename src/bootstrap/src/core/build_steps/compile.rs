@@ -2398,7 +2398,9 @@ pub fn run_cargo(
     // Ok now we need to actually find all the files listed in `toplevel`. We've
     // got a list of prefix/extensions and we basically just need to find the
     // most recent file in the `deps` folder corresponding to each one.
-    let contents = t!(target_deps_dir.read_dir())
+    let contents = target_deps_dir
+        .read_dir()
+        .unwrap_or_else(|e| panic!("Couldn't read {}: {}", target_deps_dir.display(), e))
         .map(|e| t!(e))
         .map(|e| (e.path(), e.file_name().into_string().unwrap(), t!(e.metadata())))
         .collect::<Vec<_>>();
