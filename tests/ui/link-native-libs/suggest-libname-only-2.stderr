@@ -1,4 +1,4 @@
-warning: extern declarations without an explicit ABI are deprecated
+warning: `extern` declarations without an explicit ABI are deprecated
   --> $DIR/suggest-libname-only-2.rs:5:1
    |
 LL | extern { }

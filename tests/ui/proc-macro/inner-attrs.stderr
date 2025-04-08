@@ -22,7 +22,7 @@ error: expected non-macro inner attribute, found attribute macro `print_attr`
 LL |         #![print_attr]
    |            ^^^^^^^^^^ not a non-macro inner attribute
 
-warning: extern declarations without an explicit ABI are deprecated
+warning: `extern` declarations without an explicit ABI are deprecated
   --> $DIR/inner-attrs.rs:85:1
    |
 LL | extern {
