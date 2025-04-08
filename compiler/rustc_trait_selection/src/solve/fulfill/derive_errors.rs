@@ -388,7 +388,8 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity))) | (false, Err(_)) => {}
             _ => return ControlFlow::Continue(()),
         }
-        let pred_kind = goal.goal().predicate.kind();
+
+        let pred = goal.goal().predicate;
 
         let candidates = self.non_trivial_candidates(goal);
         let candidate = match candidates.as_slice() {
@@ -410,12 +411,12 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
 
         // FIXME: Also, what about considering >1 layer up the stack? May be necessary
         // for normalizes-to.
-        let child_mode = match pred_kind.skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-                ChildMode::Trait(pred_kind.rebind(pred))
+        let child_mode = match pred.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
+                ChildMode::Trait(pred.kind().rebind(trait_pred))
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(pred)) => {
-                ChildMode::Host(pred_kind.rebind(pred))
+            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(host_pred)) => {
+                ChildMode::Host(pred.kind().rebind(host_pred))
             }
             ty::PredicateKind::NormalizesTo(normalizes_to)
                 if matches!(
@@ -423,7 +424,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst
                 ) =>
             {
-                ChildMode::Trait(pred_kind.rebind(ty::TraitPredicate {
+                ChildMode::Trait(pred.kind().rebind(ty::TraitPredicate {
                     trait_ref: normalizes_to.alias.trait_ref(tcx),
                     polarity: ty::PredicatePolarity::Positive,
                 }))
@@ -457,10 +458,12 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         for nested_goal in nested_goals {
             trace!(nested_goal = ?(nested_goal.goal(), nested_goal.source(), nested_goal.result()));
 
+            let nested_pred = nested_goal.goal().predicate;
+
             let make_obligation = |cause| Obligation {
                 cause,
                 param_env: nested_goal.goal().param_env,
-                predicate: nested_goal.goal().predicate,
+                predicate: nested_pred,
                 recursion_depth: self.obligation.recursion_depth + 1,
             };
 
@@ -510,28 +513,17 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
 
         // alias-relate may fail because the lhs or rhs can't be normalized,
         // and therefore is treated as rigid.
-        if let Some(ty::PredicateKind::AliasRelate(lhs, rhs, _)) = pred_kind.no_bound_vars() {
-            if let Some(obligation) = goal
-                .infcx()
-                .visit_proof_tree_at_depth(
-                    goal.goal().with(tcx, ty::ClauseKind::WellFormed(lhs.into())),
-                    goal.depth() + 1,
-                    self,
-                )
-                .break_value()
-            {
-                return ControlFlow::Break(obligation);
-            } else if let Some(obligation) = goal
-                .infcx()
-                .visit_proof_tree_at_depth(
-                    goal.goal().with(tcx, ty::ClauseKind::WellFormed(rhs.into())),
-                    goal.depth() + 1,
-                    self,
-                )
-                .break_value()
-            {
-                return ControlFlow::Break(obligation);
-            }
+        if let Some(ty::PredicateKind::AliasRelate(lhs, rhs, _)) = pred.kind().no_bound_vars() {
+            goal.infcx().visit_proof_tree_at_depth(
+                goal.goal().with(tcx, ty::ClauseKind::WellFormed(lhs.into())),
+                goal.depth() + 1,
+                self,
+            )?;
+            goal.infcx().visit_proof_tree_at_depth(
+                goal.goal().with(tcx, ty::ClauseKind::WellFormed(rhs.into())),
+                goal.depth() + 1,
+                self,
+            )?;
         }
 
         self.detect_error_in_higher_ranked_projection(goal)?;
