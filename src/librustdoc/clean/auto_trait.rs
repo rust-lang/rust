@@ -182,7 +182,7 @@ fn clean_param_env<'tcx>(
                     .is_some_and(|pred| tcx.lang_items().sized_trait() == Some(pred.def_id()))
         })
         .map(|pred| {
-            fold_regions(tcx, pred, |r, _| match *r {
+            fold_regions(tcx, pred, |r, _| match r.kind() {
                 // FIXME: Don't `unwrap_or`, I think we should panic if we encounter an infer var that
                 // we can't map to a concrete region. However, `AutoTraitFinder` *does* leak those kinds
                 // of `ReVar`s for some reason at the time of writing. See `rustdoc-ui/` tests.
@@ -362,7 +362,7 @@ fn clean_region_outlives_constraints<'tcx>(
 }
 
 fn early_bound_region_name(region: Region<'_>) -> Option<Symbol> {
-    match *region {
+    match region.kind() {
         ty::ReEarlyParam(r) => Some(r.name),
         _ => None,
     }

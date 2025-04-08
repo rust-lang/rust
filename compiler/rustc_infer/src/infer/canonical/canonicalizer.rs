@@ -159,7 +159,7 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
     ) -> ty::Region<'tcx> {
         let infcx = canonicalizer.infcx.unwrap();
 
-        if let ty::ReVar(vid) = *r {
+        if let ty::ReVar(vid) = r.kind() {
             r = infcx
                 .inner
                 .borrow_mut()
@@ -171,7 +171,7 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
             );
         };
 
-        match *r {
+        match r.kind() {
             ty::ReLateParam(_) | ty::ReErased | ty::ReStatic | ty::ReEarlyParam(..) => r,
 
             ty::RePlaceholder(placeholder) => canonicalizer.canonical_var_for_region(
@@ -227,7 +227,7 @@ impl CanonicalizeMode for CanonicalizeUserTypeAnnotation {
         canonicalizer: &mut Canonicalizer<'_, 'tcx>,
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
-        match *r {
+        match r.kind() {
             ty::ReEarlyParam(_)
             | ty::ReLateParam(_)
             | ty::ReErased
@@ -321,7 +321,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+        match r.kind() {
             ty::ReBound(index, ..) => {
                 if index >= self.binder_index {
                     bug!("escaping late-bound region during canonicalization");

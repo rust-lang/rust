@@ -46,7 +46,7 @@ pub fn check_opaque_type_parameter_valid<'tcx>(
             GenericArgKind::Lifetime(lt) => match defining_scope_kind {
                 DefiningScopeKind::HirTypeck => continue,
                 DefiningScopeKind::MirBorrowck => {
-                    matches!(*lt, ty::ReEarlyParam(_) | ty::ReLateParam(_))
+                    matches!(lt.kind(), ty::ReEarlyParam(_) | ty::ReLateParam(_))
                         || (lt.is_static() && opaque_env.param_equal_static(i))
                 }
             },

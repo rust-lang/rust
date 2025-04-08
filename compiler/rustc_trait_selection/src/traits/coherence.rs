@@ -537,7 +537,7 @@ fn plug_infer_with_placeholders<'tcx>(
         }
 
         fn visit_region(&mut self, r: ty::Region<'tcx>) {
-            if let ty::ReVar(vid) = *r {
+            if let ty::ReVar(vid) = r.kind() {
                 let r = self
                     .infcx
                     .inner

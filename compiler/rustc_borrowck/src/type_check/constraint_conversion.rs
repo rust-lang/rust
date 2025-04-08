@@ -205,7 +205,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     /// are dealt with during trait solving.
     fn replace_placeholders_with_nll<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, value: T) -> T {
         if value.has_placeholders() {
-            fold_regions(self.tcx, value, |r, _| match *r {
+            fold_regions(self.tcx, value, |r, _| match r.kind() {
                 ty::RePlaceholder(placeholder) => {
                     self.constraints.placeholder_region(self.infcx, placeholder)
                 }
@@ -227,7 +227,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     }
 
     fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> ty::RegionVid {
-        if let ty::RePlaceholder(placeholder) = *r {
+        if let ty::RePlaceholder(placeholder) = r.kind() {
             self.constraints.placeholder_region(self.infcx, placeholder).as_var()
         } else {
             self.universal_regions.to_region_vid(r)

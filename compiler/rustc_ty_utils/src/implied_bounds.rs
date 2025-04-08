@@ -75,7 +75,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                     {
                         let orig_lt =
                             tcx.map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local());
-                        if matches!(*orig_lt, ty::ReLateParam(..)) {
+                        if matches!(orig_lt.kind(), ty::ReLateParam(..)) {
                             mapping.insert(
                                 orig_lt,
                                 ty::Region::new_early_param(
