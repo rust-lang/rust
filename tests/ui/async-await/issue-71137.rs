@@ -19,5 +19,5 @@ async fn wrong_mutex() {
 }
 
 fn main() {
-  fake_spawn(wrong_mutex()); //~ Error future cannot be sent between threads safely
+  fake_spawn(wrong_mutex()); //~ ERROR future cannot be sent between threads safely
 }

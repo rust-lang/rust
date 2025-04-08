@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/similar_paths_primitive.rs:10:9
+  --> $DIR/similar_paths_primitive.rs:11:9
    |
 LL |     foo(true);
    |     --- ^^^^ expected `bool`, found a different `bool`
@@ -20,7 +20,7 @@ LL | fn foo(_: bool) {}
    |    ^^^ -------
 
 error[E0308]: mismatched types
-  --> $DIR/similar_paths_primitive.rs:16:9
+  --> $DIR/similar_paths_primitive.rs:17:9
    |
 LL |     bar("hello");
    |     --- ^^^^^^^ expected `str`, found a different `str`
@@ -35,7 +35,7 @@ note: the other `str` is defined in the current crate
 LL | struct str;
    | ^^^^^^^^^^
 note: function defined here
-  --> $DIR/similar_paths_primitive.rs:7:4
+  --> $DIR/similar_paths_primitive.rs:8:4
    |
 LL | fn bar(_: &str) {}
    |    ^^^ -------
