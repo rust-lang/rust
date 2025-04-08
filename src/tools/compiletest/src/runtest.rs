@@ -971,15 +971,15 @@ impl<'test> TestCx<'test> {
         delete_after_success: bool,
     ) -> ProcRes {
         let prepare_env = |cmd: &mut Command| {
-            for key in &self.props.unset_exec_env {
-                cmd.env_remove(key);
-            }
-
             for (key, val) in &self.props.exec_env {
                 cmd.env(key, val);
             }
             for (key, val) in env_extra {
                 cmd.env(key, val);
+            }
+
+            for key in &self.props.unset_exec_env {
+                cmd.env_remove(key);
             }
         };
 
