@@ -247,7 +247,7 @@ impl Resolver {
                 Scope::BlockScope(m) => {
                     if let Some(res) = m.resolve_path_in_type_ns(db, path) {
                         let res = match res.0 {
-                            TypeNs::ModuleId(_) => {
+                            TypeNs::ModuleId(_) if res.1.is_none() => {
                                 if let Some(ModuleDefId::BuiltinType(builtin)) = BUILTIN_SCOPE
                                     .get(first_name)
                                     .and_then(|builtin| builtin.take_types())
