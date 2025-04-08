@@ -317,7 +317,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
                     obligation.param_env,
-                    obligation.predicate.rebind(trait_ref),
+                    trait_ref,
                 )
             };
 
@@ -343,7 +343,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
                     obligation.param_env,
-                    obligation.predicate.rebind(outlives),
+                    outlives,
                 )
             };
 
@@ -404,7 +404,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
 
-        let predicate = obligation.predicate.skip_binder();
+        let predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
 
         let mut assume = predicate.trait_ref.args.const_at(2);
         // FIXME(mgca): We should shallowly normalize this.
