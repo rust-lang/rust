@@ -291,6 +291,34 @@ impl<'tcx> BestObligation<'tcx> {
         }
     }
 
+    /// When a higher-ranked projection goal fails, check that the corresponding
+    /// higher-ranked trait goal holds or not. This is because the process of
+    /// instantiating and then re-canonicalizing the binder of the projection goal
+    /// forces us to be unable to see that the leak check failed in the nested
+    /// `NormalizesTo` goal, so we don't fall back to the rigid projection check
+    /// that should catch when a projection goal fails due to an unsatisfied trait
+    /// goal.
+    fn detect_error_in_higher_ranked_projection(
+        &mut self,
+        goal: &inspect::InspectGoal<'_, 'tcx>,
+    ) -> ControlFlow<PredicateObligation<'tcx>> {
+        let tcx = goal.infcx().tcx;
+        if let Some(projection_clause) = goal.goal().predicate.as_projection_clause()
+            && !projection_clause.bound_vars().is_empty()
+        {
+            let pred = projection_clause.map_bound(|proj| proj.projection_term.trait_ref(tcx));
+            self.with_derived_obligation(self.obligation.with(tcx, pred), |this| {
+                goal.infcx().visit_proof_tree_at_depth(
+                    goal.goal().with(tcx, pred),
+                    goal.depth() + 1,
+                    this,
+                )
+            })
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
     /// It is likely that `NormalizesTo` failed without any applicable candidates
     /// because the alias is not well-formed.
     ///
@@ -374,7 +402,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             source: CandidateSource::Impl(impl_def_id),
             result: _,
         } = candidate.kind()
-            && goal.infcx().tcx.do_not_recommend_impl(impl_def_id)
+            && tcx.do_not_recommend_impl(impl_def_id)
         {
             trace!("#[do_not_recommend] -> exit");
             return ControlFlow::Break(self.obligation.clone());
@@ -486,7 +514,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             if let Some(obligation) = goal
                 .infcx()
                 .visit_proof_tree_at_depth(
-                    goal.goal().with(goal.infcx().tcx, ty::ClauseKind::WellFormed(lhs.into())),
+                    goal.goal().with(tcx, ty::ClauseKind::WellFormed(lhs.into())),
                     goal.depth() + 1,
                     self,
                 )
@@ -496,7 +524,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             } else if let Some(obligation) = goal
                 .infcx()
                 .visit_proof_tree_at_depth(
-                    goal.goal().with(goal.infcx().tcx, ty::ClauseKind::WellFormed(rhs.into())),
+                    goal.goal().with(tcx, ty::ClauseKind::WellFormed(rhs.into())),
                     goal.depth() + 1,
                     self,
                 )
@@ -505,6 +533,8 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                 return ControlFlow::Break(obligation);
             }
         }
+
+        self.detect_error_in_higher_ranked_projection(goal)?;
 
         ControlFlow::Break(self.obligation.clone())
     }
