@@ -83,15 +83,6 @@ pub use core::prelude::v1::concat_idents;
 pub use core::prelude::v1::const_format_args;
 
 #[unstable(
-    feature = "format_args_nl",
-    issue = "none",
-    reason = "`format_args_nl` is only for internal \
-              language use and is subject to change"
-)]
-#[doc(no_inline)]
-pub use core::prelude::v1::format_args_nl;
-
-#[unstable(
     feature = "log_syntax",
     issue = "29598",
     reason = "`log_syntax!` is not stable enough for use and is subject to change"

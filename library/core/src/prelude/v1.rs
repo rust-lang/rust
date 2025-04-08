@@ -63,10 +63,6 @@ pub use crate::{
     assert, assert_eq, assert_ne, cfg, column, compile_error, concat, debug_assert, debug_assert_eq, debug_assert_ne, env, file, format_args, include, include_bytes, include_str, line, matches, module_path, option_env, panic, stringify, todo, r#try, unimplemented, unreachable, write, writeln,
 };
 
-#[unstable(feature = "ub_checks", issue = "none")]
-#[doc(no_inline)]
-pub use crate::assert_unsafe_precondition;
-
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[doc(no_inline)]
 pub use crate::cfg_match;
@@ -90,15 +86,6 @@ pub use crate::concat_idents;
 #[unstable(feature = "const_format_args", issue = "none")]
 #[doc(no_inline)]
 pub use crate::const_format_args;
-
-#[unstable(
-    feature = "format_args_nl",
-    issue = "none",
-    reason = "`format_args_nl` is only for internal \
-              language use and is subject to change"
-)]
-#[doc(no_inline)]
-pub use crate::format_args_nl;
 
 #[unstable(
     feature = "log_syntax",
