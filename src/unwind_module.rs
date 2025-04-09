@@ -17,8 +17,8 @@ pub(crate) struct UnwindModule<T> {
 }
 
 impl<T: Module> UnwindModule<T> {
-    pub(crate) fn new(module: T, pic_eh_frame: bool) -> Self {
-        let unwind_context = UnwindContext::new(module.isa(), pic_eh_frame);
+    pub(crate) fn new(mut module: T, pic_eh_frame: bool) -> Self {
+        let unwind_context = UnwindContext::new(&mut module, pic_eh_frame);
         UnwindModule { module, unwind_context }
     }
 }
@@ -37,7 +37,7 @@ impl UnwindModule<cranelift_jit::JITModule> {
         self.module.finalize_definitions().unwrap();
         let prev_unwind_context = std::mem::replace(
             &mut self.unwind_context,
-            UnwindContext::new(self.module.isa(), false),
+            UnwindContext::new(&mut self.module, false),
         );
         unsafe { prev_unwind_context.register_jit(&self.module) };
     }
@@ -94,7 +94,7 @@ impl<T: Module> Module for UnwindModule<T> {
         ctrl_plane: &mut ControlPlane,
     ) -> ModuleResult<()> {
         self.module.define_function_with_control_plane(func, ctx, ctrl_plane)?;
-        self.unwind_context.add_function(func, ctx, self.module.isa());
+        self.unwind_context.add_function(&mut self.module, func, ctx);
         Ok(())
     }
 
