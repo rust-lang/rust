@@ -649,6 +649,7 @@ impl<'a> Parser<'a> {
                     other => {
                         if let TyKind::ImplTrait(_, bounds) = other
                             && let [bound] = bounds.as_slice()
+                            && let GenericBound::Trait(poly_trait_ref) = bound
                         {
                             // Suggest removing extra `impl` keyword:
                             // `impl<T: Default> impl Default for Wrapper<T>`
@@ -658,12 +659,12 @@ impl<'a> Parser<'a> {
                                 extra_impl_kw,
                                 impl_trait_span: ty_first.span,
                             });
+                            poly_trait_ref.trait_ref.path.clone()
                         } else {
-                            self.dcx().emit_err(errors::ExpectedTraitInTraitImplFoundType {
-                                span: ty_first.span,
-                            });
+                            return Err(self.dcx().create_err(
+                                errors::ExpectedTraitInTraitImplFoundType { span: ty_first.span },
+                            ));
                         }
-                        ast::Path::from_ident(Ident::new(kw::Empty, ty_first.span))
                     }
                 };
                 let trait_ref = TraitRef { path, ref_id: ty_first.id };
