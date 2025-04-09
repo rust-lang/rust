@@ -13,7 +13,7 @@ fn foo() {
     /// a //~ ERROR unused doc comment
     let x = 12;
 
-    /// multi-line //~ unused doc comment
+    /// multi-line //~ ERROR unused doc comment
     /// doc comment
     /// that is unused
     match x {

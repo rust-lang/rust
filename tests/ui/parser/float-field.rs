@@ -39,11 +39,11 @@ fn main() {
 
     { s.0x1.1; } //~ ERROR hexadecimal float literal is not supported
                  //~| ERROR unexpected token: `0x1.1`
-                 //~| expected one of `.`, `;`, `?`, `}`, or an operator, found `0x1.1`
+                 //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `0x1.1`
 
     { s.0x1.1e1; } //~ ERROR hexadecimal float literal is not supported
                    //~| ERROR unexpected token: `0x1.1e1`
-                   //~| expected one of `.`, `;`, `?`, `}`, or an operator, found `0x1.1e1`
+                   //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `0x1.1e1`
 
     { s.0x1e+; } //~ ERROR expected expression, found `;`
 

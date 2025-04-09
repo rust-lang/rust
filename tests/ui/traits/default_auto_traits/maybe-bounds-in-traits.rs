@@ -97,7 +97,7 @@ mod methods {
         fn mut_leak_foo(&mut self) {}
         // there is no relax bound on corresponding Receiver impl
         fn mut_maybe_leak_foo(&mut self) where Self: ?Leak {}
-        //~^  `&mut Self` cannot be used as the type of `self` without the `arbitrary_self_types`
+        //~^ ERROR `&mut Self` cannot be used as the type of `self` without the `arbitrary_self_types`
     }
 
     impl Trait for NonLeakS {}

@@ -1,7 +1,7 @@
 macro_rules! log {
     ( $ctx:expr, $( $args:expr),* ) => {
         if $ctx.trace {
-        //~^ no field `trace` on type `&T`
+        //~^ ERROR no field `trace` on type `&T`
             println!( $( $args, )* );
         }
     }

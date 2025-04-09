@@ -17,10 +17,10 @@ impl<T: ?Sized> WellUnformed for T {
 }
 
 const _: <[[[[[[u8]]]]]] as WellUnformed>::RequestNormalize = ();
-//[next]~^ the size for values of type `[[[[[u8]]]]]` cannot be known at compilation time
-//[next]~| the size for values of type `[[[[[u8]]]]]` cannot be known at compilation time
+//[next]~^ ERROR the size for values of type `[[[[[u8]]]]]` cannot be known at compilation time
+//[next]~| ERROR the size for values of type `[[[[[u8]]]]]` cannot be known at compilation time
 const _: <Vec<str> as WellUnformed>::RequestNormalize = ();
-//[next]~^ the size for values of type `str` cannot be known at compilation time
-//[next]~| the size for values of type `str` cannot be known at compilation time
+//[next]~^ ERROR the size for values of type `str` cannot be known at compilation time
+//[next]~| ERROR the size for values of type `str` cannot be known at compilation time
 
 fn main() {}

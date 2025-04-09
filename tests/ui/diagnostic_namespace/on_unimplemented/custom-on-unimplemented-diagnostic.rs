@@ -15,7 +15,7 @@ struct B;
 
 fn main() {
     B.request();
-    //~^ my message [E0599]
+    //~^ ERROR my message [E0599]
     //~| my label
     //~| my note
 }

@@ -2,7 +2,7 @@
 //@ run-rustfix
 
 pub struct S {
-    pub foo: u32 //~ expected `,`, or `}`, found keyword `pub`
+    pub foo: u32 //~ ERROR expected `,`, or `}`, found keyword `pub`
     //     ~^ HELP try adding a comma: ','
     pub bar: u32
 }

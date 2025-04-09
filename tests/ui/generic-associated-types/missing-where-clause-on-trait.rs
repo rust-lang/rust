@@ -5,7 +5,7 @@ trait Foo {
 }
 impl Foo for () {
     type Assoc<'a, 'b> = () where 'a: 'b;
-    //~^ impl has stricter requirements than trait
+    //~^ ERROR impl has stricter requirements than trait
 }
 
 fn main() {}

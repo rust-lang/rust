@@ -4,7 +4,7 @@ pub trait MutTrait {
     fn function(&mut self)
     where
         Self: Sized;
-    //~^ this has a `Sized` requirement
+    //~^ NOTE this has a `Sized` requirement
 }
 
 impl MutTrait for MutType {
@@ -17,7 +17,7 @@ pub trait Trait {
     fn function(&self)
     where
         Self: Sized;
-    //~^ this has a `Sized` requirement
+    //~^ NOTE this has a `Sized` requirement
 }
 
 impl Trait for Type {
