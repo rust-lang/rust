@@ -289,6 +289,7 @@ fn test_unix_datagram() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin autobinds an address
 fn test_unnamed_unix_datagram() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");
@@ -307,6 +308,7 @@ fn test_unnamed_unix_datagram() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin fails to determine the addr type from recvfrom
 fn test_unix_datagram_connect_to_recv_addr() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");
@@ -332,6 +334,7 @@ fn test_unix_datagram_connect_to_recv_addr() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin autobinds an address
 fn test_connect_unix_datagram() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");
