@@ -18,6 +18,18 @@ allow-unauthenticated = [
 exclude_titles = ["Rustup"] # exclude syncs from rust-lang/rust
 labels = ["has-merge-commits", "S-waiting-on-author"]
 
+[review-requested]
+# Those labels are removed when PR author requests a review from an assignee
+remove_labels = ["S-waiting-on-author"]
+# Those labels are added when PR author requests a review from an assignee
+add_labels = ["S-waiting-on-review"]
+
+[review-submitted]
+# These labels are removed when a review is submitted.
+review_labels = ["S-waiting-on-review"]
+# This label is added when a review is submitted.
+reviewed_label = "S-waiting-on-author"
+
 [autolabel."S-waiting-on-review"]
 new_pr = true
 
