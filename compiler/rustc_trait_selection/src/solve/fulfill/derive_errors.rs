@@ -13,9 +13,9 @@ use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as
 use rustc_type_ir::solve::NoSolution;
 use tracing::{instrument, trace};
 
-use crate::solve::Certainty;
 use crate::solve::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
+use crate::solve::{Certainty, deeply_normalize_for_diagnostics};
 use crate::traits::{FulfillmentError, FulfillmentErrorCode, wf};
 
 pub(super) fn fulfillment_error_for_no_solution<'tcx>(
@@ -151,7 +151,7 @@ fn find_best_leaf_obligation<'tcx>(
     //
     // We should probably fix the visitor to not do so instead, as this also
     // means the leaf obligation may be incorrect.
-    infcx
+    let obligation = infcx
         .fudge_inference_if_ok(|| {
             infcx
                 .visit_proof_tree(
@@ -161,7 +161,8 @@ fn find_best_leaf_obligation<'tcx>(
                 .break_value()
                 .ok_or(())
         })
-        .unwrap_or(obligation)
+        .unwrap_or(obligation);
+    deeply_normalize_for_diagnostics(infcx, obligation.param_env, obligation)
 }
 
 struct BestObligation<'tcx> {
@@ -298,7 +299,7 @@ impl<'tcx> BestObligation<'tcx> {
     /// `NormalizesTo` goal, so we don't fall back to the rigid projection check
     /// that should catch when a projection goal fails due to an unsatisfied trait
     /// goal.
-    fn detect_error_in_higher_ranked_projection(
+    fn detect_trait_error_in_higher_ranked_projection(
         &mut self,
         goal: &inspect::InspectGoal<'_, 'tcx>,
     ) -> ControlFlow<PredicateObligation<'tcx>> {
@@ -307,7 +308,13 @@ impl<'tcx> BestObligation<'tcx> {
             && !projection_clause.bound_vars().is_empty()
         {
             let pred = projection_clause.map_bound(|proj| proj.projection_term.trait_ref(tcx));
-            self.with_derived_obligation(self.obligation.with(tcx, pred), |this| {
+            let obligation = Obligation::new(
+                tcx,
+                self.obligation.cause.clone(),
+                goal.goal().param_env,
+                deeply_normalize_for_diagnostics(goal.infcx(), goal.goal().param_env, pred),
+            );
+            self.with_derived_obligation(obligation, |this| {
                 goal.infcx().visit_proof_tree_at_depth(
                     goal.goal().with(tcx, pred),
                     goal.depth() + 1,
@@ -526,7 +533,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             )?;
         }
 
-        self.detect_error_in_higher_ranked_projection(goal)?;
+        self.detect_trait_error_in_higher_ranked_projection(goal)?;
 
         ControlFlow::Break(self.obligation.clone())
     }
