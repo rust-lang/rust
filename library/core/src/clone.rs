@@ -427,7 +427,7 @@ pub unsafe trait CloneToUninit {
     /// read or dropped, because even if it was previously valid, it may have been partially
     /// overwritten.
     ///
-    /// The caller may wish to to take care to deallocate the allocation pointed to by `dest`,
+    /// The caller may wish to take care to deallocate the allocation pointed to by `dest`,
     /// if applicable, to avoid a memory leak (but this is not a requirement).
     ///
     /// Implementors should avoid leaking values by, upon unwinding, dropping all component values

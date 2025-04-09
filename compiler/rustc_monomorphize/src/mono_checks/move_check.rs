@@ -148,11 +148,7 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
         span: Span,
     ) {
         let source_info = self.body.source_info(location);
-        for reported_span in &self.move_size_spans {
-            if reported_span.overlaps(span) {
-                return;
-            }
-        }
+
         let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
         let Some(lint_root) = lint_root else {
             // This happens when the issue is in a function from a foreign crate that
@@ -162,13 +158,34 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
             // but correct span? This would make the lint at least accept crate-level lint attributes.
             return;
         };
+
+        // If the source scope is inlined by the MIR inliner, report the lint on the call site.
+        let reported_span = self
+            .body
+            .source_scopes
+            .get(source_info.scope)
+            .and_then(|source_scope_data| source_scope_data.inlined)
+            .map(|(_, call_site)| call_site)
+            .unwrap_or(span);
+
+        for previously_reported_span in &self.move_size_spans {
+            if previously_reported_span.overlaps(reported_span) {
+                return;
+            }
+        }
+
         self.tcx.emit_node_span_lint(
             LARGE_ASSIGNMENTS,
             lint_root,
-            span,
-            LargeAssignmentsLint { span, size: too_large_size.bytes(), limit: limit as u64 },
+            reported_span,
+            LargeAssignmentsLint {
+                span: reported_span,
+                size: too_large_size.bytes(),
+                limit: limit as u64,
+            },
         );
-        self.move_size_spans.push(span);
+
+        self.move_size_spans.push(reported_span);
     }
 }
 
