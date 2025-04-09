@@ -943,14 +943,14 @@ pub(crate) fn handle_parent_module(
     Ok(Some(res))
 }
 
-pub(crate) fn handle_children_modules(
+pub(crate) fn handle_child_modules(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
 ) -> anyhow::Result<Option<lsp_types::GotoDefinitionResponse>> {
-    let _p = tracing::info_span!("handle_children_module").entered();
-    // locate children module by semantics
+    let _p = tracing::info_span!("handle_child_modules").entered();
+    // locate child module by semantics
     let position = try_default!(from_proto::file_position(&snap, params)?);
-    let navs = snap.analysis.children_modules(position)?;
+    let navs = snap.analysis.child_modules(position)?;
     let res = to_proto::goto_definition_response(&snap, None, navs)?;
     Ok(Some(res))
 }
