@@ -6,7 +6,7 @@ use crate::sync::atomic::{AtomicU32, Ordering};
 use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::{env, fs};
 
-mod compiler_builtins;
+mod public_extern;
 #[cfg(test)]
 mod tests;
 
