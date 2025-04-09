@@ -7,7 +7,7 @@ use rustc_infer::infer::InferCtxt;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::Span;
 use smallvec::{SmallVec, smallvec};
@@ -506,18 +506,44 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
     }
 }
 
-pub fn sizedness_fast_path<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tcx>) -> bool {
-    // Proving `Sized` very often on "obviously sized" types like `&T`, accounts for about 60%
-    // percentage of the predicates we have to prove. No need to canonicalize and all that for
-    // such cases.
+pub fn sizedness_fast_path<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicate: ty::Predicate<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> bool {
+    // Proving `Sized`/`MetaSized`/`PointeeSized`, very often on "obviously sized" types like
+    // `&T`, accounts for about 60% percentage of the predicates we have to prove. No need to
+    // canonicalize and all that for such cases.
     if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_ref)) =
         predicate.kind().skip_binder()
     {
-        if tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized)
-            && trait_ref.self_ty().is_trivially_sized(tcx)
+        let sizedness = if tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized) {
+            Some(SizedTraitKind::Sized)
+        } else if tcx.is_lang_item(trait_ref.def_id(), LangItem::MetaSized) {
+            Some(SizedTraitKind::MetaSized)
+        } else if tcx.is_lang_item(trait_ref.def_id(), LangItem::PointeeSized) {
+            Some(SizedTraitKind::PointeeSized)
+        } else {
+            None
+        };
+
+        if let Some(sizedness) = sizedness
+            && trait_ref.self_ty().has_trivial_sizedness(tcx, sizedness)
         {
             debug!("fast path -- trivial sizedness");
             return true;
+        }
+
+        if matches!(sizedness, Some(SizedTraitKind::MetaSized)) {
+            let has_sized_in_param_env =
+                param_env.caller_bounds().iter().filter_map(|c| c.as_trait_clause()).any(|c| {
+                    trait_ref.self_ty() == c.skip_binder().self_ty()
+                        && tcx.is_lang_item(c.def_id(), LangItem::Sized)
+                });
+            if has_sized_in_param_env {
+                debug!("fast path -- metasized paramenv");
+                return true;
+            }
         }
     }
 
