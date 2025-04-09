@@ -34,7 +34,7 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     let (infcx, param_env) = tcx.infer_ctxt().ignoring_regions().build_with_typing_env(typing_env);
     let mut selcx = SelectionContext::new(&infcx);
 
-    if sizedness_fast_path(tcx, trait_ref.upcast(tcx)) {
+    if sizedness_fast_path(tcx, trait_ref.upcast(tcx), param_env) {
         return Ok(&*tcx.arena.alloc(ImplSource::Builtin(
             ty::solve::BuiltinImplSource::Trivial,
             Default::default(),
