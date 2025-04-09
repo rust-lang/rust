@@ -641,10 +641,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if let Some(glob_binding) = resolution.shadowed_glob {
                     let binding_id = match binding.kind {
                         NameBindingKind::Res(res) => {
-                            Some(self.def_id_to_node_id[res.def_id().expect_local()])
+                            Some(self.def_id_to_node_id(res.def_id().expect_local()))
                         }
                         NameBindingKind::Module(module) => {
-                            Some(self.def_id_to_node_id[module.def_id().expect_local()])
+                            Some(self.def_id_to_node_id(module.def_id().expect_local()))
                         }
                         NameBindingKind::Import { import, .. } => import.id(),
                     };

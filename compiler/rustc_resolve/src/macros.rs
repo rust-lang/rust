@@ -345,7 +345,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                     // We already lint the entire macro as unused
                     continue;
                 }
-                let node_id = self.def_id_to_node_id[def_id];
+                let node_id = self.def_id_to_node_id(def_id);
                 self.lint_buffer.buffer_lint(
                     UNUSED_MACRO_RULES,
                     node_id,
@@ -932,7 +932,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             .invocation_parents
                             .get(&parent_scope.expansion)
                             .map_or(ast::CRATE_NODE_ID, |parent| {
-                                self.def_id_to_node_id[parent.parent_def]
+                                self.def_id_to_node_id(parent.parent_def)
                             });
                         self.lint_buffer.buffer_lint(
                             LEGACY_DERIVE_HELPERS,

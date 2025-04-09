@@ -56,7 +56,6 @@ use rustc_hir::def::{
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::{PrimTy, TraitCandidate};
-use rustc_index::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
@@ -1184,7 +1183,6 @@ pub struct Resolver<'ra, 'tcx> {
     next_node_id: NodeId,
 
     node_id_to_def_id: NodeMap<Feed<'tcx, LocalDefId>>,
-    def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
     /// Indices of unnamed struct or variant fields with unresolved attributes.
     placeholder_field_indices: FxHashMap<NodeId, usize>,
@@ -1369,7 +1367,6 @@ impl<'tcx> Resolver<'_, 'tcx> {
             debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
             self.node_id_to_def_id.insert(node_id, feed.downgrade());
         }
-        assert_eq!(self.def_id_to_node_id.push(node_id), def_id);
 
         feed
     }
@@ -1384,6 +1381,19 @@ impl<'tcx> Resolver<'_, 'tcx> {
 
     pub fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    /// This function is very slow, as it iterates over the entire
+    /// [Resolver::node_id_to_def_id] map just to find the [NodeId]
+    /// that corresponds to the given [LocalDefId]. Only use this in
+    /// diagnostics code paths.
+    fn def_id_to_node_id(&self, def_id: LocalDefId) -> NodeId {
+        self.node_id_to_def_id
+            .items()
+            .filter(|(_, v)| v.key() == def_id)
+            .map(|(k, _)| *k)
+            .get_only()
+            .unwrap()
     }
 }
 
@@ -1417,8 +1427,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             &mut Default::default(),
         );
 
-        let mut def_id_to_node_id = IndexVec::default();
-        assert_eq!(def_id_to_node_id.push(CRATE_NODE_ID), CRATE_DEF_ID);
         let mut node_id_to_def_id = NodeMap::default();
         let crate_feed = tcx.create_local_crate_def_id(crate_span);
 
@@ -1553,7 +1561,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             lint_buffer: LintBuffer::default(),
             next_node_id: CRATE_NODE_ID,
             node_id_to_def_id,
-            def_id_to_node_id,
             placeholder_field_indices: Default::default(),
             invocation_parents,
             legacy_const_generic_args: Default::default(),
