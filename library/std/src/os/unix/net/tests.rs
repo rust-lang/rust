@@ -427,6 +427,7 @@ fn abstract_namespace_not_allowed_connect() {
 
 #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[test]
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin cannot bind to abstract addr
 fn test_abstract_stream_connect() {
     let msg1 = b"hello";
     let msg2 = b"world";
@@ -458,6 +459,7 @@ fn test_abstract_stream_connect() {
 
 #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[test]
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin cannot bind to abstract addr
 fn test_abstract_stream_iter() {
     let addr = or_panic!(SocketAddr::from_abstract_name(b"hidden"));
     let listener = or_panic!(UnixListener::bind_addr(&addr));
@@ -480,6 +482,7 @@ fn test_abstract_stream_iter() {
 
 #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[test]
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin cannot bind to abstract addr
 fn test_abstract_datagram_bind_send_to_addr() {
     let addr1 = or_panic!(SocketAddr::from_abstract_name(b"ns1"));
     let sock1 = or_panic!(UnixDatagram::bind_addr(&addr1));
@@ -501,6 +504,7 @@ fn test_abstract_datagram_bind_send_to_addr() {
 
 #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[test]
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin cannot bind to abstract addr
 fn test_abstract_datagram_connect_addr() {
     let addr1 = or_panic!(SocketAddr::from_abstract_name(b"ns3"));
     let bsock1 = or_panic!(UnixDatagram::bind_addr(&addr1));
@@ -672,6 +676,7 @@ fn test_send_vectored_fds_unix_stream() {
 #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin recvmsg doesn't support Unix sockets
 fn test_send_vectored_with_ancillary_to_unix_datagram() {
     fn getpid() -> libc::pid_t {
         unsafe { libc::getpid() }
