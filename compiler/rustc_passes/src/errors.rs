@@ -1433,7 +1433,7 @@ pub(crate) struct UselessAssignment<'a> {
 #[derive(LintDiagnostic)]
 #[diag(passes_only_has_effect_on)]
 pub(crate) struct OnlyHasEffectOn {
-    pub attr_name: Symbol,
+    pub attr_name: String,
     pub target_name: String,
 }
 
