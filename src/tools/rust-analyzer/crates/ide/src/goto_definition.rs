@@ -298,6 +298,7 @@ fn handle_control_flow_keywords(
         T![for] if token.parent().and_then(ast::ForExpr::cast).is_some() => {
             nav_for_break_points(sema, token)
         }
+        T![match] | T![=>] | T![if] => nav_for_branches(sema, token),
         _ => None,
     }
 }
@@ -403,6 +404,64 @@ fn nav_for_exit_points(
         })
         .flatten()
         .collect_vec();
+
+    Some(navs)
+}
+
+fn nav_for_branches(
+    sema: &Semantics<'_, RootDatabase>,
+    token: &SyntaxToken,
+) -> Option<Vec<NavigationTarget>> {
+    let db = sema.db;
+
+    let navs = match token.kind() {
+        T![match] => sema
+            .descend_into_macros(token.clone())
+            .into_iter()
+            .filter_map(|token| {
+                let match_expr =
+                    sema.token_ancestors_with_macros(token).find_map(ast::MatchExpr::cast)?;
+                let file_id = sema.hir_file_for(match_expr.syntax());
+                let focus_range = match_expr.match_token()?.text_range();
+                let match_expr_in_file = InFile::new(file_id, match_expr.into());
+                Some(expr_to_nav(db, match_expr_in_file, Some(focus_range)))
+            })
+            .flatten()
+            .collect_vec(),
+
+        T![=>] => sema
+            .descend_into_macros(token.clone())
+            .into_iter()
+            .filter_map(|token| {
+                let match_arm =
+                    sema.token_ancestors_with_macros(token).find_map(ast::MatchArm::cast)?;
+                let match_expr = sema
+                    .ancestors_with_macros(match_arm.syntax().clone())
+                    .find_map(ast::MatchExpr::cast)?;
+                let file_id = sema.hir_file_for(match_expr.syntax());
+                let focus_range = match_arm.fat_arrow_token()?.text_range();
+                let match_expr_in_file = InFile::new(file_id, match_expr.into());
+                Some(expr_to_nav(db, match_expr_in_file, Some(focus_range)))
+            })
+            .flatten()
+            .collect_vec(),
+
+        T![if] => sema
+            .descend_into_macros(token.clone())
+            .into_iter()
+            .filter_map(|token| {
+                let if_expr =
+                    sema.token_ancestors_with_macros(token).find_map(ast::IfExpr::cast)?;
+                let file_id = sema.hir_file_for(if_expr.syntax());
+                let focus_range = if_expr.if_token()?.text_range();
+                let if_expr_in_file = InFile::new(file_id, if_expr.into());
+                Some(expr_to_nav(db, if_expr_in_file, Some(focus_range)))
+            })
+            .flatten()
+            .collect_vec(),
+
+        _ => return Some(Vec::new()),
+    };
 
     Some(navs)
 }
@@ -3612,6 +3671,157 @@ fn foo() {
     let _ = core::mem::offset_of!(Bar, 0.Ab$0c.0.field);
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_match_keyword() {
+        check(
+            r#"
+fn main() {
+    match$0 0 {
+ // ^^^^^
+        0 => {},
+        _ => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_match_arm_fat_arrow() {
+        check(
+            r#"
+fn main() {
+    match 0 {
+        0 =>$0 {},
+       // ^^
+        _ => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_if_keyword() {
+        check(
+            r#"
+fn main() {
+    if$0 true {
+ // ^^
+        ()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_match_nested_in_if() {
+        check(
+            r#"
+fn main() {
+    if true {
+        match$0 0 {
+     // ^^^^^
+            0 => {},
+            _ => {},
+        }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_multiple_match_expressions() {
+        check(
+            r#"
+fn main() {
+    match 0 {
+        0 => {},
+        _ => {},
+    };
+
+    match$0 1 {
+ // ^^^^^
+        1 => {},
+        _ => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_nested_match_expressions() {
+        check(
+            r#"
+fn main() {
+    match 0 {
+        0 => match$0 1 {
+          // ^^^^^
+            1 => {},
+            _ => {},
+        },
+        _ => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_if_else_chains() {
+        check(
+            r#"
+fn main() {
+    if true {
+        ()
+    } else if$0 false {
+        // ^^
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_match_with_guards() {
+        check(
+            r#"
+fn main() {
+    match 42 {
+        x if x > 0 =>$0 {},
+                // ^^
+        _ => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_match_with_macro_arm() {
+        check(
+            r#"
+macro_rules! arm {
+    () => { 0 => {} };
+}
+
+fn main() {
+    match$0 0 {
+ // ^^^^^
+        arm!(),
+        _ => {},
+    }
+}
+"#,
         );
     }
 }
