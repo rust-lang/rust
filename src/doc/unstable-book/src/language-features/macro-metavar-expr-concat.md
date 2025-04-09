@@ -7,32 +7,15 @@ The tracking issue for this feature is: [#124225]
 In stable Rust, there is no way to create new identifiers by joining identifiers to literals or other identifiers without using procedural macros such as [`paste`].
  `#![feature(macro_metavar_expr_concat)]` introduces a way to do this, using the concat metavariable expression.
 
-> This feature is not to be confused with [`macro_metavar_expr`] or [`concat_idents`].
+> This feature uses the syntax from [`macro_metavar_expr`] but is otherwise
+> independent. It replaces the old unstable feature [`concat_idents`].
 
 > This is an experimental feature; it and its syntax will require a RFC before stabilization.
 
 
 ### Overview
 
-At this time, [declarative macros] cannot create new identifiers.
-A common use case is the need to create names for structs or functions. The following cannot be done on stable Rust[^1]:
-
-```rust,compile_fail
-macro_rules! create_some_structs {
-    ($name:ident) => {
-        // Invalid syntax
-        pub struct First$name;
-        // Also invalid syntax
-        pub struct Second($name);
-        // Macros are not allowed in this position
-        // (This restriction is what makes `concat_idents!` useless)
-        pub struct concat_idents!(Third, $name);
-    }
-}
-# create_some_structs!(Thing);
-```
-
-`#![feature(macro_metavar_expr_concat)]` provides the `concat` metavariable to concatenate idents:
+`#![feature(macro_metavar_expr_concat)]` provides the `concat` metavariable expression for creating new identifiers:
 
 ```rust
 #![feature(macro_metavar_expr_concat)]
@@ -59,7 +42,7 @@ pub struct ThirdThing;
 ### Syntax
 
 This feature builds upon the metavariable expression syntax `${ .. }` as specified in [RFC 3086] ([`macro_metavar_expr`]).
- `concat` is available like `${ concat(items) }`, where `items` is a comma separated sequence of idents and/or string literals.
+ `concat` is available like `${ concat(items) }`, where `items` is a comma separated sequence of idents and/or literals.
 
 ### Examples
 
@@ -140,8 +123,6 @@ test test_u64_subtraction ... ok
 
 test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
-
-[^1]: An alternative is the [`paste`] crate.
 
 [`paste`]: https://crates.io/crates/paste
 [RFC 3086]: https://rust-lang.github.io/rfcs/3086-macro-metavar-expr.html
