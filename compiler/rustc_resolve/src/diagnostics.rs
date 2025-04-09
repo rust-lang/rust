@@ -222,6 +222,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // indirectly *calls* the resolver, and would cause a query cycle.
             ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
             ModuleKind::Block => "block",
+            ModuleKind::NamespaceCrate(..) => {
+                // `NamespaceCrate`s are virtual modules
+                unreachable!();
+            }
         };
 
         let (name, span) =
