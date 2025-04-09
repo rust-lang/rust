@@ -31,6 +31,7 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
             ModifyBasicBlocks::BasicBlocks(body, bbs),
             true,
             false,
+            true,
         );
         eliminate_unused_storage_mark(body, bbs);
         strip_nops(bbs.as_mut_slice());

@@ -672,6 +672,15 @@ fn match_i128_u128(i: EnumAi128) -> u128 {
     }
 }
 
+// We cannot merge these branches unless all the dead statements are eliminated.
+// EMIT_MIR matches_reduce_branches.match_dead_store_failed.MatchBranchSimplification.diff
+pub fn match_dead_store_failed(b: bool) {
+    // CHECK-LABEL: fn match_dead_store_failed(
+    // CHECK: switchInt
+    // CHECK: return
+    let _b = (if b { " " } else { "" },);
+}
+
 fn main() {
     let _ = foo(None);
     let _ = foo(Some(()));

@@ -3,8 +3,9 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::{
     self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges,
 };
+use rustc_middle::ty::TyCtxt;
 
-use crate::{Analysis, Backward, GenKill};
+use crate::{Analysis, Backward, GenKill, ResultsCursor};
 
 /// A [live-variable dataflow analysis][liveness].
 ///
@@ -203,21 +204,42 @@ impl DefUse {
 /// This is basically written for dead store elimination and nothing else.
 ///
 /// All of the caveats of `MaybeLiveLocals` apply.
-pub struct MaybeTransitiveLiveLocals<'a> {
+pub struct MaybeTransitiveLiveLocals<'tcx, 'mir, 'a> {
     always_live: &'a DenseBitSet<Local>,
+    live: Option<ResultsCursor<'mir, 'tcx, MaybeLiveLocals>>,
 }
 
-impl<'a> MaybeTransitiveLiveLocals<'a> {
+impl<'tcx, 'mir, 'a> MaybeTransitiveLiveLocals<'tcx, 'mir, 'a> {
     /// The `always_alive` set is the set of locals to which all stores should unconditionally be
     /// considered live.
+    /// The `may_live_in_other_bbs` indicates that, when analyzing the current statement,
+    /// statements in other basic blocks are assumed to be live.
     ///
     /// This should include at least all locals that are ever borrowed.
-    pub fn new(always_live: &'a DenseBitSet<Local>) -> Self {
-        MaybeTransitiveLiveLocals { always_live }
+    pub fn new(
+        always_live: &'a DenseBitSet<Local>,
+        may_live_in_other_bbs: bool,
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+    ) -> Self {
+        let live = if may_live_in_other_bbs {
+            Some(MaybeLiveLocals.iterate_to_fixpoint(tcx, body, None).into_results_cursor(body))
+        } else {
+            None
+        };
+        MaybeTransitiveLiveLocals { always_live, live }
+    }
+
+    fn live_on(&mut self, place: Place<'_>, location: Location) -> bool {
+        let Some(live) = &mut self.live else {
+            return false;
+        };
+        live.seek_before_primary_effect(location);
+        live.get().contains(place.local)
     }
 }
 
-impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
+impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'tcx, '_, 'a> {
     type Domain = DenseBitSet<Local>;
     type Direction = Backward;
 
@@ -256,14 +278,14 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
             | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => None,
         };
-        if let Some(destination) = destination {
-            if !destination.is_indirect()
-                && !state.contains(destination.local)
-                && !self.always_live.contains(destination.local)
-            {
-                // This store is dead
-                return;
-            }
+        if let Some(destination) = destination
+            && !destination.is_indirect()
+            && !state.contains(destination.local)
+            && !self.always_live.contains(destination.local)
+            && !self.live_on(destination, location)
+        {
+            // This store is dead
+            return;
         }
         TransferFunction(state).visit_statement(statement, location);
     }

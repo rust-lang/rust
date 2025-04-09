@@ -55,6 +55,7 @@ pub(super) fn eliminate<'tcx>(
     mut modify_basic_blocks: ModifyBasicBlocks<'tcx, '_>,
     ignore_debuginfo: bool,
     arg_copy_to_move: bool,
+    may_live_in_other_bbs: bool,
 ) {
     let body = modify_basic_blocks.body();
     let borrowed_locals = borrowed_locals(body);
@@ -69,7 +70,7 @@ pub(super) fn eliminate<'tcx>(
         always_live
     };
 
-    let mut live = MaybeTransitiveLiveLocals::new(&always_live)
+    let mut live = MaybeTransitiveLiveLocals::new(&always_live, may_live_in_other_bbs, tcx, body)
         .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
@@ -179,7 +180,7 @@ impl<'tcx> crate::MirPass<'tcx> for DeadStoreElimination {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        eliminate(tcx, ModifyBasicBlocks::Direct(body), false, true);
+        eliminate(tcx, ModifyBasicBlocks::Direct(body), false, true, false);
     }
 
     fn is_required(&self) -> bool {
