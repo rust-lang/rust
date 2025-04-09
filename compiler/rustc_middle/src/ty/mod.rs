@@ -971,17 +971,38 @@ impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 #[derive(HashStable, TypeVisitable, TypeFoldable)]
 pub struct ParamEnvInner<'tcx> {
-    /// Caller bounds are `Obligation`s that the caller must satisfy. This is
-    /// basically the set of bounds on the in-scope type parameters, translated
-    /// into `Obligation`s, and elaborated and normalized.
-    ///
-    /// Use the `caller_bounds()` method to access.
-    caller_bounds: Clauses<'tcx>,
+    /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
+    /// the `Self` type of the trait reference and `A`, `B`, and `C`
+    /// would be the type parameters.
+    trait_clauses: Clauses<'tcx>,
+    /// `where 'a: 'r`
+    region_outlives_clauses: Clauses<'tcx>,
+    /// `where T: 'r`
+    type_outlives_clauses: Clauses<'tcx>,
+    /// `where <T as TraitRef>::Name == X`, approximately.
+    /// See the `ProjectionPredicate` struct for details.
+    projection_clauses: Clauses<'tcx>,
+    /// Ensures that a const generic argument to a parameter `const N: u8`
+    /// is of type `u8`.
+    const_arg_has_type_clauses: Clauses<'tcx>,
+    /// No syntax: `T` well-formed.
+    well_formed_clauses: Clauses<'tcx>,
+    /// Constant initializer must evaluate successfully.
+    const_evaluatable_clauses: Clauses<'tcx>,
+    /// Enforces the constness of the predicate we're calling. Like a projection
+    /// goal from a where clause, it's always going to be paired with a
+    /// corresponding trait clause; this just enforces the *constness* of that
+    /// implementation.
+    host_effect_clauses: Clauses<'tcx>,
 }
 
-/// When interacting with the type system we must provide information about the
-/// environment. `ParamEnv` is the type that represents this information. See the
+/// When interacting with the type system we must provide information about the environment.
+/// `ParamEnv` is the type that represents this information. See the
 /// [dev guide chapter][param_env_guide] for more information.
+///
+/// Contains various kinds of caller bounds - `Obligation`s that the caller must satisfy. This is
+/// basically the set of bounds on the in-scope type parameters, translated into `Obligation`s,
+/// and elaborated and normalized.
 ///
 /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -997,64 +1018,117 @@ impl<'tcx> ParamEnv<'tcx> {
     /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
     #[inline]
     pub fn empty(tcx: TyCtxt<'tcx>) -> Self {
-        tcx.mk_param_env(ParamEnvInner { caller_bounds: ListWithCachedTypeInfo::empty() })
+        tcx.mk_param_env(ParamEnvInner {
+            trait_clauses: ListWithCachedTypeInfo::empty(),
+            region_outlives_clauses: ListWithCachedTypeInfo::empty(),
+            type_outlives_clauses: ListWithCachedTypeInfo::empty(),
+            projection_clauses: ListWithCachedTypeInfo::empty(),
+            const_arg_has_type_clauses: ListWithCachedTypeInfo::empty(),
+            well_formed_clauses: ListWithCachedTypeInfo::empty(),
+            const_evaluatable_clauses: ListWithCachedTypeInfo::empty(),
+            host_effect_clauses: ListWithCachedTypeInfo::empty(),
+        })
     }
 
     #[inline]
     pub fn all_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
-        self.0.0.caller_bounds.iter()
+        let trait_clauses = self.0.0.trait_clauses.iter();
+        let region_outlives_clauses = self.0.0.region_outlives_clauses.iter();
+        let type_outlives_clauses = self.0.0.type_outlives_clauses.iter();
+        let projection_clauses = self.0.0.projection_clauses.iter();
+        let const_arg_has_type_clauses = self.0.0.const_arg_has_type_clauses.iter();
+        let well_formed_clauses = self.0.0.well_formed_clauses.iter();
+        let const_evaluatable_clauses = self.0.0.const_evaluatable_clauses.iter();
+        let host_effect_clauses = self.0.0.host_effect_clauses.iter();
+
+        trait_clauses.chain(region_outlives_clauses.chain(type_outlives_clauses.chain(
+            projection_clauses.chain(const_arg_has_type_clauses.chain(
+                well_formed_clauses.chain(const_evaluatable_clauses.chain(host_effect_clauses)),
+            )),
+        )))
     }
 
     #[inline]
     pub fn trait_clauses(self) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
-        self.0.0.caller_bounds.iter().filter_map(|c| c.as_trait_clause())
+        self.0.0.trait_clauses.iter().filter_map(|c| c.as_trait_clause())
     }
 
     #[inline]
     pub fn region_outlives_clauses(
         self,
     ) -> impl Iterator<Item = PolyRegionOutlivesPredicate<'tcx>> {
-        self.0.0.caller_bounds.iter().filter_map(|c| c.as_region_outlives_clause())
+        self.0.0.region_outlives_clauses.iter().filter_map(|c| c.as_region_outlives_clause())
     }
 
     #[inline]
     pub fn type_outlives_clauses(self) -> impl Iterator<Item = PolyTypeOutlivesPredicate<'tcx>> {
-        self.0.0.caller_bounds.iter().filter_map(|c| c.as_type_outlives_clause())
+        self.0.0.type_outlives_clauses.iter().filter_map(|c| c.as_type_outlives_clause())
     }
 
     #[inline]
     pub fn projection_clauses(self) -> impl Iterator<Item = PolyProjectionPredicate<'tcx>> {
-        self.0.0.caller_bounds.iter().filter_map(|c| c.as_projection_clause())
+        self.0.0.projection_clauses.iter().filter_map(|c| c.as_projection_clause())
     }
 
     #[inline]
     pub fn const_arg_has_type_clauses(
         self,
     ) -> impl Iterator<Item = PolyConstArgHasTypePredicate<'tcx>> {
-        self.0.0.caller_bounds.iter().filter_map(|c| c.as_const_arg_has_type_clause())
+        self.0.0.const_arg_has_type_clauses.iter().filter_map(|c| c.as_const_arg_has_type_clause())
     }
 
     #[inline]
     pub fn well_formed_clauses(self) -> impl Iterator<Item = PolyWellFormedPredicate<'tcx>> {
-        self.0.0.caller_bounds.iter().filter_map(|c| c.as_well_formed_clause())
+        self.0.0.well_formed_clauses.iter().filter_map(|c| c.as_well_formed_clause())
     }
 
     #[inline]
     pub fn const_evaluatable_clauses(
         self,
     ) -> impl Iterator<Item = PolyConstEvaluatablePredicate<'tcx>> {
-        self.0.0.caller_bounds.iter().filter_map(|c| c.as_const_evaluatable_clause())
+        self.0.0.const_evaluatable_clauses.iter().filter_map(|c| c.as_const_evaluatable_clause())
     }
 
     #[inline]
     pub fn host_effect_clauses(self) -> impl Iterator<Item = PolyHostEffectPredicate<'tcx>> {
-        self.0.0.caller_bounds.iter().filter_map(|c| c.as_host_effect_clause())
+        self.0.0.host_effect_clauses.iter().filter_map(|c| c.as_host_effect_clause())
     }
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(tcx: TyCtxt<'tcx>, caller_bounds: Clauses<'tcx>) -> Self {
-        tcx.mk_param_env(ParamEnvInner { caller_bounds })
+    pub fn from_iter(tcx: TyCtxt<'tcx>, clauses: impl Iterator<Item = Clause<'tcx>>) -> Self {
+        let mut trait_clauses = Vec::new();
+        let mut region_outlives_clauses = Vec::new();
+        let mut type_outlives_clauses = Vec::new();
+        let mut projection_clauses = Vec::new();
+        let mut const_arg_has_type_clauses = Vec::new();
+        let mut well_formed_clauses = Vec::new();
+        let mut const_evaluatable_clauses = Vec::new();
+        let mut host_effect_clauses = Vec::new();
+
+        for clause in clauses {
+            match clause.kind().skip_binder() {
+                ClauseKind::Trait(..) => trait_clauses.push(clause),
+                ClauseKind::RegionOutlives(..) => region_outlives_clauses.push(clause),
+                ClauseKind::TypeOutlives(..) => type_outlives_clauses.push(clause),
+                ClauseKind::Projection(..) => projection_clauses.push(clause),
+                ClauseKind::ConstArgHasType(..) => const_arg_has_type_clauses.push(clause),
+                ClauseKind::WellFormed(..) => well_formed_clauses.push(clause),
+                ClauseKind::ConstEvaluatable(..) => const_evaluatable_clauses.push(clause),
+                ClauseKind::HostEffect(..) => host_effect_clauses.push(clause),
+            }
+        }
+
+        tcx.mk_param_env(ParamEnvInner {
+            trait_clauses: tcx.mk_clauses(&trait_clauses),
+            region_outlives_clauses: tcx.mk_clauses(&region_outlives_clauses),
+            type_outlives_clauses: tcx.mk_clauses(&type_outlives_clauses),
+            projection_clauses: tcx.mk_clauses(&projection_clauses),
+            const_arg_has_type_clauses: tcx.mk_clauses(&const_arg_has_type_clauses),
+            well_formed_clauses: tcx.mk_clauses(&well_formed_clauses),
+            const_evaluatable_clauses: tcx.mk_clauses(&const_evaluatable_clauses),
+            host_effect_clauses: tcx.mk_clauses(&host_effect_clauses),
+        })
     }
 
     /// Creates a pair of param-env and value for use in queries.
@@ -1065,35 +1139,35 @@ impl<'tcx> ParamEnv<'tcx> {
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn trait_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
-        self.all_clauses().filter(|c| c.as_trait_clause().is_some())
+        self.0.0.trait_clauses.iter()
     }
 
     fn region_outlives_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
-        self.all_clauses().filter(|c| c.as_region_outlives_clause().is_some())
+        self.0.0.region_outlives_clauses.iter()
     }
 
     fn type_outlives_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
-        self.all_clauses().filter(|c| c.as_type_outlives_clause().is_some())
+        self.0.0.type_outlives_clauses.iter()
     }
 
     fn projection_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
-        self.all_clauses().filter(|c| c.as_projection_clause().is_some())
+        self.0.0.projection_clauses.iter()
     }
 
     fn const_arg_has_type_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
-        self.all_clauses().filter(|c| c.as_const_arg_has_type_clause().is_some())
+        self.0.0.const_arg_has_type_clauses.iter()
     }
 
     fn well_formed_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
-        self.all_clauses().filter(|c| c.as_well_formed_clause().is_some())
+        self.0.0.well_formed_clauses.iter()
     }
 
     fn const_evaluatable_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
-        self.all_clauses().filter(|c| c.as_const_evaluatable_clause().is_some())
+        self.0.0.const_evaluatable_clauses.iter()
     }
 
     fn host_effect_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
-        self.all_clauses().filter(|c| c.as_host_effect_clause().is_some())
+        self.0.0.host_effect_clauses.iter()
     }
 }
 

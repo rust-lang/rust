@@ -233,7 +233,7 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let param_env = ty::ParamEnv::new(tcx, tcx.mk_clauses(&hybrid_preds));
+    let param_env = ty::ParamEnv::from_iter(tcx, hybrid_preds.iter().copied());
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     debug!(?param_env);
 
@@ -523,7 +523,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         .into_iter()
         .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_to_impl_args))
         .map(|(clause, _)| clause);
-    let param_env = ty::ParamEnv::new(tcx, tcx.mk_clauses_from_iter(hybrid_preds));
+    let param_env = ty::ParamEnv::from_iter(tcx, hybrid_preds);
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         param_env,
@@ -1837,7 +1837,7 @@ fn compare_const_predicate_entailment<'tcx>(
             .map(|(predicate, _)| predicate),
     );
 
-    let param_env = ty::ParamEnv::new(tcx, tcx.mk_clauses(&hybrid_preds));
+    let param_env = ty::ParamEnv::from_iter(tcx, hybrid_preds.iter().copied());
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         param_env,
@@ -1988,7 +1988,7 @@ fn compare_type_predicate_entailment<'tcx>(
         );
     }
 
-    let param_env = ty::ParamEnv::new(tcx, tcx.mk_clauses(&hybrid_preds));
+    let param_env = ty::ParamEnv::from_iter(tcx, hybrid_preds.iter().copied());
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     debug!(?param_env);
 
@@ -2336,7 +2336,7 @@ fn param_env_with_gat_bounds<'tcx>(
         };
     }
 
-    ty::ParamEnv::new(tcx, tcx.mk_clauses(&predicates))
+    ty::ParamEnv::from_iter(tcx, predicates.iter().copied())
 }
 
 /// Manually check here that `async fn foo()` wasn't matched against `fn foo()`,
