@@ -929,7 +929,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     None => false,
                 }
             }
-
             VerifyBound::OutlivedBy(r) => {
                 let a = match *min {
                     ty::ReVar(rid) => var_values.values[rid],
@@ -941,7 +940,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 };
                 self.sub_region_values(a, b)
             }
-
             VerifyBound::IsEmpty => match *min {
                 ty::ReVar(rid) => match var_values.values[rid] {
                     VarValue::ErrorValue => false,
@@ -950,13 +948,14 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 },
                 _ => false,
             },
-
             VerifyBound::AnyBound(bs) => {
                 bs.iter().any(|b| self.bound_is_met(b, var_values, generic_ty, min))
             }
-
             VerifyBound::AllBounds(bs) => {
                 bs.iter().all(|b| self.bound_is_met(b, var_values, generic_ty, min))
+            }
+            VerifyBound::OutlivesStatic(region) => {
+                bug!("Saw bound `{region:?}: 'static` outside of region inference!")
             }
         }
     }

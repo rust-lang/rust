@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-use either::Either;
 use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -34,7 +33,7 @@ use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};
 use crate::dataflow::BorrowIndex;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
-use crate::eliminate_placeholders::{LoweredConstraints, LoweredTypeTest, RewrittenVerifyBound};
+use crate::eliminate_placeholders::LoweredConstraints;
 use crate::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
 use crate::polonius::LiveLoans;
 use crate::polonius::legacy::PoloniusOutput;
@@ -147,7 +146,7 @@ pub struct RegionInferenceContext<'tcx> {
     scc_values: RegionValues<ConstraintSccIndex>,
 
     /// Type constraints that we check after solving.
-    type_tests: Vec<LoweredTypeTest<'tcx>>,
+    type_tests: Vec<TypeTest<'tcx>>,
 
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
@@ -210,6 +209,29 @@ pub(crate) enum Cause {
     DropVar(Local, Location),
 }
 
+/// Where a type test came from.
+#[derive(Clone, Debug)]
+pub(crate) enum TypeTestOrigin<'tcx> {
+    /// This type test was generated from user-written code at this span.
+    Code(Span),
+    /// This type test was rewritten from this original type test.
+    Rewritten(Box<TypeTest<'tcx>>),
+}
+
+impl<'tcx> TypeTestOrigin<'tcx> {
+    fn span(&self) -> Span {
+        match self {
+            TypeTestOrigin::Code(span) => *span,
+            TypeTestOrigin::Rewritten(type_test) => match type_test.source {
+                TypeTestOrigin::Code(span) => span,
+                TypeTestOrigin::Rewritten(_) => {
+                    bug!("Type tests should only have been rewritten once!")
+                }
+            },
+        }
+    }
+}
+
 /// A "type test" corresponds to an outlives constraint between a type
 /// and a lifetime, like `T: 'x` or `<T as Foo>::Bar: 'x`. They are
 /// translated from the `Verify` region constraints in the ordinary
@@ -250,8 +272,8 @@ pub(crate) struct TypeTest<'tcx> {
     /// The region `'x` that the type must outlive.
     pub lower_bound: RegionVid,
 
-    /// The span to blame.
-    pub span: Span,
+    /// The reason this type test exists.
+    pub source: TypeTestOrigin<'tcx>,
 
     /// A test which, if met by the region `'x`, proves that this type
     /// constraint is satisfied.
@@ -700,51 +722,30 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn handle_type_test(
         &self,
         infcx: &InferCtxt<'tcx>,
-        generic_kind: &GenericKind<'tcx>,
-        lower_bound: RegionVid,
-        verify_bound: Either<&VerifyBound<'tcx>, &RewrittenVerifyBound<'tcx>>,
-        blame_span: Span,
+        tt: &TypeTest<'tcx>,
         propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
     ) -> Option<RegionErrorKind<'tcx>> {
-        let bound_failure = verify_bound.either(
-            |verify_bound| {
-                if self.eval_verify_bound(
-                    infcx,
-                    generic_kind.to_ty(infcx.tcx),
-                    lower_bound,
-                    verify_bound,
-                ) {
-                    None
+        let tentative_error =
+            self.eval_verify_bound(infcx, &tt, &tt.verify_bound).map(|failing_bound| {
+                let rewritten_to_fail = if let VerifyBound::AnyBound(v) = failing_bound {
+                    v.is_empty() && matches!(tt.source, TypeTestOrigin::Rewritten(..))
                 } else {
-                    Some(RegionErrorKind::TypeTestError {
-                        lower_bound,
-                        span: blame_span.clone(),
-                        generic_kind: *generic_kind,
-                        failed_due_to_placeholders: false,
-                    })
-                }
-            },
-            |rewritten| {
-                self.eval_rewritten_verify_bound(
-                    infcx,
-                    generic_kind,
-                    lower_bound,
-                    rewritten,
-                    blame_span,
-                )
-            },
-        );
+                    false
+                };
+                let failed_due_to_placeholders =
+                    matches!(failing_bound, VerifyBound::OutlivesStatic(_)) || rewritten_to_fail;
 
-        bound_failure.and_then(|error| {
+                RegionErrorKind::TypeTestError {
+                    lower_bound: tt.lower_bound,
+                    span: tt.source.span(),
+                    generic_kind: tt.generic_kind,
+                    failed_due_to_placeholders,
+                }
+            });
+
+        tentative_error.and_then(|error| {
             if let Some(propagated_outlives_reqs) = propagated_outlives_requirements {
-                self.try_promote_type_test(
-                    infcx,
-                    generic_kind,
-                    lower_bound,
-                    blame_span,
-                    propagated_outlives_reqs,
-                    error,
-                )
+                self.try_promote_type_test(infcx, &tt, propagated_outlives_reqs, error)
             } else {
                 Some(error)
             }
@@ -771,24 +772,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let mut deduplicate_errors = FxIndexSet::default();
 
-        for error in self.type_tests.iter().filter_map(|ltt| match ltt {
-            LoweredTypeTest::Untouched(tt) => self.handle_type_test(
-                infcx,
-                &tt.generic_kind,
-                tt.lower_bound,
-                Either::Left(&tt.verify_bound),
-                tt.span,
-                propagated_outlives_requirements.as_mut(),
-            ),
-            LoweredTypeTest::Rewritten { rewritten_bound, generic_kind, lower_bound, span } => self
-                .handle_type_test(
-                    infcx,
-                    generic_kind,
-                    *lower_bound,
-                    Either::Right(rewritten_bound),
-                    *span,
-                    propagated_outlives_requirements.as_mut(),
-                ),
+        for error in self.type_tests.iter().filter_map(|tt| {
+            self.handle_type_test(infcx, tt, propagated_outlives_requirements.as_mut())
         }) {
             match error {
                 e @ RegionErrorKind::TypeTestError {
@@ -843,22 +828,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn try_promote_type_test(
         &self,
         infcx: &InferCtxt<'tcx>,
-        generic_kind: &GenericKind<'tcx>,
-        lower_bound: RegionVid,
-        blame_span: Span,
+        type_test: &TypeTest<'tcx>,
         propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'tcx>>,
         tentative_error: RegionErrorKind<'tcx>,
     ) -> Option<RegionErrorKind<'tcx>> {
         let tcx = infcx.tcx;
 
-        let generic_ty = generic_kind.to_ty(tcx);
+        let generic_ty = type_test.generic_kind.to_ty(tcx);
         let Some(subject) = self.try_promote_type_test_subject(infcx, generic_ty) else {
             return Some(tentative_error);
         };
 
         debug!("subject = {:?}", subject);
 
-        let failed_due_to_placeholders = matches!(tentative_error, RegionErrorKind::TypeTestError { failed_due_to_placeholders, .. } if failed_due_to_placeholders);
+        let RegionErrorKind::TypeTestError { failed_due_to_placeholders, span, .. } =
+            tentative_error
+        else {
+            bug!("We should only see a TypeTestError from type test evaluation!");
+        };
 
         // If the type test required that `T: 'a` where `'a: 'static`,
         // that effectively requires `T: 'static`, so we propagate that requirement.
@@ -871,7 +858,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                 subject,
                 outlived_free_region: static_r,
-                blame_span,
+                blame_span: span,
                 category: ConstraintCategory::Boring,
             });
 
@@ -880,6 +867,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return None;
         };
 
+        let lower_bound = type_test.lower_bound;
         let r_scc = self.constraint_sccs.scc(lower_bound);
 
         debug!(?lower_bound, ?r_scc);
@@ -905,7 +893,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let requirement = ClosureOutlivesRequirement {
                     subject,
                     outlived_free_region: upper_bound,
-                    blame_span,
+                    blame_span: span,
                     category: ConstraintCategory::Boring,
                 };
                 debug!(?requirement, "adding closure requirement");
@@ -1028,121 +1016,65 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         lub
     }
 
-    #[instrument(level = "debug", skip(self, infcx), ret)]
-    fn eval_rewritten_verify_bound(
-        &self,
-        infcx: &InferCtxt<'tcx>,
-        generic_kind: &GenericKind<'tcx>,
-        lower_bound: RegionVid,
-        verify_bound: &RewrittenVerifyBound<'tcx>,
-        span: Span,
-    ) -> Option<RegionErrorKind<'tcx>> {
-        let bound_fails_due_to_static = |due_to_rewrite| RegionErrorKind::TypeTestError {
-            lower_bound,
-            span,
-            generic_kind: *generic_kind,
-            failed_due_to_placeholders: due_to_rewrite,
-        };
-
-        let bound_failure =
-            |verify_bound: &Either<VerifyBound<'tcx>, RewrittenVerifyBound<'tcx>>| {
-                verify_bound.as_ref().either(
-                    |verify_bound| {
-                        let bound_fails = !self.eval_verify_bound(
-                            infcx,
-                            generic_kind.to_ty(infcx.tcx),
-                            lower_bound,
-                            verify_bound,
-                        );
-                        bound_fails.then(|| bound_fails_due_to_static(false))
-                    },
-                    |rewritten| {
-                        self.eval_rewritten_verify_bound(
-                            infcx,
-                            generic_kind,
-                            lower_bound,
-                            rewritten,
-                            span,
-                        )
-                    },
-                )
-            };
-
-        match verify_bound {
-            // Rewritten higher-kinded concerns caused this bound to never be satisfied.
-            RewrittenVerifyBound::Unsatisfied => Some(bound_fails_due_to_static(true)),
-
-            RewrittenVerifyBound::OutlivesStatic(region) => {
-                let does_not_outlive_static = !self
-                    .eval_outlives(self.to_region_vid(*region), self.universal_regions().fr_static);
-                does_not_outlive_static.then(|| bound_fails_due_to_static(true))
-            }
-
-            RewrittenVerifyBound::AllBounds(verify_bounds) => {
-                verify_bounds.iter().find_map(bound_failure)
-            }
-
-            RewrittenVerifyBound::AnyBound(verify_bounds) => {
-                let mut cause_of_failure_is_hrtb = false;
-                for bound in verify_bounds.iter() {
-                    match bound_failure(bound) {
-                        Some(RegionErrorKind::TypeTestError {
-                            failed_due_to_placeholders, ..
-                        }) => {
-                            // SUBTLE DETAIL:
-                            // We attribute the failure to an outlives-static rewrite
-                            // from HRTBs as soon as one outlives-static causes a failure.
-                            // Of course, the original bound could still have failed,
-                            // but adding the toughest constraint possible can't have
-                            // helped, so we still blame ourselves.
-                            // This behaviour should, for the record, be equivalent
-                            // to what was here before The Great Universe Elimination
-                            // Refactor.
-                            // As an added bonus, in the case of an empty Any bound,
-                            // we get our desired behaviour: an error not attributed
-                            // to an extra T: 'static.
-                            cause_of_failure_is_hrtb |= failed_due_to_placeholders;
-                        }
-                        Some(_) => unreachable!("We should only see type-test errors!"),
-                        None => return None, // It's enough to have one bound succeed
-                    }
-                } // If we reach here, no bounds succeeded.
-                Some(bound_fails_due_to_static(cause_of_failure_is_hrtb))
-            }
-        }
-    }
-
     /// Tests if `test` is true when applied to `lower_bound` at
-    /// `point`.
-    fn eval_verify_bound(
+    /// `point`. If it isn't, return a failing `VerifyBound`.
+    fn eval_verify_bound<'vb>(
         &self,
         infcx: &InferCtxt<'tcx>,
-        generic_ty: Ty<'tcx>,
-        lower_bound: RegionVid,
-        verify_bound: &VerifyBound<'tcx>,
-    ) -> bool {
+        tt: &TypeTest<'tcx>,
+        verify_bound: &'vb VerifyBound<'tcx>,
+    ) -> Option<&'vb VerifyBound<'tcx>> {
+        let generic_ty = tt.generic_kind.to_ty(infcx.tcx);
+        let lower_bound = tt.lower_bound;
+
         match verify_bound {
             VerifyBound::IfEq(verify_if_eq_b) => {
-                self.eval_if_eq(infcx, generic_ty, lower_bound, *verify_if_eq_b)
+                (!self.eval_if_eq(infcx, generic_ty, lower_bound, *verify_if_eq_b))
+                    .then(|| verify_bound)
             }
-
             VerifyBound::IsEmpty => {
                 let lower_bound_scc = self.constraint_sccs.scc(lower_bound);
-                self.scc_values.elements_contained_in(lower_bound_scc).next().is_none()
+                self.scc_values
+                    .elements_contained_in(lower_bound_scc)
+                    .next()
+                    .is_some()
+                    .then(|| verify_bound)
             }
-
             VerifyBound::OutlivedBy(r) => {
                 let r_vid = self.to_region_vid(*r);
-                self.eval_outlives(r_vid, lower_bound)
+                (!self.eval_outlives(r_vid, lower_bound)).then(|| verify_bound)
             }
-
-            VerifyBound::AnyBound(verify_bounds) => verify_bounds.iter().any(|verify_bound| {
-                self.eval_verify_bound(infcx, generic_ty, lower_bound, verify_bound)
-            }),
-
-            VerifyBound::AllBounds(verify_bounds) => verify_bounds.iter().all(|verify_bound| {
-                self.eval_verify_bound(infcx, generic_ty, lower_bound, verify_bound)
-            }),
+            VerifyBound::AnyBound(verify_bounds) => {
+                let mut best_culprit: Option<&VerifyBound<'_>> = None;
+                for bound in verify_bounds.iter() {
+                    if let Some(failing_bound) = self.eval_verify_bound(infcx, tt, bound) {
+                        // SUBTLE DETAIL:
+                        // We attribute the failure to an outlives-static rewrite
+                        // from HRTBs as soon as one outlives-static fails.
+                        // Of course, the original bound could still have failed,
+                        // but adding the toughest constraint possible can't have
+                        // helped, so we still blame that.
+                        // This behaviour should, for the record, be equivalent
+                        // to what was here before The Great Universe Elimination
+                        // Refactor.
+                        if matches!(failing_bound, VerifyBound::OutlivesStatic(_)) {
+                            best_culprit = Some(bound)
+                        }
+                    } else {
+                        return None; // It's enough for one bound to succeed
+                    }
+                }
+                // If we got here no bound held. Blame our best candidate or,
+                // if we were empty, ourselves. Note that we can still have
+                // been rewritten into an empty any bound!
+                best_culprit.or(Some(verify_bound))
+            }
+            VerifyBound::AllBounds(verify_bounds) => verify_bounds
+                .iter()
+                .find_map(|verify_bound| self.eval_verify_bound(infcx, tt, verify_bound)),
+            VerifyBound::OutlivesStatic(region) => (!self
+                .eval_outlives(self.to_region_vid(*region), self.universal_regions().fr_static))
+            .then(|| verify_bound),
         }
     }
 
