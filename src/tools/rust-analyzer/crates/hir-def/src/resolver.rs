@@ -501,16 +501,16 @@ impl Resolver {
     }
 
     pub fn resolve_lifetime(&self, lifetime: &LifetimeRef) -> Option<LifetimeNs> {
-        if lifetime.name == sym::tick_static.clone() {
-            return Some(LifetimeNs::Static);
+        match lifetime {
+            LifetimeRef::Static => Some(LifetimeNs::Static),
+            LifetimeRef::Named(name) => self.scopes().find_map(|scope| match scope {
+                Scope::GenericParams { def, params } => {
+                    params.find_lifetime_by_name(name, *def).map(LifetimeNs::LifetimeParam)
+                }
+                _ => None,
+            }),
+            LifetimeRef::Placeholder | LifetimeRef::Error => None,
         }
-
-        self.scopes().find_map(|scope| match scope {
-            Scope::GenericParams { def, params } => {
-                params.find_lifetime_by_name(&lifetime.name, *def).map(LifetimeNs::LifetimeParam)
-            }
-            _ => None,
-        })
     }
 
     /// Returns a set of names available in the current scope.

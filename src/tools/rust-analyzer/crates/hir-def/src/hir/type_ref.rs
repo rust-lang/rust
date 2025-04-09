@@ -6,7 +6,6 @@ use std::fmt::Write;
 use hir_expand::name::Name;
 use intern::Symbol;
 use la_arena::Idx;
-use syntax::ast;
 use thin_vec::ThinVec;
 
 use crate::{
@@ -145,18 +144,11 @@ const _: () = assert!(size_of::<TypeRef>() == 16);
 pub type TypeRefId = Idx<TypeRef>;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct LifetimeRef {
-    pub name: Name,
-}
-
-impl LifetimeRef {
-    pub(crate) fn new(lifetime: &ast::Lifetime) -> Self {
-        LifetimeRef { name: Name::new_lifetime(lifetime) }
-    }
-
-    pub fn missing() -> LifetimeRef {
-        LifetimeRef { name: Name::missing() }
-    }
+pub enum LifetimeRef {
+    Named(Name),
+    Static,
+    Placeholder,
+    Error,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

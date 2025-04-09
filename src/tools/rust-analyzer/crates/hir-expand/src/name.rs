@@ -114,11 +114,10 @@ impl Name {
         Name { symbol, ctx: () }
     }
 
-    pub fn new_lifetime(lt: &ast::Lifetime) -> Name {
-        let text = lt.text();
-        match text.strip_prefix("'r#") {
-            Some(text) => Self::new_text(&format_smolstr!("'{text}")),
-            None => Self::new_text(text.as_str()),
+    pub fn new_lifetime(lt: &str) -> Name {
+        match lt.strip_prefix("'r#") {
+            Some(lt) => Self::new_text(&format_smolstr!("'{lt}")),
+            None => Self::new_text(lt),
         }
     }
 

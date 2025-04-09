@@ -24,7 +24,9 @@ use hir_def::{
     lang_item::{LangItem, LangItemTarget},
     nameres::DefMap,
     signatures::VariantFields,
-    type_ref::{ConstRef, TraitBoundModifier, TypeBound, TypeRef, TypeRefId, UseArgRef},
+    type_ref::{
+        ConstRef, LifetimeRef, TraitBoundModifier, TypeBound, TypeRef, TypeRefId, UseArgRef,
+    },
     visibility::Visibility,
 };
 use hir_expand::{mod_path::PathKind, name::Name};
@@ -2100,7 +2102,20 @@ impl<T: HirDisplayWithExpressionStore> HirDisplay for ExpressionStoreAdapter<'_,
         T::hir_fmt(&self.0, f, self.1)
     }
 }
-
+impl HirDisplayWithExpressionStore for LifetimeRef {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_>,
+        _store: &ExpressionStore,
+    ) -> Result<(), HirDisplayError> {
+        match self {
+            LifetimeRef::Named(name) => write!(f, "{}", name.display(f.db.upcast(), f.edition())),
+            LifetimeRef::Static => write!(f, "'static"),
+            LifetimeRef::Placeholder => write!(f, "'_"),
+            LifetimeRef::Error => write!(f, "'{{error}}"),
+        }
+    }
+}
 impl HirDisplayWithExpressionStore for TypeRefId {
     fn hir_fmt(
         &self,
@@ -2161,7 +2176,8 @@ impl HirDisplayWithExpressionStore for TypeRefId {
                 };
                 write!(f, "&")?;
                 if let Some(lifetime) = &ref_.lifetime {
-                    write!(f, "{} ", lifetime.name.display(f.db.upcast(), f.edition()))?;
+                    lifetime.hir_fmt(f, store)?;
+                    write!(f, " ")?;
                 }
                 write!(f, "{mutability}")?;
                 ref_.ty.hir_fmt(f, store)?;
@@ -2255,9 +2271,7 @@ impl HirDisplayWithExpressionStore for TypeBound {
                 }
                 store[path].hir_fmt(f, store)
             }
-            TypeBound::Lifetime(lifetime) => {
-                write!(f, "{}", lifetime.name.display(f.db.upcast(), f.edition()))
-            }
+            TypeBound::Lifetime(lifetime) => lifetime.hir_fmt(f, store),
             TypeBound::ForLifetime(lifetimes, path) => {
                 let edition = f.edition();
                 write!(
@@ -2269,16 +2283,17 @@ impl HirDisplayWithExpressionStore for TypeBound {
             }
             TypeBound::Use(args) => {
                 let edition = f.edition();
-                write!(
-                    f,
-                    "use<{}> ",
-                    args.iter()
-                        .map(|it| match it {
-                            UseArgRef::Lifetime(lt) => lt.name.display(f.db.upcast(), edition),
-                            UseArgRef::Name(n) => n.display(f.db.upcast(), edition),
-                        })
-                        .format(", ")
-                )
+                let last = args.len().saturating_sub(1);
+                for (idx, arg) in args.iter().enumerate() {
+                    match arg {
+                        UseArgRef::Lifetime(lt) => lt.hir_fmt(f, store)?,
+                        UseArgRef::Name(n) => write!(f, "{}", n.display(f.db.upcast(), edition))?,
+                    }
+                    if idx != last {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, "> ")
             }
             TypeBound::Error => write!(f, "{{error}}"),
         }
@@ -2449,9 +2464,7 @@ impl HirDisplayWithExpressionStore for hir_def::expr_store::path::GenericArg {
                 // write!(f, "{}", c.display(f.db.upcast(), f.edition()))
                 write!(f, "<expr>")
             }
-            hir_def::expr_store::path::GenericArg::Lifetime(lifetime) => {
-                write!(f, "{}", lifetime.name.display(f.db.upcast(), f.edition()))
-            }
+            hir_def::expr_store::path::GenericArg::Lifetime(lifetime) => lifetime.hir_fmt(f, store),
         }
     }
 }
