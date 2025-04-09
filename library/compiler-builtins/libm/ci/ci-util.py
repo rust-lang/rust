@@ -25,7 +25,7 @@ USAGE = cleandoc(
     COMMAND:
         generate-matrix
             Calculate a matrix of which functions had source change, print that as
-             a JSON object.
+            a JSON object.
 
         locate-baseline [--download] [--extract]
             Locate the most recent benchmark baseline available in CI and, if flags

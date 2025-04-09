@@ -10,7 +10,6 @@ readme = "README.md"
 repository = "https://github.com/rust-lang/libm"
 version = "0.2.11"
 edition = "2021"
-exclude = ["/ci/", "/.github/workflows/"]
 rust-version = "1.63"
 
 [features]
@@ -40,24 +39,6 @@ unstable-float = []
 # hard float operations.
 force-soft-floats = []
 
-[workspace]
-resolver = "2"
-members = [
-  "crates/libm-macros",
-  "crates/libm-test",
-  "crates/musl-math-sys",
-  "crates/util",
-]
-default-members = [
-  ".",
-  "crates/libm-macros",
-  "crates/libm-test",
-]
-exclude = [
-  # Requires `panic = abort` so can't be a member of the workspace
-  "crates/compiler-builtins-smoke-test",
-]
-
 [dev-dependencies]
 no-panic = "0.1.35"
 
@@ -66,22 +47,3 @@ unexpected_cfgs = { level = "warn", check-cfg = [
   # compiler-builtins sets this feature, but we use it in `libm`
   'cfg(feature, values("compiler-builtins"))',
 ] }
-
-# The default release profile is unchanged.
-
-# Release mode with debug assertions
-[profile.release-checked]
-inherits = "release"
-debug-assertions = true
-overflow-checks = true
-
-# Release with maximum optimizations, which is very slow to build. This is also
-# what is needed to check `no-panic`.
-[profile.release-opt]
-inherits = "release"
-codegen-units = 1
-lto = "fat"
-
-[profile.bench]
-# Required for iai-callgrind
-debug = true
