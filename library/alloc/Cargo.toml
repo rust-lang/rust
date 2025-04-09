@@ -16,7 +16,7 @@ bench = false
 
 [dependencies]
 core = { path = "../core", public = true }
-compiler_builtins = { version = "=0.1.152", features = ['rustc-dep-of-std'] }
+compiler_builtins = { version = "=0.1.153", features = ['rustc-dep-of-std'] }
 
 [features]
 compiler-builtins-mem = ['compiler_builtins/mem']
