@@ -69,8 +69,7 @@ impl InferenceContext<'_> {
                 }
             }
             Expr::Const(id) => {
-                let loc = self.db.lookup_intern_anonymous_const(*id);
-                self.infer_mut_expr(loc.root, Mutability::Not);
+                self.infer_mut_expr(*id, Mutability::Not);
             }
             Expr::Let { pat, expr } => self.infer_mut_expr(*expr, self.pat_bound_mutability(*pat)),
             Expr::Block { id: _, statements, tail, label: _ }

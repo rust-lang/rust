@@ -124,11 +124,11 @@ pub(crate) fn find_all_refs(
     }
 }
 
-pub(crate) fn find_defs<'a>(
-    sema: &'a Semantics<'_, RootDatabase>,
+pub(crate) fn find_defs(
+    sema: &Semantics<'_, RootDatabase>,
     syntax: &SyntaxNode,
     offset: TextSize,
-) -> Option<impl IntoIterator<Item = Definition> + 'a> {
+) -> Option<Vec<Definition>> {
     let token = syntax.token_at_offset(offset).find(|t| {
         matches!(
             t.kind(),

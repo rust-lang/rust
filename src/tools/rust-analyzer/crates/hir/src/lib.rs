@@ -44,21 +44,21 @@ use either::Either;
 use hir_def::{
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, CallableDefId, ConstId, ConstParamId,
     CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId,
-    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, InTypeConstId, ItemContainerId,
-    LifetimeParamId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
-    SyntheticSyntax, TraitAliasId, TupleId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
-    data::{TraitFlags, adt::VariantData},
-    expr_store::ExpressionStoreDiagnostics,
-    generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
-    hir::{BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, LabelId, Pat},
-    item_tree::{AttrOwner, FieldParent, ItemTreeFieldId, ItemTreeNode},
+    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
+    LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, SyntheticSyntax,
+    TraitAliasId, TupleId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
+    expr_store::{ExpressionStoreDiagnostics, ExpressionStoreSourceMap},
+    hir::{
+        BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, LabelId, Pat,
+        generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
+    },
+    item_tree::{AttrOwner, FieldParent, ImportAlias, ItemTreeFieldId, ItemTreeNode},
     lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
     nameres::{self, diagnostics::DefDiagnostic},
-    path::ImportAlias,
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
-    type_ref::TypesSourceMap,
+    signatures::{ImplFlags, StaticFlags, TraitFlags, VariantFields},
 };
 use hir_expand::{
     AstId, MacroCallKind, RenderedExpandError, ValueResult, attrs::collect_attrs,
@@ -86,7 +86,7 @@ use span::{Edition, EditionedFileId, FileId, MacroCallId};
 use stdx::{format_to, impl_from, never};
 use syntax::{
     AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, T, TextRange, ToSmolStr,
-    ast::{self, HasAttrs as _, HasGenericParams, HasName},
+    ast::{self, HasAttrs as _, HasName},
     format_smolstr,
 };
 use triomphe::{Arc, ThinArc};
@@ -117,12 +117,10 @@ pub use {
         Complete,
         ImportPathConfig,
         attr::{AttrSourceMap, Attrs, AttrsWithOwner},
-        data::adt::StructKind,
         find_path::PrefixKind,
         import_map,
         lang_item::LangItem,
         nameres::{DefMap, ModuleSource},
-        path::{ModPath, PathKind},
         per_ns::Namespace,
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
@@ -141,7 +139,7 @@ pub use {
         },
         hygiene::{SyntaxContextExt, marks_rev},
         inert_attr_macro::AttributeTemplate,
-        mod_path::tool_path,
+        mod_path::{ModPath, PathKind, tool_path},
         name::Name,
         prettify_macro_expansion,
         proc_macro::{ProcMacros, ProcMacrosBuilder},
@@ -166,7 +164,7 @@ pub use {
 // should remain private to hir internals.
 #[allow(unused)]
 use {
-    hir_def::path::Path,
+    hir_def::expr_store::path::Path,
     hir_expand::{
         name::AsName,
         span_map::{ExpansionSpanMap, RealSpanMap, SpanMap, SpanMapRef},
@@ -608,7 +606,7 @@ impl Module {
     ) -> Option<impl Iterator<Item = ItemInNs>> {
         let items = self.id.resolver(db.upcast()).resolve_module_path_in_items(
             db.upcast(),
-            &ModPath::from_segments(hir_def::path::PathKind::Plain, segments),
+            &ModPath::from_segments(PathKind::Plain, segments),
         );
         Some(items.iter_items().map(|(item, _)| item.into()))
     }
@@ -664,46 +662,59 @@ impl Module {
                 ModuleDef::Adt(adt) => {
                     match adt {
                         Adt::Struct(s) => {
-                            let tree_id = s.id.lookup(db.upcast()).id;
-                            let tree_source_maps = tree_id.item_tree_with_source_map(db.upcast()).1;
+                            let source_map = db.struct_signature_with_source_map(s.id).1;
+                            expr_store_diagnostics(db, acc, &source_map);
+                            let source_map = db.variant_fields_with_source_map(s.id.into()).1;
+                            expr_store_diagnostics(db, acc, &source_map);
                             push_ty_diagnostics(
                                 db,
                                 acc,
                                 db.field_types_with_diagnostics(s.id.into()).1,
-                                tree_source_maps.strukt(tree_id.value).item(),
+                                &source_map,
                             );
-                            for diag in db.variant_data_with_diagnostics(s.id.into()).1.iter() {
-                                emit_def_diagnostic(db, acc, diag, edition);
-                            }
                         }
                         Adt::Union(u) => {
-                            let tree_id = u.id.lookup(db.upcast()).id;
-                            let tree_source_maps = tree_id.item_tree_with_source_map(db.upcast()).1;
+                            let source_map = db.union_signature_with_source_map(u.id).1;
+                            expr_store_diagnostics(db, acc, &source_map);
+                            let source_map = db.variant_fields_with_source_map(u.id.into()).1;
+                            expr_store_diagnostics(db, acc, &source_map);
                             push_ty_diagnostics(
                                 db,
                                 acc,
                                 db.field_types_with_diagnostics(u.id.into()).1,
-                                tree_source_maps.union(tree_id.value).item(),
+                                &source_map,
                             );
-                            for diag in db.variant_data_with_diagnostics(u.id.into()).1.iter() {
-                                emit_def_diagnostic(db, acc, diag, edition);
-                            }
                         }
                         Adt::Enum(e) => {
-                            for v in e.variants(db) {
-                                let tree_id = v.id.lookup(db.upcast()).id;
-                                let tree_source_maps =
-                                    tree_id.item_tree_with_source_map(db.upcast()).1;
+                            let source_map = db.enum_signature_with_source_map(e.id).1;
+                            expr_store_diagnostics(db, acc, &source_map);
+                            let (variants, diagnostics) = db.enum_variants_with_diagnostics(e.id);
+                            let file = e.id.lookup(db.upcast()).id.file_id();
+                            let ast_id_map = db.ast_id_map(file);
+                            if let Some(diagnostics) = &diagnostics {
+                                for diag in diagnostics.iter() {
+                                    acc.push(
+                                        InactiveCode {
+                                            node: InFile::new(
+                                                file,
+                                                ast_id_map.get(diag.ast_id).syntax_node_ptr(),
+                                            ),
+                                            cfg: diag.cfg.clone(),
+                                            opts: diag.opts.clone(),
+                                        }
+                                        .into(),
+                                    );
+                                }
+                            }
+                            for &(v, _) in &variants.variants {
+                                let source_map = db.variant_fields_with_source_map(v.into()).1;
                                 push_ty_diagnostics(
                                     db,
                                     acc,
-                                    db.field_types_with_diagnostics(v.id.into()).1,
-                                    tree_source_maps.variant(tree_id.value),
+                                    db.field_types_with_diagnostics(v.into()).1,
+                                    &source_map,
                                 );
-                                acc.extend(ModuleDef::Variant(v).diagnostics(db, style_lints));
-                                for diag in db.variant_data_with_diagnostics(v.id.into()).1.iter() {
-                                    emit_def_diagnostic(db, acc, diag, edition);
-                                }
+                                expr_store_diagnostics(db, acc, &source_map);
                             }
                         }
                     }
@@ -711,13 +722,13 @@ impl Module {
                 }
                 ModuleDef::Macro(m) => emit_macro_def_diagnostics(db, acc, m),
                 ModuleDef::TypeAlias(type_alias) => {
-                    let tree_id = type_alias.id.lookup(db.upcast()).id;
-                    let tree_source_maps = tree_id.item_tree_with_source_map(db.upcast()).1;
+                    let source_map = db.type_alias_signature_with_source_map(type_alias.id).1;
+                    expr_store_diagnostics(db, acc, &source_map);
                     push_ty_diagnostics(
                         db,
                         acc,
                         db.type_for_type_alias_with_diagnostics(type_alias.id).1,
-                        tree_source_maps.type_alias(tree_id.value).item(),
+                        &source_map,
                     );
                     acc.extend(def.diagnostics(db, style_lints));
                 }
@@ -733,8 +744,10 @@ impl Module {
             GenericDef::Impl(impl_def).diagnostics(db, acc);
 
             let loc = impl_def.id.lookup(db.upcast());
-            let (tree, tree_source_maps) = loc.id.item_tree_with_source_map(db.upcast());
-            let source_map = tree_source_maps.impl_(loc.id.value).item();
+            let tree = loc.id.item_tree(db.upcast());
+            let source_map = db.impl_signature_with_source_map(impl_def.id).1;
+            expr_store_diagnostics(db, acc, &source_map);
+
             let node = &tree[loc.id.value];
             let file_id = loc.id.file_id();
             if file_id
@@ -812,9 +825,9 @@ impl Module {
             if let (false, Some(trait_)) = (impl_is_negative, trait_) {
                 let items = &db.trait_items(trait_.into()).items;
                 let required_items = items.iter().filter(|&(_, assoc)| match *assoc {
-                    AssocItemId::FunctionId(it) => !db.function_data(it).has_body(),
-                    AssocItemId::ConstId(id) => !db.const_data(id).has_body(),
-                    AssocItemId::TypeAliasId(it) => db.type_alias_data(it).type_ref.is_none(),
+                    AssocItemId::FunctionId(it) => !db.function_signature(it).has_body(),
+                    AssocItemId::ConstId(id) => !db.const_signature(id).has_body(),
+                    AssocItemId::TypeAliasId(it) => db.type_alias_signature(it).ty.is_none(),
                 });
                 impl_assoc_items_scratch.extend(db.impl_items(impl_def.id).items.iter().cloned());
 
@@ -863,13 +876,13 @@ impl Module {
                 db,
                 acc,
                 db.impl_self_ty_with_diagnostics(impl_def.id).1,
-                source_map,
+                &source_map,
             );
             push_ty_diagnostics(
                 db,
                 acc,
                 db.impl_trait_with_diagnostics(impl_def.id).and_then(|it| it.1),
-                source_map,
+                &source_map,
             );
 
             for &(_, item) in db.impl_items(impl_def.id).items.iter() {
@@ -1091,33 +1104,6 @@ fn emit_def_diagnostic_(
                             .nth(idx.into_raw().into_u32() as usize)?
                             .syntax(),
                     ),
-                    AttrOwner::Param(parent, idx) => SyntaxNodePtr::new(
-                        ast_id_map
-                            .get(item_tree[parent.index()].ast_id)
-                            .to_node(&db.parse_or_expand(tree.file_id()))
-                            .param_list()?
-                            .params()
-                            .nth(idx.into_raw().into_u32() as usize)?
-                            .syntax(),
-                    ),
-                    AttrOwner::TypeOrConstParamData(parent, idx) => SyntaxNodePtr::new(
-                        ast_id_map
-                            .get(parent.ast_id(&item_tree))
-                            .to_node(&db.parse_or_expand(tree.file_id()))
-                            .generic_param_list()?
-                            .type_or_const_params()
-                            .nth(idx.into_raw().into_u32() as usize)?
-                            .syntax(),
-                    ),
-                    AttrOwner::LifetimeParamData(parent, idx) => SyntaxNodePtr::new(
-                        ast_id_map
-                            .get(parent.ast_id(&item_tree))
-                            .to_node(&db.parse_or_expand(tree.file_id()))
-                            .generic_param_list()?
-                            .lifetime_params()
-                            .nth(idx.into_raw().into_u32() as usize)?
-                            .syntax(),
-                    ),
                 };
                 acc.push(
                     InactiveCode {
@@ -1333,7 +1319,7 @@ impl AstNode for FieldSource {
 
 impl Field {
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
-        self.parent.variant_data(db).fields()[self.id].name.clone()
+        db.variant_fields(self.parent.into()).fields()[self.id].name.clone()
     }
 
     pub fn index(&self) -> usize {
@@ -1398,11 +1384,11 @@ impl Field {
 
 impl HasVisibility for Field {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let variant_data = self.parent.variant_data(db);
+        let variant_data = db.variant_fields(self.parent.into());
         let visibility = &variant_data.fields()[self.id].visibility;
         let parent_id: hir_def::VariantId = self.parent.into();
         // FIXME: RawVisibility::Public doesn't need to construct a resolver
-        visibility.resolve(db.upcast(), &parent_id.resolver(db.upcast()))
+        Visibility::resolve(db.upcast(), &parent_id.resolver(db.upcast()), visibility)
     }
 }
 
@@ -1417,11 +1403,11 @@ impl Struct {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.struct_data(self.id).name.clone()
+        db.struct_signature(self.id).name.clone()
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
-        db.variant_data(self.id.into())
+        db.variant_fields(self.id.into())
             .fields()
             .iter()
             .map(|(id, _)| Field { parent: self.into(), id })
@@ -1441,15 +1427,19 @@ impl Struct {
     }
 
     pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprOptions> {
-        db.struct_data(self.id).repr
+        db.struct_signature(self.id).repr
     }
 
     pub fn kind(self, db: &dyn HirDatabase) -> StructKind {
-        self.variant_data(db).kind()
+        match self.variant_fields(db).shape {
+            hir_def::item_tree::FieldsShape::Record => StructKind::Record,
+            hir_def::item_tree::FieldsShape::Tuple => StructKind::Tuple,
+            hir_def::item_tree::FieldsShape::Unit => StructKind::Unit,
+        }
     }
 
-    fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
-        db.variant_data(self.id.into()).clone()
+    fn variant_fields(self, db: &dyn HirDatabase) -> Arc<VariantFields> {
+        db.variant_fields(self.id.into())
     }
 
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
@@ -1459,7 +1449,13 @@ impl Struct {
 
 impl HasVisibility for Struct {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.struct_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+        let loc = self.id.lookup(db.upcast());
+        let item_tree = loc.id.item_tree(db.upcast());
+        Visibility::resolve(
+            db.upcast(),
+            &self.id.resolver(db.upcast()),
+            &item_tree[item_tree[loc.id.value].visibility],
+        )
     }
 }
 
@@ -1470,7 +1466,7 @@ pub struct Union {
 
 impl Union {
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.union_data(self.id).name.clone()
+        db.union_signature(self.id).name.clone()
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -1489,18 +1485,21 @@ impl Union {
         Type::from_value_def(db, self.id)
     }
 
+    pub fn kind(self, db: &dyn HirDatabase) -> StructKind {
+        match db.variant_fields(self.id.into()).shape {
+            hir_def::item_tree::FieldsShape::Record => StructKind::Record,
+            hir_def::item_tree::FieldsShape::Tuple => StructKind::Tuple,
+            hir_def::item_tree::FieldsShape::Unit => StructKind::Unit,
+        }
+    }
+
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
-        db.variant_data(self.id.into())
+        db.variant_fields(self.id.into())
             .fields()
             .iter()
             .map(|(id, _)| Field { parent: self.into(), id })
             .collect()
     }
-
-    fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
-        db.variant_data(self.id.into()).clone()
-    }
-
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
         db.attrs(self.id.into()).is_unstable()
     }
@@ -1508,7 +1507,13 @@ impl Union {
 
 impl HasVisibility for Union {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.union_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+        let loc = self.id.lookup(db.upcast());
+        let item_tree = loc.id.item_tree(db.upcast());
+        Visibility::resolve(
+            db.upcast(),
+            &self.id.resolver(db.upcast()),
+            &item_tree[item_tree[loc.id.value].visibility],
+        )
     }
 }
 
@@ -1523,7 +1528,7 @@ impl Enum {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.enum_data(self.id).name.clone()
+        db.enum_signature(self.id).name.clone()
     }
 
     pub fn variants(self, db: &dyn HirDatabase) -> Vec<Variant> {
@@ -1535,7 +1540,7 @@ impl Enum {
     }
 
     pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprOptions> {
-        db.enum_data(self.id).repr
+        db.enum_signature(self.id).repr
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
@@ -1550,7 +1555,7 @@ impl Enum {
     pub fn variant_body_ty(self, db: &dyn HirDatabase) -> Type {
         Type::new_for_crate(
             self.id.lookup(db.upcast()).container.krate(),
-            TyBuilder::builtin(match db.enum_data(self.id).variant_body_type() {
+            TyBuilder::builtin(match db.enum_signature(self.id).variant_body_type() {
                 layout::IntegerType::Pointer(sign) => match sign {
                     true => hir_def::builtin_type::BuiltinType::Int(
                         hir_def::builtin_type::BuiltinInt::Isize,
@@ -1595,7 +1600,13 @@ impl Enum {
 
 impl HasVisibility for Enum {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.enum_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+        let loc = self.id.lookup(db.upcast());
+        let item_tree = loc.id.item_tree(db.upcast());
+        Visibility::resolve(
+            db.upcast(),
+            &self.id.resolver(db.upcast()),
+            &item_tree[item_tree[loc.id.value].visibility],
+        )
     }
 }
 
@@ -1625,11 +1636,13 @@ impl Variant {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.enum_variant_data(self.id).name.clone()
+        let lookup = self.id.lookup(db.upcast());
+        let enum_ = lookup.parent;
+        db.enum_variants(enum_).variants[lookup.index as usize].1.clone()
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
-        self.variant_data(db)
+        db.variant_fields(self.id.into())
             .fields()
             .iter()
             .map(|(id, _)| Field { parent: self.into(), id })
@@ -1637,11 +1650,11 @@ impl Variant {
     }
 
     pub fn kind(self, db: &dyn HirDatabase) -> StructKind {
-        self.variant_data(db).kind()
-    }
-
-    pub(crate) fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
-        db.variant_data(self.id.into()).clone()
+        match db.variant_fields(self.id.into()).shape {
+            hir_def::item_tree::FieldsShape::Record => StructKind::Record,
+            hir_def::item_tree::FieldsShape::Tuple => StructKind::Tuple,
+            hir_def::item_tree::FieldsShape::Unit => StructKind::Unit,
+        }
     }
 
     pub fn value(self, db: &dyn HirDatabase) -> Option<ast::Expr> {
@@ -1671,6 +1684,13 @@ impl Variant {
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
         db.attrs(self.id.into()).is_unstable()
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StructKind {
+    Record,
+    Tuple,
+    Unit,
 }
 
 /// Variants inherit visibility from the parent enum.
@@ -1820,14 +1840,6 @@ impl VariantDef {
             VariantDef::Variant(e) => e.name(db),
         }
     }
-
-    pub(crate) fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
-        match self {
-            VariantDef::Struct(it) => it.variant_data(db),
-            VariantDef::Union(it) => it.variant_data(db),
-            VariantDef::Variant(it) => it.variant_data(db),
-        }
-    }
 }
 
 /// The defs which have a body.
@@ -1837,9 +1849,8 @@ pub enum DefWithBody {
     Static(Static),
     Const(Const),
     Variant(Variant),
-    InTypeConst(InTypeConst),
 }
-impl_from!(Function, Const, Static, Variant, InTypeConst for DefWithBody);
+impl_from!(Function, Const, Static, Variant for DefWithBody);
 
 impl DefWithBody {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -1848,7 +1859,6 @@ impl DefWithBody {
             DefWithBody::Function(f) => f.module(db),
             DefWithBody::Static(s) => s.module(db),
             DefWithBody::Variant(v) => v.module(db),
-            DefWithBody::InTypeConst(c) => c.module(db),
         }
     }
 
@@ -1858,7 +1868,6 @@ impl DefWithBody {
             DefWithBody::Static(s) => Some(s.name(db)),
             DefWithBody::Const(c) => c.name(db),
             DefWithBody::Variant(v) => Some(v.name(db)),
-            DefWithBody::InTypeConst(_) => None,
         }
     }
 
@@ -1869,11 +1878,6 @@ impl DefWithBody {
             DefWithBody::Static(it) => it.ty(db),
             DefWithBody::Const(it) => it.ty(db),
             DefWithBody::Variant(it) => it.parent_enum(db).variant_body_ty(db),
-            DefWithBody::InTypeConst(it) => Type::new_with_resolver_inner(
-                db,
-                &DefWithBodyId::from(it.id).resolver(db.upcast()),
-                TyKind::Error.intern(Interner),
-            ),
         }
     }
 
@@ -1883,7 +1887,6 @@ impl DefWithBody {
             DefWithBody::Static(it) => it.id.into(),
             DefWithBody::Const(it) => it.id.into(),
             DefWithBody::Variant(it) => it.into(),
-            DefWithBody::InTypeConst(it) => it.id.into(),
         }
     }
 
@@ -1911,25 +1914,14 @@ impl DefWithBody {
         let krate = self.module(db).id.krate();
 
         let (body, source_map) = db.body_with_source_map(self.into());
-
-        let item_tree_source_maps;
-        let outer_types_source_map = match self {
-            DefWithBody::Function(function) => {
-                let function = function.id.lookup(db.upcast()).id;
-                item_tree_source_maps = function.item_tree_with_source_map(db.upcast()).1;
-                item_tree_source_maps.function(function.value).item()
+        let sig_source_map = match self {
+            DefWithBody::Function(id) => db.function_signature_with_source_map(id.into()).1,
+            DefWithBody::Static(id) => db.static_signature_with_source_map(id.into()).1,
+            DefWithBody::Const(id) => db.const_signature_with_source_map(id.into()).1,
+            DefWithBody::Variant(variant) => {
+                let enum_id = variant.parent_enum(db).id;
+                db.enum_signature_with_source_map(enum_id).1
             }
-            DefWithBody::Static(statik) => {
-                let statik = statik.id.lookup(db.upcast()).id;
-                item_tree_source_maps = statik.item_tree_with_source_map(db.upcast()).1;
-                item_tree_source_maps.statik(statik.value)
-            }
-            DefWithBody::Const(konst) => {
-                let konst = konst.id.lookup(db.upcast()).id;
-                item_tree_source_maps = konst.item_tree_with_source_map(db.upcast()).1;
-                item_tree_source_maps.konst(konst.value)
-            }
-            DefWithBody::Variant(_) | DefWithBody::InTypeConst(_) => &TypesSourceMap::EMPTY,
         };
 
         for (_, def_map) in body.blocks(db.upcast()) {
@@ -1940,55 +1932,7 @@ impl DefWithBody {
             .macro_calls()
             .for_each(|(_ast_id, call_id)| macro_call_diagnostics(db, call_id.macro_call_id, acc));
 
-        for diag in source_map.diagnostics() {
-            acc.push(match diag {
-                ExpressionStoreDiagnostics::InactiveCode { node, cfg, opts } => {
-                    InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
-                }
-                ExpressionStoreDiagnostics::MacroError { node, err } => {
-                    let RenderedExpandError { message, error, kind } =
-                        err.render_to_string(db.upcast());
-
-                    let precise_location = if err.span().anchor.file_id == node.file_id {
-                        Some(
-                            err.span().range
-                                + db.ast_id_map(err.span().anchor.file_id.into())
-                                    .get_erased(err.span().anchor.ast_id)
-                                    .text_range()
-                                    .start(),
-                        )
-                    } else {
-                        None
-                    };
-                    MacroError {
-                        node: (node).map(|it| it.into()),
-                        precise_location,
-                        message,
-                        error,
-                        kind,
-                    }
-                    .into()
-                }
-                ExpressionStoreDiagnostics::UnresolvedMacroCall { node, path } => {
-                    UnresolvedMacroCall {
-                        macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
-                        precise_location: None,
-                        path: path.clone(),
-                        is_bang: true,
-                    }
-                    .into()
-                }
-                ExpressionStoreDiagnostics::AwaitOutsideOfAsync { node, location } => {
-                    AwaitOutsideOfAsync { node: *node, location: location.clone() }.into()
-                }
-                ExpressionStoreDiagnostics::UnreachableLabel { node, name } => {
-                    UnreachableLabel { node: *node, name: name.clone() }.into()
-                }
-                ExpressionStoreDiagnostics::UndeclaredLabel { node, name } => {
-                    UndeclaredLabel { node: *node, name: name.clone() }.into()
-                }
-            });
-        }
+        expr_store_diagnostics(db, acc, &source_map);
 
         let infer = db.infer(self.into());
         for d in &infer.diagnostics {
@@ -1996,8 +1940,8 @@ impl DefWithBody {
                 db,
                 self.into(),
                 d,
-                outer_types_source_map,
                 &source_map,
+                &sig_source_map,
             ));
         }
 
@@ -2185,12 +2129,64 @@ impl DefWithBody {
             DefWithBody::Static(it) => it.into(),
             DefWithBody::Const(it) => it.into(),
             DefWithBody::Variant(it) => it.into(),
-            // FIXME: don't ignore diagnostics for in type const
-            DefWithBody::InTypeConst(_) => return,
         };
         for diag in hir_ty::diagnostics::incorrect_case(db, def.into()) {
             acc.push(diag.into())
         }
+    }
+}
+
+fn expr_store_diagnostics(
+    db: &dyn HirDatabase,
+    acc: &mut Vec<AnyDiagnostic>,
+    source_map: &ExpressionStoreSourceMap,
+) {
+    for diag in source_map.diagnostics() {
+        acc.push(match diag {
+            ExpressionStoreDiagnostics::InactiveCode { node, cfg, opts } => {
+                InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
+            }
+            ExpressionStoreDiagnostics::MacroError { node, err } => {
+                let RenderedExpandError { message, error, kind } =
+                    err.render_to_string(db.upcast());
+
+                let precise_location = if err.span().anchor.file_id == node.file_id {
+                    Some(
+                        err.span().range
+                            + db.ast_id_map(err.span().anchor.file_id.into())
+                                .get_erased(err.span().anchor.ast_id)
+                                .text_range()
+                                .start(),
+                    )
+                } else {
+                    None
+                };
+                MacroError {
+                    node: (node).map(|it| it.into()),
+                    precise_location,
+                    message,
+                    error,
+                    kind,
+                }
+                .into()
+            }
+            ExpressionStoreDiagnostics::UnresolvedMacroCall { node, path } => UnresolvedMacroCall {
+                macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
+                precise_location: None,
+                path: path.clone(),
+                is_bang: true,
+            }
+            .into(),
+            ExpressionStoreDiagnostics::AwaitOutsideOfAsync { node, location } => {
+                AwaitOutsideOfAsync { node: *node, location: location.clone() }.into()
+            }
+            ExpressionStoreDiagnostics::UnreachableLabel { node, name } => {
+                UnreachableLabel { node: *node, name: name.clone() }.into()
+            }
+            ExpressionStoreDiagnostics::UndeclaredLabel { node, name } => {
+                UndeclaredLabel { node: *node, name: name.clone() }.into()
+            }
+        });
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -2204,7 +2200,7 @@ impl Function {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.function_data(self.id).name.clone()
+        db.function_signature(self.id).name.clone()
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
@@ -2275,7 +2271,7 @@ impl Function {
     }
 
     pub fn has_self_param(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).has_self_param()
+        db.function_signature(self.id).has_self_param()
     }
 
     pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
@@ -2298,7 +2294,7 @@ impl Function {
     }
 
     pub fn num_params(self, db: &dyn HirDatabase) -> usize {
-        db.function_data(self.id).params.len()
+        db.function_signature(self.id).params.len()
     }
 
     pub fn method_params(self, db: &dyn HirDatabase) -> Option<Vec<Param>> {
@@ -2310,7 +2306,7 @@ impl Function {
         let environment = db.trait_environment(self.id.into());
         let substs = TyBuilder::placeholder_subst(db, self.id);
         let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
-        let skip = if db.function_data(self.id).has_self_param() { 1 } else { 0 };
+        let skip = if db.function_signature(self.id).has_self_param() { 1 } else { 0 };
         callable_sig
             .params()
             .iter()
@@ -2356,7 +2352,7 @@ impl Function {
             })
             .build();
         let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
-        let skip = if db.function_data(self.id).has_self_param() { 1 } else { 0 };
+        let skip = if db.function_signature(self.id).has_self_param() { 1 } else { 0 };
         callable_sig
             .params()
             .iter()
@@ -2370,15 +2366,15 @@ impl Function {
     }
 
     pub fn is_const(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).is_const()
+        db.function_signature(self.id).is_const()
     }
 
     pub fn is_async(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).is_async()
+        db.function_signature(self.id).is_async()
     }
 
     pub fn is_varargs(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).is_varargs()
+        db.function_signature(self.id).is_varargs()
     }
 
     pub fn extern_block(self, db: &dyn HirDatabase) -> Option<ExternBlock> {
@@ -2425,7 +2421,7 @@ impl Function {
     /// is this a `fn main` or a function with an `export_name` of `main`?
     pub fn is_main(self, db: &dyn HirDatabase) -> bool {
         db.attrs(self.id.into()).export_name() == Some(&sym::main)
-            || self.module(db).is_crate_root() && db.function_data(self.id).name == sym::main
+            || self.module(db).is_crate_root() && db.function_signature(self.id).name == sym::main
     }
 
     /// Is this a function with an `export_name` of `main`?
@@ -2467,7 +2463,7 @@ impl Function {
     ///
     /// This is false in the case of required (not provided) trait methods.
     pub fn has_body(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).has_body()
+        db.function_signature(self.id).has_body()
     }
 
     pub fn as_proc_macro(self, db: &dyn HirDatabase) -> Option<Macro> {
@@ -2611,11 +2607,11 @@ pub struct SelfParam {
 
 impl SelfParam {
     pub fn access(self, db: &dyn HirDatabase) -> Access {
-        let func_data = db.function_data(self.func);
+        let func_data = db.function_signature(self.func);
         func_data
             .params
             .first()
-            .map(|&param| match &func_data.types_map[param] {
+            .map(|&param| match &func_data.store[param] {
                 TypeRef::Reference(ref_) => match ref_.mutability {
                     hir_def::type_ref::Mutability::Shared => Access::Shared,
                     hir_def::type_ref::Mutability::Mut => Access::Exclusive,
@@ -2685,44 +2681,53 @@ impl ExternCrateDecl {
     }
 
     pub fn resolved_crate(self, db: &dyn HirDatabase) -> Option<Crate> {
-        db.extern_crate_decl_data(self.id).crate_id.map(Into::into)
+        let loc = self.id.lookup(db.upcast());
+        let item_tree = loc.id.item_tree(db.upcast());
+        let krate = loc.container.krate();
+        let name = &item_tree[loc.id.value].name;
+        if *name == sym::self_ {
+            Some(krate.into())
+        } else {
+            krate.data(db).dependencies.iter().find_map(|dep| {
+                if dep.name.symbol() == name.symbol() { Some(dep.crate_id.into()) } else { None }
+            })
+        }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.extern_crate_decl_data(self.id).name.clone()
+        let loc = self.id.lookup(db.upcast());
+        let item_tree = loc.id.item_tree(db.upcast());
+        item_tree[loc.id.value].name.clone()
     }
 
     pub fn alias(self, db: &dyn HirDatabase) -> Option<ImportAlias> {
-        db.extern_crate_decl_data(self.id).alias.clone()
+        let loc = self.id.lookup(db.upcast());
+        let item_tree = loc.id.item_tree(db.upcast());
+        item_tree[loc.id.value].alias.clone()
     }
 
     /// Returns the name under which this crate is made accessible, taking `_` into account.
     pub fn alias_or_name(self, db: &dyn HirDatabase) -> Option<Name> {
-        let extern_crate_decl_data = db.extern_crate_decl_data(self.id);
-        match &extern_crate_decl_data.alias {
+        let loc = self.id.lookup(db.upcast());
+        let item_tree = loc.id.item_tree(db.upcast());
+
+        match &item_tree[loc.id.value].alias {
             Some(ImportAlias::Underscore) => None,
             Some(ImportAlias::Alias(alias)) => Some(alias.clone()),
-            None => Some(extern_crate_decl_data.name.clone()),
+            None => Some(item_tree[loc.id.value].name.clone()),
         }
     }
 }
 
 impl HasVisibility for ExternCrateDecl {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.extern_crate_decl_data(self.id)
-            .visibility
-            .resolve(db.upcast(), &self.id.resolver(db.upcast()))
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct InTypeConst {
-    pub(crate) id: InTypeConstId,
-}
-
-impl InTypeConst {
-    pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).owner.module(db.upcast()) }
+        let loc = self.id.lookup(db.upcast());
+        let item_tree = loc.id.item_tree(db.upcast());
+        Visibility::resolve(
+            db.upcast(),
+            &self.id.resolver(db.upcast()),
+            &item_tree[item_tree[loc.id.value].visibility],
+        )
     }
 }
 
@@ -2737,7 +2742,7 @@ impl Const {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
-        db.const_data(self.id).name.clone()
+        db.const_signature(self.id).name.clone()
     }
 
     pub fn value(self, db: &dyn HirDatabase) -> Option<ast::Expr> {
@@ -2810,11 +2815,11 @@ impl Static {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.static_data(self.id).name.clone()
+        db.static_signature(self.id).name.clone()
     }
 
     pub fn is_mut(self, db: &dyn HirDatabase) -> bool {
-        db.static_data(self.id).mutable()
+        db.static_signature(self.id).flags.contains(StaticFlags::MUTABLE)
     }
 
     pub fn value(self, db: &dyn HirDatabase) -> Option<ast::Expr> {
@@ -2841,7 +2846,13 @@ impl Static {
 
 impl HasVisibility for Static {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.static_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+        let loc = self.id.lookup(db.upcast());
+        let item_tree = loc.id.item_tree(db.upcast());
+        Visibility::resolve(
+            db.upcast(),
+            &self.id.resolver(db.upcast()),
+            &item_tree[item_tree[loc.id.value].visibility],
+        )
     }
 }
 
@@ -2862,7 +2873,7 @@ impl Trait {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.trait_data(self.id).name.clone()
+        db.trait_signature(self.id).name.clone()
     }
 
     pub fn direct_supertraits(self, db: &dyn HirDatabase) -> Vec<Trait> {
@@ -2892,11 +2903,11 @@ impl Trait {
     }
 
     pub fn is_auto(self, db: &dyn HirDatabase) -> bool {
-        db.trait_data(self.id).flags.contains(TraitFlags::IS_AUTO)
+        db.trait_signature(self.id).flags.contains(TraitFlags::IS_AUTO)
     }
 
     pub fn is_unsafe(&self, db: &dyn HirDatabase) -> bool {
-        db.trait_data(self.id).flags.contains(TraitFlags::IS_UNSAFE)
+        db.trait_signature(self.id).flags.contains(TraitFlags::IS_UNSAFE)
     }
 
     pub fn type_or_const_param_count(
@@ -2947,7 +2958,13 @@ impl Trait {
 
 impl HasVisibility for Trait {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.trait_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+        let loc = self.id.lookup(db.upcast());
+        let item_tree = loc.id.item_tree(db.upcast());
+        Visibility::resolve(
+            db.upcast(),
+            &self.id.resolver(db.upcast()),
+            &item_tree[item_tree[loc.id.value].visibility],
+        )
     }
 }
 
@@ -2962,13 +2979,19 @@ impl TraitAlias {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.trait_alias_data(self.id).name.clone()
+        db.trait_alias_signature(self.id).name.clone()
     }
 }
 
 impl HasVisibility for TraitAlias {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.trait_alias_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+        let loc = self.id.lookup(db.upcast());
+        let item_tree = loc.id.item_tree(db.upcast());
+        Visibility::resolve(
+            db.upcast(),
+            &self.id.resolver(db.upcast()),
+            &item_tree[item_tree[loc.id.value].visibility],
+        )
     }
 }
 
@@ -2999,15 +3022,13 @@ impl TypeAlias {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.type_alias_data(self.id).name.clone()
+        db.type_alias_signature(self.id).name.clone()
     }
 }
 
 impl HasVisibility for TypeAlias {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let function_data = db.type_alias_data(self.id);
-        let visibility = &function_data.visibility;
-        visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+        db.type_alias_visibility(self.id)
     }
 }
 
@@ -3115,14 +3136,34 @@ impl Macro {
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         match self.id {
-            MacroId::Macro2Id(id) => db.macro2_data(id).name.clone(),
-            MacroId::MacroRulesId(id) => db.macro_rules_data(id).name.clone(),
-            MacroId::ProcMacroId(id) => db.proc_macro_data(id).name.clone(),
+            MacroId::Macro2Id(id) => {
+                let loc = id.lookup(db.upcast());
+                let item_tree = loc.id.item_tree(db.upcast());
+                item_tree[loc.id.value].name.clone()
+            }
+            MacroId::MacroRulesId(id) => {
+                let loc = id.lookup(db.upcast());
+                let item_tree = loc.id.item_tree(db.upcast());
+                item_tree[loc.id.value].name.clone()
+            }
+            MacroId::ProcMacroId(id) => {
+                let loc = id.lookup(db.upcast());
+                let item_tree = loc.id.item_tree(db.upcast());
+                match loc.kind {
+                    ProcMacroKind::CustomDerive => db
+                        .attrs(id.into())
+                        .parse_proc_macro_derive()
+                        .map_or_else(|| item_tree[loc.id.value].name.clone(), |(it, _)| it),
+                    ProcMacroKind::Bang | ProcMacroKind::Attr => {
+                        item_tree[loc.id.value].name.clone()
+                    }
+                }
+            }
         }
     }
 
     pub fn is_macro_export(self, db: &dyn HirDatabase) -> bool {
-        matches!(self.id, MacroId::MacroRulesId(id) if db.macro_rules_data(id).macro_export)
+        matches!(self.id, MacroId::MacroRulesId(_) if db.attrs(self.id.into()).by_key(&sym::macro_export).exists())
     }
 
     pub fn is_proc_macro(self) -> bool {
@@ -3211,9 +3252,13 @@ impl HasVisibility for Macro {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         match self.id {
             MacroId::Macro2Id(id) => {
-                let data = db.macro2_data(id);
-                let visibility = &data.visibility;
-                visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+                let loc = id.lookup(db.upcast());
+                let item_tree = loc.id.item_tree(db.upcast());
+                Visibility::resolve(
+                    db.upcast(),
+                    &id.resolver(db.upcast()),
+                    &item_tree[item_tree[loc.id.value].visibility],
+                )
             }
             MacroId::MacroRulesId(_) => Visibility::Public,
             MacroId::ProcMacroId(_) => Visibility::Public,
@@ -3354,7 +3399,7 @@ impl AsAssocItem for DefWithBody {
         match self {
             DefWithBody::Function(it) => it.as_assoc_item(db),
             DefWithBody::Const(it) => it.as_assoc_item(db),
-            DefWithBody::Static(_) | DefWithBody::Variant(_) | DefWithBody::InTypeConst(_) => None,
+            DefWithBody::Static(_) | DefWithBody::Variant(_) => None,
         }
     }
 }
@@ -3525,17 +3570,16 @@ impl AssocItem {
                 DefWithBody::from(func).diagnostics(db, acc, style_lints);
             }
             AssocItem::Const(const_) => {
+                GenericDef::Const(const_).diagnostics(db, acc);
                 DefWithBody::from(const_).diagnostics(db, acc, style_lints);
             }
             AssocItem::TypeAlias(type_alias) => {
                 GenericDef::TypeAlias(type_alias).diagnostics(db, acc);
-                let tree_id = type_alias.id.lookup(db.upcast()).id;
-                let tree_source_maps = tree_id.item_tree_with_source_map(db.upcast()).1;
                 push_ty_diagnostics(
                     db,
                     acc,
                     db.type_for_type_alias_with_diagnostics(type_alias.id).1,
-                    tree_source_maps.type_alias(tree_id.value).item(),
+                    &db.type_alias_signature_with_source_map(type_alias.id).1,
                 );
                 for diag in hir_ty::diagnostics::incorrect_case(db, type_alias.id.into()) {
                     acc.push(diag.into());
@@ -3642,67 +3686,40 @@ impl GenericDef {
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let def = self.id();
 
-        let item_tree_source_maps;
-        let (generics, generics_source_map) = db.generic_params_with_source_map(def);
+        let generics = db.generic_params(def);
 
         if generics.is_empty() && generics.no_predicates() {
             return;
         }
 
-        let source_map = match &generics_source_map {
-            Some(it) => it,
-            None => match def {
-                GenericDefId::FunctionId(it) => {
-                    let id = it.lookup(db.upcast()).id;
-                    item_tree_source_maps = id.item_tree_with_source_map(db.upcast()).1;
-                    item_tree_source_maps.function(id.value).generics()
-                }
-                GenericDefId::AdtId(AdtId::EnumId(it)) => {
-                    let id = it.lookup(db.upcast()).id;
-                    item_tree_source_maps = id.item_tree_with_source_map(db.upcast()).1;
-                    item_tree_source_maps.enum_generic(id.value)
-                }
-                GenericDefId::AdtId(AdtId::StructId(it)) => {
-                    let id = it.lookup(db.upcast()).id;
-                    item_tree_source_maps = id.item_tree_with_source_map(db.upcast()).1;
-                    item_tree_source_maps.strukt(id.value).generics()
-                }
-                GenericDefId::AdtId(AdtId::UnionId(it)) => {
-                    let id = it.lookup(db.upcast()).id;
-                    item_tree_source_maps = id.item_tree_with_source_map(db.upcast()).1;
-                    item_tree_source_maps.union(id.value).generics()
-                }
-                GenericDefId::TraitId(it) => {
-                    let id = it.lookup(db.upcast()).id;
-                    item_tree_source_maps = id.item_tree_with_source_map(db.upcast()).1;
-                    item_tree_source_maps.trait_generic(id.value)
-                }
-                GenericDefId::TraitAliasId(it) => {
-                    let id = it.lookup(db.upcast()).id;
-                    item_tree_source_maps = id.item_tree_with_source_map(db.upcast()).1;
-                    item_tree_source_maps.trait_alias_generic(id.value)
-                }
-                GenericDefId::TypeAliasId(it) => {
-                    let id = it.lookup(db.upcast()).id;
-                    item_tree_source_maps = id.item_tree_with_source_map(db.upcast()).1;
-                    item_tree_source_maps.type_alias(id.value).generics()
-                }
-                GenericDefId::ImplId(it) => {
-                    let id = it.lookup(db.upcast()).id;
-                    item_tree_source_maps = id.item_tree_with_source_map(db.upcast()).1;
-                    item_tree_source_maps.impl_(id.value).generics()
-                }
-                GenericDefId::ConstId(_) => return,
-                GenericDefId::StaticId(_) => return,
-            },
+        let source_map = match def {
+            GenericDefId::AdtId(AdtId::EnumId(it)) => {
+                db.enum_signature_with_source_map(it).1.clone()
+            }
+            GenericDefId::AdtId(AdtId::StructId(it)) => {
+                db.struct_signature_with_source_map(it).1.clone()
+            }
+            GenericDefId::AdtId(AdtId::UnionId(it)) => {
+                db.union_signature_with_source_map(it).1.clone()
+            }
+            GenericDefId::ConstId(_) => return,
+            GenericDefId::FunctionId(it) => db.function_signature_with_source_map(it).1.clone(),
+            GenericDefId::ImplId(it) => db.impl_signature_with_source_map(it).1.clone(),
+            GenericDefId::StaticId(_) => return,
+            GenericDefId::TraitAliasId(it) => {
+                db.trait_alias_signature_with_source_map(it).1.clone()
+            }
+            GenericDefId::TraitId(it) => db.trait_signature_with_source_map(it).1.clone(),
+            GenericDefId::TypeAliasId(it) => db.type_alias_signature_with_source_map(it).1.clone(),
         };
 
-        push_ty_diagnostics(db, acc, db.generic_defaults_with_diagnostics(def).1, source_map);
+        expr_store_diagnostics(db, acc, &source_map);
+        push_ty_diagnostics(db, acc, db.generic_defaults_with_diagnostics(def).1, &source_map);
         push_ty_diagnostics(
             db,
             acc,
             db.generic_predicates_without_parent_with_diagnostics(def).1,
-            source_map,
+            &source_map,
         );
         for (param_id, param) in generics.iter_type_or_consts() {
             if let TypeOrConstParamData::ConstParamData(_) = param {
@@ -3713,7 +3730,7 @@ impl GenericDef {
                         TypeOrConstParamId { parent: def, local_id: param_id },
                     ))
                     .1,
-                    source_map,
+                    &source_map,
                 );
             }
         }
@@ -3963,19 +3980,15 @@ impl DeriveHelper {
 
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
         match self.derive {
-            MacroId::Macro2Id(it) => db
-                .macro2_data(it)
-                .helpers
-                .as_deref()
-                .and_then(|it| it.get(self.idx as usize))
-                .cloned(),
+            makro @ MacroId::Macro2Id(_) => db
+                .attrs(makro.into())
+                .parse_rustc_builtin_macro()
+                .and_then(|(_, helpers)| helpers.get(self.idx as usize).cloned()),
             MacroId::MacroRulesId(_) => None,
-            MacroId::ProcMacroId(proc_macro) => db
-                .proc_macro_data(proc_macro)
-                .helpers
-                .as_deref()
-                .and_then(|it| it.get(self.idx as usize))
-                .cloned(),
+            makro @ MacroId::ProcMacroId(_) => db
+                .attrs(makro.into())
+                .parse_proc_macro_derive()
+                .and_then(|(_, helpers)| helpers.get(self.idx as usize).cloned()),
         }
         .unwrap_or_else(Name::missing)
     }
@@ -4149,9 +4162,8 @@ impl TypeParam {
         let params = db.generic_params(self.id.parent());
         let data = &params[self.id.local_id()];
         match data.type_param().unwrap().provenance {
-            hir_def::generics::TypeParamProvenance::TypeParamList => false,
-            hir_def::generics::TypeParamProvenance::TraitSelf
-            | hir_def::generics::TypeParamProvenance::ArgumentImplTrait => true,
+            TypeParamProvenance::TypeParamList => false,
+            TypeParamProvenance::TraitSelf | TypeParamProvenance::ArgumentImplTrait => true,
         }
     }
 
@@ -4289,10 +4301,10 @@ impl TypeOrConstParam {
     pub fn split(self, db: &dyn HirDatabase) -> Either<ConstParam, TypeParam> {
         let params = db.generic_params(self.id.parent);
         match &params[self.id.local_id] {
-            hir_def::generics::TypeOrConstParamData::TypeParamData(_) => {
+            TypeOrConstParamData::TypeParamData(_) => {
                 Either::Right(TypeParam { id: TypeParamId::from_unchecked(self.id) })
             }
-            hir_def::generics::TypeOrConstParamData::ConstParamData(_) => {
+            TypeOrConstParamData::ConstParamData(_) => {
                 Either::Left(ConstParam { id: ConstParamId::from_unchecked(self.id) })
             }
         }
@@ -4308,18 +4320,18 @@ impl TypeOrConstParam {
     pub fn as_type_param(self, db: &dyn HirDatabase) -> Option<TypeParam> {
         let params = db.generic_params(self.id.parent);
         match &params[self.id.local_id] {
-            hir_def::generics::TypeOrConstParamData::TypeParamData(_) => {
+            TypeOrConstParamData::TypeParamData(_) => {
                 Some(TypeParam { id: TypeParamId::from_unchecked(self.id) })
             }
-            hir_def::generics::TypeOrConstParamData::ConstParamData(_) => None,
+            TypeOrConstParamData::ConstParamData(_) => None,
         }
     }
 
     pub fn as_const_param(self, db: &dyn HirDatabase) -> Option<ConstParam> {
         let params = db.generic_params(self.id.parent);
         match &params[self.id.local_id] {
-            hir_def::generics::TypeOrConstParamData::TypeParamData(_) => None,
-            hir_def::generics::TypeOrConstParamData::ConstParamData(_) => {
+            TypeOrConstParamData::TypeParamData(_) => None,
+            TypeOrConstParamData::ConstParamData(_) => {
                 Some(ConstParam { id: ConstParamId::from_unchecked(self.id) })
             }
         }
@@ -4448,11 +4460,11 @@ impl Impl {
     }
 
     pub fn is_negative(self, db: &dyn HirDatabase) -> bool {
-        db.impl_data(self.id).is_negative
+        db.impl_signature(self.id).flags.contains(ImplFlags::IS_NEGATIVE)
     }
 
     pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
-        db.impl_data(self.id).is_unsafe
+        db.impl_signature(self.id).flags.contains(ImplFlags::IS_UNSAFE)
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -6321,7 +6333,7 @@ fn push_ty_diagnostics(
     db: &dyn HirDatabase,
     acc: &mut Vec<AnyDiagnostic>,
     diagnostics: Option<ThinArc<(), TyLoweringDiagnostic>>,
-    source_map: &TypesSourceMap,
+    source_map: &ExpressionStoreSourceMap,
 ) {
     if let Some(diagnostics) = diagnostics {
         acc.extend(

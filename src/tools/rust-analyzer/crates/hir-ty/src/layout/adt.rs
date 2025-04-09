@@ -4,8 +4,8 @@ use std::{cmp, ops::Bound};
 
 use hir_def::{
     AdtId, VariantId,
-    data::adt::VariantData,
     layout::{Integer, ReprOptions, TargetDataLayout},
+    signatures::VariantFields,
 };
 use intern::sym;
 use rustc_index::IndexVec;
@@ -34,7 +34,7 @@ pub fn layout_of_adt_query(
     };
     let dl = &*target;
     let cx = LayoutCx::new(dl);
-    let handle_variant = |def: VariantId, var: &VariantData| {
+    let handle_variant = |def: VariantId, var: &VariantFields| {
         var.fields()
             .iter()
             .map(|(fd, _)| db.layout_of_ty(field_ty(db, def, fd, &subst), trait_env.clone()))
@@ -42,15 +42,15 @@ pub fn layout_of_adt_query(
     };
     let (variants, repr) = match def {
         AdtId::StructId(s) => {
-            let data = db.struct_data(s);
+            let data = db.struct_signature(s);
             let mut r = SmallVec::<[_; 1]>::new();
-            r.push(handle_variant(s.into(), &db.variant_data(s.into()))?);
+            r.push(handle_variant(s.into(), &db.variant_fields(s.into()))?);
             (r, data.repr.unwrap_or_default())
         }
         AdtId::UnionId(id) => {
-            let data = db.union_data(id);
+            let data = db.union_signature(id);
             let mut r = SmallVec::new();
-            r.push(handle_variant(id.into(), &db.variant_data(id.into()))?);
+            r.push(handle_variant(id.into(), &db.variant_fields(id.into()))?);
             (r, data.repr.unwrap_or_default())
         }
         AdtId::EnumId(e) => {
@@ -58,9 +58,9 @@ pub fn layout_of_adt_query(
             let r = variants
                 .variants
                 .iter()
-                .map(|&(v, _)| handle_variant(v.into(), &db.variant_data(v.into())))
+                .map(|&(v, _)| handle_variant(v.into(), &db.variant_fields(v.into())))
                 .collect::<Result<SmallVec<_>, _>>()?;
-            (r, db.enum_data(e).repr.unwrap_or_default())
+            (r, db.enum_signature(e).repr.unwrap_or_default())
         }
     };
     let variants = variants

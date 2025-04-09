@@ -6,10 +6,10 @@ use std::mem;
 use either::Either;
 use hir_def::{
     AdtId, DefWithBodyId, FieldId, FunctionId, VariantId,
-    expr_store::Body,
+    expr_store::{Body, path::Path},
     hir::{Expr, ExprId, ExprOrPatId, Pat, PatId, Statement, UnaryOp},
-    path::Path,
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
+    signatures::StaticFlags,
     type_ref::Rawness,
 };
 use span::Edition;
@@ -31,11 +31,10 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> MissingUnsafe
     let _p = tracing::info_span!("missing_unsafe").entered();
 
     let is_unsafe = match def {
-        DefWithBodyId::FunctionId(it) => db.function_data(it).is_unsafe(),
-        DefWithBodyId::StaticId(_)
-        | DefWithBodyId::ConstId(_)
-        | DefWithBodyId::VariantId(_)
-        | DefWithBodyId::InTypeConstId(_) => false,
+        DefWithBodyId::FunctionId(it) => db.function_signature(it).is_unsafe(),
+        DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_) | DefWithBodyId::VariantId(_) => {
+            false
+        }
     };
 
     let mut res = MissingUnsafeResult { fn_is_unsafe: is_unsafe, ..MissingUnsafeResult::default() };
@@ -361,10 +360,12 @@ impl<'a> UnsafeVisitor<'a> {
         let value_or_partial =
             self.resolver.resolve_path_in_value_ns(self.db.upcast(), path, hygiene);
         if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id), _)) = value_or_partial {
-            let static_data = self.db.static_data(id);
-            if static_data.mutable() {
+            let static_data = self.db.static_signature(id);
+            if static_data.flags.contains(StaticFlags::MUTABLE) {
                 self.on_unsafe_op(node, UnsafetyReason::MutableStatic);
-            } else if static_data.is_extern() && !static_data.has_safe_kw() {
+            } else if static_data.flags.contains(StaticFlags::IS_EXTERN)
+                && !static_data.flags.contains(StaticFlags::HAS_SAFE)
+            {
                 self.on_unsafe_op(node, UnsafetyReason::ExternStatic);
             }
         }

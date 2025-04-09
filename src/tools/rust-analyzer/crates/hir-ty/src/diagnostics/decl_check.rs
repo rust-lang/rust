@@ -17,8 +17,8 @@ use std::fmt;
 
 use hir_def::{
     AdtId, ConstId, EnumId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
-    ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, data::adt::VariantData,
-    db::DefDatabase, hir::Pat, src::HasSource,
+    ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, db::DefDatabase, hir::Pat,
+    item_tree::FieldsShape, signatures::StaticFlags, src::HasSource,
 };
 use hir_expand::{
     HirFileId, HirFileIdExt,
@@ -178,7 +178,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_trait(&mut self, trait_id: TraitId) {
         // Check the trait name.
-        let data = self.db.trait_data(trait_id);
+        let data = self.db.trait_signature(trait_id);
         self.create_incorrect_case_diagnostic_for_item_name(
             trait_id,
             &data.name,
@@ -197,7 +197,7 @@ impl<'a> DeclValidator<'a> {
         // Check the function name.
         // Skipped if function is an associated item of a trait implementation.
         if !self.is_trait_impl_container(container) {
-            let data = self.db.function_data(func);
+            let data = self.db.function_signature(func);
 
             // Don't run the lint on extern "[not Rust]" fn items with the
             // #[no_mangle] attribute.
@@ -293,7 +293,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_struct(&mut self, struct_id: StructId) {
         // Check the structure name.
-        let data = self.db.struct_data(struct_id);
+        let data = self.db.struct_signature(struct_id);
         self.create_incorrect_case_diagnostic_for_item_name(
             struct_id,
             &data.name,
@@ -307,12 +307,13 @@ impl<'a> DeclValidator<'a> {
 
     /// Check incorrect names for struct fields.
     fn validate_struct_fields(&mut self, struct_id: StructId) {
-        let data = self.db.variant_data(struct_id.into());
-        let VariantData::Record { fields, .. } = data.as_ref() else {
+        let data = self.db.variant_fields(struct_id.into());
+        if data.shape != FieldsShape::Record {
             return;
         };
         let edition = self.edition(struct_id);
-        let mut struct_fields_replacements = fields
+        let mut struct_fields_replacements = data
+            .fields()
             .iter()
             .filter_map(|(_, field)| {
                 to_lower_snake_case(&field.name.display_no_db(edition).to_smolstr()).map(
@@ -378,7 +379,7 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_enum(&mut self, enum_id: EnumId) {
-        let data = self.db.enum_data(enum_id);
+        let data = self.db.enum_signature(enum_id);
 
         // Check the enum name.
         self.create_incorrect_case_diagnostic_for_item_name(
@@ -467,12 +468,13 @@ impl<'a> DeclValidator<'a> {
 
     /// Check incorrect names for fields of enum variant.
     fn validate_enum_variant_fields(&mut self, variant_id: EnumVariantId) {
-        let variant_data = self.db.variant_data(variant_id.into());
-        let VariantData::Record { fields, .. } = variant_data.as_ref() else {
+        let variant_data = self.db.variant_fields(variant_id.into());
+        if variant_data.shape != FieldsShape::Record {
             return;
         };
         let edition = self.edition(variant_id);
-        let mut variant_field_replacements = fields
+        let mut variant_field_replacements = variant_data
+            .fields()
             .iter()
             .filter_map(|(_, field)| {
                 to_lower_snake_case(&field.name.display_no_db(edition).to_smolstr()).map(
@@ -544,7 +546,7 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let data = self.db.const_data(const_id);
+        let data = self.db.const_signature(const_id);
         let Some(name) = &data.name else {
             return;
         };
@@ -557,8 +559,8 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_static(&mut self, static_id: StaticId) {
-        let data = self.db.static_data(static_id);
-        if data.is_extern() {
+        let data = self.db.static_signature(static_id);
+        if data.flags.contains(StaticFlags::IS_EXTERN) {
             cov_mark::hit!(extern_static_incorrect_case_ignored);
             return;
         }
@@ -579,7 +581,7 @@ impl<'a> DeclValidator<'a> {
         }
 
         // Check the type alias name.
-        let data = self.db.type_alias_data(type_alias_id);
+        let data = self.db.type_alias_signature(type_alias_id);
         self.create_incorrect_case_diagnostic_for_item_name(
             type_alias_id,
             &data.name,

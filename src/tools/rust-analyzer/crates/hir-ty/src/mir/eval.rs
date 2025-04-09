@@ -9,11 +9,12 @@ use hir_def::{
     AdtId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, StaticId,
     VariantId,
     builtin_type::BuiltinType,
-    data::adt::{StructFlags, VariantData},
     expr_store::HygieneId,
+    item_tree::FieldsShape,
     lang_item::LangItem,
     layout::{TagEncoding, Variants},
     resolver::{HasResolver, TypeNs, ValueNs},
+    signatures::{StaticFlags, StructFlags},
 };
 use hir_expand::{HirFileIdExt, InFile, mod_path::path, name::Name};
 use intern::sym;
@@ -368,7 +369,7 @@ impl MirEvalError {
             for (func, span, def) in stack.iter().take(30).rev() {
                 match func {
                     Either::Left(func) => {
-                        let function_name = db.function_data(*func);
+                        let function_name = db.function_signature(*func);
                         writeln!(
                             f,
                             "In function {} ({:?})",
@@ -421,7 +422,7 @@ impl MirEvalError {
                 )?;
             }
             MirEvalError::MirLowerError(func, err) => {
-                let function_name = db.function_data(*func);
+                let function_name = db.function_signature(*func);
                 let self_ = match func.lookup(db.upcast()).container {
                     ItemContainerId::ImplId(impl_id) => Some({
                         let generics = crate::generics::generics(db.upcast(), impl_id.into());
@@ -432,7 +433,7 @@ impl MirEvalError {
                             .to_string()
                     }),
                     ItemContainerId::TraitId(it) => Some(
-                        db.trait_data(it)
+                        db.trait_signature(it)
                             .name
                             .display(db.upcast(), display_target.edition)
                             .to_string(),
@@ -1761,7 +1762,7 @@ impl Evaluator<'_> {
                         AdtId::EnumId(_) => not_supported!("unsizing enums"),
                     };
                     let Some((last_field, _)) =
-                        self.db.variant_data(id.into()).fields().iter().next_back()
+                        self.db.variant_fields(id.into()).fields().iter().next_back()
                     else {
                         not_supported!("unsizing struct without field");
                     };
@@ -2243,7 +2244,7 @@ impl Evaluator<'_> {
                 }
                 chalk_ir::TyKind::Adt(adt, subst) => match adt.0 {
                     AdtId::StructId(s) => {
-                        let data = this.db.variant_data(s.into());
+                        let data = this.db.variant_fields(s.into());
                         let layout = this.layout(ty)?;
                         let field_types = this.db.field_types(s.into());
                         for (f, _) in data.fields().iter() {
@@ -2272,7 +2273,7 @@ impl Evaluator<'_> {
                             bytes,
                             e,
                         ) {
-                            let data = &this.db.variant_data(v.into());
+                            let data = &this.db.variant_fields(v.into());
                             let field_types = this.db.field_types(v.into());
                             for (f, _) in data.fields().iter() {
                                 let offset =
@@ -2755,8 +2756,8 @@ impl Evaluator<'_> {
         if let Some(o) = self.static_locations.get(&st) {
             return Ok(*o);
         };
-        let static_data = self.db.static_data(st);
-        let result = if !static_data.is_extern() {
+        let static_data = self.db.static_signature(st);
+        let result = if !static_data.flags.contains(StaticFlags::IS_EXTERN) {
             let konst = self.db.const_eval_static(st).map_err(|e| {
                 MirEvalError::ConstEvalError(static_data.name.as_str().to_owned(), Box::new(e))
             })?;
@@ -2843,16 +2844,16 @@ impl Evaluator<'_> {
             TyKind::Adt(id, subst) => {
                 match id.0 {
                     AdtId::StructId(s) => {
-                        let data = self.db.struct_data(s);
+                        let data = self.db.struct_signature(s);
                         if data.flags.contains(StructFlags::IS_MANUALLY_DROP) {
                             return Ok(());
                         }
                         let layout = self.layout_adt(id.0, subst.clone())?;
-                        match self.db.variant_data(s.into()).as_ref() {
-                            VariantData::Record { fields, .. }
-                            | VariantData::Tuple { fields, .. } => {
+                        let variant_fields = self.db.variant_fields(s.into());
+                        match variant_fields.shape {
+                            FieldsShape::Record | FieldsShape::Tuple => {
                                 let field_types = self.db.field_types(s.into());
-                                for (field, _) in fields.iter() {
+                                for (field, _) in variant_fields.fields().iter() {
                                     let offset = layout
                                         .fields
                                         .offset(u32::from(field.into_raw()) as usize)
@@ -2862,7 +2863,7 @@ impl Evaluator<'_> {
                                     self.run_drop_glue_deep(ty, locals, addr, &[], span)?;
                                 }
                             }
-                            VariantData::Unit => (),
+                            FieldsShape::Unit => (),
                         }
                     }
                     AdtId::UnionId(_) => (), // union fields don't need drop
@@ -2923,7 +2924,7 @@ pub fn render_const_using_debug_impl(
     let resolver = owner.resolver(db.upcast());
     let Some(TypeNs::TraitId(debug_trait)) = resolver.resolve_path_in_type_ns_fully(
         db.upcast(),
-        &hir_def::path::Path::from_known_path_with_no_generic(path![core::fmt::Debug]),
+        &hir_def::expr_store::path::Path::from_known_path_with_no_generic(path![core::fmt::Debug]),
     ) else {
         not_supported!("core::fmt::Debug not found");
     };
@@ -2954,7 +2955,7 @@ pub fn render_const_using_debug_impl(
     evaluator.write_memory(a3.offset(3 * evaluator.ptr_size()), &[1])?;
     let Some(ValueNs::FunctionId(format_fn)) = resolver.resolve_path_in_value_ns_fully(
         db.upcast(),
-        &hir_def::path::Path::from_known_path_with_no_generic(path![std::fmt::format]),
+        &hir_def::expr_store::path::Path::from_known_path_with_no_generic(path![std::fmt::format]),
         HygieneId::ROOT,
     ) else {
         not_supported!("std::fmt::format not found");

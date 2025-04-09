@@ -3,7 +3,7 @@
 use chalk_ir::cast::Cast;
 use hir_def::{
     AdtId, AssocItemId, GenericDefId, ItemContainerId, Lookup,
-    path::{Path, PathSegment},
+    expr_store::path::{Path, PathSegment},
     resolver::{ResolveValueResult, TypeNs, ValueNs},
 };
 use hir_expand::name::Name;
@@ -159,10 +159,10 @@ impl InferenceContext<'_> {
         let mut ctx = TyLoweringContext::new(
             self.db,
             &self.resolver,
-            &self.body.types,
-            self.owner.into(),
+            self.body,
             &self.diagnostics,
             InferenceTyDiagnosticSource::Body,
+            self.generic_def,
         );
         let mut path_ctx = if no_diagnostics {
             ctx.at_path_forget_diagnostics(path)
@@ -281,7 +281,7 @@ impl InferenceContext<'_> {
             self.db.trait_items(trait_).items.iter().map(|(_name, id)| *id).find_map(|item| {
                 match item {
                     AssocItemId::FunctionId(func) => {
-                        if segment.name == &self.db.function_data(func).name {
+                        if segment.name == &self.db.function_signature(func).name {
                             Some(AssocItemId::FunctionId(func))
                         } else {
                             None
@@ -289,7 +289,7 @@ impl InferenceContext<'_> {
                     }
 
                     AssocItemId::ConstId(konst) => {
-                        if self.db.const_data(konst).name.as_ref() == Some(segment.name) {
+                        if self.db.const_signature(konst).name.as_ref() == Some(segment.name) {
                             Some(AssocItemId::ConstId(konst))
                         } else {
                             None

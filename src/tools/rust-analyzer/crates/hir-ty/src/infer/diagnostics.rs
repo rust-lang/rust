@@ -6,7 +6,10 @@ use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
 
 use either::Either;
-use hir_def::{TypeOwnerId, hir::ExprOrPatId, path::Path, resolver::Resolver, type_ref::TypesMap};
+use hir_def::GenericDefId;
+use hir_def::expr_store::ExpressionStore;
+use hir_def::expr_store::path::Path;
+use hir_def::{hir::ExprOrPatId, resolver::Resolver};
 use la_arena::{Idx, RawIdx};
 
 use crate::{
@@ -58,12 +61,12 @@ impl<'a> InferenceTyLoweringContext<'a> {
     pub(super) fn new(
         db: &'a dyn HirDatabase,
         resolver: &'a Resolver,
-        types_map: &'a TypesMap,
-        owner: TypeOwnerId,
+        store: &'a ExpressionStore,
         diagnostics: &'a Diagnostics,
         source: InferenceTyDiagnosticSource,
+        generic_def: GenericDefId,
     ) -> Self {
-        Self { ctx: TyLoweringContext::new(db, resolver, types_map, owner), diagnostics, source }
+        Self { ctx: TyLoweringContext::new(db, resolver, store, generic_def), diagnostics, source }
     }
 
     #[inline]

@@ -4,9 +4,8 @@ use std::iter::repeat_with;
 
 use hir_def::{
     HasModule,
-    expr_store::Body,
+    expr_store::{Body, path::Path},
     hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, Literal, Pat, PatId},
-    path::Path,
 };
 use hir_expand::name::Name;
 use stdx::TupleExt;

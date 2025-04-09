@@ -1,6 +1,6 @@
 //! Functions to detect special lang items
 
-use hir_def::{AdtId, data::adt::StructFlags, lang_item::LangItem};
+use hir_def::{AdtId, lang_item::LangItem, signatures::StructFlags};
 use hir_expand::name::Name;
 use intern::sym;
 
@@ -8,13 +8,13 @@ use crate::db::HirDatabase;
 
 pub fn is_box(db: &dyn HirDatabase, adt: AdtId) -> bool {
     let AdtId::StructId(id) = adt else { return false };
-    db.struct_data(id).flags.contains(StructFlags::IS_BOX)
+    db.struct_signature(id).flags.contains(StructFlags::IS_BOX)
 }
 
 pub fn is_unsafe_cell(db: &dyn HirDatabase, adt: AdtId) -> bool {
     let AdtId::StructId(id) = adt else { return false };
 
-    db.struct_data(id).flags.contains(StructFlags::IS_UNSAFE_CELL)
+    db.struct_signature(id).flags.contains(StructFlags::IS_UNSAFE_CELL)
 }
 
 pub fn lang_items_for_bin_op(op: syntax::ast::BinaryOp) -> Option<(Name, LangItem)> {

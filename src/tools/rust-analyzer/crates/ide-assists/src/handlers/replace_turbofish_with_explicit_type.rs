@@ -339,7 +339,7 @@ fn main() {
         check_assist(
             replace_turbofish_with_explicit_type,
             r#"
-//- minicore: option, future
+//- minicore: option, future, try
 struct Fut<T>(T);
 impl<T> core::future::Future for Fut<T> {
     type Output = Option<T>;

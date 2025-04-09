@@ -989,7 +989,6 @@ impl TryFrom<DefWithBody> for Definition {
             DefWithBody::Static(it) => Ok(it.into()),
             DefWithBody::Const(it) => Ok(it.into()),
             DefWithBody::Variant(it) => Ok(it.into()),
-            DefWithBody::InTypeConst(_) => Err(()),
         }
     }
 }

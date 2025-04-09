@@ -4506,7 +4506,7 @@ struct S$0T<const C: usize = 1, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize = 1, T = Foo>(T)
+            struct ST<const C: usize = {const}, T = Foo>(T)
             ```
 
             ---
@@ -4557,7 +4557,7 @@ struct S$0T<const C: usize = VAL, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize = VAL, T = Foo>(T)
+            struct ST<const C: usize = {const}, T = Foo>(T)
             ```
 
             ---
@@ -4629,7 +4629,7 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<-1>
+            let value: Const<_>
             ```
 
             ---
@@ -5214,7 +5214,7 @@ type Fo$0o2 = Foo<2>;
             ```
 
             ```rust
-            type Foo2 = Foo<2>
+            type Foo2 = Foo<<expr>>
             ```
 
             ---
@@ -6023,7 +6023,7 @@ const FOO$0: &[i32; 5] = &[12; 5];
             ```
 
             ```rust
-            const FOO: &[i32; 5] = &[12, 12, 12, 12, 12]
+            const FOO: &[i32; {const}] = &[12, 12, 12, 12, 12]
             ```
         "#]],
     );

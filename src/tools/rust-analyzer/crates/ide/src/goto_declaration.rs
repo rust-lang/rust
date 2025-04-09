@@ -32,7 +32,7 @@ pub(crate) fn goto_declaration(
         .descend_into_macros_no_opaque(original_token)
         .iter()
         .filter_map(|token| {
-            let parent = token.parent()?;
+            let parent = token.value.parent()?;
             let def = match_ast! {
                 match parent {
                     ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {

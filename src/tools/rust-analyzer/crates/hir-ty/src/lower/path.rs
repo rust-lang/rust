@@ -6,12 +6,13 @@ use chalk_ir::{BoundVar, cast::Cast, fold::Shift};
 use either::Either;
 use hir_def::{
     GenericDefId, GenericParamId, ItemContainerId, Lookup, TraitId,
-    data::TraitFlags,
-    expr_store::HygieneId,
-    generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
-    path::{GenericArg, GenericArgs, GenericArgsParentheses, Path, PathSegment, PathSegments},
+    expr_store::{
+        HygieneId,
+        path::{GenericArg, GenericArgs, GenericArgsParentheses, Path, PathSegment, PathSegments},
+    },
     resolver::{ResolveValueResult, TypeNs, ValueNs},
-    type_ref::{TypeBound, TypeRef, TypesMap},
+    signatures::TraitFlags,
+    type_ref::TypeRef,
 };
 use smallvec::SmallVec;
 use stdx::never;
@@ -23,9 +24,7 @@ use crate::{
     consteval::unknown_const_as_generic,
     error_lifetime,
     generics::generics,
-    lower::{
-        ImplTraitLoweringState, generic_arg_to_chalk, named_associated_type_shorthand_candidates,
-    },
+    lower::{generic_arg_to_chalk, named_associated_type_shorthand_candidates},
     to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::associated_type_by_name_including_super_traits,
 };
@@ -228,12 +227,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                     TyKind::Placeholder(to_placeholder_idx(self.ctx.db, param_id.into()))
                 }
                 ParamLoweringMode::Variable => {
-                    let idx = match self
-                        .ctx
-                        .generics()
-                        .expect("generics in scope")
-                        .type_or_const_param_idx(param_id.into())
-                    {
+                    let idx = match self.ctx.generics().type_or_const_param_idx(param_id.into()) {
                         None => {
                             never!("no matching generics");
                             return (TyKind::Error.intern(Interner), None);
@@ -246,7 +240,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             }
             .intern(Interner),
             TypeNs::SelfType(impl_id) => {
-                let generics = self.ctx.generics().expect("impl should have generic param scope");
+                let generics = self.ctx.generics();
 
                 match self.ctx.type_param_mode {
                     ParamLoweringMode::Placeholder => {
@@ -480,21 +474,20 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
     }
 
     fn select_associated_type(&mut self, res: Option<TypeNs>) -> Ty {
-        let Some((generics, res)) = self.ctx.generics().zip(res) else {
+        let Some(res) = res else {
             return TyKind::Error.intern(Interner);
         };
         let segment = self.current_or_prev_segment;
         let ty = named_associated_type_shorthand_candidates(
             self.ctx.db,
-            generics.def(),
+            self.ctx.def,
             res,
             Some(segment.name.clone()),
             move |name, t, associated_ty| {
-                let generics = self.ctx.generics().unwrap();
-
                 if name != segment.name {
                     return None;
                 }
+                let generics = self.ctx.generics();
 
                 let parent_subst = t.substitution.clone();
                 let parent_subst = match self.ctx.type_param_mode {
@@ -612,8 +605,12 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                     self.current_or_prev_segment.args_and_bindings.is_some_and(|generics| {
                         generics.parenthesized == GenericArgsParentheses::ReturnTypeNotation
                     });
-                let is_fn_trait =
-                    !self.ctx.db.trait_data(trait_).flags.contains(TraitFlags::RUSTC_PAREN_SUGAR);
+                let is_fn_trait = !self
+                    .ctx
+                    .db
+                    .trait_signature(trait_)
+                    .flags
+                    .contains(TraitFlags::RUSTC_PAREN_SUGAR);
                 is_rtn || is_fn_trait
             }
             _ => true,
@@ -719,9 +716,10 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                     id,
                     arg,
                     self.ctx,
-                    self.ctx.types_map,
+                    self.ctx.store,
                     |ctx, type_ref| ctx.lower_ty(type_ref),
                     |ctx, const_ref, ty| ctx.lower_const(const_ref, ty),
+                    |ctx, path, ty| ctx.lower_path_as_const(path, ty),
                     |ctx, lifetime_ref| ctx.lower_lifetime(lifetime_ref),
                 );
                 substs.push(arg);
@@ -795,7 +793,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
 
     pub(super) fn assoc_type_bindings_from_type_bound<'c>(
         mut self,
-        bound: &'c TypeBound,
         trait_ref: TraitRef,
     ) -> Option<impl Iterator<Item = QuantifiedWhereClause> + use<'a, 'b, 'c>> {
         self.current_or_prev_segment.args_and_bindings.map(|args_and_bindings| {
@@ -819,7 +816,8 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                     false, // this is not relevant
                     Some(super_trait_ref.self_type_parameter(Interner)),
                 );
-                let self_params = generics(self.ctx.db.upcast(), associated_ty.into()).len_self();
+                let generics = generics(self.ctx.db.upcast(), associated_ty.into());
+                let self_params = generics.len_self();
                 let substitution = Substitution::from_iter(
                     Interner,
                     substitution
@@ -835,76 +833,10 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
                 );
                 if let Some(type_ref) = binding.type_ref {
-                    match (&self.ctx.types_map[type_ref], self.ctx.impl_trait_mode.mode) {
+                    match (&self.ctx.store[type_ref], self.ctx.impl_trait_mode.mode) {
                         (TypeRef::ImplTrait(_), ImplTraitLoweringMode::Disallowed) => (),
                         (_, ImplTraitLoweringMode::Disallowed | ImplTraitLoweringMode::Opaque) => {
                             let ty = self.ctx.lower_ty(type_ref);
-                            let alias_eq =
-                                AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
-                            predicates
-                                .push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
-                        }
-                        (_, ImplTraitLoweringMode::Param | ImplTraitLoweringMode::Variable) => {
-                            // Find the generic index for the target of our `bound`
-                            let target_param_idx =
-                                self.ctx.resolver.where_predicates_in_scope().find_map(
-                                    |(p, (_, types_map))| match p {
-                                        WherePredicate::TypeBound {
-                                            target: WherePredicateTypeTarget::TypeOrConstParam(idx),
-                                            bound: b,
-                                        } if std::ptr::eq::<TypesMap>(
-                                            self.ctx.types_map,
-                                            types_map,
-                                        ) && bound == b =>
-                                        {
-                                            Some(idx)
-                                        }
-                                        _ => None,
-                                    },
-                                );
-                            let ty = if let Some(target_param_idx) = target_param_idx {
-                                let mut counter = 0;
-                                let generics = self.ctx.generics().expect("generics in scope");
-                                for (idx, data) in generics.iter_self_type_or_consts() {
-                                    // Count the number of `impl Trait` things that appear before
-                                    // the target of our `bound`.
-                                    // Our counter within `impl_trait_mode` should be that number
-                                    // to properly lower each types within `type_ref`
-                                    if data.type_param().is_some_and(|p| {
-                                        p.provenance == TypeParamProvenance::ArgumentImplTrait
-                                    }) {
-                                        counter += 1;
-                                    }
-                                    if idx == *target_param_idx {
-                                        break;
-                                    }
-                                }
-                                let mut ext = TyLoweringContext::new_maybe_unowned(
-                                    self.ctx.db,
-                                    self.ctx.resolver,
-                                    self.ctx.types_map,
-                                    self.ctx.types_source_map,
-                                    self.ctx.owner,
-                                )
-                                .with_type_param_mode(self.ctx.type_param_mode);
-                                match self.ctx.impl_trait_mode.mode {
-                                    ImplTraitLoweringMode::Param => {
-                                        ext.impl_trait_mode =
-                                            ImplTraitLoweringState::param(counter);
-                                    }
-                                    ImplTraitLoweringMode::Variable => {
-                                        ext.impl_trait_mode =
-                                            ImplTraitLoweringState::variable(counter);
-                                    }
-                                    _ => unreachable!(),
-                                }
-                                let ty = ext.lower_ty(type_ref);
-                                self.ctx.diagnostics.extend(ext.diagnostics);
-                                ty
-                            } else {
-                                self.ctx.lower_ty(type_ref)
-                            };
-
                             let alias_eq =
                                 AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
                             predicates

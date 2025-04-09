@@ -276,8 +276,9 @@ pub(crate) fn check_diagnostics_with_config(
         let line_index = db.line_index(file_id);
 
         let mut actual = annotations.remove(&file_id).unwrap_or_default();
-        let expected = extract_annotations(&db.file_text(file_id).text(&db));
-        actual.sort_by_key(|(range, _)| range.start());
+        let mut expected = extract_annotations(&db.file_text(file_id).text(&db));
+        expected.sort_by_key(|(range, s)| (range.start(), s.clone()));
+        actual.sort_by_key(|(range, s)| (range.start(), s.clone()));
         // FIXME: We should panic on duplicates instead, but includes currently cause us to report
         // diagnostics twice for the calling module when both files are queried.
         actual.dedup();

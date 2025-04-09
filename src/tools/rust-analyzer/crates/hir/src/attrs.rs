@@ -5,12 +5,15 @@ use std::ops::ControlFlow;
 use hir_def::{
     AssocItemId, AttrDefId, ModuleDefId,
     attr::AttrsWithOwner,
+    expr_store::path::Path,
     item_scope::ItemInNs,
-    path::{ModPath, Path},
     per_ns::Namespace,
     resolver::{HasResolver, Resolver, TypeNs},
 };
-use hir_expand::{mod_path::PathKind, name::Name};
+use hir_expand::{
+    mod_path::{ModPath, PathKind},
+    name::Name,
+};
 use hir_ty::{db::HirDatabase, method_resolution};
 
 use crate::{

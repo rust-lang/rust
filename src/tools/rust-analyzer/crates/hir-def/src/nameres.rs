@@ -62,7 +62,8 @@ use std::ops::Deref;
 
 use base_db::Crate;
 use hir_expand::{
-    ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId, name::Name, proc_macro::ProcMacroKind,
+    ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId, mod_path::ModPath, name::Name,
+    proc_macro::ProcMacroKind,
 };
 use intern::Symbol;
 use itertools::Itertools;
@@ -75,13 +76,12 @@ use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
-    AstId, BlockId, BlockLoc, CrateRootModuleId, EnumId, EnumVariantId, ExternCrateId, FunctionId,
-    FxIndexMap, LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
+    AstId, BlockId, BlockLoc, CrateRootModuleId, ExternCrateId, FunctionId, FxIndexMap,
+    LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
     db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
     item_tree::{ItemTreeId, Mod, TreeId},
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
-    path::ModPath,
     per_ns::PerNs,
     visibility::{Visibility, VisibilityExplicitness},
 };
@@ -158,12 +158,15 @@ pub struct DefMap {
     /// this contains all kinds of macro, not just `macro_rules!` macro.
     /// ExternCrateId being None implies it being imported from the general prelude import.
     macro_use_prelude: FxHashMap<Name, (MacroId, Option<ExternCrateId>)>,
-    pub(crate) enum_definitions: FxHashMap<EnumId, Box<[EnumVariantId]>>,
 
+    // FIXME: AstId's are fairly unstable
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
     // FIXME: Figure out a better way for the IDE layer to resolve these?
     derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<(Name, MacroId, MacroCallId)>>,
+    // FIXME: AstId's are fairly unstable
+    /// A mapping from [`hir_expand::MacroDefId`] to [`crate::MacroId`].
+    pub macro_def_to_macro_id: FxHashMap<ErasedAstId, MacroId>,
 
     /// The diagnostics that need to be emitted for this crate.
     diagnostics: Vec<DefDiagnostic>,
@@ -454,8 +457,8 @@ impl DefMap {
             macro_use_prelude: FxHashMap::default(),
             derive_helpers_in_scope: FxHashMap::default(),
             diagnostics: Vec::new(),
-            enum_definitions: FxHashMap::default(),
             data: crate_data,
+            macro_def_to_macro_id: FxHashMap::default(),
         }
     }
     fn shrink_to_fit(&mut self) {
@@ -469,14 +472,14 @@ impl DefMap {
             krate: _,
             prelude: _,
             data: _,
-            enum_definitions,
+            macro_def_to_macro_id,
         } = self;
 
+        macro_def_to_macro_id.shrink_to_fit();
         macro_use_prelude.shrink_to_fit();
         diagnostics.shrink_to_fit();
         modules.shrink_to_fit();
         derive_helpers_in_scope.shrink_to_fit();
-        enum_definitions.shrink_to_fit();
         for (_, module) in modules.iter_mut() {
             module.children.shrink_to_fit();
             module.scope.shrink_to_fit();

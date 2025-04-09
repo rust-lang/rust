@@ -30,25 +30,35 @@ impl ProcMacroKind {
 }
 
 impl Attrs {
-    #[rustfmt::skip]
     pub fn parse_proc_macro_decl(&self, func_name: &Name) -> Option<ProcMacroDef> {
         if self.is_proc_macro() {
             Some(ProcMacroDef { name: func_name.clone(), kind: ProcMacroKind::Bang })
         } else if self.is_proc_macro_attribute() {
             Some(ProcMacroDef { name: func_name.clone(), kind: ProcMacroKind::Attr })
         } else if self.by_key(&sym::proc_macro_derive).exists() {
-            let derive = self.by_key(&sym::proc_macro_derive).tt_values().next()?;
-            let def = parse_macro_name_and_helper_attrs(derive)
-                .map(|(name, helpers)| ProcMacroDef { name, kind: ProcMacroKind::Derive { helpers } });
-
-            if def.is_none() {
-                tracing::trace!("malformed `#[proc_macro_derive]`: {}", derive);
-            }
-
-            def
+            let derive = self.parse_proc_macro_derive();
+            Some(match derive {
+                Some((name, helpers)) => {
+                    ProcMacroDef { name, kind: ProcMacroKind::Derive { helpers } }
+                }
+                None => ProcMacroDef {
+                    name: func_name.clone(),
+                    kind: ProcMacroKind::Derive { helpers: Box::default() },
+                },
+            })
         } else {
             None
         }
+    }
+
+    pub fn parse_proc_macro_derive(&self) -> Option<(Name, Box<[Name]>)> {
+        let derive = self.by_key(&sym::proc_macro_derive).tt_values().next()?;
+        parse_macro_name_and_helper_attrs(derive)
+    }
+
+    pub fn parse_rustc_builtin_macro(&self) -> Option<(Name, Box<[Name]>)> {
+        let derive = self.by_key(&sym::rustc_builtin_macro).tt_values().next()?;
+        parse_macro_name_and_helper_attrs(derive)
     }
 }
 

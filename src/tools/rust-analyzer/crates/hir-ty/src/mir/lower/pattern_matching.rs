@@ -1,6 +1,6 @@
 //! MIR lowering for patterns
 
-use hir_def::{AssocItemId, hir::ExprId};
+use hir_def::{AssocItemId, hir::ExprId, signatures::VariantFields};
 
 use crate::{
     BindingMode,
@@ -11,7 +11,7 @@ use crate::{
             MemoryMap, MirLowerCtx, MirLowerError, MirSpan, Mutability, Operand, Pat, PatId, Place,
             PlaceElem, ProjectionElem, RecordFieldPat, ResolveValueResult, Result, Rvalue,
             Substitution, SwitchTargets, TerminatorKind, TupleFieldId, TupleId, TyBuilder, TyKind,
-            ValueNs, VariantData, VariantId,
+            ValueNs, VariantId,
         },
     },
 };
@@ -350,12 +350,7 @@ impl MirLowerCtx<'_> {
                 )?,
                 None => {
                     let unresolved_name = || {
-                        MirLowerError::unresolved_path(
-                            self.db,
-                            p,
-                            self.display_target(),
-                            &self.body.types,
-                        )
+                        MirLowerError::unresolved_path(self.db, p, self.display_target(), self.body)
                     };
                     let hygiene = self.body.pat_path_hygiene(pattern);
                     let pr = self
@@ -597,7 +592,7 @@ impl MirLowerCtx<'_> {
                 }
                 self.pattern_matching_variant_fields(
                     shape,
-                    &self.db.variant_data(v.into()),
+                    &self.db.variant_fields(v.into()),
                     variant,
                     current,
                     current_else,
@@ -607,7 +602,7 @@ impl MirLowerCtx<'_> {
             }
             VariantId::StructId(s) => self.pattern_matching_variant_fields(
                 shape,
-                &self.db.variant_data(s.into()),
+                &self.db.variant_fields(s.into()),
                 variant,
                 current,
                 current_else,
@@ -623,7 +618,7 @@ impl MirLowerCtx<'_> {
     fn pattern_matching_variant_fields(
         &mut self,
         shape: AdtPatternShape<'_>,
-        variant_data: &VariantData,
+        variant_data: &VariantFields,
         v: VariantId,
         current: BasicBlockId,
         current_else: Option<BasicBlockId>,

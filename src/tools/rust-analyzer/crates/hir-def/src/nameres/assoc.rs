@@ -265,6 +265,9 @@ impl<'a> AssocItemCollector<'a> {
                     expand_to,
                     self.module_id.krate(),
                     resolver,
+                    &mut |ptr, call_id| {
+                        self.macro_calls.push((ptr.map(|(_, it)| it.upcast()), call_id))
+                    },
                 ) {
                     Ok(Some(call_id)) => {
                         self.macro_calls

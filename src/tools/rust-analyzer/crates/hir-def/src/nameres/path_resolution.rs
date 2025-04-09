@@ -11,7 +11,11 @@
 //! `ReachedFixedPoint` signals about this.
 
 use either::Either;
-use hir_expand::{Lookup, name::Name};
+use hir_expand::{
+    Lookup,
+    mod_path::{ModPath, PathKind},
+    name::Name,
+};
 use span::Edition;
 use triomphe::Arc;
 
@@ -21,7 +25,6 @@ use crate::{
     item_scope::{BUILTIN_SCOPE, ImportOrExternCrate},
     item_tree::FieldsShape,
     nameres::{BlockInfo, BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, sub_namespace_match},
-    path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
 };
@@ -506,33 +509,24 @@ impl DefMap {
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     // enum variant
                     cov_mark::hit!(can_import_enum_variant);
-                    let def_map;
 
-                    let loc = e.lookup(db);
-                    let tree = loc.id.item_tree(db);
-                    let current_def_map =
-                        self.krate == loc.container.krate && self.block_id() == loc.container.block;
-                    let res = if current_def_map {
-                        &self.enum_definitions[&e]
-                    } else {
-                        def_map = loc.container.def_map(db);
-                        &def_map.enum_definitions[&e]
-                    }
-                    .iter()
-                    .find_map(|&variant| {
-                        let variant_data = &tree[variant.lookup(db).id.value];
-                        (variant_data.name == *segment).then(|| match variant_data.shape {
-                            FieldsShape::Record => {
-                                PerNs::types(variant.into(), Visibility::Public, None)
-                            }
-                            FieldsShape::Tuple | FieldsShape::Unit => PerNs::both(
-                                variant.into(),
-                                variant.into(),
-                                Visibility::Public,
-                                None,
-                            ),
-                        })
-                    });
+                    let res =
+                        db.enum_variants(e).variants.iter().find(|(_, name)| name == segment).map(
+                            |&(variant, _)| {
+                                let item_tree_id = variant.lookup(db).id;
+                                match item_tree_id.item_tree(db)[item_tree_id.value].shape {
+                                    FieldsShape::Record => {
+                                        PerNs::types(variant.into(), Visibility::Public, None)
+                                    }
+                                    FieldsShape::Tuple | FieldsShape::Unit => PerNs::both(
+                                        variant.into(),
+                                        variant.into(),
+                                        Visibility::Public,
+                                        None,
+                                    ),
+                                }
+                            },
+                        );
                     // FIXME: Need to filter visibility here and below? Not sure.
                     return match res {
                         Some(res) => {

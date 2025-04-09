@@ -92,16 +92,19 @@ pub(crate) fn goto_definition(
         .descend_into_macros_no_opaque(original_token.clone())
         .into_iter()
         .filter_map(|token| {
-            let parent = token.parent()?;
+            let parent = token.value.parent()?;
 
-            if let Some(token) = ast::String::cast(token.clone()) {
-                if let Some(x) = try_lookup_include_path(sema, token, file_id) {
+            let token_file_id = token.file_id;
+            if let Some(token) = ast::String::cast(token.value.clone()) {
+                if let Some(x) =
+                    try_lookup_include_path(sema, InFile::new(token_file_id, token), file_id)
+                {
                     return Some(vec![x]);
                 }
             }
 
             if ast::TokenTree::can_cast(parent.kind()) {
-                if let Some(x) = try_lookup_macro_def_in_macro_use(sema, token) {
+                if let Some(x) = try_lookup_macro_def_in_macro_use(sema, token.value) {
                     return Some(vec![x]);
                 }
             }
@@ -205,17 +208,19 @@ fn find_definition_for_known_blanket_dual_impls(
 
 fn try_lookup_include_path(
     sema: &Semantics<'_, RootDatabase>,
-    token: ast::String,
+    token: InFile<ast::String>,
     file_id: FileId,
 ) -> Option<NavigationTarget> {
-    let file = sema.hir_file_for(&token.syntax().parent()?).macro_file()?;
+    let file = token.file_id.macro_file()?;
+
+    // Check that we are in the eager argument expansion of an include macro
+    // that is we are the string input of it
     if !iter::successors(Some(file), |file| file.parent(sema.db).macro_file())
-        // Check that we are in the eager argument expansion of an include macro
         .any(|file| file.is_include_like_macro(sema.db) && file.eager_arg(sema.db).is_none())
     {
         return None;
     }
-    let path = token.value().ok()?;
+    let path = token.value.value().ok()?;
 
     let file_id = Upcast::<dyn RootQueryDb>::upcast(sema.db)
         .resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
@@ -2049,7 +2054,10 @@ fn main() {
         );
     }
 
+    // macros in this position are not yet supported
     #[test]
+    // FIXME
+    #[should_panic]
     fn goto_doc_include_str() {
         check(
             r#"

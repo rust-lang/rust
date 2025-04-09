@@ -13,7 +13,7 @@ use hir_def::{
 use hir_expand::{HirFileId, name::Name};
 use hir_ty::{
     db::HirDatabase,
-    display::{DisplayTarget, HirDisplay, hir_display_with_types_map},
+    display::{DisplayTarget, HirDisplay, hir_display_with_store},
 };
 use intern::Symbol;
 use rustc_hash::FxHashMap;
@@ -317,9 +317,9 @@ impl<'a> SymbolCollector<'a> {
     }
 
     fn collect_from_impl(&mut self, impl_id: ImplId) {
-        let impl_data = self.db.impl_data(impl_id);
+        let impl_data = self.db.impl_signature(impl_id);
         let impl_name = Some(
-            hir_display_with_types_map(impl_data.self_ty, &impl_data.types_map)
+            hir_display_with_store(impl_data.self_ty, &impl_data.store)
                 .display(self.db, self.display_target)
                 .to_smolstr(),
         );
@@ -331,7 +331,7 @@ impl<'a> SymbolCollector<'a> {
     }
 
     fn collect_from_trait(&mut self, trait_id: TraitId, trait_do_not_complete: Complete) {
-        let trait_data = self.db.trait_data(trait_id);
+        let trait_data = self.db.trait_signature(trait_id);
         self.with_container_name(Some(trait_data.name.as_str().into()), |s| {
             for &(ref name, assoc_item_id) in &self.db.trait_items(trait_id).items {
                 s.push_assoc_item(assoc_item_id, name, Some(trait_do_not_complete));

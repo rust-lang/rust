@@ -57,7 +57,7 @@ impl Evaluator<'_> {
             return Ok(false);
         }
 
-        let function_data = self.db.function_data(def);
+        let function_data = self.db.function_signature(def);
         let attrs = self.db.attrs(def.into());
         let is_intrinsic = attrs.by_key(&sym::rustc_intrinsic).exists()
             // Keep this around for a bit until extern "rustc-intrinsic" abis are no longer used

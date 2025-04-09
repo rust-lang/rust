@@ -11,13 +11,13 @@ use chalk_ir::{
 use either::Either;
 use hir_def::{
     DefWithBodyId, FieldId, HasModule, TupleFieldId, TupleId, VariantId,
-    data::adt::VariantData,
+    expr_store::path::Path,
     hir::{
         Array, AsmOperand, BinaryOp, BindingId, CaptureBy, ClosureKind, Expr, ExprId, ExprOrPatId,
         Pat, PatId, Statement, UnaryOp,
     },
+    item_tree::FieldsShape,
     lang_item::LangItem,
-    path::Path,
     resolver::ValueNs,
 };
 use hir_def::{Lookup, type_ref::TypeRefId};
@@ -641,18 +641,20 @@ impl CapturedItem {
             match proj {
                 ProjectionElem::Deref => {}
                 ProjectionElem::Field(Either::Left(f)) => {
-                    match &*f.parent.variant_data(db.upcast()) {
-                        VariantData::Record { fields, .. } => {
+                    let variant_data = f.parent.variant_data(db.upcast());
+                    match variant_data.shape {
+                        FieldsShape::Record => {
                             result.push('_');
-                            result.push_str(fields[f.local_id].name.as_str())
+                            result.push_str(variant_data.fields()[f.local_id].name.as_str())
                         }
-                        VariantData::Tuple { fields, .. } => {
-                            let index = fields.iter().position(|it| it.0 == f.local_id);
+                        FieldsShape::Tuple => {
+                            let index =
+                                variant_data.fields().iter().position(|it| it.0 == f.local_id);
                             if let Some(index) = index {
                                 format_to!(result, "_{index}");
                             }
                         }
-                        VariantData::Unit => {}
+                        FieldsShape::Unit => {}
                     }
                 }
                 ProjectionElem::Field(Either::Right(f)) => format_to!(result, "_{}", f.index),
@@ -683,18 +685,22 @@ impl CapturedItem {
                 ProjectionElem::Deref => {}
                 ProjectionElem::Field(Either::Left(f)) => {
                     let variant_data = f.parent.variant_data(db.upcast());
-                    match &*variant_data {
-                        VariantData::Record { fields, .. } => format_to!(
+                    match variant_data.shape {
+                        FieldsShape::Record => format_to!(
                             result,
                             ".{}",
-                            fields[f.local_id].name.display(db.upcast(), edition)
+                            variant_data.fields()[f.local_id].name.display(db.upcast(), edition)
                         ),
-                        VariantData::Tuple { fields, .. } => format_to!(
+                        FieldsShape::Tuple => format_to!(
                             result,
                             ".{}",
-                            fields.iter().position(|it| it.0 == f.local_id).unwrap_or_default()
+                            variant_data
+                                .fields()
+                                .iter()
+                                .position(|it| it.0 == f.local_id)
+                                .unwrap_or_default()
                         ),
-                        VariantData::Unit => {}
+                        FieldsShape::Unit => {}
                     }
                 }
                 ProjectionElem::Field(Either::Right(f)) => {
@@ -741,16 +747,17 @@ impl CapturedItem {
                         result = format!("({result})");
                     }
                     let variant_data = f.parent.variant_data(db.upcast());
-                    let field = match &*variant_data {
-                        VariantData::Record { fields, .. } => {
-                            fields[f.local_id].name.as_str().to_owned()
+                    let field = match variant_data.shape {
+                        FieldsShape::Record => {
+                            variant_data.fields()[f.local_id].name.as_str().to_owned()
                         }
-                        VariantData::Tuple { fields, .. } => fields
+                        FieldsShape::Tuple => variant_data
+                            .fields()
                             .iter()
                             .position(|it| it.0 == f.local_id)
                             .unwrap_or_default()
                             .to_string(),
-                        VariantData::Unit => "[missing field]".to_owned(),
+                        FieldsShape::Unit => "[missing field]".to_owned(),
                     };
                     result = format!("{result}.{field}");
                     field_need_paren = false;
@@ -852,10 +859,7 @@ impl CapturedItemWithoutTy {
                     Ok(BoundVar::new(outer_binder, idx).to_ty(Interner))
                 }
             }
-            let Some(generics) = ctx.generics() else {
-                return Binders::empty(Interner, ty);
-            };
-            let filler = &mut Filler { db: ctx.db, generics };
+            let filler = &mut Filler { db: ctx.db, generics: ctx.generics() };
             let result = ty.clone().try_fold_with(filler, DebruijnIndex::INNERMOST).unwrap_or(ty);
             make_binders(ctx.db, filler.generics, result)
         }
@@ -876,7 +880,6 @@ impl InferenceContext<'_> {
             return None;
         }
         let hygiene = self.body.expr_or_pat_path_hygiene(id);
-
         self.resolver.resolve_path_in_value_ns_fully(self.db.upcast(), path, hygiene).and_then(
             |result| match result {
                 ValueNs::LocalBinding(binding) => {
@@ -1517,7 +1520,7 @@ impl InferenceContext<'_> {
                             self.consume_place(place)
                         }
                         VariantId::StructId(s) => {
-                            let vd = &*self.db.variant_data(s.into());
+                            let vd = &*self.db.variant_fields(s.into());
                             for field_pat in args.iter() {
                                 let arg = field_pat.pat;
                                 let Some(local_id) = vd.field(&field_pat.name) else {
@@ -1569,7 +1572,7 @@ impl InferenceContext<'_> {
                             self.consume_place(place)
                         }
                         VariantId::StructId(s) => {
-                            let vd = &*self.db.variant_data(s.into());
+                            let vd = &*self.db.variant_fields(s.into());
                             let (al, ar) =
                                 args.split_at(ellipsis.map_or(args.len(), |it| it as usize));
                             let fields = vd.fields().iter();
