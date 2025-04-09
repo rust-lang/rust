@@ -189,7 +189,7 @@ pub enum GccCiMode {
 ///
 /// Note that this structure is not decoded directly into, but rather it is
 /// filled out from the decoded forms of the structs below. For documentation
-/// each field, see the corresponding fields in
+/// on each field, see the corresponding fields in
 /// `bootstrap.example.toml`.
 #[derive(Default, Clone)]
 pub struct Config {

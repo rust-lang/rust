@@ -1099,7 +1099,6 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         DefKind::Struct
         | DefKind::Union
         | DefKind::Enum
-        | DefKind::Variant
         | DefKind::OpaqueTy
         | DefKind::Fn
         | DefKind::Ctor(..)
@@ -1109,6 +1108,7 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
             matches!(tcx.opt_rpitit_info(def_id), Some(ty::ImplTraitInTraitData::Trait { .. }))
         }
         DefKind::Mod
+        | DefKind::Variant
         | DefKind::Field
         | DefKind::AssocConst
         | DefKind::TyParam

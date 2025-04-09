@@ -415,7 +415,7 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 label_or_note(span, fluent::trait_selection_subtype);
                 diag.arg("requirement", requirement);
 
-                diag.note_expected_found(&"", expected, &"", found);
+                diag.note_expected_found("", expected, "", found);
             }
             RegionOriginNote::WithRequirement { span, requirement, expected_found: None } => {
                 // FIXME: this really should be handled at some earlier stage. Our

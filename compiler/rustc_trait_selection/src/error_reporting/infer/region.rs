@@ -967,7 +967,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 format!("...so that the {}", sup_trace.cause.as_requirement_str()),
             );
 
-            err.note_expected_found(&"", sup_expected, &"", sup_found);
+            err.note_expected_found("", sup_expected, "", sup_found);
             return if sub_region.is_error() | sup_region.is_error() {
                 err.delay_as_bug()
             } else {

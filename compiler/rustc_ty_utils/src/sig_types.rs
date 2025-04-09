@@ -116,7 +116,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
                 "{kind:?} has not seen any uses of `walk_types` yet, ping oli-obk if you'd like any help"
             )
         }
-        // These don't have any types.
+        // These don't have any types, but are visited during privacy checking.
         | DefKind::ExternCrate
         | DefKind::ForeignMod
         | DefKind::ForeignTy

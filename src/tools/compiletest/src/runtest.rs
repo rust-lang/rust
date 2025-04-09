@@ -10,7 +10,6 @@ use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::sync::Arc;
 use std::{env, iter, str};
 
-use anyhow::Context;
 use colored::Colorize;
 use regex::{Captures, Regex};
 use tracing::*;
@@ -143,11 +142,11 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
     }
 
     let cx = TestCx { config: &config, props: &props, testpaths, revision };
-    create_dir_all(&cx.output_base_dir())
-        .with_context(|| {
-            format!("failed to create output base directory {}", cx.output_base_dir().display())
-        })
-        .unwrap();
+
+    if let Err(e) = create_dir_all(&cx.output_base_dir()) {
+        panic!("failed to create output base directory {}: {e}", cx.output_base_dir().display());
+    }
+
     if props.incremental {
         cx.init_incremental_test();
     }
