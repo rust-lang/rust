@@ -379,7 +379,7 @@ dependencies = [
 name = "cargo-miri"
 version = "0.1.0"
 dependencies = [
- "cargo_metadata 0.18.1",
+ "cargo_metadata 0.19.2",
  "directories",
  "rustc-build-sysroot",
  "rustc_tools_util 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1012,11 +1012,11 @@ dependencies = [
 
 [[package]]
 name = "directories"
-version = "5.0.1"
+version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a49173b84e034382284f27f1af4dcbbd231ffa358c0fe316541a7337f376a35"
+checksum = "16f5094c54661b38d03bd7e50df373292118db60b585c08a411c6d840017fe7d"
 dependencies = [
- "dirs-sys",
+ "dirs-sys 0.5.0",
 ]
 
 [[package]]
@@ -1025,7 +1025,7 @@ version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44c45a9d03d6676652bcb5e724c7e988de1acad23a711b5217ab9cbecbec2225"
 dependencies = [
- "dirs-sys",
+ "dirs-sys 0.4.1",
 ]
 
 [[package]]
@@ -1046,8 +1046,20 @@ checksum = "520f05a5cbd335fae5a99ff7a6ab8627577660ee5cfd6a94a6a929b52ff0321c"
 dependencies = [
  "libc",
  "option-ext",
- "redox_users",
+ "redox_users 0.4.6",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "dirs-sys"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e01a3366d27ee9890022452ee61b2b63a67e6f13f58900b651ff5665f0bb1fab"
+dependencies = [
+ "libc",
+ "option-ext",
+ "redox_users 0.5.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1057,7 +1069,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ebda144c4fe02d1f7ea1a7d9641b6fc6b580adcfa024ae48797ecdeb6825b4d"
 dependencies = [
  "libc",
- "redox_users",
+ "redox_users 0.4.6",
  "winapi",
 ]
 
@@ -2213,20 +2225,6 @@ dependencies = [
 
 [[package]]
 name = "measureme"
-version = "11.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfa4a40f09af7aa6faef38285402a78847d0d72bf8827006cd2a332e1e6e4a8d"
-dependencies = [
- "log",
- "memmap2",
- "parking_lot",
- "perf-event-open-sys",
- "rustc-hash 1.1.0",
- "smallvec",
-]
-
-[[package]]
-name = "measureme"
 version = "12.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "570a507d8948a66a97f42cbbaf8a6bb9516a51017d4ee949502ad7a10a864395"
@@ -2322,7 +2320,7 @@ dependencies = [
  "libc",
  "libffi",
  "libloading",
- "measureme 11.0.1",
+ "measureme",
  "rand 0.9.0",
  "regex",
  "rustc_version",
@@ -2330,7 +2328,7 @@ dependencies = [
  "tempfile",
  "tikv-jemalloc-sys",
  "ui_test",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3030,6 +3028,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_users"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd6f9d3d47bdd2ad6945c5015a226ec6155d0bcdfd8f7cd29f86b71f8de99d2b"
+dependencies = [
+ "getrandom 0.2.15",
+ "libredox",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "regex"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3469,7 +3478,7 @@ dependencies = [
  "gimli 0.31.1",
  "itertools",
  "libc",
- "measureme 12.0.1",
+ "measureme",
  "object 0.36.7",
  "rustc-demangle",
  "rustc_abi",
@@ -3584,7 +3593,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "libc",
- "measureme 12.0.1",
+ "measureme",
  "memmap2",
  "parking_lot",
  "portable-atomic",
@@ -4344,7 +4353,7 @@ dependencies = [
 name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
- "measureme 12.0.1",
+ "measureme",
  "rustc_data_structures",
  "rustc_hashes",
  "rustc_hir",

@@ -222,7 +222,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
 
-            // Futex primitives
+            // Synchronization primitives
             "os_sync_wait_on_address" => {
                 let [addr_op, value_op, size_op, flags_op] =
                     this.check_shim(abi, Conv::C, link_name, args)?;
@@ -273,7 +273,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     addr_op, size_op, flags_op, /* all */ true, dest,
                 )?;
             }
-
             "os_unfair_lock_lock" => {
                 let [lock_op] = this.check_shim(abi, Conv::C, link_name, args)?;
                 this.os_unfair_lock_lock(lock_op)?;
