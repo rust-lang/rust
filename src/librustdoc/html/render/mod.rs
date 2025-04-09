@@ -113,50 +113,18 @@ enum RenderMode {
 /// by hand to a large JS file at the end of cache-creation.
 #[derive(Debug)]
 pub(crate) struct IndexItem {
-    ty: ItemType,
-    defid: Option<DefId>,
-    name: Symbol,
-    path: String,
-    desc: String,
-    parent: Option<DefId>,
-    parent_idx: Option<isize>,
-    exact_path: Option<String>,
-    impl_id: Option<DefId>,
-    search_type: Option<IndexItemFunctionType>,
-    aliases: Box<[Symbol]>,
-    deprecation: Option<Deprecation>,
-}
-
-impl IndexItem {
-    pub fn new(
-        ty: ItemType,
-        defid: Option<DefId>,
-        name: Symbol,
-        path: String,
-        desc: String,
-        parent: Option<DefId>,
-        parent_idx: Option<isize>,
-        exact_path: Option<String>,
-        impl_id: Option<DefId>,
-        search_type: Option<IndexItemFunctionType>,
-        aliases: Box<[Symbol]>,
-        deprecation: Option<Deprecation>,
-    ) -> Self {
-        Self {
-            ty,
-            defid,
-            name,
-            path,
-            desc,
-            parent,
-            parent_idx,
-            exact_path,
-            impl_id,
-            search_type,
-            aliases,
-            deprecation,
-        }
-    }
+    pub(crate) ty: ItemType,
+    pub(crate) defid: Option<DefId>,
+    pub(crate) name: Symbol,
+    pub(crate) path: String,
+    pub(crate) desc: String,
+    pub(crate) parent: Option<DefId>,
+    pub(crate) parent_idx: Option<isize>,
+    pub(crate) exact_path: Option<String>,
+    pub(crate) impl_id: Option<DefId>,
+    pub(crate) search_type: Option<IndexItemFunctionType>,
+    pub(crate) aliases: Box<[Symbol]>,
+    pub(crate) deprecation: Option<Deprecation>,
 }
 
 /// A type used for the search index.
