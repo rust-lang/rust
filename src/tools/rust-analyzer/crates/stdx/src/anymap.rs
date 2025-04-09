@@ -82,12 +82,12 @@ pub type RawMap<A> = hash_map::HashMap<TypeId, Box<A>, BuildHasherDefault<TypeId
 /// ## Example
 ///
 /// (Here, the [`AnyMap`] convenience alias is used;
-/// the first line could use `[anymap::Map][Map]::<[core::any::Any]>::new()`
+/// the first line could use `[anymap::Map][Map]::<[core::any::Any]>::default()`
 /// instead if desired.)
 ///
 /// ```
 /// # use stdx::anymap;
-/// let mut data = anymap::AnyMap::new();
+/// let mut data = anymap::AnyMap::default();
 /// assert_eq!(data.get(), None::<&i32>);
 /// ```
 ///
@@ -100,7 +100,7 @@ pub struct Map<A: ?Sized + Downcast = dyn Any> {
 /// The most common type of `Map`: just using `Any`; `[Map]<dyn [Any]>`.
 ///
 /// Why is this a separate type alias rather than a default value for `Map<A>`?
-/// `Map::new()` doesn't seem to be happy to infer that it should go with the default
+/// `Map::default()` doesn't seem to be happy to infer that it should go with the default
 /// value. It's a bit sad, really. Ah well, I guess this approach will do.
 pub type AnyMap = Map<dyn Any>;
 
