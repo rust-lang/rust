@@ -109,6 +109,16 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     pub fn collect<C: From<UnordItems<T, I>>>(self) -> C {
         self.into()
     }
+
+    /// If the iterator has only one element, returns it, otherwise returns `None`.
+    #[track_caller]
+    pub fn get_only(mut self) -> Option<T> {
+        let item = self.0.next();
+        if self.0.next().is_some() {
+            return None;
+        }
+        item
+    }
 }
 
 impl<T> UnordItems<T, std::iter::Empty<T>> {
