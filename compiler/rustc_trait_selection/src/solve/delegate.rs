@@ -11,7 +11,9 @@ use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtx
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, TypingMode};
+use rustc_middle::ty::{
+    self, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, TypingMode,
+};
 use rustc_next_trait_solver::solve::HasChanged;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
@@ -87,7 +89,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
                 match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                     Some(LangItem::Sized)
-                        if trait_pred.self_ty().is_trivially_sized(self.0.tcx) =>
+                        if trait_pred
+                            .self_ty()
+                            .has_trivial_sizedness(self.0.tcx, SizedTraitKind::Sized) =>
+                    {
+                        Some(HasChanged::No)
+                    }
+                    Some(LangItem::MetaSized)
+                        if trait_pred
+                            .self_ty()
+                            .has_trivial_sizedness(self.0.tcx, SizedTraitKind::MetaSized) =>
                     {
                         Some(HasChanged::No)
                     }
