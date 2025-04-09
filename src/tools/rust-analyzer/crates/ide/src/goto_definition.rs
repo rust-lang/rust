@@ -419,8 +419,10 @@ fn nav_for_branches(
             .descend_into_macros(token.clone())
             .into_iter()
             .filter_map(|token| {
-                let match_expr =
-                    sema.token_ancestors_with_macros(token).find_map(ast::MatchExpr::cast)?;
+                let match_expr = sema
+                    .token_ancestors_with_macros(token)
+                    .take_while(|node| !ast::MacroCall::can_cast(node.kind()))
+                    .find_map(ast::MatchExpr::cast)?;
                 let file_id = sema.hir_file_for(match_expr.syntax());
                 let focus_range = match_expr.match_token()?.text_range();
                 let match_expr_in_file = InFile::new(file_id, match_expr.into());
@@ -433,8 +435,10 @@ fn nav_for_branches(
             .descend_into_macros(token.clone())
             .into_iter()
             .filter_map(|token| {
-                let match_arm =
-                    sema.token_ancestors_with_macros(token).find_map(ast::MatchArm::cast)?;
+                let match_arm = sema
+                    .token_ancestors_with_macros(token)
+                    .take_while(|node| !ast::MacroCall::can_cast(node.kind()))
+                    .find_map(ast::MatchArm::cast)?;
                 let match_expr = sema
                     .ancestors_with_macros(match_arm.syntax().clone())
                     .find_map(ast::MatchExpr::cast)?;
@@ -450,8 +454,10 @@ fn nav_for_branches(
             .descend_into_macros(token.clone())
             .into_iter()
             .filter_map(|token| {
-                let if_expr =
-                    sema.token_ancestors_with_macros(token).find_map(ast::IfExpr::cast)?;
+                let if_expr = sema
+                    .token_ancestors_with_macros(token)
+                    .take_while(|node| !ast::MacroCall::can_cast(node.kind()))
+                    .find_map(ast::IfExpr::cast)?;
                 let file_id = sema.hir_file_for(if_expr.syntax());
                 let focus_range = if_expr.if_token()?.text_range();
                 let if_expr_in_file = InFile::new(file_id, if_expr.into());
