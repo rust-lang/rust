@@ -191,7 +191,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // we have no information about the source type. This will always
         // ultimately fall back to some form of subtyping.
         if a.is_ty_var() {
-            return self.coerce_from_inference_variable(a, b, identity);
+            return self.coerce_from_inference_variable(a, b);
         }
 
         // Consider coercing the subtype to a DST
@@ -265,12 +265,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     /// Coercing *from* an inference variable. In this case, we have no information
     /// about the source type, so we can't really do a true coercion and we always
     /// fall back to subtyping (`unify_and`).
-    fn coerce_from_inference_variable(
-        &self,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        make_adjustments: impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
-    ) -> CoerceResult<'tcx> {
+    fn coerce_from_inference_variable(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         debug!("coerce_from_inference_variable(a={:?}, b={:?})", a, b);
         assert!(a.is_ty_var() && self.shallow_resolve(a) == a);
         assert!(self.shallow_resolve(b) == b);
@@ -298,12 +293,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 "coerce_from_inference_variable: two inference variables, target_ty={:?}, obligations={:?}",
                 target_ty, obligations
             );
-            let adjustments = make_adjustments(target_ty);
-            InferResult::Ok(InferOk { value: (adjustments, target_ty), obligations })
+            success(vec![], target_ty, obligations)
         } else {
             // One unresolved type variable: just apply subtyping, we may be able
             // to do something useful.
-            self.unify_and(a, b, make_adjustments)
+            self.unify_and(a, b, identity)
         }
     }
 
@@ -708,7 +702,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             && let ty::Dynamic(b_data, _, ty::DynStar) = b.kind()
             && a_data.principal_def_id() == b_data.principal_def_id()
         {
-            return self.unify_and(a, b, |_| vec![]);
+            return self.unify_and(a, b, identity);
         }
 
         // Check the obligations of the cast -- for example, when casting
@@ -808,9 +802,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
         // add the adjustments.
-        self.unify_and(a, b, |_inner_ty| {
-            vec![Adjustment { kind: Adjust::ReborrowPin(mut_b), target: b }]
-        })
+        self.unify_and(a, b, simple(Adjust::ReborrowPin(mut_b)))
     }
 
     fn coerce_from_safe_fn(
