@@ -19,7 +19,7 @@ use crate::{
     },
     lang_item::LangItemTarget,
     signatures::{FnFlags, FunctionSignature, StructSignature},
-    type_ref::{ConstRef, Mutability, TraitBoundModifier, TypeBound, UseArgRef},
+    type_ref::{ConstRef, LifetimeRef, Mutability, TraitBoundModifier, TypeBound, UseArgRef},
 };
 
 use super::*;
@@ -268,12 +268,9 @@ fn print_where_clauses(db: &dyn DefDatabase, generic_params: &GenericParams, p: 
                         }
                     },
                     WherePredicate::Lifetime { target, bound } => {
-                        w!(
-                            p,
-                            "{}: {}",
-                            target.name.display(db.upcast(), p.edition),
-                            bound.name.display(db.upcast(), p.edition)
-                        );
+                        p.print_lifetime_ref(target);
+                        w!(p, ": ");
+                        p.print_lifetime_ref(bound);
                     }
                     WherePredicate::ForLifetime { lifetimes, target, bound } => {
                         w!(p, "for<");
@@ -1140,9 +1137,7 @@ impl Printer<'_> {
         match arg {
             GenericArg::Type(ty) => self.print_type_ref(*ty),
             GenericArg::Const(ConstRef { expr }) => self.print_expr(*expr),
-            GenericArg::Lifetime(lt) => {
-                w!(self, "{}", lt.name.display(self.db.upcast(), self.edition))
-            }
+            GenericArg::Lifetime(lt) => self.print_lifetime_ref(lt),
         }
     }
 
@@ -1152,6 +1147,17 @@ impl Printer<'_> {
         match generic_params[param.local_id()].name() {
             Some(name) => w!(self, "{}", name.display(self.db.upcast(), self.edition)),
             None => w!(self, "Param[{}]", param.local_id().into_raw()),
+        }
+    }
+
+    pub(crate) fn print_lifetime_ref(&mut self, lt_ref: &LifetimeRef) {
+        match lt_ref {
+            LifetimeRef::Static => w!(self, "'static"),
+            LifetimeRef::Named(lt) => {
+                w!(self, "{}", lt.display(self.db.upcast(), self.edition))
+            }
+            LifetimeRef::Placeholder => w!(self, "'_"),
+            LifetimeRef::Error => w!(self, "'{{error}}"),
         }
     }
 
@@ -1187,7 +1193,8 @@ impl Printer<'_> {
                 };
                 w!(self, "&");
                 if let Some(lt) = &ref_.lifetime {
-                    w!(self, "{} ", lt.name.display(self.db.upcast(), self.edition));
+                    self.print_lifetime_ref(lt);
+                    w!(self, " ");
                 }
                 w!(self, "{mtbl}");
                 self.print_type_ref(ref_.ty);
@@ -1269,9 +1276,7 @@ impl Printer<'_> {
                     );
                     self.print_path(&self.store[*path]);
                 }
-                TypeBound::Lifetime(lt) => {
-                    w!(self, "{}", lt.name.display(self.db.upcast(), self.edition))
-                }
+                TypeBound::Lifetime(lt) => self.print_lifetime_ref(lt),
                 TypeBound::Use(args) => {
                     w!(self, "use<");
                     let mut first = true;
@@ -1283,9 +1288,7 @@ impl Printer<'_> {
                             UseArgRef::Name(it) => {
                                 w!(self, "{}", it.display(self.db.upcast(), self.edition))
                             }
-                            UseArgRef::Lifetime(it) => {
-                                w!(self, "{}", it.name.display(self.db.upcast(), self.edition))
-                            }
+                            UseArgRef::Lifetime(it) => self.print_lifetime_ref(it),
                         }
                     }
                     w!(self, ">")

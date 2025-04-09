@@ -213,7 +213,8 @@ impl HirDisplay for SelfParam {
             {
                 f.write_char('&')?;
                 if let Some(lifetime) = &ref_.lifetime {
-                    write!(f, "{} ", lifetime.name.display(f.db.upcast(), f.edition()))?;
+                    lifetime.hir_fmt(f, &data.store)?;
+                    f.write_char(' ')?;
                 }
                 if let hir_def::type_ref::Mutability::Mut = ref_.mutability {
                     f.write_str("mut ")?;
@@ -685,9 +686,9 @@ fn write_where_predicates(
                 bound.hir_fmt(f, store)?;
             }
             Lifetime { target, bound } => {
-                let target = target.name.display(f.db.upcast(), f.edition());
-                let bound = bound.name.display(f.db.upcast(), f.edition());
-                write!(f, "{target}: {bound}")?;
+                target.hir_fmt(f, store)?;
+                write!(f, ": ")?;
+                bound.hir_fmt(f, store)?;
             }
             ForLifetime { lifetimes, target, bound } => {
                 let lifetimes =
@@ -703,9 +704,7 @@ fn write_where_predicates(
             f.write_str(" + ")?;
             match nxt {
                 TypeBound { bound, .. } | ForLifetime { bound, .. } => bound.hir_fmt(f, store)?,
-                Lifetime { bound, .. } => {
-                    write!(f, "{}", bound.name.display(f.db.upcast(), f.edition()))?
-                }
+                Lifetime { bound, .. } => bound.hir_fmt(f, store)?,
             }
         }
         f.write_str(",")?;

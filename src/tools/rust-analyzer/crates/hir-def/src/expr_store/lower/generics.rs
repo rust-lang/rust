@@ -123,12 +123,14 @@ impl<'db, 'c> GenericParamsCollector<'db, 'c> {
                 ast::GenericParam::LifetimeParam(lifetime_param) => {
                     let lifetime_ref =
                         self.expr_collector.lower_lifetime_ref_opt(lifetime_param.lifetime());
-                    let param = LifetimeParamData { name: lifetime_ref.name.clone() };
-                    let _idx = self.lifetimes.alloc(param);
-                    self.lower_bounds(
-                        lifetime_param.type_bound_list(),
-                        Either::Right(lifetime_ref),
-                    );
+                    if let LifetimeRef::Named(name) = &lifetime_ref {
+                        let param = LifetimeParamData { name: name.clone() };
+                        let _idx = self.lifetimes.alloc(param);
+                        self.lower_bounds(
+                            lifetime_param.type_bound_list(),
+                            Either::Right(lifetime_ref),
+                        );
+                    }
                 }
             }
         }
@@ -151,7 +153,7 @@ impl<'db, 'c> GenericParamsCollector<'db, 'c> {
                     .map(|lifetime_param| {
                         lifetime_param
                             .lifetime()
-                            .map_or_else(Name::missing, |lt| Name::new_lifetime(&lt))
+                            .map_or_else(Name::missing, |lt| Name::new_lifetime(&lt.text()))
                     })
                     .collect()
             });

@@ -544,13 +544,19 @@ impl ExprCollector<'_> {
     }
 
     pub fn lower_lifetime_ref(&mut self, lifetime: ast::Lifetime) -> LifetimeRef {
-        LifetimeRef::new(&lifetime)
+        // FIXME: Keyword check?
+        match &*lifetime.text() {
+            "" | "'" => LifetimeRef::Error,
+            "'static" => LifetimeRef::Static,
+            "'_" => LifetimeRef::Placeholder,
+            text => LifetimeRef::Named(Name::new_lifetime(text)),
+        }
     }
 
     pub fn lower_lifetime_ref_opt(&mut self, lifetime: Option<ast::Lifetime>) -> LifetimeRef {
         match lifetime {
-            Some(lifetime) => LifetimeRef::new(&lifetime),
-            None => LifetimeRef::missing(),
+            Some(lifetime) => self.lower_lifetime_ref(lifetime),
+            None => LifetimeRef::Placeholder,
         }
     }
 
@@ -590,7 +596,7 @@ impl ExprCollector<'_> {
             }
             ast::Type::RefType(inner) => {
                 let inner_ty = self.lower_type_ref_opt(inner.ty(), impl_trait_lower_fn);
-                let lifetime = inner.lifetime().map(|lt| LifetimeRef::new(&lt));
+                let lifetime = inner.lifetime().map(|lt| self.lower_lifetime_ref(lt));
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::Reference(Box::new(RefType { ty: inner_ty, lifetime, mutability }))
             }
@@ -824,7 +830,7 @@ impl ExprCollector<'_> {
                 }
                 ast::GenericArg::LifetimeArg(lifetime_arg) => {
                     if let Some(lifetime) = lifetime_arg.lifetime() {
-                        let lifetime_ref = LifetimeRef::new(&lifetime);
+                        let lifetime_ref = self.lower_lifetime_ref(lifetime);
                         args.push(GenericArg::Lifetime(lifetime_ref))
                     }
                 }
@@ -911,7 +917,7 @@ impl ExprCollector<'_> {
                 let lt_refs = match for_type.generic_param_list() {
                     Some(gpl) => gpl
                         .lifetime_params()
-                        .flat_map(|lp| lp.lifetime().map(|lt| Name::new_lifetime(&lt)))
+                        .flat_map(|lp| lp.lifetime().map(|lt| Name::new_lifetime(&lt.text())))
                         .collect(),
                     None => Box::default(),
                 };
@@ -932,14 +938,14 @@ impl ExprCollector<'_> {
                 gal.use_bound_generic_args()
                     .map(|p| match p {
                         ast::UseBoundGenericArg::Lifetime(l) => {
-                            UseArgRef::Lifetime(LifetimeRef::new(&l))
+                            UseArgRef::Lifetime(self.lower_lifetime_ref(l))
                         }
                         ast::UseBoundGenericArg::NameRef(n) => UseArgRef::Name(n.as_name()),
                     })
                     .collect(),
             ),
             ast::TypeBoundKind::Lifetime(lifetime) => {
-                TypeBound::Lifetime(LifetimeRef::new(&lifetime))
+                TypeBound::Lifetime(self.lower_lifetime_ref(lifetime))
             }
         }
     }
@@ -2491,7 +2497,10 @@ impl ExprCollector<'_> {
 
     fn collect_label(&mut self, ast_label: ast::Label) -> LabelId {
         let label = Label {
-            name: ast_label.lifetime().as_ref().map_or_else(Name::missing, Name::new_lifetime),
+            name: ast_label
+                .lifetime()
+                .as_ref()
+                .map_or_else(Name::missing, |lt| Name::new_lifetime(&lt.text())),
         };
         self.alloc_label(label, AstPtr::new(&ast_label))
     }
@@ -2511,7 +2520,7 @@ impl ExprCollector<'_> {
                 (hygiene_id.lookup().parent(self.db), expansion.def)
             })
         };
-        let name = Name::new_lifetime(&lifetime);
+        let name = Name::new_lifetime(&lifetime.text());
 
         for (rib_idx, rib) in self.label_ribs.iter().enumerate().rev() {
             match &rib.kind {
