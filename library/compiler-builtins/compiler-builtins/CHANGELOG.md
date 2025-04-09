@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.153](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.152...compiler_builtins-v0.1.153) - 2025-04-09
+
+### Other
+
+- Remove a mention of `force-soft-float` in `build.rs`
+- Revert "Disable `f16` on AArch64 without the `neon` feature"
+- Skip No More!
+- avoid out-of-bounds accesses ([#799](https://github.com/rust-lang/compiler-builtins/pull/799))
+
 ## [0.1.152](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.151...compiler_builtins-v0.1.152) - 2025-03-20
 
 ### Other
