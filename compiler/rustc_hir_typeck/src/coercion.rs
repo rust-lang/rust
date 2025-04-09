@@ -103,11 +103,6 @@ fn coerce_mutbls<'tcx>(
     if from_mutbl >= to_mutbl { Ok(()) } else { Err(TypeError::Mutability) }
 }
 
-/// Do not require any adjustments, i.e. coerce `x -> x`.
-fn identity(_: Ty<'_>) -> Vec<Adjustment<'_>> {
-    vec![]
-}
-
 fn simple<'tcx>(kind: Adjust) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>> {
     move |target| vec![Adjustment { kind, target }]
 }
@@ -161,6 +156,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         })
     }
 
+    /// Unify two types (using sub or lub).
+    fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        self.unify_raw(a, b)
+            .and_then(|InferOk { value: ty, obligations }| success(vec![], ty, obligations))
+    }
+
     /// Unify two types (using sub or lub) and produce a specific coercion.
     fn unify_and<F>(&self, a: Ty<'tcx>, b: Ty<'tcx>, f: F) -> CoerceResult<'tcx>
     where
@@ -183,7 +184,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 return success(simple(Adjust::NeverToAny)(b), b, PredicateObligations::new());
             } else {
                 // Otherwise the only coercion we can do is unification.
-                return self.unify_and(a, b, identity);
+                return self.unify(a, b);
             }
         }
 
@@ -257,7 +258,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             _ => {
                 // Otherwise, just use unification rules.
-                self.unify_and(a, b, identity)
+                self.unify(a, b)
             }
         }
     }
@@ -297,7 +298,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         } else {
             // One unresolved type variable: just apply subtyping, we may be able
             // to do something useful.
-            self.unify_and(a, b, identity)
+            self.unify(a, b)
         }
     }
 
@@ -325,7 +326,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 coerce_mutbls(mt_a.mutbl, mutbl_b)?;
                 (r_a, mt_a)
             }
-            _ => return self.unify_and(a, b, identity),
+            _ => return self.unify(a, b),
         };
 
         let span = self.cause.span;
@@ -702,7 +703,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             && let ty::Dynamic(b_data, _, ty::DynStar) = b.kind()
             && a_data.principal_def_id() == b_data.principal_def_id()
         {
-            return self.unify_and(a, b, identity);
+            return self.unify(a, b);
         }
 
         // Check the obligations of the cast -- for example, when casting
@@ -917,7 +918,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 obligations.extend(o2);
                 Ok(InferOk { value, obligations })
             }
-            _ => self.unify_and(a, b, identity),
+            _ => self.unify(a, b),
         }
     }
 
@@ -964,7 +965,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     simple(Adjust::Pointer(PointerCoercion::ClosureFnPointer(safety))),
                 )
             }
-            _ => self.unify_and(a, b, identity),
+            _ => self.unify(a, b),
         }
     }
 
@@ -979,7 +980,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let (is_ref, mt_a) = match *a.kind() {
             ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
             ty::RawPtr(ty, mutbl) => (false, ty::TypeAndMut { ty, mutbl }),
-            _ => return self.unify_and(a, b, identity),
+            _ => return self.unify(a, b),
         };
         coerce_mutbls(mt_a.mutbl, mutbl_b)?;
 
@@ -998,7 +999,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         } else if mt_a.mutbl != mutbl_b {
             self.unify_and(a_raw, b, simple(Adjust::Pointer(PointerCoercion::MutToConstPointer)))
         } else {
-            self.unify_and(a_raw, b, identity)
+            self.unify(a_raw, b)
         }
     }
 }
