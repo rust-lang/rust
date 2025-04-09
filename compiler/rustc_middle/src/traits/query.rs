@@ -178,6 +178,7 @@ pub struct MethodAutoderefStepsResult<'tcx> {
 #[derive(Debug, HashStable)]
 pub struct MethodAutoderefBadTy<'tcx> {
     pub reached_raw_pointer: bool,
+    pub is_opaque_type: bool,
     pub ty: Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
 }
 
