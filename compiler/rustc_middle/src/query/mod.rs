@@ -169,6 +169,7 @@ rustc_queries! {
     query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
         arena_cache
         eval_always
+        no_hash
         desc { "getting the crate HIR" }
     }
 
