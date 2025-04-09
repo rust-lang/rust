@@ -20,6 +20,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_target::callconv::{Conv, FnAbi, PassMode};
+use smallvec::SmallVec;
 
 use self::pass_mode::*;
 pub(crate) use self::returning::codegen_return;
@@ -384,6 +385,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: Place<'tcx>,
     target: Option<BasicBlock>,
+    _unwind: UnwindAction,
 ) {
     let func = codegen_operand(fx, func);
     let fn_sig = func.layout().ty.fn_sig(fx.tcx);
@@ -588,12 +590,14 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             with_no_trimmed_paths!(fx.add_comment(nop_inst, format!("abi: {:?}", fn_abi)));
         }
 
-        match func_ref {
+        let call_inst = match func_ref {
             CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
             CallTarget::Indirect(sig, func_ptr) => {
                 fx.bcx.ins().call_indirect(sig, func_ptr, &call_args)
             }
-        }
+        };
+
+        fx.bcx.func.dfg.inst_results(call_inst).iter().copied().collect::<SmallVec<[Value; 2]>>()
     });
 
     if let Some(dest) = target {
@@ -703,14 +707,17 @@ pub(crate) fn codegen_drop<'tcx>(
     source_info: mir::SourceInfo,
     drop_place: CPlace<'tcx>,
     target: BasicBlock,
+    _unwind: UnwindAction,
 ) {
     let ty = drop_place.layout().ty;
     let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty);
+    let ret_block = fx.get_block(target);
 
     if let ty::InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None) =
         drop_instance.def
     {
         // we don't actually need to drop anything
+        fx.bcx.ins().jump(ret_block, &[]);
     } else {
         match ty.kind() {
             ty::Dynamic(_, _, ty::Dyn) => {
@@ -747,7 +754,9 @@ pub(crate) fn codegen_drop<'tcx>(
 
                 let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
                 let sig = fx.bcx.import_signature(sig);
+                // FIXME implement cleanup on exceptions
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
+                fx.bcx.ins().jump(ret_block, &[]);
             }
             ty::Dynamic(_, _, ty::DynStar) => {
                 // IN THIS ARM, WE HAVE:
@@ -791,6 +800,8 @@ pub(crate) fn codegen_drop<'tcx>(
                 let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
                 let sig = fx.bcx.import_signature(sig);
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[data]);
+                // FIXME implement cleanup on exceptions
+                fx.bcx.ins().jump(ret_block, &[]);
             }
             _ => {
                 assert!(!matches!(drop_instance.def, InstanceKind::Virtual(_, _)));
@@ -816,10 +827,9 @@ pub(crate) fn codegen_drop<'tcx>(
 
                 let func_ref = fx.get_function_ref(drop_instance);
                 fx.bcx.ins().call(func_ref, &call_args);
+                // FIXME implement cleanup on exceptions
+                fx.bcx.ins().jump(ret_block, &[]);
             }
         }
     }
-
-    let target_block = fx.get_block(target);
-    fx.bcx.ins().jump(target_block, &[]);
 }
