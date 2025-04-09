@@ -83,7 +83,7 @@ const USELESS_METHODS: &[&str] = &[
 ///
 /// ```
 /// # use ide_db::syntax_helpers::suggest_name::NameGenerator;
-/// let mut generator = NameGenerator::new();
+/// let mut generator = NameGenerator::default();
 /// assert_eq!(generator.suggest_name("a"), "a");
 /// assert_eq!(generator.suggest_name("a"), "a1");
 ///
