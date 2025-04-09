@@ -67,9 +67,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.152"
+version = "0.1.153"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2153cf213eb259361567720ce55f6446f17acd0ccca87fb6dc05360578228a58"
+checksum = "926ef6a360c15a911023352fd6969c51605d70495406f735beb1ca0257448e59"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
