@@ -58,16 +58,16 @@ pub use crate::{
     dbg, eprint, eprintln, format, is_x86_feature_detected, print, println, thread_local,
 };
 
-// The `vec` macro needs special handling, so that we don't export it *and* the `std::vec` module at
-// the same time. We only want the macro in the prelude.
-mod vec_macro_only {
+// These macros needs special handling, so that we don't export it *and* the modules of the same
+// name. We only want the macro in the prelude.
+mod ambiguous_macro_only_std {
     #[allow(hidden_glob_reexports)]
     mod vec {}
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     pub use crate::*;
 }
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-pub use self::vec_macro_only::vec;
+pub use self::ambiguous_macro_only_std::vec;
 
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[doc(no_inline)]
