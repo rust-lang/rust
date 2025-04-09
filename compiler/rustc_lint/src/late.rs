@@ -356,7 +356,16 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     let store = unerased_lint_store(tcx.sess);
 
     if store.late_module_passes.is_empty() {
-        late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
+        // If all builtin lints can be skipped, there is no point in running `late_lint_mod_inner`
+        // at all. This happens often for dependencies built with `--cap-lints=allow`.
+        let dont_need_to_run = tcx.lints_that_dont_need_to_run(());
+        let can_skip_lints = builtin_lints
+            .get_lints()
+            .iter()
+            .all(|lint| dont_need_to_run.contains(&LintId::of(lint)));
+        if !can_skip_lints {
+            late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
+        }
     } else {
         let builtin_lints = Box::new(builtin_lints) as Box<dyn LateLintPass<'tcx>>;
         let mut binding = store
