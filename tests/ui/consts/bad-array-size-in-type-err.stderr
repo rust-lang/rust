@@ -54,7 +54,7 @@ error[E0493]: destructor of `Wrap` cannot be evaluated at compile-time
   --> $DIR/bad-array-size-in-type-err.rs:21:16
    |
 LL | pub const fn i(_: Wrap) {}
-   |                ^         - value is dropped here
+   |                ^          - value is dropped here
    |                |
    |                the destructor for this type cannot be evaluated in constant functions
 

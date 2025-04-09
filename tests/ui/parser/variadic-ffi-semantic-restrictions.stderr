@@ -205,7 +205,7 @@ error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:32:43
    |
 LL | const unsafe extern "C" fn f4_1(x: isize, ...) {}
-   |                                           ^^^   - value is dropped here
+   |                                           ^^^    - value is dropped here
    |                                           |
    |                                           the destructor for this type cannot be evaluated in constant functions
 
@@ -213,7 +213,7 @@ error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:36:36
    |
 LL | const extern "C" fn f4_2(x: isize, ...) {}
-   |                                    ^^^   - value is dropped here
+   |                                    ^^^    - value is dropped here
    |                                    |
    |                                    the destructor for this type cannot be evaluated in constant functions
 
@@ -221,7 +221,7 @@ error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:64:29
    |
 LL |     const fn i_f5(x: isize, ...) {}
-   |                             ^^^   - value is dropped here
+   |                             ^^^    - value is dropped here
    |                             |
    |                             the destructor for this type cannot be evaluated in constant functions
 

@@ -12,7 +12,7 @@ LL |     let f3: &'a Fat<[isize]> = f2;
    |             ---------------- type annotation requires that `f1` is borrowed for `'a`
 ...
 LL | }
-   | - `f1` dropped here while still borrowed
+   |  - `f1` dropped here while still borrowed
 
 error[E0597]: `f1` does not live long enough
   --> $DIR/dst-bad-coerce3.rs:19:25
@@ -27,7 +27,7 @@ LL |     let f2: &Fat<Foo> = &f1;
 LL |     let f3: &'a Fat<dyn Bar> = f2;
    |             ---------------- type annotation requires that `f1` is borrowed for `'a`
 LL | }
-   | - `f1` dropped here while still borrowed
+   |  - `f1` dropped here while still borrowed
 
 error: aborting due to 2 previous errors
 

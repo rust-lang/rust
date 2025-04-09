@@ -20,9 +20,8 @@ LL | |         e.ok(5).is_ok()
    | |         up until Edition 2021 `#3` is dropped last but will be dropped earlier in Edition 2024
 ...  |
 LL | |     }, e.mark(3), e.ok(4));
-   | |                          -
+   | |                          -- now the temporary value is dropped here, before the local variables in the block or statement
    | |                          |
-   | |                          now the temporary value is dropped here, before the local variables in the block or statement
    | |__________________________this value will be stored in a temporary; let us call it `#1`
    |                            `#1` will be dropped later as of Edition 2024
    |
@@ -68,9 +67,8 @@ LL | |         (e.ok(2), e.ok(6).is_ok(), e.ok(3), e.ok(5).is_ok())
    | |                                             up until Edition 2021 `#2` is dropped last but will be dropped earlier in Edition 2024
 ...  |
 LL | |     }, e.mark(1), e.ok(4));
-   | |                          -
+   | |                          -- now the temporary value is dropped here, before the local variables in the block or statement
    | |                          |
-   | |                          now the temporary value is dropped here, before the local variables in the block or statement
    | |__________________________this value will be stored in a temporary; let us call it `#1`
    |                            `#1` will be dropped later as of Edition 2024
    |
@@ -100,9 +98,8 @@ LL | |         (e.ok(2), e.ok(6).is_ok(), e.ok(3), e.ok(5).is_ok())
    | |                   up until Edition 2021 `#2` is dropped last but will be dropped earlier in Edition 2024
 ...  |
 LL | |     }, e.mark(1), e.ok(4));
-   | |                          -
+   | |                          -- now the temporary value is dropped here, before the local variables in the block or statement
    | |                          |
-   | |                          now the temporary value is dropped here, before the local variables in the block or statement
    | |__________________________this value will be stored in a temporary; let us call it `#1`
    |                            `#1` will be dropped later as of Edition 2024
    |
@@ -132,9 +129,8 @@ LL | |         if let Ok(_) = e.ok(4).as_ref() {
    | |                        up until Edition 2021 `#2` is dropped last but will be dropped earlier in Edition 2024
 ...  |
 LL | |     }, e.mark(2), e.ok(3));
-   | |                          -
+   | |                          -- now the temporary value is dropped here, before the local variables in the block or statement
    | |                          |
-   | |                          now the temporary value is dropped here, before the local variables in the block or statement
    | |__________________________this value will be stored in a temporary; let us call it `#1`
    |                            `#1` will be dropped later as of Edition 2024
    |
@@ -164,9 +160,8 @@ LL | |         if let Ok(_) = e.err(4).as_ref() {} else {
    | |                        up until Edition 2021 `#2` is dropped last but will be dropped earlier in Edition 2024
 ...  |
 LL | |     }, e.mark(2), e.ok(3));
-   | |                          -
+   | |                          -- now the temporary value is dropped here, before the local variables in the block or statement
    | |                          |
-   | |                          now the temporary value is dropped here, before the local variables in the block or statement
    | |__________________________this value will be stored in a temporary; let us call it `#1`
    |                            `#1` will be dropped later as of Edition 2024
    |

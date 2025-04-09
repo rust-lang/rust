@@ -5,7 +5,7 @@ LL |     let _: &'static _ = &FOO;
    |                          ^^^ the destructor for this type cannot be evaluated in constants
 LL |
 LL | };
-   | - value is dropped here
+   |  - value is dropped here
 
 error[E0492]: constants cannot refer to interior mutable data
   --> $DIR/const-promoted-opaque.rs:36:19
@@ -22,7 +22,7 @@ LL |     let _: &'static _ = &FOO;
    |            type annotation requires that borrow lasts for `'static`
 LL |
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error: aborting due to 3 previous errors
 

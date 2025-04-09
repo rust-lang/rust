@@ -7,13 +7,13 @@ LL |     let _: &'static _ = &id(&Panic);
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | };
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted_const_call.rs:8:30
    |
 LL |     let _: &'static _ = &id(&Panic);
-   |            ----------        ^^^^^ - temporary value is freed at the end of this statement
+   |            ----------        ^^^^^  - temporary value is freed at the end of this statement
    |            |                 |
    |            |                 creates a temporary value which is freed while still in use
    |            type annotation requires that borrow lasts for `'static`
@@ -27,13 +27,13 @@ LL |     let _: &'static _ = &id(&Panic);
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted_const_call.rs:14:30
    |
 LL |     let _: &'static _ = &id(&Panic);
-   |            ----------        ^^^^^ - temporary value is freed at the end of this statement
+   |            ----------        ^^^^^  - temporary value is freed at the end of this statement
    |            |                 |
    |            |                 creates a temporary value which is freed while still in use
    |            type annotation requires that borrow lasts for `'static`
@@ -47,7 +47,7 @@ LL |     let _: &'static _ = &&(Panic, 0).1;
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted_const_call.rs:17:27
@@ -58,7 +58,7 @@ LL |     let _: &'static _ = &&(Panic, 0).1;
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error: aborting due to 6 previous errors
 

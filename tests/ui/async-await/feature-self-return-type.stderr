@@ -9,7 +9,7 @@ LL |         Foo::new(&bar).await
    |                  ^^^^ borrowed value does not live long enough
 LL |
 LL |     };
-   |     - `bar` dropped here while still borrowed
+   |      - `bar` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

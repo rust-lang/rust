@@ -2,7 +2,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/fn-item-check-trait-ref.rs:13:7
    |
 LL |     (&String::new()).assert_static();
-   |     --^^^^^^^^^^^^^------------------ temporary value is freed at the end of this statement
+   |     --^^^^^^^^^^^^^----------------- - temporary value is freed at the end of this statement
    |     | |
    |     | creates a temporary value which is freed while still in use
    |     argument requires that borrow lasts for `'static`

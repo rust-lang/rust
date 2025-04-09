@@ -11,7 +11,7 @@ LL |     let m2: Machine<'static, State1> = Machine {
    |             ------------------------ type annotation requires that `s` is borrowed for `'static`
 ...
 LL | }
-   | - `s` dropped here while still borrowed
+   |  - `s` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

@@ -8,7 +8,7 @@ LL |             y: &y,
    |                ^^ borrowed value does not live long enough
 ...
 LL |     }
-   |     - `y` dropped here while still borrowed
+   |      - `y` dropped here while still borrowed
 LL |
 LL |     deref(p);
    |           - borrow later used here

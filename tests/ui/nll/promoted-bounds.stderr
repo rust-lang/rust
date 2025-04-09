@@ -9,7 +9,7 @@ LL |         let b = &l;
    |                 ^^ borrowed value does not live long enough
 ...
 LL |     };
-   |     - `l` dropped here while still borrowed
+   |      - `l` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

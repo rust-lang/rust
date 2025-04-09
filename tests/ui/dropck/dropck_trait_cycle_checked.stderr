@@ -7,7 +7,7 @@ LL |     o1.set0(&o2);
    |             ^^^ borrowed value does not live long enough
 ...
 LL | }
-   | - `o2` dropped here while still borrowed
+   |  - `o2` dropped here while still borrowed
    |
    = note: due to object lifetime defaults, `Box<dyn Obj<'_>>` actually means `Box<(dyn Obj<'_> + 'static)>`
 
@@ -21,7 +21,7 @@ LL |     o1.set1(&o3);
    |             ^^^ borrowed value does not live long enough
 ...
 LL | }
-   | - `o3` dropped here while still borrowed
+   |  - `o3` dropped here while still borrowed
    |
    = note: due to object lifetime defaults, `Box<dyn Obj<'_>>` actually means `Box<(dyn Obj<'_> + 'static)>`
 
@@ -63,7 +63,7 @@ LL |     o3.set0(&o1);
    |             ^^^ borrowed value does not live long enough
 LL |     o3.set1(&o2);
 LL | }
-   | - `o1` dropped here while still borrowed
+   |  - `o1` dropped here while still borrowed
    |
    = note: due to object lifetime defaults, `Box<dyn Obj<'_>>` actually means `Box<(dyn Obj<'_> + 'static)>`
 

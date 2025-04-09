@@ -27,7 +27,7 @@ LL |     outlives::<'a>(c());
    |     argument requires that `c` is borrowed for `'a`
 LL |     outlives::<'a>(call_once(c));
 LL | }
-   | - `c` dropped here while still borrowed
+   |  - `c` dropped here while still borrowed
 
 error[E0597]: `x` does not live long enough
   --> $DIR/without-precise-captures-we-are-powerless.rs:26:13
@@ -72,7 +72,7 @@ LL |     outlives::<'a>(c());
    |     argument requires that `c` is borrowed for `'a`
 LL |     outlives::<'a>(call_once(c));
 LL | }
-   | - `c` dropped here while still borrowed
+   |  - `c` dropped here while still borrowed
 
 error[E0505]: cannot move out of `c` because it is borrowed
   --> $DIR/without-precise-captures-we-are-powerless.rs:32:30
@@ -126,7 +126,7 @@ LL |     outlives::<'a>(c());
    |     argument requires that `c` is borrowed for `'a`
 LL |     outlives::<'a>(call_once(c));
 LL | }
-   | - `c` dropped here while still borrowed
+   |  - `c` dropped here while still borrowed
 
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/without-precise-captures-we-are-powerless.rs:44:5

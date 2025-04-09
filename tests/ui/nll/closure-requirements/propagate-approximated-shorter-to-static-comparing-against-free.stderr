@@ -66,7 +66,7 @@ LL |         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static ->
    |         ------------------------ argument requires that `a` is borrowed for `'static`
 LL |     })
 LL | }
-   | - `a` dropped here while still borrowed
+   |  - `a` dropped here while still borrowed
 
 error: aborting due to 2 previous errors
 

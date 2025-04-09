@@ -7,13 +7,13 @@ LL |     let _: &'static _ = &id(&String::new());
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | };
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted_const_call2.rs:4:30
    |
 LL |     let _: &'static _ = &id(&String::new());
-   |            ----------        ^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |            ----------        ^^^^^^^^^^^^^  - temporary value is freed at the end of this statement
    |            |                 |
    |            |                 creates a temporary value which is freed while still in use
    |            type annotation requires that borrow lasts for `'static`
@@ -22,7 +22,7 @@ error[E0493]: destructor of `String` cannot be evaluated at compile-time
   --> $DIR/promoted_const_call2.rs:4:30
    |
 LL |     let _: &'static _ = &id(&String::new());
-   |                              ^^^^^^^^^^^^^ - value is dropped here
+   |                              ^^^^^^^^^^^^^  - value is dropped here
    |                              |
    |                              the destructor for this type cannot be evaluated in constants
 
@@ -35,13 +35,13 @@ LL |     let _: &'static _ = &id(&String::new());
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted_const_call2.rs:11:30
    |
 LL |     let _: &'static _ = &id(&String::new());
-   |            ----------        ^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |            ----------        ^^^^^^^^^^^^^  - temporary value is freed at the end of this statement
    |            |                 |
    |            |                 creates a temporary value which is freed while still in use
    |            type annotation requires that borrow lasts for `'static`

@@ -61,7 +61,7 @@ LL |    object = &object2;
    |    assignment requires that `object2` is borrowed for `'1`
 ...
 LL | }
-   | - `object2` dropped here while still borrowed
+   |  - `object2` dropped here while still borrowed
 
 error: value assigned to `object` is never read
   --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:22:5

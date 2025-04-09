@@ -31,7 +31,7 @@ LL |         _y.push(&mut z);
    |         borrow later used here
 ...
 LL |     }
-   |     - `z` dropped here while still borrowed
+   |      - `z` dropped here while still borrowed
 
 error[E0503]: cannot use `x` because it was mutably borrowed
   --> $DIR/regions-escape-loop-via-vec.rs:9:9

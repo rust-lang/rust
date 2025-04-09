@@ -8,9 +8,10 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-29861.rs:16:43
    |
 LL | fn foo() -> <String as MakeRef2>::Ref2 { &String::from("foo") }
-   |                                           ^^^^^^^^^^^^^^^^^^^ -- borrow later used here
-   |                                           |                   |
-   |                                           |                   temporary value is freed at the end of this statement
+   |                                           ^^^^^^^^^^^^^^^^^^^  -
+   |                                           |                    |
+   |                                           |                    temporary value is freed at the end of this statement
+   |                                           |                    borrow later used here
    |                                           creates a temporary value which is freed while still in use
    |
    = note: consider using a `let` binding to create a longer lived value

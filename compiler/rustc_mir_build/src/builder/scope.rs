@@ -1135,11 +1135,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             if scope.region_scope == region_scope {
                 let region_scope_span = region_scope.span(self.tcx, self.region_scope_tree);
-                // Attribute scope exit drops to scope's closing brace.
-                let scope_end = self.tcx.sess.source_map().end_point(region_scope_span);
 
                 scope.drops.push(DropData {
-                    source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
+                    source_info: SourceInfo {
+                        span: region_scope_span.shrink_to_hi(),
+                        scope: scope.source_scope,
+                    },
                     local,
                     kind: drop_kind,
                 });

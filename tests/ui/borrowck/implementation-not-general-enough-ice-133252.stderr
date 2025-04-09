@@ -21,7 +21,7 @@ LL |         force_send(async_load(&not_static));
    |         argument requires that `not_static` is borrowed for `'1`
 ...
 LL |     }
-   |     - `not_static` dropped here while still borrowed
+   |      - `not_static` dropped here while still borrowed
    |
 note: due to current limitations in the borrow checker, this implies a `'static` lifetime
   --> $DIR/implementation-not-general-enough-ice-133252.rs:16:18

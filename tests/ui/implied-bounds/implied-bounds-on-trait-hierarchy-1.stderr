@@ -7,7 +7,7 @@ LL |         subs_to_soup((x.as_str(), &mut d));
    |                       ^ borrowed value does not live long enough
 LL |
 LL |     }
-   |     - `x` dropped here while still borrowed
+   |      - `x` dropped here while still borrowed
 LL |     println!("{}", d);
    |                    - borrow later used here
 
