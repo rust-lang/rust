@@ -31,9 +31,9 @@ impl<T, const N: usize> PartialDrop for [MaybeUninit<T>; N] {
 /// The real `array::IntoIter<T, N>` stores a `PolymorphicIter<[MaybeUninit<T>, N]>`
 /// which it unsizes to `PolymorphicIter<[MaybeUninit<T>]>` to iterate.
 #[allow(private_bounds)]
-pub(super) struct PolymorphicIter<TAIL: ?Sized>
+pub(super) struct PolymorphicIter<DATA: ?Sized>
 where
-    TAIL: PartialDrop,
+    DATA: PartialDrop,
 {
     /// The elements in `data` that have not been yielded yet.
     ///
@@ -55,13 +55,13 @@ where
     /// - `data[alive]` is alive (i.e. contains valid elements)
     /// - `data[..alive.start]` and `data[alive.end..]` are dead (i.e. the
     ///   elements were already read and must not be touched anymore!)
-    data: TAIL,
+    data: DATA,
 }
 
 #[allow(private_bounds)]
-impl<TAIL: ?Sized> PolymorphicIter<TAIL>
+impl<DATA: ?Sized> PolymorphicIter<DATA>
 where
-    TAIL: PartialDrop,
+    DATA: PartialDrop,
 {
     #[inline]
     pub(super) const fn len(&self) -> usize {
@@ -70,9 +70,9 @@ where
 }
 
 #[allow(private_bounds)]
-impl<TAIL: ?Sized> Drop for PolymorphicIter<TAIL>
+impl<DATA: ?Sized> Drop for PolymorphicIter<DATA>
 where
-    TAIL: PartialDrop,
+    DATA: PartialDrop,
 {
     #[inline]
     fn drop(&mut self) {
@@ -209,7 +209,7 @@ impl<T> PolymorphicIter<[MaybeUninit<T>]> {
         R: Try<Output = B>,
     {
         // `alive` is an `IndexRange`, not an arbitrary iterator, so we can
-        // trust that its `try_rfold` isn't going to do something weird like
+        // trust that its `try_fold` isn't going to do something weird like
         // call the fold-er multiple times for the same index.
         let data = &mut self.data;
         self.alive.try_fold(init, move |accum, idx| {
