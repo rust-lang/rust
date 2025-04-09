@@ -266,7 +266,7 @@ export function parentModule(ctx: CtxInit): Cmd {
     };
 }
 
-export function childrenModules(ctx: CtxInit): Cmd {
+export function childModules(ctx: CtxInit): Cmd {
     return async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
@@ -274,7 +274,7 @@ export function childrenModules(ctx: CtxInit): Cmd {
 
         const client = ctx.client;
 
-        const locations = await client.sendRequest(ra.childrenModules, {
+        const locations = await client.sendRequest(ra.childModules, {
             textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
             position: client.code2ProtocolConverter.asPosition(editor.selection.active),
         });

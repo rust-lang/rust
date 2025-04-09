@@ -157,7 +157,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             "onEnter": true,
             "openCargoToml": true,
             "parentModule": true,
-            "childrenModules": true,
+            "childModules": true,
             "runnables": {
                 "kinds": [ "cargo" ],
             },
