@@ -2,6 +2,7 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![doc(rust_logo)]
+#![recursion_limit = "256"]
 #![feature(array_windows)]
 #![feature(associated_type_defaults)]
 #![feature(if_let_guard)]
