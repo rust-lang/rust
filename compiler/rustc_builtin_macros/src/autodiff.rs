@@ -234,7 +234,7 @@ mod llvm_enzyme {
         let meta_item_vec: ThinVec<MetaItemInner> = match meta_item.kind {
             ast::MetaItemKind::List(ref vec) => vec.clone(),
             _ => {
-                dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
+                dcx.emit_err(errors::AutoDiffMissingConfig { span: item.span() });
                 return vec![item];
             }
         };
