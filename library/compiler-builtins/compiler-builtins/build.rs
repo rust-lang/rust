@@ -101,9 +101,7 @@ fn configure_libm(target: &Target) {
     println!("cargo:rustc-cfg=intrinsics_enabled");
 
     // The arch module may contain assembly.
-    if cfg!(feature = "no-asm") {
-        println!("cargo:rustc-cfg=feature=\"force-soft-floats\"");
-    } else {
+    if !cfg!(feature = "no-asm") {
         println!("cargo:rustc-cfg=arch_enabled");
     }
 
