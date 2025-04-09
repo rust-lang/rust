@@ -65,8 +65,9 @@ pub unsafe extern "C" fn bitmask_m8x16(mask: m8x16) -> u16 {
     simd_bitmask(mask)
 }
 
-// CHECK-LABEL: bitmask_m8x64
+// x86-avx512-LABEL: bitmask_m8x64
 #[no_mangle]
+#[cfg(x86_avx512)]
 pub unsafe extern "C" fn bitmask_m8x64(mask: m8x64) -> u64 {
     // The simd_bitmask intrinsic already uses the most significant bit, so no shift is necessary.
     // Note that x86 has no byte shift, llvm uses a word shift to move the least significant bit
@@ -128,8 +129,10 @@ pub unsafe extern "C" fn bitmask_m64x2(mask: m64x2) -> u8 {
     simd_bitmask(mask)
 }
 
-// CHECK-LABEL: bitmask_m64x4
+// x86-avx2-LABEL: bitmask_m64x4
+// x86-avx512-LABEL: bitmask_m64x4
 #[no_mangle]
+#[cfg(any(x86_avx2, x86_avx512))]
 pub unsafe extern "C" fn bitmask_m64x4(mask: m64x4) -> u8 {
     // The simd_bitmask intrinsic already uses the most significant bit, so no shift is necessary.
     //

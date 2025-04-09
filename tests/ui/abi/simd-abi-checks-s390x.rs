@@ -13,7 +13,6 @@
 #![no_core]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types, improper_ctypes_definitions)]
-#![deny(abi_unsupported_vector_types)]
 
 extern crate minicore;
 use minicore::*;
@@ -38,13 +37,11 @@ impl<T: Copy> Copy for TransparentWrapper<T> {}
 #[no_mangle]
 extern "C" fn vector_ret_small(x: &i8x8) -> i8x8 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    //~^^ WARN this was previously accepted
     *x
 }
 #[no_mangle]
 extern "C" fn vector_ret(x: &i8x16) -> i8x16 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    //~^^ WARN this was previously accepted
     *x
 }
 #[no_mangle]
@@ -93,7 +90,6 @@ extern "C" fn vector_transparent_wrapper_ret_small(
     x: &TransparentWrapper<i8x8>,
 ) -> TransparentWrapper<i8x8> {
     //~^^^ ERROR requires the `vector` target feature, which is not enabled
-    //~^^^^ WARN this was previously accepted
     *x
 }
 #[no_mangle]
@@ -101,7 +97,6 @@ extern "C" fn vector_transparent_wrapper_ret(
     x: &TransparentWrapper<i8x16>,
 ) -> TransparentWrapper<i8x16> {
     //~^^^ ERROR requires the `vector` target feature, which is not enabled
-    //~^^^^ WARN this was previously accepted
     *x
 }
 #[no_mangle]
@@ -115,13 +110,11 @@ extern "C" fn vector_transparent_wrapper_ret_large(
 #[no_mangle]
 extern "C" fn vector_arg_small(x: i8x8) -> i64 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    //~^^ WARN this was previously accepted
     unsafe { *(&x as *const i8x8 as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_arg(x: i8x16) -> i64 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    //~^^ WARN this was previously accepted
     unsafe { *(&x as *const i8x16 as *const i64) }
 }
 #[no_mangle]
@@ -133,13 +126,11 @@ extern "C" fn vector_arg_large(x: i8x32) -> i64 {
 #[no_mangle]
 extern "C" fn vector_wrapper_arg_small(x: Wrapper<i8x8>) -> i64 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    //~^^ WARN this was previously accepted
     unsafe { *(&x as *const Wrapper<i8x8> as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_wrapper_arg(x: Wrapper<i8x16>) -> i64 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    //~^^ WARN this was previously accepted
     unsafe { *(&x as *const Wrapper<i8x16> as *const i64) }
 }
 #[no_mangle]
@@ -151,13 +142,11 @@ extern "C" fn vector_wrapper_arg_large(x: Wrapper<i8x32>) -> i64 {
 #[no_mangle]
 extern "C" fn vector_transparent_wrapper_arg_small(x: TransparentWrapper<i8x8>) -> i64 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    //~^^ WARN this was previously accepted
     unsafe { *(&x as *const TransparentWrapper<i8x8> as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_transparent_wrapper_arg(x: TransparentWrapper<i8x16>) -> i64 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    //~^^ WARN this was previously accepted
     unsafe { *(&x as *const TransparentWrapper<i8x16> as *const i64) }
 }
 #[no_mangle]
