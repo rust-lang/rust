@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 use regex::Regex;
 use tracing::*;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ErrorKind {
     Help,
     Error,
@@ -38,6 +38,15 @@ impl ErrorKind {
             "SUGGESTION" => ErrorKind::Suggestion,
             "WARN" | "WARNING" | "warn" | "warning" => ErrorKind::Warning,
             _ => return None,
+        })
+    }
+
+    pub fn expect_from_user_str(s: &str) -> ErrorKind {
+        ErrorKind::from_user_str(s).unwrap_or_else(|| {
+            panic!(
+                "unexpected diagnostic kind `{s}`, expected \
+                 `ERROR`, `WARN`, `NOTE`, `HELP` or `SUGGESTION`"
+            )
         })
     }
 }
