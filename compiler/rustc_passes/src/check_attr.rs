@@ -561,12 +561,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         allowed_target: Target,
     ) {
         if target != allowed_target {
+            let path = attr.path();
+            let path: Vec<_> = path.iter().map(|s| s.as_str()).collect();
+            let attr_name = path.join("::");
             self.tcx.emit_node_span_lint(
                 UNUSED_ATTRIBUTES,
                 hir_id,
                 attr.span(),
                 errors::OnlyHasEffectOn {
-                    attr_name: attr.name_or_empty(),
+                    attr_name,
                     target_name: allowed_target.name().replace(' ', "_"),
                 },
             );
