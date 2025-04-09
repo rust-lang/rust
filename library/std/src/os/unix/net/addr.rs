@@ -241,7 +241,7 @@ impl SocketAddr {
 
         // macOS seems to return a len of 16 and a zeroed sun_path for unnamed addresses
         if len == 0
-            || (cfg!(not(any(target_os = "linux", target_os = "android")))
+            || (cfg!(not(any(target_os = "linux", target_os = "android", target_os = "cygwin")))
                 && self.addr.sun_path[0] == 0)
         {
             AddressKind::Unnamed
