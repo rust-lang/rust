@@ -139,6 +139,12 @@ error: invalid return activity Duplicated in Reverse Mode
 LL | #[autodiff(df21, Reverse, Active, Duplicated)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: expected 3 activities, but found 2
+  --> $DIR/autodiff_illegal.rs:180:1
+   |
+LL | #[autodiff(df, Forward, Dual, Dual)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0433]: failed to resolve: use of undeclared type `MyFloat`
   --> $DIR/autodiff_illegal.rs:130:1
    |
@@ -150,6 +156,20 @@ error[E0433]: failed to resolve: use of undeclared type `F64Trans`
    |
 LL | #[autodiff(df18, Reverse, Active, Active)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `F64Trans`
+
+error[E0308]: mismatched types
+  --> $DIR/autodiff_illegal.rs:181:25
+   |
+LL | #[autodiff(df, Forward, Dual, Dual)]
+   |            -- implicitly returns `()` as its body has no tail or `return` expression
+LL | fn f(x: f32, y: f32) -> f32 {
+   |                         ^^^ expected `f32`, found `()`
+   |
+note: consider returning one of these bindings
+  --> $DIR/autodiff_illegal.rs:181:6
+   |
+LL | fn f(x: f32, y: f32) -> f32 {
+   |      ^       ^
 
 error[E0599]: the function or associated item `default` exists for tuple `(DoesNotImplDefault, DoesNotImplDefault)`, but its trait bounds were not satisfied
   --> $DIR/autodiff_illegal.rs:181:1
@@ -168,7 +188,7 @@ LL + #[derive(Default)]
 LL | struct DoesNotImplDefault;
    |
 
-error: aborting due to 23 previous errors
+error: aborting due to 22 previous errors
 
-Some errors have detailed explanations: E0428, E0433, E0599, E0658.
+Some errors have detailed explanations: E0428, E0433, E0658.
 For more information about an error, try `rustc --explain E0428`.
