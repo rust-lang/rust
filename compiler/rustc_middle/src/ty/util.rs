@@ -16,6 +16,7 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::Limit;
 use rustc_span::sym;
+use rustc_type_ir::solve::SizedTraitKind;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -1132,7 +1133,8 @@ impl<'tcx> Ty<'tcx> {
     /// strange rules like `<T as Foo<'static>>::Bar: Sized` that
     /// actually carry lifetime requirements.
     pub fn is_sized(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
-        self.is_trivially_sized(tcx) || tcx.is_sized_raw(typing_env.as_query_input(self))
+        self.has_trivial_sizedness(tcx, SizedTraitKind::Sized)
+            || tcx.is_sized_raw(typing_env.as_query_input(self))
     }
 
     /// Checks whether values of this type `T` implement the `Freeze`

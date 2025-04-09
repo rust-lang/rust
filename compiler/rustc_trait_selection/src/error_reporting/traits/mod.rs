@@ -556,7 +556,7 @@ fn attempt_dyn_to_enum_suggestion(
             let Some(impl_type) = tcx.type_of(*impl_id).no_bound_vars() else { return None };
 
             // Obviously unsized impl types won't be usable in an enum.
-            // Note: this doesn't use `Ty::is_trivially_sized` because that function
+            // Note: this doesn't use `Ty::has_trivial_sizedness` because that function
             // defaults to assuming that things are *not* sized, whereas we want to
             // fall back to assuming that things may be sized.
             match impl_type.kind() {
