@@ -2500,7 +2500,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         );
         let ty::Tuple(params) = tupled_params.kind() else { return };
 
-        // Find the first argument with a matching type, get its ident
+        // Find the first argument with a matching type and get its identifier.
         let Some(this_name) = params.iter().zip(tcx.hir_body_param_idents(closure.body)).find_map(
             |(param_ty, ident)| {
                 // FIXME: also support deref for stuff like `Rc` arguments

@@ -1436,7 +1436,7 @@ rustc_queries! {
     }
 
     query fn_arg_idents(def_id: DefId) -> &'tcx [Option<rustc_span::Ident>] {
-        desc { |tcx| "looking up function parameter idents for `{}`", tcx.def_path_str(def_id) }
+        desc { |tcx| "looking up function parameter identifiers for `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
 

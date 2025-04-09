@@ -1169,7 +1169,7 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
         collector.cx.dcx().emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
     }
 
-    /// All of the idents (items) declared by this node.
+    /// All of the identifiers (items) declared by this node.
     /// This is an approximation and should only be used for diagnostics.
     fn declared_idents(&self) -> Vec<Ident> {
         vec![]

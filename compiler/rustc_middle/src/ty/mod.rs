@@ -1940,7 +1940,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// its supposed definition name (`def_name`). The method also needs `DefId` of the supposed
     /// definition's parent/scope to perform comparison.
     pub fn hygienic_eq(self, use_ident: Ident, def_ident: Ident, def_parent_def_id: DefId) -> bool {
-        // We could use `Ident::eq` here, but we deliberately don't. The ident
+        // We could use `Ident::eq` here, but we deliberately don't. The identifier
         // comparison fails frequently, and we want to avoid the expensive
         // `normalize_to_macros_2_0()` calls required for the span comparison whenever possible.
         use_ident.name == def_ident.name

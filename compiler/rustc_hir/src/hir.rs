@@ -3399,7 +3399,7 @@ pub struct BareFnTy<'hir> {
     pub abi: ExternAbi,
     pub generic_params: &'hir [GenericParam<'hir>],
     pub decl: &'hir FnDecl<'hir>,
-    // `Option` because bare fn parameter idents are optional. We also end up
+    // `Option` because bare fn parameter identifiers are optional. We also end up
     // with `None` in some error cases, e.g. invalid parameter patterns.
     pub param_idents: &'hir [Option<Ident>],
 }
