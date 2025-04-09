@@ -99,8 +99,8 @@ macro_rules! i8_xe_bytes_doc {
 
 **Note**: This function is meaningless on `i8`. Byte order does not exist as a
 concept for byte-sized integers. This function is only provided in symmetry
-with larger integer types. You can cast from and to `u8` using `as i8` and `as
-u8`.
+with larger integer types. You can cast from and to `u8` using
+[`cast_signed`](u8::cast_signed) and [`cast_unsigned`](Self::cast_unsigned).
 
 "
     };
