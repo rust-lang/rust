@@ -22,10 +22,10 @@ getrandom = { version = "0.3", features = ["std"] }
 rand = "0.9"
 smallvec = { version = "1.7", features = ["drain_filter"] }
 aes = { version = "0.8.3", features = ["hazmat"] }
-measureme = "11"
+measureme = "12"
 chrono = { version = "0.4.38", default-features = false }
 chrono-tz = "0.10"
-directories = "5"
+directories = "6"
 
 # Copied from `compiler/rustc/Cargo.toml`.
 # But only for some targets, it fails for others. Rustc configures this in its CI, but we can't
@@ -40,7 +40,7 @@ libffi = "3.2.0"
 libloading = "0.8"
 
 [target.'cfg(target_family = "windows")'.dependencies]
-windows-sys = { version = "0.52", features = [
+windows-sys = { version = "0.59", features = [
     "Win32_Foundation",
     "Win32_System_IO",
     "Win32_Storage_FileSystem",

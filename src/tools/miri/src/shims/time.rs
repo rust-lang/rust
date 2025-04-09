@@ -79,7 +79,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.check_no_isolation("`clock_gettime` with `REALTIME` clocks")?;
             system_time_to_duration(&SystemTime::now())?
         } else if relative_clocks.contains(&clk_id) {
-            this.machine.clock.now().duration_since(this.machine.clock.epoch())
+            this.machine.monotonic_clock.now().duration_since(this.machine.monotonic_clock.epoch())
         } else {
             return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         };
@@ -248,7 +248,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // QueryPerformanceCounter uses a hardware counter as its basis.
         // Miri will emulate a counter with a resolution of 1 nanosecond.
-        let duration = this.machine.clock.now().duration_since(this.machine.clock.epoch());
+        let duration =
+            this.machine.monotonic_clock.now().duration_since(this.machine.monotonic_clock.epoch());
         let qpc = i64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
         })?;
@@ -287,7 +288,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This returns a u64, with time units determined dynamically by `mach_timebase_info`.
         // We return plain nanoseconds.
-        let duration = this.machine.clock.now().duration_since(this.machine.clock.epoch());
+        let duration =
+            this.machine.monotonic_clock.now().duration_since(this.machine.monotonic_clock.epoch());
         let res = u64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported")
         })?;

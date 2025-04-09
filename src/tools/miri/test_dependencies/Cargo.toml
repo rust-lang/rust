@@ -22,9 +22,9 @@ tempfile = "3"
 page_size = "0.6"
 # Avoid pulling in all of tokio's dependencies.
 # However, without `net` and `signal`, tokio uses fewer relevant system APIs.
-tokio = { version = "1.24", features = ["macros", "rt-multi-thread", "time", "net", "fs", "sync", "signal", "io-util"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "net", "fs", "sync", "signal", "io-util"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.52", features = [ "Win32_Foundation", "Win32_System_Threading" ] }
+windows-sys = { version = "0.59", features = [ "Win32_Foundation", "Win32_System_Threading" ] }
 
 [workspace]

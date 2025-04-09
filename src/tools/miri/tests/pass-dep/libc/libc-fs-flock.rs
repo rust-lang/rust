@@ -1,4 +1,5 @@
 //@ignore-target: windows # File handling is not implemented yet
+//@ignore-target: solaris # Does not have flock
 //@compile-flags: -Zmiri-disable-isolation
 
 use std::fs::File;

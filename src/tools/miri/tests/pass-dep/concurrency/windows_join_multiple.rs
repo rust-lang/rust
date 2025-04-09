@@ -9,6 +9,10 @@ use std::thread;
 use windows_sys::Win32::Foundation::{HANDLE, WAIT_OBJECT_0};
 use windows_sys::Win32::System::Threading::{INFINITE, WaitForSingleObject};
 
+#[derive(Copy, Clone)]
+struct UnsafeSendWrapper<T>(T);
+unsafe impl<T> Send for UnsafeSendWrapper<T> {}
+
 fn main() {
     static FLAG: AtomicBool = AtomicBool::new(false);
 
@@ -17,10 +21,12 @@ fn main() {
             thread::yield_now();
         }
     })
-    .into_raw_handle() as HANDLE;
+    .into_raw_handle();
+    let blocker = UnsafeSendWrapper(blocker as HANDLE);
 
     let waiter = move || unsafe {
-        assert_eq!(WaitForSingleObject(blocker, INFINITE), WAIT_OBJECT_0);
+        let blocker = blocker; // circumvent per-field capturing
+        assert_eq!(WaitForSingleObject(blocker.0, INFINITE), WAIT_OBJECT_0);
     };
 
     let waiter1 = thread::spawn(waiter);
