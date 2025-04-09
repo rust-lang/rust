@@ -1,17 +1,17 @@
 error: the `naked_asm!` macro can only be used in functions marked with `#[naked]`
-  --> $DIR/naked-asm-outside-naked-fn.rs:21:14
+  --> $DIR/naked-asm-outside-naked-fn.rs:20:14
    |
 LL |     unsafe { naked_asm!("") }
    |              ^^^^^^^^^^^^^^
 
 error: the `naked_asm!` macro can only be used in functions marked with `#[naked]`
-  --> $DIR/naked-asm-outside-naked-fn.rs:26:18
+  --> $DIR/naked-asm-outside-naked-fn.rs:25:18
    |
 LL |     unsafe { (|| naked_asm!(""))() }
    |                  ^^^^^^^^^^^^^^
 
 error: the `naked_asm!` macro can only be used in functions marked with `#[naked]`
-  --> $DIR/naked-asm-outside-naked-fn.rs:32:19
+  --> $DIR/naked-asm-outside-naked-fn.rs:31:19
    |
 LL |         unsafe {  naked_asm!("") } ;
    |                   ^^^^^^^^^^^^^^
