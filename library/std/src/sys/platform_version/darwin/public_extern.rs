@@ -1,22 +1,30 @@
-//! Runtime version checking ABI for other compilers.
+//! # Runtime version checking ABI for other compilers.
 //!
 //! The symbols in this file are useful for us to expose to allow linking code written in the
 //! following languages when using their version checking functionality:
-//! - Objective-C's `@available`.
 //! - Clang's `__builtin_available` macro.
+//! - Objective-C's `@available`.
 //! - Swift's `#available`,
+//!
+//! Without Rust exposing these symbols, the user would encounter a linker error when linking to
+//! C/Objective-C/Swift libraries using these features.
+//!
+//! The presence of these are mostly considered a quality-of-implementation detail, and should not
+//! be relied upon to be available.
+//!
+//! ## Background
 //!
 //! The original discussion of this feature can be found at:
 //! - <https://lists.llvm.org/pipermail/cfe-dev/2016-July/049851.html>
 //! - <https://reviews.llvm.org/D27827>
 //! - <https://reviews.llvm.org/D30136>
 //!
-//! The implementation of these is a bit weird, since they're actually implemented in `compiler-rt`:
+//! And the upstream implementation of these can be found in `compiler-rt`:
 //! <https://github.com/llvm/llvm-project/blob/llvmorg-20.1.0/compiler-rt/lib/builtins/os_version_check.c>
 //!
-//! While they probably should've been part of `libSystem.dylib`, both because they link to symbols
-//! from that, and because their implementation is quite complex, using allocation, environment
-//! variables, file access and dynamic library loading (and emitting all of this into every binary).
+//! Ideally, these symbols should probably have been a part of Apple's `libSystem.dylib`, both
+//! because their implementation is quite complex, using allocation, environment variables, file
+//! access and dynamic library loading (and emitting all of this into every binary).
 //!
 //! The reason why Apple chose to not do that originally is lost to the sands of time, but a good
 //! reason would be that implementing it as part of `compiler-rt` allowed them to back-deploy this
@@ -27,15 +35,15 @@
 //! in `std` makes sense, since then we can implement it using `std` utilities, and we can avoid
 //! having `compiler-builtins` depend on `libSystem.dylib`.
 //!
-//! This does mean that users that attempt to link Objective-C code _and_ use `#![no_std]` in all
-//! their crates may get a linker error because these symbols are missing. Using `no_std` is quite
-//! uncommon on Apple systems though, so it's probably fine to not support this use-case.
+//! This does mean that users that attempt to link C/Objective-C/Swift code _and_ use `#![no_std]`
+//! in all their crates may get a linker error because these symbols are missing. Using `no_std` is
+//! quite uncommon on Apple systems though, so it's probably fine to not support this use-case.
 //!
 //! The workaround would be to link `libclang_rt.osx.a` or otherwise use Clang's `compiler-rt`.
 //!
 //! See also discussion in <https://github.com/rust-lang/compiler-builtins/pull/794>.
 //!
-//! ---
+//! ## Implementation details
 //!
 //! NOTE: Since macOS 10.15, `libSystem.dylib` _has_ actually provided the undocumented
 //! `_availability_version_check` via `libxpc` for doing the version lookup (zippered, which is why
