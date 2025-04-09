@@ -1,0 +1,170 @@
+error[E0425]: cannot find function `f_t` in this scope
+  --> $DIR/const-generics-closure.rs:6:9
+   |
+LL |         f_t(&*s);
+   |         ^^^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | fn bar<const f_t: /* Type */>() -> impl Into<
+   |       +++++++++++++++++++++++
+
+error[E0425]: cannot find value `s` in this scope
+  --> $DIR/const-generics-closure.rs:6:15
+   |
+LL |         f_t(&*s);
+   |               ^
+...
+LL |         struct X;
+   |         --------- similarly named unit struct `X` defined here
+   |
+help: a unit struct with a similar name exists
+   |
+LL -         f_t(&*s);
+LL +         f_t(&*X);
+   |
+help: you might be missing a const parameter
+   |
+LL | fn bar<const s: /* Type */>() -> impl Into<
+   |       +++++++++++++++++++++
+
+error[E0425]: cannot find function `c` in this scope
+  --> $DIR/const-generics-closure.rs:8:9
+   |
+LL |         c(&*s);
+   |         ^
+...
+LL |         struct X;
+   |         --------- similarly named unit struct `X` defined here
+   |
+help: a unit struct with a similar name exists
+   |
+LL -         c(&*s);
+LL +         X(&*s);
+   |
+help: you might be missing a const parameter
+   |
+LL | fn bar<const c: /* Type */>() -> impl Into<
+   |       +++++++++++++++++++++
+
+error[E0425]: cannot find value `s` in this scope
+  --> $DIR/const-generics-closure.rs:8:13
+   |
+LL |         c(&*s);
+   |             ^
+...
+LL |         struct X;
+   |         --------- similarly named unit struct `X` defined here
+   |
+help: a unit struct with a similar name exists
+   |
+LL -         c(&*s);
+LL +         c(&*X);
+   |
+help: you might be missing a const parameter
+   |
+LL | fn bar<const s: /* Type */>() -> impl Into<
+   |       +++++++++++++++++++++
+
+error[E0425]: cannot find function `c` in this scope
+  --> $DIR/const-generics-closure.rs:10:9
+   |
+LL |         c(&*s);
+   |         ^
+LL |
+LL |         struct X;
+   |         --------- similarly named unit struct `X` defined here
+   |
+help: a unit struct with a similar name exists
+   |
+LL -         c(&*s);
+LL +         X(&*s);
+   |
+help: you might be missing a const parameter
+   |
+LL | fn bar<const c: /* Type */>() -> impl Into<
+   |       +++++++++++++++++++++
+
+error[E0425]: cannot find value `s` in this scope
+  --> $DIR/const-generics-closure.rs:10:13
+   |
+LL |         c(&*s);
+   |             ^
+LL |
+LL |         struct X;
+   |         --------- similarly named unit struct `X` defined here
+   |
+help: a unit struct with a similar name exists
+   |
+LL -         c(&*s);
+LL +         c(&*X);
+   |
+help: you might be missing a const parameter
+   |
+LL | fn bar<const s: /* Type */>() -> impl Into<
+   |       +++++++++++++++++++++
+
+error[E0425]: cannot find function `c1` in this scope
+  --> $DIR/const-generics-closure.rs:14:9
+   |
+LL |         c1(*x);
+   |         ^^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | fn bar<const c1: /* Type */>() -> impl Into<
+   |       ++++++++++++++++++++++
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/const-generics-closure.rs:14:13
+   |
+LL |         struct X;
+   |         --------- similarly named unit struct `X` defined here
+LL |
+LL |         c1(*x);
+   |             ^
+   |
+help: a unit struct with a similar name exists (notice the capitalization difference)
+   |
+LL -         c1(*x);
+LL +         c1(*X);
+   |
+help: you might be missing a const parameter
+   |
+LL | fn bar<const x: /* Type */>() -> impl Into<
+   |       +++++++++++++++++++++
+
+error[E0658]: `for<...>` binders for closures are experimental
+  --> $DIR/const-generics-closure.rs:15:17
+   |
+LL | ...   let _ = for<'a, 'b> |x: &'a &'a Vec<&'b u32>, b: bool| -> &'a Vec<&'b u32> { *x };
+   |               ^^^^^^^^^^^
+   |
+   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
+   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider removing `for<...>`
+
+error[E0601]: `main` function not found in crate `const_generics_closure`
+  --> $DIR/const-generics-closure.rs:19:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/const-generics-closure.rs`
+
+error[E0308]: mismatched types
+  --> $DIR/const-generics-closure.rs:5:10
+   |
+LL |       [u8; {
+   |  __________^
+LL | |         f_t(&*s);
+LL | |
+LL | |         c(&*s);
+...  |
+LL | |         let _ = for<'a, 'b> |x: &'a &'a Vec<&'b u32>, b: bool| -> &'a Vec<&'b u32> { *x };
+LL | |     }],
+   | |_____^ expected `usize`, found `()`
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0308, E0425, E0601, E0658.
+For more information about an error, try `rustc --explain E0308`.
