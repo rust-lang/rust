@@ -247,7 +247,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::FnPtr(a_sig_tys, a_hdr) => {
                 // We permit coercion of fn pointers to drop the
                 // unsafe qualifier.
-                self.coerce_from_fn_pointer(a, a_sig_tys.with(a_hdr), b)
+                self.coerce_from_fn_pointer(a_sig_tys.with(a_hdr), b)
             }
             ty::Closure(closure_def_id_a, args_a) => {
                 // Non-capturing closures are coercible to
@@ -813,18 +813,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         })
     }
 
-    fn coerce_from_safe_fn<F, G>(
+    fn coerce_from_safe_fn(
         &self,
-        a: Ty<'tcx>,
         fn_ty_a: ty::PolyFnSig<'tcx>,
         b: Ty<'tcx>,
-        to_unsafe: F,
-        normal: G,
-    ) -> CoerceResult<'tcx>
-    where
-        F: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
-        G: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
-    {
+        adjustment: Option<Adjust>,
+    ) -> CoerceResult<'tcx> {
         self.commit_if_ok(|snapshot| {
             let outer_universe = self.infcx.universe();
 
@@ -833,9 +827,22 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 && hdr_b.safety.is_unsafe()
             {
                 let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
-                self.unify_and(unsafe_a, b, to_unsafe)
+                self.unify_and(unsafe_a, b, |target| match adjustment {
+                    Some(kind) => vec![
+                        Adjustment { kind, target: Ty::new_fn_ptr(self.tcx, fn_ty_a) },
+                        Adjustment {
+                            kind: Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
+                            target,
+                        },
+                    ],
+                    None => simple(Adjust::Pointer(PointerCoercion::UnsafeFnPointer))(target),
+                })
             } else {
-                self.unify_and(a, b, normal)
+                let a = Ty::new_fn_ptr(self.tcx, fn_ty_a);
+                self.unify_and(a, b, |target| match adjustment {
+                    None => vec![],
+                    Some(kind) => vec![Adjustment { kind, target }],
+                })
             };
 
             // FIXME(#73154): This is a hack. Currently LUB can generate
@@ -852,7 +859,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
     fn coerce_from_fn_pointer(
         &self,
-        a: Ty<'tcx>,
         fn_ty_a: ty::PolyFnSig<'tcx>,
         b: Ty<'tcx>,
     ) -> CoerceResult<'tcx> {
@@ -861,15 +867,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         //!
 
         let b = self.shallow_resolve(b);
-        debug!("coerce_from_fn_pointer(a={:?}, b={:?})", a, b);
+        debug!(?fn_ty_a, ?b, "coerce_from_fn_pointer");
 
-        self.coerce_from_safe_fn(
-            a,
-            fn_ty_a,
-            b,
-            simple(Adjust::Pointer(PointerCoercion::UnsafeFnPointer)),
-            identity,
-        )
+        self.coerce_from_safe_fn(fn_ty_a, b, None)
     }
 
     fn coerce_from_fn_item(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
@@ -916,24 +916,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     self.at(&self.cause, self.param_env).normalize(a_sig);
                 obligations.extend(o1);
 
-                let a_fn_pointer = Ty::new_fn_ptr(self.tcx, a_sig);
                 let InferOk { value, obligations: o2 } = self.coerce_from_safe_fn(
-                    a_fn_pointer,
                     a_sig,
                     b,
-                    |unsafe_ty| {
-                        vec![
-                            Adjustment {
-                                kind: Adjust::Pointer(PointerCoercion::ReifyFnPointer),
-                                target: a_fn_pointer,
-                            },
-                            Adjustment {
-                                kind: Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
-                                target: unsafe_ty,
-                            },
-                        ]
-                    },
-                    simple(Adjust::Pointer(PointerCoercion::ReifyFnPointer)),
+                    Some(Adjust::Pointer(PointerCoercion::ReifyFnPointer)),
                 )?;
 
                 obligations.extend(o2);
