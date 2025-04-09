@@ -538,6 +538,7 @@ name = "miri"
 version = "0.1.0"
 dependencies = [
  "aes",
+ "bitflags",
  "chrono",
  "chrono-tz",
  "colored",
