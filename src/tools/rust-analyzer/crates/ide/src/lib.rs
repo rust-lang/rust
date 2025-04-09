@@ -20,6 +20,7 @@ mod navigation_target;
 
 mod annotations;
 mod call_hierarchy;
+mod children_modules;
 mod doc_links;
 mod expand_macro;
 mod extend_selection;
@@ -603,6 +604,11 @@ impl Analysis {
     /// Returns a `mod name;` declaration which created the current module.
     pub fn parent_module(&self, position: FilePosition) -> Cancellable<Vec<NavigationTarget>> {
         self.with_db(|db| parent_module::parent_module(db, position))
+    }
+
+    /// Returns vec of `mod name;` declaration which are created by the current module.
+    pub fn children_modules(&self, position: FilePosition) -> Cancellable<Vec<NavigationTarget>> {
+        self.with_db(|db| children_modules::children_modules(db, position))
     }
 
     /// Returns crates that this file belongs to.

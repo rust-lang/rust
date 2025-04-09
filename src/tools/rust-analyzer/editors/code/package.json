@@ -171,6 +171,11 @@
                 "category": "rust-analyzer"
             },
             {
+                "command": "rust-analyzer.childrenModules",
+                "title": "Locate children modules",
+                "category": "rust-analyzer"
+            },
+            {
                 "command": "rust-analyzer.joinLines",
                 "title": "Join lines",
                 "category": "rust-analyzer"
@@ -3371,6 +3376,10 @@
                 },
                 {
                     "command": "rust-analyzer.parentModule",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.childrenModule",
                     "when": "inRustProject"
                 },
                 {

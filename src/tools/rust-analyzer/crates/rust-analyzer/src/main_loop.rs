@@ -1172,6 +1172,7 @@ impl GlobalState {
             .on::<NO_RETRY, lsp_ext::InterpretFunction>(handlers::handle_interpret_function)
             .on::<NO_RETRY, lsp_ext::ExpandMacro>(handlers::handle_expand_macro)
             .on::<NO_RETRY, lsp_ext::ParentModule>(handlers::handle_parent_module)
+            .on::<NO_RETRY, lsp_ext::ChildrenModules>(handlers::handle_children_modules)
             .on::<NO_RETRY, lsp_ext::Runnables>(handlers::handle_runnables)
             .on::<NO_RETRY, lsp_ext::RelatedTests>(handlers::handle_related_tests)
             .on::<NO_RETRY, lsp_ext::CodeActionRequest>(handlers::handle_code_action)
