@@ -1,6 +1,7 @@
 use std::alloc::{Layout, alloc, alloc_zeroed, dealloc, handle_alloc_error};
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
+use std::ops::RangeInclusive;
 use std::ptr::NonNull;
 use std::{fmt, slice};
 
@@ -313,6 +314,44 @@ impl<T: Idx> ThinBitSet<T> {
             BitIter::from_slice(on_heap.as_slice())
         }
     }
+
+    #[inline]
+    pub fn insert_range(&mut self, elems: RangeInclusive<T>) {
+        let start = elems.start().index();
+        let end = elems.end().index();
+
+        if start > end {
+            return;
+        }
+
+        if self.is_inline() {
+            assert!(end <= Self::MAX_INLINE_DOMAIN_SIZE);
+            let mask = (1 << end) | ((1 << end) - (1 << start));
+            unsafe { self.inline |= mask << 1 };
+        } else {
+            let words = unsafe { &mut self.on_heap.as_mut_slice() };
+
+            let (start_word_index, start_mask) = word_index_and_mask(start);
+            let (end_word_index, end_mask) = word_index_and_mask(end);
+
+            // Set all words in between start and end (exclusively of both).
+            for word_index in (start_word_index + 1)..end_word_index {
+                words[word_index] = !0;
+            }
+
+            if start_word_index != end_word_index {
+                // Start and end are in different words, so we handle each in turn.
+                //
+                // We set all leading bits. This includes the start_mask bit.
+                words[start_word_index] |= !(start_mask - 1);
+                // And all trailing bits (i.e. from 0..=end) in the end word,
+                // including the end.
+                words[end_word_index] |= end_mask | (end_mask - 1);
+            } else {
+                words[start_word_index] |= end_mask | (end_mask - start_mask);
+            }
+        }
+    }
 }
 
 /// A pointer to a dense bit set on the heap.
@@ -497,6 +536,14 @@ impl<T: Idx> fmt::Debug for ThinBitSet<T> {
     }
 }
 
+#[inline]
+fn word_index_and_mask<T: Idx>(elem: T) -> (usize, usize) {
+    let elem = elem.index();
+    let word_index = elem / usize::BITS as usize;
+    let mask = 1 << (elem % usize::BITS as usize);
+    (word_index, mask)
+}
+
 /// A fixed-column-size, variable-row-size 2D bit matrix with a moderately
 /// sparse representation.
 ///
@@ -646,7 +693,7 @@ mod tests {
     use super::*;
     use crate::bit_set::DenseBitSet;
 
-    const TEST_ITERATIONS: u32 = 256;
+    const TEST_ITERATIONS: u32 = 512;
 
     /// A very simple pseudo random generator using linear xorshift.
     ///
@@ -668,6 +715,25 @@ mod tests {
         fn next_bool(&mut self) -> bool {
             self.next() % 2 == 0
         }
+
+        /// Sample a range, a subset of `0..=max`.
+        ///
+        /// The purpose of this method is to make edge cases such as `0..=max` more common.
+        fn sample_range(&mut self, max: usize) -> RangeInclusive<usize> {
+            let start = match self.next() % 3 {
+                0 => 0,
+                1 => max,
+                2 => self.next() % (max + 1),
+                _ => unreachable!(),
+            };
+            let end = match self.next() % 3 {
+                0 => 0,
+                1 => max,
+                2 => self.next() % (max + 1),
+                _ => unreachable!(),
+            };
+            RangeInclusive::new(start, end)
+        }
     }
 
     fn test_with_domain_size(domain_size: usize) {
@@ -681,7 +747,7 @@ mod tests {
         for _ in 0..TEST_ITERATIONS {
             // Make a random operation.
             match rng.next() % 100 {
-                0..50 => {
+                0..20 => {
                     // Insert in one of the sets.
                     if domain_size == 0 {
                         continue;
@@ -692,6 +758,27 @@ mod tests {
                         assert_eq!(set_1.insert(elem), set_1_reference.insert(elem));
                     } else {
                         assert_eq!(set_2.insert(elem), set_2_reference.insert(elem));
+                    }
+                }
+                20..50 => {
+                    // Insert a range in one of the sets.
+                    if domain_size == 0 {
+                        continue;
+                    }
+                    let range = rng.sample_range(domain_size - 1);
+                    // Choose set to insert into.
+                    if rng.next_bool() {
+                        println!("{range:?}");
+                        println!("{domain_size}");
+                        println!("{set_1:?}");
+                        println!("{set_1_reference:?}");
+                        set_1.insert_range(range.clone());
+                        set_1_reference.insert_range(range);
+                        println!("{set_1:?}");
+                        println!("{set_1_reference:?}");
+                    } else {
+                        set_2.insert_range(range.clone());
+                        set_2_reference.insert_range(range);
                     }
                 }
                 50..70 => {
