@@ -13,6 +13,7 @@ use crate::{BaseName, CheckBasis, CheckCtx, Float, Identifier, Int, TestResult};
 pub struct SpecialCase;
 
 /// ULP allowed to differ from the results returned by a test basis.
+#[allow(clippy::single_match)]
 pub fn default_ulp(ctx: &CheckCtx) -> u32 {
     // ULP compared to the infinite (MPFR) result.
     let mut ulp = match ctx.base_name {

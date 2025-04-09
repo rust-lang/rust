@@ -70,7 +70,6 @@ impl Status {
     /// The default result for division is +/-inf based on operand sign. For `logB`, the default
     /// result is -inf.
     /// `x / y` when `x != 0.0` and `y == 0.0`,
-
     #[cfg_attr(not(feature = "unstable-public-internals"), allow(dead_code))]
     pub const DIVIDE_BY_ZERO: Self = Self(1 << 2);
 
