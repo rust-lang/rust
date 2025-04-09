@@ -12,7 +12,7 @@ use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
+    self, SizedTraitKind, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
 };
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
@@ -79,7 +79,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     Some(LangItem::Sized)
                         if self
                             .resolve_vars_if_possible(trait_pred.self_ty().skip_binder())
-                            .is_trivially_sized(self.0.tcx) =>
+                            .has_trivial_sizedness(self.0.tcx, SizedTraitKind::Sized) =>
+                    {
+                        return Some(Certainty::Yes);
+                    }
+                    Some(LangItem::MetaSized)
+                        if self
+                            .resolve_vars_if_possible(trait_pred.self_ty().skip_binder())
+                            .has_trivial_sizedness(self.0.tcx, SizedTraitKind::MetaSized) =>
                     {
                         return Some(Certainty::Yes);
                     }
