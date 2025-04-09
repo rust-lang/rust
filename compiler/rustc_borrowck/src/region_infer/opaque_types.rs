@@ -31,7 +31,7 @@ use crate::consumers::OutlivesConstraint;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::{RegionClassification, UniversalRegions};
-use crate::{BorrowCheckRootCtxt, BorrowckInferCtxt};
+use crate::{BorrowCheckRootCtxt, BorrowckInferCtxt, BorrowckState};
 
 pub(crate) enum DeferredOpaqueTypeError<'tcx> {
     UnexpectedHiddenRegion {
@@ -45,16 +45,39 @@ pub(crate) enum DeferredOpaqueTypeError<'tcx> {
     InvalidOpaqueTypeArgs(InvalidOpaqueTypeArgs<'tcx>),
 }
 
+impl<'tcx> BorrowCheckRootCtxt<'tcx> {
+    pub(crate) fn handle_opaque_type_uses(&mut self, borrowck_state: &mut BorrowckState<'tcx>) {
+        let BorrowckState {
+            infcx,
+            constraints,
+            universal_region_relations,
+            location_map,
+            deferred_opaque_type_errors,
+            ..
+        } = borrowck_state;
+
+        handle_opaque_type_uses(
+            self,
+            infcx,
+            constraints,
+            deferred_opaque_type_errors,
+            universal_region_relations,
+            Rc::clone(location_map),
+        )
+    }
+}
+
 pub(crate) fn handle_opaque_type_uses<'tcx>(
     root_cx: &mut BorrowCheckRootCtxt<'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
-    mut constraints: MirTypeckRegionConstraints<'tcx>,
+    constraints: &mut MirTypeckRegionConstraints<'tcx>,
+    deferred_errors: &mut Vec<DeferredOpaqueTypeError<'tcx>>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     location_map: Rc<DenseLocationMap>,
-) -> (MirTypeckRegionConstraints<'tcx>, Vec<DeferredOpaqueTypeError<'tcx>>) {
+) {
     let opaque_types = infcx.take_opaque_types();
     if opaque_types.is_empty() {
-        return (constraints, Vec::new());
+        return;
     }
 
     let tcx = infcx.tcx;
@@ -116,8 +139,6 @@ pub(crate) fn handle_opaque_type_uses<'tcx>(
         })
     }
 
-    let mut deferred_errors = Vec::new();
-
     // We start by looking for defining uses of the opaque. These are uses where all arguments
     // of the opaque are free regions. We apply "member constraints" to its hidden region and
     // map the hidden type to the definition site of the opaque.
@@ -157,7 +178,7 @@ pub(crate) fn handle_opaque_type_uses<'tcx>(
 
             opaque_type_key,
             hidden_type,
-            deferred_errors: &mut deferred_errors,
+            deferred_errors,
 
             arg_regions: &arg_regions,
             universal_region_relations,
@@ -177,7 +198,6 @@ pub(crate) fn handle_opaque_type_uses<'tcx>(
                 )
             });
 
-        // TODO this doesn't seem to help
         if !tcx.use_typing_mode_borrowck() {
             if let ty::Alias(ty::Opaque, alias_ty) = ty.kind()
                 && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
@@ -220,12 +240,8 @@ pub(crate) fn handle_opaque_type_uses<'tcx>(
             }
         });
 
-        let mut relation = EquateRegions {
-            infcx,
-            span: hidden_type.span,
-            universal_regions,
-            constraints: &mut constraints,
-        };
+        let mut relation =
+            EquateRegions { infcx, span: hidden_type.span, universal_regions, constraints };
         match TypeRelation::relate(&mut relation, hidden_type.ty, expected.ty) {
             Ok(_) => {}
             Err(_) => {
@@ -245,8 +261,6 @@ pub(crate) fn handle_opaque_type_uses<'tcx>(
         // without it we could manually walk over the types using a type relation and equate region vars
         // that way.
     }
-
-    (constraints, deferred_errors)
 }
 
 fn to_region_vid<'tcx>(

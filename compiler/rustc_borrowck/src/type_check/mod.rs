@@ -51,7 +51,9 @@ use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderI
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use crate::universal_regions::{DefiningTy, UniversalRegions};
-use crate::{BorrowCheckRootCtxt, BorrowckInferCtxt, path_utils};
+use crate::{
+    BorrowCheckRootCtxt, BorrowckInferCtxt, BorrowckState, DeferredClosureRequirements, path_utils,
+};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -148,14 +150,15 @@ pub(crate) fn type_check<'a, 'tcx>(
         body,
         promoted,
         user_type_annotations: &body.user_type_annotations,
-        region_bound_pairs,
-        known_type_outlives_obligations,
+        region_bound_pairs: &region_bound_pairs,
+        known_type_outlives_obligations: &known_type_outlives_obligations,
         reported_errors: Default::default(),
         universal_regions: &universal_region_relations.universal_regions,
         location_table,
         polonius_facts,
         borrow_set,
         constraints: &mut constraints,
+        deferred_closure_requirements: Default::default(),
         polonius_liveness,
     };
 
@@ -178,7 +181,15 @@ pub(crate) fn type_check<'a, 'tcx>(
         )
     });
 
-    MirTypeckResults { constraints, universal_region_relations, polonius_context }
+    let deferred_closure_requirements = typeck.deferred_closure_requirements;
+    MirTypeckResults {
+        constraints,
+        universal_region_relations,
+        region_bound_pairs,
+        known_type_outlives_obligations,
+        deferred_closure_requirements,
+        polonius_context,
+    }
 }
 
 #[track_caller]
@@ -208,14 +219,15 @@ struct TypeChecker<'a, 'tcx> {
     /// User type annotations are shared between the main MIR and the MIR of
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
-    region_bound_pairs: RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
+    region_bound_pairs: &'a RegionBoundPairs<'tcx>,
+    known_type_outlives_obligations: &'a Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a PoloniusLocationTable,
     polonius_facts: &'a mut Option<PoloniusFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+    deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
     /// When using `-Zpolonius=next`, the liveness helper data used to create polonius constraints.
     polonius_liveness: Option<PoloniusLivenessContext>,
 }
@@ -225,11 +237,15 @@ struct TypeChecker<'a, 'tcx> {
 pub(crate) struct MirTypeckResults<'tcx> {
     pub(crate) constraints: MirTypeckRegionConstraints<'tcx>,
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+    pub(crate) region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
+    pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
+    pub(crate) deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
     pub(crate) polonius_context: Option<PoloniusContext>,
 }
 
 /// A collection of region constraints that must be satisfied for the
 /// program to be considered well-typed.
+#[derive(Clone)]
 pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     /// Maps from a `ty::Placeholder` to the corresponding
     /// `PlaceholderIndex` bit that we will use for it.
@@ -2483,7 +2499,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
         locations: Locations,
     ) -> ty::InstantiatedPredicates<'tcx> {
-        if let Some(closure_requirements) = &self.root_cx.closure_requirements(def_id) {
+        let (closure_requirements, needs_defer) =
+            self.root_cx.get_closure_requirements_modulo_opaques(def_id);
+        if needs_defer {
+            self.deferred_closure_requirements.push((def_id, args, locations));
+        }
+
+        if let Some(closure_requirements) = closure_requirements {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 self.universal_regions,
@@ -2534,6 +2556,41 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
 
         tcx.predicates_of(def_id).instantiate(tcx, args)
+    }
+}
+
+pub(crate) fn apply_closure_requirements_considering_opaques<'tcx>(
+    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    borrowck_state: &mut BorrowckState<'tcx>,
+) {
+    let BorrowckState {
+        infcx,
+        body_owned,
+        universal_region_relations,
+        region_bound_pairs,
+        known_type_outlives_obligations,
+        constraints,
+        deferred_closure_requirements,
+        ..
+    } = borrowck_state;
+
+    for (def_id, args, locations) in mem::take(deferred_closure_requirements).into_iter() {
+        if let Some(closure_requirements) =
+            root_cx.get_closure_requirements_considering_regions(def_id)
+        {
+            constraint_conversion::ConstraintConversion::new(
+                infcx,
+                &universal_region_relations.universal_regions,
+                region_bound_pairs,
+                infcx.param_env,
+                known_type_outlives_obligations,
+                locations,
+                body_owned.span,            // irrelevant; will be overridden.
+                ConstraintCategory::Boring, // same as above.
+                constraints,
+            )
+            .apply_closure_requirements(closure_requirements, def_id, args);
+        }
     }
 }
 
