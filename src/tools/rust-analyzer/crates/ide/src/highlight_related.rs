@@ -446,6 +446,18 @@ pub(crate) fn highlight_break_points(
                 push_to_highlights(file_id, text_range);
             });
 
+        if matches!(expr, ast::Expr::BlockExpr(_)) {
+            for_each_tail_expr(&expr, &mut |tail| {
+                if matches!(tail, ast::Expr::BreakExpr(_)) {
+                    return;
+                }
+
+                let file_id = sema.hir_file_for(tail.syntax());
+                let range = tail.syntax().text_range();
+                push_to_highlights(file_id, Some(range));
+            });
+        }
+
         Some(highlights)
     }
 
@@ -2071,5 +2083,22 @@ pub unsafe fn bootstrap() -> ! {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn labeled_block_tail_expr() {
+        check(
+            r#"
+fn foo() {
+    'a: {
+ // ^^^
+        if true { break$0 'a 0; }
+               // ^^^^^^^^
+        5
+     // ^
+    }
+}
+"#,
+        );
     }
 }
