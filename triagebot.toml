@@ -13,6 +13,9 @@ allow-unauthenticated = [
 
 [canonicalize-issue-links]
 
+# Prevents mentions in commits to avoid users being spammed
+[no-mentions]
+
 # Have rustbot inform users about the *No Merge Policy*
 [no-merges]
 exclude_titles = ["Rustup"] # exclude syncs from rust-lang/rust
