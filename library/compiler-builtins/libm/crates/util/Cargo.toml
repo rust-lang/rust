@@ -11,7 +11,7 @@ build-mpfr = ["libm-test/build-mpfr", "dep:rug"]
 unstable-float = ["libm/unstable-float", "libm-test/unstable-float", "rug?/nightly-float"]
 
 [dependencies]
-libm = { path = "../..", default-features = false }
+libm = { path = "../../libm", default-features = false }
 libm-macros = { path = "../libm-macros" }
 libm-test = { path = "../libm-test", default-features = false }
 musl-math-sys = { path = "../musl-math-sys", optional = true }

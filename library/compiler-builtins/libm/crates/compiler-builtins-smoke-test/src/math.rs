@@ -3,7 +3,7 @@ use core::ffi::c_int;
 #[allow(dead_code)]
 #[allow(clippy::all)] // We don't get `libm`'s list of `allow`s, so just ignore Clippy.
 #[allow(unused_imports)]
-#[path = "../../../src/math/mod.rs"]
+#[path = "../../../libm/src/math/mod.rs"]
 pub mod libm;
 
 /// Mark functions `#[no_mangle]` and with the C ABI.

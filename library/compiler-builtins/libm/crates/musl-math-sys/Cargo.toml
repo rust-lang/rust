@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 
 [dev-dependencies]
-libm = { path = "../../" }
+libm = { path = "../../libm" }
 
 [build-dependencies]
 cc = "1.2.16"

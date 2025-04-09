@@ -18,7 +18,7 @@ from typing import Any, Callable, TypeAlias
 
 SELF_PATH = Path(__file__)
 ETC_DIR = SELF_PATH.parent
-ROOT_DIR = ETC_DIR.parent
+LIBM_DIR = ETC_DIR.parent.joinpath("libm")
 
 # These files do not trigger a retest.
 IGNORED_SOURCES = ["src/libm_helper.rs", "src/math/support/float_traits.rs"]
@@ -75,7 +75,7 @@ class Crate:
                 "-Zunstable-options",
                 "-o-",
             ],
-            cwd=ROOT_DIR,
+            cwd=LIBM_DIR,
             text=True,
         )
         j = json.loads(j)
@@ -121,8 +121,8 @@ class Crate:
 
         # A lot of the `arch` module is often configured out so doesn't show up in docs. Use
         # string matching as a fallback.
-        for fname in glob("src/math/arch/**.rs", root_dir=ROOT_DIR):
-            contents = (ROOT_DIR.joinpath(fname)).read_text()
+        for fname in glob("src/math/arch/**.rs", root_dir=LIBM_DIR):
+            contents = (LIBM_DIR.joinpath(fname)).read_text()
 
             for name in self.public_functions:
                 if f"fn {name}" in contents:
@@ -188,10 +188,10 @@ class Crate:
         include all public API.
         """
 
-        flist = sp.check_output(["git", "ls-files"], cwd=ROOT_DIR, text=True)
+        flist = sp.check_output(["git", "ls-files"], cwd=LIBM_DIR, text=True)
 
         for path in flist.splitlines():
-            fpath = ROOT_DIR.joinpath(path)
+            fpath = LIBM_DIR.joinpath(path)
             if fpath.is_dir() or fpath == SELF_PATH:
                 continue
 
@@ -229,7 +229,7 @@ class Crate:
         if len(not_found) == 0:
             return
 
-        relpath = fpath.relative_to(ROOT_DIR)
+        relpath = fpath.relative_to(LIBM_DIR)
         eprint(f"functions not found at {relpath}:{line_num}: {not_found}")
         exit(1)
 
@@ -244,7 +244,7 @@ def validate_delimited_block(
     """Identify blocks of code wrapped within `start` and `end`, collect their contents
     to a list of strings, and call `validate` for each of those lists.
     """
-    relpath = fpath.relative_to(ROOT_DIR)
+    relpath = fpath.relative_to(LIBM_DIR)
     block_lines = []
     block_start_line: None | int = None
     for line_num, line in enumerate(lines):
@@ -274,7 +274,7 @@ def validate_delimited_block(
 
 def ensure_sorted(fpath: Path, block_start_line: int, lines: list[str]) -> None:
     """Ensure that a list of lines is sorted, otherwise print a diff and exit."""
-    relpath = fpath.relative_to(ROOT_DIR)
+    relpath = fpath.relative_to(LIBM_DIR)
     diff_and_exit(
         "\n".join(lines),
         "\n".join(sorted(lines)),

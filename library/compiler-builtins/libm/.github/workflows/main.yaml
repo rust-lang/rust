@@ -213,7 +213,7 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - run: |
-        msrv="$(perl -ne 'print if s/rust-version\s*=\s*"(.*)"/\1/g' Cargo.toml)"
+        msrv="$(perl -ne 'print if s/rust-version\s*=\s*"(.*)"/\1/g' libm/Cargo.toml)"
         echo "MSRV: $msrv"
         echo "MSRV=$msrv" >> "$GITHUB_ENV"
     - name: Install Rust
