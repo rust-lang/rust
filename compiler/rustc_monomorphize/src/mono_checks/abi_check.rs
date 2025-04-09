@@ -101,7 +101,7 @@ fn wasm_abi_safe<'tcx>(tcx: TyCtxt<'tcx>, arg: &ArgAbi<'tcx, Ty<'tcx>>) -> bool 
 
     // This matches `unwrap_trivial_aggregate` in the wasm ABI logic.
     if arg.layout.is_aggregate() {
-        let cx = LayoutCx::new(tcx, TypingEnv::fully_monomorphized());
+        let cx = LayoutCx::new(tcx, TypingEnv::fully_monomorphized(tcx));
         if let Some(unit) = arg.layout.homogeneous_aggregate(&cx).ok().and_then(|ha| ha.unit()) {
             let size = arg.layout.size;
             // Ensure there's just a single `unit` element in `arg`.
@@ -151,7 +151,7 @@ fn do_check_wasm_abi<'tcx>(
 /// Checks that the ABI of a given instance of a function does not contain vector-passed arguments
 /// or return values for which the corresponding target feature is not enabled.
 fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
-    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let typing_env = ty::TypingEnv::fully_monomorphized(tcx);
     let Ok(abi) = tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
     else {
         // An error will be reported during codegen if we cannot determine the ABI of this
@@ -181,7 +181,7 @@ fn check_call_site_abi<'tcx>(
         // we directly handle the soundness of Rust ABIs
         return;
     }
-    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let typing_env = ty::TypingEnv::fully_monomorphized(tcx);
     let callee_abi = match *callee.kind() {
         ty::FnPtr(..) => {
             tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((callee.fn_sig(tcx), ty::List::empty())))
@@ -217,7 +217,7 @@ fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &m
                 let callee_ty = func.ty(body, tcx);
                 let callee_ty = instance.instantiate_mir_and_normalize_erasing_regions(
                     tcx,
-                    ty::TypingEnv::fully_monomorphized(),
+                    ty::TypingEnv::fully_monomorphized(tcx),
                     ty::EarlyBinder::bind(callee_ty),
                 );
                 check_call_site_abi(tcx, callee_ty, body.source.instance, || {

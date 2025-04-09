@@ -204,13 +204,13 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     /// Creates an interned bool constant.
     pub fn from_bool(tcx: TyCtxt<'tcx>, v: bool) -> Self {
-        Self::from_bits(tcx, v as u128, ty::TypingEnv::fully_monomorphized(), tcx.types.bool)
+        Self::from_bits(tcx, v as u128, ty::TypingEnv::fully_monomorphized(tcx), tcx.types.bool)
     }
 
     #[inline]
     /// Creates an interned usize constant.
     pub fn from_target_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
-        Self::from_bits(tcx, n as u128, ty::TypingEnv::fully_monomorphized(), tcx.types.usize)
+        Self::from_bits(tcx, n as u128, ty::TypingEnv::fully_monomorphized(tcx), tcx.types.usize)
     }
 
     /// Panics if `self.kind != ty::ConstKind::Value`.

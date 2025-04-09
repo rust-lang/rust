@@ -320,11 +320,13 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 .chain(user_computed_preds.iter().cloned());
             let normalized_preds = elaborate(tcx, computed_preds);
             new_env = ty::ParamEnv::new(
+                tcx,
                 tcx.mk_clauses_from_iter(normalized_preds.filter_map(|p| p.as_clause())),
             );
         }
 
         let final_user_env = ty::ParamEnv::new(
+            tcx,
             tcx.mk_clauses_from_iter(user_computed_preds.into_iter().filter_map(|p| p.as_clause())),
         );
         debug!(

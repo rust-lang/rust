@@ -178,7 +178,7 @@ pub(crate) fn validate_scalar_in_layout<'tcx>(
 ) -> bool {
     let machine = CompileTimeMachine::new(CanAccessMutGlobal::No, CheckAlignment::Error);
 
-    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let typing_env = ty::TypingEnv::fully_monomorphized(tcx);
     let mut cx = InterpCx::new(tcx, DUMMY_SP, typing_env, machine);
 
     let Ok(layout) = cx.layout_of(ty) else {

@@ -22,7 +22,7 @@ pub(crate) fn dump_closure_profile<'tcx>(tcx: TyCtxt<'tcx>, closure_instance: In
     let typeck_results = tcx.typeck(closure_def_id);
 
     if typeck_results.closure_size_eval.contains_key(&closure_def_id) {
-        let typing_env = ty::TypingEnv::fully_monomorphized();
+        let typing_env = ty::TypingEnv::fully_monomorphized(tcx);
 
         let ClosureSizeProfileData { before_feature_tys, after_feature_tys } =
             typeck_results.closure_size_eval[&closure_def_id];

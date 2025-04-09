@@ -145,7 +145,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     ) -> Self {
         let create_type = |ctype, rust_type| {
             let layout = tcx
-                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(rust_type))
+                .layout_of(ty::TypingEnv::fully_monomorphized(tcx).as_query_input(rust_type))
                 .unwrap();
             let align = layout.align.abi.bytes();
             #[cfg(feature = "master")]
@@ -590,7 +590,7 @@ impl<'gcc, 'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
 
 impl<'tcx, 'gcc> HasTypingEnv<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        ty::TypingEnv::fully_monomorphized()
+        ty::TypingEnv::fully_monomorphized(self.tcx)
     }
 }
 

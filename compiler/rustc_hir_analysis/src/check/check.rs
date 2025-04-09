@@ -151,7 +151,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // reason to allow any statics to be uninhabited.
     let ty = tcx.type_of(def_id).instantiate_identity();
     let span = tcx.def_span(def_id);
-    let layout = match tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)) {
+    let layout = match tcx.layout_of(ty::TypingEnv::fully_monomorphized(tcx).as_query_input(ty)) {
         Ok(l) => l,
         // Foreign statics that overflow their allowed size should emit an error
         Err(LayoutError::SizeOverflow(_))

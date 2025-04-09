@@ -388,7 +388,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         };
         let layout = self
             .tcx
-            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(res_ty))
+            .layout_of(ty::TypingEnv::fully_monomorphized(self.tcx).as_query_input(res_ty))
             .unwrap();
 
         let arg_abi = ArgAbi { layout, mode: PassMode::Direct(ArgAttributes::new()) };

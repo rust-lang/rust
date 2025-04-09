@@ -216,7 +216,7 @@ fn overlap<'tcx>(
     // types into scope; instead, we replace the generic types with
     // fresh type variables, and hence we do our evaluations in an
     // empty environment.
-    let param_env = ty::ParamEnv::empty();
+    let param_env = ty::ParamEnv::empty(tcx);
 
     let impl1_header = fresh_impl_header_normalized(selcx.infcx, param_env, impl1_def_id);
     let impl2_header = fresh_impl_header_normalized(selcx.infcx, param_env, impl2_def_id);
@@ -488,8 +488,10 @@ fn plug_infer_with_placeholders<'tcx>(
         fn visit_ty(&mut self, ty: Ty<'tcx>) {
             let ty = self.infcx.shallow_resolve(ty);
             if ty.is_ty_var() {
-                let Ok(InferOk { value: (), obligations }) =
-                    self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
+                let Ok(InferOk { value: (), obligations }) = self
+                    .infcx
+                    .at(&ObligationCause::dummy(), ty::ParamEnv::empty(self.infcx.tcx))
+                    .eq(
                         // Comparing against a type variable never registers hidden types anyway
                         DefineOpaqueTypes::Yes,
                         ty,
@@ -516,8 +518,10 @@ fn plug_infer_with_placeholders<'tcx>(
         fn visit_const(&mut self, ct: ty::Const<'tcx>) {
             let ct = self.infcx.shallow_resolve_const(ct);
             if ct.is_ct_infer() {
-                let Ok(InferOk { value: (), obligations }) =
-                    self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
+                let Ok(InferOk { value: (), obligations }) = self
+                    .infcx
+                    .at(&ObligationCause::dummy(), ty::ParamEnv::empty(self.infcx.tcx))
+                    .eq(
                         // The types of the constants are the same, so there is no hidden type
                         // registration happening anyway.
                         DefineOpaqueTypes::Yes,
@@ -545,8 +549,10 @@ fn plug_infer_with_placeholders<'tcx>(
                     .unwrap_region_constraints()
                     .opportunistic_resolve_var(self.infcx.tcx, vid);
                 if r.is_var() {
-                    let Ok(InferOk { value: (), obligations }) =
-                        self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
+                    let Ok(InferOk { value: (), obligations }) = self
+                        .infcx
+                        .at(&ObligationCause::dummy(), ty::ParamEnv::empty(self.infcx.tcx))
+                        .eq(
                             // Lifetimes don't contain opaque types (or any types for that matter).
                             DefineOpaqueTypes::Yes,
                             r,

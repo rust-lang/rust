@@ -43,7 +43,7 @@ mod rustc {
         pub(crate) fn answer(self) -> Answer<<TyCtxt<'tcx> as QueryContext>::Ref> {
             let Self { src, dst, assume, context } = self;
 
-            let layout_cx = LayoutCx::new(context, TypingEnv::fully_monomorphized());
+            let layout_cx = LayoutCx::new(context, TypingEnv::fully_monomorphized(context));
 
             // Convert `src` and `dst` from their rustc representations, to `Tree`-based
             // representations.

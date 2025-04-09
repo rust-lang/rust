@@ -419,7 +419,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let mir_const = cnst.internal(&mut *tables, tcx);
         mir_const
-            .try_eval_target_usize(tables.tcx, ty::TypingEnv::fully_monomorphized())
+            .try_eval_target_usize(tables.tcx, ty::TypingEnv::fully_monomorphized(tables.tcx))
             .ok_or_else(|| Error::new(format!("Const `{cnst:?}` cannot be encoded as u64")))
     }
     fn eval_target_usize_ty(&self, cnst: &TyConst) -> Result<u64, Error> {
@@ -437,7 +437,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let ty_internal = ty.internal(&mut *tables, tcx);
         let size = tables
             .tcx
-            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty_internal))
+            .layout_of(ty::TypingEnv::fully_monomorphized(tcx).as_query_input(ty_internal))
             .map_err(|err| {
                 Error::new(format!(
                     "Cannot create a zero-sized constant for type `{ty_internal}`: {err}"
@@ -478,7 +478,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let ty = ty::Ty::new_uint(tcx, uint_ty.internal(&mut *tables, tcx));
         let size = tables
             .tcx
-            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+            .layout_of(ty::TypingEnv::fully_monomorphized(tcx).as_query_input(ty))
             .unwrap()
             .size;
         let scalar = ScalarInt::try_from_uint(value, size).ok_or_else(|| {
@@ -497,7 +497,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let ty = ty::Ty::new_uint(tcx, uint_ty.internal(&mut *tables, tcx));
         let size = tables
             .tcx
-            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+            .layout_of(ty::TypingEnv::fully_monomorphized(tcx).as_query_input(ty))
             .unwrap()
             .size;
 
@@ -538,7 +538,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
             .tcx
             .instantiate_and_normalize_erasing_regions(
                 args,
-                ty::TypingEnv::fully_monomorphized(),
+                ty::TypingEnv::fully_monomorphized(tcx),
                 def_ty,
             )
             .stable(&mut *tables)
@@ -590,7 +590,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let instance = tables.instances[def];
         assert!(!instance.has_non_region_param(), "{instance:?} needs further instantiation");
-        instance.ty(tables.tcx, ty::TypingEnv::fully_monomorphized()).stable(&mut *tables)
+        instance.ty(tables.tcx, ty::TypingEnv::fully_monomorphized(tables.tcx)).stable(&mut *tables)
     }
 
     fn instance_args(&self, def: InstanceDef) -> GenericArgs {
@@ -661,7 +661,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let args_ref = args.internal(&mut *tables, tcx);
         match Instance::try_resolve(
             tables.tcx,
-            ty::TypingEnv::fully_monomorphized(),
+            ty::TypingEnv::fully_monomorphized(tcx),
             def_id,
             args_ref,
         ) {
@@ -689,7 +689,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let args_ref = args.internal(&mut *tables, tcx);
         Instance::resolve_for_fn_ptr(
             tables.tcx,
-            ty::TypingEnv::fully_monomorphized(),
+            ty::TypingEnv::fully_monomorphized(tcx),
             def_id,
             args_ref,
         )
@@ -718,7 +718,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let instance = tables.instances[def];
         let tcx = tables.tcx;
         let result = tcx.const_eval_instance(
-            ty::TypingEnv::fully_monomorphized(),
+            ty::TypingEnv::fully_monomorphized(tcx),
             instance,
             tcx.def_span(instance.def_id()),
         );
@@ -873,7 +873,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for Tables<'tcx> {
 
 impl<'tcx> HasTypingEnv<'tcx> for Tables<'tcx> {
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        ty::TypingEnv::fully_monomorphized()
+        ty::TypingEnv::fully_monomorphized(self.tcx)
     }
 }
 

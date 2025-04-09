@@ -424,7 +424,7 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
                 polymorphic instance: {impl_def_id:?} {args:?}"
             );
             (
-                ty::TypingEnv::fully_monomorphized(),
+                ty::TypingEnv::fully_monomorphized(self.tcx),
                 self_ty.instantiate(self.tcx, args),
                 impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate(self.tcx, args)),
             )

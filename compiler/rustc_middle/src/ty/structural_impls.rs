@@ -513,6 +513,22 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     }
 }
 
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::ParamEnv<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        let new = self.0.0.try_fold_with(folder)?;
+        Ok(folder.cx().reuse_or_mk_param_env(self, new))
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::ParamEnv<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        self.0.visit_with(visitor)
+    }
+}
+
 // FIXME(clause): This is wonky
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(

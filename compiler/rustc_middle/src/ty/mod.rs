@@ -968,20 +968,99 @@ impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
     }
 }
 
-/// When interacting with the type system we must provide information about the
-/// environment. `ParamEnv` is the type that represents this information. See the
-/// [dev guide chapter][param_env_guide] for more information.
-///
-/// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 #[derive(HashStable, TypeVisitable, TypeFoldable)]
-pub struct ParamEnv<'tcx> {
+pub struct ParamEnvInner<'tcx> {
     /// Caller bounds are `Obligation`s that the caller must satisfy. This is
     /// basically the set of bounds on the in-scope type parameters, translated
     /// into `Obligation`s, and elaborated and normalized.
     ///
     /// Use the `caller_bounds()` method to access.
     caller_bounds: Clauses<'tcx>,
+}
+
+/// When interacting with the type system we must provide information about the
+/// environment. `ParamEnv` is the type that represents this information. See the
+/// [dev guide chapter][param_env_guide] for more information.
+///
+/// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(HashStable)]
+pub struct ParamEnv<'tcx>(Interned<'tcx, ParamEnvInner<'tcx>>);
+
+impl<'tcx> ParamEnv<'tcx> {
+    /// Construct a trait environment suitable for contexts where there are
+    /// no where-clauses in scope. In the majority of cases it is incorrect
+    /// to use an empty environment. See the [dev guide section][param_env_guide]
+    /// for information on what a `ParamEnv` is and how to acquire one.
+    ///
+    /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
+    #[inline]
+    pub fn empty(tcx: TyCtxt<'tcx>) -> Self {
+        tcx.mk_param_env(ParamEnvInner { caller_bounds: ListWithCachedTypeInfo::empty() })
+    }
+
+    #[inline]
+    pub fn all_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
+        self.0.0.caller_bounds.iter()
+    }
+
+    #[inline]
+    pub fn trait_clauses(self) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
+        self.0.0.caller_bounds.iter().filter_map(|c| c.as_trait_clause())
+    }
+
+    #[inline]
+    pub fn region_outlives_clauses(
+        self,
+    ) -> impl Iterator<Item = PolyRegionOutlivesPredicate<'tcx>> {
+        self.0.0.caller_bounds.iter().filter_map(|c| c.as_region_outlives_clause())
+    }
+
+    #[inline]
+    pub fn type_outlives_clauses(self) -> impl Iterator<Item = PolyTypeOutlivesPredicate<'tcx>> {
+        self.0.0.caller_bounds.iter().filter_map(|c| c.as_type_outlives_clause())
+    }
+
+    #[inline]
+    pub fn projection_clauses(self) -> impl Iterator<Item = PolyProjectionPredicate<'tcx>> {
+        self.0.0.caller_bounds.iter().filter_map(|c| c.as_projection_clause())
+    }
+
+    #[inline]
+    pub fn const_arg_has_type_clauses(
+        self,
+    ) -> impl Iterator<Item = PolyConstArgHasTypePredicate<'tcx>> {
+        self.0.0.caller_bounds.iter().filter_map(|c| c.as_const_arg_has_type_clause())
+    }
+
+    #[inline]
+    pub fn well_formed_clauses(self) -> impl Iterator<Item = PolyWellFormedPredicate<'tcx>> {
+        self.0.0.caller_bounds.iter().filter_map(|c| c.as_well_formed_clause())
+    }
+
+    #[inline]
+    pub fn const_evaluatable_clauses(
+        self,
+    ) -> impl Iterator<Item = PolyConstEvaluatablePredicate<'tcx>> {
+        self.0.0.caller_bounds.iter().filter_map(|c| c.as_const_evaluatable_clause())
+    }
+
+    #[inline]
+    pub fn host_effect_clauses(self) -> impl Iterator<Item = PolyHostEffectPredicate<'tcx>> {
+        self.0.0.caller_bounds.iter().filter_map(|c| c.as_host_effect_clause())
+    }
+
+    /// Construct a trait environment with the given set of predicates.
+    #[inline]
+    pub fn new(tcx: TyCtxt<'tcx>, caller_bounds: Clauses<'tcx>) -> Self {
+        tcx.mk_param_env(ParamEnvInner { caller_bounds })
+    }
+
+    /// Creates a pair of param-env and value for use in queries.
+    pub fn and<T: TypeVisitable<TyCtxt<'tcx>>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
+        ParamEnvAnd { param_env: self, value }
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
@@ -1018,78 +1097,11 @@ impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx> ParamEnv<'tcx> {
-    /// Construct a trait environment suitable for contexts where there are
-    /// no where-clauses in scope. In the majority of cases it is incorrect
-    /// to use an empty environment. See the [dev guide section][param_env_guide]
-    /// for information on what a `ParamEnv` is and how to acquire one.
-    ///
-    /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
-    #[inline]
-    pub fn empty() -> Self {
-        Self::new(ListWithCachedTypeInfo::empty())
-    }
+impl<'tcx> std::ops::Deref for ParamEnv<'tcx> {
+    type Target = ParamEnvInner<'tcx>;
 
-    #[inline]
-    pub fn all_clauses(self) -> impl Iterator<Item = Clause<'tcx>> {
-        self.caller_bounds.iter()
-    }
-
-    #[inline]
-    pub fn trait_clauses(self) -> impl Iterator<Item = PolyTraitPredicate<'tcx>> {
-        self.caller_bounds.iter().filter_map(|c| c.as_trait_clause())
-    }
-
-    #[inline]
-    pub fn region_outlives_clauses(
-        self,
-    ) -> impl Iterator<Item = PolyRegionOutlivesPredicate<'tcx>> {
-        self.caller_bounds.iter().filter_map(|c| c.as_region_outlives_clause())
-    }
-
-    #[inline]
-    pub fn type_outlives_clauses(self) -> impl Iterator<Item = PolyTypeOutlivesPredicate<'tcx>> {
-        self.caller_bounds.iter().filter_map(|c| c.as_type_outlives_clause())
-    }
-
-    #[inline]
-    pub fn projection_clauses(self) -> impl Iterator<Item = PolyProjectionPredicate<'tcx>> {
-        self.caller_bounds.iter().filter_map(|c| c.as_projection_clause())
-    }
-
-    #[inline]
-    pub fn const_arg_has_type_clauses(
-        self,
-    ) -> impl Iterator<Item = PolyConstArgHasTypePredicate<'tcx>> {
-        self.caller_bounds.iter().filter_map(|c| c.as_const_arg_has_type_clause())
-    }
-
-    #[inline]
-    pub fn well_formed_clauses(self) -> impl Iterator<Item = PolyWellFormedPredicate<'tcx>> {
-        self.caller_bounds.iter().filter_map(|c| c.as_well_formed_clause())
-    }
-
-    #[inline]
-    pub fn const_evaluatable_clauses(
-        self,
-    ) -> impl Iterator<Item = PolyConstEvaluatablePredicate<'tcx>> {
-        self.caller_bounds.iter().filter_map(|c| c.as_const_evaluatable_clause())
-    }
-
-    #[inline]
-    pub fn host_effect_clauses(self) -> impl Iterator<Item = PolyHostEffectPredicate<'tcx>> {
-        self.caller_bounds.iter().filter_map(|c| c.as_host_effect_clause())
-    }
-
-    /// Construct a trait environment with the given set of predicates.
-    #[inline]
-    pub fn new(caller_bounds: Clauses<'tcx>) -> Self {
-        ParamEnv { caller_bounds }
-    }
-
-    /// Creates a pair of param-env and value for use in queries.
-    pub fn and<T: TypeVisitable<TyCtxt<'tcx>>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
-        ParamEnvAnd { param_env: self, value }
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
     }
 }
 
@@ -1131,8 +1143,8 @@ impl<'tcx> TypingEnv<'tcx> {
     /// Do not use this for MIR optimizations, as even though they also
     /// use `TypingMode::PostAnalysis`, they may still have where-clauses
     /// in scope.
-    pub fn fully_monomorphized() -> TypingEnv<'tcx> {
-        TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env: ParamEnv::empty() }
+    pub fn fully_monomorphized(tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
+        TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env: ParamEnv::empty(tcx) }
     }
 
     /// Create a typing environment for use during analysis outside of a body.

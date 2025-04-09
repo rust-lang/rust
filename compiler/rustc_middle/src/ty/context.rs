@@ -78,10 +78,10 @@ use crate::traits::solve::{
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, ParamTy,
-    Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
-    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    ValTree, ValTreeKind, Visibility,
+    GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, ParamEnv,
+    ParamEnvInner, ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
+    PredicateKind, PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty,
+    TyKind, TyVid, ValTree, ValTreeKind, Visibility,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -804,6 +804,7 @@ pub struct CtxtInterners<'tcx> {
     region: InternedSet<'tcx, RegionKind<'tcx>>,
     poly_existential_predicates: InternedSet<'tcx, List<PolyExistentialPredicate<'tcx>>>,
     predicate: InternedSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
+    param_env: InternedSet<'tcx, ParamEnvInner<'tcx>>,
     clauses: InternedSet<'tcx, ListWithCachedTypeInfo<Clause<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
@@ -840,6 +841,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             poly_existential_predicates: InternedSet::with_capacity(N / 4),
             canonical_var_infos: InternedSet::with_capacity(N / 2),
             predicate: InternedSet::with_capacity(N),
+            param_env: InternedSet::with_capacity(N),
             clauses: InternedSet::with_capacity(N),
             projs: InternedSet::with_capacity(N * 4),
             place_elems: InternedSet::with_capacity(N * 2),
@@ -2602,6 +2604,7 @@ direct_interners! {
         ExternalConstraints -> ExternalConstraints<'tcx>,
     predefined_opaques_in_body: pub mk_predefined_opaques_in_body(PredefinedOpaquesData<TyCtxt<'tcx>>):
         PredefinedOpaques -> PredefinedOpaques<'tcx>,
+    param_env: pub mk_param_env(ParamEnvInner<'tcx>): ParamEnv -> ty::ParamEnv<'tcx>,
 }
 
 macro_rules! slice_interners {
@@ -2705,6 +2708,15 @@ impl<'tcx> TyCtxt<'tcx> {
         binder: Binder<'tcx, PredicateKind<'tcx>>,
     ) -> Predicate<'tcx> {
         if pred.kind() != binder { self.mk_predicate(binder) } else { pred }
+    }
+
+    #[inline]
+    pub fn reuse_or_mk_param_env(
+        self,
+        env: ParamEnv<'tcx>,
+        inner: ParamEnvInner<'tcx>,
+    ) -> ParamEnv<'tcx> {
+        if *env != inner { self.mk_param_env(inner) } else { env }
     }
 
     pub fn check_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) -> bool {

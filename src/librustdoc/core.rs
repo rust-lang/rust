@@ -361,7 +361,7 @@ pub(crate) fn run_global_ctxt(
 
     let mut ctxt = DocContext {
         tcx,
-        param_env: ParamEnv::empty(),
+        param_env: ParamEnv::empty(tcx),
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
         args: Default::default(),

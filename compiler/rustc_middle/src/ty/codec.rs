@@ -207,7 +207,7 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for CtfeProvenance {
     }
 }
 
-impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::ParamEnv<'tcx> {
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::ParamEnvInner<'tcx> {
     fn encode(&self, e: &mut E) {
         self.caller_bounds.encode(e);
     }
@@ -338,10 +338,10 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::SymbolName<'tcx> {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::ParamEnv<'tcx> {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::ParamEnvInner<'tcx> {
     fn decode(d: &mut D) -> Self {
-        let all_clauses = Decodable::decode(d);
-        ty::ParamEnv::new(all_clauses)
+        let caller_bounds = Decodable::decode(d);
+        ty::ParamEnvInner { caller_bounds }
     }
 }
 

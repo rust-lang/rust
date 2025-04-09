@@ -590,7 +590,7 @@ fn augment_param_env<'tcx>(
         tcx.mk_clauses_from_iter(param_env.all_clauses().chain(new_predicates.iter().cloned()));
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
     // i.e. traits::normalize_param_env_or_error
-    ty::ParamEnv::new(bounds)
+    ty::ParamEnv::new(tcx, bounds)
 }
 
 /// We use the following trait as an example throughout this function.
@@ -2276,7 +2276,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     fn check_false_global_bounds(&mut self) {
         let tcx = self.ocx.infcx.tcx;
         let mut span = self.span;
-        let empty_env = ty::ParamEnv::empty();
+        let empty_env = ty::ParamEnv::empty(tcx);
 
         let predicates_with_span = tcx.predicates_of(self.body_def_id).predicates.iter().copied();
         // Check elaborated bounds.

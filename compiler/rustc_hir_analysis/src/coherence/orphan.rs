@@ -311,7 +311,7 @@ fn orphan_check<'tcx>(
         let ty::Alias(..) = user_ty.kind() else { return Ok(user_ty) };
 
         let ocx = traits::ObligationCtxt::new(&infcx);
-        let ty = ocx.normalize(&cause, ty::ParamEnv::empty(), user_ty);
+        let ty = ocx.normalize(&cause, ty::ParamEnv::empty(tcx), user_ty);
         let ty = infcx.resolve_vars_if_possible(ty);
         let errors = ocx.select_where_possible();
         if !errors.is_empty() {
@@ -321,7 +321,7 @@ fn orphan_check<'tcx>(
         let ty = if infcx.next_trait_solver() {
             ocx.structurally_normalize_ty(
                 &cause,
-                ty::ParamEnv::empty(),
+                ty::ParamEnv::empty(tcx),
                 infcx.resolve_vars_if_possible(ty),
             )
             .unwrap_or(ty)
@@ -361,7 +361,7 @@ fn orphan_check<'tcx>(
                 for (arg, id_arg) in
                     std::iter::zip(args, ty::GenericArgs::identity_for_item(tcx, impl_def_id))
                 {
-                    let _ = infcx.at(&cause, ty::ParamEnv::empty()).eq(
+                    let _ = infcx.at(&cause, ty::ParamEnv::empty(tcx)).eq(
                         DefineOpaqueTypes::No,
                         arg,
                         id_arg,

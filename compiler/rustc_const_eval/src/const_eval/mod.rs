@@ -39,7 +39,7 @@ pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
     val: mir::ConstValue<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<mir::DestructuredConstant<'tcx>> {
-    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let typing_env = ty::TypingEnv::fully_monomorphized(tcx);
     // FIXME: use a proper span here?
     let (ecx, op) = mk_eval_cx_for_const_val(tcx.at(rustc_span::DUMMY_SP), typing_env, val, ty)?;
 
@@ -83,7 +83,7 @@ pub fn tag_for_variant_provider<'tcx>(
     let ecx = InterpCx::new(
         tcx,
         ty.default_span(tcx),
-        ty::TypingEnv::fully_monomorphized(),
+        ty::TypingEnv::fully_monomorphized(tcx),
         crate::const_eval::DummyMachine,
     );
 

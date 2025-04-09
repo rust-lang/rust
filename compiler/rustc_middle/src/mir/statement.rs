@@ -533,7 +533,7 @@ impl<'tcx> Operand<'tcx> {
         span: Span,
     ) -> Operand<'tcx> {
         debug_assert!({
-            let typing_env = ty::TypingEnv::fully_monomorphized();
+            let typing_env = ty::TypingEnv::fully_monomorphized(tcx);
             let type_size = tcx
                 .layout_of(typing_env.as_query_input(ty))
                 .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))

@@ -308,7 +308,7 @@ pub fn eval_static_initializer_provider<'tcx>(
 
     let instance = ty::Instance::mono(tcx, def_id.to_def_id());
     let cid = rustc_middle::mir::interpret::GlobalId { instance, promoted: None };
-    eval_in_interpreter(tcx, cid, ty::TypingEnv::fully_monomorphized())
+    eval_in_interpreter(tcx, cid, ty::TypingEnv::fully_monomorphized(tcx))
 }
 
 pub trait InterpretationResult<'tcx> {

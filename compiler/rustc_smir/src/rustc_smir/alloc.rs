@@ -39,7 +39,7 @@ pub(crate) fn try_new_allocation<'tcx>(
 ) -> Result<Allocation, Error> {
     let layout = tables
         .tcx
-        .layout_of(rustc_middle::ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+        .layout_of(rustc_middle::ty::TypingEnv::fully_monomorphized(tables.tcx).as_query_input(ty))
         .map_err(|e| e.stable(tables))?;
     Ok(match const_value {
         ConstValue::Scalar(scalar) => {

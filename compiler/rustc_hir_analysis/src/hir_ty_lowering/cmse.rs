@@ -130,7 +130,7 @@ fn is_valid_cmse_inputs<'tcx>(
     let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
 
     for (index, ty) in fn_sig.inputs().iter().enumerate() {
-        let layout = tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*ty))?;
+        let layout = tcx.layout_of(ty::TypingEnv::fully_monomorphized(tcx).as_query_input(*ty))?;
 
         let align = layout.layout.align().abi.bytes();
         let size = layout.layout.size().bytes();
@@ -158,7 +158,7 @@ fn is_valid_cmse_output<'tcx>(
     // this type is only used for layout computation, which does not rely on regions
     let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
 
-    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let typing_env = ty::TypingEnv::fully_monomorphized(tcx);
 
     let mut ret_ty = fn_sig.output();
     let layout = tcx.layout_of(typing_env.as_query_input(ret_ty))?;

@@ -634,7 +634,7 @@ impl<'tcx> Collector<'tcx> {
             .map(|ty| {
                 let layout = self
                     .tcx
-                    .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+                    .layout_of(ty::TypingEnv::fully_monomorphized(self.tcx).as_query_input(ty))
                     .expect("layout")
                     .layout;
                 // In both stdcall and fastcall, we always round up the argument size to the

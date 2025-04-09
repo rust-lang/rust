@@ -682,7 +682,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     .tcx
                     .check_validity_requirement((
                         requirement,
-                        ty::TypingEnv::fully_monomorphized().as_query_input(ty),
+                        ty::TypingEnv::fully_monomorphized(fx.tcx).as_query_input(ty),
                     ))
                     .expect("expect to have layout during codegen");
 
@@ -743,7 +743,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let const_val = fx
                 .tcx
                 .const_eval_instance(
-                    ty::TypingEnv::fully_monomorphized(),
+                    ty::TypingEnv::fully_monomorphized(fx.tcx),
                     instance,
                     source_info.span,
                 )

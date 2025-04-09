@@ -215,7 +215,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let gcc_type = if nested {
             self.type_i8()
         } else {
-            let ty = instance.ty(self.tcx, ty::TypingEnv::fully_monomorphized());
+            let ty = instance.ty(self.tcx, ty::TypingEnv::fully_monomorphized(self.tcx));
             self.layout_of(ty).gcc_type(self)
         };
 

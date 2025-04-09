@@ -117,7 +117,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 
     // Main should have no WC, so empty param env is OK here.
-    let param_env = ty::ParamEnv::empty();
+    let param_env = ty::ParamEnv::empty(tcx);
     let expected_return_type;
     if let Some(term_did) = tcx.lang_items().termination() {
         let return_ty = main_fnsig.output();

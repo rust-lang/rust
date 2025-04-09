@@ -613,7 +613,7 @@ fn calling_convention_for_symbol<'tcx>(
     instance
         .map(|i| {
             tcx.fn_abi_of_instance(
-                ty::TypingEnv::fully_monomorphized().as_query_input((i, ty::List::empty())),
+                ty::TypingEnv::fully_monomorphized(tcx).as_query_input((i, ty::List::empty())),
             )
             .unwrap_or_else(|_| bug!("fn_abi_of_instance({i:?}) failed"))
         })

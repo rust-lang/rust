@@ -367,7 +367,7 @@ pub fn normalize_param_env_or_error<'tcx>(
                         && self.0.def_kind(uv.def) == DefKind::AnonConst
                     {
                         let infcx = self.0.infer_ctxt().build(TypingMode::non_body_analysis());
-                        let c = evaluate_const(&infcx, c, ty::ParamEnv::empty());
+                        let c = evaluate_const(&infcx, c, ty::ParamEnv::empty(infcx.tcx));
                         // We should never wind up with any `infcx` local state when normalizing anon consts
                         // under min const generics.
                         assert!(!c.has_infer() && !c.has_placeholders());
@@ -414,7 +414,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
-    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
+    let elaborated_env = ty::ParamEnv::new(tcx, tcx.mk_clauses(&predicates));
     if !elaborated_env.has_aliases() {
         return elaborated_env;
     }
@@ -461,7 +461,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // here. I believe they should not matter, because we are ignoring TypeOutlives param-env
     // predicates here anyway. Keeping them here anyway because it seems safer.
     let outlives_env = non_outlives_predicates.iter().chain(&outlives_predicates).cloned();
-    let outlives_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(outlives_env));
+    let outlives_env = ty::ParamEnv::new(tcx, tcx.mk_clauses_from_iter(outlives_env));
     let Ok(outlives_predicates) =
         do_normalize_predicates(tcx, cause, outlives_env, outlives_predicates)
     else {
@@ -474,7 +474,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let mut predicates = non_outlives_predicates;
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
+    ty::ParamEnv::new(tcx, tcx.mk_clauses(&predicates))
 }
 
 #[derive(Debug)]
@@ -702,7 +702,7 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause<'tcx>>) -> bool {
     debug!("impossible_predicates(predicates={:?})", predicates);
     let (infcx, param_env) =
-        tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
+        tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized(tcx));
     let ocx = ObligationCtxt::new(&infcx);
     let predicates = ocx.normalize(&ObligationCause::dummy(), param_env, predicates);
     for predicate in predicates {
@@ -804,7 +804,7 @@ fn is_impossible_associated_item(
         .ignoring_regions()
         .with_next_trait_solver(true)
         .build(TypingMode::Coherence);
-    let param_env = ty::ParamEnv::empty();
+    let param_env = ty::ParamEnv::empty(tcx);
     let fresh_args = infcx.fresh_args_for_item(tcx.def_span(impl_def_id), impl_def_id);
 
     let impl_trait_ref = tcx

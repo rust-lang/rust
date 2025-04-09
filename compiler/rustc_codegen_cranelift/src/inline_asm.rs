@@ -92,7 +92,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                 if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                     let instance = ty::Instance::resolve_for_fn_ptr(
                         fx.tcx,
-                        ty::TypingEnv::fully_monomorphized(),
+                        ty::TypingEnv::fully_monomorphized(fx.tcx),
                         def_id,
                         args,
                     )
@@ -225,11 +225,11 @@ pub(crate) fn codegen_naked_asm<'tcx>(
             InlineAsmOperand::Const { ref value } => {
                 let cv = instance.instantiate_mir_and_normalize_erasing_regions(
                     tcx,
-                    ty::TypingEnv::fully_monomorphized(),
+                    ty::TypingEnv::fully_monomorphized(tcx),
                     ty::EarlyBinder::bind(value.const_),
                 );
                 let const_value = cv
-                    .eval(tcx, ty::TypingEnv::fully_monomorphized(), value.span)
+                    .eval(tcx, ty::TypingEnv::fully_monomorphized(tcx), value.span)
                     .expect("erroneous constant missed by mono item collection");
 
                 let value = rustc_codegen_ssa::common::asm_const_to_str(
@@ -248,13 +248,13 @@ pub(crate) fn codegen_naked_asm<'tcx>(
 
                 let const_ = instance.instantiate_mir_and_normalize_erasing_regions(
                     tcx,
-                    ty::TypingEnv::fully_monomorphized(),
+                    ty::TypingEnv::fully_monomorphized(tcx),
                     ty::EarlyBinder::bind(value.const_),
                 );
                 if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                     let instance = ty::Instance::resolve_for_fn_ptr(
                         tcx,
-                        ty::TypingEnv::fully_monomorphized(),
+                        ty::TypingEnv::fully_monomorphized(tcx),
                         def_id,
                         args,
                     )

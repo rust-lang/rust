@@ -441,7 +441,7 @@ fn print_const_with_custom_print_scalar<'tcx>(
         (mir::Const::Val(mir::ConstValue::Scalar(int), _), ty::Int(i)) => {
             let ty = ct.ty();
             let size = tcx
-                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+                .layout_of(ty::TypingEnv::fully_monomorphized(tcx).as_query_input(ty))
                 .unwrap()
                 .size;
             let sign_extended_data = int.assert_scalar_int().to_int(size);

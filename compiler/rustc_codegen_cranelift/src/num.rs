@@ -399,7 +399,7 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
         .layout()
         .ty
         .builtin_deref(true)
-        .map(|ty| !fx.tcx.type_has_metadata(ty, ty::TypingEnv::fully_monomorphized()))
+        .map(|ty| !fx.tcx.type_has_metadata(ty, ty::TypingEnv::fully_monomorphized(fx.tcx)))
         .unwrap_or(true);
 
     if is_thin_ptr {

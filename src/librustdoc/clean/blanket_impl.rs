@@ -41,7 +41,7 @@ pub(crate) fn synthesize_blanket_impls(
             let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
             let args = infcx.fresh_args_for_item(DUMMY_SP, item_def_id);
             let impl_ty = ty.instantiate(tcx, args);
-            let param_env = ty::ParamEnv::empty();
+            let param_env = ty::ParamEnv::empty(tcx);
 
             let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
             let impl_trait_ref = trait_ref.instantiate(tcx, impl_args);

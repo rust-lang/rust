@@ -281,7 +281,7 @@ pub fn create_ecx<'tcx>(
     entry_type: MiriEntryFnType,
     config: &MiriConfig,
 ) -> InterpResult<'tcx, InterpCx<'tcx, MiriMachine<'tcx>>> {
-    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let typing_env = ty::TypingEnv::fully_monomorphized(tcx);
     let layout_cx = LayoutCx::new(tcx, typing_env);
     let mut ecx =
         InterpCx::new(tcx, rustc_span::DUMMY_SP, typing_env, MiriMachine::new(config, layout_cx));

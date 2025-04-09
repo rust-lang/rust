@@ -477,7 +477,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // Async drop glue morphology is an internal detail, so
         // using `TypingMode::PostAnalysis` probably should be fine.
-        let typing_env = ty::TypingEnv::fully_monomorphized();
+        let typing_env = ty::TypingEnv::fully_monomorphized(self);
         if ty.needs_async_drop(self, typing_env) {
             AsyncDropGlueMorphology::Custom
         } else if ty.needs_drop(self, typing_env) {
@@ -1175,7 +1175,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the maximum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
     pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<mir::Const<'tcx>> {
-        let typing_env = TypingEnv::fully_monomorphized();
+        let typing_env = TypingEnv::fully_monomorphized(tcx);
         self.numeric_min_and_max_as_bits(tcx)
             .map(|(_, max)| mir::Const::from_bits(tcx, max, typing_env, self))
     }
@@ -1183,7 +1183,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the minimum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
     pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<mir::Const<'tcx>> {
-        let typing_env = TypingEnv::fully_monomorphized();
+        let typing_env = TypingEnv::fully_monomorphized(tcx);
         self.numeric_min_and_max_as_bits(tcx)
             .map(|(min, _)| mir::Const::from_bits(tcx, min, typing_env, self))
     }

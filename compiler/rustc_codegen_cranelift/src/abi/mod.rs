@@ -394,7 +394,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     let instance = if let ty::FnDef(def_id, fn_args) = *func.layout().ty.kind() {
         let instance = ty::Instance::expect_resolve(
             fx.tcx,
-            ty::TypingEnv::fully_monomorphized(),
+            ty::TypingEnv::fully_monomorphized(fx.tcx),
             def_id,
             fn_args,
             source_info.span,

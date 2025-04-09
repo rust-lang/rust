@@ -299,7 +299,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     pub fn from_bool(b: bool, tcx: TyCtxt<'tcx>) -> Self {
         // Can use any typing env, since `bool` is always monomorphic.
         let layout = tcx
-            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tcx.types.bool))
+            .layout_of(ty::TypingEnv::fully_monomorphized(tcx).as_query_input(tcx.types.bool))
             .unwrap();
         Self::from_scalar(Scalar::from_bool(b), layout)
     }
@@ -309,7 +309,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
         // Can use any typing env, since `Ordering` is always monomorphic.
         let ty = tcx.ty_ordering_enum(None);
         let layout =
-            tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)).unwrap();
+            tcx.layout_of(ty::TypingEnv::fully_monomorphized(tcx).as_query_input(ty)).unwrap();
         Self::from_scalar(Scalar::from_i8(c as i8), layout)
     }
 

@@ -60,7 +60,7 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
         trace!("monomorphize: self.instance={:?}", self.instance);
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
-            ty::TypingEnv::fully_monomorphized(),
+            ty::TypingEnv::fully_monomorphized(self.tcx),
             ty::EarlyBinder::bind(value),
         )
     }
@@ -128,7 +128,7 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
         let ty = operand.ty(self.body, self.tcx);
         let ty = self.monomorphize(ty);
         let Ok(layout) =
-            self.tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+            self.tcx.layout_of(ty::TypingEnv::fully_monomorphized(self.tcx).as_query_input(ty))
         else {
             return None;
         };

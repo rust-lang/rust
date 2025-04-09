@@ -2455,7 +2455,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         };
 
         let def_id = hir_id.expect_owner().def_id;
-        let param_env = ty::ParamEnv::empty();
+        let param_env = ty::ParamEnv::empty(tcx);
 
         let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let ocx = ObligationCtxt::new_with_diagnostics(&infcx);

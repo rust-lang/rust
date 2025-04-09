@@ -598,7 +598,7 @@ pub fn check_function_signature<'tcx>(
 
     let local_id = fn_id.as_local().unwrap_or(CRATE_DEF_ID);
 
-    let param_env = ty::ParamEnv::empty();
+    let param_env = ty::ParamEnv::empty(tcx);
 
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
