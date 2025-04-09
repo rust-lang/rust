@@ -131,7 +131,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Coerce { fcx, cause, allow_two_phase, use_lub: false, coerce_never }
     }
 
-    fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
+    fn unify_raw(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
         self.commit_if_ok(|_| {
             let at = self.at(&self.cause, self.fcx.param_env);
@@ -166,7 +166,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     where
         F: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
     {
-        self.unify(a, b)
+        self.unify_raw(a, b)
             .and_then(|InferOk { value: ty, obligations }| success(f(ty), ty, obligations))
     }
 
@@ -431,7 +431,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 referent_ty,
                 mutbl_b, // [1] above
             );
-            match self.unify(derefd_ty_a, b) {
+            match self.unify_raw(derefd_ty_a, b) {
                 Ok(ok) => {
                     found = Some(ok);
                     break;
@@ -1096,9 +1096,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
         // We don't ever need two-phase here since we throw out the result of the coercion.
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No, true);
-        coerce
-            .autoderef(DUMMY_SP, expr_ty)
-            .find_map(|(ty, steps)| self.probe(|_| coerce.unify(ty, target)).ok().map(|_| steps))
+        coerce.autoderef(DUMMY_SP, expr_ty).find_map(|(ty, steps)| {
+            self.probe(|_| coerce.unify_raw(ty, target)).ok().map(|_| steps)
+        })
     }
 
     /// Given a type, this function will calculate and return the type given
