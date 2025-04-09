@@ -1,5 +1,6 @@
 int foo(void) {
-    // Use some API that's a lot newer than the host
+    // Use some API that's a lot newer than the deployment target.
+    // This forces Clang to insert a call to __isPlatformVersionAtLeast.
     if (__builtin_available(
         macos 1000.0,
         ios 1000.0,
