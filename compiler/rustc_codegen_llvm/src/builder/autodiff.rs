@@ -51,7 +51,7 @@ fn has_sret(fnc: &Value) -> bool {
 // using iterators and peek()?
 fn match_args_from_caller_to_enzyme<'ll>(
     cx: &SimpleCx<'ll>,
-    builder: &SBuilder<'ll,'ll>,
+    builder: &SBuilder<'ll, 'll>,
     width: u32,
     args: &mut Vec<&'ll llvm::Value>,
     inputs: &[DiffActivity],
@@ -81,6 +81,7 @@ fn match_args_from_caller_to_enzyme<'ll>(
     let enzyme_dup = cx.create_metadata("enzyme_dup".to_string()).unwrap();
     let enzyme_dupv = cx.create_metadata("enzyme_dupv".to_string()).unwrap();
     let enzyme_dupnoneed = cx.create_metadata("enzyme_dupnoneed".to_string()).unwrap();
+    let enzyme_dupnoneedv = cx.create_metadata("enzyme_dupnoneedv".to_string()).unwrap();
 
     while activity_pos < inputs.len() {
         let diff_activity = inputs[activity_pos as usize];
@@ -94,6 +95,7 @@ fn match_args_from_caller_to_enzyme<'ll>(
             DiffActivity::Dual => (enzyme_dup, true),
             DiffActivity::Dualv => (enzyme_dupv, true),
             DiffActivity::DualOnly => (enzyme_dupnoneed, true),
+            DiffActivity::DualvOnly => (enzyme_dupnoneedv, true),
             DiffActivity::Duplicated => (enzyme_dup, true),
             DiffActivity::DuplicatedOnly => (enzyme_dupnoneed, true),
             DiffActivity::FakeActivitySize => (enzyme_const, false),
@@ -106,10 +108,9 @@ fn match_args_from_caller_to_enzyme<'ll>(
             // T=f32 => 4 bytes
             // n_elems is the next integer.
             // Now we multiply `4 * next_outer_arg` to get the stride.
-            //let mul = builder
-            //    .build_mul(cx.get_const_i64(4), next_outer_arg)
-            //    .unwrap();
-            let mul = unsafe {llvm::LLVMBuildMul(builder.llbuilder, cx.get_const_i64(4), next_outer_arg, UNNAMED)};
+            let mul = unsafe {
+                llvm::LLVMBuildMul(builder.llbuilder, cx.get_const_i64(4), next_outer_arg, UNNAMED)
+            };
             args.push(mul);
         }
         args.push(outer_arg);
@@ -140,11 +141,8 @@ fn match_args_from_caller_to_enzyme<'ll>(
                 // int2 >= int1, which means the shadow vector is large enough to store the gradient.
                 assert_eq!(cx.type_kind(next_outer_ty), TypeKind::Integer);
 
-                let iterations = if matches!(diff_activity, DiffActivity::Dualv) {
-                    1
-                } else {
-                    width as usize
-                };
+                let iterations =
+                    if matches!(diff_activity, DiffActivity::Dualv) { 1 } else { width as usize };
 
                 for i in 0..iterations {
                     let next_outer_arg2 = outer_args[outer_pos + 2 * (i + 1)];

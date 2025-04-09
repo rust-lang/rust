@@ -40,6 +40,9 @@ fn adjust_activity_to_abi<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec
                     new_activities.push(activity);
                     new_positions.push(i + 1);
                 }
+                // Now we need to figure out the size of each slice element in memory.
+                // Can we actually do that here?
+
                 continue;
             }
         }
