@@ -60,8 +60,21 @@ pub use crate::hash::macros::Hash;
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
 pub use crate::{
-    assert, assert_eq, assert_ne, cfg, column, compile_error, concat, debug_assert, debug_assert_eq, debug_assert_ne, env, file, format_args, include, include_bytes, include_str, line, matches, module_path, option_env, panic, stringify, todo, r#try, unimplemented, unreachable, write, writeln,
+    assert, assert_eq, assert_ne, cfg, column, compile_error, concat, debug_assert, debug_assert_eq, debug_assert_ne, file, format_args, include, include_bytes, include_str, line, matches, module_path, option_env, stringify, todo, r#try, unimplemented, unreachable, write, writeln,
 };
+
+// These macros needs special handling, so that we don't export it *and* the modules of the same
+// name. We only want the macro in the prelude.
+mod ambiguous_macro_only {
+    #[allow(hidden_glob_reexports)]
+    mod env {}
+    #[allow(hidden_glob_reexports)]
+    mod panic {}
+    #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+    pub use crate::*;
+}
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+pub use self::ambiguous_macro_only::{env, panic};
 
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[doc(no_inline)]
