@@ -1,22 +1,27 @@
 //! Architecture-specific support for x86-32 and x86-64 with SSE2
 
-#[cfg(target_arch = "x86")]
-use core::arch::x86::*;
-#[cfg(target_arch = "x86_64")]
-use core::arch::x86_64::*;
-
-pub fn sqrtf(x: f32) -> f32 {
+pub fn sqrtf(mut x: f32) -> f32 {
+    // SAFETY: `sqrtss` is part of `sse2`, which this module is gated behind. It has no memory
+    // access or side effects.
     unsafe {
-        let m = _mm_set_ss(x);
-        let m_sqrt = _mm_sqrt_ss(m);
-        _mm_cvtss_f32(m_sqrt)
-    }
+        core::arch::asm!(
+            "sqrtss {x}, {x}",
+            x = inout(xmm_reg) x,
+            options(nostack, nomem, pure),
+        )
+    };
+    x
 }
 
-pub fn sqrt(x: f64) -> f64 {
+pub fn sqrt(mut x: f64) -> f64 {
+    // SAFETY: `sqrtsd` is part of `sse2`, which this module is gated behind. It has no memory
+    // access or side effects.
     unsafe {
-        let m = _mm_set_sd(x);
-        let m_sqrt = _mm_sqrt_pd(m);
-        _mm_cvtsd_f64(m_sqrt)
-    }
+        core::arch::asm!(
+            "sqrtsd {x}, {x}",
+            x = inout(xmm_reg) x,
+            options(nostack, nomem, pure),
+        )
+    };
+    x
 }
