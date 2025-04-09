@@ -92,7 +92,7 @@ macro_rules! expand_combined_late_lint_pass_methods {
 /// Combines multiple lints passes into a single lint pass, at compile time,
 /// for maximum speed. Each `check_foo` method in `$methods` within this pass
 /// simply calls `check_foo` once per `$pass`. Compare with
-/// `LateLintPassObjects`, which is similar, but combines lint passes at
+/// `RuntimeCombinedLateLintPass`, which is similar, but combines lint passes at
 /// runtime.
 #[macro_export]
 macro_rules! declare_combined_late_lint_pass {
