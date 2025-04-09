@@ -24,6 +24,7 @@ use std::ops::{ControlFlow, Deref};
 
 use borrow_set::LocalsStateAtExit;
 use diagnostics::RegionErrors;
+use nll::YieldComputeRegions;
 use root_cx::BorrowCheckRootCtxt;
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -54,6 +55,7 @@ use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
+use type_check::Locations;
 
 use crate::borrow_set::{BorrowData, BorrowSet};
 use crate::consumers::{BodyWithBorrowckFacts, ConsumerOptions};
@@ -127,12 +129,8 @@ fn mir_borrowck(
         let opaque_types = ConcreteOpaqueTypes(Default::default());
         Ok(tcx.arena.alloc(opaque_types))
     } else {
-        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def);
-        let PropagatedBorrowCheckResults { closure_requirements, used_mut_upvars } =
-            do_mir_borrowck(&mut root_cx, def, None).0;
-        debug_assert!(closure_requirements.is_none());
-        debug_assert!(used_mut_upvars.is_empty());
-        root_cx.finalize()
+        let root_cx = BorrowCheckRootCtxt::new(tcx, def);
+        root_cx.borrowck_root(None).0
     }
 }
 
@@ -143,6 +141,8 @@ struct PropagatedBorrowCheckResults<'tcx> {
     closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
     used_mut_upvars: SmallVec<[FieldIdx; 8]>,
 }
+
+type DeferredClosureRequirements<'tcx> = Vec<(LocalDefId, ty::GenericArgsRef<'tcx>, Locations)>;
 
 /// After we borrow check a closure, we are left with various
 /// requirements that we have inferred between the free regions that
@@ -282,6 +282,16 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
     }
 }
 
+struct YieldDoMirBorrowck<'tcx> {
+    infcx: BorrowckInferCtxt<'tcx>,
+    body_owned: Body<'tcx>,
+    promoted: IndexVec<Promoted, Body<'tcx>>,
+    move_data: MoveData<'tcx>,
+    borrow_set: BorrowSet<'tcx>,
+    location_table: PoloniusLocationTable,
+    yield_compute_regions: YieldComputeRegions<'tcx>,
+}
+
 /// Perform the actual borrow checking.
 ///
 /// Use `consumer_options: None` for the default behavior of returning
@@ -290,11 +300,11 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
 ///
 /// For nested bodies this should only be called through `root_cx.get_or_insert_nested`.
 #[instrument(skip(root_cx), level = "debug")]
-fn do_mir_borrowck<'tcx>(
+fn start_do_mir_borrowck<'tcx>(
     root_cx: &mut BorrowCheckRootCtxt<'tcx>,
     def: LocalDefId,
     consumer_options: Option<ConsumerOptions>,
-) -> (PropagatedBorrowCheckResults<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
+) -> YieldDoMirBorrowck<'tcx> {
     let tcx = root_cx.tcx;
     let infcx = BorrowckInferCtxt::new(tcx, def);
     let (input_body, promoted) = tcx.mir_promoted(def);
@@ -325,15 +335,7 @@ fn do_mir_borrowck<'tcx>(
     let locals_are_invalidated_at_exit = tcx.hir_body_owner_kind(def).is_fn_or_closure();
     let borrow_set = BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data);
 
-    // Compute non-lexical lifetimes.
-    let nll::NllOutput {
-        regioncx,
-        polonius_input,
-        polonius_output,
-        opt_closure_req,
-        nll_errors,
-        polonius_diagnostics,
-    } = nll::compute_regions(
+    let yield_compute_regions = nll::compute_regions(
         root_cx,
         &infcx,
         universal_regions,
@@ -344,6 +346,52 @@ fn do_mir_borrowck<'tcx>(
         &move_data,
         &borrow_set,
         consumer_options,
+    );
+
+    YieldDoMirBorrowck {
+        infcx,
+        body_owned,
+        promoted,
+        move_data,
+        borrow_set,
+        location_table,
+        yield_compute_regions,
+    }
+}
+
+fn resume_do_mir_borrowck<'tcx>(
+    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    consumer_options: Option<ConsumerOptions>,
+    YieldDoMirBorrowck {
+        infcx,
+        body_owned,
+        promoted,
+        move_data,
+        borrow_set,
+        location_table,
+        yield_compute_regions,
+    }: YieldDoMirBorrowck<'tcx>,
+) -> (PropagatedBorrowCheckResults<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
+    assert!(!infcx.has_opaque_types_in_storage());
+    let body = &body_owned;
+
+    // Compute non-lexical lifetimes.
+    let nll::NllOutput {
+        regioncx,
+        polonius_input,
+        polonius_output,
+        opt_closure_req,
+        nll_errors,
+        polonius_diagnostics,
+    } = nll::resume_compute_regions(
+        root_cx,
+        &infcx,
+        body,
+        &location_table,
+        &move_data,
+        &borrow_set,
+        consumer_options,
+        yield_compute_regions,
     );
 
     // Dump MIR results into a file, if that is enabled. This lets us

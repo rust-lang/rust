@@ -5,8 +5,10 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 
-use polonius_engine::{Algorithm, Output};
+use polonius_engine::{Algorithm, AllFacts, Output};
+use rustc_data_structures::frozen::Frozen;
 use rustc_index::IndexSlice;
+use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_middle::mir::pretty::{PrettyPrintMirOptions, dump_mir_with_options};
 use rustc_middle::mir::{Body, PassWhere, Promoted, create_dump_file, dump_enabled, dump_mir};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -20,19 +22,20 @@ use rustc_span::sym;
 use tracing::{debug, instrument};
 
 use crate::borrow_set::BorrowSet;
-use crate::consumers::ConsumerOptions;
+use crate::consumers::{ConsumerOptions, RustcFacts};
 use crate::diagnostics::RegionErrors;
-use crate::polonius::PoloniusDiagnosticsContext;
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
+use crate::polonius::{PoloniusContext, PoloniusDiagnosticsContext};
 use crate::region_infer::RegionInferenceContext;
-use crate::region_infer::opaque_types::handle_opaque_type_uses;
-use crate::type_check::{self, MirTypeckResults};
+use crate::region_infer::opaque_types::DeferredOpaqueTypeError;
+use crate::type_check::free_region_relations::UniversalRegionRelations;
+use crate::type_check::{self, MirTypeckRegionConstraints, MirTypeckResults};
 use crate::universal_regions::UniversalRegions;
 use crate::{
     BorrowCheckRootCtxt, BorrowckInferCtxt, ClosureOutlivesSubject, ClosureRegionRequirements,
-    polonius, renumber,
+    DeferredClosureRequirements, YieldDoMirBorrowck, polonius, renumber,
 };
 
 /// The output of `nll::compute_regions`. This includes the computed `RegionInferenceContext`, any
@@ -73,6 +76,18 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
     universal_regions
 }
 
+pub(crate) struct YieldComputeRegions<'tcx> {
+    pub(crate) constraints: MirTypeckRegionConstraints<'tcx>,
+    pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+    pub(crate) region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
+    pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
+    pub(crate) location_map: Rc<DenseLocationMap>,
+    pub(crate) deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
+    pub(crate) deferred_opaque_type_errors: Vec<DeferredOpaqueTypeError<'tcx>>,
+    polonius_facts: Option<AllFacts<RustcFacts>>,
+    polonius_context: Option<PoloniusContext>,
+}
+
 /// Computes the (non-lexical) regions from the input MIR.
 ///
 /// This may result in errors being reported.
@@ -87,11 +102,9 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     consumer_options: Option<ConsumerOptions>,
-) -> NllOutput<'tcx> {
+) -> YieldComputeRegions<'tcx> {
     let is_polonius_legacy_enabled = infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
     let polonius_input = consumer_options.map(|c| c.polonius_input()).unwrap_or_default()
-        || is_polonius_legacy_enabled;
-    let polonius_output = consumer_options.map(|c| c.polonius_output()).unwrap_or_default()
         || is_polonius_legacy_enabled;
     let mut polonius_facts =
         (polonius_input || PoloniusFacts::enabled(infcx.tcx)).then_some(PoloniusFacts::default());
@@ -99,29 +112,85 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     let location_map = Rc::new(DenseLocationMap::new(body));
 
     // Run the MIR type-checker.
-    let MirTypeckResults { constraints, universal_region_relations, polonius_context } =
-        type_check::type_check(
-            root_cx,
-            infcx,
-            body,
-            promoted,
-            universal_regions,
-            location_table,
-            borrow_set,
-            &mut polonius_facts,
-            flow_inits,
-            move_data,
-            Rc::clone(&location_map),
-        );
-
-    let (constraints, deferred_opaque_type_errors) = handle_opaque_type_uses(
+    let MirTypeckResults {
+        constraints,
+        universal_region_relations,
+        region_bound_pairs,
+        known_type_outlives_obligations,
+        deferred_closure_requirements,
+        polonius_context,
+    } = type_check::type_check(
         root_cx,
         infcx,
-        constraints,
-        &universal_region_relations,
+        body,
+        promoted,
+        universal_regions,
+        location_table,
+        borrow_set,
+        &mut polonius_facts,
+        flow_inits,
+        move_data,
         Rc::clone(&location_map),
     );
 
+    YieldComputeRegions {
+        constraints,
+        universal_region_relations,
+        region_bound_pairs,
+        known_type_outlives_obligations,
+        location_map,
+        deferred_closure_requirements,
+        deferred_opaque_type_errors: Default::default(),
+        polonius_facts,
+        polonius_context,
+    }
+}
+
+pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
+    partial_result: &YieldDoMirBorrowck<'tcx>,
+) -> Option<ClosureRegionRequirements<'tcx>> {
+    let YieldDoMirBorrowck {
+        infcx,
+        body_owned,
+        yield_compute_regions:
+            YieldComputeRegions { constraints, universal_region_relations, location_map, .. },
+        ..
+    } = partial_result;
+
+    let mut regioncx = RegionInferenceContext::new(
+        &infcx,
+        constraints.clone(),
+        universal_region_relations.clone(),
+        location_map.clone(),
+    );
+    let (closure_region_requirements, _nll_errors) = regioncx.solve(infcx, &body_owned, None);
+    closure_region_requirements
+}
+
+pub(crate) fn resume_compute_regions<'tcx>(
+    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    infcx: &BorrowckInferCtxt<'tcx>,
+    body: &Body<'tcx>,
+    location_table: &PoloniusLocationTable,
+    move_data: &MoveData<'tcx>,
+    borrow_set: &BorrowSet<'tcx>,
+    consumer_options: Option<ConsumerOptions>,
+    YieldComputeRegions {
+        constraints,
+        universal_region_relations,
+        region_bound_pairs: _,
+        known_type_outlives_obligations: _,
+        location_map,
+        deferred_closure_requirements,
+        deferred_opaque_type_errors,
+        mut polonius_facts,
+        polonius_context,
+    }: YieldComputeRegions<'tcx>,
+) -> NllOutput<'tcx> {
+    assert!(deferred_closure_requirements.is_empty());
+    let is_polonius_legacy_enabled = infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
+    let polonius_output = consumer_options.map(|c| c.polonius_output()).unwrap_or_default()
+        || is_polonius_legacy_enabled;
     // If requested, emit legacy polonius facts.
     polonius::legacy::emit_facts(
         &mut polonius_facts,
