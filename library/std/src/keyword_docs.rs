@@ -1195,6 +1195,28 @@ mod ref_keyword {}
 ///     Ok(())
 /// }
 /// ```
+///
+/// Within [closures] and [`async`] blocks, `return` returns a value from within the closure or
+/// `async` block, not from the parent function:
+///
+/// ```rust
+/// fn foo() -> i32 {
+///     let closure = || {
+///         return 5;
+///     };
+///
+///     let future = async {
+///         return 10;
+///     };
+///
+///     return 15;
+/// }
+///
+/// assert_eq!(foo(), 15);
+/// ```
+///
+/// [closures]: ../book/ch13-01-closures.html
+/// [`async`]: ../std/keyword.async.html
 mod return_keyword {}
 
 #[doc(keyword = "self")]
