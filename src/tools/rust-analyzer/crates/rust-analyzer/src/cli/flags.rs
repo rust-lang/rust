@@ -53,7 +53,7 @@ xflags::xflags! {
 
         /// Batch typecheck project and print summary statistics
         cmd analysis-stats {
-            /// Directory with Cargo.toml.
+            /// Directory with Cargo.toml or rust-project.json.
             required path: PathBuf
 
             optional --output format: OutputFormat
@@ -74,7 +74,7 @@ xflags::xflags! {
 
             /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
             optional --disable-build-scripts
-            /// Don't use expand proc macros.
+            /// Don't expand proc macros.
             optional --disable-proc-macros
             /// Run the proc-macro-srv binary at the specified path.
             optional --proc-macro-srv path: PathBuf
@@ -101,7 +101,7 @@ xflags::xflags! {
 
         /// Run unit tests of the project using mir interpreter
         cmd run-tests {
-            /// Directory with Cargo.toml.
+            /// Directory with Cargo.toml or rust-project.json.
             required path: PathBuf
         }
 
@@ -115,12 +115,12 @@ xflags::xflags! {
         }
 
         cmd diagnostics {
-            /// Directory with Cargo.toml.
+            /// Directory with Cargo.toml or rust-project.json.
             required path: PathBuf
 
             /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
             optional --disable-build-scripts
-            /// Don't use expand proc macros.
+            /// Don't expand proc macros.
             optional --disable-proc-macros
             /// Run the proc-macro-srv binary at the specified path.
             optional --proc-macro-srv path: PathBuf
@@ -128,15 +128,30 @@ xflags::xflags! {
 
         /// Report unresolved references
         cmd unresolved-references {
-            /// Directory with Cargo.toml.
+            /// Directory with Cargo.toml or rust-project.json.
             required path: PathBuf
 
             /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
             optional --disable-build-scripts
-            /// Don't use expand proc macros.
+            /// Don't expand proc macros.
             optional --disable-proc-macros
             /// Run the proc-macro-srv binary at the specified path.
             optional --proc-macro-srv path: PathBuf
+        }
+
+        /// Prime caches, as rust-analyzer does typically at startup in interactive sessions.
+        cmd prime-caches {
+            /// Directory with Cargo.toml or rust-project.json.
+            required path: PathBuf
+
+            /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
+            optional --disable-build-scripts
+            /// Don't expand proc macros.
+            optional --disable-proc-macros
+            /// Run the proc-macro-srv binary at the specified path.
+            optional --proc-macro-srv path: PathBuf
+            /// Run cache priming in parallel.
+            optional --parallel
         }
 
         cmd ssr {
@@ -197,6 +212,7 @@ pub enum RustAnalyzerCmd {
     RustcTests(RustcTests),
     Diagnostics(Diagnostics),
     UnresolvedReferences(UnresolvedReferences),
+    PrimeCaches(PrimeCaches),
     Ssr(Ssr),
     Search(Search),
     Lsif(Lsif),
@@ -274,6 +290,16 @@ pub struct UnresolvedReferences {
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,
     pub proc_macro_srv: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+pub struct PrimeCaches {
+    pub path: PathBuf,
+
+    pub disable_build_scripts: bool,
+    pub disable_proc_macros: bool,
+    pub proc_macro_srv: Option<PathBuf>,
+    pub parallel: bool,
 }
 
 #[derive(Debug)]

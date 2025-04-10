@@ -437,7 +437,7 @@ impl flags::AnalysisStats {
         let mut bar = match verbosity {
             Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
             _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
-            _ => ProgressReport::new(file_ids.len() as u64),
+            _ => ProgressReport::new(file_ids.len()),
         };
 
         file_ids.sort();
@@ -646,7 +646,7 @@ impl flags::AnalysisStats {
         let mut bar = match verbosity {
             Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
             _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
-            _ => ProgressReport::new(bodies.len() as u64),
+            _ => ProgressReport::new(bodies.len()),
         };
         let mut sw = self.stop_watch();
         let mut all = 0;
@@ -692,7 +692,7 @@ impl flags::AnalysisStats {
         let mut bar = match verbosity {
             Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
             _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
-            _ => ProgressReport::new(bodies.len() as u64),
+            _ => ProgressReport::new(bodies.len()),
         };
 
         if self.parallel {
@@ -1023,7 +1023,7 @@ impl flags::AnalysisStats {
         let mut bar = match verbosity {
             Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
             _ if self.output.is_some() => ProgressReport::hidden(),
-            _ => ProgressReport::new(bodies.len() as u64),
+            _ => ProgressReport::new(bodies.len()),
         };
 
         let mut sw = self.stop_watch();
