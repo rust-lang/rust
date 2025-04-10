@@ -1,4 +1,4 @@
-//@ dont-require-annotations:SUGGESTION
+//@ dont-require-annotations: SUGGESTION
 
 fn main() {
     let u = 5 as bool; //~ ERROR cannot cast `i32` as `bool`

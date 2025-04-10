@@ -1,5 +1,5 @@
 //@ edition:2018
-//@ dont-require-annotations:SUGGESTION
+//@ dont-require-annotations: SUGGESTION
 
 fn take_u32(_x: u32) {}
 

@@ -1,4 +1,4 @@
-//@ dont-require-annotations:SUGGESTION
+//@ dont-require-annotations: SUGGESTION
 
 struct S;
 
