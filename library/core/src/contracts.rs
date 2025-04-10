@@ -13,7 +13,7 @@ pub use crate::macros::builtin::{contracts_ensures as ensures, contracts_require
 #[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
 // Similar to `contract_check_requires`, we need to use the user-facing
 // `contracts` feature rather than the perma-unstable `contracts_internals`.
-// Const-checking doesn't honor allow internal unstable logic used by contract expansion.
+// Const-checking doesn't honor allow_internal_unstable logic used by contract expansion.
 #[rustc_const_unstable(feature = "contracts", issue = "128044")]
 #[lang = "contract_build_check_ensures"]
 pub const fn build_check_ensures<Ret, C>(cond: C) -> C

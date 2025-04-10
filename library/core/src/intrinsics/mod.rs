@@ -3484,7 +3484,7 @@ pub const fn contract_check_requires<C: Fn() -> bool + Copy>(cond: C) {
 #[unstable(feature = "contracts_internals", issue = "128044")]
 // Similar to `contract_check_requires`, we need to use the user-facing
 // `contracts` feature rather than the perma-unstable `contracts_internals`.
-// Const-checking doesn't honor allow internal unstable logic used by contract expansion.
+// Const-checking doesn't honor allow_internal_unstable logic used by contract expansion.
 #[rustc_const_unstable(feature = "contracts", issue = "128044")]
 #[lang = "contract_check_ensures"]
 #[rustc_intrinsic]
