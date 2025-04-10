@@ -191,7 +191,7 @@ impl TyExt for Ty {
         match *self.kind(Interner) {
             TyKind::Adt(AdtId(adt), ..) => Some(adt.into()),
             TyKind::FnDef(callable, ..) => Some(GenericDefId::from_callable(
-                db.upcast(),
+                db,
                 db.lookup_intern_callable_def(callable.into()),
             )),
             TyKind::AssociatedType(type_alias, ..) => Some(from_assoc_type_id(type_alias).into()),
@@ -250,7 +250,7 @@ impl TyExt for Ty {
             TyKind::OpaqueType(opaque_ty_id, subst) => {
                 match db.lookup_intern_impl_trait_id((*opaque_ty_id).into()) {
                     ImplTraitId::AsyncBlockTypeImplTrait(def, _expr) => {
-                        let krate = def.module(db.upcast()).krate();
+                        let krate = def.module(db).krate();
                         if let Some(future_trait) =
                             db.lang_item(krate, LangItem::Future).and_then(|item| item.as_trait())
                         {
@@ -348,17 +348,12 @@ impl TyExt for Ty {
 
     fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId> {
         match self.kind(Interner) {
-            TyKind::AssociatedType(id, ..) => {
-                match from_assoc_type_id(*id).lookup(db.upcast()).container {
-                    ItemContainerId::TraitId(trait_id) => Some(trait_id),
-                    _ => None,
-                }
-            }
+            TyKind::AssociatedType(id, ..) => match from_assoc_type_id(*id).lookup(db).container {
+                ItemContainerId::TraitId(trait_id) => Some(trait_id),
+                _ => None,
+            },
             TyKind::Alias(AliasTy::Projection(projection_ty)) => {
-                match from_assoc_type_id(projection_ty.associated_ty_id)
-                    .lookup(db.upcast())
-                    .container
-                {
+                match from_assoc_type_id(projection_ty.associated_ty_id).lookup(db).container {
                     ItemContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
                 }
@@ -368,7 +363,7 @@ impl TyExt for Ty {
     }
 
     fn is_copy(self, db: &dyn HirDatabase, owner: DefWithBodyId) -> bool {
-        let crate_id = owner.module(db.upcast()).krate();
+        let crate_id = owner.module(db).krate();
         let Some(copy_trait) = db.lang_item(crate_id, LangItem::Copy).and_then(|it| it.as_trait())
         else {
             return false;
@@ -422,7 +417,7 @@ pub trait ProjectionTyExt {
 impl ProjectionTyExt for ProjectionTy {
     fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef {
         // FIXME: something like `Split` trait from chalk-solve might be nice.
-        let generics = generics(db.upcast(), from_assoc_type_id(self.associated_ty_id).into());
+        let generics = generics(db, from_assoc_type_id(self.associated_ty_id).into());
         let substitution = Substitution::from_iter(
             Interner,
             self.substitution.iter(Interner).skip(generics.len_self()),
@@ -431,7 +426,7 @@ impl ProjectionTyExt for ProjectionTy {
     }
 
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
-        match from_assoc_type_id(self.associated_ty_id).lookup(db.upcast()).container {
+        match from_assoc_type_id(self.associated_ty_id).lookup(db).container {
             ItemContainerId::TraitId(it) => it,
             _ => panic!("projection ty without parent trait"),
         }

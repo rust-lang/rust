@@ -197,11 +197,7 @@ impl InferenceContext<'_> {
             Expr::Path(Path::Normal(path)) => path.type_anchor.is_none(),
             Expr::Path(path) => self
                 .resolver
-                .resolve_path_in_value_ns_fully(
-                    self.db.upcast(),
-                    path,
-                    self.body.expr_path_hygiene(expr),
-                )
+                .resolve_path_in_value_ns_fully(self.db, path, self.body.expr_path_hygiene(expr))
                 .is_none_or(|res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
             Expr::Underscore => true,
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => true,
@@ -543,16 +539,15 @@ impl InferenceContext<'_> {
                     _ if fields.is_empty() => {}
                     Some(def) => {
                         let field_types = self.db.field_types(def);
-                        let variant_data = def.variant_data(self.db.upcast());
+                        let variant_data = def.variant_data(self.db);
                         let visibilities = self.db.field_visibilities(def);
                         for field in fields.iter() {
                             let field_def = {
                                 match variant_data.field(&field.name) {
                                     Some(local_id) => {
-                                        if !visibilities[local_id].is_visible_from(
-                                            self.db.upcast(),
-                                            self.resolver.module(),
-                                        ) {
+                                        if !visibilities[local_id]
+                                            .is_visible_from(self.db, self.resolver.module())
+                                        {
                                             self.push_diagnostic(
                                                 InferenceDiagnostic::NoSuchField {
                                                     field: field.expr.into(),
@@ -744,7 +739,7 @@ impl InferenceContext<'_> {
                 } else {
                     let rhs_ty = self.infer_expr(value, &Expectation::none(), ExprIsRead::Yes);
                     let resolver_guard =
-                        self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, tgt_expr);
+                        self.resolver.update_to_inner_scope(self.db, self.owner, tgt_expr);
                     self.inside_assignment = true;
                     self.infer_top_pat(target, &rhs_ty, None);
                     self.inside_assignment = false;
@@ -1030,7 +1025,7 @@ impl InferenceContext<'_> {
     }
 
     fn infer_expr_path(&mut self, path: &Path, id: ExprOrPatId, scope_id: ExprId) -> Ty {
-        let g = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, scope_id);
+        let g = self.resolver.update_to_inner_scope(self.db, self.owner, scope_id);
         let ty = match self.infer_path(path, id) {
             Some(ty) => ty,
             None => {
@@ -1403,7 +1398,7 @@ impl InferenceContext<'_> {
         expected: &Expectation,
     ) -> Ty {
         let coerce_ty = expected.coercion_target_type(&mut self.table);
-        let g = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr);
+        let g = self.resolver.update_to_inner_scope(self.db, self.owner, expr);
         let prev_env = block_id.map(|block_id| {
             let prev_env = self.table.trait_env.clone();
             TraitEnvironment::with_block(&mut self.table.trait_env, block_id);
@@ -1576,7 +1571,7 @@ impl InferenceContext<'_> {
                 _ => return None,
             };
             let is_visible = self.db.field_visibilities(field_id.parent)[field_id.local_id]
-                .is_visible_from(self.db.upcast(), self.resolver.module());
+                .is_visible_from(self.db, self.resolver.module());
             if !is_visible {
                 if private_field.is_none() {
                     private_field = Some((field_id, parameters));
@@ -1663,7 +1658,7 @@ impl InferenceContext<'_> {
                 match resolved {
                     Some((adjust, func, _)) => {
                         let (ty, adjustments) = adjust.apply(&mut self.table, receiver_ty);
-                        let generics = generics(self.db.upcast(), func.into());
+                        let generics = generics(self.db, func.into());
                         let substs = self.substs_for_method_call(generics, None);
                         self.write_expr_adj(receiver, adjustments);
                         self.write_method_resolution(tgt_expr, func, substs.clone());
@@ -1816,7 +1811,7 @@ impl InferenceContext<'_> {
                 let (ty, adjustments) = adjust.apply(&mut self.table, receiver_ty);
                 self.write_expr_adj(receiver, adjustments);
 
-                let generics = generics(self.db.upcast(), func.into());
+                let generics = generics(self.db, func.into());
                 let substs = self.substs_for_method_call(generics, generic_args);
                 self.write_method_resolution(tgt_expr, func, substs.clone());
                 self.check_method_call(
@@ -1867,7 +1862,7 @@ impl InferenceContext<'_> {
 
                 let recovered = match assoc_func_with_same_name {
                     Some(f) => {
-                        let generics = generics(self.db.upcast(), f.into());
+                        let generics = generics(self.db, f.into());
                         let substs = self.substs_for_method_call(generics, generic_args);
                         let f = self
                             .db
@@ -2136,7 +2131,7 @@ impl InferenceContext<'_> {
         if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind(Interner) {
             let def: CallableDefId = from_chalk(self.db, *fn_def);
             let generic_predicates =
-                self.db.generic_predicates(GenericDefId::from_callable(self.db.upcast(), def));
+                self.db.generic_predicates(GenericDefId::from_callable(self.db, def));
             for predicate in generic_predicates.iter() {
                 let (predicate, binders) = predicate
                     .clone()
@@ -2148,10 +2143,10 @@ impl InferenceContext<'_> {
             // add obligation for trait implementation, if this is a trait method
             match def {
                 CallableDefId::FunctionId(f) => {
-                    if let ItemContainerId::TraitId(trait_) = f.lookup(self.db.upcast()).container {
+                    if let ItemContainerId::TraitId(trait_) = f.lookup(self.db).container {
                         // construct a TraitRef
                         let params_len = parameters.len(Interner);
-                        let trait_params_len = generics(self.db.upcast(), trait_.into()).len();
+                        let trait_params_len = generics(self.db, trait_.into()).len();
                         let substs = Substitution::from_iter(
                             Interner,
                             // The generic parameters for the trait come after those for the

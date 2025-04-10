@@ -67,7 +67,7 @@ impl InferenceContext<'_> {
                 };
             }
             ValueNs::ImplSelf(impl_id) => {
-                let generics = crate::generics::generics(self.db.upcast(), impl_id.into());
+                let generics = crate::generics::generics(self.db, impl_id.into());
                 let substs = generics.placeholder_subst(self.db);
                 let ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
                 return if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {
@@ -128,7 +128,7 @@ impl InferenceContext<'_> {
         }
 
         let parent_substs = self_subst.or_else(|| {
-            let generics = generics(self.db.upcast(), generic_def);
+            let generics = generics(self.db, generic_def);
             let parent_params_len = generics.parent_generics()?.len();
             let parent_args = &substs[substs.len() - parent_params_len..];
             Some(Substitution::from_iter(Interner, parent_args))
@@ -255,13 +255,13 @@ impl InferenceContext<'_> {
 
         // We need to add `Self: Trait` obligation when `def` is a trait assoc item.
         let container = match def {
-            GenericDefId::FunctionId(id) => id.lookup(self.db.upcast()).container,
-            GenericDefId::ConstId(id) => id.lookup(self.db.upcast()).container,
+            GenericDefId::FunctionId(id) => id.lookup(self.db).container,
+            GenericDefId::ConstId(id) => id.lookup(self.db).container,
             _ => return,
         };
 
         if let ItemContainerId::TraitId(trait_) = container {
-            let param_len = generics(self.db.upcast(), def).len_self();
+            let param_len = generics(self.db, def).len_self();
             let parent_subst =
                 Substitution::from_iter(Interner, subst.iter(Interner).skip(param_len));
             let trait_ref =
@@ -351,10 +351,8 @@ impl InferenceContext<'_> {
         let (item, visible) = res?;
 
         let (def, container) = match item {
-            AssocItemId::FunctionId(f) => {
-                (ValueNs::FunctionId(f), f.lookup(self.db.upcast()).container)
-            }
-            AssocItemId::ConstId(c) => (ValueNs::ConstId(c), c.lookup(self.db.upcast()).container),
+            AssocItemId::FunctionId(f) => (ValueNs::FunctionId(f), f.lookup(self.db).container),
+            AssocItemId::ConstId(c) => (ValueNs::ConstId(c), c.lookup(self.db).container),
             AssocItemId::TypeAliasId(_) => unreachable!(),
         };
         let substs = match container {

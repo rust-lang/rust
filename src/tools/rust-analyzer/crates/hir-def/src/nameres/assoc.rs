@@ -259,7 +259,7 @@ impl<'a> AssocItemCollector<'a> {
                         .map(|it| self.db.macro_def(it))
                 };
                 match macro_call_as_call_id(
-                    self.db.upcast(),
+                    self.db,
                     &AstIdWithPath::new(tree_id.file_id(), ast_id, Clone::clone(path)),
                     ctxt,
                     expand_to,

@@ -86,6 +86,6 @@ fn full_name_of_item(db: &dyn HirDatabase, module: Module, name: Name) -> String
         .rev()
         .filter_map(|it| it.name(db))
         .chain(Some(name))
-        .map(|it| it.display(db.upcast(), Edition::LATEST).to_string())
+        .map(|it| it.display(db, Edition::LATEST).to_string())
         .join("::")
 }

@@ -33,7 +33,7 @@ macro_rules! impl_has_attrs {
         impl HasAttrs for $def {
             fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
                 let def = AttrDefId::$def_id(self.into());
-                AttrsWithOwner::new(db.upcast(), def)
+                AttrsWithOwner::new(db, def)
             }
             fn attr_id(self) -> AttrDefId {
                 AttrDefId::$def_id(self.into())
@@ -95,7 +95,7 @@ impl HasAttrs for AssocItem {
 impl HasAttrs for crate::Crate {
     fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
         let def = AttrDefId::ModuleId(self.root_module().id);
-        AttrsWithOwner::new(db.upcast(), def)
+        AttrsWithOwner::new(db, def)
     }
     fn attr_id(self) -> AttrDefId {
         AttrDefId::ModuleId(self.root_module().id)
@@ -119,27 +119,27 @@ fn resolve_doc_path_on_(
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
     let resolver = match attr_id {
-        AttrDefId::ModuleId(it) => it.resolver(db.upcast()),
-        AttrDefId::FieldId(it) => it.parent.resolver(db.upcast()),
-        AttrDefId::AdtId(it) => it.resolver(db.upcast()),
-        AttrDefId::FunctionId(it) => it.resolver(db.upcast()),
-        AttrDefId::EnumVariantId(it) => it.resolver(db.upcast()),
-        AttrDefId::StaticId(it) => it.resolver(db.upcast()),
-        AttrDefId::ConstId(it) => it.resolver(db.upcast()),
-        AttrDefId::TraitId(it) => it.resolver(db.upcast()),
-        AttrDefId::TraitAliasId(it) => it.resolver(db.upcast()),
-        AttrDefId::TypeAliasId(it) => it.resolver(db.upcast()),
-        AttrDefId::ImplId(it) => it.resolver(db.upcast()),
-        AttrDefId::ExternBlockId(it) => it.resolver(db.upcast()),
-        AttrDefId::UseId(it) => it.resolver(db.upcast()),
-        AttrDefId::MacroId(it) => it.resolver(db.upcast()),
-        AttrDefId::ExternCrateId(it) => it.resolver(db.upcast()),
+        AttrDefId::ModuleId(it) => it.resolver(db),
+        AttrDefId::FieldId(it) => it.parent.resolver(db),
+        AttrDefId::AdtId(it) => it.resolver(db),
+        AttrDefId::FunctionId(it) => it.resolver(db),
+        AttrDefId::EnumVariantId(it) => it.resolver(db),
+        AttrDefId::StaticId(it) => it.resolver(db),
+        AttrDefId::ConstId(it) => it.resolver(db),
+        AttrDefId::TraitId(it) => it.resolver(db),
+        AttrDefId::TraitAliasId(it) => it.resolver(db),
+        AttrDefId::TypeAliasId(it) => it.resolver(db),
+        AttrDefId::ImplId(it) => it.resolver(db),
+        AttrDefId::ExternBlockId(it) => it.resolver(db),
+        AttrDefId::UseId(it) => it.resolver(db),
+        AttrDefId::MacroId(it) => it.resolver(db),
+        AttrDefId::ExternCrateId(it) => it.resolver(db),
         AttrDefId::GenericParamId(_) => return None,
     };
 
     let mut modpath = doc_modpath_from_str(link)?;
 
-    let resolved = resolver.resolve_module_path_in_items(db.upcast(), &modpath);
+    let resolved = resolver.resolve_module_path_in_items(db, &modpath);
     if resolved.is_none() {
         let last_name = modpath.pop_segment()?;
         resolve_assoc_or_field(db, resolver, modpath, last_name, ns)
@@ -168,7 +168,7 @@ fn resolve_assoc_or_field(
     let path = Path::from_known_path_with_no_generic(path);
     // FIXME: This does not handle `Self` on trait definitions, which we should resolve to the
     // trait itself.
-    let base_def = resolver.resolve_path_in_type_ns_fully(db.upcast(), &path)?;
+    let base_def = resolver.resolve_path_in_type_ns_fully(db, &path)?;
 
     let ty = match base_def {
         TypeNs::SelfType(id) => Impl::from(id).self_ty(db),
@@ -255,7 +255,7 @@ fn resolve_impl_trait_item(
     let environment = resolver
         .generic_def()
         .map_or_else(|| crate::TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
-    let traits_in_scope = resolver.traits_in_scope(db.upcast());
+    let traits_in_scope = resolver.traits_in_scope(db);
 
     let mut result = None;
 

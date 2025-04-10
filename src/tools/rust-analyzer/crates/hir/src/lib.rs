@@ -372,7 +372,7 @@ impl ModuleDef {
             segments.extend(m.name(db))
         }
         segments.reverse();
-        Some(segments.iter().map(|it| it.display(db.upcast(), edition)).join("::"))
+        Some(segments.iter().map(|it| it.display(db, edition)).join("::"))
     }
 
     pub fn canonical_module_path(
@@ -518,7 +518,7 @@ impl HasVisibility for ModuleDef {
 impl Module {
     /// Name of this module.
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
-        self.id.name(db.upcast())
+        self.id.name(db)
     }
 
     /// Returns the crate this module is part of.
@@ -540,7 +540,7 @@ impl Module {
 
     /// Iterates over all child modules.
     pub fn children(self, db: &dyn HirDatabase) -> impl Iterator<Item = Module> {
-        let def_map = self.id.def_map(db.upcast());
+        let def_map = self.id.def_map(db);
         let children = def_map[self.id.local_id]
             .children
             .values()
@@ -551,7 +551,7 @@ impl Module {
 
     /// Finds a parent module.
     pub fn parent(self, db: &dyn HirDatabase) -> Option<Module> {
-        let def_map = self.id.def_map(db.upcast());
+        let def_map = self.id.def_map(db);
         let parent_id = def_map.containing_module(self.id.local_id)?;
         Some(Module { id: parent_id })
     }
@@ -560,7 +560,7 @@ impl Module {
     pub fn nearest_non_block_module(self, db: &dyn HirDatabase) -> Module {
         let mut id = self.id;
         while id.is_block_module() {
-            id = id.containing_module(db.upcast()).expect("block without parent module");
+            id = id.containing_module(db).expect("block without parent module");
         }
         Module { id }
     }
@@ -581,13 +581,12 @@ impl Module {
         db: &dyn HirDatabase,
         visible_from: Option<Module>,
     ) -> Vec<(Name, ScopeDef)> {
-        self.id.def_map(db.upcast())[self.id.local_id]
+        self.id.def_map(db)[self.id.local_id]
             .scope
             .entries()
             .filter_map(|(name, def)| {
                 if let Some(m) = visible_from {
-                    let filtered =
-                        def.filter_visibility(|vis| vis.is_visible_from(db.upcast(), m.id));
+                    let filtered = def.filter_visibility(|vis| vis.is_visible_from(db, m.id));
                     if filtered.is_none() && !def.is_none() { None } else { Some((name, filtered)) }
                 } else {
                     Some((name, def))
@@ -604,10 +603,10 @@ impl Module {
         db: &dyn HirDatabase,
         segments: impl IntoIterator<Item = Name>,
     ) -> Option<impl Iterator<Item = ItemInNs>> {
-        let items = self.id.resolver(db.upcast()).resolve_module_path_in_items(
-            db.upcast(),
-            &ModPath::from_segments(PathKind::Plain, segments),
-        );
+        let items = self
+            .id
+            .resolver(db)
+            .resolve_module_path_in_items(db, &ModPath::from_segments(PathKind::Plain, segments));
         Some(items.iter_items().map(|(item, _)| item.into()))
     }
 
@@ -620,7 +619,7 @@ impl Module {
     ) {
         let _p = tracing::info_span!("diagnostics", name = ?self.name(db)).entered();
         let edition = self.id.krate().data(db).edition;
-        let def_map = self.id.def_map(db.upcast());
+        let def_map = self.id.def_map(db);
         for diag in def_map.diagnostics() {
             if diag.in_module != self.id.local_id {
                 // FIXME: This is accidentally quadratic.
@@ -689,7 +688,7 @@ impl Module {
                             let source_map = db.enum_signature_with_source_map(e.id).1;
                             expr_store_diagnostics(db, acc, &source_map);
                             let (variants, diagnostics) = db.enum_variants_with_diagnostics(e.id);
-                            let file = e.id.lookup(db.upcast()).id.file_id();
+                            let file = e.id.lookup(db).id.file_id();
                             let ast_id_map = db.ast_id_map(file);
                             if let Some(diagnostics) = &diagnostics {
                                 for diag in diagnostics.iter() {
@@ -743,17 +742,14 @@ impl Module {
         for impl_def in self.impl_defs(db) {
             GenericDef::Impl(impl_def).diagnostics(db, acc);
 
-            let loc = impl_def.id.lookup(db.upcast());
-            let tree = loc.id.item_tree(db.upcast());
+            let loc = impl_def.id.lookup(db);
+            let tree = loc.id.item_tree(db);
             let source_map = db.impl_signature_with_source_map(impl_def.id).1;
             expr_store_diagnostics(db, acc, &source_map);
 
             let node = &tree[loc.id.value];
             let file_id = loc.id.file_id();
-            if file_id
-                .macro_file()
-                .is_some_and(|it| it.kind(db.upcast()) == MacroKind::DeriveBuiltIn)
-            {
+            if file_id.macro_file().is_some_and(|it| it.kind(db) == MacroKind::DeriveBuiltIn) {
                 // these expansion come from us, diagnosing them is a waste of resources
                 // FIXME: Once we diagnose the inputs to builtin derives, we should at least extract those diagnostics somehow
                 continue;
@@ -892,7 +888,7 @@ impl Module {
     }
 
     pub fn declarations(self, db: &dyn HirDatabase) -> Vec<ModuleDef> {
-        let def_map = self.id.def_map(db.upcast());
+        let def_map = self.id.def_map(db);
         let scope = &def_map[self.id.local_id].scope;
         scope
             .declarations()
@@ -902,13 +898,13 @@ impl Module {
     }
 
     pub fn legacy_macros(self, db: &dyn HirDatabase) -> Vec<Macro> {
-        let def_map = self.id.def_map(db.upcast());
+        let def_map = self.id.def_map(db);
         let scope = &def_map[self.id.local_id].scope;
         scope.legacy_macros().flat_map(|(_, it)| it).map(|&it| it.into()).collect()
     }
 
     pub fn impl_defs(self, db: &dyn HirDatabase) -> Vec<Impl> {
-        let def_map = self.id.def_map(db.upcast());
+        let def_map = self.id.def_map(db);
         def_map[self.id.local_id].scope.impls().map(Impl::from).collect()
     }
 
@@ -957,7 +953,7 @@ fn macro_call_diagnostics(
         let file_id = loc.kind.file_id();
         let node =
             InFile::new(file_id, db.ast_id_map(file_id).get_erased(loc.kind.erased_ast_id()));
-        let RenderedExpandError { message, error, kind } = err.render_to_string(db.upcast());
+        let RenderedExpandError { message, error, kind } = err.render_to_string(db);
         let precise_location = if err.span().anchor.file_id == file_id {
             Some(
                 err.span().range
@@ -990,7 +986,7 @@ fn emit_macro_def_diagnostics(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>
                 never!("declarative expander for non decl-macro: {:?}", e);
                 return;
             };
-            let krate = HasModule::krate(&m.id, db.upcast());
+            let krate = HasModule::krate(&m.id, db);
             let edition = krate.data(db).edition;
             emit_def_diagnostic_(
                 db,
@@ -1019,7 +1015,7 @@ fn emit_def_diagnostic_(
 ) {
     match diag {
         DefDiagnosticKind::UnresolvedModule { ast: declaration, candidates } => {
-            let decl = declaration.to_ptr(db.upcast());
+            let decl = declaration.to_ptr(db);
             acc.push(
                 UnresolvedModule {
                     decl: InFile::new(declaration.file_id, decl),
@@ -1029,18 +1025,18 @@ fn emit_def_diagnostic_(
             )
         }
         DefDiagnosticKind::UnresolvedExternCrate { ast } => {
-            let item = ast.to_ptr(db.upcast());
+            let item = ast.to_ptr(db);
             acc.push(UnresolvedExternCrate { decl: InFile::new(ast.file_id, item) }.into());
         }
 
         DefDiagnosticKind::MacroError { ast, path, err } => {
-            let item = ast.to_ptr(db.upcast());
-            let RenderedExpandError { message, error, kind } = err.render_to_string(db.upcast());
+            let item = ast.to_ptr(db);
+            let RenderedExpandError { message, error, kind } = err.render_to_string(db);
             acc.push(
                 MacroError {
                     node: InFile::new(ast.file_id, item.syntax_node_ptr()),
                     precise_location: None,
-                    message: format!("{}: {message}", path.display(db.upcast(), edition)),
+                    message: format!("{}: {message}", path.display(db, edition)),
                     error,
                     kind,
                 }
@@ -1049,17 +1045,17 @@ fn emit_def_diagnostic_(
         }
         DefDiagnosticKind::UnresolvedImport { id, index } => {
             let file_id = id.file_id();
-            let item_tree = id.item_tree(db.upcast());
+            let item_tree = id.item_tree(db);
             let import = &item_tree[id.value];
 
-            let use_tree = import.use_tree_to_ast(db.upcast(), file_id, *index);
+            let use_tree = import.use_tree_to_ast(db, file_id, *index);
             acc.push(
                 UnresolvedImport { decl: InFile::new(file_id, AstPtr::new(&use_tree)) }.into(),
             );
         }
 
         DefDiagnosticKind::UnconfiguredCode { tree, item, cfg, opts } => {
-            let item_tree = tree.item_tree(db.upcast());
+            let item_tree = tree.item_tree(db);
             let ast_id_map = db.ast_id_map(tree.file_id());
             // FIXME: This parses... We could probably store relative ranges for the children things
             // here in the item tree?
@@ -1129,7 +1125,7 @@ fn emit_def_diagnostic_(
             );
         }
         DefDiagnosticKind::UnimplementedBuiltinMacro { ast } => {
-            let node = ast.to_node(db.upcast());
+            let node = ast.to_node(db);
             // Must have a name, otherwise we wouldn't emit it.
             let name = node.name().expect("unimplemented builtin macro with no name");
             acc.push(
@@ -1140,7 +1136,7 @@ fn emit_def_diagnostic_(
             );
         }
         DefDiagnosticKind::InvalidDeriveTarget { ast, id } => {
-            let node = ast.to_node(db.upcast());
+            let node = ast.to_node(db);
             let derive = node.attrs().nth(*id);
             match derive {
                 Some(derive) => {
@@ -1155,7 +1151,7 @@ fn emit_def_diagnostic_(
             }
         }
         DefDiagnosticKind::MalformedDerive { ast, id } => {
-            let node = ast.to_node(db.upcast());
+            let node = ast.to_node(db);
             let derive = node.attrs().nth(*id);
             match derive {
                 Some(derive) => {
@@ -1170,7 +1166,7 @@ fn emit_def_diagnostic_(
             }
         }
         DefDiagnosticKind::MacroDefError { ast, message } => {
-            let node = ast.to_node(db.upcast());
+            let node = ast.to_node(db);
             acc.push(
                 MacroDefError {
                     node: InFile::new(ast.file_id, AstPtr::new(&node)),
@@ -1191,7 +1187,7 @@ fn precise_macro_call_location(
     // - e.g. the full attribute for macro errors, but only the name for name resolution
     match ast {
         MacroCallKind::FnLike { ast_id, .. } => {
-            let node = ast_id.to_node(db.upcast());
+            let node = ast_id.to_node(db);
             (
                 ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
                 node.path()
@@ -1201,7 +1197,7 @@ fn precise_macro_call_location(
             )
         }
         MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
-            let node = ast_id.to_node(db.upcast());
+            let node = ast_id.to_node(db);
             // Compute the precise location of the macro name's token in the derive
             // list.
             let token = (|| {
@@ -1229,7 +1225,7 @@ fn precise_macro_call_location(
             )
         }
         MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
-            let node = ast_id.to_node(db.upcast());
+            let node = ast_id.to_node(db);
             let attr = collect_attrs(&node)
                 .nth(invoc_attr_index.ast_index())
                 .and_then(|x| Either::left(x.1))
@@ -1247,7 +1243,7 @@ fn precise_macro_call_location(
 
 impl HasVisibility for Module {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let def_map = self.id.def_map(db.upcast());
+        let def_map = self.id.def_map(db);
         let module_data = &def_map[self.id.local_id];
         module_data.visibility
     }
@@ -1334,7 +1330,7 @@ impl Field {
         let generic_def_id: GenericDefId = match self.parent {
             VariantDef::Struct(it) => it.id.into(),
             VariantDef::Union(it) => it.id.into(),
-            VariantDef::Variant(it) => it.id.lookup(db.upcast()).parent.into(),
+            VariantDef::Variant(it) => it.id.lookup(db).parent.into(),
         };
         let substs = TyBuilder::placeholder_subst(db, generic_def_id);
         let ty = db.field_types(var_id)[self.id].clone().substitute(Interner, &substs);
@@ -1368,7 +1364,7 @@ impl Field {
             self.ty(db).ty,
             db.trait_environment(match hir_def::VariantId::from(self.parent) {
                 hir_def::VariantId::EnumVariantId(id) => {
-                    GenericDefId::AdtId(id.lookup(db.upcast()).parent.into())
+                    GenericDefId::AdtId(id.lookup(db).parent.into())
                 }
                 hir_def::VariantId::StructId(id) => GenericDefId::AdtId(id.into()),
                 hir_def::VariantId::UnionId(id) => GenericDefId::AdtId(id.into()),
@@ -1388,7 +1384,7 @@ impl HasVisibility for Field {
         let visibility = &variant_data.fields()[self.id].visibility;
         let parent_id: hir_def::VariantId = self.parent.into();
         // FIXME: RawVisibility::Public doesn't need to construct a resolver
-        Visibility::resolve(db.upcast(), &parent_id.resolver(db.upcast()), visibility)
+        Visibility::resolve(db, &parent_id.resolver(db), visibility)
     }
 }
 
@@ -1399,7 +1395,7 @@ pub struct Struct {
 
 impl Struct {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).container }
+        Module { id: self.id.lookup(db).container }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -1449,11 +1445,11 @@ impl Struct {
 
 impl HasVisibility for Struct {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let loc = self.id.lookup(db.upcast());
-        let item_tree = loc.id.item_tree(db.upcast());
+        let loc = self.id.lookup(db);
+        let item_tree = loc.id.item_tree(db);
         Visibility::resolve(
-            db.upcast(),
-            &self.id.resolver(db.upcast()),
+            db,
+            &self.id.resolver(db),
             &item_tree[item_tree[loc.id.value].visibility],
         )
     }
@@ -1470,7 +1466,7 @@ impl Union {
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).container }
+        Module { id: self.id.lookup(db).container }
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
@@ -1507,11 +1503,11 @@ impl Union {
 
 impl HasVisibility for Union {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let loc = self.id.lookup(db.upcast());
-        let item_tree = loc.id.item_tree(db.upcast());
+        let loc = self.id.lookup(db);
+        let item_tree = loc.id.item_tree(db);
         Visibility::resolve(
-            db.upcast(),
-            &self.id.resolver(db.upcast()),
+            db,
+            &self.id.resolver(db),
             &item_tree[item_tree[loc.id.value].visibility],
         )
     }
@@ -1524,7 +1520,7 @@ pub struct Enum {
 
 impl Enum {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).container }
+        Module { id: self.id.lookup(db).container }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -1554,7 +1550,7 @@ impl Enum {
     /// The type of the enum variant bodies.
     pub fn variant_body_ty(self, db: &dyn HirDatabase) -> Type {
         Type::new_for_crate(
-            self.id.lookup(db.upcast()).container.krate(),
+            self.id.lookup(db).container.krate(),
             TyBuilder::builtin(match db.enum_signature(self.id).variant_body_type() {
                 layout::IntegerType::Pointer(sign) => match sign {
                     true => hir_def::builtin_type::BuiltinType::Int(
@@ -1600,11 +1596,11 @@ impl Enum {
 
 impl HasVisibility for Enum {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let loc = self.id.lookup(db.upcast());
-        let item_tree = loc.id.item_tree(db.upcast());
+        let loc = self.id.lookup(db);
+        let item_tree = loc.id.item_tree(db);
         Visibility::resolve(
-            db.upcast(),
-            &self.id.resolver(db.upcast()),
+            db,
+            &self.id.resolver(db),
             &item_tree[item_tree[loc.id.value].visibility],
         )
     }
@@ -1624,11 +1620,11 @@ pub struct Variant {
 
 impl Variant {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.module(db.upcast()) }
+        Module { id: self.id.module(db) }
     }
 
     pub fn parent_enum(self, db: &dyn HirDatabase) -> Enum {
-        self.id.lookup(db.upcast()).parent.into()
+        self.id.lookup(db).parent.into()
     }
 
     pub fn constructor_ty(self, db: &dyn HirDatabase) -> Type {
@@ -1636,7 +1632,7 @@ impl Variant {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        let lookup = self.id.lookup(db.upcast());
+        let lookup = self.id.lookup(db);
         let enum_ = lookup.parent;
         db.enum_variants(enum_).variants[lookup.index as usize].1.clone()
     }
@@ -1671,7 +1667,7 @@ impl Variant {
         Ok(match &parent_layout.0.variants {
             layout::Variants::Multiple { variants, .. } => Layout(
                 {
-                    let lookup = self.id.lookup(db.upcast());
+                    let lookup = self.id.lookup(db);
                     let rustc_enum_variant_idx = RustcEnumVariantIdx(lookup.index as usize);
                     Arc::new(variants[rustc_enum_variant_idx].clone())
                 },
@@ -1774,9 +1770,9 @@ impl Adt {
     /// Returns the lifetime of the DataType
     pub fn lifetime(&self, db: &dyn HirDatabase) -> Option<LifetimeParamData> {
         let resolver = match self {
-            Adt::Struct(s) => s.id.resolver(db.upcast()),
-            Adt::Union(u) => u.id.resolver(db.upcast()),
-            Adt::Enum(e) => e.id.resolver(db.upcast()),
+            Adt::Struct(s) => s.id.resolver(db),
+            Adt::Union(u) => u.id.resolver(db),
+            Adt::Enum(e) => e.id.resolver(db),
         };
         resolver
             .generic_params()
@@ -1893,7 +1889,7 @@ impl DefWithBody {
     /// A textual representation of the HIR of this def's body for debugging purposes.
     pub fn debug_hir(self, db: &dyn HirDatabase) -> String {
         let body = db.body(self.id());
-        body.pretty_print(db.upcast(), self.id(), Edition::CURRENT)
+        body.pretty_print(db, self.id(), Edition::CURRENT)
     }
 
     /// A textual representation of the MIR of this def's body for debugging purposes.
@@ -1924,7 +1920,7 @@ impl DefWithBody {
             }
         };
 
-        for (_, def_map) in body.blocks(db.upcast()) {
+        for (_, def_map) in body.blocks(db) {
             Module { id: def_map.module_id(DefMap::ROOT) }.diagnostics(db, acc, style_lints);
         }
 
@@ -2147,8 +2143,7 @@ fn expr_store_diagnostics(
                 InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
             }
             ExpressionStoreDiagnostics::MacroError { node, err } => {
-                let RenderedExpandError { message, error, kind } =
-                    err.render_to_string(db.upcast());
+                let RenderedExpandError { message, error, kind } = err.render_to_string(db);
 
                 let precise_location = if err.span().anchor.file_id == node.file_id {
                     Some(
@@ -2196,7 +2191,7 @@ pub struct Function {
 
 impl Function {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.id.module(db.upcast()).into()
+        self.id.module(db).into()
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -2208,7 +2203,7 @@ impl Function {
     }
 
     pub fn fn_ptr_type(self, db: &dyn HirDatabase) -> Type {
-        let resolver = self.id.resolver(db.upcast());
+        let resolver = self.id.resolver(db);
         let substs = TyBuilder::placeholder_subst(db, self.id);
         let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
         let ty = TyKind::Function(callable_sig.to_fn_ptr()).intern(Interner);
@@ -2217,7 +2212,7 @@ impl Function {
 
     /// Get this function's return type
     pub fn ret_type(self, db: &dyn HirDatabase) -> Type {
-        let resolver = self.id.resolver(db.upcast());
+        let resolver = self.id.resolver(db);
         let substs = TyBuilder::placeholder_subst(db, self.id);
         let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
         let ty = callable_sig.ret().clone();
@@ -2230,8 +2225,8 @@ impl Function {
         db: &dyn HirDatabase,
         generics: impl Iterator<Item = Type>,
     ) -> Type {
-        let resolver = self.id.resolver(db.upcast());
-        let parent_id: Option<GenericDefId> = match self.id.lookup(db.upcast()).container {
+        let resolver = self.id.resolver(db);
+        let parent_id: Option<GenericDefId> = match self.id.lookup(db).container {
             ItemContainerId::ImplId(it) => Some(it.into()),
             ItemContainerId::TraitId(it) => Some(it.into()),
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
@@ -2258,7 +2253,7 @@ impl Function {
         if !self.is_async(db) {
             return None;
         }
-        let resolver = self.id.resolver(db.upcast());
+        let resolver = self.id.resolver(db);
         let substs = TyBuilder::placeholder_subst(db, self.id);
         let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
         let ret_ty = callable_sig.ret().clone();
@@ -2326,7 +2321,7 @@ impl Function {
         generics: impl Iterator<Item = Type>,
     ) -> Vec<Param> {
         let environment = db.trait_environment(self.id.into());
-        let parent_id: Option<GenericDefId> = match self.id.lookup(db.upcast()).container {
+        let parent_id: Option<GenericDefId> = match self.id.lookup(db).container {
             ItemContainerId::ImplId(it) => Some(it.into()),
             ItemContainerId::TraitId(it) => Some(it.into()),
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
@@ -2378,7 +2373,7 @@ impl Function {
     }
 
     pub fn extern_block(self, db: &dyn HirDatabase) -> Option<ExternBlock> {
-        match self.id.lookup(db.upcast()).container {
+        match self.id.lookup(db).container {
             ItemContainerId::ExternBlockId(id) => Some(ExternBlock { id }),
             _ => None,
         }
@@ -2475,7 +2470,7 @@ impl Function {
         {
             return None;
         }
-        let def_map = db.crate_def_map(HasModule::krate(&self.id, db.upcast()));
+        let def_map = db.crate_def_map(HasModule::krate(&self.id, db));
         def_map.fn_as_proc_macro(self.id).map(|id| Macro { id: id.into() })
     }
 
@@ -2636,7 +2631,7 @@ impl SelfParam {
 
     // FIXME: Find better API to also handle const generics
     pub fn ty_with_args(&self, db: &dyn HirDatabase, generics: impl Iterator<Item = Type>) -> Type {
-        let parent_id: GenericDefId = match self.func.lookup(db.upcast()).container {
+        let parent_id: GenericDefId = match self.func.lookup(db).container {
             ItemContainerId::ImplId(it) => it.into(),
             ItemContainerId::TraitId(it) => it.into(),
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
@@ -2677,12 +2672,12 @@ pub struct ExternCrateDecl {
 
 impl ExternCrateDecl {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.id.module(db.upcast()).into()
+        self.id.module(db).into()
     }
 
     pub fn resolved_crate(self, db: &dyn HirDatabase) -> Option<Crate> {
-        let loc = self.id.lookup(db.upcast());
-        let item_tree = loc.id.item_tree(db.upcast());
+        let loc = self.id.lookup(db);
+        let item_tree = loc.id.item_tree(db);
         let krate = loc.container.krate();
         let name = &item_tree[loc.id.value].name;
         if *name == sym::self_ {
@@ -2695,21 +2690,21 @@ impl ExternCrateDecl {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        let loc = self.id.lookup(db.upcast());
-        let item_tree = loc.id.item_tree(db.upcast());
+        let loc = self.id.lookup(db);
+        let item_tree = loc.id.item_tree(db);
         item_tree[loc.id.value].name.clone()
     }
 
     pub fn alias(self, db: &dyn HirDatabase) -> Option<ImportAlias> {
-        let loc = self.id.lookup(db.upcast());
-        let item_tree = loc.id.item_tree(db.upcast());
+        let loc = self.id.lookup(db);
+        let item_tree = loc.id.item_tree(db);
         item_tree[loc.id.value].alias.clone()
     }
 
     /// Returns the name under which this crate is made accessible, taking `_` into account.
     pub fn alias_or_name(self, db: &dyn HirDatabase) -> Option<Name> {
-        let loc = self.id.lookup(db.upcast());
-        let item_tree = loc.id.item_tree(db.upcast());
+        let loc = self.id.lookup(db);
+        let item_tree = loc.id.item_tree(db);
 
         match &item_tree[loc.id.value].alias {
             Some(ImportAlias::Underscore) => None,
@@ -2721,11 +2716,11 @@ impl ExternCrateDecl {
 
 impl HasVisibility for ExternCrateDecl {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let loc = self.id.lookup(db.upcast());
-        let item_tree = loc.id.item_tree(db.upcast());
+        let loc = self.id.lookup(db);
+        let item_tree = loc.id.item_tree(db);
         Visibility::resolve(
-            db.upcast(),
-            &self.id.resolver(db.upcast()),
+            db,
+            &self.id.resolver(db),
             &item_tree[item_tree[loc.id.value].visibility],
         )
     }
@@ -2738,7 +2733,7 @@ pub struct Const {
 
 impl Const {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.module(db.upcast()) }
+        Module { id: self.id.module(db) }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
@@ -2811,7 +2806,7 @@ pub struct Static {
 
 impl Static {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.module(db.upcast()) }
+        Module { id: self.id.module(db) }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -2831,7 +2826,7 @@ impl Static {
     }
 
     pub fn extern_block(self, db: &dyn HirDatabase) -> Option<ExternBlock> {
-        match self.id.lookup(db.upcast()).container {
+        match self.id.lookup(db).container {
             ItemContainerId::ExternBlockId(id) => Some(ExternBlock { id }),
             _ => None,
         }
@@ -2846,11 +2841,11 @@ impl Static {
 
 impl HasVisibility for Static {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let loc = self.id.lookup(db.upcast());
-        let item_tree = loc.id.item_tree(db.upcast());
+        let loc = self.id.lookup(db);
+        let item_tree = loc.id.item_tree(db);
         Visibility::resolve(
-            db.upcast(),
-            &self.id.resolver(db.upcast()),
+            db,
+            &self.id.resolver(db),
             &item_tree[item_tree[loc.id.value].visibility],
         )
     }
@@ -2869,7 +2864,7 @@ impl Trait {
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).container }
+        Module { id: self.id.lookup(db).container }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -2877,12 +2872,12 @@ impl Trait {
     }
 
     pub fn direct_supertraits(self, db: &dyn HirDatabase) -> Vec<Trait> {
-        let traits = direct_super_traits(db.upcast(), self.into());
+        let traits = direct_super_traits(db, self.into());
         traits.iter().map(|tr| Trait::from(*tr)).collect()
     }
 
     pub fn all_supertraits(self, db: &dyn HirDatabase) -> Vec<Trait> {
-        let traits = all_super_traits(db.upcast(), self.into());
+        let traits = all_super_traits(db, self.into());
         traits.iter().map(|tr| Trait::from(*tr)).collect()
     }
 
@@ -2958,11 +2953,11 @@ impl Trait {
 
 impl HasVisibility for Trait {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let loc = self.id.lookup(db.upcast());
-        let item_tree = loc.id.item_tree(db.upcast());
+        let loc = self.id.lookup(db);
+        let item_tree = loc.id.item_tree(db);
         Visibility::resolve(
-            db.upcast(),
-            &self.id.resolver(db.upcast()),
+            db,
+            &self.id.resolver(db),
             &item_tree[item_tree[loc.id.value].visibility],
         )
     }
@@ -2975,7 +2970,7 @@ pub struct TraitAlias {
 
 impl TraitAlias {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).container }
+        Module { id: self.id.lookup(db).container }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -2985,11 +2980,11 @@ impl TraitAlias {
 
 impl HasVisibility for TraitAlias {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let loc = self.id.lookup(db.upcast());
-        let item_tree = loc.id.item_tree(db.upcast());
+        let loc = self.id.lookup(db);
+        let item_tree = loc.id.item_tree(db);
         Visibility::resolve(
-            db.upcast(),
-            &self.id.resolver(db.upcast()),
+            db,
+            &self.id.resolver(db),
             &item_tree[item_tree[loc.id.value].visibility],
         )
     }
@@ -3010,7 +3005,7 @@ impl TypeAlias {
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.module(db.upcast()) }
+        Module { id: self.id.module(db) }
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
@@ -3039,7 +3034,7 @@ pub struct ExternBlock {
 
 impl ExternBlock {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.module(db.upcast()) }
+        Module { id: self.id.module(db) }
     }
 }
 
@@ -3131,24 +3126,24 @@ pub struct Macro {
 
 impl Macro {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.module(db.upcast()) }
+        Module { id: self.id.module(db) }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         match self.id {
             MacroId::Macro2Id(id) => {
-                let loc = id.lookup(db.upcast());
-                let item_tree = loc.id.item_tree(db.upcast());
+                let loc = id.lookup(db);
+                let item_tree = loc.id.item_tree(db);
                 item_tree[loc.id.value].name.clone()
             }
             MacroId::MacroRulesId(id) => {
-                let loc = id.lookup(db.upcast());
-                let item_tree = loc.id.item_tree(db.upcast());
+                let loc = id.lookup(db);
+                let item_tree = loc.id.item_tree(db);
                 item_tree[loc.id.value].name.clone()
             }
             MacroId::ProcMacroId(id) => {
-                let loc = id.lookup(db.upcast());
-                let item_tree = loc.id.item_tree(db.upcast());
+                let loc = id.lookup(db);
+                let item_tree = loc.id.item_tree(db);
                 match loc.kind {
                     ProcMacroKind::CustomDerive => db
                         .attrs(id.into())
@@ -3172,7 +3167,7 @@ impl Macro {
 
     pub fn kind(&self, db: &dyn HirDatabase) -> MacroKind {
         match self.id {
-            MacroId::Macro2Id(it) => match it.lookup(db.upcast()).expander {
+            MacroId::Macro2Id(it) => match it.lookup(db).expander {
                 MacroExpander::Declarative => MacroKind::Declarative,
                 MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => {
                     MacroKind::DeclarativeBuiltIn
@@ -3180,7 +3175,7 @@ impl Macro {
                 MacroExpander::BuiltInAttr(_) => MacroKind::AttrBuiltIn,
                 MacroExpander::BuiltInDerive(_) => MacroKind::DeriveBuiltIn,
             },
-            MacroId::MacroRulesId(it) => match it.lookup(db.upcast()).expander {
+            MacroId::MacroRulesId(it) => match it.lookup(db).expander {
                 MacroExpander::Declarative => MacroKind::Declarative,
                 MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => {
                     MacroKind::DeclarativeBuiltIn
@@ -3188,7 +3183,7 @@ impl Macro {
                 MacroExpander::BuiltInAttr(_) => MacroKind::AttrBuiltIn,
                 MacroExpander::BuiltInDerive(_) => MacroKind::DeriveBuiltIn,
             },
-            MacroId::ProcMacroId(it) => match it.lookup(db.upcast()).kind {
+            MacroId::ProcMacroId(it) => match it.lookup(db).kind {
                 ProcMacroKind::CustomDerive => MacroKind::Derive,
                 ProcMacroKind::Bang => MacroKind::ProcMacro,
                 ProcMacroKind::Attr => MacroKind::Attr,
@@ -3206,10 +3201,10 @@ impl Macro {
     pub fn is_builtin_derive(&self, db: &dyn HirDatabase) -> bool {
         match self.id {
             MacroId::Macro2Id(it) => {
-                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInDerive(_))
+                matches!(it.lookup(db).expander, MacroExpander::BuiltInDerive(_))
             }
             MacroId::MacroRulesId(it) => {
-                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInDerive(_))
+                matches!(it.lookup(db).expander, MacroExpander::BuiltInDerive(_))
             }
             MacroId::ProcMacroId(_) => false,
         }
@@ -3218,10 +3213,10 @@ impl Macro {
     pub fn is_env_or_option_env(&self, db: &dyn HirDatabase) -> bool {
         match self.id {
             MacroId::Macro2Id(it) => {
-                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInEager(eager) if eager.is_env_or_option_env())
+                matches!(it.lookup(db).expander, MacroExpander::BuiltInEager(eager) if eager.is_env_or_option_env())
             }
             MacroId::MacroRulesId(it) => {
-                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInEager(eager) if eager.is_env_or_option_env())
+                matches!(it.lookup(db).expander, MacroExpander::BuiltInEager(eager) if eager.is_env_or_option_env())
             }
             MacroId::ProcMacroId(_) => false,
         }
@@ -3230,10 +3225,10 @@ impl Macro {
     pub fn is_asm_or_global_asm(&self, db: &dyn HirDatabase) -> bool {
         match self.id {
             MacroId::Macro2Id(it) => {
-                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltIn(m) if m.is_asm())
+                matches!(it.lookup(db).expander, MacroExpander::BuiltIn(m) if m.is_asm())
             }
             MacroId::MacroRulesId(it) => {
-                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltIn(m) if m.is_asm())
+                matches!(it.lookup(db).expander, MacroExpander::BuiltIn(m) if m.is_asm())
             }
             MacroId::ProcMacroId(_) => false,
         }
@@ -3252,11 +3247,11 @@ impl HasVisibility for Macro {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         match self.id {
             MacroId::Macro2Id(id) => {
-                let loc = id.lookup(db.upcast());
-                let item_tree = loc.id.item_tree(db.upcast());
+                let loc = id.lookup(db);
+                let item_tree = loc.id.item_tree(db);
                 Visibility::resolve(
-                    db.upcast(),
-                    &id.resolver(db.upcast()),
+                    db,
+                    &id.resolver(db),
                     &item_tree[item_tree[loc.id.value].visibility],
                 )
             }
@@ -3414,7 +3409,7 @@ where
     DEF: From<ID>,
     LOC: ItemTreeNode,
 {
-    match id.lookup(db.upcast()).container {
+    match id.lookup(db).container {
         ItemContainerId::TraitId(_) | ItemContainerId::ImplId(_) => Some(ctor(DEF::from(id))),
         ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
     }
@@ -3430,7 +3425,7 @@ where
     DEF: From<ID>,
     LOC: ItemTreeNode,
 {
-    match id.lookup(db.upcast()).container {
+    match id.lookup(db).container {
         ItemContainerId::ExternBlockId(_) => Some(ctor(DEF::from(id))),
         ItemContainerId::TraitId(_) | ItemContainerId::ImplId(_) | ItemContainerId::ModuleId(_) => {
             None
@@ -3496,9 +3491,9 @@ impl AssocItem {
 
     pub fn container(self, db: &dyn HirDatabase) -> AssocItemContainer {
         let container = match self {
-            AssocItem::Function(it) => it.id.lookup(db.upcast()).container,
-            AssocItem::Const(it) => it.id.lookup(db.upcast()).container,
-            AssocItem::TypeAlias(it) => it.id.lookup(db.upcast()).container,
+            AssocItem::Function(it) => it.id.lookup(db).container,
+            AssocItem::Const(it) => it.id.lookup(db).container,
+            AssocItem::TypeAlias(it) => it.id.lookup(db).container,
         };
         match container {
             ItemContainerId::TraitId(id) => AssocItemContainer::Trait(id.into()),
@@ -3752,9 +3747,9 @@ impl GenericSubstitution {
 
     pub fn types(&self, db: &dyn HirDatabase) -> Vec<(Symbol, Type)> {
         let container = match self.def {
-            GenericDefId::ConstId(id) => Some(id.lookup(db.upcast()).container),
-            GenericDefId::FunctionId(id) => Some(id.lookup(db.upcast()).container),
-            GenericDefId::TypeAliasId(id) => Some(id.lookup(db.upcast()).container),
+            GenericDefId::ConstId(id) => Some(id.lookup(db).container),
+            GenericDefId::FunctionId(id) => Some(id.lookup(db).container),
+            GenericDefId::TypeAliasId(id) => Some(id.lookup(db).container),
             _ => None,
         };
         let container_type_params = container
@@ -3820,7 +3815,7 @@ impl LocalSource {
     }
 
     pub fn original_file(&self, db: &dyn HirDatabase) -> EditionedFileId {
-        self.source.file_id.original_file(db.upcast())
+        self.source.file_id.original_file(db)
     }
 
     pub fn file(&self) -> HirFileId {
@@ -3901,7 +3896,7 @@ impl Local {
         let (body, source_map) = db.body_with_source_map(self.parent);
         match body.self_param.zip(source_map.self_param_syntax()) {
             Some((param, source)) if param == self.binding_id => {
-                let root = source.file_syntax(db.upcast());
+                let root = source.file_syntax(db);
                 vec![LocalSource {
                     local: self,
                     source: source.map(|ast| Either::Right(ast.to_node(&root))),
@@ -3912,7 +3907,7 @@ impl Local {
                 .iter()
                 .map(|&definition| {
                     let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
-                    let root = src.file_syntax(db.upcast());
+                    let root = src.file_syntax(db);
                     LocalSource {
                         local: self,
                         source: src.map(|ast| match ast.to_node(&root) {
@@ -3930,7 +3925,7 @@ impl Local {
         let (body, source_map) = db.body_with_source_map(self.parent);
         match body.self_param.zip(source_map.self_param_syntax()) {
             Some((param, source)) if param == self.binding_id => {
-                let root = source.file_syntax(db.upcast());
+                let root = source.file_syntax(db);
                 LocalSource {
                     local: self,
                     source: source.map(|ast| Either::Right(ast.to_node(&root))),
@@ -3941,7 +3936,7 @@ impl Local {
                 .first()
                 .map(|&definition| {
                     let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
-                    let root = src.file_syntax(db.upcast());
+                    let root = src.file_syntax(db);
                     LocalSource {
                         local: self,
                         source: src.map(|ast| match ast.to_node(&root) {
@@ -4128,7 +4123,7 @@ impl GenericParam {
             GenericParam::ConstParam(_) => return None,
             GenericParam::LifetimeParam(it) => it.id.parent,
         };
-        let generics = hir_ty::generics::generics(db.upcast(), parent);
+        let generics = hir_ty::generics::generics(db, parent);
         let index = match self {
             GenericParam::TypeParam(it) => generics.type_or_const_param_idx(it.id.into())?,
             GenericParam::ConstParam(_) => return None,
@@ -4153,7 +4148,7 @@ impl TypeParam {
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.id.parent().module(db.upcast()).into()
+        self.id.parent().module(db).into()
     }
 
     /// Is this type parameter implicitly introduced (eg. `Self` in a trait or an `impl Trait`
@@ -4168,7 +4163,7 @@ impl TypeParam {
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
-        let resolver = self.id.parent().resolver(db.upcast());
+        let resolver = self.id.parent().resolver(db);
         let ty =
             TyKind::Placeholder(hir_ty::to_placeholder_idx(db, self.id.into())).intern(Interner);
         Type::new_with_resolver_inner(db, &resolver, ty)
@@ -4191,7 +4186,7 @@ impl TypeParam {
 
     pub fn default(self, db: &dyn HirDatabase) -> Option<Type> {
         let ty = generic_arg_from_param(db, self.id.into())?;
-        let resolver = self.id.parent().resolver(db.upcast());
+        let resolver = self.id.parent().resolver(db);
         match ty.data(Interner) {
             GenericArgData::Ty(it) if *it.kind(Interner) != TyKind::Error => {
                 Some(Type::new_with_resolver_inner(db, &resolver, it.clone()))
@@ -4217,7 +4212,7 @@ impl LifetimeParam {
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.id.parent.module(db.upcast()).into()
+        self.id.parent.module(db).into()
     }
 
     pub fn parent(self, _db: &dyn HirDatabase) -> GenericDef {
@@ -4247,7 +4242,7 @@ impl ConstParam {
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.id.parent().module(db.upcast()).into()
+        self.id.parent().module(db).into()
     }
 
     pub fn parent(self, _db: &dyn HirDatabase) -> GenericDef {
@@ -4291,7 +4286,7 @@ impl TypeOrConstParam {
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.id.parent.module(db.upcast()).into()
+        self.id.parent.module(db).into()
     }
 
     pub fn parent(self, _db: &dyn HirDatabase) -> GenericDef {
@@ -4352,7 +4347,7 @@ impl Impl {
     }
 
     pub fn all_in_module(db: &dyn HirDatabase, module: Module) -> Vec<Impl> {
-        module.id.def_map(db.upcast())[module.id.local_id].scope.impls().map(Into::into).collect()
+        module.id.def_map(db)[module.id.local_id].scope.impls().map(Into::into).collect()
     }
 
     pub fn all_for_type(db: &dyn HirDatabase, Type { ty, env }: Type) -> Vec<Impl> {
@@ -4398,8 +4393,7 @@ impl Impl {
             );
         }
 
-        if let Some(block) =
-            ty.adt_id(Interner).and_then(|def| def.0.module(db.upcast()).containing_block())
+        if let Some(block) = ty.adt_id(Interner).and_then(|def| def.0.module(db).containing_block())
         {
             if let Some(inherent_impls) = db.inherent_impls_in_block(block) {
                 all.extend(
@@ -4444,12 +4438,12 @@ impl Impl {
     pub fn trait_ref(self, db: &dyn HirDatabase) -> Option<TraitRef> {
         let substs = TyBuilder::placeholder_subst(db, self.id);
         let trait_ref = db.impl_trait(self.id)?.substitute(Interner, &substs);
-        let resolver = self.id.resolver(db.upcast());
+        let resolver = self.id.resolver(db);
         Some(TraitRef::new_with_resolver(db, &resolver, trait_ref))
     }
 
     pub fn self_ty(self, db: &dyn HirDatabase) -> Type {
-        let resolver = self.id.resolver(db.upcast());
+        let resolver = self.id.resolver(db);
         let substs = TyBuilder::placeholder_subst(db, self.id);
         let ty = db.impl_self_ty(self.id).substitute(Interner, &substs);
         Type::new_with_resolver_inner(db, &resolver, ty)
@@ -4468,17 +4462,17 @@ impl Impl {
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.id.lookup(db.upcast()).container.into()
+        self.id.lookup(db).container.into()
     }
 
     pub fn as_builtin_derive_path(self, db: &dyn HirDatabase) -> Option<InMacroFile<ast::Path>> {
         let src = self.source(db)?;
 
         let macro_file = src.file_id.macro_file()?;
-        let loc = macro_file.macro_call_id.lookup(db.upcast());
+        let loc = macro_file.macro_call_id.lookup(db);
         let (derive_attr, derive_index) = match loc.kind {
             MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
-                let module_id = self.id.lookup(db.upcast()).container;
+                let module_id = self.id.lookup(db).container;
                 (
                     db.crate_def_map(module_id.krate())[module_id.local_id]
                         .scope
@@ -4765,7 +4759,7 @@ impl Type {
     }
 
     fn new(db: &dyn HirDatabase, lexical_env: impl HasResolver, ty: Ty) -> Type {
-        let resolver = lexical_env.resolver(db.upcast());
+        let resolver = lexical_env.resolver(db);
         let environment = resolver
             .generic_def()
             .map_or_else(|| TraitEnvironment::empty(resolver.krate()), |d| db.trait_environment(d));
@@ -4810,7 +4804,7 @@ impl Type {
                 ValueTyDefId::StructId(it) => GenericDefId::AdtId(AdtId::StructId(it)),
                 ValueTyDefId::UnionId(it) => GenericDefId::AdtId(AdtId::UnionId(it)),
                 ValueTyDefId::EnumVariantId(it) => {
-                    GenericDefId::AdtId(AdtId::EnumId(it.lookup(db.upcast()).parent))
+                    GenericDefId::AdtId(AdtId::EnumId(it.lookup(db).parent))
                 }
                 ValueTyDefId::StaticId(_) => return Type::new(db, def, ty.skip_binders().clone()),
             },
@@ -5089,7 +5083,7 @@ impl Type {
         alias: TypeAlias,
     ) -> Option<Type> {
         let mut args = args.iter();
-        let trait_id = match alias.id.lookup(db.upcast()).container {
+        let trait_id = match alias.id.lookup(db).container {
             ItemContainerId::TraitId(id) => id,
             _ => unreachable!("non assoc type alias reached in normalize_trait_assoc_type()"),
         };
@@ -5648,7 +5642,7 @@ impl Type {
         let _p = tracing::info_span!("applicable_inherent_traits").entered();
         self.autoderef_(db)
             .filter_map(|ty| ty.dyn_trait())
-            .flat_map(move |dyn_trait_id| hir_ty::all_super_traits(db.upcast(), dyn_trait_id))
+            .flat_map(move |dyn_trait_id| hir_ty::all_super_traits(db, dyn_trait_id))
             .map(Trait::from)
     }
 
@@ -5659,7 +5653,7 @@ impl Type {
             .flat_map(|ty| {
                 self.env
                     .traits_in_scope_from_clauses(ty)
-                    .flat_map(|t| hir_ty::all_super_traits(db.upcast(), t))
+                    .flat_map(|t| hir_ty::all_super_traits(db, t))
             })
             .map(Trait::from)
     }
@@ -6106,7 +6100,7 @@ pub trait HasVisibility {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility;
     fn is_visible_from(&self, db: &dyn HirDatabase, module: Module) -> bool {
         let vis = self.visibility(db);
-        vis.is_visible_from(db.upcast(), module.id)
+        vis.is_visible_from(db, module.id)
     }
 }
 
@@ -6117,7 +6111,7 @@ pub trait HasCrate {
 
 impl<T: hir_def::HasModule> HasCrate for T {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
-        self.module(db.upcast()).krate().into()
+        self.module(db).krate().into()
     }
 }
 
@@ -6229,14 +6223,14 @@ pub trait HasContainer {
 
 impl HasContainer for ExternCrateDecl {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
-        container_id_to_hir(self.id.lookup(db.upcast()).container.into())
+        container_id_to_hir(self.id.lookup(db).container.into())
     }
 }
 
 impl HasContainer for Module {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
         // FIXME: handle block expressions as modules (their parent is in a different DefMap)
-        let def_map = self.id.def_map(db.upcast());
+        let def_map = self.id.def_map(db);
         match def_map[self.id.local_id].parent {
             Some(parent_id) => ItemContainer::Module(Module { id: def_map.module_id(parent_id) }),
             None => ItemContainer::Crate(def_map.krate().into()),
@@ -6246,61 +6240,61 @@ impl HasContainer for Module {
 
 impl HasContainer for Function {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
-        container_id_to_hir(self.id.lookup(db.upcast()).container)
+        container_id_to_hir(self.id.lookup(db).container)
     }
 }
 
 impl HasContainer for Struct {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
-        ItemContainer::Module(Module { id: self.id.lookup(db.upcast()).container })
+        ItemContainer::Module(Module { id: self.id.lookup(db).container })
     }
 }
 
 impl HasContainer for Union {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
-        ItemContainer::Module(Module { id: self.id.lookup(db.upcast()).container })
+        ItemContainer::Module(Module { id: self.id.lookup(db).container })
     }
 }
 
 impl HasContainer for Enum {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
-        ItemContainer::Module(Module { id: self.id.lookup(db.upcast()).container })
+        ItemContainer::Module(Module { id: self.id.lookup(db).container })
     }
 }
 
 impl HasContainer for TypeAlias {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
-        container_id_to_hir(self.id.lookup(db.upcast()).container)
+        container_id_to_hir(self.id.lookup(db).container)
     }
 }
 
 impl HasContainer for Const {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
-        container_id_to_hir(self.id.lookup(db.upcast()).container)
+        container_id_to_hir(self.id.lookup(db).container)
     }
 }
 
 impl HasContainer for Static {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
-        container_id_to_hir(self.id.lookup(db.upcast()).container)
+        container_id_to_hir(self.id.lookup(db).container)
     }
 }
 
 impl HasContainer for Trait {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
-        ItemContainer::Module(Module { id: self.id.lookup(db.upcast()).container })
+        ItemContainer::Module(Module { id: self.id.lookup(db).container })
     }
 }
 
 impl HasContainer for TraitAlias {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
-        ItemContainer::Module(Module { id: self.id.lookup(db.upcast()).container })
+        ItemContainer::Module(Module { id: self.id.lookup(db).container })
     }
 }
 
 impl HasContainer for ExternBlock {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
-        ItemContainer::Module(Module { id: self.id.lookup(db.upcast()).container })
+        ItemContainer::Module(Module { id: self.id.lookup(db).container })
     }
 }
 
@@ -6416,7 +6410,7 @@ pub fn resolve_absolute_path<'a, I: Iterator<Item = Symbol> + Clone + 'a>(
                                 ModuleDefId::ModuleId(it) => Some(it),
                                 _ => None,
                             })?;
-                        def_map = res.def_map(db.upcast());
+                        def_map = res.def_map(db);
                         module = &def_map[res.local_id];
                     }
                     let (_, item_name) = segments.next()?;

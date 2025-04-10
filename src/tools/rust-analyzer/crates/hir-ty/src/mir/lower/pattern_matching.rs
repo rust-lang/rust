@@ -355,7 +355,7 @@ impl MirLowerCtx<'_> {
                     let hygiene = self.body.pat_path_hygiene(pattern);
                     let pr = self
                         .resolver
-                        .resolve_path_in_value_ns(self.db.upcast(), p, hygiene)
+                        .resolve_path_in_value_ns(self.db, p, hygiene)
                         .ok_or_else(unresolved_name)?;
 
                     if let (

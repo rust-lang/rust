@@ -426,19 +426,19 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
 
     fn trait_name(&self, trait_id: chalk_ir::TraitId<Interner>) -> String {
         let id = from_chalk_trait_id(trait_id);
-        self.db.trait_signature(id).name.display(self.db.upcast(), self.edition()).to_string()
+        self.db.trait_signature(id).name.display(self.db, self.edition()).to_string()
     }
     fn adt_name(&self, chalk_ir::AdtId(adt_id): AdtId) -> String {
         let edition = self.edition();
         match adt_id {
             hir_def::AdtId::StructId(id) => {
-                self.db.struct_signature(id).name.display(self.db.upcast(), edition).to_string()
+                self.db.struct_signature(id).name.display(self.db, edition).to_string()
             }
             hir_def::AdtId::EnumId(id) => {
-                self.db.enum_signature(id).name.display(self.db.upcast(), edition).to_string()
+                self.db.enum_signature(id).name.display(self.db, edition).to_string()
             }
             hir_def::AdtId::UnionId(id) => {
-                self.db.union_signature(id).name.display(self.db.upcast(), edition).to_string()
+                self.db.union_signature(id).name.display(self.db, edition).to_string()
             }
         }
     }
@@ -448,7 +448,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     }
     fn assoc_type_name(&self, assoc_ty_id: chalk_ir::AssocTypeId<Interner>) -> String {
         let id = self.db.associated_ty_data(from_assoc_type_id(assoc_ty_id)).name;
-        self.db.type_alias_signature(id).name.display(self.db.upcast(), self.edition()).to_string()
+        self.db.type_alias_signature(id).name.display(self.db, self.edition()).to_string()
     }
     fn opaque_type_name(&self, opaque_ty_id: chalk_ir::OpaqueTyId<Interner>) -> String {
         format!("Opaque_{:?}", opaque_ty_id.0)
@@ -537,13 +537,13 @@ impl ChalkContext<'_> {
         // `impl_datum` relies on that and will panic if the trait can't be resolved.
         let in_deps = self.db.trait_impls_in_deps(self.krate);
         let in_self = self.db.trait_impls_in_crate(self.krate);
-        let trait_module = trait_id.module(self.db.upcast());
+        let trait_module = trait_id.module(self.db);
         let type_module = match self_ty_fp {
-            Some(TyFingerprint::Adt(adt_id)) => Some(adt_id.module(self.db.upcast())),
+            Some(TyFingerprint::Adt(adt_id)) => Some(adt_id.module(self.db)),
             Some(TyFingerprint::ForeignType(type_id)) => {
-                Some(from_foreign_def_id(type_id).module(self.db.upcast()))
+                Some(from_foreign_def_id(type_id).module(self.db))
             }
-            Some(TyFingerprint::Dyn(trait_id)) => Some(trait_id.module(self.db.upcast())),
+            Some(TyFingerprint::Dyn(trait_id)) => Some(trait_id.module(self.db)),
             _ => None,
         };
 
@@ -605,15 +605,15 @@ pub(crate) fn associated_ty_data_query(
     type_alias: TypeAliasId,
 ) -> Arc<AssociatedTyDatum> {
     debug!("associated_ty_data {:?}", type_alias);
-    let trait_ = match type_alias.lookup(db.upcast()).container {
+    let trait_ = match type_alias.lookup(db).container {
         ItemContainerId::TraitId(t) => t,
         _ => panic!("associated type not in trait"),
     };
 
     // Lower bounds -- we could/should maybe move this to a separate query in `lower`
     let type_alias_data = db.type_alias_signature(type_alias);
-    let generic_params = generics(db.upcast(), type_alias.into());
-    let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db.upcast());
+    let generic_params = generics(db, type_alias.into());
+    let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db);
     let mut ctx =
         crate::TyLoweringContext::new(db, &resolver, &type_alias_data.store, type_alias.into())
             .with_type_param_mode(crate::lower::ParamLoweringMode::Variable);
@@ -671,11 +671,11 @@ pub(crate) fn trait_datum_query(
     let trait_ = from_chalk_trait_id(trait_id);
     let trait_data = db.trait_signature(trait_);
     debug!("trait {:?} = {:?}", trait_id, trait_data.name);
-    let generic_params = generics(db.upcast(), trait_.into());
+    let generic_params = generics(db, trait_.into());
     let bound_vars = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
     let flags = rust_ir::TraitFlags {
         auto: trait_data.flags.contains(TraitFlags::IS_AUTO),
-        upstream: trait_.lookup(db.upcast()).container.krate() != krate,
+        upstream: trait_.lookup(db).container.krate() != krate,
         non_enumerable: true,
         coinductive: false, // only relevant for Chalk testing
         // FIXME: set these flags correctly
@@ -754,7 +754,7 @@ pub(crate) fn adt_datum_query(
     chalk_ir::AdtId(adt_id): AdtId,
 ) -> Arc<AdtDatum> {
     debug!("adt_datum {:?}", adt_id);
-    let generic_params = generics(db.upcast(), adt_id.into());
+    let generic_params = generics(db, adt_id.into());
     let bound_vars_subst = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
     let where_clauses = convert_where_clauses(db, adt_id.into(), &bound_vars_subst);
 
@@ -771,14 +771,14 @@ pub(crate) fn adt_datum_query(
         hir_def::AdtId::EnumId(_) => (false, false),
     };
     let flags = rust_ir::AdtFlags {
-        upstream: adt_id.module(db.upcast()).krate() != krate,
+        upstream: adt_id.module(db).krate() != krate,
         fundamental,
         phantom_data,
     };
 
     // this slows down rust-analyzer by quite a bit unfortunately, so enabling this is currently not worth it
     let _variant_id_to_fields = |id: VariantId| {
-        let variant_data = &id.variant_data(db.upcast());
+        let variant_data = &id.variant_data(db);
         let fields = if variant_data.fields().is_empty() {
             vec![]
         } else {
@@ -842,10 +842,10 @@ fn impl_def_datum(db: &dyn HirDatabase, krate: Crate, impl_id: hir_def::ImplId) 
         .0;
     let impl_data = db.impl_signature(impl_id);
 
-    let generic_params = generics(db.upcast(), impl_id.into());
+    let generic_params = generics(db, impl_id.into());
     let bound_vars = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
     let trait_ = trait_ref.hir_trait_id();
-    let impl_type = if impl_id.lookup(db.upcast()).container.krate() == krate {
+    let impl_type = if impl_id.lookup(db).container.krate() == krate {
         rust_ir::ImplType::Local
     } else {
         rust_ir::ImplType::External
@@ -896,7 +896,7 @@ fn type_alias_associated_ty_value(
     type_alias: TypeAliasId,
 ) -> Arc<AssociatedTyValue> {
     let type_alias_data = db.type_alias_signature(type_alias);
-    let impl_id = match type_alias.lookup(db.upcast()).container {
+    let impl_id = match type_alias.lookup(db).container {
         ItemContainerId::ImplId(it) => it,
         _ => panic!("assoc ty value should be in impl"),
     };
@@ -925,8 +925,8 @@ pub(crate) fn fn_def_datum_query(
     db: &dyn HirDatabase,
     callable_def: CallableDefId,
 ) -> Arc<FnDefDatum> {
-    let generic_def = GenericDefId::from_callable(db.upcast(), callable_def);
-    let generic_params = generics(db.upcast(), generic_def);
+    let generic_def = GenericDefId::from_callable(db, callable_def);
+    let generic_params = generics(db, generic_def);
     let (sig, binders) = db.callable_item_signature(callable_def).into_value_and_skipped_binders();
     let bound_vars = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
     let where_clauses = convert_where_clauses(db, generic_def, &bound_vars);
@@ -960,7 +960,7 @@ pub(crate) fn fn_def_variance_query(
 ) -> Variances {
     Variances::from_iter(
         Interner,
-        db.variances_of(GenericDefId::from_callable(db.upcast(), callable_def))
+        db.variances_of(GenericDefId::from_callable(db, callable_def))
             .as_deref()
             .unwrap_or_default()
             .iter()
@@ -1023,8 +1023,7 @@ pub(super) fn generic_predicate_to_inline_bound(
             Some(chalk_ir::Binders::new(binders, rust_ir::InlineBound::TraitBound(trait_bound)))
         }
         WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
-            let generics =
-                generics(db.upcast(), from_assoc_type_id(projection_ty.associated_ty_id).into());
+            let generics = generics(db, from_assoc_type_id(projection_ty.associated_ty_id).into());
             let (assoc_args, trait_args) =
                 projection_ty.substitution.as_slice(Interner).split_at(generics.len_self());
             let (self_ty, args_no_self) =

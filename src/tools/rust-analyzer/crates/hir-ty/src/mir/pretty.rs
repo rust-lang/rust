@@ -44,15 +44,11 @@ impl MirBody {
         ctx.for_body(|this| match ctx.body.owner {
             hir_def::DefWithBodyId::FunctionId(id) => {
                 let data = db.function_signature(id);
-                w!(this, "fn {}() ", data.name.display(db.upcast(), this.display_target.edition));
+                w!(this, "fn {}() ", data.name.display(db, this.display_target.edition));
             }
             hir_def::DefWithBodyId::StaticId(id) => {
                 let data = db.static_signature(id);
-                w!(
-                    this,
-                    "static {}: _ = ",
-                    data.name.display(db.upcast(), this.display_target.edition)
-                );
+                w!(this, "static {}: _ = ", data.name.display(db, this.display_target.edition));
             }
             hir_def::DefWithBodyId::ConstId(id) => {
                 let data = db.const_signature(id);
@@ -62,21 +58,21 @@ impl MirBody {
                     data.name
                         .as_ref()
                         .unwrap_or(&Name::missing())
-                        .display(db.upcast(), this.display_target.edition)
+                        .display(db, this.display_target.edition)
                 );
             }
             hir_def::DefWithBodyId::VariantId(id) => {
-                let loc = id.lookup(db.upcast());
-                let enum_loc = loc.parent.lookup(db.upcast());
+                let loc = id.lookup(db);
+                let enum_loc = loc.parent.lookup(db);
                 w!(
                     this,
                     "enum {}::{} = ",
-                    enum_loc.id.item_tree(db.upcast())[enum_loc.id.value]
+                    enum_loc.id.item_tree(db)[enum_loc.id.value]
                         .name
-                        .display(db.upcast(), this.display_target.edition),
-                    loc.id.item_tree(db.upcast())[loc.id.value]
+                        .display(db, this.display_target.edition),
+                    loc.id.item_tree(db)[loc.id.value]
                         .name
-                        .display(db.upcast(), this.display_target.edition),
+                        .display(db, this.display_target.edition),
                 )
             }
         });
@@ -131,7 +127,7 @@ impl HirDisplay for LocalName {
         match self {
             LocalName::Unknown(l) => write!(f, "_{}", u32::from(l.into_raw())),
             LocalName::Binding(n, l) => {
-                write!(f, "{}_{}", n.display(f.db.upcast(), f.edition()), u32::from(l.into_raw()))
+                write!(f, "{}_{}", n.display(f.db, f.edition()), u32::from(l.into_raw()))
             }
         }
     }
@@ -336,23 +332,19 @@ impl<'a> MirPrettyCtx<'a> {
                         hir_def::VariantId::EnumVariantId(e) => {
                             w!(this, "(");
                             f(this, local, head);
-                            let loc = e.lookup(this.db.upcast());
+                            let loc = e.lookup(this.db);
                             w!(
                                 this,
                                 " as {}).{}",
                                 this.db.enum_variants(loc.parent).variants[loc.index as usize]
                                     .1
-                                    .display(this.db.upcast(), this.display_target.edition),
-                                name.display(this.db.upcast(), this.display_target.edition)
+                                    .display(this.db, this.display_target.edition),
+                                name.display(this.db, this.display_target.edition)
                             );
                         }
                         hir_def::VariantId::StructId(_) | hir_def::VariantId::UnionId(_) => {
                             f(this, local, head);
-                            w!(
-                                this,
-                                ".{}",
-                                name.display(this.db.upcast(), this.display_target.edition)
-                            );
+                            w!(this, ".{}", name.display(this.db, this.display_target.edition));
                         }
                     }
                 }

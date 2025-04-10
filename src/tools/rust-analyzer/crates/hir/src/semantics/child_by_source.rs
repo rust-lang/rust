@@ -38,7 +38,7 @@ impl ChildBySource for TraitId {
 
         data.attribute_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
-                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db.upcast()), call_id);
+                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db), call_id);
             },
         );
         data.items.iter().for_each(|&(_, item)| {
@@ -53,7 +53,7 @@ impl ChildBySource for ImplId {
         // FIXME: Macro calls
         data.attribute_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
-                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db.upcast()), call_id);
+                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db), call_id);
             },
         );
         data.items.iter().for_each(|&(_, item)| {
@@ -84,7 +84,7 @@ impl ChildBySource for ItemScope {
             .for_each(|konst| insert_item_loc(db, res, file_id, konst, keys::CONST));
         self.attr_macro_invocs().filter(|(id, _)| id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
-                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db.upcast()), call_id);
+                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db), call_id);
             },
         );
         self.legacy_macros().for_each(|(_, ids)| {
@@ -99,7 +99,7 @@ impl ChildBySource for ItemScope {
         });
         self.derive_macro_invocs().filter(|(id, _)| id.file_id == file_id).for_each(
             |(ast_id, calls)| {
-                let adt = ast_id.to_node(db.upcast());
+                let adt = ast_id.to_node(db);
                 calls.for_each(|(attr_id, call_id, calls)| {
                     if let Some((_, Either::Left(attr))) =
                         collect_attrs(&adt).nth(attr_id.ast_index())
@@ -112,7 +112,7 @@ impl ChildBySource for ItemScope {
         );
         self.iter_macro_invoc().filter(|(id, _)| id.file_id == file_id).for_each(
             |(ast_id, &call)| {
-                let ast = ast_id.to_ptr(db.upcast());
+                let ast = ast_id.to_ptr(db);
                 res[keys::MACRO_CALL].insert(ast, call);
             },
         );
@@ -204,7 +204,7 @@ impl ChildBySource for DefWithBodyId {
             // All block expressions are merged into the same map, because they logically all add
             // inner items to the containing `DefWithBodyId`.
             def_map[DefMap::ROOT].scope.child_by_source_to(db, res, file_id);
-            res[keys::BLOCK].insert(block.lookup(db).ast_id.to_ptr(db.upcast()), block);
+            res[keys::BLOCK].insert(block.lookup(db).ast_id.to_ptr(db), block);
         }
     }
 }

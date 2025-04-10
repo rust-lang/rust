@@ -44,11 +44,7 @@ impl CastTy {
                     return None;
                 };
                 let enum_data = table.db.enum_variants(id);
-                if enum_data.is_payload_free(table.db.upcast()) {
-                    Some(Self::Int(Int::CEnum))
-                } else {
-                    None
-                }
+                if enum_data.is_payload_free(table.db) { Some(Self::Int(Int::CEnum)) } else { None }
             }
             TyKind::Raw(m, ty) => Some(Self::Ptr(ty.clone(), *m)),
             TyKind::Function(_) => Some(Self::FnPtr),

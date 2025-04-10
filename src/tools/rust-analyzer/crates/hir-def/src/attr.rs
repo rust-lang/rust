@@ -46,7 +46,7 @@ impl Attrs {
     }
 
     pub(crate) fn filter(db: &dyn DefDatabase, krate: Crate, raw_attrs: RawAttrs) -> Attrs {
-        Attrs(raw_attrs.filter(db.upcast(), krate))
+        Attrs(raw_attrs.filter(db, krate))
     }
 }
 
@@ -507,7 +507,7 @@ impl AttrsWithOwner {
                     // FIXME: We should be never getting `None` here.
                     match src.value.get(it.local_id()) {
                         Some(val) => RawAttrs::from_attrs_owner(
-                            db.upcast(),
+                            db,
                             src.with_value(val),
                             db.span_map(src.file_id).as_ref(),
                         ),
@@ -519,7 +519,7 @@ impl AttrsWithOwner {
                     // FIXME: We should be never getting `None` here.
                     match src.value.get(it.local_id()) {
                         Some(val) => RawAttrs::from_attrs_owner(
-                            db.upcast(),
+                            db,
                             src.with_value(val),
                             db.span_map(src.file_id).as_ref(),
                         ),
@@ -531,7 +531,7 @@ impl AttrsWithOwner {
                     // FIXME: We should be never getting `None` here.
                     match src.value.get(it.local_id) {
                         Some(val) => RawAttrs::from_attrs_owner(
-                            db.upcast(),
+                            db,
                             src.with_value(val),
                             db.span_map(src.file_id).as_ref(),
                         ),
@@ -544,7 +544,7 @@ impl AttrsWithOwner {
             AttrDefId::UseId(it) => attrs_from_item_tree_loc(db, it),
         };
 
-        let attrs = raw_attrs.filter(db.upcast(), def.krate(db));
+        let attrs = raw_attrs.filter(db, def.krate(db));
         Attrs(attrs)
     }
 

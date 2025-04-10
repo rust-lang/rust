@@ -105,7 +105,7 @@ impl ItemTree {
         let mut item_tree = match_ast! {
             match syntax {
                 ast::SourceFile(file) => {
-                    top_attrs = Some(RawAttrs::new(db.upcast(), &file, ctx.span_map()));
+                    top_attrs = Some(RawAttrs::new(db, &file, ctx.span_map()));
                     ctx.lower_module_items(&file)
                 },
                 ast::MacroItems(items) => {
@@ -150,7 +150,7 @@ impl ItemTree {
         static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
 
         let loc = block.lookup(db);
-        let block = loc.ast_id.to_node(db.upcast());
+        let block = loc.ast_id.to_node(db);
 
         let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
         let mut item_tree = ctx.lower_block(&block);
@@ -885,7 +885,7 @@ impl Use {
     ) -> ast::UseTree {
         // Re-lower the AST item and get the source map.
         // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
-        let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
+        let ast = InFile::new(file_id, self.ast_id).to_node(db);
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
         let (_, source_map) = lower::lower_use_tree(db, ast_use_tree, &mut |range| {
             db.span_map(file_id).span_for_range(range).ctx
@@ -902,7 +902,7 @@ impl Use {
     ) -> Arena<ast::UseTree> {
         // Re-lower the AST item and get the source map.
         // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
-        let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
+        let ast = InFile::new(file_id, self.ast_id).to_node(db);
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
         lower::lower_use_tree(db, ast_use_tree, &mut |range| {
             db.span_map(file_id).span_for_range(range).ctx

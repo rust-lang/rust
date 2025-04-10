@@ -72,7 +72,7 @@ impl Expander {
         krate: Crate,
         has_attrs: &dyn HasAttrs,
     ) -> Attrs {
-        Attrs::filter(db, krate, RawAttrs::new(db.upcast(), has_attrs, self.span_map.as_ref()))
+        Attrs::filter(db, krate, RawAttrs::new(db, has_attrs, self.span_map.as_ref()))
     }
 
     pub(super) fn is_cfg_enabled(
@@ -103,7 +103,7 @@ impl Expander {
         let result = self.within_limit(db, |this| {
             let macro_call = this.in_file(&macro_call);
             match macro_call.as_call_id_with_errors(
-                db.upcast(),
+                db,
                 krate,
                 |path| resolver(path).map(|it| db.macro_def(it)),
                 eager_callback,
@@ -178,7 +178,7 @@ impl Expander {
             self.recursion_depth = u32::MAX;
             cov_mark::hit!(your_stack_belongs_to_me);
             return ExpandResult::only_err(ExpandError::new(
-                db.macro_arg_considering_derives(call_id, &call_id.lookup(db.upcast()).kind).2,
+                db.macro_arg_considering_derives(call_id, &call_id.lookup(db).kind).2,
                 ExpandErrorKind::RecursionOverflow,
             ));
         }

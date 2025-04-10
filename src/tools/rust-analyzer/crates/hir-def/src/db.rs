@@ -1,5 +1,5 @@
 //! Defines database & queries for name resolution.
-use base_db::{Crate, RootQueryDb, SourceDatabase, Upcast};
+use base_db::{Crate, RootQueryDb, SourceDatabase};
 use either::Either;
 use hir_expand::{HirFileId, MacroDefId, db::ExpandDatabase};
 use intern::sym;
@@ -100,13 +100,7 @@ pub trait InternDatabase: RootQueryDb {
 }
 
 #[query_group::query_group]
-pub trait DefDatabase:
-    InternDatabase
-    + ExpandDatabase
-    + SourceDatabase
-    + Upcast<dyn ExpandDatabase>
-    + Upcast<dyn RootQueryDb>
-{
+pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     /// Whether to expand procedural macros during name resolution.
     #[salsa::input]
     fn expand_proc_attr_macros(&self) -> bool;
@@ -381,7 +375,7 @@ fn include_macro_invoc(
         .flat_map(|m| m.scope.iter_macro_invoc())
         .filter_map(|invoc| {
             db.lookup_intern_macro_call(*invoc.1)
-                .include_file_id(db.upcast(), *invoc.1)
+                .include_file_id(db, *invoc.1)
                 .map(|x| (*invoc.1, x))
         })
         .collect()

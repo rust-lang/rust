@@ -286,14 +286,13 @@ impl DefCollector<'_> {
                     crate_data.rustc_coherence_is_core = true;
                 }
                 () if *attr_name == sym::feature.clone() => {
-                    let features = attr
-                        .parse_path_comma_token_tree(self.db.upcast())
-                        .into_iter()
-                        .flatten()
-                        .filter_map(|(feat, _)| match feat.segments() {
-                            [name] => Some(name.symbol().clone()),
-                            _ => None,
-                        });
+                    let features =
+                        attr.parse_path_comma_token_tree(self.db).into_iter().flatten().filter_map(
+                            |(feat, _)| match feat.segments() {
+                                [name] => Some(name.symbol().clone()),
+                                _ => None,
+                            },
+                        );
                     crate_data.unstable_features.extend(features);
                 }
                 () if *attr_name == sym::register_attr.clone() => {
@@ -549,7 +548,7 @@ impl DefCollector<'_> {
             types => {
                 tracing::debug!(
                     "could not resolve prelude path `{}` to module (resolved to {:?})",
-                    path.display(self.db.upcast(), Edition::LATEST),
+                    path.display(self.db, Edition::LATEST),
                     types
                 );
             }
@@ -809,7 +808,7 @@ impl DefCollector<'_> {
     }
 
     fn resolve_import(&self, module_id: LocalModuleId, import: &Import) -> PartialResolvedImport {
-        let _p = tracing::info_span!("resolve_import", import_path = %import.path.display(self.db.upcast(), Edition::LATEST))
+        let _p = tracing::info_span!("resolve_import", import_path = %import.path.display(self.db, Edition::LATEST))
             .entered();
         tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.data.edition);
         let res = self.def_map.resolve_path_fp_with_macro(
@@ -1256,7 +1255,7 @@ impl DefCollector<'_> {
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, expand_to, ctxt: call_site } => {
                     let call_id = macro_call_as_call_id(
-                        self.db.upcast(),
+                        self.db,
                         ast_id,
                         *call_site,
                         *expand_to,
@@ -1410,7 +1409,7 @@ impl DefCollector<'_> {
 
                         let ast_id = ast_id.with_value(ast_adt_id);
 
-                        match attr.parse_path_comma_token_tree(self.db.upcast()) {
+                        match attr.parse_path_comma_token_tree(self.db) {
                             Some(derive_macros) => {
                                 let call_id = call_id();
                                 let mut len = 0;
@@ -1517,7 +1516,7 @@ impl DefCollector<'_> {
 
         let item_tree = self.db.file_item_tree(file_id);
 
-        let mod_dir = if macro_call_id.as_macro_file().is_include_macro(self.db.upcast()) {
+        let mod_dir = if macro_call_id.as_macro_file().is_include_macro(self.db) {
             ModDir::root()
         } else {
             self.mod_dirs[&module_id].clone()
@@ -1543,7 +1542,7 @@ impl DefCollector<'_> {
                 MacroDirectiveKind::FnLike { ast_id, expand_to, ctxt: call_site } => {
                     // FIXME: we shouldn't need to re-resolve the macro here just to get the unresolved error!
                     let macro_call_as_call_id = macro_call_as_call_id(
-                        self.db.upcast(),
+                        self.db,
                         ast_id,
                         *call_site,
                         *expand_to,
@@ -1991,8 +1990,7 @@ impl ModCollector<'_, '_> {
         cov_mark::hit!(macro_rules_from_other_crates_are_visible_with_macro_use);
         let mut single_imports = Vec::new();
         for attr in macro_use_attrs {
-            let Some(paths) = attr.parse_path_comma_token_tree(self.def_collector.db.upcast())
-            else {
+            let Some(paths) = attr.parse_path_comma_token_tree(self.def_collector.db) else {
                 // `#[macro_use]` (without any paths) found, forget collected names and just import
                 // all visible macros.
                 self.def_collector.import_macros_from_extern_crate(
@@ -2222,7 +2220,7 @@ impl ModCollector<'_, '_> {
             }
             tracing::debug!(
                 "non-builtin attribute {}",
-                attr.path.display(self.def_collector.db.upcast(), Edition::LATEST)
+                attr.path.display(self.def_collector.db, Edition::LATEST)
             );
 
             let ast_id = AstIdWithPath::new(
@@ -2359,8 +2357,8 @@ impl ModCollector<'_, '_> {
                         stdx::always!(
                             name == mac.name,
                             "built-in macro {} has #[rustc_builtin_macro] which declares different name {}",
-                            mac.name.display(self.def_collector.db.upcast(), Edition::LATEST),
-                            name.display(self.def_collector.db.upcast(), Edition::LATEST),
+                            mac.name.display(self.def_collector.db, Edition::LATEST),
+                            name.display(self.def_collector.db, Edition::LATEST),
                         );
                         helpers_opt = Some(helpers);
                     }
@@ -2424,7 +2422,7 @@ impl ModCollector<'_, '_> {
         let mut eager_callback_buffer = vec![];
         // Case 1: try to resolve macro calls with single-segment name and expand macro_rules
         if let Ok(res) = macro_call_as_call_id_with_eager(
-            db.upcast(),
+            db,
             ast_id.ast_id,
             &ast_id.path,
             ctxt,

@@ -1166,7 +1166,7 @@ fn next_space_for_fn_in_module(
     target_module: hir::Module,
 ) -> (FileId, GeneratedFunctionTarget) {
     let module_source = target_module.definition_source(db);
-    let file = module_source.file_id.original_file(db.upcast());
+    let file = module_source.file_id.original_file(db);
     let assist_item = match &module_source.value {
         hir::ModuleSource::SourceFile(it) => match it.items().last() {
             Some(last_item) => GeneratedFunctionTarget::AfterItem(last_item.syntax().clone()),

@@ -175,7 +175,7 @@ fn make_ty(
     edition: Edition,
 ) -> ast::Type {
     let ty_str = match ty.as_adt() {
-        Some(adt) => adt.name(db).display(db.upcast(), edition).to_string(),
+        Some(adt) => adt.name(db).display(db, edition).to_string(),
         None => {
             ty.display_source_code(db, module.into(), false).ok().unwrap_or_else(|| "_".to_owned())
         }

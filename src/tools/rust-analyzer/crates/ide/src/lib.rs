@@ -66,8 +66,7 @@ use hir::{ChangeWithProcMacros, sym};
 use ide_db::{
     FxHashMap, FxIndexSet, LineIndexDatabase,
     base_db::{
-        CrateOrigin, CrateWorkspaceData, Env, FileSet, RootQueryDb, SourceDatabase, Upcast,
-        VfsPath,
+        CrateOrigin, CrateWorkspaceData, Env, FileSet, RootQueryDb, SourceDatabase, VfsPath,
         salsa::{AsDynDatabase, Cancelled},
     },
     prime_caches, symbol_index,
@@ -623,10 +622,7 @@ impl Analysis {
 
     /// Returns crates that this file *might* belong to.
     pub fn relevant_crates_for(&self, file_id: FileId) -> Cancellable<Vec<Crate>> {
-        self.with_db(|db| {
-            let db = Upcast::<dyn RootQueryDb>::upcast(db);
-            db.relevant_crates(file_id).iter().copied().collect()
-        })
+        self.with_db(|db| db.relevant_crates(file_id).iter().copied().collect())
     }
 
     /// Returns the edition of the given crate.

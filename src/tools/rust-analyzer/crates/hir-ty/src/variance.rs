@@ -45,7 +45,7 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Ar
         _ => return None,
     }
 
-    let generics = generics(db.upcast(), def);
+    let generics = generics(db, def);
     let count = generics.len();
     if count == 0 {
         return None;
@@ -60,7 +60,7 @@ pub(crate) fn variances_of_cycle(
     _cycle: &Cycle,
     def: GenericDefId,
 ) -> Option<Arc<[Variance]>> {
-    let generics = generics(db.upcast(), def);
+    let generics = generics(db, def);
     let count = generics.len();
 
     if count == 0 {

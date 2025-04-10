@@ -248,11 +248,8 @@ fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef
     let mut names_in_scope = vec![];
     semantics_scope.process_all_names(&mut |name, _| {
         names_in_scope.push(
-            name.display(
-                semantics_scope.db.upcast(),
-                semantics_scope.krate().edition(semantics_scope.db),
-            )
-            .to_string(),
+            name.display(semantics_scope.db, semantics_scope.krate().edition(semantics_scope.db))
+                .to_string(),
         )
     });
 

@@ -87,7 +87,7 @@ pub(crate) use closure::{CaptureKind, CapturedItem, CapturedItemWithoutTy};
 /// The entry point of type inference.
 pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
     let _p = tracing::info_span!("infer_query").entered();
-    let resolver = def.resolver(db.upcast());
+    let resolver = def.resolver(db);
     let body = db.body(def);
     let mut ctx = InferenceContext::new(db, def, &body, resolver);
 
@@ -99,7 +99,7 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
         DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_signature(s)),
         DefWithBodyId::VariantId(v) => {
             ctx.return_ty = TyBuilder::builtin(
-                match db.enum_signature(v.lookup(db.upcast()).parent).variant_body_type() {
+                match db.enum_signature(v.lookup(db).parent).variant_body_type() {
                     hir_def::layout::IntegerType::Pointer(signed) => match signed {
                         true => BuiltinType::Int(BuiltinInt::Isize),
                         false => BuiltinType::Uint(BuiltinUint::Usize),
@@ -702,10 +702,10 @@ impl<'a> InferenceContext<'a> {
                 DefWithBodyId::FunctionId(it) => it.into(),
                 DefWithBodyId::StaticId(it) => it.into(),
                 DefWithBodyId::ConstId(it) => it.into(),
-                DefWithBodyId::VariantId(it) => it.lookup(db.upcast()).parent.into(),
+                DefWithBodyId::VariantId(it) => it.lookup(db).parent.into(),
             },
             body,
-            traits_in_scope: resolver.traits_in_scope(db.upcast()),
+            traits_in_scope: resolver.traits_in_scope(db),
             resolver,
             diverges: Diverges::Maybe,
             breakables: Vec::new(),
@@ -721,7 +721,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     pub(crate) fn generics(&self) -> &Generics {
-        self.generics.get_or_init(|| crate::generics::generics(self.db.upcast(), self.generic_def))
+        self.generics.get_or_init(|| crate::generics::generics(self.db, self.generic_def))
     }
 
     // FIXME: This function should be private in module. It is currently only used in the consteval, since we need
@@ -1470,7 +1470,7 @@ impl<'a> InferenceContext<'a> {
     ) -> Ty {
         match assoc_ty {
             Some(res_assoc_ty) => {
-                let trait_ = match res_assoc_ty.lookup(self.db.upcast()).container {
+                let trait_ = match res_assoc_ty.lookup(self.db).container {
                     hir_def::ItemContainerId::TraitId(trait_) => trait_,
                     _ => panic!("resolve_associated_type called with non-associated type"),
                 };
@@ -1523,7 +1523,7 @@ impl<'a> InferenceContext<'a> {
                     ValueNs::EnumVariantId(var) => {
                         let substs = path_ctx.substs_from_path(var.into(), true);
                         drop(ctx);
-                        let ty = self.db.ty(var.lookup(self.db.upcast()).parent.into());
+                        let ty = self.db.ty(var.lookup(self.db).parent.into());
                         let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                         return (ty, Some(var.into()));
                     }
@@ -1566,12 +1566,12 @@ impl<'a> InferenceContext<'a> {
             TypeNs::EnumVariantId(var) => {
                 let substs = path_ctx.substs_from_path(var.into(), true);
                 drop(ctx);
-                let ty = self.db.ty(var.lookup(self.db.upcast()).parent.into());
+                let ty = self.db.ty(var.lookup(self.db).parent.into());
                 let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                 forbid_unresolved_segments((ty, Some(var.into())), unresolved)
             }
             TypeNs::SelfType(impl_id) => {
-                let generics = crate::generics::generics(self.db.upcast(), impl_id.into());
+                let generics = crate::generics::generics(self.db, impl_id.into());
                 let substs = generics.placeholder_subst(self.db);
                 let mut ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
 
@@ -1757,7 +1757,7 @@ impl<'a> InferenceContext<'a> {
         let ItemContainerId::TraitId(trait_) = self
             .resolve_lang_item(LangItem::IntoFutureIntoFuture)?
             .as_function()?
-            .lookup(self.db.upcast())
+            .lookup(self.db)
             .container
         else {
             return None;

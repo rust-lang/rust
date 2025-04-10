@@ -121,7 +121,7 @@ pub(super) fn attr_macro_as_call_id(
     };
 
     def.make_call(
-        db.upcast(),
+        db,
         krate,
         MacroCallKind::Attr {
             ast_id: item_attr.ast_id,
@@ -146,7 +146,7 @@ pub(super) fn derive_macro_as_call_id(
         .filter(|(_, def_id)| def_id.is_derive())
         .ok_or_else(|| UnresolvedMacro { path: item_attr.path.as_ref().clone() })?;
     let call_id = def_id.make_call(
-        db.upcast(),
+        db,
         krate,
         MacroCallKind::Derive {
             ast_id: item_attr.ast_id,

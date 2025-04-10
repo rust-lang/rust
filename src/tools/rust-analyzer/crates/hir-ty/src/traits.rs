@@ -117,7 +117,7 @@ pub(crate) fn trait_solve_query(
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::Implemented(it))) => db
             .trait_signature(it.hir_trait_id())
             .name
-            .display(db.upcast(), Edition::LATEST)
+            .display(db, Edition::LATEST)
             .to_string(),
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_owned(),
         _ => "??".to_owned(),

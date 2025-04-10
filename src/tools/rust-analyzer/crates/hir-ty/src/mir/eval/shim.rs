@@ -63,10 +63,10 @@ impl Evaluator<'_> {
             // Keep this around for a bit until extern "rustc-intrinsic" abis are no longer used
             || (match &function_data.abi {
                 Some(abi) => *abi == sym::rust_dash_intrinsic,
-                None => match def.lookup(self.db.upcast()).container {
+                None => match def.lookup(self.db).container {
                     hir_def::ItemContainerId::ExternBlockId(block) => {
-                        let id = block.lookup(self.db.upcast()).id;
-                        id.item_tree(self.db.upcast())[id.value].abi.as_ref()
+                        let id = block.lookup(self.db).id;
+                        id.item_tree(self.db)[id.value].abi.as_ref()
                             == Some(&sym::rust_dash_intrinsic)
                     }
                     _ => false,
@@ -85,10 +85,10 @@ impl Evaluator<'_> {
                     || attrs.by_key(&sym::rustc_intrinsic_must_be_overridden).exists(),
             );
         }
-        let is_extern_c = match def.lookup(self.db.upcast()).container {
+        let is_extern_c = match def.lookup(self.db).container {
             hir_def::ItemContainerId::ExternBlockId(block) => {
-                let id = block.lookup(self.db.upcast()).id;
-                id.item_tree(self.db.upcast())[id.value].abi.as_ref() == Some(&sym::C)
+                let id = block.lookup(self.db).id;
+                id.item_tree(self.db)[id.value].abi.as_ref() == Some(&sym::C)
             }
             _ => false,
         };
@@ -124,7 +124,7 @@ impl Evaluator<'_> {
             destination.write_from_bytes(self, &result)?;
             return Ok(true);
         }
-        if let ItemContainerId::TraitId(t) = def.lookup(self.db.upcast()).container {
+        if let ItemContainerId::TraitId(t) = def.lookup(self.db).container {
             if self.db.lang_attr(t.into()) == Some(LangItem::Clone) {
                 let [self_ty] = generic_args.as_slice(Interner) else {
                     not_supported!("wrong generic arg count for clone");
@@ -154,8 +154,7 @@ impl Evaluator<'_> {
     ) -> Result<Option<FunctionId>> {
         // `PanicFmt` is redirected to `ConstPanicFmt`
         if let Some(LangItem::PanicFmt) = self.db.lang_attr(def.into()) {
-            let resolver =
-                self.db.crate_def_map(self.crate_id).crate_root().resolver(self.db.upcast());
+            let resolver = self.db.crate_def_map(self.crate_id).crate_root().resolver(self.db);
 
             let Some(hir_def::lang_item::LangItemTarget::Function(const_panic_fmt)) =
                 self.db.lang_item(resolver.krate(), LangItem::ConstPanicFmt)
@@ -828,14 +827,14 @@ impl Evaluator<'_> {
                 };
                 let ty_name = match ty.display_source_code(
                     self.db,
-                    locals.body.owner.module(self.db.upcast()),
+                    locals.body.owner.module(self.db),
                     true,
                 ) {
                     Ok(ty_name) => ty_name,
                     // Fallback to human readable display in case of `Err`. Ideally we want to use `display_source_code` to
                     // render full paths.
                     Err(_) => {
-                        let krate = locals.body.owner.krate(self.db.upcast());
+                        let krate = locals.body.owner.krate(self.db);
                         ty.display(self.db, DisplayTarget::from_crate(self.db, krate)).to_string()
                     }
                 };

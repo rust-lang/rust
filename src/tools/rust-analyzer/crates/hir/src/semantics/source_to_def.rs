@@ -85,7 +85,6 @@
 //! active crate for a given position, and then provide an API to resolve all
 //! syntax nodes against this specific crate.
 
-use base_db::{RootQueryDb, Upcast};
 use either::Either;
 use hir_def::{
     AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
@@ -144,7 +143,7 @@ impl SourceToDefCache {
             return m;
         }
         self.included_file_cache.insert(file, None);
-        for &crate_id in Upcast::<dyn RootQueryDb>::upcast(db).relevant_crates(file.into()).iter() {
+        for &crate_id in db.relevant_crates(file.into()).iter() {
             db.include_macro_invoc(crate_id).iter().for_each(|&(macro_call_id, file_id)| {
                 self.included_file_cache.insert(file_id, Some(MacroFileId { macro_call_id }));
             });
@@ -158,7 +157,7 @@ impl SourceToDefCache {
         macro_file: MacroFileId,
     ) -> &ExpansionInfo {
         self.expansion_info_cache.entry(macro_file).or_insert_with(|| {
-            let exp_info = macro_file.expansion_info(db.upcast());
+            let exp_info = macro_file.expansion_info(db);
 
             let InMacroFile { file_id, value } = exp_info.expanded();
             Self::cache(&mut self.root_to_file_cache, value, file_id.into());
@@ -179,8 +178,7 @@ impl SourceToDefCtx<'_, '_> {
         self.cache.file_to_def_cache.entry(file).or_insert_with(|| {
             let mut mods = SmallVec::new();
 
-            for &crate_id in Upcast::<dyn RootQueryDb>::upcast(self.db).relevant_crates(file).iter()
-            {
+            for &crate_id in self.db.relevant_crates(file).iter() {
                 // Note: `mod` declarations in block modules cannot be supported here
                 let crate_def_map = self.db.crate_def_map(crate_id);
                 let n_mods = mods.len();
@@ -202,10 +200,10 @@ impl SourceToDefCtx<'_, '_> {
                                     .insert(file_id, Some(MacroFileId { macro_call_id }));
                                 modules(
                                     macro_call_id
-                                        .lookup(self.db.upcast())
+                                        .lookup(self.db)
                                         .kind
                                         .file_id()
-                                        .original_file(self.db.upcast())
+                                        .original_file(self.db)
                                         .file_id(),
                                 )
                             }),
@@ -235,20 +233,20 @@ impl SourceToDefCtx<'_, '_> {
                 self.module_to_def(parent_declaration.as_ref())
             }
             None => {
-                let file_id = src.file_id.original_file(self.db.upcast());
+                let file_id = src.file_id.original_file(self.db);
                 self.file_to_def(file_id.file_id()).first().copied()
             }
         }?;
 
         let child_name = src.value.name()?.as_name();
-        let def_map = parent_module.def_map(self.db.upcast());
+        let def_map = parent_module.def_map(self.db);
         let &child_id = def_map[parent_module.local_id].children.get(&child_name)?;
         Some(def_map.module_id(child_id))
     }
 
     pub(super) fn source_file_to_def(&mut self, src: InFile<&ast::SourceFile>) -> Option<ModuleId> {
         let _p = tracing::info_span!("source_file_to_def").entered();
-        let file_id = src.file_id.original_file(self.db.upcast());
+        let file_id = src.file_id.original_file(self.db);
         self.file_to_def(file_id.file_id()).first().copied()
     }
 
@@ -528,10 +526,8 @@ impl SourceToDefCtx<'_, '_> {
             return Some(def);
         }
 
-        let def = self
-            .file_to_def(src.file_id.original_file(self.db.upcast()).file_id())
-            .first()
-            .copied()?;
+        let def =
+            self.file_to_def(src.file_id.original_file(self.db).file_id()).first().copied()?;
         Some(def.into())
     }
 
@@ -754,7 +750,6 @@ impl_from! {
 impl ChildContainer {
     fn child_by_source(self, db: &dyn HirDatabase, file_id: HirFileId) -> DynMap {
         let _p = tracing::info_span!("ChildContainer::child_by_source").entered();
-        let db = db.upcast();
         match self {
             ChildContainer::DefWithBodyId(it) => it.child_by_source(db, file_id),
             ChildContainer::ModuleId(it) => it.child_by_source(db, file_id),

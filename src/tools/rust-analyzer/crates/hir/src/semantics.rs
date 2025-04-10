@@ -349,7 +349,7 @@ impl<'db> SemanticsImpl<'db> {
                     ModuleOrigin::File { declaration, declaration_tree_id, .. } => {
                         let file_id = declaration_tree_id.file_id();
                         let in_file = InFile::new(file_id, declaration);
-                        let node = in_file.to_node(self.db.upcast());
+                        let node = in_file.to_node(self.db);
                         let root = find_root(node.syntax());
                         self.cache(root, file_id);
                         Some(in_file.with_value(node.syntax().clone()))
@@ -358,10 +358,8 @@ impl<'db> SemanticsImpl<'db> {
                 }
             }
             HirFileIdRepr::MacroFile(macro_file) => {
-                let node = self
-                    .db
-                    .lookup_intern_macro_call(macro_file.macro_call_id)
-                    .to_node(self.db.upcast());
+                let node =
+                    self.db.lookup_intern_macro_call(macro_file.macro_call_id).to_node(self.db);
                 let root = find_root(&node.value);
                 self.cache(root, node.file_id);
                 Some(node)
@@ -372,8 +370,8 @@ impl<'db> SemanticsImpl<'db> {
     /// Returns the `SyntaxNode` of the module. If this is a file module, returns
     /// the `SyntaxNode` of the *definition* file, not of the *declaration*.
     pub fn module_definition_node(&self, module: Module) -> InFile<SyntaxNode> {
-        let def_map = module.id.def_map(self.db.upcast());
-        let definition = def_map[module.id.local_id].origin.definition_source(self.db.upcast());
+        let def_map = module.id.def_map(self.db);
+        let definition = def_map[module.id.local_id].origin.definition_source(self.db);
         let definition = definition.map(|it| it.node());
         let root_node = find_root(&definition.value);
         self.cache(root_node, definition.file_id);
@@ -412,7 +410,7 @@ impl<'db> SemanticsImpl<'db> {
                 self.db.lookup_intern_macro_call(macro_file.macro_call_id).krate
             }
         };
-        hir_expand::check_cfg_attr_value(self.db.upcast(), attr, krate)
+        hir_expand::check_cfg_attr_value(self.db, attr, krate)
     }
 
     /// Expands the macro if it isn't one of the built-in ones that expand to custom syntax or dummy
@@ -565,7 +563,7 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call = InFile::new(analyzer.file_id, actual_macro_call);
         let macro_file = analyzer.expansion(macro_call)?;
         hir_expand::db::expand_speculative(
-            self.db.upcast(),
+            self.db,
             macro_file.macro_call_id,
             speculative_args.syntax(),
             token_to_map,
@@ -579,7 +577,7 @@ impl<'db> SemanticsImpl<'db> {
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         hir_expand::db::expand_speculative(
-            self.db.upcast(),
+            self.db,
             macro_file.macro_call_id,
             speculative_args,
             token_to_map,
@@ -597,7 +595,7 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call = self.wrap_node_infile(actual_macro_call.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(macro_call.as_ref()))?;
         hir_expand::db::expand_speculative(
-            self.db.upcast(),
+            self.db,
             macro_call_id,
             speculative_args.syntax(),
             token_to_map,
@@ -616,7 +614,7 @@ impl<'db> SemanticsImpl<'db> {
             ctx.attr_to_derive_macro_call(attr.with_value(&adt), attr).map(|(_, it, _)| it)
         })?;
         hir_expand::db::expand_speculative(
-            self.db.upcast(),
+            self.db,
             macro_call_id,
             speculative_args.syntax(),
             token_to_map,
@@ -627,7 +625,7 @@ impl<'db> SemanticsImpl<'db> {
     /// and returns the conflicting locals.
     pub fn rename_conflicts(&self, to_be_renamed: &Local, new_name: &str) -> Vec<Local> {
         let body = self.db.body(to_be_renamed.parent);
-        let resolver = to_be_renamed.parent.resolver(self.db.upcast());
+        let resolver = to_be_renamed.parent.resolver(self.db);
         let starting_expr =
             body.binding_owners.get(&to_be_renamed.binding_id).copied().unwrap_or(body.body_expr);
         let mut visitor = RenameConflictsVisitor {
@@ -891,7 +889,7 @@ impl<'db> SemanticsImpl<'db> {
         let token = self.wrap_token_infile(token);
         if let Ok(token) = token.clone().into_real_file() {
             self.descend_into_macros_impl(token, &mut |t, ctx| {
-                if !ctx.is_opaque(self.db.upcast()) {
+                if !ctx.is_opaque(self.db) {
                     // Don't descend into opaque contexts
                     res.push(t);
                 }
@@ -924,7 +922,7 @@ impl<'db> SemanticsImpl<'db> {
             let any_ident_match = || kind.is_any_identifier() && value.kind().is_any_identifier();
             let matches = (kind == mapped_kind || any_ident_match())
                 && text == value.text()
-                && !ctx.is_opaque(self.db.upcast());
+                && !ctx.is_opaque(self.db);
             if matches {
                 r.push(value);
             }
@@ -1097,7 +1095,7 @@ impl<'db> SemanticsImpl<'db> {
                             filter_duplicates(tokens, text_range);
 
                             process_expansion_for_token(&mut stack, file_id).or(file_id
-                                .eager_arg(self.db.upcast())
+                                .eager_arg(self.db)
                                 .and_then(|arg| {
                                     // also descend into eager expansions
                                     process_expansion_for_token(&mut stack, arg.as_macro_file())
@@ -1229,21 +1227,19 @@ impl<'db> SemanticsImpl<'db> {
     /// macro file the node resides in.
     pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
         let node = self.find_file(node);
-        node.original_file_range_rooted(self.db.upcast())
+        node.original_file_range_rooted(self.db)
     }
 
     /// Attempts to map the node out of macro expanded files returning the original file range.
     pub fn original_range_opt(&self, node: &SyntaxNode) -> Option<FileRange> {
         let node = self.find_file(node);
-        node.original_file_range_opt(self.db.upcast())
-            .filter(|(_, ctx)| ctx.is_root())
-            .map(TupleExt::head)
+        node.original_file_range_opt(self.db).filter(|(_, ctx)| ctx.is_root()).map(TupleExt::head)
     }
 
     /// Attempts to map the node out of macro expanded files.
     /// This only work for attribute expansions, as other ones do not have nodes as input.
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
-        self.wrap_node_infile(node).original_ast_node_rooted(self.db.upcast()).map(
+        self.wrap_node_infile(node).original_ast_node_rooted(self.db).map(
             |InRealFile { file_id, value }| {
                 self.cache(find_root(value.syntax()), file_id.into());
                 value
@@ -1255,7 +1251,7 @@ impl<'db> SemanticsImpl<'db> {
     /// This only work for attribute expansions, as other ones do not have nodes as input.
     pub fn original_syntax_node_rooted(&self, node: &SyntaxNode) -> Option<SyntaxNode> {
         let InFile { file_id, .. } = self.find_file(node);
-        InFile::new(file_id, node).original_syntax_node_rooted(self.db.upcast()).map(
+        InFile::new(file_id, node).original_syntax_node_rooted(self.db).map(
             |InRealFile { file_id, value }| {
                 self.cache(find_root(&value), file_id.into());
                 value
@@ -1266,7 +1262,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
         let root = self.parse_or_expand(src.file_id);
         let node = src.map(|it| it.to_node(&root));
-        node.as_ref().original_file_range_rooted(self.db.upcast())
+        node.as_ref().original_file_range_rooted(self.db)
     }
 
     fn token_ancestors_with_macros(
@@ -1338,7 +1334,7 @@ impl<'db> SemanticsImpl<'db> {
             hir_def::type_ref::TypeRef::Path(path) => path,
             _ => return None,
         };
-        match analyze.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), path)? {
+        match analyze.resolver.resolve_path_in_type_ns_fully(self.db, path)? {
             TypeNs::TraitId(trait_id) => Some(trait_id.into()),
             _ => None,
         }
@@ -1613,7 +1609,7 @@ impl<'db> SemanticsImpl<'db> {
         path: &ModPath,
     ) -> Option<impl Iterator<Item = ItemInNs>> {
         let analyze = self.analyze(scope)?;
-        let items = analyze.resolver.resolve_module_path_in_items(self.db.upcast(), path);
+        let items = analyze.resolver.resolve_module_path_in_items(self.db, path);
         Some(items.iter_items().map(|(item, _)| item.into()))
     }
 
@@ -1754,7 +1750,7 @@ impl<'db> SemanticsImpl<'db> {
             ChildContainer::GenericDefId(it) => {
                 return Some(SourceAnalyzer::new_generic_def(self.db, it, node, offset));
             }
-            ChildContainer::ModuleId(it) => it.resolver(self.db.upcast()),
+            ChildContainer::ModuleId(it) => it.resolver(self.db),
         };
         Some(SourceAnalyzer::new_for_resolver(resolver, node))
     }
@@ -1867,7 +1863,7 @@ fn macro_call_to_macro_id(
 ) -> Option<MacroId> {
     use span::HirFileIdRepr;
 
-    let db: &dyn ExpandDatabase = ctx.db.upcast();
+    let db: &dyn ExpandDatabase = ctx.db;
     let loc = db.lookup_intern_macro_call(macro_call_id);
 
     match loc.def.ast_id() {
@@ -2002,12 +1998,12 @@ impl SemanticsScope<'_> {
     /// Note: `VisibleTraits` should be treated as an opaque type, passed into `Type
     pub fn visible_traits(&self) -> VisibleTraits {
         let resolver = &self.resolver;
-        VisibleTraits(resolver.traits_in_scope(self.db.upcast()))
+        VisibleTraits(resolver.traits_in_scope(self.db))
     }
 
     /// Calls the passed closure `f` on all names in scope.
     pub fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
-        let scope = self.resolver.names_in_scope(self.db.upcast());
+        let scope = self.resolver.names_in_scope(self.db);
         for (name, entries) in scope {
             for entry in entries {
                 let def = match entry {
@@ -2071,7 +2067,7 @@ impl SemanticsScope<'_> {
     }
 
     pub fn resolve_mod_path(&self, path: &ModPath) -> impl Iterator<Item = ItemInNs> + use<> {
-        let items = self.resolver.resolve_module_path_in_items(self.db.upcast(), path);
+        let items = self.resolver.resolve_module_path_in_items(self.db, path);
         items.iter_items().map(|(item, _)| item.into())
     }
 
@@ -2100,7 +2096,7 @@ impl SemanticsScope<'_> {
     }
 
     pub fn extern_crate_decls(&self) -> impl Iterator<Item = Name> + '_ {
-        self.resolver.extern_crate_decls_in_scope(self.db.upcast())
+        self.resolver.extern_crate_decls_in_scope(self.db)
     }
 
     pub fn has_same_self_type(&self, other: &SemanticsScope<'_>) -> bool {
@@ -2136,7 +2132,7 @@ impl RenameConflictsVisitor<'_> {
             if let Some(name) = path.as_ident() {
                 if *name.symbol() == self.new_name {
                     if let Some(conflicting) = self.resolver.rename_will_conflict_with_renamed(
-                        self.db.upcast(),
+                        self.db,
                         name,
                         path,
                         self.body.expr_or_pat_path_hygiene(node),
@@ -2147,7 +2143,7 @@ impl RenameConflictsVisitor<'_> {
                 } else if *name.symbol() == self.old_name {
                     if let Some(conflicting) =
                         self.resolver.rename_will_conflict_with_another_variable(
-                            self.db.upcast(),
+                            self.db,
                             name,
                             path,
                             self.body.expr_or_pat_path_hygiene(node),
@@ -2165,12 +2161,12 @@ impl RenameConflictsVisitor<'_> {
     fn rename_conflicts(&mut self, expr: ExprId) {
         match &self.body[expr] {
             Expr::Path(path) => {
-                let guard = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr);
+                let guard = self.resolver.update_to_inner_scope(self.db, self.owner, expr);
                 self.resolve_path(expr.into(), path);
                 self.resolver.reset_to_guard(guard);
             }
             &Expr::Assignment { target, .. } => {
-                let guard = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr);
+                let guard = self.resolver.update_to_inner_scope(self.db, self.owner, expr);
                 self.body.walk_pats(target, &mut |pat| {
                     if let Pat::Path(path) = &self.body[pat] {
                         self.resolve_path(pat.into(), path);
