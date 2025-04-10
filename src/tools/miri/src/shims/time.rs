@@ -219,16 +219,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let filetime = this.deref_pointer_as(LPFILETIME_op, this.windows_ty_layout("FILETIME"))?;
 
-        let NANOS_PER_SEC = this.eval_windows_u64("time", "NANOS_PER_SEC");
-        let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC");
-        let INTERVALS_TO_UNIX_EPOCH = this.eval_windows_u64("time", "INTERVALS_TO_UNIX_EPOCH");
-        let NANOS_PER_INTERVAL = NANOS_PER_SEC / INTERVALS_PER_SEC;
-        let SECONDS_TO_UNIX_EPOCH = INTERVALS_TO_UNIX_EPOCH / INTERVALS_PER_SEC;
-
-        let duration = system_time_to_duration(&SystemTime::now())?
-            + Duration::from_secs(SECONDS_TO_UNIX_EPOCH);
-        let duration_ticks = u64::try_from(duration.as_nanos() / u128::from(NANOS_PER_INTERVAL))
-            .map_err(|_| err_unsup_format!("programs running more than 2^64 Windows ticks after the Windows epoch are not supported"))?;
+        let duration = this.system_time_since_windows_epoch(&SystemTime::now())?;
+        let duration_ticks = this.windows_ticks_for(duration)?;
 
         let dwLowDateTime = u32::try_from(duration_ticks & 0x00000000FFFFFFFF).unwrap();
         let dwHighDateTime = u32::try_from((duration_ticks & 0xFFFFFFFF00000000) >> 32).unwrap();
@@ -279,6 +271,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             &this.deref_pointer_as(lpFrequency_op, this.machine.layouts.u64)?,
         )?;
         interp_ok(Scalar::from_i32(-1)) // Return non-zero on success
+    }
+
+    #[allow(non_snake_case, clippy::arithmetic_side_effects)]
+    fn system_time_since_windows_epoch(&self, time: &SystemTime) -> InterpResult<'tcx, Duration> {
+        let this = self.eval_context_ref();
+
+        let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC");
+        let INTERVALS_TO_UNIX_EPOCH = this.eval_windows_u64("time", "INTERVALS_TO_UNIX_EPOCH");
+        let SECONDS_TO_UNIX_EPOCH = INTERVALS_TO_UNIX_EPOCH / INTERVALS_PER_SEC;
+
+        interp_ok(system_time_to_duration(time)? + Duration::from_secs(SECONDS_TO_UNIX_EPOCH))
+    }
+
+    #[allow(non_snake_case, clippy::arithmetic_side_effects)]
+    fn windows_ticks_for(&self, duration: Duration) -> InterpResult<'tcx, u64> {
+        let this = self.eval_context_ref();
+
+        let NANOS_PER_SEC = this.eval_windows_u64("time", "NANOS_PER_SEC");
+        let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC");
+        let NANOS_PER_INTERVAL = NANOS_PER_SEC / INTERVALS_PER_SEC;
+
+        let ticks = u64::try_from(duration.as_nanos() / u128::from(NANOS_PER_INTERVAL))
+            .map_err(|_| err_unsup_format!("programs running more than 2^64 Windows ticks after the Windows epoch are not supported"))?;
+        interp_ok(ticks)
     }
 
     fn mach_absolute_time(&self) -> InterpResult<'tcx, Scalar> {
