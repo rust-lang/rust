@@ -1,5 +1,6 @@
 //! Code for projecting associated types out of trait references.
 
+use std::iter::Extend;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::sso::SsoHashSet;
@@ -65,6 +66,7 @@ enum ProjectionCandidate<'tcx> {
     Select(Selection<'tcx>),
 }
 
+#[derive(Debug)]
 enum ProjectionCandidateSet<'tcx> {
     None,
     Single(ProjectionCandidate<'tcx>),
@@ -648,15 +650,26 @@ fn project<'cx, 'tcx>(
     }
 
     let mut candidates = ProjectionCandidateSet::None;
+    let mut derived_obligations = PredicateObligations::default();
 
     // Make sure that the following procedures are kept in order. ParamEnv
     // needs to be first because it has highest priority, and Select checks
     // the return value of push_candidate which assumes it's ran at last.
-    assemble_candidates_from_param_env(selcx, obligation, &mut candidates);
+    assemble_candidates_from_param_env(
+        selcx,
+        obligation,
+        &mut candidates,
+        &mut derived_obligations,
+    );
 
     assemble_candidates_from_trait_def(selcx, obligation, &mut candidates);
 
-    assemble_candidates_from_object_ty(selcx, obligation, &mut candidates);
+    assemble_candidates_from_object_ty(
+        selcx,
+        obligation,
+        &mut candidates,
+        &mut derived_obligations,
+    );
 
     if let ProjectionCandidateSet::Single(ProjectionCandidate::Object(_)) = candidates {
         // Avoid normalization cycle from selection (see
@@ -669,7 +682,13 @@ fn project<'cx, 'tcx>(
 
     match candidates {
         ProjectionCandidateSet::Single(candidate) => {
-            confirm_candidate(selcx, obligation, candidate)
+            confirm_candidate(selcx, obligation, candidate).map(move |proj| {
+                if let Projected::Progress(progress) = proj {
+                    Projected::Progress(progress.with_addl_obligations(derived_obligations))
+                } else {
+                    proj
+                }
+            })
         }
         ProjectionCandidateSet::None => {
             let tcx = selcx.tcx();
@@ -691,6 +710,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
+    derived_obligations: &mut impl Extend<PredicateObligation<'tcx>>,
 ) {
     assemble_candidates_from_predicates(
         selcx,
@@ -698,7 +718,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
         candidate_set,
         ProjectionCandidate::ParamEnv,
         obligation.param_env.caller_bounds().iter(),
-        false,
+        derived_obligations,
     );
 }
 
@@ -712,6 +732,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
 /// ```
 ///
 /// Here, for example, we could conclude that the result is `i32`.
+#[instrument(level = "debug", skip(selcx))]
 fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
@@ -774,6 +795,7 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
+    derived_obligations: &mut impl Extend<PredicateObligation<'tcx>>,
 ) {
     debug!("assemble_candidates_from_object_ty(..)");
 
@@ -806,21 +828,18 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
         candidate_set,
         ProjectionCandidate::Object,
         env_predicates,
-        false,
+        derived_obligations,
     );
 }
 
-#[instrument(
-    level = "debug",
-    skip(selcx, candidate_set, ctor, env_predicates, potentially_unnormalized_candidates)
-)]
+#[instrument(level = "debug", skip(selcx, env_predicates, derived_obligations))]
 fn assemble_candidates_from_predicates<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
     ctor: fn(ty::PolyProjectionPredicate<'tcx>) -> ProjectionCandidate<'tcx>,
     env_predicates: impl Iterator<Item = ty::Clause<'tcx>>,
-    potentially_unnormalized_candidates: bool,
+    derived_obligations: &mut impl Extend<PredicateObligation<'tcx>>,
 ) {
     let infcx = selcx.infcx;
     let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
@@ -838,28 +857,39 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
                 continue;
             }
 
-            let is_match = infcx.probe(|_| {
-                selcx.match_projection_projections(
-                    obligation,
-                    data,
-                    potentially_unnormalized_candidates,
-                )
-            });
+            let is_match =
+                infcx.probe(|_| selcx.match_projection_projections(obligation, data, false));
 
             match is_match {
                 ProjectionMatchesProjection::Yes => {
-                    candidate_set.push_candidate(ctor(data));
-
-                    if potentially_unnormalized_candidates
-                        && !obligation.predicate.has_non_region_infer()
+                    debug!(?data, "push");
+                    if let ProjectionCandidateSet::Single(
+                        ProjectionCandidate::ParamEnv(proj)
+                        | ProjectionCandidate::Object(proj)
+                        | ProjectionCandidate::TraitDef(proj),
+                    ) = candidate_set
                     {
-                        // HACK: Pick the first trait def candidate for a fully
-                        // inferred predicate. This is to allow duplicates that
-                        // differ only in normalization.
-                        return;
+                        match infcx.commit_if_ok(|_| {
+                            infcx.at(&obligation.cause, obligation.param_env).eq_with_proj(
+                                DefineOpaqueTypes::No,
+                                data.term(),
+                                proj.term(),
+                            )
+                        }) {
+                            Ok(InferOk { value: (), obligations }) => {
+                                derived_obligations.extend(obligations);
+                            }
+                            Err(e) => {
+                                debug!(?e, "refuse to unify candidates");
+                                candidate_set.push_candidate(ctor(data));
+                            }
+                        }
+                    } else {
+                        candidate_set.push_candidate(ctor(data));
                     }
                 }
                 ProjectionMatchesProjection::Ambiguous => {
+                    debug!("mark ambiguous");
                     candidate_set.mark_ambiguous();
                 }
                 ProjectionMatchesProjection::No => {}
@@ -868,7 +898,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     }
 }
 
-#[instrument(level = "debug", skip(selcx, obligation, candidate_set))]
+#[instrument(level = "debug", skip(selcx))]
 fn assemble_candidates_from_impls<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,

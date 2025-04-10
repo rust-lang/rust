@@ -22,6 +22,11 @@ pub(crate) struct TypeRelating<'infcx, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     define_opaque_types: DefineOpaqueTypes,
 
+    /// This indicates whether the relation should
+    /// report obligations arising from equating aliasing terms
+    /// involving associated types, instead of rejection.
+    through_projections: bool,
+
     // Mutable fields.
     ambient_variance: ty::Variance,
     obligations: PredicateObligations<'tcx>,
@@ -67,7 +72,13 @@ impl<'infcx, 'tcx> TypeRelating<'infcx, 'tcx> {
             ambient_variance,
             obligations: PredicateObligations::new(),
             cache: Default::default(),
+            through_projections: false,
         }
+    }
+
+    pub(crate) fn through_projections(mut self, walk_through: bool) -> Self {
+        self.through_projections = walk_through;
+        self
     }
 
     pub(crate) fn into_obligations(self) -> PredicateObligations<'tcx> {
@@ -128,6 +139,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
         if self.cache.contains(&(self.ambient_variance, a, b)) {
             return Ok(a);
         }
+        let mut relate_result = a;
 
         match (a.kind(), b.kind()) {
             (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
@@ -201,6 +213,34 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
                 )?);
             }
 
+            (
+                ty::Alias(ty::Projection | ty::Opaque, _),
+                ty::Alias(ty::Projection | ty::Opaque, _),
+            ) => {
+                super_combine_tys(infcx, self, a, b)?;
+            }
+
+            (&ty::Alias(ty::Projection, ty::AliasTy { def_id, args, .. }), _)
+                if matches!(self.ambient_variance, ty::Variance::Invariant)
+                    && self.through_projections =>
+            {
+                self.register_predicates([ty::ProjectionPredicate {
+                    projection_term: ty::AliasTerm::new(self.cx(), def_id, args),
+                    term: b.into(),
+                }]);
+                relate_result = b;
+            }
+
+            (_, &ty::Alias(ty::Projection, ty::AliasTy { def_id, args, .. }))
+                if matches!(self.ambient_variance, ty::Variance::Invariant)
+                    && self.through_projections =>
+            {
+                self.register_predicates([ty::ProjectionPredicate {
+                    projection_term: ty::AliasTerm::new(self.cx(), def_id, args),
+                    term: a.into(),
+                }]);
+            }
+
             _ => {
                 super_combine_tys(infcx, self, a, b)?;
             }
@@ -208,7 +248,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
 
         assert!(self.cache.insert((self.ambient_variance, a, b)));
 
-        Ok(a)
+        Ok(relate_result)
     }
 
     #[instrument(skip(self), level = "trace")]
