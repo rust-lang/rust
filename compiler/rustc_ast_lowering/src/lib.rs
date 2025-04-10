@@ -2034,7 +2034,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_array_length_to_const_arg(&mut self, c: &AnonConst) -> &'hir hir::ConstArg<'hir> {
-        match c.value.kind {
+        // We cannot just match on `ExprKind::Underscore` as `(_)` is represented as
+        // `ExprKind::Paren(ExprKind::Underscore)` and should also be lowered to `GenericArg::Infer`
+        match c.value.peel_parens().kind {
             ExprKind::Underscore => {
                 if !self.tcx.features().generic_arg_infer() {
                     feature_err(
