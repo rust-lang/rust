@@ -906,7 +906,7 @@ LL | type TestAbiEqNonsense = (fn((str, str)), fn((str, str)));
    = help: the trait `Sized` is not implemented for `str`
    = note: only the last element of a tuple may have a dynamically sized type
 
-error: unrecognized field name ``
+error: unrecognized argument
   --> $DIR/debug.rs:56:13
    |
 LL | #[rustc_abi("assert_eq")]

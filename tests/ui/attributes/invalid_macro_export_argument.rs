@@ -11,7 +11,7 @@ macro_rules! a {
 }
 
 #[macro_export(not_local_inner_macros)]
-//[deny]~^ ERROR `not_local_inner_macros` isn't a valid `#[macro_export]` argument
+//[deny]~^ ERROR invalid `#[macro_export]` argument
 macro_rules! b {
     () => ()
 }
@@ -31,7 +31,7 @@ macro_rules! e {
 }
 
 #[macro_export("blah")]
-//[deny]~^ ERROR `` isn't a valid `#[macro_export]` argument
+//[deny]~^ ERROR invalid `#[macro_export]` argument
 macro_rules! f {
     () => ()
 }
