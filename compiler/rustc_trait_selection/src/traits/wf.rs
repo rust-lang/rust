@@ -197,7 +197,7 @@ pub fn clause_obligations<'tcx>(
         ty::ClauseKind::ConstEvaluatable(ct) => {
             wf.add_wf_preds_for_term(ct.into());
         }
-        ty::ClauseKind::UnstableFeature => {}
+        ty::ClauseKind::UnstableFeature(_) => {}
     }
 
     wf.normalize(infcx)
@@ -1088,7 +1088,7 @@ pub fn object_region_bounds<'tcx>(
                 | ty::ClauseKind::Projection(_)
                 | ty::ClauseKind::ConstArgHasType(_, _)
                 | ty::ClauseKind::WellFormed(_)
-                | ty::ClauseKind::UnstableFeature
+                | ty::ClauseKind::UnstableFeature(_)
                 | ty::ClauseKind::ConstEvaluatable(_) => None,
             }
         })

@@ -648,7 +648,7 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
             ClauseKind::HostEffect(..) => {
                 todo!()
             }
-            ClauseKind::UnstableFeature => {
+            ClauseKind::UnstableFeature(_) => {
                 todo!()
             }
         }

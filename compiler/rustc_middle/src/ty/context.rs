@@ -129,6 +129,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type FnInputTys = &'tcx [Ty<'tcx>];
     type ParamTy = ParamTy;
     type BoundTy = ty::BoundTy;
+    type Symbol = Symbol;
 
     type PlaceholderTy = ty::PlaceholderType;
     type ErrorGuaranteed = ErrorGuaranteed;
