@@ -1900,6 +1900,11 @@ rustc_queries! {
 
     // The macro which defines `rustc_metadata::provide_extern` depends on this query's name.
     // Changing the name should cause a compiler error, but in case that changes, be aware.
+    //
+    // The hash should not be calculated before the `analysis` pass is complete, specifically
+    // until `tcx.untracked().definitions.freeze()` has been called, otherwise if incremental
+    // compilation is enabled calculating this hash can freeze this structure too early in
+    // compilation and cause subsequent crashes when attempting to write to `definitions`
     query crate_hash(_: CrateNum) -> Svh {
         eval_always
         desc { "looking up the hash a crate" }
