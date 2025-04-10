@@ -1,4 +1,4 @@
-# `offset_of_slice`
+# `offset_of_enum`
 
 The tracking issue for this feature is: [#120141]
 
