@@ -858,6 +858,7 @@ fn test_local_changes_in_previous_upstream() {
         ctx.create_branch("feature");
         ctx.modify("d");
         ctx.commit();
+
         assert_eq!(
             ctx.check_modifications(&["a"], CiEnv::None),
             PathFreshness::LastModifiedUpstream { upstream: sha }
@@ -911,6 +912,76 @@ fn test_local_changes_negative_path() {
         assert_eq!(
             ctx.check_modifications(&[":!d", ":!x"], CiEnv::None),
             PathFreshness::HasLocalModifications { upstream }
+        );
+    });
+}
+
+#[test]
+fn test_local_changes_subtree_that_used_bors() {
+    // Here we simulate a very specific situation related to subtrees.
+    // When you have merge commits locally, we should ignore them w.r.t. the artifact download
+    // logic.
+    // The upstream search code currently uses a simple heuristic:
+    // - Find commits by bors (or in general an author with the merge commit e-mail)
+    // - Find the newest such commit
+    // This should make it work even for subtrees that:
+    // - Used bors in the past (so they have bors merge commits in their history).
+    // - Use Josh to merge rustc into the subtree, in a way that the rustc history is the second
+    // parent, not the first one.
+    //
+    // In addition, when searching for modified files, we cannot simply start from HEAD, because
+    // in this situation git wouldn't find the right commit.
+    //
+    // This test checks that this specific scenario will resolve to the right rustc commit, both
+    // when finding a modified file and when finding a non-existent file (which essentially means
+    // that we just lookup the most recent upstream commit).
+    //
+    // See https://github.com/rust-lang/rust/issues/101907#issuecomment-2697671282 for more details.
+    git_test(|ctx| {
+        ctx.create_upstream_merge(&["a"]);
+
+        // Start unrelated subtree history
+        ctx.run_git(&["switch", "--orphan", "subtree"]);
+        ctx.modify("bar");
+        ctx.commit();
+        // Now we need to emulate old bors commits in the subtree.
+        // Git only has a resolution of one second, which is a problem, since our git logic orders
+        // merge commits by their date.
+        // To avoid sleeping in the test, we modify the commit date to be forcefully in the past.
+        ctx.create_upstream_merge(&["subtree/a"]);
+        ctx.run_git(&["commit", "--amend", "--date", "Wed Feb 16 14:00 2011 +0100", "--no-edit"]);
+
+        // Merge the subtree history into rustc
+        ctx.switch_to_branch("main");
+        ctx.run_git(&["merge", "subtree", "--allow-unrelated"]);
+
+        // Create a rustc commit that modifies a path that we're interested in (`x`)
+        let upstream_1 = ctx.create_upstream_merge(&["x"]);
+        // Create another bors commit
+        let upstream_2 = ctx.create_upstream_merge(&["a"]);
+
+        ctx.switch_to_branch("subtree");
+
+        // Create a subtree branch
+        ctx.create_branch("subtree-pr");
+        ctx.modify("baz");
+        ctx.commit();
+        // We merge rustc into this branch (simulating a "subtree pull")
+        ctx.merge("main", "committer <committer@foo.bar>");
+
+        // And then merge that branch into the subtree (simulating a situation right before a
+        // "subtree push")
+        ctx.switch_to_branch("subtree");
+        ctx.merge("subtree-pr", "committer <committer@foo.bar>");
+
+        // And we want to check that we resolve to the right commits.
+        assert_eq!(
+            ctx.check_modifications(&["x"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: upstream_1 }
+        );
+        assert_eq!(
+            ctx.check_modifications(&["nonexistent"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: upstream_2 }
         );
     });
 }

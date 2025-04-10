@@ -53,12 +53,14 @@ impl GitCtx {
         modified_files: &[&str],
         author: &str,
     ) -> String {
+        let current_branch = self.get_current_branch();
+
         self.create_branch(branch);
         for file in modified_files {
             self.modify(file);
         }
         self.commit();
-        self.switch_to_branch("main");
+        self.switch_to_branch(&current_branch);
         self.merge(branch, author);
         self.run_git(&["branch", "-d", branch]);
         self.get_current_commit()
@@ -68,12 +70,16 @@ impl GitCtx {
         self.run_git(&["rev-parse", "HEAD"])
     }
 
+    pub fn get_current_branch(&self) -> String {
+        self.run_git(&["rev-parse", "--abbrev-ref", "HEAD"])
+    }
+
     pub fn merge(&self, branch: &str, author: &str) {
         self.run_git(&["merge", "--no-commit", "--no-ff", branch]);
         self.run_git(&[
             "commit".to_string(),
             "-m".to_string(),
-            "Merge of {branch}".to_string(),
+            format!("Merge of {branch} into {}", self.get_current_branch()),
             "--author".to_string(),
             author.to_string(),
         ]);
