@@ -30,4 +30,10 @@ macro_rules! e {
     () => ()
 }
 
+#[macro_export("blah")]
+//[deny]~^ ERROR `` isn't a valid `#[macro_export]` argument
+macro_rules! f {
+    () => ()
+}
+
 fn main() {}
