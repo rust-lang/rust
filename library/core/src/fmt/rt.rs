@@ -65,61 +65,67 @@ pub struct Argument<'a> {
     ty: ArgumentType<'a>,
 }
 
-#[rustc_diagnostic_item = "ArgumentMethods"]
-impl Argument<'_> {
-    #[inline]
-    const fn new<'a, T>(x: &'a T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'a> {
+macro_rules! argument_new {
+    ($t:ty, $x:expr, $f:expr) => {
         Argument {
             // INVARIANT: this creates an `ArgumentType<'a>` from a `&'a T` and
             // a `fn(&T, ...)`, so the invariant is maintained.
             ty: ArgumentType::Placeholder {
-                value: NonNull::from_ref(x).cast(),
+                value: NonNull::<$t>::from_ref($x).cast(),
                 // SAFETY: function pointers always have the same layout.
-                formatter: unsafe { mem::transmute(f) },
+                formatter: |ptr: NonNull<()>, fmt: &mut Formatter<'_>| {
+                    let func = $f;
+                    // SAFETY: This is the same type as the `value` field.
+                    let r = unsafe { ptr.cast::<$t>().as_ref() };
+                    (func)(r, fmt)
+                },
                 _lifetime: PhantomData,
             },
         }
-    }
+    };
+}
 
+#[rustc_diagnostic_item = "ArgumentMethods"]
+impl Argument<'_> {
     #[inline]
     pub fn new_display<T: Display>(x: &T) -> Argument<'_> {
-        Self::new(x, Display::fmt)
+        argument_new!(T, x, <T as Display>::fmt)
     }
     #[inline]
     pub fn new_debug<T: Debug>(x: &T) -> Argument<'_> {
-        Self::new(x, Debug::fmt)
+        argument_new!(T, x, <T as Debug>::fmt)
     }
     #[inline]
     pub fn new_debug_noop<T: Debug>(x: &T) -> Argument<'_> {
-        Self::new(x, |_, _| Ok(()))
+        argument_new!(T, x, |_: &T, _| Ok(()))
     }
     #[inline]
     pub fn new_octal<T: Octal>(x: &T) -> Argument<'_> {
-        Self::new(x, Octal::fmt)
+        argument_new!(T, x, <T as Octal>::fmt)
     }
     #[inline]
     pub fn new_lower_hex<T: LowerHex>(x: &T) -> Argument<'_> {
-        Self::new(x, LowerHex::fmt)
+        argument_new!(T, x, <T as LowerHex>::fmt)
     }
     #[inline]
     pub fn new_upper_hex<T: UpperHex>(x: &T) -> Argument<'_> {
-        Self::new(x, UpperHex::fmt)
+        argument_new!(T, x, <T as UpperHex>::fmt)
     }
     #[inline]
     pub fn new_pointer<T: Pointer>(x: &T) -> Argument<'_> {
-        Self::new(x, Pointer::fmt)
+        argument_new!(T, x, <T as Pointer>::fmt)
     }
     #[inline]
     pub fn new_binary<T: Binary>(x: &T) -> Argument<'_> {
-        Self::new(x, Binary::fmt)
+        argument_new!(T, x, <T as Binary>::fmt)
     }
     #[inline]
     pub fn new_lower_exp<T: LowerExp>(x: &T) -> Argument<'_> {
-        Self::new(x, LowerExp::fmt)
+        argument_new!(T, x, <T as LowerExp>::fmt)
     }
     #[inline]
     pub fn new_upper_exp<T: UpperExp>(x: &T) -> Argument<'_> {
-        Self::new(x, UpperExp::fmt)
+        argument_new!(T, x, <T as UpperExp>::fmt)
     }
     #[inline]
     #[track_caller]
@@ -135,11 +141,6 @@ impl Argument<'_> {
     /// # Safety
     ///
     /// This argument must actually be a placeholder argument.
-    ///
-    // FIXME: Transmuting formatter in new and indirectly branching to/calling
-    // it here is an explicit CFI violation.
-    #[allow(inline_no_sanitize)]
-    #[no_sanitize(cfi, kcfi)]
     #[inline]
     pub(super) unsafe fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self.ty {
