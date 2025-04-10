@@ -159,11 +159,7 @@ fn target_data_for_def(
         let in_file_syntax = source.syntax();
         let file_id = in_file_syntax.file_id;
         let range = in_file_syntax.value.text_range();
-        Some((
-            ast::AnyHasVisibility::new(source.value),
-            range,
-            file_id.original_file(db.upcast()).file_id(),
-        ))
+        Some((ast::AnyHasVisibility::new(source.value), range, file_id.original_file(db).file_id()))
     }
 
     let target_name;
@@ -203,7 +199,7 @@ fn target_data_for_def(
         hir::ModuleDef::Module(m) => {
             target_name = m.name(db);
             let in_file_source = m.declaration_source(db)?;
-            let file_id = in_file_source.file_id.original_file(db.upcast());
+            let file_id = in_file_source.file_id.original_file(db);
             let range = in_file_source.value.syntax().text_range();
             (ast::AnyHasVisibility::new(in_file_source.value), range, file_id.file_id())
         }

@@ -52,11 +52,11 @@ use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{
     CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, RootQueryDb,
-    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput, Upcast, query_group,
+    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput, query_group,
 };
 use hir::{
     FilePositionWrapper, FileRangeWrapper,
-    db::{DefDatabase, ExpandDatabase, HirDatabase},
+    db::{DefDatabase, ExpandDatabase},
 };
 use triomphe::Arc;
 
@@ -113,39 +113,6 @@ impl Clone for RootDatabase {
 impl fmt::Debug for RootDatabase {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RootDatabase").finish()
-    }
-}
-
-impl Upcast<dyn ExpandDatabase> for RootDatabase {
-    #[inline]
-    fn upcast(&self) -> &(dyn ExpandDatabase + 'static) {
-        self
-    }
-}
-
-impl Upcast<dyn DefDatabase> for RootDatabase {
-    #[inline]
-    fn upcast(&self) -> &(dyn DefDatabase + 'static) {
-        self
-    }
-}
-
-impl Upcast<dyn HirDatabase> for RootDatabase {
-    #[inline]
-    fn upcast(&self) -> &(dyn HirDatabase + 'static) {
-        self
-    }
-}
-
-impl Upcast<dyn RootQueryDb> for RootDatabase {
-    fn upcast(&self) -> &(dyn RootQueryDb + 'static) {
-        self
-    }
-}
-
-impl Upcast<dyn SourceDatabase> for RootDatabase {
-    fn upcast(&self) -> &(dyn SourceDatabase + 'static) {
-        self
     }
 }
 

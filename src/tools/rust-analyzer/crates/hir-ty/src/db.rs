@@ -3,7 +3,7 @@
 
 use std::sync;
 
-use base_db::{Crate, Upcast, impl_intern_key};
+use base_db::{Crate, impl_intern_key};
 use hir_def::{
     AdtId, BlockId, CallableDefId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId,
     GeneralConstId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId, StaticId, TraitId,
@@ -29,7 +29,7 @@ use crate::{
 };
 
 #[query_group::query_group]
-pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
+pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::invoke_actual(crate::infer::infer_query)]
     fn infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 

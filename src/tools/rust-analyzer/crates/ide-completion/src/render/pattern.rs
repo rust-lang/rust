@@ -191,7 +191,7 @@ fn render_record_as_pat(
             format!(
                 "{name} {{ {}{} }}",
                 fields.enumerate().format_with(", ", |(idx, field), f| {
-                    f(&format_args!("{}${}", field.name(db).display(db.upcast(), edition), idx + 1))
+                    f(&format_args!("{}${}", field.name(db).display(db, edition), idx + 1))
                 }),
                 if fields_omitted { ", .." } else { "" },
                 name = name

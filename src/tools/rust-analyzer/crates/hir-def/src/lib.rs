@@ -640,7 +640,7 @@ impl GeneralConstId {
             GeneralConstId::StaticId(it) => {
                 let loc = it.lookup(db);
                 let tree = loc.item_tree_id().item_tree(db);
-                let name = tree[loc.id.value].name.display(db.upcast(), Edition::CURRENT);
+                let name = tree[loc.id.value].name.display(db, Edition::CURRENT);
                 name.to_string()
             }
             GeneralConstId::ConstId(const_id) => {
@@ -648,7 +648,7 @@ impl GeneralConstId {
                 let tree = loc.item_tree_id().item_tree(db);
                 tree[loc.id.value].name.as_ref().map_or_else(
                     || "_".to_owned(),
-                    |name| name.display(db.upcast(), Edition::CURRENT).to_string(),
+                    |name| name.display(db, Edition::CURRENT).to_string(),
                 )
             }
         }

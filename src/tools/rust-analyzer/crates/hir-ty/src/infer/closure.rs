@@ -335,7 +335,7 @@ impl InferenceContext<'_> {
         // Search for a predicate like `<$self as FnX<Args>>::Output == Ret`
 
         let fn_traits: SmallVec<[ChalkTraitId; 3]> =
-            utils::fn_traits(self.db.upcast(), self.owner.module(self.db.upcast()).krate())
+            utils::fn_traits(self.db, self.owner.module(self.db).krate())
                 .map(to_chalk_trait_id)
                 .collect();
 
@@ -386,7 +386,7 @@ impl InferenceContext<'_> {
         projected_ty: &Ty,
     ) -> Option<FnSubst<Interner>> {
         let container =
-            from_assoc_type_id(projection_ty.associated_ty_id).lookup(self.db.upcast()).container;
+            from_assoc_type_id(projection_ty.associated_ty_id).lookup(self.db).container;
         let trait_ = match container {
             hir_def::ItemContainerId::TraitId(trait_) => trait_,
             _ => return None,
@@ -567,7 +567,7 @@ impl HirPlace {
                 |_, _, _| {
                     unreachable!("Closure field only happens in MIR");
                 },
-                ctx.owner.module(ctx.db.upcast()).krate(),
+                ctx.owner.module(ctx.db).krate(),
             );
         }
         ty
@@ -641,7 +641,7 @@ impl CapturedItem {
             match proj {
                 ProjectionElem::Deref => {}
                 ProjectionElem::Field(Either::Left(f)) => {
-                    let variant_data = f.parent.variant_data(db.upcast());
+                    let variant_data = f.parent.variant_data(db);
                     match variant_data.shape {
                         FieldsShape::Record => {
                             result.push('_');
@@ -668,7 +668,7 @@ impl CapturedItem {
                 }
             }
         }
-        if is_raw_identifier(&result, owner.module(db.upcast()).krate().data(db).edition) {
+        if is_raw_identifier(&result, owner.module(db).krate().data(db).edition) {
             result.insert_str(0, "r#");
         }
         result
@@ -676,20 +676,20 @@ impl CapturedItem {
 
     pub fn display_place_source_code(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
         let body = db.body(owner);
-        let krate = owner.krate(db.upcast());
+        let krate = owner.krate(db);
         let edition = krate.data(db).edition;
-        let mut result = body[self.place.local].name.display(db.upcast(), edition).to_string();
+        let mut result = body[self.place.local].name.display(db, edition).to_string();
         for proj in &self.place.projections {
             match proj {
                 // In source code autoderef kicks in.
                 ProjectionElem::Deref => {}
                 ProjectionElem::Field(Either::Left(f)) => {
-                    let variant_data = f.parent.variant_data(db.upcast());
+                    let variant_data = f.parent.variant_data(db);
                     match variant_data.shape {
                         FieldsShape::Record => format_to!(
                             result,
                             ".{}",
-                            variant_data.fields()[f.local_id].name.display(db.upcast(), edition)
+                            variant_data.fields()[f.local_id].name.display(db, edition)
                         ),
                         FieldsShape::Tuple => format_to!(
                             result,
@@ -732,9 +732,9 @@ impl CapturedItem {
 
     pub fn display_place(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
         let body = db.body(owner);
-        let krate = owner.krate(db.upcast());
+        let krate = owner.krate(db);
         let edition = krate.data(db).edition;
-        let mut result = body[self.place.local].name.display(db.upcast(), edition).to_string();
+        let mut result = body[self.place.local].name.display(db, edition).to_string();
         let mut field_need_paren = false;
         for proj in &self.place.projections {
             match proj {
@@ -746,7 +746,7 @@ impl CapturedItem {
                     if field_need_paren {
                         result = format!("({result})");
                     }
-                    let variant_data = f.parent.variant_data(db.upcast());
+                    let variant_data = f.parent.variant_data(db);
                     let field = match variant_data.shape {
                         FieldsShape::Record => {
                             variant_data.fields()[f.local_id].name.as_str().to_owned()
@@ -880,8 +880,8 @@ impl InferenceContext<'_> {
             return None;
         }
         let hygiene = self.body.expr_or_pat_path_hygiene(id);
-        self.resolver.resolve_path_in_value_ns_fully(self.db.upcast(), path, hygiene).and_then(
-            |result| match result {
+        self.resolver.resolve_path_in_value_ns_fully(self.db, path, hygiene).and_then(|result| {
+            match result {
                 ValueNs::LocalBinding(binding) => {
                     let mir_span = match id {
                         ExprOrPatId::ExprId(id) => MirSpan::ExprId(id),
@@ -891,8 +891,8 @@ impl InferenceContext<'_> {
                     Some(HirPlace { local: binding, projections: Vec::new() })
                 }
                 _ => None,
-            },
-        )
+            }
+        })
     }
 
     /// Changes `current_capture_span_stack` to contain the stack of spans for this expr.
@@ -901,7 +901,7 @@ impl InferenceContext<'_> {
         match &self.body[tgt_expr] {
             Expr::Path(p) => {
                 let resolver_guard =
-                    self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, tgt_expr);
+                    self.resolver.update_to_inner_scope(self.db, self.owner, tgt_expr);
                 let result = self.path_place(p, tgt_expr.into());
                 self.resolver.reset_to_guard(resolver_guard);
                 return result;
@@ -1263,7 +1263,7 @@ impl InferenceContext<'_> {
             &Expr::Assignment { target, value } => {
                 self.walk_expr(value);
                 let resolver_guard =
-                    self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, tgt_expr);
+                    self.resolver.update_to_inner_scope(self.db, self.owner, tgt_expr);
                 match self.place_of_expr(value) {
                     Some(rhs_place) => {
                         self.inside_assignment = true;
@@ -1322,7 +1322,7 @@ impl InferenceContext<'_> {
             | Pat::Or(_) => (),
             Pat::TupleStruct { .. } | Pat::Record { .. } => {
                 if let Some(variant) = self.result.variant_resolution_for_pat(p) {
-                    let adt = variant.adt_id(self.db.upcast());
+                    let adt = variant.adt_id(self.db);
                     let is_multivariant = match adt {
                         hir_def::AdtId::EnumId(e) => self.db.enum_variants(e).variants.len() != 1,
                         _ => false,
@@ -1413,7 +1413,7 @@ impl InferenceContext<'_> {
                     |_, _, _| {
                         unreachable!("Closure field only happens in MIR");
                     },
-                    self.owner.module(self.db.upcast()).krate(),
+                    self.owner.module(self.db).krate(),
                 );
                 if ty.as_raw_ptr().is_some() || ty.is_union() {
                     capture.kind = CaptureKind::ByRef(BorrowKind::Shared);

@@ -44,7 +44,7 @@ impl EnumVariantContiguousIndex {
     fn from_enum_variant_id(db: &dyn HirDatabase, target_evid: EnumVariantId) -> Self {
         // Find the index of this variant in the list of variants.
         use hir_def::Lookup;
-        let i = target_evid.lookup(db.upcast()).index as usize;
+        let i = target_evid.lookup(db).index as usize;
         EnumVariantContiguousIndex(i)
     }
 
@@ -105,7 +105,7 @@ impl<'db> MatchCheckCtx<'db> {
 
     /// Returns whether the given ADT is from another crate declared `#[non_exhaustive]`.
     fn is_foreign_non_exhaustive(&self, adt: hir_def::AdtId) -> bool {
-        let is_local = adt.krate(self.db.upcast()) == self.module.krate();
+        let is_local = adt.krate(self.db) == self.module.krate();
         !is_local && self.db.attrs(adt.into()).by_key(&sym::non_exhaustive).exists()
     }
 
@@ -139,7 +139,7 @@ impl<'db> MatchCheckCtx<'db> {
         let (_, substs) = ty.as_adt().unwrap();
 
         let field_tys = self.db.field_types(variant);
-        let fields_len = variant.variant_data(self.db.upcast()).fields().len() as u32;
+        let fields_len = variant.variant_data(self.db).fields().len() as u32;
 
         (0..fields_len).map(|idx| LocalFieldId::from_raw(idx.into())).map(move |fid| {
             let ty = field_tys[fid].clone().substitute(Interner, substs);
@@ -222,7 +222,7 @@ impl<'db> MatchCheckCtx<'db> {
                             }
                         };
                         let variant = Self::variant_id_for_adt(self.db, &ctor, adt).unwrap();
-                        arity = variant.variant_data(self.db.upcast()).fields().len();
+                        arity = variant.variant_data(self.db).fields().len();
                     }
                     _ => {
                         never!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, &pat.ty);
@@ -341,7 +341,7 @@ impl PatCx for MatchCheckCtx<'_> {
                         1
                     } else {
                         let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
-                        variant.variant_data(self.db.upcast()).fields().len()
+                        variant.variant_data(self.db).fields().len()
                     }
                 }
                 _ => {
@@ -389,8 +389,7 @@ impl PatCx for MatchCheckCtx<'_> {
                             .map(move |(fid, ty)| {
                                 let is_visible = || {
                                     matches!(adt, hir_def::AdtId::EnumId(..))
-                                        || visibilities[fid]
-                                            .is_visible_from(self.db.upcast(), self.module)
+                                        || visibilities[fid].is_visible_from(self.db, self.module)
                                 };
                                 let is_uninhabited = self.is_uninhabited(&ty);
                                 let private_uninhabited = is_uninhabited && !is_visible();
@@ -493,13 +492,13 @@ impl PatCx for MatchCheckCtx<'_> {
         // if let Some(variant) = variant {
         //     match variant {
         //         VariantId::EnumVariantId(v) => {
-        //             write!(f, "{}", db.enum_variant_data(v).name.display(db.upcast()))?;
+        //             write!(f, "{}", db.enum_variant_data(v).name.display(db))?;
         //         }
         //         VariantId::StructId(s) => {
-        //             write!(f, "{}", db.struct_data(s).name.display(db.upcast()))?
+        //             write!(f, "{}", db.struct_data(s).name.display(db))?
         //         }
         //         VariantId::UnionId(u) => {
-        //             write!(f, "{}", db.union_data(u).name.display(db.upcast()))?
+        //             write!(f, "{}", db.union_data(u).name.display(db))?
         //         }
         //     }
         // }

@@ -336,11 +336,11 @@ impl ModuleOrigin {
             &ModuleOrigin::Inline { definition, definition_tree_id } => InFile::new(
                 definition_tree_id.file_id(),
                 ModuleSource::Module(
-                    AstId::new(definition_tree_id.file_id(), definition).to_node(db.upcast()),
+                    AstId::new(definition_tree_id.file_id(), definition).to_node(db),
                 ),
             ),
             ModuleOrigin::BlockExpr { block, .. } => {
-                InFile::new(block.file_id, ModuleSource::BlockExpr(block.to_node(db.upcast())))
+                InFile::new(block.file_id, ModuleSource::BlockExpr(block.to_node(db)))
             }
         }
     }
@@ -607,12 +607,12 @@ impl DefMap {
         ) {
             format_to!(buf, "{}\n", path);
 
-            map.modules[module].scope.dump(db.upcast(), buf);
+            map.modules[module].scope.dump(db, buf);
 
             for (name, child) in
                 map.modules[module].children.iter().sorted_by(|a, b| Ord::cmp(&a.0, &b.0))
             {
-                let path = format!("{path}::{}", name.display(db.upcast(), Edition::LATEST));
+                let path = format!("{path}::{}", name.display(db, Edition::LATEST));
                 buf.push('\n');
                 go(buf, db, map, &path, *child);
             }
@@ -748,17 +748,14 @@ impl ModuleData {
             &ModuleOrigin::File { definition, .. } | &ModuleOrigin::CrateRoot { definition } => {
                 InFile::new(
                     definition.into(),
-                    ErasedAstId::new(definition.into(), ROOT_ERASED_FILE_AST_ID)
-                        .to_range(db.upcast()),
+                    ErasedAstId::new(definition.into(), ROOT_ERASED_FILE_AST_ID).to_range(db),
                 )
             }
             &ModuleOrigin::Inline { definition, definition_tree_id } => InFile::new(
                 definition_tree_id.file_id(),
-                AstId::new(definition_tree_id.file_id(), definition).to_range(db.upcast()),
+                AstId::new(definition_tree_id.file_id(), definition).to_range(db),
             ),
-            ModuleOrigin::BlockExpr { block, .. } => {
-                InFile::new(block.file_id, block.to_range(db.upcast()))
-            }
+            ModuleOrigin::BlockExpr { block, .. } => InFile::new(block.file_id, block.to_range(db)),
         }
     }
 
@@ -766,7 +763,7 @@ impl ModuleData {
     /// `None` for the crate root or block.
     pub fn declaration_source(&self, db: &dyn DefDatabase) -> Option<InFile<ast::Module>> {
         let decl = self.origin.declaration()?;
-        let value = decl.to_node(db.upcast());
+        let value = decl.to_node(db);
         Some(InFile { file_id: decl.file_id, value })
     }
 
@@ -774,7 +771,7 @@ impl ModuleData {
     /// `None` for the crate root or block.
     pub fn declaration_source_range(&self, db: &dyn DefDatabase) -> Option<InFile<TextRange>> {
         let decl = self.origin.declaration()?;
-        Some(InFile { file_id: decl.file_id, value: decl.to_range(db.upcast()) })
+        Some(InFile { file_id: decl.file_id, value: decl.to_range(db) })
     }
 }
 

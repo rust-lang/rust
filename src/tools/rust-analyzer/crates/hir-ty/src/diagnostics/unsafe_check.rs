@@ -127,7 +127,7 @@ pub fn unsafe_operations(
         }
     };
     let mut visitor = UnsafeVisitor::new(db, infer, body, def, &mut visitor_callback);
-    _ = visitor.resolver.update_to_inner_scope(db.upcast(), def, current);
+    _ = visitor.resolver.update_to_inner_scope(db, def, current);
     visitor.walk_expr(current);
 }
 
@@ -154,7 +154,7 @@ impl<'a> UnsafeVisitor<'a> {
         def: DefWithBodyId,
         unsafe_expr_cb: &'a mut dyn FnMut(UnsafeDiagnostic),
     ) -> Self {
-        let resolver = def.resolver(db.upcast());
+        let resolver = def.resolver(db);
         let def_target_features = match def {
             DefWithBodyId::FunctionId(func) => TargetFeatures::from_attrs(&db.attrs(func.into())),
             _ => TargetFeatures::default(),
@@ -200,7 +200,7 @@ impl<'a> UnsafeVisitor<'a> {
     }
 
     fn walk_pats_top(&mut self, pats: impl Iterator<Item = PatId>, parent_expr: ExprId) {
-        let guard = self.resolver.update_to_inner_scope(self.db.upcast(), self.def, parent_expr);
+        let guard = self.resolver.update_to_inner_scope(self.db, self.def, parent_expr);
         pats.for_each(|pat| self.walk_pat(pat));
         self.resolver.reset_to_guard(guard);
     }
@@ -268,8 +268,7 @@ impl<'a> UnsafeVisitor<'a> {
                 }
             }
             Expr::Path(path) => {
-                let guard =
-                    self.resolver.update_to_inner_scope(self.db.upcast(), self.def, current);
+                let guard = self.resolver.update_to_inner_scope(self.db, self.def, current);
                 self.mark_unsafe_path(current.into(), path);
                 self.resolver.reset_to_guard(guard);
             }
@@ -357,8 +356,7 @@ impl<'a> UnsafeVisitor<'a> {
 
     fn mark_unsafe_path(&mut self, node: ExprOrPatId, path: &Path) {
         let hygiene = self.body.expr_or_pat_path_hygiene(node);
-        let value_or_partial =
-            self.resolver.resolve_path_in_value_ns(self.db.upcast(), path, hygiene);
+        let value_or_partial = self.resolver.resolve_path_in_value_ns(self.db, path, hygiene);
         if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id), _)) = value_or_partial {
             let static_data = self.db.static_signature(id);
             if static_data.flags.contains(StaticFlags::MUTABLE) {

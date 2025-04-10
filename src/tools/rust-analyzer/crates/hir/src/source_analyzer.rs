@@ -125,7 +125,7 @@ impl SourceAnalyzer {
                 scope_for_offset(db, &scopes, &source_map, node.file_id, offset)
             }
         };
-        let resolver = resolver_for_scope(db.upcast(), def, scope);
+        let resolver = resolver_for_scope(db, def, scope);
         SourceAnalyzer {
             resolver,
             body_or_sig: Some(BodyOrSig::Body { def, body, source_map, infer }),
@@ -140,7 +140,7 @@ impl SourceAnalyzer {
         _offset: Option<TextSize>,
     ) -> SourceAnalyzer {
         let (_params, store, source_map) = db.generic_params_and_store_and_source_map(def);
-        let resolver = def.resolver(db.upcast());
+        let resolver = def.resolver(db);
         SourceAnalyzer {
             resolver,
             body_or_sig: Some(BodyOrSig::Sig { _def: def, store, source_map }),
@@ -155,7 +155,7 @@ impl SourceAnalyzer {
         _offset: Option<TextSize>,
     ) -> SourceAnalyzer {
         let (fields, source_map) = db.variant_fields_with_source_map(def);
-        let resolver = def.resolver(db.upcast());
+        let resolver = def.resolver(db);
         SourceAnalyzer {
             resolver,
             body_or_sig: Some(BodyOrSig::VariantFields {
@@ -500,7 +500,7 @@ impl SourceAnalyzer {
             (RangeOp::Inclusive, None, None) => return None,
             (RangeOp::Inclusive, Some(_), None) => return None,
         };
-        self.resolver.resolve_known_struct(db.upcast(), &path)
+        self.resolver.resolve_known_struct(db, &path)
     }
 
     pub(crate) fn resolve_range_expr(
@@ -520,7 +520,7 @@ impl SourceAnalyzer {
             (RangeOp::Inclusive, None, None) => return None,
             (RangeOp::Inclusive, Some(_), None) => return None,
         };
-        self.resolver.resolve_known_struct(db.upcast(), &path)
+        self.resolver.resolve_known_struct(db, &path)
     }
 
     pub(crate) fn resolve_await_to_poll(
@@ -532,7 +532,7 @@ impl SourceAnalyzer {
 
         let into_future_trait = self
             .resolver
-            .resolve_known_trait(db.upcast(), &path![core::future::IntoFuture])
+            .resolve_known_trait(db, &path![core::future::IntoFuture])
             .map(Trait::from);
 
         if let Some(into_future_trait) = into_future_trait {
@@ -666,7 +666,7 @@ impl SourceAnalyzer {
         let ty = self.ty_of_expr(try_expr.expr()?)?;
 
         let op_fn = db.lang_item(self.resolver.krate(), LangItem::TryTraitBranch)?.as_function()?;
-        let op_trait = match op_fn.lookup(db.upcast()).container {
+        let op_trait = match op_fn.lookup(db).container {
             ItemContainerId::TraitId(id) => id,
             _ => return None,
         };
@@ -697,7 +697,7 @@ impl SourceAnalyzer {
                 once(local_name.clone()),
             ));
             match self.resolver.resolve_path_in_value_ns_fully(
-                db.upcast(),
+                db,
                 &path,
                 name_hygiene(db, InFile::new(self.file_id, ast_name.syntax())),
             ) {
@@ -709,7 +709,7 @@ impl SourceAnalyzer {
         };
         let (adt, subst) = self.infer()?.type_of_expr_or_pat(expr_id)?.as_adt()?;
         let variant = self.infer()?.variant_resolution_for_expr_or_pat(expr_id)?;
-        let variant_data = variant.variant_data(db.upcast());
+        let variant_data = variant.variant_data(db);
         let field = FieldId { parent: variant, local_id: variant_data.field(&local_name)? };
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
@@ -730,7 +730,7 @@ impl SourceAnalyzer {
         let record_pat = ast::RecordPat::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
         let pat_id = self.pat_id(&record_pat.into())?;
         let variant = self.infer()?.variant_resolution_for_pat(pat_id.as_pat()?)?;
-        let variant_data = variant.variant_data(db.upcast());
+        let variant_data = variant.variant_data(db);
         let field = FieldId { parent: variant, local_id: variant_data.field(&field_name)? };
         let (adt, subst) = self.infer()?.type_of_pat.get(pat_id.as_pat()?)?.as_adt()?;
         let field_ty =
@@ -750,7 +750,7 @@ impl SourceAnalyzer {
         let bs = self.store_sm()?;
         bs.expansion(macro_call).and_then(|it| {
             // FIXME: Block def maps
-            let def = it.macro_call_id.lookup(db.upcast()).def;
+            let def = it.macro_call_id.lookup(db).def;
             db.crate_def_map(def.krate)
                 .macro_def_to_macro_id
                 .get(&def.kind.erased_ast_id())
@@ -930,7 +930,7 @@ impl SourceAnalyzer {
         }
 
         // FIXME: collectiong here shouldnt be necessary?
-        let mut collector = ExprCollector::new(db.upcast(), self.resolver.module(), self.file_id);
+        let mut collector = ExprCollector::new(db, self.resolver.module(), self.file_id);
         let hir_path = collector.lower_path(path.clone(), &mut |_| TypeRef::Error)?;
         let parent_hir_path =
             path.parent_path().and_then(|p| collector.lower_path(p, &mut |_| TypeRef::Error));
@@ -979,10 +979,8 @@ impl SourceAnalyzer {
                 // ```
                 Some(it) if matches!(it, PathResolution::Def(ModuleDef::BuiltinType(_))) => {
                     if let Some(mod_path) = hir_path.mod_path() {
-                        if let Some(ModuleDefId::ModuleId(id)) = self
-                            .resolver
-                            .resolve_module_path_in_items(db.upcast(), mod_path)
-                            .take_types()
+                        if let Some(ModuleDefId::ModuleId(id)) =
+                            self.resolver.resolve_module_path_in_items(db, mod_path).take_types()
                         {
                             let parent_hir_name =
                                 parent_hir_path.segments().get(1).map(|it| it.name);
@@ -1372,7 +1370,7 @@ fn scope_for(
     source_map: &BodySourceMap,
     node: InFile<&SyntaxNode>,
 ) -> Option<ScopeId> {
-    node.ancestors_with_macros(db.upcast())
+    node.ancestors_with_macros(db)
         .take_while(|it| {
             !ast::Item::can_cast(it.kind())
                 || ast::MacroCall::can_cast(it.kind())
@@ -1400,12 +1398,11 @@ fn scope_for_offset(
             }
 
             // FIXME handle attribute expansion
-            let source =
-                iter::successors(file_id.macro_file().map(|it| it.call_node(db.upcast())), |it| {
-                    Some(it.file_id.macro_file()?.call_node(db.upcast()))
-                })
-                .find(|it| it.file_id == from_file)
-                .filter(|it| it.kind() == SyntaxKind::MACRO_CALL)?;
+            let source = iter::successors(file_id.macro_file().map(|it| it.call_node(db)), |it| {
+                Some(it.file_id.macro_file()?.call_node(db))
+            })
+            .find(|it| it.file_id == from_file)
+            .filter(|it| it.kind() == SyntaxKind::MACRO_CALL)?;
             Some((source.text_range(), scope))
         })
         .filter(|(expr_range, _scope)| expr_range.start() <= offset && offset <= expr_range.end())
@@ -1435,7 +1432,7 @@ fn adjust(
             if source.file_id != from_file {
                 return None;
             }
-            let root = source.file_syntax(db.upcast());
+            let root = source.file_syntax(db);
             let node = source.value.to_node(&root);
             Some((node.syntax().text_range(), scope))
         })
@@ -1474,7 +1471,7 @@ pub(crate) fn resolve_hir_path_as_attr_macro(
     path: &Path,
 ) -> Option<Macro> {
     resolver
-        .resolve_path_as_macro(db.upcast(), path.mod_path()?, Some(MacroSubNs::Attr))
+        .resolve_path_as_macro(db, path.mod_path()?, Some(MacroSubNs::Attr))
         .map(|(it, _)| it)
         .map(Into::into)
 }
@@ -1495,7 +1492,7 @@ fn resolve_hir_path_(
                 res.map(|ty_ns| (ty_ns, path.segments().first()))
             }),
             None => {
-                let (ty, remaining_idx, _) = resolver.resolve_path_in_type_ns(db.upcast(), path)?;
+                let (ty, remaining_idx, _) = resolver.resolve_path_in_type_ns(db, path)?;
                 match remaining_idx {
                     Some(remaining_idx) => {
                         if remaining_idx + 1 == path.segments().len() {
@@ -1554,14 +1551,14 @@ fn resolve_hir_path_(
 
     let items = || {
         resolver
-            .resolve_module_path_in_items(db.upcast(), path.mod_path()?)
+            .resolve_module_path_in_items(db, path.mod_path()?)
             .take_types()
             .map(|it| PathResolution::Def(it.into()))
     };
 
     let macros = || {
         resolver
-            .resolve_path_as_macro(db.upcast(), path.mod_path()?, None)
+            .resolve_path_as_macro(db, path.mod_path()?, None)
             .map(|(def, _)| PathResolution::Def(ModuleDef::Macro(def.into())))
     };
 
@@ -1577,7 +1574,7 @@ fn resolve_hir_value_path(
     path: &Path,
     hygiene: HygieneId,
 ) -> Option<PathResolution> {
-    resolver.resolve_path_in_value_ns_fully(db.upcast(), path, hygiene).and_then(|val| {
+    resolver.resolve_path_in_value_ns_fully(db, path, hygiene).and_then(|val| {
         let res = match val {
             ValueNs::LocalBinding(binding_id) => {
                 let var = Local { parent: body_owner?, binding_id };
@@ -1622,7 +1619,7 @@ fn resolve_hir_path_qualifier(
                 res.map(|ty_ns| (ty_ns, path.segments().first()))
             }),
             None => {
-                let (ty, remaining_idx, _) = resolver.resolve_path_in_type_ns(db.upcast(), path)?;
+                let (ty, remaining_idx, _) = resolver.resolve_path_in_type_ns(db, path)?;
                 match remaining_idx {
                     Some(remaining_idx) => {
                         if remaining_idx + 1 == path.segments().len() {
@@ -1677,7 +1674,7 @@ fn resolve_hir_path_qualifier(
     })()
     .or_else(|| {
         resolver
-            .resolve_module_path_in_items(db.upcast(), path.mod_path()?)
+            .resolve_module_path_in_items(db, path.mod_path()?)
             .take_types()
             .map(|it| PathResolution::Def(it.into()))
     })

@@ -53,7 +53,7 @@ pub fn dyn_compatibility(
     db: &dyn HirDatabase,
     trait_: TraitId,
 ) -> Option<DynCompatibilityViolation> {
-    for super_trait in all_super_traits(db.upcast(), trait_).into_iter().skip(1).rev() {
+    for super_trait in all_super_traits(db, trait_).into_iter().skip(1).rev() {
         if db.dyn_compatibility_of_trait(super_trait).is_some() {
             return Some(DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait));
         }
@@ -70,7 +70,7 @@ pub fn dyn_compatibility_with_callback<F>(
 where
     F: FnMut(DynCompatibilityViolation) -> ControlFlow<()>,
 {
-    for super_trait in all_super_traits(db.upcast(), trait_).into_iter().skip(1).rev() {
+    for super_trait in all_super_traits(db, trait_).into_iter().skip(1).rev() {
         if db.dyn_compatibility_of_trait(super_trait).is_some() {
             cb(DynCompatibilityViolation::HasNonCompatibleSuperTrait(trait_))?;
         }
@@ -124,12 +124,12 @@ pub fn dyn_compatibility_of_trait_query(
 }
 
 fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
-    let krate = def.module(db.upcast()).krate();
+    let krate = def.module(db).krate();
     let Some(sized) = db.lang_item(krate, LangItem::Sized).and_then(|l| l.as_trait()) else {
         return false;
     };
 
-    let Some(trait_self_param_idx) = trait_self_param_idx(db.upcast(), def) else {
+    let Some(trait_self_param_idx) = trait_self_param_idx(db, def) else {
         return false;
     };
 
@@ -254,7 +254,7 @@ fn contains_illegal_self_type_reference<T: TypeVisitable<Interner>>(
     outer_binder: DebruijnIndex,
     allow_self_projection: AllowSelfProjection,
 ) -> bool {
-    let Some(trait_self_param_idx) = trait_self_param_idx(db.upcast(), def) else {
+    let Some(trait_self_param_idx) = trait_self_param_idx(db, def) else {
         return false;
     };
     struct IllegalSelfTypeVisitor<'a> {
@@ -288,8 +288,7 @@ fn contains_illegal_self_type_reference<T: TypeVisitable<Interner>>(
                     AllowSelfProjection::Yes => {
                         let trait_ = proj.trait_(self.db);
                         if self.super_traits.is_none() {
-                            self.super_traits =
-                                Some(all_super_traits(self.db.upcast(), self.trait_));
+                            self.super_traits = Some(all_super_traits(self.db, self.trait_));
                         }
                         if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
                             ControlFlow::Continue(())
@@ -345,7 +344,7 @@ where
             })
         }
         AssocItemId::TypeAliasId(it) => {
-            let def_map = db.crate_def_map(trait_.krate(db.upcast()));
+            let def_map = db.crate_def_map(trait_.krate(db));
             if def_map.is_unstable_feature_enabled(&intern::sym::generic_associated_type_extended) {
                 ControlFlow::Continue(())
             } else {
@@ -419,7 +418,7 @@ where
     }
 
     let predicates = &*db.generic_predicates_without_parent(func.into());
-    let trait_self_idx = trait_self_param_idx(db.upcast(), func.into());
+    let trait_self_idx = trait_self_param_idx(db, func.into());
     for pred in predicates {
         let pred = pred.skip_binders().skip_binders();
 
@@ -466,7 +465,7 @@ fn receiver_is_dispatchable(
     func: FunctionId,
     sig: &Binders<CallableSig>,
 ) -> bool {
-    let Some(trait_self_idx) = trait_self_param_idx(db.upcast(), func.into()) else {
+    let Some(trait_self_idx) = trait_self_param_idx(db, func.into()) else {
         return false;
     };
 
@@ -484,14 +483,14 @@ fn receiver_is_dispatchable(
         return true;
     }
 
-    let placeholder_subst = generics(db.upcast(), func.into()).placeholder_subst(db);
+    let placeholder_subst = generics(db, func.into()).placeholder_subst(db);
 
     let substituted_sig = sig.clone().substitute(Interner, &placeholder_subst);
     let Some(receiver_ty) = substituted_sig.params().first() else {
         return false;
     };
 
-    let krate = func.module(db.upcast()).krate();
+    let krate = func.module(db).krate();
     let traits = (
         db.lang_item(krate, LangItem::Unsize).and_then(|it| it.as_trait()),
         db.lang_item(krate, LangItem::DispatchFromDyn).and_then(|it| it.as_trait()),
@@ -550,8 +549,8 @@ fn receiver_is_dispatchable(
 }
 
 fn receiver_for_self_ty(db: &dyn HirDatabase, func: FunctionId, ty: Ty) -> Option<Ty> {
-    let generics = generics(db.upcast(), func.into());
-    let trait_self_idx = trait_self_param_idx(db.upcast(), func.into())?;
+    let generics = generics(db, func.into());
+    let trait_self_idx = trait_self_param_idx(db, func.into())?;
     let subst = generics.placeholder_subst(db);
     let subst = Substitution::from_iter(
         Interner,

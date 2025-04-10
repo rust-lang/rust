@@ -178,7 +178,7 @@ impl<'a> SymbolCollector<'a> {
         let mut push_import = |this: &mut Self, i: ImportId, name: &Name, def: ModuleDefId, vis| {
             let source = import_child_source_cache
                 .entry(i.use_)
-                .or_insert_with(|| i.use_.child_source(this.db.upcast()));
+                .or_insert_with(|| i.use_.child_source(this.db));
             let Some(use_tree_src) = source.value.get(i.idx) else { return };
             let rename = use_tree_src.rename().and_then(|rename| rename.name());
             let name_syntax = match rename {
@@ -209,8 +209,8 @@ impl<'a> SymbolCollector<'a> {
 
         let push_extern_crate =
             |this: &mut Self, i: ExternCrateId, name: &Name, def: ModuleDefId, vis| {
-                let loc = i.lookup(this.db.upcast());
-                let source = loc.source(this.db.upcast());
+                let loc = i.lookup(this.db);
+                let source = loc.source(this.db);
                 let rename = source.value.rename().and_then(|rename| rename.name());
 
                 let name_syntax = match rename {
@@ -237,7 +237,7 @@ impl<'a> SymbolCollector<'a> {
                 });
             };
 
-        let def_map = module_id.def_map(self.db.upcast());
+        let def_map = module_id.def_map(self.db);
         let scope = &def_map[module_id.local_id].scope;
 
         for impl_id in scope.impls() {
@@ -290,7 +290,7 @@ impl<'a> SymbolCollector<'a> {
 
         for (name, id) in scope.legacy_macros() {
             for &id in id {
-                if id.module(self.db.upcast()) == module_id {
+                if id.module(self.db) == module_id {
                     match id {
                         MacroId::Macro2Id(id) => self.push_decl(id, name, false, None),
                         MacroId::MacroRulesId(id) => self.push_decl(id, name, false, None),
@@ -306,7 +306,7 @@ impl<'a> SymbolCollector<'a> {
         let body = self.db.body(body_id);
 
         // Descend into the blocks and enqueue collection of all modules within.
-        for (_, def_map) in body.blocks(self.db.upcast()) {
+        for (_, def_map) in body.blocks(self.db) {
             for (id, _) in def_map.modules() {
                 self.work.push(SymbolCollectorWork {
                     module_id: def_map.module_id(id),
@@ -374,8 +374,8 @@ impl<'a> SymbolCollector<'a> {
         <L as Lookup>::Data: HasSource,
         <<L as Lookup>::Data as HasSource>::Value: HasName,
     {
-        let loc = id.lookup(self.db.upcast());
-        let source = loc.source(self.db.upcast());
+        let loc = id.lookup(self.db);
+        let source = loc.source(self.db);
         let Some(name_node) = source.value.name() else { return Complete::Yes };
         let def = ModuleDef::from(id.into());
         let dec_loc = DeclarationLocation {
@@ -419,10 +419,10 @@ impl<'a> SymbolCollector<'a> {
     }
 
     fn push_module(&mut self, module_id: ModuleId, name: &Name) {
-        let def_map = module_id.def_map(self.db.upcast());
+        let def_map = module_id.def_map(self.db);
         let module_data = &def_map[module_id.local_id];
         let Some(declaration) = module_data.origin.declaration() else { return };
-        let module = declaration.to_node(self.db.upcast());
+        let module = declaration.to_node(self.db);
         let Some(name_node) = module.name() else { return };
         let dec_loc = DeclarationLocation {
             hir_file_id: declaration.file_id,

@@ -68,12 +68,7 @@ impl ImportMap {
         for (k, v) in self.item_to_info_map.iter() {
             format_to!(out, "{:?} ({:?}) -> ", k, v.1);
             for v in &v.0 {
-                format_to!(
-                    out,
-                    "{}:{:?}, ",
-                    v.name.display(db.upcast(), Edition::CURRENT),
-                    v.container
-                );
+                format_to!(out, "{}:{:?}, ", v.name.display(db, Edition::CURRENT), v.container);
             }
             format_to!(out, "\n");
         }
@@ -483,7 +478,7 @@ fn search_maps(
 
 #[cfg(test)]
 mod tests {
-    use base_db::{RootQueryDb, Upcast};
+    use base_db::RootQueryDb;
     use expect_test::{Expect, expect};
     use test_fixture::WithFixture;
 
@@ -533,10 +528,10 @@ mod tests {
             })
             .expect("could not find crate");
 
-        let actual = search_dependencies(db.upcast(), krate, &query)
+        let actual = search_dependencies(&db, krate, &query)
             .into_iter()
             .filter_map(|(dependency, _)| {
-                let dependency_krate = dependency.krate(db.upcast())?;
+                let dependency_krate = dependency.krate(&db)?;
                 let dependency_imports = db.import_map(dependency_krate);
 
                 let (path, mark) = match assoc_item_path(&db, &dependency_imports, dependency) {
@@ -594,7 +589,7 @@ mod tests {
         Some(format!(
             "{}::{}",
             render_path(db, &trait_info[0]),
-            assoc_item_name.display(db.upcast(), Edition::CURRENT)
+            assoc_item_name.display(db, Edition::CURRENT)
         ))
     }
 
@@ -611,7 +606,7 @@ mod tests {
 
                 let map = db.import_map(krate);
 
-                Some(format!("{name}:\n{}\n", map.fmt_for_test(db.upcast())))
+                Some(format!("{name}:\n{}\n", map.fmt_for_test(&db)))
             })
             .sorted()
             .collect::<String>();
@@ -634,7 +629,7 @@ mod tests {
             module = parent;
         }
 
-        segments.iter().rev().map(|it| it.display(db.upcast(), Edition::CURRENT)).join("::")
+        segments.iter().rev().map(|it| it.display(db, Edition::CURRENT)).join("::")
     }
 
     #[test]

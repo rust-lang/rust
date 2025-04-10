@@ -53,19 +53,18 @@ pub(crate) fn print_body_hir(
     edition: Edition,
 ) -> String {
     let header = match owner {
-        DefWithBodyId::FunctionId(it) => it
-            .lookup(db)
-            .id
-            .resolved(db, |it| format!("fn {}", it.name.display(db.upcast(), edition))),
+        DefWithBodyId::FunctionId(it) => {
+            it.lookup(db).id.resolved(db, |it| format!("fn {}", it.name.display(db, edition)))
+        }
         DefWithBodyId::StaticId(it) => it
             .lookup(db)
             .id
-            .resolved(db, |it| format!("static {} = ", it.name.display(db.upcast(), edition))),
+            .resolved(db, |it| format!("static {} = ", it.name.display(db, edition))),
         DefWithBodyId::ConstId(it) => it.lookup(db).id.resolved(db, |it| {
             format!(
                 "const {} = ",
                 match &it.name {
-                    Some(name) => name.display(db.upcast(), edition).to_string(),
+                    Some(name) => name.display(db, edition).to_string(),
                     None => "_".to_owned(),
                 }
             )
@@ -75,8 +74,8 @@ pub(crate) fn print_body_hir(
             let enum_loc = loc.parent.lookup(db);
             format!(
                 "enum {}::{}",
-                enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast(), edition),
-                loc.id.item_tree(db)[loc.id.value].name.display(db.upcast(), edition),
+                enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db, edition),
+                loc.id.item_tree(db)[loc.id.value].name.display(db, edition),
             )
         }
     };
@@ -162,7 +161,7 @@ pub(crate) fn print_struct(
         wln!(p, "#[fundamental]");
     }
     w!(p, "struct ");
-    w!(p, "{}", name.display(db.upcast(), edition));
+    w!(p, "{}", name.display(db, edition));
     print_generic_params(db, generic_params, &mut p);
     match shape {
         FieldsShape::Record => wln!(p, " {{...}}"),
@@ -219,7 +218,7 @@ pub(crate) fn print_function(
         w!(p, "extern \"{}\" ", abi.as_str());
     }
     w!(p, "fn ");
-    w!(p, "{}", name.display(db.upcast(), edition));
+    w!(p, "{}", name.display(db, edition));
     print_generic_params(db, generic_params, &mut p);
     w!(p, "(");
     for (i, param) in params.iter().enumerate() {
@@ -260,7 +259,7 @@ fn print_where_clauses(db: &dyn DefDatabase, generic_params: &GenericParams, p: 
                         }
                         WherePredicateTypeTarget::TypeOrConstParam(idx) => {
                             match generic_params[*idx].name() {
-                                Some(name) => w!(p, "{}", name.display(db.upcast(), p.edition)),
+                                Some(name) => w!(p, "{}", name.display(db, p.edition)),
                                 None => w!(p, "Param[{}]", idx.into_raw()),
                             }
                             w!(p, ": ");
@@ -278,7 +277,7 @@ fn print_where_clauses(db: &dyn DefDatabase, generic_params: &GenericParams, p: 
                             if i != 0 {
                                 w!(p, ", ");
                             }
-                            w!(p, "{}", lifetime.display(db.upcast(), p.edition));
+                            w!(p, "{}", lifetime.display(db, p.edition));
                         }
                         w!(p, "> ");
                         match target {
@@ -289,7 +288,7 @@ fn print_where_clauses(db: &dyn DefDatabase, generic_params: &GenericParams, p: 
                             }
                             WherePredicateTypeTarget::TypeOrConstParam(idx) => {
                                 match generic_params[*idx].name() {
-                                    Some(name) => w!(p, "{}", name.display(db.upcast(), p.edition)),
+                                    Some(name) => w!(p, "{}", name.display(db, p.edition)),
                                     None => w!(p, "Param[{}]", idx.into_raw()),
                                 }
                                 w!(p, ": ");
@@ -313,7 +312,7 @@ fn print_generic_params(db: &dyn DefDatabase, generic_params: &GenericParams, p:
                 w!(p, ", ");
             }
             first = false;
-            w!(p, "{}", param.name.display(db.upcast(), p.edition));
+            w!(p, "{}", param.name.display(db, p.edition));
         }
         for (i, param) in generic_params.iter_type_or_consts() {
             if !first {
@@ -321,7 +320,7 @@ fn print_generic_params(db: &dyn DefDatabase, generic_params: &GenericParams, p:
             }
             first = false;
             if let Some(const_param) = param.const_param() {
-                w!(p, "const {}: ", const_param.name.display(db.upcast(), p.edition));
+                w!(p, "const {}: ", const_param.name.display(db, p.edition));
                 p.print_type_ref(const_param.ty);
                 if let Some(default) = const_param.default {
                     w!(p, " = ");
@@ -330,7 +329,7 @@ fn print_generic_params(db: &dyn DefDatabase, generic_params: &GenericParams, p:
             }
             if let Some(type_param) = param.type_param() {
                 match &type_param.name {
-                    Some(name) => w!(p, "{}", name.display(db.upcast(), p.edition)),
+                    Some(name) => w!(p, "{}", name.display(db, p.edition)),
                     None => w!(p, "Param[{}]", i.into_raw()),
                 }
                 if let Some(default) = type_param.default {
@@ -476,7 +475,7 @@ impl Printer<'_> {
                     offset_of
                         .fields
                         .iter()
-                        .format_with(".", |field, f| f(&field.display(self.db.upcast(), edition)))
+                        .format_with(".", |field, f| f(&field.display(self.db, edition)))
                 );
             }
             Expr::Path(path) => self.print_path(path),
@@ -498,7 +497,7 @@ impl Printer<'_> {
             }
             Expr::Loop { body, label } => {
                 if let Some(lbl) = label {
-                    w!(self, "{}: ", self.store[*lbl].name.display(self.db.upcast(), self.edition));
+                    w!(self, "{}: ", self.store[*lbl].name.display(self.db, self.edition));
                 }
                 w!(self, "loop ");
                 self.print_expr(*body);
@@ -518,7 +517,7 @@ impl Printer<'_> {
             }
             Expr::MethodCall { receiver, method_name, args, generic_args } => {
                 self.print_expr(*receiver);
-                w!(self, ".{}", method_name.display(self.db.upcast(), self.edition));
+                w!(self, ".{}", method_name.display(self.db, self.edition));
                 if let Some(args) = generic_args {
                     w!(self, "::<");
                     self.print_generic_args(args);
@@ -556,13 +555,13 @@ impl Printer<'_> {
             Expr::Continue { label } => {
                 w!(self, "continue");
                 if let Some(lbl) = label {
-                    w!(self, " {}", self.store[*lbl].name.display(self.db.upcast(), self.edition));
+                    w!(self, " {}", self.store[*lbl].name.display(self.db, self.edition));
                 }
             }
             Expr::Break { expr, label } => {
                 w!(self, "break");
                 if let Some(lbl) = label {
-                    w!(self, " {}", self.store[*lbl].name.display(self.db.upcast(), self.edition));
+                    w!(self, " {}", self.store[*lbl].name.display(self.db, self.edition));
                 }
                 if let Some(expr) = expr {
                     self.whitespace();
@@ -607,7 +606,7 @@ impl Printer<'_> {
                 let edition = self.edition;
                 self.indented(|p| {
                     for field in &**fields {
-                        w!(p, "{}: ", field.name.display(self.db.upcast(), edition));
+                        w!(p, "{}: ", field.name.display(self.db, edition));
                         p.print_expr(field.expr);
                         wln!(p, ",");
                     }
@@ -621,7 +620,7 @@ impl Printer<'_> {
             }
             Expr::Field { expr, name } => {
                 self.print_expr(*expr);
-                w!(self, ".{}", name.display(self.db.upcast(), self.edition));
+                w!(self, ".{}", name.display(self.db, self.edition));
             }
             Expr::Await { expr } => {
                 self.print_expr(*expr);
@@ -760,7 +759,7 @@ impl Printer<'_> {
             Expr::Literal(lit) => self.print_literal(lit),
             Expr::Block { id: _, statements, tail, label } => {
                 let label = label.map(|lbl| {
-                    format!("{}: ", self.store[lbl].name.display(self.db.upcast(), self.edition))
+                    format!("{}: ", self.store[lbl].name.display(self.db, self.edition))
                 });
                 self.print_block(label.as_deref(), statements, tail);
             }
@@ -846,7 +845,7 @@ impl Printer<'_> {
                 let oneline = matches!(self.line_format, LineFormat::Oneline);
                 self.indented(|p| {
                     for (idx, arg) in args.iter().enumerate() {
-                        let field_name = arg.name.display(self.db.upcast(), edition).to_string();
+                        let field_name = arg.name.display(self.db, edition).to_string();
 
                         let mut same_name = false;
                         if let Pat::Bind { id, subpat: None } = &self.store[arg.pat] {
@@ -1019,7 +1018,7 @@ impl Printer<'_> {
             BindingAnnotation::Ref => "ref ",
             BindingAnnotation::RefMut => "ref mut ",
         };
-        w!(self, "{}{}", mode, name.display(self.db.upcast(), self.edition));
+        w!(self, "{}{}", mode, name.display(self.db, self.edition));
     }
 
     fn print_path(&mut self, path: &Path) {
@@ -1030,7 +1029,7 @@ impl Printer<'_> {
                     let loc = $it.lookup(self.db);
                     let tree = loc.item_tree_id().item_tree(self.db);
                     let name = &tree[loc.id.value].name;
-                    w!(self, "{}", name.display(self.db.upcast(), self.edition));
+                    w!(self, "{}", name.display(self.db, self.edition));
                 }};
             }
             match *it {
@@ -1046,7 +1045,7 @@ impl Printer<'_> {
             }
 
             if let Some(s) = s {
-                w!(self, "::{}", s.display(self.db.upcast(), self.edition));
+                w!(self, "::{}", s.display(self.db, self.edition));
             }
             return w!(self, ")");
         }
@@ -1088,7 +1087,7 @@ impl Printer<'_> {
                 w!(self, "::");
             }
 
-            w!(self, "{}", segment.name.display(self.db.upcast(), self.edition));
+            w!(self, "{}", segment.name.display(self.db, self.edition));
             if let Some(generics) = segment.args_and_bindings {
                 w!(self, "::<");
                 self.print_generic_args(generics);
@@ -1121,7 +1120,7 @@ impl Printer<'_> {
                 w!(self, ", ");
             }
             first = false;
-            w!(self, "{}", binding.name.display(self.db.upcast(), self.edition));
+            w!(self, "{}", binding.name.display(self.db, self.edition));
             if !binding.bounds.is_empty() {
                 w!(self, ": ");
                 self.print_type_bounds(&binding.bounds);
@@ -1145,7 +1144,7 @@ impl Printer<'_> {
         let generic_params = self.db.generic_params(param.parent());
 
         match generic_params[param.local_id()].name() {
-            Some(name) => w!(self, "{}", name.display(self.db.upcast(), self.edition)),
+            Some(name) => w!(self, "{}", name.display(self.db, self.edition)),
             None => w!(self, "Param[{}]", param.local_id().into_raw()),
         }
     }
@@ -1154,7 +1153,7 @@ impl Printer<'_> {
         match lt_ref {
             LifetimeRef::Static => w!(self, "'static"),
             LifetimeRef::Named(lt) => {
-                w!(self, "{}", lt.display(self.db.upcast(), self.edition))
+                w!(self, "{}", lt.display(self.db, self.edition))
             }
             LifetimeRef::Placeholder => w!(self, "'_"),
             LifetimeRef::Error => w!(self, "'{{error}}"),
@@ -1270,7 +1269,7 @@ impl Printer<'_> {
                         "for<{}> ",
                         lifetimes
                             .iter()
-                            .map(|it| it.display(self.db.upcast(), self.edition))
+                            .map(|it| it.display(self.db, self.edition))
                             .format(", ")
                             .to_string()
                     );
@@ -1286,7 +1285,7 @@ impl Printer<'_> {
                         }
                         match arg {
                             UseArgRef::Name(it) => {
-                                w!(self, "{}", it.display(self.db.upcast(), self.edition))
+                                w!(self, "{}", it.display(self.db, self.edition))
                             }
                             UseArgRef::Lifetime(it) => self.print_lifetime_ref(it),
                         }

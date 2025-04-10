@@ -95,9 +95,7 @@ impl<'a> Ctx<'a> {
     }
 
     pub(super) fn lower_block(mut self, block: &ast::BlockExpr) -> ItemTree {
-        self.tree
-            .attrs
-            .insert(AttrOwner::TopLevel, RawAttrs::new(self.db.upcast(), block, self.span_map()));
+        self.tree.attrs.insert(AttrOwner::TopLevel, RawAttrs::new(self.db, block, self.span_map()));
         self.tree.top_level = block
             .statements()
             .filter_map(|stmt| match stmt {
@@ -146,7 +144,7 @@ impl<'a> Ctx<'a> {
             ast::Item::MacroDef(ast) => self.lower_macro_def(ast)?.into(),
             ast::Item::ExternBlock(ast) => self.lower_extern_block(ast).into(),
         };
-        let attrs = RawAttrs::new(self.db.upcast(), item, self.span_map());
+        let attrs = RawAttrs::new(self.db, item, self.span_map());
         self.add_attrs(mod_item.into(), attrs);
 
         Some(mod_item)
@@ -172,7 +170,7 @@ impl<'a> Ctx<'a> {
             ast::AssocItem::Const(ast) => Some(self.lower_const(ast).into()),
             ast::AssocItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
         }?;
-        let attrs = RawAttrs::new(self.db.upcast(), item_node, self.span_map());
+        let attrs = RawAttrs::new(self.db, item_node, self.span_map());
         self.add_attrs(
             match item {
                 AssocItem::Function(it) => AttrOwner::ModItem(ModItem::Function(it)),
@@ -217,7 +215,7 @@ impl<'a> Ctx<'a> {
                 for (i, field) in it.fields().enumerate() {
                     let data = self.lower_record_field(&field);
                     fields.push(data);
-                    let attr = RawAttrs::new(self.db.upcast(), &field, self.span_map());
+                    let attr = RawAttrs::new(self.db, &field, self.span_map());
                     if !attr.is_empty() {
                         attrs.push((i, attr))
                     }
@@ -231,7 +229,7 @@ impl<'a> Ctx<'a> {
                 for (i, field) in it.fields().enumerate() {
                     let data = self.lower_tuple_field(i, &field);
                     fields.push(data);
-                    let attr = RawAttrs::new(self.db.upcast(), &field, self.span_map());
+                    let attr = RawAttrs::new(self.db, &field, self.span_map());
                     if !attr.is_empty() {
                         attrs.push((i, attr))
                     }
@@ -299,10 +297,7 @@ impl<'a> Ctx<'a> {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             let idx = self.lower_variant(&variant);
-            self.add_attrs(
-                id(idx).into(),
-                RawAttrs::new(self.db.upcast(), &variant, self.span_map()),
-            );
+            self.add_attrs(id(idx).into(), RawAttrs::new(self.db, &variant, self.span_map()));
         }
         let end = self.next_variant_idx();
         FileItemTreeId(start)..FileItemTreeId(end)
@@ -465,7 +460,7 @@ impl<'a> Ctx<'a> {
         let span_map = self.span_map();
         let path = m.path()?;
         let range = path.syntax().text_range();
-        let path = Interned::new(ModPath::from_src(self.db.upcast(), path, &mut |range| {
+        let path = Interned::new(ModPath::from_src(self.db, path, &mut |range| {
             span_map.span_for_range(range).ctx
         })?);
         let ast_id = self.source_ast_id_map.ast_id(m);
@@ -508,7 +503,7 @@ impl<'a> Ctx<'a> {
                         ast::ExternItem::TypeAlias(ty) => self.lower_type_alias(ty)?.into(),
                         ast::ExternItem::MacroCall(call) => self.lower_macro_call(call)?.into(),
                     };
-                    let attrs = RawAttrs::new(self.db.upcast(), &item, self.span_map());
+                    let attrs = RawAttrs::new(self.db, &item, self.span_map());
                     self.add_attrs(mod_item.into(), attrs);
                     Some(mod_item)
                 })
@@ -559,7 +554,7 @@ impl UseTreeLowering<'_> {
                 // E.g. `use something::{inner}` (prefix is `None`, path is `something`)
                 // or `use something::{path::{inner::{innerer}}}` (prefix is `something::path`, path is `inner`)
                 Some(path) => {
-                    match ModPath::from_src(self.db.upcast(), path, span_for_range) {
+                    match ModPath::from_src(self.db, path, span_for_range) {
                         Some(it) => Some(it),
                         None => return None, // FIXME: report errors somewhere
                     }
@@ -580,7 +575,7 @@ impl UseTreeLowering<'_> {
         } else {
             let is_glob = tree.star_token().is_some();
             let path = match tree.path() {
-                Some(path) => Some(ModPath::from_src(self.db.upcast(), path, span_for_range)?),
+                Some(path) => Some(ModPath::from_src(self.db, path, span_for_range)?),
                 None => None,
             };
             let alias = tree.rename().map(|a| {
@@ -639,7 +634,7 @@ fn visibility_from_ast(
     let Some(node) = node else { return private_vis() };
     let path = match node.kind() {
         ast::VisibilityKind::In(path) => {
-            let path = ModPath::from_src(db.upcast(), path, span_for_range);
+            let path = ModPath::from_src(db, path, span_for_range);
             match path {
                 None => return private_vis(),
                 Some(path) => path,

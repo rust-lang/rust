@@ -104,7 +104,7 @@ pub(crate) fn path_to_const<'g>(
     debruijn: DebruijnIndex,
     expected_ty: Ty,
 ) -> Option<Const> {
-    match resolver.resolve_path_in_value_ns_fully(db.upcast(), path, HygieneId::ROOT) {
+    match resolver.resolve_path_in_value_ns_fully(db, path, HygieneId::ROOT) {
         Some(ValueNs::GenericParam(p)) => {
             let ty = db.const_param_ty(p);
             let value = match mode {
@@ -263,7 +263,7 @@ pub(crate) fn const_eval_query(
             db.monomorphized_mir_body(c.into(), subst, db.trait_environment(c.into()))?
         }
         GeneralConstId::StaticId(s) => {
-            let krate = s.module(db.upcast()).krate();
+            let krate = s.module(db).krate();
             db.monomorphized_mir_body(s.into(), subst, TraitEnvironment::empty(krate))?
         }
     };
@@ -290,7 +290,7 @@ pub(crate) fn const_eval_discriminant_variant(
 ) -> Result<i128, ConstEvalError> {
     let def = variant_id.into();
     let body = db.body(def);
-    let loc = variant_id.lookup(db.upcast());
+    let loc = variant_id.lookup(db);
     if body.exprs[body.body_expr] == Expr::Missing {
         let prev_idx = loc.index.checked_sub(1);
         let value = match prev_idx {

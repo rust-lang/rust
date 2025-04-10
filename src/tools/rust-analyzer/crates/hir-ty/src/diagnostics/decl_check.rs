@@ -154,7 +154,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_module(&mut self, module_id: ModuleId) {
         // Check the module name.
-        let Some(module_name) = module_id.name(self.db.upcast()) else { return };
+        let Some(module_name) = module_id.name(self.db) else { return };
         let Some(module_name_replacement) =
             to_lower_snake_case(module_name.as_str()).map(|new_name| Replacement {
                 current_name: module_name,
@@ -164,8 +164,8 @@ impl<'a> DeclValidator<'a> {
         else {
             return;
         };
-        let module_data = &module_id.def_map(self.db.upcast())[module_id.local_id];
-        let Some(module_src) = module_data.declaration_source(self.db.upcast()) else {
+        let module_data = &module_id.def_map(self.db)[module_id.local_id];
+        let Some(module_src) = module_data.declaration_source(self.db) else {
             return;
         };
         self.create_incorrect_case_diagnostic_for_ast_node(
@@ -188,7 +188,7 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_func(&mut self, func: FunctionId) {
-        let container = func.lookup(self.db.upcast()).container;
+        let container = func.lookup(self.db).container;
         if matches!(container, ItemContainerId::ExternBlockId(_)) {
             cov_mark::hit!(extern_func_incorrect_case_ignored);
             return;
@@ -259,7 +259,7 @@ impl<'a> DeclValidator<'a> {
             let Some(ptr) = source_ptr.value.cast::<ast::IdentPat>() else {
                 continue;
             };
-            let root = source_ptr.file_syntax(self.db.upcast());
+            let root = source_ptr.file_syntax(self.db);
             let ident_pat = ptr.to_node(&root);
             let Some(parent) = ident_pat.syntax().parent() else {
                 continue;
@@ -287,7 +287,7 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn edition(&self, id: impl HasModule) -> span::Edition {
-        let krate = id.krate(self.db.upcast());
+        let krate = id.krate(self.db);
         krate.data(self.db).edition
     }
 
@@ -331,8 +331,8 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let struct_loc = struct_id.lookup(self.db.upcast());
-        let struct_src = struct_loc.source(self.db.upcast());
+        let struct_loc = struct_id.lookup(self.db);
+        let struct_src = struct_loc.source(self.db);
 
         let Some(ast::FieldList::RecordFieldList(struct_fields_list)) =
             struct_src.value.field_list()
@@ -421,8 +421,8 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let enum_loc = enum_id.lookup(self.db.upcast());
-        let enum_src = enum_loc.source(self.db.upcast());
+        let enum_loc = enum_id.lookup(self.db);
+        let enum_src = enum_loc.source(self.db);
 
         let Some(enum_variants_list) = enum_src.value.variant_list() else {
             always!(
@@ -492,8 +492,8 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let variant_loc = variant_id.lookup(self.db.upcast());
-        let variant_src = variant_loc.source(self.db.upcast());
+        let variant_loc = variant_id.lookup(self.db);
+        let variant_src = variant_loc.source(self.db);
 
         let Some(ast::FieldList::RecordFieldList(variant_fields_list)) =
             variant_src.value.field_list()
@@ -540,7 +540,7 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_const(&mut self, const_id: ConstId) {
-        let container = const_id.lookup(self.db.upcast()).container;
+        let container = const_id.lookup(self.db).container;
         if self.is_trait_impl_container(container) {
             cov_mark::hit!(trait_impl_assoc_const_incorrect_case_ignored);
             return;
@@ -574,7 +574,7 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_type_alias(&mut self, type_alias_id: TypeAliasId) {
-        let container = type_alias_id.lookup(self.db.upcast()).container;
+        let container = type_alias_id.lookup(self.db).container;
         if self.is_trait_impl_container(container) {
             cov_mark::hit!(trait_impl_assoc_type_incorrect_case_ignored);
             return;
@@ -607,19 +607,16 @@ impl<'a> DeclValidator<'a> {
             CaseType::UpperCamelCase => to_camel_case,
         };
         let edition = self.edition(item_id);
-        let Some(replacement) = to_expected_case_type(
-            &name.display(self.db.upcast(), edition).to_smolstr(),
-        )
-        .map(|new_name| Replacement {
-            current_name: name.clone(),
-            suggested_text: new_name,
-            expected_case,
-        }) else {
+        let Some(replacement) =
+            to_expected_case_type(&name.display(self.db, edition).to_smolstr()).map(|new_name| {
+                Replacement { current_name: name.clone(), suggested_text: new_name, expected_case }
+            })
+        else {
             return;
         };
 
-        let item_loc = item_id.lookup(self.db.upcast());
-        let item_src = item_loc.source(self.db.upcast());
+        let item_loc = item_id.lookup(self.db);
+        let item_src = item_loc.source(self.db);
         self.create_incorrect_case_diagnostic_for_ast_node(
             replacement,
             item_src.file_id,
@@ -647,13 +644,13 @@ impl<'a> DeclValidator<'a> {
             return;
         };
 
-        let edition = file_id.original_file(self.db.upcast()).edition();
+        let edition = file_id.original_file(self.db).edition();
         let diagnostic = IncorrectCase {
             file: file_id,
             ident_type,
             ident: AstPtr::new(&name_ast),
             expected_case: replacement.expected_case,
-            ident_text: replacement.current_name.display(self.db.upcast(), edition).to_string(),
+            ident_text: replacement.current_name.display(self.db, edition).to_string(),
             suggested_text: replacement.suggested_text,
         };
 

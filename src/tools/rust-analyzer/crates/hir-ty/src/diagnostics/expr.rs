@@ -164,9 +164,8 @@ impl ExprValidator {
                 None => return,
             };
 
-            let checker = filter_map_next_checker.get_or_insert_with(|| {
-                FilterMapNextChecker::new(&self.owner.resolver(db.upcast()), db)
-            });
+            let checker = filter_map_next_checker
+                .get_or_insert_with(|| FilterMapNextChecker::new(&self.owner.resolver(db), db));
 
             if checker.check(call_id, receiver, &callee).is_some() {
                 self.diagnostics.push(BodyValidationDiagnostic::ReplaceFilterMapNextWithFindMap {
@@ -191,7 +190,7 @@ impl ExprValidator {
             return;
         }
 
-        let cx = MatchCheckCtx::new(self.owner.module(db.upcast()), self.owner, db);
+        let cx = MatchCheckCtx::new(self.owner.module(db), self.owner, db);
 
         let pattern_arena = Arena::new();
         let mut m_arms = Vec::with_capacity(arms.len());
@@ -264,7 +263,7 @@ impl ExprValidator {
                     scrut_ty,
                     witnesses,
                     m_arms.is_empty(),
-                    self.owner.krate(db.upcast()),
+                    self.owner.krate(db),
                 ),
             });
         }
@@ -288,17 +287,16 @@ impl ExprValidator {
         match &self.body[scrutinee_expr] {
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => false,
             Expr::Path(path) => {
-                let value_or_partial =
-                    self.owner.resolver(db.upcast()).resolve_path_in_value_ns_fully(
-                        db.upcast(),
-                        path,
-                        self.body.expr_path_hygiene(scrutinee_expr),
-                    );
+                let value_or_partial = self.owner.resolver(db).resolve_path_in_value_ns_fully(
+                    db,
+                    path,
+                    self.body.expr_path_hygiene(scrutinee_expr),
+                );
                 value_or_partial.is_none_or(|v| !matches!(v, ValueNs::StaticId(_)))
             }
             Expr::Field { expr, .. } => match self.infer.type_of_expr[*expr].kind(Interner) {
                 TyKind::Adt(adt, ..)
-                    if db.adt_datum(self.owner.krate(db.upcast()), *adt).kind == AdtKind::Union =>
+                    if db.adt_datum(self.owner.krate(db), *adt).kind == AdtKind::Union =>
                 {
                     false
                 }
@@ -319,7 +317,7 @@ impl ExprValidator {
             return;
         };
         let pattern_arena = Arena::new();
-        let cx = MatchCheckCtx::new(self.owner.module(db.upcast()), self.owner, db);
+        let cx = MatchCheckCtx::new(self.owner.module(db), self.owner, db);
         for stmt in &**statements {
             let &Statement::Let { pat, initializer, else_branch: None, .. } = stmt else {
                 continue;
@@ -359,7 +357,7 @@ impl ExprValidator {
                         ty,
                         witnesses,
                         false,
-                        self.owner.krate(db.upcast()),
+                        self.owner.krate(db),
                     ),
                 });
             }
@@ -438,7 +436,7 @@ impl ExprValidator {
                         let Ok(source_ptr) = source_map.expr_syntax(id) else {
                             return;
                         };
-                        let root = source_ptr.file_syntax(db.upcast());
+                        let root = source_ptr.file_syntax(db);
                         let either::Left(ast::Expr::IfExpr(if_expr)) =
                             source_ptr.value.to_node(&root)
                         else {
@@ -490,7 +488,7 @@ impl FilterMapNextChecker {
         {
             Some(next_function_id) => (
                 Some(next_function_id),
-                match next_function_id.lookup(db.upcast()).container {
+                match next_function_id.lookup(db).container {
                     ItemContainerId::TraitId(iterator_trait_id) => {
                         let iterator_trait_items = &db.trait_items(iterator_trait_id).items;
                         iterator_trait_items.iter().find_map(|(name, it)| match it {
@@ -558,7 +556,7 @@ pub fn record_literal_missing_fields(
         return None;
     }
 
-    let variant_data = variant_def.variant_data(db.upcast());
+    let variant_data = variant_def.variant_data(db);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
     let missed_fields: Vec<LocalFieldId> = variant_data
@@ -588,7 +586,7 @@ pub fn record_pattern_missing_fields(
         return None;
     }
 
-    let variant_data = variant_def.variant_data(db.upcast());
+    let variant_data = variant_def.variant_data(db);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
     let missed_fields: Vec<LocalFieldId> = variant_data

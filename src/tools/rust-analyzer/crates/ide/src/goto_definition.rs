@@ -11,7 +11,7 @@ use hir::{
 };
 use ide_db::{
     RootDatabase, SymbolKind,
-    base_db::{AnchoredPath, RootQueryDb, SourceDatabase, Upcast},
+    base_db::{AnchoredPath, SourceDatabase},
     defs::{Definition, IdentClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
@@ -222,8 +222,7 @@ fn try_lookup_include_path(
     }
     let path = token.value.value().ok()?;
 
-    let file_id = Upcast::<dyn RootQueryDb>::upcast(sema.db)
-        .resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
+    let file_id = sema.db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
     let size = sema.db.file_text(file_id).text(sema.db).len().try_into().ok()?;
     Some(NavigationTarget {
         file_id,

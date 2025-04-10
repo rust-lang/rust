@@ -213,7 +213,7 @@ impl TraitImpls {
             // const _: () = { ... };
             for konst in module_data.scope.unnamed_consts() {
                 let body = db.body(konst.into());
-                for (_, block_def_map) in body.blocks(db.upcast()) {
+                for (_, block_def_map) in body.blocks(db) {
                     Self::collect_def_map(db, map, &block_def_map);
                 }
             }
@@ -336,7 +336,7 @@ impl InherentImpls {
             // const _: () = { ... };
             for konst in module_data.scope.unnamed_consts() {
                 let body = db.body(konst.into());
-                for (_, block_def_map) in body.blocks(db.upcast()) {
+                for (_, block_def_map) in body.blocks(db) {
                     self.collect_def_map(db, &block_def_map);
                 }
             }
@@ -399,7 +399,7 @@ pub fn def_crates(db: &dyn HirDatabase, ty: &Ty, cur_crate: Crate) -> Option<Sma
             Some(if rustc_has_incoherent_inherent_impls {
                 db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::Adt(def_id))
             } else {
-                smallvec![def_id.module(db.upcast()).krate()]
+                smallvec![def_id.module(db).krate()]
             })
         }
         &TyKind::Foreign(id) => {
@@ -412,7 +412,7 @@ pub fn def_crates(db: &dyn HirDatabase, ty: &Ty, cur_crate: Crate) -> Option<Sma
                 {
                     db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::ForeignType(id))
                 } else {
-                    smallvec![alias.module(db.upcast()).krate()]
+                    smallvec![alias.module(db).krate()]
                 },
             )
         }
@@ -426,7 +426,7 @@ pub fn def_crates(db: &dyn HirDatabase, ty: &Ty, cur_crate: Crate) -> Option<Sma
                 {
                     db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::Dyn(trait_id))
                 } else {
-                    smallvec![trait_id.module(db.upcast()).krate()]
+                    smallvec![trait_id.module(db).krate()]
                 },
             )
         }
@@ -620,7 +620,7 @@ pub fn lookup_impl_const(
     const_id: ConstId,
     subs: Substitution,
 ) -> (ConstId, Substitution) {
-    let trait_id = match const_id.lookup(db.upcast()).container {
+    let trait_id = match const_id.lookup(db).container {
         ItemContainerId::TraitId(id) => id,
         _ => return (const_id, subs),
     };
@@ -648,7 +648,7 @@ pub fn is_dyn_method(
     func: FunctionId,
     fn_subst: Substitution,
 ) -> Option<usize> {
-    let ItemContainerId::TraitId(trait_id) = func.lookup(db.upcast()).container else {
+    let ItemContainerId::TraitId(trait_id) = func.lookup(db).container else {
         return None;
     };
     let trait_params = db.generic_params(trait_id.into()).len();
@@ -667,7 +667,7 @@ pub fn is_dyn_method(
             .map(|it| it.skip_binders())
             .flat_map(|it| match it {
                 WhereClause::Implemented(tr) => {
-                    all_super_traits(db.upcast(), from_chalk_trait_id(tr.trait_id))
+                    all_super_traits(db, from_chalk_trait_id(tr.trait_id))
                 }
                 _ => smallvec![],
             })
@@ -690,7 +690,7 @@ pub(crate) fn lookup_impl_method_query(
     func: FunctionId,
     fn_subst: Substitution,
 ) -> (FunctionId, Substitution) {
-    let ItemContainerId::TraitId(trait_id) = func.lookup(db.upcast()).container else {
+    let ItemContainerId::TraitId(trait_id) = func.lookup(db).container else {
         return (func, fn_subst);
     };
     let trait_params = db.generic_params(trait_id.into()).len();
@@ -729,13 +729,11 @@ fn lookup_impl_assoc_item_for_trait_ref(
     let self_ty_fp = TyFingerprint::for_trait_impl(&self_ty)?;
     let impls = db.trait_impls_in_deps(env.krate);
 
-    let trait_module = hir_trait_id.module(db.upcast());
+    let trait_module = hir_trait_id.module(db);
     let type_module = match self_ty_fp {
-        TyFingerprint::Adt(adt_id) => Some(adt_id.module(db.upcast())),
-        TyFingerprint::ForeignType(type_id) => {
-            Some(from_foreign_def_id(type_id).module(db.upcast()))
-        }
-        TyFingerprint::Dyn(trait_id) => Some(trait_id.module(db.upcast())),
+        TyFingerprint::Adt(adt_id) => Some(adt_id.module(db)),
+        TyFingerprint::ForeignType(type_id) => Some(from_foreign_def_id(type_id).module(db)),
+        TyFingerprint::Dyn(trait_id) => Some(trait_id.module(db)),
         _ => None,
     };
 
@@ -810,9 +808,9 @@ fn is_inherent_impl_coherent(
         | TyKind::Str
         | TyKind::Scalar(_) => def_map.is_rustc_coherence_is_core(),
 
-        &TyKind::Adt(AdtId(adt), _) => adt.module(db.upcast()).krate() == def_map.krate(),
+        &TyKind::Adt(AdtId(adt), _) => adt.module(db).krate() == def_map.krate(),
         TyKind::Dyn(it) => it.principal_id().is_some_and(|trait_id| {
-            from_chalk_trait_id(trait_id).module(db.upcast()).krate() == def_map.krate()
+            from_chalk_trait_id(trait_id).module(db).krate() == def_map.krate()
         }),
 
         _ => true,
@@ -883,12 +881,12 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
         return true;
     };
 
-    let local_crate = impl_.lookup(db.upcast()).container.krate();
+    let local_crate = impl_.lookup(db).container.krate();
     let is_local = |tgt_crate| tgt_crate == local_crate;
 
     let trait_ref = impl_trait.substitute(Interner, &substs);
     let trait_id = from_chalk_trait_id(trait_ref.trait_id);
-    if is_local(trait_id.module(db.upcast()).krate()) {
+    if is_local(trait_id.module(db).krate()) {
         // trait to be implemented is local
         return true;
     }
@@ -920,11 +918,11 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
     //   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
     let is_not_orphan = trait_ref.substitution.type_parameters(Interner).any(|ty| {
         match unwrap_fundamental(ty).kind(Interner) {
-            &TyKind::Adt(AdtId(id), _) => is_local(id.module(db.upcast()).krate()),
+            &TyKind::Adt(AdtId(id), _) => is_local(id.module(db).krate()),
             TyKind::Error => true,
-            TyKind::Dyn(it) => it.principal_id().is_some_and(|trait_id| {
-                is_local(from_chalk_trait_id(trait_id).module(db.upcast()).krate())
-            }),
+            TyKind::Dyn(it) => it
+                .principal_id()
+                .is_some_and(|trait_id| is_local(from_chalk_trait_id(trait_id).module(db).krate())),
             _ => false,
         }
     });
@@ -1303,7 +1301,7 @@ fn iterate_inherent_methods(
             let env = table.trait_env.clone();
             let traits = env
                 .traits_in_scope_from_clauses(self_ty.clone())
-                .flat_map(|t| all_super_traits(db.upcast(), t));
+                .flat_map(|t| all_super_traits(db, t));
             iterate_inherent_trait_methods(
                 self_ty,
                 table,
@@ -1316,7 +1314,7 @@ fn iterate_inherent_methods(
         }
         TyKind::Dyn(_) => {
             if let Some(principal_trait) = self_ty.dyn_trait() {
-                let traits = all_super_traits(db.upcast(), principal_trait);
+                let traits = all_super_traits(db, principal_trait);
                 iterate_inherent_trait_methods(
                     self_ty,
                     table,
@@ -1507,7 +1505,7 @@ fn is_valid_impl_method_candidate(
             check_that!(name.is_none_or(|n| n == item_name));
 
             if let Some(from_module) = visible_from_module {
-                if !db.const_visibility(c).is_visible_from(db.upcast(), from_module) {
+                if !db.const_visibility(c).is_visible_from(db, from_module) {
                     cov_mark::hit!(const_candidate_not_visible);
                     return IsValidCandidate::NotVisible;
                 }
@@ -1596,7 +1594,7 @@ fn is_valid_impl_fn_candidate(
     let data = db.function_signature(fn_id);
 
     if let Some(from_module) = visible_from_module {
-        if !db.function_visibility(fn_id).is_visible_from(db.upcast(), from_module) {
+        if !db.function_visibility(fn_id).is_visible_from(db, from_module) {
             cov_mark::hit!(autoderef_candidate_not_visible);
             return IsValidCandidate::NotVisible;
         }

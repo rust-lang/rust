@@ -373,7 +373,7 @@ impl MirEvalError {
                         writeln!(
                             f,
                             "In function {} ({:?})",
-                            function_name.name.display(db.upcast(), display_target.edition),
+                            function_name.name.display(db, display_target.edition),
                             func
                         )?;
                     }
@@ -407,7 +407,7 @@ impl MirEvalError {
                     },
                     MirSpan::Unknown => continue,
                 };
-                let file_id = span.file_id.original_file(db.upcast());
+                let file_id = span.file_id.original_file(db);
                 let text_range = span.value.text_range();
                 writeln!(f, "{}", span_formatter(file_id.file_id(), text_range))?;
             }
@@ -423,9 +423,9 @@ impl MirEvalError {
             }
             MirEvalError::MirLowerError(func, err) => {
                 let function_name = db.function_signature(*func);
-                let self_ = match func.lookup(db.upcast()).container {
+                let self_ = match func.lookup(db).container {
                     ItemContainerId::ImplId(impl_id) => Some({
-                        let generics = crate::generics::generics(db.upcast(), impl_id.into());
+                        let generics = crate::generics::generics(db, impl_id.into());
                         let substs = generics.placeholder_subst(db);
                         db.impl_self_ty(impl_id)
                             .substitute(Interner, &substs)
@@ -433,10 +433,7 @@ impl MirEvalError {
                             .to_string()
                     }),
                     ItemContainerId::TraitId(it) => Some(
-                        db.trait_signature(it)
-                            .name
-                            .display(db.upcast(), display_target.edition)
-                            .to_string(),
+                        db.trait_signature(it).name.display(db, display_target.edition).to_string(),
                     ),
                     _ => None,
                 };
@@ -445,7 +442,7 @@ impl MirEvalError {
                     "MIR lowering for function `{}{}{}` ({:?}) failed due:",
                     self_.as_deref().unwrap_or_default(),
                     if self_.is_some() { "::" } else { "" },
-                    function_name.name.display(db.upcast(), display_target.edition),
+                    function_name.name.display(db, display_target.edition),
                     func
                 )?;
                 err.pretty_print(f, db, span_formatter, display_target)?;
@@ -628,7 +625,7 @@ impl Evaluator<'_> {
         assert_placeholder_ty_is_unused: bool,
         trait_env: Option<Arc<TraitEnvironment>>,
     ) -> Result<Evaluator<'_>> {
-        let crate_id = owner.module(db.upcast()).krate();
+        let crate_id = owner.module(db).krate();
         let target_data_layout = match db.target_data_layout(crate_id) {
             Ok(target_data_layout) => target_data_layout,
             Err(e) => return Err(MirEvalError::TargetDataLayoutNotAvailable(e)),
@@ -821,7 +818,7 @@ impl Evaluator<'_> {
                         Variants::Multiple { variants, .. } => {
                             &variants[match f.parent {
                                 hir_def::VariantId::EnumVariantId(it) => {
-                                    RustcEnumVariantIdx(it.lookup(self.db.upcast()).index as usize)
+                                    RustcEnumVariantIdx(it.lookup(self.db).index as usize)
                                 }
                                 _ => {
                                     return Err(MirEvalError::InternalError(
@@ -1790,11 +1787,11 @@ impl Evaluator<'_> {
         subst: Substitution,
         locals: &Locals,
     ) -> Result<(usize, Arc<Layout>, Option<(usize, usize, i128)>)> {
-        let adt = it.adt_id(self.db.upcast());
+        let adt = it.adt_id(self.db);
         if let DefWithBodyId::VariantId(f) = locals.body.owner {
             if let VariantId::EnumVariantId(it) = it {
                 if let AdtId::EnumId(e) = adt {
-                    if f.lookup(self.db.upcast()).parent == e {
+                    if f.lookup(self.db).parent == e {
                         // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
                         // infinite sized type errors) we use a dummy layout
                         let i = self.const_eval_discriminant(it)?;
@@ -1812,7 +1809,7 @@ impl Evaluator<'_> {
                     _ => not_supported!("multi variant layout for non-enums"),
                 };
                 let mut discriminant = self.const_eval_discriminant(enum_variant_id)?;
-                let lookup = enum_variant_id.lookup(self.db.upcast());
+                let lookup = enum_variant_id.lookup(self.db);
                 let rustc_enum_variant_idx = RustcEnumVariantIdx(lookup.index as usize);
                 let variant_layout = variants[rustc_enum_variant_idx].clone();
                 let have_tag = match tag_encoding {
@@ -1919,7 +1916,7 @@ impl Evaluator<'_> {
                     .db
                     .const_eval(const_id, subst, Some(self.trait_env.clone()))
                     .map_err(|e| {
-                        let name = const_id.name(self.db.upcast());
+                        let name = const_id.name(self.db);
                         MirEvalError::ConstEvalError(name, Box::new(e))
                     })?;
                 if let chalk_ir::ConstValue::Concrete(c) = &result_owner.data(Interner).value {
@@ -2070,7 +2067,7 @@ impl Evaluator<'_> {
         }
         if let DefWithBodyId::VariantId(f) = locals.body.owner {
             if let Some((AdtId::EnumId(e), _)) = ty.as_adt() {
-                if f.lookup(self.db.upcast()).parent == e {
+                if f.lookup(self.db).parent == e {
                     // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
                     // infinite sized type errors) we use a dummy size
                     return Ok(Some((16, 16)));
@@ -2781,14 +2778,14 @@ impl Evaluator<'_> {
         match r {
             Ok(r) => Ok(r),
             Err(e) => {
-                let db = self.db.upcast();
+                let db = self.db;
                 let loc = variant.lookup(db);
                 let enum_loc = loc.parent.lookup(db);
                 let edition = self.crate_id.data(self.db).edition;
                 let name = format!(
                     "{}::{}",
-                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast(), edition),
-                    loc.id.item_tree(db)[loc.id.value].name.display(db.upcast(), edition),
+                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db, edition),
+                    loc.id.item_tree(db)[loc.id.value].name.display(db, edition),
                 );
                 Err(MirEvalError::ConstEvalError(name, Box::new(e)))
             }
@@ -2921,9 +2918,9 @@ pub fn render_const_using_debug_impl(
         drop_flags: DropFlags::default(),
     };
     let data = evaluator.allocate_const_in_heap(locals, c)?;
-    let resolver = owner.resolver(db.upcast());
+    let resolver = owner.resolver(db);
     let Some(TypeNs::TraitId(debug_trait)) = resolver.resolve_path_in_type_ns_fully(
-        db.upcast(),
+        db,
         &hir_def::expr_store::path::Path::from_known_path_with_no_generic(path![core::fmt::Debug]),
     ) else {
         not_supported!("core::fmt::Debug not found");
@@ -2954,7 +2951,7 @@ pub fn render_const_using_debug_impl(
     evaluator.write_memory(a3.offset(2 * evaluator.ptr_size()), &a2.to_bytes())?;
     evaluator.write_memory(a3.offset(3 * evaluator.ptr_size()), &[1])?;
     let Some(ValueNs::FunctionId(format_fn)) = resolver.resolve_path_in_value_ns_fully(
-        db.upcast(),
+        db,
         &hir_def::expr_store::path::Path::from_known_path_with_no_generic(path![std::fmt::format]),
         HygieneId::ROOT,
     ) else {

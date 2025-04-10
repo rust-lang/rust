@@ -433,7 +433,7 @@ impl AnyDiagnostic {
     ) -> Option<AnyDiagnostic> {
         match diagnostic {
             BodyValidationDiagnostic::RecordMissingFields { record, variant, missed_fields } => {
-                let variant_data = variant.variant_data(db.upcast());
+                let variant_data = variant.variant_data(db);
                 let missed_fields = missed_fields
                     .into_iter()
                     .map(|idx| variant_data.fields()[idx].name.clone())
@@ -444,7 +444,7 @@ impl AnyDiagnostic {
                     Either::Right(record_pat) => source_map.pat_syntax(record_pat).ok()?,
                 };
                 let file = record.file_id;
-                let root = record.file_syntax(db.upcast());
+                let root = record.file_syntax(db);
                 match record.value.to_node(&root) {
                     Either::Left(ast::Expr::RecordExpr(record_expr)) => {
                         if record_expr.record_expr_field_list().is_some() {
@@ -493,7 +493,7 @@ impl AnyDiagnostic {
             BodyValidationDiagnostic::MissingMatchArms { match_expr, uncovered_patterns } => {
                 match source_map.expr_syntax(match_expr) {
                     Ok(source_ptr) => {
-                        let root = source_ptr.file_syntax(db.upcast());
+                        let root = source_ptr.file_syntax(db);
                         if let Either::Left(ast::Expr::MatchExpr(match_expr)) =
                             &source_ptr.value.to_node(&root)
                         {

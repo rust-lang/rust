@@ -3,7 +3,6 @@ use hir::{HasVisibility, HirDisplay, HirFileIdExt, Module};
 use ide_db::{
     FileId,
     assists::AssistId,
-    base_db::Upcast,
     defs::{Definition, NameRefClass},
 };
 use syntax::{
@@ -123,7 +122,7 @@ fn target_data_for_generate_constant(
         return None;
     }
     let in_file_source = current_module.definition_source(ctx.sema.db);
-    let file_id = in_file_source.file_id.original_file(ctx.sema.db.upcast());
+    let file_id = in_file_source.file_id.original_file(ctx.sema.db);
     match in_file_source.value {
         hir::ModuleSource::Module(module_node) => {
             let indent = IndentLevel::from_node(module_node.syntax());

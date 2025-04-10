@@ -4,11 +4,10 @@ use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
     CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, RootQueryDb, SourceDatabase,
-    SourceRoot, SourceRootId, SourceRootInput, Upcast,
+    SourceRoot, SourceRootId, SourceRootInput,
 };
 
 use hir_def::{ModuleId, db::DefDatabase};
-use hir_expand::db::ExpandDatabase;
 use rustc_hash::FxHashMap;
 use salsa::{AsDynDatabase, Durability};
 use span::{EditionedFileId, FileId};
@@ -44,30 +43,6 @@ impl Default for TestDB {
 impl fmt::Debug for TestDB {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TestDB").finish()
-    }
-}
-
-impl Upcast<dyn ExpandDatabase> for TestDB {
-    fn upcast(&self) -> &(dyn ExpandDatabase + 'static) {
-        self
-    }
-}
-
-impl Upcast<dyn DefDatabase> for TestDB {
-    fn upcast(&self) -> &(dyn DefDatabase + 'static) {
-        self
-    }
-}
-
-impl Upcast<dyn RootQueryDb> for TestDB {
-    fn upcast(&self) -> &(dyn RootQueryDb + 'static) {
-        self
-    }
-}
-
-impl Upcast<dyn SourceDatabase> for TestDB {
-    fn upcast(&self) -> &(dyn SourceDatabase + 'static) {
-        self
     }
 }
 

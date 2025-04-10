@@ -185,7 +185,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                                     None,
                                 );
                                 let len_self =
-                                    generics(self.ctx.db.upcast(), associated_ty.into()).len_self();
+                                    generics(self.ctx.db, associated_ty.into()).len_self();
                                 let substitution = Substitution::from_iter(
                                     Interner,
                                     substitution
@@ -265,7 +265,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 }
             }
             TypeNs::AdtSelfType(adt) => {
-                let generics = generics(self.ctx.db.upcast(), adt.into());
+                let generics = generics(self.ctx.db, adt.into());
                 let substs = match self.ctx.type_param_mode {
                     ParamLoweringMode::Placeholder => generics.placeholder_subst(self.ctx.db),
                     ParamLoweringMode::Variable => {
@@ -327,10 +327,8 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
     }
 
     pub(crate) fn resolve_path_in_type_ns(&mut self) -> Option<(TypeNs, Option<usize>)> {
-        let (resolution, remaining_index, _, prefix_info) = self
-            .ctx
-            .resolver
-            .resolve_path_in_type_ns_with_prefix_info(self.ctx.db.upcast(), self.path)?;
+        let (resolution, remaining_index, _, prefix_info) =
+            self.ctx.resolver.resolve_path_in_type_ns_with_prefix_info(self.ctx.db, self.path)?;
 
         let segments = self.segments;
         if segments.is_empty() || matches!(self.path, Path::LangItem(..)) {
@@ -385,7 +383,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         hygiene_id: HygieneId,
     ) -> Option<ResolveValueResult> {
         let (res, prefix_info) = self.ctx.resolver.resolve_path_in_value_ns_with_prefix_info(
-            self.ctx.db.upcast(),
+            self.ctx.db,
             self.path,
             hygiene_id,
         )?;
@@ -510,8 +508,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 let substs = self.substs_from_path_segment(associated_ty.into(), false, None);
 
                 let len_self =
-                    crate::generics::generics(self.ctx.db.upcast(), associated_ty.into())
-                        .len_self();
+                    crate::generics::generics(self.ctx.db, associated_ty.into()).len_self();
 
                 let substs = Substitution::from_iter(
                     Interner,
@@ -583,7 +580,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         self.current_or_prev_segment = penultimate;
                     }
                 }
-                var.lookup(self.ctx.db.upcast()).parent.into()
+                var.lookup(self.ctx.db).parent.into()
             }
         };
         let result = self.substs_from_path_segment(generic_def, infer_args, None);
@@ -639,7 +636,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         // - Lifetime parameters
         // - Type or Const parameters
         // - Parent parameters
-        let def_generics = generics(self.ctx.db.upcast(), def);
+        let def_generics = generics(self.ctx.db, def);
         let (
             parent_params,
             self_param,
@@ -742,7 +739,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         // ignore them.
         let is_assoc_ty = || match def {
             GenericDefId::TypeAliasId(id) => {
-                matches!(id.lookup(self.ctx.db.upcast()).container, ItemContainerId::TraitId(_))
+                matches!(id.lookup(self.ctx.db).container, ItemContainerId::TraitId(_))
             }
             _ => false,
         };
@@ -816,7 +813,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                     false, // this is not relevant
                     Some(super_trait_ref.self_type_parameter(Interner)),
                 );
-                let generics = generics(self.ctx.db.upcast(), associated_ty.into());
+                let generics = generics(self.ctx.db, associated_ty.into());
                 let self_params = generics.len_self();
                 let substitution = Substitution::from_iter(
                     Interner,

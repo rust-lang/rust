@@ -78,7 +78,7 @@ pub(super) fn lower_path(
                         return None;
                     }
                     break kind = resolve_crate_root(
-                        collector.db.upcast(),
+                        collector.db,
                         collector.expander.ctx_for_range(name_ref.syntax().text_range()),
                     )
                     .map(PathKind::DollarCrate)
@@ -216,7 +216,7 @@ pub(super) fn lower_path(
             let syn_ctxt = collector.expander.ctx_for_range(path.segment()?.syntax().text_range());
             if let Some(macro_call_id) = syn_ctxt.outer_expn(collector.db) {
                 if collector.db.lookup_intern_macro_call(macro_call_id).def.local_inner {
-                    kind = match resolve_crate_root(collector.db.upcast(), syn_ctxt) {
+                    kind = match resolve_crate_root(collector.db, syn_ctxt) {
                         Some(crate_root) => PathKind::DollarCrate(crate_root),
                         None => PathKind::Crate,
                     }

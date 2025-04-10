@@ -6,9 +6,7 @@ use hir::{DefMap, InFile, ModuleSource, db::DefDatabase};
 use ide_db::base_db::RootQueryDb;
 use ide_db::text_edit::TextEdit;
 use ide_db::{
-    FileId, FileRange, LineIndexDatabase,
-    base_db::{SourceDatabase, Upcast},
-    source_change::SourceChange,
+    FileId, FileRange, LineIndexDatabase, base_db::SourceDatabase, source_change::SourceChange,
 };
 use paths::Utf8Component;
 use syntax::{
@@ -101,7 +99,7 @@ fn fixes(
     };
 
     // check crate roots, i.e. main.rs, lib.rs, ...
-    let relevant_crates = Upcast::<dyn RootQueryDb>::upcast(db).relevant_crates(file_id);
+    let relevant_crates = db.relevant_crates(file_id);
     'crates: for &krate in &*relevant_crates {
         let crate_def_map = ctx.sema.db.crate_def_map(krate);
 
@@ -150,7 +148,7 @@ fn fixes(
             paths.into_iter().find_map(|path| source_root.file_for_path(&path))
         })?;
     stack.pop();
-    let relevant_crates = Upcast::<dyn RootQueryDb>::upcast(db).relevant_crates(parent_id);
+    let relevant_crates = db.relevant_crates(parent_id);
     'crates: for &krate in relevant_crates.iter() {
         let crate_def_map = ctx.sema.db.crate_def_map(krate);
         let Some((_, module)) = crate_def_map.modules().find(|(_, module)| {
