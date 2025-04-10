@@ -386,15 +386,15 @@ pub fn def_crates(db: &dyn HirDatabase, ty: &Ty, cur_crate: Crate) -> Option<Sma
                 hir_def::AdtId::StructId(id) => db
                     .struct_signature(id)
                     .flags
-                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
+                    .contains(StructFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
                 hir_def::AdtId::UnionId(id) => db
                     .union_signature(id)
                     .flags
-                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
+                    .contains(StructFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
                 hir_def::AdtId::EnumId(id) => db
                     .enum_signature(id)
                     .flags
-                    .contains(EnumFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
+                    .contains(EnumFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
             };
             Some(if rustc_has_incoherent_inherent_impls {
                 db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::Adt(def_id))
@@ -408,7 +408,7 @@ pub fn def_crates(db: &dyn HirDatabase, ty: &Ty, cur_crate: Crate) -> Option<Sma
                 if db
                     .type_alias_signature(alias)
                     .flags
-                    .contains(TypeAliasFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
+                    .contains(TypeAliasFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPL)
                 {
                     db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::ForeignType(id))
                 } else {
@@ -831,15 +831,15 @@ fn is_inherent_impl_coherent(
                 hir_def::AdtId::StructId(id) => db
                     .struct_signature(id)
                     .flags
-                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
+                    .contains(StructFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
                 hir_def::AdtId::UnionId(id) => db
                     .union_signature(id)
                     .flags
-                    .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
+                    .contains(StructFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
                 hir_def::AdtId::EnumId(it) => db
                     .enum_signature(it)
                     .flags
-                    .contains(EnumFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
+                    .contains(EnumFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS),
             },
             TyKind::Dyn(it) => it.principal_id().is_some_and(|trait_id| {
                 db.trait_signature(from_chalk_trait_id(trait_id))
@@ -854,7 +854,7 @@ fn is_inherent_impl_coherent(
             && !items.items.is_empty()
             && items.items.iter().all(|&(_, assoc)| match assoc {
                 AssocItemId::FunctionId(it) => {
-                    db.function_signature(it).flags.contains(FnFlags::RUSTC_ALLOW_INCOHERENT_IMPLS)
+                    db.function_signature(it).flags.contains(FnFlags::RUSTC_ALLOW_INCOHERENT_IMPL)
                 }
                 AssocItemId::ConstId(it) => {
                     db.const_signature(it).flags.contains(ConstFlags::RUSTC_ALLOW_INCOHERENT_IMPL)
@@ -862,7 +862,7 @@ fn is_inherent_impl_coherent(
                 AssocItemId::TypeAliasId(it) => db
                     .type_alias_signature(it)
                     .flags
-                    .contains(TypeAliasFlags::RUSTC_ALLOW_INCOHERENT_IMPLS),
+                    .contains(TypeAliasFlags::RUSTC_ALLOW_INCOHERENT_IMPL),
             })
     }
 }
@@ -898,7 +898,7 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
                 TyKind::Ref(_, _, referenced) => ty = referenced.clone(),
                 &TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), ref subs) => {
                     let struct_signature = db.struct_signature(s);
-                    if struct_signature.flags.contains(StructFlags::IS_FUNDAMENTAL) {
+                    if struct_signature.flags.contains(StructFlags::FUNDAMENTAL) {
                         let next = subs.type_parameters(Interner).next();
                         match next {
                             Some(it) => ty = it,

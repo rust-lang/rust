@@ -586,13 +586,13 @@ impl<'a> TyLoweringContext<'a> {
                             .db
                             .trait_signature(from_chalk_trait_id(lhs_id))
                             .flags
-                            .contains(TraitFlags::IS_AUTO);
+                            .contains(TraitFlags::AUTO);
                         let rhs_id = rhs.trait_id;
                         let rhs_is_auto = ctx
                             .db
                             .trait_signature(from_chalk_trait_id(rhs_id))
                             .flags
-                            .contains(TraitFlags::IS_AUTO);
+                            .contains(TraitFlags::AUTO);
 
                         if !lhs_is_auto && !rhs_is_auto {
                             multiple_regular_traits = true;

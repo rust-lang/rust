@@ -674,13 +674,13 @@ pub(crate) fn trait_datum_query(
     let generic_params = generics(db, trait_.into());
     let bound_vars = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
     let flags = rust_ir::TraitFlags {
-        auto: trait_data.flags.contains(TraitFlags::IS_AUTO),
+        auto: trait_data.flags.contains(TraitFlags::AUTO),
         upstream: trait_.lookup(db).container.krate() != krate,
         non_enumerable: true,
         coinductive: false, // only relevant for Chalk testing
         // FIXME: set these flags correctly
         marker: false,
-        fundamental: trait_data.flags.contains(TraitFlags::IS_FUNDAMENTAL),
+        fundamental: trait_data.flags.contains(TraitFlags::FUNDAMENTAL),
     };
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
     let associated_ty_ids =
@@ -761,10 +761,7 @@ pub(crate) fn adt_datum_query(
     let (fundamental, phantom_data) = match adt_id {
         hir_def::AdtId::StructId(s) => {
             let flags = db.struct_signature(s).flags;
-            (
-                flags.contains(StructFlags::IS_FUNDAMENTAL),
-                flags.contains(StructFlags::IS_PHANTOM_DATA),
-            )
+            (flags.contains(StructFlags::FUNDAMENTAL), flags.contains(StructFlags::IS_PHANTOM_DATA))
         }
         // FIXME set fundamental flags correctly
         hir_def::AdtId::UnionId(_) => (false, false),
@@ -851,7 +848,7 @@ fn impl_def_datum(db: &dyn HirDatabase, krate: Crate, impl_id: hir_def::ImplId) 
         rust_ir::ImplType::External
     };
     let where_clauses = convert_where_clauses(db, impl_id.into(), &bound_vars);
-    let negative = impl_data.flags.contains(ImplFlags::IS_NEGATIVE);
+    let negative = impl_data.flags.contains(ImplFlags::NEGATIVE);
     let polarity = if negative { rust_ir::Polarity::Negative } else { rust_ir::Polarity::Positive };
 
     let impl_datum_bound = rust_ir::ImplDatumBound { trait_ref, where_clauses };

@@ -50,18 +50,18 @@ pub struct StructSignature {
 bitflags! {
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     pub struct StructFlags: u8 {
-        /// Indicates whether the struct is `PhantomData`.
-        const IS_PHANTOM_DATA  = 1 << 2;
-        /// Indicates whether the struct has a `#[fundamental]` attribute.
-        const IS_FUNDAMENTAL   = 1 << 3;
         /// Indicates whether the struct has a `#[rustc_has_incoherent_inherent_impls]` attribute.
-        const IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS      = 1 << 4;
+        const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS = 1 << 1;
+        /// Indicates whether the struct has a `#[fundamental]` attribute.
+        const FUNDAMENTAL      = 1 << 2;
+        /// Indicates whether the struct is `PhantomData`.
+        const IS_PHANTOM_DATA  = 1 << 3;
         /// Indicates whether this struct is `Box`.
-        const IS_BOX           = 1 << 5;
+        const IS_BOX           = 1 << 4;
         /// Indicates whether this struct is `ManuallyDrop`.
-        const IS_MANUALLY_DROP = 1 << 6;
+        const IS_MANUALLY_DROP = 1 << 5;
         /// Indicates whether this struct is `UnsafeCell`.
-        const IS_UNSAFE_CELL   = 1 << 7;
+        const IS_UNSAFE_CELL   = 1 << 6;
     }
 }
 
@@ -73,10 +73,10 @@ impl StructSignature {
 
         let mut flags = StructFlags::empty();
         if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
-            flags |= StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
+            flags |= StructFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
         }
         if attrs.by_key(&sym::fundamental).exists() {
-            flags |= StructFlags::IS_FUNDAMENTAL;
+            flags |= StructFlags::FUNDAMENTAL;
         }
         if let Some(lang) = attrs.lang_item() {
             match lang {
@@ -129,10 +129,10 @@ impl UnionSignature {
         let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
         let mut flags = StructFlags::empty();
         if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
-            flags |= StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
+            flags |= StructFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
         }
         if attrs.by_key(&sym::fundamental).exists() {
-            flags |= StructFlags::IS_FUNDAMENTAL;
+            flags |= StructFlags::FUNDAMENTAL;
         }
 
         let repr = attrs.repr();
@@ -162,7 +162,7 @@ impl UnionSignature {
 bitflags! {
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     pub struct EnumFlags: u8 {
-        const IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS  = 1 << 4;
+        const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS  = 1 << 1;
     }
 }
 
@@ -182,7 +182,7 @@ impl EnumSignature {
         let attrs = item_tree.attrs(db, loc.container.krate, ModItem::from(loc.id.value).into());
         let mut flags = EnumFlags::empty();
         if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
-            flags |= EnumFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
+            flags |= EnumFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
         }
 
         let repr = attrs.repr();
@@ -219,8 +219,8 @@ impl EnumSignature {
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
     pub struct ConstFlags: u8 {
-        const HAS_BODY = 1 << 0;
-        const RUSTC_ALLOW_INCOHERENT_IMPL = 1 << 1;
+        const HAS_BODY = 1 << 1;
+        const RUSTC_ALLOW_INCOHERENT_IMPL = 1 << 7;
     }
 }
 
@@ -271,12 +271,12 @@ impl ConstSignature {
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
     pub struct StaticFlags: u8 {
-        const HAS_BODY = 1 << 0;
-        const RUSTC_ALLOW_INCOHERENT_IMPL = 1 << 1;
-        const MUTABLE = 1 << 2;
-        const HAS_UNSAFE = 1 << 3;
-        const HAS_SAFE = 1 << 4;
-        const IS_EXTERN = 1 << 5;
+        const HAS_BODY = 1 << 1;
+        const MUTABLE    = 1 << 3;
+        const UNSAFE     = 1 << 4;
+        const EXPLICIT_SAFE = 1 << 5;
+        const EXTERN     = 1 << 6;
+        const RUSTC_ALLOW_INCOHERENT_IMPL = 1 << 7;
     }
 }
 
@@ -302,7 +302,7 @@ impl StaticSignature {
         }
 
         if matches!(loc.container, ItemContainerId::ExternBlockId(_)) {
-            flags.insert(StaticFlags::IS_EXTERN);
+            flags.insert(StaticFlags::EXTERN);
         }
 
         let source = loc.source(db);
@@ -313,10 +313,10 @@ impl StaticSignature {
             flags.insert(StaticFlags::MUTABLE);
         }
         if source.value.unsafe_token().is_some() {
-            flags.insert(StaticFlags::HAS_UNSAFE);
+            flags.insert(StaticFlags::UNSAFE);
         }
         if source.value.safe_token().is_some() {
-            flags.insert(StaticFlags::HAS_SAFE);
+            flags.insert(StaticFlags::EXPLICIT_SAFE);
         }
 
         let (store, source_map, type_ref) =
@@ -337,8 +337,8 @@ impl StaticSignature {
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
     pub struct ImplFlags: u8 {
-        const IS_NEGATIVE = 1 << 0;
-        const IS_UNSAFE = 1 << 1;
+        const NEGATIVE = 1 << 1;
+        const UNSAFE = 1 << 3;
     }
 }
 
@@ -358,10 +358,10 @@ impl ImplSignature {
         let mut flags = ImplFlags::empty();
         let src = loc.source(db);
         if src.value.unsafe_token().is_some() {
-            flags.insert(ImplFlags::IS_UNSAFE);
+            flags.insert(ImplFlags::UNSAFE);
         }
         if src.value.excl_token().is_some() {
-            flags.insert(ImplFlags::IS_NEGATIVE);
+            flags.insert(ImplFlags::NEGATIVE);
         }
 
         let (store, source_map, self_ty, target_trait, generic_params) =
@@ -383,13 +383,13 @@ impl ImplSignature {
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
     pub struct TraitFlags: u8 {
-        const IS_AUTO = 1 << 0;
-        const IS_UNSAFE = 1 << 1;
-        const IS_FUNDAMENTAL = 1 << 2;
-        const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS = 1 << 3;
-        const SKIP_ARRAY_DURING_METHOD_DISPATCH = 1 << 4;
-        const SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH = 1 << 5;
-        const RUSTC_PAREN_SUGAR = 1 << 6;
+        const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS = 1 << 1;
+        const FUNDAMENTAL = 1 << 2;
+        const UNSAFE = 1 << 3;
+        const AUTO = 1 << 4;
+        const SKIP_ARRAY_DURING_METHOD_DISPATCH = 1 << 5;
+        const SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH = 1 << 6;
+        const RUSTC_PAREN_SUGAR = 1 << 7;
     }
 }
 
@@ -410,13 +410,13 @@ impl TraitSignature {
         let attrs = item_tree.attrs(db, loc.container.krate, ModItem::from(loc.id.value).into());
         let source = loc.source(db);
         if source.value.auto_token().is_some() {
-            flags.insert(TraitFlags::IS_AUTO);
+            flags.insert(TraitFlags::AUTO);
         }
         if source.value.unsafe_token().is_some() {
-            flags.insert(TraitFlags::IS_UNSAFE);
+            flags.insert(TraitFlags::UNSAFE);
         }
         if attrs.by_key(&sym::fundamental).exists() {
-            flags |= TraitFlags::IS_FUNDAMENTAL;
+            flags |= TraitFlags::FUNDAMENTAL;
         }
         if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
@@ -489,21 +489,21 @@ impl TraitAliasSignature {
 bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
     pub struct FnFlags: u16 {
-        const HAS_SELF_PARAM = 1 << 0;
         const HAS_BODY = 1 << 1;
-        const HAS_DEFAULT_KW = 1 << 2;
-        const HAS_CONST_KW = 1 << 3;
-        const HAS_ASYNC_KW = 1 << 4;
-        const HAS_UNSAFE_KW = 1 << 5;
-        const IS_VARARGS = 1 << 6;
-        const HAS_SAFE_KW = 1 << 7;
+        const DEFAULT = 1 << 2;
+        const CONST = 1 << 3;
+        const ASYNC = 1 << 4;
+        const UNSAFE = 1 << 5;
+        const HAS_VARARGS = 1 << 6;
+        const RUSTC_ALLOW_INCOHERENT_IMPL = 1 << 7;
+        const HAS_SELF_PARAM = 1 << 8;
         /// The `#[target_feature]` attribute is necessary to check safety (with RFC 2396),
         /// but keeping it for all functions will consume a lot of memory when there are
         /// only very few functions with it. So we only encode its existence here, and lookup
         /// it if needed.
-        const HAS_TARGET_FEATURE = 1 << 8;
-        const DEPRECATED_SAFE_2024 = 1 << 9;
-        const RUSTC_ALLOW_INCOHERENT_IMPLS = 1 << 10;
+        const HAS_TARGET_FEATURE = 1 << 9;
+        const DEPRECATED_SAFE_2024 = 1 << 10;
+        const EXPLICIT_SAFE = 1 << 11;
     }
 }
 
@@ -532,7 +532,7 @@ impl FunctionSignature {
         let mut flags = FnFlags::empty();
         let attrs = item_tree.attrs(db, module.krate, ModItem::from(loc.id.value).into());
         if attrs.by_key(&sym::rustc_allow_incoherent_impl).exists() {
-            flags.insert(FnFlags::RUSTC_ALLOW_INCOHERENT_IMPLS);
+            flags.insert(FnFlags::RUSTC_ALLOW_INCOHERENT_IMPL);
         }
 
         if attrs.by_key(&sym::target_feature).exists() {
@@ -546,20 +546,20 @@ impl FunctionSignature {
             if attrs.by_key(&sym::rustc_deprecated_safe_2024).exists() {
                 flags.insert(FnFlags::DEPRECATED_SAFE_2024);
             } else {
-                flags.insert(FnFlags::HAS_UNSAFE_KW);
+                flags.insert(FnFlags::UNSAFE);
             }
         }
         if source.value.async_token().is_some() {
-            flags.insert(FnFlags::HAS_ASYNC_KW);
+            flags.insert(FnFlags::ASYNC);
         }
         if source.value.const_token().is_some() {
-            flags.insert(FnFlags::HAS_CONST_KW);
+            flags.insert(FnFlags::CONST);
         }
         if source.value.default_token().is_some() {
-            flags.insert(FnFlags::HAS_DEFAULT_KW);
+            flags.insert(FnFlags::DEFAULT);
         }
         if source.value.safe_token().is_some() {
-            flags.insert(FnFlags::HAS_SAFE_KW);
+            flags.insert(FnFlags::EXPLICIT_SAFE);
         }
         if source.value.body().is_some() {
             flags.insert(FnFlags::HAS_BODY);
@@ -575,7 +575,7 @@ impl FunctionSignature {
             flags.insert(FnFlags::HAS_SELF_PARAM);
         }
         if variadic {
-            flags.insert(FnFlags::IS_VARARGS);
+            flags.insert(FnFlags::HAS_VARARGS);
         }
         (
             Arc::new(FunctionSignature {
@@ -603,19 +603,19 @@ impl FunctionSignature {
     }
 
     pub fn is_default(&self) -> bool {
-        self.flags.contains(FnFlags::HAS_DEFAULT_KW)
+        self.flags.contains(FnFlags::DEFAULT)
     }
 
     pub fn is_const(&self) -> bool {
-        self.flags.contains(FnFlags::HAS_CONST_KW)
+        self.flags.contains(FnFlags::CONST)
     }
 
     pub fn is_async(&self) -> bool {
-        self.flags.contains(FnFlags::HAS_ASYNC_KW)
+        self.flags.contains(FnFlags::ASYNC)
     }
 
     pub fn is_unsafe(&self) -> bool {
-        self.flags.contains(FnFlags::HAS_UNSAFE_KW)
+        self.flags.contains(FnFlags::UNSAFE)
     }
 
     pub fn is_deprecated_safe_2024(&self) -> bool {
@@ -623,11 +623,11 @@ impl FunctionSignature {
     }
 
     pub fn is_safe(&self) -> bool {
-        self.flags.contains(FnFlags::HAS_SAFE_KW)
+        self.flags.contains(FnFlags::EXPLICIT_SAFE)
     }
 
     pub fn is_varargs(&self) -> bool {
-        self.flags.contains(FnFlags::IS_VARARGS)
+        self.flags.contains(FnFlags::HAS_VARARGS)
     }
 
     pub fn has_target_feature(&self) -> bool {
@@ -637,10 +637,10 @@ impl FunctionSignature {
 
 bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
-    pub struct TypeAliasFlags: u16 {
-        const IS_EXTERN = 1 << 7;
-        const RUSTC_ALLOW_INCOHERENT_IMPLS = 1 << 8;
-        const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS = 1 << 9;
+    pub struct TypeAliasFlags: u8 {
+        const RUSTC_HAS_INCOHERENT_INHERENT_IMPL = 1 << 1;
+        const IS_EXTERN = 1 << 6;
+        const RUSTC_ALLOW_INCOHERENT_IMPL = 1 << 7;
     }
 }
 
@@ -669,10 +669,10 @@ impl TypeAliasSignature {
             ModItem::from(loc.id.value).into(),
         );
         if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
-            flags.insert(TypeAliasFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS);
+            flags.insert(TypeAliasFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPL);
         }
         if attrs.by_key(&sym::rustc_allow_incoherent_impl).exists() {
-            flags.insert(TypeAliasFlags::RUSTC_ALLOW_INCOHERENT_IMPLS);
+            flags.insert(TypeAliasFlags::RUSTC_ALLOW_INCOHERENT_IMPL);
         }
         if matches!(loc.container, ItemContainerId::ExternBlockId(_)) {
             flags.insert(TypeAliasFlags::IS_EXTERN);

@@ -2898,11 +2898,11 @@ impl Trait {
     }
 
     pub fn is_auto(self, db: &dyn HirDatabase) -> bool {
-        db.trait_signature(self.id).flags.contains(TraitFlags::IS_AUTO)
+        db.trait_signature(self.id).flags.contains(TraitFlags::AUTO)
     }
 
     pub fn is_unsafe(&self, db: &dyn HirDatabase) -> bool {
-        db.trait_signature(self.id).flags.contains(TraitFlags::IS_UNSAFE)
+        db.trait_signature(self.id).flags.contains(TraitFlags::UNSAFE)
     }
 
     pub fn type_or_const_param_count(
@@ -4454,11 +4454,11 @@ impl Impl {
     }
 
     pub fn is_negative(self, db: &dyn HirDatabase) -> bool {
-        db.impl_signature(self.id).flags.contains(ImplFlags::IS_NEGATIVE)
+        db.impl_signature(self.id).flags.contains(ImplFlags::NEGATIVE)
     }
 
     pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
-        db.impl_signature(self.id).flags.contains(ImplFlags::IS_UNSAFE)
+        db.impl_signature(self.id).flags.contains(ImplFlags::UNSAFE)
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {

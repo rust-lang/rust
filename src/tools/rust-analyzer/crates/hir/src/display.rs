@@ -794,10 +794,10 @@ impl HirDisplay for Trait {
 fn write_trait_header(trait_: &Trait, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
     write_visibility(trait_.module(f.db).id, trait_.visibility(f.db), f)?;
     let data = f.db.trait_signature(trait_.id);
-    if data.flags.contains(TraitFlags::IS_UNSAFE) {
+    if data.flags.contains(TraitFlags::UNSAFE) {
         f.write_str("unsafe ")?;
     }
-    if data.flags.contains(TraitFlags::IS_AUTO) {
+    if data.flags.contains(TraitFlags::AUTO) {
         f.write_str("auto ")?;
     }
     write!(f, "trait {}", data.name.display(f.db, f.edition()))?;
