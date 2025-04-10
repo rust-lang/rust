@@ -1088,7 +1088,7 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attrib
 
 enum FunctionArgs<'tcx> {
     Body(hir::BodyId),
-    Names(&'tcx [Option<Ident>]),
+    Idents(&'tcx [Option<Ident>]),
 }
 
 fn clean_function<'tcx>(
@@ -1104,8 +1104,8 @@ fn clean_function<'tcx>(
             FunctionArgs::Body(body_id) => {
                 clean_args_from_types_and_body_id(cx, sig.decl.inputs, body_id)
             }
-            FunctionArgs::Names(names) => {
-                clean_args_from_types_and_names(cx, sig.decl.inputs, names)
+            FunctionArgs::Idents(idents) => {
+                clean_args_from_types_and_names(cx, sig.decl.inputs, idents)
             }
         };
         let decl = clean_fn_decl_with_args(cx, sig.decl, Some(&sig.header), args);
@@ -1117,7 +1117,7 @@ fn clean_function<'tcx>(
 fn clean_args_from_types_and_names<'tcx>(
     cx: &mut DocContext<'tcx>,
     types: &[hir::Ty<'tcx>],
-    names: &[Option<Ident>],
+    idents: &[Option<Ident>],
 ) -> Arguments {
     fn nonempty_name(ident: &Option<Ident>) -> Option<Symbol> {
         if let Some(ident) = ident
@@ -1131,7 +1131,7 @@ fn clean_args_from_types_and_names<'tcx>(
 
     // If at least one argument has a name, use `_` as the name of unnamed
     // arguments. Otherwise omit argument names.
-    let default_name = if names.iter().any(|ident| nonempty_name(ident).is_some()) {
+    let default_name = if idents.iter().any(|ident| nonempty_name(ident).is_some()) {
         kw::Underscore
     } else {
         kw::Empty
@@ -1143,7 +1143,7 @@ fn clean_args_from_types_and_names<'tcx>(
             .enumerate()
             .map(|(i, ty)| Argument {
                 type_: clean_ty(ty, cx),
-                name: names.get(i).and_then(nonempty_name).unwrap_or(default_name),
+                name: idents.get(i).and_then(nonempty_name).unwrap_or(default_name),
                 is_const: false,
             })
             .collect(),
@@ -1193,7 +1193,7 @@ fn clean_poly_fn_sig<'tcx>(
     did: Option<DefId>,
     sig: ty::PolyFnSig<'tcx>,
 ) -> FnDecl {
-    let mut names = did.map_or(&[] as &[_], |did| cx.tcx.fn_arg_names(did)).iter();
+    let mut names = did.map_or(&[] as &[_], |did| cx.tcx.fn_arg_idents(did)).iter();
 
     // We assume all empty tuples are default return type. This theoretically can discard `-> ()`,
     // but shouldn't change any code meaning.
@@ -1270,8 +1270,8 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                 let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Body(body));
                 MethodItem(m, None)
             }
-            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
-                let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Names(names));
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(idents)) => {
+                let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Idents(idents));
                 RequiredMethodItem(m)
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
@@ -2612,7 +2612,7 @@ fn clean_bare_fn_ty<'tcx>(
             .filter(|p| !is_elided_lifetime(p))
             .map(|x| clean_generic_param(cx, None, x))
             .collect();
-        let args = clean_args_from_types_and_names(cx, bare_fn.decl.inputs, bare_fn.param_names);
+        let args = clean_args_from_types_and_names(cx, bare_fn.decl.inputs, bare_fn.param_idents);
         let decl = clean_fn_decl_with_args(cx, bare_fn.decl, None, args);
         (generic_params, decl)
     });
@@ -3148,8 +3148,8 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            hir::ForeignItemKind::Fn(sig, names, generics) => ForeignFunctionItem(
-                clean_function(cx, &sig, generics, FunctionArgs::Names(names)),
+            hir::ForeignItemKind::Fn(sig, idents, generics) => ForeignFunctionItem(
+                clean_function(cx, &sig, generics, FunctionArgs::Idents(idents)),
                 sig.header.safety(),
             ),
             hir::ForeignItemKind::Static(ty, mutability, safety) => ForeignStaticItem(

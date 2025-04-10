@@ -1939,15 +1939,15 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Hygienically compares a use-site name (`use_name`) for a field or an associated item with
     /// its supposed definition name (`def_name`). The method also needs `DefId` of the supposed
     /// definition's parent/scope to perform comparison.
-    pub fn hygienic_eq(self, use_name: Ident, def_name: Ident, def_parent_def_id: DefId) -> bool {
-        // We could use `Ident::eq` here, but we deliberately don't. The name
+    pub fn hygienic_eq(self, use_ident: Ident, def_ident: Ident, def_parent_def_id: DefId) -> bool {
+        // We could use `Ident::eq` here, but we deliberately don't. The identifier
         // comparison fails frequently, and we want to avoid the expensive
         // `normalize_to_macros_2_0()` calls required for the span comparison whenever possible.
-        use_name.name == def_name.name
-            && use_name
+        use_ident.name == def_ident.name
+            && use_ident
                 .span
                 .ctxt()
-                .hygienic_eq(def_name.span.ctxt(), self.expn_that_defined(def_parent_def_id))
+                .hygienic_eq(def_ident.span.ctxt(), self.expn_that_defined(def_parent_def_id))
     }
 
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId) -> Ident {

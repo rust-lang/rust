@@ -88,7 +88,7 @@ impl<T> FreezeLock<T> {
     #[inline]
     #[track_caller]
     pub fn write(&self) -> FreezeWriteGuard<'_, T> {
-        self.try_write().expect("still mutable")
+        self.try_write().expect("data should not be frozen if we're still attempting to mutate it")
     }
 
     #[inline]

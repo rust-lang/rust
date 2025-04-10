@@ -2550,7 +2550,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .iter()
                 .filter_map(|item| {
                     let parent_module = self.opt_local_def_id(item.parent_module)?.to_def_id();
-                    Some(StrippedCfgItem { parent_module, name: item.name, cfg: item.cfg.clone() })
+                    Some(StrippedCfgItem {
+                        parent_module,
+                        ident: item.ident,
+                        cfg: item.cfg.clone(),
+                    })
                 })
                 .collect::<Vec<_>>();
             local_items.as_slice()
@@ -2558,12 +2562,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.tcx.stripped_cfg_items(module.krate)
         };
 
-        for &StrippedCfgItem { parent_module, name, ref cfg } in symbols {
-            if parent_module != module || name.name != *segment {
+        for &StrippedCfgItem { parent_module, ident, ref cfg } in symbols {
+            if parent_module != module || ident.name != *segment {
                 continue;
             }
 
-            let note = errors::FoundItemConfigureOut { span: name.span };
+            let note = errors::FoundItemConfigureOut { span: ident.span };
             err.subdiagnostic(note);
 
             if let MetaItemKind::List(nested) = &cfg.kind

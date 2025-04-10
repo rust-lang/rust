@@ -1102,7 +1102,7 @@ pub trait ResolverExpand {
     /// HIR proc macros items back to their harness items.
     fn declare_proc_macro(&mut self, id: NodeId);
 
-    fn append_stripped_cfg_item(&mut self, parent_node: NodeId, name: Ident, cfg: ast::MetaItem);
+    fn append_stripped_cfg_item(&mut self, parent_node: NodeId, ident: Ident, cfg: ast::MetaItem);
 
     /// Tools registered with `#![register_tool]` and used by tool attributes and lints.
     fn registered_tools(&self) -> &RegisteredTools;

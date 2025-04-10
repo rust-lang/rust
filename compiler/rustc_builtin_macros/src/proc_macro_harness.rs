@@ -20,14 +20,14 @@ use crate::errors;
 struct ProcMacroDerive {
     id: NodeId,
     trait_name: Symbol,
-    function_name: Ident,
+    function_ident: Ident,
     span: Span,
     attrs: Vec<Symbol>,
 }
 
 struct ProcMacroDef {
     id: NodeId,
-    function_name: Ident,
+    function_ident: Ident,
     span: Span,
 }
 
@@ -95,7 +95,7 @@ impl<'a> CollectProcMacros<'a> {
     fn collect_custom_derive(
         &mut self,
         item: &'a ast::Item,
-        function_name: Ident,
+        function_ident: Ident,
         attr: &'a ast::Attribute,
     ) {
         let Some((trait_name, proc_attrs)) =
@@ -109,7 +109,7 @@ impl<'a> CollectProcMacros<'a> {
                 id: item.id,
                 span: item.span,
                 trait_name,
-                function_name,
+                function_ident,
                 attrs: proc_attrs,
             }));
         } else {
@@ -123,12 +123,12 @@ impl<'a> CollectProcMacros<'a> {
         }
     }
 
-    fn collect_attr_proc_macro(&mut self, item: &'a ast::Item, function_name: Ident) {
+    fn collect_attr_proc_macro(&mut self, item: &'a ast::Item, function_ident: Ident) {
         if self.in_root && item.vis.kind.is_pub() {
             self.macros.push(ProcMacro::Attr(ProcMacroDef {
                 id: item.id,
                 span: item.span,
-                function_name,
+                function_ident,
             }));
         } else {
             let msg = if !self.in_root {
@@ -141,12 +141,12 @@ impl<'a> CollectProcMacros<'a> {
         }
     }
 
-    fn collect_bang_proc_macro(&mut self, item: &'a ast::Item, function_name: Ident) {
+    fn collect_bang_proc_macro(&mut self, item: &'a ast::Item, function_ident: Ident) {
         if self.in_root && item.vis.kind.is_pub() {
             self.macros.push(ProcMacro::Bang(ProcMacroDef {
                 id: item.id,
                 span: item.span,
-                function_name,
+                function_ident,
             }));
         } else {
             let msg = if !self.in_root {
@@ -303,7 +303,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                 ProcMacro::Derive(m) => m.span,
                 ProcMacro::Attr(m) | ProcMacro::Bang(m) => m.span,
             };
-            let local_path = |cx: &ExtCtxt<'_>, name| cx.expr_path(cx.path(span, vec![name]));
+            let local_path = |cx: &ExtCtxt<'_>, ident| cx.expr_path(cx.path(span, vec![ident]));
             let proc_macro_ty_method_path = |cx: &ExtCtxt<'_>, method| {
                 cx.expr_path(cx.path(
                     span.with_ctxt(harness_span.ctxt()),
@@ -327,7 +327,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                                     .map(|&s| cx.expr_str(span, s))
                                     .collect::<ThinVec<_>>(),
                             ),
-                            local_path(cx, cd.function_name),
+                            local_path(cx, cd.function_ident),
                         ],
                     )
                 }
@@ -345,8 +345,8 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                         harness_span,
                         proc_macro_ty_method_path(cx, ident),
                         thin_vec![
-                            cx.expr_str(span, ca.function_name.name),
-                            local_path(cx, ca.function_name),
+                            cx.expr_str(span, ca.function_ident.name),
+                            local_path(cx, ca.function_ident),
                         ],
                     )
                 }

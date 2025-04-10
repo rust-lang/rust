@@ -26,6 +26,7 @@ measureme = "12"
 chrono = { version = "0.4.38", default-features = false }
 chrono-tz = "0.10"
 directories = "6"
+bitflags = "2.6"
 
 # Copied from `compiler/rustc/Cargo.toml`.
 # But only for some targets, it fails for others. Rustc configures this in its CI, but we can't
