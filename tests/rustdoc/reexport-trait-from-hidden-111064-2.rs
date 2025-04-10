@@ -1,5 +1,6 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/111064>.
 #![feature(no_core, lang_items)]
+#![feature(const_trait_impl)]
 #![no_core]
 #![crate_name = "foo"]
 
@@ -7,9 +8,11 @@
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 //@ files "foo" "['sidebar-items.js', 'all.html', 'hidden', 'index.html', 'struct.Bar.html', \
