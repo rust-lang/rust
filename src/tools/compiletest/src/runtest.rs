@@ -445,8 +445,8 @@ impl<'test> TestCx<'test> {
 
         self.compose_and_run(
             rustc,
-            self.config.compile_lib_path.to_str().unwrap(),
-            Some(aux_dir.to_str().unwrap()),
+            self.config.compile_lib_path.as_path(),
+            Some(aux_dir.as_path()),
             src,
         )
     }
@@ -1020,8 +1020,8 @@ impl<'test> TestCx<'test> {
 
                 self.compose_and_run(
                     test_client,
-                    self.config.run_lib_path.to_str().unwrap(),
-                    Some(aux_dir.to_str().unwrap()),
+                    self.config.run_lib_path.as_path(),
+                    Some(aux_dir.as_path()),
                     None,
                 )
             }
@@ -1035,8 +1035,8 @@ impl<'test> TestCx<'test> {
 
                 self.compose_and_run(
                     wr_run,
-                    self.config.run_lib_path.to_str().unwrap(),
-                    Some(aux_dir.to_str().unwrap()),
+                    self.config.run_lib_path.as_path(),
+                    Some(aux_dir.as_path()),
                     None,
                 )
             }
@@ -1050,8 +1050,8 @@ impl<'test> TestCx<'test> {
 
                 self.compose_and_run(
                     program,
-                    self.config.run_lib_path.to_str().unwrap(),
-                    Some(aux_dir.to_str().unwrap()),
+                    self.config.run_lib_path.as_path(),
+                    Some(aux_dir.as_path()),
                     None,
                 )
             }
@@ -1197,8 +1197,8 @@ impl<'test> TestCx<'test> {
         self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
         self.compose_and_run(
             rustc,
-            self.config.compile_lib_path.to_str().unwrap(),
-            Some(aux_dir.to_str().unwrap()),
+            self.config.compile_lib_path.as_path(),
+            Some(aux_dir.as_path()),
             input,
         )
     }
@@ -1219,8 +1219,7 @@ impl<'test> TestCx<'test> {
         rustc.args(&["--crate-type", "rlib"]);
         rustc.arg("-Cpanic=abort");
 
-        let res =
-            self.compose_and_run(rustc, self.config.compile_lib_path.to_str().unwrap(), None, None);
+        let res = self.compose_and_run(rustc, self.config.compile_lib_path.as_path(), None, None);
         if !res.status.success() {
             self.fatal_proc_rec(
                 &format!(
@@ -1332,8 +1331,8 @@ impl<'test> TestCx<'test> {
 
         let auxres = aux_cx.compose_and_run(
             aux_rustc,
-            aux_cx.config.compile_lib_path.to_str().unwrap(),
-            Some(aux_dir.to_str().unwrap()),
+            aux_cx.config.compile_lib_path.as_path(),
+            Some(aux_dir.as_path()),
             None,
         );
         if !auxres.status.success() {
@@ -1373,8 +1372,8 @@ impl<'test> TestCx<'test> {
     fn compose_and_run(
         &self,
         mut command: Command,
-        lib_path: &str,
-        aux_path: Option<&str>,
+        lib_path: &Path,
+        aux_path: Option<&Path>,
         input: Option<String>,
     ) -> ProcRes {
         let cmdline = {
@@ -1806,7 +1805,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn make_cmdline(&self, command: &Command, libpath: &str) -> String {
+    fn make_cmdline(&self, command: &Command, libpath: &Path) -> String {
         use crate::util;
 
         // Linux and mac don't require adjusting the library search path
@@ -1819,7 +1818,7 @@ impl<'test> TestCx<'test> {
                 format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
             }
 
-            format!("{} {:?}", lib_path_cmd_prefix(libpath), command)
+            format!("{} {:?}", lib_path_cmd_prefix(libpath.to_str().unwrap()), command)
         }
     }
 
@@ -1980,7 +1979,8 @@ impl<'test> TestCx<'test> {
         // Add custom flags supplied by the `filecheck-flags:` test header.
         filecheck.args(&self.props.filecheck_flags);
 
-        self.compose_and_run(filecheck, "", None, None)
+        // FIXME(jieyouxu): don't pass an empty Path
+        self.compose_and_run(filecheck, Path::new(""), None, None)
     }
 
     fn charset() -> &'static str {
