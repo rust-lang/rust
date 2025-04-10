@@ -163,12 +163,18 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
-        mut adjustments: Vec<Adjustment<'tcx>>,
+        adjustments: impl IntoIterator<Item = Adjustment<'tcx>>,
         final_adjustment: Adjust,
     ) -> CoerceResult<'tcx> {
         self.unify_raw(a, b).and_then(|InferOk { value: ty, obligations }| {
-            adjustments.push(Adjustment { target: ty, kind: final_adjustment });
-            success(adjustments, ty, obligations)
+            success(
+                adjustments
+                    .into_iter()
+                    .chain(std::iter::once(Adjustment { target: ty, kind: final_adjustment }))
+                    .collect(),
+                ty,
+                obligations,
+            )
         })
     }
 
@@ -579,15 +585,18 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // We only have the latter, so we use an inference variable
         // for the former and let type inference do the rest.
         let coerce_target = self.next_ty_var(self.cause.span);
-        let mut coercion = self.unify_and(
-            coerce_target,
-            target,
-            match reborrow {
-                None => vec![],
-                Some((ref deref, ref autoref)) => vec![deref.clone(), autoref.clone()],
-            },
-            Adjust::Pointer(PointerCoercion::Unsize),
-        )?;
+
+        let mut coercion = match reborrow {
+            None => {
+                self.unify_and(coerce_target, target, [], Adjust::Pointer(PointerCoercion::Unsize))?
+            }
+            Some((ref deref, ref autoref)) => self.unify_and(
+                coerce_target,
+                target,
+                [deref.clone(), autoref.clone()],
+                Adjust::Pointer(PointerCoercion::Unsize),
+            )?,
+        };
 
         let mut selcx = traits::SelectionContext::new(self);
 
@@ -810,7 +819,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
         // add the adjustments.
-        self.unify_and(a, b, vec![], Adjust::ReborrowPin(mut_b))
+        self.unify_and(a, b, [], Adjust::ReborrowPin(mut_b))
     }
 
     fn coerce_from_safe_fn(
@@ -827,22 +836,24 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 && hdr_b.safety.is_unsafe()
             {
                 let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
-                let adjustments = match adjustment {
-                    Some(kind) => {
-                        vec![Adjustment { kind, target: Ty::new_fn_ptr(self.tcx, fn_ty_a) }]
-                    }
-                    None => vec![],
-                };
-                self.unify_and(
-                    unsafe_a,
-                    b,
-                    adjustments,
-                    Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
-                )
+                match adjustment {
+                    Some(kind) => self.unify_and(
+                        unsafe_a,
+                        b,
+                        [Adjustment { kind, target: Ty::new_fn_ptr(self.tcx, fn_ty_a) }],
+                        Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
+                    ),
+                    None => self.unify_and(
+                        unsafe_a,
+                        b,
+                        [],
+                        Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
+                    ),
+                }
             } else {
                 let a = Ty::new_fn_ptr(self.tcx, fn_ty_a);
                 match adjustment {
-                    Some(adjust) => self.unify_and(a, b, vec![], adjust),
+                    Some(adjust) => self.unify_and(a, b, [], adjust),
                     None => self.unify(a, b),
                 }
             };
@@ -971,7 +982,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 self.unify_and(
                     pointer_ty,
                     b,
-                    vec![],
+                    [],
                     Adjust::Pointer(PointerCoercion::ClosureFnPointer(safety)),
                 )
             }
@@ -1003,11 +1014,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.unify_and(
                 a_raw,
                 b,
-                vec![Adjustment { kind: Adjust::Deref(None), target: mt_a.ty }],
+                [Adjustment { kind: Adjust::Deref(None), target: mt_a.ty }],
                 Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)),
             )
         } else if mt_a.mutbl != mutbl_b {
-            self.unify_and(a_raw, b, vec![], Adjust::Pointer(PointerCoercion::MutToConstPointer))
+            self.unify_and(a_raw, b, [], Adjust::Pointer(PointerCoercion::MutToConstPointer))
         } else {
             self.unify(a_raw, b)
         }
