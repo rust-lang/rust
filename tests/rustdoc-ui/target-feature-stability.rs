@@ -12,15 +12,18 @@
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]
 #![feature(arm_target_feature)]
+#![feature(const_trait_impl)]
 #![no_core]
 
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 // `fp-armv8` is "forbidden" on aarch64 as we tie it to `neon`.

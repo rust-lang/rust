@@ -1,4 +1,5 @@
 #![feature(doc_notable_trait)]
+#![feature(const_trait_impl)]
 #![feature(lang_items)]
 #![feature(no_core)]
 #![no_core]
@@ -15,9 +16,11 @@ impl<T> Box<T> {
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 #[doc(notable_trait)]

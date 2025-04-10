@@ -5,6 +5,7 @@
 #![feature(no_core)]
 #![feature(rustdoc_internals)]
 #![feature(inherent_associated_types)]
+#![feature(const_trait_impl)]
 #![feature(lang_items)]
 #![no_core]
 
@@ -41,7 +42,9 @@ impl S {
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
