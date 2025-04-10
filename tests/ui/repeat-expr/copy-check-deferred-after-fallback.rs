@@ -1,37 +1,53 @@
 #![feature(generic_arg_infer)]
 
-// Test that would start passing if we defer repeat expr copy checks to end of
-// typechecking and they're checked after integer fallback occurs. We accomplish
-// this by contriving a situation where integer fallback allows progress to be
-// made on a trait goal that infers the length of a repeat expr.
+// Test when deferring repeat expr copy checks to end of typechecking whether they're
+// checked before integer fallback occurs or not. We accomplish this by having a repeat
+// count that can only be inferred after integer fallback has occured. This test will
+// pass if we were to check repeat exprs after integer fallback.
 
 use std::marker::PhantomData;
+struct Foo<T>(PhantomData<T>);
 
-struct NotCopy;
+// We impl Copy/Clone for multiple (but not all) substitutions
+// to ensure that `Foo<?int>: Copy` can't be proven on the basis
+// of there only being one applying impl.
+impl Clone for Foo<u32> {
+    fn clone(&self) -> Self {
+        Foo(PhantomData)
+    }
+}
+impl Clone for Foo<i32> {
+    fn clone(&self) -> Self {
+        Foo(PhantomData)
+    }
+}
+impl Copy for Foo<u32> {}
+impl Copy for Foo<i32> {}
 
 trait Trait<const N: usize> {}
 
-impl Trait<2> for u32 {}
+// We impl `Trait` for both `i32` and `u32` to avoid being able
+// to prove `?int: Trait<?n>` from there only being one impl.
 impl Trait<1> for i32 {}
+impl Trait<2> for u32 {}
 
-fn make_goal<T: Trait<N>, const N: usize>(_: &T, _: [NotCopy; N]) {}
+fn tie_and_make_goal<const N: usize, T: Trait<N>>(_: &T, _: &[Foo<T>; N]) {}
 
 fn main() {
     let a = 1;
-    let b = [NotCopy; _];
-    //~^ ERROR: type annotations needed
+    // Deferred repeat expr `Foo<?int>; ?n`
+    let b = [Foo(PhantomData); _];
+    //~^ ERROR: type annotations needed for `[Foo<{integer}>; _]`
 
-    // a is of type `?y`
-    // b is of type `[NotCopy; ?x]`
-    // there is a goal ?y: Trait<?x>` with two candidates:
-    // - `i32: Trait<1>`, ?y=i32 ?x=1 which doesnt require `NotCopy: Copy`
-    // - `u32: Trait<2>` ?y=u32 ?x=2 which requires `NotCopy: Copy`
-    make_goal(&a, b);
+    // Introduces a `?int: Trait<?n>` goal
+    tie_and_make_goal(&a, &b);
 
-    // final repeat expr checks:
-    //
-    // `NotCopy; ?x`
-    // - succeeds if fallback happens before repeat exprs as `i32: Trait<?x>` infers `?x=1`
-    // - fails if repeat expr checks happen first as `?x` is unconstrained so cannot be
-    //    structurally resolved
+    // If fallback doesn't occur:
+    // - `Foo<?int>; ?n`is ambig as repeat count is unknown -> error
+
+    // If fallback occurs:
+    // - `?int` inferred to `i32`
+    // - `?int: Trait<?n>` becomes `i32: Trait<?n>` wihhc infers `?n=1`
+    // - Repeat expr check `Foo<?int>; ?n` is now `Foo<i32>; 1`
+    // - `Foo<i32>; 1` doesn't require `Foo<i32>: Copy`
 }
