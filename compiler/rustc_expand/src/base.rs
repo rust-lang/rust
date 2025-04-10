@@ -824,10 +824,10 @@ impl SyntaxExtension {
             return Err(item.span);
         }
 
-        match item.name_or_empty() {
-            sym::no => Ok(CollapseMacroDebuginfo::No),
-            sym::external => Ok(CollapseMacroDebuginfo::External),
-            sym::yes => Ok(CollapseMacroDebuginfo::Yes),
+        match item.name() {
+            Some(sym::no) => Ok(CollapseMacroDebuginfo::No),
+            Some(sym::external) => Ok(CollapseMacroDebuginfo::External),
+            Some(sym::yes) => Ok(CollapseMacroDebuginfo::Yes),
             _ => Err(item.path.span),
         }
     }

@@ -59,7 +59,7 @@ LL | #[no_sanitize(address, memory)]
 LL | static INVALID : i32 = 0;
    | ------------------------- not a function
 
-error: `#[no_sanitize()]` should be applied to a function
+error: `#[no_sanitize(...)]` should be applied to a function
   --> $DIR/no-sanitize.rs:42:15
    |
 LL | #[no_sanitize("address")]

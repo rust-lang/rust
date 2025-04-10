@@ -485,7 +485,7 @@ fn construct_fn<'tcx>(
     };
 
     if let Some(custom_mir_attr) =
-        tcx.hir_attrs(fn_id).iter().find(|attr| attr.name_or_empty() == sym::custom_mir)
+        tcx.hir_attrs(fn_id).iter().find(|attr| attr.has_name(sym::custom_mir))
     {
         return custom::build_custom_mir(
             tcx,
