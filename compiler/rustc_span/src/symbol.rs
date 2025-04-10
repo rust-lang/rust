@@ -2538,13 +2538,8 @@ rustc_index::newtype_index! {
 }
 
 impl Symbol {
-    const fn new(n: u32) -> Self {
+    pub const fn new(n: u32) -> Self {
         Symbol(SymbolIndex::from_u32(n))
-    }
-
-    /// for use in Decoder only
-    pub fn new_from_decoded(n: u32) -> Self {
-        Self::new(n)
     }
 
     /// Maps a string to its interned representation.
@@ -2632,11 +2627,14 @@ struct InternerInner {
 }
 
 impl Interner {
-    fn prefill(init: &[&'static str]) -> Self {
-        Interner(Lock::new(InternerInner {
-            arena: Default::default(),
-            strings: init.iter().copied().collect(),
-        }))
+    fn prefill(init: &[&'static str], extra: &[&'static str]) -> Self {
+        let strings = FxIndexSet::from_iter(init.iter().copied().chain(extra.iter().copied()));
+        assert_eq!(
+            strings.len(),
+            init.len() + extra.len(),
+            "`init` or `extra` contain duplicate symbols",
+        );
+        Interner(Lock::new(InternerInner { arena: Default::default(), strings }))
     }
 
     #[inline]
@@ -2761,8 +2759,8 @@ impl Symbol {
     }
 
     /// Is this symbol was interned in compiler's `symbols!` macro
-    pub fn is_preinterned(self) -> bool {
-        self.as_u32() < PREINTERNED_SYMBOLS_COUNT
+    pub fn is_predefined(self) -> bool {
+        self.as_u32() < PREDEFINED_SYMBOLS_COUNT
     }
 }
 
