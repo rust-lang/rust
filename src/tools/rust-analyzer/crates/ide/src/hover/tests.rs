@@ -10724,3 +10724,41 @@ impl PublicFlags for NoteDialects {
         "#]],
     );
 }
+
+#[test]
+fn bounds_from_container_do_not_panic() {
+    check(
+        r#"
+//- minicore: copy
+struct Foo<T>(T);
+
+impl<T: Copy> Foo<T> {
+    fn foo<U: Copy>(&self, _u: U) {}
+}
+
+fn bar(v: &Foo<i32>) {
+    v.$0foo(1u32);
+}
+    "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            impl<T> Foo<T>
+            fn foo<U>(&self, _u: U)
+            where
+                U: Copy,
+                // Bounds from impl:
+                T: Copy,
+            ```
+
+            ---
+
+            `T` = `i32`, `U` = `u32`
+        "#]],
+    );
+}
