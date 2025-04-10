@@ -321,10 +321,12 @@ impl Duration {
     /// ```
     /// #![feature(duration_from_nanos_u128)]
     /// use std::time::Duration;
-    /// let time_in_nanos = 2.pow(64);
+    /// let time_in_nanos = 2u128.pow(64);
     /// let duration = Duration::from_nanos_u128(time_in_nanos);
     /// ```
     #[unstable(feature = "duration_from_nanos_u128", issue = "139201")]
+    #[must_use]
+    #[inline]
     pub const fn from_nanos_u128(nanos: u128) -> Duration {
         const NANOS_PER_SEC: u128 = self::NANOS_PER_SEC as u128;
         let secs : u64 = (nanos/ NANOS_PER_SEC) as u64 ;
