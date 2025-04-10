@@ -2754,7 +2754,7 @@ impl Evaluator<'_> {
             return Ok(*o);
         };
         let static_data = self.db.static_signature(st);
-        let result = if !static_data.flags.contains(StaticFlags::IS_EXTERN) {
+        let result = if !static_data.flags.contains(StaticFlags::EXTERN) {
             let konst = self.db.const_eval_static(st).map_err(|e| {
                 MirEvalError::ConstEvalError(static_data.name.as_str().to_owned(), Box::new(e))
             })?;

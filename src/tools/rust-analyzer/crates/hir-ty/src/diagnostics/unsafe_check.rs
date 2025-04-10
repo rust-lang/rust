@@ -361,8 +361,8 @@ impl<'a> UnsafeVisitor<'a> {
             let static_data = self.db.static_signature(id);
             if static_data.flags.contains(StaticFlags::MUTABLE) {
                 self.on_unsafe_op(node, UnsafetyReason::MutableStatic);
-            } else if static_data.flags.contains(StaticFlags::IS_EXTERN)
-                && !static_data.flags.contains(StaticFlags::HAS_SAFE)
+            } else if static_data.flags.contains(StaticFlags::EXTERN)
+                && !static_data.flags.contains(StaticFlags::EXPLICIT_SAFE)
             {
                 self.on_unsafe_op(node, UnsafetyReason::ExternStatic);
             }

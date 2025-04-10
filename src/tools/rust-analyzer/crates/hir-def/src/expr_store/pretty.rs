@@ -157,7 +157,7 @@ pub(crate) fn print_struct(
             wln!(p, "#[repr(pack({}))]", pack.bytes());
         }
     }
-    if flags.contains(StructFlags::IS_FUNDAMENTAL) {
+    if flags.contains(StructFlags::FUNDAMENTAL) {
         wln!(p, "#[fundamental]");
     }
     w!(p, "struct ");
@@ -202,16 +202,16 @@ pub(crate) fn print_function(
         line_format: LineFormat::Newline,
         edition,
     };
-    if flags.contains(FnFlags::HAS_CONST_KW) {
+    if flags.contains(FnFlags::CONST) {
         w!(p, "const ");
     }
-    if flags.contains(FnFlags::HAS_ASYNC_KW) {
+    if flags.contains(FnFlags::ASYNC) {
         w!(p, "async ");
     }
-    if flags.contains(FnFlags::HAS_UNSAFE_KW) {
+    if flags.contains(FnFlags::UNSAFE) {
         w!(p, "unsafe ");
     }
-    if flags.contains(FnFlags::HAS_SAFE_KW) {
+    if flags.contains(FnFlags::EXPLICIT_SAFE) {
         w!(p, "safe ");
     }
     if let Some(abi) = abi {

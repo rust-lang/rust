@@ -429,7 +429,7 @@ where
         // Allow `impl AutoTrait` predicates
         if let WhereClause::Implemented(TraitRef { trait_id, substitution }) = pred {
             let trait_data = db.trait_signature(from_chalk_trait_id(*trait_id));
-            if trait_data.flags.contains(TraitFlags::IS_AUTO)
+            if trait_data.flags.contains(TraitFlags::AUTO)
                 && substitution
                     .as_slice(Interner)
                     .first()
