@@ -22,6 +22,7 @@ use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
 
 use super::GenericParamDefKind;
 use crate::infer::canonical::Canonical;
+use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
 use crate::ty::{
     self, AdtDef, BoundRegionKind, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv,
@@ -1685,7 +1686,12 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
-        let tail = tcx.struct_tail_raw(self, normalize, || {});
+        let tail = tcx.struct_tail_raw(
+            self,
+            normalize,
+            || {},
+            ObligationCause::dummy(),
+        );
         match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))

@@ -11,6 +11,7 @@ use super::eval_queries::{mk_eval_cx_to_read_const_val, op_to_const};
 use super::machine::CompileTimeInterpCx;
 use super::{VALTREE_MAX_NODES, ValTreeCreationError, ValTreeCreationResult};
 use crate::const_eval::CanAccessMutGlobal;
+use rustc_infer::traits::ObligationCause;
 use crate::errors::MaxNumNodesInConstErr;
 use crate::interpret::{
     ImmTy, Immediate, InternKind, MPlaceTy, MemPlaceMeta, MemoryKind, PlaceTy, Projectable, Scalar,
@@ -203,7 +204,9 @@ fn reconstruct_place_meta<'tcx>(
             last_valtree = *branches.last().unwrap();
             debug!(?branches, ?last_valtree);
         },
+        ObligationCause::dummy()
     );
+
     // Sanity-check that we got a tail we support.
     match tail.kind() {
         ty::Slice(..) | ty::Str => {}

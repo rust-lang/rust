@@ -33,6 +33,8 @@ use tracing::{debug, instrument};
 use ty::TypingMode;
 use {rustc_attr_parsing as attr, rustc_hir as hir};
 
+use crate::traits::ObligationCause;
+
 use super::compare_impl_item::check_type_bounds;
 use super::*;
 
@@ -956,6 +958,7 @@ fn check_impl_items_against_trait<'tcx>(
                 })
             },
             || (),
+            ObligationCause::dummy()
         )
         .kind()
     {

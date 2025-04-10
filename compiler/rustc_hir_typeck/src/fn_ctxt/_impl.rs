@@ -36,6 +36,7 @@ use rustc_trait_selection::traits::{
 };
 use tracing::{debug, instrument};
 
+use rustc_infer::traits::ObligationCause;
 use crate::callee::{self, DeferredCallResolution};
 use crate::errors::{self, CtorIsPrivate};
 use crate::method::{self, MethodCallee};
@@ -427,17 +428,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn require_type_has_static_alignment(&self, ty: Ty<'tcx>, span: Span) {
         if !ty.references_error() {
-            let tail = self.tcx.struct_tail_raw(
-                ty,
-                |ty| {
-                    if self.next_trait_solver() {
-                        self.try_structurally_resolve_type(span, ty)
-                    } else {
-                        self.normalize(span, ty)
-                    }
-                },
-                || {},
-            );
+            let tail = self.tcx.struct_tail_raw(ty, |ty| {
+                if self.next_trait_solver() {
+                    self.try_structurally_resolve_type(span, ty)
+                } else {
+                    self.normalize(span, ty)
+                }
+            }, || {}, ObligationCause::dummy());
             // Sized types have static alignment, and so do slices.
             if tail.is_trivially_sized(self.tcx) || matches!(tail.kind(), ty::Slice(..)) {
                 // Nothing else is required here.
