@@ -9,7 +9,8 @@
     transparent_unions,
     auto_traits,
     freeze_impls,
-    thread_local
+    thread_local,
+    const_trait_impl
 )]
 #![no_core]
 #![allow(dead_code, internal_features, ambiguous_wide_pointer_comparisons)]
@@ -18,9 +19,11 @@
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 #[lang = "destruct"]
