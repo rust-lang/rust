@@ -893,6 +893,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         (note that the compiler does not even check whether the type indeed is being non-null-optimized; \
         it is your responsibility to ensure that the attribute is only used on types that are optimized)",
     ),
+    rustc_attr!(
+        rustc_never_randomize_layout, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes,
+        "the `#[rustc_never_randomize_layout]` attribute is just used to inhibit \
+        field randomization in rustc tests",
+    ),
 
     // ==========================================================================
     // Internal attributes, Misc:

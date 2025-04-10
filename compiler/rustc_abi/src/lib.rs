@@ -92,6 +92,10 @@ bitflags! {
         // Other flags can still inhibit reordering and thus randomization.
         // The seed stored in `ReprOptions.field_shuffle_seed`.
         const RANDOMIZE_LAYOUT   = 1 << 4;
+        // If true, the type itself has opted out of layout randomization, even under the
+        // "default-enabled" mode. Internal only, just used for tests that assume the layout of
+        // types. Does *not* inhibit reordering, just randomization.
+        const NEVER_RANDOMIZE_LAYOUT = 1 << 5;
         // Any of these flags being set prevent field reordering optimisation.
         const FIELD_ORDER_UNOPTIMIZABLE   = ReprFlags::IS_C.bits()
                                  | ReprFlags::IS_SIMD.bits()
@@ -205,6 +209,12 @@ impl ReprOptions {
     /// was enabled for its declaration crate.
     pub fn can_randomize_type_layout(&self) -> bool {
         !self.inhibit_struct_field_reordering() && self.flags.contains(ReprFlags::RANDOMIZE_LAYOUT)
+    }
+
+    pub fn never_randomize_type_layout(&self) -> bool {
+        self.inhibit_struct_field_reordering()
+            || self.flags.contains(ReprFlags::NEVER_RANDOMIZE_LAYOUT)
+            || self.packed()
     }
 
     /// Returns `true` if this `#[repr()]` should inhibit union ABI optimisations.

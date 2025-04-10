@@ -13,6 +13,7 @@
 // padding and overall computed sizes can be quite different.
 
 #![allow(dead_code)]
+#![feature(rustc_attrs)]
 
 #[derive(Default)]
 #[repr(packed)]
@@ -49,6 +50,7 @@ pub struct Packed2C {
 }
 
 #[derive(Default)]
+#[rustc_never_randomize_layout]
 pub struct Padded {
     a: u8,
     b: u8,

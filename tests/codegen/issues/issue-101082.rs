@@ -1,6 +1,7 @@
 //@ compile-flags: -Copt-level=3
 //@ revisions: host x86-64-v3
 //@ min-llvm-version: 20
+//@ ignore-std-debug-assertions
 
 // This particular CPU regressed in #131563
 //@[x86-64-v3] only-x86_64
