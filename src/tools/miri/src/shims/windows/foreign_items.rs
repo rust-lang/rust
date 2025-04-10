@@ -65,7 +65,7 @@ fn win_get_full_path_name<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<Pa
     }
     // Otherwise we try to do something kind of close to what Windows does, but this is probably not
     // right in all cases.
-    let mut result: Vec<&[u8]> = vec![]; // will be a vecot of components, joined by `/`.
+    let mut result: Vec<&[u8]> = vec![]; // will be a vector of components, joined by `/`.
     let mut bytes = bytes; // the remaining bytes to process
     let mut stop = false;
     while !stop {
