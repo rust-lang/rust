@@ -40,5 +40,5 @@ fn main() {
     let agent = Agent { info_result: InfoResult { node: None } };
     // FIXME: It would be nice for this to work. See #94067.
     assert_send(agent.handle());
-    //~^ cannot be sent between threads safely
+    //~^ ERROR cannot be sent between threads safely
 }

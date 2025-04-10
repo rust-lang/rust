@@ -782,9 +782,16 @@ impl<'a> Parser<'a> {
             // Recovery is disabled when parsing macro arguments, so it must
             // also be disabled when reparsing pasted macro arguments,
             // otherwise we get inconsistent results (e.g. #137874).
-            let res = self.with_recovery(Recovery::Forbidden, |this| {
-                f(this).expect("failed to reparse {mv_kind:?}")
-            });
+            let res = self.with_recovery(Recovery::Forbidden, |this| f(this));
+
+            let res = match res {
+                Ok(res) => res,
+                Err(err) => {
+                    // This can occur in unusual error cases, e.g. #139445.
+                    err.delay_as_bug();
+                    return None;
+                }
+            };
 
             if let token::CloseDelim(delim) = self.token.kind
                 && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)) = delim
@@ -793,7 +800,12 @@ impl<'a> Parser<'a> {
                 self.bump();
                 Some(res)
             } else {
-                panic!("no close delim when reparsing {mv_kind:?}");
+                // This can occur when invalid syntax is passed to a decl macro. E.g. see #139248,
+                // where the reparse attempt of an invalid expr consumed the trailing invisible
+                // delimiter.
+                self.dcx()
+                    .span_delayed_bug(self.token.span, "no close delim with reparsing {mv_kind:?}");
+                None
             }
         } else {
             None

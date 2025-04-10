@@ -574,6 +574,11 @@ mod items {
 }
 
 mod patterns {
+    /// PatKind::Missing
+    fn pat_missing() {
+        let _: fn(u32, T, &str);
+    }
+
     /// PatKind::Wild
     fn pat_wild() {
         let _;

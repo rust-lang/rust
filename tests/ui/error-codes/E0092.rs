@@ -1,7 +1,6 @@
 #![feature(intrinsics)]
-extern "rust-intrinsic" {
-    fn atomic_foo(); //~ ERROR E0092
-}
 
-fn main() {
-}
+#[rustc_intrinsic]
+unsafe fn atomic_foo(); //~ ERROR E0092
+
+fn main() {}

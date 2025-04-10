@@ -40,7 +40,7 @@ struct Associated;
 impl Associated {
     #![deny(unsafe_code)]
 
-    fn inherent_denied_from_inner() { unsafe {} } //~ usage of an `unsafe` block
+    fn inherent_denied_from_inner() { unsafe {} } //~ ERROR usage of an `unsafe` block
 
     #[deny(while_true)]
     fn inherent_fn() { while true {} } //~ ERROR denote infinite loops with

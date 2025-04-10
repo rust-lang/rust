@@ -11,11 +11,11 @@ use minicore::*;
 
 #[no_mangle]
 pub extern "vectorcall" fn f() {
-    //~^ ABI "vectorcall" which requires the `sse2` target feature
+    //~^ ERROR ABI "vectorcall" which requires the `sse2` target feature
 }
 
 #[no_mangle]
 pub fn call_site() {
     f();
-    //~^ ABI "vectorcall" which requires the `sse2` target feature
+    //~^ ERROR ABI "vectorcall" which requires the `sse2` target feature
 }

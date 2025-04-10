@@ -1,6 +1,6 @@
 use rustc_abi::{
-    BackendRepr, ExternAbi, FieldsShape, HasDataLayout, Primitive, Reg, RegKind, Size,
-    TyAbiInterface, TyAndLayout, Variants,
+    BackendRepr, FieldsShape, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface,
+    TyAndLayout, Variants,
 };
 
 use crate::callconv::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
@@ -364,15 +364,11 @@ where
     }
 }
 
-pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: ExternAbi)
+pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if abi == ExternAbi::RustIntrinsic {
-        return;
-    }
-
     let grlen = cx.data_layout().pointer_size.bits();
 
     for arg in fn_abi.args.iter_mut() {

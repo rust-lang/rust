@@ -18,12 +18,8 @@ LL | |     };
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope-with-macro.rs:22:1
    |
-LL | / impl Drop for Droppy {
-LL | |     fn drop(&mut self) {
-LL | |         println!("dropped");
-LL | |     }
-LL | | }
-   | |_^
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope-with-macro.rs:12:38
    |

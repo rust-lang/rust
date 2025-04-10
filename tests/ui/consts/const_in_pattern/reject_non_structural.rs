@@ -93,6 +93,7 @@ fn main() {
     //~| NOTE constant of non-structural type
 
     trait Trait: Sized { const ASSOC: Option<Self>; } //~ NOTE constant defined here
+                                                      //~^ NOTE
     impl Trait for NoDerive { const ASSOC: Option<NoDerive> = Some(NoDerive); }
     match Some(NoDerive) { NoDerive::ASSOC => dbg!(NoDerive::ASSOC), _ => panic!("whoops"), };
     //~^ ERROR constant of non-structural type `NoDerive` in a pattern

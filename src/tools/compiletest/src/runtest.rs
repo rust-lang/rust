@@ -10,7 +10,6 @@ use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::sync::Arc;
 use std::{env, iter, str};
 
-use anyhow::Context;
 use colored::Colorize;
 use regex::{Captures, Regex};
 use tracing::*;
@@ -143,11 +142,11 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
     }
 
     let cx = TestCx { config: &config, props: &props, testpaths, revision };
-    create_dir_all(&cx.output_base_dir())
-        .with_context(|| {
-            format!("failed to create output base directory {}", cx.output_base_dir().display())
-        })
-        .unwrap();
+
+    if let Err(e) = create_dir_all(&cx.output_base_dir()) {
+        panic!("failed to create output base directory {}: {e}", cx.output_base_dir().display());
+    }
+
     if props.incremental {
         cx.init_incremental_test();
     }
@@ -710,10 +709,6 @@ impl<'test> TestCx<'test> {
             self.testpaths.file.display().to_string()
         };
 
-        // If the testcase being checked contains at least one expected "help"
-        // message, then we'll ensure that all "help" messages are expected.
-        // Otherwise, all "help" messages reported by the compiler will be ignored.
-        // This logic also applies to "note" messages.
         let expect_help = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Help));
         let expect_note = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Note));
 
@@ -801,22 +796,24 @@ impl<'test> TestCx<'test> {
     }
 
     /// Returns `true` if we should report an error about `actual_error`,
-    /// which did not match any of the expected error. We always require
-    /// errors/warnings to be explicitly listed, but only require
-    /// helps/notes if there are explicit helps/notes given.
+    /// which did not match any of the expected error.
     fn is_unexpected_compiler_message(
         &self,
         actual_error: &Error,
         expect_help: bool,
         expect_note: bool,
     ) -> bool {
-        !actual_error.msg.is_empty()
-            && match actual_error.kind {
-                Some(ErrorKind::Help) => expect_help,
-                Some(ErrorKind::Note) => expect_note,
-                Some(ErrorKind::Error) | Some(ErrorKind::Warning) => true,
-                Some(ErrorKind::Suggestion) | None => false,
-            }
+        actual_error.require_annotation
+            && actual_error.kind.map_or(false, |err_kind| {
+                // If the test being checked doesn't contain any "help" or "note" annotations, then
+                // we don't require annotating "help" or "note" (respecively) diagnostics at all.
+                let default_require_annotations = self.props.require_annotations[&err_kind];
+                match err_kind {
+                    ErrorKind::Help => expect_help && default_require_annotations,
+                    ErrorKind::Note => expect_note && default_require_annotations,
+                    _ => default_require_annotations,
+                }
+            })
     }
 
     fn should_emit_metadata(&self, pm: Option<PassMode>) -> Emit {

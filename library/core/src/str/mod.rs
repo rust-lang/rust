@@ -230,8 +230,8 @@ impl str {
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
-    #[stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[rustc_const_stable(feature = "inherent_str_constructors", since = "1.87.0")]
     #[rustc_diagnostic_item = "str_inherent_from_utf8"]
     pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
         converts::from_utf8(v)
@@ -263,8 +263,8 @@ impl str {
     /// ```
     /// See the docs for [`Utf8Error`] for more details on the kinds of
     /// errors that can be returned.
-    #[stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "const_str_from_utf8", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[rustc_const_stable(feature = "const_str_from_utf8", since = "1.87.0")]
     #[rustc_diagnostic_item = "str_inherent_from_utf8_mut"]
     pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
         converts::from_utf8_mut(v)
@@ -295,8 +295,8 @@ impl str {
     /// ```
     #[inline]
     #[must_use]
-    #[stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[rustc_const_stable(feature = "inherent_str_constructors", since = "1.87.0")]
     #[rustc_diagnostic_item = "str_inherent_from_utf8_unchecked"]
     pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
         // SAFETY: converts::from_utf8_unchecked has the same safety requirements as this function.
@@ -320,8 +320,8 @@ impl str {
     /// ```
     #[inline]
     #[must_use]
-    #[stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "inherent_str_constructors", since = "1.87.0")]
+    #[rustc_const_stable(feature = "inherent_str_constructors", since = "1.87.0")]
     #[rustc_diagnostic_item = "str_inherent_from_utf8_unchecked_mut"]
     pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
         // SAFETY: converts::from_utf8_unchecked_mut has the same safety requirements as this function.

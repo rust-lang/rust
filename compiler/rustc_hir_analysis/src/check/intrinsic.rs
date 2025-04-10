@@ -1,4 +1,4 @@
-//! Type-checking for the rust-intrinsic intrinsics that the compiler exposes.
+//! Type-checking for the `#[rustc_intrinsic]` intrinsics that the compiler exposes.
 
 use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;

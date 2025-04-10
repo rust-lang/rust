@@ -14,7 +14,7 @@ struct Foo<'a> {
 
 impl<'a> Foo<'a> {
     fn f(&self) {
-        self.s.push('x'); //~ cannot borrow `*self.s` as mutable, as it is behind a `&` reference
+        self.s.push('x'); //~ ERROR cannot borrow `*self.s` as mutable, as it is behind a `&` reference
     }
 }
 

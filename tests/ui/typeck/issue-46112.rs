@@ -6,4 +6,4 @@
 extern crate xcrate_issue_46112_rexport_core;
 fn test(r: Result<Option<()>, &'static str>) { }
 fn main() { test(Ok(())); }
-//~^ mismatched types
+//~^ ERROR mismatched types

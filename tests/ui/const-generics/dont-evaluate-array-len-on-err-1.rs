@@ -13,7 +13,7 @@ trait Foo {
         [Adt; std::mem::size_of::<Self::Assoc>()]: ,
     {
         <[Adt; std::mem::size_of::<Self::Assoc>()] as Foo>::bar()
-        //~^ Error: the trait bound
+        //~^ ERROR the trait bound
     }
 
     fn bar() {}

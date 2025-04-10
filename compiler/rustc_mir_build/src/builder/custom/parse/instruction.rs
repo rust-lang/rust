@@ -145,7 +145,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             let arm = &self.thir[*arm];
             let value = match arm.pattern.kind {
                 PatKind::Constant { value } => value,
-                PatKind::ExpandedConstant { ref subpattern, def_id: _, is_inline: false }
+                PatKind::ExpandedConstant { ref subpattern, def_id: _ }
                     if let PatKind::Constant { value } = subpattern.kind =>
                 {
                     value

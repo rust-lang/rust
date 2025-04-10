@@ -25,15 +25,15 @@ macro_rules! pattern_type {
 )]
 pub trait RangePattern {
     /// Trait version of the inherent `MIN` assoc const.
-    #[cfg_attr(not(bootstrap), lang = "RangeMin")]
+    #[lang = "RangeMin"]
     const MIN: Self;
 
     /// Trait version of the inherent `MIN` assoc const.
-    #[cfg_attr(not(bootstrap), lang = "RangeMax")]
+    #[lang = "RangeMax"]
     const MAX: Self;
 
     /// A compile-time helper to subtract 1 for exclusive ranges.
-    #[cfg_attr(not(bootstrap), lang = "RangeSub")]
+    #[lang = "RangeSub"]
     #[track_caller]
     fn sub_one(self) -> Self;
 }

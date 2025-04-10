@@ -15,8 +15,8 @@ impl S {
         offset_of!(Self, v)
     }
     fn v_offs_wrong_syntax() {
-        offset_of!(Self, Self::v); //~ offset_of expects dot-separated field and variant names
-        offset_of!(S, Self); //~ no field `Self` on type `S`
+        offset_of!(Self, Self::v); //~ ERROR offset_of expects dot-separated field and variant names
+        offset_of!(S, Self); //~ ERROR no field `Self` on type `S`
     }
     fn offs_in_c() -> usize {
         offset_of!(C<Self>, w)
@@ -48,6 +48,6 @@ fn main() {
     offset_of!(self::S, v);
     offset_of!(Self, v); //~ ERROR cannot find type `Self` in this scope
 
-    offset_of!(S, self); //~ no field `self` on type `S`
-    offset_of!(S, v.self); //~ no field `self` on type `u8`
+    offset_of!(S, self); //~ ERROR no field `self` on type `S`
+    offset_of!(S, v.self); //~ ERROR no field `self` on type `u8`
 }

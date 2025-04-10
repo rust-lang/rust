@@ -20,11 +20,11 @@ impl<T> Foo for Fooer<T> {
 }
 
 fn f(_arg : Box<dyn for<'a> Foo<A<'a> = &'a ()>>) {}
-//~^ the trait `Foo` is not dyn compatible
+//~^ ERROR the trait `Foo` is not dyn compatible
 
 fn main() {
   let foo = Fooer(5);
   f(Box::new(foo));
-  //~^ the trait `Foo` is not dyn compatible
-  //~| the trait `Foo` is not dyn compatible
+  //~^ ERROR the trait `Foo` is not dyn compatible
+  //~| ERROR the trait `Foo` is not dyn compatible
 }

@@ -9,7 +9,6 @@
 #![deny(unsafe_code)]
 // proc_macros anyway don't work on wasm hosts so while both sides of this bridge can
 // be built with different versions of rustc, the wasm ABI changes don't really matter.
-#![cfg_attr(bootstrap, allow(unknown_lints))]
 #![allow(wasm_c_abi)]
 
 use std::hash::Hash;

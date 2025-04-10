@@ -118,14 +118,14 @@ LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: constant of non-structural type `NoDerive` in a pattern
-  --> $DIR/reject_non_structural.rs:97:28
+  --> $DIR/reject_non_structural.rs:98:28
    |
 LL | struct NoDerive;
    | --------------- `NoDerive` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
 ...
 LL |     trait Trait: Sized { const ASSOC: Option<Self>; }
    |     ------------------   ------------------------- constant defined here
-LL |     impl Trait for NoDerive { const ASSOC: Option<NoDerive> = Some(NoDerive); }
+...
 LL |     match Some(NoDerive) { NoDerive::ASSOC => dbg!(NoDerive::ASSOC), _ => panic!("whoops"), };
    |                            ^^^^^^^^^^^^^^^ constant of non-structural type
    |
@@ -136,7 +136,7 @@ LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: constant of non-structural type `NoDerive` in a pattern
-  --> $DIR/reject_non_structural.rs:102:28
+  --> $DIR/reject_non_structural.rs:103:28
    |
 LL | struct NoDerive;
    | --------------- `NoDerive` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
@@ -153,7 +153,7 @@ LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: constant of non-structural type `NoDerive` in a pattern
-  --> $DIR/reject_non_structural.rs:107:29
+  --> $DIR/reject_non_structural.rs:108:29
    |
 LL | struct NoDerive;
    | --------------- `NoDerive` must be annotated with `#[derive(PartialEq)]` to be usable in patterns

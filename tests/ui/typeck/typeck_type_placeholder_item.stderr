@@ -439,6 +439,18 @@ LL |     fn fn_test13(x: _) -> (i32, _) { (x, x) }
    |                           |     not allowed in type signatures
    |                           help: replace with the correct return type: `(i32, i32)`
 
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
+  --> $DIR/typeck_type_placeholder_item.rs:154:21
+   |
+LL | struct BadStruct<_>(_);
+   |                     ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL - struct BadStruct<_>(_);
+LL + struct BadStruct<T>(T);
+   |
+
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/typeck_type_placeholder_item.rs:140:31
    |
@@ -513,18 +525,6 @@ help: use type parameters instead
    |
 LL -     fn assoc_fn_test3() -> _;
 LL +     fn assoc_fn_test3<T>() -> T;
-   |
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
-  --> $DIR/typeck_type_placeholder_item.rs:154:21
-   |
-LL | struct BadStruct<_>(_);
-   |                     ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - struct BadStruct<_>(_);
-LL + struct BadStruct<T>(T);
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for implementations

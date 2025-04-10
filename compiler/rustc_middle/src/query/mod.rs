@@ -484,7 +484,7 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
-    query lints_that_dont_need_to_run(_: ()) -> &'tcx FxIndexSet<LintId> {
+    query lints_that_dont_need_to_run(_: ()) -> &'tcx UnordSet<LintId> {
         arena_cache
         desc { "Computing all lints that are explicitly enabled or with a default level greater than Allow" }
     }
@@ -1026,6 +1026,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Given an `impl_def_id`, return true if the self type is guaranteed to be unsized due
+    /// to either being one of the built-in unsized types (str/slice/dyn) or to be a struct
+    /// whose tail is one of those types.
+    query impl_self_is_guaranteed_unsized(impl_def_id: DefId) -> bool {
+        desc { |tcx| "computing whether `{}` has a guaranteed unsized self type", tcx.def_path_str(impl_def_id) }
+    }
+
     /// Maps a `DefId` of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
@@ -1153,11 +1160,10 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
-    /// Borrow-checks the function body. If this is a closure, returns
-    /// additional requirements that the closure's creator must verify.
-    query mir_borrowck(key: LocalDefId) -> &'tcx mir::BorrowCheckResult<'tcx> {
+    /// Borrow-checks the given typeck root, e.g. functions, const/static items,
+    /// and its children, e.g. closures, inline consts.
+    query mir_borrowck(key: LocalDefId) -> Result<&'tcx mir::ConcreteOpaqueTypes<'tcx>, ErrorGuaranteed> {
         desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if(tcx) { tcx.is_typeck_child(key.to_def_id()) }
     }
 
     /// Gets a complete map from all types to their inherent impls.

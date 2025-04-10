@@ -22,6 +22,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "dont-check-compiler-stderr",
     "dont-check-compiler-stdout",
     "dont-check-failure-status",
+    "dont-require-annotations",
     "edition",
     "error-pattern",
     "exact-llvm-major-version",

@@ -3,6 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
@@ -312,6 +313,61 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> DenseBitSe
     unsizing_params
 }
 
+fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) -> bool {
+    debug_assert_eq!(tcx.def_kind(impl_def_id), DefKind::Impl { of_trait: true });
+
+    let infcx = tcx.infer_ctxt().ignoring_regions().build(ty::TypingMode::non_body_analysis());
+
+    let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
+    let cause = traits::ObligationCause::dummy();
+    let param_env = tcx.param_env(impl_def_id);
+
+    let tail = tcx.struct_tail_raw(
+        tcx.type_of(impl_def_id).instantiate_identity(),
+        |ty| {
+            ocx.structurally_normalize_ty(&cause, param_env, ty).unwrap_or_else(|_| {
+                Ty::new_error_with_message(
+                    tcx,
+                    tcx.def_span(impl_def_id),
+                    "struct tail should be computable",
+                )
+            })
+        },
+        || (),
+    );
+
+    match tail.kind() {
+        ty::Dynamic(_, _, ty::Dyn) | ty::Slice(_) | ty::Str => true,
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Adt(_, _)
+        | ty::Foreign(_)
+        | ty::Array(_, _)
+        | ty::Pat(_, _)
+        | ty::RawPtr(_, _)
+        | ty::Ref(_, _, _)
+        | ty::FnDef(_, _)
+        | ty::FnPtr(_, _)
+        | ty::UnsafeBinder(_)
+        | ty::Closure(_, _)
+        | ty::CoroutineClosure(_, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(_, _)
+        | ty::Never
+        | ty::Tuple(_)
+        | ty::Alias(_, _)
+        | ty::Param(_)
+        | ty::Bound(_, _)
+        | ty::Placeholder(_)
+        | ty::Infer(_)
+        | ty::Error(_)
+        | ty::Dynamic(_, _, ty::DynStar) => false,
+    }
+}
+
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         asyncness,
@@ -320,6 +376,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         param_env_normalized_for_post_analysis,
         defaultness,
         unsizing_params_for_adt,
+        impl_self_is_guaranteed_unsized,
         ..*providers
     };
 }

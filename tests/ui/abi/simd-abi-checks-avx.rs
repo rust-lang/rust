@@ -14,19 +14,19 @@ use std::arch::x86_64::*;
 struct Wrapper(__m256);
 
 unsafe extern "C" fn w(_: Wrapper) {
-    //~^ requires the `avx` target feature, which is not enabled
+    //~^ WARN requires the `avx` target feature, which is not enabled
     //~| WARNING this was previously accepted by the compiler
     todo!()
 }
 
 unsafe extern "C" fn f(_: __m256) {
-    //~^ requires the `avx` target feature, which is not enabled
+    //~^ WARN requires the `avx` target feature, which is not enabled
     //~| WARNING this was previously accepted by the compiler
     todo!()
 }
 
 unsafe extern "C" fn g() -> __m256 {
-    //~^ requires the `avx` target feature, which is not enabled
+    //~^ WARN requires the `avx` target feature, which is not enabled
     //~| WARNING this was previously accepted by the compiler
     todo!()
 }

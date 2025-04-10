@@ -13,14 +13,15 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, LangItem, RangeEnd};
 use rustc_index::Idx;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
     Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::DefId;
 use rustc_span::{ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
 
@@ -124,7 +125,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         expr: Option<&'tcx hir::PatExpr<'tcx>>,
         // Out-parameters collecting extra data to be reapplied by the caller
         ascriptions: &mut Vec<Ascription<'tcx>>,
-        inline_consts: &mut Vec<LocalDefId>,
+        expanded_consts: &mut Vec<DefId>,
     ) -> Result<Option<PatRangeBoundary<'tcx>>, ErrorGuaranteed> {
         let Some(expr) = expr else { return Ok(None) };
 
@@ -139,10 +140,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     ascriptions.push(ascription);
                     kind = subpattern.kind;
                 }
-                PatKind::ExpandedConstant { is_inline, def_id, subpattern } => {
-                    if is_inline {
-                        inline_consts.extend(def_id.as_local());
-                    }
+                PatKind::ExpandedConstant { def_id, subpattern } => {
+                    expanded_consts.push(def_id);
                     kind = subpattern.kind;
                 }
                 _ => break,
@@ -221,10 +220,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         // Collect extra data while lowering the endpoints, to be reapplied later.
         let mut ascriptions = vec![];
-        let mut inline_consts = vec![];
+        let mut expanded_consts = vec![];
 
         let mut lower_endpoint =
-            |expr| self.lower_pattern_range_endpoint(expr, &mut ascriptions, &mut inline_consts);
+            |expr| self.lower_pattern_range_endpoint(expr, &mut ascriptions, &mut expanded_consts);
 
         let lo = lower_endpoint(lo_expr)?.unwrap_or(PatRangeBoundary::NegInfinity);
         let hi = lower_endpoint(hi_expr)?.unwrap_or(PatRangeBoundary::PosInfinity);
@@ -269,17 +268,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
         // constants somewhere. Have them on the range pattern.
         for ascription in ascriptions {
-            kind = PatKind::AscribeUserType {
-                ascription,
-                subpattern: Box::new(Pat { span, ty, kind }),
-            };
+            let subpattern = Box::new(Pat { span, ty, kind });
+            kind = PatKind::AscribeUserType { ascription, subpattern };
         }
-        for def in inline_consts {
-            kind = PatKind::ExpandedConstant {
-                def_id: def.to_def_id(),
-                is_inline: true,
-                subpattern: Box::new(Pat { span, ty, kind }),
-            };
+        for def_id in expanded_consts {
+            let subpattern = Box::new(Pat { span, ty, kind });
+            kind = PatKind::ExpandedConstant { def_id, subpattern };
         }
         Ok(kind)
     }
@@ -290,6 +284,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let mut span = pat.span;
 
         let kind = match pat.kind {
+            hir::PatKind::Missing => PatKind::Missing,
+
             hir::PatKind::Wild => PatKind::Wild,
 
             hir::PatKind::Never => PatKind::Never,
@@ -567,15 +563,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // Lower the named constant to a THIR pattern.
         let args = self.typeck_results.node_args(id);
         let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
-        let subpattern = self.const_to_pat(c, ty, id, span);
-
-        // Wrap the pattern in a marker node to indicate that it is the result
-        // of lowering a named constant. This marker is used for improved
-        // diagnostics in some situations, but has no effect at runtime.
-        let mut pattern = {
-            let kind = PatKind::ExpandedConstant { subpattern, def_id, is_inline: false };
-            Box::new(Pat { span, ty, kind })
-        };
+        let mut pattern = self.const_to_pat(c, ty, id, span);
 
         // If this is an associated constant with an explicit user-written
         // type, add an ascription node (e.g. `<Foo<'a> as MyTrait>::CONST`).
@@ -612,18 +600,37 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let ty = tcx.typeck(def_id).node_type(block.hir_id);
 
         let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id());
-        let parent_args =
-            tcx.erase_regions(ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id));
+        let parent_args = ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id);
         let args = ty::InlineConstArgs::new(tcx, ty::InlineConstArgsParts { parent_args, ty }).args;
 
-        debug_assert!(!args.has_free_regions());
-
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
-        let subpattern = self.const_to_pat(ty::Const::new_unevaluated(self.tcx, ct), ty, id, span);
+        let c = ty::Const::new_unevaluated(self.tcx, ct);
+        let pattern = self.const_to_pat(c, ty, id, span);
 
-        // Wrap the pattern in a marker node to indicate that it is the result
-        // of lowering an inline const block.
-        PatKind::ExpandedConstant { subpattern, def_id: def_id.to_def_id(), is_inline: true }
+        // Apply a type ascription for the inline constant.
+        let annotation = {
+            let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+            let args = ty::InlineConstArgs::new(
+                tcx,
+                ty::InlineConstArgsParts { parent_args, ty: infcx.next_ty_var(span) },
+            )
+            .args;
+            infcx.canonicalize_user_type_annotation(ty::UserType::new(ty::UserTypeKind::TypeOf(
+                def_id.to_def_id(),
+                ty::UserArgs { args, user_self_ty: None },
+            )))
+        };
+        let annotation =
+            CanonicalUserTypeAnnotation { user_ty: Box::new(annotation), span, inferred_ty: ty };
+        PatKind::AscribeUserType {
+            subpattern: pattern,
+            ascription: Ascription {
+                annotation,
+                // Note that we use `Contravariant` here. See the `variance` field documentation
+                // for details.
+                variance: ty::Contravariant,
+            },
+        }
     }
 
     /// Lowers the kinds of "expression" that can appear in a HIR pattern:
@@ -635,43 +642,41 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         expr: &'tcx hir::PatExpr<'tcx>,
         pat_ty: Option<Ty<'tcx>>,
     ) -> PatKind<'tcx> {
-        let (lit, neg) = match &expr.kind {
-            hir::PatExprKind::Path(qpath) => {
-                return self.lower_path(qpath, expr.hir_id, expr.span).kind;
-            }
+        match &expr.kind {
+            hir::PatExprKind::Path(qpath) => self.lower_path(qpath, expr.hir_id, expr.span).kind,
             hir::PatExprKind::ConstBlock(anon_const) => {
-                return self.lower_inline_const(anon_const, expr.hir_id, expr.span);
+                self.lower_inline_const(anon_const, expr.hir_id, expr.span)
             }
-            hir::PatExprKind::Lit { lit, negated } => (lit, *negated),
-        };
-
-        // We handle byte string literal patterns by using the pattern's type instead of the
-        // literal's type in `const_to_pat`: if the literal `b"..."` matches on a slice reference,
-        // the pattern's type will be `&[u8]` whereas the literal's type is `&[u8; 3]`; using the
-        // pattern's type means we'll properly translate it to a slice reference pattern. This works
-        // because slices and arrays have the same valtree representation.
-        // HACK: As an exception, use the literal's type if `pat_ty` is `String`; this can happen if
-        // `string_deref_patterns` is enabled. There's a special case for that when lowering to MIR.
-        // FIXME(deref_patterns): This hack won't be necessary once `string_deref_patterns` is
-        // superseded by a more general implementation of deref patterns.
-        let ct_ty = match pat_ty {
-            Some(pat_ty)
-                if let ty::Adt(def, _) = *pat_ty.kind()
-                    && self.tcx.is_lang_item(def.did(), LangItem::String) =>
-            {
-                if !self.tcx.features().string_deref_patterns() {
-                    span_bug!(
-                        expr.span,
-                        "matching on `String` went through without enabling string_deref_patterns"
-                    );
-                }
-                self.typeck_results.node_type(expr.hir_id)
+            hir::PatExprKind::Lit { lit, negated } => {
+                // We handle byte string literal patterns by using the pattern's type instead of the
+                // literal's type in `const_to_pat`: if the literal `b"..."` matches on a slice reference,
+                // the pattern's type will be `&[u8]` whereas the literal's type is `&[u8; 3]`; using the
+                // pattern's type means we'll properly translate it to a slice reference pattern. This works
+                // because slices and arrays have the same valtree representation.
+                // HACK: As an exception, use the literal's type if `pat_ty` is `String`; this can happen if
+                // `string_deref_patterns` is enabled. There's a special case for that when lowering to MIR.
+                // FIXME(deref_patterns): This hack won't be necessary once `string_deref_patterns` is
+                // superseded by a more general implementation of deref patterns.
+                let ct_ty = match pat_ty {
+                    Some(pat_ty)
+                        if let ty::Adt(def, _) = *pat_ty.kind()
+                            && self.tcx.is_lang_item(def.did(), LangItem::String) =>
+                    {
+                        if !self.tcx.features().string_deref_patterns() {
+                            span_bug!(
+                                expr.span,
+                                "matching on `String` went through without enabling string_deref_patterns"
+                            );
+                        }
+                        self.typeck_results.node_type(expr.hir_id)
+                    }
+                    Some(pat_ty) => pat_ty,
+                    None => self.typeck_results.node_type(expr.hir_id),
+                };
+                let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg: *negated };
+                let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
+                self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
             }
-            Some(pat_ty) => pat_ty,
-            None => self.typeck_results.node_type(expr.hir_id),
-        };
-        let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
-        let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
-        self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
+        }
     }
 }

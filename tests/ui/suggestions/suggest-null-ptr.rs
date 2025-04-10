@@ -16,16 +16,16 @@ extern "C" {
 fn main() {
     unsafe {
         foo(0);
-        //~^ mismatched types [E0308]
-        //~| if you meant to create a null pointer, use `std::ptr::null()`
+        //~^ ERROR mismatched types [E0308]
+        //~| HELP if you meant to create a null pointer, use `std::ptr::null()`
         foo_mut(0);
-        //~^ mismatched types [E0308]
-        //~| if you meant to create a null pointer, use `std::ptr::null_mut()`
+        //~^ ERROR mismatched types [E0308]
+        //~| HELP if you meant to create a null pointer, use `std::ptr::null_mut()`
         usize(0);
-        //~^ mismatched types [E0308]
-        //~| if you meant to create a null pointer, use `std::ptr::null()`
+        //~^ ERROR mismatched types [E0308]
+        //~| HELP if you meant to create a null pointer, use `std::ptr::null()`
         usize_mut(0);
-        //~^ mismatched types [E0308]
-        //~| if you meant to create a null pointer, use `std::ptr::null_mut()`
+        //~^ ERROR mismatched types [E0308]
+        //~| HELP if you meant to create a null pointer, use `std::ptr::null_mut()`
     }
 }

@@ -13,18 +13,16 @@ use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound,
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::mir::{
-    AnnotationSource, BasicBlock, Body, ClosureOutlivesRequirement, ClosureOutlivesSubject,
-    ClosureOutlivesSubjectTy, ClosureRegionRequirements, ConstraintCategory, Local, Location,
-    ReturnConstraint, TerminatorKind,
+    AnnotationSource, BasicBlock, Body, ConstraintCategory, Local, Location, ReturnConstraint,
+    TerminatorKind,
 };
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex, fold_regions};
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{DUMMY_SP, Span};
-use tracing::{debug, instrument, trace};
+use tracing::{Level, debug, enabled, instrument, trace};
 
-use crate::BorrowckInferCtxt;
 use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};
 use crate::dataflow::BorrowIndex;
@@ -37,6 +35,10 @@ use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues, T
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::UniversalRegions;
+use crate::{
+    BorrowckInferCtxt, ClosureOutlivesRequirement, ClosureOutlivesSubject,
+    ClosureOutlivesSubjectTy, ClosureRegionRequirements,
+};
 
 mod dump_mir;
 mod graphviz;
@@ -139,13 +141,11 @@ impl RegionTracker {
 }
 
 pub struct RegionInferenceContext<'tcx> {
-    pub var_infos: VarInfos,
-
     /// Contains the definition for every region variable. Region
     /// variables are identified by their index (`RegionVid`). The
     /// definition contains information about where the region came
     /// from as well as its final inferred value.
-    definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    pub(crate) definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
 
     /// The liveness constraints added to each region. For most
     /// regions, these start out empty and steadily grow, though for
@@ -327,11 +327,13 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
     let mut var_to_origin_sorted = var_to_origin.clone().into_iter().collect::<Vec<_>>();
     var_to_origin_sorted.sort_by_key(|vto| vto.0);
 
-    let mut reg_vars_to_origins_str = "region variables to origins:\n".to_string();
-    for (reg_var, origin) in var_to_origin_sorted.into_iter() {
-        reg_vars_to_origins_str.push_str(&format!("{reg_var:?}: {origin:?}\n"));
+    if enabled!(Level::DEBUG) {
+        let mut reg_vars_to_origins_str = "region variables to origins:\n".to_string();
+        for (reg_var, origin) in var_to_origin_sorted.into_iter() {
+            reg_vars_to_origins_str.push_str(&format!("{reg_var:?}: {origin:?}\n"));
+        }
+        debug!("{}", reg_vars_to_origins_str);
     }
-    debug!("{}", reg_vars_to_origins_str);
 
     let num_components = sccs.num_sccs();
     let mut components = vec![FxIndexSet::default(); num_components];
@@ -342,16 +344,18 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
         components[scc_idx.as_usize()].insert((reg_var, *origin));
     }
 
-    let mut components_str = "strongly connected components:".to_string();
-    for (scc_idx, reg_vars_origins) in components.iter().enumerate() {
-        let regions_info = reg_vars_origins.clone().into_iter().collect::<Vec<_>>();
-        components_str.push_str(&format!(
-            "{:?}: {:?},\n)",
-            ConstraintSccIndex::from_usize(scc_idx),
-            regions_info,
-        ))
+    if enabled!(Level::DEBUG) {
+        let mut components_str = "strongly connected components:".to_string();
+        for (scc_idx, reg_vars_origins) in components.iter().enumerate() {
+            let regions_info = reg_vars_origins.clone().into_iter().collect::<Vec<_>>();
+            components_str.push_str(&format!(
+                "{:?}: {:?},\n)",
+                ConstraintSccIndex::from_usize(scc_idx),
+                regions_info,
+            ))
+        }
+        debug!("{}", components_str);
     }
-    debug!("{}", components_str);
 
     // calculate the best representative for each component
     let components_representatives = components
@@ -449,7 +453,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             Rc::new(member_constraints.into_mapped(|r| constraint_sccs.scc(r)));
 
         let mut result = Self {
-            var_infos,
             definitions,
             liveness_constraints,
             constraints,

@@ -1,5 +1,5 @@
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/closure-mismatch.rs:8:5
+  --> $DIR/closure-mismatch.rs:12:5
    |
 LL |     baz(|_| ());
    |     ^^^^^^^^^^^ implementation of `FnOnce` is not general enough
@@ -8,7 +8,7 @@ LL |     baz(|_| ());
    = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
 
 error: implementation of `Fn` is not general enough
-  --> $DIR/closure-mismatch.rs:8:5
+  --> $DIR/closure-mismatch.rs:12:5
    |
 LL |     baz(|_| ());
    |     ^^^^^^^^^^^ implementation of `Fn` is not general enough
@@ -17,7 +17,7 @@ LL |     baz(|_| ());
    = note: ...but it actually implements `Fn<(&'2 (),)>`, for some specific lifetime `'2`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/closure-mismatch.rs:11:5
+  --> $DIR/closure-mismatch.rs:16:5
    |
 LL |     baz(|x| ());
    |     ^^^^^^^^^^^ implementation of `FnOnce` is not general enough
@@ -26,7 +26,7 @@ LL |     baz(|x| ());
    = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
 
 error: implementation of `Fn` is not general enough
-  --> $DIR/closure-mismatch.rs:11:5
+  --> $DIR/closure-mismatch.rs:16:5
    |
 LL |     baz(|x| ());
    |     ^^^^^^^^^^^ implementation of `Fn` is not general enough

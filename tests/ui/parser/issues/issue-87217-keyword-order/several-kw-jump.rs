@@ -15,5 +15,6 @@ async unsafe const fn test() {}
 //~| ERROR functions cannot be both `const` and `async`
 //~| NOTE `const` because of this
 //~| NOTE `async` because of this
+//~| NOTE
 
 fn main() {}

@@ -1,6 +1,6 @@
 [book]
 title = "Rust Compiler Development Guide"
-author = "The Rust Project Developers"
+authors = ["The Rust Project Developers"]
 description = "A guide to developing the Rust compiler (rustc)"
 
 [build]

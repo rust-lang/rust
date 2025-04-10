@@ -145,10 +145,10 @@ where
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+        match r.kind() {
             ty::ReBound(debruijn, br) if debruijn == self.current_index => {
                 let region = self.delegate.replace_region(br);
-                if let ty::ReBound(debruijn1, br) = *region {
+                if let ty::ReBound(debruijn1, br) = region.kind() {
                     // If the callback returns a bound region,
                     // that region should always use the INNERMOST
                     // debruijn index. Then we adjust it to the

@@ -1829,7 +1829,7 @@ pub struct PointeeInfo {
     pub safe: Option<PointerKind>,
     /// If `safe` is `Some`, then the pointer is either null or dereferenceable for this many bytes.
     /// On a function argument, "dereferenceable" here means "dereferenceable for the entire duration
-    /// of this function call", i.e. it is UB for the memory that this pointer points to to be freed
+    /// of this function call", i.e. it is UB for the memory that this pointer points to be freed
     /// while this function is still running.
     /// The size can be zero if the pointer is not dereferenceable.
     pub size: Size,

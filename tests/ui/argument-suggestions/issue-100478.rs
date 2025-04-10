@@ -45,7 +45,7 @@ fn main() {
     let p8 = Arc::default();
 
     foo(
-        //~^ 47:5: 47:8: this function takes 8 arguments but 7 arguments were supplied [E0061]
+        //~^ ERROR this function takes 8 arguments but 7 arguments were supplied [E0061]
         p1, //p2,
         p3, p4, p5, p6, p7, p8,
     );

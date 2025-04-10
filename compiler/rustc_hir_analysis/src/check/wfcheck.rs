@@ -631,7 +631,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
         // Ignore `'static` lifetimes for the purpose of this lint: it's
         // because we know it outlives everything and so doesn't give meaningful
         // clues. Also ignore `ReError`, to avoid knock-down errors.
-        if let ty::ReStatic | ty::ReError(_) = **region_a {
+        if let ty::ReStatic | ty::ReError(_) = region_a.kind() {
             continue;
         }
         // For each region argument (e.g., `'a` in our example), check for a
@@ -672,7 +672,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
             // Again, skip `'static` because it outlives everything. Also, we trivially
             // know that a region outlives itself. Also ignore `ReError`, to avoid
             // knock-down errors.
-            if matches!(**region_b, ty::ReStatic | ty::ReError(_)) || region_a == region_b {
+            if matches!(region_b.kind(), ty::ReStatic | ty::ReError(_)) || region_a == region_b {
                 continue;
             }
             if region_known_to_outlive(tcx, item_def_id, param_env, wf_tys, *region_a, *region_b) {

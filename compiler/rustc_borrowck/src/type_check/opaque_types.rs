@@ -271,7 +271,7 @@ where
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
-        match *r {
+        match r.kind() {
             // ignore bound regions, keep visiting
             ty::ReBound(_, _) => {}
             _ => (self.op)(r),

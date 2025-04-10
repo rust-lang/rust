@@ -19,7 +19,7 @@ fn main() {}
 //[unprefixed]~? ERROR incorrect value `CheckAlignment` for unstable option `mir-enable-passes`
 //[mixed]~? WARN MIR pass `ThisPassDoesNotExist` is unknown and will be ignored
 //[mixed]~? WARN MIR pass `ThisPassDoesNotExist` is unknown and will be ignored
-//[all_unknown]~? MIR pass `ThisPass` is unknown and will be ignored
-//[all_unknown]~? MIR pass `DoesNotExist` is unknown and will be ignored
-//[all_unknown]~? MIR pass `ThisPass` is unknown and will be ignored
-//[all_unknown]~? MIR pass `DoesNotExist` is unknown and will be ignored
+//[all_unknown]~? WARN MIR pass `ThisPass` is unknown and will be ignored
+//[all_unknown]~? WARN MIR pass `DoesNotExist` is unknown and will be ignored
+//[all_unknown]~? WARN MIR pass `ThisPass` is unknown and will be ignored
+//[all_unknown]~? WARN MIR pass `DoesNotExist` is unknown and will be ignored

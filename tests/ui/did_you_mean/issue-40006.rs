@@ -35,5 +35,5 @@ impl S {
 }
 
 fn main() {
-    S.hello_method(); //~ no method named `hello_method` found
+    S.hello_method(); //~ ERROR no method named `hello_method` found
 }

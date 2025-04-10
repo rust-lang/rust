@@ -17,7 +17,7 @@ where
 fn type_dependent<T: A>()
 where
     T::method(..): Send,
-    //~^ associated function `method` not found for `T`
+    //~^ ERROR associated function `method` not found for `T`
 {
 }
 

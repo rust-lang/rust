@@ -2,33 +2,51 @@
 #![feature(intrinsics)]
 
 mod rusti {
-    extern "rust-intrinsic" {
-        pub fn atomic_cxchg_seqcst_seqcst<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-        pub fn atomic_cxchg_acquire_acquire<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-        pub fn atomic_cxchg_release_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
 
-        pub fn atomic_cxchgweak_seqcst_seqcst<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-        pub fn atomic_cxchgweak_acquire_acquire<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-        pub fn atomic_cxchgweak_release_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_cxchg_seqcst_seqcst<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_cxchg_acquire_acquire<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_cxchg_release_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
 
-        pub fn atomic_load_seqcst<T>(src: *const T) -> T;
-        pub fn atomic_load_acquire<T>(src: *const T) -> T;
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_cxchgweak_seqcst_seqcst<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_cxchgweak_acquire_acquire<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_cxchgweak_release_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
 
-        pub fn atomic_store_seqcst<T>(dst: *mut T, val: T);
-        pub fn atomic_store_release<T>(dst: *mut T, val: T);
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_load_seqcst<T>(src: *const T) -> T;
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_load_acquire<T>(src: *const T) -> T;
 
-        pub fn atomic_xchg_seqcst<T>(dst: *mut T, src: T) -> T;
-        pub fn atomic_xchg_acquire<T>(dst: *mut T, src: T) -> T;
-        pub fn atomic_xchg_release<T>(dst: *mut T, src: T) -> T;
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_store_seqcst<T>(dst: *mut T, val: T);
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_store_release<T>(dst: *mut T, val: T);
 
-        pub fn atomic_xadd_seqcst<T>(dst: *mut T, src: T) -> T;
-        pub fn atomic_xadd_acquire<T>(dst: *mut T, src: T) -> T;
-        pub fn atomic_xadd_release<T>(dst: *mut T, src: T) -> T;
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_xchg_seqcst<T>(dst: *mut T, src: T) -> T;
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_xchg_acquire<T>(dst: *mut T, src: T) -> T;
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_xchg_release<T>(dst: *mut T, src: T) -> T;
 
-        pub fn atomic_xsub_seqcst<T>(dst: *mut T, src: T) -> T;
-        pub fn atomic_xsub_acquire<T>(dst: *mut T, src: T) -> T;
-        pub fn atomic_xsub_release<T>(dst: *mut T, src: T) -> T;
-    }
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_xadd_seqcst<T>(dst: *mut T, src: T) -> T;
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_xadd_acquire<T>(dst: *mut T, src: T) -> T;
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_xadd_release<T>(dst: *mut T, src: T) -> T;
+
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_xsub_seqcst<T>(dst: *mut T, src: T) -> T;
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_xsub_acquire<T>(dst: *mut T, src: T) -> T;
+    #[rustc_intrinsic]
+    pub unsafe fn atomic_xsub_release<T>(dst: *mut T, src: T) -> T;
 }
 
 pub fn main() {
@@ -39,9 +57,9 @@ pub fn main() {
         *x = 5;
         assert_eq!(rusti::atomic_load_acquire(&*x), 5);
 
-        rusti::atomic_store_seqcst(&mut *x,3);
+        rusti::atomic_store_seqcst(&mut *x, 3);
         assert_eq!(*x, 3);
-        rusti::atomic_store_release(&mut *x,1);
+        rusti::atomic_store_release(&mut *x, 1);
         assert_eq!(*x, 1);
 
         assert_eq!(rusti::atomic_cxchg_seqcst_seqcst(&mut *x, 1, 2), (1, true));

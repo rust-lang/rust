@@ -60,7 +60,6 @@ pub enum ExternAbi {
     System {
         unwind: bool,
     },
-    RustIntrinsic,
     RustCall,
     /// *Not* a stable ABI, just directly use the Rust types to describe the ABI for LLVM. Even
     /// normally ABI-compatible Rust types can become ABI-incompatible with this ABI!
@@ -128,7 +127,6 @@ abi_impls! {
             RiscvInterruptS =><= "riscv-interrupt-s",
             RustCall =><= "rust-call",
             RustCold =><= "rust-cold",
-            RustIntrinsic =><= "rust-intrinsic",
             Stdcall { unwind: false } =><= "stdcall",
             Stdcall { unwind: true } =><= "stdcall-unwind",
             System { unwind: false } =><= "system",
@@ -199,7 +197,7 @@ impl ExternAbi {
     /// - are subject to change between compiler versions
     pub fn is_rustic_abi(self) -> bool {
         use ExternAbi::*;
-        matches!(self, Rust | RustCall | RustIntrinsic | RustCold)
+        matches!(self, Rust | RustCall | RustCold)
     }
 
     pub fn supports_varargs(self) -> bool {

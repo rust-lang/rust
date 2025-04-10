@@ -397,8 +397,11 @@ fn best_definition_site_of_opaque<'tcx>(
                 return ControlFlow::Continue(());
             }
 
-            if let Some(hidden_ty) =
-                self.tcx.mir_borrowck(item_def_id).concrete_opaque_types.get(&self.opaque_def_id)
+            if let Some(hidden_ty) = self
+                .tcx
+                .mir_borrowck(item_def_id)
+                .ok()
+                .and_then(|opaque_types| opaque_types.0.get(&self.opaque_def_id))
             {
                 ControlFlow::Break((hidden_ty.span, item_def_id))
             } else {
@@ -413,9 +416,6 @@ fn best_definition_site_of_opaque<'tcx>(
             self.tcx
         }
         fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) -> Self::Result {
-            if let hir::ExprKind::Closure(closure) = ex.kind {
-                self.check(closure.def_id)?;
-            }
             intravisit::walk_expr(self, ex)
         }
         fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) -> Self::Result {
@@ -741,10 +741,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
             for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
-                    ty::AssocKind::Fn => {
-                        let abi = tcx.fn_sig(assoc_item.def_id).skip_binder().abi();
-                        forbid_intrinsic_abi(tcx, assoc_item.ident(tcx).span, abi);
-                    }
                     ty::AssocKind::Type if assoc_item.defaultness(tcx).has_value() => {
                         let trait_args = GenericArgs::identity_for_item(tcx, def_id);
                         let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
@@ -788,65 +784,59 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             };
             check_abi(tcx, it.span, abi);
 
-            match abi {
-                ExternAbi::RustIntrinsic => {
-                    for item in items {
-                        intrinsic::check_intrinsic_type(
-                            tcx,
-                            item.id.owner_id.def_id,
-                            item.span,
-                            item.ident.name,
-                            abi,
-                        );
-                    }
+            for item in items {
+                let def_id = item.id.owner_id.def_id;
+
+                if tcx.has_attr(def_id, sym::rustc_intrinsic) {
+                    intrinsic::check_intrinsic_type(
+                        tcx,
+                        item.id.owner_id.def_id,
+                        item.span,
+                        item.ident.name,
+                        abi,
+                    );
                 }
 
-                _ => {
-                    for item in items {
-                        let def_id = item.id.owner_id.def_id;
-                        let generics = tcx.generics_of(def_id);
-                        let own_counts = generics.own_counts();
-                        if generics.own_params.len() - own_counts.lifetimes != 0 {
-                            let (kinds, kinds_pl, egs) = match (own_counts.types, own_counts.consts)
-                            {
-                                (_, 0) => ("type", "types", Some("u32")),
-                                // We don't specify an example value, because we can't generate
-                                // a valid value for any type.
-                                (0, _) => ("const", "consts", None),
-                                _ => ("type or const", "types or consts", None),
-                            };
-                            struct_span_code_err!(
-                                tcx.dcx(),
-                                item.span,
-                                E0044,
-                                "foreign items may not have {kinds} parameters",
-                            )
-                            .with_span_label(item.span, format!("can't have {kinds} parameters"))
-                            .with_help(
-                                // FIXME: once we start storing spans for type arguments, turn this
-                                // into a suggestion.
-                                format!(
-                                    "replace the {} parameters with concrete {}{}",
-                                    kinds,
-                                    kinds_pl,
-                                    egs.map(|egs| format!(" like `{egs}`")).unwrap_or_default(),
-                                ),
-                            )
-                            .emit();
-                        }
+                let generics = tcx.generics_of(def_id);
+                let own_counts = generics.own_counts();
+                if generics.own_params.len() - own_counts.lifetimes != 0 {
+                    let (kinds, kinds_pl, egs) = match (own_counts.types, own_counts.consts) {
+                        (_, 0) => ("type", "types", Some("u32")),
+                        // We don't specify an example value, because we can't generate
+                        // a valid value for any type.
+                        (0, _) => ("const", "consts", None),
+                        _ => ("type or const", "types or consts", None),
+                    };
+                    struct_span_code_err!(
+                        tcx.dcx(),
+                        item.span,
+                        E0044,
+                        "foreign items may not have {kinds} parameters",
+                    )
+                    .with_span_label(item.span, format!("can't have {kinds} parameters"))
+                    .with_help(
+                        // FIXME: once we start storing spans for type arguments, turn this
+                        // into a suggestion.
+                        format!(
+                            "replace the {} parameters with concrete {}{}",
+                            kinds,
+                            kinds_pl,
+                            egs.map(|egs| format!(" like `{egs}`")).unwrap_or_default(),
+                        ),
+                    )
+                    .emit();
+                }
 
-                        let item = tcx.hir_foreign_item(item.id);
-                        match &item.kind {
-                            hir::ForeignItemKind::Fn(sig, _, _) => {
-                                require_c_abi_if_c_variadic(tcx, sig.decl, abi, item.span);
-                            }
-                            hir::ForeignItemKind::Static(..) => {
-                                check_static_inhabited(tcx, def_id);
-                                check_static_linkage(tcx, def_id);
-                            }
-                            _ => {}
-                        }
+                let item = tcx.hir_foreign_item(item.id);
+                match &item.kind {
+                    hir::ForeignItemKind::Fn(sig, _, _) => {
+                        require_c_abi_if_c_variadic(tcx, sig.decl, abi, item.span);
                     }
+                    hir::ForeignItemKind::Static(..) => {
+                        check_static_inhabited(tcx, def_id);
+                        check_static_linkage(tcx, def_id);
+                    }
+                    _ => {}
                 }
             }
         }
@@ -947,31 +937,7 @@ fn check_impl_items_against_trait<'tcx>(
 
     let trait_def = tcx.trait_def(trait_ref.def_id);
 
-    let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
-
-    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-    let cause = ObligationCause::misc(tcx.def_span(impl_id), impl_id);
-    let param_env = tcx.param_env(impl_id);
-
-    let self_is_guaranteed_unsized = match tcx
-        .struct_tail_raw(
-            trait_ref.self_ty(),
-            |ty| {
-                ocx.structurally_normalize_ty(&cause, param_env, ty).unwrap_or_else(|_| {
-                    Ty::new_error_with_message(
-                        tcx,
-                        tcx.def_span(impl_id),
-                        "struct tail should be computable",
-                    )
-                })
-            },
-            || (),
-        )
-        .kind()
-    {
-        ty::Dynamic(_, _, ty::DynKind::Dyn) | ty::Slice(_) | ty::Str => true,
-        _ => false,
-    };
+    let self_is_guaranteed_unsize_self = tcx.impl_self_is_guaranteed_unsized(impl_id);
 
     for &impl_item in impl_item_refs {
         let ty_impl_item = tcx.associated_item(impl_item);
@@ -1002,7 +968,7 @@ fn check_impl_items_against_trait<'tcx>(
             }
         }
 
-        if self_is_guaranteed_unsized && tcx.generics_require_sized_self(ty_trait_item.def_id) {
+        if self_is_guaranteed_unsize_self && tcx.generics_require_sized_self(ty_trait_item.def_id) {
             tcx.emit_node_span_lint(
                 rustc_lint_defs::builtin::DEAD_CODE,
                 tcx.local_def_id_to_hir_id(ty_impl_item.def_id.expect_local()),
@@ -1037,7 +1003,7 @@ fn check_impl_items_against_trait<'tcx>(
             if !is_implemented
                 && tcx.defaultness(impl_id).is_final()
                 // unsized types don't need to implement methods that have `Self: Sized` bounds.
-                && !(self_is_guaranteed_unsized && tcx.generics_require_sized_self(trait_item_id))
+                && !(self_is_guaranteed_unsize_self && tcx.generics_require_sized_self(trait_item_id))
             {
                 missing_items.push(tcx.associated_item(trait_item_id));
             }

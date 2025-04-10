@@ -139,7 +139,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "quiet", "print one character per test instead of one line")
         .optopt("", "color", "coloring: auto, always, never", "WHEN")
         .optflag("", "json", "emit json output instead of plaintext output")
-        .optopt("", "logfile", "file to log test execution to", "FILE")
         .optopt("", "target", "the target to build for", "TARGET")
         .optopt("", "host", "the host to build for", "HOST")
         .optopt("", "cdb", "path to CDB to use for CDB debuginfo tests", "PATH")
@@ -378,7 +377,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "never" => Some(false),
             _ => panic!("unknown `--run` option `{}` given", mode),
         }),
-        logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runner: matches.opt_str("runner"),
         host_rustcflags: matches.opt_strs("host-rustcflags"),
         target_rustcflags: matches.opt_strs("target-rustcflags"),

@@ -3,10 +3,10 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
-use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use tracing::{instrument, trace};
 
@@ -320,9 +320,12 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::AnonConst => {
             collector.collect_taits_declared_in_body();
         }
+        // Closures and coroutines are type checked with their parent
+        DefKind::Closure | DefKind::InlineConst => {
+            collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
+        }
+        DefKind::AssocTy | DefKind::TyAlias | DefKind::GlobalAsm => {}
         DefKind::OpaqueTy
-        | DefKind::TyAlias
-        | DefKind::AssocTy
         | DefKind::Mod
         | DefKind::Struct
         | DefKind::Union
@@ -340,12 +343,13 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::ForeignMod
         | DefKind::Field
         | DefKind::LifetimeParam
-        | DefKind::GlobalAsm
         | DefKind::Impl { .. }
-        | DefKind::SyntheticCoroutineBody => {}
-        // Closures and coroutines are type checked with their parent
-        DefKind::Closure | DefKind::InlineConst => {
-            collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
+        | DefKind::SyntheticCoroutineBody => {
+            span_bug!(
+                tcx.def_span(item),
+                "`opaque_types_defined_by` not defined for {} `{item:?}`",
+                kind.descr(item.to_def_id())
+            );
         }
     }
     tcx.mk_local_def_ids(&collector.opaques)
