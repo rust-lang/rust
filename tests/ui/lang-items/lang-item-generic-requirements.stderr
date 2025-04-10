@@ -76,9 +76,23 @@ LL |     r + a;
    |     |
    |     {integer}
 
+error[E0608]: cannot index into a value of type `[{integer}; 5]`
+  --> $DIR/lang-item-generic-requirements.rs:51:16
+   |
+LL |     let _ = arr[2];
+   |                ^^^
+
+error[E0308]: mismatched types
+  --> $DIR/lang-item-generic-requirements.rs:58:17
+   |
+LL |     let _: () = Foo;
+   |            --   ^^^ expected `()`, found `Foo`
+   |            |
+   |            expected due to this
+
 error: requires `copy` lang_item
 
-error: aborting due to 10 previous errors
+error: aborting due to 12 previous errors
 
-Some errors have detailed explanations: E0369, E0392, E0718.
-For more information about an error, try `rustc --explain E0369`.
+Some errors have detailed explanations: E0308, E0369, E0392, E0608, E0718.
+For more information about an error, try `rustc --explain E0308`.
