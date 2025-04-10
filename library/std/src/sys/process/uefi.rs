@@ -23,6 +23,7 @@ pub struct Command {
     args: Vec<OsString>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
+    stdin: Option<Stdio>,
     env: CommandEnv,
 }
 
@@ -48,6 +49,7 @@ impl Command {
             args: Vec::new(),
             stdout: None,
             stderr: None,
+            stdin: None,
             env: Default::default(),
         }
     }
@@ -64,8 +66,8 @@ impl Command {
         panic!("unsupported")
     }
 
-    pub fn stdin(&mut self, _stdin: Stdio) {
-        panic!("unsupported")
+    pub fn stdin(&mut self, stdin: Stdio) {
+        self.stdin = Some(stdin);
     }
 
     pub fn stdout(&mut self, stdout: Stdio) {
@@ -166,7 +168,8 @@ impl Command {
         };
 
         // Setup Stdin
-        let stdin = Self::create_stdin(Stdio::Null)?;
+        let stdin = self.stdin.unwrap_or(Stdio::Null);
+        let stdin = Self::create_stdin(stdin)?;
         if let Some(con) = stdin {
             cmd.stdin_init(con)
         } else {
