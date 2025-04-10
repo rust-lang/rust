@@ -721,7 +721,7 @@ pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
     extra_info: Option<&ExtraInfo<'_>>,
     include_non_rust: bool,
 ) {
-    let mut parser = Parser::new(doc).into_offset_iter();
+    let mut parser = Parser::new_ext(doc, main_body_opts()).into_offset_iter();
     let mut prev_offset = 0;
     let mut nb_lines = 0;
     let mut register_header = None;
