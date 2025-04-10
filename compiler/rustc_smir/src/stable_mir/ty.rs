@@ -1586,10 +1586,6 @@ pub struct AssocItem {
     /// the associated item on the trait that this implements.
     pub trait_item_def_id: Option<AssocDef>,
 
-    /// Whether this is a method with an explicit self
-    /// as its first parameter, allowing method calls.
-    pub fn_has_self_parameter: bool,
-
     /// `Some` if the associated item (an associated type) comes from the
     /// return-position `impl Trait` in trait desugaring. The `ImplTraitInTraitData`
     /// provides additional information about its source.
@@ -1599,7 +1595,7 @@ pub struct AssocItem {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum AssocKind {
     Const,
-    Fn,
+    Fn { has_self: bool },
     Type,
 }
 

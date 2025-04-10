@@ -129,10 +129,10 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AssocItem {
 
 fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty::AssocItem {
     let owner_id = trait_item_ref.id.owner_id;
-    let (kind, has_self) = match trait_item_ref.kind {
-        hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
-        hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
-        hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
+    let kind = match trait_item_ref.kind {
+        hir::AssocItemKind::Const => ty::AssocKind::Const,
+        hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { has_self },
+        hir::AssocItemKind::Type => ty::AssocKind::Type,
     };
 
     ty::AssocItem {
@@ -141,17 +141,16 @@ fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty
         def_id: owner_id.to_def_id(),
         trait_item_def_id: Some(owner_id.to_def_id()),
         container: ty::AssocItemContainer::Trait,
-        fn_has_self_parameter: has_self,
         opt_rpitit_info: None,
     }
 }
 
 fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::AssocItem {
     let def_id = impl_item_ref.id.owner_id;
-    let (kind, has_self) = match impl_item_ref.kind {
-        hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
-        hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
-        hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
+    let kind = match impl_item_ref.kind {
+        hir::AssocItemKind::Const => ty::AssocKind::Const,
+        hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { has_self },
+        hir::AssocItemKind::Type => ty::AssocKind::Type,
     };
 
     ty::AssocItem {
@@ -160,7 +159,6 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
         def_id: def_id.to_def_id(),
         trait_item_def_id: impl_item_ref.trait_item_def_id,
         container: ty::AssocItemContainer::Impl,
-        fn_has_self_parameter: has_self,
         opt_rpitit_info: None,
     }
 }
@@ -269,7 +267,6 @@ fn associated_type_for_impl_trait_in_trait(
         def_id,
         trait_item_def_id: None,
         container: ty::AssocItemContainer::Trait,
-        fn_has_self_parameter: false,
         opt_rpitit_info: Some(ImplTraitInTraitData::Trait {
             fn_def_id: fn_def_id.to_def_id(),
             opaque_def_id: opaque_ty_def_id.to_def_id(),
@@ -322,7 +319,6 @@ fn associated_type_for_impl_trait_in_impl(
         def_id,
         trait_item_def_id: Some(trait_assoc_def_id),
         container: ty::AssocItemContainer::Impl,
-        fn_has_self_parameter: false,
         opt_rpitit_info: Some(ImplTraitInTraitData::Impl { fn_def_id: impl_fn_def_id.to_def_id() }),
     });
 

@@ -782,7 +782,7 @@ fn foo(&self) -> Self::T { String::new() }
         let methods: Vec<(Span, String)> = items
             .in_definition_order()
             .filter(|item| {
-                ty::AssocKind::Fn == item.kind
+                item.is_fn()
                     && Some(item.name) != current_method_ident
                     && !tcx.is_doc_hidden(item.def_id)
             })

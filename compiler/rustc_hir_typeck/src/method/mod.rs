@@ -379,7 +379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let def_id = method_item.def_id;
-        if method_item.kind != ty::AssocKind::Fn {
+        if !method_item.is_fn() {
             span_bug!(tcx.def_span(def_id), "expected `{m_name}` to be an associated function");
         }
 

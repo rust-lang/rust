@@ -1464,7 +1464,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
             .in_definition_order()
-            .filter(move |item| item.kind == AssocKind::Fn && item.defaultness(self).has_value())
+            .filter(move |item| item.is_fn() && item.defaultness(self).has_value())
     }
 
     pub fn repr_options_of_def(self, did: LocalDefId) -> ReprOptions {

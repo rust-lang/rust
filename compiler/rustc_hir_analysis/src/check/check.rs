@@ -443,7 +443,7 @@ fn best_definition_site_of_opaque<'tcx>(
             let impl_def_id = tcx.local_parent(parent);
             for assoc in tcx.associated_items(impl_def_id).in_definition_order() {
                 match assoc.kind {
-                    ty::AssocKind::Const | ty::AssocKind::Fn => {
+                    ty::AssocKind::Const | ty::AssocKind::Fn { .. } => {
                         if let ControlFlow::Break(span) = locator.check(assoc.def_id.expect_local())
                         {
                             return Some(span);
@@ -942,7 +942,7 @@ fn check_impl_items_against_trait<'tcx>(
 
         if res.is_ok() {
             match ty_impl_item.kind {
-                ty::AssocKind::Fn => {
+                ty::AssocKind::Fn { .. } => {
                     compare_impl_item::refine::check_refining_return_position_impl_trait_in_trait(
                         tcx,
                         ty_impl_item,

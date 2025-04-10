@@ -1337,10 +1337,12 @@ impl<'a> CrateMetadataRef<'a> {
         } else {
             self.item_name(id)
         };
-        let (kind, has_self) = match self.def_kind(id) {
-            DefKind::AssocConst => (ty::AssocKind::Const, false),
-            DefKind::AssocFn => (ty::AssocKind::Fn, self.get_fn_has_self_parameter(id, sess)),
-            DefKind::AssocTy => (ty::AssocKind::Type, false),
+        let kind = match self.def_kind(id) {
+            DefKind::AssocConst => ty::AssocKind::Const,
+            DefKind::AssocFn => {
+                ty::AssocKind::Fn { has_self: self.get_fn_has_self_parameter(id, sess) }
+            }
+            DefKind::AssocTy => ty::AssocKind::Type,
             _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
         let container = self.root.tables.assoc_container.get(self, id).unwrap();
@@ -1353,7 +1355,6 @@ impl<'a> CrateMetadataRef<'a> {
             def_id: self.local_def_id(id),
             trait_item_def_id: self.get_trait_item_def_id(id),
             container,
-            fn_has_self_parameter: has_self,
             opt_rpitit_info,
         }
     }

@@ -407,14 +407,14 @@ fn fn_sig_suggestion<'tcx>(
         .enumerate()
         .map(|(i, ty)| {
             Some(match ty.kind() {
-                ty::Param(_) if assoc.fn_has_self_parameter && i == 0 => "self".to_string(),
+                ty::Param(_) if assoc.is_method() && i == 0 => "self".to_string(),
                 ty::Ref(reg, ref_ty, mutability) if i == 0 => {
                     let reg = format!("{reg} ");
                     let reg = match &reg[..] {
                         "'_ " | " " => "",
                         reg => reg,
                     };
-                    if assoc.fn_has_self_parameter {
+                    if assoc.is_method() {
                         match ref_ty.kind() {
                             ty::Param(param) if param.name == kw::SelfUpper => {
                                 format!("&{}{}self", reg, mutability.prefix_str())
@@ -427,7 +427,7 @@ fn fn_sig_suggestion<'tcx>(
                     }
                 }
                 _ => {
-                    if assoc.fn_has_self_parameter && i == 0 {
+                    if assoc.is_method() && i == 0 {
                         format!("self: {ty}")
                     } else {
                         format!("_: {ty}")
@@ -489,7 +489,7 @@ fn suggestion_signature<'tcx>(
     );
 
     match assoc.kind {
-        ty::AssocKind::Fn => fn_sig_suggestion(
+        ty::AssocKind::Fn { .. } => fn_sig_suggestion(
             tcx,
             tcx.liberate_late_bound_regions(
                 assoc.def_id,

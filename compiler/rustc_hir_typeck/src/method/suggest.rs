@@ -713,7 +713,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let Some(candidate) = tcx.associated_items(impl_def_id).find_by_ident_and_kind(
                     self.tcx,
                     item_ident,
-                    ty::AssocKind::Type,
+                    ty::AssocTag::Type,
                     impl_def_id,
                 )
                 && let Some(adt_def) = tcx.type_of(candidate.def_id).skip_binder().ty_adt_def()
@@ -1442,7 +1442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let Some(assoc) = self.associated_value(*def_id, item_ident) {
                                 // Check for both mode is the same so we avoid suggesting
                                 // incorrect associated item.
-                                match (mode, assoc.fn_has_self_parameter, source) {
+                                match (mode, assoc.is_method(), source) {
                                     (Mode::MethodCall, true, SelfSource::MethodCall(_)) => {
                                         // We check that the suggest type is actually
                                         // different from the received one
@@ -1834,7 +1834,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty_args = self.infcx.fresh_args_for_item(span, similar_candidate.def_id);
             let fn_sig = tcx.fn_sig(similar_candidate.def_id).instantiate(tcx, ty_args);
             let fn_sig = self.instantiate_binder_with_fresh_vars(span, infer::FnCall, fn_sig);
-            if similar_candidate.fn_has_self_parameter {
+            if similar_candidate.is_method() {
                 if let Some(args) = args
                     && fn_sig.inputs()[1..].len() == args.len()
                 {
@@ -1902,7 +1902,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     if let Some(candidates) = find_attr!(self.tcx.get_all_attrs(inherent_method.def_id), AttributeKind::Confusables{symbols, ..} => symbols)
                         && candidates.contains(&item_name.name)
-                        && let ty::AssocKind::Fn = inherent_method.kind
+                        && inherent_method.is_fn()
                     {
                         let args =
                             ty::GenericArgs::identity_for_item(self.tcx, inherent_method.def_id)
@@ -2116,8 +2116,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Only assoc fn with no receivers and only if
             // they are resolvable
             .filter(|item| {
-                matches!(item.kind, ty::AssocKind::Fn)
-                    && !item.fn_has_self_parameter
+                matches!(item.kind, ty::AssocKind::Fn { has_self: false })
                     && self
                         .probe_for_name(
                             Mode::Path,
@@ -2261,7 +2260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 let assoc = self.associated_value(assoc_did, item_name)?;
-                if assoc.kind != ty::AssocKind::Fn {
+                if !assoc.is_fn() {
                     return None;
                 }
 
@@ -3208,7 +3207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // If this method receives `&self`, then the provided
                     // argument _should_ coerce, so it's valid to suggest
                     // just changing the path.
-                    && pick.item.fn_has_self_parameter
+                    && pick.item.is_method()
                     && let Some(self_ty) =
                         self.tcx.fn_sig(pick.item.def_id).instantiate_identity().inputs().skip_binder().get(0)
                     && self_ty.is_ref()
@@ -3560,7 +3559,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             || (("Pin::new" == *pre)
                                 && ((sym::as_ref == item_name.name) || !unpin))
                             || inputs_len.is_some_and(|inputs_len| {
-                                pick.item.kind == ty::AssocKind::Fn
+                                pick.item.is_fn()
                                     && self
                                         .tcx
                                         .fn_sig(pick.item.def_id)
@@ -3618,7 +3617,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && pick.autoderefs == 0
                     // Check that the method of the same name that was found on the new `Pin<T>`
                     // receiver has the same number of arguments that appear in the user's code.
-                    && inputs_len.is_some_and(|inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().skip_binder().inputs().len() == inputs_len)
+                    && inputs_len.is_some_and(|inputs_len| pick.item.is_fn() && self.tcx.fn_sig(pick.item.def_id).skip_binder().skip_binder().inputs().len() == inputs_len)
                 {
                     let indent = self
                         .tcx
@@ -3756,7 +3755,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && self
                         .associated_value(info.def_id, item_name)
                         .filter(|item| {
-                            if let ty::AssocKind::Fn = item.kind {
+                            if item.is_fn() {
                                 let id = item
                                     .def_id
                                     .as_local()
@@ -4279,13 +4278,13 @@ fn print_disambiguation_help<'tcx>(
     item: ty::AssocItem,
 ) -> Option<String> {
     let trait_impl_type = trait_ref.self_ty().peel_refs();
-    let trait_ref = if item.fn_has_self_parameter {
+    let trait_ref = if item.is_method() {
         trait_ref.print_only_trait_name().to_string()
     } else {
         format!("<{} as {}>", trait_ref.args[0], trait_ref.print_only_trait_name())
     };
     Some(
-        if matches!(item.kind, ty::AssocKind::Fn)
+        if item.is_fn()
             && let SelfSource::MethodCall(receiver) = source
             && let Some(args) = args
         {
@@ -4304,7 +4303,7 @@ fn print_disambiguation_help<'tcx>(
             let args = if let Some(first_arg_type) = first_arg_type
                 && (first_arg_type == tcx.types.self_param
                     || first_arg_type == trait_impl_type
-                    || item.fn_has_self_parameter)
+                    || item.is_method())
             {
                 Some(receiver)
             } else {
