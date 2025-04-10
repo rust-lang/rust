@@ -1017,7 +1017,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Check that the given `caller_fn_abi` matches the expected ABI described by
-    /// `callee_abi`, `callee_input_tys`, `callee_output_ty`, and the return the list of
+    /// `callee_abi`, `callee_input_tys`, `callee_output_ty`, and then returns the list of
     /// arguments.
     fn check_shim_abi<'a, const N: usize>(
         &mut self,
