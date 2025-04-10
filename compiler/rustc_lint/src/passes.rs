@@ -240,10 +240,10 @@ macro_rules! declare_combined_early_lint_pass {
         #[allow(rustc::lint_pass_impl_without_macro)]
         impl $crate::LintPass for $name {
             fn name(&self) -> &'static str {
-                panic!()
+                stringify!($name)
             }
             fn get_lints(&self) -> LintVec {
-                panic!()
+                $name::get_lints()
             }
         }
     )
