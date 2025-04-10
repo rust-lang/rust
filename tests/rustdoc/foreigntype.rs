@@ -10,7 +10,7 @@ impl ExtType {
     pub fn do_something(&self) {}
 }
 
-pub trait Trait {}
+pub trait Trait: std::marker::PointeeSized {}
 
 //@ has foreigntype/trait.Trait.html '//a[@class="foreigntype"]' 'ExtType'
 impl Trait for ExtType {}
