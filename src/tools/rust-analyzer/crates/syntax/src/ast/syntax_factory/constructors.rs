@@ -476,11 +476,7 @@ impl SyntaxFactory {
         expr: ast::Expr,
     ) -> ast::ClosureExpr {
         let (args, input) = iterator_input(pats);
-        // FIXME: `make::expr_paren` should return a `ClosureExpr`, not just an `Expr`
-        let ast::Expr::ClosureExpr(ast) = make::expr_closure(args, expr.clone()).clone_for_update()
-        else {
-            unreachable!()
-        };
+        let ast = make::expr_closure(args, expr.clone()).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax.clone());
