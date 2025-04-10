@@ -174,8 +174,15 @@ impl Argument<'_> {
     /// let f = format_args!("{}", "a");
     /// println!("{f}");
     /// ```
+    ///
+    /// This function should _not_ be const, to make sure we don't accept
+    /// format_args!() and panic!() with arguments in const, even when not evaluated:
+    ///
+    /// ```compile_fail,E0015
+    /// const _: () = if false { panic!("a {}", "a") };
+    /// ```
     #[inline]
-    pub const fn none() -> [Self; 0] {
+    pub fn none() -> [Self; 0] {
         []
     }
 }
