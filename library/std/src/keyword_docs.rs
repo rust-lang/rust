@@ -2388,6 +2388,40 @@ mod while_keyword {}
 ///
 /// We have written an [async book] detailing `async`/`await` and trade-offs compared to using threads.
 ///
+/// ## Control Flow
+/// [`return`] statements and [`?`][try operator] operators within `async` blocks do not cause
+/// a return from the parent function; rather, they cause the `Future` returned by the block to
+/// return with that value.
+///
+/// For example, the following Rust function will return `5`, assigning the `!` value to `x`, which
+/// goes unused:
+/// ```rust
+/// #[expect(unused_variables)]
+/// fn example() -> i32 {
+///     let x = {
+///         return 5;
+///     };
+/// }
+/// ```
+/// In contrast, the following asynchronous function assigns a `Future<Output = i32>` to `x`, and
+/// only returns `5` when `x` is `.await`ed:
+/// ```rust
+/// async fn example() -> i32 {
+///     let x = async {
+///         return 5;
+///     };
+///
+///     x.await
+/// }
+/// ```
+/// Code using `?` behaves similarly - it causes the `async` block to return a [`Result`] without
+/// affecting the parent function.
+///
+/// Note that you cannot use `break` or `continue` from within an `async` block to affect the
+/// control flow of a loop in the parent function.
+///
+/// Control flow in `async` blocks is documented further in the [async book][async book blocks].
+///
 /// ## Editions
 ///
 /// `async` is a keyword from the 2018 edition onwards.
@@ -2397,6 +2431,10 @@ mod while_keyword {}
 /// [`Future`]: future::Future
 /// [`.await`]: ../std/keyword.await.html
 /// [async book]: https://rust-lang.github.io/async-book/
+/// [`return`]: ../std/keyword.return.html
+/// [try operator]: ../reference/expressions/operator-expr.html#r-expr.try
+/// [`Result`]: result::Result
+/// [async book blocks]: https://rust-lang.github.io/async-book/part-guide/more-async-await.html#async-blocks
 mod async_keyword {}
 
 #[doc(keyword = "await")]
