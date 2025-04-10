@@ -1,9 +1,0 @@
-error[E0622]: intrinsic must be a function
-  --> $DIR/E0622.rs:6:5
-   |
-LL |     pub static atomic_singlethreadfence_seqcst: unsafe extern "C" fn();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected a function
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0622`.
