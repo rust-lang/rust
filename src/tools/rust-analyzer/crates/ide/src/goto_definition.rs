@@ -3333,4 +3333,148 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn struct_shadow_by_module() {
+        check(
+            r#"
+mod foo {
+    pub mod bar {
+         // ^^^
+        pub type baz = usize;
+    }
+}
+struct bar;
+fn main() {
+    use foo::bar;
+    let x: ba$0r::baz = 5;
+
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn type_alias_shadow_by_module() {
+        check(
+            r#"
+mod foo {
+    pub mod bar {
+         // ^^^
+        pub fn baz() {}
+    }
+}
+
+trait Qux {}
+
+fn item<bar: Qux>() {
+    use foo::bar;
+    ba$0r::baz();
+}
+}
+"#,
+        );
+
+        check(
+            r#"
+mod foo {
+    pub mod bar {
+         // ^^^
+        pub fn baz() {}
+    }
+}
+
+fn item<bar>(x: bar) {
+    use foo::bar;
+    let x: bar$0 = x;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn trait_shadow_by_module() {
+        check(
+            r#"
+pub mod foo {
+    pub mod Bar {}
+         // ^^^
+}
+
+trait Bar {}
+
+fn main() {
+    use foo::Bar;
+    fn f<Qux: B$0ar>() {}
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn const_shadow_by_module() {
+        check(
+            r#"
+pub mod foo {
+    pub struct u8 {}
+    pub mod bar {
+        pub mod u8 {}
+    }
+}
+
+fn main() {
+    use foo::u8;
+    {
+        use foo::bar::u8;
+
+        fn f1<const N: u$08>() {}
+    }
+    fn f2<const N: u8>() {}
+}
+"#,
+        );
+
+        check(
+            r#"
+pub mod foo {
+    pub struct u8 {}
+            // ^^
+    pub mod bar {
+        pub mod u8 {}
+    }
+}
+
+fn main() {
+    use foo::u8;
+    {
+        use foo::bar::u8;
+
+        fn f1<const N: u8>() {}
+    }
+    fn f2<const N: u$08>() {}
+}
+"#,
+        );
+
+        check(
+            r#"
+pub mod foo {
+    pub struct buz {}
+    pub mod bar {
+        pub mod buz {}
+             // ^^^
+    }
+}
+
+fn main() {
+    use foo::buz;
+    {
+        use foo::bar::buz;
+
+        fn f1<const N: buz$0>() {}
+    }
+}
+"#,
+        );
+    }
 }

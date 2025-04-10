@@ -210,6 +210,9 @@ fn resolve_assoc_or_field(
             // XXX: Do these get resolved?
             return None;
         }
+        TypeNs::ModuleId(_) => {
+            return None;
+        }
     };
 
     // Resolve inherent items first, then trait items, then fields.
