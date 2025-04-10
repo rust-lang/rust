@@ -1,7 +1,7 @@
 use std::alloc::{Layout, alloc, alloc_zeroed, dealloc, handle_alloc_error};
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
-use std::ops::RangeInclusive;
+use std::ops::{Range, RangeInclusive};
 use std::ptr::NonNull;
 use std::{fmt, slice};
 
@@ -350,9 +350,16 @@ impl<T: Idx> ThinBitSet<T> {
     }
 
     #[inline]
-    pub fn insert_range(&mut self, elems: RangeInclusive<T>) {
-        let start = elems.start().index();
-        let end = elems.end().index();
+    pub fn insert_range(&mut self, range: Range<T>) {
+        if let Some(end) = range.end.index().checked_sub(1) {
+            self.insert_range_inclusive(RangeInclusive::new(range.start, Idx::new(end)));
+        }
+    }
+
+    #[inline(always)]
+    pub fn insert_range_inclusive(&mut self, range: RangeInclusive<T>) {
+        let start = range.start().index();
+        let end = range.end().index();
 
         if start > end {
             return;
@@ -802,10 +809,10 @@ mod tests {
                     let range = rng.sample_range(domain_size - 1);
                     // Choose set to insert into.
                     if rng.next_bool() {
-                        set_1.insert_range(range.clone());
+                        set_1.insert_range_inclusive(range.clone());
                         set_1_reference.insert_range(range);
                     } else {
-                        set_2.insert_range(range.clone());
+                        set_2.insert_range_inclusive(range.clone());
                         set_2_reference.insert_range(range);
                     }
                 }
