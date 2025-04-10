@@ -529,10 +529,14 @@ pub fn run_tests(config: Arc<Config>) {
     }
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
-    env::set_var("__COMPAT_LAYER", "RunAsInvoker");
+    //
+    // SAFETY: at this point we're still single-threaded.
+    unsafe { env::set_var("__COMPAT_LAYER", "RunAsInvoker") };
 
-    // Let tests know which target they're running as
-    env::set_var("TARGET", &config.target);
+    // Let tests know which target they're running as.
+    //
+    // SAFETY: at this point we're still single-threaded.
+    unsafe { env::set_var("TARGET", &config.target) };
 
     let mut configs = Vec::new();
     if let Mode::DebugInfo = config.mode {
