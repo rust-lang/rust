@@ -503,7 +503,7 @@ bitflags! {
         /// it if needed.
         const HAS_TARGET_FEATURE = 1 << 8;
         const DEPRECATED_SAFE_2024 = 1 << 9;
-        const RUSTC_ALLOW_INCOHERENT_IMPLS = 1 << 9;
+        const RUSTC_ALLOW_INCOHERENT_IMPLS = 1 << 10;
     }
 }
 
