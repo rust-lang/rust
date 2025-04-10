@@ -1790,7 +1790,7 @@ pub(crate) struct UnnecessaryPartialStableFeature {
 #[derive(LintDiagnostic)]
 #[diag(passes_ineffective_unstable_impl)]
 #[note]
-pub(crate) struct IneffectiveUnstableFeature;
+pub(crate) struct IneffectiveUnstableImpl;
 
 #[derive(LintDiagnostic)]
 #[diag(passes_unused_assign)]
