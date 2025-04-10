@@ -148,6 +148,17 @@ impl Step for ToolBuild {
             &self.extra_features,
         );
 
+        if self.tool == "rust-analyzer" {
+            // if std::env::var("RA_PGO_GEN").is_ok() {
+            //     cargo.rustflag("-Cprofile-generate=/tmp/ra-pgo");
+            // } else if let Ok(path) = std::env::var("RA_PGO_USE") {
+            //     cargo.rustflag(&format!("-Cprofile-use={path}"));
+            // }
+            if builder.config.enable_bolt_settings {
+                cargo.rustflag("-Clink-args=-Wl,-q");
+            }
+        }
+
         if path.ends_with("/rustdoc") &&
             // rustdoc is performance sensitive, so apply LTO to it.
             is_lto_stage(&self.compiler)
