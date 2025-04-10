@@ -346,6 +346,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let last_error = this.get_last_error()?;
                 this.write_scalar(last_error, dest)?;
             }
+            "RtlNtStatusToDosError" => {
+                let [status] = this.check_shim(abi, sys_conv, link_name, args)?;
+                let status = this.read_scalar(status)?.to_u32()?;
+                let err = match status {
+                    // STATUS_MEDIA_WRITE_PROTECTED => ERROR_WRITE_PROTECT
+                    0xC00000A2 => 19,
+                    // STATUS_FILE_INVALID => ERROR_FILE_INVALID
+                    0xC0000098 => 1006,
+                    // STATUS_DISK_FULL => ERROR_DISK_FULL
+                    0xC000007F => 112,
+                    // STATUS_IO_DEVICE_ERROR => ERROR_IO_DEVICE
+                    0xC0000185 => 1117,
+                    // STATUS_ACCESS_DENIED => ERROR_ACCESS_DENIED
+                    0xC0000022 => 5,
+                    // Anything without an error code => ERROR_MR_MID_NOT_FOUND
+                    _ => 317,
+                };
+                this.write_scalar(Scalar::from_i32(err), dest)?;
+            }
 
             // Querying system information
             "GetSystemInfo" => {
