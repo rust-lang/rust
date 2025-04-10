@@ -220,6 +220,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )))
     }
 
+    fn GetStdHandle(&mut self, which: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+        let which = this.read_scalar(which)?.to_i32()?;
+
+        let stdin = this.eval_windows("c", "STD_INPUT_HANDLE").to_i32()?;
+        let stdout = this.eval_windows("c", "STD_OUTPUT_HANDLE").to_i32()?;
+        let stderr = this.eval_windows("c", "STD_ERROR_HANDLE").to_i32()?;
+
+        // These values don't mean anything on Windows, but Miri unconditionally sets them up to the
+        // unix in/out/err descriptors. So we take advantage of that.
+        // Due to the `Handle` encoding, these values will not be directly exposed to the user.
+        let fd_num = if which == stdin {
+            0
+        } else if which == stdout {
+            1
+        } else if which == stderr {
+            2
+        } else {
+            throw_unsup_format!("Invalid argument to `GetStdHandle`: {which}")
+        };
+        let handle = Handle::File(fd_num);
+        interp_ok(handle.to_scalar(this))
+    }
+
     fn CloseHandle(&mut self, handle_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 

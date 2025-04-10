@@ -25,6 +25,13 @@ page_size = "0.6"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "net", "fs", "sync", "signal", "io-util"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_Storage_FileSystem", "Win32_Security"] }
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
+    "Win32_Storage_FileSystem",
+    "Win32_Security",
+    "Win32_System_IO",
+    "Wdk_Storage_FileSystem",
+] }
 
 [workspace]
