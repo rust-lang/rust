@@ -586,17 +586,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // for the former and let type inference do the rest.
         let coerce_target = self.next_ty_var(self.cause.span);
 
-        let mut coercion = match reborrow {
-            None => {
-                self.unify_and(coerce_target, target, [], Adjust::Pointer(PointerCoercion::Unsize))?
-            }
-            Some((ref deref, ref autoref)) => self.unify_and(
-                coerce_target,
-                target,
-                [deref.clone(), autoref.clone()],
-                Adjust::Pointer(PointerCoercion::Unsize),
-            )?,
-        };
+        let mut coercion = self.unify_and(
+            coerce_target,
+            target,
+            reborrow.into_iter().flat_map(|(deref, autoref)| [deref, autoref]),
+            Adjust::Pointer(PointerCoercion::Unsize),
+        )?;
 
         let mut selcx = traits::SelectionContext::new(self);
 
@@ -836,20 +831,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 && hdr_b.safety.is_unsafe()
             {
                 let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
-                match adjustment {
-                    Some(kind) => self.unify_and(
-                        unsafe_a,
-                        b,
-                        [Adjustment { kind, target: Ty::new_fn_ptr(self.tcx, fn_ty_a) }],
-                        Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
-                    ),
-                    None => self.unify_and(
-                        unsafe_a,
-                        b,
-                        [],
-                        Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
-                    ),
-                }
+                self.unify_and(
+                    unsafe_a,
+                    b,
+                    adjustment
+                        .map(|kind| Adjustment { kind, target: Ty::new_fn_ptr(self.tcx, fn_ty_a) }),
+                    Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
+                )
             } else {
                 let a = Ty::new_fn_ptr(self.tcx, fn_ty_a);
                 match adjustment {
