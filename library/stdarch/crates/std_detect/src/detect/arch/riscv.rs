@@ -104,15 +104,20 @@ features! {
     /// RV128I Base Integer Instruction Set
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zicsr: "zicsr";
+    without cfg check: true;
     /// "Zicsr" Extension for Control and Status Register (CSR) Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zicntr: "zicntr";
+    without cfg check: true;
     /// "Zicntr" Extension for Base Counters and Timers
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zihpm: "zihpm";
+    without cfg check: true;
     /// "Zihpm" Extension for Hardware Performance Counters
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zifencei: "zifencei";
+    without cfg check: true;
     /// "Zifencei" Extension for Instruction-Fetch Fence
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zihintpause: "zihintpause";
+    without cfg check: true;
     /// "Zihintpause" Extension for Pause Hint
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] m: "m";
