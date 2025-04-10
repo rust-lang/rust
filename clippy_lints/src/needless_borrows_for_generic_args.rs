@@ -299,7 +299,7 @@ fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
         .associated_items(trait_def_id)
         .in_definition_order()
         .any(|assoc_item| {
-            if assoc_item.fn_has_self_parameter {
+            if assoc_item.is_method() {
                 let self_ty = cx
                     .tcx
                     .fn_sig(assoc_item.def_id)
