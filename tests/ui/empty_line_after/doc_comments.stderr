@@ -87,7 +87,7 @@ LL |       fn new_code() {}
    |       ----------- the comment documents this function
    |
    = help: if the empty line is unintentional, remove it
-help: if the doc comment should not document `new_code` comment it out
+help: if the doc comment should not document function `new_code` then comment it out
    |
 LL |     // /// docs for `old_code`
    |     ++
@@ -107,7 +107,7 @@ LL |       struct Multiple;
    |       --------------- the comment documents this struct
    |
    = help: if the empty lines are unintentional, remove them
-help: if the doc comment should not document `Multiple` comment it out
+help: if the doc comment should not document struct `Multiple` then comment it out
    |
 LL ~     // /// Docs
 LL ~     // /// for OldA
@@ -149,7 +149,7 @@ LL |       fn new_code() {}
    |       ----------- the comment documents this function
    |
    = help: if the empty line is unintentional, remove it
-help: if the doc comment should not document `new_code` comment it out
+help: if the doc comment should not document function `new_code` then comment it out
    |
 LL -     /**
 LL +     /*
@@ -167,7 +167,7 @@ LL |       fn new_code2() {}
    |       ------------ the comment documents this function
    |
    = help: if the empty line is unintentional, remove it
-help: if the doc comment should not document `new_code2` comment it out
+help: if the doc comment should not document function `new_code2` then comment it out
    |
 LL |     // /// Docs for `old_code2`
    |     ++
@@ -183,10 +183,26 @@ LL |       fn bar() {}
    |       ------ the comment documents this function
    |
    = help: if the empty line is unintentional, remove it
-help: if the doc comment should not document `bar` comment it out
+help: if the doc comment should not document function `bar` then comment it out
    |
 LL |     // /// comment on assoc item
    |     ++
 
-error: aborting due to 11 previous errors
+error: empty line after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:159:1
+   |
+LL | / /// Docs for this item.
+LL | | // fn some_item() {}
+LL | |
+   | |_^
+LL |   impl LineComment {} // or any other nameless item kind
+   |   - the comment documents this implementation
+   |
+   = help: if the empty line is unintentional, remove it
+help: if the doc comment should not document the following item then comment it out
+   |
+LL | // /// Docs for this item.
+   | ++
+
+error: aborting due to 12 previous errors
 
