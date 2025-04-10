@@ -2920,8 +2920,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         // We failed to check the expression, report an error.
 
-        // Emits an error if we deref an infer variable, like calling `.field` on a base type of &_.
-        self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
+        // Emits an error if we deref an infer variable, like calling `.field` on a base type
+        // of `&_`. We can also use this to suppress unnecessary "missing field" errors that
+        // will follow ambiguity errors.
+        let final_ty = self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
+        if let ty::Error(_) = final_ty.kind() {
+            return final_ty;
+        }
 
         if let Some((adjustments, did)) = private_candidate {
             // (#90483) apply adjustments to avoid ExprUseVisitor from
