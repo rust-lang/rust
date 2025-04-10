@@ -79,7 +79,7 @@ pub enum Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<usize> for Error {
-    /// Match an error code to `Error`, if `usize > 27` or `usize == 22` then return `UnknownError`
+    /// Convert an error code to an `Error`
     fn from(src: usize) -> Self {
         match src {
             0 => Self::NoError,

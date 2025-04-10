@@ -692,7 +692,7 @@ impl_partial_eq_ord_cow!(&'a ByteStr, Cow<'a, [u8]>);
 impl<'a> TryFrom<&'a ByteStr> for String {
     type Error = core::str::Utf8Error;
 
-    /// Convert `ByteStr`s bytes to a UTF-8 `String`.
+    /// Try to allocate a `ByteStr`s bytes as a UTF-8 `String`.
     ///
     /// # Errors
     /// If `ByteStr` is not valid UTF-8

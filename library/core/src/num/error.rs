@@ -27,7 +27,6 @@ impl Error for TryFromIntError {
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl From<Infallible> for TryFromIntError {
-    #[inline]
     fn from(x: Infallible) -> TryFromIntError {
         match x {}
     }
