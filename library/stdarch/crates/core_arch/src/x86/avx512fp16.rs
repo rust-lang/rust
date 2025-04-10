@@ -264,8 +264,8 @@ pub fn _mm512_setzero_ph() -> __m512h {
 
 /// Return vector of type `__m128h` with indetermination elements.
 /// Despite using the word "undefined" (following Intel's naming scheme), this non-deterministically
-/// picks some valid value and is not equivalent to [`mem::MaybeUninit`].
-/// In practice, this is typically equivalent to [`mem::zeroed`].
+/// picks some valid value and is not equivalent to [`mem::MaybeUninit`](crate::mem::MaybeUninit).
+/// In practice, this is typically equivalent to [`mem::zeroed`](crate::mem::zeroed).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_undefined_ph)
 #[inline]
@@ -277,8 +277,8 @@ pub fn _mm_undefined_ph() -> __m128h {
 
 /// Return vector of type `__m256h` with indetermination elements.
 /// Despite using the word "undefined" (following Intel's naming scheme), this non-deterministically
-/// picks some valid value and is not equivalent to [`mem::MaybeUninit`].
-/// In practice, this is typically equivalent to [`mem::zeroed`].
+/// picks some valid value and is not equivalent to [`mem::MaybeUninit`](crate::mem::MaybeUninit).
+/// In practice, this is typically equivalent to [`mem::zeroed`](crate::mem::zeroed).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_undefined_ph)
 #[inline]
@@ -290,8 +290,8 @@ pub fn _mm256_undefined_ph() -> __m256h {
 
 /// Return vector of type `__m512h` with indetermination elements.
 /// Despite using the word "undefined" (following Intel's naming scheme), this non-deterministically
-/// picks some valid value and is not equivalent to [`mem::MaybeUninit`].
-/// In practice, this is typically equivalent to [`mem::zeroed`].
+/// picks some valid value and is not equivalent to [`mem::MaybeUninit`](crate::mem::MaybeUninit).
+/// In practice, this is typically equivalent to [`mem::zeroed`](crate::mem::zeroed).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_undefined_ph)
 #[inline]
