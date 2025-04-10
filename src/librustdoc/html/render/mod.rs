@@ -13,6 +13,9 @@
 //! is cloned per-thread and contains information about what is currently being
 //! rendered.
 //!
+//! The main entry point to the rendering system is the implementation of
+//! `FormatRenderer` on `Context`.
+//!
 //! In order to speed up rendering (mostly because of markdown rendering), the
 //! rendering process has been parallelized. This parallelization is only
 //! exposed through the `crate` method on the context, and then also from the
@@ -90,7 +93,7 @@ pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display {
 /// Specifies whether rendering directly implemented trait items or ones from a certain Deref
 /// impl.
 #[derive(Copy, Clone, Debug)]
-pub(crate) enum AssocItemRender<'a> {
+enum AssocItemRender<'a> {
     All,
     DerefFor { trait_: &'a clean::Path, type_: &'a clean::Type, deref_mut_: bool },
 }
@@ -98,7 +101,7 @@ pub(crate) enum AssocItemRender<'a> {
 /// For different handling of associated items from the Deref target of a type rather than the type
 /// itself.
 #[derive(Copy, Clone, PartialEq)]
-pub(crate) enum RenderMode {
+enum RenderMode {
     Normal,
     ForDeref { mut_: bool },
 }
@@ -126,7 +129,7 @@ pub(crate) struct IndexItem {
 
 /// A type used for the search index.
 #[derive(Debug, Eq, PartialEq)]
-pub(crate) struct RenderType {
+struct RenderType {
     id: Option<RenderTypeId>,
     generics: Option<Vec<RenderType>>,
     bindings: Option<Vec<(RenderTypeId, Vec<RenderType>)>>,
@@ -137,7 +140,7 @@ impl RenderType {
     // The contents of the lists are always integers in self-terminating hex
     // form, handled by `RenderTypeId::write_to_string`, so no commas are
     // needed to separate the items.
-    pub fn write_to_string(&self, string: &mut String) {
+    fn write_to_string(&self, string: &mut String) {
         fn write_optional_id(id: Option<RenderTypeId>, string: &mut String) {
             // 0 is a sentinel, everything else is one-indexed
             match id {
@@ -177,7 +180,7 @@ impl RenderType {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum RenderTypeId {
+enum RenderTypeId {
     DefId(DefId),
     Primitive(clean::PrimitiveType),
     AssociatedType(Symbol),
@@ -186,7 +189,7 @@ pub(crate) enum RenderTypeId {
 }
 
 impl RenderTypeId {
-    pub fn write_to_string(&self, string: &mut String) {
+    fn write_to_string(&self, string: &mut String) {
         let id: i32 = match &self {
             // 0 is a sentinel, everything else is one-indexed
             // concrete type
@@ -209,7 +212,7 @@ pub(crate) struct IndexItemFunctionType {
 }
 
 impl IndexItemFunctionType {
-    pub fn write_to_string<'a>(
+    fn write_to_string<'a>(
         &'a self,
         string: &mut String,
         backref_queue: &mut VecDeque<&'a IndexItemFunctionType>,
@@ -309,7 +312,7 @@ impl ItemEntry {
 }
 
 impl ItemEntry {
-    pub(crate) fn print(&self) -> impl fmt::Display {
+    fn print(&self) -> impl fmt::Display {
         fmt::from_fn(move |f| write!(f, "<a href=\"{}\">{}</a>", self.url, Escape(&self.name)))
     }
 }
@@ -760,7 +763,7 @@ fn short_item_info(
 
 // Render the list of items inside one of the sections "Trait Implementations",
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
-pub(crate) fn render_impls(
+fn render_impls(
     cx: &Context<'_>,
     mut w: impl Write,
     impls: &[&Impl],
@@ -1201,7 +1204,7 @@ impl<'a> AssocItemLink<'a> {
     }
 }
 
-pub fn write_section_heading(
+fn write_section_heading(
     title: &str,
     id: &str,
     extra_class: Option<&str>,
@@ -1226,7 +1229,7 @@ fn write_impl_section_heading(title: &str, id: &str) -> impl fmt::Display {
     write_section_heading(title, id, None, "")
 }
 
-pub(crate) fn render_all_impls(
+fn render_all_impls(
     mut w: impl Write,
     cx: &Context<'_>,
     containing_item: &clean::Item,
@@ -1473,10 +1476,7 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
     }
 }
 
-pub(crate) fn notable_traits_button(
-    ty: &clean::Type,
-    cx: &Context<'_>,
-) -> Option<impl fmt::Display> {
+fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt::Display> {
     if ty.is_unit() {
         // Very common fast path.
         return None;
@@ -1588,10 +1588,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
     (format!("{:#}", ty.print(cx)), out)
 }
 
-pub(crate) fn notable_traits_json<'a>(
-    tys: impl Iterator<Item = &'a clean::Type>,
-    cx: &Context<'_>,
-) -> String {
+fn notable_traits_json<'a>(tys: impl Iterator<Item = &'a clean::Type>, cx: &Context<'_>) -> String {
     let mut mp: Vec<(String, String)> = tys.map(|ty| notable_traits_decl(ty, cx)).collect();
     mp.sort_by(|(name1, _html1), (name2, _html2)| name1.cmp(name2));
     struct NotableTraitsMap(Vec<(String, String)>);
@@ -2171,7 +2168,7 @@ fn render_rightside(
     })
 }
 
-pub(crate) fn render_impl_summary(
+fn render_impl_summary(
     cx: &Context<'_>,
     i: &Impl,
     parent: &clean::Item,
