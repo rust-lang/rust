@@ -365,28 +365,26 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                 continue;
             }
 
-            let ident = if let Some(ident) = item.kind.ident() {
-                ident
+            if let Some(ident) = item.kind.ident() {
+                if ident.name.as_str().starts_with('_') {
+                    // Filters out unnamed macro-like impls for various derives,
+                    // e.g. serde::Serialize or num_derive::FromPrimitive.
+                    continue;
+                }
+
+                if ident.name == rustc_span::sym::std && item.span.is_dummy() {
+                    if let ItemKind::ExternCrate(None, _) = item.kind {
+                        // Filters the auto-included Rust standard library.
+                        continue;
+                    }
+                    println!("Unknown item: {item:?}");
+                }
             } else if let ItemKind::Impl(_) = item.kind
                 && get_item_name(item).is_some()
             {
-                rustc_span::Ident::empty() // FIXME: a bit strange, is there a better way to do it?
+                // keep going below
             } else {
                 continue;
-            };
-
-            if ident.name.as_str().starts_with('_') {
-                // Filters out unnamed macro-like impls for various derives,
-                // e.g. serde::Serialize or num_derive::FromPrimitive.
-                continue;
-            }
-
-            if ident.name == rustc_span::sym::std && item.span.is_dummy() {
-                if let ItemKind::ExternCrate(None, _) = item.kind {
-                    // Filters the auto-included Rust standard library.
-                    continue;
-                }
-                println!("Unknown item: {item:?}");
             }
 
             let item_kind = convert_module_item_kind(&item.kind);
