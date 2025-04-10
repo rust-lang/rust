@@ -5,6 +5,7 @@ use clippy_config::types::{
     SourceItemOrderingWithinModuleItemGroupings,
 };
 use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::is_cfg_test;
 use rustc_hir::{
     AssocItemKind, FieldDef, HirId, ImplItemRef, IsAuto, Item, ItemKind, Mod, QPath, TraitItemRef, TyKind, Variant,
     VariantData,
@@ -361,6 +362,10 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
         // as no sorting by source map/line of code has to be applied.
         //
         for item in items {
+            if is_cfg_test(cx.tcx, item.hir_id()) {
+                continue;
+            }
+
             if item.span.in_external_macro(cx.sess().source_map()) {
                 continue;
             }
