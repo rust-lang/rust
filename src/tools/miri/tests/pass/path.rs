@@ -31,9 +31,14 @@ fn test_absolute() {
         assert_absolute_eq(r"\\?\PIPE\name", r"\\?\PIPE\name");
         // Verbatim paths are always unchanged, no matter what.
         assert_absolute_eq(r"\\?\path.\to/file..", r"\\?\path.\to/file..");
-
+        // Trailing dot is removed here.
         assert_absolute_eq(r"C:\path..\to.\file.", r"C:\path..\to\file");
+        // `..` is resolved here.
+        assert_absolute_eq(r"C:\path\to\..\file", r"C:\path\file");
+        assert_absolute_eq(r"\\server\share\to\..\file", r"\\server\share\file");
+        // Magic filename.
         assert_absolute_eq(r"COM1", r"\\.\COM1");
+        assert_absolute_eq(r"C:\path\to\COM1", r"\\.\COM1");
     } else {
         panic!("unsupported OS");
     }
