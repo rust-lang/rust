@@ -1,0 +1,119 @@
+error[E0310]: the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` may not live long enough
+  --> $DIR/unconstrained-closure-lifetime-generic.rs:10:9
+   |
+LL |         self.bar = Box::new(|baz| Box::new(f(baz)));
+   |         ^^^^^^^^
+   |         |
+   |         the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` must be valid for the static lifetime...
+   |         ...so that the type `impl for<'a> Fn(&'a usize) -> Box<I>` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     pub fn ack<I>(&mut self, f: impl for<'a> Fn(&'a usize) -> Box<I> + 'static) {
+   |                                                                      +++++++++
+
+error[E0310]: the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` may not live long enough
+  --> $DIR/unconstrained-closure-lifetime-generic.rs:10:9
+   |
+LL |         self.bar = Box::new(|baz| Box::new(f(baz)));
+   |         ^^^^^^^^
+   |         |
+   |         the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` must be valid for the static lifetime...
+   |         ...so that the type `impl for<'a> Fn(&'a usize) -> Box<I>` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL |     pub fn ack<I>(&mut self, f: impl for<'a> Fn(&'a usize) -> Box<I> + 'static) {
+   |                                                                      +++++++++
+
+error[E0310]: the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` may not live long enough
+  --> $DIR/unconstrained-closure-lifetime-generic.rs:10:20
+   |
+LL |         self.bar = Box::new(|baz| Box::new(f(baz)));
+   |                    ^^^^^^^^
+   |                    |
+   |                    the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` must be valid for the static lifetime...
+   |                    ...so that the type `impl for<'a> Fn(&'a usize) -> Box<I>` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     pub fn ack<I>(&mut self, f: impl for<'a> Fn(&'a usize) -> Box<I> + 'static) {
+   |                                                                      +++++++++
+
+error[E0310]: the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` may not live long enough
+  --> $DIR/unconstrained-closure-lifetime-generic.rs:10:20
+   |
+LL |         self.bar = Box::new(|baz| Box::new(f(baz)));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                    |
+   |                    the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` must be valid for the static lifetime...
+   |                    ...so that the type `impl for<'a> Fn(&'a usize) -> Box<I>` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     pub fn ack<I>(&mut self, f: impl for<'a> Fn(&'a usize) -> Box<I> + 'static) {
+   |                                                                      +++++++++
+
+error[E0310]: the parameter type `I` may not live long enough
+  --> $DIR/unconstrained-closure-lifetime-generic.rs:10:35
+   |
+LL |         self.bar = Box::new(|baz| Box::new(f(baz)));
+   |                                   ^^^^^^^^^^^^^^^^
+   |                                   |
+   |                                   the parameter type `I` must be valid for the static lifetime...
+   |                                   ...so that the type `I` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     pub fn ack<I: 'static>(&mut self, f: impl for<'a> Fn(&'a usize) -> Box<I>) {
+   |                 +++++++++
+
+error[E0310]: the parameter type `I` may not live long enough
+  --> $DIR/unconstrained-closure-lifetime-generic.rs:10:35
+   |
+LL |         self.bar = Box::new(|baz| Box::new(f(baz)));
+   |                                   ^^^^^^^^^^^^^^^^
+   |                                   |
+   |                                   the parameter type `I` must be valid for the static lifetime...
+   |                                   ...so that the type `I` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL |     pub fn ack<I: 'static>(&mut self, f: impl for<'a> Fn(&'a usize) -> Box<I>) {
+   |                 +++++++++
+
+error[E0311]: the parameter type `I` may not live long enough
+  --> $DIR/unconstrained-closure-lifetime-generic.rs:10:35
+   |
+LL |     pub fn ack<I>(&mut self, f: impl for<'a> Fn(&'a usize) -> Box<I>) {
+   |                   --------- the parameter type `I` must be valid for the anonymous lifetime defined here...
+LL |         self.bar = Box::new(|baz| Box::new(f(baz)));
+   |                                   ^^^^^^^^^^^^^^^^ ...so that the type `I` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     pub fn ack<'a, I: 'a>(&'a mut self, f: impl for<'a> Fn(&'a usize) -> Box<I>) {
+   |                +++  ++++   ++
+
+error[E0597]: `f` does not live long enough
+  --> $DIR/unconstrained-closure-lifetime-generic.rs:10:44
+   |
+LL |     pub fn ack<I>(&mut self, f: impl for<'a> Fn(&'a usize) -> Box<I>) {
+   |                              - binding `f` declared here
+LL |         self.bar = Box::new(|baz| Box::new(f(baz)));
+   |         --------            -----          ^ borrowed value does not live long enough
+   |         |                   |
+   |         |                   value captured here
+   |         coercion requires that `f` is borrowed for `'static`
+...
+LL |     }
+   |     - `f` dropped here while still borrowed
+   |
+   = note: due to object lifetime defaults, `Box<dyn for<'a> Fn(&'a usize) -> Box<(dyn Any + 'a)>>` actually means `Box<(dyn for<'a> Fn(&'a usize) -> Box<(dyn Any + 'a)> + 'static)>`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0310, E0311, E0597.
+For more information about an error, try `rustc --explain E0310`.
