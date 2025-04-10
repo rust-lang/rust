@@ -55,7 +55,9 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
             const FALSE: u128 = 0;
 
             let mut new_targets = opt.targets;
-            let first_value = new_targets.iter().next().unwrap().0;
+            let Some((first_value, _)) = new_targets.iter().next() else {
+                continue;
+            };
             let first_is_false_target = first_value == FALSE;
             match opt.op {
                 BinOp::Eq => {

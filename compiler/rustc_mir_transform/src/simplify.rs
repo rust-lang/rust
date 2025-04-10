@@ -26,6 +26,13 @@
 //! Here the block (`{ return; }`) has the return type `char`, rather than `()`, but the MIR we
 //! naively generate still contains the `_a = ()` write in the unreachable block "after" the
 //! return.
+//!
+//! **WARNING**: `SimplifyCfg` is one of the few optimizations that runs on built and analysis
+//! MIR, and so its effects may affect the type-checking, borrow-checking, and other analysis.
+//! We must be extremely careful to only apply optimizations that preserve UB and all
+//! non-determinism, since changes here can affect which programs compile in an insta-stable way.
+//! The normal logic that a program with UB can be changed to do anything does not apply to
+//! pre-"runtime" MIR!
 
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
@@ -144,7 +151,6 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 merged_blocks.clear();
                 while inner_changed {
                     inner_changed = false;
-                    inner_changed |= self.simplify_branch(&mut terminator);
                     inner_changed |= self.merge_successor(&mut merged_blocks, &mut terminator);
                     changed |= inner_changed;
                 }
@@ -248,32 +254,6 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         merged_blocks.push(target);
         self.pred_count[target] = 0;
 
-        true
-    }
-
-    // turn a branch with all successors identical to a goto
-    fn simplify_branch(&mut self, terminator: &mut Terminator<'tcx>) -> bool {
-        match terminator.kind {
-            TerminatorKind::SwitchInt { .. } => {}
-            _ => return false,
-        };
-
-        let first_succ = {
-            if let Some(first_succ) = terminator.successors().next() {
-                if terminator.successors().all(|s| s == first_succ) {
-                    let count = terminator.successors().count();
-                    self.pred_count[first_succ] -= (count - 1) as u32;
-                    first_succ
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        };
-
-        debug!("simplifying branch {:?}", terminator);
-        terminator.kind = TerminatorKind::Goto { target: first_succ };
         true
     }
 
@@ -613,5 +593,44 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
 
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
         *l = self.map[*l].unwrap();
+    }
+}
+
+pub struct RemoveRedundantSwitch;
+
+impl<'tcx> crate::MirPass<'tcx> for RemoveRedundantSwitch {
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        loop {
+            let mut should_simplify = false;
+
+            for block in body.basic_blocks_mut() {
+                let TerminatorKind::SwitchInt { discr: _, targets } = &block.terminator().kind
+                else {
+                    continue;
+                };
+                let Some((first_succ, rest)) = targets.all_targets().split_first() else {
+                    continue;
+                };
+                if !rest.iter().all(|succ| succ == first_succ) {
+                    continue;
+                }
+                block.terminator_mut().kind = TerminatorKind::Goto { target: *first_succ };
+                should_simplify = true;
+            }
+
+            if should_simplify {
+                simplify_cfg(body);
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() >= 1
+    }
+
+    fn is_required(&self) -> bool {
+        false
     }
 }
