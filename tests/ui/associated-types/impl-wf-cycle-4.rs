@@ -2,7 +2,7 @@ trait Filter {
     type ToMatch;
 }
 
-impl<T> Filter for T //~ ERROR overflow evaluating the requirement
+impl<T> Filter for T //~ ERROR cycle detected when
 where
     T: Fn(Self::ToMatch),
 {
