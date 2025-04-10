@@ -310,6 +310,9 @@ impl Duration {
 
     /// Creates a new Duration from the specified number of nanoseconds.
     /// 
+    /// # Panics 
+    ///
+    /// Panics if the given number of weeks overflows the `Duration` size.
     /// Use this function if you need to specify time greater than what can fit in u64 
     /// (around 584 years).
     /// 
@@ -324,7 +327,7 @@ impl Duration {
     #[unstable(feature = "duration_from_nanos_u128", issue = "139201")]
     pub const fn from_nanos_u128(nanos: u128) -> Duration {
         const NANOS_PER_SEC: u128 = self::NANOS_PER_SEC as u128;
-        let secs = u64::try_from(nanos / NANOS_PER_SEC).unwrap_or(u64::MAX);
+        let secs : u64 = (nanos/ NANOS_PER_SEC) as u64 ;
         let subsec_nanos = (nanos % NANOS_PER_SEC) as u32;
         // SAFETY: x % 1_000_000_000 < 1_000_000_000
         let subsec_nanos = unsafe { Nanoseconds::new_unchecked(subsec_nanos) };
