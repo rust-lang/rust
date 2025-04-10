@@ -5411,7 +5411,7 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
                 tcx.associated_items(data.impl_or_alias_def_id).find_by_ident_and_kind(
                     tcx,
                     Ident::with_dummy_span(name),
-                    ty::AssocKind::Type,
+                    ty::AssocTag::Type,
                     data.impl_or_alias_def_id,
                 )
             {

@@ -746,7 +746,7 @@ impl<'tcx> Instance<'tcx> {
         let call_once = tcx
             .associated_items(fn_once)
             .in_definition_order()
-            .find(|it| it.kind == ty::AssocKind::Fn)
+            .find(|it| it.is_fn())
             .unwrap()
             .def_id;
         let track_caller =

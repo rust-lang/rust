@@ -3,7 +3,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Location, traversal};
-use rustc_middle::ty::{self, AssocKind, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, AssocTag, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_session::Limit;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_span::source_map::Spanned;
@@ -194,7 +194,7 @@ fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> 
         if let Some(new) = tcx.associated_items(impl_def_id).find_by_ident_and_kind(
             tcx,
             fn_ident,
-            AssocKind::Fn,
+            AssocTag::Fn,
             def_id,
         ) {
             return Some(new.def_id);

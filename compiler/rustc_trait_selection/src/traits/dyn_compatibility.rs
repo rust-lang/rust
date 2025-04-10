@@ -301,7 +301,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
         ty::AssocKind::Const => {
             vec![DynCompatibilityViolation::AssocConst(item.name, item.ident(tcx).span)]
         }
-        ty::AssocKind::Fn => virtual_call_violations_for_method(tcx, trait_def_id, item)
+        ty::AssocKind::Fn { .. } => virtual_call_violations_for_method(tcx, trait_def_id, item)
             .into_iter()
             .map(|v| {
                 let node = tcx.hir_get_if_local(item.def_id);
@@ -344,7 +344,7 @@ fn virtual_call_violations_for_method<'tcx>(
     let sig = tcx.fn_sig(method.def_id).instantiate_identity();
 
     // The method's first parameter must be named `self`
-    if !method.fn_has_self_parameter {
+    if !method.is_method() {
         let sugg = if let Some(hir::Node::TraitItem(hir::TraitItem {
             generics,
             kind: hir::TraitItemKind::Fn(sig, _),

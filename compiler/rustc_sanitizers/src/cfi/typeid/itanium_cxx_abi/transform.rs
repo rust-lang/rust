@@ -446,7 +446,7 @@ pub(crate) fn transform_instance<'tcx>(
             let call = tcx
                 .associated_items(trait_id)
                 .in_definition_order()
-                .find(|it| it.kind == ty::AssocKind::Fn)
+                .find(|it| it.is_fn())
                 .expect("No call-family function on closure-like Fn trait?")
                 .def_id;
 

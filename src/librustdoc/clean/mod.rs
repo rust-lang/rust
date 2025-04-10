@@ -1374,10 +1374,10 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 }
             }
         }
-        ty::AssocKind::Fn => {
+        ty::AssocKind::Fn { has_self } => {
             let mut item = inline::build_function(cx, assoc_item.def_id);
 
-            if assoc_item.fn_has_self_parameter {
+            if has_self {
                 let self_ty = match assoc_item.container {
                     ty::AssocItemContainer::Impl => {
                         tcx.type_of(assoc_item.container_id(tcx)).instantiate_identity()

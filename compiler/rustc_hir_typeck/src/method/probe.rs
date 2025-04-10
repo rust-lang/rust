@@ -992,7 +992,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn matches_return_type(&self, method: ty::AssocItem, expected: Ty<'tcx>) -> bool {
         match method.kind {
-            ty::AssocKind::Fn => self.probe(|_| {
+            ty::AssocKind::Fn { .. } => self.probe(|_| {
                 let args = self.fresh_args_for_item(self.span, method.def_id);
                 let fty = self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args);
                 let fty = self.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, fty);
@@ -1678,7 +1678,6 @@ impl<'tcx> Pick<'tcx> {
                     kind: _,
                     container: _,
                     trait_item_def_id: _,
-                    fn_has_self_parameter: _,
                     opt_rpitit_info: _,
                 },
             kind: _,
@@ -1712,7 +1711,7 @@ impl<'tcx> Pick<'tcx> {
             ));
 
             match (self.item.kind, self.item.container) {
-                (ty::AssocKind::Fn, _) => {
+                (ty::AssocKind::Fn { .. }, _) => {
                     // FIXME: This should be a `span_suggestion` instead of `help`
                     // However `self.span` only
                     // highlights the method name, so we can't use it. Also consider reusing
@@ -2252,10 +2251,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // In Path mode (i.e., resolving a value like `T::next`), consider any
         // associated value (i.e., methods, constants) but not types.
         match self.mode {
-            Mode::MethodCall => item.fn_has_self_parameter,
+            Mode::MethodCall => item.is_method(),
             Mode::Path => match item.kind {
                 ty::AssocKind::Type => false,
-                ty::AssocKind::Fn | ty::AssocKind::Const => true,
+                ty::AssocKind::Fn { .. } | ty::AssocKind::Const => true,
             },
         }
         // FIXME -- check for types that deref to `Self`,
@@ -2277,7 +2276,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         impl_ty: Ty<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> (Ty<'tcx>, Option<Ty<'tcx>>) {
-        if item.kind == ty::AssocKind::Fn && self.mode == Mode::MethodCall {
+        if item.is_fn() && self.mode == Mode::MethodCall {
             let sig = self.xform_method_sig(item.def_id, args);
             (sig.inputs()[0], Some(sig.output()))
         } else {
@@ -2328,8 +2327,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// Determine if the given associated item type is relevant in the current context.
     fn is_relevant_kind_for_mode(&self, kind: ty::AssocKind) -> bool {
         match (self.mode, kind) {
-            (Mode::MethodCall, ty::AssocKind::Fn) => true,
-            (Mode::Path, ty::AssocKind::Const | ty::AssocKind::Fn) => true,
+            (Mode::MethodCall, ty::AssocKind::Fn { .. }) => true,
+            (Mode::Path, ty::AssocKind::Const | ty::AssocKind::Fn { .. }) => true,
             _ => false,
         }
     }

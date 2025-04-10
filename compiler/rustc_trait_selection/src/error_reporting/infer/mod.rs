@@ -2334,7 +2334,7 @@ impl<'tcx> ObligationCause<'tcx> {
         subdiags: Vec<TypeErrorAdditionalDiags>,
     ) -> ObligationCauseFailureCode {
         match self.code() {
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn { .. }, .. } => {
                 ObligationCauseFailureCode::MethodCompat { span, subdiags }
             }
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => {
@@ -2398,7 +2398,7 @@ impl<'tcx> ObligationCause<'tcx> {
 
     fn as_requirement_str(&self) -> &'static str {
         match self.code() {
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn { .. }, .. } => {
                 "method type is compatible with trait"
             }
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => {
@@ -2422,7 +2422,9 @@ pub struct ObligationCauseAsDiagArg<'tcx>(pub ObligationCause<'tcx>);
 impl IntoDiagArg for ObligationCauseAsDiagArg<'_> {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         let kind = match self.0.code() {
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => "method_compat",
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn { .. }, .. } => {
+                "method_compat"
+            }
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => "type_compat",
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
                 "const_compat"

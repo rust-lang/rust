@@ -1338,7 +1338,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
 fn should_encode_fn_impl_trait_in_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     if let Some(assoc_item) = tcx.opt_associated_item(def_id)
         && assoc_item.container == ty::AssocItemContainer::Trait
-        && assoc_item.kind == ty::AssocKind::Fn
+        && assoc_item.is_fn()
     {
         true
     } else {

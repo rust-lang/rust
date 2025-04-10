@@ -616,7 +616,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some((DefKind::AssocFn, def_id)) =
                     self.typeck_results.borrow().type_dependent_def(call_expr.hir_id)
                     && let Some(assoc) = tcx.opt_associated_item(def_id)
-                    && assoc.fn_has_self_parameter
+                    && assoc.is_method()
                 {
                     Some(*receiver)
                 } else {
@@ -642,8 +642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     TraitsInScope,
                     |mut ctxt| ctxt.probe_for_similar_candidate(),
                 )
-                && let ty::AssocKind::Fn = assoc.kind
-                && assoc.fn_has_self_parameter
+                && assoc.is_method()
             {
                 let args = self.infcx.fresh_args_for_item(call_name.span, assoc.def_id);
                 let fn_sig = tcx.fn_sig(assoc.def_id).instantiate(tcx, args);

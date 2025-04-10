@@ -197,10 +197,8 @@ fn own_existential_vtable_entries_iter(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
 ) -> impl Iterator<Item = DefId> {
-    let trait_methods = tcx
-        .associated_items(trait_def_id)
-        .in_definition_order()
-        .filter(|item| item.kind == ty::AssocKind::Fn);
+    let trait_methods =
+        tcx.associated_items(trait_def_id).in_definition_order().filter(|item| item.is_fn());
 
     // Now list each method's DefId (for within its trait).
     let own_entries = trait_methods.filter_map(move |&trait_method| {

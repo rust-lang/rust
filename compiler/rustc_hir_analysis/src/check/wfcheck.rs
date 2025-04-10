@@ -432,7 +432,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
 
                 let item_required_bounds = match tcx.associated_item(item_def_id).kind {
                     // In our example, this corresponds to `into_iter` method
-                    ty::AssocKind::Fn => {
+                    ty::AssocKind::Fn { .. } => {
                         // For methods, we check the function signature's return type for any GATs
                         // to constrain. In the `into_iter` case, we see that the return type
                         // `Self::Iter<'a>` is a GAT we want to gather any potential missing bounds from.
@@ -1089,7 +1089,7 @@ fn check_associated_item(
                 );
                 Ok(())
             }
-            ty::AssocKind::Fn => {
+            ty::AssocKind::Fn { .. } => {
                 let sig = tcx.fn_sig(item.def_id).instantiate_identity();
                 let hir_sig = sig_if_method.expect("bad signature for method");
                 check_fn_or_method(
@@ -1716,7 +1716,7 @@ fn check_method_receiver<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = wfcx.tcx();
 
-    if !method.fn_has_self_parameter {
+    if !method.is_method() {
         return Ok(());
     }
 
