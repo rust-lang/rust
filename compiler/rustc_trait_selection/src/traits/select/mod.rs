@@ -838,7 +838,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature) => todo!(),
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => todo!(),
 
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
                     match const_evaluatable::is_const_evaluatable(

@@ -155,9 +155,14 @@ where
                 ty.visit_with(self)
             }
             ty::ClauseKind::ConstEvaluatable(ct) => ct.visit_with(self),
+<<<<<<< HEAD
             ty::ClauseKind::WellFormed(term) => term.visit_with(self),
             ty::ClauseKind::UnstableImpl => todo!(), // TODO: maybe we need a visit with function here too?leFeature => todo!(), // TODO: maybe we need a visit with function here too?
 
+=======
+            ty::ClauseKind::WellFormed(arg) => arg.visit_with(self),
+            ty::ClauseKind::UnstableFeature(_) => todo!(), // TODO: maybe we need a visit with function here too?
+>>>>>>> 4df12515651 (Add Symbol to UnstableFeature ClauseKind)
         }
     }
 

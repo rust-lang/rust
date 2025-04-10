@@ -200,7 +200,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
             ty::ClauseKind::ConstArgHasType(..) => {
                 // Nothing to elaborate
             }
-            ty::ClauseKind::UnstableFeature => {
+            ty::ClauseKind::UnstableFeature(_) => {
                 // TODO: come back later and add more stuff if needed.
             }
         }
