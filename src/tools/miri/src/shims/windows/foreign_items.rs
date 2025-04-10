@@ -21,57 +21,107 @@ pub fn is_dyn_sym(name: &str) -> bool {
 }
 
 #[cfg(windows)]
-fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
+fn win_get_full_path_name<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
     // We are on Windows so we can simply let the host do this.
     interp_ok(path::absolute(path))
 }
 
 #[cfg(unix)]
 #[expect(clippy::get_first, clippy::arithmetic_side_effects)]
-fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
-    // We are on Unix, so we need to implement parts of the logic ourselves.
+fn win_get_full_path_name<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
+    use std::sync::LazyLock;
+
+    use rustc_data_structures::fx::FxHashSet;
+
+    // We are on Unix, so we need to implement parts of the logic ourselves. `path` will use `/`
+    // separators, and the result should also use `/`.
+    // See <https://chrisdenton.github.io/omnipath/Overview.html#absolute-win32-paths> for more
+    // information about Windows paths.
+    // This does not handle all corner cases correctly, see
+    // <https://github.com/rust-lang/miri/pull/4262#issuecomment-2792168853> for more cursed
+    // examples.
     let bytes = path.as_os_str().as_encoded_bytes();
-    // If it starts with `//` (these were backslashes but are already converted)
-    // then this is a magic special path, we just leave it unchanged.
-    if bytes.get(0).copied() == Some(b'/') && bytes.get(1).copied() == Some(b'/') {
+    // If it starts with `//./` or `//?/` then this is a magic special path, we just leave it
+    // unchanged.
+    if bytes.get(0).copied() == Some(b'/')
+        && bytes.get(1).copied() == Some(b'/')
+        && matches!(bytes.get(2), Some(b'.' | b'?'))
+        && bytes.get(3).copied() == Some(b'/')
+    {
         return interp_ok(Ok(path.into()));
     };
-    // Special treatment for Windows' magic filenames: they are treated as being relative to `\\.\`.
-    let magic_filenames = &[
-        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
-        "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
-    ];
-    if magic_filenames.iter().any(|m| m.as_bytes() == bytes) {
-        let mut result: Vec<u8> = br"//./".into();
+    let is_unc = bytes.starts_with(b"//");
+    // Special treatment for Windows' magic filenames: they are treated as being relative to `//./`.
+    static MAGIC_FILENAMES: LazyLock<FxHashSet<&'static str>> = LazyLock::new(|| {
+        FxHashSet::from_iter([
+            "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
+            "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+        ])
+    });
+    if str::from_utf8(bytes).is_ok_and(|s| MAGIC_FILENAMES.contains(&*s.to_ascii_uppercase())) {
+        let mut result: Vec<u8> = b"//./".into();
         result.extend(bytes);
         return interp_ok(Ok(bytes_to_os_str(&result)?.into()));
     }
     // Otherwise we try to do something kind of close to what Windows does, but this is probably not
-    // right in all cases. We iterate over the components between `/`, and remove trailing `.`,
-    // except that trailing `..` remain unchanged.
-    let mut result = vec![];
+    // right in all cases.
+    let mut result: Vec<&[u8]> = vec![]; // will be a vecot of components, joined by `/`.
     let mut bytes = bytes; // the remaining bytes to process
-    loop {
-        let len = bytes.iter().position(|&b| b == b'/').unwrap_or(bytes.len());
-        let mut component = &bytes[..len];
-        if len >= 2 && component[len - 1] == b'.' && component[len - 2] != b'.' {
-            // Strip trailing `.`
+    let mut stop = false;
+    while !stop {
+        // Find next component, and advance `bytes`.
+        let mut component = match bytes.iter().position(|&b| b == b'/') {
+            Some(pos) => {
+                let (component, tail) = bytes.split_at(pos);
+                bytes = &tail[1..]; // remove the `/`.
+                component
+            }
+            None => {
+                // There's no more `/`.
+                stop = true;
+                let component = bytes;
+                bytes = &[];
+                component
+            }
+        };
+        // `NUL` and only `NUL` also gets changed to be relative to `//./` later in the path.
+        // (This changed with Windows 11; previously, all magic filenames behaved like this.)
+        // Also, this does not apply to UNC paths.
+        if !is_unc && component.eq_ignore_ascii_case(b"NUL") {
+            let mut result: Vec<u8> = b"//./".into();
+            result.extend(component);
+            return interp_ok(Ok(bytes_to_os_str(&result)?.into()));
+        }
+        // Deal with `..` -- Windows handles this entirely syntactically.
+        if component == b".." {
+            // Remove previous component, unless we are at the "root" already, then just ignore the `..`.
+            let is_root = {
+                // Paths like `/C:`.
+                result.len() == 2 && matches!(result[0], []) && matches!(result[1], [_, b':'])
+            } || {
+                // Paths like `//server/share`
+                result.len() == 4 && matches!(result[0], []) && matches!(result[1], [])
+            };
+            if !is_root {
+                result.pop();
+            }
+            continue;
+        }
+        // Preserve this component.
+        // Strip trailing `.`, but preserve trailing `..`. But not for UNC paths!
+        let len = component.len();
+        if !is_unc && len >= 2 && component[len - 1] == b'.' && component[len - 2] != b'.' {
             component = &component[..len - 1];
         }
         // Add this component to output.
-        result.extend(component);
-        // Prepare next iteration.
-        if len < bytes.len() {
-            // There's a component after this; add `/` and process remaining bytes.
-            result.push(b'/');
-            bytes = &bytes[len + 1..];
-            continue;
-        } else {
-            // This was the last component and it did not have a trailing `/`.
-            break;
-        }
+        result.push(component);
     }
-    // Let the host `absolute` function do working-dir handling
+    // Drive letters must be followed by a `/`.
+    if result.len() == 2 && matches!(result[0], []) && matches!(result[1], [_, b':']) {
+        result.push(&[]);
+    }
+    // Let the host `absolute` function do working-dir handling.
+    let result = result.join(&b'/');
     interp_ok(path::absolute(bytes_to_os_str(&result)?))
 }
 
@@ -226,7 +276,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
 
                 let filename = this.read_path_from_wide_str(filename)?;
-                let result = match win_absolute(&filename)? {
+                let result = match win_get_full_path_name(&filename)? {
                     Err(err) => {
                         this.set_last_error(err)?;
                         Scalar::from_u32(0) // return zero upon failure
