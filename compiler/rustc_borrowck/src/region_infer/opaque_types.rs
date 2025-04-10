@@ -198,14 +198,6 @@ pub(crate) fn handle_opaque_type_uses<'tcx>(
                 )
             });
 
-        if !tcx.use_typing_mode_borrowck() {
-            if let ty::Alias(ty::Opaque, alias_ty) = ty.kind()
-                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
-                && alias_ty.args == opaque_type_key.args
-            {
-                continue 'entry;
-            }
-        }
         root_cx.add_concrete_opaque_type(
             opaque_type_key.def_id,
             OpaqueHiddenType { span: hidden_type.span, ty },
@@ -213,15 +205,6 @@ pub(crate) fn handle_opaque_type_uses<'tcx>(
     }
 
     for &(key, hidden_type) in &opaque_types {
-        if !tcx.use_typing_mode_borrowck() {
-            if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
-                && alias_ty.def_id == key.def_id.to_def_id()
-                && alias_ty.args == key.args
-            {
-                continue;
-            }
-        }
-
         let Some(expected) = root_cx.get_concrete_opaque_type(key.def_id) else {
             let guar =
                 tcx.dcx().span_err(hidden_type.span, "non-defining use in the defining scope");

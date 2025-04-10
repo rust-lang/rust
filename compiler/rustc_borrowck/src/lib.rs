@@ -674,12 +674,7 @@ pub(crate) struct BorrowckInferCtxt<'tcx> {
 
 impl<'tcx> BorrowckInferCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        let typing_mode = if tcx.use_typing_mode_borrowck() {
-            TypingMode::borrowck(tcx, def_id)
-        } else {
-            TypingMode::analysis_in_body(tcx, def_id)
-        };
-        let infcx = tcx.infer_ctxt().build(typing_mode);
+        let infcx = tcx.infer_ctxt().build(TypingMode::borrowck(tcx, def_id));
         let param_env = tcx.param_env(def_id);
         BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()), param_env }
     }
