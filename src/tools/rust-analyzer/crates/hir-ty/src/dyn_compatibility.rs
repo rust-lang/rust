@@ -21,7 +21,6 @@ use crate::{
     db::HirDatabase,
     from_assoc_type_id, from_chalk_trait_id,
     generics::{generics, trait_self_param_idx},
-    lower::callable_item_sig,
     to_chalk_trait_id,
     utils::elaborate_clause_supertraits,
 };
@@ -377,7 +376,7 @@ where
         cb(MethodViolationCode::AsyncFn)?;
     }
 
-    let sig = callable_item_sig(db, func.into());
+    let sig = db.callable_item_signature(func.into());
     if sig.skip_binders().params().iter().skip(1).any(|ty| {
         contains_illegal_self_type_reference(
             db,
@@ -558,7 +557,7 @@ fn receiver_for_self_ty(db: &dyn HirDatabase, func: FunctionId, ty: Ty) -> Optio
             if idx == trait_self_idx { ty.clone().cast(Interner) } else { arg.clone() }
         }),
     );
-    let sig = callable_item_sig(db, func.into());
+    let sig = db.callable_item_signature(func.into());
     let sig = sig.substitute(Interner, &subst);
     sig.params_and_return.first().cloned()
 }

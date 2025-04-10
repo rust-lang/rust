@@ -713,7 +713,7 @@ impl<'a> TyLoweringContext<'a> {
 }
 
 /// Build the signature of a callable item (function, struct or enum variant).
-pub(crate) fn callable_item_sig(db: &dyn HirDatabase, def: CallableDefId) -> PolyFnSig {
+pub(crate) fn callable_item_signature_query(db: &dyn HirDatabase, def: CallableDefId) -> PolyFnSig {
     match def {
         CallableDefId::FunctionId(f) => fn_sig_for_fn(db, f),
         CallableDefId::StructId(s) => fn_sig_for_struct_constructor(db, s),
