@@ -213,6 +213,11 @@ impl<T> Channel<T> {
                     .compare_exchange(block, new, Ordering::Release, Ordering::Relaxed)
                     .is_ok()
                 {
+                    // This yield point leaves the channel in a half-initialized state where the
+                    // tail.block pointer is set but the head.block is not. This is used to
+                    // facilitate the test in src/tools/miri/tests/pass/issues/issue-139553.rs
+                    #[cfg(miri)]
+                    crate::thread::yield_now();
                     self.head.block.store(new, Ordering::Release);
                     block = new;
                 } else {
