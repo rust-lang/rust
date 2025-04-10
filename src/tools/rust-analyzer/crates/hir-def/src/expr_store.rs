@@ -282,6 +282,9 @@ impl ExpressionStore {
         }
     }
 
+    /// Walks the immediate children expressions and calls `f` for each child expression.
+    ///
+    /// Note that this does not walk const blocks.
     pub fn walk_child_exprs(&self, expr_id: ExprId, mut f: impl FnMut(ExprId)) {
         let expr = &self[expr_id];
         match expr {
@@ -415,6 +418,10 @@ impl ExpressionStore {
         }
     }
 
+    /// Walks the immediate children expressions and calls `f` for each child expression but does
+    /// not walk expressions within patterns.
+    ///
+    /// Note that this does not walk const blocks.
     pub fn walk_child_exprs_without_pats(&self, expr_id: ExprId, mut f: impl FnMut(ExprId)) {
         let expr = &self[expr_id];
         match expr {
