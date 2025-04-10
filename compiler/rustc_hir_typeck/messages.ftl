@@ -148,7 +148,7 @@ hir_typeck_never_type_fallback_flowing_into_unsafe_path = never type fallback af
 hir_typeck_never_type_fallback_flowing_into_unsafe_union_field = never type fallback affects this union access
     .help = specify the type explicitly
 
-hir_typeck_no_associated_item = no {$item_kind} named `{$item_name}` found for {$ty_prefix} `{$ty_str}`{$trait_missing_method ->
+hir_typeck_no_associated_item = no {$item_kind} named `{$item_ident}` found for {$ty_prefix} `{$ty_str}`{$trait_missing_method ->
     [true] {""}
     *[other] {" "}in the current scope
 }

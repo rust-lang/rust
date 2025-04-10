@@ -645,7 +645,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         (
                             // Disallow `impl Trait` in foreign items.
                             this.lower_fn_decl(fdec, i.id, sig.span, FnDeclKind::ExternFn, None),
-                            this.lower_fn_params_to_names(fdec),
+                            this.lower_fn_params_to_idents(fdec),
                         )
                     });
 
@@ -833,7 +833,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }) => {
                 // FIXME(contracts): Deny contract here since it won't apply to
                 // any impl method or callees.
-                let names = self.lower_fn_params_to_names(&sig.decl);
+                let idents = self.lower_fn_params_to_idents(&sig.decl);
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
@@ -851,7 +851,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (
                     *ident,
                     generics,
-                    hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)),
+                    hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(idents)),
                     false,
                 )
             }

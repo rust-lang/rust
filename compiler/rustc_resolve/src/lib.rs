@@ -1648,7 +1648,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .filter_map(|item| {
                     let parent_module =
                         self.node_id_to_def_id.get(&item.parent_module)?.key().to_def_id();
-                    Some(StrippedCfgItem { parent_module, name: item.name, cfg: item.cfg })
+                    Some(StrippedCfgItem { parent_module, ident: item.ident, cfg: item.cfg })
                 })
                 .collect(),
         );

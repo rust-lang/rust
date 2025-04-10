@@ -469,8 +469,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         self.proc_macros.push(id)
     }
 
-    fn append_stripped_cfg_item(&mut self, parent_node: NodeId, name: Ident, cfg: ast::MetaItem) {
-        self.stripped_cfg_items.push(StrippedCfgItem { parent_module: parent_node, name, cfg });
+    fn append_stripped_cfg_item(&mut self, parent_node: NodeId, ident: Ident, cfg: ast::MetaItem) {
+        self.stripped_cfg_items.push(StrippedCfgItem { parent_module: parent_node, ident, cfg });
     }
 
     fn registered_tools(&self) -> &RegisteredTools {

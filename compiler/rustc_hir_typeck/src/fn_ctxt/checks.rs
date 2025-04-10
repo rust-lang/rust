@@ -1136,7 +1136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let self_implicit =
                     matches!(call_expr.kind, hir::ExprKind::MethodCall(..)) as usize
                 && let Some(Some(arg)) =
-                    self.tcx.fn_arg_names(fn_def_id).get(expected_idx.as_usize() + self_implicit)
+                    self.tcx.fn_arg_idents(fn_def_id).get(expected_idx.as_usize() + self_implicit)
                 && arg.name != kw::SelfLower
             {
                 format!("/* {} */", arg.name)
@@ -2619,7 +2619,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_method: bool,
     ) -> Option<(IndexVec<ExpectedIdx, (Option<GenericIdx>, FnParam<'_>)>, &hir::Generics<'_>)>
     {
-        let (sig, generics, body_id, param_names) = match self.tcx.hir_get_if_local(def_id)? {
+        let (sig, generics, body_id, params) = match self.tcx.hir_get_if_local(def_id)? {
             hir::Node::TraitItem(&hir::TraitItem {
                 generics,
                 kind: hir::TraitItemKind::Fn(sig, trait_fn),
@@ -2661,7 +2661,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None
             }
         });
-        match (body_id, param_names) {
+        match (body_id, params) {
             (Some(_), Some(_)) | (None, None) => unreachable!(),
             (Some(body), None) => {
                 let params = self.tcx.hir_body(body).params;
@@ -2678,7 +2678,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     params.get(is_method as usize..params.len() - sig.decl.c_variadic as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
                 Some((
-                    fn_inputs.zip(params.iter().map(|&ident| FnParam::Name(ident))).collect(),
+                    fn_inputs.zip(params.iter().map(|&ident| FnParam::Ident(ident))).collect(),
                     generics,
                 ))
             }
@@ -2709,14 +2709,14 @@ impl<'tcx> Visitor<'tcx> for FindClosureArg<'tcx> {
 #[derive(Clone, Copy)]
 enum FnParam<'hir> {
     Param(&'hir hir::Param<'hir>),
-    Name(Option<Ident>),
+    Ident(Option<Ident>),
 }
 
 impl FnParam<'_> {
     fn span(&self) -> Span {
         match self {
             Self::Param(param) => param.span,
-            Self::Name(ident) => {
+            Self::Ident(ident) => {
                 if let Some(ident) = ident {
                     ident.span
                 } else {
@@ -2738,7 +2738,7 @@ impl FnParam<'_> {
                     {
                         Some(ident.name)
                     }
-                    FnParam::Name(ident)
+                    FnParam::Ident(ident)
                         if let Some(ident) = ident
                             && ident.name != kw::Underscore =>
                     {
