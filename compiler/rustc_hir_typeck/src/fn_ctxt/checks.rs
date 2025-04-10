@@ -4,10 +4,10 @@ use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, listify, pluralize};
-use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ExprKind, HirId, Node, QPath};
+use rustc_hir::{ExprKind, HirId, LangItem, Node, QPath};
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_index::IndexVec;
@@ -153,6 +153,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    /// Requires that `element_ty` is `Copy` (unless it's a const expression itself).
+    pub(super) fn enforce_repeat_element_needs_copy_bound(
+        &self,
+        element: &hir::Expr<'_>,
+        element_ty: Ty<'tcx>,
+    ) {
+        // Actual constants as the repeat element get inserted repeatedly instead of getting copied via Copy.
+        match &element.kind {
+            hir::ExprKind::ConstBlock(..) => return,
+            hir::ExprKind::Path(qpath) => {
+                let res = self.typeck_results.borrow().qpath_res(qpath, element.hir_id);
+                if let Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::AnonConst, _) = res
+                {
+                    return;
+                }
+            }
+            _ => {}
+        }
+
+        // If someone calls a const fn or constructs a const value, they can extract that
+        // out into a separate constant (or a const block in the future), so we check that
+        // to tell them that in the diagnostic. Does not affect typeck.
+        let is_constable = match element.kind {
+            hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
+                ty::FnDef(def_id, _) if self.tcx.is_stable_const_fn(def_id) => {
+                    traits::IsConstable::Fn
+                }
+                _ => traits::IsConstable::No,
+            },
+            hir::ExprKind::Path(qpath) => {
+                match self.typeck_results.borrow().qpath_res(&qpath, element.hir_id) {
+                    Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => traits::IsConstable::Ctor,
+                    _ => traits::IsConstable::No,
+                }
+            }
+            _ => traits::IsConstable::No,
+        };
+
+        let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
+        let code =
+            traits::ObligationCauseCode::RepeatElementCopy { is_constable, elt_span: element.span };
+        self.require_type_meets(element_ty, element.span, code, lang_item);
     }
 
     /// Generic function that factors out common logic from function calls,
