@@ -1,5 +1,4 @@
 use hir::{HasVisibility, sym};
-use ide_db::text_edit::TextRange;
 use ide_db::{
     FxHashMap, FxHashSet,
     assists::AssistId,
@@ -8,7 +7,9 @@ use ide_db::{
     search::{FileReference, SearchScope},
 };
 use itertools::Itertools;
-use syntax::{AstNode, Edition, SmolStr, SyntaxNode, ToSmolStr, ast, ted};
+use syntax::ast::syntax_factory::SyntaxFactory;
+use syntax::syntax_editor::SyntaxEditor;
+use syntax::{AstNode, Edition, SmolStr, SyntaxNode, ToSmolStr, ast};
 
 use crate::{
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
@@ -62,13 +63,10 @@ fn destructure_struct_binding_impl(
     data: &StructEditData,
 ) {
     let field_names = generate_field_names(ctx, data);
-    let assignment_edit = build_assignment_edit(ctx, builder, data, &field_names);
-    let usage_edits = build_usage_edits(ctx, builder, data, &field_names.into_iter().collect());
-
-    assignment_edit.apply();
-    for edit in usage_edits {
-        edit.apply(builder);
-    }
+    let mut editor = builder.make_editor(data.ident_pat.syntax());
+    destructure_pat(ctx, &mut editor, data, &field_names);
+    update_usages(ctx, &mut editor, data, &field_names.into_iter().collect());
+    builder.add_file_edits(ctx.file_id(), editor);
 }
 
 struct StructEditData {
@@ -173,64 +171,57 @@ fn get_names_in_scope(
     Some(names)
 }
 
-fn build_assignment_edit(
+fn destructure_pat(
     _ctx: &AssistContext<'_>,
-    builder: &mut SourceChangeBuilder,
+    editor: &mut SyntaxEditor,
     data: &StructEditData,
     field_names: &[(SmolStr, SmolStr)],
-) -> AssignmentEdit {
-    let ident_pat = builder.make_mut(data.ident_pat.clone());
+) {
+    let ident_pat = &data.ident_pat;
 
     let struct_path = mod_path_to_ast(&data.struct_def_path, data.edition);
     let is_ref = ident_pat.ref_token().is_some();
     let is_mut = ident_pat.mut_token().is_some();
 
+    let make = SyntaxFactory::with_mappings();
     let new_pat = match data.kind {
         hir::StructKind::Tuple => {
             let ident_pats = field_names.iter().map(|(_, new_name)| {
-                let name = ast::make::name(new_name);
-                ast::Pat::from(ast::make::ident_pat(is_ref, is_mut, name))
+                let name = make.name(new_name);
+                ast::Pat::from(make.ident_pat(is_ref, is_mut, name))
             });
-            ast::Pat::TupleStructPat(ast::make::tuple_struct_pat(struct_path, ident_pats))
+            ast::Pat::TupleStructPat(make.tuple_struct_pat(struct_path, ident_pats))
         }
         hir::StructKind::Record => {
             let fields = field_names.iter().map(|(old_name, new_name)| {
                 // Use shorthand syntax if possible
                 if old_name == new_name && !is_mut {
-                    ast::make::record_pat_field_shorthand(ast::make::name_ref(old_name))
+                    make.record_pat_field_shorthand(make.name_ref(old_name))
                 } else {
-                    ast::make::record_pat_field(
-                        ast::make::name_ref(old_name),
-                        ast::Pat::IdentPat(ast::make::ident_pat(
-                            is_ref,
-                            is_mut,
-                            ast::make::name(new_name),
-                        )),
+                    make.record_pat_field(
+                        make.name_ref(old_name),
+                        ast::Pat::IdentPat(make.ident_pat(is_ref, is_mut, make.name(new_name))),
                     )
                 }
             });
+            let field_list = make
+                .record_pat_field_list(fields, data.has_private_members.then_some(make.rest_pat()));
 
-            let field_list = ast::make::record_pat_field_list(
-                fields,
-                data.has_private_members.then_some(ast::make::rest_pat()),
-            );
-            ast::Pat::RecordPat(ast::make::record_pat_with_fields(struct_path, field_list))
+            ast::Pat::RecordPat(make.record_pat_with_fields(struct_path, field_list))
         }
-        hir::StructKind::Unit => ast::make::path_pat(struct_path),
+        hir::StructKind::Unit => make.path_pat(struct_path),
     };
 
     // If the binding is nested inside a record, we need to wrap the new
     // destructured pattern in a non-shorthand record field
-    let new_pat = if data.is_nested {
-        let record_pat_field =
-            ast::make::record_pat_field(ast::make::name_ref(&ident_pat.to_string()), new_pat)
-                .clone_for_update();
-        NewPat::RecordPatField(record_pat_field)
+    let destructured_pat = if data.is_nested {
+        make.record_pat_field(make.name_ref(&ident_pat.to_string()), new_pat).syntax().clone()
     } else {
-        NewPat::Pat(new_pat.clone_for_update())
+        new_pat.syntax().clone()
     };
 
-    AssignmentEdit { old_pat: ident_pat, new_pat }
+    editor.add_mappings(make.finish_with_mappings());
+    editor.replace(data.ident_pat.syntax(), destructured_pat);
 }
 
 fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(SmolStr, SmolStr)> {
@@ -267,85 +258,52 @@ fn new_field_name(base_name: SmolStr, names_in_scope: &FxHashSet<SmolStr>) -> Sm
     name
 }
 
-struct AssignmentEdit {
-    old_pat: ast::IdentPat,
-    new_pat: NewPat,
-}
-
-enum NewPat {
-    Pat(ast::Pat),
-    RecordPatField(ast::RecordPatField),
-}
-
-impl AssignmentEdit {
-    fn apply(self) {
-        match self.new_pat {
-            NewPat::Pat(pat) => ted::replace(self.old_pat.syntax(), pat.syntax()),
-            NewPat::RecordPatField(record_pat_field) => {
-                ted::replace(self.old_pat.syntax(), record_pat_field.syntax())
-            }
-        }
-    }
-}
-
-fn build_usage_edits(
+fn update_usages(
     ctx: &AssistContext<'_>,
-    builder: &mut SourceChangeBuilder,
+    editor: &mut SyntaxEditor,
     data: &StructEditData,
     field_names: &FxHashMap<SmolStr, SmolStr>,
-) -> Vec<StructUsageEdit> {
-    data.usages
+) {
+    let make = SyntaxFactory::with_mappings();
+    let edits = data
+        .usages
         .iter()
-        .filter_map(|r| build_usage_edit(ctx, builder, data, r, field_names))
-        .collect_vec()
+        .filter_map(|r| build_usage_edit(ctx, &make, data, r, field_names))
+        .collect_vec();
+    editor.add_mappings(make.finish_with_mappings());
+    for (old, new) in edits {
+        editor.replace(old, new);
+    }
 }
 
 fn build_usage_edit(
     ctx: &AssistContext<'_>,
-    builder: &mut SourceChangeBuilder,
+    make: &SyntaxFactory,
     data: &StructEditData,
     usage: &FileReference,
     field_names: &FxHashMap<SmolStr, SmolStr>,
-) -> Option<StructUsageEdit> {
+) -> Option<(SyntaxNode, SyntaxNode)> {
     match usage.name.syntax().ancestors().find_map(ast::FieldExpr::cast) {
         Some(field_expr) => Some({
             let field_name: SmolStr = field_expr.name_ref()?.to_string().into();
             let new_field_name = field_names.get(&field_name)?;
-            let new_expr = ast::make::expr_path(ast::make::ext::ident_path(new_field_name));
+            let new_expr = make.expr_path(ast::make::ext::ident_path(new_field_name));
 
             // If struct binding is a reference, we might need to deref field usages
             if data.is_ref {
                 let (replace_expr, ref_data) = determine_ref_and_parens(ctx, &field_expr);
-                StructUsageEdit::IndexField(
-                    builder.make_mut(replace_expr),
-                    ref_data.wrap_expr(new_expr).clone_for_update(),
+                (
+                    replace_expr.syntax().clone_for_update(),
+                    ref_data.wrap_expr(new_expr).syntax().clone_for_update(),
                 )
             } else {
-                StructUsageEdit::IndexField(
-                    builder.make_mut(field_expr).into(),
-                    new_expr.clone_for_update(),
-                )
+                (field_expr.syntax().clone(), new_expr.syntax().clone())
             }
         }),
-        None => Some(StructUsageEdit::Path(usage.range)),
-    }
-}
-
-enum StructUsageEdit {
-    Path(TextRange),
-    IndexField(ast::Expr, ast::Expr),
-}
-
-impl StructUsageEdit {
-    fn apply(self, edit: &mut SourceChangeBuilder) {
-        match self {
-            StructUsageEdit::Path(target_expr) => {
-                edit.replace(target_expr, "todo!()");
-            }
-            StructUsageEdit::IndexField(target_expr, replace_with) => {
-                ted::replace(target_expr.syntax(), replace_with.syntax())
-            }
-        }
+        None => Some((
+            usage.name.syntax().as_node().unwrap().clone(),
+            make.expr_macro(ast::make::ext::ident_path("todo"), make.arg_list([])).syntax().clone(),
+        )),
     }
 }
 

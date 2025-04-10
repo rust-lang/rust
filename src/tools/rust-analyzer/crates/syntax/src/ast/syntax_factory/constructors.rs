@@ -241,7 +241,7 @@ impl SyntaxFactory {
         ast
     }
 
-    pub fn record_pat_field(self, name_ref: ast::NameRef, pat: ast::Pat) -> ast::RecordPatField {
+    pub fn record_pat_field(&self, name_ref: ast::NameRef, pat: ast::Pat) -> ast::RecordPatField {
         let ast = make::record_pat_field(name_ref.clone(), pat.clone()).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
@@ -288,6 +288,10 @@ impl SyntaxFactory {
         }
 
         ast
+    }
+
+    pub fn rest_pat(&self) -> ast::RestPat {
+        make::rest_pat().clone_for_update()
     }
 
     pub fn block_expr(
@@ -591,6 +595,21 @@ impl SyntaxFactory {
                 match_arm_list.syntax().clone(),
                 ast.match_arm_list().unwrap().syntax().clone(),
             );
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn expr_macro(&self, path: ast::Path, args: ast::ArgList) -> ast::MacroExpr {
+        let ast = make::expr_macro(path.clone(), args.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let macro_call = ast.macro_call().unwrap();
+            let mut builder = SyntaxMappingBuilder::new(macro_call.syntax().clone());
+            builder.map_node(path.syntax().clone(), macro_call.path().unwrap().syntax().clone());
+            builder
+                .map_node(args.syntax().clone(), macro_call.token_tree().unwrap().syntax().clone());
             builder.finish(&mut mapping);
         }
 

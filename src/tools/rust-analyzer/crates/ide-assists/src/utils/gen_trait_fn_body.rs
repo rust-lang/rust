@@ -228,11 +228,11 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                     None => {
                         let fmt_string = make::expr_literal(&(format!("\"{name}\""))).into();
                         let args = make::arg_list([target, fmt_string]);
-                        let macro_name = make::expr_path(make::ext::ident_path("write"));
-                        let macro_call = make::expr_macro_call(macro_name, args);
+                        let macro_name = make::ext::ident_path("write");
+                        let macro_call = make::expr_macro(macro_name, args);
 
                         let variant_name = make::path_pat(variant_name);
-                        arms.push(make::match_arm(variant_name, None, macro_call));
+                        arms.push(make::match_arm(variant_name, None, macro_call.into()));
                     }
                 }
             }
