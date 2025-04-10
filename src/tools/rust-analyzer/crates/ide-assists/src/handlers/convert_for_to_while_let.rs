@@ -60,7 +60,7 @@ pub(crate) fn convert_for_loop_to_while_let(
             {
                 (expr, Some(make.name_ref(method.as_str())))
             } else if let ast::Expr::RefExpr(_) = iterable {
-                (make::expr_paren(iterable), Some(make.name_ref("into_iter")))
+                (make::expr_paren(iterable).into(), Some(make.name_ref("into_iter")))
             } else {
                 (iterable, Some(make.name_ref("into_iter")))
             };

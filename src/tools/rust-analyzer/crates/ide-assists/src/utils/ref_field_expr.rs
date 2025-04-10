@@ -125,7 +125,7 @@ impl RefData {
         }
 
         if self.needs_parentheses {
-            expr = make::expr_paren(expr);
+            expr = make::expr_paren(expr).into();
         }
 
         expr

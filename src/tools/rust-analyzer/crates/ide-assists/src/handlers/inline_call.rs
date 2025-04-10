@@ -512,7 +512,7 @@ fn inline(
                     && usage.syntax().parent().and_then(ast::Expr::cast).is_some() =>
             {
                 cov_mark::hit!(inline_call_inline_closure);
-                let expr = make::expr_paren(expr.clone());
+                let expr = make::expr_paren(expr.clone()).into();
                 inline_direct(usage, &expr);
             }
             // inline single use literals
@@ -567,7 +567,7 @@ fn inline(
     let no_stmts = body.statements().next().is_none();
     match body.tail_expr() {
         Some(expr) if matches!(expr, ast::Expr::ClosureExpr(_)) && no_stmts => {
-            make::expr_paren(expr).clone_for_update()
+            make::expr_paren(expr).clone_for_update().into()
         }
         Some(expr) if !is_async_fn && no_stmts => expr,
         _ => match node
@@ -577,7 +577,7 @@ fn inline(
             .and_then(|bin_expr| bin_expr.lhs())
         {
             Some(lhs) if lhs.syntax() == node.syntax() => {
-                make::expr_paren(ast::Expr::BlockExpr(body)).clone_for_update()
+                make::expr_paren(ast::Expr::BlockExpr(body)).clone_for_update().into()
             }
             _ => ast::Expr::BlockExpr(body),
         },

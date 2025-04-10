@@ -659,7 +659,7 @@ pub fn expr_closure(pats: impl IntoIterator<Item = ast::Param>, expr: ast::Expr)
 pub fn expr_field(receiver: ast::Expr, field: &str) -> ast::Expr {
     expr_from_text(&format!("{receiver}.{field}"))
 }
-pub fn expr_paren(expr: ast::Expr) -> ast::Expr {
+pub fn expr_paren(expr: ast::Expr) -> ast::ParenExpr {
     expr_from_text(&format!("({expr})"))
 }
 pub fn expr_tuple(elements: impl IntoIterator<Item = ast::Expr>) -> ast::TupleExpr {
