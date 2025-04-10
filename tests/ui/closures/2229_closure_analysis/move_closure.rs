@@ -181,9 +181,9 @@ fn box_mut_1() {
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-    //~| First Pass analysis includes:
+    //~| ERROR First Pass analysis includes:
     //~| NOTE: Capturing box_p_foo[Deref,Deref,(0, 0)] -> Mutable
-    //~| Min Capture analysis includes:
+    //~| ERROR Min Capture analysis includes:
     //~| NOTE: Min Capture box_p_foo[] -> ByValue
 }
 
@@ -199,9 +199,9 @@ fn box_mut_2() {
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-    //~| First Pass analysis includes:
+    //~| ERROR First Pass analysis includes:
     //~| NOTE: Capturing p_foo[Deref,Deref,(0, 0)] -> Mutable
-    //~| Min Capture analysis includes:
+    //~| ERROR Min Capture analysis includes:
     //~| NOTE: Min Capture p_foo[] -> ByValue
 }
 
@@ -213,9 +213,9 @@ fn returned_closure_owns_copy_type_data() -> impl Fn() -> i32 {
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-    //~| First Pass analysis includes:
+    //~| ERROR First Pass analysis includes:
     //~| NOTE: Capturing x[] -> Immutable
-    //~| Min Capture analysis includes:
+    //~| ERROR Min Capture analysis includes:
     //~| NOTE: Min Capture x[] -> ByValue
 
     c

@@ -513,7 +513,7 @@ impl Subdiagnostic for BuiltinClashingExternSub<'_> {
         expected_str.push(self.expected.fn_sig(self.tcx).to_string(), false);
         let mut found_str = DiagStyledString::new();
         found_str.push(self.found.fn_sig(self.tcx).to_string(), true);
-        diag.note_expected_found(&"", expected_str, &"", found_str);
+        diag.note_expected_found("", expected_str, "", found_str);
     }
 }
 

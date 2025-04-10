@@ -92,6 +92,12 @@ pub struct AutoDiffAttrs {
     pub input_activity: Vec<DiffActivity>,
 }
 
+impl AutoDiffAttrs {
+    pub fn has_primal_ret(&self) -> bool {
+        matches!(self.ret_activity, DiffActivity::Active | DiffActivity::Dual)
+    }
+}
+
 impl DiffMode {
     pub fn is_rev(&self) -> bool {
         matches!(self, DiffMode::Reverse)

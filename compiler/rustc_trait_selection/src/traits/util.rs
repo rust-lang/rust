@@ -289,7 +289,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+        match r.kind() {
             ty::ReBound(debruijn, _)
                 if debruijn.as_usize()
                     >= self.current_index.as_usize() + self.universe_indices.len() =>
@@ -407,7 +407,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
     }
 
     fn fold_region(&mut self, r0: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        let r1 = match *r0 {
+        let r1 = match r0.kind() {
             ty::ReVar(vid) => self
                 .infcx
                 .inner
@@ -417,7 +417,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
             _ => r0,
         };
 
-        let r2 = match *r1 {
+        let r2 = match r1.kind() {
             ty::RePlaceholder(p) => {
                 let replace_var = self.mapped_regions.get(&p);
                 match replace_var {

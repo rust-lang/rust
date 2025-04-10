@@ -1,6 +1,7 @@
 extern "C" {
     fn foo(x: i32, y: u32, z: i32);
     //~^ NOTE function defined here
+    //~| NOTE
 }
 
 fn main() {

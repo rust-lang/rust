@@ -182,7 +182,10 @@ impl<'tcx> ConstToPat<'tcx> {
             }
         }
 
-        inlined_const_as_pat
+        // Wrap the pattern in a marker node to indicate that it is the result of lowering a
+        // constant. This is used for diagnostics, and for unsafety checking of inline const blocks.
+        let kind = PatKind::ExpandedConstant { subpattern: inlined_const_as_pat, def_id: uv.def };
+        Box::new(Pat { kind, ty, span: self.span })
     }
 
     fn field_pats(

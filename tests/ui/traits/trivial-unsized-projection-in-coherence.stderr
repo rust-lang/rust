@@ -1,0 +1,15 @@
+error[E0119]: conflicting implementations of trait `Overlap<u32>` for type `u32`
+  --> $DIR/trivial-unsized-projection-in-coherence.rs:37:1
+   |
+LL |   impl<T> Overlap<u32> for T {
+   |   -------------------------- first implementation here
+...
+LL | / impl<U> Overlap<U> for u32
+LL | |
+LL | | where
+LL | |     MaybeUnsized<U, u32>: RelateReqSized,
+   | |_________________________________________^ conflicting implementation for `u32`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -96,12 +96,12 @@ trait S {}
 
 // implied stable
 impl const U for u8 {}
-//~^ const stability on the impl does not match the const stability on the trait
+//~^ ERROR const stability on the impl does not match the const stability on the trait
 
 #[rustc_const_stable(since = "0.0.0", feature = "beef2")]
 impl const U for u16 {}
-//~^ const stability on the impl does not match the const stability on the trait
-//~| trait implementations cannot be const stable yet
+//~^ ERROR const stability on the impl does not match the const stability on the trait
+//~| ERROR trait implementations cannot be const stable yet
 
 #[rustc_const_unstable(feature = "beef", issue = "none")]
 impl const U for u32 {}
@@ -111,10 +111,10 @@ impl const S for u8 {}
 
 #[rustc_const_stable(since = "0.0.0", feature = "beef2")]
 impl const S for u16 {}
-//~^ trait implementations cannot be const stable yet
+//~^ ERROR trait implementations cannot be const stable yet
 
 #[rustc_const_unstable(feature = "beef", issue = "none")]
 impl const S for u32 {}
-//~^ const stability on the impl does not match the const stability on the trait
+//~^ ERROR const stability on the impl does not match the const stability on the trait
 
 fn main() {}

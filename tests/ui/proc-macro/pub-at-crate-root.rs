@@ -5,7 +5,7 @@
 
 extern crate proc_macro;
 
-pub mod a { //~ `proc-macro` crate types currently cannot export any items
+pub mod a { //~ ERROR `proc-macro` crate types currently cannot export any items
     use proc_macro::TokenStream;
 
     #[proc_macro_derive(B)]

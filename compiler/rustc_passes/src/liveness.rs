@@ -96,7 +96,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
-use rustc_span::{BytePos, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use self::LiveNodeKind::*;
@@ -1481,9 +1481,6 @@ impl<'tcx> Liveness<'_, 'tcx> {
 
     fn should_warn(&self, var: Variable) -> Option<String> {
         let name = self.ir.variable_name(var);
-        if name == kw::Empty {
-            return None;
-        }
         let name = name.as_str();
         if name.as_bytes()[0] == b'_' {
             return None;
@@ -1655,7 +1652,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
                 Some(mut_ty.ty.span.shrink_to_lo())
             };
-            let pre = if lt.ident.span.lo() == lt.ident.span.hi() { "" } else { " " };
+            let pre = if lt.ident.span.is_empty() { "" } else { " " };
             Some(errors::UnusedAssignSuggestion {
                 ty_span,
                 pre,

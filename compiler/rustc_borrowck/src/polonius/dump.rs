@@ -5,7 +5,7 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::pretty::{
     PassWhere, PrettyPrintMirOptions, create_dump_file, dump_enabled, dump_mir_to_writer,
 };
-use rustc_middle::mir::{Body, ClosureRegionRequirements, Location};
+use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::points::PointIndex;
 use rustc_session::config::MirIncludeSpans;
@@ -17,7 +17,7 @@ use crate::polonius::{
 };
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
-use crate::{BorrowckInferCtxt, RegionInferenceContext};
+use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
 
 /// `-Zdump-mir=polonius` dumps MIR annotated with NLL and polonius specific information.
 pub(crate) fn dump_polonius_mir<'tcx>(
@@ -334,7 +334,7 @@ fn emit_mermaid_nll_regions<'tcx>(
     writeln!(out, "flowchart TD")?;
 
     // Emit the region nodes.
-    for region in regioncx.var_infos.indices() {
+    for region in regioncx.definitions.indices() {
         write!(out, "{}[\"", region.as_usize())?;
         render_region(region, regioncx, out)?;
         writeln!(out, "\"]")?;
@@ -387,7 +387,7 @@ fn emit_mermaid_nll_sccs<'tcx>(
     // Gather and emit the SCC nodes.
     let mut nodes_per_scc: IndexVec<_, _> =
         regioncx.constraint_sccs().all_sccs().map(|_| Vec::new()).collect();
-    for region in regioncx.var_infos.indices() {
+    for region in regioncx.definitions.indices() {
         let scc = regioncx.constraint_sccs().scc(region);
         nodes_per_scc[scc].push(region);
     }

@@ -2,6 +2,7 @@ use core::ops::ControlFlow;
 use std::borrow::Cow;
 use std::path::PathBuf;
 
+use rustc_abi::ExternAbi;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
@@ -2799,32 +2800,57 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         // Note any argument mismatches
-        let given_ty = params.skip_binder();
+        let ty::Tuple(given) = *params.skip_binder().kind() else {
+            return;
+        };
+
         let expected_ty = trait_pred.skip_binder().trait_ref.args.type_at(1);
-        if let ty::Tuple(given) = given_ty.kind()
-            && let ty::Tuple(expected) = expected_ty.kind()
-        {
-            if expected.len() != given.len() {
-                // Note number of types that were expected and given
-                err.note(
-                    format!(
-                        "expected a closure taking {} argument{}, but one taking {} argument{} was given",
-                        given.len(),
-                        pluralize!(given.len()),
-                        expected.len(),
-                        pluralize!(expected.len()),
-                    )
-                );
-            } else if !self.same_type_modulo_infer(given_ty, expected_ty) {
-                // Print type mismatch
-                let (expected_args, given_args) = self.cmp(given_ty, expected_ty);
-                err.note_expected_found(
-                    &"a closure with arguments",
-                    expected_args,
-                    &"a closure with arguments",
-                    given_args,
-                );
-            }
+        let ty::Tuple(expected) = *expected_ty.kind() else {
+            return;
+        };
+
+        if expected.len() != given.len() {
+            // Note number of types that were expected and given
+            err.note(format!(
+                "expected a closure taking {} argument{}, but one taking {} argument{} was given",
+                given.len(),
+                pluralize!(given.len()),
+                expected.len(),
+                pluralize!(expected.len()),
+            ));
+            return;
+        }
+
+        let given_ty = Ty::new_fn_ptr(
+            self.tcx,
+            params.rebind(self.tcx.mk_fn_sig(
+                given,
+                self.tcx.types.unit,
+                false,
+                hir::Safety::Safe,
+                ExternAbi::Rust,
+            )),
+        );
+        let expected_ty = Ty::new_fn_ptr(
+            self.tcx,
+            trait_pred.rebind(self.tcx.mk_fn_sig(
+                expected,
+                self.tcx.types.unit,
+                false,
+                hir::Safety::Safe,
+                ExternAbi::Rust,
+            )),
+        );
+
+        if !self.same_type_modulo_infer(given_ty, expected_ty) {
+            // Print type mismatch
+            let (expected_args, given_args) = self.cmp(expected_ty, given_ty);
+            err.note_expected_found(
+                "a closure with signature",
+                expected_args,
+                "a closure with signature",
+                given_args,
+            );
         }
     }
 

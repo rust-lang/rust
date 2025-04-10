@@ -521,8 +521,11 @@ self.pre_comment.as_ref().map_or(
 
 ## Control flow expressions
 
-This section covers `if`, `if let`, `loop`, `while`, `while let`, and `for`
-expressions.
+This section covers `for` and `loop` expressions, as well as `if` and `while`
+expressions with their sub-expression variants. This includes those with a
+single `let` sub-expression (i.e. `if let` and `while let`)
+as well as "let-chains": those with one or more `let` sub-expressions and
+one or more bool-type conditions (i.e.  `if a && let Some(b) = c`).
 
 Put the keyword, any initial clauses, and the opening brace of the block all on
 a single line, if they fit. Apply the usual rules for [block
@@ -548,10 +551,11 @@ if let ... {
 }
 ```
 
-If the control line needs to be broken, prefer to break before the `=` in `*
-let` expressions and before `in` in a `for` expression; block-indent the
-following line. If the control line is broken for any reason, put the opening
-brace on its own line, not indented. Examples:
+If the control line needs to be broken, then prefer breaking after the `=` for any
+`let` sub-expression in an `if` or `while` expression that does not fit,
+and before `in` in a `for` expression; the following line should be block indented.
+If the control line is broken for any reason, then the opening brace should be on its
+own line and not indented. Examples:
 
 ```rust
 while let Some(foo)
@@ -571,6 +575,68 @@ if a_long_expression
     || a_third_long_expression
 {
     ...
+}
+
+if let Some(a) = b
+    && another_long_expression
+    && a_third_long_expression
+{
+    // ...
+}
+
+if let Some(relatively_long_thing)
+    = a_long_expression
+    && another_long_expression
+    && a_third_long_expression
+{
+    // ...
+}
+
+if some_expr
+    && another_long_expression
+    && let Some(relatively_long_thing) =
+        a_long_long_long_long_long_long_really_reallllllllllyyyyyyy_long_expression
+    && a_third_long_expression
+{
+    // ...
+}
+```
+
+A let-chain control line is allowed to be formatted on a single line provided
+it only consists of two clauses, with the first, left-hand side operand being a literal or an
+`ident` (which can optionally be preceded by any number of unary prefix operators),
+and the second, right-hand side operand being a single-line `let` clause. Otherwise,
+the control line must be broken and formatted according to the above rules. For example:
+
+```rust
+if a && let Some(b) = foo() {
+    // ...
+}
+
+if true && let Some(b) = foo() {
+    // ...
+}
+
+let operator = if !from_hir_call && let Some(p) = parent {
+    // ...
+};
+
+if let Some(b) = foo()
+    && a
+{
+    // ..
+}
+
+if foo()
+    && let Some(b) = bar
+{
+    // ...
+}
+
+if gen_pos != GenericArgPosition::Type
+    && let Some(b) = gen_args.bindings.first()
+{
+    // ..
 }
 ```
 

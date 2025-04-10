@@ -1,4 +1,4 @@
-#![feature(default_field_values)]
+ #![feature(default_field_values)]
 
 #[derive(Debug)]
 pub struct S;
@@ -50,7 +50,8 @@ enum E {
 fn main () {
     let _ = Foo { .. }; // ok
     let _ = Foo::default(); // ok
-    let _ = Bar { .. }; //~ ERROR mandatory field
+    let _ = Bar { .. }; //~ ERROR missing field
+    let _ = Bar { baz: 0, .. }; //~ ERROR missing field
     let _ = Bar::default(); // silenced
     let _ = Bar { bar: S, .. }; // ok
     let _ = Qux::<4> { .. };

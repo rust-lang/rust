@@ -9,15 +9,15 @@ trait Captures<'a> {}
 impl<T> Captures<'_> for T {}
 
 fn not_captured_early<'a: 'a>() -> impl Sized {}
-//[old]~^ ['a: *]
-//[e2024]~^^ ['a: *, 'a: o]
+//[old]~^ ERROR ['a: *]
+//[e2024]~^^ ERROR ['a: *, 'a: o]
 
-fn captured_early<'a: 'a>() -> impl Sized + Captures<'a> {} //~ ['a: *, 'a: o]
+fn captured_early<'a: 'a>() -> impl Sized + Captures<'a> {} //~ ERROR ['a: *, 'a: o]
 
 fn not_captured_late<'a>(_: &'a ()) -> impl Sized {}
-//[old]~^ []
-//[e2024]~^^ ['a: o]
+//[old]~^ ERROR []
+//[e2024]~^^ ERROR ['a: o]
 
-fn captured_late<'a>(_: &'a ()) -> impl Sized + Captures<'a> {} //~ ['a: o]
+fn captured_late<'a>(_: &'a ()) -> impl Sized + Captures<'a> {} //~ ERROR ['a: o]
 
 fn main() {}

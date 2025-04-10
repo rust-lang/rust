@@ -8,7 +8,7 @@ where
     }
 }
 
-impl X<'_> for u32 //~ overflow evaluating the requirement `for<'b> u32: X<'b>`
+impl X<'_> for u32 //~ ERROR overflow evaluating the requirement `for<'b> u32: X<'b>`
 where
     for<'b> <Self as X<'b>>::U: Clone,
 {

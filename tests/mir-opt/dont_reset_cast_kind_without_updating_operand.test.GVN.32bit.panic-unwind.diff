@@ -35,8 +35,7 @@
   
       bb0: {
           StorageLive(_1);
--         StorageLive(_2);
-+         nop;
+          StorageLive(_2);
           StorageLive(_3);
           _3 = Box::<()>::new(const ()) -> [return: bb1, unwind continue];
       }
@@ -44,8 +43,7 @@
       bb1: {
           _2 = &_3;
           _1 = copy _2;
--         StorageDead(_2);
-+         nop;
+          StorageDead(_2);
           StorageLive(_4);
 -         _9 = deref_copy _3;
 +         _9 = copy _3;
@@ -66,7 +64,7 @@
           StorageLive(_8);
           _8 = copy _5;
 -         _7 = copy _8 as *mut () (PtrToPtr);
-+         _7 = copy _5 as *mut () (PtrToPtr);
++         _7 = copy ((_9.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *mut () (Transmute);
           StorageDead(_8);
           StorageDead(_7);
 -         StorageDead(_5);

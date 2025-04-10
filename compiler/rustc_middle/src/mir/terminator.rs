@@ -454,7 +454,7 @@ mod helper {
         /// Like [`SwitchTargets::target_for_value`], but returning the same type as
         /// [`Terminator::successors`].
         #[inline]
-        #[cfg_attr(not(bootstrap), define_opaque(Successors))]
+        #[define_opaque(Successors)]
         pub fn successors_for_value(&self, value: u128) -> Successors<'_> {
             let target = self.target_for_value(value);
             (&[]).into_iter().copied().chain(Some(target))
@@ -463,7 +463,7 @@ mod helper {
 
     impl<'tcx> TerminatorKind<'tcx> {
         #[inline]
-        #[cfg_attr(not(bootstrap), define_opaque(Successors))]
+        #[define_opaque(Successors)]
         pub fn successors(&self) -> Successors<'_> {
             use self::TerminatorKind::*;
             match *self {
@@ -502,7 +502,7 @@ mod helper {
         }
 
         #[inline]
-        #[cfg_attr(not(bootstrap), define_opaque(SuccessorsMut))]
+        #[define_opaque(SuccessorsMut)]
         pub fn successors_mut(&mut self) -> SuccessorsMut<'_> {
             use self::TerminatorKind::*;
             match *self {

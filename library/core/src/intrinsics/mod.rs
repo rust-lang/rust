@@ -5,14 +5,11 @@
 //!
 //! # Const intrinsics
 //!
-//! Note: any changes to the constness of intrinsics should be discussed with the language team.
-//! This includes changes in the stability of the constness.
-//!
-//! In order to make an intrinsic usable at compile-time, it needs to be declared in the "new"
-//! style, i.e. as a `#[rustc_intrinsic]` function, not inside an `extern` block. Then copy the
-//! implementation from <https://github.com/rust-lang/miri/blob/master/src/intrinsics> to
+//! In order to make an intrinsic unstable usable at compile-time, copy the implementation from
+//! <https://github.com/rust-lang/miri/blob/master/src/intrinsics> to
 //! <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>
-//! and make the intrinsic declaration a `const fn`.
+//! and make the intrinsic declaration below a `const fn`. This should be done in coordination with
+//! wg-const-eval.
 //!
 //! If an intrinsic is supposed to be used from a `const fn` with a `rustc_const_stable` attribute,
 //! `#[rustc_intrinsic_const_stable_indirect]` needs to be added to the intrinsic. Such a change requires
@@ -2307,19 +2304,7 @@ pub unsafe fn truncf128(x: f128) -> f128;
 /// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn round_ties_even_f16(x: f16) -> f16;
-
-/// To be removed on next bootstrap bump.
-#[cfg(bootstrap)]
-pub fn round_ties_even_f16(x: f16) -> f16 {
-    #[rustc_intrinsic]
-    #[rustc_nounwind]
-    unsafe fn rintf16(x: f16) -> f16;
-
-    // SAFETY: this intrinsic isn't actually unsafe
-    unsafe { rintf16(x) }
-}
 
 /// Returns the nearest integer to an `f32`. Rounds half-way cases to the number with an even
 /// least significant digit.
@@ -2328,19 +2313,7 @@ pub fn round_ties_even_f16(x: f16) -> f16 {
 /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn round_ties_even_f32(x: f32) -> f32;
-
-/// To be removed on next bootstrap bump.
-#[cfg(bootstrap)]
-pub fn round_ties_even_f32(x: f32) -> f32 {
-    #[rustc_intrinsic]
-    #[rustc_nounwind]
-    unsafe fn rintf32(x: f32) -> f32;
-
-    // SAFETY: this intrinsic isn't actually unsafe
-    unsafe { rintf32(x) }
-}
 
 /// Provided for compatibility with stdarch. DO NOT USE.
 #[inline(always)]
@@ -2355,19 +2328,7 @@ pub unsafe fn rintf32(x: f32) -> f32 {
 /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn round_ties_even_f64(x: f64) -> f64;
-
-/// To be removed on next bootstrap bump.
-#[cfg(bootstrap)]
-pub fn round_ties_even_f64(x: f64) -> f64 {
-    #[rustc_intrinsic]
-    #[rustc_nounwind]
-    unsafe fn rintf64(x: f64) -> f64;
-
-    // SAFETY: this intrinsic isn't actually unsafe
-    unsafe { rintf64(x) }
-}
 
 /// Provided for compatibility with stdarch. DO NOT USE.
 #[inline(always)]
@@ -2382,19 +2343,7 @@ pub unsafe fn rintf64(x: f64) -> f64 {
 /// [`f128::round_ties_even`](../../std/primitive.f128.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn round_ties_even_f128(x: f128) -> f128;
-
-/// To be removed on next bootstrap bump.
-#[cfg(bootstrap)]
-pub fn round_ties_even_f128(x: f128) -> f128 {
-    #[rustc_intrinsic]
-    #[rustc_nounwind]
-    unsafe fn rintf128(x: f128) -> f128;
-
-    // SAFETY: this intrinsic isn't actually unsafe
-    unsafe { rintf128(x) }
-}
 
 /// Returns the nearest integer to an `f16`. Rounds half-way cases away from zero.
 ///
@@ -3723,7 +3672,7 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(ptr: *const
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"]
+#[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3826,7 +3775,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"]
+#[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3906,7 +3855,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"]
+#[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
 #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces

@@ -90,7 +90,9 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
   are in `tests/rustdoc-gui`. These use a [NodeJS tool called
   browser-UI-test](https://github.com/GuillaumeGomez/browser-UI-test/) that uses
   puppeteer to run tests in a headless browser and check rendering and
-  interactivity.
+  interactivity.  For information on how to write this form of test,
+  see [`tests/rustdoc-gui/README.md`][rustdoc-gui-readme]
+  as well as [the description of the `.goml` format][goml-script]
 * Additionally, JavaScript type annotations are written using [TypeScript-flavored JSDoc]
   comments and an external d.ts file. The code itself is plain, valid JavaScript; we only
   use tsc as a linter.
@@ -100,6 +102,8 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
   [These tests have several extra directives available to them](./rustdoc-internals/rustdoc-test-suite.md).
 
 [TypeScript-flavored JSDoc]: https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html
+[rustdoc-gui-readme]: https://github.com/rust-lang/rust/blob/master/tests/rustdoc-gui/README.md
+[goml-script]: https://github.com/GuillaumeGomez/browser-UI-test/blob/master/goml-script.md
 
 ## Constraints
 

@@ -8,7 +8,7 @@ impl F {
     fn call() {
         <Self as Fn(&TestResult)>::call
         //~^ ERROR: cannot find type `TestResult` in this scope [E0412]
-        //~| associated item constraints are not allowed here [E0229]
+        //~| ERROR associated item constraints are not allowed here [E0229]
     }
 }
 

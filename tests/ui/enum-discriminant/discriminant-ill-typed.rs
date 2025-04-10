@@ -14,7 +14,7 @@ fn f_i8() {
         Ok2,
         OhNo = 0_u8,
         //~^ ERROR mismatched types
-        //~| expected `i8`, found `u8`
+        //~| NOTE expected `i8`, found `u8`
     }
 
     let x = A::Ok;
@@ -27,7 +27,7 @@ fn f_u8() {
         Ok2,
         OhNo = 0_i8,
         //~^ ERROR mismatched types
-        //~| expected `u8`, found `i8`
+        //~| NOTE expected `u8`, found `i8`
     }
 
     let x = A::Ok;
@@ -40,7 +40,7 @@ fn f_i16() {
         Ok2,
         OhNo = 0_u16,
         //~^ ERROR mismatched types
-        //~| expected `i16`, found `u16`
+        //~| NOTE expected `i16`, found `u16`
     }
 
     let x = A::Ok;
@@ -53,7 +53,7 @@ fn f_u16() {
         Ok2,
         OhNo = 0_i16,
         //~^ ERROR mismatched types
-        //~| expected `u16`, found `i16`
+        //~| NOTE expected `u16`, found `i16`
     }
 
     let x = A::Ok;
@@ -66,7 +66,7 @@ fn f_i32() {
         Ok2,
         OhNo = 0_u32,
         //~^ ERROR mismatched types
-        //~| expected `i32`, found `u32`
+        //~| NOTE expected `i32`, found `u32`
     }
 
     let x = A::Ok;
@@ -79,7 +79,7 @@ fn f_u32() {
         Ok2,
         OhNo = 0_i32,
         //~^ ERROR mismatched types
-        //~| expected `u32`, found `i32`
+        //~| NOTE expected `u32`, found `i32`
     }
 
     let x = A::Ok;
@@ -92,7 +92,7 @@ fn f_i64() {
         Ok2,
         OhNo = 0_u64,
         //~^ ERROR mismatched types
-        //~| expected `i64`, found `u64`
+        //~| NOTE expected `i64`, found `u64`
     }
 
     let x = A::Ok;
@@ -105,7 +105,7 @@ fn f_u64() {
         Ok2,
         OhNo = 0_i64,
         //~^ ERROR mismatched types
-        //~| expected `u64`, found `i64`
+        //~| NOTE expected `u64`, found `i64`
     }
 
     let x = A::Ok;

@@ -164,7 +164,6 @@ const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
     ("brotli-decompressor", "BSD-3-Clause/MIT"),
     ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
     ("inferno", "CDDL-1.0"),
-    ("instant", "BSD-3-Clause"),
     ("ring", NON_STANDARD_LICENSE), // see EXCEPTIONS_NON_STANDARD_LICENSE_DEPS for more.
     ("ryu", "Apache-2.0 OR BSL-1.0"),
     ("snap", "BSD-3-Clause"),

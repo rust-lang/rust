@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `foo`
-  --> $DIR/nested-loop-moved-value-wrong-continue.rs:19:14
+  --> $DIR/nested-loop-moved-value-wrong-continue.rs:21:14
    |
 LL |     for foo in foos { for bar in &bars { if foo == *bar {
    |         ---           ---------------- inside of this loop
@@ -14,13 +14,13 @@ LL |     qux.push(foo);
    |              ^^^ value used here after move
    |
 note: verify that your loop breaking logic is correct
-  --> $DIR/nested-loop-moved-value-wrong-continue.rs:15:9
+  --> $DIR/nested-loop-moved-value-wrong-continue.rs:17:9
    |
 LL |     for foo in foos { for bar in &bars { if foo == *bar {
    |     ---------------   ----------------
 ...
 LL |         continue;
-   |         ^^^^^^^^ this `continue` advances the loop at $DIR/nested-loop-moved-value-wrong-continue.rs:6:23: 18:8
+   |         ^^^^^^^^ this `continue` advances the loop at $DIR/nested-loop-moved-value-wrong-continue.rs:6:23: 20:8
 help: consider moving the expression out of the loop so it is only moved once
    |
 LL ~     for foo in foos { let mut value = baz.push(foo);
@@ -36,7 +36,7 @@ LL |         baz.push(foo.clone());
    |                     ++++++++
 
 error[E0382]: use of moved value: `foo`
-  --> $DIR/nested-loop-moved-value-wrong-continue.rs:46:18
+  --> $DIR/nested-loop-moved-value-wrong-continue.rs:50:18
    |
 LL |     for foo in foos {
    |         ---
@@ -54,7 +54,7 @@ LL |         qux.push(foo);
    |                  ^^^ value used here after move
    |
 note: verify that your loop breaking logic is correct
-  --> $DIR/nested-loop-moved-value-wrong-continue.rs:41:17
+  --> $DIR/nested-loop-moved-value-wrong-continue.rs:45:17
    |
 LL |     for foo in foos {
    |     ---------------
@@ -63,7 +63,7 @@ LL |         for bar in &bars {
    |         ----------------
 ...
 LL |                 continue;
-   |                 ^^^^^^^^ this `continue` advances the loop at line 33
+   |                 ^^^^^^^^ this `continue` advances the loop at line 36
 help: consider moving the expression out of the loop so it is only moved once
    |
 LL ~         let mut value = baz.push(foo);

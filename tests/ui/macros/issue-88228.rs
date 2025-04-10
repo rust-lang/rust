@@ -13,7 +13,7 @@ struct A;
 
 #[derive(println)]
 //~^ ERROR cannot find derive macro `println`
-//~|`println` is in scope, but it is a function-like macro
+//~| NOTE `println` is in scope, but it is a function-like macro
 struct B;
 
 fn main() {

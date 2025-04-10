@@ -437,6 +437,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         )
     }
 
+    fn impl_self_is_guaranteed_unsized(self, impl_def_id: DefId) -> bool {
+        self.impl_self_is_guaranteed_unsized(impl_def_id)
+    }
+
     fn has_target_features(self, def_id: DefId) -> bool {
         !self.codegen_fn_attrs(def_id).target_features.is_empty()
     }

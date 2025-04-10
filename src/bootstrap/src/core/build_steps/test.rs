@@ -261,13 +261,7 @@ impl Step for Cargotest {
             .args(builder.config.test_args())
             .env("RUSTC", builder.rustc(compiler))
             .env("RUSTDOC", builder.rustdoc(compiler));
-        add_rustdoc_cargo_linker_args(
-            &mut cmd,
-            builder,
-            compiler.host,
-            LldThreads::No,
-            compiler.stage,
-        );
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, compiler.host, LldThreads::No);
         cmd.delay_failure().run(builder);
     }
 }
@@ -845,7 +839,7 @@ impl Step for RustdocTheme {
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTC_BOOTSTRAP", "1");
-        cmd.args(linker_args(builder, self.compiler.host, LldThreads::No, self.compiler.stage));
+        cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
 
         cmd.delay_failure().run(builder);
     }
@@ -1021,13 +1015,7 @@ impl Step for RustdocGUI {
         cmd.env("RUSTDOC", builder.rustdoc(self.compiler))
             .env("RUSTC", builder.rustc(self.compiler));
 
-        add_rustdoc_cargo_linker_args(
-            &mut cmd,
-            builder,
-            self.compiler.host,
-            LldThreads::No,
-            self.compiler.stage,
-        );
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, self.compiler.host, LldThreads::No);
 
         for path in &builder.paths {
             if let Some(p) = helpers::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {
@@ -1796,7 +1784,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         let mut hostflags = flags.clone();
-        hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No, compiler.stage));
+        hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
 
         let mut targetflags = flags;
 

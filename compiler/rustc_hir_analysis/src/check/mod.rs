@@ -137,15 +137,6 @@ fn get_owner_return_paths(
     })
 }
 
-/// Forbid defining intrinsics in Rust code,
-/// as they must always be defined by the compiler.
-// FIXME: Move this to a more appropriate place.
-pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: ExternAbi) {
-    if let ExternAbi::RustIntrinsic = abi {
-        tcx.dcx().span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
-    }
-}
-
 pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     // Only restricted on wasm target for now
     if !tcx.sess.target.is_like_wasm {

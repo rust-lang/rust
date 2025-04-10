@@ -7,6 +7,7 @@ use build_helper::metrics::{
     format_build_steps,
 };
 
+use crate::github::JobInfoResolver;
 use crate::metrics;
 use crate::metrics::{JobMetrics, JobName, get_test_suites};
 use crate::utils::{output_details, pluralize};
@@ -185,13 +186,19 @@ fn render_table(suites: BTreeMap<String, TestSuiteRecord>) -> String {
 }
 
 /// Outputs a report of test differences between the `parent` and `current` commits.
-pub fn output_test_diffs(job_metrics: &HashMap<JobName, JobMetrics>) {
+pub fn output_test_diffs(
+    job_metrics: &HashMap<JobName, JobMetrics>,
+    job_info_resolver: &mut JobInfoResolver,
+) {
     let aggregated_test_diffs = aggregate_test_diffs(&job_metrics);
-    report_test_diffs(aggregated_test_diffs);
+    report_test_diffs(aggregated_test_diffs, job_metrics, job_info_resolver);
 }
 
 /// Prints the ten largest differences in bootstrap durations.
-pub fn output_largest_duration_changes(job_metrics: &HashMap<JobName, JobMetrics>) {
+pub fn output_largest_duration_changes(
+    job_metrics: &HashMap<JobName, JobMetrics>,
+    job_info_resolver: &mut JobInfoResolver,
+) {
     struct Entry<'a> {
         job: &'a JobName,
         before: Duration,
@@ -225,14 +232,14 @@ pub fn output_largest_duration_changes(job_metrics: &HashMap<JobName, JobMetrics
             });
         }
     }
-    changes.sort_by(|e1, e2| e1.change.partial_cmp(&e2.change).unwrap().reverse());
+    changes.sort_by(|e1, e2| e1.change.abs().partial_cmp(&e2.change.abs()).unwrap().reverse());
 
     println!("# Job duration changes");
     for (index, entry) in changes.into_iter().take(10).enumerate() {
         println!(
-            "{}. `{}`: {:.1}s -> {:.1}s ({:.1}%)",
+            "{}. {}: {:.1}s -> {:.1}s ({:.1}%)",
             index + 1,
-            entry.job,
+            format_job_link(job_info_resolver, job_metrics, entry.job),
             entry.before.as_secs_f64(),
             entry.after.as_secs_f64(),
             entry.change
@@ -400,7 +407,11 @@ fn generate_test_name(name: &str) -> String {
 }
 
 /// Prints test changes in Markdown format to stdout.
-fn report_test_diffs(diff: AggregatedTestDiffs) {
+fn report_test_diffs(
+    diff: AggregatedTestDiffs,
+    job_metrics: &HashMap<JobName, JobMetrics>,
+    job_info_resolver: &mut JobInfoResolver,
+) {
     println!("# Test differences");
     if diff.diffs.is_empty() {
         println!("No test diffs found");
@@ -521,9 +532,26 @@ fn report_test_diffs(diff: AggregatedTestDiffs) {
                 println!(
                     "- {}: {}",
                     format_job_group(group as u64),
-                    jobs.iter().map(|j| format!("`{j}`")).collect::<Vec<_>>().join(", ")
+                    jobs.iter()
+                        .map(|j| format_job_link(job_info_resolver, job_metrics, j))
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 );
             }
         },
     );
+}
+
+/// Tries to get a GitHub Actions job summary URL from the resolver.
+/// If it is not available, just wraps the job name in backticks.
+fn format_job_link(
+    job_info_resolver: &mut JobInfoResolver,
+    job_metrics: &HashMap<JobName, JobMetrics>,
+    job_name: &str,
+) -> String {
+    job_metrics
+        .get(job_name)
+        .and_then(|metrics| job_info_resolver.get_job_summary_link(job_name, &metrics.current))
+        .map(|summary_url| format!("[{job_name}]({summary_url})"))
+        .unwrap_or_else(|| format!("`{job_name}`"))
 }

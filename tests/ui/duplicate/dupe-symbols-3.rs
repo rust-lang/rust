@@ -10,5 +10,5 @@ pub fn a() {
 
 #[no_mangle]
 pub fn fail() {
-//~^ symbol `fail` is already defined
+//~^ ERROR symbol `fail` is already defined
 }

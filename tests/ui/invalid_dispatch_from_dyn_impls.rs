@@ -20,7 +20,7 @@ struct MultiplePointers<T: ?Sized>{
 }
 
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<MultiplePointers<U>> for MultiplePointers<T>
-//~^ implementing `DispatchFromDyn` does not allow multiple fields to be coerced
+//~^ ERROR implementing `DispatchFromDyn` does not allow multiple fields to be coerced
 where
     T: Unsize<U>,
 {}

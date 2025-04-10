@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::Error;
-use rinja::Template;
+use askama::Template;
 
 mod cargo_metadata;
 
@@ -117,7 +117,7 @@ struct Metadata {
 }
 
 /// Describes one node in our metadata tree
-#[derive(serde::Deserialize, rinja::Template, Clone, Debug, PartialEq, Eq)]
+#[derive(serde::Deserialize, Template, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case", tag = "type")]
 #[template(path = "Node.html")]
 pub(crate) enum Node {

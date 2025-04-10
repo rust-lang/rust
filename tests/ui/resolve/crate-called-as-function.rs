@@ -1,3 +1,3 @@
 fn main() {
-    ::foo() //~ cannot find external crate `foo` in the crate root
+    ::foo() //~ ERROR cannot find external crate `foo` in the crate root
 }

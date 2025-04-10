@@ -1093,7 +1093,6 @@ pub enum Abi {
     CCmseNonSecureCall,
     CCmseNonSecureEntry,
     System { unwind: bool },
-    RustIntrinsic,
     RustCall,
     Unadjusted,
     RustCold,

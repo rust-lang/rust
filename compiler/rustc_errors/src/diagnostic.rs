@@ -647,9 +647,9 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     #[rustc_lint_diagnostics]
     pub fn note_expected_found(
         &mut self,
-        expected_label: &dyn fmt::Display,
+        expected_label: &str,
         expected: DiagStyledString,
-        found_label: &dyn fmt::Display,
+        found_label: &str,
         found: DiagStyledString,
     ) -> &mut Self {
         self.note_expected_found_extra(
@@ -665,9 +665,9 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     #[rustc_lint_diagnostics]
     pub fn note_expected_found_extra(
         &mut self,
-        expected_label: &dyn fmt::Display,
+        expected_label: &str,
         expected: DiagStyledString,
-        found_label: &dyn fmt::Display,
+        found_label: &str,
         found: DiagStyledString,
         expected_extra: DiagStyledString,
         found_extra: DiagStyledString,

@@ -190,7 +190,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        fold_regions(tcx, ty, |region, _| match *region {
+        fold_regions(tcx, ty, |region, _| match region.kind() {
             ty::ReVar(vid) => self.to_error_region(vid).unwrap_or(region),
             _ => region,
         })
@@ -198,7 +198,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     /// Returns `true` if a closure is inferred to be an `FnMut` closure.
     fn is_closure_fn_mut(&self, fr: RegionVid) -> bool {
-        if let Some(ty::ReLateParam(late_param)) = self.to_error_region(fr).as_deref()
+        if let Some(r) = self.to_error_region(fr)
+            && let ty::ReLateParam(late_param) = r.kind()
             && let ty::LateParamRegionKind::ClosureEnv = late_param.kind
             && let DefiningTy::Closure(_, args) = self.regioncx.universal_regions().defining_ty
         {
@@ -832,7 +833,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let (Some(f), Some(outlived_f)) =
             (self.to_error_region(fr), self.to_error_region(outlived_fr))
         {
-            if *outlived_f != ty::ReStatic {
+            if outlived_f.kind() != ty::ReStatic {
                 return;
             }
             let suitable_region = self.infcx.tcx.is_suitable_region(self.mir_def_id(), f);

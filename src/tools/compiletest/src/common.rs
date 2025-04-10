@@ -275,9 +275,6 @@ pub struct Config {
     /// Explicitly enable or disable running.
     pub run: Option<bool>,
 
-    /// Write out a parseable log of tests that were run
-    pub logfile: Option<PathBuf>,
-
     /// A command line to prefix program execution with,
     /// for running under valgrind for example.
     ///

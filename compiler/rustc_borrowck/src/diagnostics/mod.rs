@@ -8,9 +8,7 @@ use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan, listify};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{self as hir, CoroutineKind, LangItem};
 use rustc_index::IndexSlice;
-use rustc_infer::infer::{
-    BoundRegionConversionTime, NllRegionVariableOrigin, RegionVariableOrigin,
-};
+use rustc_infer::infer::{BoundRegionConversionTime, NllRegionVariableOrigin};
 use rustc_infer::traits::SelectionError;
 use rustc_middle::bug;
 use rustc_middle::mir::{
@@ -587,7 +585,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // this by hooking into the pretty printer and telling it to label the
         // lifetimes without names with the value `'0`.
         if let ty::Ref(region, ..) = ty.kind() {
-            match **region {
+            match region.kind() {
                 ty::ReBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
@@ -607,7 +605,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
 
         let region = if let ty::Ref(region, ..) = ty.kind() {
-            match **region {
+            match region.kind() {
                 ty::ReBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
@@ -633,9 +631,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ) {
         let predicate_span = path.iter().find_map(|constraint| {
             let outlived = constraint.sub;
-            if let Some(origin) = self.regioncx.var_infos.get(outlived)
-                && let RegionVariableOrigin::Nll(NllRegionVariableOrigin::Placeholder(_)) =
-                    origin.origin
+            if let Some(origin) = self.regioncx.definitions.get(outlived)
+                && let NllRegionVariableOrigin::Placeholder(_) = origin.origin
                 && let ConstraintCategory::Predicate(span) = constraint.category
             {
                 Some(span)

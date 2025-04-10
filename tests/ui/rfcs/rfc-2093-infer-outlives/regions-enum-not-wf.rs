@@ -33,7 +33,7 @@ enum RefIndirect<'a, T> {
 
 enum RefDouble<'a, 'b, T> {
     RefDoubleVariant1(&'a RequireOutlives<'b, T>),
-    //~^ the parameter type `T` may not live long enough [E0309]
+    //~^ ERROR the parameter type `T` may not live long enough [E0309]
 }
 
 fn main() {}
