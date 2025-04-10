@@ -371,6 +371,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         interp_ok(this.eval_windows("c", "TRUE"))
     }
+
+    fn DeleteFileW(
+        &mut self,
+        file_name: &OpTy<'tcx>, // LPCWSTR
+    ) -> InterpResult<'tcx, Scalar> {
+        // ^ Returns BOOL (i32 on Windows)
+        let this = self.eval_context_mut();
+        this.assert_target_os("windows", "DeleteFileW");
+        this.check_no_isolation("`DeleteFileW`")?;
+
+        let file_name = this.read_path_from_wide_str(this.read_pointer(file_name)?)?;
+        match std::fs::remove_file(file_name) {
+            Ok(_) => interp_ok(this.eval_windows("c", "TRUE")),
+            Err(e) => {
+                this.set_last_error(e)?;
+                interp_ok(this.eval_windows("c", "FALSE"))
+            }
+        }
+    }
 }
 
 /// Windows FILETIME is measured in 100-nanosecs since 1601
