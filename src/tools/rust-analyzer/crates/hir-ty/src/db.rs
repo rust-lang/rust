@@ -150,7 +150,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::invoke_actual(crate::lower::field_types_query)]
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>>;
 
-    #[salsa::invoke_actual(crate::lower::callable_item_sig)]
+    #[salsa::invoke_actual(crate::lower::callable_item_signature_query)]
     fn callable_item_signature(&self, def: CallableDefId) -> PolyFnSig;
 
     #[salsa::invoke_actual(crate::lower::return_type_impl_traits)]
