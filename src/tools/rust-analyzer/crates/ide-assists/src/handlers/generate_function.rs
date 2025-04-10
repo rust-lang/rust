@@ -475,7 +475,7 @@ fn make_fn_body_as_new_function(
                     .map(|_| placeholder_expr.clone())
                     .collect::<Vec<_>>();
 
-                make::expr_call(make::expr_path(path_self), make::arg_list(args))
+                make::expr_call(make::expr_path(path_self), make::arg_list(args)).into()
             }
             StructKind::Unit => make::expr_path(path_self),
         }

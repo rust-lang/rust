@@ -400,12 +400,7 @@ impl SyntaxFactory {
     }
 
     pub fn expr_call(&self, expr: ast::Expr, arg_list: ast::ArgList) -> ast::CallExpr {
-        // FIXME: `make::expr_call`` should return a `CallExpr`, not just an `Expr`
-        let ast::Expr::CallExpr(ast) =
-            make::expr_call(expr.clone(), arg_list.clone()).clone_for_update()
-        else {
-            unreachable!()
-        };
+        let ast = make::expr_call(expr.clone(), arg_list.clone()).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());

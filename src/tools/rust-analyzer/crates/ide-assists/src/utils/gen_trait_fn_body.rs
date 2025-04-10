@@ -83,7 +83,8 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         }
                         let pat = make::tuple_struct_pat(variant_name.clone(), pats.into_iter());
                         let struct_name = make::expr_path(variant_name);
-                        let tuple_expr = make::expr_call(struct_name, make::arg_list(fields));
+                        let tuple_expr =
+                            make::expr_call(struct_name, make::arg_list(fields)).into();
                         arms.push(make::match_arm(pat.into(), None, tuple_expr));
                     }
 
@@ -126,7 +127,7 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         fields.push(gen_clone_call(target));
                     }
                     let struct_name = make::expr_path(make::ext::ident_path("Self"));
-                    make::expr_call(struct_name, make::arg_list(fields))
+                    make::expr_call(struct_name, make::arg_list(fields)).into()
                 }
                 // => Self { }
                 None => {
@@ -303,7 +304,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
     fn gen_default_call() -> Option<ast::Expr> {
         let fn_name = make::ext::path_from_idents(["Default", "default"])?;
-        Some(make::expr_call(make::expr_path(fn_name), make::arg_list(None)))
+        Some(make::expr_call(make::expr_path(fn_name), make::arg_list(None)).into())
     }
     match adt {
         // `Debug` cannot be derived for unions, so no default impl can be provided.
@@ -330,7 +331,7 @@ fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         .fields()
                         .map(|_| gen_default_call())
                         .collect::<Option<Vec<ast::Expr>>>()?;
-                    make::expr_call(struct_name, make::arg_list(fields))
+                    make::expr_call(struct_name, make::arg_list(fields)).into()
                 }
                 None => {
                     let struct_name = make::ext::ident_path("Self");
@@ -364,7 +365,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let fn_name = make_discriminant()?;
 
             let arg = make::expr_path(make::ext::ident_path("self"));
-            let fn_call = make::expr_call(fn_name, make::arg_list(Some(arg)));
+            let fn_call = make::expr_call(fn_name, make::arg_list(Some(arg))).into();
             let stmt = gen_hash_call(fn_call);
 
             make::block_expr(Some(stmt), None).indent(ast::edit::IndentLevel(1))
@@ -447,9 +448,11 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -
         ast::Adt::Enum(enum_) => {
             // => std::mem::discriminant(self) == std::mem::discriminant(other)
             let lhs_name = make::expr_path(make::ext::ident_path("self"));
-            let lhs = make::expr_call(make_discriminant()?, make::arg_list(Some(lhs_name.clone())));
+            let lhs = make::expr_call(make_discriminant()?, make::arg_list(Some(lhs_name.clone())))
+                .into();
             let rhs_name = make::expr_path(make::ext::ident_path("other"));
-            let rhs = make::expr_call(make_discriminant()?, make::arg_list(Some(rhs_name.clone())));
+            let rhs = make::expr_call(make_discriminant()?, make::arg_list(Some(rhs_name.clone())))
+                .into();
             let eq_check =
                 make::expr_bin_op(lhs, BinaryOp::CmpOp(CmpOp::Eq { negated: false }), rhs);
 
