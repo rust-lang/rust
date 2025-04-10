@@ -1,9 +1,8 @@
 //! Type-checking for the `#[rustc_intrinsic]` intrinsics that the compiler exposes.
 
 use rustc_abi::ExternAbi;
-use rustc_errors::codes::*;
-use rustc_errors::{DiagMessage, struct_span_code_err};
-use rustc_hir::{self as hir, Safety};
+use rustc_errors::DiagMessage;
+use rustc_hir::{self as hir};
 use rustc_middle::bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -26,17 +25,10 @@ fn equate_intrinsic_type<'tcx>(
     sig: ty::PolyFnSig<'tcx>,
 ) {
     let (generics, span) = match tcx.hir_node_by_def_id(def_id) {
-        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { generics, .. }, .. })
-        | hir::Node::ForeignItem(hir::ForeignItem {
-            kind: hir::ForeignItemKind::Fn(_, _, generics),
-            ..
-        }) => (tcx.generics_of(def_id), generics.span),
-        _ => {
-            struct_span_code_err!(tcx.dcx(), span, E0622, "intrinsic must be a function")
-                .with_span_label(span, "expected a function")
-                .emit();
-            return;
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { generics, .. }, .. }) => {
+            (tcx.generics_of(def_id), generics.span)
         }
+        _ => tcx.dcx().span_bug(span, "intrinsic must be a function"),
     };
     let own_counts = generics.own_counts();
 
@@ -70,13 +62,7 @@ fn equate_intrinsic_type<'tcx>(
 }
 
 /// Returns the unsafety of the given intrinsic.
-pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hir::Safety {
-    let has_safe_attr = if tcx.has_attr(intrinsic_id, sym::rustc_intrinsic) {
-        tcx.fn_sig(intrinsic_id).skip_binder().safety()
-    } else {
-        // Old-style intrinsics are never safe
-        Safety::Unsafe
-    };
+fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hir::Safety {
     let is_in_list = match tcx.item_name(intrinsic_id.into()) {
         // When adding a new intrinsic to this list,
         // it's usually worth updating that intrinsic's documentation
@@ -148,7 +134,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         _ => hir::Safety::Unsafe,
     };
 
-    if has_safe_attr != is_in_list {
+    if tcx.fn_sig(intrinsic_id).skip_binder().safety() != is_in_list {
         tcx.dcx().struct_span_err(
             tcx.def_span(intrinsic_id),
             DiagMessage::from(format!(
@@ -163,12 +149,11 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
 
 /// Remember to add all intrinsics here, in `compiler/rustc_codegen_llvm/src/intrinsic.rs`,
 /// and in `library/core/src/intrinsics.rs`.
-pub fn check_intrinsic_type(
+pub(crate) fn check_intrinsic_type(
     tcx: TyCtxt<'_>,
     intrinsic_id: LocalDefId,
     span: Span,
     intrinsic_name: Symbol,
-    abi: ExternAbi,
 ) {
     let generics = tcx.generics_of(intrinsic_id);
     let param = |n| {
@@ -706,7 +691,7 @@ pub fn check_intrinsic_type(
         };
         (n_tps, 0, n_cts, inputs, output, safety)
     };
-    let sig = tcx.mk_fn_sig(inputs, output, false, safety, abi);
+    let sig = tcx.mk_fn_sig(inputs, output, false, safety, ExternAbi::Rust);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
     equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, n_lts, n_cts, sig)
 }
