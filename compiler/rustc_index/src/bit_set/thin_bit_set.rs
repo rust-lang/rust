@@ -50,7 +50,7 @@ impl<T> ThinBitSet<T> {
     /// The maximum domain size that could be stored inlined on the stack.
     pub const MAX_INLINE_DOMAIN_SIZE: usize = usize::BITS as usize - 1;
 
-    /// Create a new bit set with a given domain_size.
+    /// Create a new empty bit set with a given domain_size.
     ///
     /// If `domain_size` is <= [`Self::MAX_INLINE_DOMAIN_SIZE`], then it is stored inline on the stack,
     /// otherwise it is stored on the heap.
@@ -61,6 +61,28 @@ impl<T> ThinBitSet<T> {
             Self { inline: 0x01 }
         } else {
             Self { on_heap: ManuallyDrop::new(BitSetOnHeap::new_empty(domain_size)) }
+        }
+    }
+
+    /// Create a new filled bit set with a given domain_size.
+    ///
+    /// If `domain_size` is <= [`Self::MAX_INLINE_DOMAIN_SIZE`], then it is stored inline on the stack,
+    /// otherwise it is stored on the heap.
+    #[inline]
+    pub fn new_filled(domain_size: usize) -> Self {
+        if domain_size <= Self::MAX_INLINE_DOMAIN_SIZE {
+            // The last bit is set to indicate the union variant.
+            Self { inline: usize::MAX >> (Self::MAX_INLINE_DOMAIN_SIZE - domain_size) }
+        } else {
+            let mut on_heap = ManuallyDrop::new(BitSetOnHeap::new_empty(domain_size));
+            let words = on_heap.as_mut_slice();
+            for word in words.iter_mut() {
+                *word = usize::MAX;
+            }
+            // Remove excessive bits on the last word.
+            *words.last_mut().unwrap() >>=
+                usize::BITS as usize - domain_size % usize::BITS as usize;
+            Self { on_heap }
         }
     }
 
@@ -122,6 +144,18 @@ impl<T> ThinBitSet<T> {
             let other_slice = other_on_heap.as_slice();
             assert_eq!(self_slice.len(), other_slice.len(), "bit sets have different domain sizes");
             self_slice.iter().zip(other_slice).all(|(&x, &y)| (!x & y) == 0)
+        }
+    }
+
+    /// Count the number of set bits in the set.
+    #[inline(always)]
+    pub fn count(&self) -> usize {
+        if self.is_inline() {
+            let x = unsafe { self.inline };
+            x.count_ones() as usize - 1
+        } else {
+            let on_heap = unsafe { &self.on_heap };
+            on_heap.as_slice().iter().map(|w| w.count_ones() as usize).sum()
         }
     }
 
@@ -768,14 +802,8 @@ mod tests {
                     let range = rng.sample_range(domain_size - 1);
                     // Choose set to insert into.
                     if rng.next_bool() {
-                        println!("{range:?}");
-                        println!("{domain_size}");
-                        println!("{set_1:?}");
-                        println!("{set_1_reference:?}");
                         set_1.insert_range(range.clone());
                         set_1_reference.insert_range(range);
-                        println!("{set_1:?}");
-                        println!("{set_1_reference:?}");
                     } else {
                         set_2.insert_range(range.clone());
                         set_2_reference.insert_range(range);
@@ -809,7 +837,7 @@ mod tests {
                     // Subtraction
                     assert_eq!(set_1.subtract(&set_2), set_1_reference.subtract(&set_2_reference));
                 }
-                97..100 => {
+                97..99 => {
                     // Clear
                     if rng.next_bool() {
                         set_1.clear();
@@ -817,6 +845,16 @@ mod tests {
                     } else {
                         set_2.clear();
                         set_2_reference.clear();
+                    }
+                }
+                99..100 => {
+                    // Fill.
+                    if rng.next_bool() {
+                        set_1 = ThinBitSet::new_filled(domain_size);
+                        set_1_reference = DenseBitSet::new_filled(domain_size);
+                    } else {
+                        set_2 = ThinBitSet::new_filled(domain_size);
+                        set_2_reference = DenseBitSet::new_filled(domain_size);
                     }
                 }
                 _ => unreachable!(),
@@ -834,6 +872,10 @@ mod tests {
 
             // Check the superset relation.
             assert_eq!(set_1.superset(&set_2), set_1_reference.superset(&set_2_reference));
+
+            // Check the count function.
+            assert_eq!(set_1.count(), set_1_reference.count());
+            assert_eq!(set_2.count(), set_2_reference.count());
         }
     }
 
