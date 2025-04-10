@@ -20,7 +20,6 @@ fn tie_and_make_goal<const N: usize, T: Trait<N>>(_: &T, _: &[String; N]) {}
 fn const_block() {
     // Deferred repeat expr `String; ?n`
     let a = [const { String::new() }; _];
-    //~^ ERROR: type annotations needed for `[String; _]`
 
     // `?int: Trait<?n>` goal
     tie_and_make_goal(&1, &a);
@@ -36,7 +35,6 @@ fn const_item() {
 
     // Deferred repeat expr `String; ?n`
     let a = [MY_CONST; _];
-    //~^ ERROR: type annotations needed for `[String; _]`
 
     // `?int: Trait<?n>` goal
     tie_and_make_goal(&1, &a);
@@ -54,12 +52,21 @@ fn assoc_const() {
 
     // Deferred repeat expr `String; ?n`
     let a = [<() as Dummy>::ASSOC; _];
-    //~^ ERROR: type annotations needed for `[String; _]`
 
     // `?int: Trait<?n>` goal
     tie_and_make_goal(&1, &a);
 
     // ... same as `const_block`
+}
+
+fn const_block_but_uninferred() {
+    // Deferred repeat expr `String; ?n`
+    let a = [const { String::new() }; _];
+    //~^ ERROR: type annotations needed for `[String; _]`
+
+    // Even if we don't structurally resolve the repeat count as part of repeat expr
+    // checks, we still error on the repeat count being uninferred as we require all
+    // types/consts to be inferred by the end of type checking.
 }
 
 fn main() {}
