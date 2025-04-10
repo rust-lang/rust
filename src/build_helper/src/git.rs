@@ -118,11 +118,8 @@ pub fn check_path_modifications(
         // modified the set of paths, to have an upstream reference that does not change
         // unnecessarily often.
         // However, if such commit is not found, we can fall back to the latest upstream commit
-        let upstream_with_modifications = get_latest_commit_that_modified_files(
-            git_dir,
-            target_paths,
-            config.git_merge_commit_email,
-        )?;
+        let upstream_with_modifications =
+            get_latest_upstream_commit_that_modified_files(git_dir, config, target_paths)?;
         match upstream_with_modifications {
             Some(sha) => Some(sha),
             None => get_closest_upstream_commit(Some(git_dir), config, ci_env)?,
@@ -157,17 +154,38 @@ pub fn has_changed_since(git_dir: &Path, base: &str, paths: &[&str]) -> bool {
     !git.status().expect("cannot run git diff-index").success()
 }
 
-/// Returns the latest commit that modified `target_paths`, or `None` if no such commit was found.
-/// If `author` is `Some`, only considers commits made by that author.
-fn get_latest_commit_that_modified_files(
+/// Returns the latest upstream commit that modified `target_paths`, or `None` if no such commit
+/// was found.
+fn get_latest_upstream_commit_that_modified_files(
     git_dir: &Path,
+    git_config: &GitConfig<'_>,
     target_paths: &[&str],
-    author: &str,
 ) -> Result<Option<String>, String> {
     let mut git = Command::new("git");
     git.current_dir(git_dir);
 
-    git.args(["rev-list", "-n1", "--first-parent", "HEAD", "--author", author]);
+    // In theory, we could just use
+    // `git rev-list --first-parent HEAD --author=<merge-bot> -- <paths>`
+    // to find the latest upstream commit that modified `<paths>`.
+    // However, this does not work if you are in a subtree sync branch that contains merge commits
+    // which have the subtree history as their first parent, and the rustc history as second parent:
+    // `--first-parent` will just walk up the subtree history and never see a single rustc commit.
+    // We thus have to take a two-pronged approach. First lookup the most recent upstream commit
+    // by *date* (this should work even in a subtree sync branch), and then start the lookup for
+    // modified paths starting from that commit.
+    //
+    // See https://github.com/rust-lang/rust/pull/138591#discussion_r2037081858 for more details.
+    let upstream = get_closest_upstream_commit(Some(git_dir), git_config, CiEnv::None)?
+        .unwrap_or_else(|| "HEAD".to_string());
+
+    git.args([
+        "rev-list",
+        "--first-parent",
+        "-n1",
+        &upstream,
+        "--author",
+        git_config.git_merge_commit_email,
+    ]);
 
     if !target_paths.is_empty() {
         git.arg("--").args(target_paths);
@@ -176,42 +194,63 @@ fn get_latest_commit_that_modified_files(
     if output.is_empty() { Ok(None) } else { Ok(Some(output)) }
 }
 
-/// Returns the most recent commit found in the local history that should definitely
-/// exist upstream. We identify upstream commits by the e-mail of the commit author.
+/// Returns the most recent (ordered chronologically) commit found in the local history that
+/// should exist upstream. We identify upstream commits by the e-mail of the commit
+/// author.
 ///
-/// If `include_head` is false, the HEAD (current) commit will be ignored and only
-/// its parents will be searched. This is useful for try/auto CI, where HEAD is
-/// actually a commit made by bors, although it is not upstream yet.
+/// If we are in CI, we simply return our first parent.
 fn get_closest_upstream_commit(
     git_dir: Option<&Path>,
     config: &GitConfig<'_>,
     env: CiEnv,
 ) -> Result<Option<String>, String> {
+    let base = match env {
+        CiEnv::None => "HEAD",
+        CiEnv::GitHubActions => {
+            // On CI, we should always have a non-upstream merge commit at the tip,
+            // and our first parent should be the most recently merged upstream commit.
+            // We thus simply return our first parent.
+            return resolve_commit_sha(git_dir, "HEAD^1").map(Some);
+        }
+    };
+
     let mut git = Command::new("git");
 
     if let Some(git_dir) = git_dir {
         git.current_dir(git_dir);
     }
 
-    let base = match env {
-        CiEnv::None => "HEAD",
-        CiEnv::GitHubActions => {
-            // On CI, we always have a merge commit at the tip.
-            // We thus skip it, because although it can be created by
-            // `config.git_merge_commit_email`, it should not be upstream.
-            "HEAD^1"
-        }
-    };
+    // We do not use `--first-parent`, because we can be in a situation (outside CI) where we have
+    // a subtree merge that actually has the main rustc history as its second parent.
+    // Using `--first-parent` would recurse into the history of the subtree, which could have some
+    // old bors commits that are not relevant to us.
+    // With `--author-date-order`, git recurses into all parent subtrees, and returns the most
+    // chronologically recent bors commit.
+    // Here we assume that none of our subtrees use bors anymore, and that all their old bors
+    // commits are way older than recent rustc bors commits!
     git.args([
         "rev-list",
+        "--author-date-order",
         &format!("--author={}", config.git_merge_commit_email),
         "-n1",
-        "--first-parent",
         &base,
     ]);
 
     let output = output_result(&mut git)?.trim().to_owned();
     if output.is_empty() { Ok(None) } else { Ok(Some(output)) }
+}
+
+/// Resolve the commit SHA of `commit_ref`.
+fn resolve_commit_sha(git_dir: Option<&Path>, commit_ref: &str) -> Result<String, String> {
+    let mut git = Command::new("git");
+
+    if let Some(git_dir) = git_dir {
+        git.current_dir(git_dir);
+    }
+
+    git.args(["rev-parse", commit_ref]);
+
+    Ok(output_result(&mut git)?.trim().to_owned())
 }
 
 /// Returns the files that have been modified in the current branch compared to the master branch.
