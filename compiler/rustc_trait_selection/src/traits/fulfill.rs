@@ -404,7 +404,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::AliasRelate(..) => {
                     bug!("AliasRelate is only used by the new solver")
                 }
-                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature) => todo!(), // TODO: not sure what will happen here. 
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => todo!(), // TODO: not sure what will happen here. 
             },
             Some(pred) => match pred {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
@@ -762,7 +762,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         }
                     }
                 }
-                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature) => todo!(),
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => todo!(),
             },
         }
     }

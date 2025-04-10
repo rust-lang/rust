@@ -1,5 +1,6 @@
 use std::fmt;
 
+
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
@@ -48,7 +49,7 @@ pub enum ClauseKind<I: Interner> {
     HostEffect(ty::HostEffectPredicate<I>),
 
     /// Support marking impl as unstable.
-    UnstableFeature,
+    UnstableFeature(I::Symbol),
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
@@ -137,7 +138,7 @@ impl<I: Interner> fmt::Debug for ClauseKind<I> {
             ClauseKind::ConstEvaluatable(ct) => {
                 write!(f, "ConstEvaluatable({ct:?})")
             }
-            ClauseKind::UnstableFeature => write!(f, "UnstableFeature"),
+            ClauseKind::UnstableFeature(feature_name) => write!(f, "UnstableFeature({feature_name:?})"),
         }
     }
 }
