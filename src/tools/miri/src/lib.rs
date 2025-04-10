@@ -1,5 +1,3 @@
-#![cfg_attr(bootstrap, feature(extract_if))]
-#![cfg_attr(bootstrap, feature(unsigned_is_multiple_of))]
 #![feature(rustc_private)]
 #![feature(cfg_match)]
 #![feature(cell_update)]
