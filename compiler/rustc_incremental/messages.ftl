@@ -93,7 +93,7 @@ incremental_undefined_clean_dirty_assertions =
 incremental_undefined_clean_dirty_assertions_item =
     clean/dirty auto-assertions not yet defined for Node::Item.node={$kind}
 
-incremental_unknown_item = unknown item `{$name}`
+incremental_unknown_rustc_clean_argument = unknown `rustc_clean` argument
 
 incremental_unrecognized_depnode = unrecognized `DepNode` variant: {$name}
 

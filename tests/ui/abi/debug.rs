@@ -53,5 +53,5 @@ type TestAbiNeSign = (fn(i32), fn(u32)); //~ ERROR: ABIs are not compatible
 #[rustc_abi(assert_eq)]
 type TestAbiEqNonsense = (fn((str, str)), fn((str, str))); //~ ERROR: cannot be known at compilation time
 
-#[rustc_abi("assert_eq")] //~ ERROR unrecognized field name ``
+#[rustc_abi("assert_eq")] //~ ERROR unrecognized argument
 type Bad = u32;

@@ -756,7 +756,7 @@ pub(crate) enum MacroExport {
     OnDeclMacro,
 
     #[diag(passes_invalid_macro_export_arguments)]
-    UnknownItem { name: Symbol },
+    InvalidArgument,
 
     #[diag(passes_invalid_macro_export_arguments_too_many_items)]
     TooManyItems,
@@ -1045,11 +1045,10 @@ pub(crate) struct AbiInvalidAttribute {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_unrecognized_field)]
-pub(crate) struct UnrecognizedField {
+#[diag(passes_unrecognized_argument)]
+pub(crate) struct UnrecognizedArgument {
     #[primary_span]
     pub span: Span,
-    pub name: Symbol,
 }
 
 #[derive(Diagnostic)]

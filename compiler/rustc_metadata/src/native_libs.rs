@@ -226,8 +226,8 @@ impl<'tcx> Collector<'tcx> {
             let mut wasm_import_module = None;
             let mut import_name_type = None;
             for item in items.iter() {
-                match item.name_or_empty() {
-                    sym::name => {
+                match item.name() {
+                    Some(sym::name) => {
                         if name.is_some() {
                             sess.dcx().emit_err(errors::MultipleNamesInLink { span: item.span() });
                             continue;
@@ -242,7 +242,7 @@ impl<'tcx> Collector<'tcx> {
                         }
                         name = Some((link_name, span));
                     }
-                    sym::kind => {
+                    Some(sym::kind) => {
                         if kind.is_some() {
                             sess.dcx().emit_err(errors::MultipleKindsInLink { span: item.span() });
                             continue;
@@ -304,7 +304,7 @@ impl<'tcx> Collector<'tcx> {
                         };
                         kind = Some(link_kind);
                     }
-                    sym::modifiers => {
+                    Some(sym::modifiers) => {
                         if modifiers.is_some() {
                             sess.dcx()
                                 .emit_err(errors::MultipleLinkModifiers { span: item.span() });
@@ -316,7 +316,7 @@ impl<'tcx> Collector<'tcx> {
                         };
                         modifiers = Some((link_modifiers, item.name_value_literal_span().unwrap()));
                     }
-                    sym::cfg => {
+                    Some(sym::cfg) => {
                         if cfg.is_some() {
                             sess.dcx().emit_err(errors::MultipleCfgs { span: item.span() });
                             continue;
@@ -346,7 +346,7 @@ impl<'tcx> Collector<'tcx> {
                         }
                         cfg = Some(link_cfg.clone());
                     }
-                    sym::wasm_import_module => {
+                    Some(sym::wasm_import_module) => {
                         if wasm_import_module.is_some() {
                             sess.dcx().emit_err(errors::MultipleWasmImport { span: item.span() });
                             continue;
@@ -357,7 +357,7 @@ impl<'tcx> Collector<'tcx> {
                         };
                         wasm_import_module = Some((link_wasm_import_module, item.span()));
                     }
-                    sym::import_name_type => {
+                    Some(sym::import_name_type) => {
                         if import_name_type.is_some() {
                             sess.dcx()
                                 .emit_err(errors::MultipleImportNameType { span: item.span() });
