@@ -1,36 +1,15 @@
-error[E0282]: type annotations needed for `[String; _]`
-  --> $DIR/copy-check-const-element-uninferred-count.rs:22:9
+error[E0284]: type annotations needed for `[String; _]`
+  --> $DIR/copy-check-const-element-uninferred-count.rs:64:9
    |
 LL |     let a = [const { String::new() }; _];
-   |         ^    ----------------------- type must be known at this point
+   |         ^   ---------------------------- type must be known at this point
    |
-help: consider giving `a` an explicit type, where the value of const parameter `N` is specified
+   = note: the length of array `[String; _]` must be type `usize`
+help: consider giving `a` an explicit type, where the placeholders `_` are specified
    |
-LL |     let a: [_; N] = [const { String::new() }; _];
+LL |     let a: [_; _] = [const { String::new() }; _];
    |          ++++++++
 
-error[E0282]: type annotations needed for `[String; _]`
-  --> $DIR/copy-check-const-element-uninferred-count.rs:38:9
-   |
-LL |     let a = [MY_CONST; _];
-   |         ^    -------- type must be known at this point
-   |
-help: consider giving `a` an explicit type, where the value of const parameter `N` is specified
-   |
-LL |     let a: [_; N] = [MY_CONST; _];
-   |          ++++++++
+error: aborting due to 1 previous error
 
-error[E0282]: type annotations needed for `[String; _]`
-  --> $DIR/copy-check-const-element-uninferred-count.rs:56:9
-   |
-LL |     let a = [<() as Dummy>::ASSOC; _];
-   |         ^    -------------------- type must be known at this point
-   |
-help: consider giving `a` an explicit type, where the value of const parameter `N` is specified
-   |
-LL |     let a: [_; N] = [<() as Dummy>::ASSOC; _];
-   |          ++++++++
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0284`.

@@ -108,6 +108,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let deferred_repeat_expr_checks = deferred_repeat_expr_checks
             .drain(..)
             .flat_map(|(element, element_ty, count)| {
+                // Actual constants as the repeat element get inserted repeatedly instead of getting copied via Copy
+                // so we don't need to attempt to structurally resolve the repeat count which may unnecessarily error.
+                match &element.kind {
+                    hir::ExprKind::ConstBlock(..) => return None,
+                    hir::ExprKind::Path(qpath) => {
+                        let res = self.typeck_results.borrow().qpath_res(qpath, element.hir_id);
+                        if let Res::Def(
+                            DefKind::Const | DefKind::AssocConst | DefKind::AnonConst,
+                            _,
+                        ) = res
+                        {
+                            return None;
+                        }
+                    }
+                    _ => {}
+                }
+
                 // We want to emit an error if the const is not structurally resolveable as otherwise
                 // we can find up conservatively proving `Copy` which may infer the repeat expr count
                 // to something that never required `Copy` in the first place.
@@ -128,12 +145,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // expr's `Copy` check.
             .collect::<Vec<_>>();
 
+        let enforce_copy_bound = |element: &hir::Expr<'_>, element_ty| {
+            // If someone calls a const fn or constructs a const value, they can extract that
+            // out into a separate constant (or a const block in the future), so we check that
+            // to tell them that in the diagnostic. Does not affect typeck.
+            let is_constable = match element.kind {
+                hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
+                    ty::FnDef(def_id, _) if self.tcx.is_stable_const_fn(def_id) => {
+                        traits::IsConstable::Fn
+                    }
+                    _ => traits::IsConstable::No,
+                },
+                hir::ExprKind::Path(qpath) => {
+                    match self.typeck_results.borrow().qpath_res(&qpath, element.hir_id) {
+                        Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => traits::IsConstable::Ctor,
+                        _ => traits::IsConstable::No,
+                    }
+                }
+                _ => traits::IsConstable::No,
+            };
+
+            let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
+            let code = traits::ObligationCauseCode::RepeatElementCopy {
+                is_constable,
+                elt_span: element.span,
+            };
+            self.require_type_meets(element_ty, element.span, code, lang_item);
+        };
+
         for (element, element_ty, count) in deferred_repeat_expr_checks {
             match count.kind() {
                 ty::ConstKind::Value(val)
                     if val.try_to_target_usize(self.tcx).is_none_or(|count| count > 1) =>
                 {
-                    self.enforce_repeat_element_needs_copy_bound(element, element_ty)
+                    enforce_copy_bound(element, element_ty)
                 }
                 // If the length is 0 or 1 we don't actually copy the element, we either don't create it
                 // or we just use the one value.
@@ -144,59 +189,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::ConstKind::Param(_)
                 | ty::ConstKind::Expr(_)
                 | ty::ConstKind::Placeholder(_)
-                | ty::ConstKind::Unevaluated(_) => {
-                    self.enforce_repeat_element_needs_copy_bound(element, element_ty)
-                }
+                | ty::ConstKind::Unevaluated(_) => enforce_copy_bound(element, element_ty),
 
                 ty::ConstKind::Bound(_, _) | ty::ConstKind::Infer(_) | ty::ConstKind::Error(_) => {
                     unreachable!()
                 }
             }
         }
-    }
-
-    /// Requires that `element_ty` is `Copy` (unless it's a const expression itself).
-    pub(super) fn enforce_repeat_element_needs_copy_bound(
-        &self,
-        element: &hir::Expr<'_>,
-        element_ty: Ty<'tcx>,
-    ) {
-        // Actual constants as the repeat element get inserted repeatedly instead of getting copied via Copy.
-        match &element.kind {
-            hir::ExprKind::ConstBlock(..) => return,
-            hir::ExprKind::Path(qpath) => {
-                let res = self.typeck_results.borrow().qpath_res(qpath, element.hir_id);
-                if let Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::AnonConst, _) = res
-                {
-                    return;
-                }
-            }
-            _ => {}
-        }
-
-        // If someone calls a const fn or constructs a const value, they can extract that
-        // out into a separate constant (or a const block in the future), so we check that
-        // to tell them that in the diagnostic. Does not affect typeck.
-        let is_constable = match element.kind {
-            hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
-                ty::FnDef(def_id, _) if self.tcx.is_stable_const_fn(def_id) => {
-                    traits::IsConstable::Fn
-                }
-                _ => traits::IsConstable::No,
-            },
-            hir::ExprKind::Path(qpath) => {
-                match self.typeck_results.borrow().qpath_res(&qpath, element.hir_id) {
-                    Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => traits::IsConstable::Ctor,
-                    _ => traits::IsConstable::No,
-                }
-            }
-            _ => traits::IsConstable::No,
-        };
-
-        let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
-        let code =
-            traits::ObligationCauseCode::RepeatElementCopy { is_constable, elt_span: element.span };
-        self.require_type_meets(element_ty, element.span, code, lang_item);
     }
 
     /// Generic function that factors out common logic from function calls,
