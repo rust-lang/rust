@@ -306,7 +306,7 @@ impl TestProps {
                 (ErrorKind::Note, true),
                 (ErrorKind::Error, true),
                 (ErrorKind::Warning, true),
-                (ErrorKind::Suggestion, false),
+                (ErrorKind::Suggestion, true),
             ]),
         }
     }

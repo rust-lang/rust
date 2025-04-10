@@ -711,6 +711,7 @@ impl<'test> TestCx<'test> {
 
         let expect_help = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Help));
         let expect_note = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Note));
+        let expect_sugg = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Suggestion));
 
         // Parse the JSON output from the compiler and extract out the messages.
         let actual_errors = json::parse_output(&diagnostic_file_name, &proc_res.stderr, proc_res);
@@ -737,8 +738,12 @@ impl<'test> TestCx<'test> {
 
                 None => {
                     // If the test is a known bug, don't require that the error is annotated
-                    if self.is_unexpected_compiler_message(&actual_error, expect_help, expect_note)
-                    {
+                    if self.is_unexpected_compiler_message(
+                        &actual_error,
+                        expect_help,
+                        expect_note,
+                        expect_sugg,
+                    ) {
                         self.error(&format!(
                             "{}:{}: unexpected {}: '{}'",
                             file_name,
@@ -802,6 +807,7 @@ impl<'test> TestCx<'test> {
         actual_error: &Error,
         expect_help: bool,
         expect_note: bool,
+        expect_sugg: bool,
     ) -> bool {
         actual_error.require_annotation
             && actual_error.kind.map_or(false, |err_kind| {
@@ -811,6 +817,7 @@ impl<'test> TestCx<'test> {
                 match err_kind {
                     ErrorKind::Help => expect_help && default_require_annotations,
                     ErrorKind::Note => expect_note && default_require_annotations,
+                    ErrorKind::Suggestion => expect_sugg && default_require_annotations,
                     _ => default_require_annotations,
                 }
             })
