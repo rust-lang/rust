@@ -104,7 +104,7 @@ impl TestCx<'_> {
 
         let debugger_run_result = self.compose_and_run(
             cdb,
-            self.config.run_lib_path.to_str().unwrap(),
+            self.config.run_lib_path.as_path(),
             None, // aux_path
             None, // input
         );
@@ -241,7 +241,8 @@ impl TestCx<'_> {
             let cmdline = {
                 let mut gdb = Command::new(&format!("{}-gdb", self.config.target));
                 gdb.args(debugger_opts);
-                let cmdline = self.make_cmdline(&gdb, "");
+                // FIXME(jieyouxu): don't pass an empty Path
+                let cmdline = self.make_cmdline(&gdb, Path::new(""));
                 logv(self.config, format!("executing {}", cmdline));
                 cmdline
             };
@@ -340,7 +341,7 @@ impl TestCx<'_> {
             gdb.args(debugger_opts).env("PYTHONPATH", pythonpath);
 
             debugger_run_result =
-                self.compose_and_run(gdb, self.config.run_lib_path.to_str().unwrap(), None, None);
+                self.compose_and_run(gdb, self.config.run_lib_path.as_path(), None, None);
         }
 
         if !debugger_run_result.status.success() {
