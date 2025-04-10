@@ -640,7 +640,7 @@ pub fn expr_method_call(
     receiver: ast::Expr,
     method: ast::NameRef,
     arg_list: ast::ArgList,
-) -> ast::Expr {
+) -> ast::MethodCallExpr {
     expr_from_text(&format!("{receiver}.{method}{arg_list}"))
 }
 pub fn expr_macro_call(f: ast::Expr, arg_list: ast::ArgList) -> ast::Expr {

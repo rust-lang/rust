@@ -66,7 +66,7 @@ pub(crate) fn convert_for_loop_to_while_let(
             };
 
             let iterable = if let Some(method) = method {
-                make::expr_method_call(iterable, method, make::arg_list([]))
+                make::expr_method_call(iterable, method, make::arg_list([])).into()
             } else {
                 iterable
             };

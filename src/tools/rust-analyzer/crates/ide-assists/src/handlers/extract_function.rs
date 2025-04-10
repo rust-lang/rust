@@ -1426,7 +1426,7 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> Sy
     let name = fun.name.clone();
     let mut call_expr = if fun.self_param.is_some() {
         let self_arg = make::expr_path(make::ext::ident_path("self"));
-        make::expr_method_call(self_arg, name, args)
+        make::expr_method_call(self_arg, name, args).into()
     } else {
         let func = make::expr_path(make::path_unqualified(make::path_segment(name)));
         make::expr_call(func, args)

@@ -423,13 +423,8 @@ impl SyntaxFactory {
         method: ast::NameRef,
         arg_list: ast::ArgList,
     ) -> ast::MethodCallExpr {
-        // FIXME: `make::expr_method_call` should return a `MethodCallExpr`, not just an `Expr`
-        let ast::Expr::MethodCallExpr(ast) =
-            make::expr_method_call(receiver.clone(), method.clone(), arg_list.clone())
-                .clone_for_update()
-        else {
-            unreachable!()
-        };
+        let ast = make::expr_method_call(receiver.clone(), method.clone(), arg_list.clone())
+            .clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
