@@ -1,6 +1,7 @@
 //@ignore-target: apple
 
 #![feature(no_core, lang_items)]
+#![feature(const_trait_impl)]
 #![no_core]
 #![allow(clippy::missing_safety_doc)]
 
@@ -11,9 +12,11 @@ extern "C" {}
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 #[lang = "copy"]
 pub trait Copy {}
