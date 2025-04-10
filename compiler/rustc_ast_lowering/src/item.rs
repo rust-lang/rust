@@ -212,8 +212,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     },
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
-                // TODO: make const arg instead of always using None
-                hir::ItemKind::Const(ident, ty, generics, body_id, None)
+                let ct_arg = if self.tcx.features().min_generic_const_args()
+                    && let Some(expr) = expr
+                {
+                    self.try_lower_as_const_path(expr)
+                } else {
+                    None
+                };
+                hir::ItemKind::Const(ident, ty, generics, body_id, ct_arg)
             }
             ItemKind::Fn(box Fn {
                 sig: FnSig { decl, header, span: fn_sig_span },
@@ -814,8 +820,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
                         let body = expr.as_ref().map(|x| this.lower_const_body(i.span, Some(x)));
-                        // TODO: make const arg instead of always using None
-                        hir::TraitItemKind::Const(ty, body, None)
+                        let ct_arg = if this.tcx.features().min_generic_const_args()
+                            && let Some(expr) = expr
+                        {
+                            this.try_lower_as_const_path(expr)
+                        } else {
+                            None
+                        };
+                        hir::TraitItemKind::Const(ty, body, ct_arg)
                     },
                 );
 
@@ -1008,8 +1020,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
                         let body = this.lower_const_body(i.span, expr.as_deref());
                         this.lower_define_opaque(hir_id, &define_opaque);
-                        // TODO: make const arg instead of always using None
-                        hir::ImplItemKind::Const(ty, body, None)
+                        let ct_arg = if this.tcx.features().min_generic_const_args()
+                            && let Some(expr) = expr
+                        {
+                            this.try_lower_as_const_path(expr)
+                        } else {
+                            None
+                        };
+                        hir::ImplItemKind::Const(ty, body, ct_arg)
                     },
                 ),
             ),
