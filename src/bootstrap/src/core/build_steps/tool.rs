@@ -817,7 +817,6 @@ impl Step for LldWrapper {
             fields(build_compiler = ?self.build_compiler, target_compiler = ?self.target_compiler),
         ),
     )]
-
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         if builder.config.dry_run() {
             return ToolBuildResult {

@@ -1043,7 +1043,7 @@ impl String {
     #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_bytes(self) -> Vec<u8> {
         self.vec
@@ -1062,7 +1062,7 @@ impl String {
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
     #[rustc_diagnostic_item = "string_as_str"]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn as_str(&self) -> &str {
         // SAFETY: String contents are stipulated to be valid UTF-8, invalid contents are an error
         // at construction.
@@ -1085,7 +1085,7 @@ impl String {
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
     #[rustc_diagnostic_item = "string_as_mut_str"]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn as_mut_str(&mut self) -> &mut str {
         // SAFETY: String contents are stipulated to be valid UTF-8, invalid contents are an error
         // at construction.
@@ -1134,7 +1134,7 @@ impl String {
     /// assert_eq!(string, "abcdecdeabecde");
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "string_extend_from_within", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_extend_from_within", since = "1.87.0")]
     pub fn extend_from_within<R>(&mut self, src: R)
     where
         R: RangeBounds<usize>,
@@ -1159,7 +1159,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn capacity(&self) -> usize {
         self.vec.capacity()
     }
@@ -1428,7 +1428,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn as_bytes(&self) -> &[u8] {
         self.vec.as_slice()
     }
@@ -1808,7 +1808,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {
         &mut self.vec
     }
@@ -1830,7 +1830,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     #[rustc_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         self.vec.len()
@@ -1850,7 +1850,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -3169,7 +3169,7 @@ impl From<String> for Vec<u8> {
     }
 }
 
-#[stable(feature = "try_from_vec_u8_for_string", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "try_from_vec_u8_for_string", since = "1.87.0")]
 impl TryFrom<Vec<u8>> for String {
     type Error = FromUtf8Error;
     /// Converts the given [`Vec<u8>`] into a  [`String`] if it contains valid UTF-8 data.

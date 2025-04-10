@@ -32,8 +32,6 @@ check-cfg = [
     'cfg(bootstrap)',
     'cfg(no_fp_fmt_parse)',
     'cfg(stdarch_intel_sde)',
-    # #[cfg(bootstrap)]
-    'cfg(target_feature, values("vector-enhancements-1"))',
     # core use #[path] imports to portable-simd `core_simd` crate
     # and to stdarch `core_arch` crate which messes-up with Cargo list
     # of declared features, we therefor expect any feature cfg
