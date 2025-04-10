@@ -878,4 +878,17 @@ fn f(it: unsafe fn()){
         "#,
         );
     }
+
+    #[test]
+    fn unsafe_call_in_const_expr() {
+        check_diagnostics(
+            r#"
+unsafe fn f() {}
+fn main() {
+    const { f(); };
+         // ^^^ 💡 error: call to unsafe function is unsafe and requires an unsafe function or block
+}
+        "#,
+        );
+    }
 }

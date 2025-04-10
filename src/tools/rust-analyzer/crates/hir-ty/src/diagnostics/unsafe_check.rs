@@ -348,6 +348,7 @@ impl<'a> UnsafeVisitor<'a> {
             Expr::Closure { args, .. } => {
                 self.walk_pats_top(args.iter().copied(), current);
             }
+            Expr::Const(e) => self.walk_expr(*e),
             _ => {}
         }
 
