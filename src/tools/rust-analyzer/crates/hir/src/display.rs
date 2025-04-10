@@ -39,21 +39,21 @@ impl HirDisplay for Function {
         // Write container (trait or impl)
         let container_params = match container {
             Some(AssocItemContainer::Trait(trait_)) => {
-                let params = f.db.generic_params(trait_.id.into());
+                let (params, params_store) = f.db.generic_params_and_store(trait_.id.into());
                 if f.show_container_bounds() && !params.is_empty() {
                     write_trait_header(&trait_, f)?;
                     f.write_char('\n')?;
-                    has_disaplayable_predicates(&params).then_some(params)
+                    has_disaplayable_predicates(&params).then_some((params, params_store))
                 } else {
                     None
                 }
             }
             Some(AssocItemContainer::Impl(impl_)) => {
-                let params = f.db.generic_params(impl_.id.into());
+                let (params, params_store) = f.db.generic_params_and_store(impl_.id.into());
                 if f.show_container_bounds() && !params.is_empty() {
                     write_impl_header(&impl_, f)?;
                     f.write_char('\n')?;
-                    has_disaplayable_predicates(&params).then_some(params)
+                    has_disaplayable_predicates(&params).then_some((params, params_store))
                 } else {
                     None
                 }
@@ -169,7 +169,7 @@ impl HirDisplay for Function {
 
         // Write where clauses
         let has_written_where = write_where_clause(GenericDefId::FunctionId(self.id), f)?;
-        if let Some(container_params) = container_params {
+        if let Some((container_params, container_params_store)) = container_params {
             if !has_written_where {
                 f.write_str("\nwhere")?;
             }
@@ -178,7 +178,7 @@ impl HirDisplay for Function {
                 AssocItemContainer::Impl(_) => "impl",
             };
             write!(f, "\n    // Bounds from {container_name}:",)?;
-            write_where_predicates(&container_params, &data.store, f)?;
+            write_where_predicates(&container_params, &container_params_store, f)?;
         }
         Ok(())
     }
