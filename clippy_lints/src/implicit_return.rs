@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context, walk_span_to_context};
 use clippy_utils::visitors::for_each_expr_without_closures;
-use clippy_utils::{get_async_fn_body, is_async_fn, is_from_proc_macro};
+use clippy_utils::{desugar_await, get_async_closure_expr, get_async_fn_body, is_async_fn, is_from_proc_macro};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -134,6 +134,10 @@ fn lint_implicit_returns(
         },
 
         ExprKind::Match(_, arms, _) => {
+            if let Some(await_expr) = desugar_await(expr) {
+                lint_return(cx, await_expr.hir_id, await_expr.span);
+                return LintLocation::Inner;
+            }
             for arm in arms {
                 let res = lint_implicit_returns(
                     cx,
@@ -241,6 +245,8 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
                 Some(e) => e,
                 None => return,
             }
+        } else if let Some(expr) = get_async_closure_expr(cx.tcx, body.value) {
+            expr
         } else {
             body.value
         };

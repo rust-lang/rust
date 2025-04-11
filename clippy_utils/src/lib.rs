@@ -104,10 +104,10 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{
     self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
-    Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItem,
-    ImplItemKind, ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode,
-    Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitFn, TraitItem,
-    TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp, def,
+    CoroutineDesugaring, CoroutineKind, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg,
+    GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource,
+    Mutability, Node, OwnerId, OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, PrimTy, QPath,
+    Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp, def,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -124,6 +124,7 @@ use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{InnerSpan, Span, sym};
+use source::walk_span_to_context;
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
@@ -2131,15 +2132,18 @@ pub fn is_async_fn(kind: FnKind<'_>) -> bool {
     }
 }
 
-/// Peels away all the compiler generated code surrounding the body of an async function,
-pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Closure(&Closure { body, .. }) = body.value.kind
+/// Peels away all the compiler generated code surrounding the body of an async closure.
+pub fn get_async_closure_expr<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::Closure(&Closure {
+        body,
+        kind: hir::ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)),
+        ..
+    }) = expr.kind
         && let ExprKind::Block(
             Block {
-                stmts: [],
                 expr:
                     Some(Expr {
-                        kind: ExprKind::DropTemps(expr),
+                        kind: ExprKind::DropTemps(inner_expr),
                         ..
                     }),
                 ..
@@ -2147,9 +2151,15 @@ pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'t
             _,
         ) = tcx.hir_body(body).value.kind
     {
-        return Some(expr);
+        Some(inner_expr)
+    } else {
+        None
     }
-    None
+}
+
+/// Peels away all the compiler generated code surrounding the body of an async function,
+pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
+    get_async_closure_expr(tcx, body.value)
 }
 
 // check if expr is calling method or function with #[must_use] attribute
@@ -3715,4 +3725,21 @@ pub fn peel_hir_ty_options<'tcx>(cx: &LateContext<'tcx>, mut hir_ty: &'tcx hir::
         hir_ty = arg_ty.as_unambig_ty();
     }
     hir_ty
+}
+
+/// If `expr` is a desugared `.await`, return the original expression if it does not come from a
+/// macro expansion.
+pub fn desugar_await<'tcx>(expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::Match(match_value, _, MatchSource::AwaitDesugar) = expr.kind
+        && let ExprKind::Call(_, [into_future_arg]) = match_value.kind
+        && let ctxt = expr.span.ctxt()
+        && for_each_expr_without_closures(into_future_arg, |e| {
+            walk_span_to_context(e.span, ctxt).map_or(ControlFlow::Break(()), |_| ControlFlow::Continue(()))
+        })
+        .is_none()
+    {
+        Some(into_future_arg)
+    } else {
+        None
+    }
 }
