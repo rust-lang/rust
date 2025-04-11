@@ -1,6 +1,6 @@
-//! Linux and Android-specific networking functionality.
+//! Linux, Android and Cygwin-specific networking functionality.
 
-#![doc(cfg(any(target_os = "linux", target_os = "android")))]
+#![doc(cfg(any(target_os = "linux", target_os = "android", target_os = "cygwin")))]
 
 #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
 pub(crate) mod addr;
