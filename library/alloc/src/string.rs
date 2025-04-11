@@ -1735,8 +1735,10 @@ impl String {
 
     /// Inserts a string slice into this `String` at a byte position.
     ///
-    /// This is an *O*(*n*) operation as it requires copying every element in the
-    /// buffer.
+    /// Reallocates if `self.capacity()` is insufficient,
+    /// (which may involve copying all `self.capacity()` bytes).
+    /// Makes space at the given position for the insertion,
+    /// by moving the bytes, from the given position until the end, to new positions.
     ///
     /// # Panics
     ///
