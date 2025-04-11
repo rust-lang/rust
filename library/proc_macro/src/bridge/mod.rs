@@ -86,7 +86,6 @@ macro_rules! with_api {
                 fn clone($self: &$S::SourceFile) -> $S::SourceFile;
                 fn eq($self: &$S::SourceFile, other: &$S::SourceFile) -> bool;
                 fn path($self: &$S::SourceFile) -> String;
-                fn is_real($self: &$S::SourceFile) -> bool;
             },
             Span {
                 fn debug($self: $S::Span) -> String;

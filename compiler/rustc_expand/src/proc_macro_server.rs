@@ -689,10 +689,6 @@ impl server::SourceFile for Rustc<'_, '_> {
             _ => file.name.prefer_local().to_string(),
         }
     }
-
-    fn is_real(&mut self, file: &Self::SourceFile) -> bool {
-        file.is_real_file()
-    }
 }
 
 impl server::Span for Rustc<'_, '_> {
