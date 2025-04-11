@@ -1140,7 +1140,7 @@ pub struct Resolver<'ra, 'tcx> {
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
     unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)>,
     /// A map from the macro to all its potentially unused arms.
-    unused_macro_rules: FxIndexMap<LocalDefId, UnordMap<usize, (Ident, Span)>>,
+    unused_macro_rules: FxIndexMap<NodeId, UnordMap<usize, (Ident, Span, LocalDefId)>>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
