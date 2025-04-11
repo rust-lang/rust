@@ -119,8 +119,8 @@ fn capacity_to_buckets(cap: usize, table_layout: TableLayout) -> Option<usize> {
         // |       28 |      32 |              80 |            3.3 |
         //
         // In general, buckets * table_layout.size >= table_layout.ctrl_align
-        // must  be true to avoid these edges. This is implemented by adjusting
-        // the  minimum capacity upwards for small items. This code only needs
+        // must be true to avoid these edges. This is implemented by adjusting
+        // the minimum capacity upwards for small items. This code only needs
         // to handle ctrl_align which are less than or equal to Group::WIDTH,
         // because valid layout sizes are always a multiple of the alignment,
         // so anything with alignment over the Group::WIDTH won't hit this edge
