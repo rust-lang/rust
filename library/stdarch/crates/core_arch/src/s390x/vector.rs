@@ -3809,6 +3809,186 @@ mod sealed {
         vector_bool_int  vector_unsigned_int                vfeef vfenef vfeezf vfenezf vfeefs vfenefs vfeezfs vfenezfs
         vector_unsigned_int vector_unsigned_int             vfeef vfenef vfeezf vfenezf vfeefs vfenefs vfeezfs vfenezfs
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorExtract {
+        type ElementType;
+
+        unsafe fn vec_extract(a: Self, b: i32) -> Self::ElementType;
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vlgvb))]
+    unsafe fn vlgvb(a: vector_unsigned_char, b: i32) -> u8 {
+        simd_extract_dyn(a, b as u32 % 16)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vlgvh))]
+    unsafe fn vlgvh(a: vector_unsigned_short, b: i32) -> u16 {
+        simd_extract_dyn(a, b as u32 % 8)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vlgvf))]
+    unsafe fn vlgvf(a: vector_unsigned_int, b: i32) -> u32 {
+        simd_extract_dyn(a, b as u32 % 4)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vlgvg))]
+    unsafe fn vlgvg(a: vector_unsigned_long_long, b: i32) -> u64 {
+        simd_extract_dyn(a, b as u32 % 2)
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorInsert {
+        type ElementType;
+
+        unsafe fn vec_insert(a: Self::ElementType, b: Self, c: i32) -> Self;
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorPromote: Sized {
+        type ElementType;
+
+        unsafe fn vec_promote(a: Self::ElementType, b: i32) -> MaybeUninit<Self>;
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vlvgb))]
+    unsafe fn vlvgb(a: u8, b: vector_unsigned_char, c: i32) -> vector_unsigned_char {
+        simd_insert_dyn(b, c as u32 % 16, a)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vlvgh))]
+    unsafe fn vlvgh(a: u16, b: vector_unsigned_short, c: i32) -> vector_unsigned_short {
+        simd_insert_dyn(b, c as u32 % 8, a)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vlvgf))]
+    unsafe fn vlvgf(a: u32, b: vector_unsigned_int, c: i32) -> vector_unsigned_int {
+        simd_insert_dyn(b, c as u32 % 4, a)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vlvgg))]
+    unsafe fn vlvgg(a: u64, b: vector_unsigned_long_long, c: i32) -> vector_unsigned_long_long {
+        simd_insert_dyn(b, c as u32 % 2, a)
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorInsertAndZero {
+        type ElementType;
+
+        unsafe fn vec_insert_and_zero(a: *const Self::ElementType) -> Self;
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vllezb))]
+    unsafe fn vllezb(x: *const u8) -> vector_unsigned_char {
+        vector_unsigned_char([0, 0, 0, 0, 0, 0, 0, *x, 0, 0, 0, 0, 0, 0, 0, 0])
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vllezh))]
+    unsafe fn vllezh(x: *const u16) -> vector_unsigned_short {
+        vector_unsigned_short([0, 0, 0, *x, 0, 0, 0, 0])
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vllezf))]
+    unsafe fn vllezf(x: *const u32) -> vector_unsigned_int {
+        vector_unsigned_int([0, *x, 0, 0])
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vllezg))]
+    unsafe fn vllezg(x: *const u64) -> vector_unsigned_long_long {
+        vector_unsigned_long_long([*x, 0])
+    }
+
+    macro_rules! impl_extract_insert {
+        ($($ty:ident $extract_intr:ident $insert_intr:ident $insert_and_zero_intr:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorExtract for $ty {
+                    type ElementType = l_t_t!($ty);
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_extract(a: Self, b: i32) -> Self::ElementType {
+                        transmute($extract_intr(transmute(a), b))
+                    }
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorInsert for $ty {
+                    type ElementType = l_t_t!($ty);
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_insert(a: Self::ElementType, b: Self, c: i32) -> Self {
+                        transmute($insert_intr(transmute(a), transmute(b), c))
+                    }
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorInsertAndZero for $ty {
+                    type ElementType = l_t_t!($ty);
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_insert_and_zero(a: *const Self::ElementType) -> Self {
+                        transmute($insert_and_zero_intr(a.cast()))
+                    }
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorPromote for $ty {
+                    type ElementType = l_t_t!($ty);
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_promote(a: Self::ElementType, c: i32) -> MaybeUninit<Self> {
+                        // Rust does not currently support `MaybeUninit` element types to simd
+                        // vectors. In C/LLVM that is allowed (using poison values). So rust will
+                        // use an extra instruction to zero the memory.
+                        let b = MaybeUninit::<$ty>::zeroed();
+                        MaybeUninit::new(transmute($insert_intr(transmute(a), transmute(b), c)))
+                    }
+                }
+            )*
+        }
+
+    }
+
+    impl_extract_insert! {
+        vector_signed_char          vlgvb vlvgb vllezb
+        vector_unsigned_char        vlgvb vlvgb vllezb
+        vector_signed_short         vlgvh vlvgh vllezh
+        vector_unsigned_short       vlgvh vlvgh vllezh
+        vector_signed_int           vlgvf vlvgf vllezf
+        vector_unsigned_int         vlgvf vlvgf vllezf
+        vector_signed_long_long     vlgvg vlvgg vllezg
+        vector_unsigned_long_long   vlgvg vlvgg vllezg
+        vector_float                vlgvf vlvgf vllezf
+        vector_double               vlgvg vlvgg vllezg
+    }
 }
 
 /// Load Count to Block Boundary
@@ -5646,6 +5826,38 @@ pub unsafe fn vec_any_nge<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
     vec_any_lt(a, b)
 }
 
+/// Vector Extract
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_extract<T: sealed::VectorExtract>(a: T, b: i32) -> T::ElementType {
+    T::vec_extract(a, b)
+}
+
+/// Vector Insert
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_insert<T: sealed::VectorInsert>(a: T::ElementType, b: T, c: i32) -> T {
+    T::vec_insert(a, b, c)
+}
+
+/// Vector Insert and Zero
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_insert_and_zero<T: sealed::VectorInsertAndZero>(a: *const T::ElementType) -> T {
+    T::vec_insert_and_zero(a)
+}
+
+/// Vector Promote
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_promote<T: sealed::VectorPromote>(a: T::ElementType, b: i32) -> MaybeUninit<T> {
+    T::vec_promote(a, b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -7188,5 +7400,36 @@ mod tests {
 
         let d = unsafe { vec_mladd(a, b, c) };
         assert_eq!(d.as_array(), &[-3, -10, -19, -30]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_extract() {
+        let v = vector_unsigned_int([1, 2, 3, 4]);
+
+        assert_eq!(unsafe { vec_extract(v, 1) }, 2);
+        assert_eq!(unsafe { vec_extract(v, 4 + 2) }, 3);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_insert() {
+        let mut v = vector_unsigned_int([1, 2, 3, 4]);
+
+        v = unsafe { vec_insert(42, v, 1) };
+        assert_eq!(v.as_array(), &[1, 42, 3, 4]);
+
+        v = unsafe { vec_insert(64, v, 6) };
+        assert_eq!(v.as_array(), &[1, 42, 64, 4]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_promote() {
+        let v: vector_unsigned_int = unsafe { vec_promote(42, 1).assume_init() };
+        assert_eq!(v.as_array(), &[0, 42, 0, 0]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_insert_and_zero() {
+        let v = unsafe { vec_insert_and_zero::<vector_unsigned_int>(&42u32) };
+        assert_eq!(v.as_array(), vector_unsigned_int([0, 42, 0, 0]).as_array());
     }
 }
