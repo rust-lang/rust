@@ -1271,7 +1271,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_as_chunks)]
     /// let slice: &[char] = &['l', 'o', 'r', 'e', 'm', '!'];
     /// let chunks: &[[char; 1]] =
     ///     // SAFETY: 1-element chunks never have remainder
@@ -1286,7 +1285,8 @@ impl<T> [T] {
     /// // let chunks: &[[_; 5]] = slice.as_chunks_unchecked() // The slice length is not a multiple of 5
     /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked() // Zero-length chunks are never allowed
     /// ```
-    #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
@@ -1314,7 +1314,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_as_chunks)]
     /// let slice = ['l', 'o', 'r', 'e', 'm'];
     /// let (chunks, remainder) = slice.as_chunks();
     /// assert_eq!(chunks, &[['l', 'o'], ['r', 'e']]);
@@ -1324,14 +1323,14 @@ impl<T> [T] {
     /// If you expect the slice to be an exact multiple, you can combine
     /// `let`-`else` with an empty slice pattern:
     /// ```
-    /// #![feature(slice_as_chunks)]
     /// let slice = ['R', 'u', 's', 't'];
     /// let (chunks, []) = slice.as_chunks::<2>() else {
     ///     panic!("slice didn't have even length")
     /// };
     /// assert_eq!(chunks, &[['R', 'u'], ['s', 't']]);
     /// ```
-    #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1359,13 +1358,13 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_as_chunks)]
     /// let slice = ['l', 'o', 'r', 'e', 'm'];
     /// let (remainder, chunks) = slice.as_rchunks();
     /// assert_eq!(remainder, &['l']);
     /// assert_eq!(chunks, &[['o', 'r'], ['e', 'm']]);
     /// ```
-    #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1427,7 +1426,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_as_chunks)]
     /// let slice: &mut [char] = &mut ['l', 'o', 'r', 'e', 'm', '!'];
     /// let chunks: &mut [[char; 1]] =
     ///     // SAFETY: 1-element chunks never have remainder
@@ -1444,7 +1442,8 @@ impl<T> [T] {
     /// // let chunks: &[[_; 5]] = slice.as_chunks_unchecked_mut() // The slice length is not a multiple of 5
     /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked_mut() // Zero-length chunks are never allowed
     /// ```
-    #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
@@ -1472,7 +1471,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_as_chunks)]
     /// let v = &mut [0, 0, 0, 0, 0];
     /// let mut count = 1;
     ///
@@ -1484,7 +1482,8 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, &[1, 1, 2, 2, 9]);
     /// ```
-    #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1512,7 +1511,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_as_chunks)]
     /// let v = &mut [0, 0, 0, 0, 0];
     /// let mut count = 1;
     ///
@@ -1524,7 +1522,8 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, &[9, 1, 1, 2, 2]);
     /// ```
-    #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "slice_as_chunks", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[track_caller]
     #[must_use]
