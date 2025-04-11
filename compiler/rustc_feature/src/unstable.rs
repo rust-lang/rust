@@ -390,6 +390,8 @@ declare_features! (
     /// Allows `async` trait bound modifier.
     (unstable, async_trait_bounds, "1.85.0", Some(62290)),
     /// Allows using C-variadics.
+    (unstable, avx10_target_feature, "CURRENT_RUSTC_VERSION", Some(138843)),
+    /// Allows using Intel AVX10 target features and intrinsics
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(<true/false>)]`.
     (unstable, cfg_boolean_literals, "1.83.0", Some(131204)),
