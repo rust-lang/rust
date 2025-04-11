@@ -3423,6 +3423,18 @@ macro_rules! atomic_int {
             /// }
             /// # }
             /// ```
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
+            ///
+            ///
+            #[doc = concat!("let atomic_ref_1 = ", stringify!($atomic_type), "::new(1);")]
+            #[doc = concat!("let atomic_ref_2 = ", stringify!($atomic_type), "::new(2);")]
+            ///
+            /// // Comparison of addresses is a safe operation and does not require an `unsafe` block.
+            /// let is_equal = atomic_ref_1.as_ptr() == atomic_ref_2.as_ptr();
+            /// assert!(is_equal || !is_equal);
+            /// ```
             #[inline]
             #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
             #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
