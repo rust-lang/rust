@@ -47,6 +47,5 @@ fn l<'a>(_: &'a str, _: &'a str) -> &str { "" }
 
 // This is ok because both `'a` are for the same parameter.
 fn m<'a>(_: &'a Foo<'a>) -> &str { "" }
-//~^ WARNING elided lifetime has a name
 
 fn main() {}

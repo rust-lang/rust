@@ -1,22 +1,11 @@
-warning: elided lifetime has a name
-  --> $DIR/ex1-return-one-existing-name-if-else-using-impl-3.rs:6:36
-   |
-LL |   fn foo<'a>(&'a self, x: &i32) -> &i32 {
-   |          --                        ^ this elided lifetime gets resolved as `'a`
-   |          |
-   |          lifetime `'a` declared here
-   |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
-
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/ex1-return-one-existing-name-if-else-using-impl-3.rs:9:36
+  --> $DIR/ex1-return-one-existing-name-if-else-using-impl-3.rs:7:36
    |
 LL |   fn foo<'a>(&'a self, x: &i32) -> &i32 {
    |                           ---- help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
-...
 LL |     if true { &self.field } else { x }
    |                                    ^ lifetime `'a` required
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0621`.

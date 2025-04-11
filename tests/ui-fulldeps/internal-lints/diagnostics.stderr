@@ -11,19 +11,19 @@ LL | #![deny(rustc::untranslatable_diagnostic)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:64:19
+  --> $DIR/diagnostics.rs:63:19
    |
 LL |         diag.note("untranslatable diagnostic");
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:85:19
+  --> $DIR/diagnostics.rs:83:19
    |
 LL |         diag.note("untranslatable diagnostic");
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
-  --> $DIR/diagnostics.rs:99:21
+  --> $DIR/diagnostics.rs:97:21
    |
 LL |     let _diag = dcx.struct_err(crate::fluent_generated::no_crate_example);
    |                     ^^^^^^^^^^
@@ -35,37 +35,37 @@ LL | #![deny(rustc::diagnostic_outside_of_impl)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
-  --> $DIR/diagnostics.rs:102:21
+  --> $DIR/diagnostics.rs:100:21
    |
 LL |     let _diag = dcx.struct_err("untranslatable diagnostic");
    |                     ^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:102:32
+  --> $DIR/diagnostics.rs:100:32
    |
 LL |     let _diag = dcx.struct_err("untranslatable diagnostic");
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:120:7
+  --> $DIR/diagnostics.rs:118:7
    |
 LL |     f("untranslatable diagnostic", crate::fluent_generated::no_crate_example);
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:122:50
+  --> $DIR/diagnostics.rs:120:50
    |
 LL |     f(crate::fluent_generated::no_crate_example, "untranslatable diagnostic");
    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:124:7
+  --> $DIR/diagnostics.rs:122:7
    |
 LL |     f("untranslatable diagnostic", "untranslatable diagnostic");
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:124:36
+  --> $DIR/diagnostics.rs:122:36
    |
 LL |     f("untranslatable diagnostic", "untranslatable diagnostic");
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
