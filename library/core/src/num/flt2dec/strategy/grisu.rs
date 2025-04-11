@@ -196,9 +196,9 @@ pub fn format_shortest_opt<'a>(
     let (minusk, cached) = cached_power(ALPHA - plus.e - 64, GAMMA - plus.e - 64);
 
     // scale fps. this gives the maximal error of 1 ulp (proved from Theorem 5.1).
-    let plus = plus.mul(&cached);
-    let minus = minus.mul(&cached);
-    let v = v.mul(&cached);
+    let plus = plus.mul(cached);
+    let minus = minus.mul(cached);
+    let v = v.mul(cached);
     debug_assert_eq!(plus.e, minus.e);
     debug_assert_eq!(plus.e, v.e);
 
@@ -480,7 +480,7 @@ pub fn format_exact_opt<'a>(
     // normalize and scale `v`.
     let v = Fp { f: d.mant, e: d.exp }.normalize();
     let (minusk, cached) = cached_power(ALPHA - v.e - 64, GAMMA - v.e - 64);
-    let v = v.mul(&cached);
+    let v = v.mul(cached);
 
     // divide `v` into integral and fractional parts.
     let e = -v.e as usize;
