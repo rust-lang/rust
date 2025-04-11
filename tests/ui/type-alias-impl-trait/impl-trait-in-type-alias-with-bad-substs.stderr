@@ -1,4 +1,4 @@
-error[E0049]: type `Baz` has 1 type parameter but its trait declaration has 0 type parameters
+error[E0049]: associated type `Baz` has 1 type parameter but its trait declaration has 0 type parameters
   --> $DIR/impl-trait-in-type-alias-with-bad-substs.rs:19:14
    |
 LL |     type Baz<'a>;
