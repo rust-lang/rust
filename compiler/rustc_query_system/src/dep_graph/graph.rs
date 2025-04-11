@@ -268,6 +268,14 @@ impl<D: Deps> DepGraph<D> {
         D::with_deps(TaskDepsRef::Forbid, op)
     }
 
+    /// This checks that no dependencies are registered in `op` if debug assertions are enabled.
+    pub fn debug_assert_no_deps<OP, R>(op: OP) -> R
+    where
+        OP: FnOnce() -> R,
+    {
+        if cfg!(debug_assertions) { D::with_deps(TaskDepsRef::Forbid, op) } else { op() }
+    }
+
     #[inline(always)]
     pub fn with_task<Ctxt: HasDepContext<Deps = D>, A: Debug, R>(
         &self,
