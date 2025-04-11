@@ -34,6 +34,15 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return true;
     }
 
+    // compiler-builtins only defines intrinsics (which are handled above by checking
+    // contains_extern_indicator) and helper functions used by those intrinsics. The helper
+    // functions should always be inlined into intrinsics that use them. This check does not
+    // guarantee that we get the optimizations we want, but it makes them *much* easier.
+    // See https://github.com/rust-lang/rust/issues/73135
+    if tcx.is_compiler_builtins(rustc_span::def_id::LOCAL_CRATE) {
+        return true;
+    }
+
     if tcx.has_attr(def_id, sym::rustc_intrinsic) {
         // Intrinsic fallback bodies are always cross-crate inlineable.
         // To ensure that the MIR inliner doesn't cluelessly try to inline fallback
