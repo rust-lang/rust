@@ -37,7 +37,7 @@ features = ['unprefixed_malloc_on_supported_platforms']
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-libffi = "3.2.0"
+libffi = "4.0.0"
 libloading = "0.8"
 
 [target.'cfg(target_family = "windows")'.dependencies]
