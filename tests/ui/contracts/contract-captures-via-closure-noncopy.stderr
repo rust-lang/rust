@@ -16,6 +16,7 @@ LL | #[core::contracts::ensures({let old = x; move |ret:&Baz| ret.baz == old.baz
    | |                                        within this `{closure@$DIR/contract-captures-via-closure-noncopy.rs:12:42: 12:57}`
    | |                                        this tail expression is of type `{closure@contract-captures-via-closure-noncopy.rs:12:42}`
    | unsatisfied trait bound
+   | required by a bound introduced by this call
    |
    = help: within `{closure@$DIR/contract-captures-via-closure-noncopy.rs:12:42: 12:57}`, the trait `std::marker::Copy` is not implemented for `Baz`
 note: required because it's used within this closure

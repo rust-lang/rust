@@ -6,7 +6,7 @@ fn main() {
     //~^ ERROR use of unstable library feature `contracts_internals`
     core::intrinsics::contract_check_requires(|| true);
     //~^ ERROR use of unstable library feature `contracts_internals`
-    core::intrinsics::contract_check_ensures(&1, |_|true);
+    core::intrinsics::contract_check_ensures( |_|true, &1);
     //~^ ERROR use of unstable library feature `contracts_internals`
 
     core::contracts::build_check_ensures(|_: &()| true);
