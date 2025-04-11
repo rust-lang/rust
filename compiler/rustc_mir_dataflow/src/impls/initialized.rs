@@ -376,7 +376,14 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         // the result of `is_unwind_dead`.
         let mut edges = terminator.edges();
         if self.skip_unreachable_unwind
-            && let mir::TerminatorKind::Drop { target, unwind, place, replace: _ } = terminator.kind
+            && let mir::TerminatorKind::Drop {
+                target,
+                unwind,
+                place,
+                replace: _,
+                drop: _,
+                async_fut: _,
+            } = terminator.kind
             && matches!(unwind, mir::UnwindAction::Cleanup(_))
             && self.is_unwind_dead(place, state)
         {
