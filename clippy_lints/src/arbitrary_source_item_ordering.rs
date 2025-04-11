@@ -344,7 +344,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
         struct CurItem<'a> {
             item: &'a Item<'a>,
             order: usize,
-            name: String,
+            name: Option<String>,
         }
         let mut cur_t: Option<CurItem<'_>> = None;
 
@@ -365,28 +365,26 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                 continue;
             }
 
-            let ident = if let Some(ident) = item.kind.ident() {
-                ident
-            } else if let ItemKind::Impl(_) = item.kind
-                && !get_item_name(item).is_empty()
-            {
-                rustc_span::Ident::empty() // FIXME: a bit strange, is there a better way to do it?
-            } else {
-                continue;
-            };
-
-            if ident.name.as_str().starts_with('_') {
-                // Filters out unnamed macro-like impls for various derives,
-                // e.g. serde::Serialize or num_derive::FromPrimitive.
-                continue;
-            }
-
-            if ident.name == rustc_span::sym::std && item.span.is_dummy() {
-                if let ItemKind::ExternCrate(None, _) = item.kind {
-                    // Filters the auto-included Rust standard library.
+            if let Some(ident) = item.kind.ident() {
+                if ident.name.as_str().starts_with('_') {
+                    // Filters out unnamed macro-like impls for various derives,
+                    // e.g. serde::Serialize or num_derive::FromPrimitive.
                     continue;
                 }
-                println!("Unknown item: {item:?}");
+
+                if ident.name == rustc_span::sym::std && item.span.is_dummy() {
+                    if let ItemKind::ExternCrate(None, _) = item.kind {
+                        // Filters the auto-included Rust standard library.
+                        continue;
+                    }
+                    println!("Unknown item: {item:?}");
+                }
+            } else if let ItemKind::Impl(_) = item.kind
+                && get_item_name(item).is_some()
+            {
+                // keep going below
+            } else {
+                continue;
             }
 
             let item_kind = convert_module_item_kind(&item.kind);
@@ -495,7 +493,7 @@ fn convert_module_item_kind(value: &ItemKind<'_>) -> SourceItemOrderingModuleIte
 /// further in the [Rust Reference, Paths Chapter][rust_ref].
 ///
 /// [rust_ref]: https://doc.rust-lang.org/reference/paths.html#crate-1
-fn get_item_name(item: &Item<'_>) -> String {
+fn get_item_name(item: &Item<'_>) -> Option<String> {
     match item.kind {
         ItemKind::Impl(im) => {
             if let TyKind::Path(path) = im.self_ty.kind {
@@ -515,27 +513,19 @@ fn get_item_name(item: &Item<'_>) -> String {
                         }
 
                         segs.push(String::new());
-                        segs.join("!!")
+                        Some(segs.join("!!"))
                     },
                     QPath::TypeRelative(_, _path_seg) => {
                         // This case doesn't exist in the clippy tests codebase.
-                        String::new()
+                        None
                     },
-                    QPath::LangItem(_, _) => String::new(),
+                    QPath::LangItem(_, _) => None,
                 }
             } else {
                 // Impls for anything that isn't a named type can be skipped.
-                String::new()
+                None
             }
         },
-        // FIXME: `Ident::empty` for anonymous items is a bit strange, is there
-        // a better way to do it?
-        _ => item
-            .kind
-            .ident()
-            .unwrap_or(rustc_span::Ident::empty())
-            .name
-            .as_str()
-            .to_owned(),
+        _ => item.kind.ident().map(|name| name.as_str().to_owned()),
     }
 }
