@@ -111,6 +111,8 @@ impl Bootstrap {
             "--stage",
             "2",
             "library/std",
+            "--set",
+            "build.metrics=true",
         ])
         .env("RUST_BACKTRACE", "full");
         Self { cmd, metrics_path }
