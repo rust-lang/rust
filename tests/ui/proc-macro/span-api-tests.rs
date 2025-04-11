@@ -8,24 +8,24 @@ extern crate span_test_macros;
 
 extern crate span_api_tests;
 
-use span_api_tests::{reemit, assert_source_file, macro_stringify};
+use span_api_tests::{reemit, assert_local_file, macro_stringify};
 
 macro_rules! say_hello {
     ($macname:ident) => ( $macname! { "Hello, world!" })
 }
 
-assert_source_file! { "Hello, world!" }
+assert_local_file! { "Hello, world!" }
 
-say_hello! { assert_source_file }
+say_hello! { assert_local_file }
 
 reemit_legacy! {
-    assert_source_file! { "Hello, world!" }
+    assert_local_file! { "Hello, world!" }
 }
 
-say_hello_extern! { assert_source_file }
+say_hello_extern! { assert_local_file }
 
 reemit! {
-    assert_source_file! { "Hello, world!" }
+    assert_local_file! { "Hello, world!" }
 }
 
 fn main() {

@@ -82,7 +82,6 @@ with_api_handle_types!(define_server_handles);
 pub trait Types {
     type FreeFunctions: 'static;
     type TokenStream: 'static + Clone;
-    type SourceFile: 'static + Clone;
     type Span: 'static + Copy + Eq + Hash;
     type Symbol: 'static;
 }

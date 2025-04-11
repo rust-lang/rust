@@ -491,12 +491,6 @@ impl Span {
         Span(bridge::client::Span::mixed_site())
     }
 
-    /// The original source file into which this span points.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub fn source_file(&self) -> SourceFile {
-        SourceFile(self.0.source_file())
-    }
-
     /// The `Span` for the tokens in the previous macro expansion from which
     /// `self` was generated from, if any.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
@@ -544,6 +538,25 @@ impl Span {
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn column(&self) -> usize {
         self.0.column()
+    }
+
+    /// The path to the source file in which this span occurs, for display purposes.
+    ///
+    /// This might not correspond to a valid file system path.
+    /// It might be remapped, or might be an artificial path such as `"<macro expansion>"`.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn file(&self) -> String {
+        self.0.file()
+    }
+
+    /// The path to the source file in which this span occurs on disk.
+    ///
+    /// This is the actual path on disk. It is unaffected by path remapping.
+    ///
+    /// This path should not be embedded in the output of the macro; prefer `file()` instead.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn local_file(&self) -> Option<PathBuf> {
+        self.0.local_file().map(|s| PathBuf::from(s))
     }
 
     /// Creates a new span encompassing `self` and `other`.
@@ -613,41 +626,6 @@ impl fmt::Debug for Span {
         self.0.fmt(f)
     }
 }
-
-/// The source file of a given `Span`.
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-#[derive(Clone)]
-pub struct SourceFile(bridge::client::SourceFile);
-
-impl SourceFile {
-    /// Gets the path to this source file.
-    ///
-    /// ### Note
-    ///
-    /// If `--remap-path-prefix` was passed on
-    /// the command line, the path as given might not actually be valid.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub fn path(&self) -> PathBuf {
-        PathBuf::from(self.0.path())
-    }
-}
-
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl fmt::Debug for SourceFile {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SourceFile").field("path", &self.path()).finish()
-    }
-}
-
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl PartialEq for SourceFile {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
-    }
-}
-
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl Eq for SourceFile {}
 
 /// A single token or a delimited sequence of token trees (e.g., `[1, (), ..]`).
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
