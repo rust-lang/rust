@@ -29,6 +29,8 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `amx-transpose`
 `atomics`
 `avx`
+`avx10.1`
+`avx10.2`
 `avx2`
 `avx512bf16`
 `avx512bitalg`
