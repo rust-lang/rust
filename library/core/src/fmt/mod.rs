@@ -4,7 +4,7 @@
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::{EscapeDebugExtArgs, MAX_LEN_UTF8};
-use crate::marker::PhantomData;
+use crate::marker::{PhantomData, PointeeSized};
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
 use crate::{iter, mem, result, str};
@@ -899,7 +899,7 @@ impl Display for Arguments<'_> {
 #[doc(alias = "{:?}")]
 #[rustc_diagnostic_item = "Debug"]
 #[rustc_trivial_field_reads]
-pub trait Debug {
+pub trait Debug: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     ///
     /// # Examples
@@ -1016,7 +1016,7 @@ pub use macros::Debug;
 #[doc(alias = "{}")]
 #[rustc_diagnostic_item = "Display"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Display {
+pub trait Display: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     ///
     /// # Examples
@@ -1092,7 +1092,7 @@ pub trait Display {
 /// assert_eq!(format!("l as octal is: {l:#06o}"), "l as octal is: 0o0011");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Octal {
+pub trait Octal: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -1151,7 +1151,7 @@ pub trait Octal {
 /// );
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Binary {
+pub trait Binary: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -1206,7 +1206,7 @@ pub trait Binary {
 /// assert_eq!(format!("l as hex is: {l:#010x}"), "l as hex is: 0x00000009");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait LowerHex {
+pub trait LowerHex: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -1261,7 +1261,7 @@ pub trait LowerHex {
 /// assert_eq!(format!("l as hex is: {l:#010X}"), "l as hex is: 0x7FFFFFFF");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait UpperHex {
+pub trait UpperHex: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -1320,7 +1320,7 @@ pub trait UpperHex {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Pointer"]
-pub trait Pointer {
+pub trait Pointer: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -1371,7 +1371,7 @@ pub trait Pointer {
 /// );
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait LowerExp {
+pub trait LowerExp: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -1422,7 +1422,7 @@ pub trait LowerExp {
 /// );
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait UpperExp {
+pub trait UpperExp: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -2667,11 +2667,11 @@ macro_rules! fmt_refs {
     ($($tr:ident),*) => {
         $(
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized + $tr> $tr for &T {
+        impl<T: ?Sized + PointeeSized + $tr> $tr for &T {
             fn fmt(&self, f: &mut Formatter<'_>) -> Result { $tr::fmt(&**self, f) }
         }
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized + $tr> $tr for &mut T {
+        impl<T: ?Sized + PointeeSized + $tr> $tr for &mut T {
             fn fmt(&self, f: &mut Formatter<'_>) -> Result { $tr::fmt(&**self, f) }
         }
         )*
@@ -2793,7 +2793,7 @@ impl Display for char {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Pointer for *const T {
+impl<T: ?Sized + PointeeSized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         if <<T as core::ptr::Pointee>::Metadata as core::unit::IsUnit>::is_unit() {
             pointer_fmt_inner(self.expose_provenance(), f)
@@ -2838,21 +2838,21 @@ pub(crate) fn pointer_fmt_inner(ptr_addr: usize, f: &mut Formatter<'_>) -> Resul
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Pointer for *mut T {
+impl<T: ?Sized + PointeeSized> Pointer for *mut T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         Pointer::fmt(&(*self as *const T), f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Pointer for &T {
+impl<T: ?Sized + PointeeSized> Pointer for &T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         Pointer::fmt(&(*self as *const T), f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Pointer for &mut T {
+impl<T: ?Sized + PointeeSized> Pointer for &mut T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         Pointer::fmt(&(&**self as *const T), f)
     }
@@ -2861,13 +2861,13 @@ impl<T: ?Sized> Pointer for &mut T {
 // Implementation of Display/Debug for various core types
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Debug for *const T {
+impl<T: ?Sized + PointeeSized> Debug for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         Pointer::fmt(self, f)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Debug for *mut T {
+impl<T: ?Sized + PointeeSized> Debug for *mut T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         Pointer::fmt(self, f)
     }

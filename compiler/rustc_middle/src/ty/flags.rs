@@ -129,7 +129,11 @@ impl FlagComputation {
                 }
             },
 
-            &ty::Adt(_, args) => {
+            &ty::Adt(def, args) => {
+                if def.has_non_const_sizedness() {
+                    self.add_flags(TypeFlags::HAS_NON_CONST_SIZEDNESS);
+                }
+
                 self.add_args(args);
             }
 

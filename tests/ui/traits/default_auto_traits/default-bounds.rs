@@ -2,6 +2,7 @@
 
 #![feature(
     auto_traits,
+    const_trait_impl,
     lang_items,
     negative_impls,
     no_core,
@@ -11,8 +12,16 @@
 #![no_std]
 #![no_core]
 
+#[lang = "pointee_sized"]
+trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[const_trait]
+trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+trait Sized: MetaSized {}
 
 #[lang = "copy"]
 pub trait Copy {}

@@ -692,6 +692,10 @@ passes_rustc_lint_opt_ty =
     `#[rustc_lint_opt_ty]` should be applied to a struct
     .label = not a struct
 
+passes_rustc_non_const_sized =
+    attribute should be applied to a struct or enum
+    .label = not a struct or enum
+
 passes_rustc_pub_transparent =
     attribute should be applied to `#[repr(transparent)]` types
     .label = not a `#[repr(transparent)]` type

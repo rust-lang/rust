@@ -2,13 +2,29 @@
 //@ revisions: current next
 //@ [next] compile-flags: -Znext-solver
 
-#![feature(auto_traits, extern_types, lang_items, negative_impls, no_core, rustc_attrs)]
+#![feature(
+    auto_traits,
+    const_trait_impl,
+    extern_types,
+    lang_items,
+    negative_impls,
+    no_core,
+    rustc_attrs
+)]
 #![allow(incomplete_features)]
 #![no_std]
 #![no_core]
 
+#[lang = "pointee_sized"]
+trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[const_trait]
+trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+trait Sized: MetaSized {}
 
 #[lang = "copy"]
 pub trait Copy {}
@@ -17,7 +33,7 @@ pub trait Copy {}
 auto trait Leak {}
 
 // implicit T: Leak here
-fn foo<T: ?Sized>(_: &T) {}
+fn foo<T: PointeeSized>(_: &T) {}
 
 mod extern_leak {
     use crate::*;

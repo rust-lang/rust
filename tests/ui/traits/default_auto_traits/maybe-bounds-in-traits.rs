@@ -3,6 +3,7 @@
 #![feature(
     auto_traits,
     associated_type_defaults,
+    const_trait_impl,
     generic_const_items,
     lang_items,
     more_maybe_bounds,
@@ -14,8 +15,16 @@
 #![no_std]
 #![no_core]
 
+#[lang = "pointee_sized"]
+trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[const_trait]
+trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+trait Sized: MetaSized {}
 
 #[lang = "legacy_receiver"]
 trait LegacyReceiver {}
