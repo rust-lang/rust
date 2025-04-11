@@ -54,7 +54,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: #0 bytes(452..523),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): { #[cfg(FALSE)] { 10 } #[cfg(not(FALSE))] { 11 } }
+PRINT-ATTR INPUT (DISPLAY): { #[cfg(false)] { 10 } #[cfg(not(FALSE))] { 11 } }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Group {
         delimiter: Brace,
@@ -75,7 +75,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                         delimiter: Parenthesis,
                         stream: TokenStream [
                             Ident {
-                                ident: "FALSE",
+                                ident: "false",
                                 span: #0 bytes(468..473),
                             },
                         ],

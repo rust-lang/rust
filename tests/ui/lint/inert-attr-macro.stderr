@@ -1,41 +1,41 @@
 warning: unused attribute `inline`
-  --> $DIR/inert-attr-macro.rs:11:5
+  --> $DIR/inert-attr-macro.rs:10:5
    |
 LL |     #[inline] foo!();
    |     ^^^^^^^^^
    |
 note: the built-in attribute `inline` will be ignored, since it's applied to the macro invocation `foo`
-  --> $DIR/inert-attr-macro.rs:11:15
+  --> $DIR/inert-attr-macro.rs:10:15
    |
 LL |     #[inline] foo!();
    |               ^^^
 note: the lint level is defined here
-  --> $DIR/inert-attr-macro.rs:4:9
+  --> $DIR/inert-attr-macro.rs:3:9
    |
 LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(unused_attributes)]` implied by `#[warn(unused)]`
 
 warning: unused attribute `allow`
-  --> $DIR/inert-attr-macro.rs:15:5
+  --> $DIR/inert-attr-macro.rs:14:5
    |
 LL |     #[allow(warnings)] #[inline] foo!();
    |     ^^^^^^^^^^^^^^^^^^
    |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `foo`
-  --> $DIR/inert-attr-macro.rs:15:34
+  --> $DIR/inert-attr-macro.rs:14:34
    |
 LL |     #[allow(warnings)] #[inline] foo!();
    |                                  ^^^
 
 warning: unused attribute `inline`
-  --> $DIR/inert-attr-macro.rs:15:24
+  --> $DIR/inert-attr-macro.rs:14:24
    |
 LL |     #[allow(warnings)] #[inline] foo!();
    |                        ^^^^^^^^^
    |
 note: the built-in attribute `inline` will be ignored, since it's applied to the macro invocation `foo`
-  --> $DIR/inert-attr-macro.rs:15:34
+  --> $DIR/inert-attr-macro.rs:14:34
    |
 LL |     #[allow(warnings)] #[inline] foo!();
    |                                  ^^^

@@ -1,7 +1,6 @@
 //@ run-pass
 
 #![feature(link_cfg)]
-#![feature(cfg_boolean_literals)]
 
 #[cfg(true)]
 fn foo() -> bool {

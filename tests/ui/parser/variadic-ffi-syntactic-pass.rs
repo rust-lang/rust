@@ -2,31 +2,31 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn f1_1(x: isize, ...) {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn f1_2(...) {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 extern "C" fn f2_1(x: isize, ...) {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 extern "C" fn f2_2(...) {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 extern "C" fn f2_3(..., x: isize) {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 extern fn f3_1(x: isize, ...) {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 extern fn f3_2(...) {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 extern fn f3_3(..., x: isize) {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 extern {
     fn e_f1(...);
     fn e_f2(..., x: isize);
@@ -34,7 +34,7 @@ extern {
 
 struct X;
 
-#[cfg(FALSE)]
+#[cfg(false)]
 impl X {
     fn i_f1(x: isize, ...) {}
     fn i_f2(...) {}
@@ -42,7 +42,7 @@ impl X {
     fn i_f4(..., x: isize, ...) {}
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 trait T {
     fn t_f1(x: isize, ...) {}
     fn t_f2(x: isize, ...);

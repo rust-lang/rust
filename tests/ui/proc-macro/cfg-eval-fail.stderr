@@ -1,7 +1,7 @@
 error: removing an expression is not supported in this position
   --> $DIR/cfg-eval-fail.rs:5:25
    |
-LL |     let _ = #[cfg_eval] #[cfg(FALSE)] 0;
+LL |     let _ = #[cfg_eval] #[cfg(false)] 0;
    |                         ^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error

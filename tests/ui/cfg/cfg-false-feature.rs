@@ -1,10 +1,10 @@
-// Features above `cfg(FALSE)` are in effect in a fully unconfigured crate (issue #104633).
+// Features above `cfg(false)` are in effect in a fully unconfigured crate (issue #104633).
 
 //@ check-pass
 //@ compile-flags: --crate-type lib
 
 #![feature(decl_macro)]
-#![cfg(FALSE)]
+#![cfg(false)]
 #![feature(box_patterns)]
 
 macro mac() {} // OK

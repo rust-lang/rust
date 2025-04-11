@@ -1,5 +1,5 @@
-PRINT-ATTR INPUT (DISPLAY): #[derive(Print)] struct AttributeDerive { #[cfg(FALSE)] field: u8, }
-PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[derive(Print)] struct AttributeDerive { #[cfg(FALSE)] field : u8, }
+PRINT-ATTR INPUT (DISPLAY): #[derive(Print)] struct AttributeDerive { #[cfg(false)] field: u8, }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[derive(Print)] struct AttributeDerive { #[cfg(false)] field : u8, }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -53,7 +53,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                         delimiter: Parenthesis,
                         stream: TokenStream [
                             Ident {
-                                ident: "FALSE",
+                                ident: "false",
                                 span: $DIR/attribute-after-derive.rs:17:11: 17:16 (#0),
                             },
                         ],
@@ -131,8 +131,8 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
         span: $DIR/attribute-after-derive.rs:23:24: 26:2 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): struct DeriveAttribute { #[cfg(FALSE)] field: u8, }
-PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): struct DeriveAttribute { #[cfg(FALSE)] field : u8, }
+PRINT-ATTR INPUT (DISPLAY): struct DeriveAttribute { #[cfg(false)] field: u8, }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): struct DeriveAttribute { #[cfg(false)] field : u8, }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -161,7 +161,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                         delimiter: Parenthesis,
                         stream: TokenStream [
                             Ident {
-                                ident: "FALSE",
+                                ident: "false",
                                 span: $DIR/attribute-after-derive.rs:24:11: 24:16 (#0),
                             },
                         ],

@@ -59,7 +59,7 @@ const _: () = sink! {
 
 // The invalid literals used to cause errors, but this was changed by #102944.
 // Except for `0b010.0f32`, because it's a lexer error.
-#[cfg(FALSE)]
+#[cfg(false)]
 fn configured_out() {
     "string"any_suffix; // OK
     10u123; // OK
