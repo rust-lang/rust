@@ -330,7 +330,7 @@ fn do_mir_borrowck<'tcx>(
     // will have a lifetime tied to the inference context.
     let mut body_owned = input_body.clone();
     let mut promoted = input_promoted.to_owned();
-    let free_regions = nll::replace_regions_in_mir(&infcx, &mut body_owned, &mut promoted);
+    let universal_regions = nll::replace_regions_in_mir(&infcx, &mut body_owned, &mut promoted);
     let body = &body_owned; // no further changes
 
     let location_table = PoloniusLocationTable::new(body);
@@ -355,7 +355,7 @@ fn do_mir_borrowck<'tcx>(
     } = nll::compute_regions(
         root_cx,
         &infcx,
-        free_regions,
+        universal_regions,
         body,
         &promoted,
         &location_table,
