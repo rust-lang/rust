@@ -1,0 +1,8 @@
+error: parameter defaults are not supported
+  --> $DIR/fn-with-default-expr.rs:1:15
+   |
+LL | fn foo(x: i32 = 1) {}
+   |               ^^^
+
+error: aborting due to 1 previous error
+
