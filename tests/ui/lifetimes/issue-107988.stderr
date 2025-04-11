@@ -2,9 +2,12 @@ error[E0261]: use of undeclared lifetime name `'tcx`
   --> $DIR/issue-107988.rs:7:52
    |
 LL | impl<T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
-   |      -                                             ^^^^ undeclared lifetime
-   |      |
-   |      help: consider introducing lifetime `'tcx` here: `'tcx,`
+   |                                                    ^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'tcx` here
+   |
+LL | impl<'tcx, T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
+   |      +++++
 
 error[E0261]: use of undeclared lifetime name `'tcx`
   --> $DIR/issue-107988.rs:7:30

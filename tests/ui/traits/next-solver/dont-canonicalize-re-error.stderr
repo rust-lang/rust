@@ -2,9 +2,12 @@ error[E0261]: use of undeclared lifetime name `'missing`
   --> $DIR/dont-canonicalize-re-error.rs:25:26
    |
 LL | impl<A: Sized> Constrain<'missing> for W<A> {}
-   |      -                   ^^^^^^^^ undeclared lifetime
-   |      |
-   |      help: consider introducing lifetime `'missing` here: `'missing,`
+   |                          ^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'missing` here
+   |
+LL | impl<'missing, A: Sized> Constrain<'missing> for W<A> {}
+   |      +++++++++
 
 error[E0119]: conflicting implementations of trait `Tr<'_>` for type `W<_>`
   --> $DIR/dont-canonicalize-re-error.rs:21:1
