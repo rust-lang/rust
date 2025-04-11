@@ -20,13 +20,11 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let typing_env = body.typing_env(tcx);
         let mut should_cleanup = false;
-        for i in 0..body.basic_blocks.len() {
-            let bbs = &*body.basic_blocks;
-            let bb_idx = BasicBlock::from_usize(i);
-            match bbs[bb_idx].terminator().kind {
+        for bb_idx in body.basic_blocks.indices() {
+            match &body.basic_blocks[bb_idx].terminator().kind {
                 TerminatorKind::SwitchInt {
-                    discr: ref _discr @ (Operand::Copy(_) | Operand::Move(_)),
-                    ref targets,
+                    discr: Operand::Copy(_) | Operand::Move(_),
+                    targets,
                     ..
                     // We require that the possible target blocks don't contain this block.
                 } if !targets.all_targets().contains(&bb_idx) => {}
@@ -66,9 +64,10 @@ trait SimplifyMatch<'tcx> {
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<()> {
         let bbs = &body.basic_blocks;
-        let (discr, targets) = match bbs[switch_bb_idx].terminator().kind {
-            TerminatorKind::SwitchInt { ref discr, ref targets, .. } => (discr, targets),
-            _ => unreachable!(),
+        let TerminatorKind::SwitchInt { discr, targets, .. } =
+            &bbs[switch_bb_idx].terminator().kind
+        else {
+            unreachable!();
         };
 
         let discr_ty = discr.ty(body.local_decls(), tcx);
