@@ -98,10 +98,10 @@ impl AssocItem {
 
     pub fn descr(&self) -> &'static str {
         match self.kind {
-            ty::AssocKind::Const => "const",
+            ty::AssocKind::Const => "associated const",
             ty::AssocKind::Fn if self.fn_has_self_parameter => "method",
             ty::AssocKind::Fn => "associated function",
-            ty::AssocKind::Type => "type",
+            ty::AssocKind::Type => "associated type",
         }
     }
 
@@ -155,6 +155,8 @@ impl AssocKind {
 impl std::fmt::Display for AssocKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            // FIXME: fails to distinguish between "associated function" and
+            // "method" because `has_self` isn't known here.
             AssocKind::Fn => write!(f, "method"),
             AssocKind::Const => write!(f, "associated const"),
             AssocKind::Type => write!(f, "associated type"),

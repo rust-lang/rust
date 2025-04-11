@@ -199,7 +199,7 @@ pub trait Iterator {
     ///
     /// The method does no guarding against overflows, so counting elements of
     /// an iterator with more than [`usize::MAX`] elements either produces the
-    /// wrong result or panics. If debug assertions are enabled, a panic is
+    /// wrong result or panics. If overflow checks are enabled, a panic is
     /// guaranteed.
     ///
     /// # Panics
@@ -931,7 +931,7 @@ pub trait Iterator {
     ///
     /// The method does no guarding against overflows, so enumerating more than
     /// [`usize::MAX`] elements either produces the wrong result or panics. If
-    /// debug assertions are enabled, a panic is guaranteed.
+    /// overflow checks are enabled, a panic is guaranteed.
     ///
     /// # Panics
     ///
@@ -2964,7 +2964,7 @@ pub trait Iterator {
     ///
     /// The method does no guarding against overflows, so if there are more
     /// than [`usize::MAX`] non-matching elements, it either produces the wrong
-    /// result or panics. If debug assertions are enabled, a panic is
+    /// result or panics. If overflow checks are enabled, a panic is
     /// guaranteed.
     ///
     /// # Panics
@@ -3516,7 +3516,7 @@ pub trait Iterator {
     /// # Panics
     ///
     /// When calling `sum()` and a primitive integer type is being returned, this
-    /// method will panic if the computation overflows and debug assertions are
+    /// method will panic if the computation overflows and overflow checks are
     /// enabled.
     ///
     /// # Examples
@@ -3550,7 +3550,7 @@ pub trait Iterator {
     /// # Panics
     ///
     /// When calling `product()` and a primitive integer type is being returned,
-    /// method will panic if the computation overflows and debug assertions are
+    /// method will panic if the computation overflows and overflow checks are
     /// enabled.
     ///
     /// # Examples

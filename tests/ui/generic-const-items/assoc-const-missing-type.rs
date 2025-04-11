@@ -14,7 +14,7 @@ impl Trait for () {
     //~| ERROR mismatched types
     const Q = "";
     //~^ ERROR missing type for `const` item
-    //~| ERROR lifetime parameters or bounds on const `Q` do not match the trait declaration
+    //~| ERROR lifetime parameters or bounds on associated const `Q` do not match the trait declaration
 }
 
 fn main() {}

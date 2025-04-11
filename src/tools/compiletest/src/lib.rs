@@ -431,6 +431,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
         target_cfgs: OnceLock::new(),
         builtin_cfg_names: OnceLock::new(),
+        supported_crate_types: OnceLock::new(),
 
         nocapture: matches.opt_present("no-capture"),
 

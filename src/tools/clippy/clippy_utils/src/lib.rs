@@ -3,6 +3,7 @@
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
+#![feature(macro_metavar_expr)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(let_chains)]
 #![feature(never_type)]
@@ -74,6 +75,7 @@ pub mod qualify_min_const_fn;
 pub mod source;
 pub mod str_utils;
 pub mod sugg;
+pub mod sym;
 pub mod ty;
 pub mod usage;
 pub mod visitors;
@@ -126,7 +128,7 @@ use rustc_middle::ty::{
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{InnerSpan, Span, sym};
+use rustc_span::{InnerSpan, Span};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};

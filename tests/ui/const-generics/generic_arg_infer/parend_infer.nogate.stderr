@@ -1,0 +1,53 @@
+error[E0658]: const arguments cannot yet be inferred with `_`
+  --> $DIR/parend_infer.rs:24:16
+   |
+LL |     let c: Foo<_> = Foo::<1>;
+   |                ^
+   |
+   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const arguments cannot yet be inferred with `_`
+  --> $DIR/parend_infer.rs:26:16
+   |
+LL |     let c: Foo<(_)> = Foo::<1>;
+   |                ^^^
+   |
+   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const arguments cannot yet be inferred with `_`
+  --> $DIR/parend_infer.rs:28:16
+   |
+LL |     let c: Foo<(((_)))> = Foo::<1>;
+   |                ^^^^^^^
+   |
+   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: using `_` for array lengths is unstable
+  --> $DIR/parend_infer.rs:17:17
+   |
+LL |     let b: [u8; (_)] = [1; (((((_)))))];
+   |                 ^^^
+   |
+   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: using `_` for array lengths is unstable
+  --> $DIR/parend_infer.rs:17:28
+   |
+LL |     let b: [u8; (_)] = [1; (((((_)))))];
+   |                            ^^^^^^^^^^^
+   |
+   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

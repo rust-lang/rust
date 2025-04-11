@@ -201,9 +201,9 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_symbol(&mut self, symbol: Symbol) {
-        // if symbol preinterned, emit tag and symbol index
-        if symbol.is_preinterned() {
-            self.opaque.emit_u8(SYMBOL_PREINTERNED);
+        // if symbol predefined, emit tag and symbol index
+        if symbol.is_predefined() {
+            self.opaque.emit_u8(SYMBOL_PREDEFINED);
             self.opaque.emit_u32(symbol.as_u32());
         } else {
             // otherwise write it as string or as offset to it
