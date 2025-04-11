@@ -575,4 +575,4 @@ with "user-facing" Rust alone. Indeed, one could say that this slightly abuses
 the term "UI" (*user* interface) and turns such UI tests from black-box tests
 into white-box ones. Use them carefully and sparingly.
 
-[compiler debugging]: ../compiler-debugging.md#rustc_test-attributes
+[compiler debugging]: ../compiler-debugging.md#rustc_-test-attributes
