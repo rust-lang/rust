@@ -76,7 +76,7 @@ LL |         #[collapse_debuginfo(yes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         _ => (),
-   |         ------- not a macro definition
+   |         -------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
   --> $DIR/collapse-debuginfo-invalid.rs:40:1
