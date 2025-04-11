@@ -1,3 +1,4 @@
+use crate::clone::TrivialClone;
 use crate::cmp::Ordering;
 use crate::marker::Unsize;
 use crate::mem::{MaybeUninit, SizedTypeProperties};
@@ -1582,6 +1583,10 @@ impl<T: ?Sized> Clone for NonNull<T> {
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> Copy for NonNull<T> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trivial_clone", issue = "none")]
+unsafe impl<T: ?Sized> TrivialClone for NonNull<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}

@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, MetaItem, Mutability};
+use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, MetaItem, Mutability, Safety};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
@@ -84,6 +84,8 @@ pub(crate) fn expand_deriving_partial_eq(
         methods: Vec::new(),
         associated_types: Vec::new(),
         is_const: false,
+        safety: Safety::Default,
+        document: true,
     };
     structural_trait_def.expand(cx, mitem, item, push);
 
@@ -110,6 +112,8 @@ pub(crate) fn expand_deriving_partial_eq(
         methods,
         associated_types: Vec::new(),
         is_const,
+        safety: Safety::Default,
+        document: true,
     };
     trait_def.expand(cx, mitem, item, push)
 }
