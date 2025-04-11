@@ -2,7 +2,7 @@
 // the reexported item whereas glob reexports do with the `doc_auto_cfg` feature.
 
 #![crate_name = "foo"]
-#![feature(doc_auto_cfg)]
+#![feature(doc_cfg)]
 
 //@ has 'foo/index.html'
 // There are two items.
