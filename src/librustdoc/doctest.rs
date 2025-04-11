@@ -219,11 +219,9 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
             let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
             let crate_attrs = tcx.hir_attrs(CRATE_HIR_ID);
             let opts = scrape_test_config(crate_name, crate_attrs, args_path);
-            let enable_per_target_ignores = options.enable_per_target_ignores;
 
             let hir_collector = HirCollector::new(
                 ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
-                enable_per_target_ignores,
                 tcx,
             );
             let tests = hir_collector.collect_crate();
@@ -782,10 +780,10 @@ fn run_test(
     let mut cmd;
 
     let output_file = make_maybe_absolute_path(output_file);
-    if let Some(tool) = &rustdoc_options.runtool {
+    if let Some(tool) = &rustdoc_options.test_runtool {
         let tool = make_maybe_absolute_path(tool.into());
         cmd = Command::new(tool);
-        cmd.args(&rustdoc_options.runtool_args);
+        cmd.args(&rustdoc_options.test_runtool_args);
         cmd.arg(&output_file);
     } else {
         cmd = Command::new(&output_file);
