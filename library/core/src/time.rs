@@ -328,12 +328,15 @@ impl Duration {
     #[inline]
     pub const fn from_nanos_u128(nanos: u128) -> Duration {
         const NANOS_PER_SEC: u128 = self::NANOS_PER_SEC as u128;
-        let secs: u64 = (nanos / NANOS_PER_SEC) as u64;
+        let secs: u128 = (nanos / NANOS_PER_SEC);
+        if (secs > u64::MAX.into()) {
+            panic!("overflow in duration in Duration::from_nanos_u128");
+        }
         let subsec_nanos = (nanos % NANOS_PER_SEC) as u32;
         // SAFETY: x % 1_000_000_000 < 1_000_000_000
         let subsec_nanos = unsafe { Nanoseconds::new_unchecked(subsec_nanos) };
 
-        Duration { secs, nanos: subsec_nanos }
+        Duration { secs: secs as u64, nanos: subsec_nanos }
     }
 
     /// Creates a new `Duration` from the specified number of weeks.
