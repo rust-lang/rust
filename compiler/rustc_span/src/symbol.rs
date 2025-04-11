@@ -454,6 +454,7 @@ symbols! {
         and_then,
         anon,
         anon_adt,
+        anon_assoc,
         anonymous_lifetime_in_impl_trait,
         any,
         append_const_msg,
