@@ -329,7 +329,7 @@ impl Duration {
     pub const fn from_nanos_u128(nanos: u128) -> Duration {
         const NANOS_PER_SEC: u128 = self::NANOS_PER_SEC as u128;
         let secs: u128 = nanos / NANOS_PER_SEC;
-        if (secs > u64::MAX.into()) {
+        if secs > u64::MAX as u128 {
             panic!("overflow in duration in Duration::from_nanos_u128");
         }
         let subsec_nanos = (nanos % NANOS_PER_SEC) as u32;
