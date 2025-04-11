@@ -103,15 +103,6 @@ fn coerce_mutbls<'tcx>(
     if from_mutbl >= to_mutbl { Ok(()) } else { Err(TypeError::Mutability) }
 }
 
-/// Do not require any adjustments, i.e. coerce `x -> x`.
-fn identity(_: Ty<'_>) -> Vec<Adjustment<'_>> {
-    vec![]
-}
-
-fn simple<'tcx>(kind: Adjust) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>> {
-    move |target| vec![Adjustment { kind, target }]
-}
-
 /// This always returns `Ok(...)`.
 fn success<'tcx>(
     adj: Vec<Adjustment<'tcx>>,
@@ -131,7 +122,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Coerce { fcx, cause, allow_two_phase, use_lub: false, coerce_never }
     }
 
-    fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
+    fn unify_raw(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
         self.commit_if_ok(|_| {
             let at = self.at(&self.cause, self.fcx.param_env);
@@ -161,13 +152,30 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         })
     }
 
+    /// Unify two types (using sub or lub).
+    fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        self.unify_raw(a, b)
+            .and_then(|InferOk { value: ty, obligations }| success(vec![], ty, obligations))
+    }
+
     /// Unify two types (using sub or lub) and produce a specific coercion.
-    fn unify_and<F>(&self, a: Ty<'tcx>, b: Ty<'tcx>, f: F) -> CoerceResult<'tcx>
-    where
-        F: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
-    {
-        self.unify(a, b)
-            .and_then(|InferOk { value: ty, obligations }| success(f(ty), ty, obligations))
+    fn unify_and(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        adjustments: impl IntoIterator<Item = Adjustment<'tcx>>,
+        final_adjustment: Adjust,
+    ) -> CoerceResult<'tcx> {
+        self.unify_raw(a, b).and_then(|InferOk { value: ty, obligations }| {
+            success(
+                adjustments
+                    .into_iter()
+                    .chain(std::iter::once(Adjustment { target: ty, kind: final_adjustment }))
+                    .collect(),
+                ty,
+                obligations,
+            )
+        })
     }
 
     #[instrument(skip(self))]
@@ -180,10 +188,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Coercing from `!` to any type is allowed:
         if a.is_never() {
             if self.coerce_never {
-                return success(simple(Adjust::NeverToAny)(b), b, PredicateObligations::new());
+                return success(
+                    vec![Adjustment { kind: Adjust::NeverToAny, target: b }],
+                    b,
+                    PredicateObligations::new(),
+                );
             } else {
                 // Otherwise the only coercion we can do is unification.
-                return self.unify_and(a, b, identity);
+                return self.unify(a, b);
             }
         }
 
@@ -191,7 +203,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // we have no information about the source type. This will always
         // ultimately fall back to some form of subtyping.
         if a.is_ty_var() {
-            return self.coerce_from_inference_variable(a, b, identity);
+            return self.coerce_from_inference_variable(a, b);
         }
 
         // Consider coercing the subtype to a DST
@@ -247,7 +259,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::FnPtr(a_sig_tys, a_hdr) => {
                 // We permit coercion of fn pointers to drop the
                 // unsafe qualifier.
-                self.coerce_from_fn_pointer(a, a_sig_tys.with(a_hdr), b)
+                self.coerce_from_fn_pointer(a_sig_tys.with(a_hdr), b)
             }
             ty::Closure(closure_def_id_a, args_a) => {
                 // Non-capturing closures are coercible to
@@ -257,7 +269,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             _ => {
                 // Otherwise, just use unification rules.
-                self.unify_and(a, b, identity)
+                self.unify(a, b)
             }
         }
     }
@@ -265,12 +277,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     /// Coercing *from* an inference variable. In this case, we have no information
     /// about the source type, so we can't really do a true coercion and we always
     /// fall back to subtyping (`unify_and`).
-    fn coerce_from_inference_variable(
-        &self,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        make_adjustments: impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
-    ) -> CoerceResult<'tcx> {
+    fn coerce_from_inference_variable(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         debug!("coerce_from_inference_variable(a={:?}, b={:?})", a, b);
         assert!(a.is_ty_var() && self.shallow_resolve(a) == a);
         assert!(self.shallow_resolve(b) == b);
@@ -298,12 +305,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 "coerce_from_inference_variable: two inference variables, target_ty={:?}, obligations={:?}",
                 target_ty, obligations
             );
-            let adjustments = make_adjustments(target_ty);
-            InferResult::Ok(InferOk { value: (adjustments, target_ty), obligations })
+            success(vec![], target_ty, obligations)
         } else {
             // One unresolved type variable: just apply subtyping, we may be able
             // to do something useful.
-            self.unify_and(a, b, make_adjustments)
+            self.unify(a, b)
         }
     }
 
@@ -331,7 +337,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 coerce_mutbls(mt_a.mutbl, mutbl_b)?;
                 (r_a, mt_a)
             }
-            _ => return self.unify_and(a, b, identity),
+            _ => return self.unify(a, b),
         };
 
         let span = self.cause.span;
@@ -437,7 +443,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 referent_ty,
                 mutbl_b, // [1] above
             );
-            match self.unify(derefd_ty_a, b) {
+            match self.unify_raw(derefd_ty_a, b) {
                 Ok(ok) => {
                     found = Some(ok);
                     break;
@@ -579,13 +585,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // We only have the latter, so we use an inference variable
         // for the former and let type inference do the rest.
         let coerce_target = self.next_ty_var(self.cause.span);
-        let mut coercion = self.unify_and(coerce_target, target, |target| {
-            let unsize = Adjustment { kind: Adjust::Pointer(PointerCoercion::Unsize), target };
-            match reborrow {
-                None => vec![unsize],
-                Some((ref deref, ref autoref)) => vec![deref.clone(), autoref.clone(), unsize],
-            }
-        })?;
+
+        let mut coercion = self.unify_and(
+            coerce_target,
+            target,
+            reborrow.into_iter().flat_map(|(deref, autoref)| [deref, autoref]),
+            Adjust::Pointer(PointerCoercion::Unsize),
+        )?;
 
         let mut selcx = traits::SelectionContext::new(self);
 
@@ -708,7 +714,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             && let ty::Dynamic(b_data, _, ty::DynStar) = b.kind()
             && a_data.principal_def_id() == b_data.principal_def_id()
         {
-            return self.unify_and(a, b, |_| vec![]);
+            return self.unify(a, b);
         }
 
         // Check the obligations of the cast -- for example, when casting
@@ -808,23 +814,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
         // add the adjustments.
-        self.unify_and(a, b, |_inner_ty| {
-            vec![Adjustment { kind: Adjust::ReborrowPin(mut_b), target: b }]
-        })
+        self.unify_and(a, b, [], Adjust::ReborrowPin(mut_b))
     }
 
-    fn coerce_from_safe_fn<F, G>(
+    fn coerce_from_safe_fn(
         &self,
-        a: Ty<'tcx>,
         fn_ty_a: ty::PolyFnSig<'tcx>,
         b: Ty<'tcx>,
-        to_unsafe: F,
-        normal: G,
-    ) -> CoerceResult<'tcx>
-    where
-        F: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
-        G: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
-    {
+        adjustment: Option<Adjust>,
+    ) -> CoerceResult<'tcx> {
         self.commit_if_ok(|snapshot| {
             let outer_universe = self.infcx.universe();
 
@@ -833,9 +831,19 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 && hdr_b.safety.is_unsafe()
             {
                 let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
-                self.unify_and(unsafe_a, b, to_unsafe)
+                self.unify_and(
+                    unsafe_a,
+                    b,
+                    adjustment
+                        .map(|kind| Adjustment { kind, target: Ty::new_fn_ptr(self.tcx, fn_ty_a) }),
+                    Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
+                )
             } else {
-                self.unify_and(a, b, normal)
+                let a = Ty::new_fn_ptr(self.tcx, fn_ty_a);
+                match adjustment {
+                    Some(adjust) => self.unify_and(a, b, [], adjust),
+                    None => self.unify(a, b),
+                }
             };
 
             // FIXME(#73154): This is a hack. Currently LUB can generate
@@ -852,7 +860,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
     fn coerce_from_fn_pointer(
         &self,
-        a: Ty<'tcx>,
         fn_ty_a: ty::PolyFnSig<'tcx>,
         b: Ty<'tcx>,
     ) -> CoerceResult<'tcx> {
@@ -861,15 +868,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         //!
 
         let b = self.shallow_resolve(b);
-        debug!("coerce_from_fn_pointer(a={:?}, b={:?})", a, b);
+        debug!(?fn_ty_a, ?b, "coerce_from_fn_pointer");
 
-        self.coerce_from_safe_fn(
-            a,
-            fn_ty_a,
-            b,
-            simple(Adjust::Pointer(PointerCoercion::UnsafeFnPointer)),
-            identity,
-        )
+        self.coerce_from_safe_fn(fn_ty_a, b, None)
     }
 
     fn coerce_from_fn_item(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
@@ -916,30 +917,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     self.at(&self.cause, self.param_env).normalize(a_sig);
                 obligations.extend(o1);
 
-                let a_fn_pointer = Ty::new_fn_ptr(self.tcx, a_sig);
                 let InferOk { value, obligations: o2 } = self.coerce_from_safe_fn(
-                    a_fn_pointer,
                     a_sig,
                     b,
-                    |unsafe_ty| {
-                        vec![
-                            Adjustment {
-                                kind: Adjust::Pointer(PointerCoercion::ReifyFnPointer),
-                                target: a_fn_pointer,
-                            },
-                            Adjustment {
-                                kind: Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
-                                target: unsafe_ty,
-                            },
-                        ]
-                    },
-                    simple(Adjust::Pointer(PointerCoercion::ReifyFnPointer)),
+                    Some(Adjust::Pointer(PointerCoercion::ReifyFnPointer)),
                 )?;
 
                 obligations.extend(o2);
                 Ok(InferOk { value, obligations })
             }
-            _ => self.unify_and(a, b, identity),
+            _ => self.unify(a, b),
         }
     }
 
@@ -983,10 +970,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 self.unify_and(
                     pointer_ty,
                     b,
-                    simple(Adjust::Pointer(PointerCoercion::ClosureFnPointer(safety))),
+                    [],
+                    Adjust::Pointer(PointerCoercion::ClosureFnPointer(safety)),
                 )
             }
-            _ => self.unify_and(a, b, identity),
+            _ => self.unify(a, b),
         }
     }
 
@@ -1001,7 +989,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let (is_ref, mt_a) = match *a.kind() {
             ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
             ty::RawPtr(ty, mutbl) => (false, ty::TypeAndMut { ty, mutbl }),
-            _ => return self.unify_and(a, b, identity),
+            _ => return self.unify(a, b),
         };
         coerce_mutbls(mt_a.mutbl, mutbl_b)?;
 
@@ -1011,16 +999,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // representation, we still register an Adjust::DerefRef so that
         // regionck knows that the region for `a` must be valid here.
         if is_ref {
-            self.unify_and(a_raw, b, |target| {
-                vec![
-                    Adjustment { kind: Adjust::Deref(None), target: mt_a.ty },
-                    Adjustment { kind: Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)), target },
-                ]
-            })
+            self.unify_and(
+                a_raw,
+                b,
+                [Adjustment { kind: Adjust::Deref(None), target: mt_a.ty }],
+                Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)),
+            )
         } else if mt_a.mutbl != mutbl_b {
-            self.unify_and(a_raw, b, simple(Adjust::Pointer(PointerCoercion::MutToConstPointer)))
+            self.unify_and(a_raw, b, [], Adjust::Pointer(PointerCoercion::MutToConstPointer))
         } else {
-            self.unify_and(a_raw, b, identity)
+            self.unify(a_raw, b)
         }
     }
 }
@@ -1118,9 +1106,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
         // We don't ever need two-phase here since we throw out the result of the coercion.
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No, true);
-        coerce
-            .autoderef(DUMMY_SP, expr_ty)
-            .find_map(|(ty, steps)| self.probe(|_| coerce.unify(ty, target)).ok().map(|_| steps))
+        coerce.autoderef(DUMMY_SP, expr_ty).find_map(|(ty, steps)| {
+            self.probe(|_| coerce.unify_raw(ty, target)).ok().map(|_| steps)
+        })
     }
 
     /// Given a type, this function will calculate and return the type given
