@@ -30,7 +30,8 @@
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
 #![allow(incomplete_features)]
-#[macro_use]
+#[prelude_import]
+use std::prelude::rust_2024::*;
 extern crate std;
 #[prelude_import]
 use std::prelude::rust_2024::*;

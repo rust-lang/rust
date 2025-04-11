@@ -68,7 +68,6 @@
 
 // Allow testing this library
 extern crate alloc as realalloc;
-#[macro_use]
 extern crate std;
 #[cfg(test)]
 extern crate test;

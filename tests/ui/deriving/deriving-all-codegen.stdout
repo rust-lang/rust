@@ -17,8 +17,8 @@
 #![crate_type = "lib"]
 #![allow(dead_code)]
 #![allow(deprecated)]
-#![feature(derive_from)]
-#[macro_use]
+#[prelude_import]
+use std::prelude::rust_2021::*;
 extern crate std;
 #[prelude_import]
 use std::prelude::rust_2021::*;
