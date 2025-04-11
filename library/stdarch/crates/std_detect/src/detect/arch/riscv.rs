@@ -44,33 +44,30 @@ features! {
     /// * Zifencei: `"zifencei"`
     /// * Zihintpause: `"zihintpause"`
     /// * Zihpm: `"zihpm"`
+    /// * Zfh: `"zfh"`
+    ///   * Zfhmin: `"zfhmin"`
+    /// * Zfinx: `"zfinx"`
+    /// * Zdinx: `"zdinx"`
+    /// * Zhinx: `"zhinx"`
+    ///   * Zhinxmin: `"zhinxmin"`
+    /// * Zbkb: `"zbkb"`
+    /// * Zbkc: `"zbkc"`
+    /// * Zbkx: `"zbkx"`
     /// * Zk: `"zk"`
-    ///   * Zbkb: `"zbkb"`
-    ///   * Zbkc: `"zbkc"`
-    ///   * Zbkx: `"zbkx"`
-    ///   * Zkn: `"zkn"`
-    ///     * Zknd: `"zknd"`
-    ///     * Zkne: `"zkne"`
-    ///     * Zknh: `"zknh"`
-    ///   * Zkr: `"zkr"`
-    ///   * Zks: `"zks"`
-    ///     * Zksed: `"zksed"`
-    ///     * Zksh: `"zksh"`
-    ///   * Zkt: `"zkt"`
+    /// * Zkn: `"zkn"`
+    ///   * Zknd: `"zknd"`
+    ///   * Zkne: `"zkne"`
+    ///   * Zknh: `"zknh"`
+    /// * Zkr: `"zkr"`
+    /// * Zks: `"zks"`
+    ///   * Zksed: `"zksed"`
+    ///   * Zksh: `"zksh"`
+    /// * Zkt: `"zkt"`
+    /// * Ztso: `"ztso"`
     ///
     /// There's also bases and extensions marked as standard instruction set,
     /// but they are in frozen or draft state. These instruction sets are also
     /// reserved by this macro and can be detected in the future platforms.
-    ///
-    /// Frozen RISC-V instruction sets:
-    ///
-    /// * Zfh: `"zfh"`
-    /// * Zfhmin: `"zfhmin"`
-    /// * Zfinx: `"zfinx"`
-    /// * Zdinx: `"zdinx"`
-    /// * Zhinx: `"zhinx"`
-    /// * Zhinxmin: `"zhinxmin"`
-    /// * Ztso: `"ztso"`
     ///
     /// Draft RISC-V instruction sets:
     ///
@@ -81,11 +78,11 @@ features! {
     ///
     /// Defined by Privileged Specification:
     ///
-    /// * Supervisor: `"s"`
+    /// * *Supervisor-Level ISA* (not "S" extension): `"s"`
+    /// * H (hypervisor): `"h"`
     /// * Svnapot: `"svnapot"`
     /// * Svpbmt: `"svpbmt"`
     /// * Svinval: `"svinval"`
-    /// * Hypervisor: `"h"`
     ///
     /// [ISA manual]: https://github.com/riscv/riscv-isa-manual/
     #[stable(feature = "riscv_ratified", since = "1.78.0")]
