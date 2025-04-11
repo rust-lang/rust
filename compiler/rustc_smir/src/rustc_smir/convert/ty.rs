@@ -1,7 +1,7 @@
 //! Conversion of internal Rust compiler `ty` items to stable ones.
 
 use rustc_middle::ty::Ty;
-use rustc_middle::{mir, ty};
+use rustc_middle::{bug, mir, ty};
 use stable_mir::ty::{
     AdtKind, FloatTy, GenericArgs, GenericParamDef, IntTy, Region, RigidTy, TyKind, UintTy,
 };
@@ -245,10 +245,12 @@ impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
 
         match self {
             ty::BoundRegionKind::Anon => BoundRegionKind::BrAnon,
-            ty::BoundRegionKind::Named(def_id, symbol) => {
-                BoundRegionKind::BrNamed(tables.br_named_def(*def_id), symbol.to_string())
-            }
+            ty::BoundRegionKind::Named(def_id) => BoundRegionKind::BrNamed(
+                tables.br_named_def(*def_id),
+                tables.tcx.item_name(*def_id).to_string(),
+            ),
             ty::BoundRegionKind::ClosureEnv => BoundRegionKind::BrEnv,
+            ty::BoundRegionKind::NamedAnon(_) => bug!("only used for pretty printing"),
         }
     }
 }
