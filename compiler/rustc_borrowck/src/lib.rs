@@ -446,9 +446,9 @@ fn do_mir_borrowck<'tcx>(
         local_names,
         region_names: RefCell::default(),
         next_region_name: RefCell::new(1),
-        polonius_output,
         move_errors: Vec::new(),
         diags_buffer,
+        polonius_output: polonius_output.as_deref(),
         polonius_diagnostics: polonius_diagnostics.as_ref(),
     };
 
@@ -505,7 +505,6 @@ fn do_mir_borrowck<'tcx>(
     };
 
     let body_with_facts = if consumer_options.is_some() {
-        let output_facts = mbcx.polonius_output;
         Some(Box::new(BodyWithBorrowckFacts {
             body: body_owned,
             promoted,
@@ -513,7 +512,7 @@ fn do_mir_borrowck<'tcx>(
             region_inference_context: regioncx,
             location_table: polonius_input.as_ref().map(|_| location_table),
             input_facts: polonius_input,
-            output_facts,
+            output_facts: polonius_output,
         }))
     } else {
         None
@@ -700,12 +699,11 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// The counter for generating new region names.
     next_region_name: RefCell<usize>,
 
-    /// Results of Polonius analysis.
-    polonius_output: Option<Box<PoloniusOutput>>,
-
     diags_buffer: &'a mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 
+    /// Results of Polonius analysis.
+    polonius_output: Option<&'a PoloniusOutput>,
     /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics.
     polonius_diagnostics: Option<&'a PoloniusDiagnosticsContext>,
 }
