@@ -439,6 +439,9 @@ language_item_table! {
     DefaultTrait3,           sym::default_trait3,      default_trait3_trait,       Target::Trait,          GenericRequirement::None;
     DefaultTrait2,           sym::default_trait2,      default_trait2_trait,       Target::Trait,          GenericRequirement::None;
     DefaultTrait1,           sym::default_trait1,      default_trait1_trait,       Target::Trait,          GenericRequirement::None;
+
+    // Used to fallback `{float}` to `f32` when `f32: From<{float}>`
+    From,                    sym::From,                from_trait,                 Target::Trait,          GenericRequirement::Exact(1);
 }
 
 /// The requirement imposed on the generics of a lang item
