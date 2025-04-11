@@ -1,13 +1,9 @@
-#![allow(dead_code)]
-#![unstable(feature = "process_internals", issue = "none")]
-
 use crate::collections::BTreeMap;
 use crate::ffi::{OsStr, OsString};
-use crate::sys::pipe::read2;
-use crate::sys::process::{EnvKey, ExitStatus, Process, StdioPipes};
-use crate::{env, fmt, io};
+use crate::sys::process::EnvKey;
+use crate::{env, fmt};
 
-// Stores a set of changes to an environment
+/// Stores a set of changes to an environment
 #[derive(Clone, Default)]
 pub struct CommandEnv {
     clear: bool,
@@ -92,30 +88,23 @@ impl CommandEnv {
     }
 }
 
-/// An iterator over the command environment variables.
-///
-/// This struct is created by
-/// [`Command::get_envs`][crate::process::Command::get_envs]. See its
-/// documentation for more.
-#[must_use = "iterators are lazy and do nothing unless consumed"]
-#[stable(feature = "command_access", since = "1.57.0")]
 #[derive(Debug)]
 pub struct CommandEnvs<'a> {
     iter: crate::collections::btree_map::Iter<'a, EnvKey, Option<OsString>>,
 }
 
-#[stable(feature = "command_access", since = "1.57.0")]
 impl<'a> Iterator for CommandEnvs<'a> {
     type Item = (&'a OsStr, Option<&'a OsStr>);
+
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next().map(|(key, value)| (key.as_ref(), value.as_deref()))
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
 }
 
-#[stable(feature = "command_access", since = "1.57.0")]
 impl<'a> ExactSizeIterator for CommandEnvs<'a> {
     fn len(&self) -> usize {
         self.iter.len()
@@ -123,31 +112,4 @@ impl<'a> ExactSizeIterator for CommandEnvs<'a> {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
-}
-
-pub fn wait_with_output(
-    mut process: Process,
-    mut pipes: StdioPipes,
-) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
-    drop(pipes.stdin.take());
-
-    let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
-    match (pipes.stdout.take(), pipes.stderr.take()) {
-        (None, None) => {}
-        (Some(out), None) => {
-            let res = out.read_to_end(&mut stdout);
-            res.unwrap();
-        }
-        (None, Some(err)) => {
-            let res = err.read_to_end(&mut stderr);
-            res.unwrap();
-        }
-        (Some(out), Some(err)) => {
-            let res = read2(out, &mut stdout, err, &mut stderr);
-            res.unwrap();
-        }
-    }
-
-    let status = process.wait()?;
-    Ok((status, stdout, stderr))
 }

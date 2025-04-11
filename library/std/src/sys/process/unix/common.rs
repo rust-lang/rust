@@ -12,7 +12,7 @@ use crate::sys::fs::File;
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
 use crate::sys::pipe::{self, AnonPipe};
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
+use crate::sys::process::env::{CommandEnv, CommandEnvs};
 use crate::sys_common::{FromInner, IntoInner};
 use crate::{fmt, io, ptr};
 
