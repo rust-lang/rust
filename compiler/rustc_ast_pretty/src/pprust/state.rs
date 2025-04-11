@@ -221,6 +221,7 @@ pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn + 'a),
+    is_sdylib_interface: bool,
 }
 
 const INDENT_UNIT: isize = 4;
@@ -237,9 +238,38 @@ pub fn print_crate<'a>(
     edition: Edition,
     g: &AttrIdGenerator,
 ) -> String {
-    let mut s =
-        State { s: pp::Printer::new(), comments: Some(Comments::new(sm, filename, input)), ann };
+    let mut s = State {
+        s: pp::Printer::new(),
+        comments: Some(Comments::new(sm, filename, input)),
+        ann,
+        is_sdylib_interface: false,
+    };
 
+    print_crate_inner(&mut s, krate, is_expanded, edition, g);
+
+    s.ann.post(&mut s, AnnNode::Crate(krate));
+    s.s.eof()
+}
+
+pub fn print_crate_as_interface(
+    krate: &ast::Crate,
+    edition: Edition,
+    g: &AttrIdGenerator,
+) -> String {
+    let mut s =
+        State { s: pp::Printer::new(), comments: None, ann: &NoAnn, is_sdylib_interface: true };
+
+    print_crate_inner(&mut s, krate, false, edition, g);
+    s.s.eof()
+}
+
+fn print_crate_inner<'a>(
+    s: &mut State<'a>,
+    krate: &ast::Crate,
+    is_expanded: bool,
+    edition: Edition,
+    g: &AttrIdGenerator,
+) {
     if is_expanded && !krate.attrs.iter().any(|attr| attr.has_name(sym::no_core)) {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
@@ -277,8 +307,6 @@ pub fn print_crate<'a>(
         s.print_item(item);
     }
     s.print_remaining_comments();
-    s.ann.post(&mut s, AnnNode::Crate(krate));
-    s.s.eof()
 }
 
 /// Should two consecutive tokens be printed with a space between them?
@@ -1093,7 +1121,7 @@ impl<'a> PrintState<'a> for State<'a> {
 
 impl<'a> State<'a> {
     pub fn new() -> State<'a> {
-        State { s: pp::Printer::new(), comments: None, ann: &NoAnn }
+        State { s: pp::Printer::new(), comments: None, ann: &NoAnn, is_sdylib_interface: false }
     }
 
     fn commasep_cmnt<T, F, G>(&mut self, b: Breaks, elts: &[T], mut op: F, mut get_span: G)
