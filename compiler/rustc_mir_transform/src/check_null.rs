@@ -4,7 +4,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::Session;
 
-use crate::check_pointers::{BorrowCheckMode, PointerCheck, check_pointers};
+use crate::check_pointers::{BorrowedFieldProjectionMode, PointerCheck, check_pointers};
 
 pub(super) struct CheckNull;
 
@@ -14,7 +14,13 @@ impl<'tcx> crate::MirPass<'tcx> for CheckNull {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        check_pointers(tcx, body, &[], insert_null_check, BorrowCheckMode::IncludeBorrows);
+        check_pointers(
+            tcx,
+            body,
+            &[],
+            insert_null_check,
+            BorrowedFieldProjectionMode::NoFollowProjections,
+        );
     }
 
     fn is_required(&self) -> bool {
