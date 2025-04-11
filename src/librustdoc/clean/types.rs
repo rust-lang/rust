@@ -926,7 +926,7 @@ pub(crate) fn hir_attr_lists<'a, I: IntoIterator<Item = &'a hir::Attribute>>(
 pub(crate) struct CfgInfo {
     hidden_cfg: FxHashSet<Cfg>,
     current_cfg: Cfg,
-    doc_auto_cfg_active: bool,
+    auto_cfg_active: bool,
     parent_is_doc_cfg: bool,
 }
 
@@ -941,7 +941,7 @@ impl Default for CfgInfo {
             .into_iter()
             .collect(),
             current_cfg: Cfg::True,
-            doc_auto_cfg_active: true,
+            auto_cfg_active: true,
             parent_is_doc_cfg: false,
         }
     }
@@ -1058,7 +1058,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                 match &attr.kind {
                     MetaItemKind::Word => {
                         if let Some(first_change) = changed_auto_active_status {
-                            if !cfg_info.doc_auto_cfg_active {
+                            if !cfg_info.auto_cfg_active {
                                 tcx.sess.dcx().struct_span_err(
                                     vec![first_change, attr.span],
                                     "`auto_cfg` was disabled and enabled more than once on the same item",
@@ -1068,12 +1068,12 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                         } else {
                             changed_auto_active_status = Some(attr.span);
                         }
-                        cfg_info.doc_auto_cfg_active = true;
+                        cfg_info.auto_cfg_active = true;
                     }
                     MetaItemKind::NameValue(lit) => {
                         if let LitKind::Bool(value) = lit.kind {
                             if let Some(first_change) = changed_auto_active_status {
-                                if cfg_info.doc_auto_cfg_active != value {
+                                if cfg_info.auto_cfg_active != value {
                                     tcx.sess.dcx().struct_span_err(
                                         vec![first_change, attr.span],
                                         "`auto_cfg` was disabled and enabled more than once on the same item",
@@ -1083,12 +1083,12 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                             } else {
                                 changed_auto_active_status = Some(attr.span);
                             }
-                            cfg_info.doc_auto_cfg_active = value;
+                            cfg_info.auto_cfg_active = value;
                         }
                     }
                     MetaItemKind::List(sub_attrs) => {
                         if let Some(first_change) = changed_auto_active_status {
-                            if !cfg_info.doc_auto_cfg_active {
+                            if !cfg_info.auto_cfg_active {
                                 tcx.sess.dcx().struct_span_err(
                                     vec![first_change, attr.span],
                                     "`auto_cfg` was disabled and enabled more than once on the same item",
@@ -1099,7 +1099,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                             changed_auto_active_status = Some(attr.span);
                         }
                         // Whatever happens next, the feature is enabled again.
-                        cfg_info.doc_auto_cfg_active = true;
+                        cfg_info.auto_cfg_active = true;
                         for sub_attr in sub_attrs.iter() {
                             if let Some(ident) = sub_attr.ident()
                                 && (ident.name == sym::show || ident.name == sym::hide)
@@ -1157,7 +1157,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
 
     // If `doc(auto_cfg)` feature is disabled and `doc(cfg())` wasn't used, there is nothing
     // to be done here.
-    if !cfg_info.doc_auto_cfg_active && !cfg_info.parent_is_doc_cfg {
+    if !cfg_info.auto_cfg_active && !cfg_info.parent_is_doc_cfg {
         None
     } else if cfg_info.parent_is_doc_cfg {
         if cfg_info.current_cfg == Cfg::True {
