@@ -640,8 +640,11 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         let metadata_cgu_name =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
         tcx.sess.time("write_compressed_metadata", || {
-            let file_name =
-                tcx.output_filenames(()).temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
+            let file_name = tcx.output_filenames(()).temp_path_for_cgu(
+                OutputType::Metadata,
+                &metadata_cgu_name,
+                tcx.sess.invocation_temp.as_deref(),
+            );
             let data = create_compressed_metadata_file(
                 tcx.sess,
                 &metadata,

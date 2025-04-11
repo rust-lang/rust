@@ -4444,6 +4444,7 @@ dependencies = [
  "bitflags",
  "getopts",
  "libc",
+ "rand 0.9.0",
  "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",
