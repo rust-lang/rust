@@ -255,7 +255,7 @@ pub(crate) fn handle_run_test(
                         }
                     })
                     .collect_vec(),
-                None => all_test_targets(cargo).into_iter().map(|target| (target, None)).collect(),
+                None => all_test_targets(cargo).map(|target| (target, None)).collect(),
             };
 
             for (target, path) in tests {
