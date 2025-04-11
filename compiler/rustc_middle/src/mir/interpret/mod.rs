@@ -104,7 +104,6 @@ enum AllocDiscriminant {
     VTable,
     Static,
     Type,
-    PartialHash,
 }
 
 pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<'tcx>>(
@@ -129,15 +128,11 @@ pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<'tcx>>(
             ty.encode(encoder);
             poly_trait_ref.encode(encoder);
         }
-        GlobalAlloc::Type(ty) => {
+        GlobalAlloc::Type { ty, segment } => {
             trace!("encoding {alloc_id:?} with {ty:#?}");
             AllocDiscriminant::Type.encode(encoder);
             ty.encode(encoder);
-        }
-        GlobalAlloc::PartialHash(ty) => {
-            trace!("encoding {alloc_id:?} with {ty:#?}");
-            AllocDiscriminant::PartialHash.encode(encoder);
-            ty.encode(encoder);
+            segment.encode(encoder);
         }
         GlobalAlloc::Static(did) => {
             assert!(!tcx.is_thread_local_static(did));
@@ -243,14 +238,9 @@ impl<'s> AllocDecodingSession<'s> {
             AllocDiscriminant::Type => {
                 trace!("creating typeid alloc ID");
                 let ty = Decodable::decode(decoder);
-                trace!("decoded typid: {ty:?}");
-                decoder.interner().reserve_and_set_type_id_alloc(ty)
-            }
-            AllocDiscriminant::PartialHash => {
-                trace!("creating typeid alloc ID");
-                let ty = Decodable::decode(decoder);
-                trace!("decoded typid: {ty:?}");
-                decoder.interner().reserve_and_set_type_id_partial_hash(ty)
+                let segment = Decodable::decode(decoder);
+                trace!("decoded typid: {ty:?} ({segment})");
+                decoder.interner().reserve_and_set_type_id_alloc(ty, segment)
             }
             AllocDiscriminant::Static => {
                 trace!("creating extern static alloc ID");
@@ -282,10 +272,9 @@ pub enum GlobalAlloc<'tcx> {
     Static(DefId),
     /// The alloc ID points to memory.
     Memory(ConstAllocation<'tcx>),
-    /// A pointer to be stored within a TypeId pointing to the full hash.
-    Type(Ty<'tcx>),
-    /// A partial type hash (the first `size_of<usize>()` bytes of the hash).
-    PartialHash(Ty<'tcx>),
+    /// A pointer-sized segment of a type id. On 64 bit systems, the 128 bit type id
+    /// is split into two segments, on 32 bit systems there are 4 segments, and so on.
+    Type { ty: Ty<'tcx>, segment: u8 },
 }
 
 impl<'tcx> GlobalAlloc<'tcx> {
@@ -324,8 +313,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
     pub fn address_space(&self, cx: &impl HasDataLayout) -> AddressSpace {
         match self {
             GlobalAlloc::Function { .. } => cx.data_layout().instruction_address_space,
-            GlobalAlloc::Type(_)
-            | GlobalAlloc::PartialHash(_)
+            GlobalAlloc::Type { .. }
             | GlobalAlloc::Static(..)
             | GlobalAlloc::Memory(..)
             | GlobalAlloc::VTable(..) => AddressSpace::DATA,
@@ -364,10 +352,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
                 }
             }
             GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
-            GlobalAlloc::PartialHash(_)
-            | GlobalAlloc::Type(_)
-            | GlobalAlloc::Function { .. }
-            | GlobalAlloc::VTable(..) => {
+            GlobalAlloc::Type { .. } | GlobalAlloc::Function { .. } | GlobalAlloc::VTable(..) => {
                 // These are immutable.
                 Mutability::Not
             }
@@ -415,8 +400,8 @@ impl<'tcx> GlobalAlloc<'tcx> {
                 // No data to be accessed here. But vtables are pointer-aligned.
                 (Size::ZERO, tcx.data_layout.pointer_align.abi)
             }
-            GlobalAlloc::Type(_) => (Size::from_bytes(16), Align::ONE),
-            GlobalAlloc::PartialHash(_) => (Size::ZERO, Align::ONE),
+            // Fake allocation, there's nothing to access here
+            GlobalAlloc::Type { .. } => (Size::ZERO, Align::ONE),
         }
     }
 }
@@ -522,15 +507,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self.reserve_and_set_dedup(GlobalAlloc::VTable(ty, dyn_ty), salt)
     }
 
-    /// Generates an [AllocId] for a [core::mem::type_info::TypeIdData]. Will get deduplicated.
-    pub fn reserve_and_set_type_id_alloc(self, ty: Ty<'tcx>) -> AllocId {
-        self.reserve_and_set_dedup(GlobalAlloc::Type(ty), 0)
-    }
-
-    /// Generates an [AllocId] that will get replaced by a partial hash of a type.
-    /// See [core::mem::type_info::TypeId] for more information.
-    pub fn reserve_and_set_type_id_partial_hash(self, ty: Ty<'tcx>) -> AllocId {
-        self.reserve_and_set_dedup(GlobalAlloc::PartialHash(ty), 0)
+    /// Generates an [AllocId] for a [core::any::TypeId]. Will get deduplicated.
+    pub fn reserve_and_set_type_id_alloc(self, ty: Ty<'tcx>, segment: u8) -> AllocId {
+        self.reserve_and_set_dedup(GlobalAlloc::Type { ty, segment }, 0)
     }
 
     /// Interns the `Allocation` and return a new `AllocId`, even if there's already an identical

@@ -709,14 +709,7 @@ impl dyn Any + Send + Sync {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "type_id"]
 pub struct TypeId {
-    /// Quick accept: if pointers are the same, the ids are the same
-    data: &'static TypeIdData,
-    /// Quick reject: if hashes are different, the ids are different
-    /// We use a raw pointer instead of a `usize`, because const eval
-    /// will be storing this as a fake pointer that will turn into the
-    /// appropriate bits at codegen time. This prevents users from inspecting
-    /// these bits at compile time.
-    partial_hash: *const (),
+    data: [*const (); 16 / size_of::<usize>()],
 }
 
 // SAFETY: the raw pointer is always an integer
@@ -725,11 +718,6 @@ unsafe impl Send for TypeId {}
 // SAFETY: the raw pointer is always an integer
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl Sync for TypeId {}
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct TypeIdData {
-    full_hash: [u8; 16],
-}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
@@ -742,8 +730,7 @@ impl const PartialEq for TypeId {
 
         #[inline]
         fn rt(a: &TypeId, b: &TypeId) -> bool {
-            a.data as *const TypeIdData == b.data as *const TypeIdData
-                || (a.partial_hash == b.partial_hash && a.data.full_hash == b.data.full_hash)
+            a.data == b.data
         }
 
         core::intrinsics::const_eval_select((self, other), ct, rt)
@@ -757,9 +744,7 @@ impl const PartialEq for TypeId {
 
         #[inline]
         fn rt(a: &TypeId, b: &TypeId) -> bool {
-            a.partial_hash != b.partial_hash
-                || (a.data as *const TypeIdData != b.data as *const TypeIdData
-                    && a.data.full_hash != b.data.full_hash)
+            a.data != b.data
         }
 
         core::intrinsics::const_eval_select((self, other), ct, rt)
@@ -789,7 +774,8 @@ impl TypeId {
     }
 
     fn as_u128(self) -> u128 {
-        u128::from_ne_bytes(self.data.full_hash)
+        // SAFETY: we know there are 16 bytes without provenance at this location
+        unsafe { crate::ptr::read_unaligned(&self.data as *const _ as *const u128) }
     }
 }
 
@@ -809,12 +795,9 @@ impl hash::Hash for TypeId {
         // - It is correct to do so -- only hashing a subset of `self` is still
         //   compatible with an `Eq` implementation that considers the entire
         //   value, as ours does.
-        if cfg!(target_pointer_width = "64") {
-            self.partial_hash.hash(state);
-        } else {
-            let [_, _, _, _, _, _, _, _, data @ ..] = self.data.full_hash;
-            u64::from_ne_bytes(data).hash(state);
-        }
+        // SAFETY: we know there are 16 bytes without provenance at this location
+        let data = unsafe { crate::ptr::read_unaligned(&self.data as *const _ as *const u64) };
+        data.hash(state);
     }
 }
 

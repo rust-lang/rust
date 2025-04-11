@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 
 use libc::{c_char, c_uint};
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{self as abi, Align, HasDataLayout, Size};
+use rustc_abi::{self as abi, Align, HasDataLayout as _, Size};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
@@ -319,17 +319,16 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                             )))
                             .unwrap_memory();
                         let init = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
-                        let value = self.static_addr_of_impl(init, alloc.inner().align, None);
-                        value
+                        self.static_addr_of_impl(init, alloc.inner().align, None)
                     }
                     GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx.is_static(def_id));
                         assert!(!self.tcx.is_thread_local_static(def_id));
                         self.get_static(def_id)
                     }
-                    GlobalAlloc::Type(ty) => {
+                    GlobalAlloc::Type { ty, segment } => {
                         let type_id = self.tcx.type_id_hash(ty).as_u128();
-                        let mut alloc = Allocation::new(
+                        let mut alloc: Allocation = Allocation::new(
                             Size::from_bytes(16),
                             Align::from_bytes(8).unwrap(),
                             AllocInit::Uninit,
@@ -342,17 +341,13 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                                 Scalar::from_u128(type_id),
                             )
                             .unwrap();
-                        alloc.mutability = Mutability::Not;
-                        let init = const_alloc_to_llvm(self, &alloc, /*static*/ false);
-                        self.static_addr_of_impl(init, alloc.align, None)
-                    }
-                    GlobalAlloc::PartialHash(ty) => {
-                        assert!(matches!(layout.primitive(), Pointer(_)));
-                        let bytes = self.tcx.type_id_hash(ty).truncate().as_u64().to_be_bytes();
-                        let bits = self.tcx.data_layout.pointer_size.bits();
-                        let mask = u64::MAX >> (64 - bits);
-                        // It doesn't matter which bits we pick as long as the scheme is the same with the same compiler.
-                        let llval = self.const_usize(u64::from_be_bytes(bytes) & mask);
+                        let pointer_size = self.tcx.data_layout.pointer_size;
+                        let offset = pointer_size * u64::from(segment);
+                        let value = alloc
+                            .read_scalar(&self.tcx, alloc_range(offset, pointer_size), false)
+                            .unwrap();
+                        let data = value.to_bits(pointer_size).unwrap() as u64;
+                        let llval = self.const_usize(data);
                         return unsafe { llvm::LLVMConstIntToPtr(llval, llty) };
                     }
                 };

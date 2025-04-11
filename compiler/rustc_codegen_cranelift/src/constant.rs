@@ -3,6 +3,8 @@
 use std::cmp::Ordering;
 
 use cranelift_module::*;
+use rustc_abi::Align;
+use rustc_const_eval::interpret::{AllocInit, Allocation, alloc_range};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, GlobalAlloc, Scalar, read_target_uint};
@@ -175,8 +177,13 @@ pub(crate) fn codegen_const_value<'tcx>(
                             fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                         fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                     }
-                    // TODO: generate pointer to allocation containing the actual type id hash u128 value
-                    GlobalAlloc::Type(_) => todo!(),
+                    GlobalAlloc::Type { ty: type_id_ty, segment } => {
+                        return CValue::const_val(
+                            fx,
+                            layout,
+                            type_id_segment(fx.tcx, type_id_ty, segment),
+                        );
+                    }
                     GlobalAlloc::Static(def_id) => {
                         assert!(fx.tcx.is_static(def_id));
                         let data_id = data_id_for_static(
@@ -212,6 +219,23 @@ pub(crate) fn codegen_const_value<'tcx>(
             CValue::by_val_pair(ptr, len, layout)
         }
     }
+}
+
+fn type_id_segment<'tcx>(tcx: TyCtxt<'tcx>, type_id_ty: Ty<'tcx>, segment: u8) -> ScalarInt {
+    let type_id = tcx.type_id_hash(type_id_ty).as_u128();
+    let mut alloc: Allocation =
+        Allocation::new(Size::from_bytes(16), Align::from_bytes(8).unwrap(), AllocInit::Uninit, ());
+    alloc
+        .write_scalar(
+            &tcx,
+            alloc_range(Size::ZERO, Size::from_bytes(16)),
+            Scalar::from_u128(type_id),
+        )
+        .unwrap();
+    let pointer_size = tcx.data_layout.pointer_size;
+    let offset = pointer_size * u64::from(segment);
+    let value = alloc.read_scalar(&tcx, alloc_range(offset, pointer_size), false).unwrap();
+    value.to_scalar_int().unwrap()
 }
 
 fn pointer_for_allocation<'tcx>(
@@ -362,7 +386,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     GlobalAlloc::Memory(alloc) => alloc,
                     GlobalAlloc::Function { .. }
                     | GlobalAlloc::Static(_)
-                    | GlobalAlloc::Type(_)
+                    | GlobalAlloc::Type { .. }
                     | GlobalAlloc::VTable(..) => {
                         unreachable!()
                     }
@@ -474,8 +498,18 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                         .principal()
                         .map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
                 ),
-                // TODO
-                GlobalAlloc::Type(_ty) => todo!(),
+                GlobalAlloc::Type { ty, segment } => {
+                    let val = type_id_segment(tcx, ty, segment);
+                    let Init::Bytes { contents } = &mut data.init else { unreachable!() };
+                    let start = offset.bytes_usize();
+                    let ptr_size = tcx.data_layout.pointer_size;
+                    let src = val.to_bits(ptr_size);
+                    let src = u128::to_le_bytes(src);
+                    let len = ptr_size.bytes_usize();
+                    assert!(src[len..].iter().all(|b| *b == 0));
+                    contents[start..(start + len)].copy_from_slice(&src[..len]);
+                    continue;
+                }
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
                     {
