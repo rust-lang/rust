@@ -348,6 +348,14 @@ fn do_mir_borrowck<'tcx>(
     // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.
     nll::dump_nll_mir(&infcx, body, &regioncx, &opt_closure_req, &borrow_set);
+    polonius::dump_polonius_mir(
+        &infcx,
+        body,
+        &regioncx,
+        &opt_closure_req,
+        &borrow_set,
+        polonius_diagnostics.as_ref(),
+    );
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
@@ -464,16 +472,6 @@ fn do_mir_borrowck<'tcx>(
     );
 
     mbcx.report_move_errors();
-
-    // If requested, dump polonius MIR.
-    polonius::dump_polonius_mir(
-        &infcx,
-        body,
-        &regioncx,
-        &borrow_set,
-        polonius_diagnostics.as_ref(),
-        &opt_closure_req,
-    );
 
     // For each non-user used mutable variable, check if it's been assigned from
     // a user-declared local. If so, then put that local into the used_mut set.
