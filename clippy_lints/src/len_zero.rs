@@ -644,7 +644,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                         && cx.tcx.get_diagnostic_item(sym::Deref).is_some_and(|deref_id| {
                             implements_trait(cx, ty, deref_id, &[])
                                 && cx
-                                    .get_associated_type(ty, deref_id, "Target")
+                                    .get_associated_type(ty, deref_id, sym::Target)
                                     .is_some_and(|deref_ty| ty_has_is_empty(cx, deref_ty, depth + 1))
                         }))
             },
