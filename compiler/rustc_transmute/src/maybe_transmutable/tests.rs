@@ -1,93 +1,115 @@
 use itertools::Itertools;
 
 use super::query_context::test::{Def, UltraMinimal};
-use crate::maybe_transmutable::MaybeTransmutableQuery;
-use crate::{Reason, layout};
+use crate::{Answer, Assume, Reason, layout};
+
+type Tree = layout::Tree<Def, !>;
+type Dfa = layout::Dfa<!>;
+
+trait Representation {
+    fn is_transmutable(src: Self, dst: Self, assume: Assume) -> Answer<!>;
+}
+
+impl Representation for Tree {
+    fn is_transmutable(src: Self, dst: Self, assume: Assume) -> Answer<!> {
+        crate::maybe_transmutable::MaybeTransmutableQuery::new(src, dst, assume, UltraMinimal)
+            .answer()
+    }
+}
+
+impl Representation for Dfa {
+    fn is_transmutable(src: Self, dst: Self, assume: Assume) -> Answer<!> {
+        crate::maybe_transmutable::MaybeTransmutableQuery::new(src, dst, assume, UltraMinimal)
+            .answer()
+    }
+}
+
+fn is_transmutable<R: Representation + Clone>(
+    src: &R,
+    dst: &R,
+    assume: Assume,
+) -> crate::Answer<!> {
+    let src = src.clone();
+    let dst = dst.clone();
+    // The only dimension of the transmutability analysis we want to test
+    // here is the safety analysis. To ensure this, we disable all other
+    // toggleable aspects of the transmutability analysis.
+    R::is_transmutable(src, dst, assume)
+}
 
 mod safety {
     use super::*;
     use crate::Answer;
 
-    type Tree = layout::Tree<Def, !>;
-
     const DST_HAS_SAFETY_INVARIANTS: Answer<!> =
         Answer::No(crate::Reason::DstMayHaveSafetyInvariants);
-
-    fn is_transmutable(src: &Tree, dst: &Tree, assume_safety: bool) -> crate::Answer<!> {
-        let src = src.clone();
-        let dst = dst.clone();
-        // The only dimension of the transmutability analysis we want to test
-        // here is the safety analysis. To ensure this, we disable all other
-        // toggleable aspects of the transmutability analysis.
-        let assume = crate::Assume {
-            alignment: true,
-            lifetimes: true,
-            validity: true,
-            safety: assume_safety,
-        };
-        crate::maybe_transmutable::MaybeTransmutableQuery::new(src, dst, assume, UltraMinimal)
-            .answer()
-    }
 
     #[test]
     fn src_safe_dst_safe() {
         let src = Tree::Def(Def::NoSafetyInvariants).then(Tree::u8());
         let dst = Tree::Def(Def::NoSafetyInvariants).then(Tree::u8());
-        assert_eq!(is_transmutable(&src, &dst, false), Answer::Yes);
-        assert_eq!(is_transmutable(&src, &dst, true), Answer::Yes);
+        assert_eq!(is_transmutable(&src, &dst, Assume::default()), Answer::Yes);
+        assert_eq!(
+            is_transmutable(&src, &dst, Assume { safety: true, ..Assume::default() }),
+            Answer::Yes
+        );
     }
 
     #[test]
     fn src_safe_dst_unsafe() {
         let src = Tree::Def(Def::NoSafetyInvariants).then(Tree::u8());
         let dst = Tree::Def(Def::HasSafetyInvariants).then(Tree::u8());
-        assert_eq!(is_transmutable(&src, &dst, false), DST_HAS_SAFETY_INVARIANTS);
-        assert_eq!(is_transmutable(&src, &dst, true), Answer::Yes);
+        assert_eq!(is_transmutable(&src, &dst, Assume::default()), DST_HAS_SAFETY_INVARIANTS);
+        assert_eq!(
+            is_transmutable(&src, &dst, Assume { safety: true, ..Assume::default() }),
+            Answer::Yes
+        );
     }
 
     #[test]
     fn src_unsafe_dst_safe() {
         let src = Tree::Def(Def::HasSafetyInvariants).then(Tree::u8());
         let dst = Tree::Def(Def::NoSafetyInvariants).then(Tree::u8());
-        assert_eq!(is_transmutable(&src, &dst, false), Answer::Yes);
-        assert_eq!(is_transmutable(&src, &dst, true), Answer::Yes);
+        assert_eq!(is_transmutable(&src, &dst, Assume::default()), Answer::Yes);
+        assert_eq!(
+            is_transmutable(&src, &dst, Assume { safety: true, ..Assume::default() }),
+            Answer::Yes
+        );
     }
 
     #[test]
     fn src_unsafe_dst_unsafe() {
         let src = Tree::Def(Def::HasSafetyInvariants).then(Tree::u8());
         let dst = Tree::Def(Def::HasSafetyInvariants).then(Tree::u8());
-        assert_eq!(is_transmutable(&src, &dst, false), DST_HAS_SAFETY_INVARIANTS);
-        assert_eq!(is_transmutable(&src, &dst, true), Answer::Yes);
+        assert_eq!(is_transmutable(&src, &dst, Assume::default()), DST_HAS_SAFETY_INVARIANTS);
+        assert_eq!(
+            is_transmutable(&src, &dst, Assume { safety: true, ..Assume::default() }),
+            Answer::Yes
+        );
     }
 }
 
 mod bool {
     use super::*;
-    use crate::Answer;
 
     #[test]
     fn should_permit_identity_transmutation_tree() {
-        let answer = crate::maybe_transmutable::MaybeTransmutableQuery::new(
-            layout::Tree::<Def, !>::bool(),
-            layout::Tree::<Def, !>::bool(),
-            crate::Assume { alignment: false, lifetimes: false, validity: true, safety: false },
-            UltraMinimal,
-        )
-        .answer();
-        assert_eq!(answer, Answer::Yes);
+        let src = Tree::bool();
+        assert_eq!(is_transmutable(&src, &src, Assume::default()), Answer::Yes);
+        assert_eq!(
+            is_transmutable(&src, &src, Assume { validity: true, ..Assume::default() }),
+            Answer::Yes
+        );
     }
 
     #[test]
     fn should_permit_identity_transmutation_dfa() {
-        let answer = crate::maybe_transmutable::MaybeTransmutableQuery::new(
-            layout::Dfa::<!>::bool(),
-            layout::Dfa::<!>::bool(),
-            crate::Assume { alignment: false, lifetimes: false, validity: true, safety: false },
-            UltraMinimal,
-        )
-        .answer();
-        assert_eq!(answer, Answer::Yes);
+        let src = Dfa::bool();
+        assert_eq!(is_transmutable(&src, &src, Assume::default()), Answer::Yes);
+        assert_eq!(
+            is_transmutable(&src, &src, Assume { validity: true, ..Assume::default() }),
+            Answer::Yes
+        );
     }
 
     #[test]
@@ -122,13 +144,7 @@ mod bool {
                 if src_set.is_subset(&dst_set) {
                     assert_eq!(
                         Answer::Yes,
-                        MaybeTransmutableQuery::new(
-                            src_layout.clone(),
-                            dst_layout.clone(),
-                            crate::Assume { validity: false, ..crate::Assume::default() },
-                            UltraMinimal,
-                        )
-                        .answer(),
+                        is_transmutable(&src_layout, &dst_layout, Assume::default()),
                         "{:?} SHOULD be transmutable into {:?}",
                         src_layout,
                         dst_layout
@@ -136,13 +152,11 @@ mod bool {
                 } else if !src_set.is_disjoint(&dst_set) {
                     assert_eq!(
                         Answer::Yes,
-                        MaybeTransmutableQuery::new(
-                            src_layout.clone(),
-                            dst_layout.clone(),
-                            crate::Assume { validity: true, ..crate::Assume::default() },
-                            UltraMinimal,
-                        )
-                        .answer(),
+                        is_transmutable(
+                            &src_layout,
+                            &dst_layout,
+                            Assume { validity: true, ..Assume::default() }
+                        ),
                         "{:?} SHOULD be transmutable (assuming validity) into {:?}",
                         src_layout,
                         dst_layout
@@ -150,13 +164,7 @@ mod bool {
                 } else {
                     assert_eq!(
                         Answer::No(Reason::DstIsBitIncompatible),
-                        MaybeTransmutableQuery::new(
-                            src_layout.clone(),
-                            dst_layout.clone(),
-                            crate::Assume { validity: false, ..crate::Assume::default() },
-                            UltraMinimal,
-                        )
-                        .answer(),
+                        is_transmutable(&src_layout, &dst_layout, Assume::default()),
                         "{:?} should NOT be transmutable into {:?}",
                         src_layout,
                         dst_layout
