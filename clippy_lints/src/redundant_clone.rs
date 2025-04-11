@@ -182,14 +182,19 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
 
             let clone_usage = if local == ret_local {
                 CloneUsage {
-                    cloned_used: false,
+                    cloned_use_loc: None.into(),
                     cloned_consume_or_mutate_loc: None,
                     clone_consumed_or_mutated: true,
                 }
             } else {
                 let clone_usage = visit_clone_usage(local, ret_local, mir, bb);
-                if clone_usage.cloned_used && clone_usage.clone_consumed_or_mutated {
+                if clone_usage.cloned_use_loc.maybe_used() && clone_usage.clone_consumed_or_mutated {
                     // cloned value is used, and the clone is modified or moved
+                    continue;
+                } else if let MirLocalUsage::Used(loc) = clone_usage.cloned_use_loc
+                    && possible_borrower.local_is_alive_at(ret_local, loc)
+                {
+                    // cloned value is used, and the clone is alive.
                     continue;
                 } else if let Some(loc) = clone_usage.cloned_consume_or_mutate_loc
                     // cloned value is mutated, and the clone is alive.
@@ -227,7 +232,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
 
                 span_lint_hir_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |diag| {
                     diag.span_suggestion(sugg_span, "remove this", "", app);
-                    if clone_usage.cloned_used {
+                    if clone_usage.cloned_use_loc.maybe_used() {
                         diag.span_note(span, "cloned value is neither consumed nor mutated");
                     } else {
                         diag.span_note(
@@ -328,10 +333,33 @@ fn base_local_and_movability<'tcx>(
     (place.local, deref || field || slice)
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
+enum MirLocalUsage {
+    /// The local maybe used, but we are not sure how.
+    Unknown,
+    /// The local is not used.
+    #[default]
+    Unused,
+    /// The local is used at a specific location.
+    Used(mir::Location),
+}
+
+impl MirLocalUsage {
+    fn maybe_used(&self) -> bool {
+        matches!(self, MirLocalUsage::Unknown | MirLocalUsage::Used(_))
+    }
+}
+
+impl From<Option<mir::Location>> for MirLocalUsage {
+    fn from(loc: Option<mir::Location>) -> Self {
+        loc.map_or(MirLocalUsage::Unused, MirLocalUsage::Used)
+    }
+}
+
+#[derive(Debug, Default)]
 struct CloneUsage {
-    /// Whether the cloned value is used after the clone.
-    cloned_used: bool,
+    /// The first location where the cloned value is used, if any.
+    cloned_use_loc: MirLocalUsage,
     /// The first location where the cloned value is consumed or mutated, if any.
     cloned_consume_or_mutate_loc: Option<mir::Location>,
     /// Whether the clone value is mutated.
@@ -359,7 +387,7 @@ fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>,
     .map(|mut vec| (vec.remove(0), vec.remove(0)))
     {
         CloneUsage {
-            cloned_used: !cloned_use_locs.is_empty(),
+            cloned_use_loc: cloned_use_locs.first().copied().into(),
             cloned_consume_or_mutate_loc: cloned_consume_or_mutate_locs.first().copied(),
             // Consider non-temporary clones consumed.
             // TODO: Actually check for mutation of non-temporaries.
@@ -368,7 +396,7 @@ fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>,
         }
     } else {
         CloneUsage {
-            cloned_used: true,
+            cloned_use_loc: MirLocalUsage::Unknown,
             cloned_consume_or_mutate_loc: None,
             clone_consumed_or_mutated: true,
         }
