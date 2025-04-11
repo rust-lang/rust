@@ -93,7 +93,6 @@ macro_rules! panic {
 }
 
 //- /lib.rs crate:foo deps:core
-#[macro_use]
 extern crate core;
 
 fn foo() {
