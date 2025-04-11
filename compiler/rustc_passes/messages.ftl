@@ -742,9 +742,6 @@ passes_trait_impl_const_stable =
 passes_transparent_incompatible =
     transparent {$target} cannot have other repr hints
 
-passes_undefined_naked_function_abi =
-    Rust ABI is unsupported in naked functions
-
 passes_unknown_external_lang_item =
     unknown external lang item: `{$lang_item}`
 
