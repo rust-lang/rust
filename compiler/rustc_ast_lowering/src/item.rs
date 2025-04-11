@@ -500,16 +500,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         body: Option<&Expr>,
     ) -> (hir::BodyId, Option<&'hir hir::ConstArg<'hir>>) {
-        let ct_arg = if self.tcx.features().min_generic_const_args()
-            && let Some(expr) = body
-        {
-            self.try_lower_as_const_path(expr)
-        } else {
-            None
-        };
-        let body_id = if body.is_some() && ct_arg.is_none() {
-            // TODO: lower as const block instead
-            self.lower_const_body(span, body)
+        let mgca = self.tcx.features().min_generic_const_args();
+        let ct_arg =
+            if mgca && let Some(expr) = body { self.try_lower_as_const_path(expr) } else { None };
+        let body_id = if mgca && ct_arg.is_none() {
+            self.lower_const_body_with_const_block(span, body)
         } else {
             self.lower_const_body(span, body)
         };
@@ -1290,6 +1285,39 @@ impl<'hir> LoweringContext<'_, 'hir> {
         contract: Option<&FnContract>,
     ) -> hir::BodyId {
         self.lower_fn_body(decl, contract, |this| this.lower_block_expr(body))
+    }
+
+    /// HACK(mgca): lower the body of the const item as a const block
+    /// we need this later to be able to control generics in the body
+    /// separately from the const's type, etc.
+    pub(super) fn lower_const_body_with_const_block(
+        &mut self,
+        span: Span,
+        expr: Option<&Expr>,
+    ) -> hir::BodyId {
+        self.lower_body(|this| {
+            (
+                &[],
+                match expr {
+                    Some(expr) => {
+                        let def_id = this.local_def_id(expr.id);
+                        // TODO: somehow avoid reusing the same nodeid for the const block and the body expr
+                        let hir_id = this.lower_node_id(expr.id);
+                        let block = hir::ConstBlock {
+                            def_id,
+                            hir_id,
+                            body: this.lower_const_body(expr.span, Some(expr)),
+                        };
+                        hir::Expr {
+                            hir_id,
+                            span: this.lower_span(expr.span),
+                            kind: hir::ExprKind::ConstBlock(block),
+                        }
+                    }
+                    None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
+                },
+            )
+        })
     }
 
     pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
