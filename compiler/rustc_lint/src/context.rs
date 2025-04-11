@@ -83,11 +83,6 @@ enum TargetLint {
     Ignored,
 }
 
-pub enum FindLintError {
-    NotFound,
-    Removed,
-}
-
 struct LintAlias {
     name: &'static str,
     /// Whether deprecation warnings should be suppressed for this alias.
@@ -231,13 +226,24 @@ impl LintStore {
         }
     }
 
-    pub fn register_group_alias(&mut self, lint_name: &'static str, alias: &'static str) {
-        self.lint_groups.insert(
+    fn insert_group(&mut self, name: &'static str, group: LintGroup) {
+        let previous = self.lint_groups.insert(name, group);
+        if previous.is_some() {
+            bug!("group {name:?} already exists");
+        }
+    }
+
+    pub fn register_group_alias(&mut self, group_name: &'static str, alias: &'static str) {
+        let Some(LintGroup { lint_ids, .. }) = self.lint_groups.get(group_name) else {
+            bug!("group alias {alias:?} points to unregistered group {group_name:?}")
+        };
+
+        self.insert_group(
             alias,
             LintGroup {
-                lint_ids: vec![],
+                lint_ids: lint_ids.clone(),
                 is_externally_loaded: false,
-                depr: Some(LintAlias { name: lint_name, silent: true }),
+                depr: Some(LintAlias { name: group_name, silent: true }),
             },
         );
     }
@@ -249,24 +255,17 @@ impl LintStore {
         deprecated_name: Option<&'static str>,
         to: Vec<LintId>,
     ) {
-        let new = self
-            .lint_groups
-            .insert(name, LintGroup { lint_ids: to, is_externally_loaded, depr: None })
-            .is_none();
         if let Some(deprecated) = deprecated_name {
-            self.lint_groups.insert(
+            self.insert_group(
                 deprecated,
                 LintGroup {
-                    lint_ids: vec![],
+                    lint_ids: to.clone(),
                     is_externally_loaded,
                     depr: Some(LintAlias { name, silent: false }),
                 },
             );
         }
-
-        if !new {
-            bug!("duplicate specification of lint group {}", name);
-        }
+        self.insert_group(name, LintGroup { lint_ids: to, is_externally_loaded, depr: None });
     }
 
     /// This lint should give no warning and have no effect.
@@ -292,23 +291,15 @@ impl LintStore {
         self.by_name.insert(name.into(), Removed(reason.into()));
     }
 
-    pub fn find_lints(&self, mut lint_name: &str) -> Result<Vec<LintId>, FindLintError> {
+    pub fn find_lints(&self, lint_name: &str) -> Option<&[LintId]> {
         match self.by_name.get(lint_name) {
-            Some(&Id(lint_id)) => Ok(vec![lint_id]),
-            Some(&Renamed(_, lint_id)) => Ok(vec![lint_id]),
-            Some(&Removed(_)) => Err(FindLintError::Removed),
-            Some(&Ignored) => Ok(vec![]),
-            None => loop {
-                return match self.lint_groups.get(lint_name) {
-                    Some(LintGroup { lint_ids, depr, .. }) => {
-                        if let Some(LintAlias { name, .. }) = depr {
-                            lint_name = name;
-                            continue;
-                        }
-                        Ok(lint_ids.clone())
-                    }
-                    None => Err(FindLintError::Removed),
-                };
+            Some(Id(lint_id)) => Some(slice::from_ref(lint_id)),
+            Some(Renamed(_, lint_id)) => Some(slice::from_ref(lint_id)),
+            Some(Removed(_)) => None,
+            Some(Ignored) => Some(&[]),
+            None => match self.lint_groups.get(lint_name) {
+                Some(LintGroup { lint_ids, .. }) => Some(lint_ids),
+                None => None,
             },
         }
     }
@@ -374,8 +365,12 @@ impl LintStore {
                             CheckLintNameResult::MissingTool
                         };
                     }
-                    Some(LintGroup { lint_ids, .. }) => {
-                        return CheckLintNameResult::Tool(lint_ids, None);
+                    Some(LintGroup { lint_ids, depr, .. }) => {
+                        return if let &Some(LintAlias { name, silent: false }) = depr {
+                            CheckLintNameResult::Tool(lint_ids, Some(name.to_string()))
+                        } else {
+                            CheckLintNameResult::Tool(lint_ids, None)
+                        };
                     }
                 },
                 Some(Id(id)) => return CheckLintNameResult::Tool(slice::from_ref(id), None),
@@ -393,15 +388,11 @@ impl LintStore {
                 None => self.check_tool_name_for_backwards_compat(&complete_name, "clippy"),
                 Some(LintGroup { lint_ids, depr, .. }) => {
                     // Check if the lint group name is deprecated
-                    if let Some(LintAlias { name, silent }) = depr {
-                        let LintGroup { lint_ids, .. } = self.lint_groups.get(name).unwrap();
-                        return if *silent {
-                            CheckLintNameResult::Ok(lint_ids)
-                        } else {
-                            CheckLintNameResult::Tool(lint_ids, Some((*name).to_string()))
-                        };
+                    if let &Some(LintAlias { name, silent: false }) = depr {
+                        CheckLintNameResult::Tool(lint_ids, Some(name.to_string()))
+                    } else {
+                        CheckLintNameResult::Ok(lint_ids)
                     }
-                    CheckLintNameResult::Ok(lint_ids)
                 }
             },
             Some(Id(id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
@@ -412,7 +403,7 @@ impl LintStore {
     fn no_lint_suggestion(&self, lint_name: &str, tool_name: &str) -> CheckLintNameResult<'_> {
         let name_lower = lint_name.to_lowercase();
 
-        if lint_name.chars().any(char::is_uppercase) && self.find_lints(&name_lower).is_ok() {
+        if lint_name.chars().any(char::is_uppercase) && self.find_lints(&name_lower).is_some() {
             // First check if the lint name is (partly) in upper case instead of lower case...
             return CheckLintNameResult::NoLint(Some((Symbol::intern(&name_lower), false)));
         }
@@ -455,18 +446,8 @@ impl LintStore {
             None => match self.lint_groups.get(&*complete_name) {
                 // Now we are sure, that this lint exists nowhere
                 None => self.no_lint_suggestion(lint_name, tool_name),
-                Some(LintGroup { lint_ids, depr, .. }) => {
-                    // Reaching this would be weird, but let's cover this case anyway
-                    if let Some(LintAlias { name, silent }) = depr {
-                        let LintGroup { lint_ids, .. } = self.lint_groups.get(name).unwrap();
-                        if *silent {
-                            CheckLintNameResult::Tool(lint_ids, Some(complete_name))
-                        } else {
-                            CheckLintNameResult::Tool(lint_ids, Some((*name).to_string()))
-                        }
-                    } else {
-                        CheckLintNameResult::Tool(lint_ids, Some(complete_name))
-                    }
+                Some(LintGroup { lint_ids, .. }) => {
+                    CheckLintNameResult::Tool(lint_ids, Some(complete_name))
                 }
             },
             Some(Id(id)) => CheckLintNameResult::Tool(slice::from_ref(id), Some(complete_name)),
