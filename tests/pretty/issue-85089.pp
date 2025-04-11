@@ -2,6 +2,7 @@
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
+extern crate std;
 // Test to print lifetimes on HIR pretty-printing.
 
 //@ pretty-compare-only
