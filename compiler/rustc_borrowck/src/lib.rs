@@ -304,26 +304,6 @@ fn do_mir_borrowck<'tcx>(
         root_cx.set_tainted_by_errors(e);
     }
 
-    let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
-    for var_debug_info in &input_body.var_debug_info {
-        if let VarDebugInfoContents::Place(place) = var_debug_info.value {
-            if let Some(local) = place.as_local() {
-                if let Some(prev_name) = local_names[local]
-                    && var_debug_info.name != prev_name
-                {
-                    span_bug!(
-                        var_debug_info.source_info.span,
-                        "local {:?} has many names (`{}` vs `{}`)",
-                        local,
-                        prev_name,
-                        var_debug_info.name
-                    );
-                }
-                local_names[local] = Some(var_debug_info.name);
-            }
-        }
-    }
-
     // Replace all regions with fresh inference variables. This
     // requires first making our own copy of the MIR. This copy will
     // be modified (in place) to contain non-lexical lifetimes. It
@@ -424,6 +404,26 @@ fn do_mir_borrowck<'tcx>(
         }
         MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
         promoted_mbcx.report_move_errors();
+    }
+
+    let mut local_names = IndexVec::from_elem(None, &body.local_decls);
+    for var_debug_info in &body.var_debug_info {
+        if let VarDebugInfoContents::Place(place) = var_debug_info.value {
+            if let Some(local) = place.as_local() {
+                if let Some(prev_name) = local_names[local]
+                    && var_debug_info.name != prev_name
+                {
+                    span_bug!(
+                        var_debug_info.source_info.span,
+                        "local {:?} has many names (`{}` vs `{}`)",
+                        local,
+                        prev_name,
+                        var_debug_info.name
+                    );
+                }
+                local_names[local] = Some(var_debug_info.name);
+            }
+        }
     }
 
     let mut mbcx = MirBorrowckCtxt {
