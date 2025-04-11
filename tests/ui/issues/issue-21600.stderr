@@ -4,11 +4,16 @@ error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `F
 LL | fn call_it<F>(f: F) where F: Fn() { f(); }
    |                  - change this to accept `FnMut` instead of `Fn`
 ...
+LL |     let mut x = A;
+   |         ----- `x` declared here, outside the closure
+...
 LL |         call_it(|| x.gen_mut());
    |         ------- -- ^ cannot borrow as mutable
    |         |       |
    |         |       in this closure
    |         expects `Fn` instead of `FnMut`
+   |
+   = help: consider using `std::sync::atomic::Mutex<A>` instead, which allows for multiple threads to access and modify the value
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
   --> $DIR/issue-21600.rs:14:17
@@ -16,6 +21,8 @@ error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `F
 LL | fn call_it<F>(f: F) where F: Fn() { f(); }
    |                  - change this to accept `FnMut` instead of `Fn`
 ...
+LL |     let mut x = A;
+   |         ----- `x` declared here, outside the closure
 LL |     call_it(|| {
    |     ------- -- in this closure
    |     |
@@ -25,6 +32,8 @@ LL |         call_it(|| x.gen_mut());
    |                 ^^ - mutable borrow occurs due to use of `x` in closure
    |                 |
    |                 cannot borrow as mutable
+   |
+   = help: consider using `std::sync::atomic::Mutex<A>` instead, which allows for multiple threads to access and modify the value
 
 error: aborting due to 2 previous errors
 
