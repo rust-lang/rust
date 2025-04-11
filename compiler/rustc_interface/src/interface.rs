@@ -348,6 +348,10 @@ pub struct Config {
     /// the list of queries.
     pub override_queries: Option<fn(&Session, &mut Providers)>,
 
+    /// An extra set of symbols to add to the symbol interner, the symbol indices
+    /// will start at [`PREDEFINED_SYMBOLS_COUNT`](rustc_span::symbol::PREDEFINED_SYMBOLS_COUNT)
+    pub extra_symbols: Vec<&'static str>,
+
     /// This is a callback from the driver that is called to create a codegen backend.
     ///
     /// Has no uses within this repository, but is used by bjorn3 for "the
@@ -409,6 +413,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
         &early_dcx,
         config.opts.edition,
         config.opts.unstable_opts.threads,
+        &config.extra_symbols,
         SourceMapInputs { file_loader, path_mapping, hash_kind, checksum_hash_kind },
         |current_gcx| {
             // The previous `early_dcx` can't be reused here because it doesn't
