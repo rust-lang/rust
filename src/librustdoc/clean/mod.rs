@@ -2221,7 +2221,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         }
 
         ty::Bound(_, ref ty) => match ty.kind {
-            ty::BoundTyKind::Param(_, name) => Generic(name),
+            ty::BoundTyKind::Param(def_id) => Generic(cx.tcx.item_name(def_id)),
             ty::BoundTyKind::Anon => panic!("unexpected anonymous bound type variable"),
         },
 
@@ -3192,7 +3192,8 @@ fn clean_bound_vars<'tcx>(
                     None
                 }
             }
-            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, name)) => {
+            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id)) => {
+                let name = cx.tcx.item_name(def_id);
                 Some(GenericParamDef {
                     name,
                     def_id,

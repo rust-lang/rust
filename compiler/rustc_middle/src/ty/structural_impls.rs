@@ -183,7 +183,7 @@ impl fmt::Debug for ty::BoundTy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             ty::BoundTyKind::Anon => write!(f, "{:?}", self.var),
-            ty::BoundTyKind::Param(_, sym) => write!(f, "{sym:?}"),
+            ty::BoundTyKind::Param(def_id) => write!(f, "{def_id:?}"),
         }
     }
 }

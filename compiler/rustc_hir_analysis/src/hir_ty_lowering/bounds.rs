@@ -1050,7 +1050,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             }
             ty::Bound(db, bt) if *db >= self.depth => {
                 self.vars.insert(match bt.kind {
-                    ty::BoundTyKind::Param(def_id, _) => def_id,
+                    ty::BoundTyKind::Param(def_id) => def_id,
                     ty::BoundTyKind::Anon => {
                         let reported = self
                             .cx

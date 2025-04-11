@@ -291,14 +291,14 @@ impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
-        _: &SmirCtxt<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::BoundTyKind;
 
         match self {
             ty::BoundTyKind::Anon => BoundTyKind::Anon,
-            ty::BoundTyKind::Param(def_id, symbol) => {
-                BoundTyKind::Param(tables.param_def(*def_id), symbol.to_string())
+            ty::BoundTyKind::Param(def_id) => {
+                BoundTyKind::Param(tables.param_def(*def_id), cx.tcx.item_name(*def_id).to_string())
             }
         }
     }

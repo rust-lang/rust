@@ -215,7 +215,7 @@ where
             let arg: ty::BoundVariableKind = arg;
             match arg {
                 ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id))
-                | ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, _)) => {
+                | ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id)) => {
                     added.push(def_id);
                     let unique = self.in_scope_parameters.insert(def_id, ParamKind::Late);
                     assert_eq!(unique, None);

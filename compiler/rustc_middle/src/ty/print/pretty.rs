@@ -795,9 +795,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty::BoundTyKind::Anon => {
                     rustc_type_ir::debug_bound_var(self, debruijn, bound_ty.var)?
                 }
-                ty::BoundTyKind::Param(_, s) => match self.should_print_verbose() {
+                ty::BoundTyKind::Param(def_id) => match self.should_print_verbose() {
                     true => p!(write("{:?}", ty.kind())),
-                    false => p!(write("{s}")),
+                    false => p!(write("{}", self.tcx().item_name(def_id))),
                 },
             },
             ty::Adt(def, args) => {
@@ -824,9 +824,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::Placeholder(placeholder) => match placeholder.bound.kind {
                 ty::BoundTyKind::Anon => p!(write("{placeholder:?}")),
-                ty::BoundTyKind::Param(_, name) => match self.should_print_verbose() {
+                ty::BoundTyKind::Param(def_id) => match self.should_print_verbose() {
                     true => p!(write("{:?}", ty.kind())),
-                    false => p!(write("{name}")),
+                    false => p!(write("{}", self.tcx().item_name(def_id))),
                 },
             },
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {

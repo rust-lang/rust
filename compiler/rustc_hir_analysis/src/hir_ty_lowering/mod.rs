@@ -2067,10 +2067,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         match tcx.named_bound_var(hir_id) {
             Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
-                let name = tcx.item_name(def_id.to_def_id());
                 let br = ty::BoundTy {
                     var: ty::BoundVar::from_u32(index),
-                    kind: ty::BoundTyKind::Param(def_id.to_def_id(), name),
+                    kind: ty::BoundTyKind::Param(def_id.to_def_id()),
                 };
                 Ty::new_bound(tcx, debruijn, br)
             }
