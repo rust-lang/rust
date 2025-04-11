@@ -1174,8 +1174,7 @@ pub(super) struct CurrentDepGraph<D: Deps> {
     /// ID from the previous session. In order to side-step this problem, we make
     /// sure that anonymous `NodeId`s allocated in different sessions don't overlap.
     /// This is implemented by mixing a session-key into the ID fingerprint of
-    /// each anon node. The session-key is just a random number generated when
-    /// the `DepGraph` is created.
+    /// each anon node. The session-key is a hash of the number of previous sessions.
     anon_id_seed: Fingerprint,
 
     /// These are simple counters that are for profiling and
@@ -1193,12 +1192,8 @@ impl<D: Deps> CurrentDepGraph<D> {
         record_stats: bool,
         previous: Arc<SerializedDepGraph>,
     ) -> Self {
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-        let nanos = duration.as_nanos();
         let mut stable_hasher = StableHasher::new();
-        nanos.hash(&mut stable_hasher);
+        previous.session_count().hash(&mut stable_hasher);
         let anon_id_seed = stable_hasher.finish();
 
         #[cfg(debug_assertions)]
