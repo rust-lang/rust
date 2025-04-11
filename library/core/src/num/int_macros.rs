@@ -3571,10 +3571,7 @@ macro_rules! int_impl {
             // so delegate it to `Ord` which is already producing -1/0/+1
             // exactly like we need and can be the place to deal with the complexity.
 
-            // FIXME(const-hack): replace with cmp
-            if self < 0 { -1 }
-            else if self == 0 { 0 }
-            else { 1 }
+            crate::intrinsics::three_way_compare(self, 0) as Self
         }
 
         /// Returns `true` if `self` is positive and `false` if the number is zero or

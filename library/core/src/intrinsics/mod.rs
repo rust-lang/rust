@@ -2628,13 +2628,15 @@ pub const fn bswap<T: Copy>(x: T) -> T;
 #[rustc_intrinsic]
 pub const fn bitreverse<T: Copy>(x: T) -> T;
 
-/// Does a three-way comparison between the two integer arguments.
+/// Does a three-way comparison between the two arguments,
+/// which must be of character or integer (signed or unsigned) type.
 ///
-/// This is included as an intrinsic as it's useful to let it be one thing
-/// in MIR, rather than the multiple checks and switches that make its IR
-/// large and difficult to optimize.
+/// This was originally added because it greatly simplified the MIR in `cmp`
+/// implementations, and then LLVM 20 added a backend intrinsic for it too.
 ///
 /// The stabilized version of this intrinsic is [`Ord::cmp`].
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn three_way_compare<T: Copy>(lhs: T, rhss: T) -> crate::cmp::Ordering;
 
