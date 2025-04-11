@@ -136,8 +136,7 @@ nav.sub {
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
 	--sidebar-resizer-hover: hsl(207, 90%, 66%);
 	--sidebar-resizer-active: hsl(207, 90%, 54%);
-	--sidebar-resizer-img-filter: opacity(66%);
-	--sidebar-resizer-img-hover-filter: none;
+	--sidebar-resizer-shadow: #ccc;
 }
 /* End theme: light */
 
@@ -248,8 +247,7 @@ nav.sub {
 		--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
 		--sidebar-resizer-hover: hsl(207, 30%, 54%);
 		--sidebar-resizer-active: hsl(207, 90%, 54%);
-		--sidebar-resizer-img-filter: opacity(66%);
-		--sidebar-resizer-img-hover-filter: none;
+		--sidebar-resizer-shadow: #000;
 	}
 /* End theme: dark */
 }
