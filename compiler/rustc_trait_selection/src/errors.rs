@@ -1926,7 +1926,7 @@ impl Subdiagnostic for AddPreciseCapturingForOvercapture {
 #[derive(Diagnostic)]
 #[diag(trait_selection_opaque_type_non_generic_param, code = E0792)]
 pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
-    pub ty: GenericArg<'tcx>,
+    pub arg: GenericArg<'tcx>,
     pub kind: &'a str,
     #[primary_span]
     pub span: Span,
