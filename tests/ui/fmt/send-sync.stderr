@@ -2,8 +2,10 @@ error[E0277]: `Arguments<'_>` cannot be sent between threads safely
   --> $DIR/send-sync.rs:8:10
    |
 LL |     send(format_args!("{:?}", c));
-   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^ `Arguments<'_>` cannot be sent between threads safely
-   |     |
+   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^
+   |     |    |
+   |     |    `Arguments<'_>` cannot be sent between threads safely
+   |     |    this tail expression is of type `Arguments<'_>`
    |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `Arguments<'_>`
@@ -17,8 +19,10 @@ error[E0277]: `Arguments<'_>` cannot be shared between threads safely
   --> $DIR/send-sync.rs:9:10
    |
 LL |     sync(format_args!("{:?}", c));
-   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^ `Arguments<'_>` cannot be shared between threads safely
-   |     |
+   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^
+   |     |    |
+   |     |    `Arguments<'_>` cannot be shared between threads safely
+   |     |    this tail expression is of type `Arguments<'_>`
    |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `Arguments<'_>`
