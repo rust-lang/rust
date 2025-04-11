@@ -2737,6 +2737,7 @@ pub const fn carrying_mul_add<T: ~const fallback::CarryingMulAdd<Unsigned = U>, 
 /// `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`
 ///
 /// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const unsafe fn exact_div<T: Copy>(x: T, y: T) -> T;
