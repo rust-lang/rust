@@ -30,13 +30,15 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     // Handle base ISA.
     let has_i = bit::test(auxv.hwcap, (b'i' - b'a').into());
-    // If future RV128I is supported, implement with `enable_feature` here
-    #[cfg(target_pointer_width = "64")]
+    // If future RV128I is supported, implement with `enable_feature` here.
+    // Note that we should use `target_arch` instead of `target_pointer_width`
+    // to avoid misdetection caused by experimental ABIs such as RV64ILP32.
+    #[cfg(target_arch = "riscv64")]
     enable_feature(Feature::rv64i, has_i);
-    #[cfg(target_pointer_width = "32")]
+    #[cfg(target_arch = "riscv32")]
     enable_feature(Feature::rv32i, has_i);
     // FIXME: e is not exposed in any of asm/hwcap.h, uapi/asm/hwcap.h, uapi/asm/hwprobe.h
-    #[cfg(target_pointer_width = "32")]
+    #[cfg(target_arch = "riscv32")]
     enable_feature(Feature::rv32e, bit::test(auxv.hwcap, (b'e' - b'a').into()));
 
     // FIXME: Auxvec does not show supervisor feature support, but this mode may be useful
