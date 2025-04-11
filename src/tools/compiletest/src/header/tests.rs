@@ -940,3 +940,13 @@ fn test_supported_crate_types() {
         "//@ needs-crate-type: bin, cdylib, dylib, lib, proc-macro, rlib, staticlib"
     ));
 }
+
+#[test]
+fn test_known_bug() {
+    let config = cfg().mode("ui").build();
+    assert!(check_ignore(&config, "//@ known-bug: unknown"));
+    assert!(check_ignore(&config, "//@ known-bug: #123456"));
+
+    let config = cfg().mode("crashes").build();
+    assert!(!check_ignore(&config, "//@ known-bug: unknown"));
+}
