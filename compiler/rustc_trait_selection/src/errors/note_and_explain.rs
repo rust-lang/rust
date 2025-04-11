@@ -39,14 +39,15 @@ impl<'a> DescriptionCtx<'a> {
                 }
             }
             ty::ReLateParam(ref fr) => {
-                if !fr.kind.is_named()
+                if !fr.kind.is_named(tcx)
                     && let Some((ty, _)) = find_anon_type(tcx, generic_param_scope, region)
                 {
                     (Some(ty.span), "defined_here", String::new())
                 } else {
                     let scope = fr.scope.expect_local();
                     match fr.kind {
-                        ty::LateParamRegionKind::Named(_, name) => {
+                        ty::LateParamRegionKind::Named(def_id) => {
+                            let name = tcx.item_name(def_id);
                             let span = if let Some(param) = tcx
                                 .hir_get_generics(scope)
                                 .and_then(|generics| generics.get_named(name))

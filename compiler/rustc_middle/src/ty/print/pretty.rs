@@ -11,7 +11,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
-use rustc_hir::def_id::{CRATE_DEF_ID, DefIdMap, DefIdSet, LOCAL_CRATE, ModDefId};
+use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModDefId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
 use rustc_session::Limit;
@@ -795,9 +795,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty::BoundTyKind::Anon => {
                     rustc_type_ir::debug_bound_var(self, debruijn, bound_ty.var)?
                 }
-                ty::BoundTyKind::Param(_, s) => match self.should_print_verbose() {
+                ty::BoundTyKind::Param(def_id) => match self.should_print_verbose() {
                     true => p!(write("{:?}", ty.kind())),
-                    false => p!(write("{s}")),
+                    false => p!(write("{}", self.tcx().item_name(def_id))),
                 },
             },
             ty::Adt(def, args) => {
@@ -825,9 +825,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::Placeholder(placeholder) => match placeholder.bound.kind {
                 ty::BoundTyKind::Anon => p!(write("{placeholder:?}")),
-                ty::BoundTyKind::Param(_, name) => match self.should_print_verbose() {
+                ty::BoundTyKind::Param(def_id) => match self.should_print_verbose() {
                     true => p!(write("{:?}", ty.kind())),
-                    false => p!(write("{name}")),
+                    false => p!(write("{}", self.tcx().item_name(def_id))),
                 },
             },
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
@@ -2530,12 +2530,12 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         match region.kind() {
             ty::ReEarlyParam(ref data) => data.has_name(),
 
-            ty::ReLateParam(ty::LateParamRegion { kind, .. }) => kind.is_named(),
+            ty::ReLateParam(ty::LateParamRegion { kind, .. }) => kind.is_named(self.tcx),
             ty::ReBound(_, ty::BoundRegion { kind: br, .. })
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {
-                if br.is_named() {
+                if br.is_named(self.tcx) {
                     return true;
                 }
 
@@ -2603,7 +2603,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                 return Ok(());
             }
             ty::ReLateParam(ty::LateParamRegion { kind, .. }) => {
-                if let Some(name) = kind.get_name() {
+                if let Some(name) = kind.get_name(self.tcx) {
                     p!(write("{}", name));
                     return Ok(());
                 }
@@ -2612,9 +2612,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {
-                if let ty::BoundRegionKind::Named(_, name) = br
-                    && br.is_named()
-                {
+                if let Some(name) = br.get_name(self.tcx) {
                     p!(write("{}", name));
                     return Ok(());
                 }
@@ -2821,55 +2819,22 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             let mut name = |lifetime_idx: Option<ty::DebruijnIndex>,
                             binder_level_idx: ty::DebruijnIndex,
                             br: ty::BoundRegion| {
-                let (name, kind) = match br.kind {
-                    ty::BoundRegionKind::Anon | ty::BoundRegionKind::ClosureEnv => {
-                        let name = next_name(self);
-
-                        if let Some(lt_idx) = lifetime_idx {
-                            if lt_idx > binder_level_idx {
-                                let kind =
-                                    ty::BoundRegionKind::Named(CRATE_DEF_ID.to_def_id(), name);
-                                return ty::Region::new_bound(
-                                    tcx,
-                                    ty::INNERMOST,
-                                    ty::BoundRegion { var: br.var, kind },
-                                );
-                            }
-                        }
-
-                        (name, ty::BoundRegionKind::Named(CRATE_DEF_ID.to_def_id(), name))
-                    }
-                    ty::BoundRegionKind::Named(def_id, kw::UnderscoreLifetime) => {
-                        let name = next_name(self);
-
-                        if let Some(lt_idx) = lifetime_idx {
-                            if lt_idx > binder_level_idx {
-                                let kind = ty::BoundRegionKind::Named(def_id, name);
-                                return ty::Region::new_bound(
-                                    tcx,
-                                    ty::INNERMOST,
-                                    ty::BoundRegion { var: br.var, kind },
-                                );
-                            }
-                        }
-
-                        (name, ty::BoundRegionKind::Named(def_id, name))
-                    }
-                    ty::BoundRegionKind::Named(_, name) => {
-                        if let Some(lt_idx) = lifetime_idx {
-                            if lt_idx > binder_level_idx {
-                                let kind = br.kind;
-                                return ty::Region::new_bound(
-                                    tcx,
-                                    ty::INNERMOST,
-                                    ty::BoundRegion { var: br.var, kind },
-                                );
-                            }
-                        }
-
-                        (name, br.kind)
-                    }
+                let (name, kind) = if let Some(name) = br.kind.get_name(tcx) {
+                    (name, br.kind)
+                } else {
+                    let name = next_name(self);
+                    (name, ty::BoundRegionKind::NamedAnon(name))
                 };
+
+                if let Some(lt_idx) = lifetime_idx {
+                    if lt_idx > binder_level_idx {
+                        return ty::Region::new_bound(
+                            tcx,
+                            ty::INNERMOST,
+                            ty::BoundRegion { var: br.var, kind },
+                        );
+                    }
+                }
 
                 // Unconditionally render `unsafe<>`.
                 if !trim_path || mode == WrapBinderMode::Unsafe {
@@ -2937,13 +2902,15 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
         struct RegionNameCollector<'tcx> {
+            tcx: TyCtxt<'tcx>,
             used_region_names: FxHashSet<Symbol>,
             type_collector: SsoHashSet<Ty<'tcx>>,
         }
 
         impl<'tcx> RegionNameCollector<'tcx> {
-            fn new() -> Self {
+            fn new(tcx: TyCtxt<'tcx>) -> Self {
                 RegionNameCollector {
+                    tcx,
                     used_region_names: Default::default(),
                     type_collector: SsoHashSet::new(),
                 }
@@ -2957,7 +2924,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                 // Collect all named lifetimes. These allow us to prevent duplication
                 // of already existing lifetime names when introducing names for
                 // anonymous late-bound regions.
-                if let Some(name) = r.get_name() {
+                if let Some(name) = r.get_name(self.tcx) {
                     self.used_region_names.insert(name);
                 }
             }
@@ -2972,7 +2939,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             }
         }
 
-        let mut collector = RegionNameCollector::new();
+        let mut collector = RegionNameCollector::new(self.tcx());
         value.visit_with(&mut collector);
         self.used_region_names = collector.used_region_names;
         self.region_index = 0;
