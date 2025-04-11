@@ -3,19 +3,18 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_session::Session;
 
 use crate::check_pointers::{BorrowCheckMode, PointerCheck, check_pointers};
 
 pub(super) struct CheckAlignment;
 
 impl<'tcx> crate::MirPass<'tcx> for CheckAlignment {
-    fn is_enabled(&self, sess: &Session) -> bool {
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
         // FIXME(#112480) MSVC and rustc disagree on minimum stack alignment on x86 Windows
-        if sess.target.llvm_target == "i686-pc-windows-msvc" {
+        if tcx.sess.target.llvm_target == "i686-pc-windows-msvc" {
             return false;
         }
-        sess.ub_checks()
+        tcx.sess.ub_checks()
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

@@ -7,8 +7,8 @@ use tracing::trace;
 pub(super) struct RemovePlaceMention;
 
 impl<'tcx> crate::MirPass<'tcx> for RemovePlaceMention {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        !sess.opts.unstable_opts.mir_keep_place_mention
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        !tcx.sess.opts.unstable_opts.mir_keep_place_mention
     }
 
     fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

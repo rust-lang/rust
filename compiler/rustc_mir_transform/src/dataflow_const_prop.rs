@@ -35,8 +35,8 @@ const PLACE_LIMIT: usize = 100;
 pub(super) struct DataflowConstProp;
 
 impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 3
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.mir_opt_level() >= 3
     }
 
     #[instrument(skip_all level = "debug")]
