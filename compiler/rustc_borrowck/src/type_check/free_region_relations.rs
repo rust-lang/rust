@@ -17,7 +17,7 @@ use type_op::TypeOpOutput;
 use crate::type_check::{Locations, MirTypeckRegionConstraints, constraint_conversion};
 use crate::universal_regions::UniversalRegions;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct UniversalRegionRelations<'tcx> {
     pub(crate) universal_regions: UniversalRegions<'tcx>,
 
@@ -41,22 +41,20 @@ type NormalizedInputsAndOutput<'tcx> = Vec<Ty<'tcx>>;
 
 pub(crate) struct CreateResult<'tcx> {
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-    pub(crate) region_bound_pairs: RegionBoundPairs<'tcx>,
-    pub(crate) known_type_outlives_obligations: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
+    pub(crate) region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
+    pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
     pub(crate) normalized_inputs_and_output: NormalizedInputsAndOutput<'tcx>,
 }
 
 pub(crate) fn create<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    implicit_region_bound: ty::Region<'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
 ) -> CreateResult<'tcx> {
     UniversalRegionRelationsBuilder {
         infcx,
         param_env,
-        implicit_region_bound,
         constraints,
         universal_regions,
         region_bound_pairs: Default::default(),
@@ -158,13 +156,6 @@ impl UniversalRegionRelations<'_> {
         self.outlives.contains(fr1, fr2)
     }
 
-    /// Returns `true` if fr1 is known to equal fr2.
-    ///
-    /// This will only ever be true for universally quantified regions.
-    pub(crate) fn equal(&self, fr1: RegionVid, fr2: RegionVid) -> bool {
-        self.outlives.contains(fr1, fr2) && self.outlives.contains(fr2, fr1)
-    }
-
     /// Returns a vector of free regions `x` such that `fr1: x` is
     /// known to hold.
     pub(crate) fn regions_outlived_by(&self, fr1: RegionVid) -> Vec<RegionVid> {
@@ -181,7 +172,6 @@ struct UniversalRegionRelationsBuilder<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     universal_regions: UniversalRegions<'tcx>,
-    implicit_region_bound: ty::Region<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 
     // outputs:
@@ -320,7 +310,6 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 self.infcx,
                 &self.universal_regions,
                 &self.region_bound_pairs,
-                self.implicit_region_bound,
                 param_env,
                 &known_type_outlives_obligations,
                 Locations::All(span),
@@ -337,8 +326,8 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 outlives: self.outlives.freeze(),
                 inverse_outlives: self.inverse_outlives.freeze(),
             }),
-            known_type_outlives_obligations,
-            region_bound_pairs: self.region_bound_pairs,
+            known_type_outlives_obligations: Frozen::freeze(known_type_outlives_obligations),
+            region_bound_pairs: Frozen::freeze(self.region_bound_pairs),
             normalized_inputs_and_output,
         }
     }
