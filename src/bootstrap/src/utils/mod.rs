@@ -20,4 +20,4 @@ pub(crate) mod tracing;
 pub(crate) mod metrics;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
