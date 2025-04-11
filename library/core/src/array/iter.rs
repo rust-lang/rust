@@ -1,38 +1,35 @@
 //! Defines the `IntoIter` owned iterator for arrays.
 
 use crate::intrinsics::transmute_unchecked;
-use crate::iter::{self, FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce};
+use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce};
 use crate::mem::MaybeUninit;
 use crate::num::NonZero;
-use crate::ops::{IndexRange, Range};
+use crate::ops::{IndexRange, Range, Try};
 use crate::{fmt, ptr};
+
+mod iter_inner;
+
+type InnerSized<T, const N: usize> = iter_inner::PolymorphicIter<[MaybeUninit<T>; N]>;
+type InnerUnsized<T> = iter_inner::PolymorphicIter<[MaybeUninit<T>]>;
 
 /// A by-value [array] iterator.
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 #[rustc_insignificant_dtor]
 #[rustc_diagnostic_item = "ArrayIntoIter"]
+#[derive(Clone)]
 pub struct IntoIter<T, const N: usize> {
-    /// This is the array we are iterating over.
-    ///
-    /// Elements with index `i` where `alive.start <= i < alive.end` have not
-    /// been yielded yet and are valid array entries. Elements with indices `i
-    /// < alive.start` or `i >= alive.end` have been yielded already and must
-    /// not be accessed anymore! Those dead elements might even be in a
-    /// completely uninitialized state!
-    ///
-    /// So the invariants are:
-    /// - `data[alive]` is alive (i.e. contains valid elements)
-    /// - `data[..alive.start]` and `data[alive.end..]` are dead (i.e. the
-    ///   elements were already read and must not be touched anymore!)
-    data: [MaybeUninit<T>; N],
+    inner: InnerSized<T, N>,
+}
 
-    /// The elements in `data` that have not been yielded yet.
-    ///
-    /// Invariants:
-    /// - `alive.end <= N`
-    ///
-    /// (And the `IndexRange` type requires `alive.start <= alive.end`.)
-    alive: IndexRange,
+impl<T, const N: usize> IntoIter<T, N> {
+    #[inline]
+    fn unsize(&self) -> &InnerUnsized<T> {
+        &self.inner
+    }
+    #[inline]
+    fn unsize_mut(&mut self) -> &mut InnerUnsized<T> {
+        &mut self.inner
+    }
 }
 
 // Note: the `#[rustc_skip_during_method_dispatch(array)]` on `trait IntoIterator`
@@ -53,6 +50,7 @@ impl<T, const N: usize> IntoIterator for [T; N] {
     /// 2021 edition -- see the [array] Editions section for more information.
     ///
     /// [array]: prim@array
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         // SAFETY: The transmute here is actually safe. The docs of `MaybeUninit`
         // promise:
@@ -68,7 +66,10 @@ impl<T, const N: usize> IntoIterator for [T; N] {
         // FIXME: If normal `transmute` ever gets smart enough to allow this
         // directly, use it instead of `transmute_unchecked`.
         let data: [MaybeUninit<T>; N] = unsafe { transmute_unchecked(self) };
-        IntoIter { data, alive: IndexRange::zero_to(N) }
+        // SAFETY: The original array was entirely initialized and the the alive
+        // range we're passing here represents that fact.
+        let inner = unsafe { InnerSized::new_unchecked(IndexRange::zero_to(N), data) };
+        IntoIter { inner }
     }
 }
 
@@ -136,13 +137,16 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// assert_eq!(r.collect::<Vec<_>>(), vec![10, 11, 12, 13, 14, 15]);
     /// ```
     #[unstable(feature = "array_into_iter_constructors", issue = "91583")]
+    #[inline]
     pub const unsafe fn new_unchecked(
         buffer: [MaybeUninit<T>; N],
         initialized: Range<usize>,
     ) -> Self {
         // SAFETY: one of our safety conditions is that the range is canonical.
         let alive = unsafe { IndexRange::new_unchecked(initialized.start, initialized.end) };
-        Self { data: buffer, alive }
+        // SAFETY: one of our safety condition is that these items are initialized.
+        let inner = unsafe { InnerSized::new_unchecked(alive, buffer) };
+        IntoIter { inner }
     }
 
     /// Creates an iterator over `T` which returns no elements.
@@ -198,172 +202,134 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// assert_eq!(get_bytes(false).collect::<Vec<_>>(), vec![]);
     /// ```
     #[unstable(feature = "array_into_iter_constructors", issue = "91583")]
+    #[inline]
     pub const fn empty() -> Self {
-        let buffer = [const { MaybeUninit::uninit() }; N];
-        let initialized = 0..0;
-
-        // SAFETY: We're telling it that none of the elements are initialized,
-        // which is trivially true. And ∀N: usize, 0 <= N.
-        unsafe { Self::new_unchecked(buffer, initialized) }
+        let inner = InnerSized::empty();
+        IntoIter { inner }
     }
 
     /// Returns an immutable slice of all elements that have not been yielded
     /// yet.
     #[stable(feature = "array_value_iter", since = "1.51.0")]
+    #[inline]
     pub fn as_slice(&self) -> &[T] {
-        // SAFETY: We know that all elements within `alive` are properly initialized.
-        unsafe {
-            let slice = self.data.get_unchecked(self.alive.clone());
-            slice.assume_init_ref()
-        }
+        self.unsize().as_slice()
     }
 
     /// Returns a mutable slice of all elements that have not been yielded yet.
     #[stable(feature = "array_value_iter", since = "1.51.0")]
+    #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        // SAFETY: We know that all elements within `alive` are properly initialized.
-        unsafe {
-            let slice = self.data.get_unchecked_mut(self.alive.clone());
-            slice.assume_init_mut()
-        }
+        self.unsize_mut().as_mut_slice()
     }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> Iterator for IntoIter<T, N> {
     type Item = T;
-    fn next(&mut self) -> Option<Self::Item> {
-        // Get the next index from the front.
-        //
-        // Increasing `alive.start` by 1 maintains the invariant regarding
-        // `alive`. However, due to this change, for a short time, the alive
-        // zone is not `data[alive]` anymore, but `data[idx..alive.end]`.
-        self.alive.next().map(|idx| {
-            // Read the element from the array.
-            // SAFETY: `idx` is an index into the former "alive" region of the
-            // array. Reading this element means that `data[idx]` is regarded as
-            // dead now (i.e. do not touch). As `idx` was the start of the
-            // alive-zone, the alive zone is now `data[alive]` again, restoring
-            // all invariants.
-            unsafe { self.data.get_unchecked(idx).assume_init_read() }
-        })
-    }
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.len();
-        (len, Some(len))
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.unsize_mut().next()
     }
 
     #[inline]
-    fn fold<Acc, Fold>(mut self, init: Acc, mut fold: Fold) -> Acc
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.unsize().size_hint()
+    }
+
+    #[inline]
+    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        let data = &mut self.data;
-        iter::ByRefSized(&mut self.alive).fold(init, |acc, idx| {
-            // SAFETY: idx is obtained by folding over the `alive` range, which implies the
-            // value is currently considered alive but as the range is being consumed each value
-            // we read here will only be read once and then considered dead.
-            fold(acc, unsafe { data.get_unchecked(idx).assume_init_read() })
-        })
+        self.unsize_mut().fold(init, fold)
     }
 
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        self.unsize_mut().try_fold(init, f)
+    }
+
+    #[inline]
     fn count(self) -> usize {
         self.len()
     }
 
+    #[inline]
     fn last(mut self) -> Option<Self::Item> {
         self.next_back()
     }
 
+    #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        // This also moves the start, which marks them as conceptually "dropped",
-        // so if anything goes bad then our drop impl won't double-free them.
-        let range_to_drop = self.alive.take_prefix(n);
-        let remaining = n - range_to_drop.len();
-
-        // SAFETY: These elements are currently initialized, so it's fine to drop them.
-        unsafe {
-            let slice = self.data.get_unchecked_mut(range_to_drop);
-            slice.assume_init_drop();
-        }
-
-        NonZero::new(remaining).map_or(Ok(()), Err)
+        self.unsize_mut().advance_by(n)
     }
 
     #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         // SAFETY: The caller must provide an idx that is in bound of the remainder.
-        unsafe { self.data.as_ptr().add(self.alive.start()).add(idx).cast::<T>().read() }
+        let elem_ref = unsafe { self.as_mut_slice().get_unchecked_mut(idx) };
+        // SAFETY: We only implement `TrustedRandomAccessNoCoerce` for types
+        // which are actually `Copy`, so cannot have multiple-drop issues.
+        unsafe { ptr::read(elem_ref) }
     }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
+    #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        // Get the next index from the back.
-        //
-        // Decreasing `alive.end` by 1 maintains the invariant regarding
-        // `alive`. However, due to this change, for a short time, the alive
-        // zone is not `data[alive]` anymore, but `data[alive.start..=idx]`.
-        self.alive.next_back().map(|idx| {
-            // Read the element from the array.
-            // SAFETY: `idx` is an index into the former "alive" region of the
-            // array. Reading this element means that `data[idx]` is regarded as
-            // dead now (i.e. do not touch). As `idx` was the end of the
-            // alive-zone, the alive zone is now `data[alive]` again, restoring
-            // all invariants.
-            unsafe { self.data.get_unchecked(idx).assume_init_read() }
-        })
+        self.unsize_mut().next_back()
     }
 
     #[inline]
-    fn rfold<Acc, Fold>(mut self, init: Acc, mut rfold: Fold) -> Acc
+    fn rfold<Acc, Fold>(mut self, init: Acc, rfold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        let data = &mut self.data;
-        iter::ByRefSized(&mut self.alive).rfold(init, |acc, idx| {
-            // SAFETY: idx is obtained by folding over the `alive` range, which implies the
-            // value is currently considered alive but as the range is being consumed each value
-            // we read here will only be read once and then considered dead.
-            rfold(acc, unsafe { data.get_unchecked(idx).assume_init_read() })
-        })
+        self.unsize_mut().rfold(init, rfold)
     }
 
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        self.unsize_mut().try_rfold(init, f)
+    }
+
+    #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        // This also moves the end, which marks them as conceptually "dropped",
-        // so if anything goes bad then our drop impl won't double-free them.
-        let range_to_drop = self.alive.take_suffix(n);
-        let remaining = n - range_to_drop.len();
-
-        // SAFETY: These elements are currently initialized, so it's fine to drop them.
-        unsafe {
-            let slice = self.data.get_unchecked_mut(range_to_drop);
-            slice.assume_init_drop();
-        }
-
-        NonZero::new(remaining).map_or(Ok(()), Err)
+        self.unsize_mut().advance_back_by(n)
     }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> Drop for IntoIter<T, N> {
+    #[inline]
     fn drop(&mut self) {
-        // SAFETY: This is safe: `as_mut_slice` returns exactly the sub-slice
-        // of elements that have not been moved out yet and that remain
-        // to be dropped.
-        unsafe { ptr::drop_in_place(self.as_mut_slice()) }
+        // `inner` now handles this, but it'd technically be a breaking change
+        // to remove this `impl`, even though it's useless.
     }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> ExactSizeIterator for IntoIter<T, N> {
+    #[inline]
     fn len(&self) -> usize {
-        self.alive.len()
+        self.inner.len()
     }
+    #[inline]
     fn is_empty(&self) -> bool {
-        self.alive.is_empty()
+        self.inner.len() == 0
     }
 }
 
@@ -397,31 +363,8 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T: Clone, const N: usize> Clone for IntoIter<T, N> {
-    fn clone(&self) -> Self {
-        // Note, we don't really need to match the exact same alive range, so
-        // we can just clone into offset 0 regardless of where `self` is.
-        let mut new =
-            Self { data: [const { MaybeUninit::uninit() }; N], alive: IndexRange::zero_to(0) };
-
-        // Clone all alive elements.
-        for (src, dst) in iter::zip(self.as_slice(), &mut new.data) {
-            // Write a clone into the new array, then update its alive range.
-            // If cloning panics, we'll correctly drop the previous items.
-            dst.write(src.clone());
-            // This addition cannot overflow as we're iterating a slice
-            new.alive = IndexRange::zero_to(new.alive.end() + 1);
-        }
-
-        new
-    }
-}
-
-#[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T: fmt::Debug, const N: usize> fmt::Debug for IntoIter<T, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Only print the elements that were not yielded yet: we cannot
-        // access the yielded elements anymore.
-        f.debug_tuple("IntoIter").field(&self.as_slice()).finish()
+        self.unsize().fmt(f)
     }
 }

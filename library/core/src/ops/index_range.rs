@@ -1,5 +1,6 @@
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::num::NonZero;
+use crate::ops::{NeverShortCircuit, Try};
 use crate::ub_checks;
 
 /// Like a `Range<usize>`, but with a safety invariant that `start <= end`.
@@ -112,6 +113,12 @@ impl IndexRange {
         self.end = mid;
         suffix
     }
+
+    #[inline]
+    fn assume_range(&self) {
+        // SAFETY: This is the type invariant
+        unsafe { crate::hint::assert_unchecked(self.start <= self.end) }
+    }
 }
 
 impl Iterator for IndexRange {
@@ -138,6 +145,30 @@ impl Iterator for IndexRange {
         let taken = self.take_prefix(n);
         NonZero::new(n - taken.len()).map_or(Ok(()), Err)
     }
+
+    #[inline]
+    fn fold<B, F: FnMut(B, usize) -> B>(mut self, init: B, f: F) -> B {
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
+    }
+
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, mut accum: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        // `Range` needs to check `start < end`, but thanks to our type invariant
+        // we can loop on the stricter `start != end`.
+
+        self.assume_range();
+        while self.start != self.end {
+            // SAFETY: We just checked that the range is non-empty
+            let i = unsafe { self.next_unchecked() };
+            accum = f(accum, i)?;
+        }
+        try { accum }
+    }
 }
 
 impl DoubleEndedIterator for IndexRange {
@@ -155,6 +186,30 @@ impl DoubleEndedIterator for IndexRange {
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let taken = self.take_suffix(n);
         NonZero::new(n - taken.len()).map_or(Ok(()), Err)
+    }
+
+    #[inline]
+    fn rfold<B, F: FnMut(B, usize) -> B>(mut self, init: B, f: F) -> B {
+        self.try_rfold(init, NeverShortCircuit::wrap_mut_2(f)).0
+    }
+
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, mut accum: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        // `Range` needs to check `start < end`, but thanks to our type invariant
+        // we can loop on the stricter `start != end`.
+
+        self.assume_range();
+        while self.start != self.end {
+            // SAFETY: We just checked that the range is non-empty
+            let i = unsafe { self.next_back_unchecked() };
+            accum = f(accum, i)?;
+        }
+        try { accum }
     }
 }
 
