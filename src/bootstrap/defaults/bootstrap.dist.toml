@@ -17,7 +17,7 @@ download-ci-llvm = false
 [rust]
 # We have several defaults in bootstrap that depend on whether the channel is `dev` (e.g. `omit-git-hash` and `download-ci-llvm`).
 # Make sure they don't get set when installing from source.
-channel = "nightly"
+channel = "auto-detect"
 # Never download a rustc, distributions must build a fresh compiler.
 download-rustc = false
 lld = true
