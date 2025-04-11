@@ -272,19 +272,13 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
     rbv
 }
 
-fn late_arg_as_bound_arg<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param: &GenericParam<'tcx>,
-) -> ty::BoundVariableKind {
+fn late_arg_as_bound_arg<'tcx>(param: &GenericParam<'tcx>) -> ty::BoundVariableKind {
     let def_id = param.def_id.to_def_id();
-    let name = tcx.item_name(def_id);
     match param.kind {
         GenericParamKind::Lifetime { .. } => {
             ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id))
         }
-        GenericParamKind::Type { .. } => {
-            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, name))
-        }
+        GenericParamKind::Type { .. } => ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id)),
         GenericParamKind::Const { .. } => ty::BoundVariableKind::Const,
     }
 }
@@ -298,7 +292,7 @@ fn generic_param_def_as_bound_arg(param: &ty::GenericParamDef) -> ty::BoundVaria
             ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(param.def_id))
         }
         ty::GenericParamDefKind::Type { .. } => {
-            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id, param.name))
+            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id))
         }
         ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const,
     }
@@ -379,7 +373,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             trait_ref.bound_generic_params.iter().enumerate().map(|(late_bound_idx, param)| {
                 let arg = ResolvedArg::late(initial_bound_vars + late_bound_idx as u32, param);
                 bound_vars.insert(param.def_id, arg);
-                late_arg_as_bound_arg(self.tcx, param)
+                late_arg_as_bound_arg(param)
             });
         binders.extend(binders_iter);
 
@@ -478,7 +472,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     .map(|(late_bound_idx, param)| {
                         (
                             (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
-                            late_arg_as_bound_arg(self.tcx, param),
+                            late_arg_as_bound_arg(param),
                         )
                     })
                     .unzip();
@@ -710,7 +704,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     .map(|(late_bound_idx, param)| {
                         (
                             (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
-                            late_arg_as_bound_arg(self.tcx, param),
+                            late_arg_as_bound_arg(param),
                         )
                     })
                     .unzip();
@@ -740,7 +734,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         .map(|(late_bound_idx, param)| {
                             (
                                 (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
-                                late_arg_as_bound_arg(self.tcx, param),
+                                late_arg_as_bound_arg(param),
                             )
                         })
                         .unzip();
@@ -949,7 +943,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         .map(|(late_bound_idx, param)| {
                             (
                                 (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
-                                late_arg_as_bound_arg(self.tcx, param),
+                                late_arg_as_bound_arg(param),
                             )
                         })
                         .unzip();
@@ -1163,7 +1157,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 matches!(param.kind, GenericParamKind::Lifetime { .. })
                     && self.tcx.is_late_bound(param.hir_id)
             })
-            .map(|param| late_arg_as_bound_arg(self.tcx, param))
+            .map(|param| late_arg_as_bound_arg(param))
             .collect();
         self.record_late_bound_vars(hir_id, binders);
         let scope = Scope::Binder {

@@ -230,9 +230,10 @@ impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
 
         match self {
             ty::BoundTyKind::Anon => BoundTyKind::Anon,
-            ty::BoundTyKind::Param(def_id, symbol) => {
-                BoundTyKind::Param(tables.param_def(*def_id), symbol.to_string())
-            }
+            ty::BoundTyKind::Param(def_id) => BoundTyKind::Param(
+                tables.param_def(*def_id),
+                tables.tcx.item_name(*def_id).to_string(),
+            ),
         }
     }
 }
