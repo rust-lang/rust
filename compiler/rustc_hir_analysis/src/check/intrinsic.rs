@@ -659,8 +659,12 @@ pub(crate) fn check_intrinsic_type(
             sym::simd_masked_load => (3, 0, vec![param(0), param(1), param(2)], param(2)),
             sym::simd_masked_store => (3, 0, vec![param(0), param(1), param(2)], tcx.types.unit),
             sym::simd_scatter => (3, 0, vec![param(0), param(1), param(2)], tcx.types.unit),
-            sym::simd_insert => (2, 0, vec![param(0), tcx.types.u32, param(1)], param(0)),
-            sym::simd_extract => (2, 0, vec![param(0), tcx.types.u32], param(1)),
+            sym::simd_insert | sym::simd_insert_dyn => {
+                (2, 0, vec![param(0), tcx.types.u32, param(1)], param(0))
+            }
+            sym::simd_extract | sym::simd_extract_dyn => {
+                (2, 0, vec![param(0), tcx.types.u32], param(1))
+            }
             sym::simd_cast
             | sym::simd_as
             | sym::simd_cast_ptr
