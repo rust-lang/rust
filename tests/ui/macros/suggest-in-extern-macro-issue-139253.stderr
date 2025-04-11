@@ -1,0 +1,30 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-in-extern-macro-issue-139253.rs:16:24
+   |
+LL |     let b: Point<u8> = dbg!(&a);
+   |                        ^^^^^^^^ expected `Point<u8>`, found `&Point<u8>`
+   |
+   = note: expected struct `Point<_>`
+           found reference `&Point<_>`
+   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-in-extern-macro-issue-139253.rs:9:20
+   |
+LL |             tmp => tmp,
+   |                    ^^^ expected `Point<u8>`, found `&Point<u8>`
+...
+LL |     let c: Point<u8> = local_macro!(&a);
+   |                        ---------------- in this macro invocation
+   |
+   = note: expected struct `Point<_>`
+           found reference `&Point<_>`
+   = note: this error originates in the macro `local_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using clone here
+   |
+LL |             tmp => tmp.clone(),
+   |                       ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
