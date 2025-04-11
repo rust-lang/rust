@@ -1981,6 +1981,7 @@ symbols! {
         slice,
         slice_from_raw_parts,
         slice_from_raw_parts_mut,
+        slice_get_unchecked,
         slice_into_vec,
         slice_iter,
         slice_len_fn,

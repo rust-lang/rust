@@ -15,12 +15,10 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
             let _8: usize;
             scope 3 {
                 scope 6 (inlined core::slice::index::get_offset_len_mut_noubcheck::<u32>) {
-                    let _10: *mut u32;
+                    let _9: *mut u32;
                     scope 7 {
-                    }
-                    scope 8 (inlined core::slice::index::get_mut_noubcheck::<u32>) {
-                        let _9: *mut u32;
-                        scope 9 {
+                        let _10: *mut u32;
+                        scope 8 {
                         }
                     }
                 }
@@ -47,13 +45,13 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
     bb1: {
         StorageDead(_6);
         _8 = SubUnchecked(copy _4, copy _3);
-        StorageLive(_10);
         StorageLive(_9);
+        StorageLive(_10);
         _9 = copy _5 as *mut u32 (PtrToPtr);
         _10 = Offset(copy _9, copy _3);
-        StorageDead(_9);
         _11 = *mut [u32] from (copy _10, copy _8);
         StorageDead(_10);
+        StorageDead(_9);
         StorageDead(_8);
         StorageDead(_5);
         _0 = &mut (*_11);
