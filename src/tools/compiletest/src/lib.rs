@@ -22,16 +22,15 @@ pub mod util;
 
 use core::panic;
 use std::collections::HashSet;
-use std::ffi::OsString;
 use std::fmt::Write;
 use std::io::{self, ErrorKind};
-use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, OnceLock};
 use std::time::SystemTime;
 use std::{env, fs, vec};
 
 use build_helper::git::{get_git_modified_files, get_git_untracked_files};
+use camino::{Utf8Path, Utf8PathBuf};
 use getopts::Options;
 use tracing::*;
 use walkdir::WalkDir;
@@ -230,15 +229,19 @@ pub fn parse_config(args: Vec<String>) -> Config {
         panic!()
     }
 
-    fn opt_path(m: &getopts::Matches, nm: &str) -> PathBuf {
-        match m.opt_str(nm) {
-            Some(s) => PathBuf::from(&s),
-            None => panic!("no option (=path) found for {}", nm),
+    fn make_absolute(path: Utf8PathBuf) -> Utf8PathBuf {
+        if path.is_relative() {
+            Utf8PathBuf::try_from(env::current_dir().unwrap()).unwrap().join(path)
+        } else {
+            path
         }
     }
 
-    fn make_absolute(path: PathBuf) -> PathBuf {
-        if path.is_relative() { env::current_dir().unwrap().join(path) } else { path }
+    fn opt_path(m: &getopts::Matches, nm: &str) -> Utf8PathBuf {
+        match m.opt_str(nm) {
+            Some(s) => Utf8PathBuf::from(&s),
+            None => panic!("no option (=path) found for {}", nm),
+        }
     }
 
     let target = opt_str2(matches.opt_str("target"));
@@ -279,12 +282,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             .free
             .iter()
             .map(|f| {
-                let path = Path::new(f);
+                let path = Utf8Path::new(f);
                 let mut iter = path.iter().skip(1);
 
                 // We skip the test folder and check if the user passed `rmake.rs`.
                 if iter.next().is_some_and(|s| s == "rmake.rs") && iter.next().is_none() {
-                    path.parent().unwrap().to_str().unwrap().to_string()
+                    path.parent().unwrap().to_string()
                 } else {
                     f.to_string()
                 }
@@ -316,8 +319,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
     assert!(
         src_test_suite_root.starts_with(&src_root),
         "`src-root` must be a parent of `src-test-suite-root`: `src-root`=`{}`, `src-test-suite-root` = `{}`",
-        src_root.display(),
-        src_test_suite_root.display()
+        src_root,
+        src_test_suite_root
     );
 
     let build_root = opt_path(matches, "build-root");
@@ -332,16 +335,16 @@ pub fn parse_config(args: Vec<String>) -> Config {
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
-        cargo_path: matches.opt_str("cargo-path").map(PathBuf::from),
-        stage0_rustc_path: matches.opt_str("stage0-rustc-path").map(PathBuf::from),
-        rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
-        coverage_dump_path: matches.opt_str("coverage-dump-path").map(PathBuf::from),
+        cargo_path: matches.opt_str("cargo-path").map(Utf8PathBuf::from),
+        stage0_rustc_path: matches.opt_str("stage0-rustc-path").map(Utf8PathBuf::from),
+        rustdoc_path: matches.opt_str("rustdoc-path").map(Utf8PathBuf::from),
+        coverage_dump_path: matches.opt_str("coverage-dump-path").map(Utf8PathBuf::from),
         python: matches.opt_str("python").unwrap(),
         jsondocck_path: matches.opt_str("jsondocck-path"),
         jsondoclint_path: matches.opt_str("jsondoclint-path"),
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
-        llvm_filecheck: matches.opt_str("llvm-filecheck").map(PathBuf::from),
-        llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
+        llvm_filecheck: matches.opt_str("llvm-filecheck").map(Utf8PathBuf::from),
+        llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(Utf8PathBuf::from),
 
         src_root,
         src_test_suite_root,
@@ -407,7 +410,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         },
         only_modified: matches.opt_present("only-modified"),
         color,
-        remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
+        remote_test_client: matches.opt_str("remote-test-client").map(Utf8PathBuf::from),
         compare_mode,
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
         has_html_tidy,
@@ -450,19 +453,19 @@ pub fn parse_config(args: Vec<String>) -> Config {
 pub fn log_config(config: &Config) {
     let c = config;
     logv(c, "configuration:".to_string());
-    logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
-    logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
-    logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
+    logv(c, format!("compile_lib_path: {}", config.compile_lib_path));
+    logv(c, format!("run_lib_path: {}", config.run_lib_path));
+    logv(c, format!("rustc_path: {}", config.rustc_path));
     logv(c, format!("cargo_path: {:?}", config.cargo_path));
     logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
 
-    logv(c, format!("src_root: {}", config.src_root.display()));
-    logv(c, format!("src_test_suite_root: {}", config.src_test_suite_root.display()));
+    logv(c, format!("src_root: {}", config.src_root));
+    logv(c, format!("src_test_suite_root: {}", config.src_test_suite_root));
 
-    logv(c, format!("build_root: {}", config.build_root.display()));
-    logv(c, format!("build_test_suite_root: {}", config.build_test_suite_root.display()));
+    logv(c, format!("build_root: {}", config.build_root));
+    logv(c, format!("build_test_suite_root: {}", config.build_test_suite_root));
 
-    logv(c, format!("sysroot_base: {}", config.sysroot_base.display()));
+    logv(c, format!("sysroot_base: {}", config.sysroot_base));
 
     logv(c, format!("stage: {}", config.stage));
     logv(c, format!("stage_id: {}", config.stage_id));
@@ -480,16 +483,16 @@ pub fn log_config(config: &Config) {
     logv(c, format!("target-rustcflags: {:?}", config.target_rustcflags));
     logv(c, format!("target: {}", config.target));
     logv(c, format!("host: {}", config.host));
-    logv(c, format!("android-cross-path: {:?}", config.android_cross_path.display()));
-    logv(c, format!("adb_path: {:?}", config.adb_path));
-    logv(c, format!("adb_test_dir: {:?}", config.adb_test_dir));
+    logv(c, format!("android-cross-path: {}", config.android_cross_path));
+    logv(c, format!("adb_path: {}", config.adb_path));
+    logv(c, format!("adb_test_dir: {}", config.adb_test_dir));
     logv(c, format!("adb_device_status: {}", config.adb_device_status));
     logv(c, format!("ar: {}", config.ar));
     logv(c, format!("target-linker: {:?}", config.target_linker));
     logv(c, format!("host-linker: {:?}", config.host_linker));
     logv(c, format!("verbose: {}", config.verbose));
     logv(c, format!("format: {:?}", config.format));
-    logv(c, format!("minicore_path: {:?}", config.minicore_path.display()));
+    logv(c, format!("minicore_path: {}", config.minicore_path));
     logv(c, "\n".to_string());
 }
 
@@ -517,7 +520,7 @@ pub fn run_tests(config: Arc<Config>) {
         coverage_file_path.push("rustfix_missing_coverage.txt");
         if coverage_file_path.exists() {
             if let Err(e) = fs::remove_file(&coverage_file_path) {
-                panic!("Could not delete {} due to {}", coverage_file_path.display(), e)
+                panic!("Could not delete {} due to {}", coverage_file_path, e)
             }
         }
     }
@@ -619,13 +622,13 @@ struct TestCollectorCx {
     config: Arc<Config>,
     cache: HeadersCache,
     common_inputs_stamp: Stamp,
-    modified_tests: Vec<PathBuf>,
+    modified_tests: Vec<Utf8PathBuf>,
 }
 
 /// Mutable state used during test collection.
 struct TestCollector {
     tests: Vec<CollectedTest>,
-    found_path_stems: HashSet<PathBuf>,
+    found_path_stems: HashSet<Utf8PathBuf>,
     poisoned: bool,
 }
 
@@ -635,14 +638,13 @@ struct TestCollector {
 /// regardless of whether any filters/tests were specified on the command-line,
 /// because filtering is handled later by libtest.
 pub(crate) fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> {
-    debug!("making tests from {}", config.src_test_suite_root.display());
+    debug!("making tests from {}", config.src_test_suite_root);
     let common_inputs_stamp = common_inputs_stamp(&config);
     let modified_tests =
         modified_tests(&config, &config.src_test_suite_root).unwrap_or_else(|err| {
             panic!(
                 "modified_tests got error from dir: {}, error: {}",
-                config.src_test_suite_root.display(),
-                err
+                config.src_test_suite_root, err
             )
         });
     let cache = HeadersCache::load(&config);
@@ -651,12 +653,9 @@ pub(crate) fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> 
     let mut collector =
         TestCollector { tests: vec![], found_path_stems: HashSet::new(), poisoned: false };
 
-    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_test_suite_root, Path::new(""))
+    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_test_suite_root, Utf8Path::new(""))
         .unwrap_or_else(|reason| {
-            panic!(
-                "Could not read tests from {}: {reason}",
-                cx.config.src_test_suite_root.display()
-            )
+            panic!("Could not read tests from {}: {reason}", cx.config.src_test_suite_root)
         });
 
     let TestCollector { tests, found_path_stems, poisoned } = collector;
@@ -725,24 +724,29 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
 /// the `--only-modified` flag is in use.
 ///
 /// (Might be inaccurate in some cases.)
-fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
+fn modified_tests(config: &Config, dir: &Utf8Path) -> Result<Vec<Utf8PathBuf>, String> {
     // If `--only-modified` wasn't passed, the list of modified tests won't be
     // used for anything, so avoid some work and just return an empty list.
     if !config.only_modified {
         return Ok(vec![]);
     }
 
-    let files =
-        get_git_modified_files(&config.git_config(), Some(dir), &vec!["rs", "stderr", "fixed"])?;
+    let files = get_git_modified_files(
+        &config.git_config(),
+        Some(dir.as_std_path()),
+        &vec!["rs", "stderr", "fixed"],
+    )?;
     // Add new test cases to the list, it will be convenient in daily development.
     let untracked_files = get_git_untracked_files(&config.git_config(), None)?.unwrap_or(vec![]);
 
     let all_paths = [&files[..], &untracked_files[..]].concat();
     let full_paths = {
-        let mut full_paths: Vec<PathBuf> = all_paths
+        let mut full_paths: Vec<Utf8PathBuf> = all_paths
             .into_iter()
-            .map(|f| PathBuf::from(f).with_extension("").with_extension("rs"))
-            .filter_map(|f| if Path::new(&f).exists() { f.canonicalize().ok() } else { None })
+            .map(|f| Utf8PathBuf::from(f).with_extension("").with_extension("rs"))
+            .filter_map(
+                |f| if Utf8Path::new(&f).exists() { f.canonicalize_utf8().ok() } else { None },
+            )
             .collect();
         full_paths.dedup();
         full_paths.sort_unstable();
@@ -756,8 +760,8 @@ fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
 fn collect_tests_from_dir(
     cx: &TestCollectorCx,
     collector: &mut TestCollector,
-    dir: &Path,
-    relative_dir_path: &Path,
+    dir: &Utf8Path,
+    relative_dir_path: &Utf8Path,
 ) -> io::Result<()> {
     // Ignore directories that contain a file named `compiletest-ignore-dir`.
     if dir.join("compiletest-ignore-dir").exists() {
@@ -790,16 +794,16 @@ fn collect_tests_from_dir(
     // subdirectories we find, except for `auxiliary` directories.
     // FIXME: this walks full tests tree, even if we have something to ignore
     // use walkdir/ignore like in tidy?
-    for file in fs::read_dir(dir)? {
+    for file in fs::read_dir(dir.as_std_path())? {
         let file = file?;
-        let file_path = file.path();
-        let file_name = file.file_name();
+        let file_path = Utf8PathBuf::try_from(file.path()).unwrap();
+        let file_name = file_path.file_name().unwrap();
 
-        if is_test(&file_name)
+        if is_test(file_name)
             && (!cx.config.only_modified || cx.modified_tests.contains(&file_path))
         {
             // We found a test file, so create the corresponding libtest structures.
-            debug!("found test file: {:?}", file_path.display());
+            debug!(%file_path, "found test file");
 
             // Record the stem of the test file, to check for overlaps later.
             let rel_test_path = relative_dir_path.join(file_path.file_stem().unwrap());
@@ -810,22 +814,20 @@ fn collect_tests_from_dir(
             make_test(cx, collector, &paths);
         } else if file_path.is_dir() {
             // Recurse to find more tests in a subdirectory.
-            let relative_file_path = relative_dir_path.join(file.file_name());
-            if &file_name != "auxiliary" {
-                debug!("found directory: {:?}", file_path.display());
+            let relative_file_path = relative_dir_path.join(file_name);
+            if file_name != "auxiliary" {
+                debug!(%file_path, "found directory");
                 collect_tests_from_dir(cx, collector, &file_path, &relative_file_path)?;
             }
         } else {
-            debug!("found other file/directory: {:?}", file_path.display());
+            debug!(%file_path, "found other file/directory");
         }
     }
     Ok(())
 }
 
 /// Returns true if `file_name` looks like a proper test file name.
-pub fn is_test(file_name: &OsString) -> bool {
-    let file_name = file_name.to_str().unwrap();
-
+pub fn is_test(file_name: &str) -> bool {
     if !file_name.ends_with(".rs") {
         return false;
     }
@@ -844,7 +846,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     let test_path = if cx.config.mode == Mode::RunMake {
         testpaths.file.join("rmake.rs")
     } else {
-        PathBuf::from(&testpaths.file)
+        testpaths.file.clone()
     };
 
     // Scan the test file to discover its revisions, if any.
@@ -899,7 +901,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
 
 /// The path of the `stamp` file that gets created or updated whenever a
 /// particular test completes successfully.
-fn stamp_file_path(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+fn stamp_file_path(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Utf8PathBuf {
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
@@ -912,7 +914,7 @@ fn files_related_to_test(
     testpaths: &TestPaths,
     props: &EarlyProps,
     revision: Option<&str>,
-) -> Vec<PathBuf> {
+) -> Vec<Utf8PathBuf> {
     let mut related = vec![];
 
     if testpaths.file.is_dir() {
@@ -920,7 +922,7 @@ fn files_related_to_test(
         for entry in WalkDir::new(&testpaths.file) {
             let path = entry.unwrap().into_path();
             if path.is_file() {
-                related.push(path);
+                related.push(Utf8PathBuf::try_from(path).unwrap());
             }
         }
     } else {
@@ -991,7 +993,7 @@ struct Stamp {
 
 impl Stamp {
     /// Creates a timestamp holding the last-modified time of the specified file.
-    fn from_path(path: &Path) -> Self {
+    fn from_path(path: &Utf8Path) -> Self {
         let mut stamp = Stamp { time: SystemTime::UNIX_EPOCH };
         stamp.add_path(path);
         stamp
@@ -999,8 +1001,8 @@ impl Stamp {
 
     /// Updates this timestamp to the last-modified time of the specified file,
     /// if it is later than the currently-stored timestamp.
-    fn add_path(&mut self, path: &Path) {
-        let modified = fs::metadata(path)
+    fn add_path(&mut self, path: &Utf8Path) {
+        let modified = fs::metadata(path.as_std_path())
             .and_then(|metadata| metadata.modified())
             .unwrap_or(SystemTime::UNIX_EPOCH);
         self.time = self.time.max(modified);
@@ -1009,7 +1011,8 @@ impl Stamp {
     /// Updates this timestamp to the most recent last-modified time of all files
     /// recursively contained in the given directory, if it is later than the
     /// currently-stored timestamp.
-    fn add_dir(&mut self, path: &Path) {
+    fn add_dir(&mut self, path: &Utf8Path) {
+        let path = path.as_std_path();
         for entry in WalkDir::new(path) {
             let entry = entry.unwrap();
             if entry.file_type().is_file() {
@@ -1042,7 +1045,7 @@ fn make_test_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>
         config.mode,
         debugger,
         mode_suffix,
-        path.display(),
+        path,
         revision.map_or("".to_string(), |rev| format!("#{}", rev))
     )
 }
@@ -1064,7 +1067,7 @@ fn make_test_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>
 /// To avoid problems, we forbid test names from overlapping in this way.
 ///
 /// See <https://github.com/rust-lang/rust/pull/109509> for more context.
-fn check_for_overlapping_test_paths(found_path_stems: &HashSet<PathBuf>) {
+fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
     let mut collisions = Vec::new();
     for path in found_path_stems {
         for ancestor in path.ancestors().skip(1) {
@@ -1077,7 +1080,7 @@ fn check_for_overlapping_test_paths(found_path_stems: &HashSet<PathBuf>) {
         collisions.sort();
         let collisions: String = collisions
             .into_iter()
-            .map(|(path, check_parent)| format!("test {path:?} clashes with {check_parent:?}\n"))
+            .map(|(path, check_parent)| format!("test {path} clashes with {check_parent}\n"))
             .collect();
         panic!(
             "{collisions}\n\
