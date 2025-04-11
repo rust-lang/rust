@@ -180,6 +180,7 @@ impl Default for ByteString {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<'a, const N: usize> From<&'a [u8; N]> for ByteString {
+//     /// Allocate a new `ByteString` with a copy of the bytes in the array.
 //     #[inline]
 //     fn from(s: &'a [u8; N]) -> Self {
 //         ByteString(s.as_slice().to_vec())
@@ -188,6 +189,7 @@ impl Default for ByteString {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<const N: usize> From<[u8; N]> for ByteString {
+//     /// Allocate a new `ByteString` with a copy of the bytes in the array.
 //     #[inline]
 //     fn from(s: [u8; N]) -> Self {
 //         ByteString(s.as_slice().to_vec())
@@ -196,6 +198,7 @@ impl Default for ByteString {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<'a> From<&'a [u8]> for ByteString {
+//     /// Allocate a new `ByteString` with a copy of the bytes in the array.
 //     #[inline]
 //     fn from(s: &'a [u8]) -> Self {
 //         ByteString(s.to_vec())
@@ -204,6 +207,7 @@ impl Default for ByteString {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl From<Vec<u8>> for ByteString {
+//     /// Make a `ByteString` with `Vec<u8>` as inner
 //     #[inline]
 //     fn from(s: Vec<u8>) -> Self {
 //         ByteString(s)
@@ -212,6 +216,7 @@ impl Default for ByteString {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl From<ByteString> for Vec<u8> {
+    /// Return the inner `Vec` of the byte string.
     #[inline]
     fn from(s: ByteString) -> Self {
         s.0
@@ -222,6 +227,7 @@ impl From<ByteString> for Vec<u8> {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<'a> From<&'a str> for ByteString {
+//     /// Allocate a new `ByteString` with a copy of the bytes in the slice.
 //     #[inline]
 //     fn from(s: &'a str) -> Self {
 //         ByteString(s.as_bytes().to_vec())
@@ -230,6 +236,7 @@ impl From<ByteString> for Vec<u8> {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl From<String> for ByteString {
+//     /// Create a `ByteString` from a `String`s bytes
 //     #[inline]
 //     fn from(s: String) -> Self {
 //         ByteString(s.into_bytes())
@@ -238,6 +245,7 @@ impl From<ByteString> for Vec<u8> {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteStr> for ByteString {
+    /// Allocates a `ByteString` containing the bytes of `ByteStr`.
     #[inline]
     fn from(s: &'a ByteStr) -> Self {
         ByteString(s.0.to_vec())
@@ -246,6 +254,7 @@ impl<'a> From<&'a ByteStr> for ByteString {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<ByteString> for Cow<'a, ByteStr> {
+    /// Wrap `ByteString` in `Cow::Owned`.
     #[inline]
     fn from(s: ByteString) -> Self {
         Cow::Owned(s)
@@ -254,6 +263,7 @@ impl<'a> From<ByteString> for Cow<'a, ByteStr> {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteString> for Cow<'a, ByteStr> {
+    /// Wrap `ByteString` as byte str in `Cow::Borrowed`.
     #[inline]
     fn from(s: &'a ByteString) -> Self {
         Cow::Borrowed(s.as_bytestr())
@@ -599,6 +609,7 @@ impl Clone for Box<ByteStr> {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
+    /// Wrap `ByteStr` in `Cow::Borrowed`.
     #[inline]
     fn from(s: &'a ByteStr) -> Self {
         Cow::Borrowed(s)
@@ -607,6 +618,7 @@ impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl From<Box<[u8]>> for Box<ByteStr> {
+    /// Move the bytes from `Box<ByteStr>` to `Box<[u8]>`, this does not allocate new memory.
     #[inline]
     fn from(s: Box<[u8]>) -> Box<ByteStr> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -616,6 +628,7 @@ impl From<Box<[u8]>> for Box<ByteStr> {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl From<Box<ByteStr>> for Box<[u8]> {
+    /// Convert the inner bytes of `Box<[u8]>` to `ByteStr`.
     #[inline]
     fn from(s: Box<ByteStr>) -> Box<[u8]> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -626,6 +639,7 @@ impl From<Box<ByteStr>> for Box<[u8]> {
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(not(no_rc))]
 impl From<Rc<[u8]>> for Rc<ByteStr> {
+    /// Create an `Rc<[u8]>` from the inner bytes of `Rc<ByteStr>`.
     #[inline]
     fn from(s: Rc<[u8]>) -> Rc<ByteStr> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -636,6 +650,7 @@ impl From<Rc<[u8]>> for Rc<ByteStr> {
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(not(no_rc))]
 impl From<Rc<ByteStr>> for Rc<[u8]> {
+    /// Create a `Rc<ByteStr>` from the bytes of `Rc<[u8]>`.
     #[inline]
     fn from(s: Rc<ByteStr>) -> Rc<[u8]> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -646,6 +661,7 @@ impl From<Rc<ByteStr>> for Rc<[u8]> {
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 impl From<Arc<[u8]>> for Arc<ByteStr> {
+    /// Create an `Arc<ByteStr>` from the bytes of `Arc<[u8]>`.
     #[inline]
     fn from(s: Arc<[u8]>) -> Arc<ByteStr> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -656,6 +672,7 @@ impl From<Arc<[u8]>> for Arc<ByteStr> {
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 impl From<Arc<ByteStr>> for Arc<[u8]> {
+    /// Create a `Arc<[u8]>` from the inner bytes of `Arc<ByteStr>`.
     #[inline]
     fn from(s: Arc<ByteStr>) -> Arc<[u8]> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -675,6 +692,10 @@ impl_partial_eq_ord_cow!(&'a ByteStr, Cow<'a, [u8]>);
 impl<'a> TryFrom<&'a ByteStr> for String {
     type Error = core::str::Utf8Error;
 
+    /// Try to allocate a `ByteStr`s bytes as a UTF-8 `String`.
+    ///
+    /// # Errors
+    /// If `ByteStr` is not valid UTF-8
     #[inline]
     fn try_from(s: &'a ByteStr) -> Result<Self, Self::Error> {
         Ok(core::str::from_utf8(&s.0)?.into())
