@@ -2,6 +2,7 @@
 
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
+use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::MaybeUninit;
 use crate::os::raw::{c_int, c_short};
@@ -11,7 +12,7 @@ use crate::sync::Arc;
 pub use crate::sys::fs::common::exists;
 use crate::sys::pal::{abi, error};
 use crate::sys::time::SystemTime;
-use crate::sys::unsupported;
+use crate::sys::{unsupported, unsupported_err};
 use crate::sys_common::ignore_notfound;
 
 type CIntNotMinusOne = core::num::niche_types::NotAllOnes<c_int>;
@@ -352,12 +353,12 @@ impl File {
         unsupported()
     }
 
-    pub fn try_lock(&self) -> io::Result<bool> {
-        unsupported()
+    pub fn try_lock(&self) -> Result<(), TryLockError> {
+        Err(TryLockError::Error(unsupported_err()))
     }
 
-    pub fn try_lock_shared(&self) -> io::Result<bool> {
-        unsupported()
+    pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
+        Err(TryLockError::Error(unsupported_err()))
     }
 
     pub fn unlock(&self) -> io::Result<()> {
