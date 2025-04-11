@@ -41,6 +41,7 @@ users_on_vacation = [
 
 [assign.owners]
 "/.github" = ["@flip1995"]
+"/triagebot.toml" = ["@flip1995"]
 "/book" = ["@flip1995"]
 "*" = [
     "@Manishearth",
