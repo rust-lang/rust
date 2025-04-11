@@ -22,6 +22,7 @@ use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
+use borrow_set::LocalsStateAtExit;
 use root_cx::BorrowCheckRootCtxt;
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -382,7 +383,6 @@ fn do_mir_borrowck<'tcx>(
             location_table: &location_table,
             movable_coroutine,
             fn_self_span_reported: Default::default(),
-            locals_are_invalidated_at_exit,
             access_place_error_reported: Default::default(),
             reservation_error_reported: Default::default(),
             uninitialized_error_reported: Default::default(),
@@ -441,7 +441,6 @@ fn do_mir_borrowck<'tcx>(
         move_data: &move_data,
         location_table: &location_table,
         movable_coroutine,
-        locals_are_invalidated_at_exit,
         fn_self_span_reported: Default::default(),
         access_place_error_reported: Default::default(),
         reservation_error_reported: Default::default(),
@@ -643,13 +642,6 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     location_table: &'a PoloniusLocationTable,
 
     movable_coroutine: bool,
-    /// This keeps track of whether local variables are free-ed when the function
-    /// exits even without a `StorageDead`, which appears to be the case for
-    /// constants.
-    ///
-    /// I'm not sure this is the right approach - @eddyb could you try and
-    /// figure this out?
-    locals_are_invalidated_at_exit: bool,
     /// This field keeps track of when borrow errors are reported in the access_place function
     /// so that there is no duplicate reporting. This field cannot also be used for the conflicting
     /// borrow errors that is handled by the `reservation_error_reported` field as the inclusion
@@ -925,13 +917,20 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<
             | TerminatorKind::Return
             | TerminatorKind::TailCall { .. }
             | TerminatorKind::CoroutineDrop => {
-                // Returning from the function implicitly kills storage for all locals and statics.
-                // Often, the storage will already have been killed by an explicit
-                // StorageDead, but we don't always emit those (notably on unwind paths),
-                // so this "extra check" serves as a kind of backup.
-                for i in state.borrows.iter() {
-                    let borrow = &self.borrow_set[i];
-                    self.check_for_invalidation_at_exit(loc, borrow, span);
+                match self.borrow_set.locals_state_at_exit() {
+                    LocalsStateAtExit::AllAreInvalidated => {
+                        // Returning from the function implicitly kills storage for all locals and statics.
+                        // Often, the storage will already have been killed by an explicit
+                        // StorageDead, but we don't always emit those (notably on unwind paths),
+                        // so this "extra check" serves as a kind of backup.
+                        for i in state.borrows.iter() {
+                            let borrow = &self.borrow_set[i];
+                            self.check_for_invalidation_at_exit(loc, borrow, span);
+                        }
+                    }
+                    // If we do not implicitly invalidate all locals on exit,
+                    // we check for conflicts when dropping or moving this local.
+                    LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved: _ } => {}
                 }
             }
 
@@ -1703,22 +1702,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         // we'll have a memory leak) and assume that all statics have a destructor.
         //
         // FIXME: allow thread-locals to borrow other thread locals?
-
-        let (might_be_alive, will_be_dropped) =
-            if self.body.local_decls[root_place.local].is_ref_to_thread_local() {
-                // Thread-locals might be dropped after the function exits
-                // We have to dereference the outer reference because
-                // borrows don't conflict behind shared references.
-                root_place.projection = TyCtxtConsts::DEREF_PROJECTION;
-                (true, true)
-            } else {
-                (false, self.locals_are_invalidated_at_exit)
-            };
-
-        if !will_be_dropped {
-            debug!("place_is_invalidated_at_exit({:?}) - won't be dropped", place);
-            return;
-        }
+        let might_be_alive = if self.body.local_decls[root_place.local].is_ref_to_thread_local() {
+            // Thread-locals might be dropped after the function exits
+            // We have to dereference the outer reference because
+            // borrows don't conflict behind shared references.
+            root_place.projection = TyCtxtConsts::DEREF_PROJECTION;
+            true
+        } else {
+            false
+        };
 
         let sd = if might_be_alive { Deep } else { Shallow(None) };
 
