@@ -7,7 +7,6 @@
 #![allow(unused)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-#[macro_use]
 extern crate std;
 
 struct Foo<'a> {
