@@ -1209,7 +1209,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     .unused_macro_rules
                     .entry(node_id)
                     .or_default()
-                    .insert(*rule_i, (ident, *rule_span, def_id));
+                    .insert(*rule_i, (ident, *rule_span));
             }
         }
     }

@@ -336,14 +336,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                 ident.span,
                 BuiltinLintDiag::UnusedMacroDefinition(ident.name),
             );
+            // Do not report unused individual rules if the entire macro is unused
+            self.unused_macro_rules.swap_remove(&node_id);
         }
 
         for (&node_id, unused_arms) in self.unused_macro_rules.iter() {
-            for (&arm_i, &(ident, rule_span, def_id)) in unused_arms.to_sorted_stable_ord() {
-                if self.unused_macros.contains_key(&def_id) {
-                    // We already lint the entire macro as unused
-                    continue;
-                }
+            for (&arm_i, &(ident, rule_span)) in unused_arms.to_sorted_stable_ord() {
                 self.lint_buffer.buffer_lint(
                     UNUSED_MACRO_RULES,
                     node_id,
