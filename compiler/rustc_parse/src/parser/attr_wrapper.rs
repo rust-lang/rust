@@ -120,7 +120,7 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
         // produce an empty `TokenStream` if no calls were made, and omit the
         // final token otherwise.
         let mut cursor_snapshot = self.cursor_snapshot.clone();
-        let tokens = iter::once(FlatToken::Token(self.start_token.clone()))
+        let tokens = iter::once(FlatToken::Token(self.start_token))
             .chain(iter::repeat_with(|| FlatToken::Token(cursor_snapshot.next())))
             .take(self.num_calls as usize);
 
@@ -186,7 +186,7 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
 impl<'a> Parser<'a> {
     pub(super) fn collect_pos(&self) -> CollectPos {
         CollectPos {
-            start_token: (self.token.clone(), self.token_spacing),
+            start_token: (self.token, self.token_spacing),
             cursor_snapshot: self.token_cursor.clone(),
             start_pos: self.num_bump_calls,
         }

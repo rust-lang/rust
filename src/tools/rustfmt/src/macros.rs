@@ -858,18 +858,18 @@ impl MacroArgParser {
         };
 
         self.result.push(ParsedMacroArg {
-            kind: MacroArgKind::Repeat(delim, inner, another, self.last_tok.clone()),
+            kind: MacroArgKind::Repeat(delim, inner, another, self.last_tok),
         });
         Some(())
     }
 
-    fn update_buffer(&mut self, t: &Token) {
+    fn update_buffer(&mut self, t: Token) {
         if self.buf.is_empty() {
-            self.start_tok = t.clone();
+            self.start_tok = t;
         } else {
             let needs_space = match next_space(&self.last_tok.kind) {
-                SpaceState::Ident => ident_like(t),
-                SpaceState::Punctuation => !ident_like(t),
+                SpaceState::Ident => ident_like(&t),
+                SpaceState::Punctuation => !ident_like(&t),
                 SpaceState::Always => true,
                 SpaceState::Never => false,
             };
@@ -878,7 +878,7 @@ impl MacroArgParser {
             }
         }
 
-        self.buf.push_str(&pprust::token_to_string(t));
+        self.buf.push_str(&pprust::token_to_string(&t));
     }
 
     fn need_space_prefix(&self) -> bool {
@@ -937,7 +937,7 @@ impl MacroArgParser {
                 ) if self.is_meta_var => {
                     self.add_meta_variable(&mut iter)?;
                 }
-                TokenTree::Token(ref t, _) => self.update_buffer(t),
+                &TokenTree::Token(t, _) => self.update_buffer(t),
                 &TokenTree::Delimited(_dspan, _spacing, delimited, ref tts) => {
                     if !self.buf.is_empty() {
                         if next_space(&self.last_tok.kind) == SpaceState::Always {

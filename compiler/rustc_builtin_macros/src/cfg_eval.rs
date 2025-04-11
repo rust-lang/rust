@@ -92,11 +92,7 @@ impl CfgEval<'_> {
         // the location of `#[cfg]` and `#[cfg_attr]` in the token stream. The tokenization
         // process is lossless, so this process is invisible to proc-macros.
 
-        // 'Flatten' all nonterminals (i.e. `TokenKind::Interpolated`)
-        // to `None`-delimited groups containing the corresponding tokens. This
-        // is normally delayed until the proc-macro server actually needs to
-        // provide a `TokenKind::Interpolated` to a proc-macro. We do this earlier,
-        // so that we can handle cases like:
+        // Interesting cases:
         //
         // ```rust
         // #[cfg_eval] #[cfg] $item
@@ -104,8 +100,8 @@ impl CfgEval<'_> {
         //
         // where `$item` is `#[cfg_attr] struct Foo {}`. We want to make
         // sure to evaluate *all* `#[cfg]` and `#[cfg_attr]` attributes - the simplest
-        // way to do this is to do a single parse of a stream without any nonterminals.
-        let orig_tokens = annotatable.to_tokens().flattened();
+        // way to do this is to do a single parse of the token stream.
+        let orig_tokens = annotatable.to_tokens();
 
         // Re-parse the tokens, setting the `capture_cfg` flag to save extra information
         // to the captured `AttrTokenStream` (specifically, we capture
