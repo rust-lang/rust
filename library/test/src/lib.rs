@@ -666,10 +666,11 @@ fn run_test_in_process(
 
     io::set_output_capture(None);
 
-    let test_result = match result {
-        Ok(()) => calc_result(&desc, Ok(()), time_opts.as_ref(), exec_time.as_ref()),
-        Err(e) => calc_result(&desc, Err(e.as_ref()), time_opts.as_ref(), exec_time.as_ref()),
-    };
+    // Determine whether the test passed or failed, by comparing its panic
+    // payload (if any) with its `ShouldPanic` value, and by checking for
+    // fatal timeout.
+    let test_result =
+        calc_result(&desc, result.err().as_deref(), time_opts.as_ref(), exec_time.as_ref());
     let stdout = data.lock().unwrap_or_else(|e| e.into_inner()).to_vec();
     let message = CompletedTest::new(id, desc, test_result, exec_time, stdout);
     monitor_ch.send(message).unwrap();
@@ -741,10 +742,7 @@ fn spawn_test_subprocess(
 fn run_test_in_spawned_subprocess(desc: TestDesc, runnable_test: RunnableTest) -> ! {
     let builtin_panic_hook = panic::take_hook();
     let record_result = Arc::new(move |panic_info: Option<&'_ PanicHookInfo<'_>>| {
-        let test_result = match panic_info {
-            Some(info) => calc_result(&desc, Err(info.payload()), None, None),
-            None => calc_result(&desc, Ok(()), None, None),
-        };
+        let test_result = calc_result(&desc, panic_info.map(|info| info.payload()), None, None);
 
         // We don't support serializing TrFailedMsg, so just
         // print the message out to stderr.
