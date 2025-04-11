@@ -719,6 +719,7 @@ version = "0.0.0"
 dependencies = [
  "anstyle-svg",
  "build_helper",
+ "camino",
  "colored",
  "diff",
  "getopts",
