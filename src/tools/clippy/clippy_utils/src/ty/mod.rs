@@ -156,7 +156,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
 pub fn get_iterator_item_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     cx.tcx
         .get_diagnostic_item(sym::Iterator)
-        .and_then(|iter_did| cx.get_associated_type(ty, iter_did, "Item"))
+        .and_then(|iter_did| cx.get_associated_type(ty, iter_did, sym::Item))
 }
 
 /// Get the diagnostic name of a type, e.g. `sym::HashMap`. To check if a type

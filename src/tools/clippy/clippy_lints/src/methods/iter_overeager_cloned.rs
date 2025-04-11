@@ -48,7 +48,7 @@ pub(super) fn check<'tcx>(
         && let Some(method_id) = typeck.type_dependent_def_id(cloned_call.hir_id)
         && cx.tcx.trait_of_item(method_id) == Some(iter_id)
         && let cloned_recv_ty = typeck.expr_ty_adjusted(cloned_recv)
-        && let Some(iter_assoc_ty) = cx.get_associated_type(cloned_recv_ty, iter_id, "Item")
+        && let Some(iter_assoc_ty) = cx.get_associated_type(cloned_recv_ty, iter_id, sym::Item)
         && matches!(*iter_assoc_ty.kind(), ty::Ref(_, ty, _) if !is_copy(cx, ty))
     {
         if needs_into_iter
