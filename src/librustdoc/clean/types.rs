@@ -517,7 +517,7 @@ impl Item {
                     Some(RenderedLink {
                         original_text: s.clone(),
                         new_text: link_text.clone(),
-                        tooltip: link_tooltip(*id, fragment, cx),
+                        tooltip: link_tooltip(*id, fragment, cx).to_string(),
                         href,
                     })
                 } else {
