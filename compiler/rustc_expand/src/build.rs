@@ -105,6 +105,10 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
+    pub fn anon_const_block(&self, b: P<ast::Block>) -> P<ast::AnonConst> {
+        P(self.anon_const(b.span, ast::ExprKind::Block(b, None)))
+    }
+
     pub fn const_ident(&self, span: Span, ident: Ident) -> ast::AnonConst {
         self.anon_const(span, ast::ExprKind::Path(None, self.path_ident(span, ident)))
     }
@@ -712,7 +716,7 @@ impl<'a> ExtCtxt<'a> {
         span: Span,
         ident: Ident,
         ty: P<ast::Ty>,
-        expr: P<ast::Expr>,
+        body: P<ast::AnonConst>,
     ) -> P<ast::Item> {
         let defaultness = ast::Defaultness::Final;
         self.item(
@@ -725,7 +729,7 @@ impl<'a> ExtCtxt<'a> {
                     // FIXME(generic_const_items): Pass the generics as a parameter.
                     generics: ast::Generics::default(),
                     ty,
-                    expr: Some(expr),
+                    body: Some(body),
                     define_opaque: None,
                 }
                 .into(),

@@ -54,8 +54,7 @@ where
         let normalized = if inherent.kind(cx).is_type() {
             cx.type_of(inherent.def_id).instantiate(cx, inherent_args).into()
         } else {
-            // FIXME(mgca): Properly handle IACs in the type system
-            panic!("normalizing inherent associated consts in the type system is unsupported");
+            cx.const_of_item(inherent.def_id).instantiate(cx, inherent_args).into()
         };
         self.instantiate_normalizes_to_term(goal, normalized);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

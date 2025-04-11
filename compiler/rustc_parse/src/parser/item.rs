@@ -255,13 +255,13 @@ impl<'a> Parser<'a> {
             } else {
                 self.recover_const_mut(const_span);
                 self.recover_missing_kw_before_item()?;
-                let (ident, generics, ty, expr) = self.parse_const_item()?;
+                let (ident, generics, ty, body) = self.parse_const_item()?;
                 ItemKind::Const(Box::new(ConstItem {
                     defaultness: def_(),
                     ident,
                     generics,
                     ty,
-                    expr,
+                    body,
                     define_opaque: None,
                 }))
             }
@@ -982,12 +982,13 @@ impl<'a> Parser<'a> {
                             define_opaque,
                         }) => {
                             self.dcx().emit_err(errors::AssociatedStaticItemNotAllowed { span });
+                            let body = expr.map(|e| P(AnonConst { id: DUMMY_NODE_ID, value: e }));
                             AssocItemKind::Const(Box::new(ConstItem {
                                 defaultness: Defaultness::Final,
                                 ident,
                                 generics: Generics::default(),
                                 ty,
-                                expr,
+                                body,
                                 define_opaque,
                             }))
                         }
@@ -1241,7 +1242,7 @@ impl<'a> Parser<'a> {
                 let kind = match ForeignItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Const(box ConstItem { ident, ty, expr, .. }) => {
+                        ItemKind::Const(box ConstItem { ident, ty, body, .. }) => {
                             let const_span = Some(span.with_hi(ident.span.lo()))
                                 .filter(|span| span.can_be_used_for_suggestions());
                             self.dcx().emit_err(errors::ExternItemCannotBeConst {
@@ -1252,7 +1253,7 @@ impl<'a> Parser<'a> {
                                 ident,
                                 ty,
                                 mutability: Mutability::Not,
-                                expr,
+                                expr: body.map(|ct| ct.value),
                                 safety: Safety::Default,
                                 define_opaque: None,
                             }))
@@ -1421,7 +1422,9 @@ impl<'a> Parser<'a> {
     /// ```ebnf
     /// Const = "const" ($ident | "_") Generics ":" $ty (= $expr)? WhereClause ";" ;
     /// ```
-    fn parse_const_item(&mut self) -> PResult<'a, (Ident, Generics, P<Ty>, Option<P<ast::Expr>>)> {
+    fn parse_const_item(
+        &mut self,
+    ) -> PResult<'a, (Ident, Generics, P<Ty>, Option<P<ast::AnonConst>>)> {
         let ident = self.parse_ident_or_underscore()?;
 
         let mut generics = self.parse_generics()?;
@@ -1448,7 +1451,7 @@ impl<'a> Parser<'a> {
         let before_where_clause =
             if self.may_recover() { self.parse_where_clause()? } else { WhereClause::default() };
 
-        let expr = if self.eat(exp!(Eq)) { Some(self.parse_expr()?) } else { None };
+        let body = if self.eat(exp!(Eq)) { Some(P(self.parse_expr_anon_const()?)) } else { None };
 
         let after_where_clause = self.parse_where_clause()?;
 
@@ -1456,18 +1459,18 @@ impl<'a> Parser<'a> {
         // Users may be tempted to write such code if they are still used to the deprecated
         // where-clause location on type aliases and associated types. See also #89122.
         if before_where_clause.has_where_token
-            && let Some(expr) = &expr
+            && let Some(body) = &body
         {
             self.dcx().emit_err(errors::WhereClauseBeforeConstBody {
                 span: before_where_clause.span,
                 name: ident.span,
-                body: expr.span,
+                body: body.value.span,
                 sugg: if !after_where_clause.has_where_token {
-                    self.psess.source_map().span_to_snippet(expr.span).ok().map(|body| {
+                    self.psess.source_map().span_to_snippet(body.value.span).ok().map(|body_s| {
                         errors::WhereClauseBeforeConstBodySugg {
                             left: before_where_clause.span.shrink_to_lo(),
-                            snippet: body,
-                            right: before_where_clause.span.shrink_to_hi().to(expr.span),
+                            snippet: body_s,
+                            right: before_where_clause.span.shrink_to_hi().to(body.value.span),
                         }
                     })
                 } else {
@@ -1505,7 +1508,7 @@ impl<'a> Parser<'a> {
 
         self.expect_semi()?;
 
-        Ok((ident, generics, ty, expr))
+        Ok((ident, generics, ty, body))
     }
 
     /// We were supposed to parse `":" $ty` but the `:` or the type was missing.
