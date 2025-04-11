@@ -226,12 +226,12 @@ impl SerializedDepGraph {
 
             // If the length of this node's edge list is small, the length is stored in the header.
             // If it is not, we fall back to another decoder call.
-            let num_edges = node_header.len().unwrap_or_else(|| d.read_usize());
+            let num_edges = node_header.len().unwrap_or_else(|| d.read_u32());
 
             // The edges index list uses the same varint strategy as rmeta tables; we select the
             // number of byte elements per-array not per-element. This lets us read the whole edge
             // list for a node with one decoder call and also use the on-disk format in memory.
-            let edges_len_bytes = node_header.bytes_per_index() * num_edges;
+            let edges_len_bytes = node_header.bytes_per_index() * (num_edges as usize);
             // The in-memory structure for the edges list stores the byte width of the edges on
             // this node with the offset into the global edge data array.
             let edges_header = node_header.edges_header(&edge_list_data);
@@ -296,7 +296,7 @@ struct SerializedNodeHeader<D> {
 // The fields of a `SerializedNodeHeader`, this struct is an implementation detail and exists only
 // to make the implementation of `SerializedNodeHeader` simpler.
 struct Unpacked {
-    len: Option<usize>,
+    len: Option<u32>,
     bytes_per_index: usize,
     kind: DepKind,
     hash: PackedFingerprint,
@@ -352,7 +352,7 @@ impl<D: Deps> SerializedNodeHeader<D> {
             assert_eq!(fingerprint, res.fingerprint());
             assert_eq!(node, res.node());
             if let Some(len) = res.len() {
-                assert_eq!(edge_count, len);
+                assert_eq!(edge_count, len as usize);
             }
         }
         Self { bytes, _marker: PhantomData }
@@ -366,7 +366,7 @@ impl<D: Deps> SerializedNodeHeader<D> {
 
         let kind = head & mask(Self::KIND_BITS) as u16;
         let bytes_per_index = (head >> Self::KIND_BITS) & mask(Self::WIDTH_BITS) as u16;
-        let len = (head as usize) >> (Self::WIDTH_BITS + Self::KIND_BITS);
+        let len = (head as u32) >> (Self::WIDTH_BITS + Self::KIND_BITS);
 
         Unpacked {
             len: len.checked_sub(1),
@@ -378,7 +378,7 @@ impl<D: Deps> SerializedNodeHeader<D> {
     }
 
     #[inline]
-    fn len(&self) -> Option<usize> {
+    fn len(&self) -> Option<u32> {
         self.unpack().len
     }
 
@@ -421,7 +421,8 @@ impl NodeInfo {
         e.write_array(header.bytes);
 
         if header.len().is_none() {
-            e.emit_usize(edges.len());
+            // The edges are all unique and the number of unique indices is less than u32::MAX.
+            e.emit_u32(edges.len().try_into().unwrap());
         }
 
         let bytes_per_index = header.bytes_per_index();
@@ -456,7 +457,8 @@ impl NodeInfo {
         e.write_array(header.bytes);
 
         if header.len().is_none() {
-            e.emit_usize(edge_count);
+            // The edges are all unique and the number of unique indices is less than u32::MAX.
+            e.emit_u32(edge_count.try_into().unwrap());
         }
 
         let bytes_per_index = header.bytes_per_index();
