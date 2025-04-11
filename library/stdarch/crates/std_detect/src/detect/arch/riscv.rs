@@ -20,6 +20,8 @@ features! {
     /// ISA prefix X. These sets are highly platform specific and should be
     /// detected with their own platform support crates.
     ///
+    /// [ISA manual]: https://riscv.org/specifications/ratified/
+    ///
     /// # Unprivileged Specification
     ///
     /// The supported ratified RISC-V instruction sets are as follows:
@@ -83,8 +85,6 @@ features! {
     /// * Svnapot: `"svnapot"`
     /// * Svpbmt: `"svpbmt"`
     /// * Svinval: `"svinval"`
-    ///
-    /// [ISA manual]: https://github.com/riscv/riscv-isa-manual/
     #[stable(feature = "riscv_ratified", since = "1.78.0")]
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] rv32i: "rv32i";
