@@ -5,7 +5,7 @@
 //@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg()
 //@ normalize-stderr: "and \d+ more" -> "and X more"
-//@ normalize-stderr: "`[a-zA-Z0-9_-]+`" -> "`xxx`"
+//@ normalize-stderr: "`[a-zA-Z0-9_\.-]+`" -> "`xxx`"
 
 fn main() {
     cfg!(target_feature = "zebra");
