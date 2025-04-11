@@ -203,7 +203,7 @@ pub(crate) fn handle_view_item_tree(
 //   underscores. cargo test requires the real name.
 // - the target kind e.g. bin or lib
 fn find_test_target(namespace_root: &str, cargo: &CargoWorkspace) -> Option<TestTarget> {
-    cargo.packages().find_map(|p| {
+    cargo.packages().filter(|p| cargo[*p].is_member).find_map(|p| {
         let package_name = &cargo[p].name;
         for target in cargo[p].targets.iter() {
             let target_name = &cargo[*target].name;
@@ -222,6 +222,7 @@ fn find_test_target(namespace_root: &str, cargo: &CargoWorkspace) -> Option<Test
 fn get_all_targets(cargo: &CargoWorkspace) -> Vec<TestTarget> {
     cargo
         .packages()
+        .filter(|p| cargo[*p].is_member)
         .flat_map(|p| {
             let package_name = &cargo[p].name;
             cargo[p].targets.iter().map(|target| {
