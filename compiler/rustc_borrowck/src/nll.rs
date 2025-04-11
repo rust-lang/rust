@@ -21,7 +21,7 @@ use tracing::{debug, instrument};
 
 use crate::borrow_set::BorrowSet;
 use crate::consumers::ConsumerOptions;
-use crate::diagnostics::{BorrowckDiagnosticsBuffer, RegionErrors};
+use crate::diagnostics::RegionErrors;
 use crate::polonius::PoloniusDiagnosticsContext;
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
@@ -297,7 +297,6 @@ pub(super) fn dump_annotation<'tcx, 'infcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
-    diagnostics_buffer: &mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());
@@ -335,13 +334,11 @@ pub(super) fn dump_annotation<'tcx, 'infcx>(
     } else {
         let mut err = infcx.dcx().struct_span_note(def_span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
-
         err
     };
 
     // FIXME(@lcnr): We currently don't dump the inferred hidden types here.
-
-    diagnostics_buffer.buffer_non_error(err);
+    err.emit();
 }
 
 fn for_each_region_constraint<'tcx>(
