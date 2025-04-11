@@ -44,6 +44,7 @@ use hir::{BodyId, HirId};
 use rustc_abi::ExternAbi;
 use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::TySource;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{Asyncness, ResolverAstLowering};
@@ -174,12 +175,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id: self.next_id(),
             kind: hir::TyKind::InferDelegation(sig_id, hir::InferDelegationKind::Input(arg)),
             span,
+            source: TySource::Other,
         }));
 
         let output = self.arena.alloc(hir::Ty {
             hir_id: self.next_id(),
             kind: hir::TyKind::InferDelegation(sig_id, hir::InferDelegationKind::Output),
             span,
+            source: TySource::Other,
         });
 
         self.arena.alloc(hir::FnDecl {

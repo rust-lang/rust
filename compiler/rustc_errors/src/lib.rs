@@ -47,7 +47,7 @@ pub use codes::*;
 pub use diagnostic::{
     BugAbort, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue, DiagInner, DiagStyledString,
     Diagnostic, EmissionGuarantee, FatalAbort, IntoDiagArg, LintDiagnostic, StringPart, Subdiag,
-    SubdiagMessageOp, Subdiagnostic,
+    Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagArgFromDisplay, DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,

@@ -57,6 +57,7 @@ mod invalid_from_utf8;
 mod late;
 mod let_underscore;
 mod levels;
+mod lifetime_style;
 mod lints;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
@@ -97,6 +98,7 @@ use impl_trait_overcaptures::ImplTraitOvercaptures;
 use internal::*;
 use invalid_from_utf8::*;
 use let_underscore::*;
+use lifetime_style::*;
 use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
 use multiple_supertrait_upcastable::*;
@@ -246,6 +248,8 @@ late_lint_methods!(
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
             UnqualifiedLocalImports: UnqualifiedLocalImports,
+            LifetimeStyle: LifetimeStyle,
+            HiddenLifetimesInTypePaths: HiddenLifetimesInTypePaths::default(),
         ]
     ]
 );
@@ -266,7 +270,7 @@ pub fn new_lint_store(internal_lints: bool) -> LintStore {
 /// `rustc_session::lint::builtin`).
 fn register_builtins(store: &mut LintStore) {
     macro_rules! add_lint_group {
-        ($name:expr, $($lint:ident),*) => (
+        ($name:expr, $($lint:ident),* $(,)?) => (
             store.register_group(false, $name, None, vec![$(LintId::of($lint)),*]);
         )
     }
@@ -281,7 +285,7 @@ fn register_builtins(store: &mut LintStore) {
         "nonstandard_style",
         NON_CAMEL_CASE_TYPES,
         NON_SNAKE_CASE,
-        NON_UPPER_CASE_GLOBALS
+        NON_UPPER_CASE_GLOBALS,
     );
 
     add_lint_group!(
@@ -307,7 +311,7 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_PARENS,
         UNUSED_BRACES,
         REDUNDANT_SEMICOLONS,
-        MAP_UNIT_FN
+        MAP_UNIT_FN,
     );
 
     add_lint_group!("let_underscore", LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK);
@@ -317,14 +321,16 @@ fn register_builtins(store: &mut LintStore) {
         BARE_TRAIT_OBJECTS,
         UNUSED_EXTERN_CRATES,
         ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
-        ELIDED_LIFETIMES_IN_PATHS,
-        EXPLICIT_OUTLIVES_REQUIREMENTS // FIXME(#52665, #47816) not always applicable and not all
-                                       // macros are ready for this yet.
-                                       // UNREACHABLE_PUB,
-
-                                       // FIXME macro crates are not up for this yet, too much
-                                       // breakage is seen if we try to encourage this lint.
-                                       // MACRO_USE_EXTERN_CRATE
+        HIDDEN_LIFETIMES_IN_OUTPUT_PATHS,
+        HIDDEN_LIFETIMES_IN_INPUT_PATHS,
+        HIDDEN_LIFETIMES_IN_TYPE_PATHS,
+        EXPLICIT_OUTLIVES_REQUIREMENTS,
+        // FIXME(#52665, #47816) not always applicable and not all
+        // macros are ready for this yet.
+        // UNREACHABLE_PUB,
+        // FIXME macro crates are not up for this yet, too much
+        // breakage is seen if we try to encourage this lint.
+        // MACRO_USE_EXTERN_CRATE
     );
 
     add_lint_group!("keyword_idents", KEYWORD_IDENTS_2018, KEYWORD_IDENTS_2024);
@@ -337,9 +343,15 @@ fn register_builtins(store: &mut LintStore) {
 
     add_lint_group!("deprecated_safe", DEPRECATED_SAFE_2024);
 
+    add_lint_group!(
+        "hidden_lifetimes_in_paths",
+        HIDDEN_LIFETIMES_IN_OUTPUT_PATHS,
+        HIDDEN_LIFETIMES_IN_INPUT_PATHS,
+        HIDDEN_LIFETIMES_IN_TYPE_PATHS,
+    );
+
     // Register renamed and removed lints.
     store.register_renamed("single_use_lifetime", "single_use_lifetimes");
-    store.register_renamed("elided_lifetime_in_path", "elided_lifetimes_in_paths");
     store.register_renamed("bare_trait_object", "bare_trait_objects");
     store.register_renamed("unstable_name_collision", "unstable_name_collisions");
     store.register_renamed("unused_doc_comment", "unused_doc_comments");
@@ -353,6 +365,11 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("unused_tuple_struct_fields", "dead_code");
     store.register_renamed("static_mut_ref", "static_mut_refs");
     store.register_renamed("temporary_cstring_as_ptr", "dangling_pointers_from_temporaries");
+    store.register_renamed("elided_named_lifetimes", "mismatched_lifetime_syntaxes");
+
+    // Register renamed lint groups
+    store.register_renamed_group("elided_lifetime_in_path", "hidden_lifetimes_in_paths");
+    store.register_renamed_group("elided_lifetimes_in_paths", "hidden_lifetimes_in_paths");
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
