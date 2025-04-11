@@ -1,6 +1,7 @@
 // This used to compile the future down to ud2, due to uninhabited types being
 // handled incorrectly in coroutines.
-//@ compile-flags: -Copt-level=z -Cdebuginfo=2 --edition=2018
+//@ compile-flags: -Copt-level=z -Cdebuginfo=2
+//@ edition: 2018
 
 //@ run-pass
 

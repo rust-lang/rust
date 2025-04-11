@@ -1,4 +1,5 @@
-//@ compile-flags: -C opt-level=z --edition=2021
+//@ compile-flags: -C opt-level=z
+//@ edition: 2021
 
 #![crate_type = "lib"]
 

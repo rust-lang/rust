@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name: `tru`
-  --> $DIR/raw-keywords.rs:14:7
+  --> $DIR/raw-keywords.rs:15:7
    |
 LL | #[cfg(tru)]
    |       ^^^ help: there is a config with a similar name: `r#true`
@@ -9,7 +9,7 @@ LL | #[cfg(tru)]
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition name: `r#false`
-  --> $DIR/raw-keywords.rs:19:7
+  --> $DIR/raw-keywords.rs:20:7
    |
 LL | #[cfg(r#false)]
    |       ^^^^^^^
@@ -19,7 +19,7 @@ LL | #[cfg(r#false)]
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `r#await`
-  --> $DIR/raw-keywords.rs:28:29
+  --> $DIR/raw-keywords.rs:29:29
    |
 LL | #[cfg_attr(edition2021, cfg(r#await))]
    |                             ^^^^^^^
@@ -28,7 +28,7 @@ LL | #[cfg_attr(edition2021, cfg(r#await))]
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `raw`
-  --> $DIR/raw-keywords.rs:33:7
+  --> $DIR/raw-keywords.rs:34:7
    |
 LL | #[cfg(r#raw)]
    |       ^^^^^

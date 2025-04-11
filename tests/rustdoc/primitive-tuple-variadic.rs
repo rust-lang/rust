@@ -1,4 +1,5 @@
-//@ compile-flags: --crate-type lib --edition 2018
+//@ compile-flags: --crate-type lib
+//@ edition: 2018
 
 #![crate_name = "foo"]
 #![feature(rustdoc_internals)]

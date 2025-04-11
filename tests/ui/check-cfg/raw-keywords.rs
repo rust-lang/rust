@@ -6,7 +6,8 @@
 //@ compile-flags: --cfg=true --cfg=async --check-cfg=cfg(r#true,r#async,edition2015,edition2021)
 //
 //@ revisions: edition2015 edition2021
-//@ [edition2021] compile-flags: --edition 2021
+//@ [edition2015] edition: 2015
+//@ [edition2021] edition: 2021
 
 #[cfg(r#true)]
 fn foo() {}

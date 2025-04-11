@@ -1,4 +1,4 @@
-//@ compile-flags: --edition=2018
+//@ edition: 2018
 //@ run-pass
 
 macro_rules! regex {

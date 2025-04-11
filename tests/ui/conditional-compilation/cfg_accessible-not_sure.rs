@@ -1,6 +1,6 @@
 //@ revisions: edition2015 edition2021
-//@ [edition2015]compile-flags: --edition=2015
-//@ [edition2021]compile-flags: --edition=2021
+//@ [edition2015] edition: 2015
+//@ [edition2021] edition: 2021
 
 #![feature(extern_types)]
 #![feature(cfg_accessible)]

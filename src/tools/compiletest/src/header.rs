@@ -389,14 +389,22 @@ impl TestProps {
                     }
 
                     if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
-                        self.compile_flags.extend(split_flags(&flags));
+                        let flags = split_flags(&flags);
+                        for flag in &flags {
+                            if flag == "--edition" || flag.starts_with("--edition=") {
+                                panic!("you must use `//@ edition` to configure the edition");
+                            }
+                        }
+                        self.compile_flags.extend(flags);
                     }
                     if config.parse_name_value_directive(ln, INCORRECT_COMPILER_FLAGS).is_some() {
                         panic!("`compiler-flags` directive should be spelled `compile-flags`");
                     }
 
                     if let Some(edition) = config.parse_edition(ln) {
-                        self.compile_flags.push(format!("--edition={}", edition.trim()));
+                        // The edition is added at the start, since flags from //@compile-flags must
+                        // be passed to rustc last.
+                        self.compile_flags.insert(0, format!("--edition={}", edition.trim()));
                         has_edition = true;
                     }
 
@@ -624,7 +632,9 @@ impl TestProps {
         }
 
         if let (Some(edition), false) = (&config.edition, has_edition) {
-            self.compile_flags.push(format!("--edition={}", edition));
+            // The edition is added at the start, since flags from //@compile-flags must be passed
+            // to rustc last.
+            self.compile_flags.insert(0, format!("--edition={}", edition));
         }
     }
 

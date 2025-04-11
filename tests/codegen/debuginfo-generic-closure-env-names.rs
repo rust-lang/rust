@@ -18,7 +18,8 @@
 // legacy mangling scheme rustc version and generic parameters are both hashed into a single part
 // of the name, thus randomizing item order with respect to rustc version.
 
-//@ compile-flags: -Cdebuginfo=2 --edition 2021 -Copt-level=0 -Csymbol-mangling-version=v0
+//@ compile-flags: -Cdebuginfo=2 -Copt-level=0 -Csymbol-mangling-version=v0
+//@ edition: 2021
 
 // non_generic_closure()
 // NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}", scope: ![[non_generic_closure_NAMESPACE:[0-9]+]],
