@@ -6,6 +6,8 @@ The tracking issue for this feature is: [#87121]
 
 ------------------------
 
+> **Note**: This feature will be superseded by [`deref_patterns`] in the future.
+
 This feature permits pattern matching `String` to `&str` through [its `Deref` implementation].
 
 ```rust
@@ -42,4 +44,5 @@ pub fn is_it_the_answer(value: Value) -> bool {
 }
 ```
 
+[`deref_patterns`]: ./deref-patterns.md
 [its `Deref` implementation]: https://doc.rust-lang.org/std/string/struct.String.html#impl-Deref-for-String

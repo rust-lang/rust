@@ -4,8 +4,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::MultiSpan;
 use rustc_hir::{BindingMode, ByRef, HirId, Mutability};
 use rustc_lint as lint;
-use rustc_middle::span_bug;
-use rustc_middle::ty::{self, Rust2024IncompatiblePatInfo, Ty, TyCtxt};
+use rustc_middle::ty::{self, Rust2024IncompatiblePatInfo, TyCtxt};
 use rustc_span::{Ident, Span};
 
 use crate::errors::{Rust2024IncompatiblePat, Rust2024IncompatiblePatSugg};
@@ -87,19 +86,18 @@ impl<'a> PatMigration<'a> {
     }
 
     /// Tracks when we're lowering a pattern that implicitly dereferences the scrutinee.
-    /// This should only be called when the pattern type adjustments list `adjustments` is
-    /// non-empty. Returns the prior default binding mode; this should be followed by a call to
-    /// [`PatMigration::leave_ref`] to restore it when we leave the pattern.
+    /// This should only be called when the pattern type adjustments list `adjustments` contains an
+    /// implicit deref of a reference type. Returns the prior default binding mode; this should be
+    /// followed by a call to [`PatMigration::leave_ref`] to restore it when we leave the pattern.
     pub(super) fn visit_implicit_derefs<'tcx>(
         &mut self,
         pat_span: Span,
-        adjustments: &[Ty<'tcx>],
+        adjustments: &[ty::adjustment::PatAdjustment<'tcx>],
     ) -> Option<(Span, Mutability)> {
-        let implicit_deref_mutbls = adjustments.iter().map(|ref_ty| {
-            let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
-                span_bug!(pat_span, "pattern implicitly dereferences a non-ref type");
-            };
-            mutbl
+        // Implicitly dereferencing references changes the default binding mode, but implicit derefs
+        // of smart pointers do not. Thus, we only consider implicit derefs of reference types.
+        let implicit_deref_mutbls = adjustments.iter().filter_map(|adjust| {
+            if let &ty::Ref(_, _, mutbl) = adjust.source.kind() { Some(mutbl) } else { None }
         });
 
         if !self.info.suggest_eliding_modes {
