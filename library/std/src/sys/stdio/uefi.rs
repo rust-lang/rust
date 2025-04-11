@@ -142,8 +142,12 @@ impl io::Write for Stderr {
 // UTF-16 character should occupy 4 bytes at most in UTF-8
 pub const STDIN_BUF_SIZE: usize = 4;
 
-pub fn is_ebadf(_err: &io::Error) -> bool {
-    false
+pub fn is_ebadf(err: &io::Error) -> bool {
+    if let Some(x) = err.raw_os_error() {
+        r_efi::efi::Status::NOT_READY.as_usize() == x
+    } else {
+        false
+    }
 }
 
 pub fn panic_output() -> Option<impl io::Write> {
@@ -180,13 +184,17 @@ unsafe fn simple_text_output(
 fn simple_text_input_read(
     stdin: *mut r_efi::protocols::simple_text_input::Protocol,
 ) -> io::Result<u16> {
-    loop {
-        match read_key_stroke(stdin) {
-            Ok(x) => return Ok(x.unicode_char),
-            Err(e) if e == r_efi::efi::Status::NOT_READY => wait_stdin(stdin)?,
-            Err(e) => return Err(io::Error::from_raw_os_error(e.as_usize())),
-        }
+    // Try reading any pending keys. Else wait for a new character
+    match read_key_stroke(stdin) {
+        Ok(x) => return Ok(x.unicode_char),
+        Err(e) if e == r_efi::efi::Status::NOT_READY => wait_stdin(stdin)?,
+        Err(e) => return Err(io::Error::from_raw_os_error(e.as_usize())),
     }
+
+    // Try reading a key after the wait.
+    read_key_stroke(stdin)
+        .map(|x| x.unicode_char)
+        .map_err(|e| io::Error::from_raw_os_error(e.as_usize()))
 }
 
 fn wait_stdin(stdin: *mut r_efi::protocols::simple_text_input::Protocol) -> io::Result<()> {
