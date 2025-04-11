@@ -182,15 +182,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::Static(box ast::StaticItem {
                 ident,
-                ty: t,
+                ty,
                 safety: _,
                 mutability: m,
                 expr: e,
                 define_opaque,
             }) => {
                 let ident = self.lower_ident(*ident);
-                let (ty, body_id) =
-                    self.lower_const_item(t, span, e.as_deref(), ImplTraitPosition::StaticTy);
+                let ty =
+                    self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
+                let body_id = self.lower_const_body(span, e.as_deref());
                 self.lower_define_opaque(hir_id, define_opaque);
                 hir::ItemKind::Static(ident, ty, *m, body_id)
             }
@@ -203,22 +204,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ..
             }) => {
                 let ident = self.lower_ident(*ident);
-                let (generics, (ty, body_id)) = self.lower_generics(
+                let (generics, (ty, (body_id, ct_arg))) = self.lower_generics(
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
-                        this.lower_const_item(ty, span, expr.as_deref(), ImplTraitPosition::ConstTy)
+                        let ty = this
+                            .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
+                        (ty, this.lower_const_item(span, expr.as_deref()))
                     },
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
-                let ct_arg = if self.tcx.features().min_generic_const_args()
-                    && let Some(expr) = expr
-                {
-                    self.try_lower_as_const_path(expr)
-                } else {
-                    None
-                };
                 hir::ItemKind::Const(ident, ty, generics, body_id, ct_arg)
             }
             ItemKind::Fn(box Fn {
@@ -501,13 +497,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_const_item(
         &mut self,
-        ty: &Ty,
         span: Span,
         body: Option<&Expr>,
-        impl_trait_position: ImplTraitPosition,
-    ) -> (&'hir hir::Ty<'hir>, hir::BodyId) {
-        let ty = self.lower_ty(ty, ImplTraitContext::Disallowed(impl_trait_position));
-        (ty, self.lower_const_body(span, body))
+    ) -> (hir::BodyId, Option<&'hir hir::ConstArg<'hir>>) {
+        let ct_arg = if self.tcx.features().min_generic_const_args()
+            && let Some(expr) = body
+        {
+            self.try_lower_as_const_path(expr)
+        } else {
+            None
+        };
+        let body_id = if body.is_some() && ct_arg.is_none() {
+            // TODO: lower as const block instead
+            self.lower_const_body(span, body)
+        } else {
+            self.lower_const_body(span, body)
+        };
+        (body_id, ct_arg)
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -819,15 +825,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
-                        let body = expr.as_ref().map(|x| this.lower_const_body(i.span, Some(x)));
-                        let ct_arg = if this.tcx.features().min_generic_const_args()
-                            && let Some(expr) = expr
-                        {
-                            this.try_lower_as_const_path(expr)
-                        } else {
-                            None
-                        };
-                        hir::TraitItemKind::Const(ty, body, ct_arg)
+                        match expr.as_deref().map(|e| this.lower_const_item(i.span, Some(e))) {
+                            Some((body, ct_arg)) => {
+                                hir::TraitItemKind::Const(ty, Some(body), ct_arg)
+                            }
+                            None => hir::TraitItemKind::Const(ty, None, None),
+                        }
                     },
                 );
 
@@ -1018,15 +1021,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
-                        let body = this.lower_const_body(i.span, expr.as_deref());
                         this.lower_define_opaque(hir_id, &define_opaque);
-                        let ct_arg = if this.tcx.features().min_generic_const_args()
-                            && let Some(expr) = expr
-                        {
-                            this.try_lower_as_const_path(expr)
-                        } else {
-                            None
-                        };
+                        let (body, ct_arg) = this.lower_const_item(i.span, expr.as_deref());
                         hir::ImplItemKind::Const(ty, body, ct_arg)
                     },
                 ),
