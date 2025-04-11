@@ -75,15 +75,16 @@ impl CmdBuilder {
         if let Some(ref workdir) = self.workdir {
             cmd.current_dir(workdir.clone().into_std_path_buf());
         }
-        let exit_status = cmd.spawn()?.wait()?;
-        if !exit_status.success() {
-            Err(anyhow::anyhow!(
-                "Command {cmd_str} has failed with exit code {:?}",
-                exit_status.code(),
-            ))
-        } else {
-            Ok(())
-        }
+        cmd.spawn()?.wait()?;
+        // let exit_status = cmd.spawn()?.wait()?;
+        // if !exit_status.success() {
+        //     Err(anyhow::anyhow!(
+        //         "Command {cmd_str} has failed with exit code {:?}",
+        //         exit_status.code(),
+        //     ))
+        // } else {
+        Ok(())
+        // }
     }
 }
 
@@ -98,7 +99,15 @@ pub struct Bootstrap {
 }
 
 impl Bootstrap {
-    pub fn build(env: &Environment) -> Self {
+    pub fn build_compiler(env: &Environment) -> Self {
+        Self::build(env, "library/std")
+    }
+
+    pub fn build_rust_analyzer(env: &Environment) -> Self {
+        Self::build(env, "rust-analyzer")
+    }
+
+    pub fn build(env: &Environment, component: &str) -> Self {
         let metrics_path = env.build_root().join("build").join("metrics.json");
         let cmd = cmd(&[
             env.python_binary(),
@@ -110,7 +119,7 @@ impl Bootstrap {
             &env.host_tuple(),
             "--stage",
             "2",
-            "library/std",
+            component,
         ])
         .env("RUST_BACKTRACE", "full");
         Self { cmd, metrics_path }

@@ -1228,15 +1228,20 @@ impl Step for RustAnalyzer {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
+        // let compiler = self.compiler;
         let target = self.target;
 
-        let rust_analyzer = builder.ensure(tool::RustAnalyzer { compiler, target });
+        let rust_analyzer = builder
+            .out
+            .join("x86_64-unknown-linux-gnu")
+            .join("stage1-tools-bin")
+            .join("rust-analyzer");
+        //builder.ensure(tool::RustAnalyzer { compiler, target });
 
         let mut tarball = Tarball::new(builder, "rust-analyzer", &target.triple);
         tarball.set_overlay(OverlayKind::RustAnalyzer);
         tarball.is_preview(true);
-        tarball.add_file(&rust_analyzer.tool_path, "bin", FileType::Executable);
+        tarball.add_file(&rust_analyzer, "bin", FileType::Executable);
         tarball.add_legal_and_readme_to("share/doc/rust-analyzer");
         Some(tarball.generate())
     }

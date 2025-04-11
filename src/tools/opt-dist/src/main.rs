@@ -11,7 +11,7 @@ use crate::tests::run_tests;
 use crate::timer::Timer;
 use crate::training::{
     gather_bolt_profiles, gather_llvm_profiles, gather_rustc_profiles, llvm_benchmarks,
-    rustc_benchmarks,
+    rust_analyzer_benchmarks, rustc_benchmarks,
 };
 use crate::utils::artifact_size::print_binary_sizes;
 use crate::utils::io::{copy_directory, reset_directory};
@@ -209,7 +209,8 @@ fn execute_pipeline(
         let rustc_profile_dir_root = env.artifact_dir().join("rustc-pgo");
 
         stage.section("Build PGO instrumented rustc and LLVM", |section| {
-            let mut builder = Bootstrap::build(env).rustc_pgo_instrument(&rustc_profile_dir_root);
+            let mut builder =
+                Bootstrap::build_compiler(env).rustc_pgo_instrument(&rustc_profile_dir_root);
 
             if env.supports_shared_llvm() {
                 // This first LLVM that we build will be thrown away after this stage, and it
@@ -227,7 +228,7 @@ fn execute_pipeline(
         print_free_disk_space()?;
 
         stage.section("Build PGO optimized rustc", |section| {
-            let mut cmd = Bootstrap::build(env).rustc_pgo_optimize(&profile);
+            let mut cmd = Bootstrap::build_compiler(env).rustc_pgo_optimize(&profile);
             if env.use_bolt() {
                 cmd = cmd.with_rustc_bolt_ldflags();
             }
@@ -248,7 +249,7 @@ fn execute_pipeline(
         let llvm_profile_dir_root = env.artifact_dir().join("llvm-pgo");
 
         stage.section("Build PGO instrumented LLVM", |section| {
-            Bootstrap::build(env)
+            Bootstrap::build_compiler(env)
                 .llvm_pgo_instrument(&llvm_profile_dir_root)
                 .avoid_rustc_rebuild()
                 .run(section)
@@ -274,7 +275,7 @@ fn execute_pipeline(
         // therefore the LLVM artifacts on disk are not "tainted" with BOLT instrumentation and they can be reused.
         timer.section("Stage 3 (BOLT)", |stage| {
             stage.section("Build PGO optimized LLVM", |stage| {
-                Bootstrap::build(env)
+                Bootstrap::build_compiler(env)
                     .with_llvm_bolt_ldflags()
                     .llvm_pgo_optimize(&llvm_pgo_profile)
                     .avoid_rustc_rebuild()
@@ -290,7 +291,7 @@ fn execute_pipeline(
             // FIXME(kobzol): try gather profiles together, at once for LLVM and rustc
             // Instrument the libraries and gather profiles
             let llvm_profile = with_bolt_instrumented(&llvm_lib, |llvm_profile_dir| {
-                stage.section("Gather profiles", |_| {
+                stage.section("Gather LLVM profiles", |_| {
                     gather_bolt_profiles(env, "LLVM", llvm_benchmarks(env), llvm_profile_dir)
                 })
             })?;
@@ -310,7 +311,7 @@ fn execute_pipeline(
 
             // Instrument it and gather profiles
             let rustc_profile = with_bolt_instrumented(&rustc_lib, |rustc_profile_dir| {
-                stage.section("Gather profiles", |_| {
+                stage.section("Gather rustc profiles", |_| {
                     gather_bolt_profiles(env, "rustc", rustc_benchmarks(env), rustc_profile_dir)
                 })
             })?;
@@ -320,8 +321,28 @@ fn execute_pipeline(
             bolt_optimize(&rustc_lib, &rustc_profile, env)
                 .context("Could not optimize rustc with BOLT")?;
 
+            Bootstrap::build_rust_analyzer(env)
+                .avoid_rustc_rebuild()
+                .with_rustc_bolt_ldflags()
+                .run(stage)?;
+            let ra_binary = env.build_artifacts().join("stage1-tools-bin").join("rust-analyzer");
+            let ra_profile = with_bolt_instrumented(&ra_binary, |ra_profile_dir| {
+                stage.section("Gather rust analyzer profiles", |_| {
+                    gather_bolt_profiles(
+                        env,
+                        "rust-analyzer",
+                        rust_analyzer_benchmarks(env, &ra_binary),
+                        ra_profile_dir,
+                    )
+                })
+            })?;
+
+            // Now optimize rust-analyzer with BOLT.
+            bolt_optimize(&ra_binary, &ra_profile, env)
+                .context("Could not optimize rust-analyzer with BOLT")?;
+
             // LLVM is not being cleared here, we want to use the BOLT-optimized LLVM
-            Ok(vec![llvm_profile, rustc_profile])
+            Ok(vec![llvm_profile, rustc_profile, ra_profile])
         })?
     } else {
         vec![]

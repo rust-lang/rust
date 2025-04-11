@@ -110,6 +110,23 @@ pub fn rustc_benchmarks(env: &Environment) -> CmdBuilder {
     init_compiler_benchmarks(env, &["Check", "Debug", "Opt"], &["All"], RUSTC_PGO_CRATES)
 }
 
+pub fn rust_analyzer_benchmarks(env: &Environment, ra_bin: &Utf8Path) -> CmdBuilder {
+    let ld_library_path = std::env::var("LD_LIBRARY_PATH").unwrap_or_default();
+    let ld_library_path =
+        format!("{}:{ld_library_path}", env.build_artifacts().join("stage2").join("lib").as_str());
+
+    let path = std::env::var("PATH").unwrap_or_default();
+    let path = format!("{}:{path}", env.build_artifacts().join("stage0").join("bin").as_str());
+
+    CmdBuilder::default()
+        .arg(ra_bin)
+        .arg("analysis-stats")
+        .env("LD_LIBRARY_PATH", &ld_library_path)
+        .env("PATH", &path)
+        .arg(env.checkout_path().join("src").join("tools").join("rust-analyzer"))
+        .arg("--run-all-ide-things")
+}
+
 pub struct LlvmPGOProfile(pub Utf8PathBuf);
 
 pub fn gather_llvm_profiles(
