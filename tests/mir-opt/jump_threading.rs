@@ -532,12 +532,17 @@ fn floats() -> u32 {
 
 pub fn bitwise_not() -> i32 {
     // CHECK-LABEL: fn bitwise_not(
-    // CHECK: switchInt(
 
     // Test for #131195, which was optimizing `!a == b` into `a != b`.
-    let mut a: i32 = 0;
-    a = 1;
+    let a = 1;
     if !a == 0 { 1 } else { 0 }
+}
+
+pub fn logical_not() -> i32 {
+    // CHECK-LABEL: fn logical_not(
+
+    let a = false;
+    if !a == true { 1 } else { 0 }
 }
 
 fn main() {
@@ -555,6 +560,8 @@ fn main() {
     aggregate(7);
     assume(7, false);
     floats();
+    bitwise_not();
+    logical_not();
 }
 
 // EMIT_MIR jump_threading.too_complex.JumpThreading.diff
@@ -572,3 +579,4 @@ fn main() {
 // EMIT_MIR jump_threading.aggregate_copy.JumpThreading.diff
 // EMIT_MIR jump_threading.floats.JumpThreading.diff
 // EMIT_MIR jump_threading.bitwise_not.JumpThreading.diff
+// EMIT_MIR jump_threading.logical_not.JumpThreading.diff
