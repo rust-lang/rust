@@ -48,14 +48,14 @@ pub use crate::result::Result::{self, Err, Ok};
 #[doc(no_inline)]
 pub use core::prelude::v1::{
     assert, assert_eq, assert_ne, cfg, column, compile_error, concat, debug_assert, debug_assert_eq, debug_assert_ne, env, file, format_args, include, include_bytes, include_str, line, matches,
-    module_path, option_env, panic, stringify, todo, r#try, unimplemented, unreachable, write,
+    module_path, option_env, stringify, todo, r#try, unimplemented, unreachable, write,
     writeln, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
 };
 
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
 pub use crate::{
-    dbg, eprint, eprintln, format, is_x86_feature_detected, print, println, thread_local,
+    dbg, eprint, eprintln, format, is_x86_feature_detected, print, println, thread_local
 };
 
 // These macros needs special handling, so that we don't export it *and* the modules of the same
@@ -63,11 +63,13 @@ pub use crate::{
 mod ambiguous_macro_only_std {
     #[allow(hidden_glob_reexports)]
     mod vec {}
+    #[allow(hidden_glob_reexports)]
+    mod panic {}
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     pub use crate::*;
 }
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-pub use self::ambiguous_macro_only_std::vec;
+pub use self::ambiguous_macro_only_std::{vec, panic};
 
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[doc(no_inline)]
