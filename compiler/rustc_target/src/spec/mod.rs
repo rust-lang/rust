@@ -2078,6 +2078,7 @@ supported_targets! {
     ("riscv32imafc-unknown-nuttx-elf", riscv32imafc_unknown_nuttx_elf),
     ("riscv64imac-unknown-nuttx-elf", riscv64imac_unknown_nuttx_elf),
     ("riscv64gc-unknown-nuttx-elf", riscv64gc_unknown_nuttx_elf),
+    ("x86_64-lynx-lynxos178", x86_64_lynx_lynxos178),
 
     ("x86_64-pc-cygwin", x86_64_pc_cygwin),
 }
