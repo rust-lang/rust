@@ -728,26 +728,27 @@ pub(crate) fn run_aot(
 
     let concurrency_limiter = IntoDynSyncSend(ConcurrencyLimiter::new(todo_cgus.len()));
 
-    let modules = tcx.sess.time("codegen mono items", || {
-        let mut modules: Vec<_> = par_map(todo_cgus, |(_, cgu)| {
-            let dep_node = cgu.codegen_dep_node(tcx);
-            tcx.dep_graph
-                .with_task(
+    let modules: Vec<_> =
+        tcx.sess.time("codegen mono items", || {
+            let modules: Vec<_> = par_map(todo_cgus, |(_, cgu)| {
+                let dep_node = cgu.codegen_dep_node(tcx);
+                let (module, _) = tcx.dep_graph.with_task(
                     dep_node,
                     tcx,
                     (global_asm_config.clone(), cgu.name(), concurrency_limiter.acquire(tcx.dcx())),
                     module_codegen,
                     Some(rustc_middle::dep_graph::hash_result),
-                )
-                .0
-        });
-        modules.extend(
-            done_cgus
+                );
+                IntoDynSyncSend(module)
+            });
+            modules
                 .into_iter()
-                .map(|(_, cgu)| OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))),
-        );
-        modules
-    });
+                .map(|module| module.0)
+                .chain(done_cgus.into_iter().map(|(_, cgu)| {
+                    OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
+                }))
+                .collect()
+        });
 
     let allocator_module = emit_allocator_module(tcx);
 
