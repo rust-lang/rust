@@ -1,6 +1,6 @@
 // ignore-tidy-linelength
 //@ build-fail
-//@ dont-require-annotations:ERROR
+//@ dont-require-annotations: ERROR
 //@ dont-check-compiler-stderr
 //@ aux-build:panic-runtime-unwind.rs
 //@ compile-flags:-C panic=abort

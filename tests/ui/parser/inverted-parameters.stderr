@@ -1,5 +1,5 @@
 error: expected one of `:`, `@`, or `|`, found `bar`
-  --> $DIR/inverted-parameters.rs:4:24
+  --> $DIR/inverted-parameters.rs:6:24
    |
 LL |     fn foo(&self, &str bar) {}
    |                   -----^^^
@@ -8,7 +8,7 @@ LL |     fn foo(&self, &str bar) {}
    |                   help: declare the type after the parameter binding: `<identifier>: <type>`
 
 error: expected one of `:`, `@`, or `|`, found `quux`
-  --> $DIR/inverted-parameters.rs:10:10
+  --> $DIR/inverted-parameters.rs:12:10
    |
 LL | fn baz(S quux, xyzzy: i32) {}
    |        --^^^^
@@ -17,19 +17,19 @@ LL | fn baz(S quux, xyzzy: i32) {}
    |        help: declare the type after the parameter binding: `<identifier>: <type>`
 
 error: expected one of `:`, `@`, or `|`, found `a`
-  --> $DIR/inverted-parameters.rs:15:12
+  --> $DIR/inverted-parameters.rs:17:12
    |
 LL | fn one(i32 a b) {}
    |            ^ expected one of `:`, `@`, or `|`
 
 error: expected one of `:` or `|`, found `(`
-  --> $DIR/inverted-parameters.rs:18:23
+  --> $DIR/inverted-parameters.rs:20:23
    |
 LL | fn pattern((i32, i32) (a, b)) {}
    |                       ^ expected one of `:` or `|`
 
 error: expected one of `:`, `@`, or `|`, found `)`
-  --> $DIR/inverted-parameters.rs:21:12
+  --> $DIR/inverted-parameters.rs:23:12
    |
 LL | fn fizz(i32) {}
    |            ^ expected one of `:`, `@`, or `|`
@@ -49,7 +49,7 @@ LL | fn fizz(_: i32) {}
    |         ++
 
 error: expected one of `:`, `@`, or `|`, found `S`
-  --> $DIR/inverted-parameters.rs:27:23
+  --> $DIR/inverted-parameters.rs:29:23
    |
 LL | fn missing_colon(quux S) {}
    |                  -----^

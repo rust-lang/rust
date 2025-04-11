@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/suggest-missing-await.rs:12:14
+  --> $DIR/suggest-missing-await.rs:13:14
    |
 LL |     take_u32(x)
    |     -------- ^ expected `u32`, found future
@@ -7,12 +7,12 @@ LL |     take_u32(x)
    |     arguments to this function are incorrect
    |
 note: calling an async function returns a future
-  --> $DIR/suggest-missing-await.rs:12:14
+  --> $DIR/suggest-missing-await.rs:13:14
    |
 LL |     take_u32(x)
    |              ^
 note: function defined here
-  --> $DIR/suggest-missing-await.rs:3:4
+  --> $DIR/suggest-missing-await.rs:4:4
    |
 LL | fn take_u32(_x: u32) {}
    |    ^^^^^^^^ -------
@@ -22,13 +22,13 @@ LL |     take_u32(x.await)
    |               ++++++
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-missing-await.rs:22:5
+  --> $DIR/suggest-missing-await.rs:23:5
    |
 LL |     dummy()
    |     ^^^^^^^ expected `()`, found future
    |
 note: calling an async function returns a future
-  --> $DIR/suggest-missing-await.rs:22:5
+  --> $DIR/suggest-missing-await.rs:23:5
    |
 LL |     dummy()
    |     ^^^^^^^
@@ -42,7 +42,7 @@ LL |     dummy();
    |            +
 
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/suggest-missing-await.rs:35:9
+  --> $DIR/suggest-missing-await.rs:36:9
    |
 LL |       let _x = if true {
    |  ______________-
@@ -64,7 +64,7 @@ LL |         dummy().await
    |                ++++++
 
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/suggest-missing-await.rs:45:14
+  --> $DIR/suggest-missing-await.rs:46:14
    |
 LL |       let _x = match 0usize {
    |  ______________-
@@ -87,7 +87,7 @@ LL ~         1 => dummy().await,
    |
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-missing-await.rs:53:9
+  --> $DIR/suggest-missing-await.rs:54:9
    |
 LL |     let _x = match dummy() {
    |                    ------- this expression has type `impl Future<Output = ()>`
@@ -102,7 +102,7 @@ LL |     let _x = match dummy().await {
    |                           ++++++
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-missing-await.rs:67:9
+  --> $DIR/suggest-missing-await.rs:68:9
    |
 LL |     match dummy_result() {
    |           -------------- this expression has type `impl Future<Output = Result<(), ()>>`
@@ -118,7 +118,7 @@ LL |     match dummy_result().await {
    |                         ++++++
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-missing-await.rs:69:9
+  --> $DIR/suggest-missing-await.rs:70:9
    |
 LL |     match dummy_result() {
    |           -------------- this expression has type `impl Future<Output = Result<(), ()>>`
@@ -134,7 +134,7 @@ LL |     match dummy_result().await {
    |                         ++++++
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-missing-await.rs:77:27
+  --> $DIR/suggest-missing-await.rs:78:27
    |
 LL |     Some(do_async()).map(|()| {});
    |                           ^^
