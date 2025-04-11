@@ -95,7 +95,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         && let hir::def::Res::Local(hir_id) = p.res
                         && let hir::Node::Pat(pat) = tcx.hir_node(hir_id)
                     {
-                        err.span_label(pat.span, format!("binding `{ident}` declared here"));
+                        if !ident.span.in_external_macro(tcx.sess.source_map()) {
+                            err.span_label(pat.span, format!("binding `{ident}` declared here"));
+                        }
                     }
                 }
             }
