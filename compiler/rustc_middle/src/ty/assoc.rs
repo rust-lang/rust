@@ -25,11 +25,6 @@ pub struct AssocItem {
     /// If this is an item in an impl of a trait then this is the `DefId` of
     /// the associated item on the trait that this implements.
     pub trait_item_def_id: Option<DefId>,
-
-    /// `Some` if the associated item (an associated type) comes from the
-    /// return-position `impl Trait` in trait desugaring. The `ImplTraitInTraitData`
-    /// provides additional information about its source.
-    pub opt_rpitit_info: Option<ty::ImplTraitInTraitData>,
 }
 
 impl AssocItem {
@@ -81,7 +76,7 @@ impl AssocItem {
                 // regions just fine, showing `fn(&MyType)`.
                 tcx.fn_sig(self.def_id).instantiate_identity().skip_binder().to_string()
             }
-            ty::AssocKind::Type => format!("type {};", self.name),
+            ty::AssocKind::Type { .. } => format!("type {};", self.name),
             ty::AssocKind::Const => {
                 format!(
                     "const {}: {:?};",
@@ -97,8 +92,12 @@ impl AssocItem {
             ty::AssocKind::Const => "associated const",
             ty::AssocKind::Fn { has_self: true } => "method",
             ty::AssocKind::Fn { has_self: false } => "associated function",
-            ty::AssocKind::Type => "associated type",
+            ty::AssocKind::Type { .. } => "associated type",
         }
+    }
+
+    pub fn is_type(&self) -> bool {
+        matches!(self.kind, ty::AssocKind::Type { .. })
     }
 
     pub fn is_fn(&self) -> bool {
@@ -113,12 +112,12 @@ impl AssocItem {
         match self.kind {
             AssocKind::Const => AssocTag::Const,
             AssocKind::Fn { .. } => AssocTag::Fn,
-            AssocKind::Type => AssocTag::Type,
+            AssocKind::Type { .. } => AssocTag::Type,
         }
     }
 
     pub fn is_impl_trait_in_trait(&self) -> bool {
-        self.opt_rpitit_info.is_some()
+        matches!(self.kind, AssocKind::Type { opt_rpitit_info: Some(_) })
     }
 
     /// Returns true if:
@@ -143,14 +142,21 @@ impl AssocItem {
 #[derive(Copy, Clone, PartialEq, Debug, HashStable, Eq, Hash, Encodable, Decodable)]
 pub enum AssocKind {
     Const,
-    Fn { has_self: bool },
-    Type,
+    Fn {
+        has_self: bool,
+    },
+    Type {
+        /// `Some` if the associated type comes from an RPITIT. The
+        /// `ImplTraitInTraitData` provides additional information about its
+        /// source.
+        opt_rpitit_info: Option<ty::ImplTraitInTraitData>,
+    },
 }
 
 impl AssocKind {
     pub fn namespace(&self) -> Namespace {
         match *self {
-            ty::AssocKind::Type => Namespace::TypeNS,
+            ty::AssocKind::Type { .. } => Namespace::TypeNS,
             ty::AssocKind::Const | ty::AssocKind::Fn { .. } => Namespace::ValueNS,
         }
     }
@@ -159,7 +165,7 @@ impl AssocKind {
         match self {
             AssocKind::Const => DefKind::AssocConst,
             AssocKind::Fn { .. } => DefKind::AssocFn,
-            AssocKind::Type => DefKind::AssocTy,
+            AssocKind::Type { .. } => DefKind::AssocTy,
         }
     }
 }
@@ -170,7 +176,7 @@ impl std::fmt::Display for AssocKind {
             AssocKind::Fn { has_self: true } => write!(f, "method"),
             AssocKind::Fn { has_self: false } => write!(f, "associated function"),
             AssocKind::Const => write!(f, "associated const"),
-            AssocKind::Type => write!(f, "associated type"),
+            AssocKind::Type { .. } => write!(f, "associated type"),
         }
     }
 }

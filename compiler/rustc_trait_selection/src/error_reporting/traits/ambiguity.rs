@@ -352,7 +352,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             ty::AssocKind::Fn { .. } => ("call", "function"),
                             // This is already covered by E0223, but this following single match
                             // arm doesn't hurt here.
-                            ty::AssocKind::Type => ("refer to the", "type"),
+                            ty::AssocKind::Type { .. } => ("refer to the", "type"),
                         };
 
                         // Replace the more general E0283 with a more specific error

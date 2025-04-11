@@ -1610,8 +1610,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// return-position `impl Trait` from a trait, then provide the source info
     /// about where that RPITIT came from.
     pub fn opt_rpitit_info(self, def_id: DefId) -> Option<ImplTraitInTraitData> {
-        if let DefKind::AssocTy = self.def_kind(def_id) {
-            self.associated_item(def_id).opt_rpitit_info
+        if let DefKind::AssocTy = self.def_kind(def_id)
+            && let AssocKind::Type { opt_rpitit_info } = self.associated_item(def_id).kind
+        {
+            opt_rpitit_info
         } else {
             None
         }

@@ -1412,7 +1412,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 RequiredMethodItem(item)
             }
         }
-        ty::AssocKind::Type => {
+        ty::AssocKind::Type { .. } => {
             let my_name = assoc_item.name;
 
             fn param_eq_arg(param: &GenericParamDef, arg: &GenericArg) -> bool {

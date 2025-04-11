@@ -1342,12 +1342,17 @@ impl<'a> CrateMetadataRef<'a> {
             DefKind::AssocFn => {
                 ty::AssocKind::Fn { has_self: self.get_fn_has_self_parameter(id, sess) }
             }
-            DefKind::AssocTy => ty::AssocKind::Type,
+            DefKind::AssocTy => ty::AssocKind::Type {
+                opt_rpitit_info: self
+                    .root
+                    .tables
+                    .opt_rpitit_info
+                    .get(self, id)
+                    .map(|d| d.decode(self)),
+            },
             _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
         let container = self.root.tables.assoc_container.get(self, id).unwrap();
-        let opt_rpitit_info =
-            self.root.tables.opt_rpitit_info.get(self, id).map(|d| d.decode(self));
 
         ty::AssocItem {
             name,
@@ -1355,7 +1360,6 @@ impl<'a> CrateMetadataRef<'a> {
             def_id: self.local_def_id(id),
             trait_item_def_id: self.get_trait_item_def_id(id),
             container,
-            opt_rpitit_info,
         }
     }
 

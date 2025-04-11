@@ -449,7 +449,7 @@ fn best_definition_site_of_opaque<'tcx>(
                             return Some(span);
                         }
                     }
-                    ty::AssocKind::Type => {}
+                    ty::AssocKind::Type { .. } => {}
                 }
             }
 
@@ -740,7 +740,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
             for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
-                    ty::AssocKind::Type if assoc_item.defaultness(tcx).has_value() => {
+                    ty::AssocKind::Type { .. } if assoc_item.defaultness(tcx).has_value() => {
                         let trait_args = GenericArgs::identity_for_item(tcx, def_id);
                         let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
@@ -953,7 +953,7 @@ fn check_impl_items_against_trait<'tcx>(
                     );
                 }
                 ty::AssocKind::Const => {}
-                ty::AssocKind::Type => {}
+                ty::AssocKind::Type { .. } => {}
             }
         }
 

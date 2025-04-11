@@ -1671,15 +1671,7 @@ impl<'tcx> Pick<'tcx> {
     /// Do not use for type checking.
     pub(crate) fn differs_from(&self, other: &Self) -> bool {
         let Self {
-            item:
-                AssocItem {
-                    def_id,
-                    name: _,
-                    kind: _,
-                    container: _,
-                    trait_item_def_id: _,
-                    opt_rpitit_info: _,
-                },
+            item: AssocItem { def_id, name: _, kind: _, container: _, trait_item_def_id: _ },
             kind: _,
             import_ids: _,
             autoderefs: _,
@@ -2253,7 +2245,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         match self.mode {
             Mode::MethodCall => item.is_method(),
             Mode::Path => match item.kind {
-                ty::AssocKind::Type => false,
+                ty::AssocKind::Type { .. } => false,
                 ty::AssocKind::Fn { .. } | ty::AssocKind::Const => true,
             },
         }

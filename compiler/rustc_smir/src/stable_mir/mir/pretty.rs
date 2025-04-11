@@ -25,7 +25,7 @@ impl Display for AssocKind {
             AssocKind::Fn { has_self: true } => write!(f, "method"),
             AssocKind::Fn { has_self: false } => write!(f, "associated function"),
             AssocKind::Const => write!(f, "associated const"),
-            AssocKind::Type => write!(f, "associated type"),
+            AssocKind::Type { .. } => write!(f, "associated type"),
         }
     }
 }

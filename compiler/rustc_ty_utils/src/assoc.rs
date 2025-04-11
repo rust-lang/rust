@@ -132,7 +132,7 @@ fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty
     let kind = match trait_item_ref.kind {
         hir::AssocItemKind::Const => ty::AssocKind::Const,
         hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { has_self },
-        hir::AssocItemKind::Type => ty::AssocKind::Type,
+        hir::AssocItemKind::Type => ty::AssocKind::Type { opt_rpitit_info: None },
     };
 
     ty::AssocItem {
@@ -141,7 +141,6 @@ fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty
         def_id: owner_id.to_def_id(),
         trait_item_def_id: Some(owner_id.to_def_id()),
         container: ty::AssocItemContainer::Trait,
-        opt_rpitit_info: None,
     }
 }
 
@@ -150,7 +149,7 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
     let kind = match impl_item_ref.kind {
         hir::AssocItemKind::Const => ty::AssocKind::Const,
         hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { has_self },
-        hir::AssocItemKind::Type => ty::AssocKind::Type,
+        hir::AssocItemKind::Type => ty::AssocKind::Type { opt_rpitit_info: None },
     };
 
     ty::AssocItem {
@@ -159,7 +158,6 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
         def_id: def_id.to_def_id(),
         trait_item_def_id: impl_item_ref.trait_item_def_id,
         container: ty::AssocItemContainer::Impl,
-        opt_rpitit_info: None,
     }
 }
 
@@ -263,14 +261,15 @@ fn associated_type_for_impl_trait_in_trait(
 
     trait_assoc_ty.associated_item(ty::AssocItem {
         name: kw::Empty,
-        kind: ty::AssocKind::Type,
+        kind: ty::AssocKind::Type {
+            opt_rpitit_info: Some(ImplTraitInTraitData::Trait {
+                fn_def_id: fn_def_id.to_def_id(),
+                opaque_def_id: opaque_ty_def_id.to_def_id(),
+            }),
+        },
         def_id,
         trait_item_def_id: None,
         container: ty::AssocItemContainer::Trait,
-        opt_rpitit_info: Some(ImplTraitInTraitData::Trait {
-            fn_def_id: fn_def_id.to_def_id(),
-            opaque_def_id: opaque_ty_def_id.to_def_id(),
-        }),
     });
 
     // Copy visility of the containing function.
@@ -315,11 +314,14 @@ fn associated_type_for_impl_trait_in_impl(
 
     impl_assoc_ty.associated_item(ty::AssocItem {
         name: kw::Empty,
-        kind: ty::AssocKind::Type,
+        kind: ty::AssocKind::Type {
+            opt_rpitit_info: Some(ImplTraitInTraitData::Impl {
+                fn_def_id: impl_fn_def_id.to_def_id(),
+            }),
+        },
         def_id,
         trait_item_def_id: Some(trait_assoc_def_id),
         container: ty::AssocItemContainer::Impl,
-        opt_rpitit_info: Some(ImplTraitInTraitData::Impl { fn_def_id: impl_fn_def_id.to_def_id() }),
     });
 
     // Copy visility of the containing function.
