@@ -1,16 +1,16 @@
 error: incorrect ordering of items (must be alphabetically ordered)
-  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:24:8
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:25:8
    |
 LL | struct OrderedChecked {
    |        ^^^^^^^^^^^^^^
    |
 note: should be placed before `Unordered`
-  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:18:8
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:19:8
    |
 LL | struct Unordered {
    |        ^^^^^^^^^
 note: the lint level is defined here
-  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:9:9
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:10:9
    |
 LL | #![deny(clippy::arbitrary_source_item_ordering)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
