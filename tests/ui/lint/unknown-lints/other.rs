@@ -1,4 +1,4 @@
-//@ ignore-test
+//@ ignore-test (auxiliary)
 
 // Companion to allow-in-other-module.rs
 

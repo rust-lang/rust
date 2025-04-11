@@ -2,7 +2,7 @@
 //@ compile-flags: -Copt-level=3 -Cdebug-assertions=no -Zub-checks=yes
 //@ error-pattern: unsafe precondition(s) violated: ptr::read requires
 //@ revisions: null misaligned
-//@ ignore-test
+//@ ignore-test (unimplemented)
 
 use std::ptr;
 

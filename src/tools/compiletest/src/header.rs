@@ -1432,6 +1432,7 @@ pub(crate) fn make_test_description<R: Read>(
             decision!(ignore_cdb(config, ln));
             decision!(ignore_gdb(config, ln));
             decision!(ignore_lldb(config, ln));
+            decision!(handle_known_bug(config, ln));
 
             if config.target == "wasm32-unknown-unknown"
                 && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
@@ -1460,6 +1461,12 @@ pub(crate) fn make_test_description<R: Read>(
     };
 
     CollectedTestDesc { name, ignore, ignore_message, should_panic }
+}
+
+enum IgnoreDecision {
+    Ignore { reason: String },
+    Continue,
+    Error { message: String },
 }
 
 fn ignore_cdb(config: &Config, line: &str) -> IgnoreDecision {
@@ -1660,8 +1667,16 @@ fn ignore_llvm(config: &Config, path: &Path, line: &str) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-enum IgnoreDecision {
-    Ignore { reason: String },
-    Continue,
-    Error { message: String },
+fn handle_known_bug(config: &Config, ln: &str) -> IgnoreDecision {
+    // Crashes tests need to ICE or crash, even with `//@ known-bug`.
+    if config.mode == Mode::Crashes {
+        return IgnoreDecision::Continue;
+    }
+
+    // NOTE: `//@ known-bug` is additionally validated in test prop parsing.
+    if let Some(bugs) = config.parse_name_value_directive(ln, "known-bug") {
+        IgnoreDecision::Ignore { reason: format!("known-bug: {bugs}") }
+    } else {
+        IgnoreDecision::Continue
+    }
 }

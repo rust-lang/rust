@@ -1,6 +1,6 @@
 //@ aux-crate:assoc_const_equality=assoc-const-equality.rs
 //@ edition:2021
-//@ ignore-test (FIXME: #125092)
+//@ known-bug: #125092
 
 #![crate_name = "user"]
 
