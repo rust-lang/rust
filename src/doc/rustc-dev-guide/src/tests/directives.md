@@ -123,9 +123,15 @@ means the test won't be compiled or run.
 * `ignore-X` where `X` is a target detail or other criteria on which to ignore the test (see below)
 * `only-X` is like `ignore-X`, but will *only* run the test on that target or
   stage
+* `known-bug` will accept a comma-delimited list of issue numbers (e.g. `#123456`
+  or `repo#123456`), or `unknown`. When specified in `crashes` test suite, the
+  test must ICE or crash. When specified in non`-crashes` test suites, it will
+  cause the test to be ignored as it is known broken.
 * `ignore-test` always ignores the test. This can be used to temporarily disable
   a test if it is currently not working, but you want to keep it in tree to
   re-enable it later.
+  * NOTE: prefer `known-bug` for known-broken tests where possibe, preferrably
+    with an issue to track it.
 
 Some examples of `X` in `ignore-X` or `only-X`:
 
