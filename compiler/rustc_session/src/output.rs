@@ -177,6 +177,13 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
+        if !session.target.executables {
+            session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
+                crate_type: CrateType::Executable,
+                target_triple: &session.opts.target_triple,
+            });
+            return Vec::new();
+        }
         return vec![CrateType::Executable];
     }
 
