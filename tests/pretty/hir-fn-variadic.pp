@@ -5,7 +5,6 @@
 #![feature(c_variadic)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-#[macro_use]
 extern crate std;
 
 extern "C" {
