@@ -374,17 +374,8 @@ fn do_mir_borrowck<'tcx>(
     let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
     nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req, diags_buffer);
 
-    let movable_coroutine =
-    // The first argument is the coroutine type passed by value
-    if let Some(local) = body.local_decls.raw.get(1)
-    // Get the interior types and args which typeck computed
-    && let ty::Coroutine(def_id, _) = *local.ty.kind()
-    && tcx.coroutine_movability(def_id) == hir::Movability::Movable
-{
-    true
-} else {
-    false
-};
+    let movable_coroutine = body.coroutine.is_some()
+        && tcx.coroutine_movability(def.to_def_id()) == hir::Movability::Movable;
 
     // While promoteds should mostly be correct by construction, we need to check them for
     // invalid moves to detect moving out of arrays:`struct S; fn main() { &([S][0]); }`.
