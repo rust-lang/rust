@@ -573,7 +573,7 @@ pub fn run_tests(config: Arc<Config>) {
     // Delegate to libtest to filter and run the big list of structures created
     // during test discovery. When libtest decides to run a test, it will
     // return control to compiletest by invoking a closure.
-    let res = crate::executor::execute_tests(&config, tests);
+    let res = crate::executor::libtest::execute_tests(&config, tests);
 
     // Check the outcome reported by libtest.
     match res {
