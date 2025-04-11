@@ -2148,6 +2148,12 @@ pub fn chroot(dir: &Path) -> io::Result<()> {
     Err(io::const_error!(io::ErrorKind::Unsupported, "chroot not supported by vxworks"))
 }
 
+pub fn mkfifo(path: &Path, mode: u32) -> io::Result<()> {
+    run_path_with_cstr(path, &|path| {
+        cvt(unsafe { libc::mkfifo(path.as_ptr(), mode.try_into().unwrap()) }).map(|_| ())
+    })
+}
+
 pub use remove_dir_impl::remove_dir_all;
 
 // Fallback for REDOX, ESP-ID, Horizon, Vita, Vxworks and Miri
