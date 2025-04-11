@@ -195,6 +195,8 @@ pub(crate) fn handle_view_item_tree(
 }
 
 // cargo test requires:
+// - the package is a member of the workspace
+// - the target in the package is not a build script (custom-build)
 // - the package name - the root of the test identifier supplied to this handler can be
 //   a package or a target inside a package.
 // - the target name - if the test identifier is a target, it's needed in addition to the
@@ -202,39 +204,26 @@ pub(crate) fn handle_view_item_tree(
 // - real names - the test identifier uses the namespace form where hyphens are replaced with
 //   underscores. cargo test requires the real name.
 // - the target kind e.g. bin or lib
-fn find_test_target(namespace_root: &str, cargo: &CargoWorkspace) -> Option<TestTarget> {
-    cargo.packages().filter(|p| cargo[*p].is_member).find_map(|p| {
-        let package_name = &cargo[p].name;
-        for target in cargo[p].targets.iter() {
-            let target_name = &cargo[*target].name;
-            if target_name.replace('-', "_") == namespace_root {
-                return Some(TestTarget {
-                    package: package_name.clone(),
-                    target: target_name.clone(),
-                    kind: cargo[*target].kind,
-                });
+fn all_test_targets(cargo: &CargoWorkspace) -> impl Iterator<Item = TestTarget> {
+    cargo.packages().filter(|p| cargo[*p].is_member).flat_map(|p| {
+        let package = &cargo[p];
+        package.targets.iter().filter_map(|t| {
+            let target = &cargo[*t];
+            if target.kind == TargetKind::BuildScript {
+                None
+            } else {
+                Some(TestTarget {
+                    package: package.name.clone(),
+                    target: target.name.clone(),
+                    kind: target.kind,
+                })
             }
-        }
-        None
+        })
     })
 }
 
-fn get_all_targets(cargo: &CargoWorkspace) -> Vec<TestTarget> {
-    cargo
-        .packages()
-        .filter(|p| cargo[*p].is_member)
-        .flat_map(|p| {
-            let package_name = &cargo[p].name;
-            cargo[p].targets.iter().map(|target| {
-                let target_name = &cargo[*target].name;
-                TestTarget {
-                    package: package_name.clone(),
-                    target: target_name.clone(),
-                    kind: cargo[*target].kind,
-                }
-            })
-        })
-        .collect()
+fn find_test_target(namespace_root: &str, cargo: &CargoWorkspace) -> Option<TestTarget> {
+    all_test_targets(cargo).find(|t| namespace_root == t.target.replace('-', "_"))
 }
 
 pub(crate) fn handle_run_test(
@@ -266,7 +255,7 @@ pub(crate) fn handle_run_test(
                         }
                     })
                     .collect_vec(),
-                None => get_all_targets(cargo).into_iter().map(|target| (target, None)).collect(),
+                None => all_test_targets(cargo).into_iter().map(|target| (target, None)).collect(),
             };
 
             for (target, path) in tests {
