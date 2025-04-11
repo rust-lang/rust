@@ -189,7 +189,8 @@ declare_passes! {
             BeforeConstProp,
             AfterGVN,
             Final
-        };
+        },
+        RemoveRedundantSwitch;
     mod simplify_branches : SimplifyConstCondition {
         AfterConstProp,
         Final
@@ -675,6 +676,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &check_null::CheckNull,
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
+            // Remove some redundant `SwitchInt` terminators.
+            &simplify::RemoveRedundantSwitch,
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
             // Also simple, so can just do first.
             &lower_slice_len::LowerSliceLenCalls,

@@ -6,6 +6,10 @@
       let mut _0: ();
   
       bb0: {
+          switchInt(copy _1) -> bb1;
+      }
+  
+      bb1: {
           return;
       }
   }

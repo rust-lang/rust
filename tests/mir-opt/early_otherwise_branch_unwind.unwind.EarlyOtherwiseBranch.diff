@@ -11,6 +11,7 @@
       let mut _6: bool;
       let mut _7: bool;
       let mut _8: isize;
+      let mut _9: isize;
       scope 1 {
           debug _v => _5;
       }
@@ -92,12 +93,13 @@
       }
   
       bb15: {
-          goto -> bb14;
+          _8 = discriminant(((((_1 as Some).0: std::option::Option<std::option::Option<T>>) as Some).0: std::option::Option<T>));
+          switchInt(move _8) -> [1: bb14, otherwise: bb14];
       }
   
       bb16: {
-          _8 = discriminant(((_1 as Some).0: std::option::Option<std::option::Option<T>>));
-          switchInt(move _8) -> [1: bb13, otherwise: bb12];
+          _9 = discriminant(((_1 as Some).0: std::option::Option<std::option::Option<T>>));
+          switchInt(move _9) -> [1: bb13, otherwise: bb12];
       }
   
       bb17: {
@@ -109,7 +111,7 @@
       }
   
       bb19 (cleanup): {
-          goto -> bb9;
+          switchInt(copy _2) -> [1: bb9, otherwise: bb9];
       }
   
       bb20 (cleanup): {
