@@ -488,7 +488,7 @@ fn parse_never_type_options_attr(
             item.span(),
             format!(
                 "unknown or duplicate never type option: `{}` (supported: `fallback`, `diverging_block_default`)",
-                item.name_or_empty()
+                item.name().unwrap()
             ),
         );
     }

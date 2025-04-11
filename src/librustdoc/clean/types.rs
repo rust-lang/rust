@@ -788,7 +788,7 @@ impl Item {
                         }
                         _ => Some(rustc_hir_pretty::attribute_to_string(&tcx, attr)),
                     }
-                } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
+                } else if attr.has_any_name(ALLOWED_ATTRIBUTES) {
                     Some(
                         rustc_hir_pretty::attribute_to_string(&tcx, attr)
                             .replace("\\\n", "")

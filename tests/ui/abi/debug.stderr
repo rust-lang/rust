@@ -906,6 +906,12 @@ LL | type TestAbiEqNonsense = (fn((str, str)), fn((str, str)));
    = help: the trait `Sized` is not implemented for `str`
    = note: only the last element of a tuple may have a dynamically sized type
 
+error: unrecognized argument
+  --> $DIR/debug.rs:56:13
+   |
+LL | #[rustc_abi("assert_eq")]
+   |             ^^^^^^^^^^^
+
 error: `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
   --> $DIR/debug.rs:29:5
    |
@@ -1004,6 +1010,6 @@ error: fn_abi_of(assoc_test) = FnAbi {
 LL |     fn assoc_test(&self) { }
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

@@ -405,8 +405,7 @@ fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
             debug!("check_config: searching for cfg {:?}", value);
             cfg = Some(config.contains(&(value, None)));
         } else if !(item.has_name(EXCEPT) || item.has_name(LOADED_FROM_DISK)) {
-            tcx.dcx()
-                .emit_err(errors::UnknownItem { span: attr.span(), name: item.name_or_empty() });
+            tcx.dcx().emit_err(errors::UnknownRustcCleanArgument { span: item.span() });
         }
     }
 

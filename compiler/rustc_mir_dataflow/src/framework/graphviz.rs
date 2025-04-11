@@ -144,9 +144,10 @@ impl RustcMirAttrs {
         attr: &ast::MetaItemInner,
         mapper: impl FnOnce(Symbol) -> Result<T, ()>,
     ) -> Result<(), ()> {
+        // Unwrapping the name is safe because this is only called when `has_name` has succeeded.
         if field.is_some() {
             tcx.dcx()
-                .emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name_or_empty() });
+                .emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name().unwrap() });
 
             return Err(());
         }
@@ -156,7 +157,7 @@ impl RustcMirAttrs {
             Ok(())
         } else {
             tcx.dcx()
-                .emit_err(RequiresAnArgument { span: attr.span(), name: attr.name_or_empty() });
+                .emit_err(RequiresAnArgument { span: attr.span(), name: attr.name().unwrap() });
             Err(())
         }
     }

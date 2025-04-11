@@ -13,7 +13,7 @@ use rustc_trait_selection::traits;
 
 use crate::errors::{
     LayoutAbi, LayoutAlign, LayoutHomogeneousAggregate, LayoutInvalidAttribute, LayoutOf,
-    LayoutSize, UnrecognizedField,
+    LayoutSize, UnrecognizedArgument,
 };
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
@@ -79,28 +79,28 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
             // The `..` are the names of fields to dump.
             let meta_items = attr.meta_item_list().unwrap_or_default();
             for meta_item in meta_items {
-                match meta_item.name_or_empty() {
+                match meta_item.name() {
                     // FIXME: this never was about ABI and now this dump arg is confusing
-                    sym::abi => {
+                    Some(sym::abi) => {
                         tcx.dcx().emit_err(LayoutAbi {
                             span,
                             abi: format!("{:?}", ty_layout.backend_repr),
                         });
                     }
 
-                    sym::align => {
+                    Some(sym::align) => {
                         tcx.dcx().emit_err(LayoutAlign {
                             span,
                             align: format!("{:?}", ty_layout.align),
                         });
                     }
 
-                    sym::size => {
+                    Some(sym::size) => {
                         tcx.dcx()
                             .emit_err(LayoutSize { span, size: format!("{:?}", ty_layout.size) });
                     }
 
-                    sym::homogeneous_aggregate => {
+                    Some(sym::homogeneous_aggregate) => {
                         tcx.dcx().emit_err(LayoutHomogeneousAggregate {
                             span,
                             homogeneous_aggregate: format!(
@@ -111,15 +111,15 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
                         });
                     }
 
-                    sym::debug => {
+                    Some(sym::debug) => {
                         let normalized_ty = tcx.normalize_erasing_regions(typing_env, ty);
                         // FIXME: using the `Debug` impl here isn't ideal.
                         let ty_layout = format!("{:#?}", *ty_layout);
                         tcx.dcx().emit_err(LayoutOf { span, normalized_ty, ty_layout });
                     }
 
-                    name => {
-                        tcx.dcx().emit_err(UnrecognizedField { span: meta_item.span(), name });
+                    _ => {
+                        tcx.dcx().emit_err(UnrecognizedArgument { span: meta_item.span() });
                     }
                 }
             }

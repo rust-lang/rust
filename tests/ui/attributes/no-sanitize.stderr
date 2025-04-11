@@ -59,5 +59,22 @@ LL | #[no_sanitize(address, memory)]
 LL | static INVALID : i32 = 0;
    | ------------------------- not a function
 
-error: aborting due to 7 previous errors
+error: `#[no_sanitize(...)]` should be applied to a function
+  --> $DIR/no-sanitize.rs:42:15
+   |
+LL | #[no_sanitize("address")]
+   |               ^^^^^^^^^
+...
+LL | static VALID2 : i32 = 0;
+   | ------------------------ not a function
+
+error: invalid argument for `no_sanitize`
+  --> $DIR/no-sanitize.rs:42:15
+   |
+LL | #[no_sanitize("address")]
+   |               ^^^^^^^^^
+   |
+   = note: expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`
+
+error: aborting due to 9 previous errors
 

@@ -1,21 +1,39 @@
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `should_panic`
-  --> $DIR/check-builtin-attr-ice.rs:43:7
+  --> $DIR/check-builtin-attr-ice.rs:45:7
    |
 LL |     #[should_panic::skip]
    |       ^^^^^^^^^^^^ use of unresolved module or unlinked crate `should_panic`
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `should_panic`
-  --> $DIR/check-builtin-attr-ice.rs:47:7
+  --> $DIR/check-builtin-attr-ice.rs:50:7
    |
 LL |     #[should_panic::a::b::c]
    |       ^^^^^^^^^^^^ use of unresolved module or unlinked crate `should_panic`
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `deny`
-  --> $DIR/check-builtin-attr-ice.rs:55:7
+  --> $DIR/check-builtin-attr-ice.rs:59:7
    |
 LL |     #[deny::skip]
    |       ^^^^ use of unresolved module or unlinked crate `deny`
 
-error: aborting due to 3 previous errors
+error: `#[should_panic::skip]` only has an effect on functions
+  --> $DIR/check-builtin-attr-ice.rs:45:5
+   |
+LL |     #[should_panic::skip]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/check-builtin-attr-ice.rs:42:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: `#[should_panic::a::b::c]` only has an effect on functions
+  --> $DIR/check-builtin-attr-ice.rs:50:5
+   |
+LL |     #[should_panic::a::b::c]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0433`.

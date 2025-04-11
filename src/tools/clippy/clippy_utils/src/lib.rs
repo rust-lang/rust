@@ -2363,14 +2363,14 @@ pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx
         .hir_attrs(hir::CRATE_HIR_ID)
         .iter()
-        .any(|attr| attr.name_or_empty() == sym::no_std)
+        .any(|attr| attr.has_name(sym::no_std))
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx
         .hir_attrs(hir::CRATE_HIR_ID)
         .iter()
-        .any(|attr| attr.name_or_empty() == sym::no_core)
+        .any(|attr| attr.has_name(sym::no_core))
 }
 
 /// Check if parent of a hir node is a trait implementation block.

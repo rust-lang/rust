@@ -521,23 +521,23 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // Crawl the crate attributes looking for attributes which control how we're
         // going to emit HTML
         for attr in krate.module.attrs.lists(sym::doc) {
-            match (attr.name_or_empty(), attr.value_str()) {
-                (sym::html_favicon_url, Some(s)) => {
+            match (attr.name(), attr.value_str()) {
+                (Some(sym::html_favicon_url), Some(s)) => {
                     layout.favicon = s.to_string();
                 }
-                (sym::html_logo_url, Some(s)) => {
+                (Some(sym::html_logo_url), Some(s)) => {
                     layout.logo = s.to_string();
                 }
-                (sym::html_playground_url, Some(s)) => {
+                (Some(sym::html_playground_url), Some(s)) => {
                     playground = Some(markdown::Playground {
                         crate_name: Some(krate.name(tcx)),
                         url: s.to_string(),
                     });
                 }
-                (sym::issue_tracker_base_url, Some(s)) => {
+                (Some(sym::issue_tracker_base_url), Some(s)) => {
                     issue_tracker_base_url = Some(s.to_string());
                 }
-                (sym::html_no_source, None) if attr.is_word() => {
+                (Some(sym::html_no_source), None) if attr.is_word() => {
                     include_sources = false;
                 }
                 _ => {}
