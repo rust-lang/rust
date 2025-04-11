@@ -3,7 +3,7 @@
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
-use crate::core::build_steps::tool::{SourceType, prepare_tool_cargo};
+use crate::core::build_steps::tool::{COMPILETEST_ALLOW_FEATURES, SourceType, prepare_tool_cargo};
 use crate::core::builder::{
     self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, crate_description,
 };
@@ -416,7 +416,7 @@ impl Step for Compiletest {
             &[],
         );
 
-        cargo.allow_features("test");
+        cargo.allow_features(COMPILETEST_ALLOW_FEATURES);
 
         // For ./x.py clippy, don't run with --all-targets because
         // linting tests and benchmarks can produce very noisy results
