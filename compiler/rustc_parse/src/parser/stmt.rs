@@ -518,7 +518,11 @@ impl<'a> Parser<'a> {
         let prev = self.prev_token.span;
         let sp = self.token.span;
         let mut e = self.dcx().struct_span_err(sp, msg);
-        let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
+        self.label_expected_raw_ref(&mut e);
+
+        let do_not_suggest_help = self.token.is_keyword(kw::In)
+            || self.token == token::Colon
+            || self.prev_token.is_keyword(kw::Raw);
 
         // Check to see if the user has written something like
         //
