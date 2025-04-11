@@ -448,3 +448,20 @@ mod issue9300 {
         }
     }
 }
+
+#[clippy::cognitive_complexity = "2"]
+mod issue14422 {
+    fn foo() {
+        for _ in 0..10 {
+            println!("hello there");
+        }
+    }
+
+    fn bar() {
+        for _ in 0..10 {
+            println!("hello there");
+        }
+        return;
+        return;
+    }
+}
