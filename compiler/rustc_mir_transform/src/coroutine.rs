@@ -1071,13 +1071,20 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // coroutine's resume function.
     let typing_env = body.typing_env(tcx);
 
-    let mut elaborator = DropShimElaborator { body, patch: MirPatch::new(body), tcx, typing_env };
+    let mut elaborator = DropShimElaborator {
+        body,
+        patch: MirPatch::new(body),
+        tcx,
+        typing_env,
+        produce_async_drops: false,
+    };
 
     for (block, block_data) in body.basic_blocks.iter_enumerated() {
         let (target, unwind, source_info) = match block_data.terminator() {
             Terminator {
                 source_info,
-                kind: TerminatorKind::Drop { place, target, unwind, replace: _ },
+                kind:
+                    TerminatorKind::Drop { place, target, unwind, replace: _, drop: _, async_fut: _ },
             } => {
                 if let Some(local) = place.as_local()
                     && local == SELF_ARG
@@ -1107,6 +1114,7 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             *target,
             unwind,
             block,
+            None,
         );
     }
     elaborator.patch.apply(body);
@@ -1365,6 +1373,8 @@ fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
         target: return_block,
         unwind: UnwindAction::Continue,
         replace: false,
+        drop: None,
+        async_fut: None,
     };
     let source_info = SourceInfo::outermost(body.span);
 
