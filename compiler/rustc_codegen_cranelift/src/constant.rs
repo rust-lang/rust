@@ -175,8 +175,8 @@ pub(crate) fn codegen_const_value<'tcx>(
                             fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                         fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                     }
-                    // TODO: generate pointer to allocation containing the actual type id hash u128 value
-                    GlobalAlloc::Type(_) => todo!(),
+                    // TODO: generate segment of type id hash
+                    GlobalAlloc::Type { .. } => todo!(),
                     GlobalAlloc::Static(def_id) => {
                         assert!(fx.tcx.is_static(def_id));
                         let data_id = data_id_for_static(
@@ -362,7 +362,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     GlobalAlloc::Memory(alloc) => alloc,
                     GlobalAlloc::Function { .. }
                     | GlobalAlloc::Static(_)
-                    | GlobalAlloc::Type(_)
+                    | GlobalAlloc::Type { .. }
                     | GlobalAlloc::VTable(..) => {
                         unreachable!()
                     }
@@ -475,7 +475,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                         .map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
                 ),
                 // TODO
-                GlobalAlloc::Type(_ty) => todo!(),
+                GlobalAlloc::Type { .. } => todo!(),
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
                     {

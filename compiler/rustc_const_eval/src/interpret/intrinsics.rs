@@ -8,7 +8,7 @@ use rustc_abi::Size;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_ast::Mutability;
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir::interpret::{AllocId, AllocInit, CtfeProvenance, alloc_range};
+use rustc_middle::mir::interpret::{AllocId, AllocInit, alloc_range};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
@@ -33,24 +33,17 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAll
 }
 
 pub(crate) fn alloc_type_id<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> AllocId {
-    let ptr_size = tcx.data_layout.pointer_size;
+    let size = Size::from_bytes(16);
     let align = tcx.data_layout.pointer_align;
-
-    let mut alloc = Allocation::new(ptr_size * 2, *align, AllocInit::Uninit, ());
-    // Write a pointer pointing to the hash. At ctfe time this is an opaque pointer that you cannot deref
-    let ptr = tcx.reserve_and_set_type_id_alloc(ty);
-    let ptr = Pointer::new(CtfeProvenance::from(ptr), Size::ZERO);
-    alloc
-        .write_scalar(&tcx, alloc_range(Size::ZERO, ptr_size), Scalar::from_pointer(ptr, &tcx))
-        .unwrap();
-
-    // Write a pointer that is not actually a pointer but will just get replaced by the first `pointer_size` bytes of the hash
-    // in codegen. It is a pointer in CTFE so no one can access the bits.
-    let ptr = tcx.reserve_and_set_type_id_partial_hash(ty);
-    let ptr = Pointer::new(CtfeProvenance::from(ptr), Size::ZERO);
-    alloc
-        .write_scalar(&tcx, alloc_range(ptr_size, ptr_size), Scalar::from_pointer(ptr, &tcx))
-        .unwrap();
+    let mut alloc = Allocation::new(size, *align, AllocInit::Uninit, ());
+    let ptr_size = tcx.data_layout.pointer_size;
+    for step in 0..size.bytes() / ptr_size.bytes() {
+        let offset = ptr_size * step;
+        let alloc_id = tcx.reserve_and_set_type_id_alloc(ty, step.try_into().unwrap());
+        let ptr = Pointer::new(alloc_id.into(), Size::ZERO);
+        let val = Scalar::from_pointer(ptr, &tcx);
+        alloc.write_scalar(&tcx, alloc_range(offset, ptr_size), val).unwrap();
+    }
 
     alloc.mutability = Mutability::Not;
 
