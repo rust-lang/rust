@@ -58,8 +58,8 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           cd src/ci/citool
-          CARGO_INCREMENTAL=0 cargo test
-          CARGO_INCREMENTAL=0 cargo run calculate-job-matrix >> $GITHUB_OUTPUT
+          CARGO_INCREMENTAL=0 cargo test --no-default-features
+          CARGO_INCREMENTAL=0 cargo run --no-default-features calculate-job-matrix >> $GITHUB_OUTPUT
         id: jobs
   job:
     name: ${{ matrix.full_name }}
