@@ -10,6 +10,40 @@ mod tests;
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';
 
+/// A null terminated wide string.
+#[repr(transparent)]
+pub struct WCStr([u16]);
+
+impl WCStr {
+    /// Convert a slice to a WCStr without checks.
+    ///
+    /// Though it is memory safe, the slice should also not contain interior nulls
+    /// as this may lead to unwanted truncation.
+    ///
+    /// # Safety
+    ///
+    /// The slice must end in a null.
+    pub unsafe fn from_wchars_with_null_unchecked(s: &[u16]) -> &Self {
+        unsafe { &*(s as *const [u16] as *const Self) }
+    }
+
+    pub fn as_ptr(&self) -> *const u16 {
+        self.0.as_ptr()
+    }
+
+    pub fn count_bytes(&self) -> usize {
+        self.0.len()
+    }
+}
+
+#[inline]
+pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&WCStr) -> io::Result<T>) -> io::Result<T> {
+    let path = maybe_verbatim(path)?;
+    // SAFETY: maybe_verbatim returns null-terminated strings
+    let path = unsafe { WCStr::from_wchars_with_null_unchecked(&path) };
+    f(path)
+}
+
 #[inline]
 pub fn is_sep_byte(b: u8) -> bool {
     b == b'/' || b == b'\\'
