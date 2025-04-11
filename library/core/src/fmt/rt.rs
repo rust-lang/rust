@@ -72,7 +72,6 @@ macro_rules! argument_new {
             // a `fn(&T, ...)`, so the invariant is maintained.
             ty: ArgumentType::Placeholder {
                 value: NonNull::<$t>::from_ref($x).cast(),
-                // SAFETY: function pointers always have the same layout.
                 formatter: |ptr: NonNull<()>, fmt: &mut Formatter<'_>| {
                     let func = $f;
                     // SAFETY: This is the same type as the `value` field.
