@@ -170,10 +170,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn report_with_use_injections(&mut self, krate: &Crate) {
         for UseError { mut err, candidates, def_id, instead, suggestion, path, is_call } in
-            self.use_injections.drain(..)
+            std::mem::take(&mut self.use_injections)
         {
             let (span, found_use) = if let Some(def_id) = def_id.as_local() {
-                UsePlacementFinder::check(krate, self.def_id_to_node_id[def_id])
+                UsePlacementFinder::check(krate, self.def_id_to_node_id(def_id))
             } else {
                 (None, FoundUse::No)
             };
@@ -1435,7 +1435,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let import_suggestions =
             self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, is_expected);
         let (span, found_use) = match parent_scope.module.nearest_parent_mod().as_local() {
-            Some(def_id) => UsePlacementFinder::check(krate, self.def_id_to_node_id[def_id]),
+            Some(def_id) => UsePlacementFinder::check(krate, self.def_id_to_node_id(def_id)),
             None => (None, FoundUse::No),
         };
         show_candidates(
