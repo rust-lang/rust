@@ -372,6 +372,7 @@ symbols! {
         SyncUnsafeCell,
         T,
         Target,
+        This,
         ToOwned,
         ToString,
         TokenStream,
