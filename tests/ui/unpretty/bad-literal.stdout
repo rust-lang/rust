@@ -2,6 +2,7 @@
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
+extern crate std;
 //@ compile-flags: -Zunpretty=hir
 //@ check-fail
 //@ edition: 2015

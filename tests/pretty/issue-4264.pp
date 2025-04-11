@@ -2,6 +2,7 @@
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
+extern crate std;
 //@ pretty-compare-only
 //@ pretty-mode:hir,typed
 //@ pp-exact:issue-4264.pp

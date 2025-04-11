@@ -10,7 +10,8 @@
 // synthesizing parentheses indiscriminately; only where necessary.
 
 #![feature(if_let_guard)]
-#[macro_use]
+#[prelude_import]
+use ::std::prelude::rust_2024::*;
 extern crate std;
 #[prelude_import]
 use std::prelude::rust_2024::*;
@@ -61,7 +62,7 @@ fn local() {
     macro_rules! let_expr_else_return {
         ($pat:pat, $expr:expr) => { let $pat = $expr else { return; }; };
     }
-    let 
+    let
 
             no_paren = void() else { return; };
 }
