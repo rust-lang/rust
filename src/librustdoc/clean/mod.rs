@@ -1255,14 +1255,14 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
     let local_did = trait_item.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match trait_item.kind {
-            hir::TraitItemKind::Const(ty, Some(default)) => {
+            hir::TraitItemKind::Const(ty, Some(default), _) => {
                 ProvidedAssocConstItem(Box::new(Constant {
                     generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
                     kind: ConstantKind::Local { def_id: local_did, body: default },
                     type_: clean_ty(ty, cx),
                 }))
             }
-            hir::TraitItemKind::Const(ty, None) => {
+            hir::TraitItemKind::Const(ty, None, _) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
                 RequiredAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
             }
@@ -1306,7 +1306,7 @@ pub(crate) fn clean_impl_item<'tcx>(
     let local_did = impl_.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match impl_.kind {
-            hir::ImplItemKind::Const(ty, expr) => ImplAssocConstItem(Box::new(Constant {
+            hir::ImplItemKind::Const(ty, expr, _) => ImplAssocConstItem(Box::new(Constant {
                 generics: clean_generics(impl_.generics, cx),
                 kind: ConstantKind::Local { def_id: local_did, body: expr },
                 type_: clean_ty(ty, cx),
@@ -2804,7 +2804,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 mutability,
                 expr: Some(body_id),
             }),
-            ItemKind::Const(_, ty, generics, body_id) => ConstantItem(Box::new(Constant {
+            ItemKind::Const(_, ty, generics, body_id, _) => ConstantItem(Box::new(Constant {
                 generics: clean_generics(generics, cx),
                 type_: clean_ty(ty, cx),
                 kind: ConstantKind::Local { body: body_id, def_id },

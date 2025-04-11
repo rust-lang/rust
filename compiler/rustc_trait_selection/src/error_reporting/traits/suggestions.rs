@@ -358,7 +358,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, _, generics)
-                        | hir::ItemKind::Const(_, _, generics, _)
+                        | hir::ItemKind::Const(_, _, generics, _, _)
                         | hir::ItemKind::TraitAlias(_, generics, _),
                     ..
                 })
@@ -418,7 +418,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, _, generics)
-                        | hir::ItemKind::Const(_, _, generics, _)
+                        | hir::ItemKind::Const(_, _, generics, _, _)
                         | hir::ItemKind::TraitAlias(_, generics, _),
                     ..
                 }) if !param_ty => {
