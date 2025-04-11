@@ -12,17 +12,17 @@ LL |     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missin
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0195]: lifetime parameters or bounds on type `Item` do not match the trait declaration
+error[E0195]: lifetime parameters or bounds on associated type `Item` do not match the trait declaration
   --> $DIR/span-bug-issue-121457.rs:10:14
    |
 LL |     type Item<'a>
-   |              ---- lifetimes in impl do not match this type in trait
+   |              ---- lifetimes in impl do not match this associated type in trait
 LL |     where
 LL |         Self: 'a;
    |               -- this bound might be missing in the impl
 ...
 LL |     type Item = u32;
-   |              ^ lifetimes do not match type in trait
+   |              ^ lifetimes do not match associated type in trait
 
 error[E0277]: `()` is not an iterator
   --> $DIR/span-bug-issue-121457.rs:13:23
