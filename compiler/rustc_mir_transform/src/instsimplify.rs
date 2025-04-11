@@ -10,7 +10,6 @@ use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, layout};
 use rustc_span::{DUMMY_SP, Symbol, sym};
 
 use crate::simplify::simplify_duplicate_switch_targets;
-use crate::take_array;
 
 pub(super) enum InstSimplify {
     BeforeInline,
@@ -214,7 +213,9 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         terminator: &mut Terminator<'tcx>,
         statements: &mut Vec<Statement<'tcx>>,
     ) {
-        let TerminatorKind::Call { func, args, destination, target, .. } = &mut terminator.kind
+        let TerminatorKind::Call {
+            func, args, destination, target: Some(destination_block), ..
+        } = &terminator.kind
         else {
             return;
         };
@@ -222,15 +223,8 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         // It's definitely not a clone if there are multiple arguments
         let [arg] = &args[..] else { return };
 
-        let Some(destination_block) = *target else { return };
-
         // Only bother looking more if it's easy to know what we're calling
-        let Some((fn_def_id, fn_args)) = func.const_fn_def() else { return };
-
-        // Clone needs one arg, so we can cheaply rule out other stuff
-        if fn_args.len() != 1 {
-            return;
-        }
+        let Some((fn_def_id, ..)) = func.const_fn_def() else { return };
 
         // These types are easily available from locals, so check that before
         // doing DefId lookups to figure out what we're actually calling.
@@ -238,15 +232,12 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
 
         let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind() else { return };
 
-        if !inner_ty.is_trivially_pure_clone_copy() {
+        if !self.tcx.is_lang_item(fn_def_id, LangItem::CloneFn)
+            || !inner_ty.is_trivially_pure_clone_copy()
+        {
             return;
         }
 
-        if !self.tcx.is_lang_item(fn_def_id, LangItem::CloneFn) {
-            return;
-        }
-
-        let Ok([arg]) = take_array(args) else { return };
         let Some(arg_place) = arg.node.place() else { return };
 
         statements.push(Statement {
@@ -258,7 +249,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                 )),
             ))),
         });
-        terminator.kind = TerminatorKind::Goto { target: destination_block };
+        terminator.kind = TerminatorKind::Goto { target: *destination_block };
     }
 
     fn simplify_nounwind_call(&self, terminator: &mut Terminator<'tcx>) {
