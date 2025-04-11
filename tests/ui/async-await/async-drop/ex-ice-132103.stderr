@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `core::future::async_drop_in_place`
+  --> $DIR/ex-ice-132103.rs:4:20
+   |
+LL | use core::future::{async_drop_in_place, Future};
+   |                    ^^^^^^^^^^^^^^^^^^^ no `async_drop_in_place` in `future`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

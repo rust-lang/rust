@@ -23,8 +23,6 @@ use crate::{
     instsimplify, mentioned_items, pass_manager as pm, remove_noop_landing_pads, simplify,
 };
 
-mod async_destructor_ctor;
-
 pub(super) fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
@@ -129,8 +127,14 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
         ty::InstanceKind::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceKind::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
         ty::InstanceKind::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
-        ty::InstanceKind::AsyncDropGlueCtorShim(def_id, ty) => {
-            async_destructor_ctor::build_async_destructor_ctor_shim(tcx, def_id, ty)
+        ty::InstanceKind::FutureDropPollShim(_def_id, _proxy_ty, _impl_ty) => {
+            todo!()
+        }
+        ty::InstanceKind::AsyncDropGlue(_def_id, _ty) => {
+            todo!()
+        }
+        ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, _ty) => {
+            bug!("AsyncDropGlueCtorShim in re-working ({:?})", instance)
         }
         ty::InstanceKind::Virtual(..) => {
             bug!("InstanceKind::Virtual ({:?}) is for direct calls only", instance)
@@ -278,8 +282,13 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     if ty.is_some() {
         let patch = {
             let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
-            let mut elaborator =
-                DropShimElaborator { body: &body, patch: MirPatch::new(&body), tcx, typing_env };
+            let mut elaborator = DropShimElaborator {
+                body: &body,
+                patch: MirPatch::new(&body),
+                tcx,
+                typing_env,
+                produce_async_drops: false,
+            };
             let dropee = tcx.mk_place_deref(dropee_ptr);
             let resume_block = elaborator.patch.resume_block();
             elaborate_drop(
@@ -290,6 +299,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
                 return_block,
                 Unwind::To(resume_block),
                 START_BLOCK,
+                None,
             );
             elaborator.patch
         };
@@ -338,6 +348,7 @@ pub(super) struct DropShimElaborator<'a, 'tcx> {
     pub patch: MirPatch<'tcx>,
     pub tcx: TyCtxt<'tcx>,
     pub typing_env: ty::TypingEnv<'tcx>,
+    pub produce_async_drops: bool,
 }
 
 impl fmt::Debug for DropShimElaborator<'_, '_> {
@@ -363,6 +374,13 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     }
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
         self.typing_env
+    }
+
+    fn terminator_loc(&self, bb: BasicBlock) -> Location {
+        self.patch.terminator_loc(self.body, bb)
+    }
+    fn allow_async_drops(&self) -> bool {
+        self.produce_async_drops
     }
 
     fn drop_style(&self, _path: Self::Path, mode: DropFlagMode) -> DropStyle {
@@ -621,6 +639,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                     target: unwind,
                     unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                     replace: false,
+                    drop: None,
+                    async_fut: None,
                 },
                 /* is_cleanup */ true,
             );
@@ -886,6 +906,8 @@ fn build_call_shim<'tcx>(
                 target: BasicBlock::new(2),
                 unwind: UnwindAction::Continue,
                 replace: false,
+                drop: None,
+                async_fut: None,
             },
             false,
         );
@@ -903,6 +925,8 @@ fn build_call_shim<'tcx>(
                 target: BasicBlock::new(4),
                 unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                 replace: false,
+                drop: None,
+                async_fut: None,
             },
             /* is_cleanup */ true,
         );

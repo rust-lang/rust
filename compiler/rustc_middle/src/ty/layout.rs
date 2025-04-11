@@ -923,23 +923,58 @@ where
                     i,
                 ),
 
-                ty::Coroutine(def_id, args) => match this.variants {
-                    Variants::Empty => unreachable!(),
-                    Variants::Single { index } => TyMaybeWithLayout::Ty(
-                        args.as_coroutine()
-                            .state_tys(def_id, tcx)
-                            .nth(index.as_usize())
-                            .unwrap()
-                            .nth(i)
-                            .unwrap(),
-                    ),
-                    Variants::Multiple { tag, tag_field, .. } => {
-                        if i == tag_field {
-                            return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
+                ty::Coroutine(def_id, args) => {
+                    // layout of `async_drop_in_place<T>::{closure}` in case,
+                    // when T is a coroutine, contains this internal coroutine's ref
+                    if tcx.is_templated_coroutine(def_id) {
+                        fn find_impl_coroutine<'tcx>(
+                            tcx: TyCtxt<'tcx>,
+                            mut cor_ty: Ty<'tcx>,
+                        ) -> Ty<'tcx> {
+                            let mut ty = cor_ty;
+                            loop {
+                                if let ty::Coroutine(def_id, args) = ty.kind() {
+                                    cor_ty = ty;
+                                    if tcx.is_templated_coroutine(*def_id) {
+                                        ty = args.first().unwrap().expect_ty();
+                                        continue;
+                                    } else {
+                                        return cor_ty;
+                                    }
+                                } else {
+                                    return cor_ty;
+                                }
+                            }
                         }
-                        TyMaybeWithLayout::Ty(args.as_coroutine().prefix_tys()[i])
+                        let arg_cor_ty = args.first().unwrap().expect_ty();
+                        if arg_cor_ty.is_coroutine() {
+                            assert!(i == 0);
+                            let impl_cor_ty = find_impl_coroutine(tcx, arg_cor_ty);
+                            return TyMaybeWithLayout::Ty(Ty::new_mut_ref(
+                                tcx,
+                                tcx.lifetimes.re_static,
+                                impl_cor_ty,
+                            ));
+                        }
                     }
-                },
+                    match this.variants {
+                        Variants::Empty => unreachable!(),
+                        Variants::Single { index } => TyMaybeWithLayout::Ty(
+                            args.as_coroutine()
+                                .state_tys(def_id, tcx)
+                                .nth(index.as_usize())
+                                .unwrap()
+                                .nth(i)
+                                .unwrap(),
+                        ),
+                        Variants::Multiple { tag, tag_field, .. } => {
+                            if i == tag_field {
+                                return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
+                            }
+                            TyMaybeWithLayout::Ty(args.as_coroutine().prefix_tys()[i])
+                        }
+                    }
+                }
 
                 ty::Tuple(tys) => TyMaybeWithLayout::Ty(tys[i]),
 

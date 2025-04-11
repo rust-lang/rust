@@ -95,7 +95,10 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                 InstanceKind::FnPtrAddrShim(..) => {
                     continue;
                 }
-                InstanceKind::DropGlue(..) | InstanceKind::AsyncDropGlueCtorShim(..) => {
+                InstanceKind::DropGlue(..)
+                | InstanceKind::FutureDropPollShim(..)
+                | InstanceKind::AsyncDropGlue(..)
+                | InstanceKind::AsyncDropGlueCtorShim(..) => {
                     // FIXME: A not fully instantiated drop shim can cause ICEs if one attempts to
                     // have its MIR built. Likely oli-obk just screwed up the `ParamEnv`s, so this
                     // needs some more analysis.
