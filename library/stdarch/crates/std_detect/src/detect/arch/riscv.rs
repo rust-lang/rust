@@ -30,6 +30,8 @@ features! {
     /// * RV32I: `"rv32i"`
     /// * RV64I: `"rv64i"`
     /// * A: `"a"`
+    ///   * Zaamo: `"zaamo"`
+    ///   * Zalrsc: `"zalrsc"`
     /// * Bit-Manipulation Extensions:
     ///   * Zba: `"zba"`
     ///   * Zbb: `"zbb"`
@@ -122,6 +124,10 @@ features! {
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] a: "a";
     /// "A" Extension for Atomic Instructions
+    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zalrsc: "zalrsc";
+    /// "Zalrsc" Extension for Load-Reserved/Store-Conditional Instructions
+    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zaamo: "zaamo";
+    /// "Zaamo" Extension for Atomic Memory Operations
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zam: "zam";
     without cfg check: true;
     /// "Zam" Extension for Misaligned Atomics

@@ -18,7 +18,10 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // [hwcap]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/arch/riscv/include/uapi/asm/hwcap.h?h=v6.14
     let auxv = auxvec::auxv().expect("read auxvec"); // should not fail on RISC-V platform
     #[allow(clippy::eq_op)]
-    enable_feature(Feature::a, bit::test(auxv.hwcap, (b'a' - b'a').into()));
+    let has_a = bit::test(auxv.hwcap, (b'a' - b'a').into());
+    enable_feature(Feature::a, has_a);
+    enable_feature(Feature::zalrsc, has_a);
+    enable_feature(Feature::zaamo, has_a);
     enable_feature(Feature::c, bit::test(auxv.hwcap, (b'c' - b'a').into()));
     let has_d = bit::test(auxv.hwcap, (b'd' - b'a').into());
     let has_f = bit::test(auxv.hwcap, (b'f' - b'a').into());
