@@ -19,6 +19,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
         }
     };
 
+    // Use auxiliary vector to enable single-letter ISA extensions and Zicsr.
     // The values are part of the platform-specific [asm/hwcap.h][hwcap]
     //
     // [hwcap]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/arch/riscv/include/uapi/asm/hwcap.h?h=v6.14
