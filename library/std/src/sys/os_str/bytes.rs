@@ -216,19 +216,26 @@ impl Buf {
         self.as_slice().into_rc()
     }
 
-    /// Provides plumbing to core `Vec::truncate`.
-    /// More well behaving alternative to allowing outer types
-    /// full mutable access to the core `Vec`.
+    /// Provides plumbing to `Vec::truncate` without giving full mutable access
+    /// to the `Vec`.
+    ///
+    /// # Safety
+    ///
+    /// The length must be at an `OsStr` boundary, according to
+    /// `Slice::check_public_boundary`.
     #[inline]
-    pub(crate) fn truncate(&mut self, len: usize) {
+    pub unsafe fn truncate_unchecked(&mut self, len: usize) {
         self.inner.truncate(len);
     }
 
-    /// Provides plumbing to core `Vec::extend_from_slice`.
-    /// More well behaving alternative to allowing outer types
-    /// full mutable access to the core `Vec`.
+    /// Provides plumbing to `Vec::extend_from_slice` without giving full
+    /// mutable access to the `Vec`.
+    ///
+    /// # Safety
+    ///
+    /// This encoding has no safety requirements.
     #[inline]
-    pub(crate) fn extend_from_slice(&mut self, other: &[u8]) {
+    pub unsafe fn extend_from_slice_unchecked(&mut self, other: &[u8]) {
         self.inner.extend_from_slice(other);
     }
 }
