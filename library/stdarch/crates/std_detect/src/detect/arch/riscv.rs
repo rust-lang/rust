@@ -163,14 +163,14 @@ features! {
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zbc: "zbc";
     /// "Zbc" Extension for Carry-less Multiplication
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zbs: "zbs";
-    /// "Zbs" Extension for Single-Bit instructions
+    /// "Zbs" Extension for Single-Bit Instructions
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zbkb: "zbkb";
-    /// "Zbkb" Extension for Bit-manipulation for Cryptography
+    /// "Zbkb" Extension for Bit-Manipulation for Cryptography
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zbkc: "zbkc";
-    /// "Zbkc" Extension for Carry-less multiplication for Cryptography
+    /// "Zbkc" Extension for Carry-less Multiplication for Cryptography
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zbkx: "zbkx";
-    /// "Zbkx" Extension for Crossbar permutations
+    /// "Zbkx" Extension for Crossbar Permutations
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zknd: "zknd";
     /// "Zknd" Cryptography Extension for NIST Suite: AES Decryption
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zkne: "zkne";
@@ -188,7 +188,7 @@ features! {
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zks: "zks";
     /// "Zks" Cryptography Extension for ShangMi Algorithm Suite
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zk: "zk";
-    /// "Zk" Cryptography Extension for Standard scalar cryptography
+    /// "Zk" Cryptography Extension for Standard Scalar Cryptography
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zkt: "zkt";
     /// "Zkt" Cryptography Extension for Data Independent Execution Latency
 
