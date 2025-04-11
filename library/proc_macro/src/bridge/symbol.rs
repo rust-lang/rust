@@ -11,9 +11,12 @@
 
 use std::cell::RefCell;
 use std::num::NonZero;
-use std::str;
+use std::{fmt, str};
 
-use super::*;
+// Explicit import to avoid macro namespace collision.
+use super::{
+    DecodeMut, Encode, Mark, Marked, Reader, Unmark, Writer, arena, client, fxhash, server,
+};
 
 /// Handle for a symbol string stored within the Interner.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
