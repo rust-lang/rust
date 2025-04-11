@@ -6,10 +6,14 @@
 // are named as expected.
 // See https://github.com/rust-lang/rust/pull/15686
 
-use run_make_support::{bin_name, cwd, has_prefix, has_suffix, rfs, rustc, shallow_find_files};
+//@ ignore-cross-compile (relocations in generic ELF against `arm-unknown-linux-gnueabihf`)
+
+use run_make_support::{
+    bin_name, cwd, has_prefix, has_suffix, rfs, rustc, shallow_find_files, target,
+};
 
 fn main() {
-    rustc().extra_filename("bar").input("foo.rs").arg("-Csave-temps").run();
+    rustc().target(target()).extra_filename("bar").input("foo.rs").arg("-Csave-temps").run();
     let object_files = shallow_find_files(cwd(), |path| {
         has_prefix(path, "foobar.foo") && has_suffix(path, "0.rcgu.o")
     });

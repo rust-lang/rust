@@ -1,16 +1,18 @@
 // Check that all symbols in cdylibs, staticlibs and bins are mangled
 //@ only-elf some object file formats create multiple symbols for each function with different names
+//@ ignore-nvptx64 (needs target std)
+//@ ignore-cross-compile (host-only)
 
 use run_make_support::object::read::{Object, ObjectSymbol};
-use run_make_support::{bin_name, dynamic_lib_name, object, rfs, rustc, static_lib_name};
+use run_make_support::{bin_name, dynamic_lib_name, object, rfs, rustc, static_lib_name, target};
 
 fn main() {
     let staticlib_name = static_lib_name("a_lib");
     let cdylib_name = dynamic_lib_name("a_lib");
     let exe_name = bin_name("an_executable");
-    rustc().crate_type("cdylib").input("a_lib.rs").run();
-    rustc().crate_type("staticlib").input("a_lib.rs").run();
-    rustc().crate_type("bin").input("an_executable.rs").run();
+    rustc().target(target()).crate_type("cdylib").input("a_lib.rs").run();
+    rustc().target(target()).crate_type("staticlib").input("a_lib.rs").run();
+    rustc().target(target()).crate_type("bin").input("an_executable.rs").run();
 
     symbols_check_archive(&staticlib_name);
     symbols_check(&cdylib_name);

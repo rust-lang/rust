@@ -4,11 +4,14 @@
 // files are exactly what is expected, no more, no less.
 // See https://github.com/rust-lang/rust/pull/12020
 
+//@ ignore-cross-compile
+// Reason: some cross-compiled targets don't support various crate types and fail to link.
+
 use std::path::PathBuf;
 
 use run_make_support::{
     bin_name, dynamic_lib_name, filename_not_in_denylist, rfs, rust_lib_name, rustc,
-    shallow_find_files, static_lib_name,
+    shallow_find_files, static_lib_name, target,
 };
 
 // Each test takes 4 arguments:
@@ -17,6 +20,7 @@ use run_make_support::{
 // `dir`: the name of the directory where the test happens
 // `rustc_invocation`: the rustc command being tested
 // Any unexpected output files not listed in `must_exist` or `can_exist` will cause a failure.
+#[track_caller]
 fn assert_expected_output_files(expectations: Expectations, rustc_invocation: impl Fn()) {
     let Expectations { expected_files: must_exist, allowed_files: can_exist, test_dir: dir } =
         expectations;
@@ -81,6 +85,7 @@ fn main() {
         },
         || {
             rustc()
+                .target(target())
                 .input("foo.rs")
                 .out_dir("three-crates")
                 .crate_type("rlib,dylib,staticlib")
@@ -95,7 +100,7 @@ fn main() {
             test_dir: "bin-crate".to_string(),
         },
         || {
-            rustc().input("foo.rs").crate_type("bin").out_dir("bin-crate").run();
+            rustc().target(target()).input("foo.rs").crate_type("bin").out_dir("bin-crate").run();
         },
     );
 
@@ -106,7 +111,12 @@ fn main() {
             test_dir: "all-emit".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("asm,llvm-ir,llvm-bc,obj,link").out_dir("all-emit").run();
+            rustc()
+                .target(target())
+                .input("foo.rs")
+                .emit("asm,llvm-ir,llvm-bc,obj,link")
+                .out_dir("all-emit")
+                .run();
         },
     );
 
@@ -117,7 +127,7 @@ fn main() {
             test_dir: "asm-emit".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("asm").output("asm-emit/foo").run();
+            rustc().target(target()).input("foo.rs").emit("asm").output("asm-emit/foo").run();
         },
     );
     assert_expected_output_files(
@@ -127,7 +137,7 @@ fn main() {
             test_dir: "asm-emit2".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("asm=asm-emit2/foo").run();
+            rustc().target(target()).input("foo.rs").emit("asm=asm-emit2/foo").run();
         },
     );
     assert_expected_output_files(
@@ -137,7 +147,7 @@ fn main() {
             test_dir: "asm-emit3".to_string(),
         },
         || {
-            rustc().input("foo.rs").arg("--emit=asm=asm-emit3/foo").run();
+            rustc().target(target()).input("foo.rs").arg("--emit=asm=asm-emit3/foo").run();
         },
     );
 
@@ -148,7 +158,12 @@ fn main() {
             test_dir: "llvm-ir-emit".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("llvm-ir").output("llvm-ir-emit/foo").run();
+            rustc()
+                .target(target())
+                .input("foo.rs")
+                .emit("llvm-ir")
+                .output("llvm-ir-emit/foo")
+                .run();
         },
     );
     assert_expected_output_files(
@@ -158,7 +173,7 @@ fn main() {
             test_dir: "llvm-ir-emit2".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("llvm-ir=llvm-ir-emit2/foo").run();
+            rustc().target(target()).input("foo.rs").emit("llvm-ir=llvm-ir-emit2/foo").run();
         },
     );
     assert_expected_output_files(
@@ -168,7 +183,7 @@ fn main() {
             test_dir: "llvm-ir-emit3".to_string(),
         },
         || {
-            rustc().input("foo.rs").arg("--emit=llvm-ir=llvm-ir-emit3/foo").run();
+            rustc().target(target()).input("foo.rs").arg("--emit=llvm-ir=llvm-ir-emit3/foo").run();
         },
     );
 
@@ -179,7 +194,12 @@ fn main() {
             test_dir: "llvm-bc-emit".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("llvm-bc").output("llvm-bc-emit/foo").run();
+            rustc()
+                .target(target())
+                .input("foo.rs")
+                .emit("llvm-bc")
+                .output("llvm-bc-emit/foo")
+                .run();
         },
     );
     assert_expected_output_files(
@@ -189,7 +209,7 @@ fn main() {
             test_dir: "llvm-bc-emit2".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("llvm-bc=llvm-bc-emit2/foo").run();
+            rustc().target(target()).input("foo.rs").emit("llvm-bc=llvm-bc-emit2/foo").run();
         },
     );
     assert_expected_output_files(
@@ -199,7 +219,7 @@ fn main() {
             test_dir: "llvm-bc-emit3".to_string(),
         },
         || {
-            rustc().input("foo.rs").arg("--emit=llvm-bc=llvm-bc-emit3/foo").run();
+            rustc().target(target()).input("foo.rs").arg("--emit=llvm-bc=llvm-bc-emit3/foo").run();
         },
     );
 
@@ -210,7 +230,7 @@ fn main() {
             test_dir: "obj-emit".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("obj").output("obj-emit/foo").run();
+            rustc().target(target()).input("foo.rs").emit("obj").output("obj-emit/foo").run();
         },
     );
     assert_expected_output_files(
@@ -220,7 +240,7 @@ fn main() {
             test_dir: "obj-emit2".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("obj=obj-emit2/foo").run();
+            rustc().target(target()).input("foo.rs").emit("obj=obj-emit2/foo").run();
         },
     );
     assert_expected_output_files(
@@ -230,7 +250,7 @@ fn main() {
             test_dir: "obj-emit3".to_string(),
         },
         || {
-            rustc().input("foo.rs").arg("--emit=obj=obj-emit3/foo").run();
+            rustc().target(target()).input("foo.rs").arg("--emit=obj=obj-emit3/foo").run();
         },
     );
 
@@ -241,7 +261,12 @@ fn main() {
             test_dir: "link-emit".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit("link").output("link-emit/".to_owned() + &bin_foo).run();
+            rustc()
+                .target(target())
+                .input("foo.rs")
+                .emit("link")
+                .output("link-emit/".to_owned() + &bin_foo)
+                .run();
         },
     );
     assert_expected_output_files(
@@ -251,7 +276,11 @@ fn main() {
             test_dir: "link-emit2".to_string(),
         },
         || {
-            rustc().input("foo.rs").emit(&format!("link=link-emit2/{bin_foo}")).run();
+            rustc()
+                .target(target())
+                .input("foo.rs")
+                .emit(&format!("link=link-emit2/{bin_foo}"))
+                .run();
         },
     );
     assert_expected_output_files(
@@ -261,7 +290,11 @@ fn main() {
             test_dir: "link-emit3".to_string(),
         },
         || {
-            rustc().input("foo.rs").arg(&format!("--emit=link=link-emit3/{bin_foo}")).run();
+            rustc()
+                .target(target())
+                .input("foo.rs")
+                .arg(&format!("--emit=link=link-emit3/{bin_foo}"))
+                .run();
         },
     );
 
@@ -272,7 +305,7 @@ fn main() {
             test_dir: "rlib".to_string(),
         },
         || {
-            rustc().crate_type("rlib").input("foo.rs").output("rlib/foo").run();
+            rustc().target(target()).crate_type("rlib").input("foo.rs").output("rlib/foo").run();
         },
     );
     assert_expected_output_files(
@@ -282,7 +315,12 @@ fn main() {
             test_dir: "rlib2".to_string(),
         },
         || {
-            rustc().crate_type("rlib").input("foo.rs").emit("link=rlib2/foo").run();
+            rustc()
+                .target(target())
+                .crate_type("rlib")
+                .input("foo.rs")
+                .emit("link=rlib2/foo")
+                .run();
         },
     );
     assert_expected_output_files(
@@ -292,7 +330,12 @@ fn main() {
             test_dir: "rlib3".to_string(),
         },
         || {
-            rustc().crate_type("rlib").input("foo.rs").arg("--emit=link=rlib3/foo").run();
+            rustc()
+                .target(target())
+                .crate_type("rlib")
+                .input("foo.rs")
+                .arg("--emit=link=rlib3/foo")
+                .run();
         },
     );
 
@@ -315,6 +358,7 @@ fn main() {
         },
         || {
             rustc()
+                .target(target())
                 .crate_type("dylib")
                 .input("foo.rs")
                 .output("dylib/".to_owned() + &bin_foo)
@@ -340,6 +384,7 @@ fn main() {
         },
         || {
             rustc()
+                .target(target())
                 .crate_type("dylib")
                 .input("foo.rs")
                 .emit(&format!("link=dylib2/{bin_foo}"))
@@ -365,6 +410,7 @@ fn main() {
         },
         || {
             rustc()
+                .target(target())
                 .crate_type("dylib")
                 .input("foo.rs")
                 .arg(&format!("--emit=link=dylib3/{bin_foo}"))
@@ -379,7 +425,12 @@ fn main() {
             test_dir: "staticlib".to_string(),
         },
         || {
-            rustc().crate_type("staticlib").input("foo.rs").output("staticlib/foo").run();
+            rustc()
+                .target(target())
+                .crate_type("staticlib")
+                .input("foo.rs")
+                .output("staticlib/foo")
+                .run();
         },
     );
     assert_expected_output_files(
@@ -389,7 +440,12 @@ fn main() {
             test_dir: "staticlib2".to_string(),
         },
         || {
-            rustc().crate_type("staticlib").input("foo.rs").emit("link=staticlib2/foo").run();
+            rustc()
+                .target(target())
+                .crate_type("staticlib")
+                .input("foo.rs")
+                .emit("link=staticlib2/foo")
+                .run();
         },
     );
     assert_expected_output_files(
@@ -399,7 +455,12 @@ fn main() {
             test_dir: "staticlib3".to_string(),
         },
         || {
-            rustc().crate_type("staticlib").input("foo.rs").arg("--emit=link=staticlib3/foo").run();
+            rustc()
+                .target(target())
+                .crate_type("staticlib")
+                .input("foo.rs")
+                .arg("--emit=link=staticlib3/foo")
+                .run();
         },
     );
 
@@ -411,6 +472,7 @@ fn main() {
         },
         || {
             rustc()
+                .target(target())
                 .crate_type("bin")
                 .input("foo.rs")
                 .output("bincrate/".to_owned() + &bin_foo)
@@ -425,6 +487,7 @@ fn main() {
         },
         || {
             rustc()
+                .target(target())
                 .crate_type("bin")
                 .input("foo.rs")
                 .emit(&format!("link=bincrate2/{bin_foo}"))
@@ -439,6 +502,7 @@ fn main() {
         },
         || {
             rustc()
+                .target(target())
                 .crate_type("bin")
                 .input("foo.rs")
                 .arg(&format!("--emit=link=bincrate3/{bin_foo}"))
@@ -454,6 +518,7 @@ fn main() {
         },
         || {
             rustc()
+                .target(target())
                 .input("foo.rs")
                 .emit("llvm-ir=rlib-ir/ir")
                 .emit("link")
@@ -471,6 +536,7 @@ fn main() {
         },
         || {
             rustc()
+                .target(target())
                 .input("foo.rs")
                 .emit("asm=staticlib-all/asm")
                 .emit("llvm-ir=staticlib-all/ir")
@@ -489,6 +555,7 @@ fn main() {
         },
         || {
             rustc()
+                .target(target())
                 .input("foo.rs")
                 .arg("--emit=asm=staticlib-all2/asm")
                 .arg("--emit")
@@ -510,6 +577,7 @@ fn main() {
         },
         || {
             rustc()
+                .target(target())
                 .input("foo.rs")
                 .emit("asm,llvm-ir,llvm-bc,obj,link")
                 .crate_type("staticlib")
@@ -529,6 +597,7 @@ fn main() {
         || {
             rfs::rename("staticlib-all3/bar.bc", "rlib-emits/foo.bc");
             rustc()
+                .target(target())
                 .input("foo.rs")
                 .emit("llvm-bc,link")
                 .crate_type("rlib")
