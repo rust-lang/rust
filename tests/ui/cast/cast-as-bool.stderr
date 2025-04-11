@@ -1,5 +1,5 @@
 error[E0054]: cannot cast `i32` as `bool`
-  --> $DIR/cast-as-bool.rs:2:13
+  --> $DIR/cast-as-bool.rs:4:13
    |
 LL |     let u = 5 as bool;
    |             ^^^^^^^^^
@@ -11,7 +11,7 @@ LL +     let u = 5 != 0;
    |
 
 error[E0054]: cannot cast `i32` as `bool`
-  --> $DIR/cast-as-bool.rs:6:13
+  --> $DIR/cast-as-bool.rs:8:13
    |
 LL |     let t = (1 + 2) as bool;
    |             ^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL +     let t = (1 + 2) != 0;
    |
 
 error[E0054]: cannot cast `u32` as `bool`
-  --> $DIR/cast-as-bool.rs:10:13
+  --> $DIR/cast-as-bool.rs:12:13
    |
 LL |     let _ = 5_u32 as bool;
    |             ^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL +     let _ = 5_u32 != 0;
    |
 
 error[E0054]: cannot cast `f64` as `bool`
-  --> $DIR/cast-as-bool.rs:13:13
+  --> $DIR/cast-as-bool.rs:15:13
    |
 LL |     let _ = 64.0_f64 as bool;
    |             ^^^^^^^^^^^^^^^^
@@ -47,43 +47,43 @@ LL +     let _ = 64.0_f64 != 0;
    |
 
 error[E0054]: cannot cast `IntEnum` as `bool`
-  --> $DIR/cast-as-bool.rs:24:13
+  --> $DIR/cast-as-bool.rs:26:13
    |
 LL |     let _ = IntEnum::One as bool;
    |             ^^^^^^^^^^^^^^^^^^^^ unsupported cast
 
 error[E0054]: cannot cast `fn(u8) -> String {uwu}` as `bool`
-  --> $DIR/cast-as-bool.rs:33:13
+  --> $DIR/cast-as-bool.rs:35:13
    |
 LL |     let _ = uwu as bool;
    |             ^^^^^^^^^^^ unsupported cast
 
 error[E0054]: cannot cast `unsafe fn() {owo}` as `bool`
-  --> $DIR/cast-as-bool.rs:35:13
+  --> $DIR/cast-as-bool.rs:37:13
    |
 LL |     let _ = owo as bool;
    |             ^^^^^^^^^^^ unsupported cast
 
 error[E0054]: cannot cast `fn(u8) -> String` as `bool`
-  --> $DIR/cast-as-bool.rs:38:13
+  --> $DIR/cast-as-bool.rs:40:13
    |
 LL |     let _ = uwu as fn(u8) -> String as bool;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported cast
 
 error[E0054]: cannot cast `char` as `bool`
-  --> $DIR/cast-as-bool.rs:40:13
+  --> $DIR/cast-as-bool.rs:42:13
    |
 LL |     let _ = 'x' as bool;
    |             ^^^^^^^^^^^ unsupported cast
 
 error[E0054]: cannot cast `*const ()` as `bool`
-  --> $DIR/cast-as-bool.rs:44:13
+  --> $DIR/cast-as-bool.rs:46:13
    |
 LL |     let _ = ptr as bool;
    |             ^^^^^^^^^^^ unsupported cast
 
 error[E0606]: casting `&'static str` as `bool` is invalid
-  --> $DIR/cast-as-bool.rs:46:13
+  --> $DIR/cast-as-bool.rs:48:13
    |
 LL |     let v = "hello" as bool;
    |             ^^^^^^^^^^^^^^^

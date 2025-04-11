@@ -12,7 +12,7 @@ use crate::sync::Arc;
 use crate::sys::handle::Handle;
 use crate::sys::pal::api::{self, WinError, set_file_information_by_handle};
 use crate::sys::pal::{IoResult, fill_utf16_buf, to_u16s, truncate_utf16_at_nul};
-use crate::sys::path::maybe_verbatim;
+use crate::sys::path::{WCStr, maybe_verbatim};
 use crate::sys::time::SystemTime;
 use crate::sys::{Align8, c, cvt};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -298,10 +298,12 @@ impl OpenOptions {
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let path = maybe_verbatim(path)?;
+        // SAFETY: maybe_verbatim returns null-terminated strings
+        let path = unsafe { WCStr::from_wchars_with_null_unchecked(&path) };
         Self::open_native(&path, opts)
     }
 
-    fn open_native(path: &[u16], opts: &OpenOptions) -> io::Result<File> {
+    fn open_native(path: &WCStr, opts: &OpenOptions) -> io::Result<File> {
         let creation = opts.get_creation_mode()?;
         let handle = unsafe {
             c::CreateFileW(
@@ -1212,9 +1214,8 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     }
 }
 
-pub fn unlink(p: &Path) -> io::Result<()> {
-    let p_u16s = maybe_verbatim(p)?;
-    if unsafe { c::DeleteFileW(p_u16s.as_ptr()) } == 0 {
+pub fn unlink(path: &WCStr) -> io::Result<()> {
+    if unsafe { c::DeleteFileW(path.as_ptr()) } == 0 {
         let err = api::get_last_error();
         // if `DeleteFileW` fails with ERROR_ACCESS_DENIED then try to remove
         // the file while ignoring the readonly attribute.
@@ -1223,7 +1224,7 @@ pub fn unlink(p: &Path) -> io::Result<()> {
             let mut opts = OpenOptions::new();
             opts.access_mode(c::DELETE);
             opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT);
-            if let Ok(f) = File::open_native(&p_u16s, &opts) {
+            if let Ok(f) = File::open_native(&path, &opts) {
                 if f.posix_delete().is_ok() {
                     return Ok(());
                 }
@@ -1236,10 +1237,7 @@ pub fn unlink(p: &Path) -> io::Result<()> {
     }
 }
 
-pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let old = maybe_verbatim(old)?;
-    let new = maybe_verbatim(new)?;
-
+pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
     if unsafe { c::MoveFileExW(old.as_ptr(), new.as_ptr(), c::MOVEFILE_REPLACE_EXISTING) } == 0 {
         let err = api::get_last_error();
         // if `MoveFileExW` fails with ERROR_ACCESS_DENIED then try to move
@@ -1253,7 +1251,8 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
 
             // Calculate the layout of the `FILE_RENAME_INFO` we pass to `SetFileInformation`
             // This is a dynamically sized struct so we need to get the position of the last field to calculate the actual size.
-            let Ok(new_len_without_nul_in_bytes): Result<u32, _> = ((new.len() - 1) * 2).try_into()
+            let Ok(new_len_without_nul_in_bytes): Result<u32, _> =
+                ((new.count_bytes() - 1) * 2).try_into()
             else {
                 return Err(err).io_result();
             };
@@ -1282,7 +1281,7 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
 
                 new.as_ptr().copy_to_nonoverlapping(
                     (&raw mut (*file_rename_info).FileName).cast::<u16>(),
-                    new.len(),
+                    new.count_bytes(),
                 );
             }
 
@@ -1309,20 +1308,19 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     Ok(())
 }
 
-pub fn rmdir(p: &Path) -> io::Result<()> {
-    let p = maybe_verbatim(p)?;
+pub fn rmdir(p: &WCStr) -> io::Result<()> {
     cvt(unsafe { c::RemoveDirectoryW(p.as_ptr()) })?;
     Ok(())
 }
 
-pub fn remove_dir_all(path: &Path) -> io::Result<()> {
+pub fn remove_dir_all(path: &WCStr) -> io::Result<()> {
     // Open a file or directory without following symlinks.
     let mut opts = OpenOptions::new();
     opts.access_mode(c::FILE_LIST_DIRECTORY);
     // `FILE_FLAG_BACKUP_SEMANTICS` allows opening directories.
     // `FILE_FLAG_OPEN_REPARSE_POINT` opens a link instead of its target.
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | c::FILE_FLAG_OPEN_REPARSE_POINT);
-    let file = File::open(path, &opts)?;
+    let file = File::open_native(path, &opts)?;
 
     // Test if the file is not a directory or a symlink to a directory.
     if (file.basic_info()?.FileAttributes & c::FILE_ATTRIBUTE_DIRECTORY) == 0 {
@@ -1333,14 +1331,14 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
     remove_dir_all_iterative(file).io_result()
 }
 
-pub fn readlink(path: &Path) -> io::Result<PathBuf> {
+pub fn readlink(path: &WCStr) -> io::Result<PathBuf> {
     // Open the link with no access mode, instead of generic read.
     // By default FILE_LIST_DIRECTORY is denied for the junction "C:\Documents and Settings", so
     // this is needed for a common case.
     let mut opts = OpenOptions::new();
     opts.access_mode(0);
     opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
-    let file = File::open(path, &opts)?;
+    let file = File::open_native(&path, &opts)?;
     file.readlink()
 }
 
@@ -1378,19 +1376,17 @@ pub fn symlink_inner(original: &Path, link: &Path, dir: bool) -> io::Result<()> 
 }
 
 #[cfg(not(target_vendor = "uwp"))]
-pub fn link(original: &Path, link: &Path) -> io::Result<()> {
-    let original = maybe_verbatim(original)?;
-    let link = maybe_verbatim(link)?;
+pub fn link(original: &WCStr, link: &WCStr) -> io::Result<()> {
     cvt(unsafe { c::CreateHardLinkW(link.as_ptr(), original.as_ptr(), ptr::null_mut()) })?;
     Ok(())
 }
 
 #[cfg(target_vendor = "uwp")]
-pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
+pub fn link(_original: &WCStr, _link: &WCStr) -> io::Result<()> {
     return Err(io::const_error!(io::ErrorKind::Unsupported, "hard link are not supported on UWP"));
 }
 
-pub fn stat(path: &Path) -> io::Result<FileAttr> {
+pub fn stat(path: &WCStr) -> io::Result<FileAttr> {
     match metadata(path, ReparsePoint::Follow) {
         Err(err) if err.raw_os_error() == Some(c::ERROR_CANT_ACCESS_FILE as i32) => {
             if let Ok(attrs) = lstat(path) {
@@ -1404,7 +1400,7 @@ pub fn stat(path: &Path) -> io::Result<FileAttr> {
     }
 }
 
-pub fn lstat(path: &Path) -> io::Result<FileAttr> {
+pub fn lstat(path: &WCStr) -> io::Result<FileAttr> {
     metadata(path, ReparsePoint::Open)
 }
 
@@ -1420,7 +1416,7 @@ impl ReparsePoint {
     }
 }
 
-fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
+fn metadata(path: &WCStr, reparse: ReparsePoint) -> io::Result<FileAttr> {
     let mut opts = OpenOptions::new();
     // No read or write permissions are necessary
     opts.access_mode(0);
@@ -1429,7 +1425,7 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
     // Attempt to open the file normally.
     // If that fails with `ERROR_SHARING_VIOLATION` then retry using `FindFirstFileExW`.
     // If the fallback fails for any reason we return the original error.
-    match File::open(path, &opts) {
+    match File::open_native(&path, &opts) {
         Ok(file) => file.file_attr(),
         Err(e)
             if [Some(c::ERROR_SHARING_VIOLATION as _), Some(c::ERROR_ACCESS_DENIED as _)]
@@ -1442,8 +1438,6 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
             // However, there are special system files, such as
             // `C:\hiberfil.sys`, that are locked in a way that denies even that.
             unsafe {
-                let path = maybe_verbatim(path)?;
-
                 // `FindFirstFileExW` accepts wildcard file names.
                 // Fortunately wildcards are not valid file names and
                 // `ERROR_SHARING_VIOLATION` means the file exists (but is locked)
@@ -1482,8 +1476,7 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
     }
 }
 
-pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    let p = maybe_verbatim(p)?;
+pub fn set_perm(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
     unsafe {
         cvt(c::SetFileAttributesW(p.as_ptr(), perm.attrs))?;
         Ok(())
@@ -1499,17 +1492,17 @@ fn get_path(f: &File) -> io::Result<PathBuf> {
     )
 }
 
-pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
+pub fn canonicalize(p: &WCStr) -> io::Result<PathBuf> {
     let mut opts = OpenOptions::new();
     // No read or write permissions are necessary
     opts.access_mode(0);
     // This flag is so we can open directories too
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
-    let f = File::open(p, &opts)?;
+    let f = File::open_native(p, &opts)?;
     get_path(&f)
 }
 
-pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+pub fn copy(from: &WCStr, to: &WCStr) -> io::Result<u64> {
     unsafe extern "system" fn callback(
         _TotalFileSize: i64,
         _TotalBytesTransferred: i64,
@@ -1528,13 +1521,11 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             c::PROGRESS_CONTINUE
         }
     }
-    let pfrom = maybe_verbatim(from)?;
-    let pto = maybe_verbatim(to)?;
     let mut size = 0i64;
     cvt(unsafe {
         c::CopyFileExW(
-            pfrom.as_ptr(),
-            pto.as_ptr(),
+            from.as_ptr(),
+            to.as_ptr(),
             Some(callback),
             (&raw mut size) as *mut _,
             ptr::null_mut(),
@@ -1624,14 +1615,14 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
 }
 
 // Try to see if a file exists but, unlike `exists`, report I/O errors.
-pub fn exists(path: &Path) -> io::Result<bool> {
+pub fn exists(path: &WCStr) -> io::Result<bool> {
     // Open the file to ensure any symlinks are followed to their target.
     let mut opts = OpenOptions::new();
     // No read, write, etc access rights are needed.
     opts.access_mode(0);
     // Backup semantics enables opening directories as well as files.
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
-    match File::open(path, &opts) {
+    match File::open_native(path, &opts) {
         Err(e) => match e.kind() {
             // The file definitely does not exist
             io::ErrorKind::NotFound => Ok(false),

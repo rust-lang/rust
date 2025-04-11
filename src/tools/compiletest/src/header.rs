@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::env;
 use std::fs::File;
 use std::io::BufReader;
@@ -198,7 +198,7 @@ pub struct TestProps {
     /// that don't otherwise want/need `-Z build-std`.
     pub add_core_stubs: bool,
     /// Whether line annotatins are required for the given error kind.
-    pub require_annotations: HashMap<ErrorKind, bool>,
+    pub dont_require_annotations: HashSet<ErrorKind>,
 }
 
 mod directives {
@@ -301,13 +301,7 @@ impl TestProps {
             no_auto_check_cfg: false,
             has_enzyme: false,
             add_core_stubs: false,
-            require_annotations: HashMap::from([
-                (ErrorKind::Help, true),
-                (ErrorKind::Note, true),
-                (ErrorKind::Error, true),
-                (ErrorKind::Warning, true),
-                (ErrorKind::Suggestion, false),
-            ]),
+            dont_require_annotations: Default::default(),
         }
     }
 
@@ -593,8 +587,8 @@ impl TestProps {
                     if let Some(err_kind) =
                         config.parse_name_value_directive(ln, DONT_REQUIRE_ANNOTATIONS)
                     {
-                        self.require_annotations
-                            .insert(ErrorKind::expect_from_user_str(&err_kind), false);
+                        self.dont_require_annotations
+                            .insert(ErrorKind::expect_from_user_str(err_kind.trim()));
                     }
                 },
             );

@@ -1,3 +1,5 @@
+//@ dont-require-annotations: SUGGESTION
+
 struct S;
 
 impl S {

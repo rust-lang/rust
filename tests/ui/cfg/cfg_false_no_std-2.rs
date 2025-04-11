@@ -1,6 +1,6 @@
 // Error, the linked empty library is `no_std` and doesn't provide a panic handler.
 
-//@ dont-require-annotations:ERROR
+//@ dont-require-annotations: ERROR
 //@ dont-check-compiler-stderr
 //@ aux-build: cfg_false_lib_no_std_before.rs
 
