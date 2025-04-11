@@ -453,10 +453,9 @@ impl RustcInternal for BoundVariableKind {
             }),
             BoundVariableKind::Region(kind) => rustc_ty::BoundVariableKind::Region(match kind {
                 BoundRegionKind::BrAnon => rustc_ty::BoundRegionKind::Anon,
-                BoundRegionKind::BrNamed(def, symbol) => rustc_ty::BoundRegionKind::Named(
-                    def.0.internal(tables, tcx),
-                    Symbol::intern(symbol),
-                ),
+                BoundRegionKind::BrNamed(def, _symbol) => {
+                    rustc_ty::BoundRegionKind::Named(def.0.internal(tables, tcx))
+                }
                 BoundRegionKind::BrEnv => rustc_ty::BoundRegionKind::ClosureEnv,
             }),
             BoundVariableKind::Const => rustc_ty::BoundVariableKind::Const,

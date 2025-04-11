@@ -729,7 +729,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .dcx()
             .struct_span_err(span, format!("{labeled_user_string} may not live long enough"));
         err.code(match sub.kind() {
-            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => E0309,
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name(self.tcx) => E0309,
             ty::ReStatic => E0310,
             _ => E0311,
         });
@@ -755,7 +755,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 || (bound_kind, sub).has_placeholders()
                 || !bound_kind.is_suggestable(self.tcx, false)
             {
-                let lt_name = sub.get_name_or_anon().to_string();
+                let lt_name = sub.get_name_or_anon(self.tcx).to_string();
                 err.help(format!("{msg} `{bound_kind}: {lt_name}`..."));
                 break 'suggestion;
             }
@@ -875,13 +875,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        let (lifetime_def_id, lifetime_scope) = match self
-            .tcx
-            .is_suitable_region(generic_param_scope, lifetime)
-        {
-            Some(info) if !lifetime.has_name() => (info.region_def_id.expect_local(), info.scope),
-            _ => return lifetime.get_name_or_anon().to_string(),
-        };
+        let (lifetime_def_id, lifetime_scope) =
+            match self.tcx.is_suitable_region(generic_param_scope, lifetime) {
+                Some(info) if !lifetime.has_name(self.tcx) => {
+                    (info.region_def_id.expect_local(), info.scope)
+                }
+                _ => return lifetime.get_name_or_anon(self.tcx).to_string(),
+            };
 
         let new_lt = {
             let generics = self.tcx.generics_of(lifetime_scope);
@@ -895,7 +895,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // consider late-bound lifetimes ...
             used_names.extend(self.tcx.late_bound_vars(hir_id).into_iter().filter_map(
                 |p| match p {
-                    ty::BoundVariableKind::Region(lt) => lt.get_name(),
+                    ty::BoundVariableKind::Region(lt) => lt.get_name(self.tcx),
                     _ => None,
                 },
             ));
@@ -1006,7 +1006,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn report_inference_failure(&self, var_origin: RegionVariableOrigin) -> Diag<'_> {
         let br_string = |br: ty::BoundRegionKind| {
             let mut s = match br {
-                ty::BoundRegionKind::Named(_, name) => name.to_string(),
+                ty::BoundRegionKind::Named(def_id) => self.tcx.item_name(def_id).to_string(),
                 _ => String::new(),
             };
             if !s.is_empty() {
@@ -1117,13 +1117,14 @@ fn msg_span_from_named_region<'tcx>(
             (text, Some(span))
         }
         ty::ReLateParam(ref fr) => {
-            if !fr.kind.is_named()
+            if !fr.kind.is_named(tcx)
                 && let Some((ty, _)) = find_anon_type(tcx, generic_param_scope, region)
             {
                 ("the anonymous lifetime defined here".to_string(), Some(ty.span))
             } else {
                 match fr.kind {
-                    ty::LateParamRegionKind::Named(param_def_id, name) => {
+                    ty::LateParamRegionKind::Named(param_def_id) => {
+                        let name = tcx.item_name(param_def_id);
                         let span = tcx.def_span(param_def_id);
                         let text = if name == kw::UnderscoreLifetime {
                             "the anonymous lifetime as defined here".to_string()
@@ -1145,9 +1146,12 @@ fn msg_span_from_named_region<'tcx>(
         }
         ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            bound: ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id, name), .. },
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id), .. },
             ..
-        }) => (format!("the lifetime `{name}` as defined here"), Some(tcx.def_span(def_id))),
+        }) => (
+            format!("the lifetime `{}` as defined here", tcx.item_name(def_id)),
+            Some(tcx.def_span(def_id)),
+        ),
         ty::RePlaceholder(ty::PlaceholderRegion {
             bound: ty::BoundRegion { kind: ty::BoundRegionKind::Anon, .. },
             ..

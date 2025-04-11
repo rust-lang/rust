@@ -579,11 +579,7 @@ fn get_new_lifetime_name<'tcx>(
         .collect_referenced_late_bound_regions(poly_trait_ref)
         .into_iter()
         .filter_map(|lt| {
-            if let ty::BoundRegionKind::Named(_, name) = lt {
-                Some(name.as_str().to_string())
-            } else {
-                None
-            }
+            if let Some(name) = lt.get_name(tcx) { Some(name.as_str().to_string()) } else { None }
         })
         .chain(generics.params.iter().filter_map(|param| {
             if let hir::GenericParamKind::Lifetime { .. } = &param.kind {

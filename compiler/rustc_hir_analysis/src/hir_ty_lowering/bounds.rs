@@ -12,7 +12,7 @@ use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor, Upcast,
 };
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, kw};
 use rustc_trait_selection::traits;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -888,7 +888,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     ty::INNERMOST,
                     ty::BoundRegion {
                         var: ty::BoundVar::from_usize(num_bound_vars),
-                        kind: ty::BoundRegionKind::Named(param.def_id, param.name),
+                        kind: ty::BoundRegionKind::Named(param.def_id),
                     },
                 )
                 .into(),
@@ -1006,12 +1006,12 @@ fn check_assoc_const_binding_type<'tcx>(
             ty_note,
         }));
     }
-    for (var_def_id, var_name) in collector.vars {
+    for var_def_id in collector.vars {
         guar.get_or_insert(cx.dcx().emit_err(
             crate::errors::EscapingBoundVarInTyOfAssocConstBinding {
                 span: assoc_const.span,
                 assoc_const,
-                var_name,
+                var_name: cx.tcx().item_name(var_def_id),
                 var_def_kind: tcx.def_descr(var_def_id),
                 var_defined_here_label: tcx.def_ident_span(var_def_id).unwrap(),
                 ty_note,
@@ -1026,7 +1026,7 @@ fn check_assoc_const_binding_type<'tcx>(
 struct GenericParamAndBoundVarCollector<'a, 'tcx> {
     cx: &'a dyn HirTyLowerer<'tcx>,
     params: FxIndexSet<u32>,
-    vars: FxIndexSet<(DefId, Symbol)>,
+    vars: FxIndexSet<DefId>,
     depth: ty::DebruijnIndex,
 }
 
@@ -1050,7 +1050,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             }
             ty::Bound(db, bt) if *db >= self.depth => {
                 self.vars.insert(match bt.kind {
-                    ty::BoundTyKind::Param(def_id, name) => (def_id, name),
+                    ty::BoundTyKind::Param(def_id, _) => def_id,
                     ty::BoundTyKind::Anon => {
                         let reported = self
                             .cx
@@ -1073,7 +1073,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             }
             ty::ReBound(db, br) if db >= self.depth => {
                 self.vars.insert(match br.kind {
-                    ty::BoundRegionKind::Named(def_id, name) => (def_id, name),
+                    ty::BoundRegionKind::Named(def_id) => def_id,
                     ty::BoundRegionKind::Anon | ty::BoundRegionKind::ClosureEnv => {
                         let guar = self
                             .cx
@@ -1081,6 +1081,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
                             .delayed_bug(format!("unexpected bound region kind: {:?}", br.kind));
                         return ControlFlow::Break(guar);
                     }
+                    ty::BoundRegionKind::NamedAnon(_) => bug!("only used for pretty printing"),
                 });
             }
             _ => {}
