@@ -1,3 +1,7 @@
+print-type-size type: `std::panic::Location<'_>`: 24 bytes, alignment: 8 bytes
+print-type-size     field `.file`: 16 bytes
+print-type-size     field `.line`: 4 bytes
+print-type-size     field `.col`: 4 bytes
 print-type-size type: `IndirectNonZero`: 12 bytes, alignment: 4 bytes
 print-type-size     field `.nested`: 8 bytes
 print-type-size     field `.post`: 2 bytes
