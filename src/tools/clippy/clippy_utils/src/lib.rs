@@ -3504,7 +3504,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
                 // a::b::c  ::d::sym refers to
                 // e::f::sym:: ::
                 // result should be super::super::super::super::e::f
-                if let DefPathData::TypeNs(Some(s)) = l {
+                if let DefPathData::TypeNs(s) = l {
                     path.push(s.to_string());
                 }
                 if let DefPathData::TypeNs(_) = r {
@@ -3515,7 +3515,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
             // a::b::sym:: ::    refers to
             // c::d::e  ::f::sym
             // when looking at `f`
-            Left(DefPathData::TypeNs(Some(sym))) => path.push(sym.to_string()),
+            Left(DefPathData::TypeNs(sym)) => path.push(sym.to_string()),
             // consider:
             // a::b::c  ::d::sym refers to
             // e::f::sym:: ::
@@ -3529,7 +3529,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
         // `super` chain would be too long, just use the absolute path instead
         once(String::from("crate"))
             .chain(to.data.iter().filter_map(|el| {
-                if let DefPathData::TypeNs(Some(sym)) = el.data {
+                if let DefPathData::TypeNs(sym) = el.data {
                     Some(sym.to_string())
                 } else {
                     None

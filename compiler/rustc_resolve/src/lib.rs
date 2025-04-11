@@ -1337,12 +1337,12 @@ impl<'tcx> Resolver<'_, 'tcx> {
         expn_id: ExpnId,
         span: Span,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        let data = def_kind.def_path_data(name);
         assert!(
             !self.node_id_to_def_id.contains_key(&node_id),
-            "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
+            "adding a def for node-id {:?}, name {:?}, data {:?} but a previous def exists: {:?}",
             node_id,
-            data,
+            name,
+            def_kind,
             self.tcx.definitions_untracked().def_key(self.node_id_to_def_id[&node_id].key()),
         );
 
