@@ -515,7 +515,14 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(discr, location);
                     }
 
-                    TerminatorKind::Drop { place, target: _, unwind: _, replace: _ } => {
+                    TerminatorKind::Drop {
+                        place,
+                        target: _,
+                        unwind: _,
+                        replace: _,
+                        drop: _,
+                        async_fut: _,
+                    } => {
                         self.visit_place(
                             place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
@@ -628,7 +635,7 @@ macro_rules! make_mir_visitor {
                     OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
                         self.visit_operand(op, location);
                     }
-                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference => {
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference | ResumedAfterDrop(_) => {
                         // Nothing to visit
                     }
                     MisalignedPointerDereference { required, found } => {
