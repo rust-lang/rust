@@ -32,10 +32,9 @@ features! {
     /// * A: `"a"`
     ///   * Zaamo: `"zaamo"`
     ///   * Zalrsc: `"zalrsc"`
-    /// * Bit-Manipulation Extensions:
+    /// * B: `"b"`
     ///   * Zba: `"zba"`
     ///   * Zbb: `"zbb"`
-    ///   * Zbc: `"zbc"`
     ///   * Zbs: `"zbs"`
     /// * C: `"c"`
     /// * D: `"d"`
@@ -54,6 +53,7 @@ features! {
     /// * Zdinx: `"zdinx"`
     /// * Zhinx: `"zhinx"`
     ///   * Zhinxmin: `"zhinxmin"`
+    /// * Zbc: `"zbc"`
     /// * Zbkb: `"zbkb"`
     /// * Zbkc: `"zbkc"`
     /// * Zbkx: `"zbkx"`
@@ -159,6 +159,9 @@ features! {
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] c: "c";
     /// "C" Extension for Compressed Instructions
 
+    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] b: "b";
+    without cfg check: true;
+    /// "B" Extension for Bit Manipulation
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zba: "zba";
     /// "Zba" Extension for Address Generation
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] zbb: "zbb";
