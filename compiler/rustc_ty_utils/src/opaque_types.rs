@@ -179,7 +179,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         }
     }
 
-    /// Checks the `#[define_opaque]` attributes on items and collectes opaques to define
+    /// Checks the `#[define_opaque]` attributes on items and collects opaques to define
     /// from the referenced types.
     #[instrument(level = "trace", skip(self))]
     fn collect_taits_from_defines_attr(&mut self) {
