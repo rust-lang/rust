@@ -26,11 +26,15 @@ fn render_universe(u: UniverseIndex) -> String {
     format!("/{:?}", u)
 }
 
-fn render_region_vid(rvid: RegionVid, regioncx: &RegionInferenceContext<'_>) -> String {
+fn render_region_vid<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    rvid: RegionVid,
+    regioncx: &RegionInferenceContext<'tcx>,
+) -> String {
     let universe_str = render_universe(regioncx.region_definition(rvid).universe);
 
     let external_name_str = if let Some(external_name) =
-        regioncx.region_definition(rvid).external_name.and_then(|e| e.get_name())
+        regioncx.region_definition(rvid).external_name.and_then(|e| e.get_name(tcx))
     {
         format!(" ({external_name})")
     } else {
@@ -42,12 +46,20 @@ fn render_region_vid(rvid: RegionVid, regioncx: &RegionInferenceContext<'_>) -> 
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Write out the region constraint graph.
-    pub(crate) fn dump_graphviz_raw_constraints(&self, mut w: &mut dyn Write) -> io::Result<()> {
-        dot::render(&RawConstraints { regioncx: self }, &mut w)
+    pub(crate) fn dump_graphviz_raw_constraints(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        mut w: &mut dyn Write,
+    ) -> io::Result<()> {
+        dot::render(&RawConstraints { tcx, regioncx: self }, &mut w)
     }
 
     /// Write out the region constraint SCC graph.
-    pub(crate) fn dump_graphviz_scc_constraints(&self, mut w: &mut dyn Write) -> io::Result<()> {
+    pub(crate) fn dump_graphviz_scc_constraints(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        mut w: &mut dyn Write,
+    ) -> io::Result<()> {
         let mut nodes_per_scc: IndexVec<ConstraintSccIndex, _> =
             self.constraint_sccs.all_sccs().map(|_| Vec::new()).collect();
 
@@ -56,11 +68,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             nodes_per_scc[scc].push(region);
         }
 
-        dot::render(&SccConstraints { regioncx: self, nodes_per_scc }, &mut w)
+        dot::render(&SccConstraints { tcx, regioncx: self, nodes_per_scc }, &mut w)
     }
 }
 
 struct RawConstraints<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     regioncx: &'a RegionInferenceContext<'tcx>,
 }
 
@@ -78,7 +91,7 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
         Some(dot::LabelText::LabelStr(Cow::Borrowed("box")))
     }
     fn node_label(&'this self, n: &RegionVid) -> dot::LabelText<'this> {
-        dot::LabelText::LabelStr(render_region_vid(*n, self.regioncx).into())
+        dot::LabelText::LabelStr(render_region_vid(self.tcx, *n, self.regioncx).into())
     }
     fn edge_label(&'this self, e: &OutlivesConstraint<'tcx>) -> dot::LabelText<'this> {
         dot::LabelText::LabelStr(render_outlives_constraint(e).into())
@@ -110,6 +123,7 @@ impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for RawConstraints<'a, 'tcx> {
 }
 
 struct SccConstraints<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     regioncx: &'a RegionInferenceContext<'tcx>,
     nodes_per_scc: IndexVec<ConstraintSccIndex, Vec<RegionVid>>,
 }
@@ -128,8 +142,10 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for SccConstraints<'a, 'tcx> {
         Some(dot::LabelText::LabelStr(Cow::Borrowed("box")))
     }
     fn node_label(&'this self, n: &ConstraintSccIndex) -> dot::LabelText<'this> {
-        let nodes_str =
-            self.nodes_per_scc[*n].iter().map(|n| render_region_vid(*n, self.regioncx)).join(", ");
+        let nodes_str = self.nodes_per_scc[*n]
+            .iter()
+            .map(|n| render_region_vid(self.tcx, *n, self.regioncx))
+            .join(", ");
         dot::LabelText::LabelStr(format!("SCC({n}) = {{{nodes_str}}}", n = n.as_usize()).into())
     }
 }

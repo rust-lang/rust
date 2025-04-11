@@ -69,12 +69,11 @@ impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ty::BoundRegionKind::Anon => write!(f, "BrAnon"),
-            ty::BoundRegionKind::Named(did, name) => {
-                if did.is_crate_root() {
-                    write!(f, "BrNamed({name})")
-                } else {
-                    write!(f, "BrNamed({did:?}, {name})")
-                }
+            ty::BoundRegionKind::NamedAnon(name) => {
+                write!(f, "BrNamedAnon({name})")
+            }
+            ty::BoundRegionKind::Named(did) => {
+                write!(f, "BrNamed({did:?})")
             }
             ty::BoundRegionKind::ClosureEnv => write!(f, "BrEnv"),
         }
@@ -91,12 +90,11 @@ impl fmt::Debug for ty::LateParamRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ty::LateParamRegionKind::Anon(idx) => write!(f, "LateAnon({idx})"),
-            ty::LateParamRegionKind::Named(did, name) => {
-                if did.is_crate_root() {
-                    write!(f, "LateNamed({name})")
-                } else {
-                    write!(f, "LateNamed({did:?}, {name})")
-                }
+            ty::LateParamRegionKind::NamedAnon(idx, name) => {
+                write!(f, "LateNamedAnon({idx:?}, {name})")
+            }
+            ty::LateParamRegionKind::Named(did) => {
+                write!(f, "LateNamed({did:?})")
             }
             ty::LateParamRegionKind::ClosureEnv => write!(f, "LateEnv"),
         }

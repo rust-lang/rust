@@ -300,16 +300,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             }
 
             ty::ReLateParam(late_param) => match late_param.kind {
-                ty::LateParamRegionKind::Named(region_def_id, name) => {
+                ty::LateParamRegionKind::Named(region_def_id) => {
                     // Get the span to point to, even if we don't use the name.
                     let span = tcx.hir_span_if_local(region_def_id).unwrap_or(DUMMY_SP);
-                    debug!(
-                        "bound region named: {:?}, is_named: {:?}",
-                        name,
-                        late_param.kind.is_named()
-                    );
 
-                    if late_param.kind.is_named() {
+                    if let Some(name) = late_param.kind.get_name(tcx) {
                         // A named region that is actually named.
                         Some(RegionName {
                             name,
@@ -369,6 +364,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
 
                 ty::LateParamRegionKind::Anon(_) => None,
+                ty::LateParamRegionKind::NamedAnon(_, _) => bug!("only used for pretty printing"),
             },
 
             ty::ReBound(..)

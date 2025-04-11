@@ -786,8 +786,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     let region_ctxt_fn = || {
                         let reg_info = match br.kind {
                             ty::BoundRegionKind::Anon => sym::anon,
-                            ty::BoundRegionKind::Named(_, name) => name,
+                            ty::BoundRegionKind::Named(def_id) => tcx.item_name(def_id),
                             ty::BoundRegionKind::ClosureEnv => sym::env,
+                            ty::BoundRegionKind::NamedAnon(_) => {
+                                bug!("only used for pretty printing")
+                            }
                         };
 
                         RegionCtxt::LateBound(reg_info)

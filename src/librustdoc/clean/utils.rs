@@ -125,9 +125,9 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
         }
 
         match arg.skip_binder().kind() {
-            GenericArgKind::Lifetime(lt) => {
-                Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
-            }
+            GenericArgKind::Lifetime(lt) => Some(GenericArg::Lifetime(
+                clean_middle_region(lt, cx).unwrap_or(Lifetime::elided()),
+            )),
             GenericArgKind::Type(ty) => Some(GenericArg::Type(clean_middle_ty(
                 arg.rebind(ty),
                 cx,

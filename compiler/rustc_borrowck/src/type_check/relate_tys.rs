@@ -7,11 +7,11 @@ use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_infer::traits::Obligation;
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::relate::combine::{super_combine_consts, super_combine_tys};
 use rustc_middle::ty::{self, FnMutDelegate, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, instrument};
 
@@ -215,7 +215,8 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
                 if let Some(ex_reg_var) = reg_map.get(&br) {
                     *ex_reg_var
                 } else {
-                    let ex_reg_var = self.next_existential_region_var(true, br.kind.get_name());
+                    let ex_reg_var =
+                        self.next_existential_region_var(true, br.kind.get_name(infcx.infcx.tcx));
                     debug!(?ex_reg_var);
                     reg_map.insert(br, ex_reg_var);
 
@@ -263,8 +264,9 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
 
         let reg_info = match placeholder.bound.kind {
             ty::BoundRegionKind::Anon => sym::anon,
-            ty::BoundRegionKind::Named(_, name) => name,
+            ty::BoundRegionKind::Named(def_id) => self.type_checker.tcx().item_name(def_id),
             ty::BoundRegionKind::ClosureEnv => sym::env,
+            ty::BoundRegionKind::NamedAnon(_) => bug!("only used for pretty printing"),
         };
 
         if cfg!(debug_assertions) {
