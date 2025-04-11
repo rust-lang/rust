@@ -599,7 +599,7 @@ impl f32 {
                 filing an issue describing your use-case too)."
     )]
     pub fn abs_sub(self, other: f32) -> f32 {
-        unsafe { cmath::fdimf(self, other) }
+        cmath::fdimf(self, other)
     }
 
     /// Returns the cube root of a number.
@@ -626,7 +626,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cbrt(self) -> f32 {
-        unsafe { cmath::cbrtf(self) }
+        cmath::cbrtf(self)
     }
 
     /// Compute the distance between the origin and a point (`x`, `y`) on the
@@ -657,7 +657,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn hypot(self, other: f32) -> f32 {
-        unsafe { cmath::hypotf(self, other) }
+        cmath::hypotf(self, other)
     }
 
     /// Computes the sine of a number (in radians).
@@ -730,7 +730,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn tan(self) -> f32 {
-        unsafe { cmath::tanf(self) }
+        cmath::tanf(self)
     }
 
     /// Computes the arcsine of a number. Return value is in radians in
@@ -760,7 +760,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asin(self) -> f32 {
-        unsafe { cmath::asinf(self) }
+        cmath::asinf(self)
     }
 
     /// Computes the arccosine of a number. Return value is in radians in
@@ -790,7 +790,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acos(self) -> f32 {
-        unsafe { cmath::acosf(self) }
+        cmath::acosf(self)
     }
 
     /// Computes the arctangent of a number. Return value is in radians in the
@@ -819,7 +819,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atan(self) -> f32 {
-        unsafe { cmath::atanf(self) }
+        cmath::atanf(self)
     }
 
     /// Computes the four quadrant arctangent of `self` (`y`) and `other` (`x`) in radians.
@@ -860,7 +860,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atan2(self, other: f32) -> f32 {
-        unsafe { cmath::atan2f(self, other) }
+        cmath::atan2f(self, other)
     }
 
     /// Simultaneously computes the sine and cosine of the number, `x`. Returns
@@ -919,7 +919,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp_m1(self) -> f32 {
-        unsafe { cmath::expm1f(self) }
+        cmath::expm1f(self)
     }
 
     /// Returns `ln(1+n)` (natural logarithm) more accurately than if
@@ -957,7 +957,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln_1p(self) -> f32 {
-        unsafe { cmath::log1pf(self) }
+        cmath::log1pf(self)
     }
 
     /// Hyperbolic sine function.
@@ -987,7 +987,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sinh(self) -> f32 {
-        unsafe { cmath::sinhf(self) }
+        cmath::sinhf(self)
     }
 
     /// Hyperbolic cosine function.
@@ -1017,7 +1017,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cosh(self) -> f32 {
-        unsafe { cmath::coshf(self) }
+        cmath::coshf(self)
     }
 
     /// Hyperbolic tangent function.
@@ -1047,7 +1047,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn tanh(self) -> f32 {
-        unsafe { cmath::tanhf(self) }
+        cmath::tanhf(self)
     }
 
     /// Inverse hyperbolic sine function.
@@ -1158,7 +1158,7 @@ impl f32 {
     #[unstable(feature = "float_gamma", issue = "99842")]
     #[inline]
     pub fn gamma(self) -> f32 {
-        unsafe { cmath::tgammaf(self) }
+        cmath::tgammaf(self)
     }
 
     /// Natural logarithm of the absolute value of the gamma function
@@ -1188,7 +1188,7 @@ impl f32 {
     #[inline]
     pub fn ln_gamma(self) -> (f32, i32) {
         let mut signgamp: i32 = 0;
-        let x = unsafe { cmath::lgammaf_r(self, &mut signgamp) };
+        let x = cmath::lgammaf_r(self, &mut signgamp);
         (x, signgamp)
     }
 
@@ -1224,7 +1224,7 @@ impl f32 {
     #[unstable(feature = "float_erf", issue = "136321")]
     #[inline]
     pub fn erf(self) -> f32 {
-        unsafe { cmath::erff(self) }
+        cmath::erff(self)
     }
 
     /// Complementary error function.
@@ -1253,6 +1253,6 @@ impl f32 {
     #[unstable(feature = "float_erf", issue = "136321")]
     #[inline]
     pub fn erfc(self) -> f32 {
-        unsafe { cmath::erfcf(self) }
+        cmath::erfcf(self)
     }
 }
