@@ -47,7 +47,14 @@ fn pr_jobs() {
 
 fn get_matrix(event_name: &str, commit_msg: &str, branch_ref: &str) -> String {
     let output = Command::new("cargo")
-        .args(["run", "-q", "calculate-job-matrix", "--jobs-file", TEST_JOBS_YML_PATH])
+        .args([
+            "run",
+            "--no-default-features",
+            "-q",
+            "calculate-job-matrix",
+            "--jobs-file",
+            TEST_JOBS_YML_PATH,
+        ])
         .env("GITHUB_EVENT_NAME", event_name)
         .env("COMMIT_MESSAGE", commit_msg)
         .env("GITHUB_REF", branch_ref)
