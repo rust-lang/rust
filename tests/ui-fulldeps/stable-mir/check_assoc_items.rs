@@ -51,7 +51,7 @@ fn test_assoc_items() -> ControlFlow<()> {
     check_items(
         &trait_assoc_item_defs,
         &[
-            "ATrait::{synthetic#0}",
+            "ATrait::{anon_assoc#0}",
             "ATrait::rpitit",
             "ATrait::Assoc",
             "ATrait::assoc_fn_no_self",
@@ -64,7 +64,7 @@ fn test_assoc_items() -> ControlFlow<()> {
     check_items(
         &impl_assoc_item_defs,
         &[
-            "<AStruct as ATrait>::{synthetic#0}",
+            "<AStruct as ATrait>::{anon_assoc#0}",
             "<AStruct as ATrait>::rpitit",
             "<AStruct as ATrait>::Assoc",
             "<AStruct as ATrait>::assoc_fn_no_self",

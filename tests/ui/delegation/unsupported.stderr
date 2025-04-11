@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:21:5: 21:24>::{synthetic#0}`
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:21:5: 21:24>::{anon_assoc#0}`
   --> $DIR/unsupported.rs:22:25
    |
 LL |         reuse to_reuse::opaque_ret;
@@ -9,7 +9,7 @@ note: ...which requires comparing an impl and trait method signature, inferring 
    |
 LL |         reuse to_reuse::opaque_ret;
    |                         ^^^^^^^^^^
-   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:21:5: 21:24>::{synthetic#0}`, completing the cycle
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:21:5: 21:24>::{anon_assoc#0}`, completing the cycle
 note: cycle used when checking that `opaque::<impl at $DIR/unsupported.rs:21:5: 21:24>` is well-formed
   --> $DIR/unsupported.rs:21:5
    |
@@ -17,7 +17,7 @@ LL |     impl ToReuse for u8 {
    |     ^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:24:5: 24:25>::{synthetic#0}`
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:24:5: 24:25>::{anon_assoc#0}`
   --> $DIR/unsupported.rs:25:24
    |
 LL |         reuse ToReuse::opaque_ret;
@@ -28,7 +28,7 @@ note: ...which requires comparing an impl and trait method signature, inferring 
    |
 LL |         reuse ToReuse::opaque_ret;
    |                        ^^^^^^^^^^
-   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:24:5: 24:25>::{synthetic#0}`, completing the cycle
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:24:5: 24:25>::{anon_assoc#0}`, completing the cycle
 note: cycle used when checking that `opaque::<impl at $DIR/unsupported.rs:24:5: 24:25>` is well-formed
   --> $DIR/unsupported.rs:24:5
    |

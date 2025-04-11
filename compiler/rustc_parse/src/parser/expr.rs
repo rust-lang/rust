@@ -2166,10 +2166,15 @@ impl<'a> Parser<'a> {
                 let expr = self
                     .eat_metavar_seq(mv_kind, |this| this.parse_expr())
                     .expect("metavar seq expr");
-                let ast::ExprKind::Lit(token_lit) = expr.kind else {
-                    panic!("didn't reparse an expr");
-                };
-                Some(token_lit)
+                if let ast::ExprKind::Lit(token_lit) = expr.kind {
+                    Some(token_lit)
+                } else if let ast::ExprKind::Unary(UnOp::Neg, inner) = &expr.kind
+                    && let ast::Expr { kind: ast::ExprKind::Lit(_), .. } = **inner
+                {
+                    None
+                } else {
+                    panic!("unexpected reparsed expr: {:?}", expr.kind);
+                }
             }
             _ => None,
         }
