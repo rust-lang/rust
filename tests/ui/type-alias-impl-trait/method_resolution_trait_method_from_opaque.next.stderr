@@ -1,9 +1,9 @@
-error[E0282]: type annotations needed
+error[E0284]: type annotations needed: cannot satisfy `Tait == _`
   --> $DIR/method_resolution_trait_method_from_opaque.rs:28:9
    |
 LL |         self.bar.next().unwrap();
-   |         ^^^^^^^^ cannot infer type
+   |         ^^^^^^^^ cannot satisfy `Tait == _`
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0284`.

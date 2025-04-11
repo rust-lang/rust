@@ -887,8 +887,13 @@ where
         }
     }
 
-    let mut folder =
-        ReplaceProjectionWith { ecx, param_env, mapping: replace_projection_with, nested: vec![] };
+    let mut folder = ReplaceProjectionWith {
+        ecx,
+        param_env,
+        mapping: replace_projection_with,
+        self_ty: trait_ref.self_ty(),
+        nested: vec![],
+    };
     let folded_requirements = requirements.fold_with(&mut folder);
 
     folder
@@ -902,6 +907,7 @@ struct ReplaceProjectionWith<'a, D: SolverDelegate<Interner = I>, I: Interner> {
     ecx: &'a EvalCtxt<'a, D>,
     param_env: I::ParamEnv,
     mapping: HashMap<I::DefId, ty::Binder<I, ty::ProjectionPredicate<I>>>,
+    self_ty: I::Ty,
     nested: Vec<Goal<I, I::Predicate>>,
 }
 
@@ -914,29 +920,28 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
 
     fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
         if let ty::Alias(ty::Projection, alias_ty) = ty.kind() {
-            if let Some(replacement) = self.mapping.get(&alias_ty.def_id) {
-                // We may have a case where our object type's projection bound is higher-ranked,
-                // but the where clauses we instantiated are not. We can solve this by instantiating
-                // the binder at the usage site.
-                let proj = self.ecx.instantiate_binder_with_infer(*replacement);
-                // FIXME: Technically this equate could be fallible...
-                self.nested.extend(
-                    self.ecx
-                        .eq_and_get_goals(
-                            self.param_env,
-                            alias_ty,
-                            proj.projection_term.expect_ty(self.ecx.cx()),
-                        )
-                        .expect(
-                            "expected to be able to unify goal projection with dyn's projection",
-                        ),
-                );
-                proj.term.expect_ty()
-            } else {
-                ty.super_fold_with(self)
+            if alias_ty.self_ty() == self.self_ty {
+                if let Some(replacement) = self.mapping.get(&alias_ty.def_id) {
+                    // We may have a case where our object type's projection bound is higher-ranked,
+                    // but the where clauses we instantiated are not. We can solve this by instantiating
+                    // the binder at the usage site.
+                    let proj = self.ecx.instantiate_binder_with_infer(*replacement);
+                    // FIXME: Technically this equate could be fallible...
+                    self.nested.extend(
+                        self.ecx
+                            .eq_and_get_goals(
+                                self.param_env,
+                                alias_ty,
+                                proj.projection_term.expect_ty(self.ecx.cx()),
+                            )
+                            .expect(
+                                "expected to be able to unify goal projection with dyn's projection",
+                            ),
+                    );
+                    return proj.term.expect_ty();
+                }
             }
-        } else {
-            ty.super_fold_with(self)
         }
+        ty.super_fold_with(self)
     }
 }

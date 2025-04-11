@@ -26,8 +26,8 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
     self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
-    Dynamic, GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt,
-    TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
+    Dynamic, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, UserArgs, UserTypeAnnotationIndex,
+    fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::ResultsCursor;
@@ -44,7 +44,6 @@ use tracing::{debug, instrument, trace};
 use crate::borrow_set::BorrowSet;
 use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::diagnostics::UniverseInfo;
-use crate::member_constraints::MemberConstraintSet;
 use crate::polonius::legacy::{PoloniusFacts, PoloniusLocationTable};
 use crate::polonius::{PoloniusContext, PoloniusLivenessContext};
 use crate::region_infer::TypeTest;
@@ -52,7 +51,10 @@ use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderI
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use crate::universal_regions::{DefiningTy, UniversalRegions};
-use crate::{BorrowCheckRootCtxt, BorrowckInferCtxt, path_utils};
+use crate::{
+    BorrowCheckRootCtxt, BorrowckInferCtxt, DeferredClosureRequirements, YieldComputeRegions,
+    YieldDoMirBorrowck, path_utils,
+};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -74,7 +76,6 @@ mod constraint_conversion;
 pub(crate) mod free_region_relations;
 mod input_output;
 pub(crate) mod liveness;
-mod opaque_types;
 mod relate_tys;
 
 /// Type checks the given `mir` in the context of the inference
@@ -113,13 +114,11 @@ pub(crate) fn type_check<'a, 'tcx>(
     move_data: &MoveData<'tcx>,
     location_map: Rc<DenseLocationMap>,
 ) -> MirTypeckResults<'tcx> {
-    let implicit_region_bound = ty::Region::new_var(infcx.tcx, universal_regions.fr_fn_body);
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
         liveness_constraints: LivenessValues::with_specific_points(Rc::clone(&location_map)),
         outlives_constraints: OutlivesConstraintSet::default(),
-        member_constraints: MemberConstraintSet::default(),
         type_tests: Vec::default(),
         universe_causes: FxIndexMap::default(),
     };
@@ -129,13 +128,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         region_bound_pairs,
         normalized_inputs_and_output,
         known_type_outlives_obligations,
-    } = free_region_relations::create(
-        infcx,
-        infcx.param_env,
-        implicit_region_bound,
-        universal_regions,
-        &mut constraints,
-    );
+    } = free_region_relations::create(infcx, infcx.param_env, universal_regions, &mut constraints);
 
     let pre_obligations = infcx.take_registered_region_obligations();
     assert!(
@@ -158,15 +151,15 @@ pub(crate) fn type_check<'a, 'tcx>(
         body,
         promoted,
         user_type_annotations: &body.user_type_annotations,
-        region_bound_pairs,
-        known_type_outlives_obligations,
-        implicit_region_bound,
+        region_bound_pairs: &region_bound_pairs,
+        known_type_outlives_obligations: &known_type_outlives_obligations,
         reported_errors: Default::default(),
         universal_regions: &universal_region_relations.universal_regions,
         location_table,
         polonius_facts,
         borrow_set,
         constraints: &mut constraints,
+        deferred_closure_requirements: Default::default(),
         polonius_liveness,
     };
 
@@ -177,10 +170,10 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     liveness::generate(&mut typeck, &location_map, flow_inits, move_data);
 
-    let opaque_type_values =
-        opaque_types::take_opaques_and_register_member_constraints(&mut typeck);
-
     // We're done with typeck, we can finalize the polonius liveness context for region inference.
+    //
+    // FIXME: Handling opaque type uses may introduce new regions. This likely has to be moved to
+    // a later point.
     let polonius_context = typeck.polonius_liveness.take().map(|liveness_context| {
         PoloniusContext::create_from_liveness(
             liveness_context,
@@ -189,10 +182,13 @@ pub(crate) fn type_check<'a, 'tcx>(
         )
     });
 
+    let deferred_closure_requirements = typeck.deferred_closure_requirements;
     MirTypeckResults {
         constraints,
         universal_region_relations,
-        opaque_type_values,
+        region_bound_pairs,
+        known_type_outlives_obligations,
+        deferred_closure_requirements,
         polonius_context,
     }
 }
@@ -224,15 +220,15 @@ struct TypeChecker<'a, 'tcx> {
     /// User type annotations are shared between the main MIR and the MIR of
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
-    region_bound_pairs: RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
-    implicit_region_bound: ty::Region<'tcx>,
+    region_bound_pairs: &'a RegionBoundPairs<'tcx>,
+    known_type_outlives_obligations: &'a Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a PoloniusLocationTable,
     polonius_facts: &'a mut Option<PoloniusFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+    deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
     /// When using `-Zpolonius=next`, the liveness helper data used to create polonius constraints.
     polonius_liveness: Option<PoloniusLivenessContext>,
 }
@@ -242,12 +238,15 @@ struct TypeChecker<'a, 'tcx> {
 pub(crate) struct MirTypeckResults<'tcx> {
     pub(crate) constraints: MirTypeckRegionConstraints<'tcx>,
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-    pub(crate) opaque_type_values: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
+    pub(crate) region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
+    pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
+    pub(crate) deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
     pub(crate) polonius_context: Option<PoloniusContext>,
 }
 
 /// A collection of region constraints that must be satisfied for the
 /// program to be considered well-typed.
+#[derive(Clone)]
 pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     /// Maps from a `ty::Placeholder` to the corresponding
     /// `PlaceholderIndex` bit that we will use for it.
@@ -274,8 +273,6 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
 
     pub(crate) outlives_constraints: OutlivesConstraintSet<'tcx>,
 
-    pub(crate) member_constraints: MemberConstraintSet<'tcx, RegionVid>,
-
     pub(crate) universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
@@ -284,7 +281,7 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
 impl<'tcx> MirTypeckRegionConstraints<'tcx> {
     /// Creates a `Region` for a given `PlaceholderRegion`, or returns the
     /// region that corresponds to a previously created one.
-    fn placeholder_region(
+    pub(crate) fn placeholder_region(
         &mut self,
         infcx: &InferCtxt<'tcx>,
         placeholder: ty::PlaceholderRegion,
@@ -299,6 +296,16 @@ impl<'tcx> MirTypeckRegionConstraints<'tcx> {
                 region
             }
         }
+    }
+
+    /// Same as `Self::placeholder_region`, except that never adds new regions but instead ICEs in case we
+    /// haven't already created an NLL var for this placeholders.
+    pub(crate) fn get_placeholder_region(
+        &self,
+        placeholder: ty::PlaceholderRegion,
+    ) -> ty::Region<'tcx> {
+        let placeholder_index = self.placeholder_indices.lookup_index(placeholder);
+        *self.placeholder_index_to_region.get(placeholder_index).unwrap()
     }
 }
 
@@ -377,14 +384,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.body
     }
 
-    fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> RegionVid {
-        if let ty::RePlaceholder(placeholder) = r.kind() {
-            self.constraints.placeholder_region(self.infcx, placeholder).as_var()
-        } else {
-            self.universal_regions.to_region_vid(r)
-        }
-    }
-
     fn unsized_feature_enabled(&self) -> bool {
         let features = self.tcx().features();
         features.unsized_locals() || features.unsized_fn_params()
@@ -422,7 +421,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.infcx,
             self.universal_regions,
             &self.region_bound_pairs,
-            self.implicit_region_bound,
             self.infcx.param_env,
             &self.known_type_outlives_obligations,
             locations,
@@ -2502,12 +2500,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
         locations: Locations,
     ) -> ty::InstantiatedPredicates<'tcx> {
-        if let Some(closure_requirements) = &self.root_cx.closure_requirements(def_id) {
+        let (closure_requirements, needs_defer) =
+            self.root_cx.get_closure_requirements_modulo_opaques(def_id);
+        if needs_defer {
+            self.deferred_closure_requirements.push((def_id, args, locations));
+        }
+
+        if let Some(closure_requirements) = closure_requirements {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 self.universal_regions,
                 &self.region_bound_pairs,
-                self.implicit_region_bound,
                 self.infcx.param_env,
                 &self.known_type_outlives_obligations,
                 locations,
@@ -2554,6 +2557,45 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
 
         tcx.predicates_of(def_id).instantiate(tcx, args)
+    }
+}
+
+pub(crate) fn apply_closure_requirements_considering_opaques<'tcx>(
+    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    partial_result: &mut YieldDoMirBorrowck<'tcx>,
+) {
+    let YieldDoMirBorrowck {
+        infcx,
+        body_owned,
+        yield_compute_regions:
+            YieldComputeRegions {
+                constraints,
+                universal_region_relations,
+                region_bound_pairs,
+                known_type_outlives_obligations,
+                deferred_closure_requirements,
+                ..
+            },
+        ..
+    } = partial_result;
+
+    for (def_id, args, locations) in mem::take(deferred_closure_requirements).into_iter() {
+        if let Some(closure_requirements) =
+            root_cx.get_closure_requirements_considering_regions(def_id)
+        {
+            constraint_conversion::ConstraintConversion::new(
+                infcx,
+                &universal_region_relations.universal_regions,
+                region_bound_pairs,
+                infcx.param_env,
+                known_type_outlives_obligations,
+                locations,
+                body_owned.span,            // irrelevant; will be overridden.
+                ConstraintCategory::Boring, // same as above.
+                constraints,
+            )
+            .apply_closure_requirements(closure_requirements, def_id, args);
+        }
     }
 }
 

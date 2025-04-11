@@ -39,7 +39,7 @@ use tracing::{debug, instrument};
 use crate::BorrowckInferCtxt;
 use crate::renumber::RegionCtxt;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct UniversalRegions<'tcx> {
     indices: UniversalRegionIndices<'tcx>,
 
@@ -199,7 +199,7 @@ impl<'tcx> DefiningTy<'tcx> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct UniversalRegionIndices<'tcx> {
     /// For those regions that may appear in the parameter environment
     /// ('static and early-bound regions), we maintain a map from the
@@ -436,6 +436,10 @@ impl<'tcx> UniversalRegions<'tcx> {
             }
             DefiningTy::GlobalAsm(_) => unreachable!(),
         }
+    }
+
+    pub(crate) fn implicit_region_bound(&self) -> RegionVid {
+        self.fr_fn_body
     }
 
     pub(crate) fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
