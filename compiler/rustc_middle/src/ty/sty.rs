@@ -400,7 +400,7 @@ impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundTy {
 #[derive(HashStable)]
 pub enum BoundTyKind {
     Anon,
-    Param(DefId, Symbol),
+    Param(DefId),
 }
 
 impl From<BoundVar> for BoundTy {

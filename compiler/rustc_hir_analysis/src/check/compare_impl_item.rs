@@ -2468,7 +2468,7 @@ fn param_env_with_gat_bounds<'tcx>(
         let normalize_impl_ty_args = ty::GenericArgs::identity_for_item(tcx, container_id)
             .extend_to(tcx, impl_ty.def_id, |param, _| match param.kind {
                 GenericParamDefKind::Type { .. } => {
-                    let kind = ty::BoundTyKind::Param(param.def_id, param.name);
+                    let kind = ty::BoundTyKind::Param(param.def_id);
                     let bound_var = ty::BoundVariableKind::Ty(kind);
                     bound_vars.push(bound_var);
                     Ty::new_bound(
