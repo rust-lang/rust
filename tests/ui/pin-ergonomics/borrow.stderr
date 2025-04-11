@@ -1,0 +1,23 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/borrow.rs:32:14
+   |
+LL | fn baz(mut x: Foo, y: Foo) {
+   |        ----- move occurs because `x` has type `Foo`, which does not implement the `Copy` trait
+LL |     // For now, `x` is moved to ensure soundness of creating this `Pin<&mut Foo>`.
+LL |     let _x = &pin mut x;
+   |                       - value moved here
+LL |     let _x = x;
+   |              ^ value used here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow.rs:9:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let _x = &pin mut x;
+   |                       - you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

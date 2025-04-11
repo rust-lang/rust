@@ -1,0 +1,155 @@
+error[E0382]: borrow of moved value: `foo`
+  --> $DIR/borrow-mut-xor-share.rs:31:17
+   |
+LL |     let mut foo = Foo;
+   |         ------- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     let x = &pin mut foo;
+   |                      --- value moved here
+LL |     foo_pin_ref(&pin const foo);
+   |                 ^^^^^^^^^^^^^^ value borrowed here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-mut-xor-share.rs:11:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &pin mut foo;
+   |                      --- you could clone this value
+
+error[E0382]: borrow of moved value: `foo`
+  --> $DIR/borrow-mut-xor-share.rs:33:13
+   |
+LL |     let mut foo = Foo;
+   |         ------- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+...
+LL |     foo_pin_mut(&pin mut foo); // ok
+   |                          --- value moved here
+LL |     foo_ref(&foo);
+   |             ^^^^ value borrowed here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-mut-xor-share.rs:11:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     foo_pin_mut(&pin mut foo); // ok
+   |                          --- you could clone this value
+
+error[E0505]: cannot move out of `foo` because it is borrowed
+  --> $DIR/borrow-mut-xor-share.rs:41:26
+   |
+LL |     let mut foo = Foo;
+   |         ------- binding `foo` declared here
+LL |     let x = &pin const foo;
+   |             -------------- borrow of `foo` occurs here
+LL |     foo_pin_ref(&pin const foo); // ok
+LL |     foo_pin_mut(&pin mut foo);
+   |                          ^^^ move out of `foo` occurs here
+...
+LL |     foo_pin_ref(x);
+   |                 - borrow later used here
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-mut-xor-share.rs:11:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &pin const foo;
+   |                        --- you could clone this value
+
+error[E0382]: borrow of moved value: `foo`
+  --> $DIR/borrow-mut-xor-share.rs:42:13
+   |
+LL |     let mut foo = Foo;
+   |         ------- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+...
+LL |     foo_pin_mut(&pin mut foo);
+   |                          --- value moved here
+LL |     foo_ref(&foo);
+   |             ^^^^ value borrowed here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-mut-xor-share.rs:11:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     foo_pin_mut(&pin mut foo);
+   |                          --- you could clone this value
+
+error[E0502]: cannot borrow `foo` as mutable because it is also borrowed as immutable
+  --> $DIR/borrow-mut-xor-share.rs:43:13
+   |
+LL |     let x = &pin const foo;
+   |             -------------- immutable borrow occurs here
+...
+LL |     foo_mut(&mut foo);
+   |             ^^^^^^^^ mutable borrow occurs here
+LL |
+LL |     foo_pin_ref(x);
+   |                 - immutable borrow later used here
+
+error[E0502]: cannot borrow `foo` as immutable because it is also borrowed as mutable
+  --> $DIR/borrow-mut-xor-share.rs:49:17
+   |
+LL |     let x = &mut foo;
+   |             -------- mutable borrow occurs here
+LL |     foo_pin_ref(&pin const foo);
+   |                 ^^^^^^^^^^^^^^ immutable borrow occurs here
+...
+LL |     foo_mut(x);
+   |             - mutable borrow later used here
+
+error[E0505]: cannot move out of `foo` because it is borrowed
+  --> $DIR/borrow-mut-xor-share.rs:50:26
+   |
+LL |     let mut foo = Foo;
+   |         ------- binding `foo` declared here
+LL |     let x = &mut foo;
+   |             -------- borrow of `foo` occurs here
+LL |     foo_pin_ref(&pin const foo);
+LL |     foo_pin_mut(&pin mut foo);
+   |                          ^^^ move out of `foo` occurs here
+LL |
+LL |     foo_mut(x);
+   |             - borrow later used here
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-mut-xor-share.rs:11:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &mut foo;
+   |                  --- you could clone this value
+
+error[E0505]: cannot move out of `foo` because it is borrowed
+  --> $DIR/borrow-mut-xor-share.rs:57:26
+   |
+LL |     let mut foo = Foo;
+   |         ------- binding `foo` declared here
+LL |     let x = &foo;
+   |             ---- borrow of `foo` occurs here
+LL |     foo_pin_ref(&pin const foo); // ok
+LL |     foo_pin_mut(&pin mut foo);
+   |                          ^^^ move out of `foo` occurs here
+LL |
+LL |     foo_ref(x);
+   |             - borrow later used here
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-mut-xor-share.rs:11:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &foo;
+   |              --- you could clone this value
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0382, E0502, E0505.
+For more information about an error, try `rustc --explain E0382`.
