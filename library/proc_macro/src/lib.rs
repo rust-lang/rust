@@ -236,7 +236,7 @@ impl Default for TokenStream {
 }
 
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
-pub use quote::{quote, quote_span};
+pub use quote::quote;
 
 fn tree_to_bridge_tree(
     tree: TokenTree,
@@ -584,20 +584,6 @@ impl Span {
     #[stable(feature = "proc_macro_source_text", since = "1.66.0")]
     pub fn source_text(&self) -> Option<String> {
         self.0.source_text()
-    }
-
-    // Used by the implementation of `Span::quote`
-    #[doc(hidden)]
-    #[unstable(feature = "proc_macro_internals", issue = "27812")]
-    pub fn save_span(&self) -> usize {
-        self.0.save_span()
-    }
-
-    // Used by the implementation of `Span::quote`
-    #[doc(hidden)]
-    #[unstable(feature = "proc_macro_internals", issue = "27812")]
-    pub fn recover_proc_macro_span(id: usize) -> Span {
-        Span(bridge::client::Span::recover_proc_macro_span(id))
     }
 
     diagnostic_method!(error, Level::Error);
