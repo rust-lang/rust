@@ -5,7 +5,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{Ty, TyCtxt};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum PointerCoercion {
@@ -133,7 +133,7 @@ impl OverloadedDeref {
         };
         tcx.associated_items(trait_def_id)
             .in_definition_order()
-            .find(|m| m.kind == ty::AssocKind::Fn)
+            .find(|item| item.is_fn())
             .unwrap()
             .def_id
     }

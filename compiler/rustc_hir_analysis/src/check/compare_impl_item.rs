@@ -43,8 +43,8 @@ pub(super) fn compare_impl_item(
     debug!(?impl_trait_ref);
 
     match impl_item.kind {
-        ty::AssocKind::Fn => compare_impl_method(tcx, impl_item, trait_item, impl_trait_ref),
-        ty::AssocKind::Type => compare_impl_ty(tcx, impl_item, trait_item, impl_trait_ref),
+        ty::AssocKind::Fn { .. } => compare_impl_method(tcx, impl_item, trait_item, impl_trait_ref),
+        ty::AssocKind::Type { .. } => compare_impl_ty(tcx, impl_item, trait_item, impl_trait_ref),
         ty::AssocKind::Const => compare_impl_const(tcx, impl_item, trait_item, impl_trait_ref),
     }
 }
@@ -1036,7 +1036,7 @@ fn report_trait_method_mismatch<'tcx>(
     );
     match &terr {
         TypeError::ArgumentMutability(0) | TypeError::ArgumentSorts(_, 0)
-            if trait_m.fn_has_self_parameter =>
+            if trait_m.is_method() =>
         {
             let ty = trait_sig.inputs()[0];
             let sugg = get_self_string(ty, |ty| ty == impl_trait_ref.self_ty());
@@ -1255,7 +1255,7 @@ fn compare_self_type<'tcx>(
         get_self_string(self_arg_ty, can_eq_self)
     };
 
-    match (trait_m.fn_has_self_parameter, impl_m.fn_has_self_parameter) {
+    match (trait_m.is_method(), impl_m.is_method()) {
         (false, false) | (true, true) => {}
 
         (false, true) => {
@@ -1363,7 +1363,7 @@ fn compare_number_of_generics<'tcx>(
     let mut err_occurred = None;
     for (kind, trait_count, impl_count) in matchings {
         if impl_count != trait_count {
-            let arg_spans = |kind: ty::AssocKind, generics: &hir::Generics<'_>| {
+            let arg_spans = |item: &ty::AssocItem, generics: &hir::Generics<'_>| {
                 let mut spans = generics
                     .params
                     .iter()
@@ -1373,7 +1373,7 @@ fn compare_number_of_generics<'tcx>(
                         } => {
                             // A fn can have an arbitrary number of extra elided lifetimes for the
                             // same signature.
-                            !matches!(kind, ty::AssocKind::Fn)
+                            !item.is_fn()
                         }
                         _ => true,
                     })
@@ -1386,7 +1386,7 @@ fn compare_number_of_generics<'tcx>(
             };
             let (trait_spans, impl_trait_spans) = if let Some(def_id) = trait_.def_id.as_local() {
                 let trait_item = tcx.hir_expect_trait_item(def_id);
-                let arg_spans: Vec<Span> = arg_spans(trait_.kind, trait_item.generics);
+                let arg_spans: Vec<Span> = arg_spans(&trait_, trait_item.generics);
                 let impl_trait_spans: Vec<Span> = trait_item
                     .generics
                     .params
@@ -1412,7 +1412,7 @@ fn compare_number_of_generics<'tcx>(
                     _ => None,
                 })
                 .collect();
-            let spans = arg_spans(impl_.kind, impl_item.generics);
+            let spans = arg_spans(&impl_, impl_item.generics);
             let span = spans.first().copied();
 
             let mut err = tcx.dcx().struct_span_err(
@@ -1703,7 +1703,7 @@ fn compare_generic_param_kinds<'tcx>(
     trait_item: ty::AssocItem,
     delay: bool,
 ) -> Result<(), ErrorGuaranteed> {
-    assert_eq!(impl_item.kind, trait_item.kind);
+    assert_eq!(impl_item.as_tag(), trait_item.as_tag());
 
     let ty_const_params_of = |def_id| {
         tcx.generics_of(def_id).own_params.iter().filter(|param| {
@@ -2235,16 +2235,19 @@ fn param_env_with_gat_bounds<'tcx>(
     // of the RPITITs associated with the same body. This is because checking
     // the item bounds of RPITITs often involves nested RPITITs having to prove
     // bounds about themselves.
-    let impl_tys_to_install = match impl_ty.opt_rpitit_info {
-        None => vec![impl_ty],
-        Some(
-            ty::ImplTraitInTraitData::Impl { fn_def_id }
-            | ty::ImplTraitInTraitData::Trait { fn_def_id, .. },
-        ) => tcx
+    let impl_tys_to_install = match impl_ty.kind {
+        ty::AssocKind::Type {
+            opt_rpitit_info:
+                Some(
+                    ty::ImplTraitInTraitData::Impl { fn_def_id }
+                    | ty::ImplTraitInTraitData::Trait { fn_def_id, .. },
+                ),
+        } => tcx
             .associated_types_for_impl_traits_in_associated_fn(fn_def_id)
             .iter()
             .map(|def_id| tcx.associated_item(*def_id))
             .collect(),
+        _ => vec![impl_ty],
     };
 
     for impl_ty in impl_tys_to_install {

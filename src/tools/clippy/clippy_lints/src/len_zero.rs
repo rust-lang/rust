@@ -13,7 +13,7 @@ use rustc_hir::{
     QPath, TraitItemRef, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
+use rustc_middle::ty::{self, FnSig, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
@@ -288,8 +288,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Iden
             .items()
             .flat_map(|&i| cx.tcx.associated_items(i).filter_by_name_unhygienic(is_empty))
             .any(|i| {
-                i.kind == AssocKind::Fn
-                    && i.fn_has_self_parameter
+                i.is_method()
                     && cx.tcx.fn_sig(i.def_id).skip_binder().inputs().skip_binder().len() == 1
             });
 
@@ -466,7 +465,7 @@ fn check_for_is_empty(
         .inherent_impls(impl_ty)
         .iter()
         .flat_map(|&id| cx.tcx.associated_items(id).filter_by_name_unhygienic(is_empty))
-        .find(|item| item.kind == AssocKind::Fn);
+        .find(|item| item.is_fn());
 
     let (msg, is_empty_span, self_kind) = match is_empty {
         None => (
@@ -486,7 +485,7 @@ fn check_for_is_empty(
             None,
         ),
         Some(is_empty)
-            if !(is_empty.fn_has_self_parameter
+            if !(is_empty.is_method()
                 && check_is_empty_sig(
                     cx,
                     cx.tcx.fn_sig(is_empty.def_id).instantiate_identity().skip_binder(),
@@ -608,7 +607,7 @@ fn is_empty_array(expr: &Expr<'_>) -> bool {
 fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     /// Gets an `AssocItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext<'_>, item: &ty::AssocItem) -> bool {
-        if item.kind == AssocKind::Fn {
+        if item.is_fn() {
             let sig = cx.tcx.fn_sig(item.def_id).skip_binder();
             let ty = sig.skip_binder();
             ty.inputs().len() == 1
@@ -644,7 +643,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                         && cx.tcx.get_diagnostic_item(sym::Deref).is_some_and(|deref_id| {
                             implements_trait(cx, ty, deref_id, &[])
                                 && cx
-                                    .get_associated_type(ty, deref_id, "Target")
+                                    .get_associated_type(ty, deref_id, sym::Target)
                                     .is_some_and(|deref_ty| ty_has_is_empty(cx, deref_ty, depth + 1))
                         }))
             },

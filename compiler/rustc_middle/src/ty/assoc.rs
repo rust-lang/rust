@@ -25,15 +25,6 @@ pub struct AssocItem {
     /// If this is an item in an impl of a trait then this is the `DefId` of
     /// the associated item on the trait that this implements.
     pub trait_item_def_id: Option<DefId>,
-
-    /// Whether this is a method with an explicit self
-    /// as its first parameter, allowing method calls.
-    pub fn_has_self_parameter: bool,
-
-    /// `Some` if the associated item (an associated type) comes from the
-    /// return-position `impl Trait` in trait desugaring. The `ImplTraitInTraitData`
-    /// provides additional information about its source.
-    pub opt_rpitit_info: Option<ty::ImplTraitInTraitData>,
 }
 
 impl AssocItem {
@@ -78,14 +69,14 @@ impl AssocItem {
 
     pub fn signature(&self, tcx: TyCtxt<'_>) -> String {
         match self.kind {
-            ty::AssocKind::Fn => {
+            ty::AssocKind::Fn { .. } => {
                 // We skip the binder here because the binder would deanonymize all
                 // late-bound regions, and we don't want method signatures to show up
                 // `as for<'r> fn(&'r MyType)`. Pretty-printing handles late-bound
                 // regions just fine, showing `fn(&MyType)`.
                 tcx.fn_sig(self.def_id).instantiate_identity().skip_binder().to_string()
             }
-            ty::AssocKind::Type => format!("type {};", self.name),
+            ty::AssocKind::Type { .. } => format!("type {};", self.name),
             ty::AssocKind::Const => {
                 format!(
                     "const {}: {:?};",
@@ -99,14 +90,34 @@ impl AssocItem {
     pub fn descr(&self) -> &'static str {
         match self.kind {
             ty::AssocKind::Const => "associated const",
-            ty::AssocKind::Fn if self.fn_has_self_parameter => "method",
-            ty::AssocKind::Fn => "associated function",
-            ty::AssocKind::Type => "associated type",
+            ty::AssocKind::Fn { has_self: true } => "method",
+            ty::AssocKind::Fn { has_self: false } => "associated function",
+            ty::AssocKind::Type { .. } => "associated type",
+        }
+    }
+
+    pub fn is_type(&self) -> bool {
+        matches!(self.kind, ty::AssocKind::Type { .. })
+    }
+
+    pub fn is_fn(&self) -> bool {
+        matches!(self.kind, ty::AssocKind::Fn { .. })
+    }
+
+    pub fn is_method(&self) -> bool {
+        matches!(self.kind, ty::AssocKind::Fn { has_self: true })
+    }
+
+    pub fn as_tag(&self) -> AssocTag {
+        match self.kind {
+            AssocKind::Const => AssocTag::Const,
+            AssocKind::Fn { .. } => AssocTag::Fn,
+            AssocKind::Type { .. } => AssocTag::Type,
         }
     }
 
     pub fn is_impl_trait_in_trait(&self) -> bool {
-        self.opt_rpitit_info.is_some()
+        matches!(self.kind, AssocKind::Type { opt_rpitit_info: Some(_) })
     }
 
     /// Returns true if:
@@ -131,23 +142,30 @@ impl AssocItem {
 #[derive(Copy, Clone, PartialEq, Debug, HashStable, Eq, Hash, Encodable, Decodable)]
 pub enum AssocKind {
     Const,
-    Fn,
-    Type,
+    Fn {
+        has_self: bool,
+    },
+    Type {
+        /// `Some` if the associated type comes from an RPITIT. The
+        /// `ImplTraitInTraitData` provides additional information about its
+        /// source.
+        opt_rpitit_info: Option<ty::ImplTraitInTraitData>,
+    },
 }
 
 impl AssocKind {
     pub fn namespace(&self) -> Namespace {
         match *self {
-            ty::AssocKind::Type => Namespace::TypeNS,
-            ty::AssocKind::Const | ty::AssocKind::Fn => Namespace::ValueNS,
+            ty::AssocKind::Type { .. } => Namespace::TypeNS,
+            ty::AssocKind::Const | ty::AssocKind::Fn { .. } => Namespace::ValueNS,
         }
     }
 
     pub fn as_def_kind(&self) -> DefKind {
         match self {
             AssocKind::Const => DefKind::AssocConst,
-            AssocKind::Fn => DefKind::AssocFn,
-            AssocKind::Type => DefKind::AssocTy,
+            AssocKind::Fn { .. } => DefKind::AssocFn,
+            AssocKind::Type { .. } => DefKind::AssocTy,
         }
     }
 }
@@ -155,13 +173,20 @@ impl AssocKind {
 impl std::fmt::Display for AssocKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            // FIXME: fails to distinguish between "associated function" and
-            // "method" because `has_self` isn't known here.
-            AssocKind::Fn => write!(f, "method"),
+            AssocKind::Fn { has_self: true } => write!(f, "method"),
+            AssocKind::Fn { has_self: false } => write!(f, "associated function"),
             AssocKind::Const => write!(f, "associated const"),
-            AssocKind::Type => write!(f, "associated type"),
+            AssocKind::Type { .. } => write!(f, "associated type"),
         }
     }
+}
+
+// Like `AssocKind`, but just the tag, no fields. Used in various kinds of matching.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AssocTag {
+    Const,
+    Fn,
+    Type,
 }
 
 /// A list of `ty::AssocItem`s in definition order that allows for efficient lookup by name.
@@ -207,25 +232,12 @@ impl AssocItems {
         &self,
         tcx: TyCtxt<'_>,
         ident: Ident,
-        kind: AssocKind,
+        assoc_tag: AssocTag,
         parent_def_id: DefId,
     ) -> Option<&ty::AssocItem> {
         self.filter_by_name_unhygienic(ident.name)
-            .filter(|item| item.kind == kind)
+            .filter(|item| item.as_tag() == assoc_tag)
             .find(|item| tcx.hygienic_eq(ident, item.ident(tcx), parent_def_id))
-    }
-
-    /// Returns the associated item with the given identifier and any of `AssocKind`, if one
-    /// exists. The identifier is matched hygienically.
-    pub fn find_by_ident_and_kinds(
-        &self,
-        tcx: TyCtxt<'_>,
-        ident: Ident,
-        // Sorted in order of what kinds to look at
-        kinds: &[AssocKind],
-        parent_def_id: DefId,
-    ) -> Option<&ty::AssocItem> {
-        kinds.iter().find_map(|kind| self.find_by_ident_and_kind(tcx, ident, *kind, parent_def_id))
     }
 
     /// Returns the associated item with the given identifier in the given `Namespace`, if one

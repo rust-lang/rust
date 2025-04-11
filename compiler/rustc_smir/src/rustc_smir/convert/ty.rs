@@ -894,12 +894,14 @@ impl<'tcx> Stable<'tcx> for rustc_session::cstore::ForeignModule {
 impl<'tcx> Stable<'tcx> for ty::AssocKind {
     type T = stable_mir::ty::AssocKind;
 
-    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use stable_mir::ty::AssocKind;
-        match self {
+        match *self {
             ty::AssocKind::Const => AssocKind::Const,
-            ty::AssocKind::Fn => AssocKind::Fn,
-            ty::AssocKind::Type => AssocKind::Type,
+            ty::AssocKind::Fn { has_self } => AssocKind::Fn { has_self },
+            ty::AssocKind::Type { opt_rpitit_info } => AssocKind::Type {
+                opt_rpitit_info: opt_rpitit_info.map(|rpitit| rpitit.stable(tables)),
+            },
         }
     }
 }
@@ -926,8 +928,6 @@ impl<'tcx> Stable<'tcx> for ty::AssocItem {
             kind: self.kind.stable(tables),
             container: self.container.stable(tables),
             trait_item_def_id: self.trait_item_def_id.map(|did| tables.assoc_def(did)),
-            fn_has_self_parameter: self.fn_has_self_parameter,
-            opt_rpitit_info: self.opt_rpitit_info.map(|rpitit| rpitit.stable(tables)),
         }
     }
 }

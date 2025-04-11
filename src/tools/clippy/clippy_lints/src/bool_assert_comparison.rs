@@ -56,7 +56,7 @@ fn is_impl_not_trait_with_bool_out<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -
             cx.tcx.associated_items(trait_id).find_by_ident_and_kind(
                 cx.tcx,
                 Ident::from_str("Output"),
-                ty::AssocKind::Type,
+                ty::AssocTag::Type,
                 trait_id,
             )
         })

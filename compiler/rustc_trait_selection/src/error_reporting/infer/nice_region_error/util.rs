@@ -158,6 +158,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             && self
                 .tcx()
                 .opt_associated_item(scope_def_id.to_def_id())
-                .is_some_and(|i| i.fn_has_self_parameter)
+                .is_some_and(|i| i.is_method())
     }
 }

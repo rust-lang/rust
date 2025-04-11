@@ -855,11 +855,11 @@ impl<'tcx> LateContext<'tcx> {
         &self,
         self_ty: Ty<'tcx>,
         trait_id: DefId,
-        name: &str,
+        name: Symbol,
     ) -> Option<Ty<'tcx>> {
         let tcx = self.tcx;
         tcx.associated_items(trait_id)
-            .find_by_ident_and_kind(tcx, Ident::from_str(name), ty::AssocKind::Type, trait_id)
+            .find_by_ident_and_kind(tcx, Ident::with_dummy_span(name), ty::AssocTag::Type, trait_id)
             .and_then(|assoc| {
                 let proj = Ty::new_projection(tcx, assoc.def_id, [self_ty]);
                 tcx.try_normalize_erasing_regions(self.typing_env(), proj).ok()

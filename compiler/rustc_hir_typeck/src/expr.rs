@@ -2588,9 +2588,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .into_iter()
                 .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
                 // Only assoc fn with no receivers.
-                .filter(|item| {
-                    matches!(item.kind, ty::AssocKind::Fn) && !item.fn_has_self_parameter
-                })
+                .filter(|item| item.is_fn() && !item.is_method())
                 .filter_map(|item| {
                     // Only assoc fns that return `Self`
                     let fn_sig = self.tcx.fn_sig(item.def_id).skip_binder();
