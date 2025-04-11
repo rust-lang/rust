@@ -84,6 +84,8 @@ WORKDIR /tmp
 COPY scripts/shared.sh /tmp/
 COPY scripts/build-fuchsia-toolchain.sh /tmp/
 RUN /tmp/build-fuchsia-toolchain.sh
+COPY scripts/checkout-fuchsia.sh /tmp/
+RUN /tmp/checkout-fuchsia.sh
 COPY host-x86_64/dist-various-2/build-solaris-toolchain.sh /tmp/
 RUN /tmp/build-solaris-toolchain.sh x86_64  amd64   solaris-i386  pc
 RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc sun
