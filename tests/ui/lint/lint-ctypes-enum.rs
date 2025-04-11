@@ -2,6 +2,8 @@
 #![deny(improper_ctypes)]
 #![feature(ptr_internals)]
 #![feature(transparent_unions)]
+#![feature(repr128)]
+#![allow(incomplete_features)]
 
 use std::num;
 
@@ -40,6 +42,20 @@ enum Isize {
     C,
 }
 
+#[repr(u128)]
+enum U128 {
+    A,
+    B,
+    C,
+}
+
+#[repr(i128)]
+enum I128 {
+    A,
+    B,
+    C,
+}
+
 #[repr(transparent)]
 struct TransparentStruct<T>(T, std::marker::PhantomData<Z>);
 
@@ -71,6 +87,8 @@ extern "C" {
     fn repr_c(x: ReprC);
     fn repr_u8(x: U8);
     fn repr_isize(x: Isize);
+    fn repr_u128(x: U128); //~ ERROR `extern` block uses type `U128`
+    fn repr_i128(x: I128); //~ ERROR `extern` block uses type `I128`
     fn option_ref(x: Option<&'static u8>);
     fn option_fn(x: Option<extern "C" fn()>);
     fn option_nonnull(x: Option<std::ptr::NonNull<u8>>);
