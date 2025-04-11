@@ -19,6 +19,7 @@ struct S {}
 impl Trait for S {
     fn func<const N: u32>() -> [(); { () }] {
         //~^ ERROR mismatched types
+        //[next]~| ERROR type mismatch resolving `N == { () }`
         N
     }
 }
