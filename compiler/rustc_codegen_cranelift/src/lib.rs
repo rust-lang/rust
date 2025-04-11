@@ -7,6 +7,7 @@
 // Note: please avoid adding other feature gates where possible
 #![feature(rustc_private)]
 // Note: please avoid adding other feature gates where possible
+#![recursion_limit = "256"]
 #![warn(rust_2018_idioms)]
 #![warn(unreachable_pub)]
 #![warn(unused_lifetimes)]
@@ -43,6 +44,7 @@ use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::sync::{DynSend, downcast_box_any_dyn_send};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
@@ -207,7 +209,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         tcx: TyCtxt<'_>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
-    ) -> Box<dyn Any> {
+    ) -> Box<dyn Any + DynSend> {
         info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
         let config = self.config.clone().unwrap_or_else(|| {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
@@ -226,11 +228,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn join_codegen(
         &self,
-        ongoing_codegen: Box<dyn Any>,
+        ongoing_codegen: Box<dyn Any + DynSend>,
         sess: &Session,
         outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
-        ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(sess, outputs)
+        downcast_box_any_dyn_send::<driver::aot::OngoingCodegen>(ongoing_codegen)
+            .unwrap()
+            .join(sess, outputs)
     }
 }
 

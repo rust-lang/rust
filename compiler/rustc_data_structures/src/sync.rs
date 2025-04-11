@@ -50,6 +50,10 @@ pub use self::worker_local::{Registry, WorkerLocal};
 pub use crate::marker::*;
 
 mod freeze;
+
+mod task;
+pub use task::{Task, task};
+
 mod lock;
 mod parallel;
 mod vec;

@@ -12,6 +12,7 @@ use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Bound, Deref};
+use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
 
@@ -1376,6 +1377,9 @@ pub struct GlobalCtxt<'tcx> {
 
     pub dep_graph: DepGraph,
 
+    pub dep_graph_serialized_rx: Lock<Option<Receiver<()>>>,
+    dep_graph_serialized_tx: SyncSender<()>,
+
     pub prof: SelfProfilerRef,
 
     /// Common types, pre-interned for your convenience.
@@ -1634,6 +1638,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types, s, &untracked);
 
+        let (tx, rx) = sync_channel(1);
+
         let gcx = gcx_cell.get_or_init(|| GlobalCtxt {
             sess: s,
             crate_types,
@@ -1642,6 +1648,8 @@ impl<'tcx> TyCtxt<'tcx> {
             hir_arena,
             interners,
             dep_graph,
+            dep_graph_serialized_rx: Lock::new(Some(rx)),
+            dep_graph_serialized_tx: tx,
             hooks,
             prof: s.prof.clone(),
             types: common_types,
@@ -2271,9 +2279,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self.save_dep_graph();
         self.query_key_hash_verify_all();
 
+        // Finish the dep graph encoding before we signal `dep_graph_serialized`.
         if let Err((path, error)) = self.dep_graph.finish_encoding() {
             self.sess.dcx().emit_fatal(crate::error::FailedWritingFile { path: &path, error });
         }
+
+        self.dep_graph_serialized_tx.send(()).ok();
     }
 }
 

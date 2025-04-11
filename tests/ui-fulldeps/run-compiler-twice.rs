@@ -81,8 +81,8 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf, linker: Option<&Path
         let krate = rustc_interface::passes::parse(&compiler.sess);
         let linker = rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
             let _ = tcx.analysis(());
-            Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)
+            Linker::codegen_and_build_linker(tcx, compiler)
         });
-        linker.link(&compiler.sess, &*compiler.codegen_backend);
+        linker.join();
     });
 }
