@@ -438,6 +438,10 @@ impl<'tcx> UniversalRegions<'tcx> {
         }
     }
 
+    pub(crate) fn implicit_region_bound(&self) -> RegionVid {
+        self.fr_fn_body
+    }
+
     pub(crate) fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
         self.indices.tainted_by_errors.get()
     }

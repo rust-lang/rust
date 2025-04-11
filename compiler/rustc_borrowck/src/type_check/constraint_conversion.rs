@@ -21,7 +21,6 @@ use crate::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategor
 
 pub(crate) struct ConstraintConversion<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
-    tcx: TyCtxt<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
     /// Each RBP `GK: 'a` is assumed to be true. These encode
     /// relationships like `T: 'a` that are added via implicit bounds
@@ -34,7 +33,6 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     /// logic expecting to see (e.g.) `ReStatic`, and if we supplied
     /// our special inference variable there, we would mess that up.
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    implicit_region_bound: ty::Region<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesPredicate<'tcx>],
     locations: Locations,
@@ -49,7 +47,6 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         infcx: &'a InferCtxt<'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-        implicit_region_bound: ty::Region<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesPredicate<'tcx>],
         locations: Locations,
@@ -59,10 +56,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     ) -> Self {
         Self {
             infcx,
-            tcx: infcx.tcx,
             universal_regions,
             region_bound_pairs,
-            implicit_region_bound,
             param_env,
             known_type_outlives_obligations,
             locations,
@@ -96,7 +91,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         // into a vector. These are the regions that we will be
         // relating to one another.
         let closure_mapping = &UniversalRegions::closure_mapping(
-            self.tcx,
+            self.infcx.tcx,
             closure_args,
             closure_requirements.num_external_vids,
             closure_def_id,
@@ -111,7 +106,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             let subject = match outlives_requirement.subject {
                 ClosureOutlivesSubject::Region(re) => closure_mapping[re].into(),
                 ClosureOutlivesSubject::Ty(subject_ty) => {
-                    subject_ty.instantiate(self.tcx, |vid| closure_mapping[vid]).into()
+                    subject_ty.instantiate(self.infcx.tcx, |vid| closure_mapping[vid]).into()
                 }
             };
 
@@ -127,14 +122,14 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         predicate: ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
         constraint_category: ConstraintCategory<'tcx>,
     ) {
+        let tcx = self.infcx.tcx;
         debug!("generate: constraints at: {:#?}", self.locations);
 
         // Extract out various useful fields we'll need below.
         let ConstraintConversion {
-            tcx,
             infcx,
+            universal_regions,
             region_bound_pairs,
-            implicit_region_bound,
             known_type_outlives_obligations,
             ..
         } = *self;
@@ -145,7 +140,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 break;
             }
 
-            if !self.tcx.recursion_limit().value_within_limit(iteration) {
+            if !tcx.recursion_limit().value_within_limit(iteration) {
                 bug!(
                     "FIXME(-Znext-solver): Overflowed when processing region obligations: {outlives_predicates:#?}"
                 );
@@ -170,10 +165,11 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                             );
                         }
 
+                        let implicit_region_bound =
+                            ty::Region::new_var(tcx, universal_regions.implicit_region_bound());
                         // we don't actually use this for anything, but
                         // the `TypeOutlives` code needs an origin.
                         let origin = infer::RelateParamBound(self.span, t1, None);
-
                         TypeOutlives::new(
                             &mut *self,
                             tcx,
@@ -205,7 +201,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     /// are dealt with during trait solving.
     fn replace_placeholders_with_nll<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, value: T) -> T {
         if value.has_placeholders() {
-            fold_regions(self.tcx, value, |r, _| match r.kind() {
+            fold_regions(self.infcx.tcx, value, |r, _| match r.kind() {
                 ty::RePlaceholder(placeholder) => {
                     self.constraints.placeholder_region(self.infcx, placeholder)
                 }
