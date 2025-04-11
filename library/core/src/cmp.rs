@@ -29,6 +29,7 @@ mod bytewise;
 pub(crate) use bytewise::BytewiseEq;
 
 use self::Ordering::*;
+use crate::marker::PointeeSized;
 use crate::ops::ControlFlow;
 
 /// Trait for comparisons using the equality operator.
@@ -246,6 +247,37 @@ use crate::ops::ControlFlow;
     append_const_msg
 )]
 #[rustc_diagnostic_item = "PartialEq"]
+#[cfg(not(bootstrap))] // FIXME(sized_hierarchy): needs bootstrap updated
+pub trait PartialEq<Rhs: ?Sized + PointeeSized = Self>: PointeeSized {
+    /// Tests for `self` and `other` values to be equal, and is used by `==`.
+    #[must_use]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "cmp_partialeq_eq"]
+    fn eq(&self, other: &Rhs) -> bool;
+
+    /// Tests for `!=`. The default implementation is almost always sufficient,
+    /// and should not be overridden without very good reason.
+    #[inline]
+    #[must_use]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "cmp_partialeq_ne"]
+    fn ne(&self, other: &Rhs) -> bool {
+        !self.eq(other)
+    }
+}
+
+#[allow(missing_docs)]
+#[lang = "eq"]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(alias = "==")]
+#[doc(alias = "!=")]
+#[rustc_on_unimplemented(
+    message = "can't compare `{Self}` with `{Rhs}`",
+    label = "no implementation for `{Self} == {Rhs}`",
+    append_const_msg
+)]
+#[rustc_diagnostic_item = "PartialEq"]
+#[cfg(bootstrap)] // FIXME(sized_hierarchy): needs bootstrap updated
 pub trait PartialEq<Rhs: ?Sized = Self> {
     /// Tests for `self` and `other` values to be equal, and is used by `==`.
     #[must_use]
@@ -332,7 +364,7 @@ pub macro PartialEq($item:item) {
 #[doc(alias = "!=")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Eq"]
-pub trait Eq: PartialEq<Self> {
+pub trait Eq: PartialEq<Self> + PointeeSized {
     // this method is used solely by `impl Eq or #[derive(Eq)]` to assert that every component of a
     // type implements `Eq` itself. The current deriving infrastructure means doing this assertion
     // without using a method on this trait is nearly impossible.
@@ -361,7 +393,7 @@ pub macro Eq($item:item) {
 #[doc(hidden)]
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "derive_eq", reason = "deriving hack, should not be public", issue = "none")]
-pub struct AssertParamIsEq<T: Eq + ?Sized> {
+pub struct AssertParamIsEq<T: Eq + ?Sized + PointeeSized> {
     _field: crate::marker::PhantomData<T>,
 }
 
@@ -954,7 +986,7 @@ impl<T: Clone> Clone for Reverse<T> {
 #[doc(alias = ">=")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Ord"]
-pub trait Ord: Eq + PartialOrd<Self> {
+pub trait Ord: Eq + PartialOrd<Self> + PointeeSized {
     /// This method returns an [`Ordering`] between `self` and `other`.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching the expression
@@ -1337,7 +1369,8 @@ pub macro Ord($item:item) {
     append_const_msg
 )]
 #[rustc_diagnostic_item = "PartialOrd"]
-pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
+#[allow(multiple_supertrait_upcastable)] // FIXME(sized_hierarchy): remove this
+pub trait PartialOrd<Rhs: ?Sized + PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
     /// This method returns an ordering between `self` and `other` values if one exists.
     ///
     /// # Examples
@@ -1481,7 +1514,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     }
 }
 
-fn default_chaining_impl<T: ?Sized, U: ?Sized>(
+fn default_chaining_impl<T: ?Sized + PointeeSized, U: ?Sized + PointeeSized>(
     lhs: &T,
     rhs: &U,
     p: impl FnOnce(Ordering) -> bool,
@@ -1803,6 +1836,7 @@ where
 mod impls {
     use crate::cmp::Ordering::{self, Equal, Greater, Less};
     use crate::hint::unreachable_unchecked;
+    use crate::marker::PointeeSized;
     use crate::ops::ControlFlow::{self, Break, Continue};
 
     macro_rules! partial_eq_impl {
@@ -2015,7 +2049,7 @@ mod impls {
     // & pointers
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &A
+    impl<A: ?Sized + PointeeSized, B: ?Sized + PointeeSized> PartialEq<&B> for &A
     where
         A: PartialEq<B>,
     {
@@ -2029,7 +2063,7 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized, B: ?Sized> PartialOrd<&B> for &A
+    impl<A: ?Sized + PointeeSized, B: ?Sized + PointeeSized> PartialOrd<&B> for &A
     where
         A: PartialOrd<B>,
     {
@@ -2055,7 +2089,7 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized> Ord for &A
+    impl<A: ?Sized + PointeeSized> Ord for &A
     where
         A: Ord,
     {
@@ -2065,12 +2099,12 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized> Eq for &A where A: Eq {}
+    impl<A: ?Sized + PointeeSized> Eq for &A where A: Eq {}
 
     // &mut pointers
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized, B: ?Sized> PartialEq<&mut B> for &mut A
+    impl<A: ?Sized + PointeeSized, B: ?Sized + PointeeSized> PartialEq<&mut B> for &mut A
     where
         A: PartialEq<B>,
     {
@@ -2084,7 +2118,7 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized, B: ?Sized> PartialOrd<&mut B> for &mut A
+    impl<A: ?Sized + PointeeSized, B: ?Sized + PointeeSized> PartialOrd<&mut B> for &mut A
     where
         A: PartialOrd<B>,
     {
@@ -2110,7 +2144,7 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized> Ord for &mut A
+    impl<A: ?Sized + PointeeSized> Ord for &mut A
     where
         A: Ord,
     {
@@ -2120,10 +2154,10 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized> Eq for &mut A where A: Eq {}
+    impl<A: ?Sized + PointeeSized> Eq for &mut A where A: Eq {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized, B: ?Sized> PartialEq<&mut B> for &A
+    impl<A: ?Sized + PointeeSized, B: ?Sized + PointeeSized> PartialEq<&mut B> for &A
     where
         A: PartialEq<B>,
     {
@@ -2138,7 +2172,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &mut A
+    impl<A: ?Sized + PointeeSized, B: ?Sized + PointeeSized> PartialEq<&B> for &mut A
     where
         A: PartialEq<B>,
     {

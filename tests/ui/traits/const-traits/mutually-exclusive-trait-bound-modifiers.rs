@@ -1,4 +1,5 @@
-#![feature(const_trait_impl)]
+#![allow(sized_hierarchy_migration)]
+#![feature(const_trait_impl, sized_hierarchy)]
 
 const fn maybe_const_maybe<T: ~const ?Sized>() {}
 //~^ ERROR `~const` trait not allowed with `?` trait polarity modifier

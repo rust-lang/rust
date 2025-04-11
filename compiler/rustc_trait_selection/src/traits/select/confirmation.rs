@@ -19,6 +19,7 @@ use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_type_ir::elaborate;
+use rustc_type_ir::solve::SizedTraitKind;
 use thin_vec::thin_vec;
 use tracing::{debug, instrument};
 
@@ -186,6 +187,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             &mut obligations,
         );
 
+        if util::is_unelaborated_sizedness_optimisation(
+            self.infcx,
+            obligation.predicate,
+            [ty::Binder::dummy(candidate.upcast(self.infcx.tcx))],
+        ) {
+            return Ok(obligations);
+        }
+
         obligations.extend(
             self.infcx
                 .at(&obligation.cause, obligation.param_env)
@@ -253,7 +262,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let obligations = if has_nested {
             let trait_def = obligation.predicate.def_id();
             let conditions = if tcx.is_lang_item(trait_def, LangItem::Sized) {
-                self.sized_conditions(obligation)
+                self.sizedness_conditions(obligation, SizedTraitKind::Sized)
+            } else if tcx.is_lang_item(trait_def, LangItem::MetaSized) {
+                self.sizedness_conditions(obligation, SizedTraitKind::MetaSized)
+            } else if tcx.is_lang_item(trait_def, LangItem::PointeeSized) {
+                self.sizedness_conditions(obligation, SizedTraitKind::PointeeSized)
             } else if tcx.is_lang_item(trait_def, LangItem::Copy) {
                 self.copy_clone_conditions(obligation)
             } else if tcx.is_lang_item(trait_def, LangItem::Clone) {

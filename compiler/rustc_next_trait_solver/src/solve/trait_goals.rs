@@ -4,7 +4,7 @@ use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::solve::CanonicalResponse;
+use rustc_type_ir::solve::{CanonicalResponse, SizedTraitKind};
 use rustc_type_ir::{
     self as ty, Interner, Movability, TraitPredicate, TypeVisitableExt as _, TypingMode,
     Upcast as _, elaborate,
@@ -133,9 +133,9 @@ where
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         if let Some(trait_clause) = assumption.as_trait_clause() {
-            if trait_clause.def_id() == goal.predicate.def_id()
-                && trait_clause.polarity() == goal.predicate.polarity
-            {
+            let goal_did = goal.predicate.def_id();
+            let trait_clause_did = trait_clause.def_id();
+            if trait_clause_did == goal_did && trait_clause.polarity() == goal.predicate.polarity {
                 if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                     goal.predicate.trait_ref.args,
                     trait_clause.skip_binder().trait_ref.args,
@@ -143,7 +143,7 @@ where
                     return Err(NoSolution);
                 }
 
-                ecx.probe_trait_candidate(source).enter(|ecx| {
+                return ecx.probe_trait_candidate(source).enter(|ecx| {
                     let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
                     ecx.eq(
                         goal.param_env,
@@ -151,13 +151,26 @@ where
                         assumption_trait_pred.trait_ref,
                     )?;
                     then(ecx)
-                })
-            } else {
-                Err(NoSolution)
+                });
             }
-        } else {
-            Err(NoSolution)
+
+            // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
+            // check for a `Sized` subtrait when looking for `MetaSized`. `PointeeSized` bounds
+            // are syntactic sugar for a lack of bounds so don't need this.
+            if ecx.cx().is_lang_item(goal_did, TraitSolverLangItem::MetaSized)
+                && ecx.cx().is_lang_item(trait_clause_did, TraitSolverLangItem::Sized)
+                && {
+                    let expected_self_ty = ecx.resolve_vars_if_possible(goal.predicate.self_ty());
+                    let found_self_ty =
+                        ecx.resolve_vars_if_possible(trait_clause.self_ty().skip_binder());
+                    expected_self_ty == found_self_ty
+                }
+            {
+                return ecx.probe_trait_candidate(source).enter(then);
+            }
         }
+
+        Err(NoSolution)
     }
 
     fn consider_auto_trait_candidate(
@@ -218,9 +231,10 @@ where
         })
     }
 
-    fn consider_builtin_sized_candidate(
+    fn consider_builtin_sizedness_candidates(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution> {
         if goal.predicate.polarity != ty::PredicatePolarity::Positive {
             return Err(NoSolution);
@@ -229,7 +243,11 @@ where
         ecx.probe_and_evaluate_goal_for_constituent_tys(
             CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial),
             goal,
-            structural_traits::instantiate_constituent_tys_for_sized_trait,
+            |ecx, ty| {
+                structural_traits::instantiate_constituent_tys_for_sizedness_trait(
+                    ecx, sizedness, ty,
+                )
+            },
         )
     }
 

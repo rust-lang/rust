@@ -1,12 +1,20 @@
 //@ check-pass
 //@ compile-flags: -Zexperimental-default-bounds
 
-#![feature(auto_traits, lang_items, no_core, rustc_attrs, trait_alias)]
+#![feature(auto_traits, const_trait_impl, lang_items, no_core, rustc_attrs, trait_alias)]
 #![no_std]
 #![no_core]
 
+#[lang = "pointee_sized"]
+trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[const_trait]
+trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+trait Sized: MetaSized {}
 
 #[lang = "default_trait1"]
 auto trait DefaultTrait1 {}

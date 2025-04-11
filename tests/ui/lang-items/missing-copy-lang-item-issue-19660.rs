@@ -1,9 +1,17 @@
-#![feature(lang_items, no_core)]
+#![feature(lang_items, no_core, const_trait_impl)]
 #![no_core]
 #![no_main]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized { }
+#[const_trait]
+trait Sized: MetaSized { }
 
 struct S;
 
