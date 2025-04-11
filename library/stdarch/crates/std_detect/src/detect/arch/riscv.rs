@@ -109,10 +109,10 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zihpm: "zihpm";
     without cfg check: true;
     /// "Zihpm" Extension for Hardware Performance Counters
-
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zifencei: "zifencei";
     without cfg check: true;
     /// "Zifencei" Extension for Instruction-Fetch Fence
+
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zihintpause: "zihintpause";
     without cfg check: true;
     /// "Zihintpause" Extension for Pause Hint
