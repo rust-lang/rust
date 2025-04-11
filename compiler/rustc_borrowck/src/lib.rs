@@ -351,12 +351,12 @@ fn do_mir_borrowck<'tcx>(
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
-    let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
-    nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req, diags_buffer);
+    nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req);
 
     let movable_coroutine = body.coroutine.is_some()
         && tcx.coroutine_movability(def.to_def_id()) == hir::Movability::Movable;
 
+    let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
     // While promoteds should mostly be correct by construction, we need to check them for
     // invalid moves to detect moving out of arrays:`struct S; fn main() { &([S][0]); }`.
     for promoted_body in &promoted {
