@@ -899,6 +899,10 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // is not defined. So we need to cfg it out.
     #[cfg(all(not(doc), debug_assertions))]
     rustc_passes::hir_id_validator::check_crate(tcx);
+
+    // Prefetch this to prevent multiple threads from blocking on it later.
+    tcx.ensure_done().hir_crate(());
+
     let sess = tcx.sess;
     sess.time("misc_checking_1", || {
         parallel!(
