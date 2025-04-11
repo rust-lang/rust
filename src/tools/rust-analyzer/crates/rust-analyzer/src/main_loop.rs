@@ -969,7 +969,9 @@ impl GlobalState {
                     TestState::Ok => lsp_ext::TestState::Passed,
                     TestState::Failed { stdout } => lsp_ext::TestState::Failed { message: stdout },
                 };
-                let test_id = format!("{}::{name}", message.target.target);
+
+                // The notification requires the namespace form (with underscores) of the target
+                let test_id = format!("{}::{name}", message.target.target.replace('-', "_"));
 
                 self.send_notification::<lsp_ext::ChangeTestState>(
                     lsp_ext::ChangeTestStateParams { test_id, state },
