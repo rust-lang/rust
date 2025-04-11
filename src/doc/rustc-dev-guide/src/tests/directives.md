@@ -191,8 +191,13 @@ settings:
   specified atomic widths, e.g. the test with `//@ needs-target-has-atomic: 8,
   16, ptr` will only run if it supports the comma-separated list of atomic
   widths.
-- `needs-dynamic-linking` - ignores if target does not support dynamic linking
+- `needs-dynamic-linking` — ignores if target does not support dynamic linking
   (which is orthogonal to it being unable to create `dylib` and `cdylib` crate types)
+- `needs-crate-type` — ignores if target platform does not support one or more
+  of the comma-delimited list of specified crate types. For example,
+  `//@ needs-crate-type: cdylib, proc-macro` will cause the test to be ignored
+  on `wasm32-unknown-unknown` target because the target does not support the
+  `proc-macro` crate type.
 
 The following directives will check LLVM support:
 

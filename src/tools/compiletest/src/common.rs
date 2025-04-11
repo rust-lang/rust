@@ -395,6 +395,7 @@ pub struct Config {
 
     pub target_cfgs: OnceLock<TargetCfgs>,
     pub builtin_cfg_names: OnceLock<HashSet<String>>,
+    pub supported_crate_types: OnceLock<HashSet<String>>,
 
     pub nocapture: bool,
 
@@ -470,6 +471,11 @@ impl Config {
     /// Get the list of builtin, 'well known' cfg names
     pub fn builtin_cfg_names(&self) -> &HashSet<String> {
         self.builtin_cfg_names.get_or_init(|| builtin_cfg_names(self))
+    }
+
+    /// Get the list of crate types that the target platform supports.
+    pub fn supported_crate_types(&self) -> &HashSet<String> {
+        self.supported_crate_types.get_or_init(|| supported_crate_types(self))
     }
 
     pub fn has_threads(&self) -> bool {
@@ -743,6 +749,31 @@ fn builtin_cfg_names(config: &Config) -> HashSet<String> {
     .map(|l| if let Some((name, _)) = l.split_once('=') { name.to_string() } else { l.to_string() })
     .chain(std::iter::once(String::from("test")))
     .collect()
+}
+
+pub const KNOWN_CRATE_TYPES: &[&str] =
+    &["bin", "cdylib", "dylib", "lib", "proc-macro", "rlib", "staticlib"];
+
+fn supported_crate_types(config: &Config) -> HashSet<String> {
+    let crate_types: HashSet<_> = rustc_output(
+        config,
+        &["--target", &config.target, "--print=supported-crate-types", "-Zunstable-options"],
+        Default::default(),
+    )
+    .lines()
+    .map(|l| l.to_string())
+    .collect();
+
+    for crate_type in crate_types.iter() {
+        assert!(
+            KNOWN_CRATE_TYPES.contains(&crate_type.as_str()),
+            "unexpected crate type `{}`: known crate types are {:?}",
+            crate_type,
+            KNOWN_CRATE_TYPES
+        );
+    }
+
+    crate_types
 }
 
 fn rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {
