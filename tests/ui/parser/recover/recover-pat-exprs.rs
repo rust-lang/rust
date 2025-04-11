@@ -28,7 +28,7 @@ fn array_indexing() {
     { let x[0; 20]; } //~ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
     { let x[]; } //~ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
     { let (x[]); } //~ error: expected one of `)`, `,`, `@`, `if`, or `|`, found `[`
-    //~^ missing `,`
+    //~^ HELP_NONVIRAL missing `,`
 }
 
 // MethodCallExpression, CallExpression, ErrorPropagationExpression

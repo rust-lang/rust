@@ -231,7 +231,7 @@ fn main() {
     // Check that matching on a reference results in a correct diagnostic
     match &non_enum {
         //~^ ERROR some variants are not matched explicitly
-        //~| pattern `&NonExhaustiveEnum::Struct { .. }` not covered
+        //~| NOTE_NONVIRAL pattern `&NonExhaustiveEnum::Struct { .. }` not covered
         NonExhaustiveEnum::Unit => {}
         NonExhaustiveEnum::Tuple(_) => {}
         _ => {}
@@ -239,21 +239,21 @@ fn main() {
 
     match (true, &non_enum) {
         //~^ ERROR some variants are not matched explicitly
-        //~| patterns `(_, &NonExhaustiveEnum::Tuple(_))` and `(_, &NonExhaustiveEnum::Struct { .. })` not covered
+        //~| NOTE_NONVIRAL patterns `(_, &NonExhaustiveEnum::Tuple(_))` and `(_, &NonExhaustiveEnum::Struct { .. })` not covered
         (true, NonExhaustiveEnum::Unit) => {}
         _ => {}
     }
 
     match (&non_enum, true) {
         //~^ ERROR some variants are not matched explicitly
-        //~| patterns `(&NonExhaustiveEnum::Tuple(_), _)` and `(&NonExhaustiveEnum::Struct { .. }, _)` not covered
+        //~| NOTE_NONVIRAL patterns `(&NonExhaustiveEnum::Tuple(_), _)` and `(&NonExhaustiveEnum::Struct { .. }, _)` not covered
         (NonExhaustiveEnum::Unit, true) => {}
         _ => {}
     }
 
     match Some(&non_enum) {
         //~^ ERROR some variants are not matched explicitly
-        //~| pattern `Some(&NonExhaustiveEnum::Struct { .. })` not covered
+        //~| NOTE_NONVIRAL pattern `Some(&NonExhaustiveEnum::Struct { .. })` not covered
         Some(NonExhaustiveEnum::Unit | NonExhaustiveEnum::Tuple(_)) => {}
         _ => {}
     }

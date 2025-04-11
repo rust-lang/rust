@@ -6,8 +6,8 @@ use rustfix::{Filter, apply_suggestions, get_suggestions_from_json};
 use tracing::debug;
 
 use super::{
-    AllowUnused, Emit, ErrorKind, FailMode, LinkToAux, PassMode, TargetLocation, TestCx,
-    TestOutput, Truncated, UI_FIXED, WillExecute,
+    AllowUnused, Emit, FailMode, LinkToAux, PassMode, TargetLocation, TestCx, TestOutput,
+    Truncated, UI_FIXED, WillExecute,
 };
 use crate::{errors, json};
 
@@ -176,7 +176,7 @@ impl TestCx<'_> {
             let msg = format!(
                 "line {}: cannot combine `--error-format` with {} annotations; use `error-pattern` instead",
                 expected_errors[0].line_num_str(),
-                expected_errors[0].kind.unwrap_or(ErrorKind::Error),
+                expected_errors[0].kind,
             );
             self.fatal(&msg);
         }

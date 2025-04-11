@@ -21,13 +21,13 @@ fn main() {
     match 'c' {
         S { .. } => (),
         //~^ ERROR mismatched types
-        //~| expected `char`, found `S`
+        //~| NOTE_NONVIRAL expected `char`, found `S`
 
         _ => ()
     }
     f(true);
     //~^ ERROR mismatched types
-    //~| expected `char`, found `bool`
+    //~| NOTE_NONVIRAL expected `char`, found `bool`
 
     match () {
         E::V => {} //~ ERROR failed to resolve: use of undeclared type `E`

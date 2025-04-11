@@ -6,5 +6,5 @@ struct Slice<T> {
 fn main() {
     let Slice { data: data, len: len } = "foo";
     //~^ ERROR mismatched types
-    //~| found struct `Slice<_>`
+    //~| NOTE_NONVIRAL found struct `Slice<_>`
 }

@@ -23,5 +23,5 @@ impl Foo for u16 {
 
 fn main() {
     println!("{}", <Bar<u16, u8> as Foo>::AMT);
-    //~^ constant
+    //~^ NOTE_NONVIRAL constant
 }

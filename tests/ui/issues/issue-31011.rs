@@ -16,7 +16,7 @@ struct Foo {
 fn wrap<T>(context: &T) -> ()
 {
     log!(context, "entered wrapper");
-    //~^ in this expansion of log!
+    //~^ NOTE_NONVIRAL in this expansion of log!
 }
 
 fn main() {

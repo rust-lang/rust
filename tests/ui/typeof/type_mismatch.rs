@@ -5,5 +5,5 @@ fn main() {
     let b: typeof(a) = 1i8;
     //~^ ERROR `typeof` is a reserved keyword but unimplemented
     //~| ERROR mismatched types
-    //~| expected `u8`, found `i8`
+    //~| NOTE_NONVIRAL expected `u8`, found `i8`
 }

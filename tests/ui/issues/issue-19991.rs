@@ -3,7 +3,7 @@
 
 fn main() {
     if let Some(homura) = Some("madoka") { //~  ERROR missing an `else` clause
-                                           //~| expected integer, found `()`
+                                           //~| NOTE_NONVIRAL expected integer, found `()`
         765
     };
 }

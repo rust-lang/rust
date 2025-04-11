@@ -6,9 +6,9 @@ fn main() {
     match Foo(1.1, marker::PhantomData) {
         1 => {}
     //~^ ERROR mismatched types
-    //~| expected struct `Foo<{float}, _>`
-    //~| found type `{integer}`
-    //~| expected `Foo<{float}, _>`, found integer
+    //~| NOTE_NONVIRAL expected struct `Foo<{float}, _>`
+    //~| NOTE_NONVIRAL found type `{integer}`
+    //~| NOTE_NONVIRAL expected `Foo<{float}, _>`, found integer
     }
 
 }

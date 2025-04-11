@@ -30,16 +30,16 @@ impl<P: Service, S: Service<Input = P::Output>> ServiceChainBuilder<P, S> {
         //~^ ERROR the associated type
         //~| ERROR the associated type
         //~| ERROR the associated type
-        //~| the associated type
-        //~| the associated type
-        //~| the associated type
+        //~| NOTE_NONVIRAL the associated type
+        //~| NOTE_NONVIRAL the associated type
+        //~| NOTE_NONVIRAL the associated type
         //~| ERROR may not live long enough
         self,
     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> {
         //~^ ERROR the associated type
         //~| ERROR the associated type
-        //~| the associated type
-        //~| the associated type
+        //~| NOTE_NONVIRAL the associated type
+        //~| NOTE_NONVIRAL the associated type
         panic!();
     }
 }

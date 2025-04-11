@@ -7,13 +7,13 @@ impl<'a,'b> Foo<'a,'b> {
     fn bar(self:
            Foo<'b,'a>
     //~^ ERROR mismatched `self` parameter type
-    //~| expected struct `Foo<'a, 'b>`
-    //~| found struct `Foo<'b, 'a>`
-    //~| lifetime mismatch
+    //~| NOTE_NONVIRAL expected struct `Foo<'a, 'b>`
+    //~| NOTE_NONVIRAL found struct `Foo<'b, 'a>`
+    //~| NOTE_NONVIRAL lifetime mismatch
     //~| ERROR mismatched `self` parameter type
-    //~| expected struct `Foo<'a, 'b>`
-    //~| found struct `Foo<'b, 'a>`
-    //~| lifetime mismatch
+    //~| NOTE_NONVIRAL expected struct `Foo<'a, 'b>`
+    //~| NOTE_NONVIRAL found struct `Foo<'b, 'a>`
+    //~| NOTE_NONVIRAL lifetime mismatch
            ) {}
 }
 

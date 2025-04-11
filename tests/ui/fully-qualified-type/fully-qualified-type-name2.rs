@@ -11,7 +11,7 @@ mod y {
 fn bar(x: x::Foo) -> y::Foo {
     return x;
     //~^ ERROR mismatched types
-    //~| expected `y::Foo`, found `x::Foo`
+    //~| NOTE_NONVIRAL expected `y::Foo`, found `x::Foo`
 }
 
 fn main() {

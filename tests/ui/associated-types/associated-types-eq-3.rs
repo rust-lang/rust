@@ -22,9 +22,9 @@ fn foo1<I: Foo<A=Bar>>(x: I) {
 fn foo2<I: Foo>(x: I) {
     let _: Bar = x.boo();
     //~^ ERROR mismatched types
-    //~| found associated type `<I as Foo>::A`
-    //~| expected `Bar`, found
-    //~| expected struct `Bar`
+    //~| NOTE_NONVIRAL found associated type `<I as Foo>::A`
+    //~| NOTE_NONVIRAL expected `Bar`, found
+    //~| NOTE_NONVIRAL expected struct `Bar`
 }
 
 

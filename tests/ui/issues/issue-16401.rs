@@ -7,9 +7,9 @@ fn main() {
     match () {
         Slice { data: data, len: len } => (),
         //~^ ERROR mismatched types
-        //~| expected unit type `()`
-        //~| found struct `Slice<_>`
-        //~| expected `()`, found `Slice<_>`
+        //~| NOTE_NONVIRAL expected unit type `()`
+        //~| NOTE_NONVIRAL found struct `Slice<_>`
+        //~| NOTE_NONVIRAL expected `()`, found `Slice<_>`
         _ => unreachable!()
     }
 }

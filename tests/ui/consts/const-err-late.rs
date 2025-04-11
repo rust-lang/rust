@@ -16,5 +16,5 @@ impl<T> S<T> {
 }
 
 fn main() {
-    black_box((S::<i32>::FOO, S::<u32>::FOO)); //~ constant
+    black_box((S::<i32>::FOO, S::<u32>::FOO)); //~ NOTE_NONVIRAL constant
 }

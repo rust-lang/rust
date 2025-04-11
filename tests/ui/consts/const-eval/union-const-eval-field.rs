@@ -25,7 +25,7 @@ const fn read_field2() -> Field2 {
 const fn read_field3() -> Field3 {
     const FIELD3: Field3 = unsafe { UNION.field3 };
     //~^ ERROR evaluation of constant value failed
-    //~| uninitialized
+    //~| NOTE_NONVIRAL uninitialized
     FIELD3
 }
 

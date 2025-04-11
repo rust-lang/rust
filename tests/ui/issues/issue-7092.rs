@@ -5,9 +5,9 @@ fn foo(x: Whatever) {
     match x {
         Some(field) =>
 //~^ ERROR mismatched types
-//~| expected `Whatever`, found `Option<_>`
-//~| expected enum `Whatever`
-//~| found enum `Option<_>`
+//~| NOTE_NONVIRAL expected `Whatever`, found `Option<_>`
+//~| NOTE_NONVIRAL expected enum `Whatever`
+//~| NOTE_NONVIRAL found enum `Option<_>`
             field.access(),
     }
 }

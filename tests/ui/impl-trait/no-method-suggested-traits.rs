@@ -22,9 +22,9 @@ fn main() {
 
     1u32.method();
     //~^ ERROR no method named
-    //~|items from traits can only be used if the trait is in scope
+    //~| HELP_NONVIRAL items from traits can only be used if the trait is in scope
     std::rc::Rc::new(&mut Box::new(&1u32)).method();
-    //~^items from traits can only be used if the trait is in scope
+    //~^ HELP_NONVIRAL items from traits can only be used if the trait is in scope
     //~| ERROR no method named `method` found for struct
 
     'a'.method();

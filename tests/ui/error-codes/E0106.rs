@@ -16,10 +16,10 @@ struct Buzz<'a, 'b>(&'a str, &'b str);
 struct Quux {
     baz: Baz,
     //~^ ERROR E0106
-    //~| expected named lifetime parameter
+    //~| NOTE_NONVIRAL expected named lifetime parameter
     buzz: Buzz,
     //~^ ERROR E0106
-    //~| expected 2 lifetime parameters
+    //~| NOTE_NONVIRAL expected 2 lifetime parameters
 }
 
 fn main() {

@@ -37,11 +37,11 @@ fn main() {
 
   get_flag::<false, { unsafe { char_raw.character } }>();
   //~^ ERROR evaluation of constant value failed
-  //~| uninitialized
+  //~| NOTE_NONVIRAL uninitialized
   get_flag::<{ unsafe { bool_raw.boolean } }, 'z'>();
   //~^ ERROR it is undefined behavior
   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
   //~^ ERROR evaluation of constant value failed
-  //~| uninitialized
+  //~| NOTE_NONVIRAL uninitialized
   //~| ERROR it is undefined behavior
 }

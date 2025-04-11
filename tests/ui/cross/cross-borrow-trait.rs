@@ -8,6 +8,6 @@ impl Trait for Foo {}
 pub fn main() {
     let x: Box<dyn Trait> = Box::new(Foo);
     let _y: &dyn Trait = x; //~ ERROR E0308
-                            //~| expected reference `&dyn Trait`
-                            //~| found struct `Box<dyn Trait>`
+                            //~| NOTE_NONVIRAL expected reference `&dyn Trait`
+                            //~| NOTE_NONVIRAL found struct `Box<dyn Trait>`
 }
