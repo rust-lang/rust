@@ -68,14 +68,18 @@ yields ()
     }
 
     bb10: {
-        drop(_1) -> [return: bb11, unwind: bb12];
+        drop(_1) -> [return: bb11, unwind: bb13, drop: bb12];
     }
 
     bb11: {
         return;
     }
 
-    bb12 (cleanup): {
+    bb12: {
+        coroutine_drop;
+    }
+
+    bb13 (cleanup): {
         resume;
     }
 }

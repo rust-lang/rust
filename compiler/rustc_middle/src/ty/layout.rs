@@ -923,23 +923,35 @@ where
                     i,
                 ),
 
-                ty::Coroutine(def_id, args) => match this.variants {
-                    Variants::Empty => unreachable!(),
-                    Variants::Single { index } => TyMaybeWithLayout::Ty(
-                        args.as_coroutine()
-                            .state_tys(def_id, tcx)
-                            .nth(index.as_usize())
-                            .unwrap()
-                            .nth(i)
-                            .unwrap(),
-                    ),
-                    Variants::Multiple { tag, tag_field, .. } => {
-                        if i == tag_field {
-                            return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
+                ty::Coroutine(def_id, args) => {
+                    // layout of `async_drop_in_place<T>::{closure}` in case,
+                    // when T is a coroutine, contains this internal coroutine's ptr
+                    if tcx.is_async_drop_in_place_poll_fn(def_id) {
+                        let arg_cor_ty = args.first().unwrap().expect_ty();
+                        if arg_cor_ty.is_coroutine() {
+                            assert!(i == 0);
+                            let impl_cor_ty = arg_cor_ty.find_async_drop_impl_coroutine(tcx);
+                            return TyMaybeWithLayout::Ty(Ty::new_mut_ptr(tcx, impl_cor_ty));
                         }
-                        TyMaybeWithLayout::Ty(args.as_coroutine().prefix_tys()[i])
                     }
-                },
+                    match this.variants {
+                        Variants::Empty => unreachable!(),
+                        Variants::Single { index } => TyMaybeWithLayout::Ty(
+                            args.as_coroutine()
+                                .state_tys(def_id, tcx)
+                                .nth(index.as_usize())
+                                .unwrap()
+                                .nth(i)
+                                .unwrap(),
+                        ),
+                        Variants::Multiple { tag, tag_field, .. } => {
+                            if i == tag_field {
+                                return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
+                            }
+                            TyMaybeWithLayout::Ty(args.as_coroutine().prefix_tys()[i])
+                        }
+                    }
+                }
 
                 ty::Tuple(tys) => TyMaybeWithLayout::Ty(tys[i]),
 
