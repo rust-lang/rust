@@ -26,11 +26,11 @@ use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::{AssocItemContainer, SymbolName};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
-use rustc_session::config::{CrateType, OptLevel, TargetModifier};
+use rustc_session::config::{CrateType, OptLevel, RemapPathScopeComponents, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
-    ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
-    sym,
+    ExternalSource, FileName, FileNameDisplayPreference, SourceFile, SpanData, SpanEncoder,
+    StableSourceFileId, SyntaxContext, sym,
 };
 use tracing::{debug, instrument, trace};
 
@@ -520,6 +520,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let source_map = self.tcx.sess.source_map();
         let all_source_files = source_map.files();
 
+        let filename_display_preference =
+            self.tcx.sess.filename_display_preference(RemapPathScopeComponents::DEBUGINFO);
+
         // By replacing the `Option` with `None`, we ensure that we can't
         // accidentally serialize any more `Span`s after the source map encoding
         // is done.
@@ -551,11 +554,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             match source_file.name {
                 FileName::Real(ref original_file_name) => {
-                    // FIXME: This should probably to conditionally remapped under
-                    // a RemapPathScopeComponents but which one?
-                    let adapted_file_name = source_map
-                        .path_mapping()
-                        .to_embeddable_absolute_path(original_file_name.clone(), working_directory);
+                    let adapted_file_name =
+                        if filename_display_preference == FileNameDisplayPreference::Remapped {
+                            source_map.path_mapping().to_embeddable_absolute_path(
+                                original_file_name.clone(),
+                                working_directory,
+                            )
+                        } else {
+                            source_map.path_mapping().to_local_embeddable_absolute_path(
+                                original_file_name.clone(),
+                                working_directory,
+                            )
+                        };
 
                     adapted_source_file.name = FileName::Real(adapted_file_name);
                 }
