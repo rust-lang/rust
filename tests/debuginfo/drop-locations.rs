@@ -1,5 +1,5 @@
 //@ ignore-android
-//@ ignore-test: #128971
+//@ known-bug: #128971
 
 #![allow(unused)]
 

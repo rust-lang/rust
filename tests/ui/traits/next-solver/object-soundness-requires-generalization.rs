@@ -1,5 +1,5 @@
 //@ compile-flags: -Znext-solver
-//@ ignore-test
+//@ known-bug: unknown
 
 trait Trait {
     type Gat<'lt>;

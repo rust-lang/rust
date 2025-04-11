@@ -1,6 +1,6 @@
 // This test has been spuriously failing a lot recently (#92000).
 // Ignore it until the underlying issue is fixed.
-//@ ignore-test (#92000)
+//@ known-bug: #92000
 
 // Regression test for #87481: short backtrace formatting cut off the entire stack trace.
 
