@@ -188,7 +188,7 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
     tcx.associated_items(trait_def_id)
         .in_definition_order()
         // We're only looking at associated type bounds
-        .filter(|item| item.kind == ty::AssocKind::Type)
+        .filter(|item| item.is_type())
         // Ignore GATs with `Self: Sized`
         .filter(|item| !tcx.generics_require_sized_self(item.def_id))
         .flat_map(|item| tcx.explicit_item_bounds(item.def_id).iter_identity_copied())
@@ -320,7 +320,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
             })
             .collect(),
         // Associated types can only be dyn-compatible if they have `Self: Sized` bounds.
-        ty::AssocKind::Type => {
+        ty::AssocKind::Type { .. } => {
             if !tcx.generics_of(item.def_id).is_own_empty() && !item.is_impl_trait_in_trait() {
                 vec![DynCompatibilityViolation::GAT(item.name, item.ident(tcx).span)]
             } else {

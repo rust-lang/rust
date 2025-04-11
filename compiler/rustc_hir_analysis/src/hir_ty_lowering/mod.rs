@@ -1733,7 +1733,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .any(|i| {
                             i.kind.namespace() == Namespace::TypeNS
                                 && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
-                                && matches!(i.kind, ty::AssocKind::Type)
+                                && i.is_type()
                         })
                     // Consider only accessible traits
                     && tcx.visibility(*trait_def_id)

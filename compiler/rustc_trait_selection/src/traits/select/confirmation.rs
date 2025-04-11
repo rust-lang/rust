@@ -594,9 +594,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Associated types that require `Self: Sized` do not show up in the built-in
             // implementation of `Trait for dyn Trait`, and can be dropped here.
             .filter(|item| !tcx.generics_require_sized_self(item.def_id))
-            .filter_map(
-                |item| if item.kind == ty::AssocKind::Type { Some(item.def_id) } else { None },
-            )
+            .filter_map(|item| if item.is_type() { Some(item.def_id) } else { None })
             .collect();
 
         for assoc_type in assoc_types {

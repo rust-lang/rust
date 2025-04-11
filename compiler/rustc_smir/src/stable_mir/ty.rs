@@ -1585,18 +1585,20 @@ pub struct AssocItem {
     /// If this is an item in an impl of a trait then this is the `DefId` of
     /// the associated item on the trait that this implements.
     pub trait_item_def_id: Option<AssocDef>,
-
-    /// `Some` if the associated item (an associated type) comes from the
-    /// return-position `impl Trait` in trait desugaring. The `ImplTraitInTraitData`
-    /// provides additional information about its source.
-    pub opt_rpitit_info: Option<ImplTraitInTraitData>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum AssocKind {
     Const,
-    Fn { has_self: bool },
-    Type,
+    Fn {
+        has_self: bool,
+    },
+    Type {
+        /// `Some` if the associated type comes from an RPITIT. The
+        /// `ImplTraitInTraitData` provides additional information about its
+        /// source.
+        opt_rpitit_info: Option<ImplTraitInTraitData>,
+    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -1613,6 +1615,6 @@ pub enum ImplTraitInTraitData {
 
 impl AssocItem {
     pub fn is_impl_trait_in_trait(&self) -> bool {
-        self.opt_rpitit_info.is_some()
+        matches!(self.kind, AssocKind::Type { opt_rpitit_info: Some(_) })
     }
 }

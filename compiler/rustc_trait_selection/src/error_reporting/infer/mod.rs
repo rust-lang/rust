@@ -2337,7 +2337,7 @@ impl<'tcx> ObligationCause<'tcx> {
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn { .. }, .. } => {
                 ObligationCauseFailureCode::MethodCompat { span, subdiags }
             }
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type { .. }, .. } => {
                 ObligationCauseFailureCode::TypeCompat { span, subdiags }
             }
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
@@ -2401,7 +2401,7 @@ impl<'tcx> ObligationCause<'tcx> {
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn { .. }, .. } => {
                 "method type is compatible with trait"
             }
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type { .. }, .. } => {
                 "associated type is compatible with trait"
             }
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
@@ -2425,7 +2425,9 @@ impl IntoDiagArg for ObligationCauseAsDiagArg<'_> {
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn { .. }, .. } => {
                 "method_compat"
             }
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => "type_compat",
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type { .. }, .. } => {
+                "type_compat"
+            }
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
                 "const_compat"
             }

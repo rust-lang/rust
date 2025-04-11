@@ -44,7 +44,7 @@ pub(super) fn compare_impl_item(
 
     match impl_item.kind {
         ty::AssocKind::Fn { .. } => compare_impl_method(tcx, impl_item, trait_item, impl_trait_ref),
-        ty::AssocKind::Type => compare_impl_ty(tcx, impl_item, trait_item, impl_trait_ref),
+        ty::AssocKind::Type { .. } => compare_impl_ty(tcx, impl_item, trait_item, impl_trait_ref),
         ty::AssocKind::Const => compare_impl_const(tcx, impl_item, trait_item, impl_trait_ref),
     }
 }
@@ -1703,7 +1703,7 @@ fn compare_generic_param_kinds<'tcx>(
     trait_item: ty::AssocItem,
     delay: bool,
 ) -> Result<(), ErrorGuaranteed> {
-    assert_eq!(impl_item.kind, trait_item.kind);
+    assert_eq!(impl_item.as_tag(), trait_item.as_tag());
 
     let ty_const_params_of = |def_id| {
         tcx.generics_of(def_id).own_params.iter().filter(|param| {
@@ -2235,16 +2235,19 @@ fn param_env_with_gat_bounds<'tcx>(
     // of the RPITITs associated with the same body. This is because checking
     // the item bounds of RPITITs often involves nested RPITITs having to prove
     // bounds about themselves.
-    let impl_tys_to_install = match impl_ty.opt_rpitit_info {
-        None => vec![impl_ty],
-        Some(
-            ty::ImplTraitInTraitData::Impl { fn_def_id }
-            | ty::ImplTraitInTraitData::Trait { fn_def_id, .. },
-        ) => tcx
+    let impl_tys_to_install = match impl_ty.kind {
+        ty::AssocKind::Type {
+            opt_rpitit_info:
+                Some(
+                    ty::ImplTraitInTraitData::Impl { fn_def_id }
+                    | ty::ImplTraitInTraitData::Trait { fn_def_id, .. },
+                ),
+        } => tcx
             .associated_types_for_impl_traits_in_associated_fn(fn_def_id)
             .iter()
             .map(|def_id| tcx.associated_item(*def_id))
             .collect(),
+        _ => vec![impl_ty],
     };
 
     for impl_ty in impl_tys_to_install {
