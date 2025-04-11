@@ -336,13 +336,6 @@ where
         unreachable!("DiscriminantKind is not const")
     }
 
-    fn consider_builtin_async_destruct_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
-        unreachable!("AsyncDestruct is not const")
-    }
-
     fn consider_builtin_destruct_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,

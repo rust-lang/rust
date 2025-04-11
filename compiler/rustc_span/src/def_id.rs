@@ -297,6 +297,20 @@ impl DefId {
         }
     }
 
+    // For templated coroutine we have non-local async_drop_in_place<T>::coroutine def_id
+    #[inline]
+    #[track_caller]
+    pub fn expect_local_or_templated<F>(self, is_templated: F) -> DefId
+    where
+        F: FnOnce(DefId) -> bool,
+    {
+        assert!(
+            self.is_local() || is_templated(self),
+            "DefId::expect_local_or_templated: `{self:?}` isn't local or templated"
+        );
+        self
+    }
+
     #[inline]
     pub fn is_crate_root(self) -> bool {
         self.index == CRATE_DEF_INDEX

@@ -251,11 +251,6 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
 
-    fn consider_builtin_async_destruct_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution>;
-
     fn consider_builtin_destruct_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -453,9 +448,6 @@ where
                 }
                 Some(TraitSolverLangItem::DiscriminantKind) => {
                     G::consider_builtin_discriminant_kind_candidate(self, goal)
-                }
-                Some(TraitSolverLangItem::AsyncDestruct) => {
-                    G::consider_builtin_async_destruct_candidate(self, goal)
                 }
                 Some(TraitSolverLangItem::Destruct) => {
                     G::consider_builtin_destruct_candidate(self, goal)

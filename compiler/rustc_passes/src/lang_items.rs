@@ -57,6 +57,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
         &mut self,
         actual_target: Target,
         def_id: LocalDefId,
+        cor_def_id: Option<LocalDefId>,
         attrs: &'ast [ast::Attribute],
         item_span: Span,
         generics: Option<&'ast ast::Generics>,
@@ -73,6 +74,18 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                         generics,
                         actual_target,
                     );
+                    // We need to register LangItem::AsyncDropInPlacePoll
+                    // for async_drop_in_place<T>::{closure}
+                    if cor_def_id.is_some() && lang_item == LangItem::AsyncDropInPlace {
+                        self.collect_item_extended(
+                            LangItem::AsyncDropInPlacePoll,
+                            cor_def_id.unwrap(),
+                            item_span,
+                            attr_span,
+                            generics,
+                            actual_target,
+                        );
+                    }
                 }
                 // Known lang item with attribute on incorrect target.
                 Some(lang_item) => {
@@ -288,10 +301,18 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
                 unreachable!("macros should have been expanded")
             }
         };
+        let cor_def_id = if let ast::ItemKind::Fn(box ast::Fn { sig, .. }) = &i.kind
+            && let Some(kind) = sig.header.coroutine_kind
+        {
+            self.resolver.node_id_to_def_id.get(&kind.closure_id()).copied()
+        } else {
+            None
+        };
 
         self.check_for_lang(
             target,
             self.resolver.node_id_to_def_id[&i.id],
+            cor_def_id,
             &i.attrs,
             i.span,
             i.opt_generics(),
@@ -307,6 +328,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             self.check_for_lang(
                 Target::Variant,
                 self.resolver.node_id_to_def_id[&variant.id],
+                None,
                 &variant.attrs,
                 variant.span,
                 None,
@@ -349,6 +371,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
         self.check_for_lang(
             target,
             self.resolver.node_id_to_def_id[&i.id],
+            None,
             &i.attrs,
             i.span,
             generics,

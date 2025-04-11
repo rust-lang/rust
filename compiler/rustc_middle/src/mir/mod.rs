@@ -200,7 +200,13 @@ pub struct CoroutineInfo<'tcx> {
     /// Coroutine drop glue. This field is populated after the state transform pass.
     pub coroutine_drop: Option<Body<'tcx>>,
 
-    /// The layout of a coroutine. This field is populated after the state transform pass.
+    /// Coroutine async drop glue.
+    pub coroutine_drop_async: Option<Body<'tcx>>,
+
+    /// When coroutine has sync drop, this is async proxy calling `coroutine_drop` sync impl.
+    pub coroutine_drop_proxy_async: Option<Body<'tcx>>,
+
+    /// The layout of a coroutine. Produced by the state transformation.
     pub coroutine_layout: Option<CoroutineLayout<'tcx>>,
 
     /// If this is a coroutine then record the type of source expression that caused this coroutine
@@ -220,6 +226,8 @@ impl<'tcx> CoroutineInfo<'tcx> {
             yield_ty: Some(yield_ty),
             resume_ty: Some(resume_ty),
             coroutine_drop: None,
+            coroutine_drop_async: None,
+            coroutine_drop_proxy_async: None,
             coroutine_layout: None,
         }
     }
@@ -585,6 +593,26 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn coroutine_drop(&self) -> Option<&Body<'tcx>> {
         self.coroutine.as_ref().and_then(|coroutine| coroutine.coroutine_drop.as_ref())
+    }
+
+    #[inline]
+    pub fn coroutine_drop_async(&self) -> Option<&Body<'tcx>> {
+        self.coroutine.as_ref().and_then(|coroutine| coroutine.coroutine_drop_async.as_ref())
+    }
+
+    #[inline]
+    pub fn coroutine_requires_async_drop(&self) -> bool {
+        self.coroutine_drop_async().is_some()
+    }
+
+    #[inline]
+    pub fn future_drop_poll(&self) -> Option<&Body<'tcx>> {
+        self.coroutine.as_ref().and_then(|coroutine| {
+            coroutine
+                .coroutine_drop_async
+                .as_ref()
+                .or(coroutine.coroutine_drop_proxy_async.as_ref())
+        })
     }
 
     #[inline]

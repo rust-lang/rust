@@ -240,10 +240,3 @@ pub trait Drop {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn drop(&mut self);
 }
-
-/// Fallback function to call surface level `Drop::drop` function
-#[allow(drop_bounds)]
-#[lang = "fallback_surface_drop"]
-pub(crate) fn fallback_surface_drop<T: Drop + ?Sized>(x: &mut T) {
-    <T as Drop>::drop(x)
-}

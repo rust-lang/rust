@@ -405,6 +405,9 @@ impl<'tcx> Map<'tcx> {
             if exclude.contains(local) {
                 continue;
             }
+            if decl.ty.is_templated_coroutine(tcx) {
+                continue;
+            }
 
             // Create a place for the local.
             debug_assert!(self.locals[local].is_none());
