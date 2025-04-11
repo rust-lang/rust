@@ -23,6 +23,7 @@ use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
 use borrow_set::LocalsStateAtExit;
+use diagnostics::RegionErrors;
 use root_cx::BorrowCheckRootCtxt;
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -362,13 +363,63 @@ fn do_mir_borrowck<'tcx>(
     // information.
     nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req);
 
+    let used_mut_upvars = borrowck_body(
+        root_cx,
+        &infcx,
+        &body,
+        &promoted,
+        &location_table,
+        &move_data,
+        &borrow_set,
+        &regioncx,
+        polonius_output.as_deref(),
+        polonius_diagnostics.as_ref(),
+        nll_errors,
+    );
+
+    let result =
+        PropagatedBorrowCheckResults { closure_requirements: opt_closure_req, used_mut_upvars };
+
+    let body_with_facts = if consumer_options.is_some() {
+        Some(Box::new(BodyWithBorrowckFacts {
+            body: body_owned,
+            promoted,
+            borrow_set,
+            region_inference_context: regioncx,
+            location_table: polonius_input.as_ref().map(|_| location_table),
+            input_facts: polonius_input,
+            output_facts: polonius_output,
+        }))
+    } else {
+        None
+    };
+
+    debug!("do_mir_borrowck: result = {:#?}", result);
+
+    (result, body_with_facts)
+}
+
+fn borrowck_body<'tcx>(
+    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    infcx: &BorrowckInferCtxt<'tcx>,
+    body: &Body<'tcx>,
+    promoted: &IndexVec<Promoted, Body<'tcx>>,
+    location_table: &PoloniusLocationTable,
+    move_data: &MoveData<'tcx>,
+    borrow_set: &BorrowSet<'tcx>,
+    regioncx: &RegionInferenceContext<'tcx>,
+    polonius_output: Option<&PoloniusOutput>,
+    polonius_diagnostics: Option<&PoloniusDiagnosticsContext>,
+    nll_errors: RegionErrors<'tcx>,
+) -> SmallVec<[FieldIdx; 8]> {
+    let tcx = infcx.tcx;
     let movable_coroutine = body.coroutine.is_some()
-        && tcx.coroutine_movability(def.to_def_id()) == hir::Movability::Movable;
+        && tcx.coroutine_movability(body.source.def_id()) == hir::Movability::Movable;
 
     let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
     // While promoteds should mostly be correct by construction, we need to check them for
     // invalid moves to detect moving out of arrays:`struct S; fn main() { &([S][0]); }`.
-    for promoted_body in &promoted {
+    for promoted_body in promoted {
         use rustc_middle::mir::visit::Visitor;
         // This assumes that we won't use some of the fields of the `promoted_mbcx`
         // when detecting and reporting move errors. While it would be nice to move
@@ -394,10 +445,11 @@ fn do_mir_borrowck<'tcx>(
             local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
             region_names: RefCell::default(),
             next_region_name: RefCell::new(1),
-            polonius_output: None,
             move_errors: Vec::new(),
             diags_buffer,
-            polonius_diagnostics: polonius_diagnostics.as_ref(),
+
+            polonius_output,
+            polonius_diagnostics,
         };
         struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
@@ -445,18 +497,18 @@ fn do_mir_borrowck<'tcx>(
         access_place_error_reported: Default::default(),
         reservation_error_reported: Default::default(),
         uninitialized_error_reported: Default::default(),
-        regioncx: &regioncx,
+        regioncx,
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
         borrow_set: &borrow_set,
-        upvars: tcx.closure_captures(def),
+        upvars: tcx.closure_captures(body.source.def_id().expect_local()),
         local_names,
         region_names: RefCell::default(),
         next_region_name: RefCell::new(1),
         move_errors: Vec::new(),
         diags_buffer,
-        polonius_output: polonius_output.as_deref(),
-        polonius_diagnostics: polonius_diagnostics.as_ref(),
+        polonius_output,
+        polonius_diagnostics,
     };
 
     // Compute and report region errors, if any.
@@ -496,28 +548,7 @@ fn do_mir_borrowck<'tcx>(
         mbcx.root_cx.set_tainted_by_errors(guar);
     }
 
-    let result = PropagatedBorrowCheckResults {
-        closure_requirements: opt_closure_req,
-        used_mut_upvars: mbcx.used_mut_upvars,
-    };
-
-    let body_with_facts = if consumer_options.is_some() {
-        Some(Box::new(BodyWithBorrowckFacts {
-            body: body_owned,
-            promoted,
-            borrow_set,
-            region_inference_context: regioncx,
-            location_table: polonius_input.as_ref().map(|_| location_table),
-            input_facts: polonius_input,
-            output_facts: polonius_output,
-        }))
-    } else {
-        None
-    };
-
-    debug!("do_mir_borrowck: result = {:#?}", result);
-
-    (result, body_with_facts)
+    mbcx.used_mut_upvars
 }
 
 fn get_flow_results<'a, 'tcx>(
