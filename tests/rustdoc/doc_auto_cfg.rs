@@ -1,10 +1,7 @@
 // Test covering RFC 3631 features.
 
 #![crate_name = "foo"]
-#![feature(no_core)]
-#![no_core]
-#![no_std]
-
+#![feature(doc_cfg)]
 #![doc(auto_cfg(hide(feature = "hidden")))]
 
 //@ has 'foo/index.html'

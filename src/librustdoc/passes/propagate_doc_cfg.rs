@@ -18,7 +18,11 @@ pub(crate) const PROPAGATE_DOC_CFG: Pass = Pass {
 };
 
 pub(crate) fn propagate_doc_cfg(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
-    CfgPropagator { cx, cfg_info: CfgInfo::default() }.fold_crate(cr)
+    if cx.tcx.features().doc_cfg() {
+        CfgPropagator { cx, cfg_info: CfgInfo::default() }.fold_crate(cr)
+    } else {
+        cr
+    }
 }
 
 struct CfgPropagator<'a, 'tcx> {
