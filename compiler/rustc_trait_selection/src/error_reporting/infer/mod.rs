@@ -82,9 +82,7 @@ use crate::infer;
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use crate::infer::{InferCtxt, InferCtxtExt as _, TypeTrace, ValuePairs};
 use crate::solve::deeply_normalize_for_diagnostics;
-use crate::traits::{
-    IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
-};
+use crate::traits::{MatchExpressionArmCause, ObligationCause, ObligationCauseCode};
 
 mod note_and_explain;
 mod suggest;
@@ -613,18 +611,28 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
             },
-            ObligationCauseCode::IfExpression(box IfExpressionCause {
-                then_id,
-                else_id,
-                then_ty,
-                else_ty,
-                outer_span,
-                ..
-            }) => {
-                let then_span = self.find_block_span_from_hir_id(then_id);
-                let else_span = self.find_block_span_from_hir_id(else_id);
-                if let hir::Node::Expr(e) = self.tcx.hir_node(else_id)
-                    && let hir::ExprKind::If(_cond, _then, None) = e.kind
+            ObligationCauseCode::IfExpression { expr_id, .. } => {
+                let hir::Node::Expr(&hir::Expr {
+                    kind: hir::ExprKind::If(cond_expr, then_expr, Some(else_expr)),
+                    span: expr_span,
+                    ..
+                }) = self.tcx.hir_node(expr_id)
+                else {
+                    return;
+                };
+                let then_span = self.find_block_span_from_hir_id(then_expr.hir_id);
+                let then_ty = self
+                    .typeck_results
+                    .as_ref()
+                    .expect("if expression only expected inside FnCtxt")
+                    .expr_ty(then_expr);
+                let else_span = self.find_block_span_from_hir_id(else_expr.hir_id);
+                let else_ty = self
+                    .typeck_results
+                    .as_ref()
+                    .expect("if expression only expected inside FnCtxt")
+                    .expr_ty(else_expr);
+                if let hir::ExprKind::If(_cond, _then, None) = else_expr.kind
                     && else_ty.is_unit()
                 {
                     // Account for `let x = if a { 1 } else if b { 2 };`
@@ -632,9 +640,32 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.note("consider adding an `else` block that evaluates to the expected type");
                 }
                 err.span_label(then_span, "expected because of this");
+
+                let outer_span = if self.tcx.sess.source_map().is_multiline(expr_span) {
+                    if then_span.hi() == expr_span.hi() || else_span.hi() == expr_span.hi() {
+                        // Point at condition only if either block has the same end point as
+                        // the whole expression, since that'll cause awkward overlapping spans.
+                        Some(expr_span.shrink_to_lo().to(cond_expr.peel_drop_temps().span))
+                    } else {
+                        Some(expr_span)
+                    }
+                } else {
+                    None
+                };
                 if let Some(sp) = outer_span {
                     err.span_label(sp, "`if` and `else` have incompatible types");
                 }
+
+                let then_id = if let hir::ExprKind::Block(then_blk, _) = then_expr.kind {
+                    then_blk.hir_id
+                } else {
+                    then_expr.hir_id
+                };
+                let else_id = if let hir::ExprKind::Block(else_blk, _) = else_expr.kind {
+                    else_blk.hir_id
+                } else {
+                    else_expr.hir_id
+                };
                 if let Some(subdiag) = self.suggest_remove_semi_or_return_binding(
                     Some(then_id),
                     then_ty,
