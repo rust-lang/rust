@@ -43,7 +43,7 @@ pub use self::freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 pub use self::lock::{Lock, LockGuard, Mode};
 pub use self::mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
 pub use self::parallel::{
-    join, par_for_each_in, par_map, parallel_guard, scope, spawn, try_par_for_each_in,
+    broadcast, join, par_for_each_in, par_map, parallel_guard, scope, spawn, try_par_for_each_in,
 };
 pub use self::vec::{AppendOnlyIndexVec, AppendOnlyVec};
 pub use self::worker_local::{Registry, WorkerLocal};
