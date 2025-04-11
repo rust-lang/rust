@@ -6,11 +6,11 @@
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::traits::CodegenObligationError;
-use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt, Upcast};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{
     ImplSource, Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
-    Unimplemented,
+    Unimplemented, sizedness_fast_path,
 };
 use tracing::debug;
 
@@ -33,6 +33,13 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     // shallow result we are looking for -- that is, what specific impl.
     let (infcx, param_env) = tcx.infer_ctxt().ignoring_regions().build_with_typing_env(typing_env);
     let mut selcx = SelectionContext::new(&infcx);
+
+    if sizedness_fast_path(tcx, trait_ref.upcast(tcx)) {
+        return Ok(&*tcx.arena.alloc(ImplSource::Builtin(
+            ty::solve::BuiltinImplSource::Trivial,
+            Default::default(),
+        )));
+    }
 
     let obligation_cause = ObligationCause::dummy();
     let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);

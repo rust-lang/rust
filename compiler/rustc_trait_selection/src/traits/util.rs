@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 pub use rustc_infer::traits::util::*;
@@ -503,4 +504,22 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
             ct.super_fold_with(self)
         }
     }
+}
+
+pub fn sizedness_fast_path<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tcx>) -> bool {
+    // Proving `Sized` very often on "obviously sized" types like `&T`, accounts for about 60%
+    // percentage of the predicates we have to prove. No need to canonicalize and all that for
+    // such cases.
+    if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_ref)) =
+        predicate.kind().skip_binder()
+    {
+        if tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized)
+            && trait_ref.self_ty().is_trivially_sized(tcx)
+        {
+            debug!("fast path -- trivial sizedness");
+            return true;
+        }
+    }
+
+    false
 }
