@@ -1020,3 +1020,20 @@ fn test_ptr_swap_nonoverlapping_is_untyped() {
     ptr_swap_nonoverlapping_is_untyped_inner();
     const { ptr_swap_nonoverlapping_is_untyped_inner() };
 }
+
+#[test]
+fn test_ptr_default() {
+    #[derive(Default)]
+    struct PtrDefaultTest {
+        ptr: *const u64,
+    }
+    let default = PtrDefaultTest::default();
+    assert!(default.ptr.is_null());
+
+    #[derive(Default)]
+    struct PtrMutDefaultTest {
+        ptr: *mut u64,
+    }
+    let default = PtrMutDefaultTest::default();
+    assert!(default.ptr.is_null());
+}

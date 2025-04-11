@@ -2156,3 +2156,11 @@ impl<T: ?Sized> PartialOrd for *mut T {
         *self >= *other
     }
 }
+
+#[stable(feature = "raw_ptr_default", since = "CURRENT_RUSTC_VERSION")]
+impl<T: ?Sized + Thin> Default for *mut T {
+    /// Returns the default value of [`null_mut()`][crate::ptr::null_mut].
+    fn default() -> Self {
+        crate::ptr::null_mut()
+    }
+}
