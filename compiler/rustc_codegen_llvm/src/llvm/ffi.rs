@@ -1157,6 +1157,10 @@ unsafe extern "C" {
     pub(crate) fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstGlobal(M: &Module) -> Option<&Value>;
     pub(crate) fn LLVMGetNextGlobal(GlobalVar: &Value) -> Option<&Value>;
+
+    pub(crate) fn LLVMGetFirstFunction(M: &Module) -> Option<&Value>;
+    pub(crate) fn LLVMGetNextFunction(Fn: &Value) -> Option<&Value>;
+
     pub(crate) fn LLVMDeleteGlobal(GlobalVar: &Value);
     pub(crate) fn LLVMGetInitializer(GlobalVar: &Value) -> Option<&Value>;
     pub(crate) fn LLVMSetInitializer<'a>(GlobalVar: &'a Value, ConstantVal: &'a Value);
