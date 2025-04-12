@@ -5,7 +5,10 @@ LL | struct Obj {
    |            ^ unclosed delimiter
 ...
 LL | )
-   | ^ mismatched closing delimiter
+   | ^
+   | |
+   | mismatched closing delimiter
+   | missing open `(` for this delimiter
 
 error: aborting due to 1 previous error
 

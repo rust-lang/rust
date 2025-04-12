@@ -2,8 +2,10 @@ error: mismatched closing delimiter: `)`
   --> $DIR/issue-91334.rs:7:19
    |
 LL | fn f(){||yield(((){),
-   |                -  ^^ mismatched closing delimiter
-   |                |  |
+   |                -  ^^
+   |                |  ||
+   |                |  |mismatched closing delimiter
+   |                |  |missing open `(` for this delimiter
    |                |  unclosed delimiter
    |                closing delimiter possibly meant for this
 
@@ -11,9 +13,8 @@ error: this file contains an unclosed delimiter
   --> $DIR/issue-91334.rs:7:23
    |
 LL | fn f(){||yield(((){),
-   |       -       -    - ^
-   |       |       |    |
-   |       |       |    missing open `(` for this delimiter
+   |       -       -      ^
+   |       |       |
    |       |       unclosed delimiter
    |       unclosed delimiter
 

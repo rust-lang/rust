@@ -5,4 +5,4 @@ fn f(i: u32, j: u32) {
     while cnt < j {
         write!&mut res, " "); //~ ERROR mismatched closing delimiter
     }
-} //~ ERROR unexpected closing delimiter
+}

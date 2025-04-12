@@ -2,8 +2,10 @@ error: mismatched closing delimiter: `)`
   --> $DIR/issue-102878.rs:1:35
    |
 LL | macro_rules!test{($l:expr,$_:r)=>({const:y y)}
-   |                                  -^         ^ mismatched closing delimiter
-   |                                  ||
+   |                                  -^         ^
+   |                                  ||         |
+   |                                  ||         mismatched closing delimiter
+   |                                  ||         missing open `(` for this delimiter
    |                                  |unclosed delimiter
    |                                  closing delimiter possibly meant for this
 

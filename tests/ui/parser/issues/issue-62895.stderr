@@ -5,7 +5,10 @@ LL | mod _ {
    |       ^ unclosed delimiter
 LL | pub    g() -> is
 LL | (), w20);
-   |        ^ mismatched closing delimiter
+   |        ^
+   |        |
+   |        mismatched closing delimiter
+   |        missing open `(` for this delimiter
 
 error: mismatched closing delimiter: `)`
   --> $DIR/issue-62895.rs:4:7
@@ -14,7 +17,10 @@ LL | mod _ {
    |       ^ unclosed delimiter
 ...
 LL | (), w20);
-   |        ^ mismatched closing delimiter
+   |        ^
+   |        |
+   |        mismatched closing delimiter
+   |        missing open `(` for this delimiter
 
 error: aborting due to 2 previous errors
 
