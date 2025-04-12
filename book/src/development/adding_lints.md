@@ -126,10 +126,14 @@ fn main() {
 ```
 
 Note that we are adding comment annotations with the name of our lint to mark
-lines where we expect an error. Once we have implemented our lint we can run
-`TESTNAME=foo_functions cargo uibless` to generate the `.stderr` file. If our
-lint makes use of structured suggestions then this command will also generate
-the corresponding `.fixed` file.
+lines where we expect an error. Except for very specific situations
+(`//@check-pass`), at least one error marker must be present in a test file for
+it to be accepted.
+
+Once we have implemented our lint we can run `TESTNAME=foo_functions cargo
+uibless` to generate the `.stderr` file. If our lint makes use of structured
+suggestions then this command will also generate the corresponding `.fixed`
+file.
 
 While we are working on implementing our lint, we can keep running the UI test.
 That allows us to check if the output is turning into what we want by checking the
