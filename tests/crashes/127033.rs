@@ -1,5 +1,5 @@
 //@ known-bug: #127033
-//@ compile-flags: --edition=2021
+//@ edition: 2021
 
 pub trait RaftLogStorage {
     fn save_vote(vote: ()) -> impl std::future::Future + Send;

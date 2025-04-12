@@ -1,4 +1,5 @@
-//@ compile-flags: --edition=2021 --crate-type=lib
+//@ compile-flags: --crate-type=lib
+//@ edition: 2021
 //@ rustc-env:RUST_BACKTRACE=0
 //@ check-pass
 

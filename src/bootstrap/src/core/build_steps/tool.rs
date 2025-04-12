@@ -148,7 +148,9 @@ impl Step for ToolBuild {
             &self.extra_features,
         );
 
-        if path.ends_with("/rustdoc") &&
+        // Rustc tools (miri, clippy, cargo, rustfmt, rust-analyzer)
+        // could use the additional optimizations.
+        if self.mode == Mode::ToolRustc &&
             // rustdoc is performance sensitive, so apply LTO to it.
             is_lto_stage(&self.compiler)
         {

@@ -1,5 +1,5 @@
 //@ known-bug: #137467
-//@ compile-flags: --edition=2021
+//@ edition: 2021
 enum Camera {
     Normal { base_transform: i32 },
     Volume { transform: i32 },

@@ -3218,17 +3218,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc-rayon"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cd9fb077db982d7ceb42a90471e5a69a990b58f71e06f0d8340bb2cf35eb751"
-dependencies = [
- "either",
- "indexmap",
- "rustc-rayon-core",
-]
-
-[[package]]
 name = "rustc-rayon-core"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3599,7 +3588,7 @@ dependencies = [
  "parking_lot",
  "portable-atomic",
  "rustc-hash 2.1.1",
- "rustc-rayon",
+ "rustc-rayon-core",
  "rustc-stable-hash",
  "rustc_arena",
  "rustc_graphviz",
@@ -3945,7 +3934,6 @@ dependencies = [
 name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
- "rustc-rayon",
  "rustc-rayon-core",
  "rustc_abi",
  "rustc_ast",
@@ -4409,7 +4397,6 @@ dependencies = [
  "rustc_feature",
  "rustc_fluent_macro",
  "rustc_hir",
- "rustc_index",
  "rustc_macros",
  "rustc_metadata",
  "rustc_middle",
@@ -4456,6 +4443,7 @@ dependencies = [
  "bitflags",
  "getopts",
  "libc",
+ "rand 0.9.0",
  "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",

@@ -562,9 +562,9 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
                     Symbol::intern(s)
                 })
             }
-            SYMBOL_PREINTERNED => {
+            SYMBOL_PREDEFINED => {
                 let symbol_index = self.read_u32();
-                Symbol::new_from_decoded(symbol_index)
+                Symbol::new(symbol_index)
             }
             _ => unreachable!(),
         }
@@ -1313,7 +1313,7 @@ impl<'a> CrateMetadataRef<'a> {
     fn get_fn_has_self_parameter(self, id: DefIndex, sess: &'a Session) -> bool {
         self.root
             .tables
-            .fn_arg_names
+            .fn_arg_idents
             .get(self, id)
             .expect("argument names not encoded for a function")
             .decode((self, sess))

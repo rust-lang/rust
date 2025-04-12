@@ -264,6 +264,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         hash_untracked_state: None,
         register_lints: None,
         override_queries: None,
+        extra_symbols: Vec::new(),
         make_codegen_backend: None,
         registry: diagnostics_registry(),
         using_internal_features: &USING_INTERNAL_FEATURES,
@@ -348,10 +349,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             // Make sure name resolution and macro expansion is run.
             let _ = tcx.resolver_for_lowering();
 
-            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
-                dump_feature_usage_metrics(tcx, metrics_dir);
-            }
-
             if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
                 return early_exit();
             }
@@ -369,6 +366,10 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             }
 
             tcx.ensure_ok().analysis(());
+
+            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
+                dump_feature_usage_metrics(tcx, metrics_dir);
+            }
 
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
                 return early_exit();

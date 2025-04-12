@@ -40,7 +40,9 @@ pub(crate) fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
         //
         // we should figure out how to lift this restriction! (run them all
         // on different ports allocated dynamically).
-        env::set_var("RUST_TEST_THREADS", "1");
+        //
+        // SAFETY: at this point we are still single-threaded.
+        unsafe { env::set_var("RUST_TEST_THREADS", "1") };
     }
 
     Some(Arc::new(Config { debugger: Some(Debugger::Gdb), ..config.clone() }))

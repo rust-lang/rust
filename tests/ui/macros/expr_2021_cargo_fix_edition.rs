@@ -1,6 +1,6 @@
 //@ run-rustfix
 //@ check-pass
-//@ compile-flags: --edition=2021
+//@ edition: 2021
 #![warn(edition_2024_expr_fragment_specifier)]
 
 macro_rules! m {

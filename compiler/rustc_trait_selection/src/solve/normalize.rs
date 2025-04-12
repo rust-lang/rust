@@ -253,20 +253,28 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        deeply_normalize_with_skipped_universes(
-            self.at,
-            ty,
-            vec![None; ty.outer_exclusive_binder().as_usize()],
-        )
-        .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ty.super_fold_with(self))
+        let infcx = self.at.infcx;
+        infcx
+            .commit_if_ok(|_| {
+                deeply_normalize_with_skipped_universes(
+                    self.at,
+                    ty,
+                    vec![None; ty.outer_exclusive_binder().as_usize()],
+                )
+            })
+            .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ty.super_fold_with(self))
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        deeply_normalize_with_skipped_universes(
-            self.at,
-            ct,
-            vec![None; ct.outer_exclusive_binder().as_usize()],
-        )
-        .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ct.super_fold_with(self))
+        let infcx = self.at.infcx;
+        infcx
+            .commit_if_ok(|_| {
+                deeply_normalize_with_skipped_universes(
+                    self.at,
+                    ct,
+                    vec![None; ct.outer_exclusive_binder().as_usize()],
+                )
+            })
+            .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ct.super_fold_with(self))
     }
 }

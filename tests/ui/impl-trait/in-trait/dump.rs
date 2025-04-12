@@ -8,7 +8,7 @@ trait Foo {
 }
 
 fn hello<'s, T: Foo>(x: &'s T) -> impl Sized + use<'s, T> {
-//~^ ERROR <T as Foo>::{synthetic#0}<'s/#1>
+//~^ ERROR <T as Foo>::{anon_assoc#0}<'s/#1>
     x.hello()
 }
 

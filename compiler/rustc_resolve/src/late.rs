@@ -5007,8 +5007,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             return false;
         }
         let Some(local_did) = did.as_local() else { return true };
-        let Some(node_id) = self.r.def_id_to_node_id.get(local_did) else { return true };
-        !self.r.proc_macros.contains(node_id)
+        !self.r.proc_macros.contains(&local_did)
     }
 
     fn resolve_doc_links(&mut self, attrs: &[Attribute], maybe_exported: MaybeExported<'_>) {

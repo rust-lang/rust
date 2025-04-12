@@ -1544,9 +1544,6 @@ impl Config {
             }
         }
 
-        let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
-        let ci_channel = file_content.trim_end();
-
         // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
         // but not if `bootstrap.toml` hasn't been created.
         let mut toml = if !using_default_path || toml_path.exists() {
@@ -1852,17 +1849,21 @@ impl Config {
         let mut lld_enabled = None;
         let mut std_features = None;
 
-        let is_user_configured_rust_channel =
-            if let Some(channel) = toml.rust.as_ref().and_then(|r| r.channel.clone()) {
-                if channel == "auto-detect" {
-                    config.channel = ci_channel.into();
-                } else {
-                    config.channel = channel;
-                }
+        let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
+        let ci_channel = file_content.trim_end();
+
+        let toml_channel = toml.rust.as_ref().and_then(|r| r.channel.clone());
+        let is_user_configured_rust_channel = match toml_channel {
+            Some(channel) if channel == "auto-detect" => {
+                config.channel = ci_channel.into();
                 true
-            } else {
-                false
-            };
+            }
+            Some(channel) => {
+                config.channel = channel;
+                true
+            }
+            None => false,
+        };
 
         let default = config.channel == "dev";
         config.omit_git_hash = toml.rust.as_ref().and_then(|r| r.omit_git_hash).unwrap_or(default);
@@ -1886,6 +1887,10 @@ impl Config {
                 && config.src.join("vendor").exists()
                 && config.src.join(".cargo/config.toml").exists(),
         );
+
+        if !is_user_configured_rust_channel && config.rust_info.is_from_tarball() {
+            config.channel = ci_channel.into();
+        }
 
         if let Some(rust) = toml.rust {
             let Rust {
@@ -2090,8 +2095,6 @@ impl Config {
 
                 config.channel = channel;
             }
-        } else if config.rust_info.is_from_tarball() && !is_user_configured_rust_channel {
-            ci_channel.clone_into(&mut config.channel);
         }
 
         if let Some(llvm) = toml.llvm {

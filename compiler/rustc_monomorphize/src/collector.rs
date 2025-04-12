@@ -1689,7 +1689,7 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
             let mut recursion_depths = DefIdMap::default();
             collect_items_rec(
                 tcx,
-                dummy_spanned(root),
+                dummy_spanned(*root),
                 &state,
                 &mut recursion_depths,
                 recursion_limit,

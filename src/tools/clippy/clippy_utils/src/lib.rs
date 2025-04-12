@@ -3,6 +3,7 @@
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
+#![feature(macro_metavar_expr)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(let_chains)]
 #![feature(never_type)]
@@ -74,6 +75,7 @@ pub mod qualify_min_const_fn;
 pub mod source;
 pub mod str_utils;
 pub mod sugg;
+pub mod sym;
 pub mod ty;
 pub mod usage;
 pub mod visitors;
@@ -126,7 +128,7 @@ use rustc_middle::ty::{
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{InnerSpan, Span, sym};
+use rustc_span::{InnerSpan, Span};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
@@ -3502,7 +3504,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
                 // a::b::c  ::d::sym refers to
                 // e::f::sym:: ::
                 // result should be super::super::super::super::e::f
-                if let DefPathData::TypeNs(Some(s)) = l {
+                if let DefPathData::TypeNs(s) = l {
                     path.push(s.to_string());
                 }
                 if let DefPathData::TypeNs(_) = r {
@@ -3513,7 +3515,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
             // a::b::sym:: ::    refers to
             // c::d::e  ::f::sym
             // when looking at `f`
-            Left(DefPathData::TypeNs(Some(sym))) => path.push(sym.to_string()),
+            Left(DefPathData::TypeNs(sym)) => path.push(sym.to_string()),
             // consider:
             // a::b::c  ::d::sym refers to
             // e::f::sym:: ::
@@ -3527,7 +3529,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
         // `super` chain would be too long, just use the absolute path instead
         once(String::from("crate"))
             .chain(to.data.iter().filter_map(|el| {
-                if let DefPathData::TypeNs(Some(sym)) = el.data {
+                if let DefPathData::TypeNs(sym) = el.data {
                     Some(sym.to_string())
                 } else {
                     None

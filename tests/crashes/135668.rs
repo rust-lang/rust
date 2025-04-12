@@ -1,5 +1,5 @@
 //@ known-bug: #135668
-//@ compile-flags: --edition=2021
+//@ edition: 2021
 use std::future::Future;
 
 pub async fn foo() {

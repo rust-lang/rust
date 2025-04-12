@@ -1,4 +1,4 @@
-error: <T as Foo>::{synthetic#0}<'s/#1>
+error: <T as Foo>::{anon_assoc#0}<'s/#1>
   --> $DIR/dump.rs:10:35
    |
 LL | fn hello<'s, T: Foo>(x: &'s T) -> impl Sized + use<'s, T> {

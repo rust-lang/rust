@@ -39,14 +39,14 @@ help: use the `'static` lifetime
 LL |     const STATIC: &'static str = "";
    |                    +++++++
 
-error[E0195]: lifetime parameters or bounds on const `STATIC` do not match the trait declaration
+error[E0195]: lifetime parameters or bounds on associated const `STATIC` do not match the trait declaration
   --> $DIR/elided-lifetime.rs:16:17
    |
 LL |     const STATIC: &str;
-   |                 - lifetimes in impl do not match this const in trait
+   |                 - lifetimes in impl do not match this associated const in trait
 ...
 LL |     const STATIC: &str = "";
-   |                 ^ lifetimes do not match const in trait
+   |                 ^ lifetimes do not match associated const in trait
 
 error: aborting due to 3 previous errors
 

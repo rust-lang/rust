@@ -534,12 +534,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok((def_kind, pick.item.def_id))
     }
 
-    /// Finds item with name `item_name` defined in impl/trait `def_id`
+    /// Finds item with name `item_ident` defined in impl/trait `def_id`
     /// and return it, or `None`, if no such item was defined there.
-    fn associated_value(&self, def_id: DefId, item_name: Ident) -> Option<ty::AssocItem> {
+    fn associated_value(&self, def_id: DefId, item_ident: Ident) -> Option<ty::AssocItem> {
         self.tcx
             .associated_items(def_id)
-            .find_by_name_and_namespace(self.tcx, item_name, Namespace::ValueNS, def_id)
+            .find_by_ident_and_namespace(self.tcx, item_ident, Namespace::ValueNS, def_id)
             .copied()
     }
 }
