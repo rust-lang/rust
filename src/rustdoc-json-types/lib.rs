@@ -64,8 +64,8 @@ pub struct Crate {
 pub struct Target {
     /// The target triple for which this documentation was generated
     pub triple: String,
-    /// A list of `#[target_feature]` which exist for this target, along with their status in this
-    /// compiler session
+    /// A list of features valid for use in `#[target_feature]` attributes
+    /// for the target where this rustdoc JSON was generated.
     pub target_features: Vec<TargetFeature>,
 }
 
