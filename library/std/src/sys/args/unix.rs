@@ -5,9 +5,12 @@
 
 #![allow(dead_code)] // runtime init functions not used during testing
 
-use crate::ffi::{CStr, OsString};
+use crate::ffi::CStr;
 use crate::os::unix::ffi::OsStringExt;
-use crate::{fmt, vec};
+
+#[path = "common.rs"]
+mod common;
+pub use common::Args;
 
 /// One-time global initialization.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
@@ -55,42 +58,7 @@ pub fn args() -> Args {
         vec.push(OsStringExt::from_vec(cstr.to_bytes().to_vec()));
     }
 
-    Args { iter: vec.into_iter() }
-}
-
-pub struct Args {
-    iter: vec::IntoIter<OsString>,
-}
-
-impl !Send for Args {}
-impl !Sync for Args {}
-
-impl fmt::Debug for Args {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.iter.as_slice().fmt(f)
-    }
-}
-
-impl Iterator for Args {
-    type Item = OsString;
-    fn next(&mut self) -> Option<OsString> {
-        self.iter.next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-}
-
-impl ExactSizeIterator for Args {
-    fn len(&self) -> usize {
-        self.iter.len()
-    }
-}
-
-impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> {
-        self.iter.next_back()
-    }
+    Args::new(vec)
 }
 
 #[cfg(any(

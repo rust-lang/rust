@@ -16,7 +16,11 @@ use crate::sys::path::get_long_path;
 use crate::sys::{c, to_u16s};
 use crate::sys_common::AsInner;
 use crate::sys_common::wstr::WStrUnits;
-use crate::{fmt, io, iter, ptr, vec};
+use crate::{io, iter, ptr};
+
+#[path = "common.rs"]
+mod common;
+pub use common::Args;
 
 pub fn args() -> Args {
     // SAFETY: `GetCommandLineW` returns a pointer to a null terminated UTF-16
@@ -27,7 +31,7 @@ pub fn args() -> Args {
             current_exe().map(PathBuf::into_os_string).unwrap_or_else(|_| OsString::new())
         });
 
-        Args { parsed_args_list: parsed_args_list.into_iter() }
+        Args::new(parsed_args_list)
     }
 }
 
@@ -151,38 +155,6 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
         ret_val.push(OsString::from_wide(&cur[..]));
     }
     ret_val
-}
-
-pub struct Args {
-    parsed_args_list: vec::IntoIter<OsString>,
-}
-
-impl fmt::Debug for Args {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.parsed_args_list.as_slice().fmt(f)
-    }
-}
-
-impl Iterator for Args {
-    type Item = OsString;
-    fn next(&mut self) -> Option<OsString> {
-        self.parsed_args_list.next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.parsed_args_list.size_hint()
-    }
-}
-
-impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> {
-        self.parsed_args_list.next_back()
-    }
-}
-
-impl ExactSizeIterator for Args {
-    fn len(&self) -> usize {
-        self.parsed_args_list.len()
-    }
 }
 
 #[derive(Debug)]
