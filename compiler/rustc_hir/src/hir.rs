@@ -1756,7 +1756,7 @@ pub enum PatKind<'hir> {
     Never,
 
     /// A tuple pattern (e.g., `(a, b)`).
-    /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
+    /// If the `..` pattern fragment is present, then `DotDotPos` denotes its position.
     /// `0 <= position <= subpats.len()`
     Tuple(&'hir [Pat<'hir>], DotDotPos),
 
