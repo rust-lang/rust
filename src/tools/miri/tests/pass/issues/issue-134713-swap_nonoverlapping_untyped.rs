@@ -1,4 +1,4 @@
-use std::mem::{size_of, align_of};
+use std::mem::{align_of, size_of};
 
 // See <https://github.com/rust-lang/rust/issues/134713>
 
