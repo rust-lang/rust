@@ -28,9 +28,9 @@
    LL|       |
    LL|      1|fn main() {
    LL|      1|    println!("codecovsample::main");
-   LL|      1|
+   LL|       |
    LL|      1|    non_async_func();
-   LL|      1|
+   LL|       |
    LL|      1|    executor::block_on(async_func());
    LL|      1|    executor::block_on(async_func_just_println());
    LL|      1|}

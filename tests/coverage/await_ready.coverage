@@ -12,7 +12,7 @@
    LL|       |#[coverage(on)]
    LL|       |#[rustfmt::skip]
    LL|      1|async fn await_ready() -> u8 {
-   LL|      1|    // await should be covered even if the function never yields
+   LL|       |    // await should be covered even if the function never yields
    LL|      1|    ready()
    LL|      1|        .await
    LL|      1|}

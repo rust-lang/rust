@@ -6,7 +6,7 @@
    LL|       |// back to the declaration site.
    LL|      1|static NO_BLOCK: fn() = || println!("hello");
    LL|       |
-   LL|      1|static WITH_BLOCK: fn() = || {
+   LL|       |static WITH_BLOCK: fn() = || {
    LL|      1|    println!("hello");
    LL|      1|};
    LL|       |
