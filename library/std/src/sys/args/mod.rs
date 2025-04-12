@@ -3,7 +3,7 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 cfg_if::cfg_if! {
-    if #[cfg(target_family = "unix")] {
+    if #[cfg(all(target_family = "unix", not(any(target_os = "espidf", target_os = "vita"))))] {
         mod unix;
         pub use unix::*;
     } else if #[cfg(target_family = "windows")] {

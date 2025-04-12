@@ -226,16 +226,3 @@ mod imp {
         (argc as isize, argv.cast())
     }
 }
-
-#[cfg(any(target_os = "espidf", target_os = "vita"))]
-mod imp {
-    use crate::ffi::c_char;
-    use crate::ptr;
-
-    #[inline(always)]
-    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-
-    pub fn argc_argv() -> (isize, *const *const c_char) {
-        (0, ptr::null())
-    }
-}
