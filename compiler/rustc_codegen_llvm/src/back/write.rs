@@ -565,6 +565,9 @@ pub(crate) unsafe fn llvm_optimize(
 
     let consider_ad = cfg!(llvm_enzyme) && config.autodiff.contains(&config::AutoDiff::Enable);
     let run_enzyme = autodiff_stage == AutodiffStage::DuringAD;
+    let print_before_enzyme = config.autodiff.contains(&config::AutoDiff::PrintModBefore);
+    let print_after_enzyme = config.autodiff.contains(&config::AutoDiff::PrintModAfter);
+    let print_passes = config.autodiff.contains(&config::AutoDiff::PrintPasses);
     let unroll_loops;
     let vectorize_slp;
     let vectorize_loop;
@@ -663,6 +666,9 @@ pub(crate) unsafe fn llvm_optimize(
             config.no_builtins,
             config.emit_lifetime_markers,
             run_enzyme,
+            print_before_enzyme,
+            print_after_enzyme,
+            print_passes,
             sanitizer_options.as_ref(),
             pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
