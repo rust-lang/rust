@@ -2,8 +2,10 @@ error: mismatched closing delimiter: `]`
   --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:27
    |
 LL |         V = [PhantomData; { [ () ].len() ].len() as isize,
-   |             -             ^              ^ mismatched closing delimiter
-   |             |             |
+   |             -             ^              ^
+   |             |             |              |
+   |             |             |              mismatched closing delimiter
+   |             |             |              missing open `[` for this delimiter
    |             |             unclosed delimiter
    |             closing delimiter possibly meant for this
 
@@ -11,8 +13,10 @@ error: mismatched closing delimiter: `]`
   --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:12:24
    |
 LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |             -          ^           ^ mismatched closing delimiter
-   |             |          |
+   |             -          ^           ^
+   |             |          |           |
+   |             |          |           mismatched closing delimiter
+   |             |          |           missing open `[` for this delimiter
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 
@@ -20,26 +24,24 @@ error: mismatched closing delimiter: `]`
   --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:19:24
    |
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |             -          ^           ^ mismatched closing delimiter
-   |             |          |
+   |             -          ^           ^
+   |             |          |           |
+   |             |          |           mismatched closing delimiter
+   |             |          |           missing open `[` for this delimiter
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 
 error: this file contains an unclosed delimiter
   --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:23:65
    |
-LL |         V = [PhantomData; { [ () ].len() ].len() as isize,
-   |                                          - missing open `[` for this delimiter
-...
-LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |                                    - missing open `[` for this delimiter
-...
 LL | mod c {
    |       - unclosed delimiter
 LL |     enum Bug {
-LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |                                    - missing open `[` for this delimiter
+   |              - this delimiter might not be properly closed...
 ...
+LL | }
+   | - ...as it matches this but it has different indentation
+LL |
 LL | fn main() {}
    |                                                                ^
 

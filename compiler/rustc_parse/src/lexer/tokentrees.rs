@@ -36,6 +36,15 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     return if is_delimited {
                         Ok((open_spacing, TokenStream::new(buf)))
                     } else {
+                        let matches_previous_open_delim = match delim {
+                            Delimiter::Parenthesis => self.diag_info.open_parens.last().is_some(),
+                            Delimiter::Brace => self.diag_info.open_braces.last().is_some(),
+                            Delimiter::Bracket => self.diag_info.open_brackets.last().is_some(),
+                            _ => unreachable!(),
+                        };
+                        if matches_previous_open_delim {
+                            return Err(vec![]);
+                        }
                         Err(vec![self.close_delim_err(delim)])
                     };
                 }
@@ -102,7 +111,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         // The span for beginning of the delimited section.
         let pre_span = self.token.span;
 
-        self.diag_info.open_delimiters.push((open_delim, self.token.span));
+        self.diag_info.push_open_delimiter(open_delim, open_delim_span);
 
         // Lex the token trees within the delimiters.
         // We stop at any delimiter so we can try to recover if the user
@@ -117,7 +126,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             // Correct delimiter.
             token::CloseDelim(close_delim) if close_delim == open_delim => {
                 let (open_delimiter, open_delimiter_span) =
-                    self.diag_info.open_delimiters.pop().unwrap();
+                    self.diag_info.pop_open_delimiter().unwrap();
                 let close_delim_span = self.token.span;
 
                 if tts.is_empty() && close_delim == Delimiter::Brace {

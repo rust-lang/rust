@@ -4,5 +4,6 @@ struct Obj {
 )
 //~^ ERROR mismatched closing delimiter
 //~| NOTE mismatched closing delimiter
+//~| NOTE missing open `(` for this delimiter
 
 fn main() {}
