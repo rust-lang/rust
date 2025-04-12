@@ -576,6 +576,11 @@ pub(crate) unsafe fn llvm_optimize(
     // When we build rustc with enzyme/autodiff support, we want to postpone size-increasing
     // optimizations until after differentiation. Our pipeline is thus: (opt + enzyme), (full opt).
     // We therefore have two calls to llvm_optimize, if autodiff is used.
+    //
+    // We also must disable merge_functions, since autodiff placeholder/dummy bodies tend to be
+    // identical. We run opts before AD, so there is a chance that LLVM will merge our dummies.
+    // In that case, we lack some dummy bodies and can't replace them with the real AD code anymore.
+    // We then would need to abort compilation. This was especially common in test cases.
     if consider_ad && autodiff_stage != AutodiffStage::PostAD {
         merge_functions = false;
         unroll_loops = false;
