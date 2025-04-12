@@ -1,18 +1,19 @@
 use crate::ffi::OsString;
 use crate::fmt;
+use crate::num::NonZero;
 use crate::sys::os_str;
 use crate::sys::pal::{WORD_SIZE, abi};
 use crate::sys_common::FromInner;
 
+#[derive(Clone)]
 pub struct Args {
-    i_forward: usize,
-    i_back: usize,
-    count: usize,
+    front: usize,
+    back: usize,
 }
 
 pub fn args() -> Args {
     let count = unsafe { abi::sys_argc() };
-    Args { i_forward: 0, i_back: 0, count }
+    Args { front: 0, back: count }
 }
 
 impl Args {
@@ -38,44 +39,80 @@ impl Args {
     }
 }
 
+impl !Send for Args {}
+impl !Sync for Args {}
+
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().finish()
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
 impl Iterator for Args {
     type Item = OsString;
 
+    #[inline]
     fn next(&mut self) -> Option<OsString> {
-        if self.i_forward >= self.count - self.i_back {
+        if self.front == self.back {
             None
         } else {
-            let arg = Self::argv(self.i_forward);
-            self.i_forward += 1;
+            let arg = Self::argv(self.front);
+            self.front += 1;
             Some(arg)
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.count, Some(self.count))
+        let len = self.len();
+        (len, Some(len))
     }
-}
 
-impl ExactSizeIterator for Args {
-    fn len(&self) -> usize {
-        self.count
+    #[inline]
+    fn count(self) -> usize {
+        self.len()
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<OsString> {
+        self.next_back()
+    }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        let step_size = self.len().min(n);
+        self.front += step_size;
+        NonZero::new(n - step_size).map_or(Ok(()), Err)
     }
 }
 
 impl DoubleEndedIterator for Args {
+    #[inline]
     fn next_back(&mut self) -> Option<OsString> {
-        if self.i_back >= self.count - self.i_forward {
+        if self.back == self.front {
             None
         } else {
-            let arg = Self::argv(self.count - 1 - self.i_back);
-            self.i_back += 1;
-            Some(arg)
+            self.back -= 1;
+            Some(Self::argv(self.back))
         }
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        let step_size = self.len().min(n);
+        self.back -= step_size;
+        NonZero::new(n - step_size).map_or(Ok(()), Err)
+    }
+}
+
+impl ExactSizeIterator for Args {
+    #[inline]
+    fn len(&self) -> usize {
+        self.back - self.front
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.front == self.back
     }
 }
