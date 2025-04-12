@@ -28,8 +28,9 @@ use crate::back::write::{
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
-use crate::llvm::{self, build_string};
-use crate::{LlvmCodegenBackend, ModuleLlvm};
+use crate::llvm::AttributePlace::Function;
+use crate::llvm::{self, build_string, get_value_name};
+use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes};
 
 /// We keep track of the computed LTO cache keys from the previous
 /// session to determine which CGUs we can reuse.
@@ -662,6 +663,19 @@ pub(crate) fn run_pass_manager(
         // This is the post-autodiff IR, mainly used for testing and educational purposes.
         if config.autodiff.contains(&config::AutoDiff::PrintModAfter) {
             unsafe { llvm::LLVMDumpModule(module.module_llvm.llmod()) };
+        }
+
+        let cx =
+            SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
+
+        for function in cx.get_functions() {
+            let name = get_value_name(function);
+            let name = std::str::from_utf8(name).unwrap();
+
+            if name.starts_with("__enzyme") {
+                let attr = llvm::AttributeKind::AlwaysInline.create_attr(cx.llcx);
+                attributes::apply_to_llfn(function, Function, &[attr]);
+            }
         }
 
         let opt_stage = llvm::OptStage::FatLTO;
