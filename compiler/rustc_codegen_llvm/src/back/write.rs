@@ -568,6 +568,7 @@ pub(crate) unsafe fn llvm_optimize(
     let print_before_enzyme = config.autodiff.contains(&config::AutoDiff::PrintModBefore);
     let print_after_enzyme = config.autodiff.contains(&config::AutoDiff::PrintModAfter);
     let print_passes = config.autodiff.contains(&config::AutoDiff::PrintPasses);
+    let merge_functions;
     let unroll_loops;
     let vectorize_slp;
     let vectorize_loop;
@@ -576,12 +577,14 @@ pub(crate) unsafe fn llvm_optimize(
     // optimizations until after differentiation. Our pipeline is thus: (opt + enzyme), (full opt).
     // We therefore have two calls to llvm_optimize, if autodiff is used.
     if consider_ad && autodiff_stage != AutodiffStage::PostAD {
+        merge_functions = false;
         unroll_loops = false;
         vectorize_slp = false;
         vectorize_loop = false;
     } else {
         unroll_loops =
             opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+        merge_functions = config.merge_functions;
         vectorize_slp = config.vectorize_slp;
         vectorize_loop = config.vectorize_loop;
     }
@@ -659,7 +662,7 @@ pub(crate) unsafe fn llvm_optimize(
             thin_lto_buffer,
             config.emit_thin_lto,
             config.emit_thin_lto_summary,
-            config.merge_functions,
+            merge_functions,
             unroll_loops,
             vectorize_slp,
             vectorize_loop,
