@@ -349,6 +349,10 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
     {
         return;
     }
+    // The presence of `unsafe` fields prevents deriving `Clone` automatically
+    if ty_adt.all_fields().any(|f| f.safety.is_unsafe()) {
+        return;
+    }
 
     span_lint_and_note(
         cx,
