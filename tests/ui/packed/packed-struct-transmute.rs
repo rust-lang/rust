@@ -4,7 +4,6 @@
 // transmute
 
 //@ normalize-stderr: "\d+ bits" -> "N bits"
-//@ error-pattern: cannot transmute between types of different sizes, or dependently-sized types
 
 use std::mem;
 
