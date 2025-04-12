@@ -149,13 +149,3 @@ pub trait ExactSizeIterator: Iterator {
         self.len() == 0
     }
 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for &mut I {
-    fn len(&self) -> usize {
-        (**self).len()
-    }
-    fn is_empty(&self) -> bool {
-        (**self).is_empty()
-    }
-}
