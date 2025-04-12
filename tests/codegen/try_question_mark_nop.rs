@@ -37,7 +37,8 @@ pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
 pub fn option_nop_traits_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
     // CHECK-NEXT: %[[IS_SOME:.+]] = trunc nuw i32 %0 to i1
-    // CHECK-NEXT: select i1 %[[IS_SOME]], i32 %1, i32 undef
+    // NINETEEN-NEXT: select i1 %[[IS_SOME]], i32 %0, i32 0
+    // TWENTY-NEXT: select i1 %[[IS_SOME]], i32 %1, i32 undef
     // CHECK-NEXT: insertvalue { i32, i32 }
     // CHECK-NEXT: insertvalue { i32, i32 }
     // CHECK-NEXT: ret { i32, i32 }
