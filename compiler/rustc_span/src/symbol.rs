@@ -1047,6 +1047,7 @@ symbols! {
         from_u16,
         from_usize,
         from_yeet,
+        frontmatter,
         fs_create_dir,
         fsub_algebraic,
         fsub_fast,
