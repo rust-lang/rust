@@ -26,7 +26,7 @@ fn true_significant_drop_ty<'tcx>(
                     name_rev.push(tcx.crate_name(did.krate));
                 }
                 rustc_hir::definitions::DefPathData::TypeNs(symbol) => {
-                    name_rev.push(symbol.unwrap());
+                    name_rev.push(symbol);
                 }
                 _ => return None,
             }

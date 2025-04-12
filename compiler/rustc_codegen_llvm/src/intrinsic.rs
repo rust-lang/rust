@@ -1421,7 +1421,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(bx.shuffle_vector(args[0].immediate(), args[1].immediate(), indices));
     }
 
-    if name == sym::simd_insert {
+    if name == sym::simd_insert || name == sym::simd_insert_dyn {
         require!(
             in_elem == arg_tys[2],
             InvalidMonomorphization::InsertedType {
@@ -1432,40 +1432,49 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 out_ty: arg_tys[2]
             }
         );
-        let idx = bx
-            .const_to_opt_u128(args[1].immediate(), false)
-            .expect("typeck should have ensure that this is a const");
-        if idx >= in_len.into() {
-            return_error!(InvalidMonomorphization::SimdIndexOutOfBounds {
-                span,
-                name,
-                arg_idx: 1,
-                total_len: in_len.into(),
-            });
-        }
-        return Ok(bx.insert_element(
-            args[0].immediate(),
-            args[2].immediate(),
-            bx.const_i32(idx as i32),
-        ));
+
+        let index_imm = if name == sym::simd_insert {
+            let idx = bx
+                .const_to_opt_u128(args[1].immediate(), false)
+                .expect("typeck should have ensure that this is a const");
+            if idx >= in_len.into() {
+                return_error!(InvalidMonomorphization::SimdIndexOutOfBounds {
+                    span,
+                    name,
+                    arg_idx: 1,
+                    total_len: in_len.into(),
+                });
+            }
+            bx.const_i32(idx as i32)
+        } else {
+            args[1].immediate()
+        };
+
+        return Ok(bx.insert_element(args[0].immediate(), args[2].immediate(), index_imm));
     }
-    if name == sym::simd_extract {
+    if name == sym::simd_extract || name == sym::simd_extract_dyn {
         require!(
             ret_ty == in_elem,
             InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
         );
-        let idx = bx
-            .const_to_opt_u128(args[1].immediate(), false)
-            .expect("typeck should have ensure that this is a const");
-        if idx >= in_len.into() {
-            return_error!(InvalidMonomorphization::SimdIndexOutOfBounds {
-                span,
-                name,
-                arg_idx: 1,
-                total_len: in_len.into(),
-            });
-        }
-        return Ok(bx.extract_element(args[0].immediate(), bx.const_i32(idx as i32)));
+        let index_imm = if name == sym::simd_extract {
+            let idx = bx
+                .const_to_opt_u128(args[1].immediate(), false)
+                .expect("typeck should have ensure that this is a const");
+            if idx >= in_len.into() {
+                return_error!(InvalidMonomorphization::SimdIndexOutOfBounds {
+                    span,
+                    name,
+                    arg_idx: 1,
+                    total_len: in_len.into(),
+                });
+            }
+            bx.const_i32(idx as i32)
+        } else {
+            args[1].immediate()
+        };
+
+        return Ok(bx.extract_element(args[0].immediate(), index_imm));
     }
 
     if name == sym::simd_select {

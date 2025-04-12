@@ -277,13 +277,13 @@ pub struct BinaryOutputToTty {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_ignoring_emit_path)]
 pub struct IgnoringEmitPath {
-    pub extension: String,
+    pub extension: &'static str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_ignoring_output)]
 pub struct IgnoringOutput {
-    pub extension: String,
+    pub extension: &'static str,
 }
 
 #[derive(Diagnostic)]

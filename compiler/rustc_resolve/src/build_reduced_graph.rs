@@ -1207,7 +1207,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             for (rule_i, rule_span) in &self.r.macro_map[&def_id.to_def_id()].rule_spans {
                 self.r
                     .unused_macro_rules
-                    .entry(def_id)
+                    .entry(node_id)
                     .or_default()
                     .insert(*rule_i, (ident, *rule_span));
             }

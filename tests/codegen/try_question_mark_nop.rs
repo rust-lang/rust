@@ -1,4 +1,5 @@
-//@ compile-flags: -Copt-level=3 -Z merge-functions=disabled --edition=2021
+//@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
+//@ edition: 2021
 //@ only-x86_64
 //@ revisions: NINETEEN TWENTY
 //@[NINETEEN] exact-llvm-major-version: 19

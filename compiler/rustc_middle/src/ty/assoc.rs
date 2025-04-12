@@ -98,10 +98,10 @@ impl AssocItem {
 
     pub fn descr(&self) -> &'static str {
         match self.kind {
-            ty::AssocKind::Const => "const",
+            ty::AssocKind::Const => "associated const",
             ty::AssocKind::Fn if self.fn_has_self_parameter => "method",
             ty::AssocKind::Fn => "associated function",
-            ty::AssocKind::Type => "type",
+            ty::AssocKind::Type => "associated type",
         }
     }
 
@@ -155,6 +155,8 @@ impl AssocKind {
 impl std::fmt::Display for AssocKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            // FIXME: fails to distinguish between "associated function" and
+            // "method" because `has_self` isn't known here.
             AssocKind::Fn => write!(f, "method"),
             AssocKind::Const => write!(f, "associated const"),
             AssocKind::Type => write!(f, "associated type"),
@@ -199,8 +201,9 @@ impl AssocItems {
         self.items.get_by_key(name)
     }
 
-    /// Returns the associated item with the given name and `AssocKind`, if one exists.
-    pub fn find_by_name_and_kind(
+    /// Returns the associated item with the given identifier and `AssocKind`, if one exists.
+    /// The identifier is matched hygienically.
+    pub fn find_by_ident_and_kind(
         &self,
         tcx: TyCtxt<'_>,
         ident: Ident,
@@ -212,8 +215,9 @@ impl AssocItems {
             .find(|item| tcx.hygienic_eq(ident, item.ident(tcx), parent_def_id))
     }
 
-    /// Returns the associated item with the given name and any of `AssocKind`, if one exists.
-    pub fn find_by_name_and_kinds(
+    /// Returns the associated item with the given identifier and any of `AssocKind`, if one
+    /// exists. The identifier is matched hygienically.
+    pub fn find_by_ident_and_kinds(
         &self,
         tcx: TyCtxt<'_>,
         ident: Ident,
@@ -221,11 +225,12 @@ impl AssocItems {
         kinds: &[AssocKind],
         parent_def_id: DefId,
     ) -> Option<&ty::AssocItem> {
-        kinds.iter().find_map(|kind| self.find_by_name_and_kind(tcx, ident, *kind, parent_def_id))
+        kinds.iter().find_map(|kind| self.find_by_ident_and_kind(tcx, ident, *kind, parent_def_id))
     }
 
-    /// Returns the associated item with the given name in the given `Namespace`, if one exists.
-    pub fn find_by_name_and_namespace(
+    /// Returns the associated item with the given identifier in the given `Namespace`, if one
+    /// exists. The identifier is matched hygienically.
+    pub fn find_by_ident_and_namespace(
         &self,
         tcx: TyCtxt<'_>,
         ident: Ident,

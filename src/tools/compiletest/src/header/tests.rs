@@ -902,3 +902,41 @@ fn test_rustc_abi() {
     assert!(!check_ignore(&config, "//@ ignore-rustc_abi-x86-sse2"));
     assert!(check_ignore(&config, "//@ only-rustc_abi-x86-sse2"));
 }
+
+#[test]
+fn test_supported_crate_types() {
+    // Basic assumptions check on under-test compiler's `--print=supported-crate-types` output based
+    // on knowledge about the cherry-picked `x86_64-unknown-linux-gnu` and `wasm32-unknown-unknown`
+    // targets. Also smoke tests the `needs-crate-type` directive itself.
+
+    use std::collections::HashSet;
+
+    let config = cfg().target("x86_64-unknown-linux-gnu").build();
+    assert_eq!(
+        config.supported_crate_types().iter().map(String::as_str).collect::<HashSet<_>>(),
+        HashSet::from(["bin", "cdylib", "dylib", "lib", "proc-macro", "rlib", "staticlib"]),
+    );
+    assert!(!check_ignore(&config, "//@ needs-crate-type: rlib"));
+    assert!(!check_ignore(&config, "//@ needs-crate-type: dylib"));
+    assert!(!check_ignore(
+        &config,
+        "//@ needs-crate-type: bin, cdylib, dylib, lib, proc-macro, rlib, staticlib"
+    ));
+
+    let config = cfg().target("wasm32-unknown-unknown").build();
+    assert_eq!(
+        config.supported_crate_types().iter().map(String::as_str).collect::<HashSet<_>>(),
+        HashSet::from(["bin", "cdylib", "lib", "rlib", "staticlib"]),
+    );
+
+    // rlib is supported
+    assert!(!check_ignore(&config, "//@ needs-crate-type: rlib"));
+    // dylib is not
+    assert!(check_ignore(&config, "//@ needs-crate-type: dylib"));
+    // If multiple crate types are specified, then all specified crate types need to be supported.
+    assert!(check_ignore(&config, "//@ needs-crate-type: cdylib, dylib"));
+    assert!(check_ignore(
+        &config,
+        "//@ needs-crate-type: bin, cdylib, dylib, lib, proc-macro, rlib, staticlib"
+    ));
+}

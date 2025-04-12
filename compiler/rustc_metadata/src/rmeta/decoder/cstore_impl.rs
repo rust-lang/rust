@@ -286,7 +286,7 @@ provide! { tcx, def_id, other, cdata,
     rendered_const => { table }
     rendered_precise_capturing_args => { table }
     asyncness => { table_direct }
-    fn_arg_names => { table }
+    fn_arg_idents => { table }
     coroutine_kind => { table_direct }
     coroutine_for_closure => { table }
     coroutine_by_move_body_def_id => { table }

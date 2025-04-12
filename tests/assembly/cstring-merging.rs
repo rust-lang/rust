@@ -1,6 +1,7 @@
 //@ only-linux
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -Copt-level=3 --edition 2024
+//@ compile-flags: --crate-type=lib -Copt-level=3
+//@ edition: 2024
 
 use std::ffi::CStr;
 

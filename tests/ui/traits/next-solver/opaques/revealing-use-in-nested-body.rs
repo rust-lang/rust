@@ -3,7 +3,7 @@
 // of the async block. This caused borrowck of the recursive
 // call to ICE.
 
-//@ compile-flags: --edition=2021
+//@ edition: 2021
 //@ check-pass
 async fn test() {
     Box::pin(test()).await;

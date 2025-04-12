@@ -238,7 +238,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
             .instantiate_bound_regions_with_erased(sig.rebind(search_ty))
             .kind()
         && let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
-        && let Some(iter_item) = cx.tcx.associated_items(iter_trait).find_by_name_and_kind(
+        && let Some(iter_item) = cx.tcx.associated_items(iter_trait).find_by_ident_and_kind(
             cx.tcx,
             Ident::with_dummy_span(sym::Item),
             AssocKind::Type,

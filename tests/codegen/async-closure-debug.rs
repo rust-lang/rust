@@ -1,6 +1,7 @@
 // Just make sure that async closures don't ICE.
 //
-//@ compile-flags: -C debuginfo=2 --edition=2018
+//@ compile-flags: -C debuginfo=2
+//@ edition: 2018
 //@ ignore-msvc
 
 // CHECK-DAG:  [[GEN_FN:!.*]] = !DINamespace(name: "async_closure_test"

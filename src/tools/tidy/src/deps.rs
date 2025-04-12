@@ -361,7 +361,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc-demangle",
     "rustc-hash",
     "rustc-literal-escaper",
-    "rustc-rayon",
     "rustc-rayon-core",
     "rustc-stable-hash",
     "rustc_apfloat",

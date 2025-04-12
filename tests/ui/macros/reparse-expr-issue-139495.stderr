@@ -1,0 +1,13 @@
+error: expected expression, found keyword `extern`
+  --> $DIR/reparse-expr-issue-139495.rs:2:22
+   |
+LL |   ($abi : expr) => { extern $abi }
+   |                      ^^^^^^ expected expression
+...
+LL |     m!(-2)
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

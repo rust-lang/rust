@@ -1169,9 +1169,9 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
         collector.cx.dcx().emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
     }
 
-    /// All of the names (items) declared by this node.
+    /// All of the identifiers (items) declared by this node.
     /// This is an approximation and should only be used for diagnostics.
-    fn declared_names(&self) -> Vec<Ident> {
+    fn declared_idents(&self) -> Vec<Ident> {
         vec![]
     }
 }
@@ -1306,7 +1306,7 @@ impl InvocationCollectorNode for P<ast::Item> {
         res
     }
 
-    fn declared_names(&self) -> Vec<Ident> {
+    fn declared_idents(&self) -> Vec<Ident> {
         if let ItemKind::Use(ut) = &self.kind {
             fn collect_use_tree_leaves(ut: &ast::UseTree, idents: &mut Vec<Ident>) {
                 match &ut.kind {
@@ -2061,10 +2061,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         }
 
                         if let Some(meta_item) = meta_item {
-                            for name in node.declared_names() {
+                            for ident in node.declared_idents() {
                                 self.cx.resolver.append_stripped_cfg_item(
                                     self.cx.current_expansion.lint_node_id,
-                                    name,
+                                    ident,
                                     meta_item.clone(),
                                 )
                             }

@@ -719,7 +719,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     def_id,
                     tcx.def_ident_span(def_id).unwrap(),
                     i.name,
-                    ExternAbi::Rust,
                 )
             }
         }
@@ -786,16 +785,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
             for item in items {
                 let def_id = item.id.owner_id.def_id;
-
-                if tcx.has_attr(def_id, sym::rustc_intrinsic) {
-                    intrinsic::check_intrinsic_type(
-                        tcx,
-                        item.id.owner_id.def_id,
-                        item.span,
-                        item.ident.name,
-                        abi,
-                    );
-                }
 
                 let generics = tcx.generics_of(def_id);
                 let own_counts = generics.own_counts();

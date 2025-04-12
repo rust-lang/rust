@@ -201,9 +201,9 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_symbol(&mut self, symbol: Symbol) {
-        // if symbol preinterned, emit tag and symbol index
-        if symbol.is_preinterned() {
-            self.opaque.emit_u8(SYMBOL_PREINTERNED);
+        // if symbol predefined, emit tag and symbol index
+        if symbol.is_predefined() {
+            self.opaque.emit_u8(SYMBOL_PREDEFINED);
             self.opaque.emit_u32(symbol.as_u32());
         } else {
             // otherwise write it as string or as offset to it
@@ -1469,7 +1469,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 self.tables.asyncness.set_some(def_id.index, tcx.asyncness(def_id));
-                record_array!(self.tables.fn_arg_names[def_id] <- tcx.fn_arg_names(def_id));
+                record_array!(self.tables.fn_arg_idents[def_id] <- tcx.fn_arg_idents(def_id));
             }
             if let Some(name) = tcx.intrinsic(def_id) {
                 record!(self.tables.intrinsic[def_id] <- name);
@@ -2199,7 +2199,7 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
     }
 
     let reachable_set = tcx.reachable_set(());
-    par_for_each_in(tcx.mir_keys(()), |&def_id| {
+    par_for_each_in(tcx.mir_keys(()), |&&def_id| {
         let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
 
         if encode_const {
