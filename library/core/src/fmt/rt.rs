@@ -72,6 +72,13 @@ macro_rules! argument_new {
             // a `fn(&T, ...)`, so the invariant is maintained.
             ty: ArgumentType::Placeholder {
                 value: NonNull::<$t>::from_ref($x).cast(),
+                #[cfg(not(any(sanitize = "cfi", sanitize = "kcfi")))]
+                formatter: {
+                    let f: fn(&$t, &mut Formatter<'_>) -> Result = $f;
+                    // SAFETY: This is only called with `value`, which has the right type.
+                    unsafe { mem::transmute(f) }
+                },
+                #[cfg(any(sanitize = "cfi", sanitize = "kcfi"))]
                 formatter: |ptr: NonNull<()>, fmt: &mut Formatter<'_>| {
                     let func = $f;
                     // SAFETY: This is the same type as the `value` field.
