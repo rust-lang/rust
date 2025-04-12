@@ -80,6 +80,7 @@ fn run_clippy_for_package(project: &str, args: &[&str]) -> bool {
 
     command.arg("--").args(args);
     command.arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
+    command.args(["-D", "clippy::dbg_macro"]);
 
     if cfg!(feature = "internal") {
         // internal lints only exist if we build with the internal feature
