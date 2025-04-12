@@ -61,9 +61,9 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     }
 
     unsafe fn sanitize_standard_fds() {
-        #[allow(dead_code)]
+        #[allow(dead_code, unused_variables, unused_mut)]
         let mut opened_devnull = -1;
-        #[allow(dead_code)]
+        #[allow(dead_code, unused_variables, unused_mut)]
         let mut open_devnull = || {
             #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
             use libc::open;
