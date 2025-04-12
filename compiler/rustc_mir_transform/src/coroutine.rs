@@ -1169,6 +1169,13 @@ fn create_coroutine_drop_shim<'tcx>(
     dump_mir(tcx, false, "coroutine_drop", &0, &body, |_, _| Ok(()));
     body.source.instance = drop_instance;
 
+    // Creating a coroutine drop shim happens on `Analysis(PostCleanup) -> Runtime(Initial)`
+    // but the pass manager doesn't update the phase of the coroutine drop shim. Update the
+    // phase of the drop shim so that later on when we run the pass manager on the shim, in
+    // the `mir_shims` query, we don't ICE on the intra-pass validation before we've updated
+    // the phase of the body from analysis.
+    body.phase = MirPhase::Runtime(RuntimePhase::Initial);
+
     body
 }
 
