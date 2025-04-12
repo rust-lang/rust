@@ -172,7 +172,7 @@ fn long_path() {
 #[test]
 #[cfg(not(target_os = "nto"))]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
-#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin ignores timeout
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin connect needs handshake
 fn timeouts() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -201,7 +201,7 @@ fn timeouts() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
-#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin ignores timeout
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin connect needs handshake
 fn test_read_timeout() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -222,7 +222,7 @@ fn test_read_timeout() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
-#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin ignores timeout
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin connect needs handshake
 fn test_read_with_timeout() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -251,7 +251,7 @@ fn test_read_with_timeout() {
 // when passed zero Durations
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
-#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin ignores timeout
+#[cfg_attr(target_os = "cygwin", ignore)] // Cygwin connect needs handshake
 fn test_unix_stream_timeout_zero_duration() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
