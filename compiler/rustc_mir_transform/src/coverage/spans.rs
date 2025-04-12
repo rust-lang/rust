@@ -42,12 +42,12 @@ pub(super) fn extract_refined_covspans<'tcx>(
         return;
     }
 
-    // Also add the adjusted function signature span, if available.
+    // Also add the function signature span, if available.
     // Otherwise, add a fake span at the start of the body, to avoid an ugly
     // gap between the start of the body and the first real span.
     // FIXME: Find a more principled way to solve this problem.
     covspans.push(SpanFromMir::for_fn_sig(
-        hir_info.fn_sig_span_extended.unwrap_or_else(|| body_span.shrink_to_lo()),
+        hir_info.fn_sig_span.unwrap_or_else(|| body_span.shrink_to_lo()),
     ));
 
     // First, perform the passes that need macro information.
@@ -227,19 +227,21 @@ struct Covspan {
 }
 
 impl Covspan {
-    /// If `self` and `other` can be merged (i.e. they have the same BCB),
-    /// mutates `self.span` to also include `other.span` and returns true.
+    /// If `self` and `other` can be merged, mutates `self.span` to also
+    /// include `other.span` and returns true.
     ///
-    /// Note that compatible covspans can be merged even if their underlying
-    /// spans are not overlapping/adjacent; any space between them will also be
-    /// part of the merged covspan.
+    /// Two covspans can be merged if they have the same BCB, and they are
+    /// overlapping or adjacent.
     fn merge_if_eligible(&mut self, other: &Self) -> bool {
-        if self.bcb != other.bcb {
-            return false;
-        }
+        let eligible_for_merge =
+            |a: &Self, b: &Self| (a.bcb == b.bcb) && a.span.overlaps_or_adjacent(b.span);
 
-        self.span = self.span.to(other.span);
-        true
+        if eligible_for_merge(self, other) {
+            self.span = self.span.to(other.span);
+            true
+        } else {
+            false
+        }
     }
 }
 
