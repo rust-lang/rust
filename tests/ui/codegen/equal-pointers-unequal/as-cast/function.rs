@@ -17,6 +17,6 @@ fn main() {
     assert_ne!(a, b);
     // But they are the same number.
     assert_eq!(format!("{a}"), format!("{b}"));
-    // And they are equal.
-    assert_eq!(a, b);
+    // And they are still not equal.
+    assert_ne!(a, b);
 }

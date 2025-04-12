@@ -16,5 +16,5 @@ fn main() {
 
     assert_ne!(a, b);
     println!("{a}"); // or b
-    assert_eq!(a, b);
+    assert_ne!(a, b);
 }

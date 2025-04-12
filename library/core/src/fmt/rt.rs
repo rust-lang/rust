@@ -5,7 +5,6 @@
 
 use super::*;
 use crate::hint::unreachable_unchecked;
-use crate::ptr::NonNull;
 
 #[lang = "format_placeholder"]
 #[derive(Copy, Clone)]
@@ -37,15 +36,13 @@ pub enum Count {
     Implied,
 }
 
+trait FormatThunk {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+}
+
 #[derive(Copy, Clone)]
 enum ArgumentType<'a> {
-    Placeholder {
-        // INVARIANT: `formatter` has type `fn(&T, _) -> _` for some `T`, and `value`
-        // was derived from a `&'a T`.
-        value: NonNull<()>,
-        formatter: unsafe fn(NonNull<()>, &mut Formatter<'_>) -> Result,
-        _lifetime: PhantomData<&'a ()>,
-    },
+    Placeholder(&'a dyn FormatThunk),
     Count(u16),
 }
 
@@ -65,62 +62,88 @@ pub struct Argument<'a> {
     ty: ArgumentType<'a>,
 }
 
+macro_rules! implement_argument_constructor {
+    ($trait:ident, $operand:expr, $fmt:item) => {{
+        #[repr(transparent)]
+        struct Wrapper<T>(T);
+
+        // SAFETY: `Wrapper<T>` has the same memory layout as `T` due to #[repr(transparent)].
+        let thunk = unsafe { mem::transmute::<&T, &Wrapper<T>>($operand) };
+
+        impl<T: $trait> FormatThunk for Wrapper<T> {
+            #[inline]
+            $fmt
+        }
+
+        Self::new(thunk)
+    }};
+
+    ($trait:ident, $operand:expr) => {
+        implement_argument_constructor!(
+            $trait,
+            $operand,
+            fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                let Self(inner) = self;
+                inner.fmt(f)
+            }
+        )
+    };
+}
+
 #[rustc_diagnostic_item = "ArgumentMethods"]
 impl Argument<'_> {
     #[inline]
-    const fn new<'a, T>(x: &'a T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'a> {
-        Argument {
-            // INVARIANT: this creates an `ArgumentType<'a>` from a `&'a T` and
-            // a `fn(&T, ...)`, so the invariant is maintained.
-            ty: ArgumentType::Placeholder {
-                value: NonNull::from_ref(x).cast(),
-                // SAFETY: function pointers always have the same layout.
-                formatter: unsafe { mem::transmute(f) },
-                _lifetime: PhantomData,
-            },
-        }
+    fn new<'a>(x: &'a dyn FormatThunk) -> Argument<'a> {
+        Argument { ty: ArgumentType::Placeholder(x) }
     }
 
     #[inline]
     pub fn new_display<T: Display>(x: &T) -> Argument<'_> {
-        Self::new(x, Display::fmt)
+        implement_argument_constructor!(Display, x)
     }
     #[inline]
     pub fn new_debug<T: Debug>(x: &T) -> Argument<'_> {
-        Self::new(x, Debug::fmt)
+        implement_argument_constructor!(Debug, x)
     }
     #[inline]
     pub fn new_debug_noop<T: Debug>(x: &T) -> Argument<'_> {
-        Self::new(x, |_, _| Ok(()))
+        implement_argument_constructor!(
+            Debug,
+            x,
+            fn fmt(&self, _: &mut Formatter<'_>) -> Result {
+                Ok(())
+            }
+        )
     }
     #[inline]
     pub fn new_octal<T: Octal>(x: &T) -> Argument<'_> {
-        Self::new(x, Octal::fmt)
+        implement_argument_constructor!(Octal, x)
     }
     #[inline]
     pub fn new_lower_hex<T: LowerHex>(x: &T) -> Argument<'_> {
-        Self::new(x, LowerHex::fmt)
+        implement_argument_constructor!(LowerHex, x)
     }
     #[inline]
     pub fn new_upper_hex<T: UpperHex>(x: &T) -> Argument<'_> {
-        Self::new(x, UpperHex::fmt)
+        implement_argument_constructor!(UpperHex, x)
     }
     #[inline]
     pub fn new_pointer<T: Pointer>(x: &T) -> Argument<'_> {
-        Self::new(x, Pointer::fmt)
+        implement_argument_constructor!(Pointer, x)
     }
     #[inline]
     pub fn new_binary<T: Binary>(x: &T) -> Argument<'_> {
-        Self::new(x, Binary::fmt)
+        implement_argument_constructor!(Binary, x)
     }
     #[inline]
     pub fn new_lower_exp<T: LowerExp>(x: &T) -> Argument<'_> {
-        Self::new(x, LowerExp::fmt)
+        implement_argument_constructor!(LowerExp, x)
     }
     #[inline]
     pub fn new_upper_exp<T: UpperExp>(x: &T) -> Argument<'_> {
-        Self::new(x, UpperExp::fmt)
+        implement_argument_constructor!(UpperExp, x)
     }
+
     #[inline]
     #[track_caller]
     pub const fn from_usize(x: &usize) -> Argument<'_> {
@@ -135,22 +158,10 @@ impl Argument<'_> {
     /// # Safety
     ///
     /// This argument must actually be a placeholder argument.
-    ///
-    // FIXME: Transmuting formatter in new and indirectly branching to/calling
-    // it here is an explicit CFI violation.
-    #[allow(inline_no_sanitize)]
-    #[no_sanitize(cfi, kcfi)]
     #[inline]
     pub(super) unsafe fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self.ty {
-            // SAFETY:
-            // Because of the invariant that if `formatter` had the type
-            // `fn(&T, _) -> _` then `value` has type `&'b T` where `'b` is
-            // the lifetime of the `ArgumentType`, and because references
-            // and `NonNull` are ABI-compatible, this is completely equivalent
-            // to calling the original function passed to `new` with the
-            // original reference, which is sound.
-            ArgumentType::Placeholder { formatter, value, .. } => unsafe { formatter(value, f) },
+            ArgumentType::Placeholder(thunk) => thunk.fmt(f),
             // SAFETY: the caller promised this.
             ArgumentType::Count(_) => unsafe { unreachable_unchecked() },
         }
