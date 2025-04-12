@@ -3343,7 +3343,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Returns `true` if and only if `self == 2^k` for some `k`.
+        /// Returns `true` if and only if `self == 2^k` for some unsigned integer `k`.
         ///
         /// # Examples
         ///
