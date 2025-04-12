@@ -19,6 +19,7 @@ impl<T> PartialDrop for [MaybeUninit<T>] {
     }
 }
 impl<T, const N: usize> PartialDrop for [MaybeUninit<T>; N] {
+    #[inline]
     unsafe fn partial_drop(&mut self, alive: IndexRange) {
         let slice: &mut [MaybeUninit<T>] = self;
         // SAFETY: Initialized elements in the array are also initialized in the slice.
@@ -124,7 +125,6 @@ impl<T: Clone, const N: usize> Clone for PolymorphicIter<[MaybeUninit<T>; N]> {
 }
 
 impl<T> PolymorphicIter<[MaybeUninit<T>]> {
-    #[inline]
     pub(super) fn as_slice(&self) -> &[T] {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
@@ -133,7 +133,6 @@ impl<T> PolymorphicIter<[MaybeUninit<T>]> {
         }
     }
 
-    #[inline]
     pub(super) fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
@@ -157,7 +156,6 @@ impl<T: fmt::Debug> fmt::Debug for PolymorphicIter<[MaybeUninit<T>]> {
 /// We don't implement the actual iterator traits because we want to implement
 /// things like `try_fold` that require `Self: Sized` (which we're not).
 impl<T> PolymorphicIter<[MaybeUninit<T>]> {
-    #[inline]
     pub(super) fn next(&mut self) -> Option<T> {
         // Get the next index from the front.
         //
@@ -175,13 +173,11 @@ impl<T> PolymorphicIter<[MaybeUninit<T>]> {
         })
     }
 
-    #[inline]
     pub(super) fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.len();
         (len, Some(len))
     }
 
-    #[inline]
     pub(super) fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         // This also moves the start, which marks them as conceptually "dropped",
         // so if anything goes bad then our drop impl won't double-free them.
@@ -197,12 +193,10 @@ impl<T> PolymorphicIter<[MaybeUninit<T>]> {
         NonZero::new(remaining).map_or(Ok(()), Err)
     }
 
-    #[inline]
     pub(super) fn fold<B>(&mut self, init: B, f: impl FnMut(B, T) -> B) -> B {
         self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
     }
 
-    #[inline]
     pub(super) fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         F: FnMut(B, T) -> R,
@@ -221,7 +215,6 @@ impl<T> PolymorphicIter<[MaybeUninit<T>]> {
         })
     }
 
-    #[inline]
     pub(super) fn next_back(&mut self) -> Option<T> {
         // Get the next index from the back.
         //
@@ -239,7 +232,6 @@ impl<T> PolymorphicIter<[MaybeUninit<T>]> {
         })
     }
 
-    #[inline]
     pub(super) fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         // This also moves the end, which marks them as conceptually "dropped",
         // so if anything goes bad then our drop impl won't double-free them.
@@ -255,12 +247,10 @@ impl<T> PolymorphicIter<[MaybeUninit<T>]> {
         NonZero::new(remaining).map_or(Ok(()), Err)
     }
 
-    #[inline]
     pub(super) fn rfold<B>(&mut self, init: B, f: impl FnMut(B, T) -> B) -> B {
         self.try_rfold(init, NeverShortCircuit::wrap_mut_2(f)).0
     }
 
-    #[inline]
     pub(super) fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         F: FnMut(B, T) -> R,
