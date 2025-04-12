@@ -388,7 +388,7 @@ Just a few things to keep in mind:
     - january 2021
 
     There is a CI action (in `~/.github/workflows/date-check.yml`)
-    that generates a monthly showing those that are over 6 months old
+    that generates a monthly report showing those that are over 6 months old
     ([example](https://github.com/rust-lang/rustc-dev-guide/issues/2052)).
 
     For the action to pick the date,
