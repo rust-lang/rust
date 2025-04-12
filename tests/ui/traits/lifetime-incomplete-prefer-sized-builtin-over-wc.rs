@@ -11,8 +11,6 @@ fn is_sized<T>() {}
 fn foo<'a, T: ?Sized>()
 where
     (MyType<'a, T>,): Sized,
-    //[current]~^ ERROR mismatched types
-    //[next]~^^ ERROR lifetime bound not satisfied
     MyType<'static, T>: Sized,
 {
     // Preferring the builtin `Sized` impl of tuples
