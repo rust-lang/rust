@@ -1,6 +1,6 @@
 use crate::ffi::OsString;
-use crate::sys::pal::xous::os::get_application_parameters;
-use crate::sys::pal::xous::os::params::ArgumentList;
+use crate::sys::pal::os::get_application_parameters;
+use crate::sys::pal::os::params::ArgumentList;
 use crate::{fmt, vec};
 
 pub struct Args {

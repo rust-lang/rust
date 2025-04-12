@@ -11,7 +11,7 @@ use crate::{fmt, vec};
 
 /// One-time global initialization.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
-    imp::init(argc, argv)
+    unsafe { imp::init(argc, argv) }
 }
 
 /// Returns the command line arguments
@@ -141,7 +141,7 @@ mod imp {
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
         // on GNU/Linux if we are main then we will init argv and argc twice, it "duplicates work"
         // BUT edge-cases are real: only using .init_array can break most emulators, dlopen, etc.
-        really_init(argc, argv);
+        unsafe { really_init(argc, argv) };
     }
 
     /// glibc passes argc, argv, and envp to functions in .init_array, as a non-standard extension.
@@ -159,9 +159,7 @@ mod imp {
             argv: *const *const u8,
             _envp: *const *const u8,
         ) {
-            unsafe {
-                really_init(argc as isize, argv);
-            }
+            unsafe { really_init(argc as isize, argv) };
         }
         init_wrapper
     };

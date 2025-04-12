@@ -6,7 +6,6 @@ use crate::io::ErrorKind;
 #[macro_use]
 pub mod weak;
 
-pub mod args;
 pub mod env;
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
@@ -47,7 +46,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     reset_sigpipe(sigpipe);
 
     stack_overflow::init();
-    args::init(argc, argv);
+    crate::sys::args::init(argc, argv);
 
     // Normally, `thread::spawn` will call `Thread::set_name` but since this thread
     // already exists, we have to call it ourselves. We only do this on Apple targets

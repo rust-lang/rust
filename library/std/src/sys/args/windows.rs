@@ -6,17 +6,17 @@
 #[cfg(test)]
 mod tests;
 
-use super::ensure_no_nuls;
-use super::os::current_exe;
 use crate::ffi::{OsStr, OsString};
 use crate::num::NonZero;
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
+use crate::sys::pal::os::current_exe;
+use crate::sys::pal::{ensure_no_nuls, fill_utf16_buf};
 use crate::sys::path::get_long_path;
 use crate::sys::{c, to_u16s};
 use crate::sys_common::AsInner;
 use crate::sys_common::wstr::WStrUnits;
-use crate::{fmt, io, iter, vec};
+use crate::{fmt, io, iter, ptr, vec};
 
 pub fn args() -> Args {
     // SAFETY: `GetCommandLineW` returns a pointer to a null terminated UTF-16
@@ -384,9 +384,6 @@ pub(crate) fn to_user_path(path: &Path) -> io::Result<Vec<u16>> {
     from_wide_to_user_path(to_u16s(path)?)
 }
 pub(crate) fn from_wide_to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>> {
-    use super::fill_utf16_buf;
-    use crate::ptr;
-
     // UTF-16 encoded code points, used in parsing and building UTF-16 paths.
     // All of these are in the ASCII range so they can be cast directly to `u16`.
     const SEP: u16 = b'\\' as _;

@@ -1,9 +1,9 @@
 use r_efi::protocols::loaded_image;
 
-use super::helpers;
 use crate::env::current_exe;
 use crate::ffi::OsString;
 use crate::iter::Iterator;
+use crate::sys::pal::helpers;
 use crate::{fmt, vec};
 
 pub struct Args {
