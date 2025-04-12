@@ -56,7 +56,7 @@ impl !PartialOrd for SyntaxContext {}
 
 /// If this part of two syntax contexts is equal, then the whole syntax contexts should be equal.
 /// The other fields are only for caching.
-type SyntaxContextKey = (SyntaxContext, ExpnId, Transparency);
+pub type SyntaxContextKey = (SyntaxContext, ExpnId, Transparency);
 
 #[derive(Clone, Copy, Debug)]
 struct SyntaxContextData {
@@ -69,17 +69,6 @@ struct SyntaxContextData {
     opaque_and_semitransparent: SyntaxContext,
     /// Name of the crate to which `$crate` with this context would resolve.
     dollar_crate_name: Symbol,
-}
-
-/// Same as `SyntaxContextData`, but `opaque(_and_semitransparent)` cannot be recursive
-/// and use `None` if they need to refer to self. Used for encoding and decoding metadata.
-#[derive(Encodable, Decodable)]
-pub struct SyntaxContextDataNonRecursive {
-    outer_expn: ExpnId,
-    outer_transparency: Transparency,
-    parent: SyntaxContext,
-    opaque: Option<SyntaxContext>,
-    opaque_and_semitransparent: Option<SyntaxContext>,
 }
 
 impl SyntaxContextData {
@@ -119,19 +108,6 @@ impl SyntaxContextData {
 
     fn key(&self) -> SyntaxContextKey {
         (self.parent, self.outer_expn, self.outer_transparency)
-    }
-}
-
-impl SyntaxContextDataNonRecursive {
-    fn recursive(&self, ctxt: SyntaxContext) -> SyntaxContextData {
-        SyntaxContextData {
-            outer_expn: self.outer_expn,
-            outer_transparency: self.outer_transparency,
-            parent: self.parent,
-            opaque: self.opaque.unwrap_or(ctxt),
-            opaque_and_semitransparent: self.opaque_and_semitransparent.unwrap_or(ctxt),
-            dollar_crate_name: kw::DollarCrate,
-        }
     }
 }
 
@@ -657,19 +633,6 @@ impl HygieneData {
         self.syntax_context_data[ctxt.as_u32() as usize] =
             SyntaxContextData::new(key, opaque, opaque_and_semitransparent);
         ctxt
-    }
-
-    fn non_recursive_ctxt(&self, ctxt: SyntaxContext) -> SyntaxContextDataNonRecursive {
-        debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
-        let data = &self.syntax_context_data[ctxt.0 as usize];
-        SyntaxContextDataNonRecursive {
-            outer_expn: data.outer_expn,
-            outer_transparency: data.outer_transparency,
-            parent: data.parent,
-            opaque: (data.opaque != ctxt).then_some(data.opaque),
-            opaque_and_semitransparent: (data.opaque_and_semitransparent != ctxt)
-                .then_some(data.opaque_and_semitransparent),
-        }
     }
 }
 
@@ -1300,7 +1263,7 @@ impl HygieneEncodeContext {
     pub fn encode<T>(
         &self,
         encoder: &mut T,
-        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextDataNonRecursive),
+        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextKey),
         mut encode_expn: impl FnMut(&mut T, ExpnId, &ExpnData, ExpnHash),
     ) {
         // When we serialize a `SyntaxContextData`, we may end up serializing
@@ -1425,10 +1388,7 @@ pub fn decode_expn_id(
 // to track which `SyntaxContext`s we have already decoded.
 // The provided closure will be invoked to deserialize a `SyntaxContextData`
 // if we haven't already seen the id of the `SyntaxContext` we are deserializing.
-pub fn decode_syntax_context<
-    D: Decoder,
-    F: FnOnce(&mut D, u32) -> SyntaxContextDataNonRecursive,
->(
+pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContextKey>(
     d: &mut D,
     context: &HygieneDecodeContext,
     decode_data: F,
@@ -1450,16 +1410,9 @@ pub fn decode_syntax_context<
 
     // Don't try to decode data while holding the lock, since we need to
     // be able to recursively decode a SyntaxContext
-    let ctxt_data = decode_data(d, raw_id);
-
-    let ctxt = HygieneData::with(|hygiene_data| {
-        let ctxt_key = (ctxt_data.parent, ctxt_data.outer_expn, ctxt_data.outer_transparency);
-        *hygiene_data.syntax_context_map.entry(ctxt_key).or_insert_with(|| {
-            let ctxt = SyntaxContext::from_usize(hygiene_data.syntax_context_data.len());
-            hygiene_data.syntax_context_data.push(ctxt_data.recursive(ctxt));
-            ctxt
-        })
-    });
+    let (parent, expn_id, transparency) = decode_data(d, raw_id);
+    let ctxt =
+        HygieneData::with(|hygiene_data| hygiene_data.alloc_ctxt(parent, expn_id, transparency));
 
     let mut inner = context.inner.lock();
     let new_len = raw_id as usize + 1;
@@ -1471,12 +1424,21 @@ pub fn decode_syntax_context<
     ctxt
 }
 
-fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextDataNonRecursive)>(
+fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextKey)>(
     ctxts: impl Iterator<Item = SyntaxContext>,
     mut f: F,
 ) {
-    let all_data: Vec<_> =
-        HygieneData::with(|data| ctxts.map(|ctxt| (ctxt, data.non_recursive_ctxt(ctxt))).collect());
+    let all_data: Vec<_> = HygieneData::with(|data| {
+        ctxts
+            .map(|ctxt| {
+                (ctxt, {
+                    let item = data.syntax_context_data[ctxt.0 as usize];
+                    debug_assert!(!item.is_decode_placeholder());
+                    item.key()
+                })
+            })
+            .collect()
+    });
     for (ctxt, data) in all_data.into_iter() {
         f(ctxt.0, ctxt, &data);
     }
