@@ -12,9 +12,10 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::convert::FloatToInt;
+use crate::intrinsics::{self, const_eval_select};
+use crate::mem;
 use crate::num::FpCategory;
 use crate::panic::const_assert;
-use crate::{intrinsics, mem};
 
 /// The radix or base of the internal representation of `f64`.
 /// Use [`f64::RADIX`] instead.
@@ -1509,9 +1510,19 @@ impl f64 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_add(self, rhs: f64) -> f64 {
-        intrinsics::fadd_algebraic(self, rhs)
+    pub const fn algebraic_add(self, rhs: f64) -> f64 {
+        const fn const_algebraic_add(lhs: f64, rhs: f64) -> f64 {
+            lhs + rhs
+        }
+
+        #[inline(always)]
+        fn rt_algebraic_add(lhs: f64, rhs: f64) -> f64 {
+            intrinsics::fadd_algebraic(lhs, rhs)
+        }
+
+        const_eval_select((self, rhs), const_algebraic_add, rt_algebraic_add)
     }
 
     /// Float subtraction that allows optimizations based on algebraic rules.
@@ -1519,9 +1530,19 @@ impl f64 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_sub(self, rhs: f64) -> f64 {
-        intrinsics::fsub_algebraic(self, rhs)
+    pub const fn algebraic_sub(self, rhs: f64) -> f64 {
+        const fn const_algebraic_sub(lhs: f64, rhs: f64) -> f64 {
+            lhs - rhs
+        }
+
+        #[inline(always)]
+        fn rt_algebraic_sub(lhs: f64, rhs: f64) -> f64 {
+            intrinsics::fsub_algebraic(lhs, rhs)
+        }
+
+        const_eval_select((self, rhs), const_algebraic_sub, rt_algebraic_sub)
     }
 
     /// Float multiplication that allows optimizations based on algebraic rules.
@@ -1529,9 +1550,19 @@ impl f64 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_mul(self, rhs: f64) -> f64 {
-        intrinsics::fmul_algebraic(self, rhs)
+    pub const fn algebraic_mul(self, rhs: f64) -> f64 {
+        const fn const_algebraic_mul(lhs: f64, rhs: f64) -> f64 {
+            lhs * rhs
+        }
+
+        #[inline(always)]
+        fn rt_algebraic_mul(lhs: f64, rhs: f64) -> f64 {
+            intrinsics::fmul_algebraic(lhs, rhs)
+        }
+
+        const_eval_select((self, rhs), const_algebraic_mul, rt_algebraic_mul)
     }
 
     /// Float division that allows optimizations based on algebraic rules.
@@ -1539,9 +1570,19 @@ impl f64 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_div(self, rhs: f64) -> f64 {
-        intrinsics::fdiv_algebraic(self, rhs)
+    pub const fn algebraic_div(self, rhs: f64) -> f64 {
+        const fn const_algebraic_div(lhs: f64, rhs: f64) -> f64 {
+            lhs / rhs
+        }
+
+        #[inline(always)]
+        fn rt_algebraic_div(lhs: f64, rhs: f64) -> f64 {
+            intrinsics::fdiv_algebraic(lhs, rhs)
+        }
+
+        const_eval_select((self, rhs), const_algebraic_div, rt_algebraic_div)
     }
 
     /// Float remainder that allows optimizations based on algebraic rules.
@@ -1549,8 +1590,18 @@ impl f64 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_rem(self, rhs: f64) -> f64 {
-        intrinsics::frem_algebraic(self, rhs)
+    pub const fn algebraic_rem(self, rhs: f64) -> f64 {
+        const fn const_algebraic_rem(lhs: f64, rhs: f64) -> f64 {
+            lhs % rhs
+        }
+
+        #[inline(always)]
+        fn rt_algebraic_rem(lhs: f64, rhs: f64) -> f64 {
+            intrinsics::frem_algebraic(lhs, rhs)
+        }
+
+        const_eval_select((self, rhs), const_algebraic_rem, rt_algebraic_rem)
     }
 }
