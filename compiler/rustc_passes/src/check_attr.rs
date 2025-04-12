@@ -1109,6 +1109,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             ItemKind::Trait(_, _, _, generics, _, items)
                 if generics.params.len() != 0
                     || items.iter().any(|item| matches!(item.kind, AssocItemKind::Type)) => {}
+            ItemKind::TyAlias(_, _, generics) if generics.params.len() != 0 => {}
             _ => {
                 self.dcx().emit_err(errors::DocSearchUnboxInvalid { span: meta.span() });
             }
