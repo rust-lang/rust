@@ -1,0 +1,10 @@
+error: invalid infostring for frontmatter
+  --> $DIR/frontmatter-whitespace-4.rs:1:4
+   |
+LL | --- cargo
+   |    ^^^^^^
+   |
+   = note: frontmatter infostrings must be a single identifier immediately following the opening
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,26 @@
+error: invalid preceding whitespace for frontmatter close
+  --> $DIR/frontmatter-whitespace-2.rs:8:1
+   |
+LL |     ---x
+   | ^^^^^^^^
+   |
+note: frontmatter close should not be preceded by whitespace
+  --> $DIR/frontmatter-whitespace-2.rs:8:1
+   |
+LL |     ---x
+   | ^^^^
+
+error: extra characters after frontmatter close are not allowed
+  --> $DIR/frontmatter-whitespace-2.rs:8:1
+   |
+LL |     ---x
+   | ^^^^^^^^
+
+error: unexpected closing delimiter: `}`
+  --> $DIR/frontmatter-whitespace-2.rs:11:1
+   |
+LL | }
+   | ^ unexpected closing delimiter
+
+error: aborting due to 3 previous errors
+

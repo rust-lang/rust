@@ -1,0 +1,16 @@
+error: frontmatter close does not match the opening
+  --> $DIR/mismatch-1.rs:1:1
+   |
+LL |   ---cargo
+   |   ^--
+   |   |
+   |  _the opening here has 3 dashes...
+   | |
+LL | |
+LL | | ----
+   | |_---^
+   |   |
+   |   ...while the close has 4 dashes
+
+error: aborting due to 1 previous error
+
