@@ -1,6 +1,11 @@
-#![allow(clippy::all)]
 #![warn(clippy::cognitive_complexity)]
-#![allow(unused, unused_crate_dependencies)]
+#![allow(
+    clippy::eq_op,
+    clippy::needless_borrows_for_generic_args,
+    clippy::needless_return,
+    clippy::nonminimal_bool,
+    clippy::uninlined_format_args
+)]
 
 #[rustfmt::skip]
 fn main() {
