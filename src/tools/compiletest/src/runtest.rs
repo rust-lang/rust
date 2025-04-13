@@ -22,7 +22,7 @@ use crate::common::{
     output_base_dir, output_base_name, output_testname_unique,
 };
 use crate::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
-use crate::errors::{self, Error, ErrorKind};
+use crate::errors::{Error, ErrorKind};
 use crate::header::TestProps;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::util::{PathBufExt, add_dylib_path, logv, static_regex};
@@ -675,7 +675,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn check_expected_errors(&self, expected_errors: Vec<errors::Error>, proc_res: &ProcRes) {
+    fn check_expected_errors(&self, expected_errors: Vec<Error>, proc_res: &ProcRes) {
         debug!(
             "check_expected_errors: expected_errors={:?} proc_res.status={:?}",
             expected_errors, proc_res.status
@@ -710,8 +710,12 @@ impl<'test> TestCx<'test> {
             self.testpaths.file.display().to_string()
         };
 
-        let expect_help = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Help));
-        let expect_note = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Note));
+        // Errors and warnings are always expected, other diagnostics are only expected
+        // if one of them actually occurs in the test.
+        let expected_kinds: HashSet<_> = [ErrorKind::Error, ErrorKind::Warning]
+            .into_iter()
+            .chain(expected_errors.iter().filter_map(|e| e.kind))
+            .collect();
 
         // Parse the JSON output from the compiler and extract out the messages.
         let actual_errors = json::parse_output(&diagnostic_file_name, &proc_res.stderr, proc_res);
@@ -737,8 +741,11 @@ impl<'test> TestCx<'test> {
                 }
 
                 None => {
-                    // If the test is a known bug, don't require that the error is annotated
-                    if self.is_unexpected_compiler_message(&actual_error, expect_help, expect_note)
+                    if actual_error.require_annotation
+                        && actual_error.kind.map_or(false, |kind| {
+                            expected_kinds.contains(&kind)
+                                && !self.props.dont_require_annotations.contains(&kind)
+                        })
                     {
                         self.error(&format!(
                             "{}:{}: unexpected {}: '{}'",
@@ -794,27 +801,6 @@ impl<'test> TestCx<'test> {
             }
             panic!("errors differ from expected");
         }
-    }
-
-    /// Returns `true` if we should report an error about `actual_error`,
-    /// which did not match any of the expected error.
-    fn is_unexpected_compiler_message(
-        &self,
-        actual_error: &Error,
-        expect_help: bool,
-        expect_note: bool,
-    ) -> bool {
-        actual_error.require_annotation
-            && actual_error.kind.map_or(false, |err_kind| {
-                // If the test being checked doesn't contain any "help" or "note" annotations, then
-                // we don't require annotating "help" or "note" (respecively) diagnostics at all.
-                let default_require_annotations = self.props.require_annotations[&err_kind];
-                match err_kind {
-                    ErrorKind::Help => expect_help && default_require_annotations,
-                    ErrorKind::Note => expect_note && default_require_annotations,
-                    _ => default_require_annotations,
-                }
-            })
     }
 
     fn should_emit_metadata(&self, pm: Option<PassMode>) -> Emit {
