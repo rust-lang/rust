@@ -20,7 +20,7 @@ macro_rules! bl {
 intrinsics! {
     // NOTE This function and the ones below are implemented using assembly because they are using a
     // custom calling convention which can't be implemented using a normal Rust function.
-    #[naked]
+    #[unsafe(naked)]
     #[cfg(not(target_env = "msvc"))]
     pub unsafe extern "C" fn __aeabi_uidivmod() {
         core::arch::naked_asm!(
@@ -34,7 +34,7 @@ intrinsics! {
         );
     }
 
-    #[naked]
+    #[unsafe(naked)]
     pub unsafe extern "C" fn __aeabi_uldivmod() {
         core::arch::naked_asm!(
             "push {{r4, lr}}",
@@ -49,7 +49,7 @@ intrinsics! {
         );
     }
 
-    #[naked]
+    #[unsafe(naked)]
     pub unsafe extern "C" fn __aeabi_idivmod() {
         core::arch::naked_asm!(
             "push {{r0, r1, r4, lr}}",
@@ -61,7 +61,7 @@ intrinsics! {
         );
     }
 
-    #[naked]
+    #[unsafe(naked)]
     pub unsafe extern "C" fn __aeabi_ldivmod() {
         core::arch::naked_asm!(
             "push {{r4, lr}}",

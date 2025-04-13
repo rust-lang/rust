@@ -3,7 +3,7 @@
 use core::intrinsics;
 
 intrinsics! {
-    #[naked]
+    #[unsafe(naked)]
     #[cfg(all(target_os = "uefi", not(feature = "no-asm")))]
     pub unsafe extern "C" fn __chkstk() {
         core::arch::naked_asm!(

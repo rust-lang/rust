@@ -423,7 +423,7 @@ macro_rules! intrinsics {
     // Naked functions are special: we can't generate wrappers for them since
     // they use a custom calling convention.
     (
-        #[naked]
+        #[unsafe(naked)]
         $(#[$($attr:tt)*])*
         pub unsafe extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
             $($body:tt)*
@@ -433,7 +433,7 @@ macro_rules! intrinsics {
     ) => (
         // `#[naked]` definitions are referenced by other places, so we can't use `cfg` like the others
         pub mod $name {
-            #[naked]
+            #[unsafe(naked)]
             $(#[$($attr)*])*
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]

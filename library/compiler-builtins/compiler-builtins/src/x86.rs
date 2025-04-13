@@ -8,7 +8,7 @@ use core::intrinsics;
 // NOTE These functions are never mangled as they are not tested against compiler-rt
 
 intrinsics! {
-    #[naked]
+    #[unsafe(naked)]
     #[cfg(all(
         any(all(windows, target_env = "gnu"), target_os = "uefi"),
         not(feature = "no-asm")
@@ -20,7 +20,7 @@ intrinsics! {
         );
     }
 
-    #[naked]
+    #[unsafe(naked)]
     #[cfg(all(
         any(all(windows, target_env = "gnu"), target_os = "uefi"),
         not(feature = "no-asm")
