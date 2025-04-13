@@ -734,3 +734,52 @@ pub const fn unlikely(b: bool) -> bool {
 pub const fn cold_path() {
     crate::intrinsics::cold_path()
 }
+
+/// Returns either `true_val` or `false_val` depending on the value of `b`,
+/// with a hint to the compiler that `b` is unlikely to be correctly
+/// predicted by a CPU’s branch predictor.
+///
+/// This method is functionally equivalent to
+/// ```ignore (this is just for illustrative purposes)
+/// fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
+///     if b { true_val } else { false_val }
+/// }
+/// ```
+/// but might generate different assembly. In particular, on platforms with
+/// a conditional move or select instruction (like `cmov` on x86 or `csel`
+/// on ARM) the optimizer might use these instructions to avoid branches,
+/// which can benefit performance if the branch predictor is struggling
+/// with predicting `condition`, such as in an implementation of binary
+/// search.
+///
+/// Note however that this lowering is not guaranteed (on any platform) and
+/// should not be relied upon when trying to write constant-time code. Also
+/// be aware that this lowering might *decrease* performance if `condition`
+/// is well-predictable. It is advisable to perform benchmarks to tell if
+/// this function is useful.
+///
+/// # Examples
+///
+/// Distribute values evenly between two buckets:
+/// ```
+/// #![feature(select_unpredictable)]
+///
+/// use std::hash::BuildHasher;
+/// use std::hint;
+///
+/// fn append<H: BuildHasher>(hasher: &H, v: i32, bucket_one: &mut Vec<i32>, bucket_two: &mut Vec<i32>) {
+///     let hash = hasher.hash_one(&v);
+///     let bucket = hint::select_unpredictable(hash % 2 == 0, bucket_one, bucket_two);
+///     bucket.push(v);
+/// }
+/// # let hasher = std::collections::hash_map::RandomState::new();
+/// # let mut bucket_one = Vec::new();
+/// # let mut bucket_two = Vec::new();
+/// # append(&hasher, 42, &mut bucket_one, &mut bucket_two);
+/// # assert_eq!(bucket_one.len() + bucket_two.len(), 1);
+/// ```
+#[inline(always)]
+#[unstable(feature = "select_unpredictable", issue = "133962")]
+pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
+    crate::intrinsics::select_unpredictable(b, true_val, false_val)
+}
