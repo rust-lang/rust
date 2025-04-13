@@ -23,6 +23,7 @@ pub enum Constraint {
     Range(Range<i64>),
 }
 
+/// ARM-specific
 impl TryFrom<ArgPrep> for Constraint {
     type Error = ();
 
@@ -77,6 +78,7 @@ impl Argument {
         (arg[..split_index + 1].trim_end(), &arg[split_index + 1..])
     }
 
+    // ARM-specific
     pub fn from_c(pos: usize, arg: &str, arg_prep: Option<ArgPrep>) -> Argument {
         let (ty, var_name) = Self::type_and_name_from_c(arg);
 
@@ -208,36 +210,23 @@ impl ArgumentList {
     /// Creates a line for each argument that initializes the argument from an array `[arg]_vals` at
     /// an offset `i` using a load intrinsic, in C.
     /// e.g `uint8x8_t a = vld1_u8(&a_vals[i]);`
-    pub fn load_values_c(&self, indentation: Indentation, target: &str) -> String {
+    ///
+    /// ARM-specific
+    pub fn load_values_c(&self, indentation: Indentation) -> String {
         self.iter()
             .filter_map(|arg| {
                 // The ACLE doesn't support 64-bit polynomial loads on Armv7
                 // This and the cast are a workaround for this
-                let armv7_p64 = if let TypeKind::Poly = arg.ty.kind() {
-                    target.contains("v7")
-                } else {
-                    false
-                };
 
                 (!arg.has_constraint()).then(|| {
                     format!(
-                        "{indentation}{ty} {name} = {open_cast}{load}(&{name}_vals[i]){close_cast};\n",
+                        "{indentation}{ty} {name} = cast<{ty}>({load}(&{name}_vals[i]));\n",
                         ty = arg.to_c_type(),
                         name = arg.name,
                         load = if arg.is_simd() {
-                            arg.ty.get_load_function(armv7_p64)
+                            arg.ty.get_load_function_c()
                         } else {
                             "*".to_string()
-                        },
-                        open_cast = if armv7_p64 {
-                            format!("cast<{}>(", arg.to_c_type())
-                        } else {
-                            "".to_string()
-                        },
-                        close_cast = if armv7_p64 {
-                            ")".to_string()
-                        } else {
-                            "".to_string()
                         }
                     )
                 })
@@ -257,7 +246,7 @@ impl ArgumentList {
                         name = arg.name,
                         vals_name = arg.rust_vals_array_name(),
                         load = if arg.is_simd() {
-                            arg.ty.get_load_function(false)
+                            arg.ty.get_load_function_rust()
                         } else {
                             "*".to_string()
                         },

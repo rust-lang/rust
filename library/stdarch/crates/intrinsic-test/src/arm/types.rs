@@ -163,6 +163,7 @@ impl IntrinsicType {
         }
     }
 
+    /// Move to Argument    
     pub fn c_scalar_type(&self) -> String {
         format!(
             "{prefix}{bits}_t",
@@ -171,6 +172,7 @@ impl IntrinsicType {
         )
     }
 
+    /// Move to Argument
     pub fn rust_scalar_type(&self) -> String {
         format!(
             "{prefix}{bits}",
@@ -180,6 +182,8 @@ impl IntrinsicType {
     }
 
     /// Gets a string containing the typename for this type in C format.
+    ///
+    /// ARM-specific
     pub fn c_type(&self) -> String {
         match self {
             IntrinsicType::Ptr { child, .. } => child.c_type(),
@@ -214,6 +218,7 @@ impl IntrinsicType {
         }
     }
 
+    /// ARM-specific
     pub fn c_single_vector_type(&self) -> String {
         match self {
             IntrinsicType::Ptr { child, .. } => child.c_single_vector_type(),
@@ -228,6 +233,7 @@ impl IntrinsicType {
         }
     }
 
+    /// ARM-specific
     pub fn rust_type(&self) -> String {
         match self {
             IntrinsicType::Ptr { child, .. } => child.c_type(),
@@ -377,9 +383,11 @@ impl IntrinsicType {
     }
 
     /// Determines the load function for this type.
-    pub fn get_load_function(&self, armv7_p64_workaround: bool) -> String {
+    ///
+    /// ARM-specific
+    fn get_load_function(&self, language: Language) -> String {
         match self {
-            IntrinsicType::Ptr { child, .. } => child.get_load_function(armv7_p64_workaround),
+            IntrinsicType::Ptr { child, .. } => child.get_load_function(language),
             IntrinsicType::Type {
                 kind: k,
                 bit_len: Some(bl),
@@ -399,7 +407,7 @@ impl IntrinsicType {
                         TypeKind::Int => "s",
                         TypeKind::Float => "f",
                         // The ACLE doesn't support 64-bit polynomial loads on Armv7
-                        TypeKind::Poly => if armv7_p64_workaround && *bl == 64 {"s"} else {"p"},
+                        TypeKind::Poly => if language == Language::C && *bl == 64 {"s"} else {"p"},
                         x => todo!("get_load_function TypeKind: {:#?}", x),
                     },
                     size = bl,
@@ -411,7 +419,17 @@ impl IntrinsicType {
         }
     }
 
+    pub fn get_load_function_c(&self) -> String {
+        self.get_load_function(Language::C)
+    }
+
+    pub fn get_load_function_rust(&self) -> String {
+        self.get_load_function(Language::Rust)
+    }
+
     /// Determines the get lane function for this type.
+    ///
+    /// ARM-specific
     pub fn get_lane_function(&self) -> String {
         match self {
             IntrinsicType::Ptr { child, .. } => child.get_lane_function(),
@@ -443,6 +461,7 @@ impl IntrinsicType {
         }
     }
 
+    /// ARM-specific
     pub fn from_c(s: &str) -> Result<IntrinsicType, String> {
         const CONST_STR: &str = "const";
         if let Some(s) = s.strip_suffix('*') {
