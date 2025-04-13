@@ -1051,7 +1051,7 @@ impl ExpandTo {
 
 intern::impl_internable!(ModPath, attrs::AttrInput);
 
-#[salsa::interned(no_lifetime)]
+#[salsa::interned(no_lifetime, debug)]
 #[doc(alias = "MacroFileId")]
 pub struct MacroCallId {
     pub loc: MacroCallLoc,
