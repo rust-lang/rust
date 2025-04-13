@@ -134,7 +134,8 @@ impl Rewrite for Pat {
                 let mut_prefix = format_mutability(mutability).trim();
 
                 let (ref_kw, mut_infix) = match by_ref {
-                    ByRef::Yes(rmutbl) => ("ref", format_mutability(rmutbl).trim()),
+                    // FIXME(pin_ergonomics): format the pinnedness
+                    ByRef::Yes(_, rmutbl) => ("ref", format_mutability(rmutbl).trim()),
                     ByRef::No => ("", ""),
                 };
                 let id_str = rewrite_ident(context, ident);
