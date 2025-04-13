@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use rustc_abi::FieldIdx;
 use rustc_hir::ByRef;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt};
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
@@ -299,7 +300,24 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(mutability) } => {
+            PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(Pinnedness::Pinned, _) } => {
+                let Some(ref_ty) = pattern.ty.pinned_ty() else {
+                    rustc_middle::bug!("RefPin pattern on non-`Pin` type {:?}", pattern.ty);
+                };
+                MatchPairTree::for_pattern(
+                    place_builder.field(FieldIdx::ZERO, ref_ty).deref(),
+                    subpattern,
+                    cx,
+                    &mut subpairs,
+                    extra_data,
+                );
+                None
+            }
+
+            PatKind::DerefPattern {
+                ref subpattern,
+                borrow: ByRef::Yes(Pinnedness::Not, mutability),
+            } => {
                 // Create a new temporary for each deref pattern.
                 // FIXME(deref_patterns): dedup temporaries to avoid multiple `deref()` calls?
                 let temp = cx.temp(

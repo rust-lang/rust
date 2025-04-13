@@ -1,0 +1,130 @@
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:27:9
+   |
+LL |         Foo { .. } => {}
+   |         ^^^^^^^^^^ matches on the result of dereferencing `Pin<&mut Foo<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&mut Foo<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:37:9
+   |
+LL |         Foo { x, y } => {}
+   |         ^^^^^^^^^^^^ matches on the result of dereferencing `Pin<&mut Foo<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&mut Foo<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:31:9
+   |
+LL |         Foo { .. } => {}
+   |         ^^^^^^^^^^ matches on the result of dereferencing `Pin<&mut Foo<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&mut Foo<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:42:9
+   |
+LL |         Foo { .. } => {}
+   |         ^^^^^^^^^^ matches on the result of dereferencing `Pin<&mut Foo<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&mut Foo<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:49:9
+   |
+LL |         Foo { .. } => {}
+   |         ^^^^^^^^^^ matches on the result of dereferencing `Pin<&Foo<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&Foo<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:59:9
+   |
+LL |         Foo { x, y } => {}
+   |         ^^^^^^^^^^^^ matches on the result of dereferencing `Pin<&Foo<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&Foo<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:53:9
+   |
+LL |         Foo { .. } => {}
+   |         ^^^^^^^^^^ matches on the result of dereferencing `Pin<&Foo<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&Foo<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:64:9
+   |
+LL |         Foo { .. } => {}
+   |         ^^^^^^^^^^ matches on the result of dereferencing `Pin<&Foo<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&Foo<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:71:9
+   |
+LL |         Bar(..) => {}
+   |         ^^^^^^^ matches on the result of dereferencing `Pin<&mut Bar<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&mut Bar<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:81:9
+   |
+LL |         Bar(x, y) => {}
+   |         ^^^^^^^^^ matches on the result of dereferencing `Pin<&mut Bar<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&mut Bar<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:75:9
+   |
+LL |         Bar(..) => {}
+   |         ^^^^^^^ matches on the result of dereferencing `Pin<&mut Bar<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&mut Bar<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:86:9
+   |
+LL |         Bar(x, y) => {}
+   |         ^^^^^^^^^ matches on the result of dereferencing `Pin<&mut Bar<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&mut Bar<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:93:9
+   |
+LL |         Bar(..) => {}
+   |         ^^^^^^^ matches on the result of dereferencing `Pin<&Bar<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&Bar<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:103:9
+   |
+LL |         Bar(x, y) => {}
+   |         ^^^^^^^^^ matches on the result of dereferencing `Pin<&Bar<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&Bar<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:97:9
+   |
+LL |         Bar(..) => {}
+   |         ^^^^^^^ matches on the result of dereferencing `Pin<&Bar<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&Bar<T, U>>`
+
+error: mix of deref patterns and normal constructors
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:108:9
+   |
+LL |         Bar(x, y) => {}
+   |         ^^^^^^^^^ matches on the result of dereferencing `Pin<&Bar<T, U>>`
+LL |         Pin { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Pin<&Bar<T, U>>`
+
+error: aborting due to 16 previous errors
+
