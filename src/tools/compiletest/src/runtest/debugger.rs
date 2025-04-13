@@ -1,7 +1,8 @@
 use std::fmt::Write;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+
+use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::common::Config;
 use crate::runtest::ProcRes;
@@ -15,11 +16,15 @@ pub(super) struct DebuggerCommands {
     /// Contains the source line number to check and the line itself
     check_lines: Vec<(usize, String)>,
     /// Source file name
-    file: PathBuf,
+    file: Utf8PathBuf,
 }
 
 impl DebuggerCommands {
-    pub fn parse_from(file: &Path, config: &Config, debugger_prefix: &str) -> Result<Self, String> {
+    pub fn parse_from(
+        file: &Utf8Path,
+        config: &Config,
+        debugger_prefix: &str,
+    ) -> Result<Self, String> {
         let command_directive = format!("{debugger_prefix}-command");
         let check_directive = format!("{debugger_prefix}-check");
 
@@ -27,7 +32,7 @@ impl DebuggerCommands {
         let mut commands = vec![];
         let mut check_lines = vec![];
         let mut counter = 0;
-        let reader = BufReader::new(File::open(file).unwrap());
+        let reader = BufReader::new(File::open(file.as_std_path()).unwrap());
         for (line_no, line) in reader.lines().enumerate() {
             counter += 1;
             let line = line.map_err(|e| format!("Error while parsing debugger commands: {}", e))?;
@@ -50,7 +55,7 @@ impl DebuggerCommands {
             }
         }
 
-        Ok(Self { commands, breakpoint_lines, check_lines, file: file.to_owned() })
+        Ok(Self { commands, breakpoint_lines, check_lines, file: file.to_path_buf() })
     }
 
     /// Given debugger output and lines to check, ensure that every line is
@@ -81,10 +86,10 @@ impl DebuggerCommands {
         if missing.is_empty() {
             Ok(())
         } else {
-            let fname = self.file.file_name().unwrap().to_string_lossy();
+            let fname = self.file.file_name().unwrap();
             let mut msg = format!(
                 "check directive(s) from `{}` not found in debugger output. errors:",
-                self.file.display()
+                self.file
             );
 
             for (src_lineno, err_line) in missing {
