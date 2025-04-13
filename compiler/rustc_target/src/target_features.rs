@@ -491,6 +491,7 @@ const MIPS_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("a", Stable, &["zaamo", "zalrsc"]),
+    ("b", Stable, &["zba", "zbb", "zbs"]),
     ("c", Stable, &[]),
     ("d", Unstable(sym::riscv_target_feature), &["f"]),
     ("e", Unstable(sym::riscv_target_feature), &[]),

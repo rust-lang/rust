@@ -49,6 +49,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `avxvnni`
 `avxvnniint16`
 `avxvnniint8`
+`b`
 `backchain`
 `bf16`
 `bmi1`
