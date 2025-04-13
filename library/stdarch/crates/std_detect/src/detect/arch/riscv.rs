@@ -115,14 +115,6 @@ features! {
     /// * P: `"p"`
     /// * Zam: `"zam"`
     ///
-    /// Defined by Privileged Specification:
-    ///
-    /// * *Supervisor-Level ISA* (not "S" extension): `"s"`
-    /// * H (hypervisor): `"h"`
-    /// * Svnapot: `"svnapot"`
-    /// * Svpbmt: `"svpbmt"`
-    /// * Svinval: `"svinval"`
-    ///
     /// # Performance Hints
     ///
     /// The two features below define performance hints for unaligned
@@ -331,22 +323,6 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zvkt: "zvkt";
     /// "Zvkt" Extension for Vector Data-Independent Execution Latency
 
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] svnapot: "svnapot";
-    without cfg check: true;
-    /// "Svnapot" Extension for NAPOT Translation Contiguity
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] svpbmt: "svpbmt";
-    without cfg check: true;
-    /// "Svpbmt" Extension for Page-Based Memory Types
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] svinval: "svinval";
-    without cfg check: true;
-    /// "Svinval" Extension for Fine-Grained Address-Translation Cache Invalidation
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] h: "h";
-    without cfg check: true;
-    /// "H" Extension for Hypervisor Support
-
-    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] s: "s";
-    without cfg check: true;
-    /// Supervisor-Level ISA
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] j: "j";
     without cfg check: true;
     /// "J" Extension for Dynamically Translated Languages

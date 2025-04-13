@@ -123,7 +123,6 @@ pub(crate) fn imply_features(mut value: cache::Initializer) -> cache::Initialize
         imply!(c & f => zcf);
 
         imply!(zicntr | zihpm | f | zfinx | zve32x => zicsr);
-        imply!(s | h => zicsr);
 
         // Loop until the feature flags converge.
         if prev == value {

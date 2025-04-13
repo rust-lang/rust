@@ -141,7 +141,6 @@ pub(crate) fn detect_features() -> cache::Initializer {
     enable_feature(Feature::c, bit::test(auxv.hwcap, (b'c' - b'a').into()));
     enable_feature(Feature::d, bit::test(auxv.hwcap, (b'd' - b'a').into()));
     enable_feature(Feature::f, bit::test(auxv.hwcap, (b'f' - b'a').into()));
-    enable_feature(Feature::h, bit::test(auxv.hwcap, (b'h' - b'a').into()));
     enable_feature(Feature::m, bit::test(auxv.hwcap, (b'm' - b'a').into()));
     let has_v = bit::test(auxv.hwcap, (b'v' - b'a').into());
     let mut is_v_set = false;
@@ -314,10 +313,6 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // FIXME: e is not exposed in any of asm/hwcap.h, uapi/asm/hwcap.h, uapi/asm/hwprobe.h
     #[cfg(target_arch = "riscv32")]
     enable_feature(Feature::rv32e, bit::test(auxv.hwcap, (b'e' - b'a').into()));
-
-    // FIXME: Auxvec does not show supervisor feature support, but this mode may be useful
-    // to detect when Rust is used to write Linux kernel modules.
-    // These should be more than Auxvec way to detect supervisor features.
 
     imply_features(value)
 }
