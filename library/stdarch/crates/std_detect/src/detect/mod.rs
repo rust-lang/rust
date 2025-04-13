@@ -49,6 +49,9 @@ cfg_if! {
         #[path = "os/x86.rs"]
         mod os;
     } else if #[cfg(all(any(target_os = "linux", target_os = "android"), feature = "libc"))] {
+        #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
+        #[path = "os/riscv.rs"]
+        mod riscv;
         #[path = "os/linux/mod.rs"]
         mod os;
     } else if #[cfg(all(target_os = "freebsd", feature = "libc"))] {

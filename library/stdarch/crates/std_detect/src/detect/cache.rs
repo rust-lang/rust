@@ -31,7 +31,7 @@ const CACHE_CAPACITY: u32 = 93;
 /// This type is used to initialize the cache
 // The derived `Default` implementation will initialize the field to zero,
 // which is what we want.
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, PartialEq, Eq)]
 pub(crate) struct Initializer(u128);
 
 // NOTE: the `debug_assert!` would catch that we do not add more Features than

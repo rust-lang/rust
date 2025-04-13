@@ -1,5 +1,6 @@
 //! Run-time feature detection for RISC-V on Linux.
 
+use super::super::riscv::imply_features;
 use super::auxvec;
 use crate::detect::{Feature, bit, cache};
 
@@ -12,22 +13,16 @@ pub(crate) fn detect_features() -> cache::Initializer {
         }
     };
 
-    // Use auxiliary vector to enable single-letter ISA extensions and Zicsr.
+    // Use auxiliary vector to enable single-letter ISA extensions.
     // The values are part of the platform-specific [asm/hwcap.h][hwcap]
     //
     // [hwcap]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/arch/riscv/include/uapi/asm/hwcap.h?h=v6.14
     let auxv = auxvec::auxv().expect("read auxvec"); // should not fail on RISC-V platform
     #[allow(clippy::eq_op)]
-    let has_a = bit::test(auxv.hwcap, (b'a' - b'a').into());
-    enable_feature(Feature::a, has_a);
-    enable_feature(Feature::zalrsc, has_a);
-    enable_feature(Feature::zaamo, has_a);
+    enable_feature(Feature::a, bit::test(auxv.hwcap, (b'a' - b'a').into()));
     enable_feature(Feature::c, bit::test(auxv.hwcap, (b'c' - b'a').into()));
-    let has_d = bit::test(auxv.hwcap, (b'd' - b'a').into());
-    let has_f = bit::test(auxv.hwcap, (b'f' - b'a').into());
-    enable_feature(Feature::d, has_d);
-    enable_feature(Feature::f, has_d | has_f);
-    enable_feature(Feature::zicsr, has_d | has_f);
+    enable_feature(Feature::d, bit::test(auxv.hwcap, (b'd' - b'a').into()));
+    enable_feature(Feature::f, bit::test(auxv.hwcap, (b'f' - b'a').into()));
     enable_feature(Feature::h, bit::test(auxv.hwcap, (b'h' - b'a').into()));
     enable_feature(Feature::m, bit::test(auxv.hwcap, (b'm' - b'a').into()));
 
@@ -48,5 +43,5 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // to detect when Rust is used to write Linux kernel modules.
     // These should be more than Auxvec way to detect supervisor features.
 
-    value
+    imply_features(value)
 }
