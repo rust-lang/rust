@@ -417,7 +417,7 @@ enum DownloadSource {
     Dist,
 }
 
-/// Functions that are only ever called once, but named for clarify and to avoid thousand-line functions.
+/// Functions that are only ever called once, but named for clarity and to avoid thousand-line functions.
 impl Config {
     pub(crate) fn download_clippy(&self) -> PathBuf {
         self.verbose(|| println!("downloading stage0 clippy artifacts"));
