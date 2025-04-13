@@ -7,6 +7,9 @@ pub fn args() -> Args {
     Args {}
 }
 
+impl !Send for Args {}
+impl !Sync for Args {}
+
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().finish()

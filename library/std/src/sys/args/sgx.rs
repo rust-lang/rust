@@ -37,6 +37,9 @@ pub struct Args {
     iter: slice::Iter<'static, OsString>,
 }
 
+impl !Send for Args {}
+impl !Sync for Args {}
+
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.iter.as_slice().fmt(f)
