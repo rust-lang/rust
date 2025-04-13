@@ -150,7 +150,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         let init_expr_str = Sugg::hir_with_applicability(cx, init_expr, "..", &mut applicability).maybe_paren();
         // Take care when binding is `ref`
         let sugg = if let PatKind::Binding(
-            BindingMode(ByRef::Yes(ref_mutability), binding_mutability),
+            BindingMode(ByRef::Yes(_,ref_mutability), binding_mutability),
             _hir_id,
             ident,
             subpattern,
@@ -169,7 +169,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
             // Handle subpattern (@ subpattern)
             let maybe_subpattern = match subpattern {
                 Some(Pat {
-                    kind: PatKind::Binding(BindingMode(ByRef::Yes(_), _), _, subident, None),
+                    kind: PatKind::Binding(BindingMode(ByRef::Yes(..), _), _, subident, None),
                     ..
                 }) => {
                     // avoid `&ref`
@@ -504,8 +504,8 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
         let requires_semi = matches!(cx.tcx.parent_hir_node(expr.hir_id), Node::Stmt(_));
         let method_call_str = match by_ref {
-            ByRef::Yes(Mutability::Mut) => ".as_mut()",
-            ByRef::Yes(Mutability::Not) => ".as_ref()",
+            ByRef::Yes(_, Mutability::Mut) => ".as_mut()",
+            ByRef::Yes(_, Mutability::Not) => ".as_ref()",
             ByRef::No => "",
         };
         let sugg = format!(
