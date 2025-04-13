@@ -668,6 +668,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// Splitting a map into even and odd keys, reusing the original map:
     ///
     /// ```
+    /// #![feature(hash_extract_if)]
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
@@ -683,7 +684,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     #[inline]
     #[rustc_lint_query_instability]
-    #[stable(feature = "hash_extract_if", since = "1.87.0")]
+    #[unstable(feature = "hash_extract_if", issue = "59618")]
     pub fn extract_if<F>(&mut self, pred: F) -> ExtractIf<'_, K, V, F>
     where
         F: FnMut(&K, &mut V) -> bool,
@@ -1670,6 +1671,8 @@ impl<'a, K, V> Drain<'a, K, V> {
 /// # Example
 ///
 /// ```
+/// #![feature(hash_extract_if)]
+///
 /// use std::collections::HashMap;
 ///
 /// let mut map = HashMap::from([
@@ -1677,7 +1680,7 @@ impl<'a, K, V> Drain<'a, K, V> {
 /// ]);
 /// let iter = map.extract_if(|_k, v| *v % 2 == 0);
 /// ```
-#[stable(feature = "hash_extract_if", since = "1.87.0")]
+#[unstable(feature = "hash_extract_if", issue = "59618")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ExtractIf<'a, K, V, F>
 where
@@ -2294,7 +2297,7 @@ where
     }
 }
 
-#[stable(feature = "hash_extract_if", since = "1.87.0")]
+#[unstable(feature = "hash_extract_if", issue = "59618")]
 impl<K, V, F> Iterator for ExtractIf<'_, K, V, F>
 where
     F: FnMut(&K, &mut V) -> bool,
@@ -2311,10 +2314,10 @@ where
     }
 }
 
-#[stable(feature = "hash_extract_if", since = "1.87.0")]
+#[unstable(feature = "hash_extract_if", issue = "59618")]
 impl<K, V, F> FusedIterator for ExtractIf<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
 
-#[stable(feature = "hash_extract_if", since = "1.87.0")]
+#[unstable(feature = "hash_extract_if", issue = "59618")]
 impl<'a, K, V, F> fmt::Debug for ExtractIf<'a, K, V, F>
 where
     F: FnMut(&K, &mut V) -> bool,
