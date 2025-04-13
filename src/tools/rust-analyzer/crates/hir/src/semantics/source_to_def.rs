@@ -220,7 +220,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn module_to_def(&mut self, src: InFile<&ast::Module>) -> Option<ModuleId> {
         let _p = tracing::info_span!("module_to_def").entered();
         let parent_declaration = self
-            .ancestors_with_macros(src.syntax_ref(), |_, ancestor, _| {
+            .parent_ancestors_with_macros(src.syntax_ref(), |_, ancestor, _| {
                 ancestor.map(Either::<ast::Module, ast::BlockExpr>::cast).transpose()
             })
             .map(|it| it.transpose());
@@ -519,7 +519,7 @@ impl SourceToDefCtx<'_, '_> {
 
     pub(super) fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {
         let _p = tracing::info_span!("find_container").entered();
-        let def = self.ancestors_with_macros(src, |this, container, child| {
+        let def = self.parent_ancestors_with_macros(src, |this, container, child| {
             this.container_to_def(container, child)
         });
         if let Some(def) = def {
@@ -532,7 +532,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     fn find_generic_param_container(&mut self, src: InFile<&SyntaxNode>) -> Option<GenericDefId> {
-        self.ancestors_with_macros(src, |this, InFile { file_id, value }, _| {
+        self.parent_ancestors_with_macros(src, |this, InFile { file_id, value }, _| {
             let item = ast::Item::cast(value)?;
             match &item {
                 ast::Item::Fn(it) => this.fn_to_def(InFile::new(file_id, it)).map(Into::into),
@@ -555,7 +555,7 @@ impl SourceToDefCtx<'_, '_> {
 
     // FIXME: Remove this when we do inference in signatures
     fn find_pat_or_label_container(&mut self, src: InFile<&SyntaxNode>) -> Option<DefWithBodyId> {
-        self.ancestors_with_macros(src, |this, InFile { file_id, value }, _| {
+        self.parent_ancestors_with_macros(src, |this, InFile { file_id, value }, _| {
             let item = match ast::Item::cast(value.clone()) {
                 Some(it) => it,
                 None => {
@@ -577,8 +577,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     /// Skips the attributed item that caused the macro invocation we are climbing up
-    ///
-    fn ancestors_with_macros<T>(
+    fn parent_ancestors_with_macros<T>(
         &mut self,
         node: InFile<&SyntaxNode>,
         mut cb: impl FnMut(

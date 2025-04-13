@@ -10,8 +10,9 @@ use hir_expand::{Lookup, mod_path::PathKind};
 use itertools::Itertools;
 use span::Edition;
 
+use crate::signatures::StructFlags;
 use crate::{
-    DefWithBodyId, ItemTreeLoc, TypeParamId,
+    AdtId, DefWithBodyId, GenericDefId, ItemTreeLoc, TypeParamId, VariantId,
     expr_store::path::{GenericArg, GenericArgs},
     hir::{
         Array, BindingAnnotation, CaptureBy, ClosureKind, Literal, Movability, Statement,
@@ -21,6 +22,7 @@ use crate::{
     signatures::{FnFlags, FunctionSignature, StructSignature},
     type_ref::{ConstRef, LifetimeRef, Mutability, TraitBoundModifier, TypeBound, UseArgRef},
 };
+use crate::{item_tree::FieldsShape, signatures::FieldData};
 
 use super::*;
 
@@ -40,13 +42,13 @@ macro_rules! wln {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum LineFormat {
+pub enum LineFormat {
     Oneline,
     Newline,
     Indentation,
 }
 
-pub(crate) fn print_body_hir(
+pub fn print_body_hir(
     db: &dyn DefDatabase,
     body: &Body,
     owner: DefWithBodyId,
@@ -112,7 +114,93 @@ pub(crate) fn print_body_hir(
     p.buf
 }
 
-pub(crate) fn print_path(
+pub fn print_variant_body_hir(db: &dyn DefDatabase, owner: VariantId, edition: Edition) -> String {
+    let header = match owner {
+        VariantId::StructId(it) => {
+            it.lookup(db).id.resolved(db, |it| format!("struct {}", it.name.display(db, edition)))
+        }
+        VariantId::EnumVariantId(enum_variant_id) => {
+            let loc = enum_variant_id.lookup(db);
+            let enum_loc = loc.parent.lookup(db);
+            format!(
+                "enum {}::{}",
+                enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db, edition),
+                loc.id.item_tree(db)[loc.id.value].name.display(db, edition),
+            )
+        }
+        VariantId::UnionId(union_id) => union_id
+            .lookup(db)
+            .id
+            .resolved(db, |it| format!("union {}", it.name.display(db, edition))),
+    };
+
+    let fields = db.variant_fields(owner);
+
+    let mut p = Printer {
+        db,
+        store: &fields.store,
+        buf: header,
+        indent_level: 0,
+        line_format: LineFormat::Newline,
+        edition,
+    };
+    match fields.shape {
+        FieldsShape::Record => wln!(p, " {{"),
+        FieldsShape::Tuple => wln!(p, "("),
+        FieldsShape::Unit => (),
+    }
+
+    for (_, data) in fields.fields().iter() {
+        let FieldData { name, type_ref, visibility, is_unsafe } = data;
+        match visibility {
+            crate::item_tree::RawVisibility::Module(interned, _visibility_explicitness) => {
+                w!(p, "{}", interned.display(db, p.edition))
+            }
+            crate::item_tree::RawVisibility::Public => w!(p, "pub "),
+        }
+        if *is_unsafe {
+            w!(p, "unsafe ");
+        }
+        w!(p, "{}: ", name.display(db, p.edition));
+        p.print_type_ref(*type_ref);
+    }
+
+    match fields.shape {
+        FieldsShape::Record => wln!(p, "}}"),
+        FieldsShape::Tuple => wln!(p, ");"),
+        FieldsShape::Unit => wln!(p, ";"),
+    }
+    p.buf
+}
+
+pub fn print_signature(db: &dyn DefDatabase, owner: GenericDefId, edition: Edition) -> String {
+    match owner {
+        GenericDefId::AdtId(id) => match id {
+            AdtId::StructId(id) => {
+                let signature = db.struct_signature(id);
+                print_struct(db, &signature, edition)
+            }
+            AdtId::UnionId(id) => {
+                format!("unimplemented {id:?}")
+            }
+            AdtId::EnumId(id) => {
+                format!("unimplemented {id:?}")
+            }
+        },
+        GenericDefId::ConstId(id) => format!("unimplemented {id:?}"),
+        GenericDefId::FunctionId(id) => {
+            let signature = db.function_signature(id);
+            print_function(db, &signature, edition)
+        }
+        GenericDefId::ImplId(id) => format!("unimplemented {id:?}"),
+        GenericDefId::StaticId(id) => format!("unimplemented {id:?}"),
+        GenericDefId::TraitAliasId(id) => format!("unimplemented {id:?}"),
+        GenericDefId::TraitId(id) => format!("unimplemented {id:?}"),
+        GenericDefId::TypeAliasId(id) => format!("unimplemented {id:?}"),
+    }
+}
+
+pub fn print_path(
     db: &dyn DefDatabase,
     store: &ExpressionStore,
     path: &Path,
@@ -130,14 +218,11 @@ pub(crate) fn print_path(
     p.buf
 }
 
-pub(crate) fn print_struct(
+pub fn print_struct(
     db: &dyn DefDatabase,
     StructSignature { name, generic_params, store, flags, shape, repr }: &StructSignature,
     edition: Edition,
 ) -> String {
-    use crate::item_tree::FieldsShape;
-    use crate::signatures::StructFlags;
-
     let mut p = Printer {
         db,
         store,
@@ -180,7 +265,7 @@ pub(crate) fn print_struct(
     p.buf
 }
 
-pub(crate) fn print_function(
+pub fn print_function(
     db: &dyn DefDatabase,
     FunctionSignature {
         name,
@@ -342,7 +427,7 @@ fn print_generic_params(db: &dyn DefDatabase, generic_params: &GenericParams, p:
     }
 }
 
-pub(crate) fn print_expr_hir(
+pub fn print_expr_hir(
     db: &dyn DefDatabase,
     store: &ExpressionStore,
     _owner: DefWithBodyId,
@@ -361,7 +446,7 @@ pub(crate) fn print_expr_hir(
     p.buf
 }
 
-pub(crate) fn print_pat_hir(
+pub fn print_pat_hir(
     db: &dyn DefDatabase,
     store: &ExpressionStore,
     _owner: DefWithBodyId,

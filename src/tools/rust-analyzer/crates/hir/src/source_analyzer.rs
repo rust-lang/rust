@@ -60,11 +60,11 @@ use triomphe::Arc;
 pub(crate) struct SourceAnalyzer {
     pub(crate) file_id: HirFileId,
     pub(crate) resolver: Resolver,
-    body_or_sig: Option<BodyOrSig>,
+    pub(crate) body_or_sig: Option<BodyOrSig>,
 }
 
 #[derive(Debug)]
-enum BodyOrSig {
+pub(crate) enum BodyOrSig {
     Body {
         def: DefWithBodyId,
         body: Arc<Body>,
@@ -73,12 +73,12 @@ enum BodyOrSig {
     },
     // To be folded into body once it is considered one
     VariantFields {
-        _def: VariantId,
+        def: VariantId,
         store: Arc<ExpressionStore>,
         source_map: Arc<ExpressionStoreSourceMap>,
     },
     Sig {
-        _def: GenericDefId,
+        def: GenericDefId,
         store: Arc<ExpressionStore>,
         source_map: Arc<ExpressionStoreSourceMap>,
         // infer: Option<Arc<InferenceResult>>,
@@ -143,7 +143,7 @@ impl SourceAnalyzer {
         let resolver = def.resolver(db);
         SourceAnalyzer {
             resolver,
-            body_or_sig: Some(BodyOrSig::Sig { _def: def, store, source_map }),
+            body_or_sig: Some(BodyOrSig::Sig { def, store, source_map }),
             file_id,
         }
     }
@@ -159,7 +159,7 @@ impl SourceAnalyzer {
         SourceAnalyzer {
             resolver,
             body_or_sig: Some(BodyOrSig::VariantFields {
-                _def: def,
+                def,
                 store: fields.store.clone(),
                 source_map,
             }),

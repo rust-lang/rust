@@ -4,7 +4,7 @@ pub mod body;
 mod expander;
 pub mod lower;
 pub mod path;
-pub(crate) mod pretty;
+pub mod pretty;
 pub mod scope;
 #[cfg(test)]
 mod tests;

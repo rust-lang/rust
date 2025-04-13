@@ -20,7 +20,7 @@ use hir_def::{
     type_ref::Mutability,
 };
 use hir_expand::{
-    ExpandResult, FileRange, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
+    ExpandResult, FileRange, HirFileIdExt, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
     attrs::collect_attrs,
     builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
@@ -737,6 +737,35 @@ impl<'db> SemanticsImpl<'db> {
                 },
             )
         }
+    }
+
+    pub fn debug_hir_at(&self, token: SyntaxToken) -> Option<String> {
+        self.analyze_no_infer(&token.parent()?).and_then(|it| {
+            Some(match it.body_or_sig.as_ref()? {
+                crate::source_analyzer::BodyOrSig::Body { def, body, .. } => {
+                    hir_def::expr_store::pretty::print_body_hir(
+                        self.db,
+                        body,
+                        *def,
+                        it.file_id.edition(self.db),
+                    )
+                }
+                &crate::source_analyzer::BodyOrSig::VariantFields { def, .. } => {
+                    hir_def::expr_store::pretty::print_variant_body_hir(
+                        self.db,
+                        def,
+                        it.file_id.edition(self.db),
+                    )
+                }
+                &crate::source_analyzer::BodyOrSig::Sig { def, .. } => {
+                    hir_def::expr_store::pretty::print_signature(
+                        self.db,
+                        def,
+                        it.file_id.edition(self.db),
+                    )
+                }
+            })
+        })
     }
 
     /// Maps a node down by mapping its first and last token down.
