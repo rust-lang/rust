@@ -2,13 +2,13 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, is_trait_method, peel_ref_operators};
+use clippy_utils::{fulfill_or_allowed, get_item_name, get_parent_as_impl, is_trait_method, peel_ref_operators};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
-    AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind,
+    AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, HirId, ImplItem, ImplItemKind,
     ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatExprKind, PatKind, PathSegment, PrimTy,
     QPath, TraitItemRef, TyKind,
 };
@@ -143,7 +143,6 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             && let Some(ty_id) = cx.qpath_res(ty_path, imp.self_ty.hir_id).opt_def_id()
             && let Some(local_id) = ty_id.as_local()
             && let ty_hir_id = cx.tcx.local_def_id_to_hir_id(local_id)
-            && !is_lint_allowed(cx, LEN_WITHOUT_IS_EMPTY, ty_hir_id)
             && let Some(output) =
                 parse_len_output(cx, cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_binder())
         {
@@ -157,7 +156,17 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
                 },
                 _ => return,
             };
-            check_for_is_empty(cx, sig.span, sig.decl.implicit_self, output, ty_id, name, kind);
+            check_for_is_empty(
+                cx,
+                sig.span,
+                sig.decl.implicit_self,
+                output,
+                ty_id,
+                name,
+                kind,
+                item.hir_id(),
+                ty_hir_id,
+            );
         }
     }
 
@@ -447,6 +456,7 @@ fn check_is_empty_sig<'tcx>(
 }
 
 /// Checks if the given type has an `is_empty` method with the appropriate signature.
+#[expect(clippy::too_many_arguments)]
 fn check_for_is_empty(
     cx: &LateContext<'_>,
     span: Span,
@@ -455,6 +465,8 @@ fn check_for_is_empty(
     impl_ty: DefId,
     item_name: Symbol,
     item_kind: &str,
+    len_method_hir_id: HirId,
+    ty_decl_hir_id: HirId,
 ) {
     // Implementor may be a type alias, in which case we need to get the `DefId` of the aliased type to
     // find the correct inherent impls.
@@ -510,14 +522,16 @@ fn check_for_is_empty(
         Some(_) => return,
     };
 
-    span_lint_and_then(cx, LEN_WITHOUT_IS_EMPTY, span, msg, |db| {
-        if let Some(span) = is_empty_span {
-            db.span_note(span, "`is_empty` defined here");
-        }
-        if let Some(self_kind) = self_kind {
-            db.note(output.expected_sig(self_kind));
-        }
-    });
+    if !fulfill_or_allowed(cx, LEN_WITHOUT_IS_EMPTY, [len_method_hir_id, ty_decl_hir_id]) {
+        span_lint_and_then(cx, LEN_WITHOUT_IS_EMPTY, span, msg, |db| {
+            if let Some(span) = is_empty_span {
+                db.span_note(span, "`is_empty` defined here");
+            }
+            if let Some(self_kind) = self_kind {
+                db.note(output.expected_sig(self_kind));
+            }
+        });
+    }
 }
 
 fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>, op: &str, compare_to: u32) {
