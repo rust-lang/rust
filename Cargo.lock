@@ -719,6 +719,7 @@ version = "0.0.0"
 dependencies = [
  "anstyle-svg",
  "build_helper",
+ "camino",
  "colored",
  "diff",
  "getopts",
@@ -4671,6 +4672,7 @@ name = "rustdoc-gui-test"
 version = "0.1.0"
 dependencies = [
  "build_helper",
+ "camino",
  "compiletest",
  "getopts",
  "walkdir",
