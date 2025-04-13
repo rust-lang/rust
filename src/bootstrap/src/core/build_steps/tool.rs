@@ -150,10 +150,7 @@ impl Step for ToolBuild {
 
         // Rustc tools (miri, clippy, cargo, rustfmt, rust-analyzer)
         // could use the additional optimizations.
-        if self.mode == Mode::ToolRustc &&
-            // rustdoc is performance sensitive, so apply LTO to it.
-            is_lto_stage(&self.compiler)
-        {
+        if self.mode == Mode::ToolRustc && is_lto_stage(&self.compiler) {
             let lto = match builder.config.rust_lto {
                 RustcLto::Off => Some("off"),
                 RustcLto::Thin => Some("thin"),
