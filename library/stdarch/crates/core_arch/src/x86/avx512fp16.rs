@@ -4563,9 +4563,13 @@ pub fn _mm_maskz_fmadd_round_sch<const ROUNDING: i32>(
 ) -> __m128h {
     unsafe {
         static_assert_rounding!(ROUNDING);
-        let a = transmute(a);
-        let r = vfmaddcsh_maskz(a, transmute(b), transmute(c), k, ROUNDING);
-        transmute(_mm_move_ss(a, r)) // FIXME: If `k == 0`, then LLVM optimized `vfmaddcsh_maskz` to output an all-zero vector, which is incorrect
+        transmute(vfmaddcsh_maskz(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+            k,
+            ROUNDING,
+        ))
     }
 }
 
@@ -5108,9 +5112,13 @@ pub fn _mm_maskz_fcmadd_round_sch<const ROUNDING: i32>(
 ) -> __m128h {
     unsafe {
         static_assert_rounding!(ROUNDING);
-        let a = transmute(a);
-        let r = vfcmaddcsh_maskz(a, transmute(b), transmute(c), k, ROUNDING);
-        transmute(_mm_move_ss(a, r)) // FIXME: If `k == 0`, then LLVM optimized `vfcmaddcsh_maskz` to output an all-zero vector, which is incorrect
+        transmute(vfcmaddcsh_maskz(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+            k,
+            ROUNDING,
+        ))
     }
 }
 
