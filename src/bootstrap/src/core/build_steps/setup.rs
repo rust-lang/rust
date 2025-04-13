@@ -606,6 +606,7 @@ Select which editor you would like to set up [default: None]: ";
             EditorKind::Zed => &[
                 "bbce727c269d1bd0c98afef4d612eb4ce27aea3c3a8968c5f10b31affbc40b6c",
                 "a5380cf5dd9328731aecc5dfb240d16dac46ed272126b9728006151ef42f5909",
+                "9d6f1f99e8a98467173126fcb480aa8203ea5bdabdb55a903bee03da8307e483".
             ],
         }
     }
