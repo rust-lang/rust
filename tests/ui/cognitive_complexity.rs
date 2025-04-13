@@ -454,15 +454,17 @@ mod issue9300 {
     }
 }
 
-#[clippy::cognitive_complexity = "2"]
+#[clippy::cognitive_complexity = "1"]
 mod issue14422 {
     fn foo() {
+        //~^ cognitive_complexity
         for _ in 0..10 {
             println!("hello there");
         }
     }
 
     fn bar() {
+        //~^ cognitive_complexity
         for _ in 0..10 {
             println!("hello there");
         }
