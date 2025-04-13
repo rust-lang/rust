@@ -103,6 +103,14 @@ impl TcpStream {
         self.0
     }
 
+    pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        self.0
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0
     }
@@ -142,6 +150,14 @@ impl TcpListener {
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
+        self.0
+    }
+
+    pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
         self.0
     }
 
@@ -268,6 +284,22 @@ impl UdpSocket {
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
+        self.0
+    }
+
+    pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        self.0
+    }
+
+    pub fn set_multicast_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
         self.0
     }
 
