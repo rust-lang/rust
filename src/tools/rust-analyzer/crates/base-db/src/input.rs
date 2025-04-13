@@ -392,7 +392,7 @@ impl BuiltDependency {
 
 pub type CratesIdMap = FxHashMap<CrateBuilderId, Crate>;
 
-#[salsa::input(no_debug)]
+#[salsa::input]
 #[derive(Debug)]
 pub struct Crate {
     #[return_ref]
