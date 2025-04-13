@@ -624,6 +624,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
+                let fn_sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
+                let abi = fn_sig.header.abi;
+                if abi.is_rustic_abi() && !self.tcx.features().naked_functions_rustic_abi() {
+                    feature_err(
+                        &self.tcx.sess,
+                        sym::naked_functions_rustic_abi,
+                        fn_sig.span,
+                        format!(
+                            "`#[naked]` is currently unstable on `extern \"{}\"` functions",
+                            abi.as_str()
+                        ),
+                    )
+                    .emit();
+                }
+
                 for other_attr in attrs {
                     // this covers "sugared doc comments" of the form `/// ...`
                     // it does not cover `#[doc = "..."]`, which is handled below
