@@ -65,32 +65,33 @@ impl Tool {
             nightly_branch,
         } = &self.config;
 
-        file_content.push_str(&format!("dist_server={}", dist_server));
-        file_content.push_str(&format!("\nartifacts_server={}", artifacts_server));
+        file_content.push_str(&format!("dist_server={}\n", dist_server));
+        file_content.push_str(&format!("artifacts_server={}\n", artifacts_server));
         file_content.push_str(&format!(
-            "\nartifacts_with_llvm_assertions_server={}",
+            "artifacts_with_llvm_assertions_server={}\n",
             artifacts_with_llvm_assertions_server
         ));
-        file_content.push_str(&format!("\ngit_merge_commit_email={}", git_merge_commit_email));
-        file_content.push_str(&format!("\ngit_repository={}", git_repository));
-        file_content.push_str(&format!("\nnightly_branch={}", nightly_branch));
+        file_content.push_str(&format!("git_merge_commit_email={}\n", git_merge_commit_email));
+        file_content.push_str(&format!("git_repository={}\n", git_repository));
+        file_content.push_str(&format!("nightly_branch={}\n", nightly_branch));
 
-        file_content.push_str("\n\n");
+        file_content.push_str("\n");
         file_content.push_str(COMMENTS);
+        file_content.push_str("\n");
 
         let compiler = self.detect_compiler()?;
-        file_content.push_str(&format!("\ncompiler_date={}", compiler.date));
-        file_content.push_str(&format!("\ncompiler_version={}", compiler.version));
+        file_content.push_str(&format!("compiler_date={}\n", compiler.date));
+        file_content.push_str(&format!("compiler_version={}\n", compiler.version));
 
         if let Some(rustfmt) = self.detect_rustfmt()? {
-            file_content.push_str(&format!("\nrustfmt_date={}", rustfmt.date));
-            file_content.push_str(&format!("\nrustfmt_version={}", rustfmt.version));
+            file_content.push_str(&format!("rustfmt_date={}\n", rustfmt.date));
+            file_content.push_str(&format!("rustfmt_version={}\n", rustfmt.version));
         }
 
         file_content.push_str("\n");
 
         for (key, value) in self.checksums {
-            file_content.push_str(&format!("\n{}={}", key, value));
+            file_content.push_str(&format!("{}={}\n", key, value));
         }
 
         std::fs::write(PATH, file_content)?;
