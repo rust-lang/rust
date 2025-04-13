@@ -1,0 +1,313 @@
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:35:9
+   |
+LL |     let Foo { x, y } = foo;
+   |         ^^^^^^^^^^^^   --- this expression has type `Pin<&mut Foo<T, U>>`
+   |         |
+   |         expected `Pin<&mut Foo<T, U>>`, found `Foo<_, _>`
+   |
+   = note: expected struct `Pin<&mut Foo<T, U>>`
+              found struct `Foo<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let Foo { x, y } = *foo;
+   |                        +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:42:9
+   |
+LL |     let Foo { x, y } = foo;
+   |         ^^^^^^^^^^^^   --- this expression has type `Pin<&Foo<T, U>>`
+   |         |
+   |         expected `Pin<&Foo<T, U>>`, found `Foo<_, _>`
+   |
+   = note: expected struct `Pin<&Foo<T, U>>`
+              found struct `Foo<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let Foo { x, y } = *foo;
+   |                        +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:49:9
+   |
+LL |     let Bar(x, y) = bar;
+   |         ^^^^^^^^^   --- this expression has type `Pin<&mut Bar<T, U>>`
+   |         |
+   |         expected `Pin<&mut Bar<T, U>>`, found `Bar<_, _>`
+   |
+   = note: expected struct `Pin<&mut Bar<T, U>>`
+              found struct `Bar<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let Bar(x, y) = *bar;
+   |                     +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:56:9
+   |
+LL |     let Bar(x, y) = bar;
+   |         ^^^^^^^^^   --- this expression has type `Pin<&Bar<T, U>>`
+   |         |
+   |         expected `Pin<&Bar<T, U>>`, found `Bar<_, _>`
+   |
+   = note: expected struct `Pin<&Bar<T, U>>`
+              found struct `Bar<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let Bar(x, y) = *bar;
+   |                     +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:63:9
+   |
+LL |     let Foo { x: Bar(x, y), y: Bar(z, w) } = foo;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   --- this expression has type `Pin<&mut Foo<Bar<T, U>, Bar<T, U>>>`
+   |         |
+   |         expected `Pin<&mut Foo<Bar<T, U>, Bar<T, U>>>`, found `Foo<_, _>`
+   |
+   = note: expected struct `Pin<&mut Foo<Bar<T, U>, Bar<T, U>>>`
+              found struct `Foo<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let Foo { x: Bar(x, y), y: Bar(z, w) } = *foo;
+   |                                              +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:72:9
+   |
+LL |     let Foo { x: Bar(x, y), y: Bar(z, w) } = foo;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   --- this expression has type `Pin<&Foo<Bar<T, U>, Bar<T, U>>>`
+   |         |
+   |         expected `Pin<&Foo<Bar<T, U>, Bar<T, U>>>`, found `Foo<_, _>`
+   |
+   = note: expected struct `Pin<&Foo<Bar<T, U>, Bar<T, U>>>`
+              found struct `Foo<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let Foo { x: Bar(x, y), y: Bar(z, w) } = *foo;
+   |                                              +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:82:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&mut Baz<T, U>>`
+LL |         Baz::Foo(x, y) => {
+   |         ^^^^^^^^^^^^^^ expected `Pin<&mut Baz<T, U>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&mut Baz<T, U>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:87:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&mut Baz<T, U>>`
+...
+LL |         Baz::Bar { x, y } => {
+   |         ^^^^^^^^^^^^^^^^^ expected `Pin<&mut Baz<T, U>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&mut Baz<T, U>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:97:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&Baz<T, U>>`
+LL |         Baz::Foo(x, y) => {
+   |         ^^^^^^^^^^^^^^ expected `Pin<&Baz<T, U>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&Baz<T, U>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:102:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&Baz<T, U>>`
+...
+LL |         Baz::Bar { x, y } => {
+   |         ^^^^^^^^^^^^^^^^^ expected `Pin<&Baz<T, U>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&Baz<T, U>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:112:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&mut Baz<Baz<T, U>, Baz<T, U>>>`
+LL |         Baz::Foo(Baz::Foo(x, y), Baz::Foo(z, w) | Baz::Bar { x: z, y: w }) => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<&mut Baz<Baz<T, U>, Baz<T, U>>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&mut Baz<Baz<T, U>, Baz<T, U>>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:119:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&mut Baz<Baz<T, U>, Baz<T, U>>>`
+...
+LL |         Baz::Foo(Baz::Bar { x, y }, Baz::Foo(z, w) | Baz::Bar { x: z, y: w }) => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<&mut Baz<Baz<T, U>, Baz<T, U>>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&mut Baz<Baz<T, U>, Baz<T, U>>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:126:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&mut Baz<Baz<T, U>, Baz<T, U>>>`
+...
+LL |         Baz::Bar { x: Baz::Foo(x, y), y: Baz::Foo(z, w) | Baz::Bar { x: z, y: w } } => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<&mut Baz<Baz<T, U>, Baz<T, U>>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&mut Baz<Baz<T, U>, Baz<T, U>>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:133:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&mut Baz<Baz<T, U>, Baz<T, U>>>`
+...
+LL |         Baz::Bar { x: Baz::Bar { x, y }, y: Baz::Foo(z, w) | Baz::Bar { x: z, y: w } } => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<&mut Baz<Baz<T, U>, Baz<T, U>>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&mut Baz<Baz<T, U>, Baz<T, U>>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:145:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`
+LL |         Baz::Foo(foo, _) if let Baz::Foo(x, y) = foo => {
+   |         ^^^^^^^^^^^^^^^^ expected `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:150:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`
+...
+LL |         Baz::Bar { x: _, y: bar } if let Baz::Bar { x, y } = bar => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:155:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`
+...
+LL |         Baz::Foo(Baz::Foo(x, y), Baz::Foo(z, w) | Baz::Bar { x: z, y: w }) => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:162:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`
+...
+LL |         Baz::Foo(Baz::Bar { x, y }, Baz::Foo(z, w) | Baz::Bar { x: z, y: w }) => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:169:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`
+...
+LL |         Baz::Bar { x: Baz::Foo(x, y), y: Baz::Foo(z, w) | Baz::Bar { x: z, y: w } } => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:176:9
+   |
+LL |     match baz {
+   |           --- this expression has type `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`
+...
+LL |         Baz::Bar { x: Baz::Bar { x, y }, y: Baz::Foo(z, w) | Baz::Bar { x: z, y: w } } => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`, found `Baz<_, _>`
+   |
+   = note: expected struct `Pin<&Baz<Baz<T, U>, Baz<T, U>>>`
+                found enum `Baz<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *baz {
+   |           +
+
+error: aborting due to 20 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

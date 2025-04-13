@@ -1,0 +1,76 @@
+// MIR for `baz_mut` after built
+
+fn baz_mut(_1: Pin<&mut Baz<T, U>>) -> () {
+    debug baz => _1;
+    let mut _0: ();
+    let mut _2: isize;
+    let _3: std::pin::Pin<&mut T>;
+    let _4: std::pin::Pin<&mut U>;
+    let mut _5: &mut T;
+    let mut _6: &mut U;
+    let _7: std::pin::Pin<&mut T>;
+    let _8: std::pin::Pin<&mut U>;
+    let mut _9: &mut T;
+    let mut _10: &mut U;
+    scope 1 {
+        debug x => _3;
+        debug y => _4;
+    }
+    scope 2 {
+        debug x => _7;
+        debug y => _8;
+    }
+
+    bb0: {
+        PlaceMention(_1);
+        _2 = discriminant((*(_1.0: &mut Baz<T, U>)));
+        switchInt(move _2) -> [0: bb2, 1: bb4, otherwise: bb1];
+    }
+
+    bb1: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb2: {
+        falseEdge -> [real: bb6, imaginary: bb4];
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        StorageLive(_7);
+        _9 = &mut (((*(_1.0: &mut Baz<T, U>)) as Bar).0: T);
+        _7 = Pin::<&mut T> { pointer: move _9 };
+        StorageLive(_8);
+        _10 = &mut (((*(_1.0: &mut Baz<T, U>)) as Bar).1: U);
+        _8 = Pin::<&mut U> { pointer: move _10 };
+        _0 = const ();
+        StorageDead(_8);
+        StorageDead(_7);
+        goto -> bb7;
+    }
+
+    bb5: {
+        goto -> bb1;
+    }
+
+    bb6: {
+        StorageLive(_3);
+        _5 = &mut (((*(_1.0: &mut Baz<T, U>)) as Foo).0: T);
+        _3 = Pin::<&mut T> { pointer: move _5 };
+        StorageLive(_4);
+        _6 = &mut (((*(_1.0: &mut Baz<T, U>)) as Foo).1: U);
+        _4 = Pin::<&mut U> { pointer: move _6 };
+        _0 = const ();
+        StorageDead(_4);
+        StorageDead(_3);
+        goto -> bb7;
+    }
+
+    bb7: {
+        return;
+    }
+}
