@@ -830,3 +830,11 @@ will be split as follows:
     "you today?",
 ]
 ```
+
+## Generating link to guide
+
+You can generate a link to a guide or generate the guide with `mdbook` using the `--book-location`
+command line argument. It accepts either a URL or a path. If a path is provided, the book will
+be generated.
+
+In both cases, a link to the book will be added in the sidebar at the crate level documentation.
