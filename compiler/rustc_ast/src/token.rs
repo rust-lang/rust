@@ -337,10 +337,8 @@ impl From<IdentIsRaw> for bool {
     }
 }
 
-// SAFETY: due to the `Clone` impl below, all fields of all variants other than
-// `Interpolated` must impl `Copy`.
 #[derive(PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
-pub enum TokenKind {
+pub enum TokenKind<Nt = Arc<Nonterminal>> {
     /* Expression-operator symbols. */
     /// `=`
     Eq,
@@ -481,7 +479,7 @@ pub enum TokenKind {
     /// The span in the surrounding `Token` is that of the metavariable in the
     /// macro's RHS. The span within the Nonterminal is that of the fragment
     /// passed to the macro at the call site.
-    Interpolated(Arc<Nonterminal>),
+    Interpolated(Nt),
 
     /// A doc comment token.
     /// `Symbol` is the doc comment's data excluding its "quotes" (`///`, `/**`, etc)
@@ -491,6 +489,15 @@ pub enum TokenKind {
     /// End Of File
     Eof,
 }
+
+// make sure that everything else in `TokenKind` is actually `Copy`-able, for
+// our unsafe use below.
+impl Clone for TokenKind<()> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl Copy for TokenKind<()> {}
 
 impl Clone for TokenKind {
     fn clone(&self) -> Self {
