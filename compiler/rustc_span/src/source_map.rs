@@ -633,6 +633,24 @@ impl SourceMap {
         sp
     }
 
+    /// Extends the given `Span` to just before the previous occurrence of `c`. Return the same span
+    /// if an error occurred while retrieving the code snippet.
+    pub fn span_extend_to_prev_char_before(
+        &self,
+        sp: Span,
+        c: char,
+        accept_newlines: bool,
+    ) -> Span {
+        if let Ok(prev_source) = self.span_to_prev_source(sp) {
+            let prev_source = prev_source.rsplit(c).next().unwrap_or("");
+            if accept_newlines || !prev_source.contains('\n') {
+                return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32 - 1_u32));
+            }
+        }
+
+        sp
+    }
+
     /// Extends the given `Span` to just after the previous occurrence of `pat` when surrounded by
     /// whitespace. Returns None if the pattern could not be found or if an error occurred while
     /// retrieving the code snippet.
