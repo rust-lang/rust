@@ -257,6 +257,13 @@ impl Parse for Newtype {
                 }
             }
 
+            impl std::ops::AddAssign<usize> for #name {
+                #[inline]
+                fn add_assign(&mut self, other: usize) {
+                    *self = *self + other;
+                }
+            }
+
             impl rustc_index::Idx for #name {
                 #[inline]
                 fn new(value: usize) -> Self {
