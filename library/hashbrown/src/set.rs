@@ -1678,10 +1678,7 @@ pub struct Drain<'a, K, A: Allocator = Global> {
 /// [`extract_if`]: struct.HashSet.html#method.extract_if
 /// [`HashSet`]: struct.HashSet.html
 #[must_use = "Iterators are lazy unless consumed"]
-pub struct ExtractIf<'a, K, F, A: Allocator = Global>
-where
-    F: FnMut(&K) -> bool,
-{
+pub struct ExtractIf<'a, K, F, A: Allocator = Global> {
     f: F,
     inner: RawExtractIf<'a, (K, ()), A>,
 }
