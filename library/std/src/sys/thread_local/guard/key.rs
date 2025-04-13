@@ -32,7 +32,7 @@ pub fn enable() {
 
 /// On platforms with key-based TLS, the system runs the destructors for us.
 /// We still have to make sure that [`crate::rt::thread_cleanup`] is called,
-/// however. This is done by defering the execution of a TLS destructor to
+/// however. This is done by deferring the execution of a TLS destructor to
 /// the next round of destruction inside the TLS destructors.
 #[cfg(not(target_thread_local))]
 pub fn enable() {
@@ -46,7 +46,7 @@ pub fn enable() {
     unsafe extern "C" fn run(state: *mut u8) {
         if state == DEFER {
             // Make sure that this function is run again in the next round of
-            // TLS destruction. If there is no futher round, there will be leaks,
+            // TLS destruction. If there is no further round, there will be leaks,
             // but that's okay, `thread_cleanup` is not guaranteed to be called.
             unsafe { set(CLEANUP.force(), RUN) }
         } else {
