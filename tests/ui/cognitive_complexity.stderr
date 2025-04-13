@@ -160,5 +160,21 @@ LL |         pub async fn async_method() {
    |
    = help: you could split it up into multiple smaller functions
 
-error: aborting due to 20 previous errors
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:459:8
+   |
+LL |     fn foo() {
+   |        ^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
+  --> tests/ui/cognitive_complexity.rs:466:8
+   |
+LL |     fn bar() {
+   |        ^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: aborting due to 22 previous errors
 
