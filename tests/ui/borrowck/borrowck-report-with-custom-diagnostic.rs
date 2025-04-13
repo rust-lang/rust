@@ -1,11 +1,13 @@
+//@ dont-require-annotations: NOTE
+
 #![allow(dead_code)]
 fn main() {
     // Original borrow ends at end of function
     let mut x = 1;
     let y = &mut x;
-    //~^ mutable borrow occurs here
+    //~^ NOTE mutable borrow occurs here
     let z = &x; //~ ERROR cannot borrow
-    //~^ immutable borrow occurs here
+    //~^ NOTE immutable borrow occurs here
     z.use_ref();
     y.use_mut();
 }
@@ -16,9 +18,9 @@ fn foo() {
             // Original borrow ends at end of match arm
             let mut x = 1;
             let y = &x;
-            //~^ immutable borrow occurs here
+            //~^ NOTE immutable borrow occurs here
             let z = &mut x; //~ ERROR cannot borrow
-            //~^ mutable borrow occurs here
+            //~^ NOTE mutable borrow occurs here
             z.use_mut();
             y.use_ref();
         }
@@ -31,9 +33,9 @@ fn bar() {
     || {
         let mut x = 1;
         let y = &mut x;
-        //~^ first mutable borrow occurs here
+        //~^ NOTE first mutable borrow occurs here
         let z = &mut x; //~ ERROR cannot borrow
-        //~^ second mutable borrow occurs here
+        //~^ NOTE second mutable borrow occurs here
         z.use_mut();
         y.use_mut();
     };

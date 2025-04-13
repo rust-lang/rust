@@ -1,3 +1,5 @@
+//@ dont-require-annotations: NOTE
+
 macro_rules! log {
     ( $ctx:expr, $( $args:expr),* ) => {
         if $ctx.trace {
@@ -16,7 +18,7 @@ struct Foo {
 fn wrap<T>(context: &T) -> ()
 {
     log!(context, "entered wrapper");
-    //~^ in this expansion of log!
+    //~^ NOTE in this expansion of log!
 }
 
 fn main() {

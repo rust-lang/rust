@@ -1,17 +1,17 @@
 error[E0080]: evaluation of `<std::string::String as Bar<std::string::String>>::F` failed
-  --> $DIR/assoc_const_2.rs:10:20
+  --> $DIR/assoc_const_2.rs:11:20
    |
 LL |     const F: u32 = 100 / U::X;
    |                    ^^^^^^^^^^ attempt to divide `100_u32` by zero
 
 note: erroneous constant encountered
-  --> $DIR/assoc_const_2.rs:27:13
+  --> $DIR/assoc_const_2.rs:28:13
    |
 LL |     let y = <String as Bar<String>>::F;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/assoc_const_2.rs:27:13
+  --> $DIR/assoc_const_2.rs:28:13
    |
 LL |     let y = <String as Bar<String>>::F;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^

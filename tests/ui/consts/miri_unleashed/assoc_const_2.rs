@@ -1,4 +1,5 @@
 //@ build-fail
+//@ dont-require-annotations: NOTE
 
 // a test demonstrating that const qualification cannot prevent monomorphization time errors
 
@@ -24,5 +25,5 @@ impl Bar<String> for String {}
 fn main() {
     let x = <() as Bar<()>>::F;
     // this test only causes errors due to the line below, so post-monomorphization
-    let y = <String as Bar<String>>::F; //~ constant
+    let y = <String as Bar<String>>::F; //~ NOTE constant
 }

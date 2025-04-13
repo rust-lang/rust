@@ -1,3 +1,5 @@
+//@ dont-require-annotations: NOTE
+
 struct Foo<'a> {
     data: &'a[u8],
 }
@@ -5,13 +7,13 @@ struct Foo<'a> {
 impl <'a> Foo<'a>{
     fn bar(self: &mut Foo) {
     //~^ ERROR mismatched `self` parameter type
-    //~| expected struct `Foo<'a>`
-    //~| found struct `Foo<'_>`
-    //~| lifetime mismatch
+    //~| NOTE expected struct `Foo<'a>`
+    //~| NOTE found struct `Foo<'_>`
+    //~| NOTE lifetime mismatch
     //~| ERROR mismatched `self` parameter type
-    //~| expected struct `Foo<'a>`
-    //~| found struct `Foo<'_>`
-    //~| lifetime mismatch
+    //~| NOTE expected struct `Foo<'a>`
+    //~| NOTE found struct `Foo<'_>`
+    //~| NOTE lifetime mismatch
     }
 }
 

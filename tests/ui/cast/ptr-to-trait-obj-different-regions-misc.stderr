@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:6:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:7:5
    |
 LL | fn change_lt<'a, 'b>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
    |              --  -- lifetime `'b` defined here
@@ -14,7 +14,7 @@ LL |     x as _
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:6:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:7:5
    |
 LL | fn change_lt<'a, 'b>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
    |              --  -- lifetime `'b` defined here
@@ -31,7 +31,7 @@ LL |     x as _
 help: `'b` and `'a` must be the same: replace one with the other
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:11:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:12:5
    |
 LL | fn change_lt_ab<'a: 'b, 'b>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
    |                 --      -- lifetime `'b` defined here
@@ -46,7 +46,7 @@ LL |     x as _
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:15:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:16:5
    |
 LL | fn change_lt_ba<'a, 'b: 'a>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
    |                 --  -- lifetime `'b` defined here
@@ -61,7 +61,7 @@ LL |     x as _
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:19:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:20:5
    |
 LL | fn change_lt_hr<'a>(x: *mut dyn Trait<'a>) -> *mut dyn for<'b> Trait<'b> {
    |                 -- lifetime `'a` defined here
@@ -74,7 +74,7 @@ LL | fn change_lt_hr<'a>(x: *mut dyn Trait<'a>) -> *mut dyn for<'b> Trait<'b> + 
    |                                                                          ++++
 
 error[E0308]: mismatched types
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:19:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:20:5
    |
 LL |     x as _
    |     ^^^^^^ one type is more general than the other
@@ -83,7 +83,7 @@ LL |     x as _
               found trait object `dyn Trait<'_>`
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:31:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
    |
 LL | fn change_assoc_0<'a, 'b>(
    |                   --  -- lifetime `'b` defined here
@@ -99,7 +99,7 @@ LL |     x as _
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:31:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
    |
 LL | fn change_assoc_0<'a, 'b>(
    |                   --  -- lifetime `'b` defined here
@@ -119,7 +119,7 @@ help: `'b` and `'a` must be the same: replace one with the other
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:38:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:39:5
    |
 LL | fn change_assoc_1<'a, 'b>(
    |                   --  -- lifetime `'b` defined here
@@ -135,7 +135,7 @@ LL |     x as _
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:38:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:39:5
    |
 LL | fn change_assoc_1<'a, 'b>(
    |                   --  -- lifetime `'b` defined here
@@ -155,7 +155,7 @@ help: `'b` and `'a` must be the same: replace one with the other
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:45:5
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:46:5
    |
 LL | fn extend_to_static<'a>(ptr: *const dyn Trait<'a>) {
    |                     --  ---

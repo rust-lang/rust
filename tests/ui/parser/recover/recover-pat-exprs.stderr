@@ -1,5 +1,5 @@
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:5:9
+  --> $DIR/recover-pat-exprs.rs:7:9
    |
 LL |         x.y => (),
    |         ^^^ not a pattern
@@ -19,7 +19,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:6:9
+  --> $DIR/recover-pat-exprs.rs:8:9
    |
 LL |         x.0 => (),
    |         ^^^ not a pattern
@@ -40,7 +40,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:7:9
+  --> $DIR/recover-pat-exprs.rs:9:9
    |
 LL |         x._0 => (),
    |         ^^^^ not a pattern
@@ -62,7 +62,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:8:9
+  --> $DIR/recover-pat-exprs.rs:10:9
    |
 LL |         x.0.1 => (),
    |         ^^^^^ not a pattern
@@ -84,7 +84,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:9:9
+  --> $DIR/recover-pat-exprs.rs:11:9
    |
 LL |         x.4.y.17.__z => (),
    |         ^^^^^^^^^^^^ not a pattern
@@ -106,37 +106,37 @@ LL ~         VAL => (),
    |
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
-  --> $DIR/recover-pat-exprs.rs:12:12
+  --> $DIR/recover-pat-exprs.rs:14:12
    |
 LL |     { let x.0e0; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
-  --> $DIR/recover-pat-exprs.rs:13:12
+  --> $DIR/recover-pat-exprs.rs:15:12
    |
 LL |     { let x.-0.0; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
-  --> $DIR/recover-pat-exprs.rs:14:12
+  --> $DIR/recover-pat-exprs.rs:16:12
    |
 LL |     { let x.-0; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
-  --> $DIR/recover-pat-exprs.rs:16:12
+  --> $DIR/recover-pat-exprs.rs:18:12
    |
 LL |     { let x.0u32; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
-  --> $DIR/recover-pat-exprs.rs:17:12
+  --> $DIR/recover-pat-exprs.rs:19:12
    |
 LL |     { let x.0.0_f64; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:23:9
+  --> $DIR/recover-pat-exprs.rs:25:9
    |
 LL |         x[0] => (),
    |         ^^^^ not a pattern
@@ -155,7 +155,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:24:9
+  --> $DIR/recover-pat-exprs.rs:26:9
    |
 LL |         x[..] => (),
    |         ^^^^^ not a pattern
@@ -175,25 +175,25 @@ LL ~         VAL => (),
    |
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
-  --> $DIR/recover-pat-exprs.rs:27:12
+  --> $DIR/recover-pat-exprs.rs:29:12
    |
 LL |     { let x[0, 1, 2]; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
-  --> $DIR/recover-pat-exprs.rs:28:12
+  --> $DIR/recover-pat-exprs.rs:30:12
    |
 LL |     { let x[0; 20]; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
-  --> $DIR/recover-pat-exprs.rs:29:12
+  --> $DIR/recover-pat-exprs.rs:31:12
    |
 LL |     { let x[]; }
    |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: expected one of `)`, `,`, `@`, `if`, or `|`, found `[`
-  --> $DIR/recover-pat-exprs.rs:30:13
+  --> $DIR/recover-pat-exprs.rs:32:13
    |
 LL |     { let (x[]); }
    |             ^
@@ -202,7 +202,7 @@ LL |     { let (x[]); }
    |             help: missing `,`
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:37:9
+  --> $DIR/recover-pat-exprs.rs:39:9
    |
 LL |         x.f() => (),
    |         ^^^^^ not a pattern
@@ -221,7 +221,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:38:9
+  --> $DIR/recover-pat-exprs.rs:40:9
    |
 LL |         x._f() => (),
    |         ^^^^^^ not a pattern
@@ -241,7 +241,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:39:9
+  --> $DIR/recover-pat-exprs.rs:41:9
    |
 LL |         x? => (),
    |         ^^ not a pattern
@@ -262,7 +262,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:40:9
+  --> $DIR/recover-pat-exprs.rs:42:9
    |
 LL |         ().f() => (),
    |         ^^^^^^ not a pattern
@@ -284,7 +284,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:41:9
+  --> $DIR/recover-pat-exprs.rs:43:9
    |
 LL |         (0, x)?.f() => (),
    |         ^^^^^^^^^^^ not a pattern
@@ -306,7 +306,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:42:9
+  --> $DIR/recover-pat-exprs.rs:44:9
    |
 LL |         x.f().g() => (),
    |         ^^^^^^^^^ not a pattern
@@ -328,7 +328,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:43:9
+  --> $DIR/recover-pat-exprs.rs:45:9
    |
 LL |         0.f()?.g()?? => (),
    |         ^^^^^^^^^^^^ not a pattern
@@ -350,7 +350,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:50:9
+  --> $DIR/recover-pat-exprs.rs:52:9
    |
 LL |         x as usize => (),
    |         ^^^^^^^^^^ not a pattern
@@ -369,7 +369,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:51:9
+  --> $DIR/recover-pat-exprs.rs:53:9
    |
 LL |         0 as usize => (),
    |         ^^^^^^^^^^ not a pattern
@@ -389,7 +389,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:52:9
+  --> $DIR/recover-pat-exprs.rs:54:9
    |
 LL |         x.f().0.4 as f32 => (),
    |         ^^^^^^^^^^^^^^^^ not a pattern
@@ -410,7 +410,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:59:9
+  --> $DIR/recover-pat-exprs.rs:61:9
    |
 LL |         1 + 1 => (),
    |         ^^^^^ not a pattern
@@ -429,7 +429,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:60:9
+  --> $DIR/recover-pat-exprs.rs:62:9
    |
 LL |         (1 + 2) * 3 => (),
    |         ^^^^^^^^^^^ not a pattern
@@ -449,7 +449,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:63:9
+  --> $DIR/recover-pat-exprs.rs:65:9
    |
 LL |         x.0 > 2 => (),
    |         ^^^^^^^ not a pattern
@@ -471,7 +471,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:64:9
+  --> $DIR/recover-pat-exprs.rs:66:9
    |
 LL |         x.0 == 2 => (),
    |         ^^^^^^^^ not a pattern
@@ -493,7 +493,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:69:13
+  --> $DIR/recover-pat-exprs.rs:71:13
    |
 LL |         (x, y.0 > 2) if x != 0 => (),
    |             ^^^^^^^ not a pattern
@@ -512,7 +512,7 @@ LL ~         (x, VAL) if x != 0 => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:70:13
+  --> $DIR/recover-pat-exprs.rs:72:13
    |
 LL |         (x, y.0 > 2) if x != 0 || x != 1 => (),
    |             ^^^^^^^ not a pattern
@@ -532,7 +532,7 @@ LL ~         (x, VAL) if x != 0 || x != 1 => (),
    |
 
 error: left-hand side of `@` must be a binding
-  --> $DIR/recover-pat-exprs.rs:83:9
+  --> $DIR/recover-pat-exprs.rs:85:9
    |
 LL |         x.sqrt() @ .. => (),
    |         --------^^^--
@@ -543,13 +543,13 @@ LL |         x.sqrt() @ .. => (),
    = note: bindings are `x`, `mut x`, `ref x`, and `ref mut x`
 
 error: expected one of `)`, `,`, `if`, or `|`, found `+`
-  --> $DIR/recover-pat-exprs.rs:97:12
+  --> $DIR/recover-pat-exprs.rs:99:12
    |
 LL |         (_ + 1) => (),
    |            ^ expected one of `)`, `,`, `if`, or `|`
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:81:9
+  --> $DIR/recover-pat-exprs.rs:83:9
    |
 LL |         u8::MAX.abs() => (),
    |         ^^^^^^^^^^^^^ not a pattern
@@ -568,7 +568,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:86:17
+  --> $DIR/recover-pat-exprs.rs:88:17
    |
 LL |         z @ w @ v.u() => (),
    |                 ^^^^^ not a pattern
@@ -590,7 +590,7 @@ LL ~         z @ w @ VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:88:9
+  --> $DIR/recover-pat-exprs.rs:90:9
    |
 LL |         y.ilog(3) => (),
    |         ^^^^^^^^^ not a pattern
@@ -612,7 +612,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:90:9
+  --> $DIR/recover-pat-exprs.rs:92:9
    |
 LL |         n + 1 => (),
    |         ^^^^^ not a pattern
@@ -634,7 +634,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:92:10
+  --> $DIR/recover-pat-exprs.rs:94:10
    |
 LL |         ("".f() + 14 * 8) => (),
    |          ^^^^^^^^^^^^^^^ not a pattern
@@ -656,7 +656,7 @@ LL ~         (VAL) => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:95:9
+  --> $DIR/recover-pat-exprs.rs:97:9
    |
 LL |         f?() => (),
    |         ^^^^ not a pattern
@@ -678,7 +678,7 @@ LL ~         VAL => (),
    |
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:101:9
+  --> $DIR/recover-pat-exprs.rs:103:9
    |
 LL |     let 1 + 1 = 2;
    |         ^^^^^ not a pattern
@@ -686,7 +686,7 @@ LL |     let 1 + 1 = 2;
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected one of `)`, `,`, `@`, `if`, or `|`, found `*`
-  --> $DIR/recover-pat-exprs.rs:104:28
+  --> $DIR/recover-pat-exprs.rs:106:28
    |
 LL |     let b = matches!(x, (x * x | x.f()) | x[0]);
    |                            ^ expected one of `)`, `,`, `@`, `if`, or `|`
@@ -695,7 +695,7 @@ LL |     let b = matches!(x, (x * x | x.f()) | x[0]);
    = note: while parsing argument for this `pat` macro fragment
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:60:10
+  --> $DIR/recover-pat-exprs.rs:62:10
    |
 LL |         (1 + 2) * 3 => (),
    |          ^^^^^ not a pattern
@@ -703,7 +703,7 @@ LL |         (1 + 2) * 3 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:75:5
+  --> $DIR/recover-pat-exprs.rs:77:5
    |
 LL |     1 + 2 * PI.cos() => 2,
    |     ^^^^^^^^^^^^^^^^ not a pattern
@@ -711,7 +711,7 @@ LL |     1 + 2 * PI.cos() => 2,
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern, found an expression
-  --> $DIR/recover-pat-exprs.rs:83:9
+  --> $DIR/recover-pat-exprs.rs:85:9
    |
 LL |         x.sqrt() @ .. => (),
    |         ^^^^^^^^ not a pattern

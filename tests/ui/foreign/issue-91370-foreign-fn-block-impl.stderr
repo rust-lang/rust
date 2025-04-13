@@ -8,9 +8,7 @@ LL |       fn f() {
    |  ________^___-
    | |        |
    | |        cannot have a body
-LL | |
-LL | |
-LL | |         impl Copy for u8 {}
+...  |
 LL | |     }
    | |_____- help: remove the invalid body: `;`
    |

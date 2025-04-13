@@ -1,11 +1,12 @@
 pub const A: i8 = -i8::MIN;
 //~^ ERROR constant
+//~| NOTE attempt to negate `i8::MIN`, which would overflow
 pub const B: i8 = A;
-//~^ constant
+//~^ NOTE constant
 pub const C: u8 = A as u8;
-//~^ constant
+//~^ NOTE constant
 pub const D: i8 = 50 - A;
-//~^ constant
+//~^ NOTE constant
 
 fn main() {
     let _ = (A, B, C, D);

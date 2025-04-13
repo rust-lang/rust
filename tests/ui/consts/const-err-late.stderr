@@ -1,29 +1,29 @@
 error[E0080]: evaluation of `S::<i32>::FOO` failed
-  --> $DIR/const-err-late.rs:13:21
+  --> $DIR/const-err-late.rs:14:21
    |
 LL |     const FOO: u8 = [5u8][1];
    |                     ^^^^^^^^ index out of bounds: the length is 1 but the index is 1
 
 note: erroneous constant encountered
-  --> $DIR/const-err-late.rs:19:16
+  --> $DIR/const-err-late.rs:20:16
    |
 LL |     black_box((S::<i32>::FOO, S::<u32>::FOO));
    |                ^^^^^^^^^^^^^
 
 error[E0080]: evaluation of `S::<u32>::FOO` failed
-  --> $DIR/const-err-late.rs:13:21
+  --> $DIR/const-err-late.rs:14:21
    |
 LL |     const FOO: u8 = [5u8][1];
    |                     ^^^^^^^^ index out of bounds: the length is 1 but the index is 1
 
 note: erroneous constant encountered
-  --> $DIR/const-err-late.rs:19:31
+  --> $DIR/const-err-late.rs:20:31
    |
 LL |     black_box((S::<i32>::FOO, S::<u32>::FOO));
    |                               ^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/const-err-late.rs:19:16
+  --> $DIR/const-err-late.rs:20:16
    |
 LL |     black_box((S::<i32>::FOO, S::<u32>::FOO));
    |                ^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |     black_box((S::<i32>::FOO, S::<u32>::FOO));
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 note: erroneous constant encountered
-  --> $DIR/const-err-late.rs:19:31
+  --> $DIR/const-err-late.rs:20:31
    |
 LL |     black_box((S::<i32>::FOO, S::<u32>::FOO));
    |                               ^^^^^^^^^^^^^

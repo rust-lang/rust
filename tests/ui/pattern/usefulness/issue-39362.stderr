@@ -1,11 +1,11 @@
 error[E0004]: non-exhaustive patterns: `Foo::Bar { bar: Bar::C, .. }`, `Foo::Bar { bar: Bar::D, .. }`, `Foo::Bar { bar: Bar::E, .. }` and 1 more not covered
-  --> $DIR/issue-39362.rs:10:11
+  --> $DIR/issue-39362.rs:12:11
    |
 LL |     match f {
    |           ^ patterns `Foo::Bar { bar: Bar::C, .. }`, `Foo::Bar { bar: Bar::D, .. }`, `Foo::Bar { bar: Bar::E, .. }` and 1 more not covered
    |
 note: `Foo` defined here
-  --> $DIR/issue-39362.rs:1:6
+  --> $DIR/issue-39362.rs:3:6
    |
 LL | enum Foo {
    |      ^^^

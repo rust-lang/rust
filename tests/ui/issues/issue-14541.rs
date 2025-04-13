@@ -4,7 +4,8 @@ struct Vec3 { y: f32, z: f32 }
 fn make(v: Vec2) {
     let Vec3 { y: _, z: _ } = v;
     //~^ ERROR mismatched types
-    //~| expected `Vec2`, found `Vec3`
+    //~| NOTE expected `Vec2`, found `Vec3`
+    //~| NOTE this expression has type `Vec2`
 }
 
 fn main() { }

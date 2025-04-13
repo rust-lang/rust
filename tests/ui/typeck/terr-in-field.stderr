@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/terr-in-field.rs:13:14
+  --> $DIR/terr-in-field.rs:15:14
    |
 LL |     want_foo(b);
    |     -------- ^ expected `Foo`, found `Bar`
@@ -7,7 +7,7 @@ LL |     want_foo(b);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/terr-in-field.rs:11:4
+  --> $DIR/terr-in-field.rs:13:4
    |
 LL | fn want_foo(f: Foo) {}
    |    ^^^^^^^^ ------

@@ -1,3 +1,5 @@
+//@ dont-require-annotations: HELP
+
 // FieldExpression, TupleIndexingExpression
 fn field_access() {
     match 0 {
@@ -28,7 +30,7 @@ fn array_indexing() {
     { let x[0; 20]; } //~ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
     { let x[]; } //~ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
     { let (x[]); } //~ error: expected one of `)`, `,`, `@`, `if`, or `|`, found `[`
-    //~^ missing `,`
+    //~^ HELP missing `,`
 }
 
 // MethodCallExpression, CallExpression, ErrorPropagationExpression

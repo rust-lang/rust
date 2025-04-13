@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/mut-mut-wont-coerce.rs:36:14
+  --> $DIR/mut-mut-wont-coerce.rs:39:14
    |
 LL |     make_foo(&mut &mut *result);
    |     -------- ^^^^^^^^^^^^^^^^^ expected `*mut *mut Foo`, found `&mut &mut Foo`
@@ -9,7 +9,7 @@ LL |     make_foo(&mut &mut *result);
    = note:    expected raw pointer `*mut *mut Foo`
            found mutable reference `&mut &mut Foo`
 note: function defined here
-  --> $DIR/mut-mut-wont-coerce.rs:30:4
+  --> $DIR/mut-mut-wont-coerce.rs:33:4
    |
 LL | fn make_foo(_: *mut *mut Foo) {
    |    ^^^^^^^^ ----------------

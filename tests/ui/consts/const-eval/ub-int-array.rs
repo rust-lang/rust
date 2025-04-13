@@ -1,6 +1,8 @@
 //! Test the "array of int" fast path in validity checking, and in particular whether it
 //! points at the right array element.
 
+//@ dont-require-annotations: NOTE
+
 use std::mem;
 
 #[repr(C)]
@@ -17,7 +19,7 @@ impl<T: Copy> MaybeUninit<T> {
 
 const UNINIT_INT_0: [u32; 3] = unsafe {
     //~^ ERROR it is undefined behavior to use this value
-    //~| invalid value at [0]
+    //~| NOTE invalid value at [0]
     mem::transmute([
         MaybeUninit { uninit: () },
         // Constants chosen to achieve endianness-independent hex dump.
@@ -27,7 +29,7 @@ const UNINIT_INT_0: [u32; 3] = unsafe {
 };
 const UNINIT_INT_1: [u32; 3] = unsafe {
     //~^ ERROR it is undefined behavior to use this value
-    //~| invalid value at [1]
+    //~| NOTE invalid value at [1]
     mem::transmute([
         MaybeUninit::new(0u8),
         MaybeUninit::new(0u8),
@@ -45,7 +47,7 @@ const UNINIT_INT_1: [u32; 3] = unsafe {
 };
 const UNINIT_INT_2: [u32; 3] = unsafe {
     //~^ ERROR it is undefined behavior to use this value
-    //~| invalid value at [2]
+    //~| NOTE invalid value at [2]
     mem::transmute([
         MaybeUninit::new(0u8),
         MaybeUninit::new(0u8),

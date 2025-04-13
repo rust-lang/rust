@@ -1,5 +1,5 @@
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/repeat_count.rs:5:17
+  --> $DIR/repeat_count.rs:7:17
    |
 LL |     let a = [0; n];
    |                 ^ non-constant value
@@ -11,37 +11,37 @@ LL +     const n: /* Type */ = 1;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:7:17
+  --> $DIR/repeat_count.rs:9:17
    |
 LL |     let b = [0; ()];
    |                 ^^ expected `usize`, found `()`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:31:17
+  --> $DIR/repeat_count.rs:33:17
    |
 LL |     let g = [0; G { g: () }];
    |                 ^^^^^^^^^^^ expected `usize`, found `G`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:10:17
+  --> $DIR/repeat_count.rs:12:17
    |
 LL |     let c = [0; true];
    |                 ^^^^ expected `usize`, found `bool`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:13:17
+  --> $DIR/repeat_count.rs:15:17
    |
 LL |     let d = [0; 0.5];
    |                 ^^^ expected `usize`, found floating-point number
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:16:17
+  --> $DIR/repeat_count.rs:18:17
    |
 LL |     let e = [0; "foo"];
    |                 ^^^^^ expected `usize`, found `&str`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:19:17
+  --> $DIR/repeat_count.rs:21:17
    |
 LL |     let f = [0; -4_isize];
    |                 ^^^^^^^^ expected `usize`, found `isize`
@@ -49,7 +49,7 @@ LL |     let f = [0; -4_isize];
    = note: `-4_isize` cannot fit into type `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:22:23
+  --> $DIR/repeat_count.rs:24:23
    |
 LL |     let f = [0_usize; -1_isize];
    |                       ^^^^^^^^ expected `usize`, found `isize`
@@ -57,7 +57,7 @@ LL |     let f = [0_usize; -1_isize];
    = note: `-1_isize` cannot fit into type `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:25:17
+  --> $DIR/repeat_count.rs:27:17
    |
 LL |     let f = [0; 4u8];
    |                 ^^^ expected `usize`, found `u8`

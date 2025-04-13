@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/terr-sorts.rs:10:14
+  --> $DIR/terr-sorts.rs:12:14
    |
 LL |     want_foo(b);
    |     -------- ^ expected `Foo`, found `Box<Foo>`
@@ -9,7 +9,7 @@ LL |     want_foo(b);
    = note: expected struct `Foo`
               found struct `Box<Foo>`
 note: function defined here
-  --> $DIR/terr-sorts.rs:8:4
+  --> $DIR/terr-sorts.rs:10:4
    |
 LL | fn want_foo(f: Foo) {}
    |    ^^^^^^^^ ------

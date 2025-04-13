@@ -1,6 +1,8 @@
+//@ dont-require-annotations: NOTE
+
 fn main() {
     while true { //~ WARN denote infinite loops with
         true //~  ERROR mismatched types
-             //~| expected `()`, found `bool`
+             //~| NOTE expected `()`, found `bool`
     }
 }

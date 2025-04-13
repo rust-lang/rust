@@ -1,6 +1,7 @@
 //@ compile-flags: -Zunleash-the-miri-inside-of-you
 //@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
+//@ dont-require-annotations: NOTE
 
 #![allow(static_mut_refs)]
 use std::cell::UnsafeCell;
@@ -11,10 +12,10 @@ use std::sync::atomic::*;
 // This requires walking nested statics.
 static FOO: &&mut u32 = &&mut 42;
 //~^ ERROR it is undefined behavior to use this value
-//~| pointing to read-only memory
+//~| NOTE pointing to read-only memory
 static OH_YES: &mut i32 = &mut 42;
 //~^ ERROR it is undefined behavior to use this value
-//~| pointing to read-only memory
+//~| NOTE pointing to read-only memory
 static BAR: &mut () = &mut ();
 //~^ ERROR encountered mutable pointer in final value of static
 
@@ -25,11 +26,11 @@ static BOO: &mut Foo<()> = &mut Foo(());
 
 const BLUNT: &mut i32 = &mut 42;
 //~^ ERROR: it is undefined behavior to use this value
-//~| pointing to read-only memory
+//~| NOTE pointing to read-only memory
 
 const SUBTLE: &mut i32 = unsafe {
     //~^ ERROR: it is undefined behavior to use this value
-    //~| constructing invalid value: encountered reference to mutable memory in `const`
+    //~| NOTE constructing invalid value: encountered reference to mutable memory in `const`
     static mut STATIC: i32 = 0;
     &mut STATIC
 };
@@ -42,13 +43,13 @@ struct Meh {
 unsafe impl Sync for Meh {}
 static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
 //~^ ERROR it is undefined behavior to use this value
-//~| `UnsafeCell` in read-only memory
+//~| NOTE `UnsafeCell` in read-only memory
 // Same with a const:
 // the following will never be ok! no interior mut behind consts, because
 // all allocs interned here will be marked immutable.
 const MUH: Meh = Meh {
     //~^ ERROR it is undefined behavior to use this value
-    //~| `UnsafeCell` in read-only memory
+    //~| NOTE `UnsafeCell` in read-only memory
     x: &UnsafeCell::new(42),
 };
 
@@ -60,30 +61,30 @@ unsafe impl Sync for Synced {}
 // Make sure we also catch this behind a type-erased `dyn Trait` reference.
 const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
 //~^ ERROR: it is undefined behavior to use this value
-//~| `UnsafeCell` in read-only memory
+//~| NOTE `UnsafeCell` in read-only memory
 
 // # Check for mutable references to read-only memory
 
 static READONLY: i32 = 0;
 static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
 //~^ ERROR: it is undefined behavior to use this value
-//~| pointing to read-only memory
+//~| NOTE pointing to read-only memory
 
 // # Check for consts pointing to mutable memory
 
 static mut MUTABLE: i32 = 42;
-const POINTS_TO_MUTABLE: &i32 = unsafe { &MUTABLE }; //~ERROR: undefined behavior
-//~| encountered reference to mutable memory
+const POINTS_TO_MUTABLE: &i32 = unsafe { &MUTABLE }; //~ ERROR undefined behavior
+//~| NOTE encountered reference to mutable memory
 static mut MUTABLE_REF: &mut i32 = &mut 42;
 const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
-//~^ ERROR: evaluation of constant value failed
-//~| accesses mutable global memory
+//~^ ERROR evaluation of constant value failed
+//~| NOTE accesses mutable global memory
 
 const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
-//~^ ERROR: mutable pointer in final value
+//~^ ERROR mutable pointer in final value
 
 const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
-//~^ ERROR: mutable pointer in final value
+//~^ ERROR mutable pointer in final value
 
 // This does *not* error since it uses a shared reference, and we have to ignore
 // those. See <https://github.com/rust-lang/rust/pull/128543>.
