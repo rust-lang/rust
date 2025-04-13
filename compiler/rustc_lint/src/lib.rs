@@ -606,6 +606,11 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, see issue #127323 \
          <https://github.com/rust-lang/rust/issues/127323> for more information",
     );
+    store.register_removed(
+        "undefined_naked_function_abi",
+        "converted into hard error, see PR #139001 \
+         <https://github.com/rust-lang/rust/issues/139001> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
