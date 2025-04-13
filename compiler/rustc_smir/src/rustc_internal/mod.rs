@@ -244,6 +244,7 @@ where
 /// ```ignore(needs-extern-crate)
 /// # extern crate rustc_driver;
 /// # extern crate rustc_interface;
+/// # extern crate rustc_middle;
 /// # #[macro_use]
 /// # extern crate rustc_smir;
 /// # extern crate stable_mir;
@@ -264,6 +265,7 @@ where
 /// ```ignore(needs-extern-crate)
 /// # extern crate rustc_driver;
 /// # extern crate rustc_interface;
+/// # extern crate rustc_middle;
 /// # #[macro_use]
 /// # extern crate rustc_smir;
 /// # extern crate stable_mir;
