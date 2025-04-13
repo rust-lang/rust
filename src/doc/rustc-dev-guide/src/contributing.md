@@ -1,4 +1,4 @@
-# Contribution Procedures
+# Contribution procedures
 
 <!-- toc -->
 

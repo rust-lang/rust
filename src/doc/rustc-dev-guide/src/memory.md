@@ -1,4 +1,4 @@
-# Memory Management in Rustc
+# Memory management in rustc
 
 Generally rustc tries to be pretty careful how it manages memory.
 The compiler allocates _a lot_ of data structures throughout compilation,

@@ -1,4 +1,4 @@
-# Feature Gates
+# Feature gates
 
 This chapter is intended to provide basic help for adding, removing, and
 modifying feature gates.
