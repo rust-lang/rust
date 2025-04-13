@@ -6,17 +6,21 @@
 #[cfg(test)]
 mod tests;
 
-use super::ensure_no_nuls;
-use super::os::current_exe;
 use crate::ffi::{OsStr, OsString};
 use crate::num::NonZero;
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
+use crate::sys::pal::os::current_exe;
+use crate::sys::pal::{ensure_no_nuls, fill_utf16_buf};
 use crate::sys::path::get_long_path;
 use crate::sys::{c, to_u16s};
 use crate::sys_common::AsInner;
 use crate::sys_common::wstr::WStrUnits;
-use crate::{fmt, io, iter, vec};
+use crate::{io, iter, ptr};
+
+#[path = "common.rs"]
+mod common;
+pub use common::Args;
 
 pub fn args() -> Args {
     // SAFETY: `GetCommandLineW` returns a pointer to a null terminated UTF-16
@@ -27,7 +31,7 @@ pub fn args() -> Args {
             current_exe().map(PathBuf::into_os_string).unwrap_or_else(|_| OsString::new())
         });
 
-        Args { parsed_args_list: parsed_args_list.into_iter() }
+        Args::new(parsed_args_list)
     }
 }
 
@@ -151,38 +155,6 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
         ret_val.push(OsString::from_wide(&cur[..]));
     }
     ret_val
-}
-
-pub struct Args {
-    parsed_args_list: vec::IntoIter<OsString>,
-}
-
-impl fmt::Debug for Args {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.parsed_args_list.as_slice().fmt(f)
-    }
-}
-
-impl Iterator for Args {
-    type Item = OsString;
-    fn next(&mut self) -> Option<OsString> {
-        self.parsed_args_list.next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.parsed_args_list.size_hint()
-    }
-}
-
-impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> {
-        self.parsed_args_list.next_back()
-    }
-}
-
-impl ExactSizeIterator for Args {
-    fn len(&self) -> usize {
-        self.parsed_args_list.len()
-    }
 }
 
 #[derive(Debug)]
@@ -384,9 +356,6 @@ pub(crate) fn to_user_path(path: &Path) -> io::Result<Vec<u16>> {
     from_wide_to_user_path(to_u16s(path)?)
 }
 pub(crate) fn from_wide_to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>> {
-    use super::fill_utf16_buf;
-    use crate::ptr;
-
     // UTF-16 encoded code points, used in parsing and building UTF-16 paths.
     // All of these are in the ASCII range so they can be cast directly to `u16`.
     const SEP: u16 = b'\\' as _;

@@ -1,7 +1,7 @@
-use super::{WORD_SIZE, abi};
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::sys::os_str;
+use crate::sys::pal::{WORD_SIZE, abi};
 use crate::sys_common::FromInner;
 
 pub struct Args {

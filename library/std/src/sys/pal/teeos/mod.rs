@@ -6,8 +6,6 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
-#[path = "../unsupported/args.rs"]
-pub mod args;
 #[path = "../unsupported/env.rs"]
 pub mod env;
 //pub mod fd;
