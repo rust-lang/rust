@@ -351,7 +351,6 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::matches::MATCH_AS_REF_INFO,
     crate::matches::MATCH_BOOL_INFO,
     crate::matches::MATCH_LIKE_MATCHES_MACRO_INFO,
-    crate::matches::MATCH_ON_VEC_ITEMS_INFO,
     crate::matches::MATCH_OVERLAPPING_ARM_INFO,
     crate::matches::MATCH_REF_PATS_INFO,
     crate::matches::MATCH_SAME_ARMS_INFO,
