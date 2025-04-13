@@ -8,14 +8,19 @@ use crate::sys::weak::weak;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
 use crate::{cmp, io, ptr};
-#[cfg(not(any(target_os = "l4re", target_os = "vxworks", target_os = "espidf")))]
+#[cfg(not(any(
+    target_os = "l4re",
+    target_os = "vxworks",
+    target_os = "espidf",
+    target_os = "nuttx"
+)))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
 #[cfg(target_os = "l4re")]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * 1024;
 #[cfg(target_os = "vxworks")]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
-#[cfg(target_os = "espidf")]
-pub const DEFAULT_MIN_STACK_SIZE: usize = 0; // 0 indicates that the stack size configured in the ESP-IDF menuconfig system should be used
+#[cfg(any(target_os = "espidf", target_os = "nuttx"))]
+pub const DEFAULT_MIN_STACK_SIZE: usize = 0; // 0 indicates that the stack size configured in the ESP-IDF/NuttX menuconfig system should be used
 
 #[cfg(target_os = "fuchsia")]
 mod zircon {
@@ -52,10 +57,10 @@ impl Thread {
         let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
         assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
 
-        #[cfg(target_os = "espidf")]
+        #[cfg(any(target_os = "espidf", target_os = "nuttx"))]
         if stack > 0 {
             // Only set the stack if a non-zero value is passed
-            // 0 is used as an indication that the default stack size configured in the ESP-IDF menuconfig system should be used
+            // 0 is used as an indication that the default stack size configured in the ESP-IDF/NuttX menuconfig system should be used
             assert_eq!(
                 libc::pthread_attr_setstacksize(
                     attr.as_mut_ptr(),
@@ -65,7 +70,7 @@ impl Thread {
             );
         }
 
-        #[cfg(not(target_os = "espidf"))]
+        #[cfg(not(any(target_os = "espidf", target_os = "nuttx")))]
         {
             let stack_size = cmp::max(stack, min_stack_size(attr.as_ptr()));
 
