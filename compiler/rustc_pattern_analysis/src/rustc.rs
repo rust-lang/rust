@@ -221,19 +221,32 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         let slice = match ctor {
             Struct | Variant(_) | UnionField => match ty.kind() {
                 ty::Tuple(fs) => reveal_and_alloc(cx, fs.iter()),
-                ty::Adt(adt, _) => {
-                    let variant = &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, *adt));
-                    let tys = cx.variant_sub_tys(ty, variant).map(|(field, ty)| {
-                        let is_visible =
-                            adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
-                        let is_uninhabited = cx.is_uninhabited(*ty);
-                        let is_unstable = cx.tcx.lookup_stability(field.did).is_some_and(|stab| {
-                            stab.is_unstable() && stab.feature != sym::rustc_private
+                ty::Adt(adt, args) => {
+                    if adt.is_box() {
+                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
+                        // patterns. If we're here we can assume this is a box pattern.
+                        reveal_and_alloc(cx, once(args.type_at(0)))
+                    } else if adt.is_pin()
+                        && let ty::Ref(_, rty, _) = args.type_at(0).kind()
+                        && self.tcx.features().pin_ergonomics()
+                    {
+                        reveal_and_alloc(cx, once(*rty))
+                    } else {
+                        let variant =
+                            &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, *adt));
+                        let tys = cx.variant_sub_tys(ty, variant).map(|(field, ty)| {
+                            let is_visible =
+                                adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
+                            let is_uninhabited = cx.is_uninhabited(*ty);
+                            let is_unstable =
+                                cx.tcx.lookup_stability(field.did).is_some_and(|stab| {
+                                    stab.is_unstable() && stab.feature != sym::rustc_private
+                                });
+                            let skip = is_uninhabited && (!is_visible || is_unstable);
+                            (ty, PrivateUninhabitedField(skip))
                         });
-                        let skip = is_uninhabited && (!is_visible || is_unstable);
-                        (ty, PrivateUninhabitedField(skip))
-                    });
-                    cx.dropless_arena.alloc_from_iter(tys)
+                        cx.dropless_arena.alloc_from_iter(tys)
+                    }
                 }
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
             },
