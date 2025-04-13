@@ -53,6 +53,10 @@ bitflags::bitflags! {
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
         /// Indicates whether the type is `UnsafeCell`.
         const IS_UNSAFE_CELL              = 1 << 9;
+        /// Indicates whether the type is `UnsafePinned`.
+        const IS_UNSAFE_PINNED              = 1 << 10;
+        /// Indicates whether the type is anonymous.
+        const IS_ANONYMOUS                = 1 << 11;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -302,6 +306,9 @@ impl AdtDefData {
         if tcx.is_lang_item(did, LangItem::UnsafeCell) {
             flags |= AdtFlags::IS_UNSAFE_CELL;
         }
+        if tcx.is_lang_item(did, LangItem::UnsafePinned) {
+            flags |= AdtFlags::IS_UNSAFE_PINNED;
+        }
 
         AdtDefData { did, variants, flags, repr }
     }
@@ -403,6 +410,12 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_unsafe_cell(self) -> bool {
         self.flags().contains(AdtFlags::IS_UNSAFE_CELL)
+    }
+
+    /// Returns `true` if this is `UnsafePinned<T>`.
+    #[inline]
+    pub fn is_unsafe_pinned(self) -> bool {
+        self.flags().contains(AdtFlags::IS_UNSAFE_PINNED)
     }
 
     /// Returns `true` if this is `ManuallyDrop<T>`.
