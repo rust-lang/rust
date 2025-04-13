@@ -1,4 +1,4 @@
-use crate::utils::{UpdateMode, clippy_project_root, exit_with_failure, replace_region_in_file};
+use crate::utils::{UpdateMode, Version, exit_with_failure, replace_region_in_file};
 use aho_corasick::AhoCorasickBuilder;
 use itertools::Itertools;
 use rustc_lexer::{LiteralKind, TokenKind, tokenize};
@@ -139,7 +139,7 @@ pub fn print_lints() {
 /// * If `old_name` doesn't name an existing lint.
 /// * If `old_name` names a deprecated or renamed lint.
 #[allow(clippy::too_many_lines)]
-pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
+pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: bool) {
     if let Some((prefix, _)) = old_name.split_once("::") {
         panic!("`{old_name}` should not contain the `{prefix}` prefix");
     }
@@ -180,31 +180,28 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
     );
 
     // Update all lint level attributes. (`clippy::lint_name`)
-    for file in WalkDir::new(clippy_project_root())
-        .into_iter()
-        .map(Result::unwrap)
-        .filter(|f| {
-            let name = f.path().file_name();
-            let ext = f.path().extension();
-            (ext == Some(OsStr::new("rs")) || ext == Some(OsStr::new("fixed")))
-                && name != Some(OsStr::new("rename.rs"))
-                && name != Some(OsStr::new("deprecated_lints.rs"))
-        })
-    {
+    for file in WalkDir::new(".").into_iter().map(Result::unwrap).filter(|f| {
+        let name = f.path().file_name();
+        let ext = f.path().extension();
+        (ext == Some(OsStr::new("rs")) || ext == Some(OsStr::new("fixed")))
+            && name != Some(OsStr::new("rename.rs"))
+            && name != Some(OsStr::new("deprecated_lints.rs"))
+    }) {
         rewrite_file(file.path(), |s| {
             replace_ident_like(s, &[(&lint.old_name, &lint.new_name)])
         });
     }
 
-    let version = crate::new_lint::get_stabilization_version();
     rewrite_file(Path::new("clippy_lints/src/deprecated_lints.rs"), |s| {
         insert_at_marker(
             s,
             "// end renamed lints. used by `cargo dev rename_lint`",
             &format!(
-                "#[clippy::version = \"{version}\"]\n    \
+                "#[clippy::version = \"{}\"]\n    \
                 (\"{}\", \"{}\"),\n    ",
-                lint.old_name, lint.new_name,
+                clippy_version.rust_display(),
+                lint.old_name,
+                lint.new_name,
             ),
         )
     });
@@ -284,9 +281,15 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
 
         // Don't change `clippy_utils/src/renamed_lints.rs` here as it would try to edit the lint being
         // renamed.
-        for (_, file) in clippy_lints_src_files().filter(|(rel_path, _)| rel_path != OsStr::new("deprecated_lints.rs"))
-        {
-            rewrite_file(file.path(), |s| replace_ident_like(s, replacements));
+        for file in clippy_lints_src_files() {
+            if file
+                .path()
+                .as_os_str()
+                .to_str()
+                .is_none_or(|x| x["clippy_lints/src/".len()..] != *"deprecated_lints.rs")
+            {
+                rewrite_file(file.path(), |s| replace_ident_like(s, replacements));
+            }
         }
 
         generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
@@ -305,7 +308,7 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
 /// # Panics
 ///
 /// If a file path could not read from or written to
-pub fn deprecate(name: &str, reason: &str) {
+pub fn deprecate(clippy_version: Version, name: &str, reason: &str) {
     let prefixed_name = if name.starts_with("clippy::") {
         name.to_owned()
     } else {
@@ -329,15 +332,15 @@ pub fn deprecate(name: &str, reason: &str) {
         mod_path
     };
 
-    let deprecated_lints_path = &*clippy_project_root().join("clippy_lints/src/deprecated_lints.rs");
-
     if remove_lint_declaration(stripped_name, &mod_path, &mut lints).unwrap_or(false) {
-        let version = crate::new_lint::get_stabilization_version();
-        rewrite_file(deprecated_lints_path, |s| {
+        rewrite_file("clippy_lints/src/deprecated_lints.rs".as_ref(), |s| {
             insert_at_marker(
                 s,
                 "// end deprecated lints. used by `cargo dev deprecate_lint`",
-                &format!("#[clippy::version = \"{version}\"]\n    (\"{prefixed_name}\", \"{reason}\"),\n    ",),
+                &format!(
+                    "#[clippy::version = \"{}\"]\n    (\"{prefixed_name}\", \"{reason}\"),\n    ",
+                    clippy_version.rust_display(),
+                ),
             )
         });
 
@@ -612,15 +615,11 @@ fn gather_all() -> (Vec<Lint>, Vec<DeprecatedLint>, Vec<RenamedLint>) {
     let mut deprecated_lints = Vec::with_capacity(50);
     let mut renamed_lints = Vec::with_capacity(50);
 
-    for (rel_path, file) in clippy_lints_src_files() {
+    for file in clippy_lints_src_files() {
         let path = file.path();
         let contents =
             fs::read_to_string(path).unwrap_or_else(|e| panic!("Cannot read from `{}`: {e}", path.display()));
-        let module = rel_path
-            .components()
-            .map(|c| c.as_os_str().to_str().unwrap())
-            .collect::<Vec<_>>()
-            .join("::");
+        let module = path.as_os_str().to_str().unwrap()["clippy_lints/src/".len()..].replace(['/', '\\'], "::");
 
         // If the lints are stored in mod.rs, we get the module name from
         // the containing directory:
@@ -639,12 +638,10 @@ fn gather_all() -> (Vec<Lint>, Vec<DeprecatedLint>, Vec<RenamedLint>) {
     (lints, deprecated_lints, renamed_lints)
 }
 
-fn clippy_lints_src_files() -> impl Iterator<Item = (PathBuf, DirEntry)> {
-    let root_path = clippy_project_root().join("clippy_lints/src");
-    let iter = WalkDir::new(&root_path).into_iter();
+fn clippy_lints_src_files() -> impl Iterator<Item = DirEntry> {
+    let iter = WalkDir::new("clippy_lints/src").into_iter();
     iter.map(Result::unwrap)
         .filter(|f| f.path().extension() == Some(OsStr::new("rs")))
-        .map(move |f| (f.path().strip_prefix(&root_path).unwrap().to_path_buf(), f))
 }
 
 macro_rules! match_tokens {

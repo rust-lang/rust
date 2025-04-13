@@ -5,9 +5,14 @@
 use clap::{Args, Parser, Subcommand};
 use clippy_dev::{dogfood, fmt, lint, new_lint, release, serve, setup, sync, update_lints, utils};
 use std::convert::Infallible;
+use std::env;
 
 fn main() {
     let dev = Dev::parse();
+    let clippy = utils::ClippyInfo::search_for_manifest();
+    if let Err(e) = env::set_current_dir(&clippy.path) {
+        panic!("error setting current directory to `{}`: {e}", clippy.path.display());
+    }
 
     match dev.command {
         DevCommand::Bless => {
@@ -35,7 +40,7 @@ fn main() {
             category,
             r#type,
             msrv,
-        } => match new_lint::create(pass, &name, &category, r#type.as_deref(), msrv) {
+        } => match new_lint::create(clippy.version, pass, &name, &category, r#type.as_deref(), msrv) {
             Ok(()) => update_lints::update(utils::UpdateMode::Change),
             Err(e) => eprintln!("Unable to create lint: {e}"),
         },
@@ -79,13 +84,18 @@ fn main() {
             old_name,
             new_name,
             uplift,
-        } => update_lints::rename(&old_name, new_name.as_ref().unwrap_or(&old_name), uplift),
-        DevCommand::Deprecate { name, reason } => update_lints::deprecate(&name, &reason),
+        } => update_lints::rename(
+            clippy.version,
+            &old_name,
+            new_name.as_ref().unwrap_or(&old_name),
+            uplift,
+        ),
+        DevCommand::Deprecate { name, reason } => update_lints::deprecate(clippy.version, &name, &reason),
         DevCommand::Sync(SyncCommand { subcommand }) => match subcommand {
             SyncSubcommand::UpdateNightly => sync::update_nightly(),
         },
         DevCommand::Release(ReleaseCommand { subcommand }) => match subcommand {
-            ReleaseSubcommand::BumpVersion => release::bump_version(),
+            ReleaseSubcommand::BumpVersion => release::bump_version(clippy.version),
         },
     }
 }
