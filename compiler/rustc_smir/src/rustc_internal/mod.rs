@@ -330,6 +330,7 @@ macro_rules! run_driver {
         use rustc_driver::{Callbacks, Compilation, run_compiler};
         use rustc_middle::ty::TyCtxt;
         use rustc_interface::interface;
+        use rustc_smir::rustc_internal;
         use stable_mir::CompilerError;
         use std::ops::ControlFlow;
 

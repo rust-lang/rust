@@ -19,7 +19,6 @@ extern crate stable_mir;
 use std::assert_matches::assert_matches;
 use mir::{mono::Instance, TerminatorKind::*};
 use stable_mir::mir::mono::InstanceKind;
-use rustc_smir::rustc_internal;
 use stable_mir::ty::{RigidTy, TyKind, Ty, UintTy};
 use stable_mir::*;
 use std::io::Write;
