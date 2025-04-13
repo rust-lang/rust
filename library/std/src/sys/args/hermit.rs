@@ -1,8 +1,12 @@
 use crate::ffi::{CStr, OsString, c_char};
 use crate::os::hermit::ffi::OsStringExt;
+use crate::ptr;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sync::atomic::{AtomicIsize, AtomicPtr};
-use crate::{fmt, ptr, vec};
+
+#[path = "common.rs"]
+mod common;
+pub use common::Args;
 
 static ARGC: AtomicIsize = AtomicIsize::new(0);
 static ARGV: AtomicPtr<*const u8> = AtomicPtr::new(ptr::null_mut());
@@ -27,40 +31,5 @@ pub fn args() -> Args {
         })
         .collect();
 
-    Args { iter: args.into_iter() }
-}
-
-pub struct Args {
-    iter: vec::IntoIter<OsString>,
-}
-
-impl fmt::Debug for Args {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.iter.as_slice().fmt(f)
-    }
-}
-
-impl !Send for Args {}
-impl !Sync for Args {}
-
-impl Iterator for Args {
-    type Item = OsString;
-    fn next(&mut self) -> Option<OsString> {
-        self.iter.next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-}
-
-impl ExactSizeIterator for Args {
-    fn len(&self) -> usize {
-        self.iter.len()
-    }
-}
-
-impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> {
-        self.iter.next_back()
-    }
+    Args::new(args)
 }

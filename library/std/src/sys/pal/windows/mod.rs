@@ -14,7 +14,6 @@ pub mod compat;
 
 pub mod api;
 
-pub mod args;
 pub mod c;
 pub mod env;
 #[cfg(not(target_vendor = "win7"))]

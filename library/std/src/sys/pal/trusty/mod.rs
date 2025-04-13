@@ -1,7 +1,5 @@
 //! System bindings for the Trusty OS.
 
-#[path = "../unsupported/args.rs"]
-pub mod args;
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]
 mod common;
