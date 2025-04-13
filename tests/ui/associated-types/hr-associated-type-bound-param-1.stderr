@@ -1,3 +1,121 @@
+error: implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+
+error: implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+
+error: implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:1:1
+   |
+LL | / trait Y<'a, T: ?Sized>
+LL | | where
+LL | |     T: Y<'a, Self>,
+LL | |     for<'b> <Self as Y<'b, T>>::V: Clone,
+...  |
+LL | | }
+   | |_^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:1:1
+   |
+LL | / trait Y<'a, T: ?Sized>
+LL | | where
+LL | |     T: Y<'a, Self>,
+LL | |     for<'b> <Self as Y<'b, T>>::V: Clone,
+...  |
+LL | | }
+   | |_^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:1:1
+   |
+LL | / trait Y<'a, T: ?Sized>
+LL | | where
+LL | |     T: Y<'a, Self>,
+LL | |     for<'b> <Self as Y<'b, T>>::V: Clone,
+...  |
+LL | | }
+   | |_^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:1:1
+   |
+LL | / trait Y<'a, T: ?Sized>
+LL | | where
+LL | |     T: Y<'a, Self>,
+LL | |     for<'b> <Self as Y<'b, T>>::V: Clone,
+...  |
+LL | | }
+   | |_^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:3:8
+   |
+LL |     T: Y<'a, Self>,
+   |        ^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:3:8
+   |
+LL |     T: Y<'a, Self>,
+   |        ^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:3:8
+   |
+LL |     T: Y<'a, Self>,
+   |        ^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:3:8
+   |
+LL |     T: Y<'a, Self>,
+   |        ^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0277]: the trait bound `str: Clone` is not satisfied
   --> $DIR/hr-associated-type-bound-param-1.rs:14:14
    |
@@ -13,6 +131,196 @@ LL | trait Y<'a, T: ?Sized>
 ...
 LL |     for<'b> <Self as Y<'b, T>>::V: Clone,
    |                                    ^^^^^ required by this bound in `Y`
+
+error: implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:3:8
+   |
+LL |     T: Y<'a, Self>,
+   |        ^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:3:8
+   |
+LL |     T: Y<'a, Self>,
+   |        ^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:3:8
+   |
+LL |     T: Y<'a, Self>,
+   |        ^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:3:8
+   |
+LL |     T: Y<'a, Self>,
+   |        ^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:5
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/hr-associated-type-bound-param-1.rs:1:9
+   |
+LL | trait Y<'a, T: ?Sized>
+   |         ^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:5
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
+  --> $DIR/hr-associated-type-bound-param-1.rs:1:9
+   |
+LL | trait Y<'a, T: ?Sized>
+   |         ^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:5
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/hr-associated-type-bound-param-1.rs:1:9
+   |
+LL | trait Y<'a, T: ?Sized>
+   |         ^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:5
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
+  --> $DIR/hr-associated-type-bound-param-1.rs:1:9
+   |
+LL | trait Y<'a, T: ?Sized>
+   |         ^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:8
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |        ^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:8
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |        ^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:8
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |        ^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:8
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |        ^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:20
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |                    ^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:20
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |                    ^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:20
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |                    ^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:20
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |                    ^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'a, Self>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `str: Clone` is not satisfied
   --> $DIR/hr-associated-type-bound-param-1.rs:19:9
@@ -30,6 +338,86 @@ LL |     for<'b> <Self as Y<'b, T>>::V: Clone,
 LL |     fn g(&self, x: &Self::V) {
    |        - required by a bound in this associated function
 
-error: aborting due to 2 previous errors
+error: lifetime may not live long enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:5
+   |
+LL | trait Y<'a, T: ?Sized>
+   |         -- lifetime `'a` defined here
+...
+LL |     fn g(&self, x: &Self::V) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
 
-For more information about this error, try `rustc --explain E0277`.
+error: higher-ranked subtype error
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:5
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/hr-associated-type-bound-param-1.rs:8:5
+   |
+LL |     fn g(&self, x: &Self::V) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:9:9
+   |
+LL |         <Self::V>::clone(x);
+   |         ^^^^^^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'1, T>`, for some specific lifetime `'1`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:9:9
+   |
+LL |         <Self::V>::clone(x);
+   |         ^^^^^^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'1, Self>`, for some specific lifetime `'1`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:9:9
+   |
+LL |         <Self::V>::clone(x);
+   |         ^^^^^^^^^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'1, T>`, for some specific lifetime `'1`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:9:9
+   |
+LL |         <Self::V>::clone(x);
+   |         ^^^^^^^^^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'1, Self>`, for some specific lifetime `'1`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:9:9
+   |
+LL |         <Self::V>::clone(x);
+   |         ^^^^^^^^^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `Self` must implement `Y<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'1, T>`, for some specific lifetime `'1`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/hr-associated-type-bound-param-1.rs:9:9
+   |
+LL |         <Self::V>::clone(x);
+   |         ^^^^^^^^^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `T` must implement `Y<'0, Self>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Y<'1, Self>`, for some specific lifetime `'1`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 43 previous errors
+
+Some errors have detailed explanations: E0277, E0478.
+For more information about an error, try `rustc --explain E0277`.

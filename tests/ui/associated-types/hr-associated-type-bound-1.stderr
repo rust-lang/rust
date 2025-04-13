@@ -1,3 +1,41 @@
+error: implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+
+error: implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `X` is not general enough
+  --> $DIR/hr-associated-type-bound-1.rs:1:1
+   |
+LL | / trait X<'a>
+LL | | where
+LL | |     for<'b> <Self as X<'b>>::U: Clone,
+...  |
+LL | | }
+   | |_^ implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+
+error: implementation of `X` is not general enough
+  --> $DIR/hr-associated-type-bound-1.rs:1:1
+   |
+LL | / trait X<'a>
+LL | | where
+LL | |     for<'b> <Self as X<'b>>::U: Clone,
+...  |
+LL | | }
+   | |_^ implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0277]: the trait bound `str: Clone` is not satisfied
   --> $DIR/hr-associated-type-bound-1.rs:12:14
    |
@@ -13,6 +51,80 @@ LL | trait X<'a>
 LL | where
 LL |     for<'b> <Self as X<'b>>::U: Clone,
    |                                 ^^^^^ required by this bound in `X`
+
+error: implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/hr-associated-type-bound-1.rs:6:5
+   |
+LL |     fn f(&self, x: &Self::U) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/hr-associated-type-bound-1.rs:1:9
+   |
+LL | trait X<'a>
+   |         ^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/hr-associated-type-bound-1.rs:6:5
+   |
+LL |     fn f(&self, x: &Self::U) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
+  --> $DIR/hr-associated-type-bound-1.rs:1:9
+   |
+LL | trait X<'a>
+   |         ^^
+
+error: implementation of `X` is not general enough
+  --> $DIR/hr-associated-type-bound-1.rs:6:8
+   |
+LL |     fn f(&self, x: &Self::U) {
+   |        ^ implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+
+error: implementation of `X` is not general enough
+  --> $DIR/hr-associated-type-bound-1.rs:6:8
+   |
+LL |     fn f(&self, x: &Self::U) {
+   |        ^ implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `X` is not general enough
+  --> $DIR/hr-associated-type-bound-1.rs:6:20
+   |
+LL |     fn f(&self, x: &Self::U) {
+   |                    ^^^^^^^^ implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+
+error: implementation of `X` is not general enough
+  --> $DIR/hr-associated-type-bound-1.rs:6:20
+   |
+LL |     fn f(&self, x: &Self::U) {
+   |                    ^^^^^^^^ implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `str: Clone` is not satisfied
   --> $DIR/hr-associated-type-bound-1.rs:17:10
@@ -30,6 +142,50 @@ LL |     for<'b> <Self as X<'b>>::U: Clone,
 LL |     fn f(&self, x: &Self::U) {
    |        - required by a bound in this associated function
 
-error: aborting due to 2 previous errors
+error: lifetime may not live long enough
+  --> $DIR/hr-associated-type-bound-1.rs:6:5
+   |
+LL | trait X<'a>
+   |         -- lifetime `'a` defined here
+...
+LL |     fn f(&self, x: &Self::U) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
 
-For more information about this error, try `rustc --explain E0277`.
+error: higher-ranked subtype error
+  --> $DIR/hr-associated-type-bound-1.rs:6:5
+   |
+LL |     fn f(&self, x: &Self::U) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of `X` is not general enough
+  --> $DIR/hr-associated-type-bound-1.rs:7:9
+   |
+LL |         <Self::U>::clone(x);
+   |         ^^^^^^^^^^^^^^^^ implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'1>`, for some specific lifetime `'1`
+
+error: implementation of `X` is not general enough
+  --> $DIR/hr-associated-type-bound-1.rs:7:9
+   |
+LL |         <Self::U>::clone(x);
+   |         ^^^^^^^^^^^^^^^^^^^ implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'1>`, for some specific lifetime `'1`
+
+error: implementation of `X` is not general enough
+  --> $DIR/hr-associated-type-bound-1.rs:7:9
+   |
+LL |         <Self::U>::clone(x);
+   |         ^^^^^^^^^^^^^^^^^^^ implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'1>`, for some specific lifetime `'1`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 19 previous errors
+
+Some errors have detailed explanations: E0277, E0478.
+For more information about an error, try `rustc --explain E0277`.

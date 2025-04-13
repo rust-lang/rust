@@ -1,3 +1,92 @@
+error: implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+
+error: implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+   |
+   = note: ...`Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+
+error: implementation of `UnsafeCopy` is not general enough
+   |
+   = note: ...`Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:1:1
+   |
+LL | / trait UnsafeCopy<'a, T: Copy>
+LL | | where
+LL | |     for<'b> <Self as UnsafeCopy<'b, T>>::Item: std::ops::Deref<Target = T>,
+...  |
+LL | | }
+   | |_^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:1:1
+   |
+LL | / trait UnsafeCopy<'a, T: Copy>
+LL | | where
+LL | |     for<'b> <Self as UnsafeCopy<'b, T>>::Item: std::ops::Deref<Target = T>,
+...  |
+LL | | }
+   | |_^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:1:1
+   |
+LL | / trait UnsafeCopy<'a, T: Copy>
+LL | | where
+LL | |     for<'b> <Self as UnsafeCopy<'b, T>>::Item: std::ops::Deref<Target = T>,
+...  |
+LL | | }
+   | |_^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:1:1
+   |
+LL | / trait UnsafeCopy<'a, T: Copy>
+LL | | where
+LL | |     for<'b> <Self as UnsafeCopy<'b, T>>::Item: std::ops::Deref<Target = T>,
+...  |
+LL | | }
+   | |_^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0271]: type mismatch resolving `<T as Deref>::Target == T`
   --> $DIR/hr-associated-type-projection-1.rs:14:17
    |
@@ -21,6 +110,240 @@ help: consider further restricting this bound
 LL | impl<T: Copy + std::ops::Deref<Target = T>> UnsafeCopy<'_, T> for T {
    |                               ++++++++++++
 
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:5:5
+   |
+LL |     type Item;
+   |     ^^^^^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:5:5
+   |
+LL |     type Item;
+   |     ^^^^^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:5:5
+   |
+LL |     type Item;
+   |     ^^^^^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:5:5
+   |
+LL |     type Item;
+   |     ^^^^^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:5:5
+   |
+LL | trait UnsafeCopy<'a, T: Copy>
+   | ----------------------------- due to a where-clause on `UnsafeCopy`...
+LL | where
+LL |     for<'b> <Self as UnsafeCopy<'b, T>>::Item: std::ops::Deref<Target = T>,
+   |                                                                ---------- doesn't satisfy where-clause
+LL | {
+LL |     type Item;
+   |     ^^^^^^^^^^
+   |
+   = note: ...`Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:5:5
+   |
+LL | trait UnsafeCopy<'a, T: Copy>
+   | ----------------------------- due to a where-clause on `UnsafeCopy`...
+LL | where
+LL |     for<'b> <Self as UnsafeCopy<'b, T>>::Item: std::ops::Deref<Target = T>,
+   |                                                                ---------- doesn't satisfy where-clause
+LL | {
+LL |     type Item;
+   |     ^^^^^^^^^^
+   |
+   = note: ...`Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+   |
+   = note: ...`Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+   |
+   = note: ...`Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/hr-associated-type-projection-1.rs:7:5
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/hr-associated-type-projection-1.rs:1:18
+   |
+LL | trait UnsafeCopy<'a, T: Copy>
+   |                  ^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/hr-associated-type-projection-1.rs:7:5
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
+  --> $DIR/hr-associated-type-projection-1.rs:1:18
+   |
+LL | trait UnsafeCopy<'a, T: Copy>
+   |                  ^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/hr-associated-type-projection-1.rs:7:5
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/hr-associated-type-projection-1.rs:1:18
+   |
+LL | trait UnsafeCopy<'a, T: Copy>
+   |                  ^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/hr-associated-type-projection-1.rs:7:5
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
+  --> $DIR/hr-associated-type-projection-1.rs:1:18
+   |
+LL | trait UnsafeCopy<'a, T: Copy>
+   |                  ^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:7:8
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |        ^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:7:8
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |        ^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:7:8
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |        ^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:7:8
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |        ^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:7:18
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |                  ^^^^^^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:7:18
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |                  ^^^^^^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:7:18
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |                  ^^^^^^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:7:18
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |                  ^^^^^^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'a, T>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0271]: type mismatch resolving `<&str as Deref>::Target == &str`
   --> $DIR/hr-associated-type-projection-1.rs:19:6
    |
@@ -36,6 +359,148 @@ LL |     for<'b> <Self as UnsafeCopy<'b, T>>::Item: std::ops::Deref<Target = T>,
 LL |     fn bug(item: &Self::Item) -> () {
    |        --- required by a bound in this associated function
 
-error: aborting due to 2 previous errors
+error: lifetime may not live long enough
+  --> $DIR/hr-associated-type-projection-1.rs:7:5
+   |
+LL | trait UnsafeCopy<'a, T: Copy>
+   |                  -- lifetime `'a` defined here
+...
+LL |     fn bug(item: &Self::Item) -> () {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
 
-For more information about this error, try `rustc --explain E0271`.
+error: higher-ranked subtype error
+  --> $DIR/hr-associated-type-projection-1.rs:7:5
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/hr-associated-type-projection-1.rs:7:5
+   |
+LL |     fn bug(item: &Self::Item) -> () {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:8:20
+   |
+LL |         let x: T = **item;
+   |                    ^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'1, T>`, for some specific lifetime `'1`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:8:20
+   |
+LL |         let x: T = **item;
+   |                    ^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'1, T>`, for some specific lifetime `'1`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:8:20
+   |
+LL |         let x: T = **item;
+   |                    ^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'b, T>`
+   = note: ...but it actually implements `UnsafeCopy<'0, T>`, for some specific lifetime `'0`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:8:20
+   |
+LL |         let x: T = **item;
+   |                    ^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'1, T>`, for some specific lifetime `'1`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:8:20
+   |
+LL |         let x: T = **item;
+   |                    ^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'1, T>`, for some specific lifetime `'1`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:8:20
+   |
+LL |         let x: T = **item;
+   |                    ^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'b, T>`
+   = note: ...but it actually implements `UnsafeCopy<'0, T>`, for some specific lifetime `'0`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:8:20
+   |
+LL |         let x: T = **item;
+   |                    ^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'1, T>`, for some specific lifetime `'1`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:8:20
+   |
+LL |         let x: T = **item;
+   |                    ^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'1, T>`, for some specific lifetime `'1`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:8:20
+   |
+LL |         let x: T = **item;
+   |                    ^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'b, T>`
+   = note: ...but it actually implements `UnsafeCopy<'0, T>`, for some specific lifetime `'0`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:8:20
+   |
+LL |         let x: T = **item;
+   |                    ^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'1, T>`, for some specific lifetime `'1`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:8:20
+   |
+LL |         let x: T = **item;
+   |                    ^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'0, T>`, for any lifetime `'0`...
+   = note: ...but it actually implements `UnsafeCopy<'1, T>`, for some specific lifetime `'1`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `UnsafeCopy` is not general enough
+  --> $DIR/hr-associated-type-projection-1.rs:8:20
+   |
+LL |         let x: T = **item;
+   |                    ^^^^^^ implementation of `UnsafeCopy` is not general enough
+   |
+   = note: `Self` must implement `UnsafeCopy<'b, T>`
+   = note: ...but it actually implements `UnsafeCopy<'0, T>`, for some specific lifetime `'0`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 51 previous errors
+
+Some errors have detailed explanations: E0271, E0478.
+For more information about an error, try `rustc --explain E0271`.

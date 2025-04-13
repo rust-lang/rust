@@ -415,7 +415,12 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
             let result =
                 Normalized { value: projected_ty, obligations: PredicateObligations::new() };
             infcx.inner.borrow_mut().projection_cache().insert_term(cache_key, result.clone());
-            // No need to extend `obligations`.
+            obligations.push(Obligation::new(
+                infcx.tcx,
+                cause,
+                param_env,
+                projection_term.trait_ref(infcx.tcx),
+            ));
             Ok(Some(result.value))
         }
         Err(ProjectionError::TooManyCandidates) => {

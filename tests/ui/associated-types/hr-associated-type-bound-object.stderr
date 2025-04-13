@@ -1,3 +1,41 @@
+error: implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+
+error: implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `X` is not general enough
+  --> $DIR/hr-associated-type-bound-object.rs:1:1
+   |
+LL | / trait X<'a>
+LL | | where
+LL | |     for<'b> <Self as X<'b>>::U: Clone,
+...  |
+LL | | }
+   | |_^ implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+
+error: implementation of `X` is not general enough
+  --> $DIR/hr-associated-type-bound-object.rs:1:1
+   |
+LL | / trait X<'a>
+LL | | where
+LL | |     for<'b> <Self as X<'b>>::U: Clone,
+...  |
+LL | | }
+   | |_^ implementation of `X` is not general enough
+   |
+   = note: `Self` must implement `X<'0>`, for any lifetime `'0`...
+   = note: ...but it actually implements `X<'a>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0277]: the trait bound `for<'b> <T as X<'b>>::U: Clone` is not satisfied
   --> $DIR/hr-associated-type-bound-object.rs:7:13
    |
@@ -85,6 +123,6 @@ help: consider further restricting the associated type
 LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) where for<'b> <T as X<'b>>::U: Clone {
    |                                                  ++++++++++++++++++++++++++++++++++++
 
-error: aborting due to 5 previous errors
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

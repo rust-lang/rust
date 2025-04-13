@@ -25,6 +25,27 @@ note: required by a bound in `Iterate::Ty`
 LL |     type Ty: Valid;
    |              ^^^^^ required by this bound in `Iterate::Ty`
 
-error: aborting due to 1 previous error; 1 warning emitted
+error[E0275]: overflow evaluating the requirement `T: Iterate<'_>`
+  --> $DIR/issue-38091.rs:18:1
+   |
+LL | impl<'a, T> Check for T where <T as Iterate<'a>>::Ty: Valid {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required for `T` to implement `Check`
+  --> $DIR/issue-38091.rs:18:13
+   |
+LL | impl<'a, T> Check for T where <T as Iterate<'a>>::Ty: Valid {}
+   |             ^^^^^     ^                               ----- unsatisfied trait bound introduced here
+note: required for `T` to implement `Iterate<'a>`
+  --> $DIR/issue-38091.rs:8:13
+   |
+LL | impl<'a, T> Iterate<'a> for T
+   |             ^^^^^^^^^^^     ^
+LL | where
+LL |     T: Check,
+   |        ----- unsatisfied trait bound introduced here
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0275, E0277.
+For more information about an error, try `rustc --explain E0275`.
