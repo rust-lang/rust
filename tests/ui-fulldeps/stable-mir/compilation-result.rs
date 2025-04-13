@@ -16,7 +16,6 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_smir::rustc_internal;
 use std::io::Write;
 
 /// This test will generate and analyze a dummy crate using the stable mir.
