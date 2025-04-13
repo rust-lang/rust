@@ -89,7 +89,7 @@ fn should_not_lint(
     tuple_struct: TupleStruct,
     s: Struct,
 ) {
-    if let [ref a] = slice {}
+    if let [a] = slice {}
     if let &[ref a, b] = slice {}
     if let &[ref a, .., b] = slice {}
 
