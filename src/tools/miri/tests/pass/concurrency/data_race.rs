@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-fixed-schedule
 
 use std::sync::atomic::*;
 use std::thread::{self, spawn};

@@ -573,6 +573,8 @@ fn main() {
             miri_config.mute_stdout_stderr = true;
         } else if arg == "-Zmiri-retag-fields" {
             miri_config.retag_fields = RetagFields::Yes;
+        } else if arg == "-Zmiri-fixed-schedule" {
+            miri_config.fixed_scheduling = true;
         } else if let Some(retag_fields) = arg.strip_prefix("-Zmiri-retag-fields=") {
             miri_config.retag_fields = match retag_fields {
                 "all" => RetagFields::Yes,

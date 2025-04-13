@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-preemption-rate=0.0 -Zmiri-disable-weak-memory-emulation
+//@compile-flags:-Zmiri-fixed-schedule -Zmiri-disable-weak-memory-emulation
 use std::sync::atomic::Ordering::*;
 use std::sync::atomic::*;
 

@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-fixed-schedule
 use std::{env, thread};
 
 fn main() {

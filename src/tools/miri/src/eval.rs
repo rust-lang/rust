@@ -163,6 +163,8 @@ pub struct MiriConfig {
     pub address_reuse_rate: f64,
     /// Probability for address reuse across threads.
     pub address_reuse_cross_thread_rate: f64,
+    /// Round Robin scheduling with no preemption.
+    pub fixed_scheduling: bool,
 }
 
 impl Default for MiriConfig {
@@ -200,6 +202,7 @@ impl Default for MiriConfig {
             collect_leak_backtraces: true,
             address_reuse_rate: 0.5,
             address_reuse_cross_thread_rate: 0.1,
+            fixed_scheduling: false,
         }
     }
 }
