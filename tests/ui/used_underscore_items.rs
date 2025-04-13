@@ -73,7 +73,7 @@ fn external_item_call() {
 
 // should not lint foreign functions.
 // issue #14156
-extern "C" {
+unsafe extern "C" {
     pub fn _exit(code: i32) -> !;
 }
 
