@@ -597,20 +597,6 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
         self.tcx
     }
 
-    fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
-        if let StatementKind::BackwardIncompatibleDropHint { place, reason: _ } =
-            &mut statement.kind
-        {
-            self.visit_local(
-                &mut place.local,
-                PlaceContext::MutatingUse(MutatingUseContext::Store),
-                location,
-            );
-        } else {
-            self.super_statement(statement, location);
-        }
-    }
-
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
         *l = self.map[*l].unwrap();
     }
