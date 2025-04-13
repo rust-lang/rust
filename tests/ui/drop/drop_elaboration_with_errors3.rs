@@ -1,5 +1,6 @@
-//@ known-bug: #135668
+// Regression test for #135668
 //@ edition: 2021
+
 use std::future::Future;
 
 pub async fn foo() {
@@ -11,7 +12,8 @@ async fn create_task() -> impl Sized {
 }
 
 async fn documentation() {
-    include_str!("nonexistent");
+    compile_error!("bonjour");
+    //~^ ERROR bonjour
 }
 
 fn bind<F>(_filter: F) -> impl Sized
@@ -36,3 +38,5 @@ where
 {
     type Assoc = F;
 }
+
+fn main() {}
