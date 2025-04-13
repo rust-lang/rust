@@ -348,8 +348,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 // x's type, which is &T, where we want T (the type being matched).
                 let var_ty = ty;
                 if let hir::ByRef::Yes(_) = mode.0 {
-                    if let ty::Ref(_, rty, _) = ty.kind() {
-                        ty = *rty;
+                    if let Some((_, _, rty, _)) = ty.is_ref_or_pin_ref(self.tcx) {
+                        ty = rty;
                     } else {
                         bug!("`ref {}` has wrong type {}", ident, ty);
                     }

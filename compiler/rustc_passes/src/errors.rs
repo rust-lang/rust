@@ -1928,3 +1928,13 @@ pub(crate) struct UnsupportedAttributesInWhere {
     #[primary_span]
     pub span: MultiSpan,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes_pin_bad_location)]
+pub(crate) struct PinBadLocation {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+    pub target: &'static str,
+}

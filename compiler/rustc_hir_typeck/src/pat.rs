@@ -88,6 +88,7 @@ struct TopInfo<'tcx> {
 
 #[derive(Copy, Clone)]
 struct PatInfo<'tcx> {
+    pinnedness: ast::Pinnedness,
     binding_mode: ByRef,
     max_ref_mutbl: MutblCap,
     top_info: TopInfo<'tcx>,
@@ -302,6 +303,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let top_info = TopInfo { expected, origin_expr, span, hir_id: pat.hir_id };
         let pat_info = PatInfo {
+            pinnedness: ast::Pinnedness::Not,
             binding_mode: ByRef::No,
             max_ref_mutbl: MutblCap::Mut,
             top_info,
@@ -400,11 +402,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let pat_info = PatInfo { current_depth: old_pat_info.current_depth + 1, ..old_pat_info };
 
         match pat.kind {
-            // Peel off a `&` or `&mut` from the scrutinee type. See the examples in
-            // `tests/ui/rfcs/rfc-2005-default-binding-mode`.
+            // Peel off a `&`, `&mut`, `&pin const` or `&pin mut` from the scrutinee type.
+            // See the examples in `tests/ui/rfcs/rfc-2005-default-binding-mode`
+            // and `tests/ui/async-await/pin-ergonomics/project-pattern-match`.
             _ if let AdjustMode::Peel = adjust_mode
                 && pat.default_binding_modes
-                && let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() =>
+                && let Some((_, pinnedness, inner_ty, inner_mutability)) =
+                    expected.is_ref_or_pin_ref(self.tcx) =>
             {
                 debug!("inspecting {:?}", expected);
 
@@ -428,6 +432,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ByRef::Yes(Mutability::Not) => Mutability::Not,
                 });
 
+                let pinnedness = pinnedness.max(pat_info.pinnedness);
+
                 let mut max_ref_mutbl = pat_info.max_ref_mutbl;
                 if self.downgrade_mut_inside_shared() {
                     binding_mode = binding_mode.cap_ref_mutability(max_ref_mutbl.as_mutbl());
@@ -438,7 +444,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!("default binding mode is now {:?}", binding_mode);
 
                 // Use the old pat info to keep `current_depth` to its old value.
-                let new_pat_info = PatInfo { binding_mode, max_ref_mutbl, ..old_pat_info };
+                let new_pat_info =
+                    PatInfo { pinnedness, binding_mode, max_ref_mutbl, ..old_pat_info };
                 // Recurse with the new expected type.
                 self.check_pat_inner(pat, opt_path_res, adjust_mode, inner_ty, new_pat_info)
             }
@@ -790,7 +797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
-        let PatInfo { binding_mode: def_br, top_info: ti, .. } = pat_info;
+        let PatInfo { pinnedness, binding_mode: def_br, top_info: ti, .. } = pat_info;
 
         // Determine the binding mode...
         let bm = match user_bind_annot {
@@ -881,6 +888,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             // Otherwise, the type of x is the expected type `T`.
             ByRef::No => expected, // As above, `T <: typeof(x)` is required, but we use equality, see (note_1).
+        };
+
+        // Wrapping the type into `Pin` if the pattern is pinned
+        let eq_ty = if pinnedness == ast::Pinnedness::Pinned {
+            Ty::new_adt(
+                self.tcx,
+                self.tcx.adt_def(self.tcx.require_lang_item(hir::LangItem::Pin, Some(pat.span))),
+                self.tcx.mk_args(&[eq_ty.into()]),
+            )
+        } else {
+            eq_ty
         };
 
         // We have a concrete type for the local, so we do not need to taint it and hide follow up errors *using* the local.
@@ -1386,6 +1404,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field = &variant.fields[FieldIdx::from_usize(i)];
                 let field_ty = self.field_ty(subpat.span, field, args);
+                // If the field is not marked as `#[pin]`, then remove the
+                // pinnedness in `pat_info`.
+                let pinnedness = pat_info.pinnedness.min(field.pinnedness);
+                let pat_info = PatInfo { pinnedness, ..pat_info };
                 self.check_pat(subpat, field_ty, pat_info);
 
                 self.tcx.check_stability(
@@ -1642,11 +1664,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for field in fields {
             let span = field.span;
             let ident = tcx.adjust_ident(field.ident, variant.def_id);
-            let field_ty = match used_fields.entry(ident) {
+            let (field_ty, pinnedness) = match used_fields.entry(ident) {
                 Occupied(occupied) => {
                     let guar = self.error_field_already_bound(span, field.ident, *occupied.get());
                     result = Err(guar);
-                    Ty::new_error(tcx, guar)
+                    (Ty::new_error(tcx, guar), ast::Pinnedness::Not)
                 }
                 Vacant(vacant) => {
                     vacant.insert(span);
@@ -1655,15 +1677,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .map(|(i, f)| {
                             self.write_field_index(field.hir_id, *i);
                             self.tcx.check_stability(f.did, Some(field.hir_id), span, None);
-                            self.field_ty(span, f, args)
+                            (self.field_ty(span, f, args), f.pinnedness)
                         })
                         .unwrap_or_else(|| {
                             inexistent_fields.push(field);
-                            Ty::new_misc_error(tcx)
+                            (Ty::new_misc_error(tcx), ast::Pinnedness::Not)
                         })
                 }
             };
 
+            // If the field is not marked as `#[pin]`, then remove the
+            // pinnedness in `pat_info`.
+            let pinnedness = pat_info.pinnedness.min(pinnedness);
+            let pat_info = PatInfo { pinnedness, ..pat_info };
             self.check_pat(field.pat, field_ty, pat_info);
         }
 

@@ -1545,6 +1545,27 @@ impl<'tcx> Ty<'tcx> {
         ty
     }
 
+    /// Destructs a reference type `&'a [mut] T` or a pinned reference type
+    /// `&'a pin const|mut T` into `'a` the region, `[pin]` the pinnedness,
+    /// `T` the inner type, and `mut|const` the mutability.
+    pub fn is_ref_or_pin_ref(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<(ty::Region<'tcx>, ty::Pinnedness, Ty<'tcx>, ty::Mutability)> {
+        match self.kind() {
+            &ty::Ref(region, inner_ty, mutbl) => {
+                Some((region, ty::Pinnedness::Not, inner_ty, mutbl))
+            }
+            ty::Adt(adt, args)
+                if tcx.is_lang_item(adt.did(), hir::LangItem::Pin)
+                    && let &ty::Ref(region, inner_ty, mutbl) = args.type_at(0).kind() =>
+            {
+                Some((region, ty::Pinnedness::Pinned, inner_ty, mutbl))
+            }
+            _ => None,
+        }
+    }
+
     // FIXME(compiler-errors): Think about removing this.
     #[inline]
     pub fn outer_exclusive_binder(self) -> ty::DebruijnIndex {

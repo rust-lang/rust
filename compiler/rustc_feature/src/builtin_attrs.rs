@@ -583,6 +583,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, min_generic_const_args, experimental!(type_const),
     ),
 
+    // Pinned fields `#[pin]`
+    gated!(
+        pin, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, pin_ergonomics,
+        experimental!(pin),
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

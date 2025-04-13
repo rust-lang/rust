@@ -1379,6 +1379,7 @@ pub struct FieldDef {
     pub vis: Visibility<DefId>,
     pub safety: hir::Safety,
     pub value: Option<DefId>,
+    pub pinnedness: ast::Pinnedness,
 }
 
 impl PartialEq for FieldDef {
@@ -1391,9 +1392,9 @@ impl PartialEq for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did: lhs_did, name: _, vis: _, safety: _, value: _ } = &self;
+        let Self { did: lhs_did, name: _, vis: _, safety: _, value: _, pinnedness: _ } = &self;
 
-        let Self { did: rhs_did, name: _, vis: _, safety: _, value: _ } = other;
+        let Self { did: rhs_did, name: _, vis: _, safety: _, value: _, pinnedness: _ } = other;
 
         let res = lhs_did == rhs_did;
 
@@ -1420,7 +1421,7 @@ impl Hash for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did, name: _, vis: _, safety: _, value: _ } = &self;
+        let Self { did, name: _, vis: _, safety: _, value: _, pinnedness: _ } = &self;
 
         did.hash(s)
     }
