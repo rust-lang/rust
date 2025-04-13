@@ -5,13 +5,16 @@
 
 #![allow(dead_code)] // runtime init functions not used during testing
 
-use crate::ffi::{CStr, OsString};
+use crate::ffi::CStr;
 use crate::os::unix::ffi::OsStringExt;
-use crate::{fmt, vec};
+
+#[path = "common.rs"]
+mod common;
+pub use common::Args;
 
 /// One-time global initialization.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
-    imp::init(argc, argv)
+    unsafe { imp::init(argc, argv) }
 }
 
 /// Returns the command line arguments
@@ -55,42 +58,7 @@ pub fn args() -> Args {
         vec.push(OsStringExt::from_vec(cstr.to_bytes().to_vec()));
     }
 
-    Args { iter: vec.into_iter() }
-}
-
-pub struct Args {
-    iter: vec::IntoIter<OsString>,
-}
-
-impl !Send for Args {}
-impl !Sync for Args {}
-
-impl fmt::Debug for Args {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.iter.as_slice().fmt(f)
-    }
-}
-
-impl Iterator for Args {
-    type Item = OsString;
-    fn next(&mut self) -> Option<OsString> {
-        self.iter.next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-}
-
-impl ExactSizeIterator for Args {
-    fn len(&self) -> usize {
-        self.iter.len()
-    }
-}
-
-impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> {
-        self.iter.next_back()
-    }
+    Args::new(vec)
 }
 
 #[cfg(any(
@@ -141,7 +109,7 @@ mod imp {
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
         // on GNU/Linux if we are main then we will init argv and argc twice, it "duplicates work"
         // BUT edge-cases are real: only using .init_array can break most emulators, dlopen, etc.
-        really_init(argc, argv);
+        unsafe { really_init(argc, argv) };
     }
 
     /// glibc passes argc, argv, and envp to functions in .init_array, as a non-standard extension.
@@ -159,9 +127,7 @@ mod imp {
             argv: *const *const u8,
             _envp: *const *const u8,
         ) {
-            unsafe {
-                really_init(argc as isize, argv);
-            }
+            unsafe { really_init(argc as isize, argv) };
         }
         init_wrapper
     };
@@ -226,18 +192,5 @@ mod imp {
 
         // Cast from `*mut *mut c_char` to `*const *const c_char`
         (argc as isize, argv.cast())
-    }
-}
-
-#[cfg(any(target_os = "espidf", target_os = "vita"))]
-mod imp {
-    use crate::ffi::c_char;
-    use crate::ptr;
-
-    #[inline(always)]
-    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-
-    pub fn argc_argv() -> (isize, *const *const c_char) {
-        (0, ptr::null())
     }
 }
