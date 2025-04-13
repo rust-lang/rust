@@ -62,25 +62,67 @@ pub(crate) fn imply_features(mut value: cache::Initializer) -> cache::Initialize
             "defined as subset":
                 The latter extension is described as a subset of the former
                 (but the evidence is weak).
+            "functional":
+                The former extension is functionally a superset of the latter
+                (no direct references though).
         */
+
+        imply!(zvbb => zvkb);
+
+        // Certain set of vector cryptography extensions form a group.
+        group!(zvkn == zvkned & zvknhb & zvkb & zvkt);
+        group!(zvknc == zvkn & zvbc);
+        group!(zvkng == zvkn & zvkg);
+        group!(zvks == zvksed & zvksh & zvkb & zvkt);
+        group!(zvksc == zvks & zvbc);
+        group!(zvksg == zvks & zvkg);
+
+        imply!(zvknhb => zvknha); // functional
+
+        // For vector cryptography, Zvknhb and Zvbc require integer arithmetic
+        // with EEW=64 (Zve64x) while others not depending on them
+        // require EEW=32 (Zve32x).
+        imply!(zvknhb | zvbc => zve64x);
+        imply!(zvbb | zvkb | zvkg | zvkned | zvknha | zvksed | zvksh => zve32x);
 
         imply!(zbc => zbkc); // defined as subset
         group!(zkn == zbkb & zbkc & zbkx & zkne & zknd & zknh);
         group!(zks == zbkb & zbkc & zbkx & zksed & zksh);
         group!(zk == zkn & zkr & zkt);
 
+        imply!(zacas => zaamo);
         group!(a == zalrsc & zaamo);
 
         group!(b == zba & zbb & zbs);
 
+        imply!(zcf => zca & f);
+        imply!(zcd => zca & d);
+        imply!(zcmop | zcb => zca);
+
         imply!(zhinx => zhinxmin);
         imply!(zdinx | zhinxmin => zfinx);
 
+        imply!(zvfh => zvfhmin); // functional
+        imply!(zvfh => zve32f & zfhmin);
+        imply!(zvfhmin => zve32f);
+
+        imply!(v => zve64d);
+        imply!(zve64d => zve64f & d);
+        imply!(zve64f => zve64x & zve32f);
+        imply!(zve64x => zve32x);
+        imply!(zve32f => zve32x & f);
+
         imply!(zfh => zfhmin);
         imply!(q => d);
-        imply!(d | zfhmin => f);
+        imply!(d | zfhmin | zfa => f);
 
-        imply!(zicntr | zihpm | f | zfinx => zicsr);
+        // Relatively complex implication rules from the "C" extension.
+        imply!(c => zca);
+        imply!(c & d => zcd);
+        #[cfg(target_arch = "riscv32")]
+        imply!(c & f => zcf);
+
+        imply!(zicntr | zihpm | f | zfinx | zve32x => zicsr);
         imply!(s | h => zicsr);
 
         // Loop until the feature flags converge.
@@ -111,6 +153,16 @@ mod tests {
     }
 
     #[test]
+    fn complex_zcd() {
+        let mut value = cache::Initializer::default();
+        // C & D -> Zcd
+        value.set(Feature::c as u32);
+        assert!(!imply_features(value).test(Feature::zcd as u32));
+        value.set(Feature::d as u32);
+        assert!(imply_features(value).test(Feature::zcd as u32));
+    }
+
+    #[test]
     fn group_simple_forward() {
         let mut value = cache::Initializer::default();
         // A -> Zalrsc & Zaamo (forward implication)
@@ -132,17 +184,18 @@ mod tests {
     #[test]
     fn group_complex_convergence() {
         let mut value = cache::Initializer::default();
-        // Needs 2 iterations to converge
-        // (and 3rd iteration for convergence checking):
-        // 1.  [Zk] -> Zkn & Zkr & Zkt
-        // 2.  Zkn -> {Zbkb} & {Zbkc} & {Zbkx} & {Zkne} & {Zknd} & {Zknh}
-        value.set(Feature::zk as u32);
+        // Needs 3 iterations to converge
+        // (and 4th iteration for convergence checking):
+        // 1.  [Zvksc] -> Zvks & Zvbc
+        // 2.  Zvks -> Zvksed & Zvksh & Zvkb & Zvkt
+        // 3a. [Zvkned] & [Zvknhb] & [Zvkb] & Zvkt -> {Zvkn}
+        // 3b. Zvkn & Zvbc -> {Zvknc}
+        value.set(Feature::zvksc as u32);
+        value.set(Feature::zvkned as u32);
+        value.set(Feature::zvknhb as u32);
+        value.set(Feature::zvkb as u32);
         let value = imply_features(value);
-        assert!(value.test(Feature::zbkb as u32));
-        assert!(value.test(Feature::zbkc as u32));
-        assert!(value.test(Feature::zbkx as u32));
-        assert!(value.test(Feature::zkne as u32));
-        assert!(value.test(Feature::zknd as u32));
-        assert!(value.test(Feature::zknh as u32));
+        assert!(value.test(Feature::zvkn as u32));
+        assert!(value.test(Feature::zvknc as u32));
     }
 }
