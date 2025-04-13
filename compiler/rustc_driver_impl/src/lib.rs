@@ -30,7 +30,7 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Instant, SystemTime};
+use std::time::Instant;
 use std::{env, str};
 
 use rustc_ast as ast;
@@ -66,8 +66,6 @@ use rustc_span::FileName;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
-use time::OffsetDateTime;
-use time::macros::format_description;
 use tracing::trace;
 
 #[allow(unused_macros)]
@@ -1301,13 +1299,8 @@ fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<Pat
                 .or_else(|| std::env::current_dir().ok())
                 .unwrap_or_default(),
         };
-        let now: OffsetDateTime = SystemTime::now().into();
-        let file_now = now
-            .format(
-                // Don't use a standard datetime format because Windows doesn't support `:` in paths
-                &format_description!("[year]-[month]-[day]T[hour]_[minute]_[second]"),
-            )
-            .unwrap_or_default();
+        // Don't use a standard datetime format because Windows doesn't support `:` in paths
+        let file_now = jiff::Zoned::now().strftime("%Y-%m-%dT%H_%M_%S");
         let pid = std::process::id();
         path.push(format!("rustc-ice-{file_now}-{pid}.txt"));
         Some(path)
