@@ -42,6 +42,7 @@ pub(super) struct Sidebar<'a> {
     pub(super) is_mod: bool,
     pub(super) blocks: Vec<LinkBlock<'a>>,
     pub(super) path: String,
+    pub(super) book_location: Option<&'a crate::config::PathOrUrl>,
 }
 
 impl Sidebar<'_> {
@@ -194,6 +195,7 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Str
         parent_is_crate: sidebar_path.len() == 1,
         blocks,
         path,
+        book_location: cx.shared.book_location.as_ref(),
     };
     sidebar.render_into(buffer).unwrap();
 }

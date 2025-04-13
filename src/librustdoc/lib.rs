@@ -668,6 +668,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "disable the minification of CSS/JS files (perma-unstable, do not use with cached files)",
             "",
         ),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "book-location",
+            "URL where the book is hosted or the folder where the mdBook source is located",
+            "PATH or URL",
+        ),
         // deprecated / removed options
         opt(
             Stable,
@@ -751,6 +759,32 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     }
 }
 
+fn generate_book(render_options: &mut config::RenderOptions) -> Result<(), String> {
+    let Some(config::PathOrUrl::Path(ref mut book_dir)) = render_options.book_location else {
+        return Ok(());
+    };
+    if !book_dir.is_dir() {
+        return Err(format!(
+            "`{}` is not a folder, expected a folder or a URL for `--book-location` argument",
+            book_dir.display(),
+        ));
+    }
+    let mut book = match mdbook::MDBook::load(&book_dir) {
+        Ok(book) => book,
+        Err(error) => return Err(format!("failed to load book: {error:?}")),
+    };
+    let output_dir = render_options.output.join("doc-book");
+    *book_dir = output_dir.join("index.html");
+    book.config.build.build_dir = output_dir;
+    if let Err(error) = book.build() {
+        return Err(format!(
+            "failed to generate book into `{}`: {error:?}",
+            book.config.build.build_dir.display()
+        ));
+    }
+    Ok(())
+}
+
 /// Renders and writes cross-crate info files, like the search index. This function exists so that
 /// we can run rustdoc without a crate root in the `--merge=finalize` mode. Cross-crate info files
 /// discovered via `--include-parts-dir` are combined and written to the doc root.
@@ -803,7 +837,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
 
     // Note that we discard any distinction between different non-zero exit
     // codes from `from_matches` here.
-    let (input, options, render_options) =
+    let (input, options, mut render_options) =
         match config::Options::from_matches(early_dcx, &matches, args) {
             Some(opts) => opts,
             None => return,
@@ -866,6 +900,10 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
 
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
+
+    if let Err(error) = generate_book(&mut render_options) {
+        early_dcx.early_fatal(error);
+    }
 
     let config = core::create_config(input, options, &render_options);
 
