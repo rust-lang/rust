@@ -14,6 +14,7 @@ use pulldown_cmark::{Options, Parser, html};
 use serde::Deserialize;
 use test_utils::IS_RUSTC_TEST_SUITE;
 use ui_test::custom_flags::Flag;
+use ui_test::custom_flags::edition::Edition;
 use ui_test::custom_flags::rustfix::RustfixMode;
 use ui_test::spanned::Spanned;
 use ui_test::{Args, CommandBuilder, Config, Match, error_on_output_conflict, status_emitter};
@@ -156,6 +157,7 @@ impl TestContext {
             ..Config::rustc(Path::new("tests").join(test_dir))
         };
         let defaults = config.comment_defaults.base();
+        defaults.set_custom("edition", Edition("2024".into()));
         defaults.exit_status = None.into();
         if mandatory_annotations {
             defaults.require_annotations = Some(Spanned::dummy(true)).into();
