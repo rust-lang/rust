@@ -1,8 +1,8 @@
 use crate::update_lints::{
-    RenamedLint, clippy_lints_src_files, gather_all, gen_renamed_lints_test, generate_lint_files,
+    RenamedLint, clippy_lints_src_files, gather_all, gen_renamed_lints_test_fn, generate_lint_files,
 };
 use crate::utils::{
-    UpdateMode, Version, insert_at_marker, replace_ident_like, rewrite_file, try_rename_file, write_file,
+    FileUpdater, UpdateMode, Version, insert_at_marker, replace_ident_like, rewrite_file, try_rename_file,
 };
 use std::ffi::OsStr;
 use std::path::Path;
@@ -32,6 +32,7 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
         panic!("`{new_name}` should not contain the `{prefix}` prefix");
     }
 
+    let mut updater = FileUpdater::default();
     let (mut lints, deprecated_lints, mut renamed_lints) = gather_all();
     let mut old_lint_index = None;
     let mut found_new_name = false;
@@ -72,8 +73,8 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
             && name != Some(OsStr::new("rename.rs"))
             && name != Some(OsStr::new("deprecated_lints.rs"))
     }) {
-        rewrite_file(file.path(), |s| {
-            replace_ident_like(s, &[(&lint.old_name, &lint.new_name)])
+        updater.update_file(file.path(), &mut |_, src, dst| {
+            replace_ident_like(&[(&lint.old_name, &lint.new_name)], src, dst)
         });
     }
 
@@ -101,12 +102,12 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
     });
 
     if uplift {
-        write_file(Path::new("tests/ui/rename.rs"), &gen_renamed_lints_test(&renamed_lints));
+        updater.update_file("tests/ui/rename.rs", &mut gen_renamed_lints_test_fn(&renamed_lints));
         println!(
             "`{old_name}` has be uplifted. All the code inside `clippy_lints` related to it needs to be removed manually."
         );
     } else if found_new_name {
-        write_file(Path::new("tests/ui/rename.rs"), &gen_renamed_lints_test(&renamed_lints));
+        updater.update_file("tests/ui/rename.rs", &mut gen_renamed_lints_test_fn(&renamed_lints));
         println!(
             "`{new_name}` is already defined. The old linting code inside `clippy_lints` needs to be updated/removed manually."
         );
@@ -173,7 +174,9 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
                 .to_str()
                 .is_none_or(|x| x["clippy_lints/src/".len()..] != *"deprecated_lints.rs")
             {
-                rewrite_file(file.path(), |s| replace_ident_like(s, replacements));
+                updater.update_file(file.path(), &mut |_, src, dst| {
+                    replace_ident_like(replacements, src, dst)
+                });
             }
         }
 

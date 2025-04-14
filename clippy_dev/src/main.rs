@@ -30,10 +30,8 @@ fn main() {
         DevCommand::UpdateLints { print_only, check } => {
             if print_only {
                 update_lints::print_lints();
-            } else if check {
-                update_lints::update(utils::UpdateMode::Check);
             } else {
-                update_lints::update(utils::UpdateMode::Change);
+                update_lints::update(utils::UpdateMode::from_check(check));
             }
         },
         DevCommand::NewLint {

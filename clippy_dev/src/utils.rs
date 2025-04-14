@@ -209,78 +209,145 @@ pub fn exit_if_err(status: io::Result<ExitStatus>) {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy)]
+pub enum UpdateStatus {
+    Unchanged,
+    Changed,
+}
+impl UpdateStatus {
+    #[must_use]
+    pub fn from_changed(value: bool) -> Self {
+        if value { Self::Changed } else { Self::Unchanged }
+    }
+
+    #[must_use]
+    pub fn is_changed(self) -> bool {
+        matches!(self, Self::Changed)
+    }
+}
+
+#[derive(Clone, Copy)]
 pub enum UpdateMode {
-    Check,
     Change,
+    Check,
+}
+impl UpdateMode {
+    #[must_use]
+    pub fn from_check(check: bool) -> Self {
+        if check { Self::Check } else { Self::Change }
+    }
 }
 
-pub(crate) fn exit_with_failure() {
-    println!(
-        "Not all lints defined properly. \
-                 Please run `cargo dev update_lints` to make sure all lints are defined properly."
-    );
-    process::exit(1);
+#[derive(Default)]
+pub struct FileUpdater {
+    src_buf: String,
+    dst_buf: String,
 }
+impl FileUpdater {
+    fn update_file_checked_inner(
+        &mut self,
+        tool: &str,
+        mode: UpdateMode,
+        path: &Path,
+        update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
+    ) {
+        let mut file = File::open(path, OpenOptions::new().read(true).write(true));
+        file.read_to_cleared_string(&mut self.src_buf);
+        self.dst_buf.clear();
+        match (mode, update(path, &self.src_buf, &mut self.dst_buf)) {
+            (UpdateMode::Check, UpdateStatus::Changed) => {
+                eprintln!(
+                    "the contents of `{}` are out of date\nplease run `{tool}` to update",
+                    path.display()
+                );
+                process::exit(1);
+            },
+            (UpdateMode::Change, UpdateStatus::Changed) => file.replace_contents(self.dst_buf.as_bytes()),
+            (UpdateMode::Check | UpdateMode::Change, UpdateStatus::Unchanged) => {},
+        }
+    }
 
-/// Replaces a region in a file delimited by two lines matching regexes.
-///
-/// `path` is the relative path to the file on which you want to perform the replacement.
-///
-/// See `replace_region_in_text` for documentation of the other options.
-///
-/// # Panics
-///
-/// Panics if the path could not read or then written
-pub(crate) fn replace_region_in_file(
-    update_mode: UpdateMode,
-    path: &Path,
-    start: &str,
-    end: &str,
-    write_replacement: impl FnMut(&mut String),
-) {
-    let contents = fs::read_to_string(path).unwrap_or_else(|e| panic!("Cannot read from `{}`: {e}", path.display()));
-    let new_contents = match replace_region_in_text(&contents, start, end, write_replacement) {
-        Ok(x) => x,
-        Err(delim) => panic!("Couldn't find `{delim}` in file `{}`", path.display()),
-    };
+    fn update_file_inner(&mut self, path: &Path, update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus) {
+        let mut file = File::open(path, OpenOptions::new().read(true).write(true));
+        file.read_to_cleared_string(&mut self.src_buf);
+        self.dst_buf.clear();
+        if update(path, &self.src_buf, &mut self.dst_buf).is_changed() {
+            file.replace_contents(self.dst_buf.as_bytes());
+        }
+    }
 
-    match update_mode {
-        UpdateMode::Check if contents != new_contents => exit_with_failure(),
-        UpdateMode::Check => (),
-        UpdateMode::Change => {
-            if let Err(e) = fs::write(path, new_contents.as_bytes()) {
-                panic!("Cannot write to `{}`: {e}", path.display());
-            }
-        },
+    pub fn update_file_checked(
+        &mut self,
+        tool: &str,
+        mode: UpdateMode,
+        path: impl AsRef<Path>,
+        update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
+    ) {
+        self.update_file_checked_inner(tool, mode, path.as_ref(), update);
+    }
+
+    #[expect(clippy::type_complexity)]
+    pub fn update_files_checked(
+        &mut self,
+        tool: &str,
+        mode: UpdateMode,
+        files: &mut [(
+            impl AsRef<Path>,
+            &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
+        )],
+    ) {
+        for (path, update) in files {
+            self.update_file_checked_inner(tool, mode, path.as_ref(), update);
+        }
+    }
+
+    pub fn update_file(
+        &mut self,
+        path: impl AsRef<Path>,
+        update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
+    ) {
+        self.update_file_inner(path.as_ref(), update);
     }
 }
 
 /// Replaces a region in a text delimited by two strings. Returns the new text if both delimiters
 /// were found, or the missing delimiter if not.
-pub(crate) fn replace_region_in_text<'a>(
-    text: &str,
-    start: &'a str,
-    end: &'a str,
-    mut write_replacement: impl FnMut(&mut String),
-) -> Result<String, &'a str> {
-    let (text_start, rest) = text.split_once(start).ok_or(start)?;
-    let (_, text_end) = rest.split_once(end).ok_or(end)?;
+pub fn update_text_region(
+    path: &Path,
+    start: &str,
+    end: &str,
+    src: &str,
+    dst: &mut String,
+    insert: &mut impl FnMut(&mut String),
+) -> UpdateStatus {
+    let Some((src_start, src_end)) = src.split_once(start) else {
+        panic!("`{}` does not contain `{start}`", path.display());
+    };
+    let Some((replaced_text, src_end)) = src_end.split_once(end) else {
+        panic!("`{}` does not contain `{end}`", path.display());
+    };
+    dst.push_str(src_start);
+    dst.push_str(start);
+    let new_start = dst.len();
+    insert(dst);
+    let changed = dst[new_start..] != *replaced_text;
+    dst.push_str(end);
+    dst.push_str(src_end);
+    UpdateStatus::from_changed(changed)
+}
 
-    let mut res = String::with_capacity(text.len() + 4096);
-    res.push_str(text_start);
-    res.push_str(start);
-    write_replacement(&mut res);
-    res.push_str(end);
-    res.push_str(text_end);
-
-    Ok(res)
+pub fn update_text_region_fn(
+    start: &str,
+    end: &str,
+    mut insert: impl FnMut(&mut String),
+) -> impl FnMut(&Path, &str, &mut String) -> UpdateStatus {
+    move |path, src, dst| update_text_region(path, start, end, src, dst, &mut insert)
 }
 
 /// Replace substrings if they aren't bordered by identifier characters. Returns `None` if there
 /// were no replacements.
 #[must_use]
-pub fn replace_ident_like(contents: &str, replacements: &[(&str, &str)]) -> Option<String> {
+pub fn replace_ident_like(replacements: &[(&str, &str)], src: &str, dst: &mut String) -> UpdateStatus {
     fn is_ident_char(c: u8) -> bool {
         matches!(c, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')
     }
@@ -290,26 +357,20 @@ pub fn replace_ident_like(contents: &str, replacements: &[(&str, &str)]) -> Opti
         .build(replacements.iter().map(|&(x, _)| x.as_bytes()))
         .unwrap();
 
-    let mut result = String::with_capacity(contents.len() + 1024);
     let mut pos = 0;
-    let mut edited = false;
-    for m in searcher.find_iter(contents) {
-        let (old, new) = replacements[m.pattern()];
-        result.push_str(&contents[pos..m.start()]);
-        result.push_str(
-            if !is_ident_char(contents.as_bytes().get(m.start().wrapping_sub(1)).copied().unwrap_or(0))
-                && !is_ident_char(contents.as_bytes().get(m.end()).copied().unwrap_or(0))
-            {
-                edited = true;
-                new
-            } else {
-                old
-            },
-        );
-        pos = m.end();
+    let mut changed = false;
+    for m in searcher.find_iter(src) {
+        if !is_ident_char(src.as_bytes().get(m.start().wrapping_sub(1)).copied().unwrap_or(0))
+            && !is_ident_char(src.as_bytes().get(m.end()).copied().unwrap_or(0))
+        {
+            dst.push_str(&src[pos..m.start()]);
+            dst.push_str(replacements[m.pattern()].1);
+            pos = m.end();
+            changed = true;
+        }
     }
-    result.push_str(&contents[pos..]);
-    edited.then_some(result)
+    dst.push_str(&src[pos..]);
+    UpdateStatus::from_changed(changed)
 }
 
 #[expect(clippy::must_use_candidate)]
