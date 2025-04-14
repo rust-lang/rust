@@ -4,7 +4,7 @@ use std::{
     panic, thread,
 };
 
-use ide_db::base_db::salsa::{self, Cancelled, Cycle};
+use ide_db::base_db::salsa::{self, Cancelled};
 use lsp_server::{ExtractError, Response, ResponseError};
 use serde::{Serialize, de::DeserializeOwned};
 use stdx::thread::ThreadIntent;
@@ -309,14 +309,12 @@ impl RequestDispatcher<'_> {
 
 #[derive(Debug)]
 enum HandlerCancelledError {
-    PropagatedPanic,
     Inner(salsa::Cancelled),
 }
 
 impl std::error::Error for HandlerCancelledError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            HandlerCancelledError::PropagatedPanic => None,
             HandlerCancelledError::Inner(cancelled) => Some(cancelled),
         }
     }
@@ -349,9 +347,6 @@ where
             if let Some(panic_message) = panic_message {
                 message.push_str(": ");
                 message.push_str(panic_message)
-            } else if let Some(cycle) = panic.downcast_ref::<Cycle>() {
-                tracing::error!("Cycle propagated out of salsa! This is a bug: {cycle:?}");
-                return Err(HandlerCancelledError::PropagatedPanic);
             } else if let Ok(cancelled) = panic.downcast::<Cancelled>() {
                 tracing::error!("Cancellation propagated out of salsa! This is a bug");
                 return Err(HandlerCancelledError::Inner(*cancelled));

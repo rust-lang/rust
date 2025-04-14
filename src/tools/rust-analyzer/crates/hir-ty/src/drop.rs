@@ -193,9 +193,8 @@ fn is_copy(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment>) -> bool {
     db.trait_solve(env.krate, env.block, goal).is_some()
 }
 
-pub(crate) fn has_drop_glue_recover(
+pub(crate) fn has_drop_glue_cycle_result(
     _db: &dyn HirDatabase,
-    _cycle: &salsa::Cycle,
     _ty: Ty,
     _env: Arc<TraitEnvironment>,
 ) -> DropGlue {

@@ -19,10 +19,10 @@ use crate::{
     AliasTy, Const, ConstScalar, DynTyExt, GenericArg, GenericArgData, Interner, Lifetime,
     LifetimeData, Ty, TyKind,
 };
-use base_db::salsa::Cycle;
 use chalk_ir::Mutability;
 use hir_def::signatures::StructFlags;
 use hir_def::{AdtId, GenericDefId, GenericParamId, VariantId};
+use salsa::CycleRecoveryAction;
 use std::fmt;
 use std::ops::Not;
 use stdx::never;
@@ -55,9 +55,17 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Ar
     variances.is_empty().not().then(|| Arc::from_iter(variances))
 }
 
-pub(crate) fn variances_of_cycle(
+pub(crate) fn variances_of_cycle_fn(
+    _db: &dyn HirDatabase,
+    result: &Option<Arc<[Variance]>>,
+    _count: u32,
+    _def: GenericDefId,
+) -> CycleRecoveryAction<Option<Arc<[Variance]>>> {
+    CycleRecoveryAction::Fallback(result.clone())
+}
+
+pub(crate) fn variances_of_cycle_initial(
     db: &dyn HirDatabase,
-    _cycle: &Cycle,
     def: GenericDefId,
 ) -> Option<Arc<[Variance]>> {
     let generics = generics(db, def);

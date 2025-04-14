@@ -41,8 +41,8 @@ use rustc_hash::FxHashMap;
 use smallvec::{SmallVec, smallvec};
 use stdx::{impl_from, never};
 
-pub(crate) use lower::mir_body_recover;
-pub(crate) use monomorphization::monomorphized_mir_body_recover;
+pub(crate) use lower::mir_body_cycle_result;
+pub(crate) use monomorphization::monomorphized_mir_body_cycle_result;
 
 use super::consteval::{intern_const_scalar, try_const_usize};
 

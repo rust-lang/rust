@@ -45,7 +45,6 @@ use hir_expand::name::Name;
 use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::Captures;
-use salsa::Cycle;
 use stdx::{impl_from, never};
 use triomphe::{Arc, ThinArc};
 
@@ -961,9 +960,8 @@ pub(crate) fn generic_predicates_for_param_query(
     GenericPredicates(predicates.is_empty().not().then(|| predicates.into()))
 }
 
-pub(crate) fn generic_predicates_for_param_recover(
+pub(crate) fn generic_predicates_for_param_cycle_result(
     _db: &dyn HirDatabase,
-    _cycle: &salsa::Cycle,
     _def: GenericDefId,
     _param_id: TypeOrConstParamId,
     _assoc_name: Option<Name>,
@@ -1264,9 +1262,8 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
     }
 }
 
-pub(crate) fn generic_defaults_with_diagnostics_recover(
+pub(crate) fn generic_defaults_with_diagnostics_cycle_result(
     _db: &dyn HirDatabase,
-    _cycle: &Cycle,
     _def: GenericDefId,
 ) -> (GenericDefaults, Diagnostics) {
     (GenericDefaults(None), None)
@@ -1402,16 +1399,12 @@ fn type_for_enum_variant_constructor(
     }
 }
 
-#[salsa::tracked(recovery_fn = type_for_adt_recovery)]
+#[salsa::tracked(cycle_result = type_for_adt_cycle_result)]
 fn type_for_adt_tracked(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
     type_for_adt(db, adt)
 }
 
-pub(crate) fn type_for_adt_recovery(
-    db: &dyn HirDatabase,
-    _cycle: &salsa::Cycle,
-    adt: AdtId,
-) -> Binders<Ty> {
+fn type_for_adt_cycle_result(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
     let generics = generics(db, adt.into());
     make_binders(db, &generics, TyKind::Error.intern(Interner))
 }
@@ -1449,9 +1442,8 @@ pub(crate) fn type_for_type_alias_with_diagnostics_query(
     (make_binders(db, &generics, inner), diags)
 }
 
-pub(crate) fn type_for_type_alias_with_diagnostics_query_recover(
+pub(crate) fn type_for_type_alias_with_diagnostics_cycle_result(
     db: &dyn HirDatabase,
-    _cycle: &salsa::Cycle,
     adt: TypeAliasId,
 ) -> (Binders<Ty>, Diagnostics) {
     let generics = generics(db, adt.into());
@@ -1555,12 +1547,11 @@ pub(crate) fn const_param_ty_with_diagnostics_query(
     (ty, create_diagnostics(ctx.diagnostics))
 }
 
-pub(crate) fn impl_self_ty_with_diagnostics_recover(
+pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
     db: &dyn HirDatabase,
-    _cycle: &salsa::Cycle,
     impl_id: ImplId,
 ) -> (Binders<Ty>, Diagnostics) {
-    let generics = generics(db, (impl_id).into());
+    let generics = generics(db, impl_id.into());
     (make_binders(db, &generics, TyKind::Error.intern(Interner)), None)
 }
 

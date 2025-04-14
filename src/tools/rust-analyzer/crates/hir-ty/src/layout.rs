@@ -13,7 +13,6 @@ use hir_def::{
 use la_arena::{Idx, RawIdx};
 use rustc_abi::AddressSpace;
 use rustc_index::IndexVec;
-use salsa::Cycle;
 
 use triomphe::Arc;
 
@@ -25,7 +24,7 @@ use crate::{
     utils::ClosureSubst,
 };
 
-pub(crate) use self::adt::layout_of_adt_recover;
+pub(crate) use self::adt::layout_of_adt_cycle_result;
 pub use self::{adt::layout_of_adt_query, target::target_data_layout_query};
 
 mod adt;
@@ -365,9 +364,8 @@ pub fn layout_of_ty_query(
     Ok(Arc::new(result))
 }
 
-pub(crate) fn layout_of_ty_recover(
+pub(crate) fn layout_of_ty_cycle_result(
     _: &dyn HirDatabase,
-    _: &Cycle,
     _: Ty,
     _: Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {
