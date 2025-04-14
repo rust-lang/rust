@@ -203,7 +203,7 @@ struct TransformVisitor<'tcx> {
 
 impl<'tcx> TransformVisitor<'tcx> {
     fn insert_none_ret_block(&self, body: &mut Body<'tcx>) -> BasicBlock {
-        let block = BasicBlock::new(body.basic_blocks.len());
+        let block = body.basic_blocks.next_index();
         let source_info = SourceInfo::outermost(body.span);
 
         let none_value = match self.coroutine_kind {
@@ -1193,7 +1193,7 @@ fn insert_panic_block<'tcx>(
     body: &mut Body<'tcx>,
     message: AssertMessage<'tcx>,
 ) -> BasicBlock {
-    let assert_block = BasicBlock::new(body.basic_blocks.len());
+    let assert_block = body.basic_blocks.next_index();
     let kind = TerminatorKind::Assert {
         cond: Operand::Constant(Box::new(ConstOperand {
             span: body.span,

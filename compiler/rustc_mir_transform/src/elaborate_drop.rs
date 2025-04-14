@@ -258,17 +258,16 @@ where
     ) -> Vec<(Place<'tcx>, Option<D::Path>)> {
         variant
             .fields
-            .iter()
-            .enumerate()
-            .map(|(i, f)| {
-                let field = FieldIdx::new(i);
-                let subpath = self.elaborator.field_subpath(variant_path, field);
+            .iter_enumerated()
+            .map(|(field_idx, field)| {
+                let subpath = self.elaborator.field_subpath(variant_path, field_idx);
                 let tcx = self.tcx();
 
                 assert_eq!(self.elaborator.typing_env().typing_mode, ty::TypingMode::PostAnalysis);
-                let field_ty = match tcx
-                    .try_normalize_erasing_regions(self.elaborator.typing_env(), f.ty(tcx, args))
-                {
+                let field_ty = match tcx.try_normalize_erasing_regions(
+                    self.elaborator.typing_env(),
+                    field.ty(tcx, args),
+                ) {
                     Ok(t) => t,
                     Err(_) => Ty::new_error(
                         self.tcx(),
@@ -279,7 +278,7 @@ where
                     ),
                 };
 
-                (tcx.mk_place_field(base_place, field, field_ty), subpath)
+                (tcx.mk_place_field(base_place, field_idx, field_ty), subpath)
             })
             .collect()
     }

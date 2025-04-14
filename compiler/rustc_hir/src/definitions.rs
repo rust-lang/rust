@@ -47,12 +47,9 @@ impl DefPathTable {
         debug_assert_eq!(self.stable_crate_id, def_path_hash.stable_crate_id());
         let local_hash = def_path_hash.local_hash();
 
-        let index = {
-            let index = DefIndex::from(self.index_to_key.len());
-            debug!("DefPathTable::insert() - {:?} <-> {:?}", key, index);
-            self.index_to_key.push(key);
-            index
-        };
+        let index = self.index_to_key.push(key);
+        debug!("DefPathTable::insert() - {key:?} <-> {index:?}");
+
         self.def_path_hashes.push(local_hash);
         debug_assert!(self.def_path_hashes.len() == self.index_to_key.len());
 

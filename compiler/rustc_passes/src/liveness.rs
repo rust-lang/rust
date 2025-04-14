@@ -578,8 +578,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     where
         F: FnMut(Variable) -> bool,
     {
-        for var_idx in 0..self.ir.var_kinds.len() {
-            let var = Variable::from(var_idx);
+        for var in self.ir.var_kinds.indices() {
             if test(var) {
                 write!(wr, " {var:?}")?;
             }
@@ -609,8 +608,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!(
             "^^ liveness computation results for body {} (entry={:?})",
             {
-                for ln_idx in 0..self.ir.lnks.len() {
-                    debug!("{:?}", self.ln_str(LiveNode::from(ln_idx)));
+                for ln_idx in self.ir.lnks.indices() {
+                    debug!("{:?}", self.ln_str(ln_idx));
                 }
                 hir_id
             },
