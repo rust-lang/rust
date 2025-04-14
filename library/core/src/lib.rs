@@ -169,7 +169,6 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(no_core)]
-#![feature(no_sanitize)]
 #![feature(optimize_attribute)]
 #![feature(prelude_import)]
 #![feature(repr_simd)]
