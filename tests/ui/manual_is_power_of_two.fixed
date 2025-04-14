@@ -20,6 +20,8 @@ fn main() {
     //~^ manual_is_power_of_two
     let _ = a.is_power_of_two();
     //~^ manual_is_power_of_two
+    let _ = a.is_power_of_two();
+    //~^ manual_is_power_of_two
 
     // Test different orders of expression
     let _ = a.is_power_of_two();

@@ -2,9 +2,10 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::ty_from_hir_ty;
 use clippy_utils::{SpanlessEq, is_in_const_context, is_integer_literal};
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
+use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
@@ -90,16 +91,19 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsPowerOfTwo {
     }
 }
 
-/// Return the unsigned integer receiver of `.count_ones()`
+/// Return the unsigned integer receiver of `.count_ones()` or the argument of
+/// `<int-type>::count_ones(…)`.
 fn count_ones_receiver<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::MethodCall(method_name, receiver, [], _) = expr.kind
-        && method_name.ident.as_str() == "count_ones"
-        && matches!(cx.typeck_results().expr_ty_adjusted(receiver).kind(), ty::Uint(_))
+    let (method, ty, receiver) = if let ExprKind::MethodCall(method_name, receiver, [], _) = expr.kind {
+        (method_name, cx.typeck_results().expr_ty_adjusted(receiver), receiver)
+    } else if let ExprKind::Call(func, [arg]) = expr.kind
+        && let ExprKind::Path(QPath::TypeRelative(ty, func_name)) = func.kind
     {
-        Some(receiver)
+        (func_name, ty_from_hir_ty(cx, ty), arg)
     } else {
-        None
-    }
+        return None;
+    };
+    (method.ident.as_str() == "count_ones" && matches!(ty.kind(), ty::Uint(_))).then_some(receiver)
 }
 
 /// Return `greater` if `smaller == greater - 1`

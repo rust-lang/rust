@@ -18,6 +18,8 @@ fn main() {
 
     let _ = a.count_ones() == 1;
     //~^ manual_is_power_of_two
+    let _ = u64::count_ones(a) == 1;
+    //~^ manual_is_power_of_two
     let _ = a & (a - 1) == 0;
     //~^ manual_is_power_of_two
 
