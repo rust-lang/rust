@@ -3,7 +3,7 @@
 //@ add-core-stubs
 //@ build-fail
 
-#![feature(no_core)]
+#![feature(no_core, repr_simd)]
 #![no_core]
 #![crate_type = "lib"]
 #![deny(wasm_c_abi)]
@@ -45,3 +45,16 @@ pub fn call_other_fun(x: MyType) {
 pub struct MyZstType;
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn zst_safe(_x: (), _y: MyZstType) {}
+
+// The `v128` is already warned as not-FFI-safe by the
+// `improper_ctypes_definitions` lint, so no need to doubly warn about it with
+// the `wasm_c_abi` lint. Test for the lint from `improper_ctypes_definitions`
+// but this doubly asserts that there are no other lints, such as from the
+// `wasm_c_abi` lint.
+#[repr(simd)]
+#[allow(non_camel_case_types)]
+pub struct v128([i32; 4]);
+#[target_feature(enable = "simd128")]
+pub extern "C" fn my_safe_simd(x: v128) -> v128 { x }
+//~^ WARN `extern` fn uses type `v128`, which is not FFI-safe
+//~| WARN `extern` fn uses type `v128`, which is not FFI-safe

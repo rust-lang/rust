@@ -99,6 +99,12 @@ fn wasm_abi_safe<'tcx>(tcx: TyCtxt<'tcx>, arg: &ArgAbi<'tcx, Ty<'tcx>>) -> bool 
         return true;
     }
 
+    // If this is a simd argument let other rustc warnings kick in and don't
+    // provide extra warnings here
+    if uses_vector_registers(&arg.mode, &arg.layout.backend_repr) {
+        return true;
+    }
+
     // This matches `unwrap_trivial_aggregate` in the wasm ABI logic.
     if arg.layout.is_aggregate() {
         let cx = LayoutCx::new(tcx, TypingEnv::fully_monomorphized());
