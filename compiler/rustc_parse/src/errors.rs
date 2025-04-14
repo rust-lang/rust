@@ -2806,6 +2806,8 @@ pub(crate) struct ReturnTypesUseThinArrow {
 pub(crate) struct NeedPlusAfterTraitObjectLifetime {
     #[primary_span]
     pub span: Span,
+    #[suggestion(code = " + /* Trait */", applicability = "has-placeholders")]
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
