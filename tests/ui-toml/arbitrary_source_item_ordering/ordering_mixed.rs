@@ -52,6 +52,22 @@ enum EnumUnorderedAllowed {
     B,
 }
 
+struct EnumWithoutExtern {
+    r: u8,
+    g: u8,
+    //~^ arbitrary_source_item_ordering
+    b: u8,
+    //~^ arbitrary_source_item_ordering
+}
+
+#[repr(C)]
+struct EnumWithExternButAtWrongPosition {
+    //~[ord_within]^ arbitrary_source_item_ordering
+    r: u8,
+    g: u8,
+    b: u8,
+}
+
 struct StructOrdered {
     a: bool,
     b: bool,
