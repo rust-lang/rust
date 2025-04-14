@@ -1705,9 +1705,7 @@ impl InferenceContext<'_> {
                 if let TyKind::Closure(c, _) =
                     self.table.resolve_completely(callee_ty.clone()).kind(Interner)
                 {
-                    if let Some(par) = self.current_closure {
-                        self.closure_dependencies.entry(par).or_default().push(*c);
-                    }
+                    self.add_current_closure_dependency(*c);
                     self.deferred_closures.entry(*c).or_default().push((
                         derefed_callee.clone(),
                         callee_ty.clone(),

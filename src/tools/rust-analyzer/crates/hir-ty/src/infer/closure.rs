@@ -23,7 +23,7 @@ use hir_def::{
 use hir_def::{Lookup, type_ref::TypeRefId};
 use hir_expand::name::Name;
 use intern::sym;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{SmallVec, smallvec};
 use stdx::{format_to, never};
 use syntax::utils::is_raw_identifier;
@@ -107,9 +107,7 @@ impl InferenceContext<'_> {
                 )
                 .intern(Interner);
                 self.deferred_closures.entry(closure_id).or_default();
-                if let Some(c) = self.current_closure {
-                    self.closure_dependencies.entry(c).or_default().push(closure_id);
-                }
+                self.add_current_closure_dependency(closure_id);
                 (Some(closure_id), closure_ty, None)
             }
         };
@@ -1748,7 +1746,41 @@ impl InferenceContext<'_> {
                 }
             }
         }
+        assert!(deferred_closures.is_empty(), "we should have analyzed all closures");
         result
+    }
+
+    pub(super) fn add_current_closure_dependency(&mut self, dep: ClosureId) {
+        if let Some(c) = self.current_closure {
+            if !dep_creates_cycle(&self.closure_dependencies, &mut FxHashSet::default(), c, dep) {
+                self.closure_dependencies.entry(c).or_default().push(dep);
+            }
+        }
+
+        fn dep_creates_cycle(
+            closure_dependencies: &FxHashMap<ClosureId, Vec<ClosureId>>,
+            visited: &mut FxHashSet<ClosureId>,
+            from: ClosureId,
+            to: ClosureId,
+        ) -> bool {
+            if !visited.insert(from) {
+                return false;
+            }
+
+            if from == to {
+                return true;
+            }
+
+            if let Some(deps) = closure_dependencies.get(&to) {
+                for dep in deps {
+                    if dep_creates_cycle(closure_dependencies, visited, from, *dep) {
+                        return true;
+                    }
+                }
+            }
+
+            false
+        }
     }
 }
 
