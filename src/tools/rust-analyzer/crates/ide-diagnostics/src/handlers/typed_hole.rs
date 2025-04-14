@@ -151,7 +151,7 @@ fn main() {
 fn main() {
     let mut x = t();
     x = _;
-      //^ 💡 error: invalid `_` expression, expected type `&str`
+      //^ 💡 error: invalid `_` expression, expected type `&'static str`
     x = "";
 }
 fn t<T>() -> T { loop {} }

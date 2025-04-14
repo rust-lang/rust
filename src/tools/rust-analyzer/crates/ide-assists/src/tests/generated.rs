@@ -1737,7 +1737,7 @@ fn foo() {
     bar("", baz());
 }
 
-fn bar(arg: &str, baz: Baz) ${0:-> _} {
+fn bar(arg: &'static str, baz: Baz) ${0:-> _} {
     todo!()
 }
 
