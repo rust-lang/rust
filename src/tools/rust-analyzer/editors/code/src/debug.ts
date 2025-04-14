@@ -6,7 +6,7 @@ import type * as ra from "./lsp_ext";
 import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { createTaskFromRunnable, prepareEnv } from "./run";
-import { execute, isCargoRunnableArgs, unwrapUndefinable, log } from "./util";
+import { execute, isCargoRunnableArgs, unwrapUndefinable, log, normalizeDriveLetter } from "./util";
 import type { Config } from "./config";
 
 // Here we want to keep track on everything that's currently running
@@ -127,20 +127,14 @@ async function getDebugConfiguration(
               firstWorkspace;
 
     const workspace = unwrapUndefinable(maybeWorkspace);
-    let wsFolder = path.normalize(workspace.uri.fsPath);
-    if (os.platform() === "win32") {
-        // in windows, the drive letter can vary in casing for VSCode, so we gotta normalize that first
-        wsFolder = wsFolder.replace(/^[a-z]:\\/, (c) => c.toUpperCase());
-    }
+    const wsFolder = normalizeDriveLetter(path.normalize(workspace.uri.fsPath));
 
     const workspaceQualifier = isMultiFolderWorkspace ? `:${workspace.name}` : "";
     function simplifyPath(p: string): string {
         // in windows, the drive letter can vary in casing for VSCode, so we gotta normalize that first
-        if (os.platform() === "win32") {
-            p = p.replace(/^[a-z]:\\/, (c) => c.toUpperCase());
-        }
+        p = normalizeDriveLetter(path.normalize(p));
         // see https://github.com/rust-lang/rust-analyzer/pull/5513#issuecomment-663458818 for why this is needed
-        return path.normalize(p).replace(wsFolder, `\${workspaceFolder${workspaceQualifier}}`);
+        return p.replace(wsFolder, `\${workspaceFolder${workspaceQualifier}}`);
     }
 
     const executable = await getDebugExecutable(

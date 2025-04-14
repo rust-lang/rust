@@ -2,7 +2,7 @@ import * as Is from "vscode-languageclient/lib/common/utils/is";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
-import { expectNotUndefined, log, unwrapUndefinable } from "./util";
+import { expectNotUndefined, log, normalizeDriveLetter, unwrapUndefinable } from "./util";
 import type { Env } from "./util";
 import type { Disposable } from "vscode";
 
@@ -498,7 +498,7 @@ function computeVscodeVar(varName: string): string | null {
                   // user has opened on Editor startup. Could lead to
                   // unpredictable workspace selection in practice.
                   // It's better to pick the first one
-                  folder.uri.fsPath;
+                  normalizeDriveLetter(folder.uri.fsPath);
         return fsPath;
     };
     // https://code.visualstudio.com/docs/editor/variables-reference
