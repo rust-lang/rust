@@ -59,6 +59,8 @@ xflags::xflags! {
             optional --client-patch-version version: String
             /// Use cargo-zigbuild
             optional --zig
+            /// Apply PGO optimizations
+            optional --pgo
         }
         /// Read a changelog AsciiDoc file and update the GitHub Releases entry in Markdown.
         cmd publish-release-notes {
@@ -147,6 +149,7 @@ pub struct Dist {
     pub jemalloc: bool,
     pub client_patch_version: Option<String>,
     pub zig: bool,
+    pub pgo: bool,
 }
 
 #[derive(Debug)]
