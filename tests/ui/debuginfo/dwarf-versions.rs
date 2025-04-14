@@ -6,7 +6,6 @@
 //@[zero] compile-flags: -Zdwarf-version=0
 
 //@[one] compile-flags: -Zdwarf-version=1
-//@[one] error-pattern: requested DWARF version 1 is not supported
 
 //@[two] compile-flags: -Zdwarf-version=2
 //@[two] check-pass
