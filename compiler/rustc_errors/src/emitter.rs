@@ -3569,10 +3569,17 @@ fn is_external_library(sm: &SourceMap, span: Span) -> bool {
             }
         };
 
+        let sysroot = match std::env::var("RUSTC_SYSROOT") {
+            Ok(dir) => Some(std::path::PathBuf::from(dir)),
+            Err(_) => None,
+        };
+
         let registry_path = cargo_home.join("registry").join("src");
         let toolchain_path = rustup_home.join("toolchains");
 
-        path.starts_with(&registry_path) || path.starts_with(&toolchain_path)
+        path.starts_with(&registry_path)
+            || path.starts_with(&toolchain_path)
+            || sysroot.as_ref().map_or(false, |sr| path.starts_with(sr))
     } else {
         false
     }
