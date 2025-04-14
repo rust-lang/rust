@@ -374,7 +374,7 @@ impl<I: Interner> ty::Binder<I, ExistentialTraitRef<I>> {
 }
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
