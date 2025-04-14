@@ -1,7 +1,5 @@
-#![allow(fuzzy_provenance_casts)] // FIXME: this module systematically confuses pointers and integers
-
 use crate::ffi::OsString;
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::OnceLock;
 use crate::sys::os_str::Buf;
 use crate::sys::pal::abi::usercalls::alloc;
 use crate::sys::pal::abi::usercalls::raw::ByteBuffer;
@@ -11,23 +9,23 @@ use crate::{fmt, slice};
 // Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
 #[cfg_attr(test, linkage = "available_externally")]
 #[unsafe(export_name = "_ZN16__rust_internals3std3sys3sgx4args4ARGSE")]
-static ARGS: AtomicUsize = AtomicUsize::new(0);
+static ARGS: OnceLock<ArgsStore> = OnceLock::new();
 type ArgsStore = Vec<OsString>;
 
 #[cfg_attr(test, allow(dead_code))]
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
     if argc != 0 {
-        let args = unsafe { alloc::User::<[ByteBuffer]>::from_raw_parts(argv as _, argc as _) };
-        let args = args
-            .iter()
-            .map(|a| OsString::from_inner(Buf { inner: a.copy_user_buffer() }))
-            .collect::<ArgsStore>();
-        ARGS.store(Box::into_raw(Box::new(args)) as _, Ordering::Relaxed);
+        ARGS.get_or_init(|| {
+            let args = unsafe { alloc::User::<[ByteBuffer]>::from_raw_parts(argv as _, argc as _) };
+            args.iter()
+                .map(|a| OsString::from_inner(Buf { inner: a.copy_user_buffer() }))
+                .collect::<ArgsStore>()
+        });
     }
 }
 
 pub fn args() -> Args {
-    let args = unsafe { (ARGS.load(Ordering::Relaxed) as *const ArgsStore).as_ref() };
+    let args = ARGS.get();
     if let Some(args) = args { Args(args.iter()) } else { Args([].iter()) }
 }
 

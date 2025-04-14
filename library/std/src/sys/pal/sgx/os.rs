@@ -1,3 +1,5 @@
+#![forbid(fuzzy_provenance_casts)]
+
 use fortanix_sgx_abi::{Error, RESULT_SUCCESS};
 
 use crate::collections::HashMap;
@@ -5,8 +7,7 @@ use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
-use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::sync::{Mutex, Once};
+use crate::sync::{LazyLock, Mutex};
 use crate::sys::{decode_error_kind, sgx_ineffective, unsupported};
 use crate::{fmt, io, str, vec};
 
@@ -76,23 +77,8 @@ pub fn current_exe() -> io::Result<PathBuf> {
 // Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
 #[cfg_attr(test, linkage = "available_externally")]
 #[unsafe(export_name = "_ZN16__rust_internals3std3sys3pal3sgx2os3ENVE")]
-static ENV: AtomicUsize = AtomicUsize::new(0);
-// Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
-#[cfg_attr(test, linkage = "available_externally")]
-#[unsafe(export_name = "_ZN16__rust_internals3std3sys3pal3sgx2os8ENV_INITE")]
-static ENV_INIT: Once = Once::new();
+static ENV: LazyLock<EnvStore> = LazyLock::new(|| EnvStore::default());
 type EnvStore = Mutex<HashMap<OsString, OsString>>;
-
-fn get_env_store() -> Option<&'static EnvStore> {
-    unsafe { (ENV.load(Ordering::Relaxed) as *const EnvStore).as_ref() }
-}
-
-fn create_env_store() -> &'static EnvStore {
-    ENV_INIT.call_once(|| {
-        ENV.store(Box::into_raw(Box::new(EnvStore::default())) as _, Ordering::Relaxed)
-    });
-    unsafe { &*(ENV.load(Ordering::Relaxed) as *const EnvStore) }
-}
 
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
@@ -140,31 +126,22 @@ impl Iterator for Env {
 }
 
 pub fn env() -> Env {
-    let clone_to_vec = |map: &HashMap<OsString, OsString>| -> Vec<_> {
-        map.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
-    };
-
-    let iter = get_env_store()
-        .map(|env| clone_to_vec(&env.lock().unwrap()))
-        .unwrap_or_default()
-        .into_iter();
-    Env { iter }
+    let env = ENV.lock().unwrap().iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Vec<_>>();
+    Env { iter: env.into_iter() }
 }
 
 pub fn getenv(k: &OsStr) -> Option<OsString> {
-    get_env_store().and_then(|s| s.lock().unwrap().get(k).cloned())
+    ENV.lock().unwrap().get(k).cloned()
 }
 
 pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let (k, v) = (k.to_owned(), v.to_owned());
-    create_env_store().lock().unwrap().insert(k, v);
+    ENV.lock().unwrap().insert(k, v);
     Ok(())
 }
 
 pub unsafe fn unsetenv(k: &OsStr) -> io::Result<()> {
-    if let Some(env) = get_env_store() {
-        env.lock().unwrap().remove(k);
-    }
+    ENV.lock().unwrap().remove(k);
     Ok(())
 }
 
