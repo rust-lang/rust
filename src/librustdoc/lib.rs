@@ -520,7 +520,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
             "test-runtool-arg",
             "",
-            "One (of possibly many) arguments to pass to the runtool",
+            "One argument (of possibly many) to pass to the runtool",
         ),
         opt(
             Unstable,
