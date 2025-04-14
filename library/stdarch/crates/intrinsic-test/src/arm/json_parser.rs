@@ -2,6 +2,7 @@ use super::argument::{Argument, ArgumentList};
 use super::intrinsic::Intrinsic;
 use super::types::IntrinsicType;
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -28,6 +29,14 @@ pub enum ArgPrep {
     Nothing {},
 }
 
+impl TryFrom<Value> for ArgPrep {
+    type Error = serde_json::Error;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        serde_json::from_value(value)
+    }
+}
+
 #[derive(Deserialize, Debug)]
 struct JsonIntrinsic {
     #[serde(rename = "SIMD_ISA")]
@@ -36,7 +45,7 @@ struct JsonIntrinsic {
     arguments: Vec<String>,
     return_type: ReturnType,
     #[serde(rename = "Arguments_Preparation")]
-    args_prep: Option<HashMap<String, ArgPrep>>,
+    args_prep: Option<HashMap<String, Value>>,
     #[serde(rename = "Architectures")]
     architectures: Vec<String>,
 }
@@ -70,15 +79,13 @@ fn json_to_intrinsic(
 
     let results = IntrinsicType::from_c(&intr.return_type.value, target)?;
 
-    let mut args_prep = intr.args_prep.as_mut();
     let args = intr
         .arguments
         .into_iter()
         .enumerate()
         .map(|(i, arg)| {
-            let arg_name = Argument::type_and_name_from_c(&arg).1;
-            let arg_prep = args_prep.as_mut().and_then(|a| a.remove(arg_name));
-            let mut arg = Argument::from_c(i, &arg, arg_prep, target);
+            // let arg_name = Argument::type_and_name_from_c(&arg).1;
+            let mut arg = Argument::from_c(i, &arg, target, intr.args_prep.as_mut());
             // The JSON doesn't list immediates as const
             if let IntrinsicType::Type {
                 ref mut constant, ..

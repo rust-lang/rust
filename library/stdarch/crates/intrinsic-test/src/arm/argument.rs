@@ -2,6 +2,9 @@ use super::format::Indentation;
 use super::json_parser::ArgPrep;
 use super::types::{IntrinsicType, TypeKind};
 use crate::common::types::Language;
+use serde::Deserialize;
+use serde_json::Value;
+use std::collections::HashMap;
 use std::ops::Range;
 
 /// An argument for the intrinsic.
@@ -17,7 +20,7 @@ pub struct Argument {
     pub constraints: Vec<Constraint>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Deserialize)]
 pub enum Constraint {
     Equal(i64),
     Range(Range<i64>),
@@ -79,12 +82,26 @@ impl Argument {
     }
 
     // ARM-specific
-    pub fn from_c(pos: usize, arg: &str, arg_prep: Option<ArgPrep>, target: &String) -> Argument {
+    pub fn from_c(
+        pos: usize,
+        arg: &str,
+        target: &String,
+        metadata: Option<&mut HashMap<String, Value>>,
+    ) -> Argument {
         let (ty, var_name) = Self::type_and_name_from_c(arg);
 
         let ty = IntrinsicType::from_c(ty, target)
             .unwrap_or_else(|_| panic!("Failed to parse argument '{arg}'"));
 
+        let arg_name = Argument::type_and_name_from_c(&arg).1;
+        let arg = metadata.and_then(|a| a.remove(arg_name));
+        let arg_prep: Option<ArgPrep> = arg.and_then(|a| {
+            if let Value::Object(_) = a {
+                a.try_into().ok()
+            } else {
+                None
+            }
+        });
         let constraint = arg_prep.and_then(|a| a.try_into().ok());
 
         Argument {
