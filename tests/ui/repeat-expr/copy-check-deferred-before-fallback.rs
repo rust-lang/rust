@@ -5,7 +5,7 @@
 // checked before integer fallback occurs. We accomplish this by having the repeat
 // expr check allow inference progress on an ambiguous goal, where the ambiguous goal
 // would fail if the inference variable was fallen back to `i32`. This test will
-// pass if wecheck repeat exprs before integer fallback.
+// pass if we check repeat exprs before integer fallback.
 
 use std::marker::PhantomData;
 struct Foo<T>(PhantomData<T>);

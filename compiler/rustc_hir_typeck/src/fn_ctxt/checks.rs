@@ -108,8 +108,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let deferred_repeat_expr_checks = deferred_repeat_expr_checks
             .drain(..)
             .flat_map(|(element, element_ty, count)| {
-                // Actual constants as the repeat element get inserted repeatedly instead of getting copied via Copy
-                // so we don't need to attempt to structurally resolve the repeat count which may unnecessarily error.
+                // Actual constants as the repeat element are inserted repeatedly instead
+                // of being copied via `Copy`, so we don't need to attempt to structurally
+                // resolve the repeat count which may unnecessarily error.
                 match &element.kind {
                     hir::ExprKind::ConstBlock(..) => return None,
                     hir::ExprKind::Path(qpath) => {
@@ -121,23 +122,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => {}
                 }
 
-                // We want to emit an error if the const is not structurally resolveable as otherwise
-                // we can find up conservatively proving `Copy` which may infer the repeat expr count
-                // to something that never required `Copy` in the first place.
+                // We want to emit an error if the const is not structurally resolveable
+                // as otherwise we can wind up conservatively proving `Copy` which may
+                // infer the repeat expr count to something that never required `Copy` in
+                // the first place.
                 let count = self
                     .structurally_resolve_const(element.span, self.normalize(element.span, count));
 
-                // Avoid run on "`NotCopy: Copy` is not implemented" errors when the repeat expr count
-                // is erroneous/unknown. The user might wind up specifying a repeat count of 0/1.
+                // Avoid run on "`NotCopy: Copy` is not implemented" errors when the
+                // repeat expr count is erroneous/unknown. The user might wind up
+                // specifying a repeat count of 0/1.
                 if count.references_error() {
                     return None;
                 }
 
                 Some((element, element_ty, count))
             })
-            // We collect to force the side effects of structurally resolving the repeat count to happen in one
-            // go, to avoid side effects from proving `Copy` affecting whether repeat counts are known or not.
-            // If we did not do this we would get results that depend on the order that we evaluate each repeat
+            // We collect to force the side effects of structurally resolving the repeat
+            // count to happen in one go, to avoid side effects from proving `Copy`
+            // affecting whether repeat counts are known or not. If we did not do this we
+            // would get results that depend on the order that we evaluate each repeat
             // expr's `Copy` check.
             .collect::<Vec<_>>();
 
@@ -171,14 +175,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         for (element, element_ty, count) in deferred_repeat_expr_checks {
             match count.kind() {
-                ty::ConstKind::Value(val)
-                    if val.try_to_target_usize(self.tcx).is_none_or(|count| count > 1) =>
-                {
-                    enforce_copy_bound(element, element_ty)
+                ty::ConstKind::Value(val) => {
+                    if val.try_to_target_usize(self.tcx).is_none_or(|count| count > 1) {
+                        enforce_copy_bound(element, element_ty)
+                    } else {
+                        // If the length is 0 or 1 we don't actually copy the element, we either don't create it
+                        // or we just use the one value.
+                    }
                 }
-                // If the length is 0 or 1 we don't actually copy the element, we either don't create it
-                // or we just use the one value.
-                ty::ConstKind::Value(_) => (),
 
                 // If the length is a generic parameter or some rigid alias then conservatively
                 // require `element_ty: Copy` as it may wind up being `>1` after monomorphization.
