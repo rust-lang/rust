@@ -17,7 +17,6 @@ extern crate stable_mir;
 
 use mir::mono::Instance;
 use ty::{Ty, TyKind, RigidTy};
-use rustc_smir::rustc_internal;
 use stable_mir::*;
 use std::io::Write;
 use std::ops::ControlFlow;

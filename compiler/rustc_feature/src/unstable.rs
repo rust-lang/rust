@@ -565,6 +565,8 @@ declare_features! (
     (incomplete, mut_ref, "1.79.0", Some(123076)),
     /// Allows using `#[naked]` on functions.
     (unstable, naked_functions, "1.9.0", Some(90957)),
+    /// Allows using `#[naked]` on `extern "Rust"` functions.
+    (unstable, naked_functions_rustic_abi, "CURRENT_RUSTC_VERSION", Some(138997)),
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
     (unstable, naked_functions_target_feature, "1.86.0", Some(138568)),
     /// Allows specifying the as-needed link modifier
