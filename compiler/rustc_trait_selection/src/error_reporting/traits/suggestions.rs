@@ -2116,7 +2116,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 err.note(format!(
                     "{}s cannot be accessed directly on a `trait`, they can only be \
                         accessed through a specific `impl`",
-                    self.tcx.def_kind_descr(assoc_item.kind.as_def_kind(), item_def_id)
+                    self.tcx.def_kind_descr(assoc_item.as_def_kind(), item_def_id)
                 ));
                 err.span_suggestion(
                     span,

@@ -1731,7 +1731,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 tcx.associated_items(*trait_def_id)
                         .in_definition_order()
                         .any(|i| {
-                            i.kind.namespace() == Namespace::TypeNS
+                            i.namespace() == Namespace::TypeNS
                                 && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
                                 && i.is_type()
                         })

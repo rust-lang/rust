@@ -529,7 +529,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let def_kind = pick.item.kind.as_def_kind();
+        let def_kind = pick.item.as_def_kind();
         tcx.check_stability(pick.item.def_id, Some(expr_id), span, Some(method_name.span));
         Ok((def_kind, pick.item.def_id))
     }

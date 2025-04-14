@@ -96,6 +96,20 @@ impl AssocItem {
         }
     }
 
+    pub fn namespace(&self) -> Namespace {
+        match self.kind {
+            ty::AssocKind::Type { .. } => Namespace::TypeNS,
+            ty::AssocKind::Const | ty::AssocKind::Fn { .. } => Namespace::ValueNS,
+        }
+    }
+
+    pub fn as_def_kind(&self) -> DefKind {
+        match self.kind {
+            AssocKind::Const => DefKind::AssocConst,
+            AssocKind::Fn { .. } => DefKind::AssocFn,
+            AssocKind::Type { .. } => DefKind::AssocTy,
+        }
+    }
     pub fn is_type(&self) -> bool {
         matches!(self.kind, ty::AssocKind::Type { .. })
     }
@@ -151,23 +165,6 @@ pub enum AssocKind {
         /// source.
         opt_rpitit_info: Option<ty::ImplTraitInTraitData>,
     },
-}
-
-impl AssocKind {
-    pub fn namespace(&self) -> Namespace {
-        match *self {
-            ty::AssocKind::Type { .. } => Namespace::TypeNS,
-            ty::AssocKind::Const | ty::AssocKind::Fn { .. } => Namespace::ValueNS,
-        }
-    }
-
-    pub fn as_def_kind(&self) -> DefKind {
-        match self {
-            AssocKind::Const => DefKind::AssocConst,
-            AssocKind::Fn { .. } => DefKind::AssocFn,
-            AssocKind::Type { .. } => DefKind::AssocTy,
-        }
-    }
 }
 
 impl std::fmt::Display for AssocKind {
@@ -250,7 +247,7 @@ impl AssocItems {
         parent_def_id: DefId,
     ) -> Option<&ty::AssocItem> {
         self.filter_by_name_unhygienic(ident.name)
-            .filter(|item| item.kind.namespace() == ns)
+            .filter(|item| item.namespace() == ns)
             .find(|item| tcx.hygienic_eq(ident, item.ident(tcx), parent_def_id))
     }
 }

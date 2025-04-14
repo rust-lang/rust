@@ -64,7 +64,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
     fn compare_hygienically(&self, item1: ty::AssocItem, item2: ty::AssocItem) -> bool {
         // Symbols and namespace match, compare hygienically.
-        item1.kind.namespace() == item2.kind.namespace()
+        item1.namespace() == item2.namespace()
             && item1.ident(self.tcx).normalize_to_macros_2_0()
                 == item2.ident(self.tcx).normalize_to_macros_2_0()
     }

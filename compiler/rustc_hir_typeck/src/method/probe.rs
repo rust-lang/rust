@@ -1583,7 +1583,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 },
                 None,
             ) {
-                self.private_candidate.set(Some((pick.item.kind.as_def_kind(), pick.item.def_id)));
+                self.private_candidate.set(Some((pick.item.as_def_kind(), pick.item.def_id)));
             }
         }
         None
@@ -1694,7 +1694,7 @@ impl<'tcx> Pick<'tcx> {
         if self.unstable_candidates.is_empty() {
             return;
         }
-        let def_kind = self.item.kind.as_def_kind();
+        let def_kind = self.item.as_def_kind();
         tcx.node_span_lint(lint::builtin::UNSTABLE_NAME_COLLISIONS, scope_expr_id, span, |lint| {
             lint.primary_message(format!(
                 "{} {} with this name may be added to the standard library in the future",

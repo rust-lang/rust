@@ -1819,7 +1819,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mode: Mode,
     ) {
         let tcx = self.tcx;
-        let def_kind = similar_candidate.kind.as_def_kind();
+        let def_kind = similar_candidate.as_def_kind();
         let an = self.tcx.def_kind_descr_article(def_kind, similar_candidate.def_id);
         let msg = format!(
             "there is {an} {} `{}` with a similar name",
@@ -4288,7 +4288,7 @@ fn print_disambiguation_help<'tcx>(
             && let SelfSource::MethodCall(receiver) = source
             && let Some(args) = args
         {
-            let def_kind_descr = tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id);
+            let def_kind_descr = tcx.def_kind_descr(item.as_def_kind(), item.def_id);
             let item_name = item.ident(tcx);
             let first_input =
                 tcx.fn_sig(item.def_id).instantiate_identity().skip_binder().inputs().get(0);
