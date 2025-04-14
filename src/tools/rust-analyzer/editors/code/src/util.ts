@@ -304,12 +304,18 @@ export const isWindows = process.platform === "win32";
 
 export function isWindowsDriveLetter(code: number): boolean {
     // Copied from https://github.com/microsoft/vscode/blob/02c2dba5f2669b924fd290dff7d2ff3460791996/src/vs/base/common/extpath.ts#L265-L267
-    return code >= /* CharCode.A */ 65 && code <= /* CharCode.Z */ 90 || code >= /* CharCode.a */ 97 && code <= /* CharCode.z */ 122;
+    return (
+        (code >= /* CharCode.A */ 65 && code <= /* CharCode.Z */ 90) ||
+        (code >= /* CharCode.a */ 97 && code <= /* CharCode.z */ 122)
+    );
 }
 export function hasDriveLetter(path: string, isWindowsOS: boolean = isWindows): boolean {
     // Copied from https://github.com/microsoft/vscode/blob/02c2dba5f2669b924fd290dff7d2ff3460791996/src/vs/base/common/extpath.ts#L324-L330
     if (isWindowsOS) {
-        return isWindowsDriveLetter(path.charCodeAt(0)) && path.charCodeAt(1) === /* CharCode.Colon */ 58;
+        return (
+            isWindowsDriveLetter(path.charCodeAt(0)) &&
+            path.charCodeAt(1) === /* CharCode.Colon */ 58
+        );
     }
 
     return false;
