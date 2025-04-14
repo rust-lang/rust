@@ -1004,4 +1004,32 @@ fn foo() {
 "#,
         );
     }
+
+    #[test]
+    fn closure_dependency_cycle_no_panic() {
+        check(
+            r#"
+fn foo() {
+    let closure;
+     // ^^^^^^^ impl Fn()
+    closure = || {
+        closure();
+    };
+}
+
+fn bar() {
+    let closure1;
+     // ^^^^^^^^ impl Fn()
+    let closure2;
+     // ^^^^^^^^ impl Fn()
+    closure1 = || {
+        closure2();
+    };
+    closure2 = || {
+        closure1();
+    };
+}
+        "#,
+        );
+    }
 }
