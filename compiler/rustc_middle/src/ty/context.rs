@@ -870,7 +870,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         Ty(Interned::new_unchecked(
             self.type_
                 .intern(kind, |kind| {
-                    let flags = super::flags::FlagComputation::for_kind(&kind);
+                    let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_kind(&kind);
                     let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
@@ -896,7 +896,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         Const(Interned::new_unchecked(
             self.const_
                 .intern(kind, |kind: ty::ConstKind<'_>| {
-                    let flags = super::flags::FlagComputation::for_const_kind(&kind);
+                    let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_const_kind(&kind);
                     let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
@@ -912,7 +912,7 @@ impl<'tcx> CtxtInterners<'tcx> {
 
     fn stable_hash<'a, T: HashStable<StableHashingContext<'a>>>(
         &self,
-        flags: &ty::flags::FlagComputation,
+        flags: &ty::FlagComputation<TyCtxt<'tcx>>,
         sess: &'a Session,
         untracked: &'a Untracked,
         val: &T,
@@ -940,7 +940,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         Predicate(Interned::new_unchecked(
             self.predicate
                 .intern(kind, |kind| {
-                    let flags = super::flags::FlagComputation::for_predicate(kind);
+                    let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_predicate(kind);
 
                     let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
 
@@ -961,7 +961,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         } else {
             self.clauses
                 .intern_ref(clauses, || {
-                    let flags = super::flags::FlagComputation::for_clauses(clauses);
+                    let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_clauses(clauses);
 
                     InternedInSet(ListWithCachedTypeInfo::from_arena(
                         &*self.arena,

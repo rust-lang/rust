@@ -583,7 +583,7 @@ pub trait Span<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 
 pub trait SliceLike: Sized + Copy {
     type Item: Copy;
-    type IntoIter: Iterator<Item = Self::Item>;
+    type IntoIter: Iterator<Item = Self::Item> + DoubleEndedIterator;
 
     fn iter(self) -> Self::IntoIter;
 
