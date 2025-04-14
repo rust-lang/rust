@@ -520,23 +520,27 @@ fn report_test_diffs(
             }
 
             if doctest_count > 0 {
+                let prefix =
+                    if doctest_count < original_diff_count { "Additionally, " } else { "" };
                 println!(
-                    "\nAdditionally, {doctest_count} doctest {} were found. These are ignored, as they are noisy.",
+                    "\n{prefix}{doctest_count} doctest {} were found. These are ignored, as they are noisy.",
                     pluralize("diff", doctest_count)
                 );
             }
 
             // Now print the job group index
-            println!("\n**Job group index**\n");
-            for (group, jobs) in job_index.into_iter().enumerate() {
-                println!(
-                    "- {}: {}",
-                    format_job_group(group as u64),
-                    jobs.iter()
-                        .map(|j| format_job_link(job_info_resolver, job_metrics, j))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                );
+            if !job_index.is_empty() {
+                println!("\n**Job group index**\n");
+                for (group, jobs) in job_index.into_iter().enumerate() {
+                    println!(
+                        "- {}: {}",
+                        format_job_group(group as u64),
+                        jobs.iter()
+                            .map(|j| format_job_link(job_info_resolver, job_metrics, j))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                }
             }
         },
     );
