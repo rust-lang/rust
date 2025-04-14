@@ -1996,6 +1996,14 @@ impl HumanEmitter {
             return Ok(());
         };
 
+        if suggestion
+            .substitutions
+            .iter()
+            .any(|s| s.parts.iter().any(|p| is_external_library(sm, p.span)))
+        {
+            return Ok(());
+        }
+
         // Render the replacements for each suggestion
         let suggestions = suggestion.splice_lines(sm);
         debug!(?suggestions);
@@ -3531,4 +3539,14 @@ pub(crate) fn should_show_source_code(
     name.local_path()
         .map(|path| ignored_directories.iter().all(|dir| !path.starts_with(dir)))
         .unwrap_or(true)
+}
+
+fn is_external_library(sm: &SourceMap, span: Span) -> bool {
+    let filename = sm.span_to_filename(span);
+    if let Some(path) = filename.into_local_path() {
+        path.to_string_lossy().contains(".cargo/registry/src/")
+            || path.to_string_lossy().contains(".rustup/toolchains/")
+    } else {
+        false
+    }
 }
