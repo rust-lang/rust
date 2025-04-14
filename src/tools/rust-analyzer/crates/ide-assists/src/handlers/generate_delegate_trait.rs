@@ -751,7 +751,7 @@ fn func_assoc_item(
     }
     .clone_for_update();
 
-    let body = make::block_expr(vec![], Some(call)).clone_for_update();
+    let body = make::block_expr(vec![], Some(call.into())).clone_for_update();
     let func = make::fn_(
         item.visibility(),
         item.name()?,

@@ -140,7 +140,8 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     .map(convert_param_list_to_arg_list)
                     .unwrap_or_else(|| make::arg_list([]));
 
-                let tail_expr = make::expr_method_call(field, make::name_ref(&name), arg_list);
+                let tail_expr =
+                    make::expr_method_call(field, make::name_ref(&name), arg_list).into();
                 let tail_expr_finished =
                     if is_async { make::expr_await(tail_expr) } else { tail_expr };
                 let body = make::block_expr([], Some(tail_expr_finished));

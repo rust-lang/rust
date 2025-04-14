@@ -330,7 +330,11 @@ fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
                 T![>] => T![<=],
                 T![>=] => T![<],
                 // Parenthesize other expressions before prefixing `!`
-                _ => return Some(make::expr_prefix(T![!], make::expr_paren(expr.clone())).into()),
+                _ => {
+                    return Some(
+                        make::expr_prefix(T![!], make::expr_paren(expr.clone()).into()).into(),
+                    );
+                }
             };
             ted::replace(op_token, make::token(rev_token));
             Some(bin.into())
@@ -347,7 +351,7 @@ fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
                 "is_err" => "is_ok",
                 _ => return None,
             };
-            Some(make::expr_method_call(receiver, make::name_ref(method), arg_list))
+            Some(make::expr_method_call(receiver, make::name_ref(method), arg_list).into())
         }
         ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::UnaryOp::Not => match pe.expr()? {
             ast::Expr::ParenExpr(parexpr) => parexpr.expr(),
@@ -852,6 +856,7 @@ impl ReferenceConversion {
                     make::expr_ref(expr, false)
                 } else {
                     make::expr_method_call(expr, make::name_ref("as_ref"), make::arg_list([]))
+                        .into()
                 }
             }
         }

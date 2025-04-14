@@ -328,10 +328,7 @@ impl SyntaxFactory {
     }
 
     pub fn expr_paren(&self, expr: ast::Expr) -> ast::ParenExpr {
-        // FIXME: `make::expr_paren` should return a `ParenExpr`, not just an `Expr`
-        let ast::Expr::ParenExpr(ast) = make::expr_paren(expr.clone()).clone_for_update() else {
-            unreachable!()
-        };
+        let ast = make::expr_paren(expr.clone()).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
@@ -403,12 +400,7 @@ impl SyntaxFactory {
     }
 
     pub fn expr_call(&self, expr: ast::Expr, arg_list: ast::ArgList) -> ast::CallExpr {
-        // FIXME: `make::expr_call`` should return a `CallExpr`, not just an `Expr`
-        let ast::Expr::CallExpr(ast) =
-            make::expr_call(expr.clone(), arg_list.clone()).clone_for_update()
-        else {
-            unreachable!()
-        };
+        let ast = make::expr_call(expr.clone(), arg_list.clone()).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
@@ -426,13 +418,8 @@ impl SyntaxFactory {
         method: ast::NameRef,
         arg_list: ast::ArgList,
     ) -> ast::MethodCallExpr {
-        // FIXME: `make::expr_method_call` should return a `MethodCallExpr`, not just an `Expr`
-        let ast::Expr::MethodCallExpr(ast) =
-            make::expr_method_call(receiver.clone(), method.clone(), arg_list.clone())
-                .clone_for_update()
-        else {
-            unreachable!()
-        };
+        let ast = make::expr_method_call(receiver.clone(), method.clone(), arg_list.clone())
+            .clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
@@ -479,11 +466,7 @@ impl SyntaxFactory {
         expr: ast::Expr,
     ) -> ast::ClosureExpr {
         let (args, input) = iterator_input(pats);
-        // FIXME: `make::expr_paren` should return a `ClosureExpr`, not just an `Expr`
-        let ast::Expr::ClosureExpr(ast) = make::expr_closure(args, expr.clone()).clone_for_update()
-        else {
-            unreachable!()
-        };
+        let ast = make::expr_closure(args, expr.clone()).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax.clone());

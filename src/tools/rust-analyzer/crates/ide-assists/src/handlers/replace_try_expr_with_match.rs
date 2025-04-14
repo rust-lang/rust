@@ -61,10 +61,13 @@ pub(crate) fn replace_try_expr_with_match(
                 TryEnum::Option => {
                     make::expr_return(Some(make::expr_path(make::ext::ident_path("None"))))
                 }
-                TryEnum::Result => make::expr_return(Some(make::expr_call(
-                    make::expr_path(make::ext::ident_path("Err")),
-                    make::arg_list(iter::once(make::expr_path(make::ext::ident_path("err")))),
-                ))),
+                TryEnum::Result => make::expr_return(Some(
+                    make::expr_call(
+                        make::expr_path(make::ext::ident_path("Err")),
+                        make::arg_list(iter::once(make::expr_path(make::ext::ident_path("err")))),
+                    )
+                    .into(),
+                )),
             };
 
             let happy_arm = make::match_arm(

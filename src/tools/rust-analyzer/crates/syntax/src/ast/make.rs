@@ -633,14 +633,14 @@ pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::PrefixExpr {
     let token = token(op);
     expr_from_text(&format!("{token}{expr}"))
 }
-pub fn expr_call(f: ast::Expr, arg_list: ast::ArgList) -> ast::Expr {
+pub fn expr_call(f: ast::Expr, arg_list: ast::ArgList) -> ast::CallExpr {
     expr_from_text(&format!("{f}{arg_list}"))
 }
 pub fn expr_method_call(
     receiver: ast::Expr,
     method: ast::NameRef,
     arg_list: ast::ArgList,
-) -> ast::Expr {
+) -> ast::MethodCallExpr {
     expr_from_text(&format!("{receiver}.{method}{arg_list}"))
 }
 pub fn expr_macro_call(f: ast::Expr, arg_list: ast::ArgList) -> ast::Expr {
@@ -652,14 +652,17 @@ pub fn expr_ref(expr: ast::Expr, exclusive: bool) -> ast::Expr {
 pub fn expr_reborrow(expr: ast::Expr) -> ast::Expr {
     expr_from_text(&format!("&mut *{expr}"))
 }
-pub fn expr_closure(pats: impl IntoIterator<Item = ast::Param>, expr: ast::Expr) -> ast::Expr {
+pub fn expr_closure(
+    pats: impl IntoIterator<Item = ast::Param>,
+    expr: ast::Expr,
+) -> ast::ClosureExpr {
     let params = pats.into_iter().join(", ");
     expr_from_text(&format!("|{params}| {expr}"))
 }
 pub fn expr_field(receiver: ast::Expr, field: &str) -> ast::Expr {
     expr_from_text(&format!("{receiver}.{field}"))
 }
-pub fn expr_paren(expr: ast::Expr) -> ast::Expr {
+pub fn expr_paren(expr: ast::Expr) -> ast::ParenExpr {
     expr_from_text(&format!("({expr})"))
 }
 pub fn expr_tuple(elements: impl IntoIterator<Item = ast::Expr>) -> ast::TupleExpr {

@@ -1426,10 +1426,10 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> Sy
     let name = fun.name.clone();
     let mut call_expr = if fun.self_param.is_some() {
         let self_arg = make::expr_path(make::ext::ident_path("self"));
-        make::expr_method_call(self_arg, name, args)
+        make::expr_method_call(self_arg, name, args).into()
     } else {
         let func = make::expr_path(make::path_unqualified(make::path_segment(name)));
-        make::expr_call(func, args)
+        make::expr_call(func, args).into()
     };
 
     let handler = FlowHandler::from_ret_ty(fun, &ret_ty);
@@ -1911,14 +1911,15 @@ fn make_body(ctx: &AssistContext<'_>, old_indent: IndentLevel, fun: &Function) -
                 };
                 let func = make::expr_path(make::ext::ident_path(constructor));
                 let args = make::arg_list(iter::once(tail_expr));
-                make::expr_call(func, args)
+                make::expr_call(func, args).into()
             })
         }
         FlowHandler::If { .. } => {
             let controlflow_continue = make::expr_call(
                 make::expr_path(make::path_from_text("ControlFlow::Continue")),
                 make::arg_list([make::ext::expr_unit()]),
-            );
+            )
+            .into();
             with_tail_expr(block, controlflow_continue)
         }
         FlowHandler::IfOption { .. } => {
@@ -1928,12 +1929,12 @@ fn make_body(ctx: &AssistContext<'_>, old_indent: IndentLevel, fun: &Function) -
         FlowHandler::MatchOption { .. } => map_tail_expr(block, |tail_expr| {
             let some = make::expr_path(make::ext::ident_path("Some"));
             let args = make::arg_list(iter::once(tail_expr));
-            make::expr_call(some, args)
+            make::expr_call(some, args).into()
         }),
         FlowHandler::MatchResult { .. } => map_tail_expr(block, |tail_expr| {
             let ok = make::expr_path(make::ext::ident_path("Ok"));
             let args = make::arg_list(iter::once(tail_expr));
-            make::expr_call(ok, args)
+            make::expr_call(ok, args).into()
         }),
     }
 }
@@ -2121,17 +2122,18 @@ fn make_rewritten_flow(handler: &FlowHandler, arg_expr: Option<ast::Expr>) -> Op
         FlowHandler::If { .. } => make::expr_call(
             make::expr_path(make::path_from_text("ControlFlow::Break")),
             make::arg_list([make::ext::expr_unit()]),
-        ),
+        )
+        .into(),
         FlowHandler::IfOption { .. } => {
             let expr = arg_expr.unwrap_or_else(make::ext::expr_unit);
             let args = make::arg_list([expr]);
-            make::expr_call(make::expr_path(make::ext::ident_path("Some")), args)
+            make::expr_call(make::expr_path(make::ext::ident_path("Some")), args).into()
         }
         FlowHandler::MatchOption { .. } => make::expr_path(make::ext::ident_path("None")),
         FlowHandler::MatchResult { .. } => {
             let expr = arg_expr.unwrap_or_else(make::ext::expr_unit);
             let args = make::arg_list([expr]);
-            make::expr_call(make::expr_path(make::ext::ident_path("Err")), args)
+            make::expr_call(make::expr_path(make::ext::ident_path("Err")), args).into()
         }
     };
     Some(make::expr_return(Some(value)).clone_for_update())

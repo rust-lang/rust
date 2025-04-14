@@ -79,7 +79,7 @@ fn into_closure(param: &Expr) -> Expr {
             None
         }
     })()
-    .unwrap_or_else(|| make::expr_closure(None, param.clone()))
+    .unwrap_or_else(|| make::expr_closure(None, param.clone()).into())
 }
 
 // Assist: replace_with_eager_method
@@ -155,7 +155,7 @@ fn into_call(param: &Expr) -> Expr {
             None
         }
     })()
-    .unwrap_or_else(|| make::expr_call(param.clone(), make::arg_list(Vec::new())))
+    .unwrap_or_else(|| make::expr_call(param.clone(), make::arg_list(Vec::new())).into())
 }
 
 #[cfg(test)]

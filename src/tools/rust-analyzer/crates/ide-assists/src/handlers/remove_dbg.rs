@@ -146,7 +146,7 @@ fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Opt
                 None => false,
             };
             let expr = replace_nested_dbgs(expr.clone());
-            let expr = if wrap { make::expr_paren(expr) } else { expr.clone_subtree() };
+            let expr = if wrap { make::expr_paren(expr).into() } else { expr.clone_subtree() };
             (macro_call.syntax().text_range(), Some(expr))
         }
         // dbg!(expr0, expr1, ...)
