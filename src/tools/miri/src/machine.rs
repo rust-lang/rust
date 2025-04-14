@@ -674,11 +674,13 @@ impl<'tcx> MiriMachine<'tcx> {
             thread_cpu_affinity
                 .insert(threads.active_thread(), CpuAffinityMask::new(&layout_cx, config.num_cpus));
         }
+        let alloc_addresses =
+            RefCell::new(alloc_addresses::GlobalStateInner::new(config, stack_addr, tcx));
         MiriMachine {
             tcx,
             borrow_tracker,
             data_race,
-            alloc_addresses: RefCell::new(alloc_addresses::GlobalStateInner::new(config, stack_addr)),
+            alloc_addresses,
             // `env_vars` depends on a full interpreter so we cannot properly initialize it yet.
             env_vars: EnvVars::default(),
             main_fn_ret_place: None,

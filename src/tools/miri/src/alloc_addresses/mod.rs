@@ -1,15 +1,16 @@
 //! This module is responsible for managing the absolute addresses that allocations are located at,
 //! and for casting between pointers and integers based on those addresses.
 
+mod address_generator;
 mod reuse_pool;
 
 use std::cell::RefCell;
-use std::cmp::max;
 
-use rand::Rng;
 use rustc_abi::{Align, Size};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_middle::ty::TyCtxt;
 
+pub use self::address_generator::AddressGenerator;
 use self::reuse_pool::ReusePool;
 use crate::concurrency::VClock;
 use crate::*;
@@ -49,9 +50,8 @@ pub struct GlobalStateInner {
     /// Whether an allocation has been exposed or not. This cannot be put
     /// into `AllocExtra` for the same reason as `base_addr`.
     exposed: FxHashSet<AllocId>,
-    /// This is used as a memory address when a new pointer is casted to an integer. It
-    /// is always larger than any address that was previously made part of a block.
-    next_base_addr: u64,
+    /// The generator for new addresses in a given range.
+    address_generator: AddressGenerator,
     /// The provenance to use for int2ptr casts
     provenance_mode: ProvenanceMode,
 }
@@ -64,7 +64,7 @@ impl VisitProvenance for GlobalStateInner {
             prepared_alloc_bytes: _,
             reuse: _,
             exposed: _,
-            next_base_addr: _,
+            address_generator: _,
             provenance_mode: _,
         } = self;
         // Though base_addr, int_to_ptr_map, and exposed contain AllocIds, we do not want to visit them.
@@ -77,14 +77,14 @@ impl VisitProvenance for GlobalStateInner {
 }
 
 impl GlobalStateInner {
-    pub fn new(config: &MiriConfig, stack_addr: u64) -> Self {
+    pub fn new<'tcx>(config: &MiriConfig, stack_addr: u64, tcx: TyCtxt<'tcx>) -> Self {
         GlobalStateInner {
             int_to_ptr_map: Vec::default(),
             base_addr: FxHashMap::default(),
             prepared_alloc_bytes: FxHashMap::default(),
             reuse: ReusePool::new(config),
             exposed: FxHashSet::default(),
-            next_base_addr: stack_addr,
+            address_generator: AddressGenerator::new(stack_addr..tcx.target_usize_max()),
             provenance_mode: config.provenance_mode,
         }
     }
@@ -93,15 +93,6 @@ impl GlobalStateInner {
         // `exposed` and `int_to_ptr_map` are cleared immediately when an allocation
         // is freed, so `base_addr` is the only one we have to clean up based on the GC.
         self.base_addr.retain(|id, _| allocs.is_live(*id));
-    }
-}
-
-/// Shifts `addr` to make it aligned with `align` by rounding `addr` to the smallest multiple
-/// of `align` that is larger or equal to `addr`
-fn align_addr(addr: u64, align: u64) -> u64 {
-    match addr % align {
-        0 => addr,
-        rem => addr.strict_add(align) - rem,
     }
 }
 
@@ -194,34 +185,17 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             interp_ok(reuse_addr)
         } else {
             // We have to pick a fresh address.
-            // Leave some space to the previous allocation, to give it some chance to be less aligned.
-            // We ensure that `(global_state.next_base_addr + slack) % 16` is uniformly distributed.
-            let slack = rng.random_range(0..16);
-            // From next_base_addr + slack, round up to adjust for alignment.
-            let base_addr = global_state
-                .next_base_addr
-                .checked_add(slack)
-                .ok_or_else(|| err_exhaust!(AddressSpaceFull))?;
-            let base_addr = align_addr(base_addr, info.align.bytes());
+            let new_addr =
+                global_state.address_generator.generate(info.size, info.align, &mut rng)?;
 
-            // Remember next base address.  If this allocation is zero-sized, leave a gap of at
-            // least 1 to avoid two allocations having the same base address. (The logic in
-            // `alloc_id_from_addr` assumes unique addresses, and different function/vtable pointers
-            // need to be distinguishable!)
-            global_state.next_base_addr = base_addr
-                .checked_add(max(info.size.bytes(), 1))
-                .ok_or_else(|| err_exhaust!(AddressSpaceFull))?;
-            // Even if `Size` didn't overflow, we might still have filled up the address space.
-            if global_state.next_base_addr > this.target_usize_max() {
-                throw_exhaust!(AddressSpaceFull);
-            }
             // If we filled up more than half the address space, start aggressively reusing
             // addresses to avoid running out.
-            if global_state.next_base_addr > u64::try_from(this.target_isize_max()).unwrap() {
+            let remaining_range = global_state.address_generator.get_remaining();
+            if remaining_range.start > remaining_range.end / 2 {
                 global_state.reuse.address_space_shortage();
             }
 
-            interp_ok(base_addr)
+            interp_ok(new_addr)
         }
     }
 }
@@ -517,16 +491,5 @@ impl<'tcx> MiriMachine<'tcx> {
                 VClock::default()
             }
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_align_addr() {
-        assert_eq!(align_addr(37, 4), 40);
-        assert_eq!(align_addr(44, 4), 44);
     }
 }
