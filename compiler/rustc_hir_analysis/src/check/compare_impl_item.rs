@@ -606,7 +606,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // with placeholders, which imply nothing about outlives bounds, and then
     // prove below that the hidden types are well formed.
     let universe = infcx.create_next_universe();
-    let mut idx = 0;
+    let mut idx = ty::BoundVar::ZERO;
     let mapping: FxIndexMap<_, _> = collector
         .types
         .iter()
@@ -623,10 +623,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     tcx,
                     ty::Placeholder {
                         universe,
-                        bound: ty::BoundTy {
-                            var: ty::BoundVar::from_usize(idx),
-                            kind: ty::BoundTyKind::Anon,
-                        },
+                        bound: ty::BoundTy { var: idx, kind: ty::BoundTyKind::Anon },
                     },
                 ),
             )
