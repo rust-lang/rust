@@ -72,6 +72,25 @@ macro_rules! argument_new {
             // a `fn(&T, ...)`, so the invariant is maintained.
             ty: ArgumentType::Placeholder {
                 value: NonNull::<$t>::from_ref($x).cast(),
+                // The Rust ABI considers all pointers to be equivalent, so transmuting a fn(&T) to
+                // fn(NonNull<()>) and calling it with a NonNull<()> that points at a T is allowed.
+                // However, the CFI sanitizer does not allow this, and triggers a crash when it
+                // happens.
+                //
+                // To avoid this crash, we use a helper function when CFI is enabled. To avoid the
+                // cost of this helper function (mainly code-size) when it is not needed, we
+                // transmute the function pointer otherwise.
+                //
+                // This is similar to what the Rust compiler does internally with vtables when KCFI
+                // is enabled, where it generates trampoline functions that only serve to adjust the
+                // expected type of the argument. `ArgumentType::Placeholder` is a bit like a
+                // manually constructed trait object, so it is not surprising that the same approach
+                // has to be applied here as well.
+                //
+                // It is still considered problematic (from the Rust side) that CFI rejects entirely
+                // legal Rust programs, so we do not consider anything done here a stable guarantee,
+                // but meanwhile we carry this work-around to keep Rust compatible with CFI and
+                // KCFI.
                 #[cfg(not(any(sanitize = "cfi", sanitize = "kcfi")))]
                 formatter: {
                     let f: fn(&$t, &mut Formatter<'_>) -> Result = $f;
