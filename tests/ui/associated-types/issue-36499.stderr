@@ -1,5 +1,5 @@
 error: leading `+` is not supported
-  --> $DIR/issue-36499.rs:4:9
+  --> $DIR/issue-36499.rs:2:9
    |
 LL |     2 + +2;
    |         ^ unexpected `+`

@@ -31,6 +31,7 @@ pub mod outlives;
 pub mod relate;
 pub mod search_graph;
 pub mod solve;
+pub mod walk;
 
 // These modules are not `pub` since they are glob-imported.
 #[macro_use]
@@ -44,6 +45,7 @@ mod generic_arg;
 mod infer_ctxt;
 mod interner;
 mod opaque_ty;
+mod pattern;
 mod predicate;
 mod predicate_kind;
 mod region_kind;
@@ -67,6 +69,7 @@ pub use generic_arg::*;
 pub use infer_ctxt::*;
 pub use interner::*;
 pub use opaque_ty::*;
+pub use pattern::*;
 pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;

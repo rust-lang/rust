@@ -16,6 +16,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, extension};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_type_ir::TyKind::*;
+use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind, TypeVisitableExt, elaborate};
 use tracing::instrument;
 use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
@@ -2028,6 +2029,20 @@ impl<'tcx> Ty<'tcx> {
     /// type constructor remains the same.
     pub fn is_known_rigid(self) -> bool {
         self.kind().is_known_rigid()
+    }
+
+    /// Iterator that walks `self` and any types reachable from
+    /// `self`, in depth-first order. Note that just walks the types
+    /// that appear in `self`, it does not descend into the fields of
+    /// structs or variants. For example:
+    ///
+    /// ```text
+    /// isize => { isize }
+    /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
+    /// [isize] => { [isize], isize }
+    /// ```
+    pub fn walk(self) -> TypeWalker<TyCtxt<'tcx>> {
+        TypeWalker::new(self.into())
     }
 }
 

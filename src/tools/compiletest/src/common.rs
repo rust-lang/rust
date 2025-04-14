@@ -1,18 +1,17 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::ffi::OsString;
-use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::OnceLock;
 use std::{fmt, iter};
 
 use build_helper::git::GitConfig;
+use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
 
 pub use self::Mode::*;
 use crate::executor::{ColorConfig, OutputFormat};
-use crate::util::{PathBufExt, add_dylib_path};
+use crate::util::{Utf8PathBufExt, add_dylib_path};
 
 macro_rules! string_enum {
     ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
@@ -183,25 +182,25 @@ pub struct Config {
     pub fail_fast: bool,
 
     /// The library paths required for running the compiler.
-    pub compile_lib_path: PathBuf,
+    pub compile_lib_path: Utf8PathBuf,
 
     /// The library paths required for running compiled programs.
-    pub run_lib_path: PathBuf,
+    pub run_lib_path: Utf8PathBuf,
 
     /// The rustc executable.
-    pub rustc_path: PathBuf,
+    pub rustc_path: Utf8PathBuf,
 
     /// The cargo executable.
-    pub cargo_path: Option<PathBuf>,
+    pub cargo_path: Option<Utf8PathBuf>,
 
     /// Rustc executable used to compile run-make recipes.
-    pub stage0_rustc_path: Option<PathBuf>,
+    pub stage0_rustc_path: Option<Utf8PathBuf>,
 
     /// The rustdoc executable.
-    pub rustdoc_path: Option<PathBuf>,
+    pub rustdoc_path: Option<Utf8PathBuf>,
 
     /// The coverage-dump executable.
-    pub coverage_dump_path: Option<PathBuf>,
+    pub coverage_dump_path: Option<Utf8PathBuf>,
 
     /// The Python executable to use for LLDB and htmldocck.
     pub python: String,
@@ -213,27 +212,27 @@ pub struct Config {
     pub jsondoclint_path: Option<String>,
 
     /// The LLVM `FileCheck` binary path.
-    pub llvm_filecheck: Option<PathBuf>,
+    pub llvm_filecheck: Option<Utf8PathBuf>,
 
     /// Path to LLVM's bin directory.
-    pub llvm_bin_dir: Option<PathBuf>,
+    pub llvm_bin_dir: Option<Utf8PathBuf>,
 
     /// The path to the Clang executable to run Clang-based tests with. If
     /// `None` then these tests will be ignored.
     pub run_clang_based_tests_with: Option<String>,
 
     /// The directory containing the sources.
-    pub src_root: PathBuf,
+    pub src_root: Utf8PathBuf,
     /// The directory containing the test suite sources. Must be a subdirectory of `src_root`.
-    pub src_test_suite_root: PathBuf,
+    pub src_test_suite_root: Utf8PathBuf,
 
     /// Root build directory (e.g. `build/`).
-    pub build_root: PathBuf,
+    pub build_root: Utf8PathBuf,
     /// Test suite specific build directory (e.g. `build/host/test/ui/`).
-    pub build_test_suite_root: PathBuf,
+    pub build_test_suite_root: Utf8PathBuf,
 
     /// The directory containing the compiler sysroot
-    pub sysroot_base: PathBuf,
+    pub sysroot_base: Utf8PathBuf,
 
     /// The number of the stage under test.
     pub stage: u32,
@@ -301,7 +300,7 @@ pub struct Config {
     pub host: String,
 
     /// Path to / name of the Microsoft Console Debugger (CDB) executable
-    pub cdb: Option<OsString>,
+    pub cdb: Option<Utf8PathBuf>,
 
     /// Version of CDB
     pub cdb_version: Option<[u16; 4]>,
@@ -322,7 +321,7 @@ pub struct Config {
     pub system_llvm: bool,
 
     /// Path to the android tools
-    pub android_cross_path: PathBuf,
+    pub android_cross_path: Utf8PathBuf,
 
     /// Extra parameter to run adb on arm-linux-androideabi
     pub adb_path: String,
@@ -346,7 +345,7 @@ pub struct Config {
     pub color: ColorConfig,
 
     /// where to find the remote test client process, if we're using it
-    pub remote_test_client: Option<PathBuf>,
+    pub remote_test_client: Option<Utf8PathBuf>,
 
     /// mode describing what file the actual ui output will be compared to
     pub compare_mode: Option<CompareMode>,
@@ -414,7 +413,7 @@ pub struct Config {
     /// Path to minicore aux library, used for `no_core` tests that need `core` stubs in
     /// cross-compilation scenarios that do not otherwise want/need to `-Zbuild-std`. Used in e.g.
     /// ABI tests.
-    pub minicore_path: PathBuf,
+    pub minicore_path: Utf8PathBuf,
 }
 
 impl Config {
@@ -804,8 +803,8 @@ fn serde_parse_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D:
 
 #[derive(Debug, Clone)]
 pub struct TestPaths {
-    pub file: PathBuf,         // e.g., compile-test/foo/bar/baz.rs
-    pub relative_dir: PathBuf, // e.g., foo/bar
+    pub file: Utf8PathBuf,         // e.g., compile-test/foo/bar/baz.rs
+    pub relative_dir: Utf8PathBuf, // e.g., foo/bar
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
@@ -814,7 +813,7 @@ pub fn expected_output_path(
     revision: Option<&str>,
     compare_mode: &Option<CompareMode>,
     kind: &str,
-) -> PathBuf {
+) -> Utf8PathBuf {
     assert!(UI_EXTENSIONS.contains(&kind));
     let mut parts = Vec::new();
 
@@ -865,7 +864,7 @@ pub const UI_COVERAGE_MAP: &str = "cov-map";
 /// ```
 ///
 /// This is created early when tests are collected to avoid race conditions.
-pub fn output_relative_path(config: &Config, relative_dir: &Path) -> PathBuf {
+pub fn output_relative_path(config: &Config, relative_dir: &Utf8Path) -> Utf8PathBuf {
     config.build_test_suite_root.join(relative_dir)
 }
 
@@ -874,10 +873,10 @@ pub fn output_testname_unique(
     config: &Config,
     testpaths: &TestPaths,
     revision: Option<&str>,
-) -> PathBuf {
+) -> Utf8PathBuf {
     let mode = config.compare_mode.as_ref().map_or("", |m| m.to_str());
     let debugger = config.debugger.as_ref().map_or("", |m| m.to_str());
-    PathBuf::from(&testpaths.file.file_stem().unwrap())
+    Utf8PathBuf::from(&testpaths.file.file_stem().unwrap())
         .with_extra_extension(config.mode.output_dir_disambiguator())
         .with_extra_extension(revision.unwrap_or(""))
         .with_extra_extension(mode)
@@ -887,7 +886,11 @@ pub fn output_testname_unique(
 /// Absolute path to the directory where all output for the given
 /// test/revision should reside. Example:
 ///   /path/to/build/host-tuple/test/ui/relative/testname.revision.mode/
-pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+pub fn output_base_dir(
+    config: &Config,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+) -> Utf8PathBuf {
     output_relative_path(config, &testpaths.relative_dir)
         .join(output_testname_unique(config, testpaths, revision))
 }
@@ -895,12 +898,20 @@ pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<
 /// Absolute path to the base filename used as output for the given
 /// test/revision. Example:
 ///   /path/to/build/host-tuple/test/ui/relative/testname.revision.mode/testname
-pub fn output_base_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+pub fn output_base_name(
+    config: &Config,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+) -> Utf8PathBuf {
     output_base_dir(config, testpaths, revision).join(testpaths.file.file_stem().unwrap())
 }
 
 /// Absolute path to the directory to use for incremental compilation. Example:
 ///   /path/to/build/host-tuple/test/ui/relative/testname.mode/testname.inc
-pub fn incremental_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+pub fn incremental_dir(
+    config: &Config,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+) -> Utf8PathBuf {
     output_base_name(config, testpaths, revision).with_extension("inc")
 }

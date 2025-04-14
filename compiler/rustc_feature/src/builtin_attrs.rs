@@ -6,6 +6,7 @@ use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_span::edition::Edition;
 use rustc_span::{Symbol, sym};
 
 use crate::{Features, Stability};
@@ -65,9 +66,12 @@ pub enum AttributeSafety {
     /// Normal attribute that does not need `#[unsafe(...)]`
     Normal,
 
-    /// Unsafe attribute that requires safety obligations
-    /// to be discharged
-    Unsafe,
+    /// Unsafe attribute that requires safety obligations to be discharged.
+    ///
+    /// An error is emitted when `#[unsafe(...)]` is omitted, except when the attribute's edition
+    /// is less than the one stored in `unsafe_since`. This handles attributes that were safe in
+    /// earlier editions, but become unsafe in later ones.
+    Unsafe { unsafe_since: Option<Edition> },
 }
 
 #[derive(Clone, Copy)]
@@ -187,12 +191,23 @@ macro_rules! template {
 }
 
 macro_rules! ungated {
+    (unsafe($edition:ident) $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr $(,)?) => {
+        BuiltinAttribute {
+            name: sym::$attr,
+            encode_cross_crate: $encode_cross_crate,
+            type_: $typ,
+            safety: AttributeSafety::Unsafe { unsafe_since: Some(Edition::$edition) },
+            template: $tpl,
+            gate: Ungated,
+            duplicates: $duplicates,
+        }
+    };
     (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
             type_: $typ,
-            safety: AttributeSafety::Unsafe,
+            safety: AttributeSafety::Unsafe { unsafe_since: None },
             template: $tpl,
             gate: Ungated,
             duplicates: $duplicates,
@@ -217,7 +232,7 @@ macro_rules! gated {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
             type_: $typ,
-            safety: AttributeSafety::Unsafe,
+            safety: AttributeSafety::Unsafe { unsafe_since: None },
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated(Stability::Unstable, sym::$gate, $msg, Features::$gate),
@@ -228,7 +243,7 @@ macro_rules! gated {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
             type_: $typ,
-            safety: AttributeSafety::Unsafe,
+            safety: AttributeSafety::Unsafe { unsafe_since: None },
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated(Stability::Unstable, sym::$attr, $msg, Features::$attr),
@@ -423,9 +438,9 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(no_link, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(repr, Normal, template!(List: "C"), DuplicatesOk, EncodeCrossCrate::No),
-    ungated!(unsafe export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
-    ungated!(unsafe link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
-    ungated!(unsafe no_mangle, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
+    ungated!(unsafe(Edition2024) export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
+    ungated!(unsafe(Edition2024) link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
+    ungated!(unsafe(Edition2024) no_mangle, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing, EncodeCrossCrate::No),
     ungated!(link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding, EncodeCrossCrate::Yes),
 

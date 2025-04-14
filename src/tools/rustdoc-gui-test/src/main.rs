@@ -118,7 +118,11 @@ If you want to install the `browser-ui-test` dependency, run `npm install browse
                     ..Default::default()
                 };
 
-                let test_props = TestProps::from_file(&librs, None, &compiletest_c);
+                let test_props = TestProps::from_file(
+                    &camino::Utf8PathBuf::try_from(librs).unwrap(),
+                    None,
+                    &compiletest_c,
+                );
 
                 if !test_props.compile_flags.is_empty() {
                     cargo.env("RUSTDOCFLAGS", test_props.compile_flags.join(" "));
