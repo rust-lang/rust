@@ -299,7 +299,7 @@ fn eventfd_read<'tcx>(
         );
     } else {
         // Synchronize with all prior `write` calls to this FD.
-        ecx.acquire_clock(&eventfd.clock.borrow());
+        ecx.acquire_clock(&eventfd.clock.borrow())?;
 
         // Return old counter value into user-space buffer.
         ecx.write_int(counter, &buf_place)?;

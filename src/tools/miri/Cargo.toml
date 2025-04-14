@@ -70,7 +70,7 @@ harness = false
 
 [features]
 default = ["stack-cache", "native-lib"]
-genmc = ["dep:genmc-sys"] # this enables a GPL dependency!
+genmc = ["dep:genmc-sys"]
 stack-cache = []
 stack-cache-consistency-check = ["stack-cache"]
 tracing = ["serde_json"]

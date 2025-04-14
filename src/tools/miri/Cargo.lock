@@ -363,9 +363,9 @@ dependencies = [
 
 [[package]]
 name = "cxx"
-version = "1.0.161"
+version = "1.0.173"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3523cc02ad831111491dd64b27ad999f1ae189986728e477604e61b81f828df"
+checksum = "6c64ed3da1c337cbaae7223cdcff8b4dddf698d188cd3eaddd1116f6b0295950"
 dependencies = [
  "cc",
  "cxxbridge-cmd",
@@ -377,9 +377,9 @@ dependencies = [
 
 [[package]]
 name = "cxx-build"
-version = "1.0.161"
+version = "1.0.173"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "212b754247a6f07b10fa626628c157593f0abf640a3dd04cce2760eca970f909"
+checksum = "ae0a26a75a05551f5ae3d75b3557543d06682284eaa7419113162d602cb45766"
 dependencies = [
  "cc",
  "codespan-reporting",
@@ -392,9 +392,9 @@ dependencies = [
 
 [[package]]
 name = "cxxbridge-cmd"
-version = "1.0.161"
+version = "1.0.173"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f426a20413ec2e742520ba6837c9324b55ffac24ead47491a6e29f933c5b135a"
+checksum = "952d408b6002b7db4b36da07c682a9cbb34f2db0efa03e976ae50a388414e16c"
 dependencies = [
  "clap",
  "codespan-reporting",
@@ -406,15 +406,15 @@ dependencies = [
 
 [[package]]
 name = "cxxbridge-flags"
-version = "1.0.161"
+version = "1.0.173"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a258b6069020b4e5da6415df94a50ee4f586a6c38b037a180e940a43d06a070d"
+checksum = "ccbd201b471c75c6abb6321cace706d1982d270e308b891c11a3262d320f5265"
 
 [[package]]
 name = "cxxbridge-macro"
-version = "1.0.161"
+version = "1.0.173"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8dec184b52be5008d6eaf7e62fc1802caf1ad1227d11b3b7df2c409c7ffc3f4"
+checksum = "2bea8b915bbc4cb4288f242aa7ca18b23ecc6965e4d6e7c1b07905e3fe2e0c41"
 dependencies = [
  "indexmap",
  "proc-macro2",
@@ -501,9 +501,9 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "foldhash"
-version = "0.1.5"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
+checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
 name = "form_urlencoded"

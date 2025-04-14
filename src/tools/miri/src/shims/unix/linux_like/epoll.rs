@@ -639,7 +639,7 @@ fn return_ready_list<'tcx>(
                 &des.1,
             )?;
             // Synchronize waking thread with the event of interest.
-            ecx.acquire_clock(&epoll_event_instance.clock);
+            ecx.acquire_clock(&epoll_event_instance.clock)?;
 
             num_of_events = num_of_events.strict_add(1);
         } else {

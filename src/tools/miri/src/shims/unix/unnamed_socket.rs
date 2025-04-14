@@ -337,7 +337,7 @@ fn anonsocket_read<'tcx>(
         // Synchronize with all previous writes to this buffer.
         // FIXME: this over-synchronizes; a more precise approach would be to
         // only sync with the writes whose data we will read.
-        ecx.acquire_clock(&readbuf.clock);
+        ecx.acquire_clock(&readbuf.clock)?;
 
         // Do full read / partial read based on the space available.
         // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
