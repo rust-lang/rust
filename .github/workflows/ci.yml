@@ -53,6 +53,13 @@ jobs:
     steps:
       - name: Checkout the source code
         uses: actions/checkout@v4
+      # Cache citool to make its build faster, as it's in the critical path.
+      # The rust-cache doesn't bleed into the main `job`, so it should not affect any other
+      # Rust compilation.
+      - name: Cache citool
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
+        with:
+          workspaces: src/ci/citool
       - name: Calculate the CI job matrix
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
