@@ -10,7 +10,7 @@ note: `_` wildcard arm here
   --> tests/ui/match_same_arms_non_exhaustive.rs:46:9
    |
 LL |         _ => repeat(),
-   |         ^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^
    = note: `-D clippy::match-same-arms` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
 
@@ -26,7 +26,7 @@ note: `_` wildcard arm here
   --> tests/ui/match_same_arms_non_exhaustive.rs:60:13
    |
 LL |             _ => repeat(),
-   |             ^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
