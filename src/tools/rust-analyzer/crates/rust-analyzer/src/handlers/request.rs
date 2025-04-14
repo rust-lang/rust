@@ -2418,7 +2418,11 @@ fn run_rustfmt(
                 Ok(None)
             }
             // rustfmt panicked at lexing/parsing the file
-            Some(101) if !rustfmt_not_installed && captured_stderr.starts_with("error[") => {
+            Some(101)
+                if !rustfmt_not_installed
+                    && (captured_stderr.starts_with("error[")
+                        || captured_stderr.starts_with("error:")) =>
+            {
                 Ok(None)
             }
             _ => {
