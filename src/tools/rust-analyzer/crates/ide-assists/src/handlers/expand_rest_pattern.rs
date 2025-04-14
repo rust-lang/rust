@@ -2,27 +2,11 @@ use hir::{PathResolution, StructKind};
 use ide_db::syntax_helpers::suggest_name::NameGenerator;
 use syntax::{
     AstNode, ToSmolStr,
-    ast::{self, make},
+    ast::{self, syntax_factory::SyntaxFactory},
     match_ast,
 };
 
 use crate::{AssistContext, AssistId, Assists};
-
-pub(crate) fn expand_rest_pattern(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let rest_pat = ctx.find_node_at_offset::<ast::RestPat>()?;
-    let parent = rest_pat.syntax().parent()?;
-    match_ast! {
-        match parent {
-            ast::RecordPatFieldList(it) => expand_record_rest_pattern(acc, ctx, it.syntax().parent().and_then(ast::RecordPat::cast)?, rest_pat),
-            ast::TupleStructPat(it) => expand_tuple_struct_rest_pattern(acc, ctx, it, rest_pat),
-            // FIXME
-            // ast::TuplePat(it) => (),
-            // FIXME
-            // ast::SlicePat(it) => (),
-            _ => return None,
-        }
-    }
-}
 
 // Assist: expand_record_rest_pattern
 //
@@ -50,7 +34,6 @@ fn expand_record_rest_pattern(
     rest_pat: ast::RestPat,
 ) -> Option<()> {
     let missing_fields = ctx.sema.record_pattern_missing_fields(&record_pat);
-
     if missing_fields.is_empty() {
         cov_mark::hit!(no_missing_fields);
         return None;
@@ -62,24 +45,30 @@ fn expand_record_rest_pattern(
         return None;
     }
 
-    let new_field_list =
-        make::record_pat_field_list(old_field_list.fields(), None).clone_for_update();
-    for (f, _) in missing_fields.iter() {
-        let edition = ctx.sema.scope(record_pat.syntax())?.krate().edition(ctx.db());
-        let field = make::record_pat_field_shorthand(make::name_ref(
-            &f.name(ctx.sema.db).display_no_db(edition).to_smolstr(),
-        ));
-        new_field_list.add_field(field.clone_for_update());
-    }
-
-    let target_range = rest_pat.syntax().text_range();
+    let edition = ctx.sema.scope(record_pat.syntax())?.krate().edition(ctx.db());
     acc.add(
         AssistId::refactor_rewrite("expand_record_rest_pattern"),
         "Fill struct fields",
-        target_range,
-        move |builder| builder.replace_ast(old_field_list, new_field_list),
+        rest_pat.syntax().text_range(),
+        |builder| {
+            let make = SyntaxFactory::with_mappings();
+            let mut editor = builder.make_editor(rest_pat.syntax());
+            let new_field_list = make.record_pat_field_list(old_field_list.fields(), None);
+            for (f, _) in missing_fields.iter() {
+                let field = make.record_pat_field_shorthand(
+                    make.name_ref(&f.name(ctx.sema.db).display_no_db(edition).to_smolstr()),
+                );
+                new_field_list.add_field(field);
+            }
+
+            editor.replace(old_field_list.syntax(), new_field_list.syntax());
+
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.file_id(), editor);
+        },
     )
 }
+
 // Assist: expand_tuple_struct_rest_pattern
 //
 // Fills fields by replacing rest pattern in tuple struct patterns.
@@ -134,32 +123,56 @@ fn expand_tuple_struct_rest_pattern(
         return None;
     }
 
-    let mut name_gen = NameGenerator::new_from_scope_locals(ctx.sema.scope(pat.syntax()));
-    let new_pat = make::tuple_struct_pat(
-        path,
-        pat.fields()
-            .take(prefix_count)
-            .chain(fields[prefix_count..fields.len() - suffix_count].iter().map(|f| {
-                make::ident_pat(
-                    false,
-                    false,
-                    match name_gen.for_type(&f.ty(ctx.sema.db), ctx.sema.db, ctx.edition()) {
-                        Some(name) => make::name(&name),
-                        None => make::name(&format!("_{}", f.index())),
-                    },
-                )
-                .into()
-            }))
-            .chain(pat.fields().skip(prefix_count + 1)),
-    );
-
-    let target_range = rest_pat.syntax().text_range();
     acc.add(
         AssistId::refactor_rewrite("expand_tuple_struct_rest_pattern"),
         "Fill tuple struct fields",
-        target_range,
-        move |builder| builder.replace_ast(pat, new_pat),
+        rest_pat.syntax().text_range(),
+        |builder| {
+            let make = SyntaxFactory::with_mappings();
+            let mut editor = builder.make_editor(rest_pat.syntax());
+
+            let mut name_gen = NameGenerator::new_from_scope_locals(ctx.sema.scope(pat.syntax()));
+            let new_pat = make.tuple_struct_pat(
+                path,
+                pat.fields()
+                    .take(prefix_count)
+                    .chain(fields[prefix_count..fields.len() - suffix_count].iter().map(|f| {
+                        make.ident_pat(
+                            false,
+                            false,
+                            match name_gen.for_type(&f.ty(ctx.sema.db), ctx.sema.db, ctx.edition())
+                            {
+                                Some(name) => make.name(&name),
+                                None => make.name(&format!("_{}", f.index())),
+                            },
+                        )
+                        .into()
+                    }))
+                    .chain(pat.fields().skip(prefix_count + 1)),
+            );
+
+            editor.replace(pat.syntax(), new_pat.syntax());
+
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.file_id(), editor);
+        },
     )
+}
+
+pub(crate) fn expand_rest_pattern(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    let rest_pat = ctx.find_node_at_offset::<ast::RestPat>()?;
+    let parent = rest_pat.syntax().parent()?;
+    match_ast! {
+        match parent {
+            ast::RecordPatFieldList(it) => expand_record_rest_pattern(acc, ctx, it.syntax().parent().and_then(ast::RecordPat::cast)?, rest_pat),
+            ast::TupleStructPat(it) => expand_tuple_struct_rest_pattern(acc, ctx, it, rest_pat),
+            // FIXME
+            // ast::TuplePat(it) => (),
+            // FIXME
+            // ast::SlicePat(it) => (),
+            _ => return None,
+        }
+    }
 }
 
 #[cfg(test)]
