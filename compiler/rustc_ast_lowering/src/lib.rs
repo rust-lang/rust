@@ -54,8 +54,7 @@ use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{
-    self as hir, ConstArg, GenericArg, HirId, IsAnonInPath, ItemLocalMap, LangItem, ParamName,
-    TraitCandidate,
+    self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem, ParamName, TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -1750,11 +1749,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_lifetime(&mut self, l: &Lifetime) -> &'hir hir::Lifetime {
-        self.new_named_lifetime(l.id, l.id, l.ident, IsAnonInPath::No)
+        self.new_named_lifetime(l.id, l.id, l.ident, None)
     }
 
-    fn lower_lifetime_anon_in_path(&mut self, id: NodeId, span: Span) -> &'hir hir::Lifetime {
-        self.new_named_lifetime(id, id, Ident::new(kw::UnderscoreLifetime, span), IsAnonInPath::Yes)
+    fn lower_lifetime_anon_in_path(
+        &mut self,
+        id: NodeId,
+        span: Span,
+        angle_brackets: hir::AngleBrackets,
+    ) -> &'hir hir::Lifetime {
+        self.new_named_lifetime(
+            id,
+            id,
+            Ident::new(kw::UnderscoreLifetime, span),
+            Some(angle_brackets),
+        )
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1763,7 +1772,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         id: NodeId,
         new_id: NodeId,
         ident: Ident,
-        is_anon_in_path: IsAnonInPath,
+        is_anon_in_path: hir::IsAnonInPath,
     ) -> &'hir hir::Lifetime {
         debug_assert_ne!(ident.name, kw::Empty);
         let res = self.resolver.get_lifetime_res(id).unwrap_or(LifetimeRes::Error);
@@ -1789,7 +1798,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         #[cfg(debug_assertions)]
-        if is_anon_in_path == IsAnonInPath::Yes {
+        if is_anon_in_path.is_some() {
             debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
         }
 
@@ -2390,7 +2399,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.next_id(),
             Ident::new(kw::UnderscoreLifetime, self.lower_span(span)),
             hir::LifetimeName::ImplicitObjectLifetimeDefault,
-            IsAnonInPath::No,
+            None,
         );
         debug!("elided_dyn_bound: r={:?}", r);
         self.arena.alloc(r)

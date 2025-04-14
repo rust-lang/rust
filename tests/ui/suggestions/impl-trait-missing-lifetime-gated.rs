@@ -49,6 +49,17 @@ mod alone_in_path {
     //~| ERROR missing lifetime specifier
 }
 
+mod alone_in_path2 {
+    trait Foo<'a> { fn next(&mut self) -> Option<&'a ()>; }
+
+    fn f(_: impl Foo<>) {}
+    //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
+
+    fn g(mut x: impl Foo<>) -> Option<&()> { x.next() }
+    //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
+    //~| ERROR missing lifetime specifier
+}
+
 mod in_path {
     trait Foo<'a, T> { fn next(&mut self) -> Option<&'a T>; }
 
