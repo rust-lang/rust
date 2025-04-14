@@ -1,3 +1,5 @@
+#![forbid(fuzzy_provenance_casts)]
+
 use fortanix_sgx_abi::{Error, RESULT_SUCCESS};
 
 use crate::collections::HashMap;
@@ -5,8 +7,7 @@ use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
-use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::sync::{Mutex, Once};
+use crate::sync::{Mutex, OnceLock};
 use crate::sys::{decode_error_kind, sgx_ineffective, unsupported};
 use crate::{fmt, io, str, vec};
 
@@ -75,21 +76,15 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg_attr(test, linkage = "available_externally")]
 #[unsafe(export_name = "_ZN16__rust_internals3std3sys3sgx2os3ENVE")]
-static ENV: AtomicUsize = AtomicUsize::new(0);
-#[cfg_attr(test, linkage = "available_externally")]
-#[unsafe(export_name = "_ZN16__rust_internals3std3sys3sgx2os8ENV_INITE")]
-static ENV_INIT: Once = Once::new();
+static ENV: OnceLock<EnvStore> = OnceLock::new();
 type EnvStore = Mutex<HashMap<OsString, OsString>>;
 
 fn get_env_store() -> Option<&'static EnvStore> {
-    unsafe { (ENV.load(Ordering::Relaxed) as *const EnvStore).as_ref() }
+    ENV.get()
 }
 
 fn create_env_store() -> &'static EnvStore {
-    ENV_INIT.call_once(|| {
-        ENV.store(Box::into_raw(Box::new(EnvStore::default())) as _, Ordering::Relaxed)
-    });
-    unsafe { &*(ENV.load(Ordering::Relaxed) as *const EnvStore) }
+    ENV.get_or_init(|| EnvStore::default())
 }
 
 pub struct Env {
