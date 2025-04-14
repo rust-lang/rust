@@ -2375,9 +2375,13 @@ impl<'test> TestCx<'test> {
         let rust_src_dir = rust_src_dir.read_link_utf8().unwrap_or(rust_src_dir.to_path_buf());
         normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
 
+        // Canonicalize test build directory path.
+        // Without this some tests fail if build directory is a symlink.
+        let output_base_dir = self.output_base_dir().canonicalize_utf8().unwrap();
+
         // eg.
         // /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui/<test_dir>/$name.$revision.$mode/
-        normalize_path(&self.output_base_dir(), "$TEST_BUILD_DIR");
+        normalize_path(&output_base_dir, "$TEST_BUILD_DIR");
         // eg. /home/user/rust/build
         normalize_path(&self.config.build_root, "$BUILD_DIR");
 
