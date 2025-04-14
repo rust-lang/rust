@@ -24,9 +24,9 @@ pub(crate) fn dump_polonius_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
+    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
     polonius_diagnostics: Option<&PoloniusDiagnosticsContext>,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
 ) {
     let tcx = infcx.tcx;
     if !tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
