@@ -2,7 +2,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-114374-invalid-help-fmt-args.rs:5:13
    |
 LL |     let x = format_args!("a {} {} {}.", 1, format_args!("b{}!", 2), 3);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
    |             |
    |             creates a temporary value which is freed while still in use
 ...
@@ -16,7 +16,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-114374-invalid-help-fmt-args.rs:10:15
    |
 LL |     let foo = format_args!("{}", "hi");
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
    |               |
    |               creates a temporary value which is freed while still in use
 LL |

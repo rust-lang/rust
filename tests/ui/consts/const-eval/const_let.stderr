@@ -18,7 +18,7 @@ error[E0493]: destructor of `Option<FakeNeedsDrop>` cannot be evaluated at compi
   --> $DIR/const_let.rs:24:21
    |
 LL | const Z: () = { let mut x = None; x = Some(FakeNeedsDrop); };
-   |                     ^^^^^                                  - value is dropped here
+   |                     ^^^^^                                   - value is dropped here
    |                     |
    |                     the destructor for this type cannot be evaluated in constants
 
@@ -26,7 +26,7 @@ error[E0493]: destructor of `Option<FakeNeedsDrop>` cannot be evaluated at compi
   --> $DIR/const_let.rs:28:22
    |
 LL | const Z2: () = { let mut x; x = None; x = Some(FakeNeedsDrop); };
-   |                      ^^^^^                                     - value is dropped here
+   |                      ^^^^^                                      - value is dropped here
    |                      |
    |                      the destructor for this type cannot be evaluated in constants
 

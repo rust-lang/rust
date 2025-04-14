@@ -14,7 +14,7 @@ LL |     let a: [String; 1];
    |         ^ the destructor for this type cannot be evaluated in statics
 ...
 LL | };
-   | - value is dropped here
+   |  - value is dropped here
 
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
   --> $DIR/drop-elaboration-after-borrowck-error.rs:17:9
@@ -32,7 +32,7 @@ LL |         let _this = self;
    |             ^^^^^ the destructor for this type cannot be evaluated in constant functions
 ...
 LL |     }
-   |     - value is dropped here
+   |      - value is dropped here
 
 error: aborting due to 4 previous errors
 

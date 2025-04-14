@@ -12,7 +12,7 @@ LL |     let x = <A<'a>>::new::<&'a u32>(&v, &v);
    |             argument requires that `v` is borrowed for `'a`
 ...
 LL | }
-   | - `v` dropped here while still borrowed
+   |  - `v` dropped here while still borrowed
 
 error[E0597]: `v` does not live long enough
   --> $DIR/method-ufcs-inherent-4.rs:15:41

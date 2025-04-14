@@ -11,7 +11,7 @@ LL |         Pin::new(&mut #[coroutine] || yield &a).resume(())
    |                                    value captured here by coroutine
 LL |
 LL |     };
-   |     - `a` dropped here while still borrowed
+   |      - `a` dropped here while still borrowed
 
 error[E0597]: `a` does not live long enough
   --> $DIR/borrowing.rs:16:20
@@ -26,7 +26,7 @@ LL |             yield &a
    |                    ^ borrowed value does not live long enough
 ...
 LL |     };
-   |     - `a` dropped here while still borrowed
+   |      - `a` dropped here while still borrowed
 
 error: aborting due to 2 previous errors
 

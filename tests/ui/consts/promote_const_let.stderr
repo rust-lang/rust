@@ -8,7 +8,7 @@ LL |         let y = 42;
 LL |         &y
    |         ^^ borrowed value does not live long enough
 LL |     };
-   |     - `y` dropped here while still borrowed
+   |      - `y` dropped here while still borrowed
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote_const_let.rs:6:28
@@ -22,7 +22,7 @@ LL | |         y
 LL | |     };
    | |_____^ creates a temporary value which is freed while still in use
 LL |   }
-   |   - temporary value is freed at the end of this statement
+   |    - temporary value is freed at the end of this statement
 
 error: aborting due to 2 previous errors
 

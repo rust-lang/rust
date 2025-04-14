@@ -10,7 +10,7 @@ LL |     let z: &'a & usize = &(&y);
    |            type annotation requires that borrow lasts for `'a`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0597]: `y` does not live long enough
   --> $DIR/regions-free-region-ordering-caller1.rs:9:27
@@ -26,7 +26,7 @@ LL |     let z: &'a & usize = &(&y);
    |            type annotation requires that `y` is borrowed for `'a`
 ...
 LL | }
-   | - `y` dropped here while still borrowed
+   |  - `y` dropped here while still borrowed
 
 error: aborting due to 2 previous errors
 

@@ -9,7 +9,7 @@ LL |             Foo::new(&bar).into()
    |                      ^^^^ borrowed value does not live long enough
 LL |
 LL |         };
-   |         - `bar` dropped here while still borrowed
+   |          - `bar` dropped here while still borrowed
 
 error[E0597]: `y` does not live long enough
   --> $DIR/feature-self-return-type.rs:62:17
@@ -22,7 +22,7 @@ LL |             foo(&y)
    |                 ^^ borrowed value does not live long enough
 LL |
 LL |         };
-   |         - `y` dropped here while still borrowed
+   |          - `y` dropped here while still borrowed
 
 error[E0597]: `y` does not live long enough
   --> $DIR/feature-self-return-type.rs:94:17
@@ -35,7 +35,7 @@ LL |             foo(&y)
    |                 ^^ borrowed value does not live long enough
 LL |
 LL |         };
-   |         - `y` dropped here while still borrowed
+   |          - `y` dropped here while still borrowed
 
 error: aborting due to 3 previous errors
 

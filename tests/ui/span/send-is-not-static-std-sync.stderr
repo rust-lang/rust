@@ -26,7 +26,7 @@ LL |         let z = 2;
 LL |         *lock.lock().unwrap() = &z;
    |                                 ^^ borrowed value does not live long enough
 LL |     }
-   |     - `z` dropped here while still borrowed
+   |      - `z` dropped here while still borrowed
 LL |
 LL |     lock.use_ref(); // (Mutex is #[may_dangle] so its dtor does not use `z` => needs explicit use)
    |     ---- borrow later used here
@@ -59,7 +59,7 @@ LL |         let z = 2;
 LL |         *lock.write().unwrap() = &z;
    |                                  ^^ borrowed value does not live long enough
 LL |     }
-   |     - `z` dropped here while still borrowed
+   |      - `z` dropped here while still borrowed
 LL |
 LL |     lock.use_ref(); // (RwLock is #[may_dangle] so its dtor does not use `z` => needs explicit use)
    |     ---- borrow later used here
@@ -92,7 +92,7 @@ LL |         let z = 2;
 LL |         tx.send(&z).unwrap();
    |                 ^^ borrowed value does not live long enough
 LL |     }
-   |     - `z` dropped here while still borrowed
+   |      - `z` dropped here while still borrowed
 LL |
 LL |     tx.use_ref(); // (channel drop glue does not use `z` => needs explicit use)
    |     -- borrow later used here

@@ -11,7 +11,7 @@ LL |     display_len(&x)
    |     argument requires that `x` is borrowed for `'static`
 ...
 LL | }
-   | - `x` dropped here while still borrowed
+   |  - `x` dropped here while still borrowed
 
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
   --> $DIR/migration-note.rs:19:5
@@ -48,7 +48,7 @@ LL |     needs_static(a);
    |     --------------- argument requires that `x` is borrowed for `'static`
 LL |
 LL | }
-   | - `x` dropped here while still borrowed
+   |  - `x` dropped here while still borrowed
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
   --> $DIR/migration-note.rs:29:13
@@ -73,7 +73,7 @@ LL |     mv(x);
    |        ^ move out of `x` occurs here
 ...
 LL | }
-   | - borrow might be used here, when `a` is dropped and runs the destructor for type `impl std::fmt::Display`
+   |  - borrow might be used here, when `a` is dropped and runs the destructor for type `impl std::fmt::Display`
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
   --> $DIR/migration-note.rs:43:13
@@ -124,7 +124,7 @@ LL |     needs_static(a);
    |     --------------- argument requires that `x` is borrowed for `'static`
 LL |
 LL | }
-   | - `x` dropped here while still borrowed
+   |  - `x` dropped here while still borrowed
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
   --> $DIR/migration-note.rs:76:13
@@ -149,7 +149,7 @@ LL |     mv(x);
    |        ^ move out of `x` occurs here
 ...
 LL | }
-   | - borrow might be used here, when `a` is dropped and runs the destructor for type `impl std::fmt::Display`
+   |  - borrow might be used here, when `a` is dropped and runs the destructor for type `impl std::fmt::Display`
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
   --> $DIR/migration-note.rs:90:13
@@ -241,10 +241,10 @@ LL |         x = display_len(&z.f);
    |                         ^^^^ borrowed value does not live long enough
 ...
 LL |     }
-   |     - `z.f` dropped here while still borrowed
+   |      - `z.f` dropped here while still borrowed
 LL |
 LL | }
-   | - borrow might be used here, when `x` is dropped and runs the destructor for type `impl std::fmt::Display`
+   |  - borrow might be used here, when `x` is dropped and runs the destructor for type `impl std::fmt::Display`
    |
    = note: values in a scope are dropped in the opposite order they are defined
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
@@ -261,9 +261,9 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/migration-note.rs:170:40
    |
 LL |     let x = { let x = display_len(&mut vec![0]); x };
-   |                                        ^^^^^^^ - - borrow later used here
-   |                                        |       |
-   |                                        |       temporary value is freed at the end of this statement
+   |                                        ^^^^^^^  -- borrow later used here
+   |                                        |        |
+   |                                        |        temporary value is freed at the end of this statement
    |                                        creates a temporary value which is freed while still in use
    |
    = note: consider using a `let` binding to create a longer lived value
@@ -291,7 +291,7 @@ LL |     drop(x);
    |          ^ move out of `x` occurs here
 ...
 LL | }
-   | - borrow might be used here, when `y` is dropped and runs the destructor for type `impl Sized`
+   |  - borrow might be used here, when `y` is dropped and runs the destructor for type `impl Sized`
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
   --> $DIR/migration-note.rs:195:13

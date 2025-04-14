@@ -9,7 +9,7 @@ LL |     let _: W<impl Static> = W(&local);
    |            type annotation requires that `local` is borrowed for `'static`
 LL |
 LL | }
-   | - `local` dropped here while still borrowed
+   |  - `local` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

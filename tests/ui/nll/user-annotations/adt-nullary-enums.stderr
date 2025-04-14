@@ -10,7 +10,7 @@ LL | |         SomeEnum::SomeOtherVariant::<Cell<&'static u32>>,
 LL | |     );
    | |_____- argument requires that `c` is borrowed for `'static`
 LL |   }
-   |   - `c` dropped here while still borrowed
+   |    - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-nullary-enums.rs:41:41
@@ -26,7 +26,7 @@ LL | |         SomeEnum::SomeOtherVariant::<Cell<&'a u32>>,
 LL | |     );
    | |_____- argument requires that `c` is borrowed for `'a`
 LL |   }
-   |   - `c` dropped here while still borrowed
+   |    - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-nullary-enums.rs:54:45
@@ -43,7 +43,7 @@ LL | |             SomeEnum::SomeOtherVariant::<Cell<&'a u32>>,
 LL | |         );
    | |_________- argument requires that `c` is borrowed for `'a`
 LL |       };
-   |       - `c` dropped here while still borrowed
+   |        - `c` dropped here while still borrowed
 
 error: aborting due to 3 previous errors
 

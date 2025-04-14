@@ -5,7 +5,7 @@ LL |     match Some("Hello".to_string()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
 ...
 LL |     }
-   |     - temporary value is freed at the end of this statement
+   |      - temporary value is freed at the end of this statement
 LL |     println!("{}", *msg);
    |                    ---- borrow later used here
    |

@@ -7,7 +7,7 @@ LL |     let x: &'static bool = &(42 as *const i32 == 43 as *const i32);
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted_raw_ptr_ops.rs:4:30
@@ -18,7 +18,7 @@ LL |     let y: &'static usize = &(&1 as *const i32 as usize + 1);
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted_raw_ptr_ops.rs:6:28
@@ -29,7 +29,7 @@ LL |     let z: &'static i32 = &(unsafe { *(42 as *const i32) });
    |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted_raw_ptr_ops.rs:8:29
@@ -40,7 +40,7 @@ LL |     let a: &'static bool = &(main as fn() == main as fn());
    |            type annotation requires that borrow lasts for `'static`
 LL |
 LL | }
-   | - temporary value is freed at the end of this statement
+   |  - temporary value is freed at the end of this statement
 
 error: aborting due to 4 previous errors
 

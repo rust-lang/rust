@@ -9,7 +9,7 @@ LL |         &v
    |         ^^ borrowed value does not live long enough
 LL |
 LL |     });
-   |     - `v` dropped here while still borrowed
+   |      - `v` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 

@@ -5,7 +5,7 @@ LL |         &(v,)
    |          ^^^^ creates a temporary value which is freed while still in use
 LL |
 LL |     });
-   |       - temporary value is freed at the end of this statement
+   |        - temporary value is freed at the end of this statement
 LL |     println!("{:?}", x);
    |                      - borrow later used here
    |

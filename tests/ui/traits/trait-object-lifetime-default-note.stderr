@@ -10,7 +10,7 @@ LL |     require_box(Box::new(r));
    |                 ----------- coercion requires that `local` is borrowed for `'static`
 ...
 LL | }
-   | - `local` dropped here while still borrowed
+   |  - `local` dropped here while still borrowed
    |
    = note: due to object lifetime defaults, `Box<dyn A>` actually means `Box<(dyn A + 'static)>`
 

@@ -8,7 +8,7 @@ LL |         v2.push(&young[0]);      // statement 4
    |                 ^^^^^^^^^ borrowed value does not live long enough
 ...
 LL |     }
-   |     - `young[_]` dropped here while still borrowed
+   |      - `young[_]` dropped here while still borrowed
 ...
 LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
    |          -- borrow later used here
@@ -17,7 +17,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion-suffixes.rs:20:14
    |
 LL |     v3.push(&id('x'));           // statement 6
-   |              ^^^^^^^ - temporary value is freed at the end of this statement
+   |              ^^^^^^^  - temporary value is freed at the end of this statement
    |              |
    |              creates a temporary value which is freed while still in use
 ...
@@ -34,7 +34,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion-suffixes.rs:30:18
    |
 LL |         v4.push(&id('y'));
-   |                  ^^^^^^^ - temporary value is freed at the end of this statement
+   |                  ^^^^^^^  - temporary value is freed at the end of this statement
    |                  |
    |                  creates a temporary value which is freed while still in use
 ...
@@ -47,7 +47,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion-suffixes.rs:41:14
    |
 LL |     v5.push(&id('z'));
-   |              ^^^^^^^ - temporary value is freed at the end of this statement
+   |              ^^^^^^^  - temporary value is freed at the end of this statement
    |              |
    |              creates a temporary value which is freed while still in use
 ...

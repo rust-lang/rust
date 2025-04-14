@@ -11,7 +11,7 @@ LL |     let b = |_| &a;
    |             value captured here
 ...
 LL | }
-   | - `a` dropped here while still borrowed
+   |  - `a` dropped here while still borrowed
    |
 note: due to current limitations in the borrow checker, this implies a `'static` lifetime
   --> $DIR/location-insensitive-scopes-issue-117146.rs:20:22

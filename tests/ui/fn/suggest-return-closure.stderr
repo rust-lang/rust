@@ -54,9 +54,10 @@ LL |         x.push(c);
    |         ^ borrowed value does not live long enough
 ...
 LL | }
-   | -- borrow later used here
-   | |
-   | `x` dropped here while still borrowed
+   |  -
+   |  |
+   |  `x` dropped here while still borrowed
+   |  borrow later used here
 
 error: aborting due to 5 previous errors
 

@@ -9,7 +9,7 @@ LL |     SomeStruct::<&'static u32> { t: &c };
    |                                     borrowed value does not live long enough
    |                                     this usage requires that `c` is borrowed for `'static`
 LL | }
-   | - `c` dropped here while still borrowed
+   |  - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-brace-structs.rs:28:32
@@ -24,7 +24,7 @@ LL |     SomeStruct::<&'a u32> { t: &c };
    |                                borrowed value does not live long enough
    |                                this usage requires that `c` is borrowed for `'a`
 LL | }
-   | - `c` dropped here while still borrowed
+   |  - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-brace-structs.rs:38:36
@@ -40,7 +40,7 @@ LL |         SomeStruct::<&'a u32> { t: &c };
    |                                    borrowed value does not live long enough
    |                                    this usage requires that `c` is borrowed for `'a`
 LL |     };
-   |     - `c` dropped here while still borrowed
+   |      - `c` dropped here while still borrowed
 
 error: aborting due to 3 previous errors
 

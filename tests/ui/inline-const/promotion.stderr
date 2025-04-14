@@ -7,7 +7,7 @@ LL |             let _x: &'static i32 = &div_by_zero();
    |                     type annotation requires that borrow lasts for `'static`
 LL |
 LL |         }
-   |         - temporary value is freed at the end of this statement
+   |          - temporary value is freed at the end of this statement
 
 error: aborting due to 1 previous error
 

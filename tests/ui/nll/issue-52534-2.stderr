@@ -7,7 +7,7 @@ LL |         y = &x
    |             ^^ borrowed value does not live long enough
 LL |
 LL |     }
-   |     - `x` dropped here while still borrowed
+   |      - `x` dropped here while still borrowed
 LL |
 LL |     println!("{}", y);
    |                    - borrow later used here

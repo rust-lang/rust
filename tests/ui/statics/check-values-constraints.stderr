@@ -9,7 +9,7 @@ LL | |         field2: SafeEnum::Variant1,
 LL | |     }
    | |_____^ the destructor for this type cannot be evaluated in statics
 LL |   };
-   |   - value is dropped here
+   |    - value is dropped here
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-values-constraints.rs:81:33

@@ -10,7 +10,7 @@ LL |     FUN(&x);
    |     argument requires that `x` is borrowed for `'static`
 ...
 LL | }
-   | - `x` dropped here while still borrowed
+   |  - `x` dropped here while still borrowed
 
 error[E0597]: `x` does not live long enough
   --> $DIR/constant-in-expr-inherent-2.rs:24:23

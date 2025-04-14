@@ -7,7 +7,7 @@ LL |     foo(|a| &x)
    |          has type `&'0 u32`
 LL |
 LL | }
-   | - ...but `x` will be dropped here, when the function `bar` returns
+   |  - ...but `x` will be dropped here, when the function `bar` returns
    |
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references>
@@ -21,7 +21,7 @@ LL |     baz(|first, second| &y)
    |          has type `&'0 u32`
 LL |
 LL | }
-   | - ...but `y` will be dropped here, when the function `foobar` returns
+   |  - ...but `y` will be dropped here, when the function `foobar` returns
    |
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references>

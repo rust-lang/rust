@@ -11,7 +11,7 @@ LL |     let x: DoubleCell<_> = make_cell(&b);
    |                            assignment requires that `b` is borrowed for `'static`
 ...
 LL | }
-   | - `b` dropped here while still borrowed
+   |  - `b` dropped here while still borrowed
 
 error: aborting due to 1 previous error
 
