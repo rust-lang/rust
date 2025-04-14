@@ -283,6 +283,20 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             ret_lane.write_cvalue(fx, val);
         }
 
+        sym::simd_insert_dyn => {
+            intrinsic_args!(fx, args => (base, idx, val); intrinsic);
+
+            if !base.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, base.layout().ty);
+                return;
+            }
+
+            let idx = idx.load_scalar(fx);
+
+            ret.write_cvalue(fx, base);
+            ret.write_lane_dyn(fx, idx, val);
+        }
+
         sym::simd_extract => {
             let (v, idx) = match args {
                 [v, idx] => (v, idx),
@@ -315,6 +329,20 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
 
             let ret_lane = v.value_lane(fx, idx.into());
+            ret.write_cvalue(fx, ret_lane);
+        }
+
+        sym::simd_extract_dyn => {
+            intrinsic_args!(fx, args => (v, idx); intrinsic);
+
+            if !v.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
+                return;
+            }
+
+            let idx = idx.load_scalar(fx);
+
+            let ret_lane = v.value_lane_dyn(fx, idx);
             ret.write_cvalue(fx, ret_lane);
         }
 

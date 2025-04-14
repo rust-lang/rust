@@ -806,6 +806,34 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
+    /// Write a value to an individual lane in a SIMD vector.
+    pub(crate) fn write_lane_dyn(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+        lane_idx: Value,
+        value: CValue<'tcx>,
+    ) {
+        let layout = self.layout();
+        assert!(layout.ty.is_simd());
+        let (_lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+        let lane_layout = fx.layout_of(lane_ty);
+        assert_eq!(lane_layout, value.layout());
+
+        match self.inner {
+            CPlaceInner::Var(_, _) => unreachable!(),
+            CPlaceInner::VarPair(_, _, _) => unreachable!(),
+            CPlaceInner::Addr(ptr, None) => {
+                let field_offset = fx
+                    .bcx
+                    .ins()
+                    .imul_imm(lane_idx, i64::try_from(lane_layout.size.bytes()).unwrap());
+                let field_ptr = ptr.offset_value(fx, field_offset);
+                CPlace::for_ptr(field_ptr, lane_layout).write_cvalue(fx, value);
+            }
+            CPlaceInner::Addr(_, Some(_)) => unreachable!(),
+        }
+    }
+
     pub(crate) fn place_index(
         self,
         fx: &mut FunctionCx<'_, '_, 'tcx>,
