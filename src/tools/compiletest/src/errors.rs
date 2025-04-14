@@ -2,9 +2,9 @@ use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
-use std::path::Path;
 use std::sync::OnceLock;
 
+use camino::Utf8Path;
 use regex::Regex;
 use tracing::*;
 
@@ -102,8 +102,8 @@ impl Error {
 ///
 /// If revision is not None, then we look
 /// for `//[X]~` instead, where `X` is the current revision.
-pub fn load_errors(testfile: &Path, revision: Option<&str>) -> Vec<Error> {
-    let rdr = BufReader::new(File::open(testfile).unwrap());
+pub fn load_errors(testfile: &Utf8Path, revision: Option<&str>) -> Vec<Error> {
+    let rdr = BufReader::new(File::open(testfile.as_std_path()).unwrap());
 
     // `last_nonfollow_error` tracks the most recently seen
     // line with an error template that did not use the

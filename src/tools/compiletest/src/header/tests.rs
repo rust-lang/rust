@@ -1,6 +1,6 @@
 use std::io::Read;
-use std::path::Path;
 
+use camino::Utf8Path;
 use semver::Version;
 
 use super::{
@@ -13,7 +13,7 @@ use crate::executor::{CollectedTestDesc, ShouldPanic};
 fn make_test_description<R: Read>(
     config: &Config,
     name: String,
-    path: &Path,
+    path: &Utf8Path,
     src: R,
     revision: Option<&str>,
 ) -> CollectedTestDesc {
@@ -230,12 +230,12 @@ fn cfg() -> ConfigBuilder {
 
 fn parse_rs(config: &Config, contents: &str) -> EarlyProps {
     let bytes = contents.as_bytes();
-    EarlyProps::from_reader(config, Path::new("a.rs"), bytes)
+    EarlyProps::from_reader(config, Utf8Path::new("a.rs"), bytes)
 }
 
 fn check_ignore(config: &Config, contents: &str) -> bool {
     let tn = String::new();
-    let p = Path::new("a.rs");
+    let p = Utf8Path::new("a.rs");
     let d = make_test_description(&config, tn, p, std::io::Cursor::new(contents), None);
     d.ignore
 }
@@ -244,7 +244,7 @@ fn check_ignore(config: &Config, contents: &str) -> bool {
 fn should_fail() {
     let config: Config = cfg().build();
     let tn = String::new();
-    let p = Path::new("a.rs");
+    let p = Utf8Path::new("a.rs");
 
     let d = make_test_description(&config, tn.clone(), p, std::io::Cursor::new(""), None);
     assert_eq!(d.should_panic, ShouldPanic::No);
@@ -784,7 +784,7 @@ fn threads_support() {
     }
 }
 
-fn run_path(poisoned: &mut bool, path: &Path, buf: &[u8]) {
+fn run_path(poisoned: &mut bool, path: &Utf8Path, buf: &[u8]) {
     let rdr = std::io::Cursor::new(&buf);
     iter_header(Mode::Ui, "ui", poisoned, path, rdr, &mut |_| {});
 }
@@ -794,7 +794,7 @@ fn test_unknown_directive_check() {
     let mut poisoned = false;
     run_path(
         &mut poisoned,
-        Path::new("a.rs"),
+        Utf8Path::new("a.rs"),
         include_bytes!("./test-auxillary/unknown_directive.rs"),
     );
     assert!(poisoned);
@@ -805,7 +805,7 @@ fn test_known_directive_check_no_error() {
     let mut poisoned = false;
     run_path(
         &mut poisoned,
-        Path::new("a.rs"),
+        Utf8Path::new("a.rs"),
         include_bytes!("./test-auxillary/known_directive.rs"),
     );
     assert!(!poisoned);
@@ -816,7 +816,7 @@ fn test_error_annotation_no_error() {
     let mut poisoned = false;
     run_path(
         &mut poisoned,
-        Path::new("a.rs"),
+        Utf8Path::new("a.rs"),
         include_bytes!("./test-auxillary/error_annotation.rs"),
     );
     assert!(!poisoned);
@@ -827,7 +827,7 @@ fn test_non_rs_unknown_directive_not_checked() {
     let mut poisoned = false;
     run_path(
         &mut poisoned,
-        Path::new("a.Makefile"),
+        Utf8Path::new("a.Makefile"),
         include_bytes!("./test-auxillary/not_rs.Makefile"),
     );
     assert!(!poisoned);
@@ -836,21 +836,21 @@ fn test_non_rs_unknown_directive_not_checked() {
 #[test]
 fn test_trailing_directive() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Path::new("a.rs"), b"//@ only-x86 only-arm");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ only-x86 only-arm");
     assert!(poisoned);
 }
 
 #[test]
 fn test_trailing_directive_with_comment() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Path::new("a.rs"), b"//@ only-x86   only-arm with comment");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ only-x86   only-arm with comment");
     assert!(poisoned);
 }
 
 #[test]
 fn test_not_trailing_directive() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Path::new("a.rs"), b"//@ revisions: incremental");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ revisions: incremental");
     assert!(!poisoned);
 }
 

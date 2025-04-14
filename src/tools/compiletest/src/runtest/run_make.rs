@@ -1,8 +1,8 @@
-use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::{env, fs};
 
 use build_helper::fs::{ignore_not_found, recursive_remove};
+use camino::{Utf8Path, Utf8PathBuf};
 
 use super::{ProcRes, TestCx, disable_error_reporting};
 use crate::util::{copy_dir_all, dylib_env_var};
@@ -39,14 +39,16 @@ impl TestCx<'_> {
         // Copy all input files (apart from rmake.rs) to the temporary directory,
         // so that the input directory structure from `tests/run-make/<test>` is mirrored
         // to the `rmake_out` directory.
-        for path in walkdir::WalkDir::new(&self.testpaths.file).min_depth(1) {
-            let path = path.unwrap().path().to_path_buf();
+        for entry in walkdir::WalkDir::new(&self.testpaths.file).min_depth(1) {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            let path = <&Utf8Path>::try_from(path).unwrap();
             if path.file_name().is_some_and(|s| s != "rmake.rs") {
                 let target = rmake_out_dir.join(path.strip_prefix(&self.testpaths.file).unwrap());
                 if path.is_dir() {
-                    copy_dir_all(&path, target).unwrap();
+                    copy_dir_all(&path, &target).unwrap();
                 } else {
-                    fs::copy(&path, target).unwrap();
+                    fs::copy(path.as_std_path(), target).unwrap();
                 }
             }
         }
@@ -83,8 +85,10 @@ impl TestCx<'_> {
         //    on some linux distros.
         // 2. Specific library paths in `self.config.compile_lib_path` needed for running rustc.
 
-        let base_dylib_search_paths =
-            Vec::from_iter(env::split_paths(&env::var(dylib_env_var()).unwrap()));
+        let base_dylib_search_paths = Vec::from_iter(
+            env::split_paths(&env::var(dylib_env_var()).unwrap())
+                .map(|p| Utf8PathBuf::try_from(p).expect("dylib env var contains non-UTF8 paths")),
+        );
 
         // Calculate the paths of the recipe binary. As previously discussed, this is placed at
         // `<base_dir>/<bin_name>` with `bin_name` being `rmake` or `rmake.exe` depending on
@@ -113,13 +117,13 @@ impl TestCx<'_> {
             .arg("-o")
             .arg(&recipe_bin)
             // Specify library search paths for `run_make_support`.
-            .arg(format!("-Ldependency={}", &support_lib_path.parent().unwrap().to_string_lossy()))
-            .arg(format!("-Ldependency={}", &support_lib_deps.to_string_lossy()))
-            .arg(format!("-Ldependency={}", &support_lib_deps_deps.to_string_lossy()))
+            .arg(format!("-Ldependency={}", &support_lib_path.parent().unwrap()))
+            .arg(format!("-Ldependency={}", &support_lib_deps))
+            .arg(format!("-Ldependency={}", &support_lib_deps_deps))
             // Provide `run_make_support` as extern prelude, so test writers don't need to write
             // `extern run_make_support;`.
             .arg("--extern")
-            .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
+            .arg(format!("run_make_support={}", &support_lib_path))
             .arg("--edition=2021")
             .arg(&self.testpaths.file.join("rmake.rs"))
             .arg("-Cprefer-dynamic");
@@ -240,7 +244,7 @@ impl TestCx<'_> {
         if self.config.target.contains("msvc") && !self.config.cc.is_empty() {
             // We need to pass a path to `lib.exe`, so assume that `cc` is `cl.exe`
             // and that `lib.exe` lives next to it.
-            let lib = Path::new(&self.config.cc).parent().unwrap().join("lib.exe");
+            let lib = Utf8Path::new(&self.config.cc).parent().unwrap().join("lib.exe");
 
             // MSYS doesn't like passing flags of the form `/foo` as it thinks it's
             // a path and instead passes `C:\msys64\foo`, so convert all
@@ -262,8 +266,8 @@ impl TestCx<'_> {
 
             cmd.env("IS_MSVC", "1")
                 .env("IS_WINDOWS", "1")
-                .env("MSVC_LIB", format!("'{}' -nologo", lib.display()))
-                .env("MSVC_LIB_PATH", format!("{}", lib.display()))
+                .env("MSVC_LIB", format!("'{}' -nologo", lib))
+                .env("MSVC_LIB_PATH", &lib)
                 // Note: we diverge from legacy run_make and don't lump `CC` the compiler and
                 // default flags together.
                 .env("CC_DEFAULT_FLAGS", &cflags)
