@@ -32,7 +32,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -917,7 +916,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_delim_args(&self, args: &DelimArgs) -> DelimArgs {
-        DelimArgs { dspan: args.dspan, delim: args.delim, tokens: args.tokens.flattened() }
+        DelimArgs { dspan: args.dspan, delim: args.delim, tokens: args.tokens.clone() }
     }
 
     /// Lower an associated item constraint.

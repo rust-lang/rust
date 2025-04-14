@@ -810,7 +810,7 @@ impl<'tt> FirstSets<'tt> {
                         // token could be the separator token itself.
 
                         if let (Some(sep), true) = (&seq_rep.separator, subfirst.maybe_empty) {
-                            first.add_one_maybe(TtHandle::from_token(sep.clone()));
+                            first.add_one_maybe(TtHandle::from_token(*sep));
                         }
 
                         // Reverse scan: Sequence comes before `first`.
@@ -873,7 +873,7 @@ impl<'tt> FirstSets<'tt> {
                     // If the sequence contents can be empty, then the first
                     // token could be the separator token itself.
                     if let (Some(sep), true) = (&seq_rep.separator, subfirst.maybe_empty) {
-                        first.add_one_maybe(TtHandle::from_token(sep.clone()));
+                        first.add_one_maybe(TtHandle::from_token(*sep));
                     }
 
                     assert!(first.maybe_empty);
@@ -949,7 +949,7 @@ impl<'tt> Clone for TtHandle<'tt> {
             // This variant *must* contain a `mbe::TokenTree::Token`, and not
             // any other variant of `mbe::TokenTree`.
             TtHandle::Token(mbe::TokenTree::Token(tok)) => {
-                TtHandle::Token(mbe::TokenTree::Token(tok.clone()))
+                TtHandle::Token(mbe::TokenTree::Token(*tok))
             }
 
             _ => unreachable!(),
@@ -1125,7 +1125,7 @@ fn check_matcher_core<'tt>(
                 let mut new;
                 let my_suffix = if let Some(sep) = &seq_rep.separator {
                     new = suffix_first.clone();
-                    new.add_one_maybe(TtHandle::from_token(sep.clone()));
+                    new.add_one_maybe(TtHandle::from_token(*sep));
                     &new
                 } else {
                     &suffix_first
