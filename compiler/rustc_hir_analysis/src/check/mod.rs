@@ -205,7 +205,7 @@ fn missing_items_err(
 
     let missing_items_msg = missing_items
         .clone()
-        .map(|trait_item| trait_item.name.to_string())
+        .map(|trait_item| trait_item.name().to_string())
         .collect::<Vec<_>>()
         .join("`, `");
 
@@ -236,7 +236,7 @@ fn missing_items_err(
         let code = format!("{padding}{snippet}\n{padding}");
         if let Some(span) = tcx.hir_span_if_local(trait_item.def_id) {
             missing_trait_item_label
-                .push(errors::MissingTraitItemLabel { span, item: trait_item.name });
+                .push(errors::MissingTraitItemLabel { span, item: trait_item.name() });
             missing_trait_item.push(errors::MissingTraitItemSuggestion {
                 span: sugg_sp,
                 code,
@@ -504,9 +504,9 @@ fn suggestion_signature<'tcx>(
                 tcx,
                 tcx.predicates_of(assoc.def_id).instantiate_own(tcx, args),
             );
-            format!("type {}{generics} = /* Type */{where_clauses};", assoc.name)
+            format!("type {}{generics} = /* Type */{where_clauses};", assoc.name())
         }
-        ty::AssocKind::Const => {
+        ty::AssocKind::Const { name } => {
             let ty = tcx.type_of(assoc.def_id).instantiate_identity();
             let val = tcx
                 .infer_ctxt()
@@ -514,7 +514,7 @@ fn suggestion_signature<'tcx>(
                 .err_ctxt()
                 .ty_kind_suggestion(tcx.param_env(assoc.def_id), ty)
                 .unwrap_or_else(|| "value".to_string());
-            format!("const {}: {} = {};", assoc.name, ty, val)
+            format!("const {}: {} = {};", name, ty, val)
         }
     }
 }

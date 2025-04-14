@@ -45,7 +45,9 @@ pub(super) fn compare_impl_item(
     match impl_item.kind {
         ty::AssocKind::Fn { .. } => compare_impl_method(tcx, impl_item, trait_item, impl_trait_ref),
         ty::AssocKind::Type { .. } => compare_impl_ty(tcx, impl_item, trait_item, impl_trait_ref),
-        ty::AssocKind::Const => compare_impl_const(tcx, impl_item, trait_item, impl_trait_ref),
+        ty::AssocKind::Const { .. } => {
+            compare_impl_const(tcx, impl_item, trait_item, impl_trait_ref)
+        }
     }
 }
 
@@ -654,7 +656,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 cause.span,
                 E0053,
                 "method `{}` has an incompatible return type for trait",
-                trait_m.name
+                trait_m.name()
             );
             infcx.err_ctxt().note_type_err(
                 &mut diag,
@@ -1032,7 +1034,7 @@ fn report_trait_method_mismatch<'tcx>(
         impl_err_span,
         E0053,
         "method `{}` has an incompatible type for trait",
-        trait_m.name
+        trait_m.name()
     );
     match &terr {
         TypeError::ArgumentMutability(0) | TypeError::ArgumentSorts(_, 0)
@@ -1266,14 +1268,14 @@ fn compare_self_type<'tcx>(
                 impl_m_span,
                 E0185,
                 "method `{}` has a `{}` declaration in the impl, but not in the trait",
-                trait_m.name,
+                trait_m.name(),
                 self_descr
             );
             err.span_label(impl_m_span, format!("`{self_descr}` used in impl"));
             if let Some(span) = tcx.hir_span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("trait method declared without `{self_descr}`"));
             } else {
-                err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
+                err.note_trait_signature(trait_m.name(), trait_m.signature(tcx));
             }
             return Err(err.emit_unless(delay));
         }
@@ -1286,14 +1288,14 @@ fn compare_self_type<'tcx>(
                 impl_m_span,
                 E0186,
                 "method `{}` has a `{}` declaration in the trait, but not in the impl",
-                trait_m.name,
+                trait_m.name(),
                 self_descr
             );
             err.span_label(impl_m_span, format!("expected `{self_descr}` in impl"));
             if let Some(span) = tcx.hir_span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("`{self_descr}` used in trait"));
             } else {
-                err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
+                err.note_trait_signature(trait_m.name(), trait_m.signature(tcx));
             }
 
             return Err(err.emit_unless(delay));
@@ -1421,7 +1423,7 @@ fn compare_number_of_generics<'tcx>(
                     "{} `{}` has {} {kind} parameter{} but its trait \
                      declaration has {} {kind} parameter{}",
                     item_kind,
-                    trait_.name,
+                    trait_.name(),
                     impl_count,
                     pluralize!(impl_count),
                     trait_count,
@@ -1512,7 +1514,7 @@ fn compare_number_of_method_arguments<'tcx>(
             impl_span,
             E0050,
             "method `{}` has {} but the declaration in trait `{}` has {}",
-            trait_m.name,
+            trait_m.name(),
             potentially_plural_count(impl_number_args, "parameter"),
             tcx.def_path_str(trait_m.def_id),
             trait_number_args
@@ -1527,7 +1529,7 @@ fn compare_number_of_method_arguments<'tcx>(
                 ),
             );
         } else {
-            err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
+            err.note_trait_signature(trait_m.name(), trait_m.signature(tcx));
         }
 
         err.span_label(
@@ -1581,7 +1583,7 @@ fn compare_synthetic_generics<'tcx>(
                 impl_span,
                 E0643,
                 "method `{}` has incompatible signature for trait",
-                trait_m.name
+                trait_m.name()
             );
             err.span_label(trait_span, "declaration in trait here");
             if impl_synthetic {
@@ -1741,7 +1743,7 @@ fn compare_generic_param_kinds<'tcx>(
                 E0053,
                 "{} `{}` has an incompatible generic parameter for trait `{}`",
                 impl_item.descr(),
-                trait_item.name,
+                trait_item.name(),
                 &tcx.def_path_str(tcx.parent(trait_item.def_id))
             );
 
@@ -1877,7 +1879,7 @@ fn compare_const_predicate_entailment<'tcx>(
             cause.span,
             E0326,
             "implemented const `{}` has an incompatible type for trait",
-            trait_ct.name
+            trait_ct.name()
         );
 
         let trait_c_span = trait_ct.def_id.as_local().map(|trait_ct_def_id| {
@@ -2237,8 +2239,8 @@ fn param_env_with_gat_bounds<'tcx>(
     // bounds about themselves.
     let impl_tys_to_install = match impl_ty.kind {
         ty::AssocKind::Type {
-            opt_rpitit_info:
-                Some(
+            data:
+                ty::AssocTypeData::Rpitit(
                     ty::ImplTraitInTraitData::Impl { fn_def_id }
                     | ty::ImplTraitInTraitData::Trait { fn_def_id, .. },
                 ),

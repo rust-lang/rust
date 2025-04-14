@@ -111,8 +111,8 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             // Only suggest if `clone_from`/`clone_into` is explicitly implemented
             && resolved_assoc_items.in_definition_order().any(|assoc|
                 match which_trait {
-                    CloneTrait::Clone => assoc.name == sym::clone_from,
-                    CloneTrait::ToOwned => assoc.name.as_str() == "clone_into",
+                    CloneTrait::Clone => assoc.name() == sym::clone_from,
+                    CloneTrait::ToOwned => assoc.name().as_str() == "clone_into",
                 }
             )
             && !clone_source_borrows_from_dest(cx, lhs, rhs.span)

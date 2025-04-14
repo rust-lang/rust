@@ -502,7 +502,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .associated_items(trait_def_id)
             .in_definition_order()
             .filter(|assoc| assoc.namespace() == Namespace::ValueNS)
-            .map(|cand| cand.name)
+            .map(|cand| cand.name())
             .collect();
         if let Some(typo) = find_best_match_for_name(&names, segment.ident.name, None) {
             diag.span_suggestion_verbose(

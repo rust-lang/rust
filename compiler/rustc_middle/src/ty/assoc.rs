@@ -18,7 +18,6 @@ pub enum AssocItemContainer {
 #[derive(Copy, Clone, Debug, PartialEq, HashStable, Eq, Hash, Encodable, Decodable)]
 pub struct AssocItem {
     pub def_id: DefId,
-    pub name: Symbol,
     pub kind: AssocKind,
     pub container: AssocItemContainer,
 
@@ -28,8 +27,24 @@ pub struct AssocItem {
 }
 
 impl AssocItem {
+    // Gets the identifier, if it has one.
+    pub fn opt_name(&self) -> Option<Symbol> {
+        match self.kind {
+            ty::AssocKind::Type { data: AssocTypeData::Normal(name) } => Some(name),
+            ty::AssocKind::Type { data: AssocTypeData::Rpitit(_) } => None,
+            ty::AssocKind::Const { name } => Some(name),
+            ty::AssocKind::Fn { name, .. } => Some(name),
+        }
+    }
+
+    // Gets the identifier name. Aborts if it lacks one, i.e. is an RPITIT
+    // associated type.
+    pub fn name(&self) -> Symbol {
+        self.opt_name().expect("name of non-Rpitit assoc item")
+    }
+
     pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
-        Ident::new(self.name, tcx.def_ident_span(self.def_id).unwrap())
+        Ident::new(self.name(), tcx.def_ident_span(self.def_id).unwrap())
     }
 
     /// Gets the defaultness of the associated item.
@@ -76,22 +91,18 @@ impl AssocItem {
                 // regions just fine, showing `fn(&MyType)`.
                 tcx.fn_sig(self.def_id).instantiate_identity().skip_binder().to_string()
             }
-            ty::AssocKind::Type { .. } => format!("type {};", self.name),
-            ty::AssocKind::Const => {
-                format!(
-                    "const {}: {:?};",
-                    self.name,
-                    tcx.type_of(self.def_id).instantiate_identity()
-                )
+            ty::AssocKind::Type { .. } => format!("type {};", self.name()),
+            ty::AssocKind::Const { name } => {
+                format!("const {}: {:?};", name, tcx.type_of(self.def_id).instantiate_identity())
             }
         }
     }
 
     pub fn descr(&self) -> &'static str {
         match self.kind {
-            ty::AssocKind::Const => "associated const",
-            ty::AssocKind::Fn { has_self: true } => "method",
-            ty::AssocKind::Fn { has_self: false } => "associated function",
+            ty::AssocKind::Const { .. } => "associated const",
+            ty::AssocKind::Fn { has_self: true, .. } => "method",
+            ty::AssocKind::Fn { has_self: false, .. } => "associated function",
             ty::AssocKind::Type { .. } => "associated type",
         }
     }
@@ -99,13 +110,13 @@ impl AssocItem {
     pub fn namespace(&self) -> Namespace {
         match self.kind {
             ty::AssocKind::Type { .. } => Namespace::TypeNS,
-            ty::AssocKind::Const | ty::AssocKind::Fn { .. } => Namespace::ValueNS,
+            ty::AssocKind::Const { .. } | ty::AssocKind::Fn { .. } => Namespace::ValueNS,
         }
     }
 
     pub fn as_def_kind(&self) -> DefKind {
         match self.kind {
-            AssocKind::Const => DefKind::AssocConst,
+            AssocKind::Const { .. } => DefKind::AssocConst,
             AssocKind::Fn { .. } => DefKind::AssocFn,
             AssocKind::Type { .. } => DefKind::AssocTy,
         }
@@ -119,19 +130,19 @@ impl AssocItem {
     }
 
     pub fn is_method(&self) -> bool {
-        matches!(self.kind, ty::AssocKind::Fn { has_self: true })
+        matches!(self.kind, ty::AssocKind::Fn { has_self: true, .. })
     }
 
     pub fn as_tag(&self) -> AssocTag {
         match self.kind {
-            AssocKind::Const => AssocTag::Const,
+            AssocKind::Const { .. } => AssocTag::Const,
             AssocKind::Fn { .. } => AssocTag::Fn,
             AssocKind::Type { .. } => AssocTag::Type,
         }
     }
 
     pub fn is_impl_trait_in_trait(&self) -> bool {
-        matches!(self.kind, AssocKind::Type { opt_rpitit_info: Some(_) })
+        matches!(self.kind, AssocKind::Type { data: AssocTypeData::Rpitit(_) })
     }
 
     /// Returns true if:
@@ -139,7 +150,7 @@ impl AssocItem {
     /// - If it is in a trait impl, the item from the original trait has this attribute, or
     /// - It is an inherent assoc const.
     pub fn is_type_const_capable(&self, tcx: TyCtxt<'_>) -> bool {
-        if self.kind != ty::AssocKind::Const {
+        if !matches!(self.kind, ty::AssocKind::Const { .. }) {
             return false;
         }
 
@@ -154,25 +165,44 @@ impl AssocItem {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, HashStable, Eq, Hash, Encodable, Decodable)]
+pub enum AssocTypeData {
+    Normal(Symbol),
+    /// The associated type comes from an RPITIT. It has no name, and the
+    /// `ImplTraitInTraitData` provides additional information about its
+    /// source.
+    Rpitit(ty::ImplTraitInTraitData),
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, HashStable, Eq, Hash, Encodable, Decodable)]
 pub enum AssocKind {
-    Const,
-    Fn {
-        has_self: bool,
-    },
-    Type {
-        /// `Some` if the associated type comes from an RPITIT. The
-        /// `ImplTraitInTraitData` provides additional information about its
-        /// source.
-        opt_rpitit_info: Option<ty::ImplTraitInTraitData>,
-    },
+    Const { name: Symbol },
+    Fn { name: Symbol, has_self: bool },
+    Type { data: AssocTypeData },
+}
+
+impl AssocKind {
+    pub fn namespace(&self) -> Namespace {
+        match *self {
+            ty::AssocKind::Type { .. } => Namespace::TypeNS,
+            ty::AssocKind::Const { .. } | ty::AssocKind::Fn { .. } => Namespace::ValueNS,
+        }
+    }
+
+    pub fn as_def_kind(&self) -> DefKind {
+        match self {
+            AssocKind::Const { .. } => DefKind::AssocConst,
+            AssocKind::Fn { .. } => DefKind::AssocFn,
+            AssocKind::Type { .. } => DefKind::AssocTy,
+        }
+    }
 }
 
 impl std::fmt::Display for AssocKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AssocKind::Fn { has_self: true } => write!(f, "method"),
-            AssocKind::Fn { has_self: false } => write!(f, "associated function"),
-            AssocKind::Const => write!(f, "associated const"),
+            AssocKind::Fn { has_self: true, .. } => write!(f, "method"),
+            AssocKind::Fn { has_self: false, .. } => write!(f, "associated function"),
+            AssocKind::Const { .. } => write!(f, "associated const"),
             AssocKind::Type { .. } => write!(f, "associated type"),
         }
     }
@@ -193,17 +223,17 @@ pub enum AssocTag {
 /// done only on items with the same name.
 #[derive(Debug, Clone, PartialEq, HashStable)]
 pub struct AssocItems {
-    items: SortedIndexMultiMap<u32, Symbol, ty::AssocItem>,
+    items: SortedIndexMultiMap<u32, Option<Symbol>, ty::AssocItem>,
 }
 
 impl AssocItems {
     /// Constructs an `AssociatedItems` map from a series of `ty::AssocItem`s in definition order.
     pub fn new(items_in_def_order: impl IntoIterator<Item = ty::AssocItem>) -> Self {
-        let items = items_in_def_order.into_iter().map(|item| (item.name, item)).collect();
+        let items = items_in_def_order.into_iter().map(|item| (item.opt_name(), item)).collect();
         AssocItems { items }
     }
 
-    /// Returns a slice of associated items in the order they were defined.
+    /// Returns an iterator over associated items in the order they were defined.
     ///
     /// New code should avoid relying on definition order. If you need a particular associated item
     /// for a known trait, make that trait a lang item instead of indexing this array.
@@ -220,7 +250,8 @@ impl AssocItems {
         &self,
         name: Symbol,
     ) -> impl '_ + Iterator<Item = &ty::AssocItem> {
-        self.items.get_by_key(name)
+        assert!(!name.is_empty());
+        self.items.get_by_key(Some(name))
     }
 
     /// Returns the associated item with the given identifier and `AssocKind`, if one exists.

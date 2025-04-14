@@ -2601,8 +2601,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return None;
                     }
                     let input_len = fn_sig.inputs().skip_binder().len();
-                    let order = !item.name.as_str().starts_with("new");
-                    Some((order, item.name, input_len))
+                    let name = item.name();
+                    let order = !name.as_str().starts_with("new");
+                    Some((order, name, input_len))
                 })
                 .collect::<Vec<_>>();
             items.sort_by_key(|(order, _, _)| *order);

@@ -1722,7 +1722,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // that had unsatisfied trait bounds
             if unsatisfied_predicates.is_empty()
                 // ...or if we already suggested that name because of `rustc_confusable` annotation.
-                && Some(similar_candidate.name) != confusable_suggested
+                && Some(similar_candidate.name()) != confusable_suggested
             {
                 self.find_likely_intended_associated_item(
                     &mut err,
@@ -1821,10 +1821,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         let def_kind = similar_candidate.as_def_kind();
         let an = self.tcx.def_kind_descr_article(def_kind, similar_candidate.def_id);
+        let similar_candidate_name = similar_candidate.name();
         let msg = format!(
             "there is {an} {} `{}` with a similar name",
             self.tcx.def_kind_descr(def_kind, similar_candidate.def_id),
-            similar_candidate.name,
+            similar_candidate_name,
         );
         // Methods are defined within the context of a struct and their first parameter
         // is always `self`, which represents the instance of the struct the method is
@@ -1843,7 +1844,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         span,
                         msg,
-                        similar_candidate.name,
+                        similar_candidate_name,
                         Applicability::MaybeIncorrect,
                     );
                 } else {
@@ -1865,7 +1866,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_suggestion_verbose(
                     span,
                     msg,
-                    similar_candidate.name,
+                    similar_candidate_name,
                     Applicability::MaybeIncorrect,
                 );
             } else {
@@ -1878,7 +1879,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_suggestion_verbose(
                 span,
                 msg,
-                similar_candidate.name,
+                similar_candidate_name,
                 Applicability::MaybeIncorrect,
             );
         } else {
@@ -1918,6 +1919,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             infer::FnCall,
                             fn_sig,
                         );
+                        let name = inherent_method.name();
                         if let Some(ref args) = call_args
                             && fn_sig.inputs()[1..]
                                 .iter()
@@ -1927,20 +1929,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         {
                             err.span_suggestion_verbose(
                                 item_name.span,
-                                format!("you might have meant to use `{}`", inherent_method.name),
-                                inherent_method.name,
+                                format!("you might have meant to use `{}`", name),
+                                name,
                                 Applicability::MaybeIncorrect,
                             );
-                            return Some(inherent_method.name);
+                            return Some(name);
                         } else if let None = call_args {
                             err.span_note(
                                 self.tcx.def_span(inherent_method.def_id),
-                                format!(
-                                    "you might have meant to use method `{}`",
-                                    inherent_method.name,
-                                ),
+                                format!("you might have meant to use method `{}`", name),
                             );
-                            return Some(inherent_method.name);
+                            return Some(name);
                         }
                     }
                 }
@@ -2116,7 +2115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Only assoc fn with no receivers and only if
             // they are resolvable
             .filter(|item| {
-                matches!(item.kind, ty::AssocKind::Fn { has_self: false })
+                matches!(item.kind, ty::AssocKind::Fn { has_self: false, .. })
                     && self
                         .probe_for_name(
                             Mode::Path,

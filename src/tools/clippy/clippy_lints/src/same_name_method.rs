@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                 .associated_items(did)
                                 .in_definition_order()
                                 .filter(|assoc_item| assoc_item.is_fn())
-                                .map(|assoc_item| assoc_item.name)
+                                .map(|assoc_item| assoc_item.name())
                                 .collect()
                         } else {
                             BTreeSet::new()

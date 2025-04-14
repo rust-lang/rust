@@ -1332,30 +1332,26 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_associated_item(self, id: DefIndex, sess: &'a Session) -> ty::AssocItem {
-        let name = if self.root.tables.opt_rpitit_info.get(self, id).is_some() {
-            kw::Empty
-        } else {
-            self.item_name(id)
-        };
         let kind = match self.def_kind(id) {
-            DefKind::AssocConst => ty::AssocKind::Const,
-            DefKind::AssocFn => {
-                ty::AssocKind::Fn { has_self: self.get_fn_has_self_parameter(id, sess) }
-            }
-            DefKind::AssocTy => ty::AssocKind::Type {
-                opt_rpitit_info: self
-                    .root
-                    .tables
-                    .opt_rpitit_info
-                    .get(self, id)
-                    .map(|d| d.decode(self)),
+            DefKind::AssocConst => ty::AssocKind::Const { name: self.item_name(id) },
+            DefKind::AssocFn => ty::AssocKind::Fn {
+                name: self.item_name(id),
+                has_self: self.get_fn_has_self_parameter(id, sess),
             },
+            DefKind::AssocTy => {
+                let data = if let Some(rpitit_info) = self.root.tables.opt_rpitit_info.get(self, id)
+                {
+                    ty::AssocTypeData::Rpitit(rpitit_info.decode(self))
+                } else {
+                    ty::AssocTypeData::Normal(self.item_name(id))
+                };
+                ty::AssocKind::Type { data }
+            }
             _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
         let container = self.root.tables.assoc_container.get(self, id).unwrap();
 
         ty::AssocItem {
-            name,
             kind,
             def_id: self.local_def_id(id),
             trait_item_def_id: self.get_trait_item_def_id(id),

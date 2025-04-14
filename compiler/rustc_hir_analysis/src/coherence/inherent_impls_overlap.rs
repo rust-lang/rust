@@ -51,7 +51,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
         for &item1 in impl_items1.in_definition_order() {
             let collision = impl_items2
-                .filter_by_name_unhygienic(item1.name)
+                .filter_by_name_unhygienic(item1.name())
                 .any(|&item2| self.compare_hygienically(item1, item2));
 
             if collision {
@@ -113,7 +113,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         let mut res = Ok(());
         for &item1 in impl_items1.in_definition_order() {
             let collision = impl_items2
-                .filter_by_name_unhygienic(item1.name)
+                .filter_by_name_unhygienic(item1.name())
                 .find(|&&item2| self.compare_hygienically(item1, item2));
 
             if let Some(item2) = collision {
@@ -230,11 +230,11 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                 let mut ids = impl_items
                     .in_definition_order()
                     .filter_map(|item| {
-                        let entry = connected_region_ids.entry(item.name);
+                        let entry = connected_region_ids.entry(item.name());
                         if let IndexEntry::Occupied(e) = &entry {
                             Some(*e.get())
                         } else {
-                            idents_to_add.push(item.name);
+                            idents_to_add.push(item.name());
                             None
                         }
                     })

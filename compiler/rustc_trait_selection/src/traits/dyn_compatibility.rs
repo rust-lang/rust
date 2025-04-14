@@ -298,31 +298,33 @@ pub fn dyn_compatibility_violations_for_assoc_item(
     match item.kind {
         // Associated consts are never dyn-compatible, as they can't have `where` bounds yet at all,
         // and associated const bounds in trait objects aren't a thing yet either.
-        ty::AssocKind::Const => {
-            vec![DynCompatibilityViolation::AssocConst(item.name, item.ident(tcx).span)]
+        ty::AssocKind::Const { name } => {
+            vec![DynCompatibilityViolation::AssocConst(name, item.ident(tcx).span)]
         }
-        ty::AssocKind::Fn { .. } => virtual_call_violations_for_method(tcx, trait_def_id, item)
-            .into_iter()
-            .map(|v| {
-                let node = tcx.hir_get_if_local(item.def_id);
-                // Get an accurate span depending on the violation.
-                let span = match (&v, node) {
-                    (MethodViolationCode::ReferencesSelfInput(Some(span)), _) => *span,
-                    (MethodViolationCode::UndispatchableReceiver(Some(span)), _) => *span,
-                    (MethodViolationCode::ReferencesImplTraitInTrait(span), _) => *span,
-                    (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
-                        node.fn_decl().map_or(item.ident(tcx).span, |decl| decl.output.span())
-                    }
-                    _ => item.ident(tcx).span,
-                };
+        ty::AssocKind::Fn { name, .. } => {
+            virtual_call_violations_for_method(tcx, trait_def_id, item)
+                .into_iter()
+                .map(|v| {
+                    let node = tcx.hir_get_if_local(item.def_id);
+                    // Get an accurate span depending on the violation.
+                    let span = match (&v, node) {
+                        (MethodViolationCode::ReferencesSelfInput(Some(span)), _) => *span,
+                        (MethodViolationCode::UndispatchableReceiver(Some(span)), _) => *span,
+                        (MethodViolationCode::ReferencesImplTraitInTrait(span), _) => *span,
+                        (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
+                            node.fn_decl().map_or(item.ident(tcx).span, |decl| decl.output.span())
+                        }
+                        _ => item.ident(tcx).span,
+                    };
 
-                DynCompatibilityViolation::Method(item.name, v, span)
-            })
-            .collect(),
+                    DynCompatibilityViolation::Method(name, v, span)
+                })
+                .collect()
+        }
         // Associated types can only be dyn-compatible if they have `Self: Sized` bounds.
         ty::AssocKind::Type { .. } => {
             if !tcx.generics_of(item.def_id).is_own_empty() && !item.is_impl_trait_in_trait() {
-                vec![DynCompatibilityViolation::GAT(item.name, item.ident(tcx).span)]
+                vec![DynCompatibilityViolation::GAT(item.name(), item.ident(tcx).span)]
             } else {
                 // We will permit associated types if they are explicitly mentioned in the trait object.
                 // We can't check this here, as here we only check if it is guaranteed to not be possible.

@@ -1706,7 +1706,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
         }
-        if let ty::AssocKind::Type { opt_rpitit_info: Some(rpitit_info) } = item.kind {
+        if let ty::AssocKind::Type { data: ty::AssocTypeData::Rpitit(rpitit_info) } = item.kind {
             record!(self.tables.opt_rpitit_info[def_id] <- rpitit_info);
             if matches!(rpitit_info, ty::ImplTraitInTraitData::Trait { .. }) {
                 record_array!(

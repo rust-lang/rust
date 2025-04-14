@@ -474,7 +474,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
                             gat_generics,
                         )
                     }
-                    ty::AssocKind::Const => None,
+                    ty::AssocKind::Const { .. } => None,
                 };
 
                 if let Some(item_required_bounds) = item_required_bounds {
@@ -1076,7 +1076,7 @@ fn check_associated_item(
         };
 
         match item.kind {
-            ty::AssocKind::Const => {
+            ty::AssocKind::Const { .. } => {
                 let ty = tcx.type_of(item.def_id).instantiate_identity();
                 let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());

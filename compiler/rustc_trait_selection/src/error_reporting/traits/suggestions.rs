@@ -2112,7 +2112,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_ref: DefId,
     ) {
         if let Some(assoc_item) = self.tcx.opt_associated_item(item_def_id) {
-            if let ty::AssocKind::Const | ty::AssocKind::Type { .. } = assoc_item.kind {
+            if let ty::AssocKind::Const { .. } | ty::AssocKind::Type { .. } = assoc_item.kind {
                 err.note(format!(
                     "{}s cannot be accessed directly on a `trait`, they can only be \
                         accessed through a specific `impl`",
@@ -2121,7 +2121,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 err.span_suggestion(
                     span,
                     "use the fully qualified path to an implementation",
-                    format!("<Type as {}>::{}", self.tcx.def_path_str(trait_ref), assoc_item.name),
+                    format!(
+                        "<Type as {}>::{}",
+                        self.tcx.def_path_str(trait_ref),
+                        assoc_item.name()
+                    ),
                     Applicability::HasPlaceholders,
                 );
             }

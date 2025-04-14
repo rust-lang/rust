@@ -6,7 +6,6 @@ use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::kw;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -129,14 +128,14 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AssocItem {
 
 fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty::AssocItem {
     let owner_id = trait_item_ref.id.owner_id;
+    let name = trait_item_ref.ident.name;
     let kind = match trait_item_ref.kind {
-        hir::AssocItemKind::Const => ty::AssocKind::Const,
-        hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { has_self },
-        hir::AssocItemKind::Type => ty::AssocKind::Type { opt_rpitit_info: None },
+        hir::AssocItemKind::Const => ty::AssocKind::Const { name },
+        hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { name, has_self },
+        hir::AssocItemKind::Type => ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) },
     };
 
     ty::AssocItem {
-        name: trait_item_ref.ident.name,
         kind,
         def_id: owner_id.to_def_id(),
         trait_item_def_id: Some(owner_id.to_def_id()),
@@ -146,14 +145,14 @@ fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty
 
 fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::AssocItem {
     let def_id = impl_item_ref.id.owner_id;
+    let name = impl_item_ref.ident.name;
     let kind = match impl_item_ref.kind {
-        hir::AssocItemKind::Const => ty::AssocKind::Const,
-        hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { has_self },
-        hir::AssocItemKind::Type => ty::AssocKind::Type { opt_rpitit_info: None },
+        hir::AssocItemKind::Const => ty::AssocKind::Const { name },
+        hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { name, has_self },
+        hir::AssocItemKind::Type => ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) },
     };
 
     ty::AssocItem {
-        name: impl_item_ref.ident.name,
         kind,
         def_id: def_id.to_def_id(),
         trait_item_def_id: impl_item_ref.trait_item_def_id,
@@ -260,9 +259,8 @@ fn associated_type_for_impl_trait_in_trait(
     trait_assoc_ty.def_ident_span(Some(span));
 
     trait_assoc_ty.associated_item(ty::AssocItem {
-        name: kw::Empty,
         kind: ty::AssocKind::Type {
-            opt_rpitit_info: Some(ImplTraitInTraitData::Trait {
+            data: ty::AssocTypeData::Rpitit(ImplTraitInTraitData::Trait {
                 fn_def_id: fn_def_id.to_def_id(),
                 opaque_def_id: opaque_ty_def_id.to_def_id(),
             }),
@@ -313,9 +311,8 @@ fn associated_type_for_impl_trait_in_impl(
     impl_assoc_ty.def_ident_span(Some(span));
 
     impl_assoc_ty.associated_item(ty::AssocItem {
-        name: kw::Empty,
         kind: ty::AssocKind::Type {
-            opt_rpitit_info: Some(ImplTraitInTraitData::Impl {
+            data: ty::AssocTypeData::Rpitit(ImplTraitInTraitData::Impl {
                 fn_def_id: impl_fn_def_id.to_def_id(),
             }),
         },

@@ -783,7 +783,7 @@ fn foo(&self) -> Self::T { String::new() }
             .in_definition_order()
             .filter(|item| {
                 item.is_fn()
-                    && Some(item.name) != current_method_ident
+                    && Some(item.name()) != current_method_ident
                     && !tcx.is_doc_hidden(item.def_id)
             })
             .filter_map(|item| {

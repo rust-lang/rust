@@ -348,7 +348,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && let None = self.tainted_by_errors()
                     {
                         let (verb, noun) = match self.tcx.associated_item(item_id).kind {
-                            ty::AssocKind::Const => ("refer to the", "constant"),
+                            ty::AssocKind::Const { .. } => ("refer to the", "constant"),
                             ty::AssocKind::Fn { .. } => ("call", "function"),
                             // This is already covered by E0223, but this following single match
                             // arm doesn't hurt here.

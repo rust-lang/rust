@@ -2007,8 +2007,9 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 if def.did() != def_id {
                     return None;
                 }
-                let order = !item.name.as_str().starts_with("new");
-                Some((order, item.name, input_len))
+                let name = item.name();
+                let order = !name.as_str().starts_with("new");
+                Some((order, name, input_len))
             })
             .collect::<Vec<_>>();
         items.sort_by_key(|(order, _, _)| *order);

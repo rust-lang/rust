@@ -1671,7 +1671,7 @@ impl<'tcx> Pick<'tcx> {
     /// Do not use for type checking.
     pub(crate) fn differs_from(&self, other: &Self) -> bool {
         let Self {
-            item: AssocItem { def_id, name: _, kind: _, container: _, trait_item_def_id: _ },
+            item: AssocItem { def_id, kind: _, container: _, trait_item_def_id: _ },
             kind: _,
             import_ids: _,
             autoderefs: _,
@@ -1714,17 +1714,12 @@ impl<'tcx> Pick<'tcx> {
                         tcx.def_path_str(self.item.def_id),
                     ));
                 }
-                (ty::AssocKind::Const, ty::AssocItemContainer::Trait) => {
+                (ty::AssocKind::Const { name }, ty::AssocItemContainer::Trait) => {
                     let def_id = self.item.container_id(tcx);
                     lint.span_suggestion(
                         span,
                         "use the fully qualified path to the associated const",
-                        format!(
-                            "<{} as {}>::{}",
-                            self.self_ty,
-                            tcx.def_path_str(def_id),
-                            self.item.name
-                        ),
+                        format!("<{} as {}>::{}", self.self_ty, tcx.def_path_str(def_id), name),
                         Applicability::MachineApplicable,
                     );
                 }
@@ -2213,7 +2208,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let best_name = {
                     let names = applicable_close_candidates
                         .iter()
-                        .map(|cand| cand.name)
+                        .map(|cand| cand.name())
                         .collect::<Vec<Symbol>>();
                     find_best_match_for_name_with_substrings(
                         &names,
@@ -2225,10 +2220,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     applicable_close_candidates
                         .iter()
                         .find(|cand| self.matches_by_doc_alias(cand.def_id))
-                        .map(|cand| cand.name)
+                        .map(|cand| cand.name())
                 });
                 Ok(best_name.and_then(|best_name| {
-                    applicable_close_candidates.into_iter().find(|method| method.name == best_name)
+                    applicable_close_candidates
+                        .into_iter()
+                        .find(|method| method.name() == best_name)
                 }))
             }
         })
@@ -2246,7 +2243,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             Mode::MethodCall => item.is_method(),
             Mode::Path => match item.kind {
                 ty::AssocKind::Type { .. } => false,
-                ty::AssocKind::Fn { .. } | ty::AssocKind::Const => true,
+                ty::AssocKind::Fn { .. } | ty::AssocKind::Const { .. } => true,
             },
         }
         // FIXME -- check for types that deref to `Self`,
@@ -2320,7 +2317,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn is_relevant_kind_for_mode(&self, kind: ty::AssocKind) -> bool {
         match (self.mode, kind) {
             (Mode::MethodCall, ty::AssocKind::Fn { .. }) => true,
-            (Mode::Path, ty::AssocKind::Const | ty::AssocKind::Fn { .. }) => true,
+            (Mode::Path, ty::AssocKind::Const { .. } | ty::AssocKind::Fn { .. }) => true,
             _ => false,
         }
     }
@@ -2402,7 +2399,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         }
                         match edit_distance_with_substrings(
                             name.as_str(),
-                            x.name.as_str(),
+                            x.name().as_str(),
                             max_dist,
                         ) {
                             Some(d) => d > 0,

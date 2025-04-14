@@ -1578,7 +1578,6 @@ crate_def! {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct AssocItem {
     pub def_id: AssocDef,
-    pub name: Symbol,
     pub kind: AssocKind,
     pub container: AssocItemContainer,
 
@@ -1587,18 +1586,20 @@ pub struct AssocItem {
     pub trait_item_def_id: Option<AssocDef>,
 }
 
+#[derive(Clone, PartialEq, Debug, Eq, Serialize)]
+pub enum AssocTypeData {
+    Normal(Symbol),
+    /// The associated type comes from an RPITIT. It has no name, and the
+    /// `ImplTraitInTraitData` provides additional information about its
+    /// source.
+    Rpitit(ImplTraitInTraitData),
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum AssocKind {
-    Const,
-    Fn {
-        has_self: bool,
-    },
-    Type {
-        /// `Some` if the associated type comes from an RPITIT. The
-        /// `ImplTraitInTraitData` provides additional information about its
-        /// source.
-        opt_rpitit_info: Option<ImplTraitInTraitData>,
-    },
+    Const { name: Symbol },
+    Fn { name: Symbol, has_self: bool },
+    Type { data: AssocTypeData },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -1615,6 +1616,6 @@ pub enum ImplTraitInTraitData {
 
 impl AssocItem {
     pub fn is_impl_trait_in_trait(&self) -> bool {
-        matches!(self.kind, AssocKind::Type { opt_rpitit_info: Some(_) })
+        matches!(self.kind, AssocKind::Type { data: AssocTypeData::Rpitit(_) })
     }
 }

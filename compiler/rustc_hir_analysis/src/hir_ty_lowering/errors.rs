@@ -168,7 +168,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let all_candidate_names: Vec<_> = all_candidates()
             .flat_map(|r| tcx.associated_items(r.def_id()).in_definition_order())
             .filter_map(|item| {
-                (!item.is_impl_trait_in_trait() && item.as_tag() == assoc_tag).then_some(item.name)
+                if !item.is_impl_trait_in_trait() && item.as_tag() == assoc_tag {
+                    item.opt_name()
+                } else {
+                    None
+                }
             })
             .collect();
 
@@ -200,7 +204,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .iter()
             .flat_map(|trait_def_id| tcx.associated_items(*trait_def_id).in_definition_order())
             .filter_map(|item| {
-                (!item.is_impl_trait_in_trait() && item.as_tag() == assoc_tag).then_some(item.name)
+                (!item.is_impl_trait_in_trait() && item.as_tag() == assoc_tag)
+                    .then_some(item.name())
             })
             .collect();
 
@@ -337,7 +342,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> ErrorGuaranteed {
         let tcx = self.tcx();
 
-        let bound_on_assoc_const_label = if let ty::AssocKind::Const = assoc_item.kind
+        let bound_on_assoc_const_label = if let ty::AssocKind::Const { .. } = assoc_item.kind
             && let Some(constraint) = constraint
             && let hir::AssocItemConstraintKind::Bound { .. } = constraint.kind
         {
@@ -761,7 +766,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // `issue-22560.rs`.
         let mut dyn_compatibility_violations = Ok(());
         for (assoc_item, trait_ref) in &missing_assoc_types {
-            names.entry(trait_ref).or_default().push(assoc_item.name);
+            names.entry(trait_ref).or_default().push(assoc_item.name());
             names_len += 1;
 
             let violations =
@@ -852,16 +857,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut names: UnordMap<_, usize> = Default::default();
         for (item, _) in &missing_assoc_types {
             types_count += 1;
-            *names.entry(item.name).or_insert(0) += 1;
+            *names.entry(item.name()).or_insert(0) += 1;
         }
         let mut dupes = false;
         let mut shadows = false;
         for (item, trait_ref) in &missing_assoc_types {
-            let prefix = if names[&item.name] > 1 {
+            let name = item.name();
+            let prefix = if names[&name] > 1 {
                 let trait_def_id = trait_ref.def_id();
                 dupes = true;
                 format!("{}::", tcx.def_path_str(trait_def_id))
-            } else if bound_names.get(&item.name).is_some_and(|x| *x != item) {
+            } else if bound_names.get(&name).is_some_and(|x| *x != item) {
                 let trait_def_id = trait_ref.def_id();
                 shadows = true;
                 format!("{}::", tcx.def_path_str(trait_def_id))
@@ -871,7 +877,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             let mut is_shadowed = false;
 
-            if let Some(assoc_item) = bound_names.get(&item.name)
+            if let Some(assoc_item) = bound_names.get(&name)
                 && *assoc_item != item
             {
                 is_shadowed = true;
@@ -880,17 +886,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     if assoc_item.def_id.is_local() { ", consider renaming it" } else { "" };
                 err.span_label(
                     tcx.def_span(assoc_item.def_id),
-                    format!("`{}{}` shadowed here{}", prefix, item.name, rename_message),
+                    format!("`{}{}` shadowed here{}", prefix, name, rename_message),
                 );
             }
 
             let rename_message = if is_shadowed { ", consider renaming it" } else { "" };
 
             if let Some(sp) = tcx.hir_span_if_local(item.def_id) {
-                err.span_label(
-                    sp,
-                    format!("`{}{}` defined here{}", prefix, item.name, rename_message),
-                );
+                err.span_label(sp, format!("`{}{}` defined here{}", prefix, name, rename_message));
             }
         }
         if potential_assoc_types.len() == missing_assoc_types.len() {
@@ -903,7 +906,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             let types: Vec<_> = missing_assoc_types
                 .iter()
-                .map(|(item, _)| format!("{} = Type", item.name))
+                .map(|(item, _)| format!("{} = Type", item.name()))
                 .collect();
             let code = if let Some(snippet) = snippet.strip_suffix('>') {
                 // The user wrote `Trait<'a>` or similar and we don't have a type we can
@@ -938,16 +941,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let mut names: FxIndexMap<_, usize> = FxIndexMap::default();
             for (item, _) in &missing_assoc_types {
                 types_count += 1;
-                *names.entry(item.name).or_insert(0) += 1;
+                *names.entry(item.name()).or_insert(0) += 1;
             }
             let mut label = vec![];
             for (item, trait_ref) in &missing_assoc_types {
-                let postfix = if names[&item.name] > 1 {
+                let name = item.name();
+                let postfix = if names[&name] > 1 {
                     format!(" (from trait `{}`)", trait_ref.print_trait_sugared())
                 } else {
                     String::new()
                 };
-                label.push(format!("`{}`{}", item.name, postfix));
+                label.push(format!("`{}`{}", name, postfix));
             }
             if !label.is_empty() {
                 err.span_label(

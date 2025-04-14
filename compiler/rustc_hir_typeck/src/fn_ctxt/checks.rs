@@ -683,10 +683,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .all(|(expected, found)| self.may_coerce(*expected, *found))
                 && fn_sig.inputs()[1..].len() == input_types.len()
             {
+                let assoc_name = assoc.name();
                 err.span_suggestion_verbose(
                     call_name.span,
-                    format!("you might have meant to use `{}`", assoc.name),
-                    assoc.name,
+                    format!("you might have meant to use `{}`", assoc_name),
+                    assoc_name,
                     Applicability::MaybeIncorrect,
                 );
                 return;
@@ -706,7 +707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.def_span(assoc.def_id),
                     format!(
                         "there's is a method with similar name `{}`, but the arguments don't match",
-                        assoc.name,
+                        assoc.name(),
                     ),
                 );
                 return;
@@ -718,7 +719,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     format!(
                         "there's is a method with similar name `{}`, but their argument count \
                          doesn't match",
-                        assoc.name,
+                        assoc.name(),
                     ),
                 );
                 return;

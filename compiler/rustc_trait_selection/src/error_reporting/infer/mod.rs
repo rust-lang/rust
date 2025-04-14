@@ -2340,7 +2340,7 @@ impl<'tcx> ObligationCause<'tcx> {
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type { .. }, .. } => {
                 ObligationCauseFailureCode::TypeCompat { span, subdiags }
             }
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const { .. }, .. } => {
                 ObligationCauseFailureCode::ConstCompat { span, subdiags }
             }
             ObligationCauseCode::BlockTailExpression(.., hir::MatchSource::TryDesugar(_)) => {
@@ -2404,7 +2404,7 @@ impl<'tcx> ObligationCause<'tcx> {
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type { .. }, .. } => {
                 "associated type is compatible with trait"
             }
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const { .. }, .. } => {
                 "const is compatible with trait"
             }
             ObligationCauseCode::MainFunctionType => "`main` function has the correct type",
@@ -2428,7 +2428,7 @@ impl IntoDiagArg for ObligationCauseAsDiagArg<'_> {
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type { .. }, .. } => {
                 "type_compat"
             }
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const { .. }, .. } => {
                 "const_compat"
             }
             ObligationCauseCode::MainFunctionType => "fn_main_correct_type",
