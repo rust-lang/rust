@@ -76,7 +76,7 @@ macro_rules! argument_new {
                 formatter: {
                     let f: fn(&$t, &mut Formatter<'_>) -> Result = $f;
                     // SAFETY: This is only called with `value`, which has the right type.
-                    unsafe { mem::transmute(f) }
+                    unsafe { core::mem::transmute(f) }
                 },
                 #[cfg(any(sanitize = "cfi", sanitize = "kcfi"))]
                 formatter: |ptr: NonNull<()>, fmt: &mut Formatter<'_>| {
