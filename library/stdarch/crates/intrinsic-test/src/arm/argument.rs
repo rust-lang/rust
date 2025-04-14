@@ -79,10 +79,10 @@ impl Argument {
     }
 
     // ARM-specific
-    pub fn from_c(pos: usize, arg: &str, arg_prep: Option<ArgPrep>) -> Argument {
+    pub fn from_c(pos: usize, arg: &str, arg_prep: Option<ArgPrep>, target: &String) -> Argument {
         let (ty, var_name) = Self::type_and_name_from_c(arg);
 
-        let ty = IntrinsicType::from_c(ty)
+        let ty = IntrinsicType::from_c(ty, target)
             .unwrap_or_else(|_| panic!("Failed to parse argument '{arg}'"));
 
         let constraint = arg_prep.and_then(|a| a.try_into().ok());

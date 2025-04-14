@@ -22,8 +22,8 @@ pub struct ArmArchitectureTest {
 impl SupportedArchitectureTest for ArmArchitectureTest {
     fn create(cli_options: ProcessedCli) -> Self {
         let a32 = cli_options.target.contains("v7");
-        let mut intrinsics =
-            get_neon_intrinsics(&cli_options.filename).expect("Error parsing input file");
+        let mut intrinsics = get_neon_intrinsics(&cli_options.filename, &cli_options.target)
+            .expect("Error parsing input file");
 
         intrinsics.sort_by(|a, b| a.name.cmp(&b.name));
 

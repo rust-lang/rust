@@ -97,6 +97,8 @@ pub enum IntrinsicType {
         /// rows encoded in the type (e.g. uint8x8_t).
         /// A value of `None` can be assumed to be 1 though.
         vec_len: Option<u32>,
+
+        target: String,
     },
 }
 
@@ -393,6 +395,7 @@ impl IntrinsicType {
                 bit_len: Some(bl),
                 simd_len,
                 vec_len,
+                target,
                 ..
             } => {
                 let quad = if simd_len.unwrap_or(1) * bl > 64 {
@@ -400,6 +403,8 @@ impl IntrinsicType {
                 } else {
                     ""
                 };
+
+                let choose_workaround = language == Language::C && target.contains("v7");
                 format!(
                     "vld{len}{quad}_{type}{size}",
                     type = match k {
@@ -407,7 +412,8 @@ impl IntrinsicType {
                         TypeKind::Int => "s",
                         TypeKind::Float => "f",
                         // The ACLE doesn't support 64-bit polynomial loads on Armv7
-                        TypeKind::Poly => if language == Language::C && *bl == 64 {"s"} else {"p"},
+                        // if armv7 and bl == 64, use "s", else "p"
+                        TypeKind::Poly => if choose_workaround && *bl == 64 {"s"} else {"p"},
                         x => todo!("get_load_function TypeKind: {:#?}", x),
                     },
                     size = bl,
@@ -462,7 +468,7 @@ impl IntrinsicType {
     }
 
     /// ARM-specific
-    pub fn from_c(s: &str) -> Result<IntrinsicType, String> {
+    pub fn from_c(s: &str, target: &String) -> Result<IntrinsicType, String> {
         const CONST_STR: &str = "const";
         if let Some(s) = s.strip_suffix('*') {
             let (s, constant) = match s.trim().strip_suffix(CONST_STR) {
@@ -472,7 +478,7 @@ impl IntrinsicType {
             let s = s.trim_end();
             Ok(IntrinsicType::Ptr {
                 constant,
-                child: Box::new(IntrinsicType::from_c(s)?),
+                child: Box::new(IntrinsicType::from_c(s, target)?),
             })
         } else {
             // [const ]TYPE[{bitlen}[x{simdlen}[x{vec_len}]]][_t]
@@ -507,6 +513,7 @@ impl IntrinsicType {
                     bit_len: Some(bit_len),
                     simd_len,
                     vec_len,
+                    target: target.to_string(),
                 })
             } else {
                 let kind = start.parse::<TypeKind>()?;
@@ -520,6 +527,7 @@ impl IntrinsicType {
                     bit_len,
                     simd_len: None,
                     vec_len: None,
+                    target: target.to_string(),
                 })
             }
         }

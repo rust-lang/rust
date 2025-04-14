@@ -41,7 +41,10 @@ struct JsonIntrinsic {
     architectures: Vec<String>,
 }
 
-pub fn get_neon_intrinsics(filename: &Path) -> Result<Vec<Intrinsic>, Box<dyn std::error::Error>> {
+pub fn get_neon_intrinsics(
+    filename: &Path,
+    target: &String,
+) -> Result<Vec<Intrinsic>, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(filename)?;
     let reader = std::io::BufReader::new(file);
     let json: Vec<JsonIntrinsic> = serde_json::from_reader(reader).expect("Couldn't parse JSON");
@@ -50,7 +53,7 @@ pub fn get_neon_intrinsics(filename: &Path) -> Result<Vec<Intrinsic>, Box<dyn st
         .into_iter()
         .filter_map(|intr| {
             if intr.simd_isa == "Neon" {
-                Some(json_to_intrinsic(intr).expect("Couldn't parse JSON"))
+                Some(json_to_intrinsic(intr, target).expect("Couldn't parse JSON"))
             } else {
                 None
             }
@@ -59,10 +62,13 @@ pub fn get_neon_intrinsics(filename: &Path) -> Result<Vec<Intrinsic>, Box<dyn st
     Ok(parsed)
 }
 
-fn json_to_intrinsic(mut intr: JsonIntrinsic) -> Result<Intrinsic, Box<dyn std::error::Error>> {
+fn json_to_intrinsic(
+    mut intr: JsonIntrinsic,
+    target: &String,
+) -> Result<Intrinsic, Box<dyn std::error::Error>> {
     let name = intr.name.replace(['[', ']'], "");
 
-    let results = IntrinsicType::from_c(&intr.return_type.value)?;
+    let results = IntrinsicType::from_c(&intr.return_type.value, target)?;
 
     let mut args_prep = intr.args_prep.as_mut();
     let args = intr
@@ -72,7 +78,7 @@ fn json_to_intrinsic(mut intr: JsonIntrinsic) -> Result<Intrinsic, Box<dyn std::
         .map(|(i, arg)| {
             let arg_name = Argument::type_and_name_from_c(&arg).1;
             let arg_prep = args_prep.as_mut().and_then(|a| a.remove(arg_name));
-            let mut arg = Argument::from_c(i, &arg, arg_prep);
+            let mut arg = Argument::from_c(i, &arg, arg_prep, target);
             // The JSON doesn't list immediates as const
             if let IntrinsicType::Type {
                 ref mut constant, ..
