@@ -122,7 +122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 // We want to emit an error if the const is not structurally resolveable as otherwise
-                // we can find up conservatively proving `Copy` which may infer the repeat expr count
+                // we can wind up conservatively proving `Copy` which may infer the repeat expr count
                 // to something that never required `Copy` in the first place.
                 let count = self
                     .structurally_resolve_const(element.span, self.normalize(element.span, count));
@@ -171,14 +171,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         for (element, element_ty, count) in deferred_repeat_expr_checks {
             match count.kind() {
-                ty::ConstKind::Value(val)
-                    if val.try_to_target_usize(self.tcx).is_none_or(|count| count > 1) =>
-                {
-                    enforce_copy_bound(element, element_ty)
+                ty::ConstKind::Value(val) => {
+                    if val.try_to_target_usize(self.tcx).is_none_or(|count| count > 1) {
+                        enforce_copy_bound(element, element_ty)
+                    } else {
+                        // If the length is 0 or 1 we don't actually copy the element, we either don't create it
+                        // or we just use the one value.
+                    }
                 }
-                // If the length is 0 or 1 we don't actually copy the element, we either don't create it
-                // or we just use the one value.
-                ty::ConstKind::Value(_) => (),
 
                 // If the length is a generic parameter or some rigid alias then conservatively
                 // require `element_ty: Copy` as it may wind up being `>1` after monomorphization.
