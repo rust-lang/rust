@@ -322,7 +322,7 @@ impl UnconditionalRecursion {
                             .in_definition_order()
                             // We're not interested in foreign implementations of the `Default` trait.
                             .find(|item| {
-                                item.is_fn() && item.def_id.is_local() && item.name == kw::Default
+                                item.is_fn() && item.def_id.is_local() && item.name() == kw::Default
                             })
                         && let Some(body_node) = cx.tcx.hir_get_if_local(assoc_item.def_id)
                         && let Some(body_id) = body_node.body_id()
