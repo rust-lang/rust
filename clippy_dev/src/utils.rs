@@ -1,3 +1,4 @@
+use aho_corasick::AhoCorasickBuilder;
 use core::fmt::{self, Display};
 use core::str::FromStr;
 use std::env;
@@ -274,4 +275,88 @@ pub(crate) fn replace_region_in_text<'a>(
     res.push_str(text_end);
 
     Ok(res)
+}
+
+/// Replace substrings if they aren't bordered by identifier characters. Returns `None` if there
+/// were no replacements.
+#[must_use]
+pub fn replace_ident_like(contents: &str, replacements: &[(&str, &str)]) -> Option<String> {
+    fn is_ident_char(c: u8) -> bool {
+        matches!(c, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')
+    }
+
+    let searcher = AhoCorasickBuilder::new()
+        .match_kind(aho_corasick::MatchKind::LeftmostLongest)
+        .build(replacements.iter().map(|&(x, _)| x.as_bytes()))
+        .unwrap();
+
+    let mut result = String::with_capacity(contents.len() + 1024);
+    let mut pos = 0;
+    let mut edited = false;
+    for m in searcher.find_iter(contents) {
+        let (old, new) = replacements[m.pattern()];
+        result.push_str(&contents[pos..m.start()]);
+        result.push_str(
+            if !is_ident_char(contents.as_bytes().get(m.start().wrapping_sub(1)).copied().unwrap_or(0))
+                && !is_ident_char(contents.as_bytes().get(m.end()).copied().unwrap_or(0))
+            {
+                edited = true;
+                new
+            } else {
+                old
+            },
+        );
+        pos = m.end();
+    }
+    result.push_str(&contents[pos..]);
+    edited.then_some(result)
+}
+
+#[expect(clippy::must_use_candidate)]
+pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
+    match OpenOptions::new().create_new(true).write(true).open(new_name) {
+        Ok(file) => drop(file),
+        Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
+        Err(e) => panic_io(&e, "creating", new_name),
+    }
+    match fs::rename(old_name, new_name) {
+        Ok(()) => true,
+        Err(e) => {
+            drop(fs::remove_file(new_name));
+            if e.kind() == io::ErrorKind::NotFound {
+                false
+            } else {
+                panic_io(&e, "renaming", old_name);
+            }
+        },
+    }
+}
+
+#[must_use]
+pub fn insert_at_marker(text: &str, marker: &str, new_text: &str) -> Option<String> {
+    let i = text.find(marker)?;
+    let (pre, post) = text.split_at(i);
+    Some([pre, new_text, post].into_iter().collect())
+}
+
+pub fn rewrite_file(path: &Path, f: impl FnOnce(&str) -> Option<String>) {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .read(true)
+        .open(path)
+        .unwrap_or_else(|e| panic_io(&e, "opening", path));
+    let mut buf = String::new();
+    file.read_to_string(&mut buf)
+        .unwrap_or_else(|e| panic_io(&e, "reading", path));
+    if let Some(new_contents) = f(&buf) {
+        file.rewind().unwrap_or_else(|e| panic_io(&e, "writing", path));
+        file.write_all(new_contents.as_bytes())
+            .unwrap_or_else(|e| panic_io(&e, "writing", path));
+        file.set_len(new_contents.len() as u64)
+            .unwrap_or_else(|e| panic_io(&e, "writing", path));
+    }
+}
+
+pub fn write_file(path: &Path, contents: &str) {
+    fs::write(path, contents).unwrap_or_else(|e| panic_io(&e, "writing", path));
 }

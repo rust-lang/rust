@@ -3,7 +3,9 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use clap::{Args, Parser, Subcommand};
-use clippy_dev::{dogfood, fmt, lint, new_lint, release, serve, setup, sync, update_lints, utils};
+use clippy_dev::{
+    deprecate_lint, dogfood, fmt, lint, new_lint, release, rename_lint, serve, setup, sync, update_lints, utils,
+};
 use std::convert::Infallible;
 use std::env;
 
@@ -84,13 +86,13 @@ fn main() {
             old_name,
             new_name,
             uplift,
-        } => update_lints::rename(
+        } => rename_lint::rename(
             clippy.version,
             &old_name,
             new_name.as_ref().unwrap_or(&old_name),
             uplift,
         ),
-        DevCommand::Deprecate { name, reason } => update_lints::deprecate(clippy.version, &name, &reason),
+        DevCommand::Deprecate { name, reason } => deprecate_lint::deprecate(clippy.version, &name, &reason),
         DevCommand::Sync(SyncCommand { subcommand }) => match subcommand {
             SyncSubcommand::UpdateNightly => sync::update_nightly(),
         },
