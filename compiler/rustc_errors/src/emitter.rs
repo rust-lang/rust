@@ -3544,8 +3544,35 @@ pub(crate) fn should_show_source_code(
 fn is_external_library(sm: &SourceMap, span: Span) -> bool {
     let filename = sm.span_to_filename(span);
     if let Some(path) = filename.into_local_path() {
-        path.to_string_lossy().contains(".cargo/registry/src/")
-            || path.to_string_lossy().contains(".rustup/toolchains/")
+        // use env variable to get path, avoid hardcode
+        // use platform independent path
+
+        let cargo_home = match std::env::var("CARGO_HOME") {
+            Ok(dir) => std::path::PathBuf::from(dir),
+            Err(_) => {
+                if let Ok(home) = std::env::var("HOME") {
+                    std::path::PathBuf::from(home).join(".cargo")
+                } else {
+                    return false;
+                }
+            }
+        };
+
+        let rustup_home = match std::env::var("RUSTUP_HOME") {
+            Ok(dir) => std::path::PathBuf::from(dir),
+            Err(_) => {
+                if let Ok(home) = std::env::var("HOME") {
+                    std::path::PathBuf::from(home).join(".rustup")
+                } else {
+                    return false;
+                }
+            }
+        };
+
+        let registry_path = cargo_home.join("registry").join("src");
+        let toolchain_path = rustup_home.join("toolchains");
+
+        path.starts_with(&registry_path) || path.starts_with(&toolchain_path)
     } else {
         false
     }
