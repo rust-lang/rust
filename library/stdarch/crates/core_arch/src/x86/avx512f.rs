@@ -24813,10 +24813,7 @@ pub fn _mm256_maskz_shuffle_f64x2<const MASK: i32>(k: __mmask8, a: __m256d, b: _
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextractf32x4, IMM8 = 3)
-)]
+#[cfg_attr(test, assert_instr(vextractf32x4, IMM8 = 3))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm512_extractf32x4_ps<const IMM8: i32>(a: __m512) -> __m128 {
     unsafe {
@@ -24836,10 +24833,7 @@ pub fn _mm512_extractf32x4_ps<const IMM8: i32>(a: __m512) -> __m128 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextractf32x4, IMM8 = 3)
-)]
+#[cfg_attr(test, assert_instr(vextractf32x4, IMM8 = 3))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm512_mask_extractf32x4_ps<const IMM8: i32>(src: __m128, k: __mmask8, a: __m512) -> __m128 {
     unsafe {
@@ -24855,10 +24849,7 @@ pub fn _mm512_mask_extractf32x4_ps<const IMM8: i32>(src: __m128, k: __mmask8, a:
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextractf32x4, IMM8 = 3)
-)]
+#[cfg_attr(test, assert_instr(vextractf32x4, IMM8 = 3))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm512_maskz_extractf32x4_ps<const IMM8: i32>(k: __mmask8, a: __m512) -> __m128 {
     unsafe {
@@ -24875,7 +24866,7 @@ pub fn _mm512_maskz_extractf32x4_ps<const IMM8: i32>(k: __mmask8, a: __m512) -> 
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(
-    all(test, not(target_env = "msvc")),
+    test,
     assert_instr(vextract, IMM8 = 1) //should be vextractf32x4
 )]
 #[rustc_legacy_const_generics(1)]
@@ -24895,10 +24886,7 @@ pub fn _mm256_extractf32x4_ps<const IMM8: i32>(a: __m256) -> __m128 {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextractf32x4, IMM8 = 1)
-)]
+#[cfg_attr(test, assert_instr(vextractf32x4, IMM8 = 1))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm256_mask_extractf32x4_ps<const IMM8: i32>(src: __m128, k: __mmask8, a: __m256) -> __m128 {
     unsafe {
@@ -24914,10 +24902,7 @@ pub fn _mm256_mask_extractf32x4_ps<const IMM8: i32>(src: __m128, k: __mmask8, a:
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextractf32x4, IMM8 = 1)
-)]
+#[cfg_attr(test, assert_instr(vextractf32x4, IMM8 = 1))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm256_maskz_extractf32x4_ps<const IMM8: i32>(k: __mmask8, a: __m256) -> __m128 {
     unsafe {
@@ -24934,7 +24919,7 @@ pub fn _mm256_maskz_extractf32x4_ps<const IMM8: i32>(k: __mmask8, a: __m256) -> 
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(
-    all(test, not(target_env = "msvc")),
+    test,
     assert_instr(vextractf64x4, IMM1 = 1) //should be vextracti64x4
 )]
 #[rustc_legacy_const_generics(1)]
@@ -24954,10 +24939,7 @@ pub fn _mm512_extracti64x4_epi64<const IMM1: i32>(a: __m512i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextracti64x4, IMM1 = 1)
-)]
+#[cfg_attr(test, assert_instr(vextracti64x4, IMM1 = 1))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm512_mask_extracti64x4_epi64<const IMM1: i32>(
     src: __m256i,
@@ -24977,10 +24959,7 @@ pub fn _mm512_mask_extracti64x4_epi64<const IMM1: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextracti64x4, IMM1 = 1)
-)]
+#[cfg_attr(test, assert_instr(vextracti64x4, IMM1 = 1))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm512_maskz_extracti64x4_epi64<const IMM1: i32>(k: __mmask8, a: __m512i) -> __m256i {
     unsafe {
@@ -24996,10 +24975,7 @@ pub fn _mm512_maskz_extracti64x4_epi64<const IMM1: i32>(k: __mmask8, a: __m512i)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextractf64x4, IMM8 = 1)
-)]
+#[cfg_attr(test, assert_instr(vextractf64x4, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm512_extractf64x4_pd<const IMM8: i32>(a: __m512d) -> __m256d {
     unsafe {
@@ -25017,10 +24993,7 @@ pub fn _mm512_extractf64x4_pd<const IMM8: i32>(a: __m512d) -> __m256d {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextractf64x4, IMM8 = 1)
-)]
+#[cfg_attr(test, assert_instr(vextractf64x4, IMM8 = 1))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm512_mask_extractf64x4_pd<const IMM8: i32>(
     src: __m256d,
@@ -25040,10 +25013,7 @@ pub fn _mm512_mask_extractf64x4_pd<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextractf64x4, IMM8 = 1)
-)]
+#[cfg_attr(test, assert_instr(vextractf64x4, IMM8 = 1))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm512_maskz_extractf64x4_pd<const IMM8: i32>(k: __mmask8, a: __m512d) -> __m256d {
     unsafe {
@@ -25060,7 +25030,7 @@ pub fn _mm512_maskz_extractf64x4_pd<const IMM8: i32>(k: __mmask8, a: __m512d) ->
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(
-    all(test, not(target_env = "msvc")),
+    test,
     assert_instr(vextractf32x4, IMM2 = 3) //should be vextracti32x4
 )]
 #[rustc_legacy_const_generics(1)]
@@ -25085,10 +25055,7 @@ pub fn _mm512_extracti32x4_epi32<const IMM2: i32>(a: __m512i) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextracti32x4, IMM2 = 3)
-)]
+#[cfg_attr(test, assert_instr(vextracti32x4, IMM2 = 3))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm512_mask_extracti32x4_epi32<const IMM2: i32>(
     src: __m128i,
@@ -25108,10 +25075,7 @@ pub fn _mm512_mask_extracti32x4_epi32<const IMM2: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextracti32x4, IMM2 = 3)
-)]
+#[cfg_attr(test, assert_instr(vextracti32x4, IMM2 = 3))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm512_maskz_extracti32x4_epi32<const IMM2: i32>(k: __mmask8, a: __m512i) -> __m128i {
     unsafe {
@@ -25128,7 +25092,7 @@ pub fn _mm512_maskz_extracti32x4_epi32<const IMM2: i32>(k: __mmask8, a: __m512i)
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(
-    all(test, not(target_env = "msvc")),
+    test,
     assert_instr(vextract, IMM1 = 1) //should be vextracti32x4
 )]
 #[rustc_legacy_const_generics(1)]
@@ -25151,10 +25115,7 @@ pub fn _mm256_extracti32x4_epi32<const IMM1: i32>(a: __m256i) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextracti32x4, IMM1 = 1)
-)]
+#[cfg_attr(test, assert_instr(vextracti32x4, IMM1 = 1))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm256_mask_extracti32x4_epi32<const IMM1: i32>(
     src: __m128i,
@@ -25174,10 +25135,7 @@ pub fn _mm256_mask_extracti32x4_epi32<const IMM1: i32>(
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextracti32x4, IMM1 = 1)
-)]
+#[cfg_attr(test, assert_instr(vextracti32x4, IMM1 = 1))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm256_maskz_extracti32x4_epi32<const IMM1: i32>(k: __mmask8, a: __m256i) -> __m128i {
     unsafe {
@@ -25572,7 +25530,7 @@ pub fn _mm512_maskz_inserti32x4<const IMM8: i32>(k: __mmask16, a: __m512i, b: __
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(
-    all(test, not(target_env = "msvc")),
+    test,
     assert_instr(vinsert, IMM8 = 1) //should be vinserti32x4
 )]
 #[rustc_legacy_const_generics(2)]
@@ -25595,10 +25553,7 @@ pub fn _mm256_inserti32x4<const IMM8: i32>(a: __m256i, b: __m128i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vinserti32x4, IMM8 = 1)
-)]
+#[cfg_attr(test, assert_instr(vinserti32x4, IMM8 = 1))]
 #[rustc_legacy_const_generics(4)]
 pub fn _mm256_mask_inserti32x4<const IMM8: i32>(
     src: __m256i,
@@ -25619,10 +25574,7 @@ pub fn _mm256_mask_inserti32x4<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vinserti32x4, IMM8 = 1)
-)]
+#[cfg_attr(test, assert_instr(vinserti32x4, IMM8 = 1))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm256_maskz_inserti32x4<const IMM8: i32>(k: __mmask8, a: __m256i, b: __m128i) -> __m256i {
     unsafe {
@@ -25773,7 +25725,7 @@ pub fn _mm512_maskz_insertf32x4<const IMM8: i32>(k: __mmask16, a: __m512, b: __m
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(
-    all(test, not(target_env = "msvc")),
+    test,
     assert_instr(vinsert, IMM8 = 1) //should be vinsertf32x4
 )]
 #[rustc_legacy_const_generics(2)]
@@ -25794,10 +25746,7 @@ pub fn _mm256_insertf32x4<const IMM8: i32>(a: __m256, b: __m128) -> __m256 {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vinsertf32x4, IMM8 = 1)
-)]
+#[cfg_attr(test, assert_instr(vinsertf32x4, IMM8 = 1))]
 #[rustc_legacy_const_generics(4)]
 pub fn _mm256_mask_insertf32x4<const IMM8: i32>(
     src: __m256,
@@ -25818,10 +25767,7 @@ pub fn _mm256_mask_insertf32x4<const IMM8: i32>(
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vinsertf32x4, IMM8 = 1)
-)]
+#[cfg_attr(test, assert_instr(vinsertf32x4, IMM8 = 1))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm256_maskz_insertf32x4<const IMM8: i32>(k: __mmask8, a: __m256, b: __m128) -> __m256 {
     unsafe {
@@ -26958,7 +26904,7 @@ pub fn _mm512_castsi512_pd(a: __m512i) -> __m512d {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(vmovd))]
+#[cfg_attr(test, assert_instr(vmovd))]
 pub fn _mm512_cvtsi512_si32(a: __m512i) -> i32 {
     unsafe { simd_extract!(a.as_i32x16(), 0) }
 }

@@ -970,10 +970,7 @@ pub fn _mm256_cvttps_epi32(a: __m256) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_extractf128_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextractf128, IMM1 = 1)
-)]
+#[cfg_attr(test, assert_instr(vextractf128, IMM1 = 1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_extractf128_ps<const IMM1: i32>(a: __m256) -> __m128 {
@@ -993,10 +990,7 @@ pub fn _mm256_extractf128_ps<const IMM1: i32>(a: __m256) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_extractf128_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextractf128, IMM1 = 1)
-)]
+#[cfg_attr(test, assert_instr(vextractf128, IMM1 = 1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_extractf128_pd<const IMM1: i32>(a: __m256d) -> __m128d {
@@ -1009,10 +1003,7 @@ pub fn _mm256_extractf128_pd<const IMM1: i32>(a: __m256d) -> __m128d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_extractf128_si256)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vextractf128, IMM1 = 1)
-)]
+#[cfg_attr(test, assert_instr(vextractf128, IMM1 = 1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_extractf128_si256<const IMM1: i32>(a: __m256i) -> __m128i {
@@ -1328,10 +1319,7 @@ pub unsafe fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_insertf128_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vinsertf128, IMM1 = 1)
-)]
+#[cfg_attr(test, assert_instr(vinsertf128, IMM1 = 1))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_insertf128_ps<const IMM1: i32>(a: __m256, b: __m128) -> __m256 {
@@ -1352,10 +1340,7 @@ pub fn _mm256_insertf128_ps<const IMM1: i32>(a: __m256, b: __m128) -> __m256 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_insertf128_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vinsertf128, IMM1 = 1)
-)]
+#[cfg_attr(test, assert_instr(vinsertf128, IMM1 = 1))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_insertf128_pd<const IMM1: i32>(a: __m256d, b: __m128d) -> __m256d {
@@ -1375,10 +1360,7 @@ pub fn _mm256_insertf128_pd<const IMM1: i32>(a: __m256d, b: __m128d) -> __m256d 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_insertf128_si256)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(
-    all(test, not(target_env = "msvc")),
-    assert_instr(vinsertf128, IMM1 = 1)
-)]
+#[cfg_attr(test, assert_instr(vinsertf128, IMM1 = 1))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_insertf128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -> __m256i {

@@ -108,10 +108,7 @@ pub fn _mm512_maskz_madd52lo_epu64(k: __mmask8, a: __m512i, b: __m512i, c: __m51
 #[inline]
 #[target_feature(enable = "avxifma")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vpmadd52huq)
-)]
+#[cfg_attr(test, assert_instr(vpmadd52huq))]
 pub fn _mm256_madd52hi_avx_epu64(a: __m256i, b: __m256i, c: __m256i) -> __m256i {
     unsafe { vpmadd52huq_256(a, b, c) }
 }
@@ -173,10 +170,7 @@ pub fn _mm256_maskz_madd52hi_epu64(k: __mmask8, a: __m256i, b: __m256i, c: __m25
 #[inline]
 #[target_feature(enable = "avxifma")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vpmadd52luq)
-)]
+#[cfg_attr(test, assert_instr(vpmadd52luq))]
 pub fn _mm256_madd52lo_avx_epu64(a: __m256i, b: __m256i, c: __m256i) -> __m256i {
     unsafe { vpmadd52luq_256(a, b, c) }
 }
@@ -238,10 +232,7 @@ pub fn _mm256_maskz_madd52lo_epu64(k: __mmask8, a: __m256i, b: __m256i, c: __m25
 #[inline]
 #[target_feature(enable = "avxifma")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vpmadd52huq)
-)]
+#[cfg_attr(test, assert_instr(vpmadd52huq))]
 pub fn _mm_madd52hi_avx_epu64(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     unsafe { vpmadd52huq_128(a, b, c) }
 }
@@ -303,10 +294,7 @@ pub fn _mm_maskz_madd52hi_epu64(k: __mmask8, a: __m128i, b: __m128i, c: __m128i)
 #[inline]
 #[target_feature(enable = "avxifma")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vpmadd52luq)
-)]
+#[cfg_attr(test, assert_instr(vpmadd52luq))]
 pub fn _mm_madd52lo_avx_epu64(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     unsafe { vpmadd52luq_128(a, b, c) }
 }

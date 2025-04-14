@@ -11,10 +11,7 @@ use stdarch_test::assert_instr;
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_bcstnebf16_ps)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vbcstnebf162ps)
-)]
+#[cfg_attr(test, assert_instr(vbcstnebf162ps))]
 #[unstable(feature = "stdarch_x86_avx512_bf16", issue = "127356")]
 pub unsafe fn _mm_bcstnebf16_ps(a: *const bf16) -> __m128 {
     bcstnebf162ps_128(a)
@@ -27,10 +24,7 @@ pub unsafe fn _mm_bcstnebf16_ps(a: *const bf16) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_bcstnebf16_ps)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vbcstnebf162ps)
-)]
+#[cfg_attr(test, assert_instr(vbcstnebf162ps))]
 #[unstable(feature = "stdarch_x86_avx512_bf16", issue = "127356")]
 pub unsafe fn _mm256_bcstnebf16_ps(a: *const bf16) -> __m256 {
     bcstnebf162ps_256(a)
@@ -43,10 +37,7 @@ pub unsafe fn _mm256_bcstnebf16_ps(a: *const bf16) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_bcstnesh_ps)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vbcstnesh2ps)
-)]
+#[cfg_attr(test, assert_instr(vbcstnesh2ps))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm_bcstnesh_ps(a: *const f16) -> __m128 {
     bcstnesh2ps_128(a)
@@ -59,10 +50,7 @@ pub unsafe fn _mm_bcstnesh_ps(a: *const f16) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_bcstnesh_ps)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vbcstnesh2ps)
-)]
+#[cfg_attr(test, assert_instr(vbcstnesh2ps))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm256_bcstnesh_ps(a: *const f16) -> __m256 {
     bcstnesh2ps_256(a)
@@ -74,10 +62,7 @@ pub unsafe fn _mm256_bcstnesh_ps(a: *const f16) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneebf16_ps)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vcvtneebf162ps)
-)]
+#[cfg_attr(test, assert_instr(vcvtneebf162ps))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_cvtneebf16_ps(a: *const __m128bh) -> __m128 {
     transmute(cvtneebf162ps_128(a))
@@ -89,10 +74,7 @@ pub unsafe fn _mm_cvtneebf16_ps(a: *const __m128bh) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneebf16_ps)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vcvtneebf162ps)
-)]
+#[cfg_attr(test, assert_instr(vcvtneebf162ps))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_cvtneebf16_ps(a: *const __m256bh) -> __m256 {
     transmute(cvtneebf162ps_256(a))
@@ -104,10 +86,7 @@ pub unsafe fn _mm256_cvtneebf16_ps(a: *const __m256bh) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneeph_ps)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vcvtneeph2ps)
-)]
+#[cfg_attr(test, assert_instr(vcvtneeph2ps))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm_cvtneeph_ps(a: *const __m128h) -> __m128 {
     transmute(cvtneeph2ps_128(a))
@@ -119,10 +98,7 @@ pub unsafe fn _mm_cvtneeph_ps(a: *const __m128h) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneeph_ps)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vcvtneeph2ps)
-)]
+#[cfg_attr(test, assert_instr(vcvtneeph2ps))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm256_cvtneeph_ps(a: *const __m256h) -> __m256 {
     transmute(cvtneeph2ps_256(a))
@@ -134,10 +110,7 @@ pub unsafe fn _mm256_cvtneeph_ps(a: *const __m256h) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneobf16_ps)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vcvtneobf162ps)
-)]
+#[cfg_attr(test, assert_instr(vcvtneobf162ps))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_cvtneobf16_ps(a: *const __m128bh) -> __m128 {
     transmute(cvtneobf162ps_128(a))
@@ -149,10 +122,7 @@ pub unsafe fn _mm_cvtneobf16_ps(a: *const __m128bh) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneobf16_ps)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vcvtneobf162ps)
-)]
+#[cfg_attr(test, assert_instr(vcvtneobf162ps))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_cvtneobf16_ps(a: *const __m256bh) -> __m256 {
     transmute(cvtneobf162ps_256(a))
@@ -164,10 +134,7 @@ pub unsafe fn _mm256_cvtneobf16_ps(a: *const __m256bh) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneoph_ps)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vcvtneoph2ps)
-)]
+#[cfg_attr(test, assert_instr(vcvtneoph2ps))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm_cvtneoph_ps(a: *const __m128h) -> __m128 {
     transmute(cvtneoph2ps_128(a))
@@ -179,10 +146,7 @@ pub unsafe fn _mm_cvtneoph_ps(a: *const __m128h) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneoph_ps)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vcvtneoph2ps)
-)]
+#[cfg_attr(test, assert_instr(vcvtneoph2ps))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm256_cvtneoph_ps(a: *const __m256h) -> __m256 {
     transmute(cvtneoph2ps_256(a))
@@ -194,10 +158,7 @@ pub unsafe fn _mm256_cvtneoph_ps(a: *const __m256h) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneps_avx_pbh)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vcvtneps2bf16)
-)]
+#[cfg_attr(test, assert_instr(vcvtneps2bf16))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub fn _mm_cvtneps_avx_pbh(a: __m128) -> __m128bh {
     unsafe {
@@ -218,10 +179,7 @@ pub fn _mm_cvtneps_avx_pbh(a: __m128) -> __m128bh {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneps_avx_pbh)
 #[inline]
 #[target_feature(enable = "avxneconvert")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(vcvtneps2bf16)
-)]
+#[cfg_attr(test, assert_instr(vcvtneps2bf16))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub fn _mm256_cvtneps_avx_pbh(a: __m256) -> __m128bh {
     unsafe {

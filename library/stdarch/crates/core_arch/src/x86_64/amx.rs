@@ -191,10 +191,7 @@ pub unsafe fn _tile_dpbuud<const DST: i32, const A: i32, const B: i32>() {
 #[inline]
 #[rustc_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-fp16")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(tdpfp16ps, DST = 0, A = 1, B = 2)
-)]
+#[cfg_attr(test, assert_instr(tdpfp16ps, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn _tile_dpfp16ps<const DST: i32, const A: i32, const B: i32>() {
     static_assert_uimm_bits!(DST, 3);
@@ -215,10 +212,7 @@ pub unsafe fn _tile_dpfp16ps<const DST: i32, const A: i32, const B: i32>() {
 #[inline]
 #[rustc_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-complex")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(tcmmimfp16ps, DST = 0, A = 1, B = 2)
-)]
+#[cfg_attr(test, assert_instr(tcmmimfp16ps, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn _tile_cmmimfp16ps<const DST: i32, const A: i32, const B: i32>() {
     static_assert_uimm_bits!(DST, 3);
@@ -239,10 +233,7 @@ pub unsafe fn _tile_cmmimfp16ps<const DST: i32, const A: i32, const B: i32>() {
 #[inline]
 #[rustc_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-complex")]
-#[cfg_attr(
-    all(test, any(target_os = "linux", target_env = "msvc")),
-    assert_instr(tcmmrlfp16ps, DST = 0, A = 1, B = 2)
-)]
+#[cfg_attr(test, assert_instr(tcmmrlfp16ps, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn _tile_cmmrlfp16ps<const DST: i32, const A: i32, const B: i32>() {
     static_assert_uimm_bits!(DST, 3);

@@ -1385,10 +1385,7 @@ pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
 #[inline]
 #[target_feature(enable = "sse2")]
 // FIXME movd on msvc, movd on i686
-#[cfg_attr(
-    all(test, not(target_env = "msvc"), target_arch = "x86_64"),
-    assert_instr(movq)
-)]
+#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_move_epi64(a: __m128i) -> __m128i {
     unsafe {
@@ -1668,7 +1665,7 @@ pub fn _mm_unpacklo_epi32(a: __m128i, b: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_unpacklo_epi64)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movlhps))]
+#[cfg_attr(test, assert_instr(movlhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_unpacklo_epi64(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute::<i64x2, _>(simd_shuffle!(a.as_i64x2(), b.as_i64x2(), [0, 2])) }
@@ -2618,7 +2615,7 @@ pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_store_sd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movlps))]
+#[cfg_attr(test, assert_instr(movlps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_store_sd(mem_addr: *mut f64, a: __m128d) {
     *mem_addr = simd_extract!(a, 0)
@@ -2736,7 +2733,7 @@ pub unsafe fn _mm_storer_pd(mem_addr: *mut f64, a: __m128d) {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_storeh_pd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movhps))]
+#[cfg_attr(test, assert_instr(movhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_storeh_pd(mem_addr: *mut f64, a: __m128d) {
     *mem_addr = simd_extract!(a, 1);
@@ -2748,7 +2745,7 @@ pub unsafe fn _mm_storeh_pd(mem_addr: *mut f64, a: __m128d) {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_storel_pd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movlps))]
+#[cfg_attr(test, assert_instr(movlps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_storel_pd(mem_addr: *mut f64, a: __m128d) {
     *mem_addr = simd_extract!(a, 0);
@@ -3006,7 +3003,7 @@ pub fn _mm_unpackhi_pd(a: __m128d, b: __m128d) -> __m128d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_unpacklo_pd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movlhps))]
+#[cfg_attr(test, assert_instr(movlhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_unpacklo_pd(a: __m128d, b: __m128d) -> __m128d {
     unsafe { simd_shuffle!(a, b, [0, 2]) }

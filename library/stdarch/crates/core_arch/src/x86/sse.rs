@@ -1067,7 +1067,7 @@ pub fn _mm_unpacklo_ps(a: __m128, b: __m128) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_movehl_ps)
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movhlps))]
+#[cfg_attr(test, assert_instr(movhlps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
     // TODO; figure why this is a different instruction on msvc?
@@ -1080,7 +1080,7 @@ pub fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_movelh_ps)
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movlhps))]
+#[cfg_attr(test, assert_instr(movlhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
     unsafe { simd_shuffle!(a, b, [0, 1, 4, 5]) }
