@@ -109,26 +109,26 @@ jobs:
 
         # macOS targets
         - tuple: x86_64-apple-darwin
-          os: macos-13
+          os: macos-15-large
         - tuple: x86_64-apple-ios-macabi
-          os: macos-13
+          os: macos-15-large
         - tuple: aarch64-apple-darwin
-          os: macos-latest
+          os: macos-15
         - tuple: aarch64-apple-ios-macabi
-          os: macos-latest
+          os: macos-15
         # FIXME: gh-actions build environment doesn't have linker support
         # - tuple: i686-apple-darwin
         #   os: macos-13
 
         # Windows targets
         - tuple: x86_64-pc-windows-msvc
-          os: windows-latest
+          os: windows-2025
         - tuple: i686-pc-windows-msvc
-          os: windows-latest
+          os: windows-2025
         - tuple: aarch64-pc-windows-msvc
-          os: windows-latest
+          os: windows-2025
         - tuple: x86_64-pc-windows-gnu
-          os: windows-latest
+          os: windows-2025
         # - tuple: i686-pc-windows-gnu
         #   os: windows-latest
 
@@ -167,15 +167,15 @@ jobs:
           disable_assert_instr: true
         - target:
             tuple: aarch64-apple-darwin
-            os: macos-latest
+            os: macos-15
           norun: true # https://github.com/rust-lang/stdarch/issues/1206
         - target:
             tuple: aarch64-apple-ios-macabi
-            os: macos-latest
+            os: macos-15
           norun: true # https://github.com/rust-lang/stdarch/issues/1206
         - target:
             tuple: aarch64-pc-windows-msvc
-            os: windows-latest
+            os: windows-2025
           norun: true
 
     steps:
