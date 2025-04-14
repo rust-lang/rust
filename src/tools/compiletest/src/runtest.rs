@@ -2383,7 +2383,7 @@ impl<'test> TestCx<'test> {
 
         if json {
             // escaped newlines in json strings should be readable
-            // in the stderr files. There's no point int being correct,
+            // in the stderr files. There's no point in being correct,
             // since only humans process the stderr files.
             // Thus we just turn escaped newlines back into newlines.
             normalized = normalized.replace("\\n", "\n");
