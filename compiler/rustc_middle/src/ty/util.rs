@@ -1647,6 +1647,42 @@ pub fn fold_list<'tcx, F, L, T>(
     list: L,
     folder: &mut F,
     intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> L,
+) -> L
+where
+    F: TypeFolder<TyCtxt<'tcx>>,
+    L: AsRef<[T]>,
+    T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy,
+{
+    let slice = list.as_ref();
+    let mut iter = slice.iter().copied();
+    // Look for the first element that changed
+    match iter.by_ref().enumerate().find_map(|(i, t)| {
+        let new_t = t.fold_with(folder);
+        if new_t != t { Some((i, new_t)) } else { None }
+    }) {
+        Some((i, new_t)) => {
+            // An element changed, prepare to intern the resulting list
+            let mut new_list = SmallVec::<[_; 8]>::with_capacity(slice.len());
+            new_list.extend_from_slice(&slice[..i]);
+            new_list.push(new_t);
+            for t in iter {
+                new_list.push(t.fold_with(folder))
+            }
+            intern(folder.cx(), &new_list)
+        }
+        None => list,
+    }
+}
+
+/// Does the equivalent of
+/// ```ignore (illustrative)
+/// let v = self.iter().map(|p| p.try_fold_with(folder)).collect::<SmallVec<[_; 8]>>();
+/// folder.tcx().intern_*(&v)
+/// ```
+pub fn try_fold_list<'tcx, F, L, T>(
+    list: L,
+    folder: &mut F,
+    intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> L,
 ) -> Result<L, F::Error>
 where
     F: FallibleTypeFolder<TyCtxt<'tcx>>,
