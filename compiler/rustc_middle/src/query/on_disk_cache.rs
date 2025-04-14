@@ -16,8 +16,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixed
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
-    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext,
-    SyntaxContextDataNonRecursive as SyntaxContextData,
+    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextKey,
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{
@@ -567,7 +566,7 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
             // We look up the position of the associated `SyntaxData` and decode it.
             let pos = syntax_contexts.get(&id).unwrap();
             this.with_position(pos.to_usize(), |decoder| {
-                let data: SyntaxContextData = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
+                let data: SyntaxContextKey = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
                 data
             })
         })
