@@ -1,9 +1,7 @@
 use crate::update_lints::{
     RenamedLint, clippy_lints_src_files, gather_all, gen_renamed_lints_test_fn, generate_lint_files,
 };
-use crate::utils::{
-    FileUpdater, UpdateMode, Version, insert_at_marker, replace_ident_like, rewrite_file, try_rename_file,
-};
+use crate::utils::{FileUpdater, StringReplacer, UpdateMode, Version, insert_at_marker, rewrite_file, try_rename_file};
 use std::ffi::OsStr;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -66,6 +64,8 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
     );
 
     // Update all lint level attributes. (`clippy::lint_name`)
+    let replacements = &[(&*lint.old_name, &*lint.new_name)];
+    let replacer = StringReplacer::new(replacements);
     for file in WalkDir::new(".").into_iter().map(Result::unwrap).filter(|f| {
         let name = f.path().file_name();
         let ext = f.path().extension();
@@ -73,9 +73,7 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
             && name != Some(OsStr::new("rename.rs"))
             && name != Some(OsStr::new("deprecated_lints.rs"))
     }) {
-        updater.update_file(file.path(), &mut |_, src, dst| {
-            replace_ident_like(&[(&lint.old_name, &lint.new_name)], src, dst)
-        });
+        updater.update_file(file.path(), &mut replacer.replace_ident_fn());
     }
 
     rewrite_file(Path::new("clippy_lints/src/deprecated_lints.rs"), |s| {
@@ -167,6 +165,7 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
 
         // Don't change `clippy_utils/src/renamed_lints.rs` here as it would try to edit the lint being
         // renamed.
+        let replacer = StringReplacer::new(replacements);
         for file in clippy_lints_src_files() {
             if file
                 .path()
@@ -174,9 +173,7 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
                 .to_str()
                 .is_none_or(|x| x["clippy_lints/src/".len()..] != *"deprecated_lints.rs")
             {
-                updater.update_file(file.path(), &mut |_, src, dst| {
-                    replace_ident_like(replacements, src, dst)
-                });
+                updater.update_file(file.path(), &mut replacer.replace_ident_fn());
             }
         }
 

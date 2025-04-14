@@ -1,4 +1,4 @@
-use aho_corasick::AhoCorasickBuilder;
+use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
 use core::fmt::{self, Display};
 use core::str::FromStr;
 use std::env;
@@ -344,33 +344,46 @@ pub fn update_text_region_fn(
     move |path, src, dst| update_text_region(path, start, end, src, dst, &mut insert)
 }
 
-/// Replace substrings if they aren't bordered by identifier characters. Returns `None` if there
-/// were no replacements.
 #[must_use]
-pub fn replace_ident_like(replacements: &[(&str, &str)], src: &str, dst: &mut String) -> UpdateStatus {
-    fn is_ident_char(c: u8) -> bool {
-        matches!(c, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')
-    }
+pub fn is_ident_char(c: u8) -> bool {
+    matches!(c, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')
+}
 
-    let searcher = AhoCorasickBuilder::new()
-        .match_kind(aho_corasick::MatchKind::LeftmostLongest)
-        .build(replacements.iter().map(|&(x, _)| x.as_bytes()))
-        .unwrap();
-
-    let mut pos = 0;
-    let mut changed = false;
-    for m in searcher.find_iter(src) {
-        if !is_ident_char(src.as_bytes().get(m.start().wrapping_sub(1)).copied().unwrap_or(0))
-            && !is_ident_char(src.as_bytes().get(m.end()).copied().unwrap_or(0))
-        {
-            dst.push_str(&src[pos..m.start()]);
-            dst.push_str(replacements[m.pattern()].1);
-            pos = m.end();
-            changed = true;
+pub struct StringReplacer<'a> {
+    searcher: AhoCorasick,
+    replacements: &'a [(&'a str, &'a str)],
+}
+impl<'a> StringReplacer<'a> {
+    #[must_use]
+    pub fn new(replacements: &'a [(&'a str, &'a str)]) -> Self {
+        Self {
+            searcher: AhoCorasickBuilder::new()
+                .match_kind(aho_corasick::MatchKind::LeftmostLongest)
+                .build(replacements.iter().map(|&(x, _)| x))
+                .unwrap(),
+            replacements,
         }
     }
-    dst.push_str(&src[pos..]);
-    UpdateStatus::from_changed(changed)
+
+    /// Replace substrings if they aren't bordered by identifier characters.
+    pub fn replace_ident_fn(&self) -> impl Fn(&Path, &str, &mut String) -> UpdateStatus {
+        move |_, src, dst| {
+            let mut pos = 0;
+            let mut changed = false;
+            for m in self.searcher.find_iter(src) {
+                if !is_ident_char(src.as_bytes().get(m.start().wrapping_sub(1)).copied().unwrap_or(0))
+                    && !is_ident_char(src.as_bytes().get(m.end()).copied().unwrap_or(0))
+                {
+                    changed = true;
+                    dst.push_str(&src[pos..m.start()]);
+                    dst.push_str(self.replacements[m.pattern()].1);
+                    pos = m.end();
+                }
+            }
+            dst.push_str(&src[pos..]);
+            UpdateStatus::from_changed(changed)
+        }
+    }
 }
 
 #[expect(clippy::must_use_candidate)]
