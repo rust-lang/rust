@@ -827,12 +827,6 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
 /// additional step of eagerly folding the associated types in the where
 /// clauses of the impl. In this example, that means replacing
 /// `<Self as Foo>::Bar` with `Ty` in the first impl.
-///
-// FIXME: This is only necessary as `<Self as Trait>::Assoc: ItemBound`
-// bounds in impls are trivially proven using the item bound candidates.
-// This is unsound in general and once that is fixed, we don't need to
-// normalize eagerly here. See https://github.com/lcnr/solver-woes/issues/9
-// for more details.
 pub(in crate::solve) fn predicates_for_object_candidate<D, I>(
     ecx: &mut EvalCtxt<'_, D>,
     param_env: I::ParamEnv,
