@@ -827,6 +827,18 @@ impl<'a> Parser<'a> {
         if let Some(lt) = lifetime {
             self.error_remove_borrow_lifetime(span, lt.ident.span.until(expr.span));
         }
+
+        // Add expected tokens if we parsed `&raw` as an expression.
+        // This will make sure we see "expected `const`, `mut`", and
+        // guides recovery in case we write `&raw expr`.
+        if borrow_kind == ast::BorrowKind::Ref
+            && mutbl == ast::Mutability::Not
+            && matches!(&expr.kind, ExprKind::Path(None, p) if p.is_ident(kw::Raw))
+        {
+            self.expected_token_types.insert(TokenType::KwMut);
+            self.expected_token_types.insert(TokenType::KwConst);
+        }
+
         Ok((span, ExprKind::AddrOf(borrow_kind, mutbl, expr)))
     }
 

@@ -1286,7 +1286,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         error_reported
     }
 
-    /// Through #123739, backward incompatible drops (BIDs) are introduced.
+    /// Through #123739, `BackwardIncompatibleDropHint`s (BIDs) are introduced.
     /// We would like to emit lints whether borrow checking fails at these future drop locations.
     #[instrument(level = "debug", skip(self, state))]
     fn check_backward_incompatible_drop(

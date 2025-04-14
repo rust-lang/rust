@@ -60,7 +60,7 @@ define_display_via_print!(
     PatternKind,
 );
 
-define_debug_via_print!(TraitRef, ExistentialTraitRef, ExistentialProjection, PatternKind);
+define_debug_via_print!(TraitRef, ExistentialTraitRef, PatternKind);
 
 impl<I: Interner, T> fmt::Display for OutlivesPredicate<I, T>
 where

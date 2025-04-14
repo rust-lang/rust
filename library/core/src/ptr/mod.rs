@@ -278,7 +278,7 @@
 //! ### Using Strict Provenance
 //!
 //! Most code needs no changes to conform to strict provenance, as the only really concerning
-//! operation is casts from usize to a pointer. For code which *does* cast a `usize` to a pointer,
+//! operation is casts from `usize` to a pointer. For code which *does* cast a `usize` to a pointer,
 //! the scope of the change depends on exactly what you're doing.
 //!
 //! In general, you just need to make sure that if you want to convert a `usize` address to a
