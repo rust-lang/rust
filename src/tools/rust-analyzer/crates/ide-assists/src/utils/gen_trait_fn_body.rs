@@ -230,7 +230,9 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                     }
                     None => {
                         let fmt_string = make::expr_literal(&(format!("\"{name}\""))).into();
-                        let args = make::arg_list([target, fmt_string]);
+                        let args = make::ext::token_tree_from_node(
+                            make::arg_list([target, fmt_string]).syntax(),
+                        );
                         let macro_name = make::ext::ident_path("write");
                         let macro_call = make::expr_macro(macro_name, args);
 

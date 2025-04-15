@@ -302,7 +302,12 @@ fn build_usage_edit(
         }),
         None => Some((
             usage.name.syntax().as_node().unwrap().clone(),
-            make.expr_macro(ast::make::ext::ident_path("todo"), make.arg_list([])).syntax().clone(),
+            make.expr_macro(
+                ast::make::ext::ident_path("todo"),
+                make.token_tree(syntax::SyntaxKind::L_PAREN, []),
+            )
+            .syntax()
+            .clone(),
         )),
     }
 }

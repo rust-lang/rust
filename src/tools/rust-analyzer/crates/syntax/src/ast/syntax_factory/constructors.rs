@@ -584,15 +584,15 @@ impl SyntaxFactory {
         ast
     }
 
-    pub fn expr_macro(&self, path: ast::Path, args: ast::ArgList) -> ast::MacroExpr {
-        let ast = make::expr_macro(path.clone(), args.clone()).clone_for_update();
+    pub fn expr_macro(&self, path: ast::Path, tt: ast::TokenTree) -> ast::MacroExpr {
+        let ast = make::expr_macro(path.clone(), tt.clone()).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
             let macro_call = ast.macro_call().unwrap();
             let mut builder = SyntaxMappingBuilder::new(macro_call.syntax().clone());
             builder.map_node(path.syntax().clone(), macro_call.path().unwrap().syntax().clone());
             builder
-                .map_node(args.syntax().clone(), macro_call.token_tree().unwrap().syntax().clone());
+                .map_node(tt.syntax().clone(), macro_call.token_tree().unwrap().syntax().clone());
             builder.finish(&mut mapping);
         }
 
