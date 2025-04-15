@@ -46,7 +46,7 @@ pub enum Round {
 }
 
 /// IEEE 754 exception status flags.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Status(u8);
 
 impl Status {
@@ -90,8 +90,14 @@ impl Status {
 
     /// True if `UNDERFLOW` is set.
     #[cfg_attr(not(feature = "unstable-public-internals"), allow(dead_code))]
-    pub fn underflow(self) -> bool {
+    pub const fn underflow(self) -> bool {
         self.0 & Self::UNDERFLOW.0 != 0
+    }
+
+    /// True if `OVERFLOW` is set.
+    #[cfg_attr(not(feature = "unstable-public-internals"), allow(dead_code))]
+    pub const fn overflow(self) -> bool {
+        self.0 & Self::OVERFLOW.0 != 0
     }
 
     pub fn set_underflow(&mut self, val: bool) {
@@ -99,7 +105,7 @@ impl Status {
     }
 
     /// True if `INEXACT` is set.
-    pub fn inexact(self) -> bool {
+    pub const fn inexact(self) -> bool {
         self.0 & Self::INEXACT.0 != 0
     }
 
@@ -113,5 +119,9 @@ impl Status {
         } else {
             self.0 &= !mask.0;
         }
+    }
+
+    pub(crate) const fn with(self, rhs: Self) -> Self {
+        Self(self.0 | rhs.0)
     }
 }
