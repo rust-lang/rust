@@ -1,6 +1,8 @@
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
 use core::fmt::{self, Display};
+use core::slice;
 use core::str::FromStr;
+use rustc_lexer as lexer;
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
@@ -403,6 +405,199 @@ impl<'a> StringReplacer<'a> {
             dst.push_str(&src[pos..]);
             UpdateStatus::from_changed(changed)
         }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum Token {
+    /// Matches any number of doc comments.
+    AnyDoc,
+    Ident(&'static str),
+    CaptureIdent,
+    LitStr,
+    CaptureLitStr,
+    Bang,
+    CloseBrace,
+    CloseBracket,
+    CloseParen,
+    /// This will consume the first colon even if the second doesn't exist.
+    DoubleColon,
+    Comma,
+    Eq,
+    Lifetime,
+    Lt,
+    Gt,
+    OpenBrace,
+    OpenBracket,
+    OpenParen,
+    Pound,
+}
+
+pub struct RustSearcher<'txt> {
+    text: &'txt str,
+    cursor: lexer::Cursor<'txt>,
+    pos: u32,
+
+    // Either the next token or a zero-sized whitespace sentinel.
+    next_token: lexer::Token,
+}
+impl<'txt> RustSearcher<'txt> {
+    #[must_use]
+    pub fn new(text: &'txt str) -> Self {
+        Self {
+            text,
+            cursor: lexer::Cursor::new(text),
+            pos: 0,
+
+            // Sentinel value indicating there is no read token.
+            next_token: lexer::Token {
+                len: 0,
+                kind: lexer::TokenKind::Whitespace,
+            },
+        }
+    }
+
+    #[must_use]
+    pub fn peek_text(&self) -> &'txt str {
+        &self.text[self.pos as usize..(self.pos + self.next_token.len) as usize]
+    }
+
+    #[must_use]
+    pub fn peek(&self) -> lexer::TokenKind {
+        self.next_token.kind
+    }
+
+    #[must_use]
+    pub fn pos(&self) -> u32 {
+        self.pos
+    }
+
+    #[must_use]
+    pub fn at_end(&self) -> bool {
+        self.next_token.kind == lexer::TokenKind::Eof
+    }
+
+    pub fn step(&mut self) {
+        // `next_len` is zero for the sentinel value and the eof marker.
+        self.pos += self.next_token.len;
+        self.next_token = self.cursor.advance_token();
+    }
+
+    /// Consumes the next token if it matches the requested value and captures the value if
+    /// requested. Returns true if a token was matched.
+    fn read_token(&mut self, token: Token, captures: &mut slice::IterMut<'_, &mut &'txt str>) -> bool {
+        loop {
+            match (token, self.next_token.kind) {
+                // Has to be the first match arm so the empty sentinel token will be handled.
+                // This will also skip all whitespace/comments preceding any tokens.
+                (
+                    _,
+                    lexer::TokenKind::Whitespace
+                    | lexer::TokenKind::LineComment { doc_style: None }
+                    | lexer::TokenKind::BlockComment {
+                        doc_style: None,
+                        terminated: true,
+                    },
+                ) => {
+                    self.step();
+                    if self.at_end() {
+                        // `AnyDoc` always matches.
+                        return matches!(token, Token::AnyDoc);
+                    }
+                },
+                (
+                    Token::AnyDoc,
+                    lexer::TokenKind::BlockComment { terminated: true, .. } | lexer::TokenKind::LineComment { .. },
+                ) => {
+                    self.step();
+                    if self.at_end() {
+                        // `AnyDoc` always matches.
+                        return true;
+                    }
+                },
+                (Token::AnyDoc, _) => return true,
+                (Token::Bang, lexer::TokenKind::Bang)
+                | (Token::CloseBrace, lexer::TokenKind::CloseBrace)
+                | (Token::CloseBracket, lexer::TokenKind::CloseBracket)
+                | (Token::CloseParen, lexer::TokenKind::CloseParen)
+                | (Token::Comma, lexer::TokenKind::Comma)
+                | (Token::Eq, lexer::TokenKind::Eq)
+                | (Token::Lifetime, lexer::TokenKind::Lifetime { .. })
+                | (Token::Lt, lexer::TokenKind::Lt)
+                | (Token::Gt, lexer::TokenKind::Gt)
+                | (Token::OpenBrace, lexer::TokenKind::OpenBrace)
+                | (Token::OpenBracket, lexer::TokenKind::OpenBracket)
+                | (Token::OpenParen, lexer::TokenKind::OpenParen)
+                | (Token::Pound, lexer::TokenKind::Pound)
+                | (
+                    Token::LitStr,
+                    lexer::TokenKind::Literal {
+                        kind: lexer::LiteralKind::Str { terminated: true } | lexer::LiteralKind::RawStr { .. },
+                        ..
+                    },
+                ) => {
+                    self.step();
+                    return true;
+                },
+                (Token::Ident(x), lexer::TokenKind::Ident) if x == self.peek_text() => {
+                    self.step();
+                    return true;
+                },
+                (Token::DoubleColon, lexer::TokenKind::Colon) => {
+                    self.step();
+                    if !self.at_end() && matches!(self.next_token.kind, lexer::TokenKind::Colon) {
+                        self.step();
+                        return true;
+                    }
+                    return false;
+                },
+                (
+                    Token::CaptureLitStr,
+                    lexer::TokenKind::Literal {
+                        kind: lexer::LiteralKind::Str { terminated: true } | lexer::LiteralKind::RawStr { .. },
+                        ..
+                    },
+                )
+                | (Token::CaptureIdent, lexer::TokenKind::Ident) => {
+                    **captures.next().unwrap() = self.peek_text();
+                    self.step();
+                    return true;
+                },
+                _ => return false,
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn find_token(&mut self, token: Token) -> bool {
+        let mut capture = [].iter_mut();
+        while !self.read_token(token, &mut capture) {
+            self.step();
+            if self.at_end() {
+                return false;
+            }
+        }
+        true
+    }
+
+    #[must_use]
+    pub fn find_capture_token(&mut self, token: Token) -> Option<&'txt str> {
+        let mut res = "";
+        let mut capture = &mut res;
+        let mut capture = slice::from_mut(&mut capture).iter_mut();
+        while !self.read_token(token, &mut capture) {
+            self.step();
+            if self.at_end() {
+                return None;
+            }
+        }
+        Some(res)
+    }
+
+    #[must_use]
+    pub fn match_tokens(&mut self, tokens: &[Token], captures: &mut [&mut &'txt str]) -> bool {
+        let mut captures = captures.iter_mut();
+        tokens.iter().all(|&t| self.read_token(t, &mut captures))
     }
 }
 

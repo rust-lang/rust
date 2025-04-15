@@ -1,8 +1,7 @@
-use crate::utils::{File, FileAction, FileUpdater, UpdateMode, UpdateStatus, panic_file, update_text_region_fn};
-use core::str;
+use crate::utils::{
+    File, FileAction, FileUpdater, RustSearcher, Token, UpdateMode, UpdateStatus, panic_file, update_text_region_fn,
+};
 use itertools::Itertools;
-use rustc_lexer::{LiteralKind, TokenKind, tokenize};
-use rustc_literal_escaper::{Mode, unescape_unicode};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::fs::OpenOptions;
@@ -140,17 +139,6 @@ pub struct Lint {
 }
 
 impl Lint {
-    #[must_use]
-    fn new(name: &str, group: &str, desc: &str, module: &str, declaration_range: Range<usize>) -> Self {
-        Self {
-            name: name.to_lowercase(),
-            group: group.into(),
-            desc: remove_line_splices(desc),
-            module: module.into(),
-            declaration_range,
-        }
-    }
-
     /// Returns the lints in a `HashMap`, grouped by the different lint groups
     #[must_use]
     fn by_lint_group(lints: impl Iterator<Item = Self>) -> HashMap<String, Vec<Self>> {
@@ -163,26 +151,10 @@ pub struct DeprecatedLint {
     pub name: String,
     pub reason: String,
 }
-impl DeprecatedLint {
-    fn new(name: &str, reason: &str) -> Self {
-        Self {
-            name: remove_line_splices(name),
-            reason: remove_line_splices(reason),
-        }
-    }
-}
 
 pub struct RenamedLint {
     pub old_name: String,
     pub new_name: String,
-}
-impl RenamedLint {
-    fn new(old_name: &str, new_name: &str) -> Self {
-        Self {
-            old_name: remove_line_splices(old_name),
-            new_name: remove_line_splices(new_name),
-        }
-    }
 }
 
 pub fn gen_renamed_lints_test_fn(lints: &[RenamedLint]) -> impl Fn(&Path, &str, &mut String) -> UpdateStatus {
@@ -213,6 +185,7 @@ pub fn find_lint_decls() -> Vec<Lint> {
     let mut contents = String::new();
     for (file, module) in read_src_with_module("clippy_lints/src".as_ref()) {
         parse_clippy_lint_decls(
+            file.path(),
             File::open_read_to_cleared_string(file.path(), &mut contents),
             &module,
             &mut lints,
@@ -256,94 +229,34 @@ fn read_src_with_module(src_root: &Path) -> impl use<'_> + Iterator<Item = (DirE
     })
 }
 
-macro_rules! match_tokens {
-    ($iter:ident, $($token:ident $({$($fields:tt)*})? $(($capture:ident))?)*) => {
-         {
-            $(#[allow(clippy::redundant_pattern)] let Some(LintDeclSearchResult {
-                    token_kind: TokenKind::$token $({$($fields)*})?,
-                    content: $($capture @)? _,
-                    ..
-            }) = $iter.next() else {
-                continue;
-            };)*
-            #[allow(clippy::unused_unit)]
-            { ($($($capture,)?)*) }
-        }
-    }
-}
-
-pub(crate) use match_tokens;
-
-pub(crate) struct LintDeclSearchResult<'a> {
-    pub token_kind: TokenKind,
-    pub content: &'a str,
-    pub range: Range<usize>,
-}
-
 /// Parse a source file looking for `declare_clippy_lint` macro invocations.
-fn parse_clippy_lint_decls(contents: &str, module: &str, lints: &mut Vec<Lint>) {
-    let mut offset = 0usize;
-    let mut iter = tokenize(contents).map(|t| {
-        let range = offset..offset + t.len as usize;
-        offset = range.end;
+fn parse_clippy_lint_decls(path: &Path, contents: &str, module: &str, lints: &mut Vec<Lint>) {
+    #[allow(clippy::enum_glob_use)]
+    use Token::*;
+    #[rustfmt::skip]
+    static DECL_TOKENS: &[Token] = &[
+        // !{ /// docs
+        Bang, OpenBrace, AnyDoc,
+        // #[clippy::version = "version"]
+        Pound, OpenBracket, Ident("clippy"), DoubleColon, Ident("version"), Eq, LitStr, CloseBracket,
+        // pub NAME, GROUP, "description"
+        Ident("pub"), CaptureIdent, Comma, CaptureIdent, Comma, CaptureLitStr,
+    ];
 
-        LintDeclSearchResult {
-            token_kind: t.kind,
-            content: &contents[range.clone()],
-            range,
-        }
-    });
-
-    while let Some(LintDeclSearchResult { range, .. }) = iter.find(
-        |LintDeclSearchResult {
-             token_kind, content, ..
-         }| token_kind == &TokenKind::Ident && *content == "declare_clippy_lint",
-    ) {
-        let start = range.start;
-        let mut iter = iter
-            .by_ref()
-            .filter(|t| !matches!(t.token_kind, TokenKind::Whitespace | TokenKind::LineComment { .. }));
-        // matches `!{`
-        match_tokens!(iter, Bang OpenBrace);
-        match iter.next() {
-            // #[clippy::version = "version"] pub
-            Some(LintDeclSearchResult {
-                token_kind: TokenKind::Pound,
-                ..
-            }) => {
-                match_tokens!(iter, OpenBracket Ident Colon Colon Ident Eq Literal{..} CloseBracket Ident);
-            },
-            // pub
-            Some(LintDeclSearchResult {
-                token_kind: TokenKind::Ident,
-                ..
-            }) => (),
-            _ => continue,
-        }
-
-        let (name, group, desc) = match_tokens!(
-            iter,
-            // LINT_NAME
-            Ident(name) Comma
-            // group,
-            Ident(group) Comma
-            // "description"
-            Literal{..}(desc)
-        );
-
-        if let Some(end) = iter.find_map(|t| {
-            if let LintDeclSearchResult {
-                token_kind: TokenKind::CloseBrace,
-                range,
-                ..
-            } = t
-            {
-                Some(range.end)
-            } else {
-                None
-            }
-        }) {
-            lints.push(Lint::new(name, group, desc, module, start..end));
+    let mut searcher = RustSearcher::new(contents);
+    while searcher.find_token(Ident("declare_clippy_lint")) {
+        let start = searcher.pos() as usize - "declare_clippy_lint".len();
+        let (mut name, mut group, mut desc) = ("", "", "");
+        if searcher.match_tokens(DECL_TOKENS, &mut [&mut name, &mut group, &mut desc])
+            && searcher.find_token(CloseBrace)
+        {
+            lints.push(Lint {
+                name: name.to_lowercase(),
+                group: group.into(),
+                desc: parse_str_single_line(path, desc),
+                module: module.into(),
+                declaration_range: start..searcher.pos() as usize,
+            });
         }
     }
 }
@@ -358,13 +271,30 @@ pub struct DeprecatedLints {
 }
 
 #[must_use]
-#[expect(clippy::cast_possible_truncation)]
 pub fn read_deprecated_lints() -> DeprecatedLints {
+    #[allow(clippy::enum_glob_use)]
+    use Token::*;
+    #[rustfmt::skip]
+    static DECL_TOKENS: &[Token] = &[
+        // #[clippy::version = "version"]
+        Pound, OpenBracket, Ident("clippy"), DoubleColon, Ident("version"), Eq, LitStr, CloseBracket,
+        // ("first", "second"),
+        OpenParen, CaptureLitStr, Comma, CaptureLitStr, CloseParen, Comma,
+    ];
+    #[rustfmt::skip]
+    static DEPRECATED_TOKENS: &[Token] = &[
+        // !{ DEPRECATED(DEPRECATED_VERSION) = [
+        Bang, OpenBrace, Ident("DEPRECATED"), OpenParen, Ident("DEPRECATED_VERSION"), CloseParen, Eq, OpenBracket,
+    ];
+    #[rustfmt::skip]
+    static RENAMED_TOKENS: &[Token] = &[
+        // !{ RENAMED(RENAMED_VERSION) = [
+        Bang, OpenBrace, Ident("RENAMED"), OpenParen, Ident("RENAMED_VERSION"), CloseParen, Eq, OpenBracket,
+    ];
+
+    let path = "clippy_lints/src/deprecated_lints.rs";
     let mut res = DeprecatedLints {
-        file: File::open(
-            "clippy_lints/src/deprecated_lints.rs",
-            OpenOptions::new().read(true).write(true),
-        ),
+        file: File::open(path, OpenOptions::new().read(true).write(true)),
         contents: String::new(),
         deprecated: Vec::with_capacity(30),
         renamed: Vec::with_capacity(80),
@@ -373,79 +303,75 @@ pub fn read_deprecated_lints() -> DeprecatedLints {
     };
 
     res.file.read_append_to_string(&mut res.contents);
+    let mut searcher = RustSearcher::new(&res.contents);
 
-    let (_, contents) = res.contents.split_once("\ndeclare_with_version! { DEPRECATED").unwrap();
-    let (deprecated_src, contents) = contents.split_once("\n]}").unwrap();
-    res.deprecated_end = (res.contents.len() - contents.len() - 2) as u32;
+    // First instance is the macro definition.
+    assert!(
+        searcher.find_token(Ident("declare_with_version")),
+        "error reading deprecated lints"
+    );
 
-    let (_, contents) = contents.split_once("\ndeclare_with_version! { RENAMED").unwrap();
-    let (renamed_src, contents) = contents.split_once("\n]}").unwrap();
-    res.renamed_end = (res.contents.len() - contents.len() - 2) as u32;
-
-    for line in deprecated_src.lines() {
-        let mut offset = 0usize;
-        let mut iter = tokenize(line).map(|t| {
-            let range = offset..offset + t.len as usize;
-            offset = range.end;
-
-            LintDeclSearchResult {
-                token_kind: t.kind,
-                content: &line[range.clone()],
-                range,
-            }
-        });
-
-        let (name, reason) = match_tokens!(
-            iter,
-            // ("old_name",
-            Whitespace OpenParen Literal{kind: LiteralKind::Str{..},..}(name) Comma
-            // "new_name"),
-            Whitespace Literal{kind: LiteralKind::Str{..},..}(reason) CloseParen Comma
-        );
-        res.deprecated.push(DeprecatedLint::new(name, reason));
+    if searcher.find_token(Ident("declare_with_version")) && searcher.match_tokens(DEPRECATED_TOKENS, &mut []) {
+        let mut name = "";
+        let mut reason = "";
+        while searcher.match_tokens(DECL_TOKENS, &mut [&mut name, &mut reason]) {
+            res.deprecated.push(DeprecatedLint {
+                name: parse_str_single_line(path.as_ref(), name),
+                reason: parse_str_single_line(path.as_ref(), reason),
+            });
+        }
+    } else {
+        panic!("error reading deprecated lints");
     }
-    for line in renamed_src.lines() {
-        let mut offset = 0usize;
-        let mut iter = tokenize(line).map(|t| {
-            let range = offset..offset + t.len as usize;
-            offset = range.end;
+    // position of the closing `]}` of `declare_with_version`
+    res.deprecated_end = searcher.pos();
 
-            LintDeclSearchResult {
-                token_kind: t.kind,
-                content: &line[range.clone()],
-                range,
-            }
-        });
-
-        let (old_name, new_name) = match_tokens!(
-            iter,
-            // ("old_name",
-            Whitespace OpenParen Literal{kind: LiteralKind::Str{..},..}(old_name) Comma
-            // "new_name"),
-            Whitespace Literal{kind: LiteralKind::Str{..},..}(new_name) CloseParen Comma
-        );
-        res.renamed.push(RenamedLint::new(old_name, new_name));
+    if searcher.find_token(Ident("declare_with_version")) && searcher.match_tokens(RENAMED_TOKENS, &mut []) {
+        let mut old_name = "";
+        let mut new_name = "";
+        while searcher.match_tokens(DECL_TOKENS, &mut [&mut old_name, &mut new_name]) {
+            res.renamed.push(RenamedLint {
+                old_name: parse_str_single_line(path.as_ref(), old_name),
+                new_name: parse_str_single_line(path.as_ref(), new_name),
+            });
+        }
+    } else {
+        panic!("error reading renamed lints");
     }
+    // position of the closing `]}` of `declare_with_version`
+    res.renamed_end = searcher.pos();
 
     res
 }
 
 /// Removes the line splices and surrounding quotes from a string literal
-fn remove_line_splices(s: &str) -> String {
+fn parse_str_lit(s: &str) -> String {
+    let (s, mode) = if let Some(s) = s.strip_prefix("r") {
+        (s.trim_matches('#'), rustc_literal_escaper::Mode::RawStr)
+    } else {
+        (s, rustc_literal_escaper::Mode::Str)
+    };
     let s = s
-        .strip_prefix('r')
-        .unwrap_or(s)
-        .trim_matches('#')
         .strip_prefix('"')
         .and_then(|s| s.strip_suffix('"'))
         .unwrap_or_else(|| panic!("expected quoted string, found `{s}`"));
     let mut res = String::with_capacity(s.len());
-    unescape_unicode(s, Mode::Str, &mut |range, ch| {
-        if ch.is_ok() {
-            res.push_str(&s[range]);
+    rustc_literal_escaper::unescape_unicode(s, mode, &mut |_, ch| {
+        if let Ok(ch) = ch {
+            res.push(ch);
         }
     });
     res
+}
+
+fn parse_str_single_line(path: &Path, s: &str) -> String {
+    let value = parse_str_lit(s);
+    assert!(
+        !value.contains('\n'),
+        "error parsing `{}`: `{s}` should be a single line string",
+        path.display(),
+    );
+    value
 }
 
 #[cfg(test)]
@@ -471,7 +397,7 @@ mod tests {
             }
         "#;
         let mut result = Vec::new();
-        parse_clippy_lint_decls(CONTENTS, "module_name", &mut result);
+        parse_clippy_lint_decls("".as_ref(), CONTENTS, "module_name", &mut result);
         for r in &mut result {
             r.declaration_range = Range::default();
         }

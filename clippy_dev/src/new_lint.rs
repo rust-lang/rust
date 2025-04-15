@@ -1,4 +1,4 @@
-use crate::utils::Version;
+use crate::utils::{RustSearcher, Token, Version};
 use clap::ValueEnum;
 use indoc::{formatdoc, writedoc};
 use std::fmt::{self, Write as _};
@@ -360,8 +360,7 @@ fn get_lint_declaration(version: Version, name_upper: &str, category: &str) -> S
                 pub {name_upper},
                 {category},
                 "default lint description"
-            }}
-        "#,
+            }}"#,
         version.rust_display(),
     )
 }
@@ -446,9 +445,6 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
 
 #[allow(clippy::too_many_lines)]
 fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> {
-    use super::update_lints::{LintDeclSearchResult, match_tokens};
-    use rustc_lexer::TokenKind;
-
     let lint_name_upper = lint.name.to_uppercase();
 
     let mut file_contents = fs::read_to_string(path)?;
@@ -459,81 +455,11 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
         path.display()
     );
 
-    let mut offset = 0usize;
-    let mut last_decl_curly_offset = None;
-    let mut lint_context = None;
-
-    let mut iter = rustc_lexer::tokenize(&file_contents).map(|t| {
-        let range = offset..offset + t.len as usize;
-        offset = range.end;
-
-        LintDeclSearchResult {
-            token_kind: t.kind,
-            content: &file_contents[range.clone()],
-            range,
-        }
-    });
-
-    // Find both the last lint declaration (declare_clippy_lint!) and the lint pass impl
-    while let Some(LintDeclSearchResult { content, .. }) = iter.find(|result| result.token_kind == TokenKind::Ident) {
-        let mut iter = iter
-            .by_ref()
-            .filter(|t| !matches!(t.token_kind, TokenKind::Whitespace | TokenKind::LineComment { .. }));
-
-        match content {
-            "declare_clippy_lint" => {
-                // matches `!{`
-                match_tokens!(iter, Bang OpenBrace);
-                if let Some(LintDeclSearchResult { range, .. }) =
-                    iter.find(|result| result.token_kind == TokenKind::CloseBrace)
-                {
-                    last_decl_curly_offset = Some(range.end);
-                }
-            },
-            "impl" => {
-                let mut token = iter.next();
-                match token {
-                    // matches <'foo>
-                    Some(LintDeclSearchResult {
-                        token_kind: TokenKind::Lt,
-                        ..
-                    }) => {
-                        match_tokens!(iter, Lifetime { .. } Gt);
-                        token = iter.next();
-                    },
-                    None => break,
-                    _ => {},
-                }
-
-                if let Some(LintDeclSearchResult {
-                    token_kind: TokenKind::Ident,
-                    content,
-                    ..
-                }) = token
-                {
-                    // Get the appropriate lint context struct
-                    lint_context = match content {
-                        "LateLintPass" => Some("LateContext"),
-                        "EarlyLintPass" => Some("EarlyContext"),
-                        _ => continue,
-                    };
-                }
-            },
-            _ => {},
-        }
-    }
-
-    drop(iter);
-
-    let last_decl_curly_offset =
-        last_decl_curly_offset.unwrap_or_else(|| panic!("No lint declarations found in `{}`", path.display()));
-    let lint_context =
-        lint_context.unwrap_or_else(|| panic!("No lint pass implementation found in `{}`", path.display()));
+    let (lint_context, lint_decl_end) = parse_mod_file(path, &file_contents);
 
     // Add the lint declaration to `mod.rs`
-    file_contents.replace_range(
-        // Remove the trailing newline, which should always be present
-        last_decl_curly_offset..=last_decl_curly_offset,
+    file_contents.insert_str(
+        lint_decl_end,
         &format!(
             "\n\n{}",
             get_lint_declaration(lint.clippy_version, &lint_name_upper, lint.category)
@@ -586,6 +512,41 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
         .context(format!("writing to file: `{}`", path.display()))?;
 
     Ok(lint_context)
+}
+
+// Find both the last lint declaration (declare_clippy_lint!) and the lint pass impl
+fn parse_mod_file(path: &Path, contents: &str) -> (&'static str, usize) {
+    #[allow(clippy::enum_glob_use)]
+    use Token::*;
+
+    let mut context = None;
+    let mut decl_end = None;
+    let mut searcher = RustSearcher::new(contents);
+    while let Some(name) = searcher.find_capture_token(CaptureIdent) {
+        match name {
+            "declare_clippy_lint" => {
+                if searcher.match_tokens(&[Bang, OpenBrace], &mut []) && searcher.find_token(CloseBrace) {
+                    decl_end = Some(searcher.pos());
+                }
+            },
+            "impl" => {
+                let mut capture = "";
+                if searcher.match_tokens(&[Lt, Lifetime, Gt, CaptureIdent], &mut [&mut capture]) {
+                    match capture {
+                        "LateLintPass" => context = Some("LateContext"),
+                        "EarlyLintPass" => context = Some("EarlyContext"),
+                        _ => {},
+                    }
+                }
+            },
+            _ => {},
+        }
+    }
+
+    (
+        context.unwrap_or_else(|| panic!("No lint pass implementation found in `{}`", path.display())),
+        decl_end.unwrap_or_else(|| panic!("No lint declarations found in `{}`", path.display())) as usize,
+    )
 }
 
 #[test]
