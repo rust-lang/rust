@@ -97,3 +97,9 @@ where
         Err(e) => Err(e),
     }
 }
+
+pub fn remove_and_create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
+    let path = path.as_ref();
+    recursive_remove(path)?;
+    fs::create_dir_all(path)
+}
