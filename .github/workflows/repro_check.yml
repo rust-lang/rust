@@ -34,20 +34,32 @@ jobs:
           echo "Present Directory : `pwd`"
           echo "work contents : `ls ..`"
 
-      - name: Build source 1
+      - name: Build and store binaries from source 1
         run: |
           echo "Repo storage available: `df -h .`"
           cd ../buildA
           SOURCE_DIR=$(dirname $(find . -maxdepth 2  -name x.py))
           $SOURCE_DIR/configure --set rust.channel=nightly
-          $SOURCE_DIR/x.py build --stage 1 -j8
+          $SOURCE_DIR/x.py build --stage 1 -j$(($(nproc)*2/3))
+          rm -rf $SOURCE_DIR
+          STAGE1_DIR=`find build -name stage1`
+          cp -r "$STAGE1_DIR" .
+          echo "Contents stage 1 dir : `ls stage1`"
+          rm -rf build
 
-      - name: Build source 2
+      - name: Build and store binaries from source 2
         run: |
           cd ../buildA_extended
+          echo "Repo storage available: `df -h .`"
           SOURCE_DIR=$(dirname $(find . -maxdepth 2  -name x.py))
           $SOURCE_DIR/configure --set rust.channel=nightly
-          $SOURCE_DIR/x.py build --stage 1 -j8
+          $SOURCE_DIR/x.py build --stage 1 -j$(($(nproc)*2/3))
+          rm -rf $SOURCE_DIR
+          STAGE1_DIR=`find build -name stage1`
+          cp -r "$STAGE1_DIR" .
+          echo "Contents stage 1 dir : `ls stage1`"
+          rm -rf build
+          cd ..
 
       - name: Compare builds using git diff
         run: |
@@ -61,7 +73,4 @@ jobs:
           fi
 
           # Perform a diff between the two builds
-          buildA_stage1=`find buildA/build -name stage1`
-          buildA2_stage1=`find buildA_extended/build -name stage1`
-          diff -r $buildA_stage1/bin $buildA2_stage1/bin || echo "Differences found!"
-
+          diff -r buildA/stage1 buildA_extended/stage1 || echo "Differences found!"
