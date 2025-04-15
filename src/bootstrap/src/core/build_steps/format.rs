@@ -85,11 +85,15 @@ fn update_rustfmt_version(build: &Builder<'_>) {
     t!(stamp_file.add_stamp(version).write());
 }
 
-/// Returns the Rust files modified between the `merge-base` of HEAD and
-/// rust-lang/master and what is now on the disk. Does not include removed files.
+/// Returns the Rust files modified between the last merge commit and what is now on the disk.
+/// Does not include removed files.
 ///
 /// Returns `None` if all files should be formatted.
 fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, String> {
+    // In CI `get_git_modified_files` returns something different to normal environment.
+    // This shouldn't be called in CI anyway.
+    assert!(!build.config.is_running_on_ci);
+
     if !verify_rustfmt_version(build) {
         return Ok(None);
     }
@@ -104,7 +108,7 @@ struct RustfmtConfig {
 
 // Prints output describing a collection of paths, with lines such as "formatted modified file
 // foo/bar/baz" or "skipped 20 untracked files".
-fn print_paths(build: &Builder<'_>, verb: &str, adjective: Option<&str>, paths: &[String]) {
+fn print_paths(verb: &str, adjective: Option<&str>, paths: &[String]) {
     let len = paths.len();
     let adjective =
         if let Some(adjective) = adjective { format!("{adjective} ") } else { String::new() };
@@ -114,9 +118,6 @@ fn print_paths(build: &Builder<'_>, verb: &str, adjective: Option<&str>, paths: 
         }
     } else {
         println!("fmt: {verb} {len} {adjective}files");
-    }
-    if len > 1000 && !build.config.is_running_on_ci {
-        println!("hint: if this number seems too high, try running `git fetch origin master`");
     }
 }
 
@@ -190,7 +191,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                 )
                 .map(|x| x.to_string())
                 .collect();
-            print_paths(build, "skipped", Some("untracked"), &untracked_paths);
+            print_paths("skipped", Some("untracked"), &untracked_paths);
 
             for untracked_path in untracked_paths {
                 // The leading `/` makes it an exact match against the
@@ -319,7 +320,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
     });
     let mut paths = formatted_paths.into_inner().unwrap();
     paths.sort();
-    print_paths(build, if check { "checked" } else { "formatted" }, adjective, &paths);
+    print_paths(if check { "checked" } else { "formatted" }, adjective, &paths);
 
     drop(tx);
 

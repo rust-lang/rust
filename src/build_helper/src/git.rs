@@ -114,7 +114,9 @@ fn git_upstream_merge_base(
     Ok(output_result(git.arg("merge-base").arg(&updated_master).arg("HEAD"))?.trim().to_owned())
 }
 
-/// Searches for the nearest merge commit in the repository that also exists upstream.
+/// Searches for the nearest merge commit in the repository.
+///
+/// **In CI** finds the nearest merge commit that *also exists upstream*.
 ///
 /// It looks for the most recent commit made by the merge bot by matching the author's email
 /// address with the merge bot's email.
@@ -165,7 +167,7 @@ pub fn get_closest_merge_commit(
     Ok(output_result(&mut git)?.trim().to_owned())
 }
 
-/// Returns the files that have been modified in the current branch compared to the master branch.
+/// Returns the files that have been modified in the current branch compared to the last merge.
 /// The `extensions` parameter can be used to filter the files by their extension.
 /// Does not include removed files.
 /// If `extensions` is empty, all files will be returned.
