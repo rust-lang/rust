@@ -14,10 +14,8 @@ error: mismatched closing delimiter: `]`
   --> $DIR/issue-94171.rs:1:5
    |
 LL | fn L(]{match
-   |     ^^
-   |     ||
-   |     |mismatched closing delimiter
-   |     |missing open `[` for this delimiter
+   |     ^^ mismatched closing delimiter, may missing open `[`
+   |     |
    |     unclosed delimiter
 
 error: this file contains an unclosed delimiter

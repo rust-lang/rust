@@ -2,7 +2,7 @@ error: mismatched closing delimiter: `]`
   --> <crate attribute>:1:4
    |
 LL | #![(]
-   |   -^^ mismatched closing delimiter
+   |   -^^ mismatched closing delimiter, may missing open `[`
    |   ||
    |   |unclosed delimiter
    |   closing delimiter possibly meant for this

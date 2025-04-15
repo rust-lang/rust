@@ -73,38 +73,36 @@ pub(crate) fn make_unclosed_delims_error(
     if let Some(sp) = unmatched.unclosed_span {
         spans.push(sp);
     };
-    let mut err = psess.dcx().create_err(MismatchedClosingDelimiter {
+
+    let missing_open_note = report_missing_open_delim(&unmatched)
+        .map(|s| format!(", may missing open `{s}`"))
+        .unwrap_or_default();
+
+    let err = psess.dcx().create_err(MismatchedClosingDelimiter {
         spans,
         delimiter: pprust::token_kind_to_string(&token::CloseDelim(found_delim)).to_string(),
         unmatched: unmatched.found_span,
+        missing_open_note,
         opening_candidate: unmatched.candidate_span,
         unclosed: unmatched.unclosed_span,
     });
-    report_missing_open_delim(&mut err, &[unmatched]);
     Some(err)
 }
 
 // When we get a `)` or `]` for `{`, we should emit help message here
 // it's more friendly compared to report `unmatched error` in later phase
-fn report_missing_open_delim(err: &mut Diag<'_>, unmatched_delims: &[UnmatchedDelim]) -> bool {
-    let mut reported_missing_open = false;
-    for unmatch_brace in unmatched_delims.iter() {
-        if let Some(delim) = unmatch_brace.found_delim
-            && matches!(delim, Delimiter::Parenthesis | Delimiter::Bracket)
-        {
-            let missed_open = match delim {
-                Delimiter::Parenthesis => "(",
-                Delimiter::Bracket => "[",
-                _ => unreachable!(),
-            };
-            err.span_label(
-                unmatch_brace.found_span.shrink_to_lo(),
-                format!("missing open `{missed_open}` for this delimiter"),
-            );
-            reported_missing_open = true;
-        }
+fn report_missing_open_delim(unmatched_delim: &UnmatchedDelim) -> Option<String> {
+    if let Some(delim) = unmatched_delim.found_delim
+        && matches!(delim, Delimiter::Parenthesis | Delimiter::Bracket)
+    {
+        let missed_open = match delim {
+            Delimiter::Parenthesis => "(",
+            Delimiter::Bracket => "[",
+            _ => unreachable!(),
+        };
+        return Some(missed_open.to_owned());
     }
-    reported_missing_open
+    None
 }
 
 pub(super) fn report_suspicious_mismatch_block(
