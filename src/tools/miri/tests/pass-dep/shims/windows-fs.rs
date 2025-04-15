@@ -10,7 +10,9 @@ use std::ptr;
 mod utils;
 
 use windows_sys::Win32::Foundation::{
-    CloseHandle, ERROR_ALREADY_EXISTS, GENERIC_READ, GENERIC_WRITE, GetLastError,
+    CloseHandle, ERROR_ACCESS_DENIED, ERROR_ALREADY_EXISTS, ERROR_IO_DEVICE, GENERIC_READ,
+    GENERIC_WRITE, GetLastError, RtlNtStatusToDosError, STATUS_ACCESS_DENIED,
+    STATUS_IO_DEVICE_ERROR,
 };
 use windows_sys::Win32::Storage::FileSystem::{
     BY_HANDLE_FILE_INFORMATION, CREATE_ALWAYS, CREATE_NEW, CreateFileW, FILE_ATTRIBUTE_DIRECTORY,
@@ -26,6 +28,7 @@ fn main() {
         test_create_always_twice();
         test_open_always_twice();
         test_open_dir_reparse();
+        test_ntstatus_to_dos();
     }
 }
 
@@ -189,6 +192,12 @@ unsafe fn test_open_dir_reparse() {
     if CloseHandle(handle) == 0 {
         panic!("Failed to close file")
     };
+}
+
+unsafe fn test_ntstatus_to_dos() {
+    // We won't test all combinations, just a couple common ones
+    assert_eq!(RtlNtStatusToDosError(STATUS_IO_DEVICE_ERROR), ERROR_IO_DEVICE);
+    assert_eq!(RtlNtStatusToDosError(STATUS_ACCESS_DENIED), ERROR_ACCESS_DENIED);
 }
 
 fn to_wide_cstr(path: &Path) -> Vec<u16> {

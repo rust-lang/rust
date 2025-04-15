@@ -448,8 +448,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         generic_args.args.insert_many(
             0,
-            (start.as_u32()..end.as_u32()).map(|i| {
-                let id = NodeId::from_u32(i);
+            (start..end).map(|id| {
                 let l = self.lower_lifetime_anon_in_path(id, elided_lifetime_span);
                 GenericArg::Lifetime(l)
             }),

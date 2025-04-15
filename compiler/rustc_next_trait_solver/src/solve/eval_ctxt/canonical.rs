@@ -355,7 +355,7 @@ where
                     // exist at all (see the FIXME at the start of this method), we have to deal with
                     // them for now.
                     delegate.instantiate_canonical_var_with_infer(info, span, |idx| {
-                        ty::UniverseIndex::from(prev_universe.index() + idx.index())
+                        prev_universe + idx.index()
                     })
                 } else if info.is_existential() {
                     // As an optimization we sometimes avoid creating a new inference variable here.

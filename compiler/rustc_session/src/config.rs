@@ -1560,9 +1560,10 @@ The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE
     )
 });
 
-static PRINT_KINDS_STRING: LazyLock<String> = LazyLock::new(|| {
+static PRINT_HELP: LazyLock<String> = LazyLock::new(|| {
     format!(
-        "[{}]",
+        "Compiler information to print on stdout (or to a file)\n\
+        INFO may be one of ({}).",
         PRINT_KINDS.iter().map(|(name, _)| format!("{name}")).collect::<Vec<_>>().join("|")
     )
 });
@@ -1621,14 +1622,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Comma separated list of types of output for the compiler to emit",
             "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info|mir]",
         ),
-        opt(
-            Stable,
-            Multi,
-            "",
-            "print",
-            "Compiler information to print on stdout",
-            &PRINT_KINDS_STRING,
-        ),
+        opt(Stable, Multi, "", "print", &PRINT_HELP, "INFO[=FILE]"),
         opt(Stable, FlagMulti, "g", "", "Equivalent to -C debuginfo=2", ""),
         opt(Stable, FlagMulti, "O", "", "Equivalent to -C opt-level=3", ""),
         opt(Stable, Opt, "o", "", "Write output to <filename>", "FILENAME"),
