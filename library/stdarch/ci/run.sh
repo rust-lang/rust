@@ -56,10 +56,11 @@ case ${TARGET} in
 esac
 
 echo "RUSTFLAGS=${RUSTFLAGS}"
-echo "FEATURES=${FEATURES}"
 echo "OBJDUMP=${OBJDUMP}"
 echo "STDARCH_DISABLE_ASSERT_INSTR=${STDARCH_DISABLE_ASSERT_INSTR}"
 echo "STDARCH_TEST_EVERYTHING=${STDARCH_TEST_EVERYTHING}"
+echo "STDARCH_TEST_SKIP_FEATURE=${STDARCH_TEST_SKIP_FEATURE}"
+echo "STDARCH_TEST_SKIP_FUNCTION=${STDARCH_TEST_SKIP_FUNCTION}"
 echo "PROFILE=${PROFILE}"
 
 cargo_test() {
@@ -78,15 +79,7 @@ cargo_test() {
         wasm32*)
             cmd="$cmd --nocapture"
             ;;
-        # qemu has an erratic behavior on those tests
-        powerpc64-unknown-linux-gnu)
-            cmd="$cmd --skip test_vec_lde_u16 --skip test_vec_lde_u32"
-            ;;
     esac
-
-    if [ "$SKIP_TESTS" != "" ]; then
-        cmd="$cmd --skip "$SKIP_TESTS
-    fi
     $cmd
 }
 

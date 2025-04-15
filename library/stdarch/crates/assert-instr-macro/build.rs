@@ -1,8 +1,6 @@
 use std::env;
 
 fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo::rustc-check-cfg=cfg(optimized)");
     let opt_level = env::var("OPT_LEVEL")
         .ok()
         .and_then(|s| s.parse().ok())
