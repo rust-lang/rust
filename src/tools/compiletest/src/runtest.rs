@@ -9,6 +9,7 @@ use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::sync::Arc;
 use std::{env, iter, str};
 
+use build_helper::fs::remove_and_create_dir_all;
 use camino::{Utf8Path, Utf8PathBuf};
 use colored::Colorize;
 use regex::{Captures, Regex};
@@ -205,12 +206,6 @@ pub fn compute_stamp_hash(config: &Config) -> String {
     }
 
     format!("{:x}", hash.finish())
-}
-
-fn remove_and_create_dir_all(path: &Utf8Path) {
-    let path = path.as_std_path();
-    let _ = fs::remove_dir_all(path);
-    fs::create_dir_all(path).unwrap();
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -523,7 +518,9 @@ impl<'test> TestCx<'test> {
         let mut rustc = Command::new(&self.config.rustc_path);
 
         let out_dir = self.output_base_name().with_extension("pretty-out");
-        remove_and_create_dir_all(&out_dir);
+        remove_and_create_dir_all(&out_dir).unwrap_or_else(|e| {
+            panic!("failed to remove and recreate output directory `{out_dir}`: {e}")
+        });
 
         let target = if self.props.force_host { &*self.config.host } else { &*self.config.target };
 
@@ -1098,13 +1095,19 @@ impl<'test> TestCx<'test> {
         let aux_dir = self.aux_output_dir_name();
 
         if !self.props.aux.builds.is_empty() {
-            remove_and_create_dir_all(&aux_dir);
+            remove_and_create_dir_all(&aux_dir).unwrap_or_else(|e| {
+                panic!("failed to remove and recreate output directory `{aux_dir}`: {e}")
+            });
         }
 
         if !self.props.aux.bins.is_empty() {
             let aux_bin_dir = self.aux_bin_output_dir_name();
-            remove_and_create_dir_all(&aux_dir);
-            remove_and_create_dir_all(&aux_bin_dir);
+            remove_and_create_dir_all(&aux_dir).unwrap_or_else(|e| {
+                panic!("failed to remove and recreate output directory `{aux_dir}`: {e}")
+            });
+            remove_and_create_dir_all(&aux_bin_dir).unwrap_or_else(|e| {
+                panic!("failed to remove and recreate output directory `{aux_bin_dir}`: {e}")
+            });
         }
 
         aux_dir
@@ -1509,7 +1512,9 @@ impl<'test> TestCx<'test> {
 
         let set_mir_dump_dir = |rustc: &mut Command| {
             let mir_dump_dir = self.get_mir_dump_dir();
-            remove_and_create_dir_all(&mir_dump_dir);
+            remove_and_create_dir_all(&mir_dump_dir).unwrap_or_else(|e| {
+                panic!("failed to remove and recreate output directory `{mir_dump_dir}`: {e}")
+            });
             let mut dir_opt = "-Zdump-mir-dir=".to_string();
             dir_opt.push_str(mir_dump_dir.as_str());
             debug!("dir_opt: {:?}", dir_opt);
@@ -1969,7 +1974,9 @@ impl<'test> TestCx<'test> {
         let suffix =
             self.safe_revision().map_or("nightly".into(), |path| path.to_owned() + "-nightly");
         let compare_dir = output_base_dir(self.config, self.testpaths, Some(&suffix));
-        remove_and_create_dir_all(&compare_dir);
+        remove_and_create_dir_all(&compare_dir).unwrap_or_else(|e| {
+            panic!("failed to remove and recreate output directory `{compare_dir}`: {e}")
+        });
 
         // We need to create a new struct for the lifetimes on `config` to work.
         let new_rustdoc = TestCx {
