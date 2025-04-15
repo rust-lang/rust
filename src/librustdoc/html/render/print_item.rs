@@ -162,6 +162,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
                 }
             }
             clean::FunctionItem(..) | clean::ForeignFunctionItem(..) => "Function ",
+            clean::TestItem(..) => "Test ",
             clean::TraitItem(..) => "Trait ",
             clean::StructItem(..) => "Struct ",
             clean::UnionItem(..) => "Union ",
@@ -228,7 +229,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::ModuleItem(m) => {
                 write!(buf, "{}", item_module(cx, item, &m.items))
             }
-            clean::FunctionItem(f) | clean::ForeignFunctionItem(f, _) => {
+            clean::FunctionItem(f) | clean::ForeignFunctionItem(f, _) | clean::TestItem(f) => {
                 write!(buf, "{}", item_function(cx, item, f))
             }
             clean::TraitItem(t) => write!(buf, "{}", item_trait(cx, item, t)),
@@ -326,6 +327,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                 ItemType::Static => 8,
                 ItemType::Trait => 9,
                 ItemType::Function => 10,
+                ItemType::Test => 11,
                 ItemType::TypeAlias => 12,
                 ItemType::Union => 13,
                 _ => 14 + ty as u8,
