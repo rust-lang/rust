@@ -1871,10 +1871,11 @@ impl<'a> State<'a> {
     fn print_pat(&mut self, pat: &hir::Pat<'_>) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
-        // Pat isn't normalized, but the beauty of it
-        // is that it doesn't matter
+        // Pat isn't normalized, but the beauty of it is that it doesn't matter.
         match pat.kind {
-            PatKind::Missing => unreachable!(),
+            // Printing `_` isn't ideal for a missing pattern, but it's easy and good enough.
+            // E.g. `fn(u32)` gets printed as `fn(_: u32)`.
+            PatKind::Missing => self.word("_"),
             PatKind::Wild => self.word("_"),
             PatKind::Never => self.word("!"),
             PatKind::Binding(BindingMode(by_ref, mutbl), _, ident, sub) => {
@@ -2164,7 +2165,9 @@ impl<'a> State<'a> {
             s.end();
         });
         if decl.c_variadic {
-            self.word(", ");
+            if !decl.inputs.is_empty() {
+                self.word(", ");
+            }
             print_arg(self, None);
             self.word("...");
         }
