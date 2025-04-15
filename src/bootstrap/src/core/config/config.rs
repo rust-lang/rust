@@ -2397,6 +2397,10 @@ impl Config {
             );
         }
 
+        if config.lld_enabled && config.is_system_llvm(config.build) {
+            panic!("Cannot enable LLD when using external llvm-config.");
+        }
+
         let default_std_features = BTreeSet::from([String::from("panic-unwind")]);
         config.rust_std_features = std_features.unwrap_or(default_std_features);
 
