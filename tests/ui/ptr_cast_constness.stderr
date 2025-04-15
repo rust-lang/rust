@@ -83,5 +83,11 @@ LL |     let _ = inline!(ptr::null::<u32>().cast_mut());
    |
    = note: this error originates in the macro `__inline_mac_fn_null_pointers` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 13 previous errors
+error: `as` casting between raw pointers while changing only its constness
+  --> tests/ui/ptr_cast_constness.rs:106:13
+   |
+LL |     let _ = std::ptr::addr_of_mut!(local) as *const _;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `std::ptr::addr_of_mut!(local).cast_const()`
+
+error: aborting due to 14 previous errors
 
