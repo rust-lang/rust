@@ -673,6 +673,14 @@ pub(crate) fn run_pass_manager(
             let name = std::str::from_utf8(name).unwrap();
 
             if name.starts_with("__enzyme") {
+                // Ensure `noinline` is present before replacing it.
+                // This is not strictly necessary for correctness, but serves as a sanity check
+                // in case the autodiff pass stops injecting `noinline` in the future.
+                assert!(
+                    attributes::has_attr(function, llvm::AttributeKind::NoInline, Function),
+                    "Expected __enzyme function to have 'noinline' before adding 'alwaysinline'"
+                );
+
                 let attr = llvm::AttributeKind::AlwaysInline.create_attr(cx.llcx);
                 attributes::apply_to_llfn(function, Function, &[attr]);
             }

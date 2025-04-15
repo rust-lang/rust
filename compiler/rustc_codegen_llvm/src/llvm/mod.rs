@@ -41,6 +41,14 @@ pub(crate) fn AddFunctionAttributes<'ll>(
     }
 }
 
+pub(crate) fn HasAttributeAtIndex<'ll>(
+    llfn: &'ll Value,
+    idx: AttributePlace,
+    attr: &'ll Attribute,
+) -> bool {
+    unsafe { LLVMRustHasAttributeAtIndex(llfn, idx.as_uint(), attrs.as_ptr()) }
+}
+
 pub(crate) fn AddCallSiteAttributes<'ll>(
     callsite: &'ll Value,
     idx: AttributePlace,

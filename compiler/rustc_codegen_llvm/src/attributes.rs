@@ -28,6 +28,10 @@ pub(crate) fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[
     }
 }
 
+pub(crate) fn has_attr(llfn: &Value, idx: AttributePlace, attr: &Attribute) -> bool {
+    llvm::HasAttributeAtIndex(llfn, idx, attr)
+}
+
 /// Get LLVM attribute for the provided inline heuristic.
 #[inline]
 fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll Attribute> {
