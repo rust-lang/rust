@@ -189,10 +189,8 @@ fn gather_pgo_profile<'a>(
     eprintln!("Training RA on {label}...");
     cmd!(
         sh,
-        "target/{target}/release/rust-analyzer analysis-stats --run-all-ide-things {train_path}"
+        "target/{target}/release/rust-analyzer analysis-stats -q --run-all-ide-things {train_path}"
     )
-    // analysis-stats produces an enormous amount of output on stdout
-    .ignore_stdout()
     .run()
     .context("cannot generate PGO profiles")?;
 
