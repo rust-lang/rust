@@ -68,8 +68,7 @@ pub(super) const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
 const NO_SCOPE_METADATA: Option<&DIScope> = None;
 /// A function that returns an empty list of generic parameter debuginfo nodes.
-const NO_GENERICS: for<'ll> fn(&CodegenCx<'ll, '_>) -> SmallVec<Option<&'ll DIType>> =
-    |_| SmallVec::new();
+const NO_GENERICS: for<'ll> fn(&CodegenCx<'ll, '_>) -> SmallVec<&'ll DIType> = |_| SmallVec::new();
 
 // SmallVec is used quite a bit in this module, so create a shorthand.
 // The actual number of elements is not so important.
@@ -1289,7 +1288,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
 fn build_generic_type_param_di_nodes<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
-) -> SmallVec<Option<&'ll DIType>> {
+) -> SmallVec<&'ll DIType> {
     if let ty::Adt(def, args) = *ty.kind() {
         if args.types().next().is_some() {
             let generics = cx.tcx.generics_of(def.did());
@@ -1299,7 +1298,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
                     kind.as_type().map(|ty| {
                         let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
                         let actual_type_di_node = type_di_node(cx, actual_type);
-                        Some(cx.create_template_type_parameter(name.as_str(), actual_type_di_node))
+                        cx.create_template_type_parameter(name.as_str(), actual_type_di_node)
                     })
                 })
                 .collect();
