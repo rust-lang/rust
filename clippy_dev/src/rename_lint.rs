@@ -1,7 +1,8 @@
 use crate::update_lints::{
-    RenamedLint, clippy_lints_src_files, gather_all, gen_renamed_lints_test_fn, generate_lint_files,
+    DeprecatedLints, RenamedLint, find_lint_decls, gen_renamed_lints_test_fn, generate_lint_files,
+    read_deprecated_lints,
 };
-use crate::utils::{FileUpdater, StringReplacer, UpdateMode, Version, insert_at_marker, rewrite_file, try_rename_file};
+use crate::utils::{FileUpdater, StringReplacer, UpdateMode, Version, try_rename_file};
 use std::ffi::OsStr;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -31,7 +32,16 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
     }
 
     let mut updater = FileUpdater::default();
-    let (mut lints, deprecated_lints, mut renamed_lints) = gather_all();
+    let mut lints = find_lint_decls();
+    let DeprecatedLints {
+        renamed: mut renamed_lints,
+        deprecated: deprecated_lints,
+        file: mut deprecated_file,
+        contents: mut deprecated_contents,
+        renamed_end,
+        ..
+    } = read_deprecated_lints();
+
     let mut old_lint_index = None;
     let mut found_new_name = false;
     for (i, lint) in lints.iter().enumerate() {
@@ -76,19 +86,17 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
         updater.update_file(file.path(), &mut replacer.replace_ident_fn());
     }
 
-    rewrite_file(Path::new("clippy_lints/src/deprecated_lints.rs"), |s| {
-        insert_at_marker(
-            s,
-            "// end renamed lints. used by `cargo dev rename_lint`",
-            &format!(
-                "#[clippy::version = \"{}\"]\n    \
-                (\"{}\", \"{}\"),\n    ",
-                clippy_version.rust_display(),
-                lint.old_name,
-                lint.new_name,
-            ),
-        )
-    });
+    deprecated_contents.insert_str(
+        renamed_end as usize,
+        &format!(
+            "    #[clippy::version = \"{}\"]\n    (\"{}\", \"{}\"),\n",
+            clippy_version.rust_display(),
+            lint.old_name,
+            lint.new_name,
+        ),
+    );
+    deprecated_file.replace_contents(deprecated_contents.as_bytes());
+    drop(deprecated_file);
 
     renamed_lints.push(lint);
     renamed_lints.sort_by(|lhs, rhs| {
@@ -166,12 +174,13 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
         // Don't change `clippy_utils/src/renamed_lints.rs` here as it would try to edit the lint being
         // renamed.
         let replacer = StringReplacer::new(replacements);
-        for file in clippy_lints_src_files() {
+        for file in WalkDir::new("clippy_lints/src") {
+            let file = file.expect("error reading `clippy_lints/src`");
             if file
                 .path()
                 .as_os_str()
                 .to_str()
-                .is_none_or(|x| x["clippy_lints/src/".len()..] != *"deprecated_lints.rs")
+                .is_some_and(|x| x.ends_with("*.rs") && x["clippy_lints/src/".len()..] != *"deprecated_lints.rs")
             {
                 updater.update_file(file.path(), &mut replacer.replace_ident_fn());
             }

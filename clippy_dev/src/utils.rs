@@ -12,10 +12,30 @@ static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
 #[cfg(windows)]
 static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
 
+#[derive(Clone, Copy)]
+pub enum FileAction {
+    Open,
+    Read,
+    Write,
+    Create,
+    Rename,
+}
+impl FileAction {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Open => "opening",
+            Self::Read => "reading",
+            Self::Write => "writing",
+            Self::Create => "creating",
+            Self::Rename => "renaming",
+        }
+    }
+}
+
 #[cold]
 #[track_caller]
-fn panic_io(e: &io::Error, action: &str, path: &Path) -> ! {
-    panic!("error {action} `{}`: {}", path.display(), *e)
+pub fn panic_file(err: &impl Display, action: FileAction, path: &Path) -> ! {
+    panic!("error {} `{}`: {}", action.as_str(), path.display(), *err)
 }
 
 /// Wrapper around `std::fs::File` which panics with a path on failure.
@@ -30,7 +50,7 @@ impl<'a> File<'a> {
         let path = path.as_ref();
         match options.open(path) {
             Ok(inner) => Self { inner, path },
-            Err(e) => panic_io(&e, "opening", path),
+            Err(e) => panic_file(&e, FileAction::Open, path),
         }
     }
 
@@ -41,7 +61,7 @@ impl<'a> File<'a> {
         match options.open(path) {
             Ok(inner) => Some(Self { inner, path }),
             Err(e) if e.kind() == io::ErrorKind::NotFound => None,
-            Err(e) => panic_io(&e, "opening", path),
+            Err(e) => panic_file(&e, FileAction::Open, path),
         }
     }
 
@@ -59,7 +79,7 @@ impl<'a> File<'a> {
     pub fn read_append_to_string<'dst>(&mut self, dst: &'dst mut String) -> &'dst mut String {
         match self.inner.read_to_string(dst) {
             Ok(_) => {},
-            Err(e) => panic_io(&e, "reading", self.path),
+            Err(e) => panic_file(&e, FileAction::Read, self.path),
         }
         dst
     }
@@ -81,7 +101,7 @@ impl<'a> File<'a> {
             Err(e) => Err(e),
         };
         if let Err(e) = res {
-            panic_io(&e, "writing", self.path);
+            panic_file(&e, FileAction::Write, self.path);
         }
     }
 }
@@ -391,7 +411,7 @@ pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
     match OpenOptions::new().create_new(true).write(true).open(new_name) {
         Ok(file) => drop(file),
         Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
-        Err(e) => panic_io(&e, "creating", new_name),
+        Err(e) => panic_file(&e, FileAction::Create, new_name),
     }
     match fs::rename(old_name, new_name) {
         Ok(()) => true,
@@ -400,37 +420,12 @@ pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
             if e.kind() == io::ErrorKind::NotFound {
                 false
             } else {
-                panic_io(&e, "renaming", old_name);
+                panic_file(&e, FileAction::Rename, old_name);
             }
         },
     }
 }
 
-#[must_use]
-pub fn insert_at_marker(text: &str, marker: &str, new_text: &str) -> Option<String> {
-    let i = text.find(marker)?;
-    let (pre, post) = text.split_at(i);
-    Some([pre, new_text, post].into_iter().collect())
-}
-
-pub fn rewrite_file(path: &Path, f: impl FnOnce(&str) -> Option<String>) {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .read(true)
-        .open(path)
-        .unwrap_or_else(|e| panic_io(&e, "opening", path));
-    let mut buf = String::new();
-    file.read_to_string(&mut buf)
-        .unwrap_or_else(|e| panic_io(&e, "reading", path));
-    if let Some(new_contents) = f(&buf) {
-        file.rewind().unwrap_or_else(|e| panic_io(&e, "writing", path));
-        file.write_all(new_contents.as_bytes())
-            .unwrap_or_else(|e| panic_io(&e, "writing", path));
-        file.set_len(new_contents.len() as u64)
-            .unwrap_or_else(|e| panic_io(&e, "writing", path));
-    }
-}
-
 pub fn write_file(path: &Path, contents: &str) {
-    fs::write(path, contents).unwrap_or_else(|e| panic_io(&e, "writing", path));
+    fs::write(path, contents).unwrap_or_else(|e| panic_file(&e, FileAction::Write, path));
 }

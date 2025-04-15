@@ -1,5 +1,7 @@
-use crate::update_lints::{DeprecatedLint, Lint, gather_all, generate_lint_files};
-use crate::utils::{UpdateMode, Version, insert_at_marker, rewrite_file};
+use crate::update_lints::{
+    DeprecatedLint, DeprecatedLints, Lint, find_lint_decls, generate_lint_files, read_deprecated_lints,
+};
+use crate::utils::{UpdateMode, Version};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
@@ -21,7 +23,16 @@ pub fn deprecate(clippy_version: Version, name: &str, reason: &str) {
     };
     let stripped_name = &prefixed_name[8..];
 
-    let (mut lints, mut deprecated_lints, renamed_lints) = gather_all();
+    let mut lints = find_lint_decls();
+    let DeprecatedLints {
+        renamed: renamed_lints,
+        deprecated: mut deprecated_lints,
+        file: mut deprecated_file,
+        contents: mut deprecated_contents,
+        deprecated_end,
+        ..
+    } = read_deprecated_lints();
+
     let Some(lint) = lints.iter().find(|l| l.name == stripped_name) else {
         eprintln!("error: failed to find lint `{name}`");
         return;
@@ -38,16 +49,17 @@ pub fn deprecate(clippy_version: Version, name: &str, reason: &str) {
     };
 
     if remove_lint_declaration(stripped_name, &mod_path, &mut lints).unwrap_or(false) {
-        rewrite_file("clippy_lints/src/deprecated_lints.rs".as_ref(), |s| {
-            insert_at_marker(
-                s,
-                "// end deprecated lints. used by `cargo dev deprecate_lint`",
-                &format!(
-                    "#[clippy::version = \"{}\"]\n    (\"{prefixed_name}\", \"{reason}\"),\n    ",
-                    clippy_version.rust_display(),
-                ),
-            )
-        });
+        deprecated_contents.insert_str(
+            deprecated_end as usize,
+            &format!(
+                "    #[clippy::version = \"{}\"]\n    (\"{}\", \"{}\"),\n",
+                clippy_version.rust_display(),
+                prefixed_name,
+                reason,
+            ),
+        );
+        deprecated_file.replace_contents(deprecated_contents.as_bytes());
+        drop(deprecated_file);
 
         deprecated_lints.push(DeprecatedLint {
             name: prefixed_name,

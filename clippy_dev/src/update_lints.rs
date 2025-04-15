@@ -1,11 +1,11 @@
-use crate::utils::{FileUpdater, UpdateMode, UpdateStatus, update_text_region_fn};
+use crate::utils::{File, FileAction, FileUpdater, UpdateMode, UpdateStatus, panic_file, update_text_region_fn};
+use core::str;
 use itertools::Itertools;
 use rustc_lexer::{LiteralKind, TokenKind, tokenize};
 use rustc_literal_escaper::{Mode, unescape_unicode};
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsStr;
 use std::fmt::Write;
-use std::fs;
+use std::fs::OpenOptions;
 use std::ops::Range;
 use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
@@ -26,8 +26,11 @@ const DOCS_LINK: &str = "https://rust-lang.github.io/rust-clippy/master/index.ht
 ///
 /// Panics if a file path could not read from or then written to
 pub fn update(update_mode: UpdateMode) {
-    let (lints, deprecated_lints, renamed_lints) = gather_all();
-    generate_lint_files(update_mode, &lints, &deprecated_lints, &renamed_lints);
+    let lints = find_lint_decls();
+    let DeprecatedLints {
+        renamed, deprecated, ..
+    } = read_deprecated_lints();
+    generate_lint_files(update_mode, &lints, &deprecated, &renamed);
 }
 
 pub fn generate_lint_files(
@@ -36,8 +39,6 @@ pub fn generate_lint_files(
     deprecated: &[DeprecatedLint],
     renamed: &[RenamedLint],
 ) {
-    let mut lints = lints.to_owned();
-    lints.sort_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
     FileUpdater::default().update_files_checked(
         "cargo dev update_lints",
         update_mode,
@@ -107,7 +108,7 @@ pub fn generate_lint_files(
 }
 
 pub fn print_lints() {
-    let (lints, _, _) = gather_all();
+    let lints = find_lint_decls();
     let lint_count = lints.len();
     let grouped_by_lint_group = Lint::by_lint_group(lints.into_iter());
 
@@ -205,40 +206,54 @@ pub fn gen_renamed_lints_test_fn(lints: &[RenamedLint]) -> impl Fn(&Path, &str, 
     }
 }
 
-/// Gathers all lints defined in `clippy_lints/src`
+/// Finds all lint declarations (`declare_clippy_lint!`)
 #[must_use]
-pub fn gather_all() -> (Vec<Lint>, Vec<DeprecatedLint>, Vec<RenamedLint>) {
+pub fn find_lint_decls() -> Vec<Lint> {
     let mut lints = Vec::with_capacity(1000);
-    let mut deprecated_lints = Vec::with_capacity(50);
-    let mut renamed_lints = Vec::with_capacity(50);
-
-    for file in clippy_lints_src_files() {
-        let path = file.path();
-        let contents =
-            fs::read_to_string(path).unwrap_or_else(|e| panic!("Cannot read from `{}`: {e}", path.display()));
-        let module = path.as_os_str().to_str().unwrap()["clippy_lints/src/".len()..].replace(['/', '\\'], "::");
-
-        // If the lints are stored in mod.rs, we get the module name from
-        // the containing directory:
-        let module = if let Some(module) = module.strip_suffix("::mod.rs") {
-            module
-        } else {
-            module.strip_suffix(".rs").unwrap_or(&module)
-        };
-
-        if module == "deprecated_lints" {
-            parse_deprecated_contents(&contents, &mut deprecated_lints, &mut renamed_lints);
-        } else {
-            parse_contents(&contents, module, &mut lints);
-        }
+    let mut contents = String::new();
+    for (file, module) in read_src_with_module("clippy_lints/src".as_ref()) {
+        parse_clippy_lint_decls(
+            File::open_read_to_cleared_string(file.path(), &mut contents),
+            &module,
+            &mut lints,
+        );
     }
-    (lints, deprecated_lints, renamed_lints)
+    lints.sort_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
+    lints
 }
 
-pub fn clippy_lints_src_files() -> impl Iterator<Item = DirEntry> {
-    let iter = WalkDir::new("clippy_lints/src").into_iter();
-    iter.map(Result::unwrap)
-        .filter(|f| f.path().extension() == Some(OsStr::new("rs")))
+/// Reads the source files from the given root directory
+fn read_src_with_module(src_root: &Path) -> impl use<'_> + Iterator<Item = (DirEntry, String)> {
+    WalkDir::new(src_root).into_iter().filter_map(move |e| {
+        let e = match e {
+            Ok(e) => e,
+            Err(ref e) => panic_file(e, FileAction::Read, src_root),
+        };
+        let path = e.path().as_os_str().as_encoded_bytes();
+        if let Some(path) = path.strip_suffix(b".rs")
+            && let Some(path) = path.get("clippy_lints/src/".len()..)
+        {
+            if path == b"lib" {
+                Some((e, String::new()))
+            } else {
+                let path = if let Some(path) = path.strip_suffix(b"mod")
+                    && let Some(path) = path.strip_suffix(b"/").or_else(|| path.strip_suffix(b"\\"))
+                {
+                    path
+                } else {
+                    path
+                };
+                if let Ok(path) = str::from_utf8(path) {
+                    let path = path.replace(['/', '\\'], "::");
+                    Some((e, path))
+                } else {
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    })
 }
 
 macro_rules! match_tokens {
@@ -266,7 +281,7 @@ pub(crate) struct LintDeclSearchResult<'a> {
 }
 
 /// Parse a source file looking for `declare_clippy_lint` macro invocations.
-fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
+fn parse_clippy_lint_decls(contents: &str, module: &str, lints: &mut Vec<Lint>) {
     let mut offset = 0usize;
     let mut iter = tokenize(contents).map(|t| {
         let range = offset..offset + t.len as usize;
@@ -333,14 +348,39 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
     }
 }
 
-/// Parse a source file looking for `declare_deprecated_lint` macro invocations.
-fn parse_deprecated_contents(contents: &str, deprecated: &mut Vec<DeprecatedLint>, renamed: &mut Vec<RenamedLint>) {
-    let Some((_, contents)) = contents.split_once("\ndeclare_with_version! { DEPRECATED") else {
-        return;
+pub struct DeprecatedLints {
+    pub file: File<'static>,
+    pub contents: String,
+    pub deprecated: Vec<DeprecatedLint>,
+    pub renamed: Vec<RenamedLint>,
+    pub deprecated_end: u32,
+    pub renamed_end: u32,
+}
+
+#[must_use]
+#[expect(clippy::cast_possible_truncation)]
+pub fn read_deprecated_lints() -> DeprecatedLints {
+    let mut res = DeprecatedLints {
+        file: File::open(
+            "clippy_lints/src/deprecated_lints.rs",
+            OpenOptions::new().read(true).write(true),
+        ),
+        contents: String::new(),
+        deprecated: Vec::with_capacity(30),
+        renamed: Vec::with_capacity(80),
+        deprecated_end: 0,
+        renamed_end: 0,
     };
-    let Some((deprecated_src, renamed_src)) = contents.split_once("\ndeclare_with_version! { RENAMED") else {
-        return;
-    };
+
+    res.file.read_append_to_string(&mut res.contents);
+
+    let (_, contents) = res.contents.split_once("\ndeclare_with_version! { DEPRECATED").unwrap();
+    let (deprecated_src, contents) = contents.split_once("\n]}").unwrap();
+    res.deprecated_end = (res.contents.len() - contents.len() - 2) as u32;
+
+    let (_, contents) = contents.split_once("\ndeclare_with_version! { RENAMED").unwrap();
+    let (renamed_src, contents) = contents.split_once("\n]}").unwrap();
+    res.renamed_end = (res.contents.len() - contents.len() - 2) as u32;
 
     for line in deprecated_src.lines() {
         let mut offset = 0usize;
@@ -362,7 +402,7 @@ fn parse_deprecated_contents(contents: &str, deprecated: &mut Vec<DeprecatedLint
             // "new_name"),
             Whitespace Literal{kind: LiteralKind::Str{..},..}(reason) CloseParen Comma
         );
-        deprecated.push(DeprecatedLint::new(name, reason));
+        res.deprecated.push(DeprecatedLint::new(name, reason));
     }
     for line in renamed_src.lines() {
         let mut offset = 0usize;
@@ -384,8 +424,10 @@ fn parse_deprecated_contents(contents: &str, deprecated: &mut Vec<DeprecatedLint
             // "new_name"),
             Whitespace Literal{kind: LiteralKind::Str{..},..}(new_name) CloseParen Comma
         );
-        renamed.push(RenamedLint::new(old_name, new_name));
+        res.renamed.push(RenamedLint::new(old_name, new_name));
     }
+
+    res
 }
 
 /// Removes the line splices and surrounding quotes from a string literal
@@ -411,7 +453,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_contents() {
+    fn test_parse_clippy_lint_decls() {
         static CONTENTS: &str = r#"
             declare_clippy_lint! {
                 #[clippy::version = "Hello Clippy!"]
@@ -429,7 +471,7 @@ mod tests {
             }
         "#;
         let mut result = Vec::new();
-        parse_contents(CONTENTS, "module_name", &mut result);
+        parse_clippy_lint_decls(CONTENTS, "module_name", &mut result);
         for r in &mut result {
             r.declaration_range = Range::default();
         }
