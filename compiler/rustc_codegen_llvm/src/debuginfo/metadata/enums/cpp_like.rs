@@ -17,8 +17,8 @@ use crate::debuginfo::metadata::enums::DiscrResult;
 use crate::debuginfo::metadata::type_map::{self, Stub, UniqueTypeId};
 use crate::debuginfo::metadata::{
     DINodeCreationResult, NO_GENERICS, NO_SCOPE_METADATA, SmallVec, UNKNOWN_LINE_NUMBER,
-    build_field_di_node, create_member_type, file_metadata, file_metadata_from_def_id,
-    size_and_align_of, type_di_node, unknown_file_metadata, visibility_di_flags,
+    build_field_di_node, file_metadata, file_metadata_from_def_id, size_and_align_of, type_di_node,
+    unknown_file_metadata, visibility_di_flags,
 };
 use crate::debuginfo::utils::DIB;
 use crate::llvm::debuginfo::{DIFile, DIFlags, DIType};
@@ -820,6 +820,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
             .unwrap_or_else(|| (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER));
 
         let field_name = variant_union_field_name(variant_member_info.variant_index);
+        let (size, align) = size_and_align_of(enum_type_and_layout);
 
         let variant_struct_type_wrapper = build_variant_struct_wrapper_type_di_node(
             cx,
@@ -839,23 +840,27 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
             },
         );
 
-        // We use create_member_type() member type directly because
+        // We use LLVMRustDIBuilderCreateMemberType() member type directly because
         // the build_field_di_node() function does not support specifying a source location,
         // which is something that we don't do anywhere else.
-        create_member_type(
-            cx,
-            enum_type_di_node,
-            &field_name,
-            file_di_node,
-            line_number,
-            // NOTE: We use the layout of the entire type, not from variant_layout
-            //       since the later is sometimes smaller (if it has fewer fields).
-            enum_type_and_layout,
-            // Union fields are always at offset zero
-            Size::ZERO,
-            di_flags,
-            variant_struct_type_wrapper,
-        )
+        unsafe {
+            llvm::LLVMRustDIBuilderCreateMemberType(
+                DIB(cx),
+                enum_type_di_node,
+                field_name.as_c_char_ptr(),
+                field_name.len(),
+                file_di_node,
+                line_number,
+                // NOTE: We use the size and align of the entire type, not from variant_layout
+                //       since the later is sometimes smaller (if it has fewer fields).
+                size.bits(),
+                align.bits() as u32,
+                // Union fields are always at offset zero
+                Size::ZERO.bits(),
+                di_flags,
+                variant_struct_type_wrapper,
+            )
+        }
     }));
 
     assert_eq!(

@@ -985,30 +985,6 @@ fn build_field_di_node<'ll, 'tcx>(
     } else {
         (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
     };
-    create_member_type(
-        cx,
-        owner,
-        name,
-        file_metadata,
-        line_number,
-        layout,
-        offset,
-        flags,
-        type_di_node,
-    )
-}
-
-fn create_member_type<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
-    owner: &'ll DIScope,
-    name: &str,
-    file_metadata: &'ll DIType,
-    line_number: u32,
-    layout: TyAndLayout<'tcx>,
-    offset: Size,
-    flags: DIFlags,
-    type_di_node: &'ll DIType,
-) -> &'ll DIType {
     unsafe {
         llvm::LLVMRustDIBuilderCreateMemberType(
             DIB(cx),
