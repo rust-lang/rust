@@ -214,7 +214,13 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                             override_builder.add(&format!("/{file}")).expect(&file);
                         }
                     }
-                    Ok(None) => {}
+                    Ok(None) => {
+                        // NOTE: `Ok(None)` signifies that we need to format all files.
+                        // The tricky part here is that if `override_builder` isn't given any white
+                        // list files (i.e. files to be formatted, added without leading `!`), it
+                        // will instead look for *all* files. So, by doing nothing here, we are
+                        // actually making it so we format all files.
+                    }
                     Err(err) => {
                         eprintln!("fmt warning: Something went wrong running git commands:");
                         eprintln!("fmt warning: {err}");
