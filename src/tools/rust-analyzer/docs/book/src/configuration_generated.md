@@ -612,7 +612,7 @@ Default: `"client"`
 Controls file watching implementation.
 
 
-## rust-analyzer.highlightRelated.branches.enable {#highlightRelated.branches.enable}
+## rust-analyzer.highlightRelated.branchExitPoints.enable {#highlightRelated.branchExitPoints.enable}
 
 Default: `true`
 

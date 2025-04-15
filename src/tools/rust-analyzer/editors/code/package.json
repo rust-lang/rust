@@ -1532,7 +1532,7 @@
             {
                 "title": "highlightRelated",
                 "properties": {
-                    "rust-analyzer.highlightRelated.branches.enable": {
+                    "rust-analyzer.highlightRelated.branchExitPoints.enable": {
                         "markdownDescription": "Enables highlighting of related return values while the cursor is on any `match`, `if`, or match arm arrow (`=>`).",
                         "default": true,
                         "type": "boolean"
