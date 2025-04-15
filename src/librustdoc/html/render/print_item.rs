@@ -11,7 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::symbol::{Symbol, sym};
 use tracing::{debug, info};
 
 use super::type_layout::document_type_layout;
@@ -347,9 +347,12 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                 // but we actually want stable items to come first
                 return is_stable2.cmp(&is_stable1);
             }
-            let lhs = i1.name.unwrap_or(kw::Empty);
-            let rhs = i2.name.unwrap_or(kw::Empty);
-            compare_names(lhs.as_str(), rhs.as_str())
+            match (i1.name, i2.name) {
+                (Some(name1), Some(name2)) => compare_names(name1.as_str(), name2.as_str()),
+                (Some(_), None) => Ordering::Greater,
+                (None, Some(_)) => Ordering::Less,
+                (None, None) => Ordering::Equal,
+            }
         }
 
         let tcx = cx.tcx();
