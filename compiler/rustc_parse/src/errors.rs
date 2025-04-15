@@ -30,7 +30,6 @@ pub(crate) struct AmbiguousPlus {
 #[derive(Diagnostic)]
 #[diag(parse_maybe_recover_from_bad_type_plus, code = E0178)]
 pub(crate) struct BadTypePlus {
-    pub ty: String,
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]

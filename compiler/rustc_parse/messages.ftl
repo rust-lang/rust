@@ -543,7 +543,7 @@ parse_maybe_recover_from_bad_qpath_stage_2 =
     .suggestion = types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
 
 parse_maybe_recover_from_bad_type_plus =
-    expected a path on the left-hand side of `+`, not `{$ty}`
+    expected a path on the left-hand side of `+`
 
 parse_maybe_report_ambiguous_plus =
     ambiguous `+` in a type

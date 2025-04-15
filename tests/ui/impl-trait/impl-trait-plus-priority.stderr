@@ -31,11 +31,13 @@ help: try adding parentheses
 LL | type A = fn() -> (dyn A + B);
    |                  +         +
 
-error[E0178]: expected a path on the left-hand side of `+`, not `fn() -> A`
+error[E0178]: expected a path on the left-hand side of `+`
   --> $DIR/impl-trait-plus-priority.rs:29:10
    |
 LL | type A = fn() -> A + B;
-   |          ^^^^^^^^^^^^^ perhaps you forgot parentheses?
+   |          ^^^^^^^^^----
+   |          |
+   |          perhaps you forgot parentheses?
 
 error: ambiguous `+` in a type
   --> $DIR/impl-trait-plus-priority.rs:32:18
@@ -103,11 +105,11 @@ help: try adding parentheses
 LL | type A = &(dyn A + B);
    |           +         +
 
-error[E0178]: expected a path on the left-hand side of `+`, not `&A`
+error[E0178]: expected a path on the left-hand side of `+`
   --> $DIR/impl-trait-plus-priority.rs:46:10
    |
 LL | type A = &A + B;
-   |          ^^^^^^
+   |          ^^
    |
 help: try adding parentheses
    |
