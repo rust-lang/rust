@@ -444,7 +444,11 @@ macro_rules! bootstrap_tool {
                         SourceType::InTree
                     },
                     extra_features: vec![],
-                    allow_features: concat!($($allow_features)*),
+                    allow_features: {
+                        let mut _value = "";
+                        $( _value = $allow_features; )?
+                        _value
+                    },
                     cargo_args: vec![],
                     artifact_kind: if false $(|| $artifact_kind == ToolArtifactKind::Library)* {
                         ToolArtifactKind::Library
@@ -458,6 +462,8 @@ macro_rules! bootstrap_tool {
     }
 }
 
+pub(crate) const COMPILETEST_ALLOW_FEATURES: &str = "test,internal_output_capture";
+
 bootstrap_tool!(
     // This is marked as an external tool because it includes dependencies
     // from submodules. Trying to keep the lints in sync between all the repos
@@ -468,7 +474,7 @@ bootstrap_tool!(
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
     CargoTest, "src/tools/cargotest", "cargotest";
-    Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true, allow_features = "test";
+    Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true, allow_features = COMPILETEST_ALLOW_FEATURES;
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
     RustInstaller, "src/tools/rust-installer", "rust-installer";
@@ -483,7 +489,8 @@ bootstrap_tool!(
     GenerateCopyright, "src/tools/generate-copyright", "generate-copyright";
     SuggestTests, "src/tools/suggest-tests", "suggest-tests";
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
-    RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
+    // rustdoc-gui-test has a crate dependency on compiletest, so it needs the same unstable features.
+    RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = COMPILETEST_ALLOW_FEATURES;
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
     WasmComponentLd, "src/tools/wasm-component-ld", "wasm-component-ld", is_unstable_tool = true, allow_features = "min_specialization";
     UnicodeTableGenerator, "src/tools/unicode-table-generator", "unicode-table-generator";
