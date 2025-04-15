@@ -1600,11 +1600,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(method)
             }
             Err(error) => {
-                if segment.ident.name == kw::Empty {
-                    span_bug!(rcvr.span, "empty method name")
-                } else {
-                    Err(self.report_method_error(expr.hir_id, rcvr_t, error, expected, false))
-                }
+                Err(self.report_method_error(expr.hir_id, rcvr_t, error, expected, false))
             }
         };
 
@@ -2941,9 +2937,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ty::new_error(self.tcx(), guar);
         }
 
-        let guar = if field.name == kw::Empty {
-            self.dcx().span_bug(field.span, "field name with no name")
-        } else if self.method_exists_for_diagnostic(
+        let guar = if self.method_exists_for_diagnostic(
             field,
             base_ty,
             expr.hir_id,

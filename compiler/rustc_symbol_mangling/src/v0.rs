@@ -776,7 +776,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                                     self.push_disambiguator(
                                         disambiguated_field.disambiguator as u64,
                                     );
-                                    self.push_ident(field_name.unwrap_or(kw::Empty).as_str());
+                                    self.push_ident(field_name.unwrap().as_str());
 
                                     field.print(self)?;
                                 }
