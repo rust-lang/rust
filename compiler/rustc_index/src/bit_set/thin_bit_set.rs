@@ -366,7 +366,7 @@ impl<T: Idx> ThinBitSet<T> {
         }
 
         if self.is_inline() {
-            assert!(end <= Self::MAX_INLINE_DOMAIN_SIZE);
+            assert!(end < Self::MAX_INLINE_DOMAIN_SIZE);
             let mask = (1 << end) | ((1 << end) - (1 << start));
             unsafe { self.inline |= mask << 1 };
         } else {
@@ -390,6 +390,58 @@ impl<T: Idx> ThinBitSet<T> {
                 words[end_word_index] |= end_mask | (end_mask - 1);
             } else {
                 words[start_word_index] |= end_mask | (end_mask - start_mask);
+            }
+        }
+    }
+
+    pub fn last_set_in(&self, range: RangeInclusive<T>) -> Option<T> {
+        let start = range.start().index();
+        let end = range.end().index();
+
+        if start > end {
+            return None;
+        }
+
+        if self.is_inline() {
+            assert!(end < Self::MAX_INLINE_DOMAIN_SIZE);
+            let mut word = unsafe { self.inline } >> 1;
+            let end_bit = 1 << end;
+            // Set all bits mor significant than `end_bit` to zero.
+            word &= end_bit | (end_bit - 1);
+            if word != 0 {
+                let pos = usize::BITS as usize - 1 - word.leading_zeros() as usize;
+                if start <= pos { Some(T::new(pos)) } else { None }
+            } else {
+                None
+            }
+        } else {
+            let words = unsafe { self.on_heap.as_slice() };
+
+            let (start_word_index, _) = word_index_and_mask(start);
+            let (end_word_index, end_mask) = word_index_and_mask(end);
+
+            let end_word = words[end_word_index] & (end_mask | (end_mask - 1));
+            if end_word != 0 {
+                let pos = usize::BITS as usize - 1 - end_word.leading_zeros() as usize
+                    + usize::BITS as usize * end_word_index;
+                if start <= pos {
+                    return Some(T::new(pos));
+                }
+            }
+
+            // We exclude end_word_index from the range here, because we don't want
+            // to limit ourselves to *just* the last word: the bits set it in may be
+            // after `end`, so it may not work out.
+            if let Some(offset) =
+                words[start_word_index..end_word_index].iter().rposition(|&w| w != 0)
+            {
+                let word_idx = start_word_index + offset;
+                let start_word = words[word_idx];
+                let pos = usize::BITS as usize - 1 - start_word.leading_zeros() as usize
+                    + usize::BITS as usize * word_idx;
+                if start <= pos { Some(T::new(pos)) } else { None }
+            } else {
+                None
             }
         }
     }
@@ -806,6 +858,7 @@ mod tests {
                     if domain_size == 0 {
                         continue;
                     }
+
                     let range = rng.sample_range(domain_size - 1);
                     // Choose set to insert into.
                     if rng.next_bool() {
@@ -883,6 +936,20 @@ mod tests {
             // Check the count function.
             assert_eq!(set_1.count(), set_1_reference.count());
             assert_eq!(set_2.count(), set_2_reference.count());
+
+            // Check `last_set_in()`.
+            if domain_size > 0 {
+                let range = rng.sample_range(domain_size - 1);
+                println!("{domain_size}, {range:?}, {set_1:?}, {set_2:?}");
+                assert_eq!(
+                    set_1.last_set_in(range.clone()),
+                    set_1_reference.last_set_in(range.clone())
+                );
+                assert_eq!(
+                    set_2.last_set_in(range.clone()),
+                    set_2_reference.last_set_in(range.clone())
+                );
+            }
         }
     }
 
