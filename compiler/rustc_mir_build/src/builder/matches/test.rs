@@ -715,7 +715,7 @@ fn trait_method<'tcx>(
     let item = tcx
         .associated_items(trait_def_id)
         .filter_by_name_unhygienic(method_name)
-        .find(|item| item.kind == ty::AssocKind::Fn)
+        .find(|item| item.is_fn())
         .expect("trait method not found");
 
     let method_ty = Ty::new_fn_def(tcx, item.def_id, args);

@@ -2588,9 +2588,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .into_iter()
                 .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
                 // Only assoc fn with no receivers.
-                .filter(|item| {
-                    matches!(item.kind, ty::AssocKind::Fn) && !item.fn_has_self_parameter
-                })
+                .filter(|item| item.is_fn() && !item.is_method())
                 .filter_map(|item| {
                     // Only assoc fns that return `Self`
                     let fn_sig = self.tcx.fn_sig(item.def_id).skip_binder();
@@ -2603,8 +2601,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return None;
                     }
                     let input_len = fn_sig.inputs().skip_binder().len();
-                    let order = !item.name.as_str().starts_with("new");
-                    Some((order, item.name, input_len))
+                    let name = item.name();
+                    let order = !name.as_str().starts_with("new");
+                    Some((order, name, input_len))
                 })
                 .collect::<Vec<_>>();
             items.sort_by_key(|(order, _, _)| *order);

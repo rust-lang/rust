@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
             .is_some()
         };
         if let ItemKind::Impl(Impl { of_trait: None, .. }) = parent_item.kind
-            && assoc_item.fn_has_self_parameter
+            && assoc_item.is_method()
             && let ImplItemKind::Fn(.., body_id) = &impl_item.kind
             && (!cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) || !self.avoid_breaking_exported_api)
             && let body = cx.tcx.hir_body(*body_id)

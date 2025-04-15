@@ -315,7 +315,7 @@ fn check<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds<'tcx>) {
                 assocs
                     .filter_by_name_unhygienic(constraint.ident.name)
                     .next()
-                    .is_some_and(|assoc| assoc.kind == ty::AssocKind::Type)
+                    .is_some_and(|assoc| assoc.is_type())
                 })
         {
             emit_lint(cx, poly_trait, bounds, index, implied_constraints, bound);

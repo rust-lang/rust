@@ -60,7 +60,7 @@ fn filter_assoc_items_by_name_and_namespace(
     ns: Namespace,
 ) -> impl Iterator<Item = &ty::AssocItem> {
     tcx.associated_items(assoc_items_of).filter_by_name_unhygienic(ident.name).filter(move |item| {
-        item.kind.namespace() == ns && tcx.hygienic_eq(ident, item.ident(tcx), assoc_items_of)
+        item.namespace() == ns && tcx.hygienic_eq(ident, item.ident(tcx), assoc_items_of)
     })
 }
 
@@ -743,7 +743,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
                 ns,
             )
             .map(|item| {
-                let res = Res::Def(item.kind.as_def_kind(), item.def_id);
+                let res = Res::Def(item.as_def_kind(), item.def_id);
                 (res, item.def_id)
             })
             .collect::<Vec<_>>(),

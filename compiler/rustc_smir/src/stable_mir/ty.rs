@@ -1578,29 +1578,28 @@ crate_def! {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct AssocItem {
     pub def_id: AssocDef,
-    pub name: Symbol,
     pub kind: AssocKind,
     pub container: AssocItemContainer,
 
     /// If this is an item in an impl of a trait then this is the `DefId` of
     /// the associated item on the trait that this implements.
     pub trait_item_def_id: Option<AssocDef>,
+}
 
-    /// Whether this is a method with an explicit self
-    /// as its first parameter, allowing method calls.
-    pub fn_has_self_parameter: bool,
-
-    /// `Some` if the associated item (an associated type) comes from the
-    /// return-position `impl Trait` in trait desugaring. The `ImplTraitInTraitData`
-    /// provides additional information about its source.
-    pub opt_rpitit_info: Option<ImplTraitInTraitData>,
+#[derive(Clone, PartialEq, Debug, Eq, Serialize)]
+pub enum AssocTypeData {
+    Normal(Symbol),
+    /// The associated type comes from an RPITIT. It has no name, and the
+    /// `ImplTraitInTraitData` provides additional information about its
+    /// source.
+    Rpitit(ImplTraitInTraitData),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum AssocKind {
-    Const,
-    Fn,
-    Type,
+    Const { name: Symbol },
+    Fn { name: Symbol, has_self: bool },
+    Type { data: AssocTypeData },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -1617,6 +1616,6 @@ pub enum ImplTraitInTraitData {
 
 impl AssocItem {
     pub fn is_impl_trait_in_trait(&self) -> bool {
-        self.opt_rpitit_info.is_some()
+        matches!(self.kind, AssocKind::Type { data: AssocTypeData::Rpitit(_) })
     }
 }

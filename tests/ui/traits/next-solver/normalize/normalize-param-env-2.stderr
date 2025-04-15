@@ -4,14 +4,14 @@ error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc: A<T>`
 LL |         Self::Assoc: A<T>,
    |                      ^^^^
    |
-note: the requirement `<() as A<T>>::Assoc: A<T>` appears on the `impl`'s method `f` but not on the corresponding trait's method
+note: the requirement `<() as A<T>>::Assoc: A<T>` appears on the `impl`'s associated function `f` but not on the corresponding trait's associated function
   --> $DIR/normalize-param-env-2.rs:12:8
    |
 LL | trait A<T> {
    |       - in this trait
 ...
 LL |     fn f()
-   |        ^ this trait's method doesn't have the requirement `<() as A<T>>::Assoc: A<T>`
+   |        ^ this trait's associated function doesn't have the requirement `<() as A<T>>::Assoc: A<T>`
 
 error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc: A<T>`
   --> $DIR/normalize-param-env-2.rs:24:22

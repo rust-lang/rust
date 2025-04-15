@@ -443,13 +443,13 @@ fn best_definition_site_of_opaque<'tcx>(
             let impl_def_id = tcx.local_parent(parent);
             for assoc in tcx.associated_items(impl_def_id).in_definition_order() {
                 match assoc.kind {
-                    ty::AssocKind::Const | ty::AssocKind::Fn => {
+                    ty::AssocKind::Const { .. } | ty::AssocKind::Fn { .. } => {
                         if let ControlFlow::Break(span) = locator.check(assoc.def_id.expect_local())
                         {
                             return Some(span);
                         }
                     }
-                    ty::AssocKind::Type => {}
+                    ty::AssocKind::Type { .. } => {}
                 }
             }
 
@@ -740,7 +740,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
             for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
-                    ty::AssocKind::Type if assoc_item.defaultness(tcx).has_value() => {
+                    ty::AssocKind::Type { .. } if assoc_item.defaultness(tcx).has_value() => {
                         let trait_args = GenericArgs::identity_for_item(tcx, def_id);
                         let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
@@ -942,7 +942,7 @@ fn check_impl_items_against_trait<'tcx>(
 
         if res.is_ok() {
             match ty_impl_item.kind {
-                ty::AssocKind::Fn => {
+                ty::AssocKind::Fn { .. } => {
                     compare_impl_item::refine::check_refining_return_position_impl_trait_in_trait(
                         tcx,
                         ty_impl_item,
@@ -952,8 +952,8 @@ fn check_impl_items_against_trait<'tcx>(
                             .instantiate_identity(),
                     );
                 }
-                ty::AssocKind::Const => {}
-                ty::AssocKind::Type => {}
+                ty::AssocKind::Const { .. } => {}
+                ty::AssocKind::Type { .. } => {}
             }
         }
 

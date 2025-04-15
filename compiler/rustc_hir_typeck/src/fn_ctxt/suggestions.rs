@@ -381,9 +381,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut suggestions = methods
                 .iter()
                 .filter_map(|conversion_method| {
+                    let conversion_method_name = conversion_method.name();
                     let receiver_method_ident = expr.method_ident();
                     if let Some(method_ident) = receiver_method_ident
-                        && method_ident.name == conversion_method.name
+                        && method_ident.name == conversion_method_name
                     {
                         return None; // do not suggest code that is already there (#53348)
                     }
@@ -391,20 +392,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let method_call_list = [sym::to_vec, sym::to_string];
                     let mut sugg = if let ExprKind::MethodCall(receiver_method, ..) = expr.kind
                         && receiver_method.ident.name == sym::clone
-                        && method_call_list.contains(&conversion_method.name)
+                        && method_call_list.contains(&conversion_method_name)
                     // If receiver is `.clone()` and found type has one of those methods,
                     // we guess that the user wants to convert from a slice type (`&[]` or `&str`)
                     // to an owned type (`Vec` or `String`). These conversions clone internally,
                     // so we remove the user's `clone` call.
                     {
-                        vec![(receiver_method.ident.span, conversion_method.name.to_string())]
+                        vec![(receiver_method.ident.span, conversion_method_name.to_string())]
                     } else if expr.precedence() < ExprPrecedence::Unambiguous {
                         vec![
                             (expr.span.shrink_to_lo(), "(".to_string()),
-                            (expr.span.shrink_to_hi(), format!(").{}()", conversion_method.name)),
+                            (expr.span.shrink_to_hi(), format!(").{}()", conversion_method_name)),
                         ]
                     } else {
-                        vec![(expr.span.shrink_to_hi(), format!(".{}()", conversion_method.name))]
+                        vec![(expr.span.shrink_to_hi(), format!(".{}()", conversion_method_name))]
                     };
                     let struct_pat_shorthand_field =
                         self.tcx.hir_maybe_get_struct_pattern_shorthand_field(expr);
