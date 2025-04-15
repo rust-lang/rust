@@ -6,7 +6,6 @@ use std::ptr;
 use std::sync::Arc;
 
 use libc::c_uint;
-use metadata::create_subroutine_type;
 use rustc_abi::Size;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
@@ -342,8 +341,10 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
-        let function_type_metadata =
-            create_subroutine_type(self, get_function_signature(self, fn_abi));
+        let function_type_metadata = unsafe {
+            let fn_signature = get_function_signature(self, fn_abi);
+            llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
+        };
 
         let mut name = String::with_capacity(64);
         type_names::push_item_name(tcx, def_id, false, &mut name);
