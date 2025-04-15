@@ -951,6 +951,7 @@ dependencies = [
  "once_cell",
  "pathdiff",
  "pulldown-cmark 0.10.3",
+ "railroad",
  "regex",
  "semver",
  "serde_json",
@@ -1299,6 +1300,15 @@ name = "r-efi"
 version = "5.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74765f6d916ee2faa39bc8e68e4f3ed8949b48cccdac59983d287a7cb71ce9c5"
+
+[[package]]
+name = "railroad"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ecedffc46c1b2cb04f4b80e094eae6b3f3f470a9635f1f396dd5206428f6b58"
+dependencies = [
+ "unicode-width",
+]
 
 [[package]]
 name = "rand"
