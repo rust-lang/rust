@@ -3234,8 +3234,8 @@ impl Config {
         Some(commit.to_string())
     }
 
-    /// Checks if the given target is the same as the builder target.
-    pub fn is_builder_target(&self, target: TargetSelection) -> bool {
+    /// Checks if the given target is the same as the host target.
+    pub fn is_host_target(&self, target: TargetSelection) -> bool {
         self.build == target
     }
 
@@ -3246,7 +3246,7 @@ impl Config {
     pub fn is_system_llvm(&self, target: TargetSelection) -> bool {
         match self.target_config.get(&target) {
             Some(Target { llvm_config: Some(_), .. }) => {
-                let ci_llvm = self.llvm_from_ci && self.is_builder_target(target);
+                let ci_llvm = self.llvm_from_ci && self.is_host_target(target);
                 !ci_llvm
             }
             // We're building from the in-tree src/llvm-project sources.

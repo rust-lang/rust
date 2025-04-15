@@ -229,7 +229,7 @@ impl Step for Std {
         // The LLD wrappers and `rust-lld` are self-contained linking components that can be
         // necessary to link the stdlib on some targets. We'll also need to copy these binaries to
         // the `stage0-sysroot` to ensure the linker is found when bootstrapping on such a target.
-        if compiler.stage == 0 && builder.config.is_builder_target(compiler.host) {
+        if compiler.stage == 0 && builder.config.is_host_target(compiler.host) {
             trace!(
                 "(build == host) copying linking components to `stage0-sysroot` for bootstrapping"
             );
@@ -2182,7 +2182,7 @@ impl Step for Assemble {
         debug!("copying codegen backends to sysroot");
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
-        if builder.config.lld_enabled {
+        if builder.config.lld_enabled && !builder.config.is_system_llvm(target_compiler.host) {
             builder.ensure(crate::core::build_steps::tool::LldWrapper {
                 build_compiler,
                 target_compiler,
@@ -2533,7 +2533,7 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     // `strip -g` is both available and will fix the issue, i.e. on a x64 linux host that is not
     // cross-compiling. Expand this to other appropriate targets in the future.
     if target != "x86_64-unknown-linux-gnu"
-        || !builder.config.is_builder_target(target)
+        || !builder.config.is_host_target(target)
         || !path.exists()
     {
         return;
