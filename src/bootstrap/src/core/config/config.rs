@@ -776,6 +776,30 @@ impl Merge for TomlConfig {
             }
         }
 
+        self.change_id.inner.merge(None, &mut Default::default(), change_id.inner, replace);
+        self.profile.merge(None, &mut Default::default(), profile, replace);
+
+        do_merge(&mut self.build, build, replace);
+        do_merge(&mut self.install, install, replace);
+        do_merge(&mut self.llvm, llvm, replace);
+        do_merge(&mut self.gcc, gcc, replace);
+        do_merge(&mut self.rust, rust, replace);
+        do_merge(&mut self.dist, dist, replace);
+
+        match (self.target.as_mut(), target) {
+            (_, None) => {}
+            (None, Some(target)) => self.target = Some(target),
+            (Some(original_target), Some(new_target)) => {
+                for (triple, new) in new_target {
+                    if let Some(original) = original_target.get_mut(&triple) {
+                        original.merge(None, &mut Default::default(), new, replace);
+                    } else {
+                        original_target.insert(triple, new);
+                    }
+                }
+            }
+        }
+
         let parent_dir = parent_config_path
             .as_ref()
             .and_then(|p| p.parent().map(ToOwned::to_owned))
@@ -809,30 +833,6 @@ impl Merge for TomlConfig {
             );
 
             included_extensions.remove(&include_path);
-        }
-
-        self.change_id.inner.merge(None, &mut Default::default(), change_id.inner, replace);
-        self.profile.merge(None, &mut Default::default(), profile, replace);
-
-        do_merge(&mut self.build, build, replace);
-        do_merge(&mut self.install, install, replace);
-        do_merge(&mut self.llvm, llvm, replace);
-        do_merge(&mut self.gcc, gcc, replace);
-        do_merge(&mut self.rust, rust, replace);
-        do_merge(&mut self.dist, dist, replace);
-
-        match (self.target.as_mut(), target) {
-            (_, None) => {}
-            (None, Some(target)) => self.target = Some(target),
-            (Some(original_target), Some(new_target)) => {
-                for (triple, new) in new_target {
-                    if let Some(original) = original_target.get_mut(&triple) {
-                        original.merge(None, &mut Default::default(), new, replace);
-                    } else {
-                        original_target.insert(triple, new);
-                    }
-                }
-            }
         }
     }
 }
@@ -1640,12 +1640,14 @@ impl Config {
         // This must be handled before applying the `profile` since `include`s should always take
         // precedence over `profile`s.
         for include_path in toml.include.clone().unwrap_or_default().iter().rev() {
-            let included_toml = get_toml(include_path).unwrap_or_else(|e| {
+            let include_path = toml_path.parent().unwrap().join(include_path);
+
+            let included_toml = get_toml(&include_path).unwrap_or_else(|e| {
                 eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
                 exit!(2);
             });
             toml.merge(
-                Some(toml_path.join(include_path)),
+                Some(include_path),
                 &mut Default::default(),
                 included_toml,
                 ReplaceOpt::IgnoreDuplicate,
