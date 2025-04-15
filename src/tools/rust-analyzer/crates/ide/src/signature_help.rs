@@ -5,13 +5,15 @@ use std::collections::BTreeSet;
 
 use either::Either;
 use hir::{
-    AssocItem, DisplayTarget, GenericParam, HirDisplay, ModuleDef, PathResolution, Semantics, Trait,
+    AssocItem, DisplayTarget, GenericDef, GenericParam, HirDisplay, ModuleDef, PathResolution,
+    Semantics, Trait,
 };
 use ide_db::{
     FilePosition, FxIndexMap,
     active_parameter::{callable_for_arg_list, generic_def_for_node},
     documentation::{Documentation, HasDocs},
 };
+use itertools::Itertools;
 use span::Edition;
 use stdx::format_to;
 use syntax::{
@@ -175,6 +177,20 @@ fn signature_help_for_call(
         hir::CallableKind::Function(func) => {
             res.doc = func.docs(db);
             format_to!(res.signature, "fn {}", func.name(db).display(db, edition));
+
+            let generic_params = GenericDef::Function(func)
+                .params(db)
+                .iter()
+                .filter(|param| match param {
+                    GenericParam::TypeParam(type_param) => !type_param.is_implicit(db),
+                    GenericParam::ConstParam(_) | GenericParam::LifetimeParam(_) => true,
+                })
+                .map(|param| param.display(db, display_target))
+                .join(", ");
+            if !generic_params.is_empty() {
+                format_to!(res.signature, "<{}>", generic_params);
+            }
+
             fn_params = Some(match callable.receiver_param(db) {
                 Some(_self) => func.params_without_self(db),
                 None => func.assoc_fn_params(db),
@@ -183,15 +199,34 @@ fn signature_help_for_call(
         hir::CallableKind::TupleStruct(strukt) => {
             res.doc = strukt.docs(db);
             format_to!(res.signature, "struct {}", strukt.name(db).display(db, edition));
+
+            let generic_params = GenericDef::Adt(strukt.into())
+                .params(db)
+                .iter()
+                .map(|param| param.display(db, display_target))
+                .join(", ");
+            if !generic_params.is_empty() {
+                format_to!(res.signature, "<{}>", generic_params);
+            }
         }
         hir::CallableKind::TupleEnumVariant(variant) => {
             res.doc = variant.docs(db);
             format_to!(
                 res.signature,
-                "enum {}::{}",
+                "enum {}",
                 variant.parent_enum(db).name(db).display(db, edition),
-                variant.name(db).display(db, edition)
             );
+
+            let generic_params = GenericDef::Adt(variant.parent_enum(db).into())
+                .params(db)
+                .iter()
+                .map(|param| param.display(db, display_target))
+                .join(", ");
+            if !generic_params.is_empty() {
+                format_to!(res.signature, "<{}>", generic_params);
+            }
+
+            format_to!(res.signature, "::{}", variant.name(db).display(db, edition))
         }
         hir::CallableKind::Closure(closure) => {
             let fn_trait = closure.fn_trait(db);
@@ -339,6 +374,20 @@ fn signature_help_for_generics(
 
         buf.clear();
         format_to!(buf, "{}", param.display(db, display_target));
+        match param {
+            GenericParam::TypeParam(param) => {
+                if let Some(ty) = param.default(db) {
+                    format_to!(buf, " = {}", ty.display(db, display_target));
+                }
+            }
+            GenericParam::ConstParam(param) => {
+                if let Some(expr) = param.default(db, display_target).and_then(|konst| konst.expr())
+                {
+                    format_to!(buf, " = {}", expr);
+                }
+            }
+            _ => {}
+        }
         res.push_generic_param(&buf);
     }
     if let hir::GenericDef::Trait(tr) = generics_def {
@@ -815,8 +864,8 @@ fn foo<T, U: Copy + Display>(x: T, y: U) -> u32
 fn bar() { foo($03, ); }
 "#,
             expect![[r#"
-                fn foo(x: i32, y: U) -> u32
-                       ^^^^^^  ----
+                fn foo<T, U>(x: i32, y: U) -> u32
+                             ^^^^^^  ----
             "#]],
         );
     }
@@ -829,7 +878,7 @@ fn foo<T>() -> T where T: Copy + Display {}
 fn bar() { foo($0); }
 "#,
             expect![[r#"
-                fn foo() -> T
+                fn foo<T>() -> T
             "#]],
         );
     }
@@ -1279,8 +1328,8 @@ fn main() {
 }
 "#,
             expect![[r#"
-                struct S({unknown})
-                         ^^^^^^^^^
+                struct S<T>({unknown})
+                            ^^^^^^^^^
             "#]],
         );
     }
@@ -1375,7 +1424,7 @@ id! {
 fn test() { S.foo($0); }
 "#,
             expect![[r#"
-                fn foo(&'a mut self)
+                fn foo<'a>(&'a mut self)
             "#]],
         );
     }
@@ -1724,8 +1773,8 @@ fn sup() {
 }
 "#,
             expect![[r#"
-                fn test(&mut self, val: V)
-                                   ^^^^^^
+                fn test<V>(&mut self, val: V)
+                                      ^^^^^^
             "#]],
         );
     }
@@ -1901,8 +1950,8 @@ fn f() {
 }
 "#,
             expect![[r#"
-                fn foo(x: Wrap<impl Trait<U>>)
-                       ^^^^^^^^^^^^^^^^^^^^^^
+                fn foo<U>(x: Wrap<impl Trait<U>>)
+                          ^^^^^^^^^^^^^^^^^^^^^^
             "#]],
         );
     }
@@ -2391,6 +2440,98 @@ fn main() {
             expect![[r#"
                 (i32, i32, i32)
                  ---  ---  ^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_tuple_generic_param() {
+        check(
+            r#"
+struct S<T>(T);
+
+fn main() {
+    let s: S<$0
+}
+            "#,
+            expect![[r#"
+                struct S<T>
+                         ^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_enum_generic_param() {
+        check(
+            r#"
+enum Option<T> {
+    Some(T),
+    None,
+}
+
+fn main() {
+    let opt: Option<$0
+}
+            "#,
+            expect![[r#"
+                enum Option<T>
+                            ^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_enum_variant_generic_param() {
+        check(
+            r#"
+enum Option<T> {
+    Some(T),
+    None,
+}
+
+fn main() {
+    let opt = Option::Some($0);
+}
+            "#,
+            expect![[r#"
+                enum Option<T>::Some({unknown})
+                                     ^^^^^^^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_generic_arg_with_default() {
+        check(
+            r#"
+struct S<T = u8> {
+    field: T,
+}
+
+fn main() {
+    let s: S<$0
+}
+            "#,
+            expect![[r#"
+                struct S<T = u8>
+                         ^^^^^^
+            "#]],
+        );
+
+        check(
+            r#"
+struct S<const C: u8 = 5> {
+    field: C,
+}
+
+fn main() {
+    let s: S<$0
+}
+            "#,
+            expect![[r#"
+                struct S<const C: u8 = 5>
+                         ^^^^^^^^^^^^^^^
             "#]],
         );
     }
