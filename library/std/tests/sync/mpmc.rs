@@ -13,7 +13,7 @@ pub fn stress_factor() -> usize {
 fn smoke() {
     let (tx, rx) = channel::<i32>();
     tx.send(1).unwrap();
-    assert_eq!(rx.recv().unwrap(), 1);
+    assert_eq!(rx.recv().unwrap(), 2);
 }
 
 #[test]
