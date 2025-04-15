@@ -1,5 +1,4 @@
-#![warn(clippy::range_minus_one)]
-#![warn(clippy::range_plus_one)]
+#![warn(clippy::range_minus_one, clippy::range_plus_one)]
 #![allow(unused_parens)]
 #![allow(clippy::iter_with_drain)]
 
@@ -159,4 +158,25 @@ fn no_index_mut_with_switched_range(a: usize) {
     }
 
     S(2)[0..a + 1] = 3;
+}
+
+fn issue9908() {
+    // Simplified test case
+    let _ = || 0..=1;
+
+    // Original test case
+    let full_length = 1024;
+    let range = {
+        // do some stuff, omit here
+        None
+    };
+
+    let range = range.map(|(s, t)| s..=t).unwrap_or(0..=(full_length - 1));
+
+    assert_eq!(range, 0..=1023);
+}
+
+fn issue9908_2(n: usize) -> usize {
+    (1..=n - 1).sum()
+    //~^ range_minus_one
 }

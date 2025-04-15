@@ -13,7 +13,7 @@ use rustc_ast::Mutability;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, LangItem, Node};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::ty::{self, ClauseKind, GenericArgKind, PredicatePolarity, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
@@ -468,70 +468,70 @@ fn can_switch_ranges<'tcx>(
 
 // exclusive range plus one: `x..(y+1)`
 fn check_exclusive_range_plus_one<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if expr.span.can_be_used_for_suggestions()
-        && let Some(higher::Range {
-            start,
-            end: Some(end),
-            limits: RangeLimits::HalfOpen,
-        }) = higher::Range::hir(expr)
-        && let Some(y) = y_plus_one(cx, end)
-        && can_switch_ranges(cx, expr, RangeLimits::HalfOpen, cx.typeck_results().expr_ty(y))
-    {
-        let span = expr.span;
-        span_lint_and_then(
-            cx,
-            RANGE_PLUS_ONE,
-            span,
-            "an inclusive range would be more readable",
-            |diag| {
-                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_paren().to_string());
-                let end = Sugg::hir(cx, y, "y").maybe_paren();
-                match span.with_source_text(cx, |src| src.starts_with('(') && src.ends_with(')')) {
-                    Some(true) => {
-                        diag.span_suggestion(span, "use", format!("({start}..={end})"), Applicability::MaybeIncorrect);
-                    },
-                    Some(false) => {
-                        diag.span_suggestion(
-                            span,
-                            "use",
-                            format!("{start}..={end}"),
-                            Applicability::MachineApplicable, // snippet
-                        );
-                    },
-                    None => {},
-                }
-            },
-        );
-    }
+    check_range_switch(
+        cx,
+        expr,
+        RangeLimits::HalfOpen,
+        y_plus_one,
+        RANGE_PLUS_ONE,
+        "an inclusive range would be more readable",
+        "..=",
+    );
 }
 
 // inclusive range minus one: `x..=(y-1)`
 fn check_inclusive_range_minus_one<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+    check_range_switch(
+        cx,
+        expr,
+        RangeLimits::Closed,
+        y_minus_one,
+        RANGE_MINUS_ONE,
+        "an exclusive range would be more readable",
+        "..",
+    );
+}
+
+/// Check for a `kind` of range in `expr`, check for `predicate` on the end,
+/// and emit the `lint` with `msg` and the `operator`.
+fn check_range_switch<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    kind: RangeLimits,
+    predicate: impl for<'hir> FnOnce(&LateContext<'_>, &Expr<'hir>) -> Option<&'hir Expr<'hir>>,
+    lint: &'static Lint,
+    msg: &'static str,
+    operator: &str,
+) {
     if expr.span.can_be_used_for_suggestions()
         && let Some(higher::Range {
             start,
             end: Some(end),
-            limits: RangeLimits::Closed,
+            limits,
         }) = higher::Range::hir(expr)
-        && let Some(y) = y_minus_one(cx, end)
-        && can_switch_ranges(cx, expr, RangeLimits::Closed, cx.typeck_results().expr_ty(y))
+        && limits == kind
+        && let Some(y) = predicate(cx, end)
+        && can_switch_ranges(cx, expr, kind, cx.typeck_results().expr_ty(y))
     {
-        span_lint_and_then(
-            cx,
-            RANGE_MINUS_ONE,
-            expr.span,
-            "an exclusive range would be more readable",
-            |diag| {
-                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_paren().to_string());
-                let end = Sugg::hir(cx, y, "y").maybe_paren();
-                diag.span_suggestion(
-                    expr.span,
-                    "use",
-                    format!("{start}..{end}"),
-                    Applicability::MachineApplicable, // snippet
-                );
-            },
-        );
+        let span = expr.span;
+        span_lint_and_then(cx, lint, span, msg, |diag| {
+            let mut app = Applicability::MachineApplicable;
+            let start = start.map_or(String::new(), |x| {
+                Sugg::hir_with_applicability(cx, x, "<x>", &mut app)
+                    .maybe_paren()
+                    .to_string()
+            });
+            let end = Sugg::hir_with_applicability(cx, y, "<y>", &mut app).maybe_paren();
+            match span.with_source_text(cx, |src| src.starts_with('(') && src.ends_with(')')) {
+                Some(true) => {
+                    diag.span_suggestion(span, "use", format!("({start}{operator}{end})"), app);
+                },
+                Some(false) => {
+                    diag.span_suggestion(span, "use", format!("{start}{operator}{end}"), app);
+                },
+                None => {},
+            }
+        });
     }
 }
 
@@ -618,7 +618,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }
 }
 
-fn y_plus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
+fn y_plus_one<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match expr.kind {
         ExprKind::Binary(
             Spanned {
@@ -639,7 +639,7 @@ fn y_plus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'
     }
 }
 
-fn y_minus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
+fn y_minus_one<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match expr.kind {
         ExprKind::Binary(
             Spanned {
