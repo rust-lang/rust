@@ -1315,31 +1315,21 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
     ty: Ty<'tcx>,
 ) -> SmallVec<Option<&'ll DIType>> {
     if let ty::Adt(def, args) = *ty.kind() {
-        let generics = cx.tcx.generics_of(def.did());
-        return get_template_parameters(cx, generics, args);
-    }
-
-    return smallvec![];
-}
-
-pub(super) fn get_template_parameters<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
-    generics: &ty::Generics,
-    args: ty::GenericArgsRef<'tcx>,
-) -> SmallVec<Option<&'ll DIType>> {
-    if args.types().next().is_some() {
-        let names = get_parameter_names(cx, generics);
-        let template_params: SmallVec<_> = iter::zip(args, names)
-            .filter_map(|(kind, name)| {
-                kind.as_type().map(|ty| {
-                    let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
-                    let actual_type_di_node = type_di_node(cx, actual_type);
-                    Some(cx.create_template_type_parameter(name.as_str(), actual_type_di_node))
+        if args.types().next().is_some() {
+            let generics = cx.tcx.generics_of(def.did());
+            let names = get_parameter_names(cx, generics);
+            let template_params: SmallVec<_> = iter::zip(args, names)
+                .filter_map(|(kind, name)| {
+                    kind.as_type().map(|ty| {
+                        let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
+                        let actual_type_di_node = type_di_node(cx, actual_type);
+                        Some(cx.create_template_type_parameter(name.as_str(), actual_type_di_node))
+                    })
                 })
-            })
-            .collect();
+                .collect();
 
-        return template_params;
+            return template_params;
+        }
     }
 
     return smallvec![];
