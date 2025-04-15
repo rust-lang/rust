@@ -75,6 +75,7 @@ declare_lint_pass!(EmptyWithBrackets => [EMPTY_STRUCTS_WITH_BRACKETS, EMPTY_ENUM
 impl EarlyLintPass for EmptyWithBrackets {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if let ItemKind::Struct(ident, var_data, _) = &item.kind
+            && !item.span.from_expansion()
             && has_brackets(var_data)
             && let span_after_ident = item.span.with_lo(ident.span.hi())
             && has_no_fields(cx, var_data, span_after_ident)
