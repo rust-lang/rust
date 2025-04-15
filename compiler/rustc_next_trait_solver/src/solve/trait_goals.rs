@@ -1256,10 +1256,11 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
+    #[instrument(level = "debug", skip(self, goal), ret)]
     pub(super) fn merge_trait_candidates(
         &mut self,
         goal: Goal<I, TraitPredicate<I>>,
-        candidates: Vec<Candidate<I>>,
+        mut candidates: Vec<Candidate<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         if let TypingMode::Coherence = self.typing_mode() {
             let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();
@@ -1341,13 +1342,16 @@ where
 
         // If there are *only* global where bounds, then make sure to return that this
         // is still reported as being proven-via the param-env so that rigid projections
-        // operate correctly.
+        // operate correctly. Otherwise, drop all global where-bounds before merging the
+        // remaining candidates.
         let proven_via =
             if candidates.iter().all(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
                 TraitGoalProvenVia::ParamEnv
             } else {
+                candidates.retain(|c| !matches!(c.source, CandidateSource::ParamEnv(_)));
                 TraitGoalProvenVia::Misc
             };
+
         let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();
         if let Some(response) = self.try_merge_responses(&all_candidates) {
             Ok((response, Some(proven_via)))
