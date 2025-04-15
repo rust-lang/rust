@@ -3402,20 +3402,62 @@ pub const fn contract_checks() -> bool {
 ///
 /// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
 /// returns false.
-#[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
+///
+/// Note that this function is a no-op during constant evaluation.
+#[unstable(feature = "contracts_internals", issue = "128044")]
+// Calls to this function get inserted by an AST expansion pass, which uses the equivalent of
+// `#[allow_internal_unstable]` to allow using `contracts_internals` functions. Const-checking
+// doesn't honor `#[allow_internal_unstable]`, so for the const feature gate we use the user-facing
+// `contracts` feature rather than the perma-unstable `contracts_internals`
+#[rustc_const_unstable(feature = "contracts", issue = "128044")]
 #[lang = "contract_check_requires"]
 #[rustc_intrinsic]
-pub fn contract_check_requires<C: Fn() -> bool>(cond: C) {
-    if contract_checks() && !cond() {
-        // Emit no unwind panic in case this was a safety requirement.
-        crate::panicking::panic_nounwind("failed requires check");
-    }
+pub const fn contract_check_requires<C: Fn() -> bool + Copy>(cond: C) {
+    const_eval_select!(
+        @capture[C: Fn() -> bool + Copy] { cond: C } :
+        if const {
+                // Do nothing
+        } else {
+            if contract_checks() && !cond() {
+                // Emit no unwind panic in case this was a safety requirement.
+                crate::panicking::panic_nounwind("failed requires check");
+            }
+        }
+    )
 }
 
 /// Check if the post-condition `cond` has been met.
 ///
 /// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
 /// returns false.
+///
+/// Note that this function is a no-op during constant evaluation.
+#[cfg(not(bootstrap))]
+#[unstable(feature = "contracts_internals", issue = "128044")]
+// Similar to `contract_check_requires`, we need to use the user-facing
+// `contracts` feature rather than the perma-unstable `contracts_internals`.
+// Const-checking doesn't honor allow_internal_unstable logic used by contract expansion.
+#[rustc_const_unstable(feature = "contracts", issue = "128044")]
+#[lang = "contract_check_ensures"]
+#[rustc_intrinsic]
+pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(cond: C, ret: Ret) -> Ret {
+    const_eval_select!(
+        @capture[C: Fn(&Ret) -> bool + Copy, Ret] { cond: C, ret: Ret } -> Ret :
+        if const {
+            // Do nothing
+            ret
+        } else {
+            if contract_checks() && !cond(&ret) {
+                // Emit no unwind panic in case this was a safety requirement.
+                crate::panicking::panic_nounwind("failed ensures check");
+            }
+            ret
+        }
+    )
+}
+
+/// This is the old version of contract_check_ensures kept here for bootstrap only.
+#[cfg(bootstrap)]
 #[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
 #[rustc_intrinsic]
 pub fn contract_check_ensures<'a, Ret, C: Fn(&'a Ret) -> bool>(ret: &'a Ret, cond: C) {
