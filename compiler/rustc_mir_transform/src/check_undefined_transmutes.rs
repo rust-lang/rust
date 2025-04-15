@@ -42,7 +42,7 @@ impl<'a, 'tcx> UndefinedTransmutesChecker<'a, 'tcx> {
         if self.tcx.is_const_fn(def_id)
             || matches!(
                 self.tcx.opt_associated_item(def_id),
-                Some(AssocItem { kind: AssocKind::Const, .. })
+                Some(AssocItem { kind: AssocKind::Const { .. }, .. })
             )
         {
             let fn_sig = function.ty(self.body, self.tcx).fn_sig(self.tcx).skip_binder();

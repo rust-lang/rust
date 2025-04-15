@@ -464,7 +464,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn associated_type_def_ids(self, def_id: DefId) -> impl IntoIterator<Item = DefId> {
         self.associated_items(def_id)
             .in_definition_order()
-            .filter(|assoc_item| matches!(assoc_item.kind, ty::AssocKind::Type))
+            .filter(|assoc_item| assoc_item.is_type())
             .map(|assoc_item| assoc_item.def_id)
     }
 

@@ -201,7 +201,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             tcx.associated_items(pred.trait_ref.def_id)
                                 .in_definition_order()
                                 // We only care about associated types.
-                                .filter(|item| item.kind == ty::AssocKind::Type)
+                                .filter(|item| item.is_type())
                                 // No RPITITs -- they're not dyn-compatible for now.
                                 .filter(|item| !item.is_impl_trait_in_trait())
                                 // If the associated type has a `where Self: Sized` bound,

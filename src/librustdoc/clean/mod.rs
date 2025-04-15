@@ -521,7 +521,7 @@ fn projection_to_path_segment<'tcx>(
     let item = cx.tcx.associated_item(def_id);
     let generics = cx.tcx.generics_of(def_id);
     PathSegment {
-        name: item.name,
+        name: item.name(),
         args: GenericArgs::AngleBracketed {
             args: clean_middle_generic_args(
                 cx,
@@ -1340,7 +1340,7 @@ pub(crate) fn clean_impl_item<'tcx>(
 pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocContext<'_>) -> Item {
     let tcx = cx.tcx;
     let kind = match assoc_item.kind {
-        ty::AssocKind::Const => {
+        ty::AssocKind::Const { .. } => {
             let ty = clean_middle_ty(
                 ty::Binder::dummy(tcx.type_of(assoc_item.def_id).instantiate_identity()),
                 cx,
@@ -1374,10 +1374,10 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 }
             }
         }
-        ty::AssocKind::Fn => {
+        ty::AssocKind::Fn { has_self, .. } => {
             let mut item = inline::build_function(cx, assoc_item.def_id);
 
-            if assoc_item.fn_has_self_parameter {
+            if has_self {
                 let self_ty = match assoc_item.container {
                     ty::AssocItemContainer::Impl => {
                         tcx.type_of(assoc_item.container_id(tcx)).instantiate_identity()
@@ -1412,8 +1412,8 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 RequiredMethodItem(item)
             }
         }
-        ty::AssocKind::Type => {
-            let my_name = assoc_item.name;
+        ty::AssocKind::Type { .. } => {
+            let my_name = assoc_item.name();
 
             fn param_eq_arg(param: &GenericParamDef, arg: &GenericArg) -> bool {
                 match (&param.kind, arg) {
@@ -1554,7 +1554,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
         }
     };
 
-    Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name), kind, cx)
+    Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name()), kind, cx)
 }
 
 fn first_non_private_clean_path<'tcx>(
@@ -2223,7 +2223,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
 
             Type::QPath(Box::new(QPathData {
                 assoc: PathSegment {
-                    name: cx.tcx.associated_item(def_id).name,
+                    name: cx.tcx.associated_item(def_id).name(),
                     args: GenericArgs::AngleBracketed {
                         args: clean_middle_generic_args(
                             cx,

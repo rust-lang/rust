@@ -1017,7 +1017,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             infer::BoundRegion(_, br, infer::AssocTypeProjection(def_id)) => format!(
                 " for lifetime parameter {}in trait containing associated type `{}`",
                 br_string(br),
-                self.tcx.associated_item(def_id).name
+                self.tcx.associated_item(def_id).name()
             ),
             infer::RegionParameterDefinition(_, name) => {
                 format!(" for lifetime parameter `{name}`")

@@ -348,11 +348,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && let None = self.tainted_by_errors()
                     {
                         let (verb, noun) = match self.tcx.associated_item(item_id).kind {
-                            ty::AssocKind::Const => ("refer to the", "constant"),
-                            ty::AssocKind::Fn => ("call", "function"),
+                            ty::AssocKind::Const { .. } => ("refer to the", "constant"),
+                            ty::AssocKind::Fn { .. } => ("call", "function"),
                             // This is already covered by E0223, but this following single match
                             // arm doesn't hurt here.
-                            ty::AssocKind::Type => ("refer to the", "type"),
+                            ty::AssocKind::Type { .. } => ("refer to the", "type"),
                         };
 
                         // Replace the more general E0283 with a more specific error

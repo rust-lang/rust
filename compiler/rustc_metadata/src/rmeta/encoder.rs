@@ -1338,7 +1338,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
 fn should_encode_fn_impl_trait_in_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     if let Some(assoc_item) = tcx.opt_associated_item(def_id)
         && assoc_item.container == ty::AssocItemContainer::Trait
-        && assoc_item.kind == ty::AssocKind::Fn
+        && assoc_item.is_fn()
     {
         true
     } else {
@@ -1691,7 +1691,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         match item.container {
             AssocItemContainer::Trait => {
-                if let ty::AssocKind::Type = item.kind {
+                if item.is_type() {
                     self.encode_explicit_item_bounds(def_id);
                     self.encode_explicit_item_self_bounds(def_id);
                     if tcx.is_conditionally_const(def_id) {
@@ -1706,7 +1706,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
         }
-        if let Some(rpitit_info) = item.opt_rpitit_info {
+        if let ty::AssocKind::Type { data: ty::AssocTypeData::Rpitit(rpitit_info) } = item.kind {
             record!(self.tables.opt_rpitit_info[def_id] <- rpitit_info);
             if matches!(rpitit_info, ty::ImplTraitInTraitData::Trait { .. }) {
                 record_array!(
