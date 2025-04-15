@@ -338,8 +338,7 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
     let num_components = sccs.num_sccs();
     let mut components = vec![FxIndexSet::default(); num_components];
 
-    for (reg_var_idx, scc_idx) in sccs.scc_indices().iter().enumerate() {
-        let reg_var = ty::RegionVid::from_usize(reg_var_idx);
+    for (reg_var, scc_idx) in sccs.scc_indices().iter_enumerated() {
         let origin = var_to_origin.get(&reg_var).unwrap_or(&RegionCtxt::Unknown);
         components[scc_idx.as_usize()].insert((reg_var, *origin));
     }
