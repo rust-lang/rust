@@ -336,7 +336,10 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
         crate::exit!(1);
     }
 
-    if !check {
-        update_rustfmt_version(build);
-    }
+    // Update `build/.rustfmt-stamp`, allowing this code to ignore files which have not been changed
+    // since last merge.
+    //
+    // NOTE: Because of the exit above, this is only reachable if formatting / format checking
+    // succeeded. So we are not commiting the version if formatting was not good.
+    update_rustfmt_version(build);
 }
