@@ -1052,7 +1052,7 @@ fn clean_fn_or_proc_macro<'tcx>(
     match macro_kind {
         Some(kind) => clean_proc_macro(item, name, kind, cx),
         None => {
-            let mut func = clean_function(cx, sig, generics, FunctionArgs::Body(body_id));
+            let mut func = clean_function(cx, sig, generics, ParamsSrc::Body(body_id));
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
             FunctionItem(func)
         }
@@ -1071,16 +1071,11 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attrib
         for (pos, literal) in meta_item_list.iter().filter_map(|meta| meta.lit()).enumerate() {
             match literal.kind {
                 ast::LitKind::Int(a, _) => {
-                    let param = func.generics.params.remove(0);
-                    if let GenericParamDef {
-                        name,
-                        kind: GenericParamDefKind::Const { ty, .. },
-                        ..
-                    } = param
-                    {
-                        func.decl.inputs.values.insert(
+                    let GenericParamDef { name, kind, .. } = func.generics.params.remove(0);
+                    if let GenericParamDefKind::Const { ty, .. } = kind {
+                        func.decl.inputs.insert(
                             a.get() as _,
-                            Argument { name: Some(name), type_: *ty, is_const: true },
+                            Parameter { name: Some(name), type_: *ty, is_const: true },
                         );
                     } else {
                         panic!("unexpected non const in position {pos}");
@@ -1092,7 +1087,7 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attrib
     }
 }
 
-enum FunctionArgs<'tcx> {
+enum ParamsSrc<'tcx> {
     Body(hir::BodyId),
     Idents(&'tcx [Option<Ident>]),
 }
@@ -1101,30 +1096,26 @@ fn clean_function<'tcx>(
     cx: &mut DocContext<'tcx>,
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
-    args: FunctionArgs<'tcx>,
+    params: ParamsSrc<'tcx>,
 ) -> Box<Function> {
     let (generics, decl) = enter_impl_trait(cx, |cx| {
-        // NOTE: generics must be cleaned before args
+        // NOTE: Generics must be cleaned before params.
         let generics = clean_generics(generics, cx);
-        let args = match args {
-            FunctionArgs::Body(body_id) => {
-                clean_args_from_types_and_body_id(cx, sig.decl.inputs, body_id)
-            }
-            FunctionArgs::Idents(idents) => {
-                clean_args_from_types_and_names(cx, sig.decl.inputs, idents)
-            }
+        let params = match params {
+            ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl.inputs, body_id),
+            ParamsSrc::Idents(idents) => clean_params(cx, sig.decl.inputs, idents),
         };
-        let decl = clean_fn_decl_with_args(cx, sig.decl, Some(&sig.header), args);
+        let decl = clean_fn_decl_with_params(cx, sig.decl, Some(&sig.header), params);
         (generics, decl)
     });
     Box::new(Function { decl, generics })
 }
 
-fn clean_args_from_types_and_names<'tcx>(
+fn clean_params<'tcx>(
     cx: &mut DocContext<'tcx>,
     types: &[hir::Ty<'tcx>],
     idents: &[Option<Ident>],
-) -> Arguments {
+) -> Vec<Parameter> {
     fn nonempty_name(ident: &Option<Ident>) -> Option<Symbol> {
         if let Some(ident) = ident
             && ident.name != kw::Underscore
@@ -1143,44 +1134,38 @@ fn clean_args_from_types_and_names<'tcx>(
         None
     };
 
-    Arguments {
-        values: types
-            .iter()
-            .enumerate()
-            .map(|(i, ty)| Argument {
-                type_: clean_ty(ty, cx),
-                name: idents.get(i).and_then(nonempty_name).or(default_name),
-                is_const: false,
-            })
-            .collect(),
-    }
+    types
+        .iter()
+        .enumerate()
+        .map(|(i, ty)| Parameter {
+            name: idents.get(i).and_then(nonempty_name).or(default_name),
+            type_: clean_ty(ty, cx),
+            is_const: false,
+        })
+        .collect()
 }
 
-fn clean_args_from_types_and_body_id<'tcx>(
+fn clean_params_via_body<'tcx>(
     cx: &mut DocContext<'tcx>,
     types: &[hir::Ty<'tcx>],
     body_id: hir::BodyId,
-) -> Arguments {
-    let body = cx.tcx.hir_body(body_id);
-
-    Arguments {
-        values: types
-            .iter()
-            .zip(body.params)
-            .map(|(ty, param)| Argument {
-                name: Some(name_from_pat(param.pat)),
-                type_: clean_ty(ty, cx),
-                is_const: false,
-            })
-            .collect(),
-    }
+) -> Vec<Parameter> {
+    types
+        .iter()
+        .zip(cx.tcx.hir_body(body_id).params)
+        .map(|(ty, param)| Parameter {
+            name: Some(name_from_pat(param.pat)),
+            type_: clean_ty(ty, cx),
+            is_const: false,
+        })
+        .collect()
 }
 
-fn clean_fn_decl_with_args<'tcx>(
+fn clean_fn_decl_with_params<'tcx>(
     cx: &mut DocContext<'tcx>,
     decl: &hir::FnDecl<'tcx>,
     header: Option<&hir::FnHeader>,
-    args: Arguments,
+    params: Vec<Parameter>,
 ) -> FnDecl {
     let mut output = match decl.output {
         hir::FnRetTy::Return(typ) => clean_ty(typ, cx),
@@ -1191,7 +1176,7 @@ fn clean_fn_decl_with_args<'tcx>(
     {
         output = output.sugared_async_return_type();
     }
-    FnDecl { inputs: args, output, c_variadic: decl.c_variadic }
+    FnDecl { inputs: params, output, c_variadic: decl.c_variadic }
 }
 
 fn clean_poly_fn_sig<'tcx>(
@@ -1201,8 +1186,6 @@ fn clean_poly_fn_sig<'tcx>(
 ) -> FnDecl {
     let mut names = did.map_or(&[] as &[_], |did| cx.tcx.fn_arg_idents(did)).iter();
 
-    // We assume all empty tuples are default return type. This theoretically can discard `-> ()`,
-    // but shouldn't change any code meaning.
     let mut output = clean_middle_ty(sig.output(), cx, None, None);
 
     // If the return type isn't an `impl Trait`, we can safely assume that this
@@ -1215,25 +1198,21 @@ fn clean_poly_fn_sig<'tcx>(
         output = output.sugared_async_return_type();
     }
 
-    FnDecl {
-        output,
-        c_variadic: sig.skip_binder().c_variadic,
-        inputs: Arguments {
-            values: sig
-                .inputs()
-                .iter()
-                .map(|t| Argument {
-                    type_: clean_middle_ty(t.map_bound(|t| *t), cx, None, None),
-                    name: Some(if let Some(Some(ident)) = names.next() {
-                        ident.name
-                    } else {
-                        kw::Underscore
-                    }),
-                    is_const: false,
-                })
-                .collect(),
-        },
-    }
+    let params = sig
+        .inputs()
+        .iter()
+        .map(|t| Parameter {
+            type_: clean_middle_ty(t.map_bound(|t| *t), cx, None, None),
+            name: Some(if let Some(Some(ident)) = names.next() {
+                ident.name
+            } else {
+                kw::Underscore
+            }),
+            is_const: false,
+        })
+        .collect();
+
+    FnDecl { inputs: params, output, c_variadic: sig.skip_binder().c_variadic }
 }
 
 fn clean_trait_ref<'tcx>(trait_ref: &hir::TraitRef<'tcx>, cx: &mut DocContext<'tcx>) -> Path {
@@ -1273,11 +1252,11 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                 RequiredAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Body(body));
+                let m = clean_function(cx, sig, trait_item.generics, ParamsSrc::Body(body));
                 MethodItem(m, None)
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(idents)) => {
-                let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Idents(idents));
+                let m = clean_function(cx, sig, trait_item.generics, ParamsSrc::Idents(idents));
                 RequiredMethodItem(m)
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
@@ -1318,7 +1297,7 @@ pub(crate) fn clean_impl_item<'tcx>(
                 type_: clean_ty(ty, cx),
             })),
             hir::ImplItemKind::Fn(ref sig, body) => {
-                let m = clean_function(cx, sig, impl_.generics, FunctionArgs::Body(body));
+                let m = clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body));
                 let defaultness = cx.tcx.defaultness(impl_.owner_id);
                 MethodItem(m, Some(defaultness))
             }
@@ -1390,14 +1369,14 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                     }
                     ty::AssocItemContainer::Trait => tcx.types.self_param,
                 };
-                let self_arg_ty =
+                let self_param_ty =
                     tcx.fn_sig(assoc_item.def_id).instantiate_identity().input(0).skip_binder();
-                if self_arg_ty == self_ty {
-                    item.decl.inputs.values[0].type_ = SelfTy;
-                } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind()
+                if self_param_ty == self_ty {
+                    item.decl.inputs[0].type_ = SelfTy;
+                } else if let ty::Ref(_, ty, _) = *self_param_ty.kind()
                     && ty == self_ty
                 {
-                    match item.decl.inputs.values[0].type_ {
+                    match item.decl.inputs[0].type_ {
                         BorrowedRef { ref mut type_, .. } => **type_ = SelfTy,
                         _ => unreachable!(),
                     }
@@ -2611,15 +2590,15 @@ fn clean_bare_fn_ty<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> BareFunctionDecl {
     let (generic_params, decl) = enter_impl_trait(cx, |cx| {
-        // NOTE: generics must be cleaned before args
+        // NOTE: Generics must be cleaned before params.
         let generic_params = bare_fn
             .generic_params
             .iter()
             .filter(|p| !is_elided_lifetime(p))
             .map(|x| clean_generic_param(cx, None, x))
             .collect();
-        let args = clean_args_from_types_and_names(cx, bare_fn.decl.inputs, bare_fn.param_idents);
-        let decl = clean_fn_decl_with_args(cx, bare_fn.decl, None, args);
+        let params = clean_params(cx, bare_fn.decl.inputs, bare_fn.param_idents);
+        let decl = clean_fn_decl_with_params(cx, bare_fn.decl, None, params);
         (generic_params, decl)
     });
     BareFunctionDecl { safety: bare_fn.safety, abi: bare_fn.abi, decl, generic_params }
@@ -2629,7 +2608,6 @@ fn clean_unsafe_binder_ty<'tcx>(
     unsafe_binder_ty: &hir::UnsafeBinderTy<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> UnsafeBinderTy {
-    // NOTE: generics must be cleaned before args
     let generic_params = unsafe_binder_ty
         .generic_params
         .iter()
@@ -3155,7 +3133,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
             hir::ForeignItemKind::Fn(sig, idents, generics) => ForeignFunctionItem(
-                clean_function(cx, &sig, generics, FunctionArgs::Idents(idents)),
+                clean_function(cx, &sig, generics, ParamsSrc::Idents(idents)),
                 sig.header.safety(),
             ),
             hir::ForeignItemKind::Static(ty, mutability, safety) => ForeignStaticItem(

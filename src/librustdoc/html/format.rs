@@ -1186,8 +1186,8 @@ impl clean::Impl {
         {
             primitive_link(f, PrimitiveType::Array, format_args!("[{name}; N]"), cx)?;
         } else if let clean::BareFunction(bare_fn) = &type_
-            && let [clean::Argument { type_: clean::Type::Generic(name), .. }] =
-                &bare_fn.decl.inputs.values[..]
+            && let [clean::Parameter { type_: clean::Type::Generic(name), .. }] =
+                &bare_fn.decl.inputs[..]
             && (self.kind.is_fake_variadic() || self.kind.is_auto())
         {
             // Hardcoded anchor library/core/src/primitive_docs.rs
@@ -1234,22 +1234,20 @@ impl clean::Impl {
     }
 }
 
-impl clean::Arguments {
-    pub(crate) fn print(&self, cx: &Context<'_>) -> impl Display {
-        fmt::from_fn(move |f| {
-            self.values
-                .iter()
-                .map(|input| {
-                    fmt::from_fn(|f| {
-                        if let Some(name) = input.name {
-                            write!(f, "{}: ", name)?;
-                        }
-                        input.type_.print(cx).fmt(f)
-                    })
+pub(crate) fn print_params(params: &[clean::Parameter], cx: &Context<'_>) -> impl Display {
+    fmt::from_fn(move |f| {
+        params
+            .iter()
+            .map(|param| {
+                fmt::from_fn(|f| {
+                    if let Some(name) = param.name {
+                        write!(f, "{}: ", name)?;
+                    }
+                    param.type_.print(cx).fmt(f)
                 })
-                .joined(", ", f)
-        })
-    }
+            })
+            .joined(", ", f)
+    })
 }
 
 // Implements Write but only counts the bytes "written".
@@ -1281,16 +1279,16 @@ impl clean::FnDecl {
             if f.alternate() {
                 write!(
                     f,
-                    "({args:#}{ellipsis}){arrow:#}",
-                    args = self.inputs.print(cx),
+                    "({params:#}{ellipsis}){arrow:#}",
+                    params = print_params(&self.inputs, cx),
                     ellipsis = ellipsis,
                     arrow = self.print_output(cx)
                 )
             } else {
                 write!(
                     f,
-                    "({args}{ellipsis}){arrow}",
-                    args = self.inputs.print(cx),
+                    "({params}{ellipsis}){arrow}",
+                    params = print_params(&self.inputs, cx),
                     ellipsis = ellipsis,
                     arrow = self.print_output(cx)
                 )
@@ -1336,14 +1334,14 @@ impl clean::FnDecl {
 
         write!(f, "(")?;
         if let Some(n) = line_wrapping_indent
-            && !self.inputs.values.is_empty()
+            && !self.inputs.is_empty()
         {
             write!(f, "\n{}", Indent(n + 4))?;
         }
 
-        let last_input_index = self.inputs.values.len().checked_sub(1);
-        for (i, input) in self.inputs.values.iter().enumerate() {
-            if let Some(selfty) = input.to_receiver() {
+        let last_input_index = self.inputs.len().checked_sub(1);
+        for (i, param) in self.inputs.iter().enumerate() {
+            if let Some(selfty) = param.to_receiver() {
                 match selfty {
                     clean::SelfTy => {
                         write!(f, "self")?;
@@ -1361,13 +1359,13 @@ impl clean::FnDecl {
                     }
                 }
             } else {
-                if input.is_const {
+                if param.is_const {
                     write!(f, "const ")?;
                 }
-                if let Some(name) = input.name {
+                if let Some(name) = param.name {
                     write!(f, "{}: ", name)?;
                 }
-                input.type_.print(cx).fmt(f)?;
+                param.type_.print(cx).fmt(f)?;
             }
             match (line_wrapping_indent, last_input_index) {
                 (_, None) => (),
