@@ -117,7 +117,14 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
             hir::ItemKind::Use(path, kind) => {
                 let hir::UsePath { segments, span, .. } = *path;
                 let path = hir::Path { segments, res: *res, span };
-                clean_use_statement_inner(import, Some(name), &path, kind, cx, &mut Default::default())
+                clean_use_statement_inner(
+                    import,
+                    Some(name),
+                    &path,
+                    kind,
+                    cx,
+                    &mut Default::default(),
+                )
             }
             _ => unreachable!(),
         }
@@ -1071,10 +1078,10 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attrib
                         ..
                     } = param
                     {
-                        func.decl
-                            .inputs
-                            .values
-                            .insert(a.get() as _, Argument { name, type_: *ty, is_const: true });
+                        func.decl.inputs.values.insert(
+                            a.get() as _,
+                            Argument { name: Some(name), type_: *ty, is_const: true },
+                        );
                     } else {
                         panic!("unexpected non const in position {pos}");
                     }
@@ -1131,9 +1138,9 @@ fn clean_args_from_types_and_names<'tcx>(
     // If at least one argument has a name, use `_` as the name of unnamed
     // arguments. Otherwise omit argument names.
     let default_name = if idents.iter().any(|ident| nonempty_name(ident).is_some()) {
-        kw::Underscore
+        Some(kw::Underscore)
     } else {
-        kw::Empty
+        None
     };
 
     Arguments {
@@ -1142,7 +1149,7 @@ fn clean_args_from_types_and_names<'tcx>(
             .enumerate()
             .map(|(i, ty)| Argument {
                 type_: clean_ty(ty, cx),
-                name: idents.get(i).and_then(nonempty_name).unwrap_or(default_name),
+                name: idents.get(i).and_then(nonempty_name).or(default_name),
                 is_const: false,
             })
             .collect(),
@@ -1161,7 +1168,7 @@ fn clean_args_from_types_and_body_id<'tcx>(
             .iter()
             .zip(body.params)
             .map(|(ty, param)| Argument {
-                name: name_from_pat(param.pat),
+                name: Some(name_from_pat(param.pat)),
                 type_: clean_ty(ty, cx),
                 is_const: false,
             })
@@ -1217,11 +1224,11 @@ fn clean_poly_fn_sig<'tcx>(
                 .iter()
                 .map(|t| Argument {
                     type_: clean_middle_ty(t.map_bound(|t| *t), cx, None, None),
-                    name: if let Some(Some(ident)) = names.next() {
+                    name: Some(if let Some(Some(ident)) = names.next() {
                         ident.name
                     } else {
                         kw::Underscore
-                    },
+                    }),
                     is_const: false,
                 })
                 .collect(),
@@ -2791,11 +2798,7 @@ fn clean_maybe_renamed_item<'tcx>(
     use hir::ItemKind;
 
     let def_id = item.owner_id.to_def_id();
-    let mut name = if renamed.is_some() {
-        renamed
-    } else {
-        cx.tcx.hir_opt_name(item.hir_id())
-    };
+    let mut name = if renamed.is_some() { renamed } else { cx.tcx.hir_opt_name(item.hir_id()) };
 
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
