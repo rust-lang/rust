@@ -411,7 +411,7 @@ fn handle_control_flow_keywords(
         T![for] if token.parent().and_then(ast::ForExpr::cast).is_some() => {
             highlight_related::highlight_break_points(sema, token)
         }
-        T![if] | T![=>] | T![match] => highlight_related::highlight_branches(sema, token),
+        T![if] | T![=>] | T![match] => highlight_related::highlight_branch_exit_points(sema, token),
         _ => return None,
     }
     .into_iter()
