@@ -12,6 +12,7 @@ use time::OffsetDateTime;
 use xshell::{Cmd, Shell, cmd};
 use zip::{DateTime, ZipWriter, write::SimpleFileOptions};
 
+use crate::flags::PgoTrainingCrate;
 use crate::{
     date_iso,
     flags::{self, Malloc},
@@ -93,7 +94,7 @@ fn dist_server(
     target: &Target,
     allocator: Malloc,
     zig: bool,
-    pgo: bool,
+    pgo: Option<PgoTrainingCrate>,
 ) -> anyhow::Result<()> {
     let _e = sh.push_env("CFG_RELEASE", release);
     let _e = sh.push_env("CARGO_PROFILE_RELEASE_LTO", "thin");
@@ -111,11 +112,12 @@ fn dist_server(
     let features = allocator.to_features();
     let command = if linux_target && zig { "zigbuild" } else { "build" };
 
-    let pgo_profile = if pgo {
+    let pgo_profile = if let Some(train_crate) = pgo {
         Some(gather_pgo_profile(
             sh,
             build_command(sh, command, &target_name, features),
             &target_name,
+            train_crate,
         )?)
     } else {
         None
@@ -155,8 +157,9 @@ fn gather_pgo_profile<'a>(
     sh: &'a Shell,
     ra_build_cmd: Cmd<'a>,
     target: &str,
+    train_crate: PgoTrainingCrate,
 ) -> anyhow::Result<PathBuf> {
-    let pgo_dir = std::path::absolute("ra-pgo-profiles")?;
+    let pgo_dir = std::path::absolute("rust-analyzer-pgo")?;
     // Clear out any stale profiles
     if pgo_dir.is_dir() {
         std::fs::remove_dir_all(&pgo_dir)?;
@@ -168,18 +171,25 @@ fn gather_pgo_profile<'a>(
         .read()
         .context("cannot resolve target-libdir from rustc")?;
     let target_bindir = PathBuf::from(target_libdir).parent().unwrap().join("bin");
-    let llvm_profdata = target_bindir.join(format!("llvm-profdata{}", EXE_EXTENSION));
+    let llvm_profdata = target_bindir.join("llvm-profdata").with_extension(EXE_EXTENSION);
 
     // Build RA with PGO instrumentation
     let cmd_gather =
         ra_build_cmd.env("RUSTFLAGS", format!("-Cprofile-generate={}", pgo_dir.to_str().unwrap()));
     cmd_gather.run().context("cannot build rust-analyzer with PGO instrumentation")?;
 
-    // Run RA on itself to gather profiles
-    let train_crate = ".";
+    let (train_path, label) = match &train_crate {
+        PgoTrainingCrate::RustAnalyzer => (PathBuf::from("."), "itself"),
+        PgoTrainingCrate::GitHub(url) => {
+            (download_crate_for_training(sh, &pgo_dir, url)?, url.as_str())
+        }
+    };
+
+    // Run RA either on itself or on a downloaded crate
+    eprintln!("Training RA on {label}...");
     cmd!(
         sh,
-        "target/{target}/release/rust-analyzer analysis-stats {train_crate} --run-all-ide-things"
+        "target/{target}/release/rust-analyzer analysis-stats -q --run-all-ide-things {train_path}"
     )
     .run()
     .context("cannot generate PGO profiles")?;
@@ -199,6 +209,17 @@ fn gather_pgo_profile<'a>(
     )?;
 
     Ok(merged_profile)
+}
+
+/// Downloads a crate from GitHub, stores it into `pgo_dir` and returns a path to it.
+fn download_crate_for_training(sh: &Shell, pgo_dir: &Path, url: &str) -> anyhow::Result<PathBuf> {
+    let normalized_path = url.replace("/", "-");
+    let target_path = pgo_dir.join(normalized_path);
+    cmd!(sh, "git clone --depth 1 https://github.com/{url} {target_path}")
+        .run()
+        .with_context(|| "cannot download PGO training crate from {url}")?;
+
+    Ok(target_path)
 }
 
 fn gzip(src_path: &Path, dest_path: &Path) -> anyhow::Result<()> {
