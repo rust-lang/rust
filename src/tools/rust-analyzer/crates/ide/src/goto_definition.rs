@@ -291,14 +291,14 @@ fn handle_control_flow_keywords(
     token: &SyntaxToken,
 ) -> Option<Vec<NavigationTarget>> {
     match token.kind() {
-        // For `fn` / `loop` / `while` / `for` / `async`, return the keyword it self,
+        // For `fn` / `loop` / `while` / `for` / `async` / `match`, return the keyword it self,
         // so that VSCode will find the references when using `ctrl + click`
         T![fn] | T![async] | T![try] | T![return] => nav_for_exit_points(sema, token),
         T![loop] | T![while] | T![break] | T![continue] => nav_for_break_points(sema, token),
         T![for] if token.parent().and_then(ast::ForExpr::cast).is_some() => {
             nav_for_break_points(sema, token)
         }
-        T![match] | T![=>] | T![if] => nav_for_branches(sema, token),
+        T![match] | T![=>] | T![if] => nav_for_branch_exit_points(sema, token),
         _ => None,
     }
 }
@@ -408,22 +408,66 @@ fn nav_for_exit_points(
     Some(navs)
 }
 
-fn nav_for_branches(
+pub(crate) fn find_branch_root(
+    sema: &Semantics<'_, RootDatabase>,
+    token: &SyntaxToken,
+) -> Vec<SyntaxNode> {
+    fn find_root(
+        sema: &Semantics<'_, RootDatabase>,
+        token: &SyntaxToken,
+        pred: impl Fn(SyntaxNode) -> Option<SyntaxNode>,
+    ) -> Vec<SyntaxNode> {
+        let mut result = Vec::new();
+        for token in sema.descend_into_macros(token.clone()) {
+            for node in sema.token_ancestors_with_macros(token) {
+                if ast::MacroCall::can_cast(node.kind()) {
+                    break;
+                }
+
+                if let Some(node) = pred(node) {
+                    result.push(node);
+                    break;
+                }
+            }
+        }
+        result
+    }
+
+    match token.kind() {
+        T![match] => {
+            find_root(sema, token, |node| Some(ast::MatchExpr::cast(node)?.syntax().clone()))
+        }
+        T![=>] => find_root(sema, token, |node| Some(ast::MatchArm::cast(node)?.syntax().clone())),
+        T![if] => find_root(sema, token, |node| {
+            let if_expr = ast::IfExpr::cast(node)?;
+
+            iter::successors(Some(if_expr.clone()), |if_expr| {
+                let parent_if = if_expr.syntax().parent().and_then(ast::IfExpr::cast)?;
+                if let ast::ElseBranch::IfExpr(nested_if) = parent_if.else_branch()? {
+                    (nested_if.syntax() == if_expr.syntax()).then_some(parent_if)
+                } else {
+                    None
+                }
+            })
+            .last()
+            .map(|if_expr| if_expr.syntax().clone())
+        }),
+        _ => vec![],
+    }
+}
+
+fn nav_for_branch_exit_points(
     sema: &Semantics<'_, RootDatabase>,
     token: &SyntaxToken,
 ) -> Option<Vec<NavigationTarget>> {
     let db = sema.db;
 
     let navs = match token.kind() {
-        T![match] => sema
-            .descend_into_macros(token.clone())
+        T![match] => find_branch_root(sema, token)
             .into_iter()
-            .filter_map(|token| {
-                let match_expr = sema
-                    .token_ancestors_with_macros(token)
-                    .take_while(|node| !ast::MacroCall::can_cast(node.kind()))
-                    .find_map(ast::MatchExpr::cast)?;
-                let file_id = sema.hir_file_for(match_expr.syntax());
+            .filter_map(|node| {
+                let file_id = sema.hir_file_for(&node);
+                let match_expr = ast::MatchExpr::cast(node)?;
                 let focus_range = match_expr.match_token()?.text_range();
                 let match_expr_in_file = InFile::new(file_id, match_expr.into());
                 Some(expr_to_nav(db, match_expr_in_file, Some(focus_range)))
@@ -431,14 +475,10 @@ fn nav_for_branches(
             .flatten()
             .collect_vec(),
 
-        T![=>] => sema
-            .descend_into_macros(token.clone())
+        T![=>] => find_branch_root(sema, token)
             .into_iter()
-            .filter_map(|token| {
-                let match_arm = sema
-                    .token_ancestors_with_macros(token)
-                    .take_while(|node| !ast::MacroCall::can_cast(node.kind()))
-                    .find_map(ast::MatchArm::cast)?;
+            .filter_map(|node| {
+                let match_arm = ast::MatchArm::cast(node)?;
                 let match_expr = sema
                     .ancestors_with_macros(match_arm.syntax().clone())
                     .find_map(ast::MatchExpr::cast)?;
@@ -450,15 +490,11 @@ fn nav_for_branches(
             .flatten()
             .collect_vec(),
 
-        T![if] => sema
-            .descend_into_macros(token.clone())
+        T![if] => find_branch_root(sema, token)
             .into_iter()
-            .filter_map(|token| {
-                let if_expr = sema
-                    .token_ancestors_with_macros(token)
-                    .take_while(|node| !ast::MacroCall::can_cast(node.kind()))
-                    .find_map(ast::IfExpr::cast)?;
-                let file_id = sema.hir_file_for(if_expr.syntax());
+            .filter_map(|node| {
+                let file_id = sema.hir_file_for(&node);
+                let if_expr = ast::IfExpr::cast(node)?;
                 let focus_range = if_expr.if_token()?.text_range();
                 let if_expr_in_file = InFile::new(file_id, if_expr.into());
                 Some(expr_to_nav(db, if_expr_in_file, Some(focus_range)))
@@ -3785,9 +3821,9 @@ fn main() {
             r#"
 fn main() {
     if true {
+ // ^^
         ()
     } else if$0 false {
-        // ^^
         ()
     } else {
         ()
