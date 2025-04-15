@@ -23,8 +23,8 @@ runners:
     os: ubuntu-24.04-16core-64gb
     <<: *base-job
 
-  - &job-macos-xl
-    os: macos-13 # We use the standard runner for now
+  - &job-macos
+    os: macos-13
     <<: *base-job
 
   - &job-macos-m1
@@ -380,7 +380,7 @@ auto:
       NO_OVERFLOW_CHECKS: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-macos-xl
+    <<: *job-macos
 
   - name: dist-apple-various
     env:
@@ -397,18 +397,18 @@ auto:
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
       NO_OVERFLOW_CHECKS: 1
-    <<: *job-macos-xl
+    <<: *job-macos
 
   - name: x86_64-apple-1
     env:
       <<: *env-x86_64-apple-tests
-    <<: *job-macos-xl
+    <<: *job-macos
 
   - name: x86_64-apple-2
     env:
       SCRIPT: ./x.py --stage 2 test tests/ui tests/rustdoc
       <<: *env-x86_64-apple-tests
-    <<: *job-macos-xl
+    <<: *job-macos
 
   - name: dist-aarch64-apple
     env:
