@@ -217,15 +217,11 @@ pub(crate) fn check_intrinsic_type(
         };
         (n_tps, 0, 0, inputs, output, hir::Safety::Unsafe)
     } else if intrinsic_name == sym::contract_check_ensures {
-        // contract_check_ensures::<'a, Ret, C>(&'a Ret, C)
-        // where C: impl Fn(&'a Ret) -> bool,
+        // contract_check_ensures::<Ret, C>(Ret, C) -> Ret
+        // where C: for<'a> Fn(&'a Ret) -> bool,
         //
-        // so: two type params, one lifetime param, 0 const params, two inputs, no return
-
-        let p = generics.param_at(0, tcx);
-        let r = ty::Region::new_early_param(tcx, p.to_early_bound_region_data());
-        let ref_ret = Ty::new_imm_ref(tcx, r, param(1));
-        (2, 1, 0, vec![ref_ret, param(2)], tcx.types.unit, hir::Safety::Safe)
+        // so: two type params, 0 lifetime param, 0 const params, two inputs, no return
+        (2, 0, 0, vec![param(0), param(1)], param(1), hir::Safety::Safe)
     } else {
         let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
         let (n_tps, n_cts, inputs, output) = match intrinsic_name {
