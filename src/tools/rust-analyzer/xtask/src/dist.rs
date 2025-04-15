@@ -168,7 +168,7 @@ fn gather_pgo_profile<'a>(
         .read()
         .context("cannot resolve target-libdir from rustc")?;
     let target_bindir = PathBuf::from(target_libdir).parent().unwrap().join("bin");
-    let llvm_profdata = target_bindir.join(format!("llvm-profdata{}", EXE_EXTENSION));
+    let llvm_profdata = target_bindir.join("llvm-profdata").with_extension(EXE_EXTENSION);
 
     // Build RA with PGO instrumentation
     let cmd_gather =
