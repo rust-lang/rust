@@ -36,7 +36,9 @@ jobs:
             code-target: win32-arm64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            zig_target: x86_64-unknown-linux-gnu.2.28
+            # Use a container with glibc 2.28
+            # Zig is not used because it doesn't work with PGO
+            container: quay.io/pypa/manylinux_2_28_x86_64
             code-target: linux-x64
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
@@ -70,6 +72,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Install rustup
+        if: ${{ matrix.container }}
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install Rust toolchain
         run: |
