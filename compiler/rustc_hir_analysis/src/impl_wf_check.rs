@@ -112,14 +112,14 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
         .flat_map(|def_id| {
             let item = tcx.associated_item(def_id);
             match item.kind {
-                ty::AssocKind::Type => {
+                ty::AssocKind::Type { .. } => {
                     if item.defaultness(tcx).has_value() {
                         cgp::parameters_for(tcx, tcx.type_of(def_id).instantiate_identity(), true)
                     } else {
                         vec![]
                     }
                 }
-                ty::AssocKind::Fn | ty::AssocKind::Const => vec![],
+                ty::AssocKind::Fn { .. } | ty::AssocKind::Const { .. } => vec![],
             }
         })
         .collect();

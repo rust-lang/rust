@@ -57,14 +57,14 @@ note: required for `Fooy<T>` to implement `Copy`
    |
 LL | #[derive(Copy, Clone)]
    |          ^^^^ unsatisfied trait bound introduced in this `derive` macro
-note: the requirement `Fooy<T>: Copy` appears on the `impl`'s method `d` but not on the corresponding trait's method
+note: the requirement `Fooy<T>: Copy` appears on the `impl`'s associated function `d` but not on the corresponding trait's associated function
   --> $DIR/impl_bounds.rs:7:8
    |
 LL | trait Foo {
    |       --- in this trait
 ...
 LL |     fn d() where Self: Clone;
-   |        ^ this trait's method doesn't have the requirement `Fooy<T>: Copy`
+   |        ^ this trait's associated function doesn't have the requirement `Fooy<T>: Copy`
 help: consider restricting type parameter `T` with trait `Copy`
    |
 LL | impl<T: std::marker::Copy> Foo for Fooy<T> {

@@ -1462,7 +1462,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
             .in_definition_order()
-            .filter(move |item| item.kind == AssocKind::Fn && item.defaultness(self).has_value())
+            .filter(move |item| item.is_fn() && item.defaultness(self).has_value())
     }
 
     pub fn repr_options_of_def(self, did: LocalDefId) -> ReprOptions {
@@ -1608,8 +1608,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// return-position `impl Trait` from a trait, then provide the source info
     /// about where that RPITIT came from.
     pub fn opt_rpitit_info(self, def_id: DefId) -> Option<ImplTraitInTraitData> {
-        if let DefKind::AssocTy = self.def_kind(def_id) {
-            self.associated_item(def_id).opt_rpitit_info
+        if let DefKind::AssocTy = self.def_kind(def_id)
+            && let AssocKind::Type { data: AssocTypeData::Rpitit(rpitit_info) } =
+                self.associated_item(def_id).kind
+        {
+            Some(rpitit_info)
         } else {
             None
         }

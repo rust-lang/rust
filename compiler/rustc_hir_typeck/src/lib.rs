@@ -265,7 +265,7 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
     let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer(()), span, .. }) = node.ty()
     {
         if let Some(item) = tcx.opt_associated_item(def_id.into())
-            && let ty::AssocKind::Const = item.kind
+            && let ty::AssocKind::Const { .. } = item.kind
             && let ty::AssocItemContainer::Impl = item.container
             && let Some(trait_item_def_id) = item.trait_item_def_id
         {

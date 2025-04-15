@@ -5,7 +5,7 @@
 
 use std::ffi::CStr;
 
-// CHECK: .section .rodata.str1.1,"aMS"
+// CHECK: .section .rodata.str1.{{[12]}},"aMS"
 // CHECK: .Lanon.{{.+}}:
 // CHECK-NEXT: .asciz "foo"
 #[unsafe(no_mangle)]

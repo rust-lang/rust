@@ -85,7 +85,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .delegation_fn_sigs
                     .get(&local_def_id)
                     .is_some_and(|sig| sig.has_self),
-                None => self.tcx.associated_item(def_id).fn_has_self_parameter,
+                None => self.tcx.associated_item(def_id).is_method(),
             },
             _ => span_bug!(span, "unexpected DefKind for delegation item"),
         }

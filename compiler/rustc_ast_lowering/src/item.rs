@@ -1206,8 +1206,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let precond = if let Some(req) = &contract.requires {
                     // Lower the precondition check intrinsic.
                     let lowered_req = this.lower_expr_mut(&req);
+                    let req_span = this.mark_span_with_reason(
+                        DesugaringKind::Contract,
+                        lowered_req.span,
+                        None,
+                    );
                     let precond = this.expr_call_lang_item_fn_mut(
-                        req.span,
+                        req_span,
                         hir::LangItem::ContractCheckRequires,
                         &*arena_vec![this; lowered_req],
                     );
@@ -1217,6 +1222,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 };
                 let (postcond, body) = if let Some(ens) = &contract.ensures {
                     let ens_span = this.lower_span(ens.span);
+                    let ens_span =
+                        this.mark_span_with_reason(DesugaringKind::Contract, ens_span, None);
                     // Set up the postcondition `let` statement.
                     let check_ident: Ident =
                         Ident::from_str_and_span("__ensures_checker", ens_span);

@@ -6,7 +6,7 @@
 //! 1. **Shallow visit**: Get a simple callback for every item (or item-like thing) in the HIR.
 //!    - Example: find all items with a `#[foo]` attribute on them.
 //!    - How: Use the `hir_crate_items` or `hir_module_items` query to traverse over item-like ids
-//!       (ItemId, TraitItemId, etc.) and use tcx.def_kind and `tcx.hir().item*(id)` to filter and
+//!       (ItemId, TraitItemId, etc.) and use tcx.def_kind and `tcx.hir_item*(id)` to filter and
 //!       access actual item-like thing, respectively.
 //!    - Pro: Efficient; just walks the lists of item ids and gives users control whether to access
 //!       the hir_owners themselves or not.

@@ -616,7 +616,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some((DefKind::AssocFn, def_id)) =
                     self.typeck_results.borrow().type_dependent_def(call_expr.hir_id)
                     && let Some(assoc) = tcx.opt_associated_item(def_id)
-                    && assoc.fn_has_self_parameter
+                    && assoc.is_method()
                 {
                     Some(*receiver)
                 } else {
@@ -642,8 +642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     TraitsInScope,
                     |mut ctxt| ctxt.probe_for_similar_candidate(),
                 )
-                && let ty::AssocKind::Fn = assoc.kind
-                && assoc.fn_has_self_parameter
+                && assoc.is_method()
             {
                 let args = self.infcx.fresh_args_for_item(call_name.span, assoc.def_id);
                 let fn_sig = tcx.fn_sig(assoc.def_id).instantiate(tcx, args);
@@ -684,10 +683,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .all(|(expected, found)| self.may_coerce(*expected, *found))
                 && fn_sig.inputs()[1..].len() == input_types.len()
             {
+                let assoc_name = assoc.name();
                 err.span_suggestion_verbose(
                     call_name.span,
-                    format!("you might have meant to use `{}`", assoc.name),
-                    assoc.name,
+                    format!("you might have meant to use `{}`", assoc_name),
+                    assoc_name,
                     Applicability::MaybeIncorrect,
                 );
                 return;
@@ -707,7 +707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.def_span(assoc.def_id),
                     format!(
                         "there's is a method with similar name `{}`, but the arguments don't match",
-                        assoc.name,
+                        assoc.name(),
                     ),
                 );
                 return;
@@ -719,7 +719,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     format!(
                         "there's is a method with similar name `{}`, but their argument count \
                          doesn't match",
-                        assoc.name,
+                        assoc.name(),
                     ),
                 );
                 return;

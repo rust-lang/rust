@@ -4,7 +4,7 @@ use GenericArgsInfo::*;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, Diagnostic, EmissionGuarantee, MultiSpan, pluralize};
 use rustc_hir as hir;
-use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
+use rustc_middle::ty::{self as ty, AssocItems, TyCtxt};
 use rustc_span::def_id::DefId;
 use tracing::debug;
 
@@ -486,13 +486,13 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             let items: &AssocItems = self.tcx.associated_items(self.def_id);
             items
                 .in_definition_order()
-                .filter(|item| item.kind == AssocKind::Type)
+                .filter(|item| item.is_type())
                 .filter(|item| {
                     !self
                         .gen_args
                         .constraints
                         .iter()
-                        .any(|constraint| constraint.ident.name == item.name)
+                        .any(|constraint| constraint.ident.name == item.name())
                 })
                 .filter(|item| !item.is_impl_trait_in_trait())
                 .map(|item| self.tcx.item_ident(item.def_id).to_string())

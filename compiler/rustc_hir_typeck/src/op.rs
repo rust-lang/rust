@@ -372,7 +372,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .associated_item_def_ids(def_id)
                                 .iter()
                                 .find(|item_def_id| {
-                                    self.tcx.associated_item(*item_def_id).name == sym::Output
+                                    self.tcx.associated_item(*item_def_id).name() == sym::Output
                                 })
                                 .cloned()
                         });

@@ -1214,7 +1214,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             && assoc
                                 .trait_container(tcx)
                                 .is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Coroutine))
-                            && assoc.name == rustc_span::sym::Return
+                            && assoc.opt_name() == Some(rustc_span::sym::Return)
                         {
                             if let ty::Coroutine(_, args) = args.type_at(0).kind() {
                                 let return_ty = args.as_coroutine().return_ty();
@@ -1237,7 +1237,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             p!(", ");
                         }
 
-                        p!(write("{} = ", tcx.associated_item(assoc_item_def_id).name));
+                        p!(write("{} = ", tcx.associated_item(assoc_item_def_id).name()));
 
                         match term.unpack() {
                             TermKind::Ty(ty) => p!(print(ty)),
@@ -3291,7 +3291,7 @@ define_print! {
     }
 
     ty::ExistentialProjection<'tcx> {
-        let name = cx.tcx().associated_item(self.def_id).name;
+        let name = cx.tcx().associated_item(self.def_id).name();
         // The args don't contain the self ty (as it has been erased) but the corresp.
         // generics do as the trait always has a self ty param. We need to offset.
         let args = &self.args[cx.tcx().generics_of(self.def_id).parent_count - 1..];

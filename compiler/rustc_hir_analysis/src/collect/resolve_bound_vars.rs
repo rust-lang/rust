@@ -1811,7 +1811,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         self.tcx,
                         type_def_id,
                         constraint.ident,
-                        ty::AssocKind::Fn,
+                        ty::AssocTag::Fn,
                     ) {
                     bound_vars.extend(
                         self.tcx
@@ -1843,7 +1843,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     self.tcx,
                     type_def_id,
                     constraint.ident,
-                    ty::AssocKind::Type,
+                    ty::AssocTag::Type,
                 )
                 .map(|(bound_vars, _)| bound_vars);
                 self.with(scope, |this| {
@@ -1875,13 +1875,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
         assoc_ident: Ident,
-        assoc_kind: ty::AssocKind,
+        assoc_tag: ty::AssocTag,
     ) -> Option<(Vec<ty::BoundVariableKind>, &'tcx ty::AssocItem)> {
         let trait_defines_associated_item_named = |trait_def_id: DefId| {
             tcx.associated_items(trait_def_id).find_by_ident_and_kind(
                 tcx,
                 assoc_ident,
-                assoc_kind,
+                assoc_tag,
                 trait_def_id,
             )
         };
@@ -1894,8 +1894,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             let Some((def_id, bound_vars)) = stack.pop() else {
                 break None;
             };
-            // See issue #83753. If someone writes an associated type on a non-trait, just treat it as
-            // there being no supertrait HRTBs.
+            // See issue #83753. If someone writes an associated type on a non-trait, just treat it
+            // as there being no supertrait HRTBs.
             match tcx.def_kind(def_id) {
                 DefKind::Trait | DefKind::TraitAlias | DefKind::Impl { .. } => {}
                 _ => break None,
@@ -2067,7 +2067,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                                     self.tcx,
                                     trait_def_id,
                                     item_segment.ident,
-                                    ty::AssocKind::Fn,
+                                    ty::AssocTag::Fn,
                                 )
                             });
 
@@ -2112,7 +2112,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             self.tcx,
                             trait_def_id,
                             item_segment.ident,
-                            ty::AssocKind::Fn,
+                            ty::AssocTag::Fn,
                         ) else {
                             return;
                         };
