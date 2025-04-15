@@ -2,6 +2,7 @@
 //@compile-flags: -Zmiri-disable-isolation
 #![allow(nonstandard_style)]
 
+use std::io::ErrorKind;
 use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 use std::ptr;
@@ -15,10 +16,10 @@ use windows_sys::Win32::Foundation::{
     STATUS_IO_DEVICE_ERROR,
 };
 use windows_sys::Win32::Storage::FileSystem::{
-    BY_HANDLE_FILE_INFORMATION, CREATE_ALWAYS, CREATE_NEW, CreateFileW, FILE_ATTRIBUTE_DIRECTORY,
-    FILE_ATTRIBUTE_NORMAL, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT,
-    FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, GetFileInformationByHandle, OPEN_ALWAYS,
-    OPEN_EXISTING,
+    BY_HANDLE_FILE_INFORMATION, CREATE_ALWAYS, CREATE_NEW, CreateFileW, DeleteFileW,
+    FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_FLAG_BACKUP_SEMANTICS,
+    FILE_FLAG_OPEN_REPARSE_POINT, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+    GetFileInformationByHandle, OPEN_ALWAYS, OPEN_EXISTING,
 };
 
 fn main() {
@@ -28,6 +29,7 @@ fn main() {
         test_create_always_twice();
         test_open_always_twice();
         test_open_dir_reparse();
+        test_delete_file();
         test_ntstatus_to_dos();
     }
 }
@@ -192,6 +194,21 @@ unsafe fn test_open_dir_reparse() {
     if CloseHandle(handle) == 0 {
         panic!("Failed to close file")
     };
+}
+
+unsafe fn test_delete_file() {
+    let temp = utils::tmp().join("test_delete_file.txt");
+    let raw_path = to_wide_cstr(&temp);
+    let _ = std::fs::File::create(&temp).unwrap();
+
+    if DeleteFileW(raw_path.as_ptr()) == 0 {
+        panic!("Failed to delete file");
+    }
+
+    match std::fs::File::open(temp) {
+        Ok(_) => panic!("File not deleted"),
+        Err(e) => assert!(e.kind() == ErrorKind::NotFound, "File not deleted"),
+    }
 }
 
 unsafe fn test_ntstatus_to_dos() {
