@@ -27,11 +27,8 @@ case ${TARGET} in
     # instruction assertion checks to pass below the 20 instruction limit. If
     # this is the default, dynamic, then too many instructions are generated
     # when we assert the instruction for a function and it causes tests to fail.
-    #
-    # It's not clear why `-Z plt=yes` is required here. Probably a bug in LLVM.
-    # If you can remove it and CI passes, please feel free to do so!
     i686-* | i586-*)
-        export RUSTFLAGS="${RUSTFLAGS} -C relocation-model=static -Z plt=yes"
+        export RUSTFLAGS="${RUSTFLAGS} -C relocation-model=static"
         ;;
     # Some x86_64 targets enable by default more features beyond SSE2,
     # which cause some instruction assertion checks to fail.
@@ -102,8 +99,18 @@ fi
 
 # Test targets compiled with extra features.
 case ${TARGET} in
-    x86*)
+    x86_64*emulated)
         export STDARCH_DISABLE_ASSERT_INSTR=1
+
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
+        cargo_test "${PROFILE}"
+
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx512f"
+        cargo_test "${PROFILE}"
+        ;;
+    x86_64* | i686*)
+        export STDARCH_DISABLE_ASSERT_INSTR=1
+
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
         cargo_test "${PROFILE}"
         ;;
