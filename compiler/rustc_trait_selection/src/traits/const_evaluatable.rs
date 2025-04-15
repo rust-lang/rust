@@ -141,6 +141,8 @@ pub fn is_const_evaluatable<'tcx>(
                     NotConstEvaluatable::MentionsInfer
                 } else if uv.has_non_region_param() {
                     NotConstEvaluatable::MentionsParam
+                } else if tcx.instantiate_and_check_impossible_predicates((uv.def, uv.args)) {
+                    return Ok(());
                 } else {
                     let guar = infcx.dcx().span_delayed_bug(
                         span,

@@ -22,10 +22,26 @@ pub fn impossible_preds_repeat_expr_count()
 where
     for<'a> (): Unimplemented<'a>,
 {
+    // I expect this to potentially compile with MGCA (maybe)
+    let _a = [(); <u8 as Trait<()>>::ASSOC];
+    //~^ WARN: cannot use constants which depend on trivially-false where clauses
+    //~| WARN: this was previously accepted by the compiler
+
+    // evaluating the anon const requires evaluating an assoc const which fails even though
+    // we "best effort" try to allow evaluating repeat exprs still. this prevents equating
+    // `1` with the anon const.
+    //
+    // I expect this to potentially compile with MGCA (maybe)
     let _a: [(); 1] = [(); <u8 as Trait<()>>::ASSOC];
     //~^ WARN: cannot use constants which depend on trivially-false where clauses
     //~| WARN: this was previously accepted by the compiler
     //~^^^ ERROR: mismatched types
+
+    // This will just compiling in the future and not be an error but it's hard to
+    // detect this until making the FCW a hard error
+    let _c: [(); 2] = [(); 1 + 1];
+    //~^ WARN: cannot use constants which depend on trivially-false where clauses
+    //~| WARN: this was previously accepted by the compiler
 }
 
 struct Foo<const N: usize>;
