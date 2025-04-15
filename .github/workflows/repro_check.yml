@@ -1,0 +1,67 @@
+name: Build and Diff Projects
+
+on:
+  push:
+    branches:
+      - master
+      - reproducible
+  pull_request:
+    branches:
+      - master
+      - reproducible
+
+jobs:
+  build_and_compare:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'  # Adjust to the version you need
+
+      - name: Copy source files to two separate folders
+        run: |
+          # Copy source files into two separate folders
+          mkdir ../buildA ../buildA_extended
+          # Copy the repo contents into both
+          cp -r "$(pwd)" ../buildA
+          cp -r "$(pwd)" ../buildA_extended
+
+          echo "Present Directory : `pwd`"
+          echo "work contents : `ls ..`"
+
+      - name: Build source 1
+        run: |
+          echo "Repo storage available: `df -h .`"
+          cd ../buildA
+          SOURCE_DIR=$(dirname $(find . -maxdepth 2  -name x.py))
+          $SOURCE_DIR/configure --set rust.channel=nightly
+          $SOURCE_DIR/x.py build --stage 1 -j8
+
+      - name: Build source 2
+        run: |
+          cd ../buildA_extended
+          SOURCE_DIR=$(dirname $(find . -maxdepth 2  -name x.py))
+          $SOURCE_DIR/configure --set rust.channel=nightly
+          $SOURCE_DIR/x.py build --stage 1 -j8
+
+      - name: Compare builds using git diff
+        run: |
+          # Go back to the root directory
+          cd ..
+
+          # Ensure the directories exist
+          if [[ ! -d "buildA" || ! -d "buildA_extended" ]]; then
+            echo "Error: Build directories not found!"
+            exit 1
+          fi
+
+          # Perform a diff between the two builds
+          buildA_stage1=`find buildA/build -name stage1`
+          buildA2_stage1=`find buildA_extended/build -name stage1`
+          diff -r $buildA_stage1/bin $buildA2_stage1/bin || echo "Differences found!"
+
