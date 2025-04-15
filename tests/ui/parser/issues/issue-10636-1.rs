@@ -3,7 +3,6 @@ struct Obj {
     member: usize
 )
 //~^ ERROR mismatched closing delimiter
-//~| NOTE mismatched closing delimiter
-//~| NOTE missing open `(` for this delimiter
+//~| NOTE mismatched closing delimiter, may missing open `(`
 
 fn main() {}

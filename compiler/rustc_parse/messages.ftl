@@ -553,7 +553,7 @@ parse_meta_bad_delim = wrong meta list delimiters
 parse_meta_bad_delim_suggestion = the delimiters should be `(` and `)`
 
 parse_mismatched_closing_delimiter = mismatched closing delimiter: `{$delimiter}`
-    .label_unmatched = mismatched closing delimiter
+    .label_unmatched = mismatched closing delimiter{$missing_open_note}
     .label_opening_candidate = closing delimiter possibly meant for this
     .label_unclosed = unclosed delimiter
 

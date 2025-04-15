@@ -2,10 +2,8 @@ error: mismatched closing delimiter: `)`
   --> $DIR/issue-92481.rs:5:6
    |
 LL | fn r({) {
-   |     -^^
-   |     |||
-   |     ||mismatched closing delimiter
-   |     ||missing open `(` for this delimiter
+   |     -^^ mismatched closing delimiter, may missing open `(`
+   |     ||
    |     |unclosed delimiter
    |     closing delimiter possibly meant for this
 

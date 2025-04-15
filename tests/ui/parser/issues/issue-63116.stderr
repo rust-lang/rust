@@ -2,10 +2,8 @@ error: mismatched closing delimiter: `]`
   --> $DIR/issue-63116.rs:4:14
    |
 LL | impl W <s(f;Y(;]
-   |              ^ ^
-   |              | |
-   |              | mismatched closing delimiter
-   |              | missing open `[` for this delimiter
+   |              ^ ^ mismatched closing delimiter, may missing open `[`
+   |              |
    |              unclosed delimiter
 
 error: this file contains an unclosed delimiter

@@ -5,10 +5,7 @@ LL |     foo! {
    |          ^ unclosed delimiter
 LL |         bar, "baz", 1, 2.0
 LL |     )
-   |     ^
-   |     |
-   |     mismatched closing delimiter
-   |     missing open `(` for this delimiter
+   |     ^ mismatched closing delimiter, may missing open `(`
 
 error: aborting due to 1 previous error
 

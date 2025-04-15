@@ -2,10 +2,8 @@ error: mismatched closing delimiter: `]`
   --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:5:27
    |
 LL |         V = [PhantomData; { [ () ].len() ].len() as isize,
-   |             -             ^              ^
-   |             |             |              |
-   |             |             |              mismatched closing delimiter
-   |             |             |              missing open `[` for this delimiter
+   |             -             ^              ^ mismatched closing delimiter, may missing open `[`
+   |             |             |
    |             |             unclosed delimiter
    |             closing delimiter possibly meant for this
 
@@ -13,10 +11,8 @@ error: mismatched closing delimiter: `]`
   --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:12:24
    |
 LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |             -          ^           ^
-   |             |          |           |
-   |             |          |           mismatched closing delimiter
-   |             |          |           missing open `[` for this delimiter
+   |             -          ^           ^ mismatched closing delimiter, may missing open `[`
+   |             |          |
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 
@@ -24,10 +20,8 @@ error: mismatched closing delimiter: `]`
   --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:19:24
    |
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |             -          ^           ^
-   |             |          |           |
-   |             |          |           mismatched closing delimiter
-   |             |          |           missing open `[` for this delimiter
+   |             -          ^           ^ mismatched closing delimiter, may missing open `[`
+   |             |          |
    |             |          unclosed delimiter
    |             closing delimiter possibly meant for this
 

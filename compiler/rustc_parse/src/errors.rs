@@ -947,6 +947,7 @@ pub(crate) struct MismatchedClosingDelimiter {
     pub delimiter: String,
     #[label(parse_label_unmatched)]
     pub unmatched: Span,
+    pub missing_open_note: String,
     #[label(parse_label_opening_candidate)]
     pub opening_candidate: Option<Span>,
     #[label(parse_label_unclosed)]
