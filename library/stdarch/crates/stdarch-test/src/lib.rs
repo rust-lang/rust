@@ -203,6 +203,3 @@ pub fn assert_skip_test_ok(name: &str, missing_features: &[&str]) {
         Err(_) => println!("Set STDARCH_TEST_EVERYTHING to make this an error."),
     }
 }
-
-// See comment in `assert-instr-macro` crate for why this exists
-pub static mut _DONT_DEDUP: *const u8 = std::ptr::null();

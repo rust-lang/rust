@@ -14,8 +14,6 @@ export RUSTFLAGS="${RUSTFLAGS} -D warnings -Z merge-functions=disabled "
 export HOST_RUSTFLAGS="${RUSTFLAGS}"
 export PROFILE="${PROFILE:="--profile=release"}"
 
-export STDARCH_DISABLE_DEDUP_GUARD=1
-
 case ${TARGET} in
     # On Windows the linker performs identical COMDAT folding (ICF) by default
     # in release mode which removes identical COMDAT sections. This interferes
