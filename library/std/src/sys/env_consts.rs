@@ -1,6 +1,21 @@
 //! Constants associated with each target.
 
+// Collect all #[cfg(…)] gates, so that the #[else] fallback entry is
+// #[cfg(not(any(…)))] of all of them. This ensures that they are mutually
+// exclusive and do not have precedence like cfg_if!.
+macro_rules! cfg_unordered {
+    ([$($cfgs:meta,)*] #[cfg($cfg:meta)] $os:item $($rest:tt)*) => {
+        #[cfg($cfg)] $os
+        cfg_unordered!([$($cfgs,)* $cfg,] $($rest)*);
+    };
+    ([$($cfgs:meta,)*] #[else] $last:item) => {
+        #[cfg(not(any($($cfgs),*)))] $last
+    };
+}
+
 // Keep entries sorted alphabetically.
+
+cfg_unordered! { []
 
 #[cfg(target_os = "aix")]
 pub mod os {
@@ -376,4 +391,16 @@ pub mod os {
     pub const EXE_EXTENSION: &str = "exe";
 }
 
-// Keep entries sorted alphabetically.
+// Fallback when unsupported:
+#[else]
+pub mod os {
+    pub const FAMILY: &str = "";
+    pub const OS: &str = "";
+    pub const DLL_PREFIX: &str = "";
+    pub const DLL_SUFFIX: &str = "";
+    pub const DLL_EXTENSION: &str = "";
+    pub const EXE_SUFFIX: &str = "";
+    pub const EXE_EXTENSION: &str = "";
+}
+
+}
