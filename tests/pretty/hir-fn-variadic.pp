@@ -20,8 +20,8 @@ fn main() {
     fn g3(_: extern "C" fn(u8, va: ...)) { }
     fn g4(_: extern "C" fn(u8, ...)) { }
 
-    fn g5(_: extern "C" fn(, va: ...)) { }
-    fn g6(_: extern "C" fn(, ...)) { }
+    fn g5(_: extern "C" fn(va: ...)) { }
+    fn g6(_: extern "C" fn(...)) { }
 
     {
         let _ =
@@ -39,13 +39,13 @@ fn main() {
     {
         let _ =
             {
-                unsafe extern "C" fn f5(, va: ...) { }
+                unsafe extern "C" fn f5(va: ...) { }
             };
     };
     {
         let _ =
             {
-                unsafe extern "C" fn f6(, _: ...) { }
+                unsafe extern "C" fn f6(_: ...) { }
             };
     };
 }
