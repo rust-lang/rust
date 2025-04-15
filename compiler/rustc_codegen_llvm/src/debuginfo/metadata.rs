@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::{iter, ptr};
 
 use libc::{c_char, c_longlong, c_uint};
@@ -39,7 +38,7 @@ use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
 use crate::llvm;
 use crate::llvm::debuginfo::{
-    DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType,
+    DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType,
     DebugEmissionKind, DebugNameTableKind,
 };
 use crate::value::Value;
@@ -624,38 +623,42 @@ pub(crate) fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFi
         let source =
             cx.sess().opts.unstable_opts.embed_source.then_some(()).and(source_file.src.as_ref());
 
-        create_file(DIB(cx), &file_name, &directory, &hash_value, hash_kind, source)
+        unsafe {
+            llvm::LLVMRustDIBuilderCreateFile(
+                DIB(cx),
+                file_name.as_c_char_ptr(),
+                file_name.len(),
+                directory.as_c_char_ptr(),
+                directory.len(),
+                hash_kind,
+                hash_value.as_c_char_ptr(),
+                hash_value.len(),
+                source.map_or(ptr::null(), |x| x.as_c_char_ptr()),
+                source.map_or(0, |x| x.len()),
+            )
+        }
     }
 }
 
 fn unknown_file_metadata<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
-    debug_context(cx).created_files.borrow_mut().entry(None).or_insert_with(|| {
-        create_file(DIB(cx), "<unknown>", "", "", llvm::ChecksumKind::None, None)
-    })
-}
+    debug_context(cx).created_files.borrow_mut().entry(None).or_insert_with(|| unsafe {
+        let file_name = "<unknown>";
+        let directory = "";
+        let hash_value = "";
 
-fn create_file<'ll>(
-    builder: &DIBuilder<'ll>,
-    file_name: &str,
-    directory: &str,
-    hash_value: &str,
-    hash_kind: llvm::ChecksumKind,
-    source: Option<&Arc<String>>,
-) -> &'ll DIFile {
-    unsafe {
         llvm::LLVMRustDIBuilderCreateFile(
-            builder,
+            DIB(cx),
             file_name.as_c_char_ptr(),
             file_name.len(),
             directory.as_c_char_ptr(),
             directory.len(),
-            hash_kind,
+            llvm::ChecksumKind::None,
             hash_value.as_c_char_ptr(),
             hash_value.len(),
-            source.map_or(ptr::null(), |x| x.as_c_char_ptr()),
-            source.map_or(0, |x| x.len()),
+            ptr::null(),
+            0,
         )
-    }
+    })
 }
 
 trait MsvcBasicName {
@@ -930,13 +933,17 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
     };
 
     unsafe {
-        let compile_unit_file = create_file(
+        let compile_unit_file = llvm::LLVMRustDIBuilderCreateFile(
             debug_context.builder.as_ref(),
-            &name_in_debuginfo,
-            &work_dir,
-            "",
+            name_in_debuginfo.as_c_char_ptr(),
+            name_in_debuginfo.len(),
+            work_dir.as_c_char_ptr(),
+            work_dir.len(),
             llvm::ChecksumKind::None,
-            None,
+            ptr::null(),
+            0,
+            ptr::null(),
+            0,
         );
 
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
