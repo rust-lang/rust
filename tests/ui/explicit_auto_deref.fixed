@@ -59,7 +59,7 @@ fn f_str_t<T>(_: &str, _: T) {}
 
 fn f_box_t<T>(_: &Box<T>) {}
 
-extern "C" {
+unsafe extern "C" {
     fn var(_: u32, ...);
 }
 

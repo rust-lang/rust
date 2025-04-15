@@ -68,14 +68,16 @@ fn main() {
 
 // Issue #12531
 unsafe fn no_deref_ptr(a: Option<i32>, b: *const Option<i32>) -> i32 {
-    match a {
-        // `*b` being correct depends on `a == Some(_)`
-        Some(_) => match *b {
-            //~^ manual_unwrap_or_default
-            Some(v) => v,
+    unsafe {
+        match a {
+            // `*b` being correct depends on `a == Some(_)`
+            Some(_) => match *b {
+                //~^ manual_unwrap_or_default
+                Some(v) => v,
+                _ => 0,
+            },
             _ => 0,
-        },
-        _ => 0,
+        }
     }
 }
 

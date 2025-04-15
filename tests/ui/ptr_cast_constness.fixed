@@ -12,11 +12,13 @@ extern crate proc_macros;
 use proc_macros::{external, inline_macros};
 
 unsafe fn ptr_to_ref<T, U>(p: *const T, om: *mut U) {
-    let _: &mut T = std::mem::transmute(p.cast_mut());
-    //~^ ptr_cast_constness
-    let _ = &mut *p.cast_mut();
-    //~^ ptr_cast_constness
-    let _: &T = &*(om as *const T);
+    unsafe {
+        let _: &mut T = std::mem::transmute(p.cast_mut());
+        //~^ ptr_cast_constness
+        let _ = &mut *p.cast_mut();
+        //~^ ptr_cast_constness
+        let _: &T = &*(om as *const T);
+    }
 }
 
 #[inline_macros]
