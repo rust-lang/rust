@@ -35,7 +35,11 @@ pub struct TestOpts {
 
 impl TestOpts {
     pub fn use_color(&self) -> bool {
+        // Implement the algorithm as described in https://bixense.com/clicolors/. We don't need to
+        // check CLICOLOR because it's the default anyway.
         match self.color {
+            ColorConfig::AutoColor if env::var_os("NO_COLOR").is_some() => false,
+            ColorConfig::AutoColor if env::var_os("CLICOLOR_FORCE").is_some() => true,
             ColorConfig::AutoColor => !self.nocapture && io::stdout().is_terminal(),
             ColorConfig::AlwaysColor => true,
             ColorConfig::NeverColor => false,
