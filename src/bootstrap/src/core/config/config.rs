@@ -3233,6 +3233,42 @@ impl Config {
 
         Some(commit.to_string())
     }
+
+    /// Checks if the given target is the same as the builder target.
+    pub fn is_builder_target(&self, target: TargetSelection) -> bool {
+        self.build == target
+    }
+
+    /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
+    /// In particular, we expect llvm sources to be available when this is false.
+    ///
+    /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
+    pub fn is_system_llvm(&self, target: TargetSelection) -> bool {
+        match self.target_config.get(&target) {
+            Some(Target { llvm_config: Some(_), .. }) => {
+                let ci_llvm = self.llvm_from_ci && self.is_builder_target(target);
+                !ci_llvm
+            }
+            // We're building from the in-tree src/llvm-project sources.
+            Some(Target { llvm_config: None, .. }) => false,
+            None => false,
+        }
+    }
+
+    /// Returns `true` if this is our custom, patched, version of LLVM.
+    ///
+    /// This does not necessarily imply that we're managing the `llvm-project` submodule.
+    pub fn is_rust_llvm(&self, target: TargetSelection) -> bool {
+        match self.target_config.get(&target) {
+            // We're using a user-controlled version of LLVM. The user has explicitly told us whether the version has our patches.
+            // (They might be wrong, but that's not a supported use-case.)
+            // In particular, this tries to support `submodules = false` and `patches = false`, for using a newer version of LLVM that's not through `rust-lang/llvm-project`.
+            Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
+            // The user hasn't promised the patches match.
+            // This only has our patches if it's downloaded from CI or built from source.
+            _ => !self.is_system_llvm(target),
+        }
+    }
 }
 
 /// Compares the current `Llvm` options against those in the CI LLVM builder and detects any incompatible options.
