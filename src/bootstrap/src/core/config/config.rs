@@ -805,6 +805,8 @@ impl Merge for TomlConfig {
             .and_then(|p| p.parent().map(ToOwned::to_owned))
             .unwrap_or_default();
 
+        // `include` handled later since we ignore duplicates using `ReplaceOpt::IgnoreDuplicate` to
+        // keep the upper-level configuration to take precedence.
         for include_path in include.clone().unwrap_or_default().iter().rev() {
             let include_path = parent_dir.join(include_path);
             let include_path = include_path.canonicalize().unwrap_or_else(|e| {
