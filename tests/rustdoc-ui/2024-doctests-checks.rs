@@ -1,6 +1,6 @@
 //@ check-pass
 //@ edition: 2024
-//@ compile-flags: --test --test-args=--test-threads=1
+//@ compile-flags: --test --test-arg=--test-threads=1
 //@ normalize-stdout: "tests/rustdoc-ui" -> "$$DIR"
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 //@ normalize-stdout: ".rs:\d+:\d+" -> ".rs:$$LINE:$$COL"

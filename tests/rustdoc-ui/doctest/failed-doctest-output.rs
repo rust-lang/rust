@@ -5,7 +5,7 @@
 // FIXME: if/when the output of the test harness can be tested on its own, this test should be
 // adapted to use that, and that normalize line can go away
 
-//@ compile-flags:--test --test-args --test-threads=1
+//@ compile-flags:--test --test-arg --test-threads=1
 //@ rustc-env:RUST_BACKTRACE=0
 //@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
