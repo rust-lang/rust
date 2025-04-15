@@ -1298,7 +1298,16 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
                     kind.as_type().map(|ty| {
                         let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
                         let actual_type_di_node = type_di_node(cx, actual_type);
-                        cx.create_template_type_parameter(name.as_str(), actual_type_di_node)
+                        let name = name.as_str();
+                        unsafe {
+                            llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
+                                DIB(cx),
+                                None,
+                                name.as_c_char_ptr(),
+                                name.len(),
+                                actual_type_di_node,
+                            )
+                        }
                     })
                 })
                 .collect();

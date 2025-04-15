@@ -34,8 +34,8 @@ use crate::builder::Builder;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;
 use crate::llvm::debuginfo::{
-    DIArray, DIBuilderBox, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope,
-    DITemplateTypeParameter, DIType, DIVariable,
+    DIArray, DIBuilderBox, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope, DIType,
+    DIVariable,
 };
 use crate::value::Value;
 
@@ -251,7 +251,7 @@ struct DebugLoc {
     col: u32,
 }
 
-impl<'ll> CodegenCx<'ll, '_> {
+impl CodegenCx<'_, '_> {
     /// Looks up debug source information about a `BytePos`.
     // FIXME(eddyb) rename this to better indicate it's a duplicate of
     // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
@@ -277,22 +277,6 @@ impl<'ll> CodegenCx<'ll, '_> {
             DebugLoc { file, line, col: UNKNOWN_COLUMN_NUMBER }
         } else {
             DebugLoc { file, line, col }
-        }
-    }
-
-    fn create_template_type_parameter(
-        &self,
-        name: &str,
-        actual_type_metadata: &'ll DIType,
-    ) -> &'ll DITemplateTypeParameter {
-        unsafe {
-            llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
-                DIB(self),
-                None,
-                name.as_c_char_ptr(),
-                name.len(),
-                actual_type_metadata,
-            )
         }
     }
 }
@@ -499,10 +483,16 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         kind.as_type().map(|ty| {
                             let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
                             let actual_type_metadata = type_di_node(cx, actual_type);
-                            Some(cx.create_template_type_parameter(
-                                name.as_str(),
-                                actual_type_metadata,
-                            ))
+                            let name = name.as_str();
+                            unsafe {
+                                Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
+                                    DIB(cx),
+                                    None,
+                                    name.as_c_char_ptr(),
+                                    name.len(),
+                                    actual_type_metadata,
+                                ))
+                            }
                         })
                     })
                     .collect()
