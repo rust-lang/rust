@@ -14,3 +14,5 @@ RUN tar -xJf sde.tar.xz --strip-components=1 -C intel-sde
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="/intel-sde/sde64 \
             -cpuid-in /checkout/ci/docker/x86_64-unknown-linux-gnu-emulated/cpuid.def \
             -rtm-mode full -tsx --"
+# These tests fail with SDE as it doesn't support saving register data
+ENV STDARCH_TEST_SKIP_FUNCTION="xsave,xsaveopt,xsave64,xsaveopt64"

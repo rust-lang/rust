@@ -149,7 +149,6 @@ mod tests {
         }
     }
 
-    #[cfg_attr(stdarch_intel_sde, ignore)]
     #[simd_test(enable = "xsave")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
     unsafe fn test_xsave64() {
@@ -162,7 +161,6 @@ mod tests {
         xsave::_xsave64(b.ptr(), m);
     }
 
-    #[cfg_attr(stdarch_intel_sde, ignore)]
     #[simd_test(enable = "xsave,xsaveopt")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
     unsafe fn test_xsaveopt64() {

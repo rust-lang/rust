@@ -27,9 +27,6 @@ std_detect = { version = "0.*", path = "../std_detect" }
 [target.'cfg(all(target_arch = "x86_64", target_os = "linux"))'.dev-dependencies]
 syscalls = { version = "0.6.18", default-features = false }
 
-[lints.rust]
-unexpected_cfgs = {level = "warn", check-cfg = ['cfg(stdarch_intel_sde)'] }
-
 [lints.clippy]
 too_long_first_doc_paragraph = "allow"
 missing_transmute_annotations = "allow"

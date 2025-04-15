@@ -126,7 +126,6 @@ jobs:
             tuple: x86_64-unknown-linux-gnu-emulated
             os: ubuntu-latest
           test_everything: true
-          rustflags: --cfg stdarch_intel_sde
         # MIPS targets disabled since they are dropped to tier 3.
         # See https://github.com/rust-lang/compiler-team/issues/648
         #- target:
@@ -191,9 +190,6 @@ jobs:
     - run: echo "STDARCH_TEST_EVERYTHING=1" >> $GITHUB_ENV
       shell: bash
       if: matrix.test_everything != ''
-    - run: echo "RUSTFLAGS=${{ matrix.rustflags }}" >> $GITHUB_ENV
-      shell: bash
-      if: matrix.rustflags != ''
     - run: echo "STDARCH_DISABLE_ASSERT_INSTR=1" >> $GITHUB_ENV
       shell: bash
       if: matrix.disable_assert_instr != ''
