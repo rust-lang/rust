@@ -274,6 +274,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ETXTBSY => ExecutableFileBusy,
         libc::EXDEV => CrossesDevices,
         libc::EINPROGRESS => InProgress,
+        libc::EOPNOTSUPP => Unsupported,
 
         libc::EACCES | libc::EPERM => PermissionDenied,
 
