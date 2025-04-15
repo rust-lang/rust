@@ -83,58 +83,60 @@ Number of file 0 mappings: 1
 Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#14}
-Raw bytes (22): 0x[01, 01, 01, 01, 05, 03, 01, b3, 01, 0d, 02, 1b, 05, 02, 1e, 00, 25, 02, 00, 2f, 00, 33]
+Raw bytes (27): 0x[01, 01, 01, 01, 05, 04, 01, b4, 01, 11, 00, 21, 01, 01, 14, 00, 1b, 05, 00, 1e, 00, 25, 02, 00, 2f, 00, 33]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-Number of file 0 mappings: 3
-- Code(Counter(0)) at (prev + 179, 13) to (start + 2, 27)
-- Code(Counter(1)) at (prev + 2, 30) to (start + 0, 37)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 180, 17) to (start + 0, 33)
+- Code(Counter(0)) at (prev + 1, 20) to (start + 0, 27)
+- Code(Counter(1)) at (prev + 0, 30) to (start + 0, 37)
 - Code(Expression(0, Sub)) at (prev + 0, 47) to (start + 0, 51)
     = (c0 - c1)
 Highest counter ID seen: c1
 
 Function name: closure::main::{closure#15}
-Raw bytes (37): 0x[01, 01, 01, 01, 05, 06, 01, bb, 01, 09, 00, 0a, 01, 01, 0d, 00, 15, 01, 01, 11, 01, 1b, 05, 01, 1e, 00, 25, 02, 00, 2f, 00, 33, 01, 02, 09, 00, 0a]
+Raw bytes (37): 0x[01, 01, 01, 01, 05, 06, 01, bb, 01, 09, 00, 0a, 01, 01, 0d, 01, 21, 01, 02, 14, 00, 1b, 05, 00, 1e, 00, 25, 02, 00, 2f, 00, 33, 01, 02, 09, 00, 0a]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 6
 - Code(Counter(0)) at (prev + 187, 9) to (start + 0, 10)
-- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 21)
-- Code(Counter(0)) at (prev + 1, 17) to (start + 1, 27)
-- Code(Counter(1)) at (prev + 1, 30) to (start + 0, 37)
+- Code(Counter(0)) at (prev + 1, 13) to (start + 1, 33)
+- Code(Counter(0)) at (prev + 2, 20) to (start + 0, 27)
+- Code(Counter(1)) at (prev + 0, 30) to (start + 0, 37)
 - Code(Expression(0, Sub)) at (prev + 0, 47) to (start + 0, 51)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)
 Highest counter ID seen: c1
 
 Function name: closure::main::{closure#16}
-Raw bytes (22): 0x[01, 01, 01, 01, 05, 03, 01, c5, 01, 0d, 02, 1b, 05, 02, 1e, 00, 25, 02, 00, 2f, 00, 33]
+Raw bytes (27): 0x[01, 01, 01, 01, 05, 04, 01, c6, 01, 11, 00, 21, 01, 01, 14, 00, 1b, 05, 00, 1e, 00, 25, 02, 00, 2f, 00, 33]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-Number of file 0 mappings: 3
-- Code(Counter(0)) at (prev + 197, 13) to (start + 2, 27)
-- Code(Counter(1)) at (prev + 2, 30) to (start + 0, 37)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 198, 17) to (start + 0, 33)
+- Code(Counter(0)) at (prev + 1, 20) to (start + 0, 27)
+- Code(Counter(1)) at (prev + 0, 30) to (start + 0, 37)
 - Code(Expression(0, Sub)) at (prev + 0, 47) to (start + 0, 51)
     = (c0 - c1)
 Highest counter ID seen: c1
 
 Function name: closure::main::{closure#17}
-Raw bytes (37): 0x[01, 01, 01, 01, 05, 06, 01, cd, 01, 09, 00, 0a, 01, 01, 0d, 00, 15, 01, 01, 11, 01, 1b, 05, 01, 1e, 00, 25, 02, 00, 2f, 00, 33, 01, 02, 09, 00, 0a]
+Raw bytes (37): 0x[01, 01, 01, 01, 05, 06, 01, cd, 01, 09, 00, 0a, 01, 01, 0d, 01, 21, 01, 02, 14, 00, 1b, 05, 00, 1e, 00, 25, 02, 00, 2f, 00, 33, 01, 02, 09, 00, 0a]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 6
 - Code(Counter(0)) at (prev + 205, 9) to (start + 0, 10)
-- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 21)
-- Code(Counter(0)) at (prev + 1, 17) to (start + 1, 27)
-- Code(Counter(1)) at (prev + 1, 30) to (start + 0, 37)
+- Code(Counter(0)) at (prev + 1, 13) to (start + 1, 33)
+- Code(Counter(0)) at (prev + 2, 20) to (start + 0, 27)
+- Code(Counter(1)) at (prev + 0, 30) to (start + 0, 37)
 - Code(Expression(0, Sub)) at (prev + 0, 47) to (start + 0, 51)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)

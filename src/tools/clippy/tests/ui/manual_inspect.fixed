@@ -154,7 +154,6 @@ fn main() {
     });
 
     let _ = [0]
-        //~^ suspicious_map
         .into_iter()
         .inspect(|&x| {
             //~^ manual_inspect
