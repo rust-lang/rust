@@ -31,14 +31,10 @@ alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-all
 [target.'cfg(not(windows))'.dependencies]
 libc = { version = "0.2.0", optional = true, default-features = false }
 
-[dev-dependencies]
-cupid = "0.6.0"
-
 [features]
 default = [ "std_detect_dlsym_getauxval", "std_detect_file_io" ]
 std_detect_file_io = [ "libc" ]
 std_detect_dlsym_getauxval = [ "libc" ]
-std_detect_env_override = [ "libc" ]
 rustc-dep-of-std = [
     "core",
     "compiler_builtins",

@@ -52,8 +52,7 @@ crate from working on applications in which `std` is not available.
 * All `x86`/`x86_64` targets are supported on all platforms by querying the
   `cpuid` instruction directly for the features supported by the hardware and
   the operating system. `std_detect` assumes that the binary is an user-space
-  application. If you need raw support for querying `cpuid`, consider using the
-  [`cupid`](https://crates.io/crates/cupid) crate.
+  application.
 
 * Linux/Android:
   * `arm{32, 64}`, `mips{32,64}{,el}`, `powerpc{32,64}{,le}`, `loongarch64`, `s390x`:

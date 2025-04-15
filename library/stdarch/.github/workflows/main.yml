@@ -35,20 +35,6 @@ jobs:
       run: rustup update nightly --no-self-update && rustup default nightly
     - run: cargo test --manifest-path crates/stdarch-verify/Cargo.toml
 
-  env_override:
-    name: Env Override
-    needs: [style]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install Rust
-      run: rustup update nightly --no-self-update && rustup default nightly
-    - run: RUST_STD_DETECT_UNSTABLE=avx cargo test --features=std_detect_env_override --manifest-path crates/std_detect/Cargo.toml env_override_no_avx
-      shell: bash
-
   test:
     needs: [style]
     name: Test
@@ -243,7 +229,6 @@ jobs:
     needs:
       - docs
       - verify
-      - env_override
       - test
       - build-std-detect
     runs-on: ubuntu-latest

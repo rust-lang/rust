@@ -168,13 +168,6 @@ macro_rules! features {
                     Feature::_last => unreachable!(),
                 }
             }
-            #[cfg(feature = "std_detect_env_override")]
-            pub(crate) fn from_str(s: &str) -> Result<Feature, ()> {
-                match s {
-                    $($feature_lit => Ok(Feature::$feature),)*
-                    _ => Err(())
-                }
-            }
         }
 
         /// Each function performs run-time feature detection for a single

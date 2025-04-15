@@ -44,12 +44,8 @@ case ${TARGET} in
     mips-* | mipsel-*)
 	export RUSTFLAGS="${RUSTFLAGS} -C llvm-args=-fast-isel=false"
 	;;
-    # Some of our test dependencies use the deprecated `gcc` crates which is
-    # missing a fix from https://github.com/alexcrichton/cc-rs/pull/627. Apply
-    # the workaround manually here.
     armv7-*eabihf | thumbv7-*eabihf)
         export RUSTFLAGS="${RUSTFLAGS} -Ctarget-feature=+neon"
-        export TARGET_CFLAGS="-mfpu=vfpv3-d16"
         ;;
     # Some of our test dependencies use the deprecated `gcc` crates which
     # doesn't detect RISC-V compilers automatically, so do it manually here.
