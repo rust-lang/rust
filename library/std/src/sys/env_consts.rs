@@ -1,3 +1,5 @@
+//! Constants associated with each target.
+
 // Keep entries sorted alphabetically.
 
 #[cfg(target_os = "aix")]
@@ -44,7 +46,7 @@ pub mod os {
     pub const EXE_EXTENSION: &str = "";
 }
 
-#[cfg(all(target_os = "emscripten", target_arch = "wasm32"))]
+#[cfg(target_os = "emscripten")]
 pub mod os {
     pub const FAMILY: &str = "unix";
     pub const OS: &str = "emscripten";
@@ -95,6 +97,17 @@ pub mod os {
     pub const DLL_PREFIX: &str = "lib";
     pub const DLL_SUFFIX: &str = ".so";
     pub const DLL_EXTENSION: &str = "so";
+    pub const EXE_SUFFIX: &str = "";
+    pub const EXE_EXTENSION: &str = "";
+}
+
+#[cfg(target_os = "hermit")]
+pub mod os {
+    pub const FAMILY: &str = "";
+    pub const OS: &str = "hermit";
+    pub const DLL_PREFIX: &str = "";
+    pub const DLL_SUFFIX: &str = "";
+    pub const DLL_EXTENSION: &str = "";
     pub const EXE_SUFFIX: &str = "";
     pub const EXE_EXTENSION: &str = "";
 }
@@ -242,11 +255,33 @@ pub mod os {
     pub const EXE_EXTENSION: &str = "";
 }
 
+#[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
+pub mod os {
+    pub const FAMILY: &str = "";
+    pub const OS: &str = "";
+    pub const DLL_PREFIX: &str = "";
+    pub const DLL_SUFFIX: &str = ".sgxs";
+    pub const DLL_EXTENSION: &str = "sgxs";
+    pub const EXE_SUFFIX: &str = ".sgxs";
+    pub const EXE_EXTENSION: &str = "sgxs";
+}
+
 #[cfg(target_os = "solaris")]
 pub mod os {
     pub const FAMILY: &str = "unix";
     pub const OS: &str = "solaris";
     pub const DLL_PREFIX: &str = "lib";
+    pub const DLL_SUFFIX: &str = ".so";
+    pub const DLL_EXTENSION: &str = "so";
+    pub const EXE_SUFFIX: &str = "";
+    pub const EXE_EXTENSION: &str = "";
+}
+
+#[cfg(target_os = "solid_asp3")]
+pub mod os {
+    pub const FAMILY: &str = "itron";
+    pub const OS: &str = "solid";
+    pub const DLL_PREFIX: &str = "";
     pub const DLL_SUFFIX: &str = ".so";
     pub const DLL_EXTENSION: &str = "so";
     pub const EXE_SUFFIX: &str = "";
@@ -262,6 +297,17 @@ pub mod os {
     pub const DLL_EXTENSION: &str = "dylib";
     pub const EXE_SUFFIX: &str = "";
     pub const EXE_EXTENSION: &str = "";
+}
+
+#[cfg(target_os = "uefi")]
+pub mod os {
+    pub const FAMILY: &str = "";
+    pub const OS: &str = "uefi";
+    pub const DLL_PREFIX: &str = "";
+    pub const DLL_SUFFIX: &str = "";
+    pub const DLL_EXTENSION: &str = "";
+    pub const EXE_SUFFIX: &str = ".efi";
+    pub const EXE_EXTENSION: &str = "efi";
 }
 
 #[cfg(target_os = "visionos")]
@@ -297,6 +343,17 @@ pub mod os {
     pub const EXE_EXTENSION: &str = "";
 }
 
+#[cfg(all(target_family = "wasm", not(any(target_os = "emscripten", target_os = "linux"))))]
+pub mod os {
+    pub const FAMILY: &str = "";
+    pub const OS: &str = "";
+    pub const DLL_PREFIX: &str = "";
+    pub const DLL_SUFFIX: &str = ".wasm";
+    pub const DLL_EXTENSION: &str = "wasm";
+    pub const EXE_SUFFIX: &str = ".wasm";
+    pub const EXE_EXTENSION: &str = "wasm";
+}
+
 #[cfg(target_os = "watchos")]
 pub mod os {
     pub const FAMILY: &str = "unix";
@@ -306,4 +363,15 @@ pub mod os {
     pub const DLL_EXTENSION: &str = "dylib";
     pub const EXE_SUFFIX: &str = "";
     pub const EXE_EXTENSION: &str = "";
+}
+
+#[cfg(target_os = "windows")]
+pub mod os {
+    pub const FAMILY: &str = "windows";
+    pub const OS: &str = "windows";
+    pub const DLL_PREFIX: &str = "";
+    pub const DLL_SUFFIX: &str = ".dll";
+    pub const DLL_EXTENSION: &str = "dll";
+    pub const EXE_SUFFIX: &str = ".exe";
+    pub const EXE_EXTENSION: &str = "exe";
 }
