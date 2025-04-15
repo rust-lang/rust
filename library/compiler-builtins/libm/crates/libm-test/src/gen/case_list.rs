@@ -403,11 +403,33 @@ fn fminimum_numf128_cases() -> Vec<TestCase<op::fminimum_numf128::Routine>> {
 }
 
 fn fmod_cases() -> Vec<TestCase<op::fmod::Routine>> {
-    vec![]
+    let mut v = vec![];
+    TestCase::append_pairs(
+        &mut v,
+        &[
+            // Previous failure with incorrect loop iteration
+            // <https://github.com/rust-lang/libm/pull/469#discussion_r2022337272>
+            ((2.1, 3.123e-320), Some(2.0696e-320)),
+            ((2.1, 2.253547e-318), Some(1.772535e-318)),
+        ],
+    );
+    v
 }
 
 fn fmodf_cases() -> Vec<TestCase<op::fmodf::Routine>> {
-    vec![]
+    let mut v = vec![];
+    TestCase::append_pairs(
+        &mut v,
+        &[
+            // Previous failure with incorrect loop iteration
+            // <https://github.com/rust-lang/libm/pull/469#discussion_r2022337272>
+            ((2.1, 8.858e-42), Some(8.085e-42)),
+            ((2.1, 6.39164e-40), Some(6.1636e-40)),
+            ((5.5, 6.39164e-40), Some(4.77036e-40)),
+            ((-151.189, 6.39164e-40), Some(-5.64734e-40)),
+        ],
+    );
+    v
 }
 
 #[cfg(f128_enabled)]
