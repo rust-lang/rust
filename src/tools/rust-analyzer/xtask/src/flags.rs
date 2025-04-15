@@ -60,7 +60,7 @@ xflags::xflags! {
             /// Use cargo-zigbuild
             optional --zig
             /// Apply PGO optimizations
-            optional --pgo
+            optional --pgo pgo: PgoTrainingCrate
         }
         /// Read a changelog AsciiDoc file and update the GitHub Releases entry in Markdown.
         cmd publish-release-notes {
@@ -144,12 +144,31 @@ pub struct RustcPush {
 }
 
 #[derive(Debug)]
+pub enum PgoTrainingCrate {
+    // Use RA's own sources for PGO training
+    RustAnalyzer,
+    // Download a Rust crate from `https://github.com/{0}` and use it for PGO training.
+    GitHub(String),
+}
+
+impl FromStr for PgoTrainingCrate {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "rust-analyzer" => Ok(Self::RustAnalyzer),
+            url => Ok(Self::GitHub(url.to_owned())),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Dist {
     pub mimalloc: bool,
     pub jemalloc: bool,
     pub client_patch_version: Option<String>,
     pub zig: bool,
-    pub pgo: bool,
+    pub pgo: Option<PgoTrainingCrate>,
 }
 
 #[derive(Debug)]
