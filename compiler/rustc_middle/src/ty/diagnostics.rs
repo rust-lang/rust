@@ -571,7 +571,7 @@ pub fn suggest_constraining_type_params<'a>(
 }
 
 /// Collect al types that have an implicit `'static` obligation that we could suggest `'_` for.
-pub struct TraitObjectVisitor<'tcx>(pub Vec<&'tcx hir::Ty<'tcx>>, pub crate::hir::map::Map<'tcx>);
+pub(crate) struct TraitObjectVisitor<'tcx>(pub(crate) Vec<&'tcx hir::Ty<'tcx>>);
 
 impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
     fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
@@ -589,18 +589,6 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
             _ => {}
         }
         hir::intravisit::walk_ty(self, ty);
-    }
-}
-
-/// Collect al types that have an implicit `'static` obligation that we could suggest `'_` for.
-pub struct StaticLifetimeVisitor<'tcx>(pub Vec<Span>, pub crate::hir::map::Map<'tcx>);
-
-impl<'v> hir::intravisit::Visitor<'v> for StaticLifetimeVisitor<'v> {
-    fn visit_lifetime(&mut self, lt: &'v hir::Lifetime) {
-        if let hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static = lt.res
-        {
-            self.0.push(lt.ident.span);
-        }
     }
 }
 

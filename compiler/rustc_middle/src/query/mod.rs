@@ -161,11 +161,11 @@ rustc_queries! {
 
     /// Represents crate as a whole (as distinct from the top-level crate module).
     ///
-    /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir_crate()`),
-    /// we will have to assume that any change means that you need to be recompiled.
-    /// This is because the `hir_crate` query gives you access to all other items.
-    /// To avoid this fate, do not call `tcx.hir_crate()`; instead,
-    /// prefer wrappers like [`TyCtxt::hir_visit_all_item_likes_in_crate`].
+    /// If you call `tcx.hir_crate(())` we will have to assume that any change
+    /// means that you need to be recompiled. This is because the `hir_crate`
+    /// query gives you access to all other items. To avoid this fate, do not
+    /// call `tcx.hir_crate(())`; instead, prefer wrappers like
+    /// [`TyCtxt::hir_visit_all_item_likes_in_crate`].
     query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
         arena_cache
         eval_always
@@ -197,7 +197,7 @@ rustc_queries! {
 
     /// Gives access to the HIR node's parent for the HIR owner `key`.
     ///
-    /// This can be conveniently accessed by methods on `tcx.hir()`.
+    /// This can be conveniently accessed by `tcx.hir_*` methods.
     /// Avoid calling this query directly.
     query hir_owner_parent(key: hir::OwnerId) -> hir::HirId {
         desc { |tcx| "getting HIR parent of `{}`", tcx.def_path_str(key) }
@@ -205,7 +205,7 @@ rustc_queries! {
 
     /// Gives access to the HIR nodes and bodies inside `key` if it's a HIR owner.
     ///
-    /// This can be conveniently accessed by methods on `tcx.hir()`.
+    /// This can be conveniently accessed by `tcx.hir_*` methods.
     /// Avoid calling this query directly.
     query opt_hir_owner_nodes(key: LocalDefId) -> Option<&'tcx hir::OwnerNodes<'tcx>> {
         desc { |tcx| "getting HIR owner items in `{}`", tcx.def_path_str(key) }
@@ -214,7 +214,7 @@ rustc_queries! {
 
     /// Gives access to the HIR attributes inside the HIR owner `key`.
     ///
-    /// This can be conveniently accessed by methods on `tcx.hir()`.
+    /// This can be conveniently accessed by `tcx.hir_*` methods.
     /// Avoid calling this query directly.
     query hir_attr_map(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
         desc { |tcx| "getting HIR owner attributes in `{}`", tcx.def_path_str(key) }
