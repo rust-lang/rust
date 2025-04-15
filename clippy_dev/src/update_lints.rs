@@ -2,7 +2,7 @@ use crate::utils::{
     File, FileAction, FileUpdater, RustSearcher, Token, UpdateMode, UpdateStatus, panic_file, update_text_region_fn,
 };
 use itertools::Itertools;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt::Write;
 use std::fs::OpenOptions;
 use std::ops::Range;
@@ -106,24 +106,6 @@ pub fn generate_lint_files(
     );
 }
 
-pub fn print_lints() {
-    let lints = find_lint_decls();
-    let lint_count = lints.len();
-    let grouped_by_lint_group = Lint::by_lint_group(lints.into_iter());
-
-    for (lint_group, mut lints) in grouped_by_lint_group {
-        println!("\n## {lint_group}");
-
-        lints.sort_by_key(|l| l.name.clone());
-
-        for lint in lints {
-            println!("* [{}]({DOCS_LINK}#{}) ({})", lint.name, lint.name, lint.desc);
-        }
-    }
-
-    println!("there are {lint_count} lints");
-}
-
 fn round_to_fifty(count: usize) -> usize {
     count / 50 * 50
 }
@@ -133,17 +115,8 @@ fn round_to_fifty(count: usize) -> usize {
 pub struct Lint {
     pub name: String,
     pub group: String,
-    pub desc: String,
     pub module: String,
     pub declaration_range: Range<usize>,
-}
-
-impl Lint {
-    /// Returns the lints in a `HashMap`, grouped by the different lint groups
-    #[must_use]
-    fn by_lint_group(lints: impl Iterator<Item = Self>) -> HashMap<String, Vec<Self>> {
-        lints.map(|lint| (lint.group.to_string(), lint)).into_group_map()
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -185,7 +158,6 @@ pub fn find_lint_decls() -> Vec<Lint> {
     let mut contents = String::new();
     for (file, module) in read_src_with_module("clippy_lints/src".as_ref()) {
         parse_clippy_lint_decls(
-            file.path(),
             File::open_read_to_cleared_string(file.path(), &mut contents),
             &module,
             &mut lints,
@@ -230,7 +202,7 @@ fn read_src_with_module(src_root: &Path) -> impl use<'_> + Iterator<Item = (DirE
 }
 
 /// Parse a source file looking for `declare_clippy_lint` macro invocations.
-fn parse_clippy_lint_decls(path: &Path, contents: &str, module: &str, lints: &mut Vec<Lint>) {
+fn parse_clippy_lint_decls(contents: &str, module: &str, lints: &mut Vec<Lint>) {
     #[allow(clippy::enum_glob_use)]
     use Token::*;
     #[rustfmt::skip]
@@ -239,21 +211,18 @@ fn parse_clippy_lint_decls(path: &Path, contents: &str, module: &str, lints: &mu
         Bang, OpenBrace, AnyDoc,
         // #[clippy::version = "version"]
         Pound, OpenBracket, Ident("clippy"), DoubleColon, Ident("version"), Eq, LitStr, CloseBracket,
-        // pub NAME, GROUP, "description"
-        Ident("pub"), CaptureIdent, Comma, CaptureIdent, Comma, CaptureLitStr,
+        // pub NAME, GROUP,
+        Ident("pub"), CaptureIdent, Comma, CaptureIdent, Comma,
     ];
 
     let mut searcher = RustSearcher::new(contents);
     while searcher.find_token(Ident("declare_clippy_lint")) {
         let start = searcher.pos() as usize - "declare_clippy_lint".len();
-        let (mut name, mut group, mut desc) = ("", "", "");
-        if searcher.match_tokens(DECL_TOKENS, &mut [&mut name, &mut group, &mut desc])
-            && searcher.find_token(CloseBrace)
-        {
+        let (mut name, mut group) = ("", "");
+        if searcher.match_tokens(DECL_TOKENS, &mut [&mut name, &mut group]) && searcher.find_token(CloseBrace) {
             lints.push(Lint {
                 name: name.to_lowercase(),
                 group: group.into(),
-                desc: parse_str_single_line(path, desc),
                 module: module.into(),
                 declaration_range: start..searcher.pos() as usize,
             });
@@ -397,61 +366,25 @@ mod tests {
             }
         "#;
         let mut result = Vec::new();
-        parse_clippy_lint_decls("".as_ref(), CONTENTS, "module_name", &mut result);
+        parse_clippy_lint_decls(CONTENTS, "module_name", &mut result);
         for r in &mut result {
             r.declaration_range = Range::default();
         }
 
         let expected = vec![
-            Lint::new(
-                "ptr_arg",
-                "style",
-                "\"really long text\"",
-                "module_name",
-                Range::default(),
-            ),
-            Lint::new(
-                "doc_markdown",
-                "pedantic",
-                "\"single line\"",
-                "module_name",
-                Range::default(),
-            ),
+            Lint {
+                name: "ptr_arg".into(),
+                group: "style".into(),
+                module: "module_name".into(),
+                declaration_range: Range::default(),
+            },
+            Lint {
+                name: "doc_markdown".into(),
+                group: "pedantic".into(),
+                module: "module_name".into(),
+                declaration_range: Range::default(),
+            },
         ];
         assert_eq!(expected, result);
-    }
-
-    #[test]
-    fn test_by_lint_group() {
-        let lints = vec![
-            Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
-            Lint::new(
-                "should_assert_eq2",
-                "group2",
-                "\"abc\"",
-                "module_name",
-                Range::default(),
-            ),
-            Lint::new("incorrect_match", "group1", "\"abc\"", "module_name", Range::default()),
-        ];
-        let mut expected: HashMap<String, Vec<Lint>> = HashMap::new();
-        expected.insert(
-            "group1".to_string(),
-            vec![
-                Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
-                Lint::new("incorrect_match", "group1", "\"abc\"", "module_name", Range::default()),
-            ],
-        );
-        expected.insert(
-            "group2".to_string(),
-            vec![Lint::new(
-                "should_assert_eq2",
-                "group2",
-                "\"abc\"",
-                "module_name",
-                Range::default(),
-            )],
-        );
-        assert_eq!(expected, Lint::by_lint_group(lints.into_iter()));
     }
 }

@@ -27,13 +27,7 @@ fn main() {
             allow_no_vcs,
         } => dogfood::dogfood(fix, allow_dirty, allow_staged, allow_no_vcs),
         DevCommand::Fmt { check, verbose } => fmt::run(check, verbose),
-        DevCommand::UpdateLints { print_only, check } => {
-            if print_only {
-                update_lints::print_lints();
-            } else {
-                update_lints::update(utils::UpdateMode::from_check(check));
-            }
-        },
+        DevCommand::UpdateLints { check } => update_lints::update(utils::UpdateMode::from_check(check)),
         DevCommand::NewLint {
             pass,
             name,
@@ -145,11 +139,6 @@ enum DevCommand {
     /// * lint modules in `clippy_lints/*` are visible in `src/lib.rs` via `pub mod` {n}
     /// * all lints are registered in the lint store
     UpdateLints {
-        #[arg(long)]
-        /// Print a table of lints to STDOUT
-        ///
-        /// This does not include deprecated and internal lints. (Does not modify any files)
-        print_only: bool,
         #[arg(long)]
         /// Checks that `cargo dev update_lints` has been run. Used on CI.
         check: bool,
