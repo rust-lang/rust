@@ -228,6 +228,18 @@ pub(crate) fn compile_fn(
                     name = codegened_func.symbol_name
                 ));
             }
+            Err(ModuleError::Compilation(CodegenError::Verifier(err))) => {
+                let early_dcx = rustc_session::EarlyDiagCtxt::new(
+                    rustc_session::config::ErrorOutputType::default(),
+                );
+                let _ = early_dcx.early_err(format!("{:?}", err));
+                let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
+                    &context.func,
+                    Some(Box::new(&clif_comments)),
+                    err,
+                );
+                early_dcx.early_fatal(format!("cranelift verify error:\n{}", pretty_error));
+            }
             Err(err) => {
                 panic!("Error while defining {name}: {err:?}", name = codegened_func.symbol_name);
             }
