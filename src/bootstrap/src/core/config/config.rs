@@ -812,6 +812,8 @@ impl Merge for TomlConfig {
                 exit!(2);
             });
 
+            // FIXME: Similar to `Config::parse_inner`, allow passing a custom `get_toml` from the caller to
+            // improve testability since `Config::get_toml` does nothing when `cfg(test)` is enabled.
             let included_toml = Config::get_toml(&include_path).unwrap_or_else(|e| {
                 eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
                 exit!(2);
