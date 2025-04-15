@@ -2,8 +2,8 @@
 
 use std::cell::{OnceCell, RefCell};
 use std::ops::Range;
-use std::ptr;
 use std::sync::Arc;
+use std::{iter, ptr};
 
 use libc::c_uint;
 use metadata::create_subroutine_type;
@@ -486,8 +486,38 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             generics: &ty::Generics,
             args: GenericArgsRef<'tcx>,
         ) -> &'ll DIArray {
-            let template_params = metadata::get_template_parameters(cx, generics, args);
+            if args.types().next().is_none() {
+                return create_DIArray(DIB(cx), &[]);
+            }
+
+            // Again, only create type information if full debuginfo is enabled
+            let template_params: Vec<_> = if cx.sess().opts.debuginfo == DebugInfo::Full {
+                let names = get_parameter_names(cx, generics);
+                iter::zip(args, names)
+                    .filter_map(|(kind, name)| {
+                        kind.as_type().map(|ty| {
+                            let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
+                            let actual_type_metadata = type_di_node(cx, actual_type);
+                            Some(cx.create_template_type_parameter(
+                                name.as_str(),
+                                actual_type_metadata,
+                            ))
+                        })
+                    })
+                    .collect()
+            } else {
+                vec![]
+            };
+
             create_DIArray(DIB(cx), &template_params)
+        }
+
+        fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
+            let mut names = generics.parent.map_or_else(Vec::new, |def_id| {
+                get_parameter_names(cx, cx.tcx.generics_of(def_id))
+            });
+            names.extend(generics.own_params.iter().map(|param| param.name));
+            names
         }
 
         /// Returns a scope, plus `true` if that's a type scope for "class" methods,
