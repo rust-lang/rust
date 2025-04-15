@@ -1557,11 +1557,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::Transmute => {
-                        span_mirbug!(
-                            self,
-                            rvalue,
-                            "Unexpected CastKind::Transmute, which is not permitted in Analysis MIR",
-                        );
+                        let ty_from = op.ty(self.body, tcx);
+                        match ty_from.kind() {
+                            ty::Pat(base, _) if base == ty => {}
+                            _ => span_mirbug!(
+                                self,
+                                rvalue,
+                                "Unexpected CastKind::Transmute {ty_from:?} -> {ty:?}, which is not permitted in Analysis MIR",
+                            ),
+                        }
                     }
                 }
             }
