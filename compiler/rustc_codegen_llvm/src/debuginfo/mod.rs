@@ -154,7 +154,8 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         &mut self,
         dbg_var: &'ll DIVariable,
         dbg_loc: &'ll DILocation,
-        variable_alloca: Self::Value,
+        is_declared: bool,
+        val: Self::Value,
         direct_offset: Size,
         indirect_offsets: &[Size],
         fragment: Option<Range<Size>>,
@@ -183,17 +184,30 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
             addr_ops.push((fragment.end - fragment.start).bits() as u64);
         }
 
-        unsafe {
-            // FIXME(eddyb) replace `llvm.dbg.declare` with `llvm.dbg.addr`.
-            llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
-                DIB(self.cx()),
-                variable_alloca,
-                dbg_var,
-                addr_ops.as_ptr(),
-                addr_ops.len() as c_uint,
-                dbg_loc,
-                self.llbb(),
-            );
+        if is_declared {
+            unsafe {
+                llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
+                    DIB(self.cx()),
+                    val,
+                    dbg_var,
+                    addr_ops.as_ptr(),
+                    addr_ops.len() as c_uint,
+                    dbg_loc,
+                    self.llbb(),
+                );
+            }
+        } else {
+            unsafe {
+                llvm::LLVMRustDIBuilderInsertDbgValueAtEnd(
+                    DIB(self.cx()),
+                    val,
+                    dbg_var,
+                    addr_ops.as_ptr(),
+                    addr_ops.len() as c_uint,
+                    dbg_loc,
+                    self.llbb(),
+                );
+            }
         }
     }
 

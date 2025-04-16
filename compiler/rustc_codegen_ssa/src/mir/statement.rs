@@ -1,8 +1,10 @@
 use rustc_middle::mir::{self, NonDivergingIntrinsic};
-use rustc_middle::span_bug;
+use rustc_middle::{bug, span_bug};
 use tracing::instrument;
 
 use super::{FunctionCx, LocalRef};
+use crate::mir::operand::OperandValue;
+use crate::mir::place::PlaceRef;
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -94,8 +96,65 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             | mir::StatementKind::PlaceMention(..)
             | mir::StatementKind::BackwardIncompatibleDropHint { .. } => {}
             mir::StatementKind::Nop(ref stmt) => {
-                if stmt.is_some() {
-                    todo!("add debugging information")
+                if let Some(box stmt_kind) = stmt {
+                    match stmt_kind {
+                        mir::StatementKind::Assign(box (dest, rvalue)) => {
+                            if let Some(index) = dest.as_local()
+                                && let mir::Rvalue::Ref(_, _, place) = *rvalue
+                            {
+                                let place_ref = match self.locals[place.local] {
+                                    LocalRef::Place(place_ref)
+                                    | LocalRef::UnsizedPlace(place_ref) => Some(place_ref),
+                                    LocalRef::Operand(operand_ref) => match operand_ref.val {
+                                        OperandValue::Ref(_place_value) => {
+                                            todo!("OperandValue::Ref")
+                                        }
+                                        OperandValue::Immediate(v) => {
+                                            Some(PlaceRef::new_sized(v, operand_ref.layout))
+                                        }
+                                        OperandValue::Pair(_, _) => None,
+                                        OperandValue::ZeroSized => None,
+                                    },
+                                    LocalRef::PendingOperand => None,
+                                };
+                                let (val, layout, projection) =
+                                    match (place_ref, place.is_indirect_first_projection()) {
+                                        (Some(place_ref), false) => (
+                                            place_ref.val,
+                                            place_ref.layout,
+                                            place.projection.as_slice(),
+                                        ),
+                                        (Some(place_ref), true) => {
+                                            let projected_ty = place_ref
+                                                .layout
+                                                .ty
+                                                .builtin_deref(true)
+                                                .unwrap_or_else(|| {
+                                                    bug!("deref of non-pointer {:?}", place_ref)
+                                                });
+                                            let layout = bx.cx().layout_of(projected_ty);
+                                            (place_ref.val, layout, &place.projection[1..])
+                                        }
+                                        _ => {
+                                            let ty =
+                                                self.monomorphize(self.mir.local_decls[index].ty);
+                                            let layout = bx.cx().layout_of(ty);
+                                            let to_backend_ty =
+                                                bx.cx().immediate_backend_type(layout);
+                                            let place_ref = PlaceRef::new_sized(
+                                                bx.cx().const_poison(to_backend_ty),
+                                                layout,
+                                            );
+                                            (place_ref.val, layout, [].as_slice())
+                                        }
+                                    };
+                                self.debug_new_value_to_local(bx, index, val, layout, projection);
+                            } else {
+                                todo!("add debugging information")
+                            }
+                        }
+                        _ => {}
+                    }
                 }
             }
         }

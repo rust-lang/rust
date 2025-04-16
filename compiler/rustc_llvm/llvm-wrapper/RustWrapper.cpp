@@ -1247,6 +1247,18 @@ LLVMRustDIBuilderInsertDeclareAtEnd(LLVMDIBuilderRef Builder, LLVMValueRef V,
       DebugLoc(cast<MDNode>(unwrap(DL))), unwrap(InsertAtEnd));
 }
 
+extern "C" void
+LLVMRustDIBuilderInsertDbgValueAtEnd(LLVMDIBuilderRef Builder, LLVMValueRef V,
+                                     LLVMMetadataRef VarInfo, uint64_t *AddrOps,
+                                     unsigned AddrOpsCount, LLVMMetadataRef DL,
+                                     LLVMBasicBlockRef InsertAtEnd) {
+  unwrap(Builder)->insertDbgValueIntrinsic(
+      unwrap(V), unwrap<DILocalVariable>(VarInfo),
+      unwrap(Builder)->createExpression(
+          llvm::ArrayRef<uint64_t>(AddrOps, AddrOpsCount)),
+      DebugLoc(cast<MDNode>(unwrap(DL))), unwrap(InsertAtEnd));
+}
+
 extern "C" LLVMMetadataRef
 LLVMRustDIBuilderCreateEnumerator(LLVMDIBuilderRef Builder, const char *Name,
                                   size_t NameLen, const uint64_t Value[2],

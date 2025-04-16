@@ -37,15 +37,9 @@
       }
   
       bb2: {
-          StorageLive(_7);
           Nop(Assign((_7, &(*_2)[0 of 3])));
-          StorageLive(_8);
           Nop(Assign((_8, &(*_2)[1 of 3])));
-          StorageLive(_9);
           Nop(Assign((_9, &(*_2)[2 of 3])));
-          StorageDead(_9);
-          StorageDead(_8);
-          StorageDead(_7);
           StorageDead(_4);
           return;
       }

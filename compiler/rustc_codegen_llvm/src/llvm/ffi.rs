@@ -2301,6 +2301,16 @@ unsafe extern "C" {
         InsertAtEnd: &'a BasicBlock,
     );
 
+    pub(crate) fn LLVMRustDIBuilderInsertDbgValueAtEnd<'a>(
+        Builder: &DIBuilder<'a>,
+        Val: &'a Value,
+        VarInfo: &'a DIVariable,
+        AddrOps: *const u64,
+        AddrOpsCount: c_uint,
+        DL: &'a DILocation,
+        InsertAtEnd: &'a BasicBlock,
+    );
+
     pub(crate) fn LLVMRustDIBuilderCreateEnumerator<'a>(
         Builder: &DIBuilder<'a>,
         Name: *const c_char,

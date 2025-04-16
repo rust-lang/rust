@@ -378,6 +378,52 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
+    pub(crate) fn debug_new_value_to_local(
+        &self,
+        bx: &mut Bx,
+        local: mir::Local,
+        base: PlaceValue<Bx::Value>,
+        layout: TyAndLayout<'tcx>,
+        projection: &[mir::PlaceElem<'tcx>],
+    ) {
+        let full_debug_info = bx.sess().opts.debuginfo == DebugInfo::Full;
+        if !full_debug_info {
+            return;
+        }
+
+        let vars = match &self.per_local_var_debug_info {
+            Some(per_local) => &per_local[local],
+            None => return,
+        };
+
+        for var in vars.iter().cloned() {
+            self.debug_new_value_to_local_as_var(bx, base, layout, projection, var);
+        }
+    }
+
+    fn debug_new_value_to_local_as_var(
+        &self,
+        bx: &mut Bx,
+        base: PlaceValue<Bx::Value>,
+        layout: TyAndLayout<'tcx>,
+        projection: &[mir::PlaceElem<'tcx>],
+        var: PerLocalVarDebugInfo<'tcx, Bx::DIVariable>,
+    ) {
+        let Some(dbg_var) = var.dbg_var else { return };
+        let Some(dbg_loc) = self.dbg_loc(var.source_info) else { return };
+        let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
+            calculate_debuginfo_offset(bx, projection, layout);
+        bx.dbg_var_addr(
+            dbg_var,
+            dbg_loc,
+            false,
+            base.llval,
+            direct_offset,
+            &indirect_offsets,
+            var.fragment,
+        );
+    }
+
     fn debug_introduce_local_as_var(
         &self,
         bx: &mut Bx,
@@ -387,7 +433,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         let Some(dbg_var) = var.dbg_var else { return };
         let Some(dbg_loc) = self.dbg_loc(var.source_info) else { return };
-
         let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
             calculate_debuginfo_offset(bx, var.projection, base.layout);
 
@@ -422,6 +467,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.dbg_var_addr(
                 dbg_var,
                 dbg_loc,
+                true,
                 alloca.val.llval,
                 Size::ZERO,
                 &[Size::ZERO],
@@ -431,6 +477,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.dbg_var_addr(
                 dbg_var,
                 dbg_loc,
+                true,
                 base.val.llval,
                 direct_offset,
                 &indirect_offsets,
@@ -456,7 +503,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let base = FunctionCx::spill_operand_to_stack(operand, Some(name), bx);
                 bx.clear_dbg_loc();
 
-                bx.dbg_var_addr(dbg_var, dbg_loc, base.val.llval, Size::ZERO, &[], fragment);
+                bx.dbg_var_addr(dbg_var, dbg_loc, true, base.val.llval, Size::ZERO, &[], fragment);
             }
         }
     }
