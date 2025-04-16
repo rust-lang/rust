@@ -909,7 +909,9 @@ impl Loops {
     }
 
     fn check_for_loop_arg(&self, cx: &LateContext<'_>, _: &Pat<'_>, arg: &Expr<'_>) {
-        if let ExprKind::MethodCall(method, self_arg, [], _) = arg.kind {
+        if !arg.span.from_expansion()
+            && let ExprKind::MethodCall(method, self_arg, [], _) = arg.kind
+        {
             match method.ident.name {
                 sym::iter | sym::iter_mut => {
                     explicit_iter_loop::check(cx, self_arg, arg, self.msrv, self.enforce_iter_loop_reborrow);
