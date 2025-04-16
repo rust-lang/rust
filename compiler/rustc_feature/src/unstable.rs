@@ -317,7 +317,6 @@ declare_features! (
     (unstable, aarch64_unstable_target_feature, "1.82.0", Some(44839)),
     (unstable, aarch64_ver_target_feature, "1.27.0", Some(44839)),
     (unstable, arm_target_feature, "1.27.0", Some(44839)),
-    (unstable, avx512_target_feature, "1.27.0", Some(44839)),
     (unstable, bpf_target_feature, "1.54.0", Some(44839)),
     (unstable, csky_target_feature, "1.73.0", Some(44839)),
     (unstable, ermsb_target_feature, "1.49.0", Some(44839)),
