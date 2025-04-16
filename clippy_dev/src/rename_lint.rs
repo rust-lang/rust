@@ -1,4 +1,4 @@
-use crate::update_lints::{DeprecatedLints, RenamedLint, find_lint_decls, generate_lint_files, read_deprecated_lints};
+use crate::update_lints::{RenamedLint, find_lint_decls, generate_lint_files, read_deprecated_lints};
 use crate::utils::{
     FileUpdater, RustSearcher, Token, UpdateMode, UpdateStatus, Version, delete_dir_if_exists, delete_file_if_exists,
     try_rename_dir, try_rename_file,
@@ -35,39 +35,34 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
 
     let mut updater = FileUpdater::default();
     let mut lints = find_lint_decls();
-    let DeprecatedLints {
-        renamed: mut renamed_lints,
-        deprecated: deprecated_lints,
-        file: mut deprecated_file,
-        contents: mut deprecated_contents,
-        renamed_end,
-        ..
-    } = read_deprecated_lints();
+    let (deprecated_lints, mut renamed_lints) = read_deprecated_lints();
 
     let Ok(lint_idx) = lints.binary_search_by(|x| x.name.as_str().cmp(old_name)) else {
         panic!("could not find lint `{old_name}`");
     };
     let lint = &lints[lint_idx];
 
-    let renamed_lint = RenamedLint {
-        old_name: String::from_iter(["clippy::", old_name]),
-        new_name: if uplift {
-            new_name.to_owned()
-        } else {
-            String::from_iter(["clippy::", new_name])
+    let old_name_prefixed = String::from_iter(["clippy::", old_name]);
+    match renamed_lints.binary_search_by(|x| x.old_name.cmp(&old_name_prefixed)) {
+        Ok(_) => {
+            println!("`{old_name}` already has a rename registered");
+            return;
         },
-    };
-    deprecated_contents.insert_str(
-        renamed_end as usize,
-        &format!(
-            "    #[clippy::version = \"{}\"]\n    (\"{}\", \"{}\"),\n",
-            clippy_version.rust_display(),
-            renamed_lint.old_name,
-            renamed_lint.new_name,
-        ),
-    );
-    deprecated_file.replace_contents(deprecated_contents.as_bytes());
-    renamed_lints.push(renamed_lint);
+        Err(idx) => {
+            renamed_lints.insert(
+                idx,
+                RenamedLint {
+                    old_name: old_name_prefixed,
+                    new_name: if uplift {
+                        new_name.to_owned()
+                    } else {
+                        String::from_iter(["clippy::", new_name])
+                    },
+                    version: clippy_version.rust_display().to_string(),
+                },
+            );
+        },
+    }
 
     // Some tests are named `lint_name_suffix` which should also be renamed,
     // but we can't do that if the renamed lint's name overlaps with another
