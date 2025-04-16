@@ -1116,7 +1116,7 @@ impl CStr {
     /// with the corresponding <code>&[str]</code> slice. Otherwise, it will
     /// replace any invalid UTF-8 sequences with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD] and return a
-    /// <code>[Cow]::[Owned]\(&[str])</code> with the result.
+    /// <code>[Cow]::[Owned]\([String])</code> with the result.
     ///
     /// [str]: prim@str "str"
     /// [Borrowed]: Cow::Borrowed
