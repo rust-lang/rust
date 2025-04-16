@@ -274,6 +274,12 @@ fn layout_of_uncached<'tcx>(
                         };
 
                         layout.largest_niche = Some(niche);
+                        // Make wide pointer pattern types contain only a single field
+                        // of the wide pointer type itself.
+                        layout.fields = FieldsShape::Arbitrary {
+                            offsets: [Size::ZERO].into_iter().collect(),
+                            memory_index: [0].into_iter().collect(),
+                        }
                     } else {
                         bug!(
                             "pattern type with `!null` pattern but not scalar/pair layout: {ty:?}, {layout:?}"
