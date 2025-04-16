@@ -105,6 +105,13 @@ fn exec_lld(mut command: process::Command) {
 }
 
 fn main() {
+    if true {
+        let args =
+            libwild::Args::parse(env::args().skip(1)).unwrap_or_exit_with("Args are not UTF-8");
+        unsafe {
+            libwild::run_in_subprocess(&args);
+        }
+    }
     let current_exe_path =
         env::current_exe().unwrap_or_exit_with("could not get the path of the current executable");
 
