@@ -201,9 +201,11 @@ fn make_fixes(
 
     let mod_decl = format!("mod {new_mod_name};");
     let pub_mod_decl = format!("pub mod {new_mod_name};");
+    let pub_crate_mod_decl = format!("pub(crate) mod {new_mod_name};");
 
     let mut mod_decl_builder = TextEdit::builder();
     let mut pub_mod_decl_builder = TextEdit::builder();
+    let mut pub_crate_mod_decl_builder = TextEdit::builder();
 
     let mut items = match &source {
         ModuleSource::SourceFile(it) => it.items(),
@@ -232,6 +234,7 @@ fn make_fixes(
             let indent = IndentLevel::from_node(last.syntax());
             mod_decl_builder.insert(offset, format!("\n{indent}{mod_decl}"));
             pub_mod_decl_builder.insert(offset, format!("\n{indent}{pub_mod_decl}"));
+            pub_crate_mod_decl_builder.insert(offset, format!("\n{indent}{pub_crate_mod_decl}"));
         }
         None => {
             // Prepend before the first item in the file.
@@ -242,6 +245,8 @@ fn make_fixes(
                     let indent = IndentLevel::from_node(first.syntax());
                     mod_decl_builder.insert(offset, format!("{mod_decl}\n\n{indent}"));
                     pub_mod_decl_builder.insert(offset, format!("{pub_mod_decl}\n\n{indent}"));
+                    pub_crate_mod_decl_builder
+                        .insert(offset, format!("{pub_crate_mod_decl}\n\n{indent}"));
                 }
                 None => {
                     // No items in the file, so just append at the end.
@@ -259,6 +264,8 @@ fn make_fixes(
                     };
                     mod_decl_builder.insert(offset, format!("{indent}{mod_decl}\n"));
                     pub_mod_decl_builder.insert(offset, format!("{indent}{pub_mod_decl}\n"));
+                    pub_crate_mod_decl_builder
+                        .insert(offset, format!("{indent}{pub_crate_mod_decl}\n"));
                 }
             }
         }
@@ -275,6 +282,12 @@ fn make_fixes(
             "add_pub_mod_declaration",
             &format!("Insert `{pub_mod_decl}`"),
             SourceChange::from_text_edit(parent_file_id, pub_mod_decl_builder.finish()),
+            trigger_range,
+        ),
+        fix(
+            "add_pub_crate_mod_declaration",
+            &format!("Insert `{pub_crate_mod_decl}`"),
+            SourceChange::from_text_edit(parent_file_id, pub_crate_mod_decl_builder.finish()),
             trigger_range,
         ),
     ])
@@ -303,6 +316,11 @@ fn f() {}
 "#,
                 r#"
 pub mod foo;
+
+fn f() {}
+"#,
+                r#"
+pub(crate) mod foo;
 
 fn f() {}
 "#,
