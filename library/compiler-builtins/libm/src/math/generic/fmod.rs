@@ -26,7 +26,7 @@ pub fn fmod<F: Float>(x: F, y: F) -> F {
 
     /* normalize x and y */
     if ex == 0 {
-        let i = ix << F::EXP_BITS;
+        let i = ix << (F::EXP_BITS + 1);
         ex -= i.leading_zeros() as i32;
         ix <<= -ex + 1;
     } else {
@@ -35,7 +35,7 @@ pub fn fmod<F: Float>(x: F, y: F) -> F {
     }
 
     if ey == 0 {
-        let i = iy << F::EXP_BITS;
+        let i = iy << (F::EXP_BITS + 1);
         ey -= i.leading_zeros() as i32;
         iy <<= -ey + 1;
     } else {
