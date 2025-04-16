@@ -79,6 +79,10 @@ ast_passes_extern_types_cannot = `type`s inside `extern` blocks cannot have {$de
     .suggestion = remove the {$remove_descr}
     .label = `extern` block begins here
 
+ast_passes_extern_without_abi = `extern` declarations without an explicit ABI are disallowed
+    .suggestion = specify an ABI
+    .help = prior to Rust 2024, a default ABI was inferred
+
 ast_passes_feature_on_non_nightly = `#![feature]` may not be used on the {$channel} release channel
     .suggestion = remove the attribute
     .stable_since = the feature `{$name}` has been stable since `{$since}` and no longer requires an attribute to enable

@@ -477,6 +477,8 @@ declare_features! (
     (incomplete, ergonomic_clones, "1.87.0", Some(132290)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (unstable, exhaustive_patterns, "1.13.0", Some(51085)),
+    /// Disallows `extern` without an explicit ABI.
+    (unstable, explicit_extern_abis, "CURRENT_RUSTC_VERSION", Some(134986)),
     /// Allows explicit tail calls via `become` expression.
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
     /// Allows using `aapcs`, `efiapi`, `sysv64` and `win64` as calling conventions

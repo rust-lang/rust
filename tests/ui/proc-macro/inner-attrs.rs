@@ -82,7 +82,7 @@ fn bar() {
 }
 
 
-extern { //~ WARN extern declarations without an explicit ABI are deprecated
+extern { //~ WARN `extern` declarations without an explicit ABI are deprecated
     fn weird_extern() {
         #![print_target_and_args_consume(tenth)]
     }

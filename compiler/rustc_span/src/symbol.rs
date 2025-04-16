@@ -916,6 +916,7 @@ symbols! {
         expf16,
         expf32,
         expf64,
+        explicit_extern_abis,
         explicit_generic_args_with_impl_trait,
         explicit_tail_calls,
         export_name,
