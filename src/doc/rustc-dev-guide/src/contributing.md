@@ -150,6 +150,20 @@ when contributing to Rust under [the git section](./git.md).
 [t-compiler]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
 [triagebot]: https://github.com/rust-lang/rust/blob/master/triagebot.toml
 
+### Keeping your branch up-to-date
+
+The CI in rust-lang/rust applies your patches directly against the current master,
+not against the commit your branch is based on. This can lead to unexpected failures
+if your branch is outdated, even when there are no explicit merge conflicts.
+
+Before submitting or updating a PR, make sure to update your branch
+as mentioned [here](git.md#keeping-things-up-to-date) if it's significantly
+behind the master branch (e.g., more than 100 commits behind).
+This fetches the latest master branch and rebases your changes on top of it,
+ensuring your PR is tested against the latest code.
+
+After rebasing, it's recommended to [run the relevant tests locally](tests/intro.md) to catch any issues before CI runs.
+
 ### r?
 
 All pull requests are reviewed by another person. We have a bot,
