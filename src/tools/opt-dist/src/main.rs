@@ -76,7 +76,7 @@ enum EnvironmentCmd {
         rustc_perf_checkout_dir: Option<Utf8PathBuf>,
 
         /// Is LLVM for `rustc` built in shared library mode?
-        #[arg(long, default_value_t = true)]
+        #[arg(long, default_value_t = true, action(clap::ArgAction::Set))]
         llvm_shared: bool,
 
         /// Should BOLT optimization be used? If yes, host LLVM must have BOLT binaries
