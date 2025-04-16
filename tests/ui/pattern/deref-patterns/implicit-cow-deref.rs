@@ -6,7 +6,7 @@
 use std::borrow::Cow;
 
 fn main() {
-    let cow: Cow<'static, [u8]> = Cow::from(&[1, 2, 3]);
+    let cow: Cow<'static, [u8]> = Cow::Borrowed(&[1, 2, 3]);
 
     match cow {
         [..] => {}
@@ -31,6 +31,7 @@ fn main() {
         _ => unreachable!(),
     }
 
+    // This matches on the outer `Cow` (the owned one).
     match cow_of_cow {
         Cow::Borrowed(_) => unreachable!(),
         Cow::Owned(_) => {}
