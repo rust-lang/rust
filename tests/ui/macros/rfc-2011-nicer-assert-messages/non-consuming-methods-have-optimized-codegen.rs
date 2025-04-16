@@ -1,5 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Z unpretty=expanded
+//@ edition: 2015
 
 #![feature(core_intrinsics, generic_assert)]
 
