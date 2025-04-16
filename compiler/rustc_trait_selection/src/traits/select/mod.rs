@@ -1983,6 +1983,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
+                | PointerLikeCandidate
                 | BikeshedGuaranteedNoDropCandidate => false,
                 // Non-global param candidates have already been handled, global
                 // where-bounds get ignored.
