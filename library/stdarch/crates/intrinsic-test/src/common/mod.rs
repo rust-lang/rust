@@ -2,9 +2,13 @@ use crate::common::types::ProcessedCli;
 use std::fs::File;
 use std::io::Write;
 
+pub mod argument;
 pub mod compare;
+pub mod format;
 pub mod gen_c;
 pub mod gen_rust;
+pub mod intrinsic;
+pub mod intrinsic_types;
 pub mod types;
 pub mod values;
 

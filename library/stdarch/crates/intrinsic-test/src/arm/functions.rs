@@ -1,9 +1,12 @@
-use super::argument::Argument;
 use super::config::{AARCH_CONFIGURATIONS, POLY128_OSTREAM_DEF, build_notices};
-use super::format::Indentation;
-use super::intrinsic::Intrinsic;
+use super::intrinsic::ArmIntrinsicType;
+use crate::arm::constraint::Constraint;
+use crate::common::argument::Argument;
+use crate::common::format::Indentation;
 use crate::common::gen_c::{compile_c, create_c_filenames, generate_c_program};
 use crate::common::gen_rust::{compile_rust, create_rust_filenames, generate_rust_program};
+use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
+use crate::common::intrinsic_types::IntrinsicTypeDefinition;
 use crate::common::write_file;
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -14,14 +17,14 @@ const PASSES: u32 = 20;
 
 fn gen_code_c(
     indentation: Indentation,
-    intrinsic: &Intrinsic,
-    constraints: &[&Argument],
+    intrinsic: &Intrinsic<ArmIntrinsicType, Constraint>,
+    constraints: &[&Argument<ArmIntrinsicType, Constraint>],
     name: String,
     target: &str,
 ) -> String {
     if let Some((current, constraints)) = constraints.split_last() {
         let range = current
-            .constraints
+            .metadata
             .iter()
             .map(|c| c.to_range())
             .flat_map(|r| r.into_iter());
@@ -52,11 +55,15 @@ fn gen_code_c(
     }
 }
 
-fn generate_c_program_arm(header_files: &[&str], intrinsic: &Intrinsic, target: &str) -> String {
+fn generate_c_program_arm(
+    header_files: &[&str],
+    intrinsic: &Intrinsic<ArmIntrinsicType, Constraint>,
+    target: &str,
+) -> String {
     let constraints = intrinsic
         .arguments
         .iter()
-        .filter(|i| i.has_constraint())
+        .filter(|&i| i.has_constraint())
         .collect_vec();
 
     let indentation = Indentation::default();
@@ -82,13 +89,13 @@ fn generate_c_program_arm(header_files: &[&str], intrinsic: &Intrinsic, target: 
 
 fn gen_code_rust(
     indentation: Indentation,
-    intrinsic: &Intrinsic,
-    constraints: &[&Argument],
+    intrinsic: &Intrinsic<ArmIntrinsicType, Constraint>,
+    constraints: &[&Argument<ArmIntrinsicType, Constraint>],
     name: String,
 ) -> String {
     if let Some((current, constraints)) = constraints.split_last() {
         let range = current
-            .constraints
+            .metadata
             .iter()
             .map(|c| c.to_range())
             .flat_map(|r| r.into_iter());
@@ -118,7 +125,10 @@ fn gen_code_rust(
     }
 }
 
-fn generate_rust_program_arm(intrinsic: &Intrinsic, target: &str) -> String {
+fn generate_rust_program_arm(
+    intrinsic: &Intrinsic<ArmIntrinsicType, Constraint>,
+    target: &str,
+) -> String {
     let constraints = intrinsic
         .arguments
         .iter()
@@ -220,7 +230,7 @@ fn compile_c_arm(
 }
 
 pub fn build_c(
-    intrinsics: &Vec<Intrinsic>,
+    intrinsics: &Vec<Intrinsic<ArmIntrinsicType, Constraint>>,
     compiler: Option<&str>,
     target: &str,
     cxx_toolchain_dir: Option<&str>,
@@ -252,7 +262,7 @@ pub fn build_c(
 }
 
 pub fn build_rust(
-    intrinsics: &[Intrinsic],
+    intrinsics: &[Intrinsic<ArmIntrinsicType, Constraint>],
     toolchain: Option<&str>,
     target: &str,
     linker: Option<&str>,

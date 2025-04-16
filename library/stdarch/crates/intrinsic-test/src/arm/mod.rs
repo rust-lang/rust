@@ -1,21 +1,22 @@
-mod argument;
 mod config;
-mod format;
+mod constraint;
 mod functions;
 mod intrinsic;
 mod json_parser;
 mod types;
 
+use crate::arm::constraint::Constraint;
+use crate::arm::intrinsic::ArmIntrinsicType;
 use crate::common::SupportedArchitectureTest;
 use crate::common::compare::compare_outputs;
+use crate::common::intrinsic::Intrinsic;
+use crate::common::intrinsic_types::{BaseIntrinsicTypeDefinition, TypeKind};
 use crate::common::types::ProcessedCli;
 use functions::{build_c, build_rust};
-use intrinsic::Intrinsic;
 use json_parser::get_neon_intrinsics;
-use types::TypeKind;
 
 pub struct ArmArchitectureTest {
-    intrinsics: Vec<Intrinsic>,
+    intrinsics: Vec<Intrinsic<ArmIntrinsicType, Constraint>>,
     cli_options: ProcessedCli,
 }
 

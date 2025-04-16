@@ -1,6 +1,8 @@
-use super::argument::{Argument, ArgumentList};
-use super::intrinsic::Intrinsic;
-use super::types::IntrinsicType;
+use super::constraint::Constraint;
+use super::intrinsic::ArmIntrinsicType;
+use crate::common::argument::{Argument, ArgumentList};
+use crate::common::intrinsic::Intrinsic;
+use crate::common::intrinsic_types::{IntrinsicType, IntrinsicTypeDefinition};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -53,7 +55,7 @@ struct JsonIntrinsic {
 pub fn get_neon_intrinsics(
     filename: &Path,
     target: &String,
-) -> Result<Vec<Intrinsic>, Box<dyn std::error::Error>> {
+) -> Result<Vec<Intrinsic<ArmIntrinsicType, Constraint>>, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(filename)?;
     let reader = std::io::BufReader::new(file);
     let json: Vec<JsonIntrinsic> = serde_json::from_reader(reader).expect("Couldn't parse JSON");
@@ -74,37 +76,39 @@ pub fn get_neon_intrinsics(
 fn json_to_intrinsic(
     mut intr: JsonIntrinsic,
     target: &String,
-) -> Result<Intrinsic, Box<dyn std::error::Error>> {
+) -> Result<Intrinsic<ArmIntrinsicType, Constraint>, Box<dyn std::error::Error>> {
     let name = intr.name.replace(['[', ']'], "");
 
-    let results = IntrinsicType::from_c(&intr.return_type.value, target)?;
+    let results = ArmIntrinsicType::from_c(&intr.return_type.value, target)?;
 
     let args = intr
         .arguments
         .into_iter()
         .enumerate()
         .map(|(i, arg)| {
-            // let arg_name = Argument::type_and_name_from_c(&arg).1;
-            let mut arg = Argument::from_c(i, &arg, target, intr.args_prep.as_mut());
+            let arg_name = Argument::<ArmIntrinsicType, Constraint>::type_and_name_from_c(&arg).1;
+            let metadata = intr.args_prep.as_mut();
+            let metadata = metadata.and_then(|a| a.remove(arg_name));
+            let mut arg =
+                Argument::<ArmIntrinsicType, Constraint>::from_c(i, &arg, target, metadata);
+
             // The JSON doesn't list immediates as const
-            if let IntrinsicType::Type {
+            let IntrinsicType {
                 ref mut constant, ..
-            } = arg.ty
-            {
-                if arg.name.starts_with("imm") {
-                    *constant = true
-                }
+            } = arg.ty.0;
+            if arg.name.starts_with("imm") {
+                *constant = true
             }
             arg
         })
         .collect();
 
-    let arguments = ArgumentList { args };
+    let arguments = ArgumentList::<ArmIntrinsicType, Constraint> { args };
 
     Ok(Intrinsic {
         name,
         arguments,
-        results,
+        results: *results,
         a64_only: intr.architectures == vec!["A64".to_string()],
     })
 }
