@@ -13,7 +13,14 @@ error: layout_of((*const T) is !null) = Layout {
                    valid_range: 1..=18446744073709551615,
                },
            ),
-           fields: Primitive,
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
@@ -153,5 +160,59 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
 LL | type Test = Option<NonNull<()>>;
    | ^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: layout_of((*const [u8]) is !null) = Layout {
+           size: Size(16 bytes),
+           align: AbiAlign {
+               abi: Align(8 bytes),
+           },
+           backend_repr: ScalarPair(
+               Initialized {
+                   value: Pointer(
+                       AddressSpace(
+                           0,
+                       ),
+                   ),
+                   valid_range: 1..=18446744073709551615,
+               },
+               Initialized {
+                   value: Int(
+                       I64,
+                       false,
+                   ),
+                   valid_range: 0..=18446744073709551615,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Pointer(
+                       AddressSpace(
+                           0,
+                       ),
+                   ),
+                   valid_range: 1..=18446744073709551615,
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(8 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/non_null.rs:17:1
+   |
+LL | type Wide = pattern_type!(*const [u8] is !null);
+   | ^^^^^^^^^
+
+error: aborting due to 3 previous errors
 
