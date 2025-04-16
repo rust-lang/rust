@@ -1,53 +1,14 @@
 use super::constraint::Constraint;
+use crate::base_intrinsictype_trait_def_macro;
 use crate::common::argument::ArgumentList;
 use crate::common::format::Indentation;
 use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
 use crate::common::intrinsic_types::{
-    BaseIntrinsicTypeDefinition, IntrinsicType, IntrinsicTypeDefinition, TypeKind,
+    BaseIntrinsicTypeDefinition, IntrinsicTypeDefinition, TypeKind,
 };
 use crate::common::types::Language;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ArmIntrinsicType(pub IntrinsicType);
-
-impl BaseIntrinsicTypeDefinition for ArmIntrinsicType {
-    fn kind(&self) -> TypeKind {
-        self.0.kind()
-    }
-    fn inner_size(&self) -> u32 {
-        self.0.inner_size()
-    }
-    fn num_lanes(&self) -> u32 {
-        self.0.num_lanes()
-    }
-    fn num_vectors(&self) -> u32 {
-        self.0.num_vectors()
-    }
-    fn is_simd(&self) -> bool {
-        self.0.is_simd()
-    }
-    fn is_ptr(&self) -> bool {
-        self.0.is_ptr()
-    }
-    fn c_scalar_type(&self) -> String {
-        self.0.c_scalar_type()
-    }
-    fn rust_scalar_type(&self) -> String {
-        self.0.rust_scalar_type()
-    }
-    fn c_promotion(&self) -> &str {
-        self.0.c_promotion()
-    }
-    fn populate_random(&self, indentation: Indentation, loads: u32, language: &Language) -> String {
-        self.0.populate_random(indentation, loads, language)
-    }
-    fn is_rust_vals_array_const(&self) -> bool {
-        self.0.is_rust_vals_array_const()
-    }
-    fn as_call_param_c(&self, name: &String) -> String {
-        self.0.as_call_param_c(name)
-    }
-}
+base_intrinsictype_trait_def_macro! {ArmIntrinsicType}
 
 impl IntrinsicDefinition<ArmIntrinsicType, Constraint> for Intrinsic<ArmIntrinsicType, Constraint> {
     fn arguments(&self) -> ArgumentList<ArmIntrinsicType, Constraint> {

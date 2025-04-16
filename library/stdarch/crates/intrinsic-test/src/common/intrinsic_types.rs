@@ -350,3 +350,59 @@ pub trait IntrinsicTypeDefinition: BaseIntrinsicTypeDefinition {
         unimplemented!("Different architectures must implement rust_type!")
     }
 }
+
+/// Defines the basic structure of achitecture-specific derivatives
+/// of IntrinsicType.
+#[macro_export]
+macro_rules! base_intrinsictype_trait_def_macro {
+    ($T:ident) => {
+        use crate::common::intrinsic_types::IntrinsicType;
+
+        #[derive(Debug, Clone, PartialEq)]
+        pub struct $T(pub IntrinsicType);
+
+        impl BaseIntrinsicTypeDefinition for $T {
+            fn kind(&self) -> TypeKind {
+                self.0.kind()
+            }
+            fn inner_size(&self) -> u32 {
+                self.0.inner_size()
+            }
+            fn num_lanes(&self) -> u32 {
+                self.0.num_lanes()
+            }
+            fn num_vectors(&self) -> u32 {
+                self.0.num_vectors()
+            }
+            fn is_simd(&self) -> bool {
+                self.0.is_simd()
+            }
+            fn is_ptr(&self) -> bool {
+                self.0.is_ptr()
+            }
+            fn c_scalar_type(&self) -> String {
+                self.0.c_scalar_type()
+            }
+            fn rust_scalar_type(&self) -> String {
+                self.0.rust_scalar_type()
+            }
+            fn c_promotion(&self) -> &str {
+                self.0.c_promotion()
+            }
+            fn populate_random(
+                &self,
+                indentation: Indentation,
+                loads: u32,
+                language: &Language,
+            ) -> String {
+                self.0.populate_random(indentation, loads, language)
+            }
+            fn is_rust_vals_array_const(&self) -> bool {
+                self.0.is_rust_vals_array_const()
+            }
+            fn as_call_param_c(&self, name: &String) -> String {
+                self.0.as_call_param_c(name)
+            }
+        }
+    };
+}
