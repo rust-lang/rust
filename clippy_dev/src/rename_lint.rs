@@ -43,6 +43,17 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
     let lint = &lints[lint_idx];
 
     let old_name_prefixed = String::from_iter(["clippy::", old_name]);
+    let new_name_prefixed = if uplift {
+        new_name.to_owned()
+    } else {
+        String::from_iter(["clippy::", new_name])
+    };
+
+    for lint in &mut renamed_lints {
+        if lint.new_name == old_name_prefixed {
+            lint.new_name.clone_from(&new_name_prefixed);
+        }
+    }
     match renamed_lints.binary_search_by(|x| x.old_name.cmp(&old_name_prefixed)) {
         Ok(_) => {
             println!("`{old_name}` already has a rename registered");
