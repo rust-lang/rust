@@ -29,4 +29,21 @@ fn main() {
         //~^ ERROR: mismatched types
         _ => {}
     }
+
+    // `deref_patterns` allows string and byte string patterns to implicitly peel references.
+    match &"str" {
+        "str" => {}
+        //~^ ERROR: mismatched types
+        _ => {}
+    }
+    match &b"str" {
+        b"str" => {}
+        //~^ ERROR: mismatched types
+        _ => {}
+    }
+    match "str".to_owned() {
+        "str" => {}
+        //~^ ERROR: mismatched types
+        _ => {}
+    }
 }
