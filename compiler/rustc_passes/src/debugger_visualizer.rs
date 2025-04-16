@@ -28,17 +28,17 @@ impl DebuggerVisualizerCollector<'_> {
                 return;
             };
 
-            let (visualizer_type, visualizer_path) =
-                match (meta_item.name_or_empty(), meta_item.value_str()) {
-                    (sym::natvis_file, Some(value)) => (DebuggerVisualizerType::Natvis, value),
-                    (sym::gdb_script_file, Some(value)) => {
-                        (DebuggerVisualizerType::GdbPrettyPrinter, value)
-                    }
-                    (_, _) => {
-                        self.sess.dcx().emit_err(DebugVisualizerInvalid { span: meta_item.span });
-                        return;
-                    }
-                };
+            let (visualizer_type, visualizer_path) = match (meta_item.name(), meta_item.value_str())
+            {
+                (Some(sym::natvis_file), Some(value)) => (DebuggerVisualizerType::Natvis, value),
+                (Some(sym::gdb_script_file), Some(value)) => {
+                    (DebuggerVisualizerType::GdbPrettyPrinter, value)
+                }
+                (_, _) => {
+                    self.sess.dcx().emit_err(DebugVisualizerInvalid { span: meta_item.span });
+                    return;
+                }
+            };
 
             let file = match resolve_path(&self.sess, visualizer_path.as_str(), attr.span) {
                 Ok(file) => file,
