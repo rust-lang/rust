@@ -121,7 +121,7 @@ impl PartialEq<str> for EnvKey {
 // Environment variable keys should preserve their original case even though
 // they are compared using a caseless string mapping.
 impl From<OsString> for EnvKey {
-    /// Create a new `EnvKey` from `OsString` and its encode wide iter.
+    /// Create a new `EnvKey` from `OsString`.
     ///
     /// ## Cost
     /// Has to collect `OsString.encode_wide` which allocates a new `Vec`
@@ -646,7 +646,6 @@ impl From<io::Stdout> for Stdio {
 }
 
 impl From<io::Stderr> for Stdio {
-    /// Create a new `Stdio::InheritSpecific` with `c::STD_ERROR_HANDLE`
     fn from(_: io::Stderr) -> Stdio {
         Stdio::InheritSpecific { from_stdio_id: c::STD_ERROR_HANDLE }
     }
@@ -792,7 +791,7 @@ impl ExitCode {
 }
 
 impl From<u8> for ExitCode {
-    /// Convert the `u8` to a `u32` then wrap it in a `ExitCode`
+    /// Convert the `u8` then wrap it in a `ExitCode`
     fn from(code: u8) -> Self {
         ExitCode(u32::from(code))
     }

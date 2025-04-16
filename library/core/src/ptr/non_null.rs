@@ -1648,7 +1648,7 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
 
 #[unstable(feature = "ptr_internals", issue = "none")]
 impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
-    /// Return `Unique` cast to a `NonNull`.
+    /// Cast `Unique` to a `NonNull`.
     #[inline]
     fn from(unique: Unique<T>) -> Self {
         unique.as_non_null_ptr()

@@ -180,7 +180,6 @@ impl Default for ByteString {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<'a, const N: usize> From<&'a [u8; N]> for ByteString {
-//     /// Allocate a new `ByteString` with a copy of the bytes in the array.
 //     #[inline]
 //     fn from(s: &'a [u8; N]) -> Self {
 //         ByteString(s.as_slice().to_vec())
@@ -189,7 +188,6 @@ impl Default for ByteString {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<const N: usize> From<[u8; N]> for ByteString {
-//     /// Allocate a new `ByteString` with a copy of the bytes in the array.
 //     #[inline]
 //     fn from(s: [u8; N]) -> Self {
 //         ByteString(s.as_slice().to_vec())
@@ -198,7 +196,6 @@ impl Default for ByteString {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<'a> From<&'a [u8]> for ByteString {
-//     /// Allocate a new `ByteString` with a copy of the bytes in the array.
 //     #[inline]
 //     fn from(s: &'a [u8]) -> Self {
 //         ByteString(s.to_vec())
@@ -236,7 +233,6 @@ impl From<ByteString> for Vec<u8> {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl From<String> for ByteString {
-//     /// Create a `ByteString` from a `String`s bytes
 //     #[inline]
 //     fn from(s: String) -> Self {
 //         ByteString(s.into_bytes())
