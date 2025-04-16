@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.154](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.153...compiler_builtins-v0.1.154) - 2025-04-16
+
+### Other
+
+- turn #[naked] into an unsafe attribute
+
 ## [0.1.153](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.152...compiler_builtins-v0.1.153) - 2025-04-09
 
 ### Other
