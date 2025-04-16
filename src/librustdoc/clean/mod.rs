@@ -117,7 +117,14 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
             hir::ItemKind::Use(path, kind) => {
                 let hir::UsePath { segments, span, .. } = *path;
                 let path = hir::Path { segments, res: *res, span };
-                clean_use_statement_inner(import, name, &path, kind, cx, &mut Default::default())
+                clean_use_statement_inner(
+                    import,
+                    Some(name),
+                    &path,
+                    kind,
+                    cx,
+                    &mut Default::default(),
+                )
             }
             _ => unreachable!(),
         }
@@ -125,8 +132,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     items.extend(doc.items.values().flat_map(|(item, renamed, _)| {
         // Now we actually lower the imports, skipping everything else.
         if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
-            let name = renamed.unwrap_or(kw::Empty); // using kw::Empty is a bit of a hack
-            clean_use_statement(item, name, path, hir::UseKind::Glob, cx, &mut inserted)
+            clean_use_statement(item, *renamed, path, hir::UseKind::Glob, cx, &mut inserted)
         } else {
             // skip everything else
             Vec::new()
@@ -1072,10 +1078,10 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attrib
                         ..
                     } = param
                     {
-                        func.decl
-                            .inputs
-                            .values
-                            .insert(a.get() as _, Argument { name, type_: *ty, is_const: true });
+                        func.decl.inputs.values.insert(
+                            a.get() as _,
+                            Argument { name: Some(name), type_: *ty, is_const: true },
+                        );
                     } else {
                         panic!("unexpected non const in position {pos}");
                     }
@@ -1132,9 +1138,9 @@ fn clean_args_from_types_and_names<'tcx>(
     // If at least one argument has a name, use `_` as the name of unnamed
     // arguments. Otherwise omit argument names.
     let default_name = if idents.iter().any(|ident| nonempty_name(ident).is_some()) {
-        kw::Underscore
+        Some(kw::Underscore)
     } else {
-        kw::Empty
+        None
     };
 
     Arguments {
@@ -1143,7 +1149,7 @@ fn clean_args_from_types_and_names<'tcx>(
             .enumerate()
             .map(|(i, ty)| Argument {
                 type_: clean_ty(ty, cx),
-                name: idents.get(i).and_then(nonempty_name).unwrap_or(default_name),
+                name: idents.get(i).and_then(nonempty_name).or(default_name),
                 is_const: false,
             })
             .collect(),
@@ -1162,7 +1168,7 @@ fn clean_args_from_types_and_body_id<'tcx>(
             .iter()
             .zip(body.params)
             .map(|(ty, param)| Argument {
-                name: name_from_pat(param.pat),
+                name: Some(name_from_pat(param.pat)),
                 type_: clean_ty(ty, cx),
                 is_const: false,
             })
@@ -1218,11 +1224,11 @@ fn clean_poly_fn_sig<'tcx>(
                 .iter()
                 .map(|t| Argument {
                     type_: clean_middle_ty(t.map_bound(|t| *t), cx, None, None),
-                    name: if let Some(Some(ident)) = names.next() {
+                    name: Some(if let Some(Some(ident)) = names.next() {
                         ident.name
                     } else {
                         kw::Underscore
-                    },
+                    }),
                     is_const: false,
                 })
                 .collect(),
@@ -2792,10 +2798,7 @@ fn clean_maybe_renamed_item<'tcx>(
     use hir::ItemKind;
 
     let def_id = item.owner_id.to_def_id();
-    let mut name = renamed.unwrap_or_else(|| {
-        // FIXME: using kw::Empty is a bit of a hack
-        cx.tcx.hir_opt_name(item.hir_id()).unwrap_or(kw::Empty)
-    });
+    let mut name = if renamed.is_some() { renamed } else { cx.tcx.hir_opt_name(item.hir_id()) };
 
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
@@ -2836,7 +2839,7 @@ fn clean_maybe_renamed_item<'tcx>(
                         item_type: Some(type_),
                     })),
                     item.owner_id.def_id.to_def_id(),
-                    name,
+                    name.unwrap(),
                     import_id,
                     renamed,
                 ));
@@ -2861,13 +2864,15 @@ fn clean_maybe_renamed_item<'tcx>(
             }),
             ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
             ItemKind::Macro(_, macro_def, MacroKind::Bang) => MacroItem(Macro {
-                source: display_macro_source(cx, name, macro_def),
+                source: display_macro_source(cx, name.unwrap(), macro_def),
                 macro_rules: macro_def.macro_rules,
             }),
-            ItemKind::Macro(_, _, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
+            ItemKind::Macro(_, _, macro_kind) => {
+                clean_proc_macro(item, name.as_mut().unwrap(), macro_kind, cx)
+            }
             // proc macros can have a name set by attributes
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
-                clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
+                clean_fn_or_proc_macro(item, sig, generics, body_id, name.as_mut().unwrap(), cx)
             }
             ItemKind::Trait(_, _, _, generics, bounds, item_ids) => {
                 let items = item_ids
@@ -2883,7 +2888,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 }))
             }
             ItemKind::ExternCrate(orig_name, _) => {
-                return clean_extern_crate(item, name, orig_name, cx);
+                return clean_extern_crate(item, name.unwrap(), orig_name, cx);
             }
             ItemKind::Use(path, kind) => {
                 return clean_use_statement(item, name, path, kind, cx, &mut FxHashSet::default());
@@ -2895,7 +2900,7 @@ fn clean_maybe_renamed_item<'tcx>(
             cx,
             kind,
             item.owner_id.def_id.to_def_id(),
-            name,
+            name.unwrap(),
             import_id,
             renamed,
         )]
@@ -3006,7 +3011,7 @@ fn clean_extern_crate<'tcx>(
 
 fn clean_use_statement<'tcx>(
     import: &hir::Item<'tcx>,
-    name: Symbol,
+    name: Option<Symbol>,
     path: &hir::UsePath<'tcx>,
     kind: hir::UseKind,
     cx: &mut DocContext<'tcx>,
@@ -3023,7 +3028,7 @@ fn clean_use_statement<'tcx>(
 
 fn clean_use_statement_inner<'tcx>(
     import: &hir::Item<'tcx>,
-    name: Symbol,
+    name: Option<Symbol>,
     path: &hir::Path<'tcx>,
     kind: hir::UseKind,
     cx: &mut DocContext<'tcx>,
@@ -3042,7 +3047,7 @@ fn clean_use_statement_inner<'tcx>(
     let visibility = cx.tcx.visibility(import.owner_id);
     let attrs = cx.tcx.hir_attrs(import.hir_id());
     let inline_attr = hir_attr_lists(attrs, sym::doc).get_word_attr(sym::inline);
-    let pub_underscore = visibility.is_public() && name == kw::Underscore;
+    let pub_underscore = visibility.is_public() && name == Some(kw::Underscore);
     let current_mod = cx.tcx.parent_module_from_def_id(import.owner_id.def_id);
     let import_def_id = import.owner_id.def_id;
 
@@ -3108,6 +3113,7 @@ fn clean_use_statement_inner<'tcx>(
         }
         Import::new_glob(resolve_use_source(cx, path), true)
     } else {
+        let name = name.unwrap();
         if inline_attr.is_none()
             && let Res::Def(DefKind::Mod, did) = path.res
             && !did.is_local()
