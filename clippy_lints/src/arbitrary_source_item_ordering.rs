@@ -382,7 +382,9 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                         // Filters the auto-included Rust standard library.
                         continue;
                     }
-                    println!("Unknown item: {item:?}");
+                    if cfg!(debug_assertions) {
+                        rustc_middle::bug!("unknown item: {item:?}");
+                    }
                 }
             } else if let ItemKind::Impl(_) = item.kind
                 && get_item_name(item).is_some()
