@@ -33,8 +33,6 @@ error: expected identifier, found `:`
    |
 LL |     S .. S: S;
    |           ^ expected identifier
-   |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
   --> $DIR/type-ascription-precedence.rs:53:13

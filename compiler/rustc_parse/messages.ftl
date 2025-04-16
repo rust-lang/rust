@@ -806,9 +806,6 @@ parse_trait_alias_cannot_be_unsafe = trait aliases cannot be `unsafe`
 parse_transpose_dyn_or_impl = `for<...>` expected after `{$kw}`, not before
     .suggestion = move `{$kw}` before the `for<...>`
 
-parse_type_ascription_removed =
-    if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
-
 parse_unclosed_unicode_escape = unterminated unicode escape
     .label = missing a closing `{"}"}`
     .terminate = terminate the unicode escape
