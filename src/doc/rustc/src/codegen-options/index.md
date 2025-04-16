@@ -110,6 +110,19 @@ It takes a path to [the dlltool executable](https://sourceware.org/binutils/docs
 If this flag is not specified, a dlltool executable will be inferred based on
 the host environment and target.
 
+## dwarf-version
+
+This option controls the version of DWARF that the compiler emits, on platforms
+that use DWARF to encode debug information. It takes one of the following
+values:
+
+* `2`: DWARF version 2 (the default on certain platforms, like Android).
+* `3`: DWARF version 3 (the default on certain platforms, like AIX).
+* `4`: DWARF version 4 (the default on most platforms, like Linux & macOS).
+* `5`: DWARF version 5.
+
+DWARF version 1 is not supported.
+
 ## embed-bitcode
 
 This flag controls whether or not the compiler embeds LLVM bitcode into object
