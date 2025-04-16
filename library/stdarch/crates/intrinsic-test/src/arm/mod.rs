@@ -39,7 +39,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .filter(|i| !i.arguments.iter().any(|a| a.is_ptr()))
             .filter(|i| !i.arguments.iter().any(|a| a.ty.inner_size() == 128))
             .filter(|i| !cli_options.skip.contains(&i.name))
-            .filter(|i| !(a32 && i.a64_only))
+            .filter(|i| !(a32 && i.arch_tags == vec!["A64".to_string()]))
             .collect::<Vec<_>>();
         intrinsics.dedup();
 

@@ -16,8 +16,8 @@ pub struct Intrinsic<T: IntrinsicTypeDefinition, M: MetadataDefinition> {
     /// The return type of this intrinsic.
     pub results: T,
 
-    /// Whether this intrinsic is only available on A64.
-    pub a64_only: bool,
+    /// Any architecture-specific tags.
+    pub arch_tags: Vec<String>,
 }
 
 pub trait IntrinsicDefinition<T, M>

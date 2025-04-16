@@ -109,6 +109,6 @@ fn json_to_intrinsic(
         name,
         arguments,
         results: *results,
-        a64_only: intr.architectures == vec!["A64".to_string()],
+        arch_tags: intr.architectures,
     })
 }
