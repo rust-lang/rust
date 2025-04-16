@@ -1767,21 +1767,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> &'hir hir::Lifetime {
         let res = self.resolver.get_lifetime_res(id).unwrap_or(LifetimeRes::Error);
         let res = match res {
-            LifetimeRes::Param { param, .. } => hir::LifetimeName::Param(param),
+            LifetimeRes::Param { param, .. } => hir::LifetimeKind::Param(param),
             LifetimeRes::Fresh { param, .. } => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
                 let param = self.local_def_id(param);
-                hir::LifetimeName::Param(param)
+                hir::LifetimeKind::Param(param)
             }
             LifetimeRes::Infer => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
-                hir::LifetimeName::Infer
+                hir::LifetimeKind::Infer
             }
             LifetimeRes::Static { .. } => {
                 debug_assert!(matches!(ident.name, kw::StaticLifetime | kw::UnderscoreLifetime));
-                hir::LifetimeName::Static
+                hir::LifetimeKind::Static
             }
-            LifetimeRes::Error => hir::LifetimeName::Error,
+            LifetimeRes::Error => hir::LifetimeKind::Error,
             LifetimeRes::ElidedAnchor { .. } => {
                 panic!("Unexpected `ElidedAnchar` {:?} at {:?}", ident, ident.span);
             }
@@ -2388,7 +2388,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let r = hir::Lifetime::new(
             self.next_id(),
             Ident::new(kw::UnderscoreLifetime, self.lower_span(span)),
-            hir::LifetimeName::ImplicitObjectLifetimeDefault,
+            hir::LifetimeKind::ImplicitObjectLifetimeDefault,
             IsAnonInPath::No,
         );
         debug!("elided_dyn_bound: r={:?}", r);

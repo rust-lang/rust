@@ -42,7 +42,7 @@ pub enum IsAnonInPath {
 }
 
 /// A lifetime. The valid field combinations are non-obvious. The following
-/// example shows some of them. See also the comments on `LifetimeName`.
+/// example shows some of them. See also the comments on `LifetimeKind`.
 /// ```
 /// #[repr(C)]
 /// struct S<'a>(&'a u32);       // res=Param, name='a, IsAnonInPath::No
@@ -84,7 +84,7 @@ pub struct Lifetime {
     pub ident: Ident,
 
     /// Semantics of this lifetime.
-    pub res: LifetimeName,
+    pub kind: LifetimeKind,
 
     /// Is the lifetime anonymous and in a path? Used only for error
     /// suggestions. See `Lifetime::suggestion` for example use.
@@ -130,7 +130,7 @@ impl ParamName {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
-pub enum LifetimeName {
+pub enum LifetimeKind {
     /// User-given names or fresh (synthetic) names.
     Param(LocalDefId),
 
@@ -160,16 +160,16 @@ pub enum LifetimeName {
     Static,
 }
 
-impl LifetimeName {
+impl LifetimeKind {
     fn is_elided(&self) -> bool {
         match self {
-            LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Infer => true,
+            LifetimeKind::ImplicitObjectLifetimeDefault | LifetimeKind::Infer => true,
 
             // It might seem surprising that `Fresh` counts as not *elided*
             // -- but this is because, as far as the code in the compiler is
             // concerned -- `Fresh` variants act equivalently to "some fresh name".
             // They correspond to early-bound regions on an impl, in other words.
-            LifetimeName::Error | LifetimeName::Param(..) | LifetimeName::Static => false,
+            LifetimeKind::Error | LifetimeKind::Param(..) | LifetimeKind::Static => false,
         }
     }
 }
@@ -184,10 +184,10 @@ impl Lifetime {
     pub fn new(
         hir_id: HirId,
         ident: Ident,
-        res: LifetimeName,
+        kind: LifetimeKind,
         is_anon_in_path: IsAnonInPath,
     ) -> Lifetime {
-        let lifetime = Lifetime { hir_id, ident, res, is_anon_in_path };
+        let lifetime = Lifetime { hir_id, ident, kind, is_anon_in_path };
 
         // Sanity check: elided lifetimes form a strict subset of anonymous lifetimes.
         #[cfg(debug_assertions)]
@@ -202,7 +202,7 @@ impl Lifetime {
     }
 
     pub fn is_elided(&self) -> bool {
-        self.res.is_elided()
+        self.kind.is_elided()
     }
 
     pub fn is_anonymous(&self) -> bool {
@@ -1014,7 +1014,7 @@ pub struct WhereRegionPredicate<'hir> {
 impl<'hir> WhereRegionPredicate<'hir> {
     /// Returns `true` if `param_def_id` matches the `lifetime` of this predicate.
     fn is_param_bound(&self, param_def_id: LocalDefId) -> bool {
-        self.lifetime.res == LifetimeName::Param(param_def_id)
+        self.lifetime.kind == LifetimeKind::Param(param_def_id)
     }
 }
 

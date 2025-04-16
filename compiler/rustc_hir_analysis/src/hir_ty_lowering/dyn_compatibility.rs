@@ -415,7 +415,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
                 } else {
                     let reason =
-                        if let hir::LifetimeName::ImplicitObjectLifetimeDefault = lifetime.res {
+                        if let hir::LifetimeKind::ImplicitObjectLifetimeDefault = lifetime.kind {
                             if let hir::Node::Ty(hir::Ty {
                                 kind: hir::TyKind::Ref(parent_lifetime, _),
                                 ..

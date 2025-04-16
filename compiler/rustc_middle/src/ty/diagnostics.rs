@@ -578,8 +578,8 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
         match ty.kind {
             hir::TyKind::TraitObject(_, tagged_ptr)
                 if let hir::Lifetime {
-                    res:
-                        hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static,
+                    kind:
+                        hir::LifetimeKind::ImplicitObjectLifetimeDefault | hir::LifetimeKind::Static,
                     ..
                 } = tagged_ptr.pointer() =>
             {
