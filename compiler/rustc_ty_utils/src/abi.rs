@@ -724,14 +724,19 @@ fn make_thin_self_ptr<'tcx>(
         // To get the type `*mut RcInner<Self>`, we just keep unwrapping newtypes until we
         // get a built-in pointer type
         let mut wide_pointer_layout = layout;
-        while !wide_pointer_layout.ty.is_raw_ptr() && !wide_pointer_layout.ty.is_ref() {
-            wide_pointer_layout = wide_pointer_layout
-                .non_1zst_field(cx)
-                .expect("not exactly one non-1-ZST field in a `DispatchFromDyn` type")
-                .1
+        loop {
+            match *wide_pointer_layout.ty.kind() {
+                ty::Ref(..) | ty::RawPtr(..) => break wide_pointer_layout.ty,
+                ty::Pat(inner, _) => match inner.kind() {
+                    ty::RawPtr(..) => break inner,
+                    _ => panic!("only raw pointers are allowed in unsized pattern types"),
+                },
+                _ => wide_pointer_layout = wide_pointer_layout
+                    .non_1zst_field(cx)
+                    .unwrap_or_else(|| panic!("not exactly one non-1-ZST field in a `DispatchFromDyn` type: {wide_pointer_layout:#?}"))
+                    .1,
+            }
         }
-
-        wide_pointer_layout.ty
     };
 
     // we now have a type like `*mut RcInner<dyn Trait>`

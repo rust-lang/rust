@@ -1,5 +1,10 @@
 //! Helper module for exporting the `pattern_type` macro
 
+#[cfg(not(bootstrap))]
+use crate::marker::{Freeze, Unsize};
+#[cfg(not(bootstrap))]
+use crate::ops::{CoerceUnsized, DispatchFromDyn};
+
 /// Creates a pattern type.
 /// ```ignore (cannot test this from within core yet)
 /// type Positive = std::pat::pattern_type!(i32 is 1..);
@@ -74,3 +79,21 @@ impl const RangePattern for char {
         }
     }
 }
+
+#[cfg(not(bootstrap))]
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<pattern_type!(*const U is !null)> for pattern_type!(*const T is !null) where
+    T: Unsize<U>
+{
+}
+
+#[cfg(not(bootstrap))]
+impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<pattern_type!(U is !null)> for pattern_type!(T is !null) {}
+
+#[cfg(not(bootstrap))]
+impl<T: ?Sized> Unpin for pattern_type!(*const T is !null) {}
+
+#[cfg(not(bootstrap))]
+unsafe impl<T: ?Sized> Freeze for pattern_type!(*const T is !null) {}
+
+#[cfg(not(bootstrap))]
+unsafe impl<T: ?Sized> Freeze for pattern_type!(*mut T is !null) {}

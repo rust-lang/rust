@@ -473,6 +473,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {}", *src, src.layout.ty, cast_ty.ty);
         match (src.layout.ty.kind(), cast_ty.ty.kind()) {
+            (&ty::Pat(s, s_pat), &ty::Pat(c, c_pat)) if s_pat == c_pat => {
+                let mut src = src.clone();
+                src.layout = self.layout_of(s)?;
+                let mut dest = dest.clone();
+                dest.layout = self.layout_of(c)?;
+                let cast_ty = match *cast_ty.ty.kind() {
+                    ty::Pat(base, pat) if pat == c_pat => self.layout_of(base)?,
+                    _ => span_bug!(
+                        self.cur_span(),
+                        "unsize_into: invalid cast ty for pattern type: {cast_ty:#?}"
+                    ),
+                };
+                self.unsize_into(&src, cast_ty, &dest)
+            }
             (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(c, _))
             | (&ty::RawPtr(s, _), &ty::RawPtr(c, _)) => self.unsize_into_ptr(src, dest, s, c),
             (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {

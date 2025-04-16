@@ -57,7 +57,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:58:1
    |
 LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .pointer: encountered 0, but expected something greater or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
@@ -112,7 +112,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:78:1
    |
 LL | const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .pointer: encountered 0, but expected something greater or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {

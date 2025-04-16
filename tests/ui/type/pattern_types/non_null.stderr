@@ -207,9 +207,9 @@ error: layout_of((*const [u8]) is !null) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(8 bytes),
-           randomization_seed: 16,
+           randomization_seed: $SEED,
        }
-  --> $DIR/non_null.rs:14:1
+  --> $DIR/non_null.rs:16:1
    |
 LL | type Wide = pattern_type!(*const [u8] is !null);
    | ^^^^^^^^^

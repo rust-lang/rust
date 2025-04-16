@@ -1009,12 +1009,16 @@ where
     /// Compute the information for the pointer stored at the given offset inside this type.
     /// This will recurse into fields of ADTs to find the inner pointer.
     fn ty_and_layout_pointee_info_at(
-        this: TyAndLayout<'tcx>,
+        mut this: TyAndLayout<'tcx>,
         cx: &C,
         offset: Size,
     ) -> Option<PointeeInfo> {
         let tcx = cx.tcx();
         let typing_env = cx.typing_env();
+
+        if let ty::Pat(base, _) = *this.ty.kind() {
+            this.ty = base;
+        }
 
         let pointee_info = match *this.ty.kind() {
             ty::RawPtr(p_ty, _) if offset.bytes() == 0 => {
