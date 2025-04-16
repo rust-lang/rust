@@ -92,6 +92,9 @@ pub struct SerializedDepGraph {
     /// Stores a map from fingerprints to nodes per dep node kind.
     /// This is the reciprocal of `nodes`.
     index: Vec<UnhashMap<PackedFingerprint, SerializedDepNodeIndex>>,
+    /// The number of previous compilation sessions. This is used to generate
+    /// unique anon dep nodes per session.
+    session_count: u64,
 }
 
 impl SerializedDepGraph {
@@ -145,6 +148,11 @@ impl SerializedDepGraph {
     #[inline]
     pub fn node_count(&self) -> usize {
         self.nodes.len()
+    }
+
+    #[inline]
+    pub fn session_count(&self) -> u64 {
+        self.session_count
     }
 }
 
@@ -252,6 +260,8 @@ impl SerializedDepGraph {
             .map(|_| UnhashMap::with_capacity_and_hasher(d.read_u32() as usize, Default::default()))
             .collect();
 
+        let session_count = d.read_u64();
+
         for (idx, node) in nodes.iter_enumerated() {
             if index[node.kind.as_usize()].insert(node.hash, idx).is_some() {
                 // Side effect nodes can have duplicates
@@ -273,6 +283,7 @@ impl SerializedDepGraph {
             edge_list_indices,
             edge_list_data,
             index,
+            session_count,
         })
     }
 }
@@ -603,7 +614,7 @@ impl<D: Deps> EncoderState<D> {
             stats: _,
             kind_stats,
             marker: _,
-            previous: _,
+            previous,
         } = self;
 
         let node_count = total_node_count.try_into().unwrap();
@@ -613,6 +624,8 @@ impl<D: Deps> EncoderState<D> {
         for count in kind_stats.iter() {
             count.encode(&mut encoder);
         }
+
+        previous.session_count.checked_add(1).unwrap().encode(&mut encoder);
 
         debug!(?node_count, ?edge_count);
         debug!("position: {:?}", encoder.position());
