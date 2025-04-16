@@ -122,7 +122,7 @@ impl RustcMirAttrs {
                 })
             } else if attr.has_name(sym::borrowck_graphviz_format) {
                 Self::set_field(&mut ret.formatter, tcx, &attr, |s| match s {
-                    sym::gen_kill | sym::two_phase => Ok(s),
+                    sym::two_phase => Ok(s),
                     _ => {
                         tcx.dcx().emit_err(UnknownFormatter { span: attr.span() });
                         Err(())
