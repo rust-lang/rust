@@ -1894,7 +1894,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                     .arg(llvm_components.trim());
                 llvm_components_passed = true;
             }
-            if !builder.is_rust_llvm(target) {
+            if !builder.config.is_rust_llvm(target) {
                 cmd.arg("--system-llvm");
             }
 
@@ -2668,7 +2668,7 @@ impl Step for Crate {
             cargo
         } else {
             // Also prepare a sysroot for the target.
-            if !builder.is_builder_target(target) {
+            if !builder.config.is_host_target(target) {
                 builder.ensure(compile::Std::new(compiler, target).force_recompile(true));
                 builder.ensure(RemoteCopyLibs { compiler, target });
             }
