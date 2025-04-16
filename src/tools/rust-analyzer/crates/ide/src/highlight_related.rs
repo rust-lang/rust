@@ -232,6 +232,23 @@ fn highlight_references(
             }
         }
 
+        // highlight the tail expr of the labelled block
+        if matches!(def, Definition::Label(_)) {
+            let label = token.parent_ancestors().nth(1).and_then(ast::Label::cast);
+            if let Some(block) =
+                label.and_then(|label| label.syntax().parent()).and_then(ast::BlockExpr::cast)
+            {
+                for_each_tail_expr(&block.into(), &mut |tail| {
+                    if !matches!(tail, ast::Expr::BreakExpr(_)) {
+                        res.insert(HighlightedRange {
+                            range: tail.syntax().text_range(),
+                            category: ReferenceCategory::empty(),
+                        });
+                    }
+                });
+            }
+        }
+
         // highlight the defs themselves
         match def {
             Definition::Local(local) => {
@@ -445,6 +462,18 @@ pub(crate) fn highlight_break_points(
 
                 push_to_highlights(file_id, text_range);
             });
+
+        if matches!(expr, ast::Expr::BlockExpr(_)) {
+            for_each_tail_expr(&expr, &mut |tail| {
+                if matches!(tail, ast::Expr::BreakExpr(_)) {
+                    return;
+                }
+
+                let file_id = sema.hir_file_for(tail.syntax());
+                let range = tail.syntax().text_range();
+                push_to_highlights(file_id, Some(range));
+            });
+        }
 
         Some(highlights)
     }
@@ -2071,5 +2100,42 @@ pub unsafe fn bootstrap() -> ! {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn labeled_block_tail_expr() {
+        check(
+            r#"
+fn foo() {
+    'a: {
+ // ^^^
+        if true { break$0 'a 0; }
+               // ^^^^^^^^
+        5
+     // ^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn labeled_block_tail_expr_2() {
+        check(
+            r#"
+fn foo() {
+    let _ = 'b$0lk: {
+         // ^^^^
+        let x = 1;
+        if true { break 'blk 42; }
+                     // ^^^^
+        if false { break 'blk 24; }
+                      // ^^^^
+        100
+     // ^^^
+    };
+}
+"#,
+        );
     }
 }
