@@ -277,7 +277,8 @@ fn layout_of_uncached<'tcx>(
 
                         layout.largest_niche = Some(niche);
                         // Make wide pointer pattern types contain only a single field
-                        // of the wide pointer type itself.
+                        // of the wide pointer type itself. We do this so that we can just rely
+                        // on field visiting of const validation to do everything correctly
                         layout.fields = FieldsShape::Arbitrary {
                             offsets: [Size::ZERO].into_iter().collect(),
                             memory_index: [0].into_iter().collect(),
