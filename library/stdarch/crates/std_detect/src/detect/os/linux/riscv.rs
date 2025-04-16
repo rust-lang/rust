@@ -310,9 +310,6 @@ pub(crate) fn detect_features() -> cache::Initializer {
     enable_feature(Feature::rv64i, has_i);
     #[cfg(target_arch = "riscv32")]
     enable_feature(Feature::rv32i, has_i);
-    // FIXME: e is not exposed in any of asm/hwcap.h, uapi/asm/hwcap.h, uapi/asm/hwprobe.h
-    #[cfg(target_arch = "riscv32")]
-    enable_feature(Feature::rv32e, bit::test(auxv.hwcap, (b'e' - b'a').into()));
 
     imply_features(value)
 }
