@@ -78,7 +78,8 @@ fn memusage_linux() -> MemoryUsage {
         let alloc = unsafe { libc::mallinfo() }.uordblks as isize;
         MemoryUsage { allocated: Bytes(alloc) }
     } else {
-        let mallinfo2: fn() -> libc::mallinfo2 = unsafe { std::mem::transmute(mallinfo2) };
+        let mallinfo2: extern "C" fn() -> libc::mallinfo2 =
+            unsafe { std::mem::transmute(mallinfo2) };
         let alloc = mallinfo2().uordblks as isize;
         MemoryUsage { allocated: Bytes(alloc) }
     }
