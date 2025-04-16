@@ -139,13 +139,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             sym::needs_drop | sym::type_id | sym::type_name | sym::variant_count => {
                 let gid = GlobalId { instance, promoted: None };
-                let ty = match intrinsic_name {
-                    sym::variant_count => self.tcx.types.usize,
-                    sym::needs_drop => self.tcx.types.bool,
-                    sym::type_id => self.tcx.types.u128,
-                    sym::type_name => Ty::new_static_str(self.tcx.tcx),
-                    _ => bug!(),
-                };
+                let ty = self
+                    .tcx
+                    .fn_sig(instance.def_id())
+                    .instantiate(self.tcx.tcx, instance.args)
+                    .output()
+                    .no_bound_vars()
+                    .unwrap();
                 let val = self
                     .ctfe_query(|tcx| tcx.const_eval_global_id(self.typing_env, gid, tcx.span))?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
