@@ -46,16 +46,24 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Install rustup-toolchain-install-master
+        run: cargo install rustup-toolchain-install-master@1.6.0
+
+      # Install a pinned rustc commit to avoid surprises
       - name: Install Rust toolchain
         run: |
-          rustup update --no-self-update nightly
-          rustup default nightly
-          rustup component add --toolchain nightly rust-src rustfmt
+          RUSTC_VERSION=`cat rust-version`
+          rustup-toolchain-install-master ${RUSTC_VERSION} -c rust-src -c rustfmt
+          rustup default ${RUSTC_VERSION}
+
+      # Emulate a nightly toolchain, because the toolchain installed above does not have "nightly"
+      # in its version string.
+      - name: Emulate a nightly toolchain
+        run: echo "RUSTC_BOOTSTRAP=1" >> $GITHUB_ENV
+
       # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
       - name: Install Rust Problem Matcher
         run: echo "::add-matcher::.github/rust.json"
-
-      # We don't cache this job, as it will be invalidated every day due to nightly usage
 
       - name: Test
         run: cargo test --features sysroot-abi -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -- --quiet
