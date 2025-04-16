@@ -17,16 +17,16 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContex
 pub mod visit;
 
 /// The movability of a coroutine / closure literal:
-/// whether a coroutine contains self-references, causing it to be `!Unpin`.
+/// whether a coroutine contains self-references, causing it to be `![Unsafe]Unpin`.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
 pub enum Movability {
-    /// May contain self-references, `!Unpin`.
+    /// May contain self-references, `!Unpin + !UnsafeUnpin`.
     Static,
-    /// Must not contain self-references, `Unpin`.
+    /// Must not contain self-references, `Unpin + UnsafeUnpin`.
     Movable,
 }
 

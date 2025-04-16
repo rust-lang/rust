@@ -1,0 +1,421 @@
+// MIR for `async_block::{closure#0}` 0 coroutine_pre-elab
+/* coroutine_layout = CoroutineLayout {
+    field_tys: {
+        _0: CoroutineSavedTy {
+            ty: i32,
+            source_info: SourceInfo {
+                span: $DIR/coroutine_pinned_fields.rs:49:13: 49:18 (#0),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+            pinned: true,
+        },
+        _1: CoroutineSavedTy {
+            ty: &'{erased} mut i32,
+            source_info: SourceInfo {
+                span: $DIR/coroutine_pinned_fields.rs:50:13: 50:14 (#0),
+                scope: scope[1],
+            },
+            ignore_for_traits: false,
+            pinned: false,
+        },
+        _2: CoroutineSavedTy {
+            ty: Coroutine(
+                DefId(0:15 ~ coroutine_pinned_fields[f9b5]::nop::{closure#0}),
+                [
+                    (),
+                    std::future::ResumeTy,
+                    (),
+                    (),
+                    CoroutineWitness(
+                        DefId(0:15 ~ coroutine_pinned_fields[f9b5]::nop::{closure#0}),
+                        [],
+                    ),
+                    (),
+                ],
+            ),
+            source_info: SourceInfo {
+                span: $DIR/coroutine_pinned_fields.rs:51:9: 51:20 (#11),
+                scope: scope[2],
+            },
+            ignore_for_traits: false,
+            pinned: false,
+        },
+        _3: CoroutineSavedTy {
+            ty: Coroutine(
+                DefId(0:15 ~ coroutine_pinned_fields[f9b5]::nop::{closure#0}),
+                [
+                    (),
+                    std::future::ResumeTy,
+                    (),
+                    (),
+                    CoroutineWitness(
+                        DefId(0:15 ~ coroutine_pinned_fields[f9b5]::nop::{closure#0}),
+                        [],
+                    ),
+                    (),
+                ],
+            ),
+            source_info: SourceInfo {
+                span: $DIR/coroutine_pinned_fields.rs:53:9: 53:20 (#13),
+                scope: scope[2],
+            },
+            ignore_for_traits: false,
+            pinned: false,
+        },
+    },
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [_0, _1, _2],
+        Suspend1 (4): [_0, _3],
+    },
+    storage_conflicts: BitMatrix(4x4) {
+        (_0, _0),
+        (_0, _1),
+        (_0, _2),
+        (_0, _3),
+        (_1, _0),
+        (_1, _1),
+        (_1, _2),
+        (_1, _3),
+        (_2, _0),
+        (_2, _1),
+        (_2, _2),
+        (_3, _0),
+        (_3, _1),
+        (_3, _3),
+    },
+} */
+
+fn async_block::{closure#0}(_1: {async block@$DIR/coroutine_pinned_fields.rs:48:5: 48:10}, _2: &mut Context<'_>) -> Poll<i32> {
+    debug _task_context => _41;
+    let mut _0: std::task::Poll<i32>;
+    let mut _3: i32;
+    let _5: ();
+    let mut _6: {async fn body of nop()};
+    let mut _7: {async fn body of nop()};
+    let mut _9: ();
+    let _10: ();
+    let mut _11: std::task::Poll<()>;
+    let mut _12: std::pin::Pin<&mut {async fn body of nop()}>;
+    let mut _13: &mut {async fn body of nop()};
+    let mut _14: &mut {async fn body of nop()};
+    let mut _15: &mut std::task::Context<'_>;
+    let mut _16: &mut std::task::Context<'_>;
+    let mut _17: &mut std::task::Context<'_>;
+    let mut _18: isize;
+    let mut _20: !;
+    let mut _21: &mut std::task::Context<'_>;
+    let mut _22: ();
+    let _23: ();
+    let mut _24: {async fn body of nop()};
+    let mut _25: {async fn body of nop()};
+    let _27: ();
+    let mut _28: std::task::Poll<()>;
+    let mut _29: std::pin::Pin<&mut {async fn body of nop()}>;
+    let mut _30: &mut {async fn body of nop()};
+    let mut _31: &mut {async fn body of nop()};
+    let mut _32: &mut std::task::Context<'_>;
+    let mut _33: &mut std::task::Context<'_>;
+    let mut _34: &mut std::task::Context<'_>;
+    let mut _35: isize;
+    let mut _37: !;
+    let mut _38: &mut std::task::Context<'_>;
+    let mut _39: ();
+    let mut _40: i32;
+    let mut _41: &mut std::task::Context<'_>;
+    scope 1 {
+        debug x => ((_1 as variant#4).0: i32);
+        let _4: &mut i32;
+        scope 2 {
+            debug y => ((_1 as variant#3).1: &mut i32);
+            let mut _8: {async fn body of nop()};
+            let mut _26: {async fn body of nop()};
+            scope 3 {
+                debug __awaitee => ((_1 as variant#3).2: {async fn body of nop()});
+                let _19: ();
+                scope 4 {
+                    debug result => _19;
+                }
+            }
+            scope 5 {
+                debug __awaitee => ((_1 as variant#4).1: {async fn body of nop()});
+                let _36: ();
+                scope 6 {
+                    debug result => _36;
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _41 = move _2;
+        nop;
+        ((_1 as variant#4).0: i32) = const 9_i32;
+        nop;
+        ((_1 as variant#3).1: &mut i32) = &mut ((_1 as variant#4).0: i32);
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = nop() -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        _6 = <{async fn body of nop()} as IntoFuture>::into_future(move _7) -> [return: bb2, unwind unreachable];
+    }
+
+    bb2: {
+        StorageDead(_7);
+        PlaceMention(_6);
+        nop;
+        ((_1 as variant#3).2: {async fn body of nop()}) = move _6;
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageLive(_10);
+        StorageLive(_11);
+        StorageLive(_12);
+        StorageLive(_13);
+        StorageLive(_14);
+        _14 = &mut ((_1 as variant#3).2: {async fn body of nop()});
+        _13 = &mut (*_14);
+        _12 = Pin::<&mut {async fn body of nop()}>::new_unchecked(move _13) -> [return: bb4, unwind unreachable];
+    }
+
+    bb4: {
+        StorageDead(_13);
+        StorageLive(_15);
+        StorageLive(_16);
+        StorageLive(_17);
+        _17 = copy _41;
+        _16 = move _17;
+        goto -> bb5;
+    }
+
+    bb5: {
+        _15 = &mut (*_16);
+        StorageDead(_17);
+        _11 = <{async fn body of nop()} as Future>::poll(move _12, move _15) -> [return: bb6, unwind unreachable];
+    }
+
+    bb6: {
+        StorageDead(_16);
+        StorageDead(_15);
+        StorageDead(_14);
+        StorageDead(_12);
+        PlaceMention(_11);
+        _18 = discriminant(_11);
+        switchInt(move _18) -> [0: bb9, 1: bb8, otherwise: bb7];
+    }
+
+    bb7: {
+        unreachable;
+    }
+
+    bb8: {
+        _10 = const ();
+        StorageDead(_11);
+        StorageDead(_10);
+        StorageLive(_21);
+        StorageLive(_22);
+        _22 = ();
+        _0 = Poll::<i32>::Pending;
+        StorageDead(_5);
+        StorageDead(_6);
+        StorageDead(_21);
+        StorageDead(_22);
+        discriminant(_1) = 3;
+        return;
+    }
+
+    bb9: {
+        StorageLive(_19);
+        _19 = copy ((_11 as Ready).0: ());
+        _5 = copy _19;
+        StorageDead(_19);
+        StorageDead(_11);
+        StorageDead(_10);
+        drop(((_1 as variant#3).2: {async fn body of nop()})) -> [return: bb11, unwind unreachable];
+    }
+
+    bb10: {
+        StorageDead(_22);
+        _41 = move _21;
+        StorageDead(_21);
+        _9 = const ();
+        goto -> bb3;
+    }
+
+    bb11: {
+        nop;
+        goto -> bb12;
+    }
+
+    bb12: {
+        StorageDead(_6);
+        StorageDead(_5);
+        (*((_1 as variant#3).1: &mut i32)) = Add(copy (*((_1 as variant#3).1: &mut i32)), const 1_i32);
+        StorageLive(_23);
+        StorageLive(_24);
+        StorageLive(_25);
+        _25 = nop() -> [return: bb13, unwind unreachable];
+    }
+
+    bb13: {
+        _24 = <{async fn body of nop()} as IntoFuture>::into_future(move _25) -> [return: bb14, unwind unreachable];
+    }
+
+    bb14: {
+        StorageDead(_25);
+        PlaceMention(_24);
+        nop;
+        ((_1 as variant#4).1: {async fn body of nop()}) = move _24;
+        goto -> bb15;
+    }
+
+    bb15: {
+        StorageLive(_27);
+        StorageLive(_28);
+        StorageLive(_29);
+        StorageLive(_30);
+        StorageLive(_31);
+        _31 = &mut ((_1 as variant#4).1: {async fn body of nop()});
+        _30 = &mut (*_31);
+        _29 = Pin::<&mut {async fn body of nop()}>::new_unchecked(move _30) -> [return: bb16, unwind unreachable];
+    }
+
+    bb16: {
+        StorageDead(_30);
+        StorageLive(_32);
+        StorageLive(_33);
+        StorageLive(_34);
+        _34 = copy _41;
+        _33 = move _34;
+        goto -> bb17;
+    }
+
+    bb17: {
+        _32 = &mut (*_33);
+        StorageDead(_34);
+        _28 = <{async fn body of nop()} as Future>::poll(move _29, move _32) -> [return: bb18, unwind unreachable];
+    }
+
+    bb18: {
+        StorageDead(_33);
+        StorageDead(_32);
+        StorageDead(_31);
+        StorageDead(_29);
+        PlaceMention(_28);
+        _35 = discriminant(_28);
+        switchInt(move _35) -> [0: bb20, 1: bb19, otherwise: bb7];
+    }
+
+    bb19: {
+        _27 = const ();
+        StorageDead(_28);
+        StorageDead(_27);
+        StorageLive(_38);
+        StorageLive(_39);
+        _39 = ();
+        _0 = Poll::<i32>::Pending;
+        StorageDead(_23);
+        StorageDead(_24);
+        StorageDead(_38);
+        StorageDead(_39);
+        discriminant(_1) = 4;
+        return;
+    }
+
+    bb20: {
+        StorageLive(_36);
+        _36 = copy ((_28 as Ready).0: ());
+        _23 = copy _36;
+        StorageDead(_36);
+        StorageDead(_28);
+        StorageDead(_27);
+        drop(((_1 as variant#4).1: {async fn body of nop()})) -> [return: bb22, unwind unreachable];
+    }
+
+    bb21: {
+        StorageDead(_39);
+        _41 = move _38;
+        StorageDead(_38);
+        _9 = const ();
+        goto -> bb15;
+    }
+
+    bb22: {
+        nop;
+        goto -> bb23;
+    }
+
+    bb23: {
+        StorageDead(_24);
+        StorageDead(_23);
+        _40 = copy ((_1 as variant#4).0: i32);
+        nop;
+        nop;
+        drop(_1) -> [return: bb24, unwind unreachable];
+    }
+
+    bb24: {
+        _0 = Poll::<i32>::Ready(move _40);
+        discriminant(_1) = 1;
+        return;
+    }
+
+    bb25: {
+        StorageDead(_39);
+        StorageDead(_38);
+        drop(((_1 as variant#4).1: {async fn body of nop()})) -> [return: bb26, unwind unreachable];
+    }
+
+    bb26: {
+        nop;
+        goto -> bb27;
+    }
+
+    bb27: {
+        StorageDead(_24);
+        StorageDead(_23);
+        goto -> bb31;
+    }
+
+    bb28: {
+        StorageDead(_22);
+        StorageDead(_21);
+        drop(((_1 as variant#3).2: {async fn body of nop()})) -> [return: bb29, unwind unreachable];
+    }
+
+    bb29: {
+        nop;
+        goto -> bb30;
+    }
+
+    bb30: {
+        StorageDead(_6);
+        StorageDead(_5);
+        goto -> bb31;
+    }
+
+    bb31: {
+        nop;
+        nop;
+        drop(_1) -> [return: bb32, unwind unreachable];
+    }
+
+    bb32: {
+        coroutine_drop;
+    }
+
+    bb33: {
+        return;
+    }
+
+    bb34: {
+        drop(_1) -> [return: bb33, unwind continue];
+    }
+}

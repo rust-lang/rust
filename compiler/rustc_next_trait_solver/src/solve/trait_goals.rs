@@ -1148,19 +1148,34 @@ where
 
             ty::Infer(_) | ty::Bound(_, _) => panic!("unexpected type `{self_ty:?}`"),
 
-            // Coroutines have one special built-in candidate, `Unpin`, which
-            // takes precedence over the structural auto trait candidate being
-            // assembled.
+            // Coroutines have two special built-in candidates, `Unpin` and `UnsafeUnpin`.
+            // These take precedence over the structural auto trait candidate being assembled.
             ty::Coroutine(def_id, _)
                 if self.cx().is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::Unpin) =>
             {
                 match self.cx().coroutine_movability(def_id) {
+                    // immovable coroutines are *never* Unpin
                     Movability::Static => Some(Err(NoSolution)),
                     Movability::Movable => Some(
                         self.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
                             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                         }),
                     ),
+                }
+            }
+            ty::Coroutine(def_id, _)
+                if self
+                    .cx()
+                    .is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::UnsafeUnpin) =>
+            {
+                match self.cx().coroutine_has_pinned_fields(def_id) {
+                    Some(true) => Some(Err(NoSolution)),
+                    Some(false) => Some(
+                        self.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                        }),
+                    ),
+                    None => None, // coro tainted by errors
                 }
             }
 

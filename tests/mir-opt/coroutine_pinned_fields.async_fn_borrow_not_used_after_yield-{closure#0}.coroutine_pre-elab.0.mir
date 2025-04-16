@@ -1,0 +1,267 @@
+// MIR for `async_fn_borrow_not_used_after_yield::{closure#0}` 0 coroutine_pre-elab
+/* coroutine_layout = CoroutineLayout {
+    field_tys: {
+        _0: CoroutineSavedTy {
+            ty: std::string::String,
+            source_info: SourceInfo {
+                span: $DIR/coroutine_pinned_fields.rs:60:9: 60:15 (#0),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+            pinned: false,
+        },
+        _1: CoroutineSavedTy {
+            ty: Coroutine(
+                DefId(0:15 ~ coroutine_pinned_fields[f9b5]::nop::{closure#0}),
+                [
+                    (),
+                    std::future::ResumeTy,
+                    (),
+                    (),
+                    CoroutineWitness(
+                        DefId(0:15 ~ coroutine_pinned_fields[f9b5]::nop::{closure#0}),
+                        [],
+                    ),
+                    (),
+                ],
+            ),
+            source_info: SourceInfo {
+                span: $DIR/coroutine_pinned_fields.rs:64:5: 64:16 (#17),
+                scope: scope[2],
+            },
+            ignore_for_traits: false,
+            pinned: false,
+        },
+    },
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [_0, _1],
+    },
+    storage_conflicts: BitMatrix(2x2) {
+        (_0, _0),
+        (_0, _1),
+        (_1, _0),
+        (_1, _1),
+    },
+} */
+
+fn async_fn_borrow_not_used_after_yield::{closure#0}(_1: {async fn body of async_fn_borrow_not_used_after_yield()}, _2: &mut Context<'_>) -> Poll<()> {
+    debug _task_context => _27;
+    let mut _0: std::task::Poll<()>;
+    let _3: std::string::String;
+    let mut _5: &std::string::String;
+    let _6: ();
+    let mut _7: &str;
+    let _8: ();
+    let mut _9: {async fn body of nop()};
+    let mut _10: {async fn body of nop()};
+    let mut _12: ();
+    let _13: ();
+    let mut _14: std::task::Poll<()>;
+    let mut _15: std::pin::Pin<&mut {async fn body of nop()}>;
+    let mut _16: &mut {async fn body of nop()};
+    let mut _17: &mut {async fn body of nop()};
+    let mut _18: &mut std::task::Context<'_>;
+    let mut _19: &mut std::task::Context<'_>;
+    let mut _20: &mut std::task::Context<'_>;
+    let mut _21: isize;
+    let mut _23: !;
+    let mut _24: &mut std::task::Context<'_>;
+    let mut _25: ();
+    let mut _26: ();
+    let mut _27: &mut std::task::Context<'_>;
+    scope 1 {
+        debug string => ((_1 as variant#3).0: std::string::String);
+        let _4: &str;
+        scope 2 {
+            debug str => _4;
+            let mut _11: {async fn body of nop()};
+            scope 3 {
+                debug __awaitee => ((_1 as variant#3).1: {async fn body of nop()});
+                let _22: ();
+                scope 4 {
+                    debug result => _22;
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _27 = move _2;
+        nop;
+        ((_1 as variant#3).0: std::string::String) = <String as From<&str>>::from(const "abc123") -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = &((_1 as variant#3).0: std::string::String);
+        _4 = String::as_str(move _5) -> [return: bb2, unwind unreachable];
+    }
+
+    bb2: {
+        StorageDead(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = copy _4;
+        _6 = do_thing::<&str>(move _7) -> [return: bb3, unwind unreachable];
+    }
+
+    bb3: {
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageLive(_8);
+        StorageLive(_9);
+        StorageLive(_10);
+        _10 = nop() -> [return: bb4, unwind unreachable];
+    }
+
+    bb4: {
+        _9 = <{async fn body of nop()} as IntoFuture>::into_future(move _10) -> [return: bb5, unwind unreachable];
+    }
+
+    bb5: {
+        StorageDead(_10);
+        PlaceMention(_9);
+        nop;
+        ((_1 as variant#3).1: {async fn body of nop()}) = move _9;
+        goto -> bb6;
+    }
+
+    bb6: {
+        StorageLive(_13);
+        StorageLive(_14);
+        StorageLive(_15);
+        StorageLive(_16);
+        StorageLive(_17);
+        _17 = &mut ((_1 as variant#3).1: {async fn body of nop()});
+        _16 = &mut (*_17);
+        _15 = Pin::<&mut {async fn body of nop()}>::new_unchecked(move _16) -> [return: bb7, unwind unreachable];
+    }
+
+    bb7: {
+        StorageDead(_16);
+        StorageLive(_18);
+        StorageLive(_19);
+        StorageLive(_20);
+        _20 = copy _27;
+        _19 = move _20;
+        goto -> bb8;
+    }
+
+    bb8: {
+        _18 = &mut (*_19);
+        StorageDead(_20);
+        _14 = <{async fn body of nop()} as Future>::poll(move _15, move _18) -> [return: bb9, unwind unreachable];
+    }
+
+    bb9: {
+        StorageDead(_19);
+        StorageDead(_18);
+        StorageDead(_17);
+        StorageDead(_15);
+        PlaceMention(_14);
+        _21 = discriminant(_14);
+        switchInt(move _21) -> [0: bb12, 1: bb11, otherwise: bb10];
+    }
+
+    bb10: {
+        unreachable;
+    }
+
+    bb11: {
+        _13 = const ();
+        StorageDead(_14);
+        StorageDead(_13);
+        StorageLive(_24);
+        StorageLive(_25);
+        _25 = ();
+        _0 = Poll::<()>::Pending;
+        StorageDead(_4);
+        StorageDead(_8);
+        StorageDead(_9);
+        StorageDead(_24);
+        StorageDead(_25);
+        discriminant(_1) = 3;
+        return;
+    }
+
+    bb12: {
+        StorageLive(_22);
+        _22 = copy ((_14 as Ready).0: ());
+        _8 = copy _22;
+        StorageDead(_22);
+        StorageDead(_14);
+        StorageDead(_13);
+        drop(((_1 as variant#3).1: {async fn body of nop()})) -> [return: bb14, unwind unreachable];
+    }
+
+    bb13: {
+        StorageDead(_25);
+        _27 = move _24;
+        StorageDead(_24);
+        _12 = const ();
+        goto -> bb6;
+    }
+
+    bb14: {
+        nop;
+        goto -> bb15;
+    }
+
+    bb15: {
+        StorageDead(_9);
+        StorageDead(_8);
+        _26 = const ();
+        StorageDead(_4);
+        drop(((_1 as variant#3).0: std::string::String)) -> [return: bb16, unwind unreachable];
+    }
+
+    bb16: {
+        nop;
+        drop(_1) -> [return: bb17, unwind unreachable];
+    }
+
+    bb17: {
+        _0 = Poll::<()>::Ready(move _26);
+        discriminant(_1) = 1;
+        return;
+    }
+
+    bb18: {
+        StorageDead(_25);
+        StorageDead(_24);
+        drop(((_1 as variant#3).1: {async fn body of nop()})) -> [return: bb19, unwind unreachable];
+    }
+
+    bb19: {
+        nop;
+        goto -> bb20;
+    }
+
+    bb20: {
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_4);
+        drop(((_1 as variant#3).0: std::string::String)) -> [return: bb21, unwind unreachable];
+    }
+
+    bb21: {
+        nop;
+        drop(_1) -> [return: bb22, unwind unreachable];
+    }
+
+    bb22: {
+        coroutine_drop;
+    }
+
+    bb23: {
+        return;
+    }
+
+    bb24: {
+        drop(_1) -> [return: bb23, unwind continue];
+    }
+}

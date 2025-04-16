@@ -69,8 +69,8 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{
-    MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
-    always_storage_live_locals,
+    CoroutinePinnedLocals, MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage,
+    MaybeStorageLive, always_storage_live_locals,
 };
 use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -639,6 +639,15 @@ struct LivenessInfo {
     /// Parallel vec to the above with SourceInfo for each yield terminator.
     source_info_at_suspension_points: Vec<SourceInfo>,
 
+    /// Coroutine saved locals that are borrowed across a suspension point.
+    /// This corresponds to locals that are "wrapped" with `UnsafePinned`.
+    ///
+    /// Note that movable coroutines do not allow borrowing locals across
+    /// suspension points and thus will always have this set empty.
+    ///
+    /// For more information, see [RFC 3467](https://rust-lang.github.io/rfcs/3467-unsafe-pinned.html).
+    saved_locals_borrowed_across_suspension_points: DenseBitSet<CoroutineSavedLocal>,
+
     /// For every saved local, the set of other saved locals that are
     /// storage-live at the same time as this local. We cannot overlap locals in
     /// the layout which have conflicting storage.
@@ -657,6 +666,9 @@ struct LivenessInfo {
 ///   case none exist, the local is considered to be always live.
 /// - a local has to be stored if it is either directly used after the
 ///   the suspend point, or if it is live and has been previously borrowed.
+///
+/// We also compute locals which are "pinned" (borrowed across a suspension point).
+/// These are "wrapped" in `UnsafePinned` and have their niche opts disabled.
 fn locals_live_across_suspend_points<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -686,10 +698,12 @@ fn locals_live_across_suspend_points<'tcx>(
     let mut liveness =
         MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("coroutine")).into_results_cursor(body);
 
+    let mut pinned_locals_cache = IndexVec::from_fn_n(|_| None, body.local_decls.len());
     let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
     let mut live_locals_at_suspension_points = Vec::new();
     let mut source_info_at_suspension_points = Vec::new();
     let mut live_locals_at_any_suspension_point = DenseBitSet::new_empty(body.local_decls.len());
+    let mut pinned_locals = DenseBitSet::new_empty(body.local_decls.len());
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
@@ -729,6 +743,27 @@ fn locals_live_across_suspend_points<'tcx>(
 
             debug!("loc = {:?}, live_locals = {:?}", loc, live_locals);
 
+            for live_local in live_locals.iter() {
+                let pinned_cursor = pinned_locals_cache[live_local].get_or_insert_with(|| {
+                    CoroutinePinnedLocals(live_local)
+                        .iterate_to_fixpoint(tcx, body, None)
+                        .into_results_cursor(body)
+                });
+                pinned_cursor.seek_to_block_end(block);
+                let mut pinned_by = pinned_cursor.get().clone();
+                pinned_by.intersect(&live_locals);
+
+                if !pinned_by.is_empty() {
+                    assert!(
+                        !movable,
+                        "local {live_local:?} of movable coro shouldn't be pinned, yet it is pinned by {pinned_by:?}"
+                    );
+
+                    debug!("{live_local:?} pinned by {pinned_by:?} in {block:?}");
+                    pinned_locals.insert(live_local);
+                }
+            }
+
             // Add the locals live at this suspension point to the set of locals which live across
             // any suspension points
             live_locals_at_any_suspension_point.union(&live_locals);
@@ -738,7 +773,8 @@ fn locals_live_across_suspend_points<'tcx>(
         }
     }
 
-    debug!("live_locals_anywhere = {:?}", live_locals_at_any_suspension_point);
+    debug!(?pinned_locals);
+    debug!(live_locals_anywhere = ?live_locals_at_any_suspension_point);
     let saved_locals = CoroutineSavedLocals(live_locals_at_any_suspension_point);
 
     // Renumber our liveness_map bitsets to include only the locals we are
@@ -747,6 +783,9 @@ fn locals_live_across_suspend_points<'tcx>(
         .iter()
         .map(|live_here| saved_locals.renumber_bitset(live_here))
         .collect();
+
+    let saved_locals_borrowed_across_suspension_points =
+        saved_locals.renumber_bitset(&pinned_locals);
 
     let storage_conflicts = compute_storage_conflicts(
         body,
@@ -759,6 +798,7 @@ fn locals_live_across_suspend_points<'tcx>(
         saved_locals,
         live_locals_at_suspension_points,
         source_info_at_suspension_points,
+        saved_locals_borrowed_across_suspension_points,
         storage_conflicts,
         storage_liveness: storage_liveness_map,
     }
@@ -931,6 +971,7 @@ fn compute_layout<'tcx>(
         saved_locals,
         live_locals_at_suspension_points,
         source_info_at_suspension_points,
+        saved_locals_borrowed_across_suspension_points,
         storage_conflicts,
         storage_liveness,
     } = liveness;
@@ -960,8 +1001,14 @@ fn compute_layout<'tcx>(
             ClearCrossCrate::Set(box LocalInfo::FakeBorrow) => true,
             _ => false,
         };
-        let decl =
-            CoroutineSavedTy { ty: decl.ty, source_info: decl.source_info, ignore_for_traits };
+        let pinned = saved_locals_borrowed_across_suspension_points.contains(saved_local);
+
+        let decl = CoroutineSavedTy {
+            ty: decl.ty,
+            source_info: decl.source_info,
+            ignore_for_traits,
+            pinned,
+        };
         debug!(?decl);
 
         tys.push(decl);

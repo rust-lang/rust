@@ -205,6 +205,8 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, ty::Binder<Self, Self::Tys>>;
 
+    fn coroutine_has_pinned_fields(self, def_id: Self::DefId) -> Option<bool>;
+
     fn fn_sig(
         self,
         def_id: Self::DefId,

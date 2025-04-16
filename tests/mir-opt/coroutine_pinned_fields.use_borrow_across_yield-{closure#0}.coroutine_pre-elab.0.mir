@@ -1,0 +1,129 @@
+// MIR for `use_borrow_across_yield::{closure#0}` 0 coroutine_pre-elab
+/* coroutine_layout = CoroutineLayout {
+    field_tys: {
+        _0: CoroutineSavedTy {
+            ty: i32,
+            source_info: SourceInfo {
+                span: $DIR/coroutine_pinned_fields.rs:20:13: 20:18 (#0),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+            pinned: true,
+        },
+        _1: CoroutineSavedTy {
+            ty: &'{erased} mut i32,
+            source_info: SourceInfo {
+                span: $DIR/coroutine_pinned_fields.rs:21:13: 21:14 (#0),
+                scope: scope[1],
+            },
+            ignore_for_traits: false,
+            pinned: false,
+        },
+    },
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [_0, _1],
+        Suspend1 (4): [_0],
+    },
+    storage_conflicts: BitMatrix(2x2) {
+        (_0, _0),
+        (_0, _1),
+        (_1, _0),
+        (_1, _1),
+    },
+} */
+
+fn use_borrow_across_yield::{closure#0}(_1: {static coroutine@$DIR/coroutine_pinned_fields.rs:19:5: 19:14}, _2: ()) -> CoroutineState<(), i32> {
+    let mut _0: std::ops::CoroutineState<(), i32>;
+    let mut _3: i32;
+    let _5: ();
+    let mut _6: ();
+    let _7: ();
+    let mut _8: ();
+    let mut _9: i32;
+    let mut _10: ();
+    scope 1 {
+        debug a => ((_1 as variant#4).0: i32);
+        let _4: &mut i32;
+        scope 2 {
+            debug b => ((_1 as variant#3).1: &mut i32);
+        }
+    }
+
+    bb0: {
+        _10 = move _2;
+        nop;
+        ((_1 as variant#4).0: i32) = const 19_i32;
+        nop;
+        ((_1 as variant#3).1: &mut i32) = &mut ((_1 as variant#4).0: i32);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = ();
+        _0 = CoroutineState::<(), i32>::Yielded(move _6);
+        StorageDead(_5);
+        StorageDead(_6);
+        discriminant(_1) = 3;
+        return;
+    }
+
+    bb1: {
+        StorageDead(_6);
+        StorageDead(_5);
+        (*((_1 as variant#3).1: &mut i32)) = const 23_i32;
+        StorageLive(_7);
+        StorageLive(_8);
+        _8 = ();
+        _0 = CoroutineState::<(), i32>::Yielded(move _8);
+        StorageDead(_7);
+        StorageDead(_8);
+        discriminant(_1) = 4;
+        return;
+    }
+
+    bb2: {
+        StorageDead(_8);
+        StorageDead(_7);
+        _9 = copy ((_1 as variant#4).0: i32);
+        nop;
+        nop;
+        drop(_1) -> [return: bb3, unwind unreachable];
+    }
+
+    bb3: {
+        _0 = CoroutineState::<(), i32>::Complete(move _9);
+        discriminant(_1) = 1;
+        return;
+    }
+
+    bb4: {
+        StorageDead(_8);
+        StorageDead(_7);
+        goto -> bb6;
+    }
+
+    bb5: {
+        StorageDead(_6);
+        StorageDead(_5);
+        goto -> bb6;
+    }
+
+    bb6: {
+        nop;
+        nop;
+        drop(_1) -> [return: bb7, unwind unreachable];
+    }
+
+    bb7: {
+        coroutine_drop;
+    }
+
+    bb8: {
+        return;
+    }
+
+    bb9: {
+        drop(_1) -> [return: bb8, unwind continue];
+    }
+}

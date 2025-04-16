@@ -790,6 +790,13 @@ impl<'tcx> TyCtxt<'tcx> {
         ))
     }
 
+    /// True if the given coroutine has any pinned fields.
+    /// `None` if the coroutine is tainted by errors.
+    pub fn coroutine_has_pinned_fields(self, def_id: DefId) -> Option<bool> {
+        self.mir_coroutine_witnesses(def_id)
+            .map(|layout| layout.field_tys.iter().any(|ty| ty.pinned))
+    }
+
     /// Expands the given impl trait type, stopping if the type is recursive.
     #[instrument(skip(self), level = "debug", ret)]
     pub fn try_expand_impl_trait_type(

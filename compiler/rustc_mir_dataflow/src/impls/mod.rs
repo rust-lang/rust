@@ -1,9 +1,11 @@
 mod borrowed_locals;
+mod coro_pinned_locals;
 mod initialized;
 mod liveness;
 mod storage_liveness;
 
 pub use self::borrowed_locals::{MaybeBorrowedLocals, borrowed_locals};
+pub use self::coro_pinned_locals::CoroutinePinnedLocals;
 pub use self::initialized::{
     EverInitializedPlaces, EverInitializedPlacesDomain, MaybeInitializedPlaces,
     MaybeUninitializedPlaces, MaybeUninitializedPlacesDomain,
