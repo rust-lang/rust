@@ -639,6 +639,15 @@ struct LivenessInfo {
     /// Parallel vec to the above with SourceInfo for each yield terminator.
     source_info_at_suspension_points: Vec<SourceInfo>,
 
+    /// Coroutine saved locals that are borrowed across a suspension point.
+    /// This corresponds to locals that are "wrapped" with `UnsafePinned`.
+    ///
+    /// Note that movable coroutines do not allow borrowing locals across
+    /// suspension points and thus will always have this set empty.
+    ///
+    /// For more information, see [RFC 3467](https://rust-lang.github.io/rfcs/3467-unsafe-pinned.html).
+    saved_locals_borrowed_across_suspension_points: DenseBitSet<CoroutineSavedLocal>,
+
     /// For every saved local, the set of other saved locals that are
     /// storage-live at the same time as this local. We cannot overlap locals in
     /// the layout which have conflicting storage.
@@ -690,6 +699,8 @@ fn locals_live_across_suspend_points<'tcx>(
     let mut live_locals_at_suspension_points = Vec::new();
     let mut source_info_at_suspension_points = Vec::new();
     let mut live_locals_at_any_suspension_point = DenseBitSet::new_empty(body.local_decls.len());
+    let mut locals_borrowed_across_any_suspension_point =
+        DenseBitSet::new_empty(body.local_decls.len());
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
@@ -711,6 +722,7 @@ fn locals_live_across_suspend_points<'tcx>(
                 // of the local, which happens using the `intersect` operation below.
                 borrowed_locals_cursor.seek_before_primary_effect(loc);
                 live_locals.union(borrowed_locals_cursor.get());
+                locals_borrowed_across_any_suspension_point.union(borrowed_locals_cursor.get());
             }
 
             // Store the storage liveness for later use so we can restore the state
@@ -726,6 +738,7 @@ fn locals_live_across_suspend_points<'tcx>(
 
             // The coroutine argument is ignored.
             live_locals.remove(SELF_ARG);
+            locals_borrowed_across_any_suspension_point.remove(SELF_ARG);
 
             debug!("loc = {:?}, live_locals = {:?}", loc, live_locals);
 
@@ -741,12 +754,17 @@ fn locals_live_across_suspend_points<'tcx>(
     debug!("live_locals_anywhere = {:?}", live_locals_at_any_suspension_point);
     let saved_locals = CoroutineSavedLocals(live_locals_at_any_suspension_point);
 
+    debug!("borrowed_locals = {:?}", locals_borrowed_across_any_suspension_point);
+
     // Renumber our liveness_map bitsets to include only the locals we are
     // saving.
     let live_locals_at_suspension_points = live_locals_at_suspension_points
         .iter()
         .map(|live_here| saved_locals.renumber_bitset(live_here))
         .collect();
+
+    let saved_locals_borrowed_across_suspension_points =
+        saved_locals.renumber_bitset(&locals_borrowed_across_any_suspension_point);
 
     let storage_conflicts = compute_storage_conflicts(
         body,
@@ -759,6 +777,7 @@ fn locals_live_across_suspend_points<'tcx>(
         saved_locals,
         live_locals_at_suspension_points,
         source_info_at_suspension_points,
+        saved_locals_borrowed_across_suspension_points,
         storage_conflicts,
         storage_liveness: storage_liveness_map,
     }
@@ -931,6 +950,7 @@ fn compute_layout<'tcx>(
         saved_locals,
         live_locals_at_suspension_points,
         source_info_at_suspension_points,
+        saved_locals_borrowed_across_suspension_points,
         storage_conflicts,
         storage_liveness,
     } = liveness;
@@ -960,8 +980,14 @@ fn compute_layout<'tcx>(
             ClearCrossCrate::Set(box LocalInfo::FakeBorrow) => true,
             _ => false,
         };
-        let decl =
-            CoroutineSavedTy { ty: decl.ty, source_info: decl.source_info, ignore_for_traits };
+        let pinned = saved_locals_borrowed_across_suspension_points.contains(saved_local);
+
+        let decl = CoroutineSavedTy {
+            ty: decl.ty,
+            source_info: decl.source_info,
+            ignore_for_traits,
+            pinned,
+        };
         debug!(?decl);
 
         tys.push(decl);

@@ -8,6 +8,7 @@
                 scope: scope[0],
             },
             ignore_for_traits: false,
+            pinned: false,
         },
     },
     variant_fields: {

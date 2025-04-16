@@ -751,6 +751,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // The auto impl might apply; we don't know.
                     candidates.ambiguous = true;
                 }
+
                 ty::Coroutine(coroutine_def_id, _)
                     if self.tcx().is_lang_item(def_id, LangItem::Unpin) =>
                 {
@@ -764,6 +765,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             // unconditional builtin candidate.
                             candidates.vec.push(BuiltinCandidate { has_nested: false });
                         }
+                    }
+                }
+                ty::Coroutine(coroutine_def_id, _)
+                    if self.tcx().is_lang_item(def_id, LangItem::UnsafeUnpin) =>
+                {
+                    match self.tcx().coroutine_has_pinned_fields(coroutine_def_id) {
+                        Some(true) => {}
+                        Some(false) => {
+                            candidates.vec.push(BuiltinCandidate { has_nested: false });
+                        }
+                        // coro tainted by errors
+                        None => candidates.vec.push(AutoImplCandidate),
                     }
                 }
 

@@ -335,6 +335,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.coroutine_hidden_types(def_id)
     }
 
+    fn coroutine_has_pinned_fields(self, def_id: DefId) -> Option<bool> {
+        self.coroutine_has_pinned_fields(def_id)
+    }
+
     fn fn_sig(self, def_id: DefId) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
         self.fn_sig(def_id)
     }
@@ -734,6 +738,7 @@ bidirectional_lang_item_map! {
     TransmuteTrait,
     Tuple,
     Unpin,
+    UnsafeUnpin,
     Unsize,
 // tidy-alphabetical-end
 }

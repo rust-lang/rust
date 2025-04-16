@@ -21,6 +21,7 @@
                 scope: scope[0],
             },
             ignore_for_traits: false,
+            pinned: true,
         },
         _1: CoroutineSavedTy {
             ty: Coroutine(
@@ -42,6 +43,7 @@
                 scope: scope[0],
             },
             ignore_for_traits: false,
+            pinned: true,
         },
     },
     variant_fields: {
