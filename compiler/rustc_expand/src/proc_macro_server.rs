@@ -1,4 +1,4 @@
-use std::ops::{Bound, Range};
+use std::ops::Bound;
 
 use ast::token::IdentIsRaw;
 use pm::bridge::{
@@ -704,14 +704,12 @@ impl server::Span for Rustc<'_, '_> {
         span.source_callsite()
     }
 
-    fn byte_range(&mut self, span: Self::Span) -> Range<usize> {
+    fn byte_offset(&mut self, span: Self::Span) -> usize {
         let source_map = self.psess().source_map();
 
-        let relative_start_pos = source_map.lookup_byte_offset(span.lo()).pos;
-        let relative_end_pos = source_map.lookup_byte_offset(span.hi()).pos;
-
-        Range { start: relative_start_pos.0 as usize, end: relative_end_pos.0 as usize }
+        source_map.lookup_byte_offset(span.lo()).pos.0 as usize
     }
+
     fn start(&mut self, span: Self::Span) -> Self::Span {
         span.shrink_to_lo()
     }

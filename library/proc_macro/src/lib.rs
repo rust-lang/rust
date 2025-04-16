@@ -45,7 +45,7 @@ mod escape;
 mod to_tokens;
 
 use std::ffi::CStr;
-use std::ops::{Range, RangeBounds};
+use std::ops::RangeBounds;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::{error, fmt};
@@ -506,12 +506,6 @@ impl Span {
         Span(self.0.source())
     }
 
-    /// Returns the span's byte position range in the source file.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub fn byte_range(&self) -> Range<usize> {
-        self.0.byte_range()
-    }
-
     /// Creates an empty span pointing to directly before this span.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn start(&self) -> Span {
@@ -538,6 +532,14 @@ impl Span {
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn column(&self) -> usize {
         self.0.column()
+    }
+
+    /// The span's byte position in the source file.
+    ///
+    /// To obtain the byte position of the end of the span, use `span.end().byte_offset()`.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn byte_offset(&self) -> usize {
+        self.0.byte_offset()
     }
 
     /// The path to the source file in which this span occurs, for display purposes.

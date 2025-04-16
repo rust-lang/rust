@@ -12,7 +12,7 @@
 #![allow(wasm_c_abi)]
 
 use std::hash::Hash;
-use std::ops::{Bound, Range};
+use std::ops::Bound;
 use std::sync::Once;
 use std::{fmt, marker, mem, panic, thread};
 
@@ -85,7 +85,7 @@ macro_rules! with_api {
                 fn debug($self: $S::Span) -> String;
                 fn parent($self: $S::Span) -> Option<$S::Span>;
                 fn source($self: $S::Span) -> $S::Span;
-                fn byte_range($self: $S::Span) -> Range<usize>;
+                fn byte_offset($self: $S::Span) -> usize;
                 fn start($self: $S::Span) -> $S::Span;
                 fn end($self: $S::Span) -> $S::Span;
                 fn line($self: $S::Span) -> usize;
@@ -533,8 +533,4 @@ pub struct ExpnGlobals<Span> {
 
 compound_traits!(
     struct ExpnGlobals<Span> { def_site, call_site, mixed_site }
-);
-
-compound_traits!(
-    struct Range<T> { start, end }
 );
