@@ -1259,6 +1259,16 @@ pub(crate) struct CoerceUnsizedNonStruct {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_same_pat_kind)]
+pub(crate) struct CoerceSamePatKind {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+    pub pat_a: String,
+    pub pat_b: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_coerce_unsized_may, code = E0377)]
 pub(crate) struct CoerceSameStruct {
     #[primary_span]

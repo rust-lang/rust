@@ -243,6 +243,18 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     // in the compiler (in particular, all the call ABI logic) will treat them as repr(transparent)
     // even if they do not carry that attribute.
     match (source.kind(), target.kind()) {
+        (&ty::Pat(_, pat_a), &ty::Pat(_, pat_b)) => {
+            if pat_a != pat_b {
+                return Err(tcx.dcx().emit_err(errors::CoerceSamePatKind {
+                    span,
+                    trait_name,
+                    pat_a: pat_a.to_string(),
+                    pat_b: pat_b.to_string(),
+                }));
+            }
+            Ok(())
+        }
+
         (&ty::Ref(r_a, _, mutbl_a), ty::Ref(r_b, _, mutbl_b))
             if r_a == *r_b && mutbl_a == *mutbl_b =>
         {
@@ -408,6 +420,18 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         (mt_a.ty, mt_b.ty, unsize_trait, None, span)
     };
     let (source, target, trait_def_id, kind, field_span) = match (source.kind(), target.kind()) {
+        (&ty::Pat(ty_a, pat_a), &ty::Pat(ty_b, pat_b)) => {
+            if pat_a != pat_b {
+                return Err(tcx.dcx().emit_err(errors::CoerceSamePatKind {
+                    span,
+                    trait_name,
+                    pat_a: pat_a.to_string(),
+                    pat_b: pat_b.to_string(),
+                }));
+            }
+            (ty_a, ty_b, coerce_unsized_trait, None, span)
+        }
+
         (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
             infcx.sub_regions(SubregionOrigin::RelateObjectBound(span), r_b, r_a);
             let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
