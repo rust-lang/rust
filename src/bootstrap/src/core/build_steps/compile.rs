@@ -155,7 +155,7 @@ impl Step for Std {
 
         // When using `download-rustc`, we already have artifacts for the host available. Don't
         // recompile them.
-        if builder.download_rustc() && builder.config.is_builder_target(target)
+        if builder.download_rustc() && builder.config.is_host_target(target)
             // NOTE: the beta compiler may generate different artifacts than the downloaded compiler, so
             // its artifacts can't be reused.
             && compiler.stage != 0
