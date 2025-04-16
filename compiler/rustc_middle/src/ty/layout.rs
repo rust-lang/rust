@@ -822,10 +822,19 @@ where
                 | ty::FnDef(..)
                 | ty::CoroutineWitness(..)
                 | ty::Foreign(..)
-                | ty::Pat(_, _)
                 | ty::Dynamic(_, _, ty::Dyn) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
                 }
+
+                // May contain wide pointers
+                ty::Pat(base, pat) => match *pat {
+                    ty::PatternKind::NotNull => {
+                        field_ty_or_layout(TyAndLayout { ty: base, ..this }, cx, i)
+                    }
+                    ty::PatternKind::Range { .. } | ty::PatternKind::Or(_) => {
+                        bug!("TyAndLayout::field({this:?}): only applicable to !null patterns")
+                    }
+                },
 
                 ty::UnsafeBinder(bound_ty) => {
                     let ty = tcx.instantiate_bound_regions_with_erased(bound_ty.into());
