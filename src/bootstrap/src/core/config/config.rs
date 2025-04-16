@@ -814,9 +814,7 @@ impl Merge for TomlConfig {
                 exit!(2);
             });
 
-            // FIXME: Similar to `Config::parse_inner`, allow passing a custom `get_toml` from the caller to
-            // improve testability since `Config::get_toml` does nothing when `cfg(test)` is enabled.
-            let included_toml = Config::get_toml(&include_path).unwrap_or_else(|e| {
+            let included_toml = Config::get_toml_inner(&include_path).unwrap_or_else(|e| {
                 eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
                 exit!(2);
             });
@@ -1424,13 +1422,15 @@ impl Config {
         Self::get_toml(&builder_config_path)
     }
 
-    #[cfg(test)]
-    pub(crate) fn get_toml(_: &Path) -> Result<TomlConfig, toml::de::Error> {
-        Ok(TomlConfig::default())
+    pub(crate) fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
+        #[cfg(test)]
+        return Ok(TomlConfig::default());
+
+        #[cfg(not(test))]
+        Self::get_toml_inner(file)
     }
 
-    #[cfg(not(test))]
-    pub(crate) fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
+    fn get_toml_inner(file: &Path) -> Result<TomlConfig, toml::de::Error> {
         let contents =
             t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
         // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
