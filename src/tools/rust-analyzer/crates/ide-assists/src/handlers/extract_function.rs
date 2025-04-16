@@ -797,15 +797,21 @@ impl FunctionBody {
     ) -> (FxIndexSet<Local>, Option<ast::SelfParam>) {
         let mut self_param = None;
         let mut res = FxIndexSet::default();
-        let mut add_name_if_local = |name_ref: Option<_>| {
-            let local_ref =
-                match name_ref.and_then(|name_ref| NameRefClass::classify(sema, &name_ref)) {
-                    Some(
-                        NameRefClass::Definition(Definition::Local(local_ref), _)
-                        | NameRefClass::FieldShorthand { local_ref, field_ref: _, adt_subst: _ },
-                    ) => local_ref,
-                    _ => return,
-                };
+
+        fn local_from_name_ref(
+            sema: &Semantics<'_, RootDatabase>,
+            name_ref: ast::NameRef,
+        ) -> Option<hir::Local> {
+            match NameRefClass::classify(sema, &name_ref) {
+                Some(
+                    NameRefClass::Definition(Definition::Local(local_ref), _)
+                    | NameRefClass::FieldShorthand { local_ref, field_ref: _, adt_subst: _ },
+                ) => Some(local_ref),
+                _ => None,
+            }
+        }
+
+        let mut add_name_if_local = |local_ref: Local| {
             let InFile { file_id, value } = local_ref.primary_source(sema.db).source;
             // locals defined inside macros are not relevant to us
             if !file_id.is_macro() {
@@ -821,13 +827,20 @@ impl FunctionBody {
         };
         self.walk_expr(&mut |expr| match expr {
             ast::Expr::PathExpr(path_expr) => {
-                add_name_if_local(path_expr.path().and_then(|it| it.as_single_name_ref()))
+                if let Some(local) = path_expr
+                    .path()
+                    .and_then(|it| it.as_single_name_ref())
+                    .and_then(|name_ref| local_from_name_ref(sema, name_ref))
+                {
+                    add_name_if_local(local);
+                }
             }
             ast::Expr::ClosureExpr(closure_expr) => {
                 if let Some(body) = closure_expr.body() {
                     body.syntax()
                         .descendants()
-                        .map(ast::NameRef::cast)
+                        .filter_map(ast::NameRef::cast)
+                        .filter_map(|name_ref| local_from_name_ref(sema, name_ref))
                         .for_each(&mut add_name_if_local);
                 }
             }
@@ -836,9 +849,31 @@ impl FunctionBody {
                     tt.syntax()
                         .descendants_with_tokens()
                         .filter_map(SyntaxElement::into_token)
-                        .filter(|it| matches!(it.kind(), SyntaxKind::IDENT | T![self]))
-                        .flat_map(|t| sema.descend_into_macros_exact(t))
-                        .for_each(|t| add_name_if_local(t.parent().and_then(ast::NameRef::cast)));
+                        .filter(|it| {
+                            matches!(it.kind(), SyntaxKind::STRING | SyntaxKind::IDENT | T![self])
+                        })
+                        .for_each(|t| {
+                            if ast::String::can_cast(t.kind()) {
+                                if let Some(parts) =
+                                    ast::String::cast(t).and_then(|s| sema.as_format_args_parts(&s))
+                                {
+                                    parts
+                                        .into_iter()
+                                        .filter_map(|(_, value)| value.and_then(|it| it.left()))
+                                        .filter_map(|path| match path {
+                                            PathResolution::Local(local) => Some(local),
+                                            _ => None,
+                                        })
+                                        .for_each(&mut add_name_if_local);
+                                }
+                            } else {
+                                sema.descend_into_macros_exact(t)
+                                    .into_iter()
+                                    .filter_map(|t| t.parent().and_then(ast::NameRef::cast))
+                                    .filter_map(|name_ref| local_from_name_ref(sema, name_ref))
+                                    .for_each(&mut add_name_if_local);
+                            }
+                        });
                 }
             }
             _ => (),
@@ -6125,6 +6160,28 @@ fn existing(a: i32, b: i32, c: i32) {
 
 fn $0fun_name(a: i32, b: i32, c: i32, x: i32) -> i32 {
     x + b + c + a
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fmt_macro_argument() {
+        check_assist(
+            extract_function,
+            r#"
+//- minicore: fmt
+fn existing(a: i32, b: i32, c: i32) {
+    $0print!("{a}{}{}", b, "{c}");$0
+}
+"#,
+            r#"
+fn existing(a: i32, b: i32, c: i32) {
+    fun_name(a, b);
+}
+
+fn $0fun_name(a: i32, b: i32) {
+    print!("{a}{}{}", b, "{c}");
 }
 "#,
         );
