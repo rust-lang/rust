@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
+itertools = "0.12"
 rustc_abi = { path = "../rustc_abi", optional = true }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_hir = { path = "../rustc_hir", optional = true }
@@ -20,8 +21,3 @@ rustc = [
     "dep:rustc_middle",
     "dep:rustc_span",
 ]
-
-[dev-dependencies]
-# tidy-alphabetical-start
-itertools = "0.12"
-# tidy-alphabetical-end
