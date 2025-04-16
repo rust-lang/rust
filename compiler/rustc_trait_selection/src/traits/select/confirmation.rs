@@ -115,6 +115,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
+            PointerLikeCandidate => {
+                let data = self.confirm_pointer_like_candidate(obligation);
+                ImplSource::Builtin(BuiltinImplSource::Misc, data)
+            }
+
             TraitAliasCandidate => {
                 let data = self.confirm_trait_alias_candidate(obligation);
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
@@ -629,6 +634,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         nested.push(Obligation::new(self.infcx.tcx, cause, obligation.param_env, tr));
 
         Ok(nested)
+    }
+
+    fn confirm_pointer_like_candidate(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+    ) -> PredicateObligations<'tcx> {
+        debug!(?obligation, "confirm_pointer_like_candidate");
+        let placeholder_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let self_ty = self.infcx.shallow_resolve(placeholder_predicate.self_ty());
+        let ty::Pat(base, _) = *self_ty.kind() else { bug!() };
+        let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
+
+        self.collect_predicates_for_types(
+            obligation.param_env,
+            cause,
+            obligation.recursion_depth + 1,
+            placeholder_predicate.def_id(),
+            vec![base],
+        )
     }
 
     fn confirm_trait_alias_candidate(
