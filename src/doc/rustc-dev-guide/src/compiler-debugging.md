@@ -301,7 +301,8 @@ Right below you can find elaborate explainers on a selected few.
 
 Some compiler options for debugging specific features yield graphviz graphs -
 e.g. the `#[rustc_mir(borrowck_graphviz_postflow="suffix.dot")]` attribute
-dumps various borrow-checker dataflow graphs.
+on a function dumps various borrow-checker dataflow graphs in conjunction with
+`-Zdump-mir-dataflow`.
 
 These all produce `.dot` files. To view these files, install graphviz (e.g.
 `apt-get install graphviz`) and then run the following commands:

@@ -1068,7 +1068,6 @@ symbols! {
         ge,
         gen_blocks,
         gen_future,
-        gen_kill,
         generator_clone,
         generators,
         generic_arg_infer,

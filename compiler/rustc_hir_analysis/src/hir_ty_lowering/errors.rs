@@ -204,8 +204,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .iter()
             .flat_map(|trait_def_id| tcx.associated_items(*trait_def_id).in_definition_order())
             .filter_map(|item| {
-                (!item.is_impl_trait_in_trait() && item.as_tag() == assoc_tag)
-                    .then_some(item.name())
+                (!item.is_impl_trait_in_trait() && item.as_tag() == assoc_tag).then(|| item.name())
             })
             .collect();
 

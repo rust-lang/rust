@@ -72,7 +72,7 @@ pub struct TypeSizeInfo {
 
 #[derive(Default)]
 pub struct CodeStats {
-    type_sizes: Lock<FxHashSet<TypeSizeInfo>>,
+    pub type_sizes: Lock<FxHashSet<TypeSizeInfo>>,
 }
 
 impl CodeStats {
