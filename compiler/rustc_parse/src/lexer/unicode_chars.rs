@@ -5,7 +5,7 @@ use rustc_span::{BytePos, Pos, Span, kw};
 
 use super::Lexer;
 use crate::errors::TokenSubstitution;
-use crate::token::{self, Delimiter};
+use crate::token;
 
 #[rustfmt::skip] // for line breaks
 pub(super) static UNICODE_ARRAY: &[(char, &str, &str)] = &[
@@ -315,12 +315,12 @@ const ASCII_ARRAY: &[(&str, &str, Option<token::TokenKind>)] = &[
     ("!", "Exclamation Mark", Some(token::Bang)),
     ("?", "Question Mark", Some(token::Question)),
     (".", "Period", Some(token::Dot)),
-    ("(", "Left Parenthesis", Some(token::OpenDelim(Delimiter::Parenthesis))),
-    (")", "Right Parenthesis", Some(token::CloseDelim(Delimiter::Parenthesis))),
-    ("[", "Left Square Bracket", Some(token::OpenDelim(Delimiter::Bracket))),
-    ("]", "Right Square Bracket", Some(token::CloseDelim(Delimiter::Bracket))),
-    ("{", "Left Curly Brace", Some(token::OpenDelim(Delimiter::Brace))),
-    ("}", "Right Curly Brace", Some(token::CloseDelim(Delimiter::Brace))),
+    ("(", "Left Parenthesis", Some(token::OpenParen)),
+    (")", "Right Parenthesis", Some(token::CloseParen)),
+    ("[", "Left Square Bracket", Some(token::OpenBracket)),
+    ("]", "Right Square Bracket", Some(token::CloseBracket)),
+    ("{", "Left Curly Brace", Some(token::OpenBrace)),
+    ("}", "Right Curly Brace", Some(token::CloseBrace)),
     ("*", "Asterisk", Some(token::Star)),
     ("/", "Slash", Some(token::Slash)),
     ("\\", "Backslash", None),

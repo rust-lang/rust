@@ -96,7 +96,7 @@ fn print_tt(printer: &mut Printer<'_>, tt: &TokenTree) {
             }
         }
         TokenTree::Delimited(_span, _spacing, delim, tts) => {
-            let open_delim = printer.token_kind_to_string(&token::OpenDelim(*delim));
+            let open_delim = printer.token_kind_to_string(&delim.as_open_token_kind());
             printer.word(open_delim);
             if !tts.is_empty() {
                 if *delim == Delimiter::Brace {
@@ -107,7 +107,7 @@ fn print_tt(printer: &mut Printer<'_>, tt: &TokenTree) {
                     printer.space();
                 }
             }
-            let close_delim = printer.token_kind_to_string(&token::CloseDelim(*delim));
+            let close_delim = printer.token_kind_to_string(&delim.as_close_token_kind());
             printer.word(close_delim);
         }
     }
