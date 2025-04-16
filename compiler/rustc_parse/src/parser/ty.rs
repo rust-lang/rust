@@ -7,7 +7,7 @@ use rustc_ast::{
     Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
     TyKind, UnsafeBinderTy,
 };
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -411,6 +411,9 @@ impl<'a> Parser<'a> {
                 TyKind::Path(None, path) if maybe_bounds => {
                     self.parse_remaining_bounds_path(ThinVec::new(), path, lo, true)
                 }
+                // For `('a) + …`, we know that `'a` in type position already lead to an error being
+                // emitted. To reduce output, let's indirectly suppress E0178 (bad `+` in type) and
+                // other irrelevant consequential errors.
                 TyKind::TraitObject(bounds, TraitObjectSyntax::None)
                     if maybe_bounds && bounds.len() == 1 && !trailing_plus =>
                 {
@@ -425,12 +428,60 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_bare_trait_object(&mut self, lo: Span, allow_plus: AllowPlus) -> PResult<'a, TyKind> {
-        let lt_no_plus = self.check_lifetime() && !self.look_ahead(1, |t| t.is_like_plus());
-        let bounds = self.parse_generic_bounds_common(allow_plus)?;
-        if lt_no_plus {
-            self.dcx().emit_err(NeedPlusAfterTraitObjectLifetime { span: lo });
+        // A lifetime only begins a bare trait object type if it is followed by `+`!
+        if self.token.is_lifetime() && !self.look_ahead(1, |t| t.is_like_plus()) {
+            // In Rust 2021 and beyond, we assume that the user didn't intend to write a bare trait
+            // object type with a leading lifetime bound since that seems very unlikely given the
+            // fact that `dyn`-less trait objects are *semantically* invalid.
+            if self.psess.edition.at_least_rust_2021() {
+                let lt = self.expect_lifetime();
+                let mut err = self.dcx().struct_span_err(lo, "expected type, found lifetime");
+                err.span_label(lo, "expected type");
+                return Ok(match self.maybe_recover_ref_ty_no_leading_ampersand(lt, lo, err) {
+                    Ok(ref_ty) => ref_ty,
+                    Err(err) => TyKind::Err(err.emit()),
+                });
+            }
+
+            self.dcx().emit_err(NeedPlusAfterTraitObjectLifetime {
+                span: lo,
+                suggestion: lo.shrink_to_hi(),
+            });
         }
-        Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
+        Ok(TyKind::TraitObject(
+            self.parse_generic_bounds_common(allow_plus)?,
+            TraitObjectSyntax::None,
+        ))
+    }
+
+    fn maybe_recover_ref_ty_no_leading_ampersand<'cx>(
+        &mut self,
+        lt: Lifetime,
+        lo: Span,
+        mut err: Diag<'cx>,
+    ) -> Result<TyKind, Diag<'cx>> {
+        if !self.may_recover() {
+            return Err(err);
+        }
+        let snapshot = self.create_snapshot_for_diagnostic();
+        let mutbl = self.parse_mutability();
+        match self.parse_ty_no_plus() {
+            Ok(ty) => {
+                err.span_suggestion_verbose(
+                    lo.shrink_to_lo(),
+                    "you might have meant to write a reference type here",
+                    "&",
+                    Applicability::MaybeIncorrect,
+                );
+                err.emit();
+                Ok(TyKind::Ref(Some(lt), MutTy { ty, mutbl }))
+            }
+            Err(diag) => {
+                diag.cancel();
+                self.restore_snapshot(snapshot);
+                Err(err)
+            }
+        }
     }
 
     fn parse_remaining_bounds_path(

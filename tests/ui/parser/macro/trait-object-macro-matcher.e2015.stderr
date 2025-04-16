@@ -1,0 +1,32 @@
+error: lifetimes must be followed by `+` to form a trait object type
+  --> $DIR/trait-object-macro-matcher.rs:17:8
+   |
+LL |     m!('static);
+   |        ^^^^^^^
+   |
+help: consider adding a trait bound after the potential lifetime bound
+   |
+LL |     m!('static + /* Trait */);
+   |                +++++++++++++
+
+error: lifetimes must be followed by `+` to form a trait object type
+  --> $DIR/trait-object-macro-matcher.rs:17:8
+   |
+LL |     m!('static);
+   |        ^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding a trait bound after the potential lifetime bound
+   |
+LL |     m!('static + /* Trait */);
+   |                +++++++++++++
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/trait-object-macro-matcher.rs:17:8
+   |
+LL |     m!('static);
+   |        ^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0224`.
