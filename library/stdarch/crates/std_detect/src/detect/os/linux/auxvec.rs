@@ -139,8 +139,7 @@ fn getauxval(key: usize) -> Result<usize, ()> {
                 target_os = "linux",
                 any(target_env = "gnu", target_env = "musl", target_env = "ohos"),
             )),
-            // TODO: libc crate currently doesn't provide getauxval on 32-bit Android.
-            not(all(target_os = "android", target_pointer_width = "64")),
+            not(target_os = "android"),
         ))] {
             let ffi_getauxval: F = unsafe {
                 let ptr = libc::dlsym(libc::RTLD_DEFAULT, c"getauxval".as_ptr());
