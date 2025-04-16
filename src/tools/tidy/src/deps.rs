@@ -682,8 +682,10 @@ pub static CRATES: &[&str] = &[
 pub fn has_missing_submodule(root: &Path, submodules: &[&str]) -> bool {
     !CiEnv::is_ci()
         && submodules.iter().any(|submodule| {
+            let path = root.join(submodule);
+            !path.exists()
             // If the directory is empty, we can consider it as an uninitialized submodule.
-            read_dir(root.join(submodule)).unwrap().next().is_none()
+            || read_dir(path).unwrap().next().is_none()
         })
 }
 
