@@ -392,7 +392,7 @@ impl TcpStream {
         .map(|res| res[0] as _)?)
     }
 
-    pub fn set_hop_limit_v6(&self, hlim: u8) -> io::Result<()> {
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
         unimpl!();
     }
 
