@@ -1241,8 +1241,8 @@ impl clean::Arguments {
                 .iter()
                 .map(|input| {
                     fmt::from_fn(|f| {
-                        if !input.name.is_empty() {
-                            write!(f, "{}: ", input.name)?;
+                        if let Some(name) = input.name {
+                            write!(f, "{}: ", name)?;
                         }
                         input.type_.print(cx).fmt(f)
                     })
@@ -1364,7 +1364,9 @@ impl clean::FnDecl {
                 if input.is_const {
                     write!(f, "const ")?;
                 }
-                write!(f, "{}: ", input.name)?;
+                if let Some(name) = input.name {
+                    write!(f, "{}: ", name)?;
+                }
                 input.type_.print(cx).fmt(f)?;
             }
             match (line_wrapping_indent, last_input_index) {

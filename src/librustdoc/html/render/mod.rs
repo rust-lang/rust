@@ -223,7 +223,7 @@ pub(crate) struct IndexItemFunctionType {
     inputs: Vec<RenderType>,
     output: Vec<RenderType>,
     where_clause: Vec<Vec<RenderType>>,
-    param_names: Vec<Symbol>,
+    param_names: Vec<Option<Symbol>>,
 }
 
 impl IndexItemFunctionType {

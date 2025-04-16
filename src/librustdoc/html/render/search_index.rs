@@ -709,8 +709,11 @@ pub(crate) fn build_index(
                 let mut result = Vec::new();
                 for (index, item) in self.items.iter().enumerate() {
                     if let Some(ty) = &item.search_type
-                        && let my =
-                            ty.param_names.iter().map(|sym| sym.as_str()).collect::<Vec<_>>()
+                        && let my = ty
+                            .param_names
+                            .iter()
+                            .filter_map(|sym| sym.map(|sym| sym.to_string()))
+                            .collect::<Vec<_>>()
                         && my != prev
                     {
                         result.push((index, my.join(",")));
@@ -1372,7 +1375,7 @@ fn simplify_fn_constraint<'a>(
 /// Used to allow type-based search on constants and statics.
 fn make_nullary_fn(
     clean_type: &clean::Type,
-) -> (Vec<RenderType>, Vec<RenderType>, Vec<Symbol>, Vec<Vec<RenderType>>) {
+) -> (Vec<RenderType>, Vec<RenderType>, Vec<Option<Symbol>>, Vec<Vec<RenderType>>) {
     let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
     let output = get_index_type(clean_type, vec![], &mut rgen);
     (vec![], vec![output], vec![], vec![])
@@ -1387,7 +1390,7 @@ fn get_fn_inputs_and_outputs(
     tcx: TyCtxt<'_>,
     impl_or_trait_generics: Option<&(clean::Type, clean::Generics)>,
     cache: &Cache,
-) -> (Vec<RenderType>, Vec<RenderType>, Vec<Symbol>, Vec<Vec<RenderType>>) {
+) -> (Vec<RenderType>, Vec<RenderType>, Vec<Option<Symbol>>, Vec<Vec<RenderType>>) {
     let decl = &func.decl;
 
     let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
@@ -1441,10 +1444,10 @@ fn get_fn_inputs_and_outputs(
         simplified_params
             .iter()
             .map(|(name, (_idx, _traits))| match name {
-                SimplifiedParam::Symbol(name) => *name,
-                SimplifiedParam::Anonymous(_) => kw::Empty,
+                SimplifiedParam::Symbol(name) => Some(*name),
+                SimplifiedParam::Anonymous(_) => None,
                 SimplifiedParam::AssociatedType(def_id, name) => {
-                    Symbol::intern(&format!("{}::{}", tcx.item_name(*def_id), name))
+                    Some(Symbol::intern(&format!("{}::{}", tcx.item_name(*def_id), name)))
                 }
             })
             .collect(),
