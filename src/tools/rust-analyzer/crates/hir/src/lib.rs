@@ -3773,17 +3773,23 @@ impl GenericSubstitution {
             TypeOrConstParamData::ConstParamData(_) => None,
         });
         // The `Substitution` is first self then container, we want the reverse order.
-        let self_params = self.subst.type_parameters(Interner).zip(type_params);
-        let container_params = self.subst.as_slice(Interner)[generics.len()..]
+        let subst_type_params = self.subst.type_parameters(Interner).collect::<Vec<_>>();
+        let mut self_params = subst_type_params
             .iter()
-            .filter_map(|param| param.ty(Interner).cloned())
-            .zip(container_type_params.into_iter().flatten());
-        container_params
-            .chain(self_params)
+            .zip(type_params)
             .filter_map(|(ty, name)| {
-                Some((name?.symbol().clone(), Type { ty, env: self.env.clone() }))
+                Some((name?.symbol().clone(), Type { ty: ty.clone(), env: self.env.clone() }))
             })
-            .collect()
+            .collect::<Vec<_>>();
+        let mut container_params = subst_type_params[self_params.len()..]
+            .iter()
+            .zip(container_type_params.into_iter().flatten())
+            .filter_map(|(ty, name)| {
+                Some((name?.symbol().clone(), Type { ty: ty.clone(), env: self.env.clone() }))
+            })
+            .collect::<Vec<_>>();
+        container_params.append(&mut self_params);
+        container_params
     }
 }
 

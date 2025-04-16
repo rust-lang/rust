@@ -10762,3 +10762,35 @@ fn bar(v: &Foo<i32>) {
         "#]],
     );
 }
+
+#[test]
+fn extra_lifetime_param_on_trait_method_subst() {
+    check(
+        r#"
+struct AudioFormat;
+
+trait ValueEnum {
+    fn to_possible_value(&self);
+}
+
+impl ValueEnum for AudioFormat {
+    fn to_possible_value<'a>(&'a self) {}
+}
+
+fn main() {
+    ValueEnum::to_possible_value$0(&AudioFormat);
+}
+    "#,
+        expect![[r#"
+            *to_possible_value*
+
+            ```rust
+            ra_test_fixture::AudioFormat
+            ```
+
+            ```rust
+            fn to_possible_value<'a>(&'a self)
+            ```
+        "#]],
+    );
+}
