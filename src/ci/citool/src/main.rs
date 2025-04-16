@@ -180,7 +180,7 @@ fn postprocess_metrics(
 }
 
 fn post_merge_report(db: JobDatabase, current: String, parent: String) -> anyhow::Result<()> {
-    let metrics = download_auto_job_metrics(&db, &parent, &current)?;
+    let metrics = download_auto_job_metrics(&db, Some(&parent), &current)?;
 
     println!("\nComparing {parent} (parent) -> {current} (this PR)\n");
 
