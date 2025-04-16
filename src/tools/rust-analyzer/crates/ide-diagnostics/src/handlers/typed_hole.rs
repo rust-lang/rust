@@ -27,7 +27,7 @@ pub(crate) fn typed_hole(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Di
             format!(
                 "invalid `_` expression, expected type `{}`",
                 d.expected
-                    .display(ctx.sema.db, ctx.edition)
+                    .display(ctx.sema.db, ctx.display_target)
                     .with_closure_style(ClosureStyle::ClosureWithId),
             ),
             fixes(ctx, d),
@@ -72,7 +72,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
                     prefer_absolute: ctx.config.prefer_absolute,
                     allow_unstable: ctx.is_nightly,
                 },
-                ctx.edition,
+                ctx.display_target,
             )
             .ok()
         })

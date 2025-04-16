@@ -1,6 +1,6 @@
 use core::cell::RefCell;
 use core::marker::Freeze;
-use core::mem::{self, MaybeUninit};
+use core::mem::MaybeUninit;
 use core::num::NonZero;
 use core::ptr;
 use core::ptr::*;
@@ -388,7 +388,7 @@ fn align_offset_various_strides() {
         let mut expected = usize::MAX;
         // Naive but definitely correct way to find the *first* aligned element of stride::<T>.
         for el in 0..align {
-            if (numptr + el * ::std::mem::size_of::<T>()) % align == 0 {
+            if (numptr + el * size_of::<T>()) % align == 0 {
                 expected = el;
                 break;
             }
@@ -398,7 +398,7 @@ fn align_offset_various_strides() {
             eprintln!(
                 "aligning {:p} (with stride of {}) to {}, expected {}, got {}",
                 ptr,
-                ::std::mem::size_of::<T>(),
+                size_of::<T>(),
                 align,
                 expected,
                 got
@@ -525,31 +525,24 @@ fn ptr_metadata() {
     assert_eq!(metadata("foo"), 3_usize);
     assert_eq!(metadata(&[4, 7][..]), 2_usize);
 
-    let dst_tuple: &(bool, [u8]) = &(true, [0x66, 0x6F, 0x6F]);
     let dst_struct: &Pair<bool, [u8]> = &Pair(true, [0x66, 0x6F, 0x6F]);
-    assert_eq!(metadata(dst_tuple), 3_usize);
     assert_eq!(metadata(dst_struct), 3_usize);
     unsafe {
-        let dst_tuple: &(bool, str) = std::mem::transmute(dst_tuple);
         let dst_struct: &Pair<bool, str> = std::mem::transmute(dst_struct);
-        assert_eq!(&dst_tuple.1, "foo");
         assert_eq!(&dst_struct.1, "foo");
-        assert_eq!(metadata(dst_tuple), 3_usize);
         assert_eq!(metadata(dst_struct), 3_usize);
     }
 
     let vtable_1: DynMetadata<dyn Debug> = metadata(&4_u16 as &dyn Debug);
     let vtable_2: DynMetadata<dyn Display> = metadata(&4_u16 as &dyn Display);
     let vtable_3: DynMetadata<dyn Display> = metadata(&4_u32 as &dyn Display);
-    let vtable_4: DynMetadata<dyn Display> = metadata(&(true, 7_u32) as &(bool, dyn Display));
-    let vtable_5: DynMetadata<dyn Display> =
+    let vtable_4: DynMetadata<dyn Display> =
         metadata(&Pair(true, 7_u32) as &Pair<bool, dyn Display>);
     unsafe {
         let address_1: *const () = std::mem::transmute(vtable_1);
         let address_2: *const () = std::mem::transmute(vtable_2);
         let address_3: *const () = std::mem::transmute(vtable_3);
         let address_4: *const () = std::mem::transmute(vtable_4);
-        let address_5: *const () = std::mem::transmute(vtable_5);
         // Different trait => different vtable pointer
         assert_ne!(address_1, address_2);
         // Different erased type => different vtable pointer
@@ -558,7 +551,6 @@ fn ptr_metadata() {
         // This is *not guaranteed*, so we skip it in Miri.
         if !cfg!(miri) {
             assert_eq!(address_3, address_4);
-            assert_eq!(address_3, address_5);
         }
     }
 }
@@ -613,9 +605,9 @@ fn dyn_metadata() {
     let meta = metadata(trait_object);
 
     assert_eq!(meta.size_of(), 64);
-    assert_eq!(meta.size_of(), std::mem::size_of::<Something>());
+    assert_eq!(meta.size_of(), size_of::<Something>());
     assert_eq!(meta.align_of(), 32);
-    assert_eq!(meta.align_of(), std::mem::align_of::<Something>());
+    assert_eq!(meta.align_of(), align_of::<Something>());
     assert_eq!(meta.layout(), std::alloc::Layout::new::<Something>());
 
     assert!(format!("{meta:?}").starts_with("DynMetadata(0x"));
@@ -789,7 +781,7 @@ fn nonnull_tagged_pointer_with_provenance() {
 
     impl<T> TaggedPointer<T> {
         /// The ABI-required minimum alignment of the `P` type.
-        pub const ALIGNMENT: usize = core::mem::align_of::<T>();
+        pub const ALIGNMENT: usize = align_of::<T>();
         /// A mask for data-carrying bits of the address.
         pub const DATA_MASK: usize = !Self::ADDRESS_MASK;
         /// Number of available bits of storage in the address.
@@ -873,7 +865,7 @@ fn test_const_copy_ptr() {
             ptr::copy(
                 &ptr1 as *const _ as *const MaybeUninit<u8>,
                 &mut ptr2 as *mut _ as *mut MaybeUninit<u8>,
-                mem::size_of::<&i32>(),
+                size_of::<&i32>(),
             );
         }
 
@@ -891,7 +883,7 @@ fn test_const_copy_ptr() {
             ptr::copy_nonoverlapping(
                 &ptr1 as *const _ as *const MaybeUninit<u8>,
                 &mut ptr2 as *mut _ as *mut MaybeUninit<u8>,
-                mem::size_of::<&i32>(),
+                size_of::<&i32>(),
             );
         }
 
@@ -936,7 +928,7 @@ fn test_const_swap_ptr() {
         let mut s2 = A(S { ptr: &666, f1: 0, f2: [0; 3] });
 
         // Swap ptr1 and ptr2, as an array.
-        type T = [u8; mem::size_of::<A>()];
+        type T = [u8; size_of::<A>()];
         unsafe {
             ptr::swap(ptr::from_mut(&mut s1).cast::<T>(), ptr::from_mut(&mut s2).cast::<T>());
         }
@@ -991,4 +983,40 @@ fn test_ptr_metadata_in_const() {
     assert_eq!(ARRAY_META, ());
     assert_eq!(SLICE_META, 3);
     assert_eq!(DYN_META.size_of(), 42);
+}
+
+// See <https://github.com/rust-lang/rust/issues/134713>
+const fn ptr_swap_nonoverlapping_is_untyped_inner() {
+    #[repr(C)]
+    struct HasPadding(usize, u8);
+
+    let buf1: [usize; 2] = [1000, 2000];
+    let buf2: [usize; 2] = [3000, 4000];
+
+    // HasPadding and [usize; 2] have the same size and alignment,
+    // so swap_nonoverlapping should treat them the same
+    assert!(size_of::<HasPadding>() == size_of::<[usize; 2]>());
+    assert!(align_of::<HasPadding>() == align_of::<[usize; 2]>());
+
+    let mut b1 = buf1;
+    let mut b2 = buf2;
+    // Safety: b1 and b2 are distinct local variables,
+    // with the same size and alignment as HasPadding.
+    unsafe {
+        std::ptr::swap_nonoverlapping(
+            b1.as_mut_ptr().cast::<HasPadding>(),
+            b2.as_mut_ptr().cast::<HasPadding>(),
+            1,
+        );
+    }
+    assert!(b1[0] == buf2[0]);
+    assert!(b1[1] == buf2[1]);
+    assert!(b2[0] == buf1[0]);
+    assert!(b2[1] == buf1[1]);
+}
+
+#[test]
+fn test_ptr_swap_nonoverlapping_is_untyped() {
+    ptr_swap_nonoverlapping_is_untyped_inner();
+    const { ptr_swap_nonoverlapping_is_untyped_inner() };
 }

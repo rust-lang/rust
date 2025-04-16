@@ -469,7 +469,7 @@ declare_clippy_lint! {
     /// let item2 = 3;
     /// let mut vec: Vec<u8> = Vec::new();
     /// for _ in 0..20 {
-    ///    vec.push(item1);
+    ///     vec.push(item1);
     /// }
     /// for _ in 0..30 {
     ///     vec.push(item2);

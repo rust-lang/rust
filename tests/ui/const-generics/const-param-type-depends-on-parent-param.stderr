@@ -1,0 +1,9 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/const-param-type-depends-on-parent-param.rs:4:26
+   |
+LL |     fn foo<const M: [u8; N]>() {}
+   |                          ^ the type must not depend on the parameter `N`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0770`.

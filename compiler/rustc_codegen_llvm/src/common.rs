@@ -1,9 +1,11 @@
 //! Code that is useful in various codegen modules.
 
+use std::borrow::Borrow;
+
 use libc::{c_char, c_uint};
 use rustc_abi as abi;
+use rustc_abi::HasDataLayout;
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{AddressSpace, HasDataLayout};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
@@ -18,6 +20,7 @@ use tracing::debug;
 
 use crate::consts::const_alloc_to_llvm;
 pub(crate) use crate::context::CodegenCx;
+use crate::context::{GenericCx, SCx};
 use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, Metadata, True};
 use crate::type_::Type;
 use crate::value::Value;
@@ -81,7 +84,7 @@ impl<'ll> Funclet<'ll> {
     }
 }
 
-impl<'ll> BackendTypes for CodegenCx<'ll, '_> {
+impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericCx<'ll, CX> {
     type Value = &'ll Value;
     type Metadata = &'ll Metadata;
     // FIXME(eddyb) replace this with a `Function` "subclass" of `Value`.
@@ -118,7 +121,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 }
 
-impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
     fn const_null(&self, t: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMConstNull(t) }
     }
@@ -266,7 +269,8 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             }
             Scalar::Ptr(ptr, _size) => {
                 let (prov, offset) = ptr.into_parts();
-                let (base_addr, base_addr_space) = match self.tcx.global_alloc(prov.alloc_id()) {
+                let global_alloc = self.tcx.global_alloc(prov.alloc_id());
+                let base_addr = match global_alloc {
                     GlobalAlloc::Memory(alloc) => {
                         // For ZSTs directly codegen an aligned pointer.
                         // This avoids generating a zero-sized constant value and actually needing a
@@ -298,12 +302,10 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                                     format!("alloc_{hash:032x}").as_bytes(),
                                 );
                             }
-                            (value, AddressSpace::DATA)
+                            value
                         }
                     }
-                    GlobalAlloc::Function { instance, .. } => {
-                        (self.get_fn_addr(instance), self.data_layout().instruction_address_space)
-                    }
+                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance),
                     GlobalAlloc::VTable(ty, dyn_ty) => {
                         let alloc = self
                             .tcx
@@ -316,14 +318,15 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             .unwrap_memory();
                         let init = const_alloc_to_llvm(self, alloc, /*static*/ false);
                         let value = self.static_addr_of_impl(init, alloc.inner().align, None);
-                        (value, AddressSpace::DATA)
+                        value
                     }
                     GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx.is_static(def_id));
                         assert!(!self.tcx.is_thread_local_static(def_id));
-                        (self.get_static(def_id), AddressSpace::DATA)
+                        self.get_static(def_id)
                     }
                 };
+                let base_addr_space = global_alloc.address_space(self);
                 let llval = unsafe {
                     llvm::LLVMConstInBoundsGEP2(
                         self.type_i8(),
@@ -342,7 +345,7 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
+    fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value {
         const_alloc_to_llvm(self, alloc, /*static*/ false)
     }
 

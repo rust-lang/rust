@@ -35,7 +35,7 @@ use rustc_session::lint::builtin::{
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, edition, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -52,7 +52,7 @@ fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>)
         hir::ImplItemKind::Const(..) => Target::AssocConst,
         hir::ImplItemKind::Fn(..) => {
             let parent_def_id = tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
-            let containing_item = tcx.hir().expect_item(parent_def_id);
+            let containing_item = tcx.hir_expect_item(parent_def_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
                 hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
                 _ => bug!("parent of an ImplItem must be an Impl"),
@@ -114,7 +114,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let mut doc_aliases = FxHashMap::default();
         let mut specified_inline = None;
         let mut seen = FxHashMap::default();
-        let attrs = self.tcx.hir().attrs(hir_id);
+        let attrs = self.tcx.hir_attrs(hir_id);
         for attr in attrs {
             match attr {
                 Attribute::Parsed(AttributeKind::Confusables { first_span, .. }) => {
@@ -272,6 +272,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::forbid
                             | sym::cfg
                             | sym::cfg_attr
+                            | sym::cfg_trace
+                            | sym::cfg_attr_trace
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::pointee // FIXME(derive_coerce_pointee)
@@ -449,6 +451,23 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 });
             }
         }
+
+        // `#[inline]` is ignored if the symbol must be codegened upstream because it's exported.
+        if let Some(did) = hir_id.as_owner()
+            && self.tcx.def_kind(did).has_codegen_attrs()
+            && !matches!(attr.meta_item_list().as_deref(), Some([item]) if item.has_name(sym::never))
+        {
+            let attrs = self.tcx.codegen_fn_attrs(did);
+            // Not checking naked as `#[inline]` is forbidden for naked functions anyways.
+            if attrs.contains_extern_indicator() {
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span(),
+                    errors::InlineIgnoredForExported {},
+                );
+            }
+        }
     }
 
     /// Checks that `#[coverage(..)]` is applied to a function/closure/method,
@@ -573,8 +592,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // NOTE: when making changes to this list, check that `error_codes/E0736.md` remains accurate
         const ALLOW_LIST: &[rustc_span::Symbol] = &[
             // conditional compilation
-            sym::cfg,
-            sym::cfg_attr,
+            sym::cfg_trace,
+            sym::cfg_attr_trace,
             // testing (allowed here so better errors can be generated in `rustc_builtin_macros::test`)
             sym::test,
             sym::ignore,
@@ -598,7 +617,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             sym::repr,
             // code generation
             sym::cold,
-            sym::target_feature,
             // documentation
             sym::doc,
         ];
@@ -606,6 +624,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
+                let fn_sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
+                let abi = fn_sig.header.abi;
+                if abi.is_rustic_abi() && !self.tcx.features().naked_functions_rustic_abi() {
+                    feature_err(
+                        &self.tcx.sess,
+                        sym::naked_functions_rustic_abi,
+                        fn_sig.span,
+                        format!(
+                            "`#[naked]` is currently unstable on `extern \"{}\"` functions",
+                            abi.as_str()
+                        ),
+                    )
+                    .emit();
+                }
+
                 for other_attr in attrs {
                     // this covers "sugared doc comments" of the form `/// ...`
                     // it does not cover `#[doc = "..."]`, which is handled below
@@ -622,6 +655,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             continue;
                         }
                         _ => {}
+                    }
+
+                    if other_attr.has_name(sym::target_feature) {
+                        if !self.tcx.features().naked_functions_target_feature() {
+                            feature_err(
+                                &self.tcx.sess,
+                                sym::naked_functions_target_feature,
+                                other_attr.span(),
+                                "`#[target_feature(/* ... */)]` is currently unstable on `#[naked]` functions",
+                            ).emit();
+
+                            return;
+                        } else {
+                            continue;
+                        }
                     }
 
                     if !ALLOW_LIST.iter().any(|name| other_attr.has_name(*name)) {
@@ -743,7 +791,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Struct => {
                 if let Some(ItemLike::Item(hir::Item {
-                    kind: hir::ItemKind::Struct(hir::VariantData::Struct { fields, .. }, _),
+                    kind: hir::ItemKind::Struct(_, hir::VariantData::Struct { fields, .. }, _),
                     ..
                 })) = item
                     && !fields.is_empty()
@@ -899,7 +947,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if let Some(location) = match target {
             Target::AssocTy => {
                 let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id;
-                let containing_item = self.tcx.hir().expect_item(parent_def_id);
+                let containing_item = self.tcx.hir_expect_item(parent_def_id);
                 if Target::from_item(containing_item) == Target::Impl {
                     Some("type alias in implementation block")
                 } else {
@@ -908,7 +956,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
             Target::AssocConst => {
                 let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id;
-                let containing_item = self.tcx.hir().expect_item(parent_def_id);
+                let containing_item = self.tcx.hir_expect_item(parent_def_id);
                 // We can't link to trait impl's consts.
                 let err = "associated constant in trait implementation block";
                 match containing_item.kind {
@@ -952,8 +1000,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             tcx.dcx().emit_err(errors::DocAliasBadLocation { span, attr_str, location });
             return;
         }
-        let item_name = self.tcx.hir().name(hir_id);
-        if item_name == doc_alias {
+        if self.tcx.hir_opt_name(hir_id) == Some(doc_alias) {
             tcx.dcx().emit_err(errors::DocAliasNotAnAlias { span, attr_str });
             return;
         }
@@ -1006,20 +1053,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
             // can remove the `SelfTy` case here, remove `sym::SelfTy`, and update the
             // `#[doc(keyword = "SelfTy")` attribute in `library/std/src/keyword_docs.rs`.
-            s <= kw::Union || s == sym::SelfTy
+            s.is_reserved(|| edition::LATEST_STABLE_EDITION) || s.is_weak() || s == sym::SelfTy
         }
 
-        let doc_keyword = meta.value_str().unwrap_or(kw::Empty);
-        if doc_keyword == kw::Empty {
-            self.doc_attr_str_error(meta, "keyword");
-            return;
-        }
+        let doc_keyword = match meta.value_str() {
+            Some(value) if value != kw::Empty => value,
+            _ => return self.doc_attr_str_error(meta, "keyword"),
+        };
+
         let item_kind = match self.tcx.hir_node(hir_id) {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
         };
         match item_kind {
-            Some(ItemKind::Mod(module)) => {
+            Some(ItemKind::Mod(_, module)) => {
                 if !module.item_ids.is_empty() {
                     self.dcx().emit_err(errors::DocKeywordEmptyMod { span: meta.span() });
                     return;
@@ -1072,11 +1119,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         };
         match item.kind {
-            ItemKind::Enum(_, generics) | ItemKind::Struct(_, generics)
+            ItemKind::Enum(_, _, generics) | ItemKind::Struct(_, _, generics)
                 if generics.params.len() != 0 => {}
-            ItemKind::Trait(_, _, generics, _, items)
+            ItemKind::Trait(_, _, _, generics, _, items)
                 if generics.params.len() != 0
                     || items.iter().any(|item| matches!(item.kind, AssocItemKind::Type)) => {}
+            ItemKind::TyAlias(_, _, generics) if generics.params.len() != 0 => {}
             _ => {
                 self.dcx().emit_err(errors::DocSearchUnboxInvalid { span: meta.span() });
             }
@@ -1125,7 +1173,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     errors::DocInlineOnlyUse {
                         attr_span: meta.span(),
                         item_span: (attr.style() == AttrStyle::Outer)
-                            .then(|| self.tcx.hir().span(hir_id)),
+                            .then(|| self.tcx.hir_span(hir_id)),
                     },
                 );
             }
@@ -1147,7 +1195,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 errors::DocMaskedOnlyExternCrate {
                     attr_span: meta.span(),
                     item_span: (attr.style() == AttrStyle::Outer)
-                        .then(|| self.tcx.hir().span(hir_id)),
+                        .then(|| self.tcx.hir_span(hir_id)),
                 },
             );
             return;
@@ -1161,7 +1209,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 errors::DocMaskedNotExternCrateSelf {
                     attr_span: meta.span(),
                     item_span: (attr.style() == AttrStyle::Outer)
-                        .then(|| self.tcx.hir().span(hir_id)),
+                        .then(|| self.tcx.hir_span(hir_id)),
                 },
             );
         }
@@ -1481,7 +1529,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // `#[must_use]` can be applied to a trait method definition with a default body
         if let Target::Method(MethodKind::Trait { body: true }) = target
             && let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id
-            && let containing_item = self.tcx.hir().expect_item(parent_def_id)
+            && let containing_item = self.tcx.hir_expect_item(parent_def_id)
             && let hir::ItemKind::Trait(..) = containing_item.kind
         {
             return;
@@ -1566,7 +1614,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if target == Target::ForeignMod
             && let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
             && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
-            && !matches!(abi, ExternAbi::Rust | ExternAbi::RustIntrinsic)
+            && !matches!(abi, ExternAbi::Rust)
         {
             return;
         }
@@ -1998,7 +2046,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     // catch `repr()` with no arguments, applied to an item (i.e. not `#![repr()]`)
                     if item.is_some() {
                         match target {
-                            Target::Struct | Target::Union | Target::Enum => {}
+                            Target::Struct | Target::Union | Target::Enum => continue,
                             Target::Fn | Target::Method(_) => {
                                 feature_err(
                                     &self.tcx.sess,
@@ -2203,7 +2251,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     fn check_rustc_std_internal_symbol(&self, attr: &Attribute, span: Span, target: Target) {
         match target {
-            Target::Fn | Target::Static => {}
+            Target::Fn | Target::Static | Target::ForeignFn | Target::ForeignStatic => {}
             _ => {
                 self.tcx
                     .dcx()
@@ -2293,7 +2341,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         } else {
             // special case when `#[macro_export]` is applied to a macro 2.0
-            let (macro_definition, _) = self.tcx.hir_node(hir_id).expect_item().expect_macro();
+            let (_, macro_definition, _) = self.tcx.hir_node(hir_id).expect_item().expect_macro();
             let is_decl_macro = !macro_definition.macro_rules;
 
             if is_decl_macro {
@@ -2387,7 +2435,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     .iter()
                     .all(|kind| matches!(kind, CrateType::Rlib | CrateType::Staticlib));
                 if never_needs_link {
-                    errors::UnusedNote::LinkerWarningsBinaryCrateOnly
+                    errors::UnusedNote::LinkerMessagesBinaryCrateOnly
                 } else {
                     return;
                 }
@@ -2572,7 +2620,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match (target, force_inline_attr) {
             (Target::Closure, None) => {
                 let is_coro = matches!(
-                    self.tcx.hir().expect_expr(hir_id).kind,
+                    self.tcx.hir_expect_expr(hir_id).kind,
                     hir::ExprKind::Closure(hir::Closure {
                         kind: hir::ClosureKind::Coroutine(..)
                             | hir::ClosureKind::CoroutineClosure(..),
@@ -2624,7 +2672,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // Historically we've run more checks on non-exported than exported macros,
         // so this lets us continue to run them while maintaining backwards compatibility.
         // In the long run, the checks should be harmonized.
-        if let ItemKind::Macro(macro_def, _) = item.kind {
+        if let ItemKind::Macro(_, macro_def, _) = item.kind {
             let def_id = item.owner_id.to_def_id();
             if macro_def.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
                 check_non_exported_macro_for_invalid_attrs(self.tcx, item);
@@ -2641,11 +2689,10 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
         // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
         // in where clauses. After that, only `self.check_attributes` should be enough.
-        const ATTRS_ALLOWED: &[Symbol] = &[sym::cfg, sym::cfg_attr];
+        const ATTRS_ALLOWED: &[Symbol] = &[sym::cfg_trace, sym::cfg_attr_trace];
         let spans = self
             .tcx
-            .hir()
-            .attrs(where_predicate.hir_id)
+            .hir_attrs(where_predicate.hir_id)
             .iter()
             .filter(|attr| !ATTRS_ALLOWED.iter().any(|&sym| attr.has_name(sym)))
             .map(|attr| attr.span())
@@ -2737,7 +2784,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 }
 
 fn is_c_like_enum(item: &Item<'_>) -> bool {
-    if let ItemKind::Enum(ref def, _) = item.kind {
+    if let ItemKind::Enum(_, ref def, _) = item.kind {
         for variant in def.variants {
             match variant.data {
                 hir::VariantData::Unit(..) => { /* continue */ }
@@ -2785,7 +2832,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             .map(|id| tcx.hir_item(id))
             .find(|item| !item.span.is_dummy()) // Skip prelude `use`s
             .map(|item| errors::ItemFollowingInnerAttr {
-                span: item.ident.span,
+                span: if let Some(ident) = item.kind.ident() { ident.span } else { item.span },
                 kind: item.kind.descr(),
             });
         let err = tcx.dcx().create_err(errors::InvalidAttrAtCrateLevel {
@@ -2814,7 +2861,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
 }
 
 fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) {
-    let attrs = tcx.hir().attrs(item.hir_id());
+    let attrs = tcx.hir_attrs(item.hir_id());
 
     for attr in attrs {
         if attr.has_name(sym::inline) {

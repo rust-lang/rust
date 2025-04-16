@@ -53,19 +53,19 @@ LL |     naked_asm!("", options(may_unwind));
    |                            ^^^^^^^^^^ the `may_unwind` option is not meaningful for global-scoped inline assembly
 
 error: this is a user specified error
-  --> $DIR/naked-functions.rs:169:5
+  --> $DIR/naked-functions.rs:157:5
    |
 LL |     compile_error!("this is a user specified error")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this is a user specified error
-  --> $DIR/naked-functions.rs:175:5
+  --> $DIR/naked-functions.rs:163:5
    |
 LL |     compile_error!("this is a user specified error");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: asm template must be a string literal
-  --> $DIR/naked-functions.rs:182:16
+  --> $DIR/naked-functions.rs:170:16
    |
 LL |     naked_asm!(invalid_syntax)
    |                ^^^^^^^^^^^^^^
@@ -175,20 +175,6 @@ LL |
 LL |         *&y
    |         --- not allowed in naked functions
 
-warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:126:1
-   |
-LL | pub unsafe fn default_abi() {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(undefined_naked_function_abi)]` on by default
-
-warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:132:1
-   |
-LL | pub unsafe fn rust_abi() {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 25 previous errors; 2 warnings emitted
+error: aborting due to 25 previous errors
 
 For more information about this error, try `rustc --explain E0787`.

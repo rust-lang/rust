@@ -9,13 +9,13 @@ use rustc_errors::{DiagCtxtHandle, Diagnostic};
 use rustc_feature::Features;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId};
 use rustc_session::Session;
-use rustc_span::symbol::kw;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::repr::ReprParser;
+use crate::attributes::rustc::RustcMacroEdition2021Parser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
@@ -77,6 +77,7 @@ attribute_groups!(
         // tidy-alphabetical-start
         Single<ConstStabilityIndirectParser>,
         Single<DeprecationParser>,
+        Single<RustcMacroEdition2021Parser>,
         Single<TransparencyParser>,
         // tidy-alphabetical-end
     ];
@@ -319,7 +320,7 @@ impl<'sess> AttributeParser<'sess> {
             ast::AttrArgs::Delimited(args) => AttrArgs::Delimited(DelimArgs {
                 dspan: args.dspan,
                 delim: args.delim,
-                tokens: args.tokens.flattened(),
+                tokens: args.tokens.clone(),
             }),
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
@@ -338,7 +339,7 @@ impl<'sess> AttributeParser<'sess> {
                         "expr in place where literal is expected (builtin attr parsing)",
                     );
                     ast::MetaItemLit {
-                        symbol: kw::Empty,
+                        symbol: sym::dummy,
                         suffix: None,
                         kind: ast::LitKind::Err(guar),
                         span: DUMMY_SP,

@@ -86,12 +86,29 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::Repeat(ref elem, count) => {
-                let cg_elem = self.codegen_operand(bx, elem);
-
                 // Do not generate the loop for zero-sized elements or empty arrays.
                 if dest.layout.is_zst() {
                     return;
                 }
+
+                // When the element is a const with all bytes uninit, emit a single memset that
+                // writes undef to the entire destination.
+                if let mir::Operand::Constant(const_op) = elem {
+                    let val = self.eval_mir_constant(const_op);
+                    if val.all_bytes_uninit(self.cx.tcx()) {
+                        let size = bx.const_usize(dest.layout.size.bytes());
+                        bx.memset(
+                            dest.val.llval,
+                            bx.const_undef(bx.type_i8()),
+                            size,
+                            dest.val.align,
+                            MemFlags::empty(),
+                        );
+                        return;
+                    }
+                }
+
+                let cg_elem = self.codegen_operand(bx, elem);
 
                 let try_init_all_same = |bx: &mut Bx, v| {
                     let start = dest.val.llval;
@@ -363,6 +380,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         to_backend_ty: Bx::Type,
     ) -> Bx::Value {
         assert_eq!(from_scalar.size(self.cx), to_scalar.size(self.cx));
+
+        // While optimizations will remove no-op transmutes, they might still be
+        // there in debug or things that aren't no-op in MIR because they change
+        // the Rust type but not the underlying layout/niche.
+        if from_scalar == to_scalar && from_backend_ty == to_backend_ty {
+            return imm;
+        }
 
         use abi::Primitive::*;
         imm = bx.from_immediate(imm);
@@ -699,7 +723,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Discriminant(ref place) => {
                 let discr_ty = rvalue.ty(self.mir, bx.tcx());
                 let discr_ty = self.monomorphize(discr_ty);
-                let discr = self.codegen_place(bx, place.as_ref()).codegen_get_discr(bx, discr_ty);
+                let operand = self.codegen_consume(bx, place.as_ref());
+                let discr = operand.codegen_get_discr(self, bx, discr_ty);
                 OperandRef {
                     val: OperandValue::Immediate(discr),
                     layout: self.cx.layout_of(discr_ty),
@@ -739,7 +764,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let tcx = self.cx.tcx();
                 OperandRef {
                     val: OperandValue::Immediate(val),
-                    layout: self.cx.layout_of(tcx.types.usize),
+                    layout: self.cx.layout_of(null_op.ty(tcx)),
                 }
             }
 
@@ -829,15 +854,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn evaluate_array_len(&mut self, bx: &mut Bx, place: mir::Place<'tcx>) -> Bx::Value {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
-        if let Some(index) = place.as_local() {
-            if let LocalRef::Operand(op) = self.locals[index] {
-                if let ty::Array(_, n) = op.layout.ty.kind() {
-                    let n = n
-                        .try_to_target_usize(bx.tcx())
-                        .expect("expected monomorphic const in codegen");
-                    return bx.cx().const_usize(n);
-                }
-            }
+        if let Some(index) = place.as_local()
+            && let LocalRef::Operand(op) = self.locals[index]
+            && let ty::Array(_, n) = op.layout.ty.kind()
+        {
+            let n = n.try_to_target_usize(bx.tcx()).expect("expected monomorphic const in codegen");
+            return bx.cx().const_usize(n);
         }
         // use common size calculation for non zero-sized types
         let cg_value = self.codegen_place(bx, place.as_ref());
@@ -983,6 +1005,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::Cmp => {
                 use std::cmp::Ordering;
                 assert!(!is_float);
+                if let Some(value) = bx.three_way_compare(lhs_ty, lhs, rhs) {
+                    return value;
+                }
                 let pred = |op| base::bin_op_to_icmp_predicate(op, is_signed);
                 if bx.cx().tcx().sess.opts.optimize == OptLevel::No {
                     // FIXME: This actually generates tighter assembly, and is a classic trick

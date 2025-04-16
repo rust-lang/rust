@@ -54,12 +54,6 @@ warning: type `v17` should have an upper camel case name
 LL |     pub struct v17<const v10: usize, const v7: v11> {
    |                ^^^ help: convert the identifier to upper camel case (notice the capitalization): `V17`
 
-error[E0425]: cannot find function `v6` in this scope
-  --> $DIR/unevaluated-const-ice-119731.rs:13:35
-   |
-LL |     const v0: [[usize; v4]; v4] = v6(v8);
-   |                                   ^^ not found in this scope
-
 error: `[[usize; v4]; v4]` is forbidden as the type of a const generic parameter
   --> $DIR/unevaluated-const-ice-119731.rs:16:48
    |
@@ -71,6 +65,12 @@ help: add `#![feature(adt_const_params)]` to the crate attributes to enable more
    |
 LL + #![feature(adt_const_params)]
    |
+
+error[E0425]: cannot find function `v6` in this scope
+  --> $DIR/unevaluated-const-ice-119731.rs:13:35
+   |
+LL |     const v0: [[usize; v4]; v4] = v6(v8);
+   |                                   ^^ not found in this scope
 
 error: maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
   --> $DIR/unevaluated-const-ice-119731.rs:28:37

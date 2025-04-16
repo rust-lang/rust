@@ -6,19 +6,12 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
-#[path = "../unsupported/args.rs"]
-pub mod args;
 #[path = "../unsupported/env.rs"]
 pub mod env;
 //pub mod fd;
-#[path = "../unsupported/fs.rs"]
-pub mod fs;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
-pub mod process;
-pub mod stdio;
 pub mod thread;
 #[allow(non_upper_case_globals)]
 #[path = "../unix/time.rs"]

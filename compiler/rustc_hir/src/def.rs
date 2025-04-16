@@ -253,7 +253,9 @@ impl DefKind {
         }
     }
 
-    pub fn def_path_data(self, name: Symbol) -> DefPathData {
+    // Some `DefKind`s require a name, some don't. Panics if one is needed but
+    // not provided. (`AssocTy` is an exception, see below.)
+    pub fn def_path_data(self, name: Option<Symbol>) -> DefPathData {
         match self {
             DefKind::Mod
             | DefKind::Struct
@@ -264,9 +266,18 @@ impl DefKind {
             | DefKind::TyAlias
             | DefKind::ForeignTy
             | DefKind::TraitAlias
-            | DefKind::AssocTy
             | DefKind::TyParam
-            | DefKind::ExternCrate => DefPathData::TypeNs(name),
+            | DefKind::ExternCrate => DefPathData::TypeNs(name.unwrap()),
+
+            // An associated type name will be missing for an RPITIT.
+            DefKind::AssocTy => {
+                if let Some(name) = name {
+                    DefPathData::TypeNs(name)
+                } else {
+                    DefPathData::AnonAssocTy
+                }
+            }
+
             // It's not exactly an anon const, but wrt DefPathData, there
             // is no difference.
             DefKind::Static { nested: true, .. } => DefPathData::AnonConst,
@@ -276,9 +287,9 @@ impl DefKind {
             | DefKind::Static { .. }
             | DefKind::AssocFn
             | DefKind::AssocConst
-            | DefKind::Field => DefPathData::ValueNs(name),
-            DefKind::Macro(..) => DefPathData::MacroNs(name),
-            DefKind::LifetimeParam => DefPathData::LifetimeNs(name),
+            | DefKind::Field => DefPathData::ValueNs(name.unwrap()),
+            DefKind::Macro(..) => DefPathData::MacroNs(name.unwrap()),
+            DefKind::LifetimeParam => DefPathData::LifetimeNs(name.unwrap()),
             DefKind::Ctor(..) => DefPathData::Ctor,
             DefKind::Use => DefPathData::Use,
             DefKind::ForeignMod => DefPathData::ForeignMod,
@@ -288,7 +299,7 @@ impl DefKind {
             DefKind::GlobalAsm => DefPathData::GlobalAsm,
             DefKind::Impl { .. } => DefPathData::Impl,
             DefKind::Closure => DefPathData::Closure,
-            DefKind::SyntheticCoroutineBody => DefPathData::Closure,
+            DefKind::SyntheticCoroutineBody => DefPathData::SyntheticCoroutineBody,
         }
     }
 
@@ -429,7 +440,7 @@ pub enum Res<Id = hir::HirId> {
         /// mention any generic parameters to allow the following with `min_const_generics`:
         /// ```
         /// # struct Foo;
-        /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
+        /// impl Foo { fn test() -> [u8; size_of::<Self>()] { todo!() } }
         ///
         /// struct Bar([u8; baz::<Self>()]);
         /// const fn baz<T>() -> usize { 10 }
@@ -439,7 +450,7 @@ pub enum Res<Id = hir::HirId> {
         /// compat lint:
         /// ```
         /// fn foo<T>() {
-        ///     let _bar = [1_u8; std::mem::size_of::<*mut T>()];
+        ///     let _bar = [1_u8; size_of::<*mut T>()];
         /// }
         /// ```
         // FIXME(generic_const_exprs): Remove this bodge once that feature is stable.

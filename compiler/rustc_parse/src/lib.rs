@@ -12,7 +12,6 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(string_from_utf8_lossy_owned)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::path::{Path, PathBuf};

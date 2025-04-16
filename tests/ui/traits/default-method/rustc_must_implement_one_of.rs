@@ -39,6 +39,6 @@ impl Equal for T2 {
 }
 
 impl Equal for T3 {}
-//~^ not all trait items implemented, missing one of: `eq`, `neq`
+//~^ ERROR not all trait items implemented, missing one of: `eq`, `neq`
 
 fn main() {}

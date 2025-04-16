@@ -27,6 +27,7 @@ impl Bar<u32> {
     fn foo(self) {}
 }
 
+#[define_opaque(Foo)]
 fn foo() -> Foo {
     42_u32
 }

@@ -9,5 +9,5 @@ mod repeat_n {
 /// not here
 pub use repeat_n::RepeatN;
 
-//@ count "$.index[*][?(@.name=='pub_use_doc_hidden')].inner.items[*]" 0
-//@ !has "$.index[*][?(@.docs == 'not here')]"
+//@ count "$.index[?(@.name=='pub_use_doc_hidden')].inner.items[*]" 0
+//@ !has "$.index[?(@.docs == 'not here')]"

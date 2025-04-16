@@ -12,7 +12,7 @@ pub(crate) fn expected_function(
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
         DiagnosticCode::RustcHardError("E0618"),
-        format!("expected function, found {}", d.found.display(ctx.sema.db, ctx.edition)),
+        format!("expected function, found {}", d.found.display(ctx.sema.db, ctx.display_target)),
         d.call.map(|it| it.into()),
     )
     .experimental()

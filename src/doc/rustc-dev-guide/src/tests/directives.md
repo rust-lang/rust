@@ -6,10 +6,8 @@
 FIXME(jieyouxu) completely revise this chapter.
 -->
 
-Directives are special comments that tell compiletest how to build and interpret
-a test. They must appear before the Rust source in the test. They may also
-appear in `rmake.rs` or legacy Makefiles for [run-make
-tests](compiletest.md#run-make-tests).
+Directives are special comments that tell compiletest how to build and interpret a test.
+They may also appear in `rmake.rs` [run-make tests](compiletest.md#run-make-tests).
 
 They are normally put after the short comment that explains the point of this
 test. Compiletest test suites use `//@` to signal that a comment is a directive.
@@ -103,6 +101,7 @@ for more details.
 | `normalize-stdout`                | Normalize actual stdout with a rule `"<raw>" -> "<normalized>"` before comparing against snapshot                        | `ui`, `incremental`                          | `"<RAW>" -> "<NORMALIZED>"`, `<RAW>`/`<NORMALIZED>` is regex capture and replace syntax |
 | `dont-check-compiler-stderr`      | Don't check actual compiler stderr vs stderr snapshot                                                                    | `ui`                                         | N/A                                                                                     |
 | `dont-check-compiler-stdout`      | Don't check actual compiler stdout vs stdout snapshot                                                                    | `ui`                                         | N/A                                                                                     |
+| `dont-require-annotations`        | Don't require line annotations for the given diagnostic kind (`//~ KIND`) to be exhaustive                               | `ui`, `incremental`                          | `ERROR`, `WARN`, `NOTE`, `HELP`, `SUGGESTION`                                           |
 | `run-rustfix`                     | Apply all suggestions via `rustfix`, snapshot fixed output, and check fixed output builds                                | `ui`                                         | N/A                                                                                     |
 | `rustfix-only-machine-applicable` | `run-rustfix` but only machine-applicable suggestions                                                                    | `ui`                                         | N/A                                                                                     |
 | `exec-env`                        | Env var to set when executing a test                                                                                     | `ui`, `crashes`                              | `<KEY>=<VALUE>`                                                                         |
@@ -122,8 +121,7 @@ for more details.
 These directives are used to ignore the test in some situations, which
 means the test won't be compiled or run.
 
-* `ignore-X` where `X` is a target detail or stage will ignore the test
-  accordingly (see below)
+* `ignore-X` where `X` is a target detail or other criteria on which to ignore the test (see below)
 * `only-X` is like `ignore-X`, but will *only* run the test on that target or
   stage
 * `ignore-test` always ignores the test. This can be used to temporarily disable
@@ -142,8 +140,8 @@ Some examples of `X` in `ignore-X` or `only-X`:
   matches that target as well as the emscripten targets.
 - Pointer width: `32bit`, `64bit`
 - Endianness: `endian-big`
+- Stage: `stage1`, `stage2`
 - Binary format: `elf`
-- Stage: `stage0`, `stage1`, `stage2`
 - Channel: `stable`, `beta`
 - When cross compiling: `cross-compile`
 - When [remote testing] is used: `remote`
@@ -164,9 +162,9 @@ settings:
   stable support for `asm!`
 - `needs-profiler-runtime` — ignores the test if the profiler runtime was not
   enabled for the target
-  (`build.profiler = true` in rustc's `config.toml`)
+  (`build.profiler = true` in rustc's `bootstrap.toml`)
 - `needs-sanitizer-support` — ignores if the sanitizer support was not enabled
-  for the target (`sanitizers = true` in rustc's `config.toml`)
+  for the target (`sanitizers = true` in rustc's `bootstrap.toml`)
 - `needs-sanitizer-{address,hwaddress,leak,memory,thread}` — ignores if the
   corresponding sanitizer is not enabled for the target (AddressSanitizer,
   hardware-assisted AddressSanitizer, LeakSanitizer, MemorySanitizer or
@@ -176,7 +174,7 @@ settings:
   flag, or running on fuchsia.
 - `needs-unwind` — ignores if the target does not support unwinding
 - `needs-rust-lld` — ignores if the rust lld support is not enabled (`rust.lld =
-  true` in `config.toml`)
+  true` in `bootstrap.toml`)
 - `needs-threads` — ignores if the target does not have threading support
 - `needs-subprocess`  — ignores if the target does not have subprocess support
 - `needs-symlink` — ignores if the target does not support symlinks. This can be
@@ -194,12 +192,16 @@ settings:
   specified atomic widths, e.g. the test with `//@ needs-target-has-atomic: 8,
   16, ptr` will only run if it supports the comma-separated list of atomic
   widths.
-- `needs-dynamic-linking` - ignores if target does not support dynamic linking
+- `needs-dynamic-linking` — ignores if target does not support dynamic linking
   (which is orthogonal to it being unable to create `dylib` and `cdylib` crate types)
+- `needs-crate-type` — ignores if target platform does not support one or more
+  of the comma-delimited list of specified crate types. For example,
+  `//@ needs-crate-type: cdylib, proc-macro` will cause the test to be ignored
+  on `wasm32-unknown-unknown` target because the target does not support the
+  `proc-macro` crate type.
 
 The following directives will check LLVM support:
 
-- `no-system-llvm` — ignores if the system llvm is used
 - `exact-llvm-major-version: 19` — ignores if the llvm major version does not
   match the specified llvm major version.
 - `min-llvm-version: 13.0` — ignored if the LLVM version is less than the given
@@ -222,8 +224,6 @@ The following directives will check LLVM support:
     [`aarch64-gnu-debug`]), which only runs a
     subset of `run-make` tests. Other tests with this directive will not
     run at all, which is usually not what you want.
-  - Notably, the [`aarch64-gnu-debug`] CI job *currently* only runs `run-make`
-    tests which additionally contain `clang` in their test name.
 
 See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for
 ignoring debuggers.
@@ -235,14 +235,14 @@ ignoring debuggers.
 
 ### Affecting how tests are built
 
-| Directive           | Explanation                                                                                  | Supported test suites     | Possible values                                                              |
-|---------------------|----------------------------------------------------------------------------------------------|---------------------------|------------------------------------------------------------------------------|
-| `compile-flags`     | Flags passed to `rustc` when building the test or aux file                                   | All except for `run-make` | Any valid `rustc` flags, e.g. `-Awarnings -Dfoo`. Cannot be `-Cincremental`. |
-| `edition`           | Alias for `compile-flags: --edition=xxx`                                                     | All except for `run-make` | Any valid `--edition` value                                                  |
-| `rustc-env`         | Env var to set when running `rustc`                                                          | All except for `run-make` | `<KEY>=<VALUE>`                                                              |
-| `unset-rustc-env`   | Env var to unset when running `rustc`                                                        | All except for `run-make` | Any env var name                                                             |
-| `incremental`       | Proper incremental support for tests outside of incremental test suite                       | `ui`, `crashes`           | N/A                                                                          |
-| `no-prefer-dynamic` | Don't use `-C prefer-dynamic`, don't build as a dylib via a `--crate-type=dylib` preset flag | `ui`, `crashes`           | N/A                                                                          |
+| Directive           | Explanation                                                                                  | Supported test suites     | Possible values                                                                            |
+|---------------------|----------------------------------------------------------------------------------------------|---------------------------|--------------------------------------------------------------------------------------------|
+| `compile-flags`     | Flags passed to `rustc` when building the test or aux file                                   | All except for `run-make` | Any valid `rustc` flags, e.g. `-Awarnings -Dfoo`. Cannot be `-Cincremental` or `--edition` |
+| `edition`           | The edition used to build the test                                                           | All except for `run-make` | Any valid `--edition` value                                                                |
+| `rustc-env`         | Env var to set when running `rustc`                                                          | All except for `run-make` | `<KEY>=<VALUE>`                                                                            |
+| `unset-rustc-env`   | Env var to unset when running `rustc`                                                        | All except for `run-make` | Any env var name                                                                           |
+| `incremental`       | Proper incremental support for tests outside of incremental test suite                       | `ui`, `crashes`           | N/A                                                                                        |
+| `no-prefer-dynamic` | Don't use `-C prefer-dynamic`, don't build as a dylib via a `--crate-type=dylib` preset flag | `ui`, `crashes`           | N/A                                                                                        |
 
 <div class="warning">
 Tests (outside of `run-make`) that want to use incremental tests not in the

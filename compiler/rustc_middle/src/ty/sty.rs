@@ -8,7 +8,7 @@ use std::iter;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
-use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
@@ -16,8 +16,8 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, extension};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_type_ir::TyKind::*;
-use rustc_type_ir::visit::TypeVisitableExt;
-use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind, elaborate};
+use rustc_type_ir::walk::TypeWalker;
+use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind, TypeVisitableExt, elaborate};
 use tracing::instrument;
 use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
 
@@ -735,7 +735,7 @@ impl<'tcx> Ty<'tcx> {
                     .map(|principal| {
                         tcx.associated_items(principal.def_id())
                             .in_definition_order()
-                            .filter(|item| item.kind == ty::AssocKind::Type)
+                            .filter(|item| item.is_type())
                             .filter(|item| !item.is_impl_trait_in_trait())
                             .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                             .count()
@@ -1442,23 +1442,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[tracing::instrument(level = "trace", skip(tcx))]
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
-        match self.kind() {
-            FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),
-            FnPtr(sig_tys, hdr) => sig_tys.with(*hdr),
-            Error(_) => {
-                // ignore errors (#54954)
-                Binder::dummy(ty::FnSig {
-                    inputs_and_output: ty::List::empty(),
-                    c_variadic: false,
-                    safety: hir::Safety::Safe,
-                    abi: ExternAbi::Rust,
-                })
-            }
-            Closure(..) => bug!(
-                "to get the signature of a closure, use `args.as_closure().sig()` not `fn_sig()`",
-            ),
-            _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self),
-        }
+        self.kind().fn_sig(tcx)
     }
 
     #[inline]
@@ -1889,14 +1873,14 @@ impl<'tcx> Ty<'tcx> {
 
     /// Fast path helper for testing if a type is `Sized`.
     ///
-    /// Returning true means the type is known to be sized. Returning
-    /// `false` means nothing -- could be sized, might not be.
+    /// Returning true means the type is known to implement `Sized`. Returning `false` means
+    /// nothing -- could be sized, might not be.
     ///
-    /// Note that we could never rely on the fact that a type such as `[_]` is
-    /// trivially `!Sized` because we could be in a type environment with a
-    /// bound such as `[_]: Copy`. A function with such a bound obviously never
-    /// can be called, but that doesn't mean it shouldn't typecheck. This is why
-    /// this method doesn't return `Option<bool>`.
+    /// Note that we could never rely on the fact that a type such as `[_]` is trivially `!Sized`
+    /// because we could be in a type environment with a bound such as `[_]: Copy`. A function with
+    /// such a bound obviously never can be called, but that doesn't mean it shouldn't typecheck.
+    /// This is why this method doesn't return `Option<bool>`.
+    #[instrument(skip(tcx), level = "debug")]
     pub fn is_trivially_sized(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -2044,32 +2028,21 @@ impl<'tcx> Ty<'tcx> {
     /// nested types may be further simplified, the outermost [`TyKind`] or
     /// type constructor remains the same.
     pub fn is_known_rigid(self) -> bool {
-        match self.kind() {
-            Bool
-            | Char
-            | Int(_)
-            | Uint(_)
-            | Float(_)
-            | Adt(_, _)
-            | Foreign(_)
-            | Str
-            | Array(_, _)
-            | Pat(_, _)
-            | Slice(_)
-            | RawPtr(_, _)
-            | Ref(_, _, _)
-            | FnDef(_, _)
-            | FnPtr(..)
-            | Dynamic(_, _, _)
-            | Closure(_, _)
-            | CoroutineClosure(_, _)
-            | Coroutine(_, _)
-            | CoroutineWitness(..)
-            | Never
-            | Tuple(_)
-            | UnsafeBinder(_) => true,
-            Error(_) | Infer(_) | Alias(_, _) | Param(_) | Bound(_, _) | Placeholder(_) => false,
-        }
+        self.kind().is_known_rigid()
+    }
+
+    /// Iterator that walks `self` and any types reachable from
+    /// `self`, in depth-first order. Note that just walks the types
+    /// that appear in `self`, it does not descend into the fields of
+    /// structs or variants. For example:
+    ///
+    /// ```text
+    /// isize => { isize }
+    /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
+    /// [isize] => { [isize], isize }
+    /// ```
+    pub fn walk(self) -> TypeWalker<TyCtxt<'tcx>> {
+        TypeWalker::new(self.into())
     }
 }
 

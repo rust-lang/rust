@@ -22,7 +22,6 @@ note: inside `main`
    |
 LL |     core::panic!("panicking from libcore");
    | ^
-   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `core::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -116,8 +116,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         all_candidates: impl Fn() -> I,
         qself: AssocItemQSelf,
-        assoc_kind: ty::AssocKind,
-        assoc_name: Ident,
+        assoc_tag: ty::AssocTag,
+        assoc_ident: Ident,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'tcx>>,
     ) -> ErrorGuaranteed
@@ -129,28 +129,35 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // First and foremost, provide a more user-friendly & “intuitive” error on kind mismatches.
         if let Some(assoc_item) = all_candidates().find_map(|r| {
             tcx.associated_items(r.def_id())
-                .filter_by_name_unhygienic(assoc_name.name)
-                .find(|item| tcx.hygienic_eq(assoc_name, item.ident(tcx), r.def_id()))
+                .filter_by_name_unhygienic(assoc_ident.name)
+                .find(|item| tcx.hygienic_eq(assoc_ident, item.ident(tcx), r.def_id()))
         }) {
             return self.complain_about_assoc_kind_mismatch(
-                assoc_item, assoc_kind, assoc_name, span, constraint,
+                assoc_item,
+                assoc_tag,
+                assoc_ident,
+                span,
+                constraint,
             );
         }
 
-        let assoc_kind_str = assoc_kind_str(assoc_kind);
+        let assoc_kind_str = assoc_tag_str(assoc_tag);
         let qself_str = qself.to_string(tcx);
 
         // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
         // valid span, so we point at the whole path segment instead.
-        let is_dummy = assoc_name.span == DUMMY_SP;
+        let is_dummy = assoc_ident.span == DUMMY_SP;
 
         let mut err = errors::AssocItemNotFound {
-            span: if is_dummy { span } else { assoc_name.span },
-            assoc_name,
+            span: if is_dummy { span } else { assoc_ident.span },
+            assoc_ident,
             assoc_kind: assoc_kind_str,
             qself: &qself_str,
             label: None,
             sugg: None,
+            // Try to get the span of the identifier within the path's syntax context
+            // (if that's different).
+            within_macro_span: assoc_ident.span.within_macro(span, tcx.sess.source_map()),
         };
 
         if is_dummy {
@@ -161,15 +168,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let all_candidate_names: Vec<_> = all_candidates()
             .flat_map(|r| tcx.associated_items(r.def_id()).in_definition_order())
             .filter_map(|item| {
-                (!item.is_impl_trait_in_trait() && item.kind == assoc_kind).then_some(item.name)
+                if !item.is_impl_trait_in_trait() && item.as_tag() == assoc_tag {
+                    item.opt_name()
+                } else {
+                    None
+                }
             })
             .collect();
 
         if let Some(suggested_name) =
-            find_best_match_for_name(&all_candidate_names, assoc_name.name, None)
+            find_best_match_for_name(&all_candidate_names, assoc_ident.name, None)
         {
             err.sugg = Some(errors::AssocItemNotFoundSugg::Similar {
-                span: assoc_name.span,
+                span: assoc_ident.span,
                 assoc_kind: assoc_kind_str,
                 suggested_name,
             });
@@ -193,12 +204,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .iter()
             .flat_map(|trait_def_id| tcx.associated_items(*trait_def_id).in_definition_order())
             .filter_map(|item| {
-                (!item.is_impl_trait_in_trait() && item.kind == assoc_kind).then_some(item.name)
+                (!item.is_impl_trait_in_trait() && item.as_tag() == assoc_tag)
+                    .then_some(item.name())
             })
             .collect();
 
         if let Some(suggested_name) =
-            find_best_match_for_name(&wider_candidate_names, assoc_name.name, None)
+            find_best_match_for_name(&wider_candidate_names, assoc_ident.name, None)
         {
             if let [best_trait] = visible_traits
                 .iter()
@@ -206,17 +218,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .filter(|trait_def_id| {
                     tcx.associated_items(trait_def_id)
                         .filter_by_name_unhygienic(suggested_name)
-                        .any(|item| item.kind == assoc_kind)
+                        .any(|item| item.as_tag() == assoc_tag)
                 })
                 .collect::<Vec<_>>()[..]
             {
                 let trait_name = tcx.def_path_str(best_trait);
                 err.label = Some(errors::AssocItemNotFoundLabel::FoundInOtherTrait {
-                    span: assoc_name.span,
+                    span: assoc_ident.span,
                     assoc_kind: assoc_kind_str,
                     trait_name: &trait_name,
                     suggested_name,
-                    identically_named: suggested_name == assoc_name.name,
+                    identically_named: suggested_name == assoc_ident.name,
                 });
                 if let AssocItemQSelf::TyParam(ty_param_def_id, ty_param_span) = qself
                     // Not using `self.item_def_id()` here as that would yield the opaque type itself if we're
@@ -243,7 +255,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // The type param already has a bound for `trait_name`, we just need to
                         // change the associated item.
                         err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTrait {
-                            span: assoc_name.span,
+                            span: assoc_ident.span,
                             assoc_kind: assoc_kind_str,
                             suggested_name,
                         });
@@ -262,7 +274,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         Applicability::MaybeIncorrect
                     };
 
-                    let identically_named = suggested_name == assoc_name.name;
+                    let identically_named = suggested_name == assoc_ident.name;
 
                     if let DefKind::TyAlias = tcx.def_kind(item_def_id)
                         && !tcx.type_alias_is_lazy(item_def_id)
@@ -270,7 +282,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTraitQPath {
                             lo: ty_param_span.shrink_to_lo(),
                             mi: ty_param_span.shrink_to_hi(),
-                            hi: (!identically_named).then_some(assoc_name.span),
+                            hi: (!identically_named).then_some(assoc_ident.span),
                             trait_ref,
                             identically_named,
                             suggested_name,
@@ -291,7 +303,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             // We suggested constraining a type parameter, but the associated item on it
                             // was also not an exact match, so we also suggest changing it.
                             err.span_suggestion_verbose(
-                                assoc_name.span,
+                                assoc_ident.span,
                                 fluent::hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg,
                                 suggested_name,
                                 Applicability::MaybeIncorrect,
@@ -308,13 +320,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // suggest using it.
         if let [candidate_name] = all_candidate_names.as_slice() {
             err.sugg = Some(errors::AssocItemNotFoundSugg::Other {
-                span: assoc_name.span,
+                span: assoc_ident.span,
                 qself: &qself_str,
                 assoc_kind: assoc_kind_str,
                 suggested_name: *candidate_name,
             });
         } else {
-            err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span: assoc_name.span });
+            err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span: assoc_ident.span });
         }
 
         self.dcx().emit_err(err)
@@ -323,14 +335,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn complain_about_assoc_kind_mismatch(
         &self,
         assoc_item: &ty::AssocItem,
-        assoc_kind: ty::AssocKind,
+        assoc_tag: ty::AssocTag,
         ident: Ident,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'tcx>>,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx();
 
-        let bound_on_assoc_const_label = if let ty::AssocKind::Const = assoc_item.kind
+        let bound_on_assoc_const_label = if let ty::AssocKind::Const { .. } = assoc_item.kind
             && let Some(constraint) = constraint
             && let hir::AssocItemConstraintKind::Bound { .. } = constraint.kind
         {
@@ -368,17 +380,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 hir::Term::Ty(ty) => ty.span,
                 hir::Term::Const(ct) => ct.span(),
             };
-            (span, Some(ident.span), assoc_item.kind, assoc_kind)
+            (span, Some(ident.span), assoc_item.as_tag(), assoc_tag)
         } else {
-            (ident.span, None, assoc_kind, assoc_item.kind)
+            (ident.span, None, assoc_tag, assoc_item.as_tag())
         };
 
         self.dcx().emit_err(errors::AssocKindMismatch {
             span,
-            expected: assoc_kind_str(expected),
-            got: assoc_kind_str(got),
+            expected: assoc_tag_str(expected),
+            got: assoc_tag_str(got),
             expected_because_label,
-            assoc_kind: assoc_kind_str(assoc_item.kind),
+            assoc_kind: assoc_tag_str(assoc_item.as_tag()),
             def_span: tcx.def_span(assoc_item.def_id),
             bound_on_assoc_const_label,
             wrap_in_braces_sugg,
@@ -391,9 +403,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         types: &[String],
         traits: &[String],
         name: Symbol,
-        kind: ty::AssocKind,
+        assoc_tag: ty::AssocTag,
     ) -> ErrorGuaranteed {
-        let kind_str = assoc_kind_str(kind);
+        let kind_str = assoc_tag_str(assoc_tag);
         let mut err =
             struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated {kind_str}");
         if self
@@ -562,7 +574,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         candidates: Vec<(DefId, (DefId, DefId))>,
         fulfillment_errors: Vec<FulfillmentError<'tcx>>,
         span: Span,
-        kind: ty::AssocKind,
+        assoc_tag: ty::AssocTag,
     ) -> ErrorGuaranteed {
         // FIXME(fmease): This was copied in parts from an old version of `rustc_hir_typeck::method::suggest`.
         // Either
@@ -572,14 +584,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let tcx = self.tcx();
 
-        let kind_str = assoc_kind_str(kind);
+        let assoc_tag_str = assoc_tag_str(assoc_tag);
         let adt_did = self_ty.ty_adt_def().map(|def| def.did());
         let add_def_label = |err: &mut Diag<'_>| {
             if let Some(did) = adt_did {
                 err.span_label(
                     tcx.def_span(did),
                     format!(
-                        "associated {kind_str} `{name}` not found for this {}",
+                        "associated {assoc_tag_str} `{name}` not found for this {}",
                         tcx.def_descr(did)
                     ),
                 );
@@ -608,11 +620,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.dcx(),
                 name.span,
                 E0220,
-                "associated {kind_str} `{name}` not found for `{self_ty}` in the current scope"
+                "associated {assoc_tag_str} `{name}` not found for `{self_ty}` in the current scope"
             );
             err.span_label(name.span, format!("associated item not found in `{self_ty}`"));
             err.note(format!(
-                "the associated {kind_str} was found for\n{type_candidates}{additional_types}",
+                "the associated {assoc_tag_str} was found for\n{type_candidates}{additional_types}",
             ));
             add_def_label(&mut err);
             return err.emit();
@@ -693,7 +705,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut err = self.dcx().struct_span_err(
             name.span,
-            format!("the associated {kind_str} `{name}` exists for `{self_ty}`, but its trait bounds were not satisfied")
+            format!("the associated {assoc_tag_str} `{name}` exists for `{self_ty}`, but its trait bounds were not satisfied")
         );
         if !bounds.is_empty() {
             err.note(format!(
@@ -703,7 +715,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
         err.span_label(
             name.span,
-            format!("associated {kind_str} cannot be referenced on `{self_ty}` due to unsatisfied trait bounds")
+            format!("associated {assoc_tag_str} cannot be referenced on `{self_ty}` due to unsatisfied trait bounds")
         );
 
         for (span, mut bounds) in bound_spans {
@@ -754,7 +766,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // `issue-22560.rs`.
         let mut dyn_compatibility_violations = Ok(());
         for (assoc_item, trait_ref) in &missing_assoc_types {
-            names.entry(trait_ref).or_default().push(assoc_item.name);
+            names.entry(trait_ref).or_default().push(assoc_item.name());
             names_len += 1;
 
             let violations =
@@ -802,10 +814,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         return None;
                     };
 
-                    let assoc_item = tcx.associated_items(trait_def).find_by_name_and_kind(
+                    let assoc_item = tcx.associated_items(trait_def).find_by_ident_and_kind(
                         tcx,
                         ident,
-                        ty::AssocKind::Type,
+                        ty::AssocTag::Type,
                         trait_def,
                     );
 
@@ -845,16 +857,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut names: UnordMap<_, usize> = Default::default();
         for (item, _) in &missing_assoc_types {
             types_count += 1;
-            *names.entry(item.name).or_insert(0) += 1;
+            *names.entry(item.name()).or_insert(0) += 1;
         }
         let mut dupes = false;
         let mut shadows = false;
         for (item, trait_ref) in &missing_assoc_types {
-            let prefix = if names[&item.name] > 1 {
+            let name = item.name();
+            let prefix = if names[&name] > 1 {
                 let trait_def_id = trait_ref.def_id();
                 dupes = true;
                 format!("{}::", tcx.def_path_str(trait_def_id))
-            } else if bound_names.get(&item.name).is_some_and(|x| *x != item) {
+            } else if bound_names.get(&name).is_some_and(|x| *x != item) {
                 let trait_def_id = trait_ref.def_id();
                 shadows = true;
                 format!("{}::", tcx.def_path_str(trait_def_id))
@@ -864,7 +877,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             let mut is_shadowed = false;
 
-            if let Some(assoc_item) = bound_names.get(&item.name)
+            if let Some(assoc_item) = bound_names.get(&name)
                 && *assoc_item != item
             {
                 is_shadowed = true;
@@ -873,17 +886,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     if assoc_item.def_id.is_local() { ", consider renaming it" } else { "" };
                 err.span_label(
                     tcx.def_span(assoc_item.def_id),
-                    format!("`{}{}` shadowed here{}", prefix, item.name, rename_message),
+                    format!("`{}{}` shadowed here{}", prefix, name, rename_message),
                 );
             }
 
             let rename_message = if is_shadowed { ", consider renaming it" } else { "" };
 
-            if let Some(sp) = tcx.hir().span_if_local(item.def_id) {
-                err.span_label(
-                    sp,
-                    format!("`{}{}` defined here{}", prefix, item.name, rename_message),
-                );
+            if let Some(sp) = tcx.hir_span_if_local(item.def_id) {
+                err.span_label(sp, format!("`{}{}` defined here{}", prefix, name, rename_message));
             }
         }
         if potential_assoc_types.len() == missing_assoc_types.len() {
@@ -896,14 +906,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             let types: Vec<_> = missing_assoc_types
                 .iter()
-                .map(|(item, _)| format!("{} = Type", item.name))
+                .map(|(item, _)| format!("{} = Type", item.name()))
                 .collect();
-            let code = if snippet.ends_with('>') {
+            let code = if let Some(snippet) = snippet.strip_suffix('>') {
                 // The user wrote `Trait<'a>` or similar and we don't have a type we can
                 // suggest, but at least we can clue them to the correct syntax
                 // `Trait<'a, Item = Type>` while accounting for the `<'a>` in the
                 // suggestion.
-                format!("{}, {}>", &snippet[..snippet.len() - 1], types.join(", "))
+                format!("{}, {}>", snippet, types.join(", "))
             } else if in_expr_or_pat {
                 // The user wrote `Iterator`, so we don't have a type we can suggest, but at
                 // least we can clue them to the correct syntax `Iterator::<Item = Type>`.
@@ -931,16 +941,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let mut names: FxIndexMap<_, usize> = FxIndexMap::default();
             for (item, _) in &missing_assoc_types {
                 types_count += 1;
-                *names.entry(item.name).or_insert(0) += 1;
+                *names.entry(item.name()).or_insert(0) += 1;
             }
             let mut label = vec![];
             for (item, trait_ref) in &missing_assoc_types {
-                let postfix = if names[&item.name] > 1 {
+                let name = item.name();
+                let postfix = if names[&name] > 1 {
                     format!(" (from trait `{}`)", trait_ref.print_trait_sugared())
                 } else {
                     String::new()
                 };
-                label.push(format!("`{}`{}", item.name, postfix));
+                label.push(format!("`{}`{}", name, postfix));
             }
             if !label.is_empty() {
                 err.span_label(
@@ -1015,12 +1026,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .map(|simple_ty| tcx.incoherent_impls(simple_ty))
                 })
             && let name = Symbol::intern(&format!("{ident2}_{ident3}"))
-            && let Some(ty::AssocItem { kind: ty::AssocKind::Fn, .. }) = inherent_impls
+            && let Some(item) = inherent_impls
                 .iter()
                 .flat_map(|inherent_impl| {
                     tcx.associated_items(inherent_impl).filter_by_name_unhygienic(name)
                 })
                 .next()
+            && item.is_fn()
         {
             Err(struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated type")
                 .with_span_suggestion_verbose(
@@ -1378,7 +1390,7 @@ pub(crate) fn fn_trait_to_string(
         .find_map(|c| {
             if c.ident.name == sym::Output
                 && let Some(ty) = c.ty()
-                && ty.span != tcx.hir().span(trait_segment.hir_id)
+                && ty.span != tcx.hir_span(trait_segment.hir_id)
             {
                 tcx.sess.source_map().span_to_snippet(ty.span).ok()
             } else {
@@ -1517,7 +1529,7 @@ fn generics_args_err_extend<'a>(
                 })
                 .collect();
             if args.len() > 1
-                && let Some(span) = args.into_iter().last()
+                && let Some(span) = args.into_iter().next_back()
             {
                 err.note(
                     "generic arguments are not allowed on both an enum and its variant's path \
@@ -1622,10 +1634,10 @@ fn generics_args_err_extend<'a>(
     }
 }
 
-pub(crate) fn assoc_kind_str(kind: ty::AssocKind) -> &'static str {
-    match kind {
-        ty::AssocKind::Fn => "function",
-        ty::AssocKind::Const => "constant",
-        ty::AssocKind::Type => "type",
+pub(crate) fn assoc_tag_str(assoc_tag: ty::AssocTag) -> &'static str {
+    match assoc_tag {
+        ty::AssocTag::Fn => "function",
+        ty::AssocTag::Const => "constant",
+        ty::AssocTag::Type => "type",
     }
 }

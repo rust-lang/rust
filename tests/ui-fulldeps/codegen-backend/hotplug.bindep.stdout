@@ -1,4 +1,4 @@
-$TEST_BUILD_DIR/codegen-backend/hotplug.bindep/libhotplug.rlib: $DIR/hotplug.rs $TEST_BUILD_DIR/codegen-backend/hotplug.bindep/auxiliary/libthe_backend.so
+$TEST_BUILD_DIR/libhotplug.rlib: $DIR/hotplug.rs $TEST_BUILD_DIR/auxiliary/libthe_backend.so
 
 $DIR/hotplug.rs:
-$TEST_BUILD_DIR/codegen-backend/hotplug.bindep/auxiliary/libthe_backend.so:
+$TEST_BUILD_DIR/auxiliary/libthe_backend.so:

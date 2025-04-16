@@ -192,6 +192,7 @@ impl Atpit for () {
 
 type Tait = impl DerefMut;
 //~^ implied_bounds_in_impls
+#[define_opaque(Tait)]
 fn define() -> Tait {
     &mut [] as &mut [()]
 }

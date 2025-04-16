@@ -19,7 +19,7 @@ pub fn f2(x: &[f64], y: f64) -> f64 {
     unimplemented!()
 }
 
-#[autodiff(df3, ForwardFirst, Dual, Const, Const)]
+#[autodiff(df3, Forward, Dual, Const, Const)]
 pub fn f3(x: &[f64], y: f64) -> f64 {
     unimplemented!()
 }
@@ -34,6 +34,33 @@ pub fn f4() {}
 #[autodiff(df5_y, Forward, Const, Dual, Const)]
 pub fn f5(x: &[f64], y: f64) -> f64 {
     unimplemented!()
+}
+
+struct DoesNotImplDefault;
+#[autodiff(df6, Forward, Const)]
+pub fn f6() -> DoesNotImplDefault {
+    unimplemented!()
+}
+
+// Make sure, that we add the None for the default return.
+#[autodiff(df7, Forward, Const)]
+pub fn f7(x: f32) -> () {}
+
+#[autodiff(f8_1, Forward, Dual, DualOnly)]
+#[autodiff(f8_2, Forward, 4, Dual, DualOnly)]
+#[autodiff(f8_3, Forward, 4, Dual, Dual)]
+#[no_mangle]
+fn f8(x: &f32) -> f32 {
+    unimplemented!()
+}
+
+// We want to make sure that we can use the macro for functions defined inside of functions
+pub fn f9() {
+    #[autodiff(d_inner_1, Forward, Dual, DualOnly)]
+    #[autodiff(d_inner_2, Forward, Dual, Dual)]
+    fn inner(x: f32) -> f32 {
+        x * x
+    }
 }
 
 fn main() {}

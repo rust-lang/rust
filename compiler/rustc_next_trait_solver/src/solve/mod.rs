@@ -313,7 +313,9 @@ where
                     ty::AliasRelationDirection::Equate,
                 ),
             );
-            self.add_goal(GoalSource::Misc, alias_relate_goal);
+            // We normalize the self type to be able to relate it with
+            // types from candidates.
+            self.add_goal(GoalSource::TypeRelating, alias_relate_goal);
             self.try_evaluate_added_goals()?;
             Ok(self.resolve_vars_if_possible(normalized_term))
         } else {
@@ -328,6 +330,7 @@ where
             // During analysis, opaques are rigid unless they may be defined by
             // the current body.
             TypingMode::Analysis { defining_opaque_types: non_rigid_opaques }
+            | TypingMode::Borrowck { defining_opaque_types: non_rigid_opaques }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: non_rigid_opaques } => {
                 !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id))
             }

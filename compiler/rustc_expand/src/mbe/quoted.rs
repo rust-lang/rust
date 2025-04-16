@@ -274,7 +274,7 @@ fn parse_tree<'a>(
                     let msg =
                         format!("expected identifier, found `{}`", pprust::token_to_string(token),);
                     sess.dcx().span_err(token.span, msg);
-                    TokenTree::MetaVar(token.span, Ident::empty())
+                    TokenTree::MetaVar(token.span, Ident::dummy())
                 }
 
                 // There are no more tokens. Just return the `$` we already have.
@@ -283,7 +283,7 @@ fn parse_tree<'a>(
         }
 
         // `tree` is an arbitrary token. Keep it.
-        tokenstream::TokenTree::Token(token, _) => TokenTree::Token(token.clone()),
+        tokenstream::TokenTree::Token(token, _) => TokenTree::Token(*token),
 
         // `tree` is the beginning of a delimited set of tokens (e.g., `(` or `{`). We need to
         // descend into the delimited set and further parse it.
@@ -321,7 +321,7 @@ fn parse_kleene_op(
     match iter.next() {
         Some(tokenstream::TokenTree::Token(token, _)) => match kleene_op(token) {
             Some(op) => Ok(Ok((op, token.span))),
-            None => Ok(Err(token.clone())),
+            None => Ok(Err(*token)),
         },
         tree => Err(tree.map_or(span, tokenstream::TokenTree::span)),
     }

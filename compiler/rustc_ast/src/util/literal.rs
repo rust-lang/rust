@@ -2,7 +2,7 @@
 
 use std::{ascii, fmt, str};
 
-use rustc_lexer::unescape::{
+use rustc_literal_escaper::{
     MixedUnit, Mode, byte_from_char, unescape_byte, unescape_char, unescape_mixed, unescape_unicode,
 };
 use rustc_span::{Span, Symbol, kw, sym};

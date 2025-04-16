@@ -1,3 +1,4 @@
+//@require-annotations-for-level: WARN
 #![warn(clippy::single_match)]
 #![allow(
     unused,
@@ -18,13 +19,9 @@ fn single_match() {
     //~^^^^^^ single_match
 
     let x = Some(1u8);
-    match x {
-        // Note the missing block braces.
-        // We suggest `if let Some(y) = x { .. }` because the macro
-        // is expanded before we can do anything.
-        Some(y) => println!("{:?}", y),
-        _ => (),
-    }
+    if let Some(y) = x { println!("{:?}", y) }
+    //~^^^^^^^ single_match
+    //~| NOTE: you might want to preserve the comments from inside the `match`
 
     let z = (1u8, 1u8);
     if let (2..=3, 7..=9) = z { dummy() };
@@ -358,21 +355,14 @@ fn irrefutable_match() {
 
     let mut x = vec![1i8];
 
-    // Should not lint.
-    match x.pop() {
+    if let Some(u) = x.pop() { println!("{u}") }
+    //~^^^^^^ single_match
+    //~| NOTE: you might want to preserve the comments from inside the `match`
+
+    if let Some(u) = x.pop() {
         // bla
-        Some(u) => println!("{u}"),
-        // more comments!
-        None => {},
+        println!("{u}");
     }
-    // Should not lint.
-    match x.pop() {
-        // bla
-        Some(u) => {
-            // bla
-            println!("{u}");
-        },
-        // bla
-        None => {},
-    }
+    //~^^^^^^^^^ single_match
+    //~| NOTE: you might want to preserve the comments from inside the `match`
 }

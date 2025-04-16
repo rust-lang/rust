@@ -4,7 +4,7 @@ use hir::{db::HirDatabase, AsAssocItem, HirDisplay};
 use ide_db::{SnippetCap, SymbolKind};
 use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
-use syntax::{format_smolstr, AstNode, Edition, SmolStr, ToSmolStr};
+use syntax::{format_smolstr, AstNode, SmolStr, ToSmolStr};
 
 use crate::{
     context::{
@@ -142,9 +142,9 @@ fn render(
     }
 
     let detail = if ctx.completion.config.full_function_signatures {
-        detail_full(db, func, ctx.completion.edition)
+        detail_full(ctx.completion, func)
     } else {
-        detail(ctx.completion, func, ctx.completion.edition)
+        detail(ctx.completion, func)
     };
     item.set_documentation(ctx.docs(func))
         .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
@@ -251,7 +251,7 @@ pub(super) fn add_call_parens<'b>(
                     format!(
                         "{}(${{1:{}}}{}{})$0",
                         escaped_name,
-                        self_param.display(ctx.db, ctx.edition),
+                        self_param.display(ctx.db, ctx.display_target),
                         if params.is_empty() { "" } else { ", " },
                         function_params_snippet
                     )
@@ -307,7 +307,7 @@ fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type) -> &'sta
     ""
 }
 
-fn detail(ctx: &CompletionContext<'_>, func: hir::Function, edition: Edition) -> String {
+fn detail(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
     let mut ret_ty = func.ret_type(ctx.db);
     let mut detail = String::new();
 
@@ -324,15 +324,15 @@ fn detail(ctx: &CompletionContext<'_>, func: hir::Function, edition: Edition) ->
         format_to!(detail, "unsafe ");
     }
 
-    format_to!(detail, "fn({})", params_display(ctx.db, func, edition));
+    format_to!(detail, "fn({})", params_display(ctx, func));
     if !ret_ty.is_unit() {
-        format_to!(detail, " -> {}", ret_ty.display(ctx.db, edition));
+        format_to!(detail, " -> {}", ret_ty.display(ctx.db, ctx.display_target));
     }
     detail
 }
 
-fn detail_full(db: &dyn HirDatabase, func: hir::Function, edition: Edition) -> String {
-    let signature = format!("{}", func.display(db, edition));
+fn detail_full(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
+    let signature = format!("{}", func.display(ctx.db, ctx.display_target));
     let mut detail = String::with_capacity(signature.len());
 
     for segment in signature.split_whitespace() {
@@ -346,24 +346,24 @@ fn detail_full(db: &dyn HirDatabase, func: hir::Function, edition: Edition) -> S
     detail
 }
 
-fn params_display(db: &dyn HirDatabase, func: hir::Function, edition: Edition) -> String {
-    if let Some(self_param) = func.self_param(db) {
-        let assoc_fn_params = func.assoc_fn_params(db);
+fn params_display(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
+    if let Some(self_param) = func.self_param(ctx.db) {
+        let assoc_fn_params = func.assoc_fn_params(ctx.db);
         let params = assoc_fn_params
             .iter()
             .skip(1) // skip the self param because we are manually handling that
-            .map(|p| p.ty().display(db, edition));
+            .map(|p| p.ty().display(ctx.db, ctx.display_target));
         format!(
             "{}{}",
-            self_param.display(db, edition),
+            self_param.display(ctx.db, ctx.display_target),
             params.format_with("", |display, f| {
                 f(&", ")?;
                 f(&display)
             })
         )
     } else {
-        let assoc_fn_params = func.assoc_fn_params(db);
-        assoc_fn_params.iter().map(|p| p.ty().display(db, edition)).join(", ")
+        let assoc_fn_params = func.assoc_fn_params(ctx.db);
+        assoc_fn_params.iter().map(|p| p.ty().display(ctx.db, ctx.display_target)).join(", ")
     }
 }
 

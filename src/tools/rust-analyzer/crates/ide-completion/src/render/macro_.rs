@@ -62,7 +62,7 @@ fn render(
         completion.edition,
     );
     item.set_deprecated(ctx.is_deprecated(macro_))
-        .detail(macro_.display(completion.db, completion.edition).to_string())
+        .detail(macro_.display(completion.db, completion.display_target).to_string())
         .set_documentation(docs)
         .set_relevance(ctx.completion_relevance());
 

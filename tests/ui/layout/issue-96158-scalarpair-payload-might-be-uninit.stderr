@@ -4,7 +4,7 @@ error: layout_of(MissingPayloadField) = Layout {
                abi: Align(1 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: ScalarPair(
+           backend_repr: ScalarPair(
                Initialized {
                    value: Int(
                        I8,
@@ -55,7 +55,7 @@ error: layout_of(MissingPayloadField) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: ScalarPair(
+                       backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
                                    I8,
@@ -93,7 +93,7 @@ error: layout_of(MissingPayloadField) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -126,7 +126,7 @@ error: layout_of(CommonPayloadField) = Layout {
                abi: Align(1 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: ScalarPair(
+           backend_repr: ScalarPair(
                Initialized {
                    value: Int(
                        I8,
@@ -178,7 +178,7 @@ error: layout_of(CommonPayloadField) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: ScalarPair(
+                       backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
                                    I8,
@@ -217,7 +217,7 @@ error: layout_of(CommonPayloadField) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: ScalarPair(
+                       backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
                                    I8,
@@ -267,7 +267,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                abi: Align(1 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: ScalarPair(
+           backend_repr: ScalarPair(
                Initialized {
                    value: Int(
                        I8,
@@ -318,7 +318,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: ScalarPair(
+                       backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
                                    I8,
@@ -356,7 +356,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: ScalarPair(
+                       backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
                                    I8,
@@ -405,7 +405,7 @@ error: layout_of(NicheFirst) = Layout {
                abi: Align(1 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: ScalarPair(
+           backend_repr: ScalarPair(
                Initialized {
                    value: Int(
                        I8,
@@ -460,7 +460,7 @@ error: layout_of(NicheFirst) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: ScalarPair(
+                       backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
                                    I8,
@@ -510,7 +510,7 @@ error: layout_of(NicheFirst) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -532,7 +532,7 @@ error: layout_of(NicheFirst) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -565,7 +565,7 @@ error: layout_of(NicheSecond) = Layout {
                abi: Align(1 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: ScalarPair(
+           backend_repr: ScalarPair(
                Initialized {
                    value: Int(
                        I8,
@@ -620,7 +620,7 @@ error: layout_of(NicheSecond) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: ScalarPair(
+                       backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
                                    I8,
@@ -670,7 +670,7 @@ error: layout_of(NicheSecond) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -692,7 +692,7 @@ error: layout_of(NicheSecond) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {

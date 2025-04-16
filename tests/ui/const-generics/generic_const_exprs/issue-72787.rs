@@ -9,8 +9,8 @@ pub trait True {}
 
 impl<const LHS: u32, const RHS: u32> True for IsLessOrEqual<LHS, RHS> where
     Condition<{ LHS <= RHS }>: True
-//[min]~^ Error generic parameters may not be used in const operations
-//[min]~| Error generic parameters may not be used in const operations
+//[min]~^ ERROR generic parameters may not be used in const operations
+//[min]~| ERROR generic parameters may not be used in const operations
 {
 }
 impl True for Condition<true> {}
@@ -21,8 +21,8 @@ where
     IsLessOrEqual<I, 8>: True,
     IsLessOrEqual<J, 8>: True,
     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
-//[min]~^ Error generic parameters may not be used in const operations
-//[min]~| Error generic parameters may not be used in const operations
+//[min]~^ ERROR generic parameters may not be used in const operations
+//[min]~| ERROR generic parameters may not be used in const operations
     // Condition<{ 8 - I <= 8 - J }>: True,
 {
     fn print() {

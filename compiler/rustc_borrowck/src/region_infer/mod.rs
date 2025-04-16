@@ -9,23 +9,20 @@ use rustc_errors::Diag;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_index::IndexVec;
 use rustc_infer::infer::outlives::test_type_match;
-use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound, VerifyIfEq};
+use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound, VerifyIfEq};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::mir::{
-    AnnotationSource, BasicBlock, Body, ClosureOutlivesRequirement, ClosureOutlivesSubject,
-    ClosureOutlivesSubjectTy, ClosureRegionRequirements, ConstraintCategory, Local, Location,
-    ReturnConstraint, TerminatorKind,
+    AnnotationSource, BasicBlock, Body, ConstraintCategory, Local, Location, ReturnConstraint,
+    TerminatorKind,
 };
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::fold::fold_regions;
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex};
+use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex, fold_regions};
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_span::Span;
 use rustc_span::hygiene::DesugaringKind;
-use tracing::{debug, instrument, trace};
+use rustc_span::{DUMMY_SP, Span};
+use tracing::{Level, debug, enabled, instrument, trace};
 
-use crate::BorrowckInferCtxt;
 use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};
 use crate::dataflow::BorrowIndex;
@@ -38,6 +35,10 @@ use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues, T
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::UniversalRegions;
+use crate::{
+    BorrowckInferCtxt, ClosureOutlivesRequirement, ClosureOutlivesSubject,
+    ClosureOutlivesSubjectTy, ClosureRegionRequirements,
+};
 
 mod dump_mir;
 mod graphviz;
@@ -140,13 +141,11 @@ impl RegionTracker {
 }
 
 pub struct RegionInferenceContext<'tcx> {
-    pub var_infos: VarInfos,
-
     /// Contains the definition for every region variable. Region
     /// variables are identified by their index (`RegionVid`). The
     /// definition contains information about where the region came
     /// from as well as its final inferred value.
-    definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    pub(crate) definitions: Frozen<IndexVec<RegionVid, RegionDefinition<'tcx>>>,
 
     /// The liveness constraints added to each region. For most
     /// regions, these start out empty and steadily grow, though for
@@ -311,9 +310,11 @@ enum RegionRelationCheckResult {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-enum Trace<'tcx> {
+enum Trace<'a, 'tcx> {
     StartRegion,
-    FromOutlivesConstraint(OutlivesConstraint<'tcx>),
+    FromGraph(&'a OutlivesConstraint<'tcx>),
+    FromStatic(RegionVid),
+    FromMember(RegionVid, RegionVid, Span),
     NotVisited,
 }
 
@@ -326,31 +327,34 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
     let mut var_to_origin_sorted = var_to_origin.clone().into_iter().collect::<Vec<_>>();
     var_to_origin_sorted.sort_by_key(|vto| vto.0);
 
-    let mut reg_vars_to_origins_str = "region variables to origins:\n".to_string();
-    for (reg_var, origin) in var_to_origin_sorted.into_iter() {
-        reg_vars_to_origins_str.push_str(&format!("{reg_var:?}: {origin:?}\n"));
+    if enabled!(Level::DEBUG) {
+        let mut reg_vars_to_origins_str = "region variables to origins:\n".to_string();
+        for (reg_var, origin) in var_to_origin_sorted.into_iter() {
+            reg_vars_to_origins_str.push_str(&format!("{reg_var:?}: {origin:?}\n"));
+        }
+        debug!("{}", reg_vars_to_origins_str);
     }
-    debug!("{}", reg_vars_to_origins_str);
 
     let num_components = sccs.num_sccs();
     let mut components = vec![FxIndexSet::default(); num_components];
 
-    for (reg_var_idx, scc_idx) in sccs.scc_indices().iter().enumerate() {
-        let reg_var = ty::RegionVid::from_usize(reg_var_idx);
+    for (reg_var, scc_idx) in sccs.scc_indices().iter_enumerated() {
         let origin = var_to_origin.get(&reg_var).unwrap_or(&RegionCtxt::Unknown);
         components[scc_idx.as_usize()].insert((reg_var, *origin));
     }
 
-    let mut components_str = "strongly connected components:".to_string();
-    for (scc_idx, reg_vars_origins) in components.iter().enumerate() {
-        let regions_info = reg_vars_origins.clone().into_iter().collect::<Vec<_>>();
-        components_str.push_str(&format!(
-            "{:?}: {:?},\n)",
-            ConstraintSccIndex::from_usize(scc_idx),
-            regions_info,
-        ))
+    if enabled!(Level::DEBUG) {
+        let mut components_str = "strongly connected components:".to_string();
+        for (scc_idx, reg_vars_origins) in components.iter().enumerate() {
+            let regions_info = reg_vars_origins.clone().into_iter().collect::<Vec<_>>();
+            components_str.push_str(&format!(
+                "{:?}: {:?},\n)",
+                ConstraintSccIndex::from_usize(scc_idx),
+                regions_info,
+            ))
+        }
+        debug!("{}", components_str);
     }
-    debug!("{}", components_str);
 
     // calculate the best representative for each component
     let components_representatives = components
@@ -380,6 +384,26 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
     debug!("SCC edges {:#?}", scc_node_to_edges);
 }
 
+fn create_definitions<'tcx>(
+    infcx: &BorrowckInferCtxt<'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
+) -> Frozen<IndexVec<RegionVid, RegionDefinition<'tcx>>> {
+    // Create a RegionDefinition for each inference variable.
+    let mut definitions: IndexVec<_, _> = infcx
+        .get_region_var_infos()
+        .iter()
+        .map(|info| RegionDefinition::new(info.universe, info.origin))
+        .collect();
+
+    // Add the external name for all universal regions.
+    for (external_name, variable) in universal_regions.named_universal_regions_iter() {
+        debug!("region {variable:?} has external name {external_name:?}");
+        definitions[variable].external_name = Some(external_name);
+    }
+
+    Frozen::freeze(definitions)
+}
+
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Creates a new region inference context with a total of
     /// `num_region_variables` valid inference variables; the first N
@@ -390,7 +414,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// of constraints produced by the MIR type check.
     pub(crate) fn new(
         infcx: &BorrowckInferCtxt<'tcx>,
-        var_infos: VarInfos,
         constraints: MirTypeckRegionConstraints<'tcx>,
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
         location_map: Rc<DenseLocationMap>,
@@ -421,11 +444,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             infcx.set_tainted_by_errors(guar);
         }
 
-        // Create a RegionDefinition for each inference variable.
-        let definitions: IndexVec<_, _> = var_infos
-            .iter()
-            .map(|info| RegionDefinition::new(info.universe, info.origin))
-            .collect();
+        let definitions = create_definitions(infcx, &universal_regions);
 
         let constraint_sccs =
             outlives_constraints.add_outlives_static(&universal_regions, &definitions);
@@ -448,7 +467,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             Rc::new(member_constraints.into_mapped(|r| constraint_sccs.scc(r)));
 
         let mut result = Self {
-            var_infos,
             definitions,
             liveness_constraints,
             constraints,
@@ -522,18 +540,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// means that the `R1: !1` constraint here will cause
     /// `R1` to become `'static`.
     fn init_free_and_bound_regions(&mut self) {
-        // Update the names (if any)
-        // This iterator has unstable order but we collect it all into an IndexVec
-        for (external_name, variable) in
-            self.universal_region_relations.universal_regions.named_universal_regions_iter()
-        {
-            debug!(
-                "init_free_and_bound_regions: region {:?} has external name {:?}",
-                variable, external_name
-            );
-            self.definitions[variable].external_name = Some(external_name);
-        }
-
         for variable in self.definitions.indices() {
             let scc = self.constraint_sccs.scc(variable);
 
@@ -1764,6 +1770,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut context = IndexVec::from_elem(Trace::NotVisited, &self.definitions);
         context[from_region] = Trace::StartRegion;
 
+        let fr_static = self.universal_regions().fr_static;
+
         // Use a deque so that we do a breadth-first search. We will
         // stop at the first match, which ought to be the shortest
         // path (fewest constraints).
@@ -1783,13 +1791,39 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if target_test(r) {
                 let mut result = vec![];
                 let mut p = r;
+                // This loop is cold and runs at the end, which is why we delay
+                // `OutlivesConstraint` construction until now.
                 loop {
-                    match context[p].clone() {
-                        Trace::NotVisited => {
-                            bug!("found unvisited region {:?} on path to {:?}", p, r)
+                    match context[p] {
+                        Trace::FromGraph(c) => {
+                            p = c.sup;
+                            result.push(*c);
                         }
 
-                        Trace::FromOutlivesConstraint(c) => {
+                        Trace::FromStatic(sub) => {
+                            let c = OutlivesConstraint {
+                                sup: fr_static,
+                                sub,
+                                locations: Locations::All(DUMMY_SP),
+                                span: DUMMY_SP,
+                                category: ConstraintCategory::Internal,
+                                variance_info: ty::VarianceDiagInfo::default(),
+                                from_closure: false,
+                            };
+                            p = c.sup;
+                            result.push(c);
+                        }
+
+                        Trace::FromMember(sup, sub, span) => {
+                            let c = OutlivesConstraint {
+                                sup,
+                                sub,
+                                locations: Locations::All(span),
+                                span,
+                                category: ConstraintCategory::OpaqueType,
+                                variance_info: ty::VarianceDiagInfo::default(),
+                                from_closure: false,
+                            };
                             p = c.sup;
                             result.push(c);
                         }
@@ -1797,6 +1831,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         Trace::StartRegion => {
                             result.reverse();
                             return Some((result, r));
+                        }
+
+                        Trace::NotVisited => {
+                            bug!("found unvisited region {:?} on path to {:?}", p, r)
                         }
                     }
                 }
@@ -1808,45 +1846,42 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // A constraint like `'r: 'x` can come from our constraint
             // graph.
-            let fr_static = self.universal_regions().fr_static;
-            let outgoing_edges_from_graph =
-                self.constraint_graph.outgoing_edges(r, &self.constraints, fr_static);
 
             // Always inline this closure because it can be hot.
-            let mut handle_constraint = #[inline(always)]
-            |constraint: OutlivesConstraint<'tcx>| {
-                debug_assert_eq!(constraint.sup, r);
-                let sub_region = constraint.sub;
-                if let Trace::NotVisited = context[sub_region] {
-                    context[sub_region] = Trace::FromOutlivesConstraint(constraint);
-                    deque.push_back(sub_region);
+            let mut handle_trace = #[inline(always)]
+            |sub, trace| {
+                if let Trace::NotVisited = context[sub] {
+                    context[sub] = trace;
+                    deque.push_back(sub);
                 }
             };
 
-            // This loop can be hot.
-            for constraint in outgoing_edges_from_graph {
-                if matches!(constraint.category, ConstraintCategory::IllegalUniverse) {
-                    debug!("Ignoring illegal universe constraint: {constraint:?}");
-                    continue;
+            // If this is the `'static` region and the graph's direction is normal, then set up the
+            // Edges iterator to return all regions (#53178).
+            if r == fr_static && self.constraint_graph.is_normal() {
+                for sub in self.constraint_graph.outgoing_edges_from_static() {
+                    handle_trace(sub, Trace::FromStatic(sub));
                 }
-                handle_constraint(constraint);
+            } else {
+                let edges = self.constraint_graph.outgoing_edges_from_graph(r, &self.constraints);
+                // This loop can be hot.
+                for constraint in edges {
+                    if matches!(constraint.category, ConstraintCategory::IllegalUniverse) {
+                        debug!("Ignoring illegal universe constraint: {constraint:?}");
+                        continue;
+                    }
+                    debug_assert_eq!(constraint.sup, r);
+                    handle_trace(constraint.sub, Trace::FromGraph(constraint));
+                }
             }
 
             // Member constraints can also give rise to `'r: 'x` edges that
             // were not part of the graph initially, so watch out for those.
             // (But they are extremely rare; this loop is very cold.)
             for constraint in self.applied_member_constraints(self.constraint_sccs.scc(r)) {
+                let sub = constraint.min_choice;
                 let p_c = &self.member_constraints[constraint.member_constraint_index];
-                let constraint = OutlivesConstraint {
-                    sup: r,
-                    sub: constraint.min_choice,
-                    locations: Locations::All(p_c.definition_span),
-                    span: p_c.definition_span,
-                    category: ConstraintCategory::OpaqueType,
-                    variance_info: ty::VarianceDiagInfo::default(),
-                    from_closure: false,
-                };
-                handle_constraint(constraint);
+                handle_trace(sub, Trace::FromMember(r, sub, p_c.definition_span));
             }
         }
 

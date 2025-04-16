@@ -112,7 +112,6 @@ impl<'cx, 'a> Context<'cx, 'a> {
             self.span,
             self.cx.item(
                 self.span,
-                Ident::empty(),
                 thin_vec![self.cx.attr_nested_word(sym::allow, sym::unused_imports, self.span)],
                 ItemKind::Use(UseTree {
                     prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
@@ -297,6 +296,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::AssignOp(_, _, _)
             | ExprKind::Gen(_, _, _, _)
             | ExprKind::Await(_, _)
+            | ExprKind::Use(_, _)
             | ExprKind::Block(_, _)
             | ExprKind::Break(_, _)
             | ExprKind::Closure(_)

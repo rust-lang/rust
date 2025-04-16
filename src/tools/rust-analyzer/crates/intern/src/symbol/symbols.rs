@@ -185,6 +185,7 @@ define_symbols! {
     Clone,
     coerce_unsized,
     column,
+    completion,
     compile_error,
     concat_bytes,
     concat_idents,

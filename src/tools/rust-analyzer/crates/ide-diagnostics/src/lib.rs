@@ -81,7 +81,10 @@ mod tests;
 use std::{collections::hash_map, iter, sync::LazyLock};
 
 use either::Either;
-use hir::{db::ExpandDatabase, diagnostics::AnyDiagnostic, Crate, HirFileId, InFile, Semantics};
+use hir::{
+    db::ExpandDatabase, diagnostics::AnyDiagnostic, Crate, DisplayTarget, HirFileId, InFile,
+    Semantics,
+};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
     base_db::{ReleaseChannel, SourceDatabase},
@@ -277,6 +280,7 @@ struct DiagnosticsContext<'a> {
     sema: Semantics<'a, RootDatabase>,
     resolve: &'a AssistResolveStrategy,
     edition: Edition,
+    display_target: DisplayTarget,
     is_nightly: bool,
 }
 
@@ -374,7 +378,18 @@ pub fn semantic_diagnostics(
         module.and_then(|m| db.toolchain_channel(m.krate().into())),
         Some(ReleaseChannel::Nightly) | None
     );
-    let ctx = DiagnosticsContext { config, sema, resolve, edition: file_id.edition(), is_nightly };
+    let krate = module.map(|module| module.krate()).unwrap_or_else(|| {
+        (*db.crate_graph().crates_in_topological_order().last().unwrap()).into()
+    });
+    let display_target = krate.to_display_target(db);
+    let ctx = DiagnosticsContext {
+        config,
+        sema,
+        resolve,
+        edition: file_id.edition(),
+        is_nightly,
+        display_target,
+    };
 
     let mut diags = Vec::new();
     match module {

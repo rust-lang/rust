@@ -1,6 +1,5 @@
 use core::num::{IntErrorKind, NonZero};
 use core::option::Option::None;
-use std::mem::size_of;
 
 #[test]
 fn test_create_nonzero_instance() {

@@ -5,6 +5,8 @@
 //! expansion.
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
+pub use intern;
+
 pub mod attrs;
 pub mod builtin;
 pub mod change;

@@ -16,6 +16,19 @@ LL | unsafe impl<T: Clone> Send for TestType<T> {}
 LL | impl<T: MyTrait> !Send for TestType<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ negative implementation here
 
-error: aborting due to 1 previous error; 1 warning emitted
+error[E0367]: `!Send` impl requires `T: MyTrait` but the struct it is implemented for does not
+  --> $DIR/specialization-overlap-negative.rs:9:9
+   |
+LL | impl<T: MyTrait> !Send for TestType<T> {}
+   |         ^^^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/specialization-overlap-negative.rs:6:1
+   |
+LL | struct TestType<T>(::std::marker::PhantomData<T>);
+   | ^^^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0751`.
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0367, E0751.
+For more information about an error, try `rustc --explain E0367`.

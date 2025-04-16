@@ -16,13 +16,13 @@ fn main() {
     +=
     x;
     //~^ ERROR cannot move out of `x` because it is borrowed
-    //~| move out of `x` occurs here
+    //~| NOTE move out of `x` occurs here
 
     let y = Int(2);
     //~^ HELP consider changing this to be mutable
     //~| SUGGESTION mut
     y   //~ ERROR cannot borrow `y` as mutable, as it is not declared as mutable
-        //~| cannot borrow as mutable
+        //~| NOTE cannot borrow as mutable
     +=
     Int(1);
 }

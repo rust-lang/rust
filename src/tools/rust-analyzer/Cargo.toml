@@ -85,12 +85,12 @@ vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 edition = { path = "./crates/edition", version = "0.0.0" }
 
-ra-ap-rustc_hashes = { version = "0.98", default-features = false }
-ra-ap-rustc_lexer = { version = "0.98", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.98", default-features = false }
-ra-ap-rustc_index = { version = "0.98", default-features = false }
-ra-ap-rustc_abi = { version = "0.98", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.98", default-features = false }
+ra-ap-rustc_hashes = { version = "0.100", default-features = false }
+ra-ap-rustc_lexer = { version = "0.100", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.100", default-features = false }
+ra-ap-rustc_index = { version = "0.100", default-features = false }
+ra-ap-rustc_abi = { version = "0.100", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.100", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 
@@ -105,10 +105,10 @@ arrayvec = "0.7.4"
 bitflags = "2.4.1"
 cargo_metadata = "0.18.1"
 camino = "1.1.6"
-chalk-solve = { version = "0.99.0", default-features = false }
-chalk-ir = "0.99.0"
-chalk-recursive = { version = "0.99.0", default-features = false }
-chalk-derive = "0.99.0"
+chalk-solve = { version = "0.100.0", default-features = false }
+chalk-ir = "0.100.0"
+chalk-recursive = { version = "0.100.0", default-features = false }
+chalk-derive = "0.100.0"
 crossbeam-channel = "0.5.8"
 dissimilar = "1.0.7"
 dot = "0.1.4"
@@ -136,6 +136,7 @@ pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.0", default-features = false }
 rayon = "1.8.0"
 rustc-hash = "2.0.0"
+rustc-literal-escaper = "0.0.2"
 semver = "1.0.14"
 serde = { version = "1.0.192" }
 serde_derive = { version = "1.0.192" }

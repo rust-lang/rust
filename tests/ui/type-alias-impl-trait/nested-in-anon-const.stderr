@@ -13,7 +13,7 @@ error: unconstrained opaque type
 LL |                     type B<Z> = impl Sized;
    |                                 ^^^^^^^^^^
    |
-   = note: `B` must be used in combination with a concrete type within the same item
+   = note: `B` must be used in combination with a concrete type within the same crate
 
 error: aborting due to 2 previous errors
 

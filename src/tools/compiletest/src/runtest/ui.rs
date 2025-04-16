@@ -68,7 +68,7 @@ impl TestCx<'_> {
             {
                 let mut coverage_file_path = self.config.build_test_suite_root.clone();
                 coverage_file_path.push("rustfix_missing_coverage.txt");
-                debug!("coverage_file_path: {}", coverage_file_path.display());
+                debug!("coverage_file_path: {}", coverage_file_path);
 
                 let mut file = OpenOptions::new()
                     .create(true)
@@ -76,8 +76,8 @@ impl TestCx<'_> {
                     .open(coverage_file_path.as_path())
                     .expect("could not create or open file");
 
-                if let Err(e) = writeln!(file, "{}", self.testpaths.file.display()) {
-                    panic!("couldn't write to {}: {e:?}", coverage_file_path.display());
+                if let Err(e) = writeln!(file, "{}", self.testpaths.file) {
+                    panic!("couldn't write to {}: {e:?}", coverage_file_path);
                 }
             }
         } else if self.props.run_rustfix {
@@ -119,7 +119,7 @@ impl TestCx<'_> {
                 self.testpaths.relative_dir.join(self.testpaths.file.file_name().unwrap());
             println!(
                 "To only update this specific test, also pass `--test-args {}`",
-                relative_path_to_file.display(),
+                relative_path_to_file,
             );
             self.fatal_proc_rec(
                 &format!("{} errors occurred comparing output.", errors),
@@ -169,26 +169,22 @@ impl TestCx<'_> {
             self.props.error_patterns
         );
 
-        let check_patterns = should_run == WillExecute::No
-            && (!self.props.error_patterns.is_empty()
-                || !self.props.regex_error_patterns.is_empty());
         if !explicit && self.config.compare_mode.is_none() {
-            let check_annotations = !check_patterns || !expected_errors.is_empty();
-
-            if check_annotations {
-                // "//~ERROR comments"
-                self.check_expected_errors(expected_errors, &proc_res);
-            }
+            // "//~ERROR comments"
+            self.check_expected_errors(expected_errors, &proc_res);
         } else if explicit && !expected_errors.is_empty() {
             let msg = format!(
                 "line {}: cannot combine `--error-format` with {} annotations; use `error-pattern` instead",
-                expected_errors[0].line_num,
+                expected_errors[0].line_num_str(),
                 expected_errors[0].kind.unwrap_or(ErrorKind::Error),
             );
             self.fatal(&msg);
         }
         let output_to_check = self.get_output(&proc_res);
-        if check_patterns {
+        if should_run == WillExecute::No
+            && (!self.props.error_patterns.is_empty()
+                || !self.props.regex_error_patterns.is_empty())
+        {
             // "// error-pattern" comments
             self.check_all_error_patterns(&output_to_check, &proc_res, pm);
         }
@@ -215,8 +211,6 @@ impl TestCx<'_> {
                 let crate_name =
                     self.testpaths.file.file_stem().expect("test must have a file stem");
                 // crate name must be alphanumeric or `_`.
-                let crate_name =
-                    crate_name.to_str().expect("crate name implies file name must be valid UTF-8");
                 // replace `a.foo` -> `a__foo` for crate name purposes.
                 // replace `revision-name-with-dashes` -> `revision_name_with_underscore`
                 let crate_name = crate_name.replace('.', "__");

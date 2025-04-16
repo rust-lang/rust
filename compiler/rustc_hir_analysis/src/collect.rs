@@ -14,6 +14,7 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
+use std::assert_matches::assert_matches;
 use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
@@ -28,14 +29,13 @@ use rustc_errors::{
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt, walk_generics};
-use rustc_hir::{self as hir, GenericParamKind, HirId, Node};
+use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypingMode, fold_regions};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
@@ -43,9 +43,8 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 
-use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
-use crate::hir_ty_lowering::errors::assoc_kind_str;
+use crate::hir_ty_lowering::errors::assoc_tag_str;
 use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer, RegionInferReason};
 
 pub(crate) mod dump;
@@ -62,6 +61,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         type_of: type_of::type_of,
         type_of_opaque: type_of::type_of_opaque,
+        type_of_opaque_hir_typeck: type_of::type_of_opaque_hir_typeck,
         type_alias_is_lazy: type_of::type_alias_is_lazy,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
@@ -248,13 +248,13 @@ fn reject_placeholder_type_signatures_in_item<'tcx>(
     item: &'tcx hir::Item<'tcx>,
 ) {
     let (generics, suggest) = match &item.kind {
-        hir::ItemKind::Union(_, generics)
-        | hir::ItemKind::Enum(_, generics)
-        | hir::ItemKind::TraitAlias(generics, _)
-        | hir::ItemKind::Trait(_, _, generics, ..)
+        hir::ItemKind::Union(_, _, generics)
+        | hir::ItemKind::Enum(_, _, generics)
+        | hir::ItemKind::TraitAlias(_, generics, _)
+        | hir::ItemKind::Trait(_, _, _, generics, ..)
         | hir::ItemKind::Impl(hir::Impl { generics, .. })
-        | hir::ItemKind::Struct(_, generics) => (generics, true),
-        hir::ItemKind::TyAlias(_, generics) => (generics, false),
+        | hir::ItemKind::Struct(_, _, generics) => (generics, true),
+        hir::ItemKind::TyAlias(_, _, generics) => (generics, false),
         // `static`, `fn` and `const` are handled elsewhere to suggest appropriate type.
         _ => return,
     };
@@ -439,9 +439,9 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         &self,
         span: Span,
         def_id: LocalDefId,
-        assoc_name: Ident,
+        assoc_ident: Ident,
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
-        self.tcx.at(span).type_param_predicates((self.item_def_id, def_id, assoc_name))
+        self.tcx.at(span).type_param_predicates((self.item_def_id, def_id, assoc_ident))
     }
 
     fn lower_assoc_shared(
@@ -450,7 +450,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         item_def_id: DefId,
         item_segment: &rustc_hir::PathSegment<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
-        kind: ty::AssocKind,
+        assoc_tag: ty::AssocTag,
     ) -> Result<(DefId, ty::GenericArgsRef<'tcx>), ErrorGuaranteed> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
             let item_args = self.lowerer().lower_generic_args_of_assoc_item(
@@ -469,12 +469,11 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                 hir::Node::Field(_) | hir::Node::Ctor(_) | hir::Node::Variant(_) => {
                     let item = self
                         .tcx
-                        .hir()
-                        .expect_item(self.tcx.hir_get_parent_item(self.hir_id()).def_id);
+                        .hir_expect_item(self.tcx.hir_get_parent_item(self.hir_id()).def_id);
                     match &item.kind {
-                        hir::ItemKind::Enum(_, generics)
-                        | hir::ItemKind::Struct(_, generics)
-                        | hir::ItemKind::Union(_, generics) => {
+                        hir::ItemKind::Enum(_, _, generics)
+                        | hir::ItemKind::Struct(_, _, generics)
+                        | hir::ItemKind::Union(_, _, generics) => {
                             let lt_name = get_new_lifetime_name(self.tcx, poly_trait_ref, generics);
                             let (lt_sp, sugg) = match generics.params {
                                 [] => (generics.span, format!("<{lt_name}>")),
@@ -526,7 +525,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                 inferred_sugg,
                 bound,
                 mpart_sugg,
-                what: assoc_kind_str(kind),
+                what: assoc_tag_str(assoc_tag),
             }))
         }
     }
@@ -669,16 +668,16 @@ fn get_new_lifetime_name<'tcx>(
 #[instrument(level = "debug", skip_all)]
 fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
     let it = tcx.hir_item(item_id);
-    debug!(item = %it.ident, id = %it.hir_id());
+    debug!(item = ?it.kind.ident(), id = %it.hir_id());
     let def_id = item_id.owner_id.def_id;
     let icx = ItemCtxt::new(tcx, def_id);
 
     match &it.kind {
         // These don't define types.
-        hir::ItemKind::ExternCrate(_)
+        hir::ItemKind::ExternCrate(..)
         | hir::ItemKind::Use(..)
         | hir::ItemKind::Macro(..)
-        | hir::ItemKind::Mod(_)
+        | hir::ItemKind::Mod(..)
         | hir::ItemKind::GlobalAsm { .. } => {}
         hir::ItemKind::ForeignMod { items, .. } => {
             for item in *items {
@@ -738,7 +737,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.at(it.span).explicit_super_predicates_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
         }
-        hir::ItemKind::Struct(struct_def, _) | hir::ItemKind::Union(struct_def, _) => {
+        hir::ItemKind::Struct(_, struct_def, _) | hir::ItemKind::Union(_, struct_def, _) => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
@@ -760,7 +759,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.ensure_ok().predicates_of(def_id);
         }
 
-        hir::ItemKind::Static(ty, ..) | hir::ItemKind::Const(ty, ..) => {
+        hir::ItemKind::Static(_, ty, ..) | hir::ItemKind::Const(_, ty, ..) => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
@@ -1091,7 +1090,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 
     let repr = tcx.repr_options_of_def(def_id);
     let (kind, variants) = match &item.kind {
-        ItemKind::Enum(def, _) => {
+        ItemKind::Enum(_, def, _) => {
             let mut distance_from_explicit = 0;
             let variants = def
                 .variants
@@ -1119,7 +1118,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 
             (AdtKind::Enum, variants)
         }
-        ItemKind::Struct(def, _) | ItemKind::Union(def, _) => {
+        ItemKind::Struct(ident, def, _) | ItemKind::Union(ident, def, _) => {
             let adt_kind = match item.kind {
                 ItemKind::Struct(..) => AdtKind::Struct,
                 _ => AdtKind::Union,
@@ -1127,7 +1126,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
             let variants = std::iter::once(lower_variant(
                 tcx,
                 None,
-                item.ident,
+                *ident,
                 ty::VariantDiscr::Relative(0),
                 def,
                 adt_kind,
@@ -1143,7 +1142,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
-    let item = tcx.hir().expect_item(def_id);
+    let item = tcx.hir_expect_item(def_id);
 
     let (is_alias, is_auto, safety, items) = match item.kind {
         hir::ItemKind::Trait(is_auto, safety, .., items) => {
@@ -1342,11 +1341,12 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
         ),
 
         ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(sig, _, _), .. }) => {
-            let abi = tcx.hir().get_foreign_abi(hir_id);
+            let abi = tcx.hir_get_foreign_abi(hir_id);
             compute_sig_of_foreign_fn_decl(tcx, def_id, sig.decl, abi, sig.header.safety())
         }
 
-        Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor().is_some() => {
+        Ctor(data) => {
+            assert_matches!(data.ctor(), Some(_));
             let adt_def_id = tcx.hir_get_parent_item(hir_id).def_id.to_def_id();
             let ty = tcx.type_of(adt_def_id).instantiate_identity();
             let inputs = data.fields().iter().map(|f| tcx.type_of(f.def_id).instantiate_identity());
@@ -1418,7 +1418,7 @@ fn recover_infer_ret_ty<'tcx>(
         GenericParamKind::Lifetime { .. } => true,
         _ => false,
     });
-    let fn_sig = fold_regions(tcx, fn_sig, |r, _| match *r {
+    let fn_sig = fold_regions(tcx, fn_sig, |r, _| match r.kind() {
         ty::ReErased => {
             if has_region_params {
                 ty::Region::new_error_with_message(
@@ -1597,7 +1597,7 @@ pub fn suggest_impl_trait<'tcx>(
 
 fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTraitHeader<'_>> {
     let icx = ItemCtxt::new(tcx, def_id);
-    let item = tcx.hir().expect_item(def_id);
+    let item = tcx.hir_expect_item(def_id);
     let impl_ = item.expect_impl();
     impl_.of_trait.as_ref().map(|ast_trait_ref| {
         let selfty = tcx.type_of(def_id).instantiate_identity();
@@ -1705,18 +1705,13 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     abi: ExternAbi,
     safety: hir::Safety,
 ) -> ty::PolyFnSig<'tcx> {
-    let safety = if abi == ExternAbi::RustIntrinsic {
-        intrinsic_operation_unsafety(tcx, def_id)
-    } else {
-        safety
-    };
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let fty =
         ItemCtxt::new(tcx, def_id).lowerer().lower_fn_ty(hir_id, safety, abi, decl, None, None);
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw
-    if abi != ExternAbi::RustIntrinsic && !tcx.features().simd_ffi() {
+    if !tcx.features().simd_ffi() {
         let check = |hir_ty: &hir::Ty<'_>, ty: Ty<'_>| {
             if ty.is_simd() {
                 let snip = tcx
@@ -1792,7 +1787,7 @@ fn opaque_ty_origin<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> hir::OpaqueT
 fn rendered_precise_capturing_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> Option<&'tcx [Symbol]> {
+) -> Option<&'tcx [PreciseCapturingArgKind<Symbol, Symbol>]> {
     if let Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) =
         tcx.opt_rpitit_info(def_id.to_def_id())
     {
@@ -1801,7 +1796,12 @@ fn rendered_precise_capturing_args<'tcx>(
 
     tcx.hir_node_by_def_id(def_id).expect_opaque_ty().bounds.iter().find_map(|bound| match bound {
         hir::GenericBound::Use(args, ..) => {
-            Some(&*tcx.arena.alloc_from_iter(args.iter().map(|arg| arg.name())))
+            Some(&*tcx.arena.alloc_from_iter(args.iter().map(|arg| match arg {
+                PreciseCapturingArgKind::Lifetime(_) => {
+                    PreciseCapturingArgKind::Lifetime(arg.name())
+                }
+                PreciseCapturingArgKind::Param(_) => PreciseCapturingArgKind::Param(arg.name()),
+            })))
         }
         _ => None,
     })

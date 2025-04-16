@@ -32,10 +32,9 @@ pub use self::query::*;
 use crate::mir::interpret::{AllocRange, Scalar};
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
-use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
-    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypingEnv,
-    UserTypeAnnotationIndex,
+    self, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypeVisitableExt,
+    TypingEnv, UserTypeAnnotationIndex,
 };
 
 mod basic_blocks;
@@ -332,13 +331,13 @@ pub struct Body<'tcx> {
     ///
     /// ```rust
     /// fn test<T>() {
-    ///     let _ = [0; std::mem::size_of::<*mut T>()];
+    ///     let _ = [0; size_of::<*mut T>()];
     /// }
     /// ```
     ///
     /// **WARNING**: Do not change this flags after the MIR was originally created, even if an optimization
     /// removed the last mention of all generic params. We do not want to rely on optimizations and
-    /// potentially allow things like `[u8; std::mem::size_of::<T>() * 0]` due to this.
+    /// potentially allow things like `[u8; size_of::<T>() * 0]` due to this.
     pub is_polymorphic: bool,
 
     /// The phase at which this MIR should be "injected" into the compilation process.
@@ -791,7 +790,7 @@ impl<T> ClearCrossCrate<T> {
 const TAG_CLEAR_CROSS_CRATE_CLEAR: u8 = 0;
 const TAG_CLEAR_CROSS_CRATE_SET: u8 = 1;
 
-impl<E: TyEncoder, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
+impl<'tcx, E: TyEncoder<'tcx>, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
     #[inline]
     fn encode(&self, e: &mut E) {
         if E::CLEAR_CROSS_CRATE {
@@ -807,7 +806,7 @@ impl<E: TyEncoder, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
         }
     }
 }
-impl<D: TyDecoder, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
+impl<'tcx, D: TyDecoder<'tcx>, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
     #[inline]
     fn decode(d: &mut D) -> ClearCrossCrate<T> {
         if D::CLEAR_CROSS_CRATE {
@@ -1483,52 +1482,9 @@ pub struct UserTypeProjections {
     pub contents: Vec<UserTypeProjection>,
 }
 
-impl<'tcx> UserTypeProjections {
-    pub fn none() -> Self {
-        UserTypeProjections { contents: vec![] }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.contents.is_empty()
-    }
-
+impl UserTypeProjections {
     pub fn projections(&self) -> impl Iterator<Item = &UserTypeProjection> + ExactSizeIterator {
         self.contents.iter()
-    }
-
-    pub fn push_user_type(mut self, base_user_type: UserTypeAnnotationIndex) -> Self {
-        self.contents.push(UserTypeProjection { base: base_user_type, projs: vec![] });
-        self
-    }
-
-    fn map_projections(mut self, f: impl FnMut(UserTypeProjection) -> UserTypeProjection) -> Self {
-        self.contents = self.contents.into_iter().map(f).collect();
-        self
-    }
-
-    pub fn index(self) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.index())
-    }
-
-    pub fn subslice(self, from: u64, to: u64) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.subslice(from, to))
-    }
-
-    pub fn deref(self) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.deref())
-    }
-
-    pub fn leaf(self, field: FieldIdx) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.leaf(field))
-    }
-
-    pub fn variant(
-        self,
-        adt_def: AdtDef<'tcx>,
-        variant_index: VariantIdx,
-        field_index: FieldIdx,
-    ) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field_index))
     }
 }
 
@@ -1552,42 +1508,6 @@ impl<'tcx> UserTypeProjections {
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
     pub projs: Vec<ProjectionKind>,
-}
-
-impl UserTypeProjection {
-    pub(crate) fn index(mut self) -> Self {
-        self.projs.push(ProjectionElem::Index(()));
-        self
-    }
-
-    pub(crate) fn subslice(mut self, from: u64, to: u64) -> Self {
-        self.projs.push(ProjectionElem::Subslice { from, to, from_end: true });
-        self
-    }
-
-    pub(crate) fn deref(mut self) -> Self {
-        self.projs.push(ProjectionElem::Deref);
-        self
-    }
-
-    pub(crate) fn leaf(mut self, field: FieldIdx) -> Self {
-        self.projs.push(ProjectionElem::Field(field, ()));
-        self
-    }
-
-    pub(crate) fn variant(
-        mut self,
-        adt_def: AdtDef<'_>,
-        variant_index: VariantIdx,
-        field_index: FieldIdx,
-    ) -> Self {
-        self.projs.push(ProjectionElem::Downcast(
-            Some(adt_def.variant(variant_index).name),
-            variant_index,
-        ));
-        self.projs.push(ProjectionElem::Field(field_index, ()));
-        self
-    }
 }
 
 rustc_index::newtype_index! {
@@ -1716,8 +1636,8 @@ pub fn find_self_call<'tcx>(
         &body[block].terminator
         && let Operand::Constant(box ConstOperand { const_, .. }) = func
         && let ty::FnDef(def_id, fn_args) = *const_.ty().kind()
-        && let Some(ty::AssocItem { fn_has_self_parameter: true, .. }) =
-            tcx.opt_associated_item(def_id)
+        && let Some(item) = tcx.opt_associated_item(def_id)
+        && item.is_method()
         && let [Spanned { node: Operand::Move(self_place) | Operand::Copy(self_place), .. }, ..] =
             **args
     {

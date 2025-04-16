@@ -2,14 +2,12 @@
 
 //@ check-pass
 
-mod foo {
-    pub type Foo = impl PartialEq<(Foo, i32)>;
+pub type Foo = impl PartialEq<(Foo, i32)>;
 
-    fn foo() -> Foo {
-        super::Bar
-    }
+#[define_opaque(Foo)]
+fn foo() -> Foo {
+    Bar
 }
-use foo::Foo;
 
 struct Bar;
 

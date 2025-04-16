@@ -153,7 +153,7 @@ MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/pass/v
 
 Note that you will only get `info`, `warn` or `error` messages if you use a prebuilt compiler.
 In order to get `debug` and `trace` level messages, you need to build miri with a locally built
-compiler that has `debug=true` set in `config.toml`.
+compiler that has `debug=true` set in `bootstrap.toml`.
 
 #### Debugging error messages
 

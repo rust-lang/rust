@@ -2,8 +2,7 @@
 //@ aux-build:issue-12133-rlib.rs
 //@ aux-build:issue-12133-dylib.rs
 //@ aux-build:issue-12133-dylib2.rs
-//@ ignore-wasm32 no dylib support
-//@ ignore-musl
+//@ needs-crate-type: dylib
 //@ needs-dynamic-linking
 
 

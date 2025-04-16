@@ -32,7 +32,7 @@ fn main() {
     {
         let x = "Hello World".to_string();
         subs_to_soup((x.as_str(), &mut d));
-        //~^ does not live long enough
+        //~^ ERROR does not live long enough
     }
     println!("{}", d);
 }

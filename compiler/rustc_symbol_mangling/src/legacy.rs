@@ -28,7 +28,10 @@ pub(super) fn mangle<'tcx>(
     loop {
         let key = tcx.def_key(ty_def_id);
         match key.disambiguated_data.data {
-            DefPathData::TypeNs(_) | DefPathData::ValueNs(_) | DefPathData::Closure => {
+            DefPathData::TypeNs(_)
+            | DefPathData::ValueNs(_)
+            | DefPathData::Closure
+            | DefPathData::SyntheticCoroutineBody => {
                 instance_ty = tcx.type_of(ty_def_id).instantiate_identity();
                 debug!(?instance_ty);
                 break;

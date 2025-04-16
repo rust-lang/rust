@@ -106,6 +106,19 @@ pub(crate) struct IncorrectUseOfAwait {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(parse_incorrect_use_of_use)]
+pub(crate) struct IncorrectUseOfUse {
+    #[primary_span]
+    #[suggestion(
+        parse_parentheses_suggestion,
+        style = "verbose",
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     parse_incorrect_use_of_await_postfix_suggestion,
@@ -797,16 +810,16 @@ pub(crate) enum WrapInParentheses {
 
 #[derive(Diagnostic)]
 #[diag(parse_array_brackets_instead_of_braces)]
-pub(crate) struct ArrayBracketsInsteadOfSpaces {
+pub(crate) struct ArrayBracketsInsteadOfBraces {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sub: ArrayBracketsInsteadOfSpacesSugg,
+    pub sub: ArrayBracketsInsteadOfBracesSugg,
 }
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(parse_suggestion, applicability = "maybe-incorrect")]
-pub(crate) struct ArrayBracketsInsteadOfSpacesSugg {
+pub(crate) struct ArrayBracketsInsteadOfBracesSugg {
     #[suggestion_part(code = "[")]
     pub left: Span,
     #[suggestion_part(code = "]")]
@@ -1260,24 +1273,6 @@ pub(crate) struct StructLiteralBodyWithoutPathSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_struct_literal_needing_parens)]
-pub(crate) struct StructLiteralNeedingParens {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: StructLiteralNeedingParensSugg,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
-pub(crate) struct StructLiteralNeedingParensSugg {
-    #[suggestion_part(code = "(")]
-    pub before: Span,
-    #[suggestion_part(code = ")")]
-    pub after: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_unmatched_angle_brackets)]
 pub(crate) struct UnmatchedAngleBrackets {
     #[primary_span]
@@ -1500,6 +1495,14 @@ pub(crate) struct AsyncMoveOrderIncorrect {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_async_use_order_incorrect)]
+pub(crate) struct AsyncUseOrderIncorrect {
+    #[primary_span]
+    #[suggestion(style = "verbose", code = "async use", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_double_colon_in_bound)]
 pub(crate) struct DoubleColonInBound {
     #[primary_span]
@@ -1668,6 +1671,13 @@ pub(crate) struct AsyncMoveBlockIn2015 {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_async_use_block_in_2015)]
+pub(crate) struct AsyncUseBlockIn2015 {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_async_bound_modifier_in_2015)]
 pub(crate) struct AsyncBoundModifierIn2015 {
     #[primary_span]
@@ -1686,10 +1696,10 @@ pub(crate) struct SelfArgumentPointer {
 
 #[derive(Diagnostic)]
 #[diag(parse_unexpected_token_after_dot)]
-pub(crate) struct UnexpectedTokenAfterDot<'a> {
+pub(crate) struct UnexpectedTokenAfterDot {
     #[primary_span]
     pub span: Span,
-    pub actual: Cow<'a, str>,
+    pub actual: String,
 }
 
 #[derive(Diagnostic)]
@@ -2758,17 +2768,6 @@ pub(crate) enum UnexpectedExpressionInPatternSugg {
         expr: String,
         /// The statement's block's indentation.
         indentation: String,
-    },
-
-    #[multipart_suggestion(
-        parse_unexpected_expr_in_pat_inline_const_sugg,
-        applicability = "maybe-incorrect"
-    )]
-    InlineConst {
-        #[suggestion_part(code = "const {{ ")]
-        start_span: Span,
-        #[suggestion_part(code = " }}")]
-        end_span: Span,
     },
 }
 

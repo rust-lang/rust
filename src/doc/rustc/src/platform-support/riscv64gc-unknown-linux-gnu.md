@@ -26,7 +26,7 @@ These targets are distributed through `rustup`, and otherwise require no
 special configuration.
 
 If you need to build your own Rust for some reason though, the targets can be
-enabled in `config.toml`. For example:
+enabled in `bootstrap.toml`. For example:
 
 ```toml
 [build]

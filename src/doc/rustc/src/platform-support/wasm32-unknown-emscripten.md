@@ -61,7 +61,7 @@ Building this target can be done by:
 * Configure the `wasm32-unknown-emscripten` target to get built.
 * Ensure the `WebAssembly` target backend is not disabled in LLVM.
 
-These are all controlled through `config.toml` options. It should be possible
+These are all controlled through `bootstrap.toml` options. It should be possible
 to build this target on any platform. A minimal example configuration would be:
 
 ```toml

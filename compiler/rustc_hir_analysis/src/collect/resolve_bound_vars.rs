@@ -617,7 +617,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 });
             }
 
-            hir::ItemKind::ExternCrate(_)
+            hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Use(..)
             | hir::ItemKind::Macro(..)
             | hir::ItemKind::Mod(..)
@@ -627,13 +627,13 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }
-            hir::ItemKind::TyAlias(_, generics)
-            | hir::ItemKind::Const(_, generics, _)
-            | hir::ItemKind::Enum(_, generics)
-            | hir::ItemKind::Struct(_, generics)
-            | hir::ItemKind::Union(_, generics)
-            | hir::ItemKind::Trait(_, _, generics, ..)
-            | hir::ItemKind::TraitAlias(generics, ..)
+            hir::ItemKind::TyAlias(_, _, generics)
+            | hir::ItemKind::Const(_, _, generics, _)
+            | hir::ItemKind::Enum(_, _, generics)
+            | hir::ItemKind::Struct(_, _, generics)
+            | hir::ItemKind::Union(_, _, generics)
+            | hir::ItemKind::Trait(_, _, _, generics, ..)
+            | hir::ItemKind::TraitAlias(_, generics, ..)
             | hir::ItemKind::Impl(&hir::Impl { generics, .. }) => {
                 // These kinds of items have only early-bound lifetime parameters.
                 self.visit_early(item.hir_id(), generics, |this| intravisit::walk_item(this, item));
@@ -1462,7 +1462,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         for &(opaque_def_id, captures) in opaque_capture_scopes.iter().rev() {
             let mut captures = captures.borrow_mut();
             let remapped = *captures.entry(lifetime).or_insert_with(|| {
-                let feed = self.tcx.create_def(opaque_def_id, ident.name, DefKind::LifetimeParam);
+                let feed =
+                    self.tcx.create_def(opaque_def_id, Some(ident.name), DefKind::LifetimeParam);
                 feed.def_span(ident.span);
                 feed.def_ident_span(Some(ident.span));
                 feed.def_id()
@@ -1528,7 +1529,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             if let ResolvedArg::LateBound(..) = def
                 && let Some(what) = crossed_late_boundary
             {
-                let use_span = self.tcx.hir().span(hir_id);
+                let use_span = self.tcx.hir_span(hir_id);
                 let def_span = self.tcx.def_span(param_def_id);
                 let guar = match self.tcx.def_kind(param_def_id) {
                     DefKind::ConstParam => {
@@ -1575,11 +1576,11 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 } => {
                     let guar = self.tcx.dcx().emit_err(match self.tcx.def_kind(param_def_id) {
                         DefKind::TyParam => errors::LateBoundInApit::Type {
-                            span: self.tcx.hir().span(hir_id),
+                            span: self.tcx.hir_span(hir_id),
                             param_span: self.tcx.def_span(param_def_id),
                         },
                         DefKind::ConstParam => errors::LateBoundInApit::Const {
-                            span: self.tcx.hir().span(hir_id),
+                            span: self.tcx.hir_span(hir_id),
                             param_span: self.tcx.def_span(param_def_id),
                         },
                         kind => {
@@ -1604,7 +1605,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
         self.tcx
             .dcx()
-            .span_bug(self.tcx.hir().span(hir_id), format!("could not resolve {param_def_id:?}"));
+            .span_bug(self.tcx.hir_span(hir_id), format!("could not resolve {param_def_id:?}"));
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1810,7 +1811,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         self.tcx,
                         type_def_id,
                         constraint.ident,
-                        ty::AssocKind::Fn,
+                        ty::AssocTag::Fn,
                     ) {
                     bound_vars.extend(
                         self.tcx
@@ -1842,7 +1843,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     self.tcx,
                     type_def_id,
                     constraint.ident,
-                    ty::AssocKind::Type,
+                    ty::AssocTag::Type,
                 )
                 .map(|(bound_vars, _)| bound_vars);
                 self.with(scope, |this| {
@@ -1873,14 +1874,14 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     fn supertrait_hrtb_vars(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        assoc_name: Ident,
-        assoc_kind: ty::AssocKind,
+        assoc_ident: Ident,
+        assoc_tag: ty::AssocTag,
     ) -> Option<(Vec<ty::BoundVariableKind>, &'tcx ty::AssocItem)> {
         let trait_defines_associated_item_named = |trait_def_id: DefId| {
-            tcx.associated_items(trait_def_id).find_by_name_and_kind(
+            tcx.associated_items(trait_def_id).find_by_ident_and_kind(
                 tcx,
-                assoc_name,
-                assoc_kind,
+                assoc_ident,
+                assoc_tag,
                 trait_def_id,
             )
         };
@@ -1893,8 +1894,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             let Some((def_id, bound_vars)) = stack.pop() else {
                 break None;
             };
-            // See issue #83753. If someone writes an associated type on a non-trait, just treat it as
-            // there being no supertrait HRTBs.
+            // See issue #83753. If someone writes an associated type on a non-trait, just treat it
+            // as there being no supertrait HRTBs.
             match tcx.def_kind(def_id) {
                 DefKind::Trait | DefKind::TraitAlias | DefKind::Impl { .. } => {}
                 _ => break None,
@@ -1903,7 +1904,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             if let Some(assoc_item) = trait_defines_associated_item_named(def_id) {
                 break Some((bound_vars.into_iter().collect(), assoc_item));
             }
-            let predicates = tcx.explicit_supertraits_containing_assoc_item((def_id, assoc_name));
+            let predicates = tcx.explicit_supertraits_containing_assoc_item((def_id, assoc_ident));
             let obligations = predicates.iter_identity_copied().filter_map(|(pred, _)| {
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
@@ -2066,7 +2067,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                                     self.tcx,
                                     trait_def_id,
                                     item_segment.ident,
-                                    ty::AssocKind::Fn,
+                                    ty::AssocTag::Fn,
                                 )
                             });
 
@@ -2111,7 +2112,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             self.tcx,
                             trait_def_id,
                             item_segment.ident,
-                            ty::AssocKind::Fn,
+                            ty::AssocTag::Fn,
                         ) else {
                             return;
                         };

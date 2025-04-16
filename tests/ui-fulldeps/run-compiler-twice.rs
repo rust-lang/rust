@@ -46,7 +46,7 @@ fn main() {
 fn compile(code: String, output: PathBuf, sysroot: PathBuf, linker: Option<&Path>) {
     let mut opts = Options::default();
     opts.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
-    opts.maybe_sysroot = Some(sysroot);
+    opts.sysroot = sysroot;
 
     if let Some(linker) = linker {
         opts.cg.linker = Some(linker.to_owned());
@@ -70,6 +70,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf, linker: Option<&Path
         hash_untracked_state: None,
         register_lints: None,
         override_queries: None,
+        extra_symbols: Vec::new(),
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,

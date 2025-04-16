@@ -35,11 +35,10 @@ type_alias! { "c_float.md", c_float = f32; }
 type_alias! { "c_double.md", c_double = f64; }
 
 mod c_char_definition {
-    cfg_if! {
+    crate::cfg_match! {
         // These are the targets on which c_char is unsigned. Usually the
         // signedness is the same for all target_os values on a given architecture
         // but there are some exceptions (see isSignedCharDefault() in clang).
-        //
         // aarch64:
         //   Section 10 "Arm C and C++ language mappings" in Procedure Call Standard for the Arm®
         //   64-bit Architecture (AArch64) says C/C++ char is unsigned byte.
@@ -97,14 +96,19 @@ mod c_char_definition {
         //   are promoted to int as if from type signed char by default, unless the /J compilation
         //   option is used."
         //   https://learn.microsoft.com/en-us/cpp/cpp/fundamental-types-cpp?view=msvc-170#character-types
+        // Vita:
+        //   Chars are signed by default on the Vita, and VITASDK follows that convention.
+        //   https://github.com/vitasdk/buildscripts/blob/09c533b771591ecde88864b6acad28ffb688dbd4/patches/gcc/0001-gcc-10.patch#L33-L34
+        //
         // L4Re:
-        //   The kernel builds with -funsigned-char on all targets (but useserspace follows the
+        //   The kernel builds with -funsigned-char on all targets (but userspace follows the
         //   architecture defaults). As we only have a target for userspace apps so there are no
         //   special cases for L4Re below.
         //   https://github.com/rust-lang/rust/pull/132975#issuecomment-2484645240
-        if #[cfg(all(
+        all(
             not(windows),
             not(target_vendor = "apple"),
+            not(target_os = "vita"),
             any(
                 target_arch = "aarch64",
                 target_arch = "arm",
@@ -118,21 +122,27 @@ mod c_char_definition {
                 target_arch = "s390x",
                 target_arch = "xtensa",
             )
-        ))] {
+        ) => {
             pub(super) type c_char = u8;
-        } else {
-            // On every other target, c_char is signed.
+        }
+        // On every other target, c_char is signed.
+        _ => {
             pub(super) type c_char = i8;
         }
     }
 }
 
 mod c_long_definition {
-    cfg_if! {
-        if #[cfg(all(target_pointer_width = "64", not(windows)))] {
+    crate::cfg_match! {
+        any(
+            all(target_pointer_width = "64", not(windows)),
+            // wasm32 Linux ABI uses 64-bit long
+            all(target_arch = "wasm32", target_os = "linux")
+        ) => {
             pub(super) type c_long = i64;
             pub(super) type c_ulong = u64;
-        } else {
+        }
+        _ => {
             // The minimal size of `long` in the C standard is 32 bits
             pub(super) type c_long = i32;
             pub(super) type c_ulong = u32;
@@ -162,11 +172,12 @@ pub type c_ptrdiff_t = isize;
 pub type c_ssize_t = isize;
 
 mod c_int_definition {
-    cfg_if! {
-        if #[cfg(any(target_arch = "avr", target_arch = "msp430"))] {
+    crate::cfg_match! {
+        any(target_arch = "avr", target_arch = "msp430") => {
             pub(super) type c_int = i16;
             pub(super) type c_uint = u16;
-        } else {
+        }
+        _ => {
             pub(super) type c_int = i32;
             pub(super) type c_uint = u32;
         }

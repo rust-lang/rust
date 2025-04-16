@@ -47,12 +47,9 @@ impl DefPathTable {
         debug_assert_eq!(self.stable_crate_id, def_path_hash.stable_crate_id());
         let local_hash = def_path_hash.local_hash();
 
-        let index = {
-            let index = DefIndex::from(self.index_to_key.len());
-            debug!("DefPathTable::insert() - {:?} <-> {:?}", key, index);
-            self.index_to_key.push(key);
-            index
-        };
+        let index = self.index_to_key.push(key);
+        debug!("DefPathTable::insert() - {key:?} <-> {index:?}");
+
         self.def_path_hashes.push(local_hash);
         debug_assert!(self.def_path_hashes.len() == self.index_to_key.len());
 
@@ -290,6 +287,10 @@ pub enum DefPathData {
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
+    /// An anonymous associated type from an RPITIT.
+    AnonAssocTy,
+    /// A synthetic body for a coroutine's by-move body.
+    SyntheticCoroutineBody,
 }
 
 impl Definitions {
@@ -410,20 +411,25 @@ impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) if name == kw::Empty => None,
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
-            Impl | ForeignMod | CrateRoot | Use | GlobalAsm | Closure | Ctor | AnonConst
-            | OpaqueTy => None,
+            Impl
+            | ForeignMod
+            | CrateRoot
+            | Use
+            | GlobalAsm
+            | Closure
+            | Ctor
+            | AnonConst
+            | OpaqueTy
+            | AnonAssocTy
+            | SyntheticCoroutineBody => None,
         }
     }
 
     pub fn name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) if name == kw::Empty => {
-                DefPathDataName::Anon { namespace: sym::synthetic }
-            }
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => {
                 DefPathDataName::Named(name)
             }
@@ -437,6 +443,8 @@ impl DefPathData {
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
+            AnonAssocTy => DefPathDataName::Anon { namespace: sym::anon_assoc },
+            SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },
         }
     }
 }

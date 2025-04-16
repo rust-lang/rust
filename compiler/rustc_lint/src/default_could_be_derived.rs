@@ -93,7 +93,11 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
         let orig_fields = match cx.tcx.hir_get_if_local(type_def_id) {
             Some(hir::Node::Item(hir::Item {
                 kind:
-                    hir::ItemKind::Struct(hir::VariantData::Struct { fields, recovered: _ }, _generics),
+                    hir::ItemKind::Struct(
+                        _,
+                        hir::VariantData::Struct { fields, recovered: _ },
+                        _generics,
+                    ),
                 ..
             })) => fields.iter().map(|f| (f.ident.name, f)).collect::<FxHashMap<_, _>>(),
             _ => return,
@@ -133,7 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
             return;
         }
 
-        // At least one of the fields with a default value have been overriden in
+        // At least one of the fields with a default value have been overridden in
         // the `Default` implementation. We suggest removing it and relying on `..`
         // instead.
         let any_default_field_given =

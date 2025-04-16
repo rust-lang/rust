@@ -244,7 +244,7 @@ impl UdpSocket {
         // let buf = unsafe {
         //     xous::MemoryRange::new(
         //         &mut tx_req as *mut SendData as usize,
-        //         core::mem::size_of::<SendData>(),
+        //         size_of::<SendData>(),
         //     )
         //     .unwrap()
         // };

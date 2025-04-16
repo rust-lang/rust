@@ -12,7 +12,7 @@ pub fn main() {
     mir! {
         let a: [u8; 1024];
         {
-            Call(a = f(Move(a)), ReturnTo(bb1), UnwindUnreachable())
+            Call(a = f(Move(a)), ReturnTo(bb1), UnwindUnreachable()) //~ ERROR broken MIR
         }
         bb1 = {
             Return()

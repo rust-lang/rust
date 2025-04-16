@@ -783,6 +783,27 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn record_expr_field(
+        &self,
+        name: ast::NameRef,
+        expr: Option<ast::Expr>,
+    ) -> ast::RecordExprField {
+        let ast = make::record_expr_field(name.clone(), expr.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+
+            builder.map_node(name.syntax().clone(), ast.name_ref().unwrap().syntax().clone());
+            if let Some(expr) = expr {
+                builder.map_node(expr.syntax().clone(), ast.expr().unwrap().syntax().clone());
+            }
+
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn record_field_list(
         &self,
         fields: impl IntoIterator<Item = ast::RecordField>,

@@ -46,6 +46,7 @@ unsafe extern "C" {
         any(
             target_os = "netbsd",
             target_os = "openbsd",
+            target_os = "cygwin",
             target_os = "android",
             target_os = "redox",
             target_os = "nuttx",
@@ -58,11 +59,14 @@ unsafe extern "C" {
     #[cfg_attr(any(target_os = "freebsd", target_vendor = "apple"), link_name = "__error")]
     #[cfg_attr(target_os = "haiku", link_name = "_errnop")]
     #[cfg_attr(target_os = "aix", link_name = "_Errno")]
+    // SAFETY: this will always return the same pointer on a given thread.
+    #[unsafe(ffi_const)]
     fn errno_location() -> *mut c_int;
 }
 
 /// Returns the platform-specific value of errno
 #[cfg(not(any(target_os = "dragonfly", target_os = "vxworks", target_os = "rtems")))]
+#[inline]
 pub fn errno() -> i32 {
     unsafe { (*errno_location()) as i32 }
 }
@@ -71,16 +75,19 @@ pub fn errno() -> i32 {
 // needed for readdir and syscall!
 #[cfg(all(not(target_os = "dragonfly"), not(target_os = "vxworks"), not(target_os = "rtems")))]
 #[allow(dead_code)] // but not all target cfgs actually end up using it
+#[inline]
 pub fn set_errno(e: i32) {
     unsafe { *errno_location() = e as c_int }
 }
 
 #[cfg(target_os = "vxworks")]
+#[inline]
 pub fn errno() -> i32 {
     unsafe { libc::errnoGet() }
 }
 
 #[cfg(target_os = "rtems")]
+#[inline]
 pub fn errno() -> i32 {
     unsafe extern "C" {
         #[thread_local]
@@ -91,6 +98,7 @@ pub fn errno() -> i32 {
 }
 
 #[cfg(target_os = "dragonfly")]
+#[inline]
 pub fn errno() -> i32 {
     unsafe extern "C" {
         #[thread_local]
@@ -102,6 +110,7 @@ pub fn errno() -> i32 {
 
 #[cfg(target_os = "dragonfly")]
 #[allow(dead_code)]
+#[inline]
 pub fn set_errno(e: i32) {
     unsafe extern "C" {
         #[thread_local]
@@ -118,7 +127,12 @@ pub fn error_string(errno: i32) -> String {
     unsafe extern "C" {
         #[cfg_attr(
             all(
-                any(target_os = "linux", target_os = "hurd", target_env = "newlib"),
+                any(
+                    target_os = "linux",
+                    target_os = "hurd",
+                    target_env = "newlib",
+                    target_os = "cygwin"
+                ),
                 not(target_env = "ohos")
             ),
             link_name = "__xpg_strerror_r"
@@ -395,6 +409,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(
     target_os = "linux",
+    target_os = "cygwin",
     target_os = "hurd",
     target_os = "android",
     target_os = "nuttx",
@@ -484,7 +499,12 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(any(target_os = "redox", target_os = "rtems"))]
+#[cfg(target_os = "redox")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    crate::fs::read_to_string("/scheme/sys/exe").map(PathBuf::from)
+}
+
+#[cfg(target_os = "rtems")]
 pub fn current_exe() -> io::Result<PathBuf> {
     crate::fs::read_to_string("sys:exe").map(PathBuf::from)
 }

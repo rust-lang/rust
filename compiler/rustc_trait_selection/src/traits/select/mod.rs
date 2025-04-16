@@ -49,7 +49,9 @@ use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::solve::InferCtxtSelectExt as _;
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::project::{ProjectAndUnifyResult, ProjectionCacheKeyExt};
-use crate::traits::{EvaluateConstErr, ProjectionCacheKey, Unimplemented, effects};
+use crate::traits::{
+    EvaluateConstErr, ProjectionCacheKey, Unimplemented, effects, sizedness_fast_path,
+};
 
 mod _match;
 mod candidate_assembly;
@@ -601,6 +603,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match previous_stack.head() {
             Some(h) => self.check_recursion_limit(&obligation, h.obligation)?,
             None => self.check_recursion_limit(&obligation, &obligation)?,
+        }
+
+        if sizedness_fast_path(self.tcx(), obligation.predicate) {
+            return Ok(EvaluatedToOk);
         }
 
         ensure_sufficient_stack(|| {
@@ -1446,6 +1452,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.infcx.typing_mode() {
             TypingMode::Coherence => {}
             TypingMode::Analysis { .. }
+            | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => return Ok(()),
         }
@@ -1491,7 +1498,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // However, if we disqualify *all* goals from being cached, perf suffers.
             // This is likely fixed by better caching in general in the new solver.
             // See: <https://github.com/rust-lang/rust/issues/132064>.
-            TypingMode::Analysis { defining_opaque_types } => {
+            TypingMode::Analysis { defining_opaque_types }
+            | TypingMode::Borrowck { defining_opaque_types } => {
                 defining_opaque_types.is_empty() || !pred.has_opaque_types()
             }
             // The hidden types of `defined_opaque_types` is not local to the current
@@ -1801,17 +1809,21 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             return Some(candidates.pop().unwrap().candidate);
         }
 
-        // We prefer trivial builtin candidates, i.e. builtin impls without any nested
-        // requirements, over all others. This is a fix for #53123 and prevents winnowing
-        // from accidentally extending the lifetime of a variable.
-        let mut trivial_builtin = candidates
-            .iter()
-            .filter(|c| matches!(c.candidate, BuiltinCandidate { has_nested: false }));
-        if let Some(_trivial) = trivial_builtin.next() {
-            // There should only ever be a single trivial builtin candidate
+        // We prefer `Sized` candidates over everything.
+        let mut sized_candidates =
+            candidates.iter().filter(|c| matches!(c.candidate, SizedCandidate { has_nested: _ }));
+        if let Some(sized_candidate) = sized_candidates.next() {
+            // There should only ever be a single sized candidate
             // as they would otherwise overlap.
-            debug_assert_eq!(trivial_builtin.next(), None);
-            return Some(BuiltinCandidate { has_nested: false });
+            debug_assert_eq!(sized_candidates.next(), None);
+            // Only prefer the built-in `Sized` candidate if its nested goals are certain.
+            // Otherwise, we may encounter failure later on if inference causes this candidate
+            // to not hold, but a where clause would've applied instead.
+            if sized_candidate.evaluation.must_apply_modulo_regions() {
+                return Some(sized_candidate.candidate.clone());
+            } else {
+                return None;
+            }
         }
 
         // Before we consider where-bounds, we have to deduplicate them here and also
@@ -1925,9 +1937,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let mut impl_candidate = None;
         for c in impls {
             if let Some(prev) = impl_candidate.replace(c) {
-                if self.prefer_lhs_over_victim(has_non_region_infer, c, prev) {
+                if self.prefer_lhs_over_victim(has_non_region_infer, c, prev.0) {
                     // Ok, prefer `c` over the previous entry
-                } else if self.prefer_lhs_over_victim(has_non_region_infer, prev, c) {
+                } else if self.prefer_lhs_over_victim(has_non_region_infer, prev, c.0) {
                     // Ok, keep `prev` instead of the new entry
                     impl_candidate = Some(prev);
                 } else {
@@ -1940,7 +1952,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             // Don't use impl candidates which overlap with other candidates.
             // This should pretty much only ever happen with malformed impls.
             if candidates.iter().all(|c| match c.candidate {
-                BuiltinCandidate { has_nested: _ }
+                SizedCandidate { has_nested: _ }
+                | BuiltinCandidate { has_nested: _ }
                 | TransmutabilityCandidate
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
@@ -1986,7 +1999,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &self,
         has_non_region_infer: bool,
         (lhs, lhs_evaluation): (DefId, EvaluationResult),
-        (victim, victim_evaluation): (DefId, EvaluationResult),
+        victim: DefId,
     ) -> bool {
         let tcx = self.tcx();
         // See if we can toss out `victim` based on specialization.
@@ -2002,14 +2015,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
 
         match tcx.impls_are_allowed_to_overlap(lhs, victim) {
-            // For #33140 the impl headers must be exactly equal, the trait must not have
-            // any associated items and there are no where-clauses.
-            //
-            // We can just arbitrarily drop one of the impls.
-            Some(ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects) => {
-                assert_eq!(lhs_evaluation, victim_evaluation);
-                true
-            }
             // For candidates which already reference errors it doesn't really
             // matter what we do 🤷
             Some(ty::ImplOverlapKind::Permitted { marker: false }) => {
@@ -2239,15 +2244,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
-            // `Copy` and `Clone` are automatically implemented for an anonymous adt
-            // if all of its fields are `Copy` and `Clone`
-            ty::Adt(adt, args) if adt.is_anonymous() => {
-                // (*) binder moved here
-                Where(obligation.predicate.rebind(
-                    adt.non_enum_variant().fields.iter().map(|f| f.ty(self.tcx(), args)).collect(),
-                ))
-            }
-
             ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
@@ -2311,6 +2307,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Never
             | ty::Char => ty::Binder::dummy(Vec::new()),
 
+            // This branch is only for `experimental_default_bounds`.
+            // Other foreign types were rejected earlier in
+            // `assemble_candidates_from_auto_impls`.
+            ty::Foreign(..) => ty::Binder::dummy(Vec::new()),
+
             // FIXME(unsafe_binders): Squash the double binder for now, I guess.
             ty::UnsafeBinder(_) => return Err(SelectionError::Unimplemented),
 
@@ -2320,7 +2321,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Placeholder(..)
             | ty::Dynamic(..)
             | ty::Param(..)
-            | ty::Foreign(..)
             | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
             | ty::Bound(..)
             | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
@@ -2387,7 +2387,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         trait_def_id: DefId,
-        types: ty::Binder<'tcx, Vec<Ty<'tcx>>>,
+        types: Vec<Ty<'tcx>>,
     ) -> PredicateObligations<'tcx> {
         // Because the types were potentially derived from
         // higher-ranked obligations they may reference late-bound
@@ -2404,13 +2404,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // 3. Re-bind the regions back to `for<'a> &'a i32 : Copy`
 
         types
-            .as_ref()
-            .skip_binder() // binder moved -\
-            .iter()
-            .flat_map(|ty| {
-                let ty: ty::Binder<'tcx, Ty<'tcx>> = types.rebind(*ty); // <----/
-
-                let placeholder_ty = self.infcx.enter_forall_and_leak_universe(ty);
+            .into_iter()
+            .flat_map(|placeholder_ty| {
                 let Normalized { value: normalized_ty, mut obligations } =
                     ensure_sufficient_stack(|| {
                         normalize_with_depth(

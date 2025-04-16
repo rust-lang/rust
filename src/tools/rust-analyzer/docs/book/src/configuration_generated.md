@@ -102,6 +102,10 @@ Default:
 
  List of cfg options to enable with the given values.
 
+To enable a name without a value, use `"key"`.
+To enable a name with a value, use `"key=value"`.
+To disable, prefix the entry with a `!`.
+
 
  **rust-analyzer.cargo.extraArgs** (default: [])
 

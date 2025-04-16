@@ -147,22 +147,42 @@ impl_from!(i16 => isize, #[stable(feature = "lossless_iusize_conv", since = "1.2
 // https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-951.pdf
 
 // Note: integers can only be represented with full precision in a float if
-// they fit in the significand, which is 24 bits in f32 and 53 bits in f64.
+// they fit in the significand, which is:
+// * 11 bits in f16
+// * 24 bits in f32
+// * 53 bits in f64
+// * 113 bits in f128
 // Lossy float conversions are not implemented at this time.
+// FIXME(f16_f128): The `f16`/`f128` impls `#[stable]` attributes should be changed to reference
+// `f16`/`f128` when they are stabilised (trait impls have to have a `#[stable]` attribute, but none
+// of the `f16`/`f128` impls can be used on stable as the `f16` and `f128` types are unstable).
 
 // signed integer -> float
+impl_from!(i8 => f16, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i8 => f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i8 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(i8 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i16 => f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(i16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(i32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+// FIXME(f16_f128): This impl would allow using `f128` on stable before it is stabilised.
+// impl_from!(i64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 
 // unsigned integer -> float
+impl_from!(u8 => f16, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u8 => f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u8 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(u8 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(u16 => f16, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u16 => f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(u16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(u32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+// FIXME(f16_f128): This impl would allow using `f128` on stable before it is stabilised.
+// impl_from!(u64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 
 // float -> float
 // FIXME(f16_f128): adding additional `From<{float}>` impls to `f32` breaks inference. See
@@ -174,7 +194,12 @@ impl_from!(f32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0
 impl_from!(f64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 
 macro_rules! impl_float_from_bool {
-    ($float:ty) => {
+    (
+        $float:ty $(;
+            doctest_prefix: $(#[doc = $doctest_prefix:literal])*
+            doctest_suffix: $(#[doc = $doctest_suffix:literal])*
+        )?
+    ) => {
         #[stable(feature = "float_from_bool", since = "1.68.0")]
         impl From<bool> for $float {
             #[doc = concat!("Converts a [`bool`] to [`", stringify!($float),"`] losslessly.")]
@@ -182,12 +207,14 @@ macro_rules! impl_float_from_bool {
             ///
             /// # Examples
             /// ```
+            $($(#[doc = $doctest_prefix])*)?
             #[doc = concat!("let x: ", stringify!($float)," = false.into();")]
             /// assert_eq!(x, 0.0);
             /// assert!(x.is_sign_positive());
             ///
             #[doc = concat!("let y: ", stringify!($float)," = true.into();")]
             /// assert_eq!(y, 1.0);
+            $($(#[doc = $doctest_suffix])*)?
             /// ```
             #[inline]
             fn from(small: bool) -> Self {
@@ -198,8 +225,27 @@ macro_rules! impl_float_from_bool {
 }
 
 // boolean -> float
+impl_float_from_bool!(
+    f16;
+    doctest_prefix:
+    // rustdoc doesn't remove the conventional space after the `///`
+    ///#![feature(f16)]
+    ///# #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    ///
+    doctest_suffix:
+    ///# }
+);
 impl_float_from_bool!(f32);
 impl_float_from_bool!(f64);
+impl_float_from_bool!(
+    f128;
+    doctest_prefix:
+    ///#![feature(f128)]
+    ///# #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    ///
+    doctest_suffix:
+    ///# }
+);
 
 // no possible bounds violation
 macro_rules! impl_try_from_unbounded {

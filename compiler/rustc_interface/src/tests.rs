@@ -21,7 +21,7 @@ use rustc_session::config::{
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, build_session, filesearch, getopts};
+use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, build_session, getopts};
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
 use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
 use rustc_span::{FileName, SourceFileHashAlgorithm, sym};
@@ -41,7 +41,7 @@ where
 
     let matches = optgroups().parse(args).unwrap();
     let sessopts = build_session_options(&mut early_dcx, &matches);
-    let sysroot = filesearch::materialize_sysroot(sessopts.maybe_sysroot.clone());
+    let sysroot = sessopts.sysroot.clone();
     let target =
         rustc_session::config::build_target_config(&early_dcx, &sessopts.target_triple, &sysroot);
     let hash_kind = sessopts.unstable_opts.src_hash_algorithm(&target);
@@ -53,7 +53,7 @@ where
         checksum_hash_kind,
     });
 
-    rustc_span::create_session_globals_then(DEFAULT_EDITION, sm_inputs, || {
+    rustc_span::create_session_globals_then(DEFAULT_EDITION, &[], sm_inputs, || {
         let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
         let io = CompilerIO {
             input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
@@ -787,6 +787,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(direct_access_external_data, Some(true));
     tracked!(dual_proc_macros, true);
     tracked!(dwarf_version, Some(5));
+    tracked!(embed_metadata, false);
     tracked!(embed_source, true);
     tracked!(emit_thin_lto, false);
     tracked!(emscripten_wasm_eh, true);
@@ -852,6 +853,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(sanitizer_cfi_generalize_pointers, Some(true));
     tracked!(sanitizer_cfi_normalize_integers, Some(true));
     tracked!(sanitizer_dataflow_abilist, vec![String::from("/rustc/abc")]);
+    tracked!(sanitizer_kcfi_arity, Some(true));
     tracked!(sanitizer_memory_track_origins, 2);
     tracked!(sanitizer_recover, SanitizerSet::ADDRESS);
     tracked!(saturating_float_casts, Some(true));

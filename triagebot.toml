@@ -18,6 +18,7 @@ allow-unauthenticated = [
     "WG-*",
     "-Z*",
     "beta-nominated",
+    "CI-spurious-*",
     "const-hack",
     "llvm-*",
     "needs-fcp",
@@ -46,7 +47,6 @@ add_labels = ["S-waiting-on-review"]
 [glacier]
 
 [ping.icebreakers-llvm]
-alias = ["llvm", "llvms"]
 message = """\
 Hey LLVM ICE-breakers! This bug has been identified as a good
 "LLVM ICE-breaking candidate". In case it's useful, here are some
@@ -174,8 +174,8 @@ label = "O-emscripten"
 
 [ping.relnotes-interest-group]
 message = """\
-Hi relnotes-interest-group, this PR adds release notes. Could you review this PR
-if you have time? Thanks <3
+Hi relnotes-interest-group, this issue/PR could use some help in reviewing /
+adjusting release notes. Could you take a look if available? Thanks <3
 """
 
 [prioritize]
@@ -252,7 +252,16 @@ trigger_files = [
     "compiler/rustc_passes/src/check_attr.rs",
     "compiler/rustc_attr_parsing",
     "compiler/rustc_attr_data_structures",
-    "compiler/rustc_attr_validation",
+]
+
+[autolabel."F-autodiff"]
+trigger_files = [
+    "src/tools/enzyme",
+    "src/doc/unstable-book/src/compiler-flags/autodiff.md",
+    "compiler/rustc_ast/src/expand/autodiff_attrs.rs",
+    "compiler/rustc_monomorphize/src/partitioning/autodiff.rs",
+    "compiler/rustc_codegen_llvm/src/builder/autodiff.rs",
+    "compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs",
 ]
 
 [autolabel."T-rustdoc-frontend"]
@@ -274,7 +283,7 @@ trigger_files = [
 [autolabel."A-rustdoc-search"]
 trigger_files = [
     "src/librustdoc/html/static/js/search.js",
-    "tests/rustdoc-js",
+    "tests/rustdoc-js/",
     "tests/rustdoc-js-std",
 ]
 
@@ -308,6 +317,23 @@ exclude_labels = [
     "T-*",
 ]
 
+trigger_labels = [
+    "D-*",
+    "A-diagnostics",
+]
+
+[autolabel."A-diagnostics"]
+
+trigger_labels = [
+    "D-*",
+]
+
+[autolabel."A-lints"]
+
+trigger_labels = [
+    "L-*",
+]
+
 [autolabel."T-libs"]
 trigger_files = [
     "library/alloc",
@@ -316,7 +342,6 @@ trigger_files = [
     "library/panic_unwind",
     "library/std",
     "library/stdarch",
-    "library/term",
     "library/test",
 ]
 exclude_labels = [
@@ -331,7 +356,7 @@ trigger_files = [
 [autolabel."O-apple"]
 trigger_files = [
     "library/std/src/os/darwin",
-    "library/std/src/sys/pal/unix/thread_parking/darwin.rs",
+    "library/std/src/sys/sync/thread_parking/darwin.rs",
     "compiler/rustc_target/src/spec/base/apple",
 ]
 
@@ -408,7 +433,8 @@ trigger_files = [
 [autolabel."O-wasm"]
 trigger_files = [
     "library/std/src/sys/pal/wasm",
-    "library/std/src/os/wasm"
+    "library/std/src/os/wasi",
+    "library/std/src/os/wasip2"
 ]
 
 [autolabel."O-windows"]
@@ -421,7 +447,7 @@ trigger_files = [
 trigger_files = [
     "Cargo.toml",
     "configure",
-    "config.example.toml",
+    "bootstrap.example.toml",
     "src/bootstrap",
     "src/build_helper",
     "src/tools/rust-installer",
@@ -499,7 +525,6 @@ trigger_files = [
     "CONTRIBUTING.md",
     "INSTALL.md",
     "REUSE.toml",
-    ".reuse",
     ".mailmap",
     ".git-blame-ignore-revs",
     ".editorconfig"
@@ -524,7 +549,6 @@ exclude_labels = [
 
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
-    "compiler/rustc_middle/src/traits/solve",
     "compiler/rustc_next_trait_solver",
     "compiler/rustc_trait_selection/src/solve",
     "compiler/rustc_type_ir/src/solve",
@@ -567,12 +591,12 @@ trigger_files = [
 ]
 
 [notify-zulip."I-prioritize"]
-zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
+zulip_stream = 245100 # #t-compiler/prioritization/alerts
 topic = "#{number} {title}"
 message_on_add = """\
 @*WG-prioritization/alerts* issue #{number} has been requested for prioritization.
 
-# [Procedure](https://forge.rust-lang.org/compiler/prioritization/procedure.html#assign-priority-to-unprioritized-issues-with-i-prioritize-label)
+# [Procedure](https://forge.rust-lang.org/compiler/prioritization.html)
 - Priority?
 - Regression?
 - Notify people/groups?
@@ -701,6 +725,9 @@ cc = ["@davidtwco", "@wesleywiser"]
 [mentions."compiler/rustc_codegen_cranelift"]
 cc = ["@bjorn3"]
 
+[mentions."compiler/rustc_codegen_ssa"]
+cc = ["@WaffleLapkin"]
+
 [mentions."compiler/rustc_codegen_gcc"]
 cc = ["@antoyo", "@GuillaumeGomez"]
 
@@ -791,7 +818,7 @@ cc = ["@Nadrieril"]
 message = "Some changes occurred in cfg and check-cfg configuration"
 cc = ["@Urgau"]
 
-[mentions."compiler/rustc_lint/src/context/diagnostics/check_cfg.rs"]
+[mentions."compiler/rustc_lint/src/early/diagnostics/check_cfg.rs"]
 message = "Some changes occurred in check-cfg diagnostics"
 cc = ["@Urgau"]
 
@@ -838,13 +865,7 @@ message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
 [mentions."tests/run-make/"]
-message = """
-This PR modifies `tests/run-make/`. If this PR is trying to port a Makefile
-run-make test to use rmake.rs, please update the
-[run-make port tracking issue](https://github.com/rust-lang/rust/issues/121876)
-so we can track our progress. You can either modify the tracking issue
-directly, or you can comment on the tracking issue and link this PR.
-"""
+message = "This PR modifies `run-make` tests."
 cc = ["@jieyouxu"]
 
 [mentions."src/rustdoc-json-types"]
@@ -953,9 +974,9 @@ This PR modifies `src/bootstrap/defaults`.
 
 If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
-[mentions."config.example.toml"]
+[mentions."bootstrap.example.toml"]
 message = """
-This PR modifies `config.example.toml`.
+This PR modifies `bootstrap.example.toml`.
 
 If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
@@ -963,7 +984,10 @@ If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/util
 [mentions."src/bootstrap/src/core/build_steps/llvm.rs"]
 message = "This PR changes how LLVM is built. Consider updating src/bootstrap/download-ci-llvm-stamp."
 
-[mentions."test/crashes"]
+[mentions."src/bootstrap/src/core/build_steps/gcc.rs"]
+message = "This PR changes how GCC is built. Consider updating src/bootstrap/download-ci-gcc-stamp."
+
+[mentions."tests/crashes"]
 message = "This PR changes a file inside `tests/crashes`. If a crash was fixed, please move into the corresponding `ui` subdir and add 'Fixes #<issueNr>' to the PR description to autoclose the issue upon merge."
 
 [mentions."tests/rustdoc-json"]
@@ -978,7 +1002,7 @@ message = "Changes to the size of AST and/or HIR nodes."
 cc = ["@nnethercote"]
 
 [mentions."compiler/rustc_sanitizers"]
-cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+cc = ["@rcvalle"]
 
 [mentions."src/doc/rustc/src/exploit-mitigations.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
@@ -1014,7 +1038,7 @@ cc = ["@Urgau"]
 cc = ["@Noratrieb"]
 
 [mentions."tests/codegen/sanitizer"]
-cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+cc = ["@rcvalle"]
 
 [mentions."tests/codegen/split-lto-unit.rs"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
@@ -1026,7 +1050,7 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."tests/ui/sanitizer"]
-cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
+cc = ["@rcvalle"]
 
 [mentions."tests/ui/stack-protector"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
@@ -1077,14 +1101,32 @@ cc = ["@jdonszelmann"]
 cc = ["@jdonszelmann"]
 [mentions."compiler/rustc_attr_data_structures"]
 cc = ["@jdonszelmann"]
-[mentions."compiler/rustc_attr_validation"]
-cc = ["@jdonszelmann"]
+
+[mentions."src/tools/enzyme"]
+cc = ["@ZuseZ4"]
+[mentions."src/doc/unstable-book/src/compiler-flags/autodiff.md"]
+cc = ["@ZuseZ4"]
+[mentions."compiler/rustc_ast/src/expand/autodiff_attrs.rs"]
+cc = ["@ZuseZ4"]
+[mentions."compiler/rustc_ast/src/expand/typetree.rs"]
+cc = ["@ZuseZ4"]
+[mentions."compiler/rustc_builtin_macros/src/autodiff.rs"]
+cc = ["@ZuseZ4"]
+[mentions."compiler/rustc_monomorphize/src/partitioning/autodiff.rs"]
+cc = ["@ZuseZ4"]
+[mentions."compiler/rustc_codegen_llvm/src/builder/autodiff.rs"]
+cc = ["@ZuseZ4"]
+[mentions."compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs"]
+cc = ["@ZuseZ4"]
 
 [assign]
 warn_non_default_branch.enable = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 users_on_vacation = [
+    "fmease",
     "jyn514",
+    "Noratrieb",
+    "spastorino",
 ]
 
 [[assign.warn_non_default_branch.exceptions]]
@@ -1096,9 +1138,12 @@ title = "[stable"
 branch = "stable"
 
 [assign.adhoc_groups]
+compiler_leads = [
+    "@davidtwco",
+    "@wesleywiser",
+]
 compiler = [
     "@BoxyUwU",
-    "@cjgillot",
     "@compiler-errors",
     "@davidtwco",
     "@estebank",
@@ -1115,9 +1160,7 @@ compiler = [
     "@wesleywiser",
 ]
 libs = [
-    "@cuviper",
     "@Mark-Simulacrum",
-    "@Amanieu",
     "@Noratrieb",
     "@workingjubilee",
     "@joboet",
@@ -1149,13 +1192,13 @@ docs = [
     "@ehuss",
     "@GuillaumeGomez",
 ]
-
 codegen = [
+    "@dianqk",
     "@saethlin",
     "@workingjubilee",
 ]
 query-system = [
-    "@cjgillot",
+    "@oli-obk",
 ]
 incremental = [
     "@wesleywiser",
@@ -1236,10 +1279,12 @@ project-stable-mir = [
     "@oli-obk",
     "@scottmcm",
 ]
-
 project-exploit-mitigations = [
     "@cuviper",
     "@rcvalle",
+]
+compiletest = [
+    "@jieyouxu",
 ]
 
 [assign.owners]
@@ -1263,7 +1308,6 @@ project-exploit-mitigations = [
 "/compiler/rustc_middle/src/traits" =                    ["compiler", "types"]
 "/compiler/rustc_middle/src/ty" =                        ["compiler", "types"]
 "/compiler/rustc_const_eval/src/interpret" =             ["compiler", "mir"]
-"/compiler/rustc_const_eval/src/transform" =             ["compiler", "mir-opt"]
 "/compiler/rustc_mir_build/src/builder" =                ["compiler", "mir"]
 "/compiler/rustc_mir_transform" =                        ["compiler", "mir", "mir-opt"]
 "/compiler/rustc_smir" =                                 ["project-stable-mir"]
@@ -1295,9 +1339,11 @@ project-exploit-mitigations = [
 "/src/doc/nomicon" =                                     ["@ehuss"]
 "/src/doc/reference" =                                   ["@ehuss"]
 "/src/doc/rust-by-example" =                             ["@ehuss"]
+"/src/doc/rustc" =                                       ["compiler", "@ehuss"]
 "/src/doc/rustc-dev-guide" =                             ["compiler"]
 "/src/doc/rustdoc" =                                     ["rustdoc"]
 "/src/doc/style-guide" =                                 ["style-team"]
+"/src/doc/unstable-book" =                               ["compiler"]
 "/src/etc" =                                             ["@Mark-Simulacrum"]
 "/src/librustdoc" =                                      ["rustdoc"]
 "/src/llvm-project" =                                    ["@cuviper"]

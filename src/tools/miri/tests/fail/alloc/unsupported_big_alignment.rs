@@ -2,7 +2,10 @@
 // because rustc does not support alignments that large.
 // https://github.com/rust-lang/miri/issues/3687
 
+#![feature(rustc_attrs)]
+
 extern "Rust" {
+    #[rustc_std_internal_symbol]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
 }
 

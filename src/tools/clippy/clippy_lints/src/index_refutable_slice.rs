@@ -248,7 +248,7 @@ impl<'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'_, 'tcx> {
             {
                 use_info
                     .index_use
-                    .push((index_value, cx.tcx.hir().span(parent_expr.hir_id)));
+                    .push((index_value, cx.tcx.hir_span(parent_expr.hir_id)));
                 return;
             }
 

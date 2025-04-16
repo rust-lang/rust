@@ -53,9 +53,13 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
         //
         //     #[const_mutation_allowed]
         //     pub const LOG: Log = Log { msg: "" };
-        match self.tcx.calculate_dtor(def_id, |_, _| Ok(())) {
-            Some(_) => None,
-            None => Some(def_id),
+        // FIXME: this should not be checking for `Drop` impls,
+        // but whether it or any field has a Drop impl (`needs_drop`)
+        // as fields' Drop impls may make this observable, too.
+        match self.tcx.type_of(def_id).skip_binder().ty_adt_def().map(|adt| adt.has_dtor(self.tcx))
+        {
+            Some(true) => None,
+            Some(false) | None => Some(def_id),
         }
     }
 

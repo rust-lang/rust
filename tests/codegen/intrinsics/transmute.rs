@@ -10,9 +10,7 @@
 use std::intrinsics::mir::*;
 use std::intrinsics::{transmute, transmute_unchecked};
 use std::mem::MaybeUninit;
-
-// FIXME(LLVM18REMOVED): `trunc nuw` doesn't exist in LLVM 18, so once we no
-// longer support it the optional flag checks can be changed to required.
+use std::num::NonZero;
 
 pub enum ZstNever {}
 
@@ -156,7 +154,7 @@ pub unsafe fn check_from_newtype(x: Scalar64) -> u64 {
 pub unsafe fn check_aggregate_to_bool(x: Aggregate8) -> bool {
     // CHECK: %x = alloca [1 x i8], align 1
     // CHECK: %[[BYTE:.+]] = load i8, ptr %x, align 1
-    // CHECK: %[[BOOL:.+]] = trunc{{( nuw)?}} i8 %[[BYTE]] to i1
+    // CHECK: %[[BOOL:.+]] = trunc nuw i8 %[[BYTE]] to i1
     // CHECK: ret i1 %[[BOOL]]
     transmute(x)
 }
@@ -174,7 +172,7 @@ pub unsafe fn check_aggregate_from_bool(x: bool) -> Aggregate8 {
 #[no_mangle]
 pub unsafe fn check_byte_to_bool(x: u8) -> bool {
     // CHECK-NOT: alloca
-    // CHECK: %[[R:.+]] = trunc{{( nuw)?}} i8 %x to i1
+    // CHECK: %[[R:.+]] = trunc nuw i8 %x to i1
     // CHECK: ret i1 %[[R]]
     transmute(x)
 }
@@ -287,7 +285,7 @@ pub unsafe fn check_long_array_more_aligned(x: [u8; 100]) -> [u32; 25] {
 #[no_mangle]
 pub unsafe fn check_pair_with_bool(x: (u8, bool)) -> (bool, i8) {
     // CHECK-NOT: alloca
-    // CHECK: trunc{{( nuw)?}} i8 %x.0 to i1
+    // CHECK: trunc nuw i8 %x.0 to i1
     // CHECK: zext i1 %x.1 to i8
     transmute(x)
 }
@@ -341,7 +339,7 @@ pub unsafe fn check_heterogeneous_integer_pair(x: (i32, bool)) -> (bool, u32) {
     // CHECK: store i8 %[[WIDER]]
 
     // CHECK: %[[BYTE:.+]] = load i8
-    // CHECK: trunc{{( nuw)?}} i8 %[[BYTE:.+]] to i1
+    // CHECK: trunc nuw i8 %[[BYTE:.+]] to i1
     // CHECK: load i32
     transmute(x)
 }
@@ -469,4 +467,28 @@ pub unsafe fn check_from_overalign(x: HighAlignScalar) -> u64 {
     // CHECK: %[[VAL:.+]] = load i64, ptr %x, align 8
     // CHECK: ret i64 %[[VAL]]
     transmute(x)
+}
+
+#[repr(transparent)]
+struct Level1(std::num::NonZero<u32>);
+#[repr(transparent)]
+struct Level2(Level1);
+#[repr(transparent)]
+struct Level3(Level2);
+
+// CHECK-LABEL: @repeatedly_transparent_transmute
+// CHECK-SAME: (i32{{.+}}%[[ARG:[^)]+]])
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn repeatedly_transparent_transmute(x: NonZero<u32>) -> Level3 {
+    // CHECK: start
+    // CHECK-NEXT: ret i32 %[[ARG]]
+    mir! {
+        {
+            let A = CastTransmute::<NonZero<u32>, Level1>(x);
+            let B = CastTransmute::<Level1, Level2>(A);
+            RET = CastTransmute::<Level2, Level3>(B);
+            Return()
+        }
+    }
 }

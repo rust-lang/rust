@@ -116,7 +116,7 @@ pub fn dyn_compatibility_of_trait_query(
     trait_: TraitId,
 ) -> Option<DynCompatibilityViolation> {
     let mut res = None;
-    dyn_compatibility_of_trait_with_callback(db, trait_, &mut |osv| {
+    let _ = dyn_compatibility_of_trait_with_callback(db, trait_, &mut |osv| {
         res = Some(osv);
         ControlFlow::Break(())
     });
@@ -597,7 +597,7 @@ fn contains_illegal_impl_trait_in_trait(
 
     let ret = sig.skip_binders().ret();
     let mut visitor = OpaqueTypeCollector(FxHashSet::default());
-    ret.visit_with(visitor.as_dyn(), DebruijnIndex::INNERMOST);
+    let _ = ret.visit_with(visitor.as_dyn(), DebruijnIndex::INNERMOST);
 
     // Since we haven't implemented RPITIT in proper way like rustc yet,
     // just check whether `ret` contains RPIT for now

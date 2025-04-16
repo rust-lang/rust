@@ -2,8 +2,7 @@ use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
 use rustc_middle::mir::{Body, ConstOperand, Location, Promoted};
-use rustc_middle::ty::fold::fold_regions;
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, fold_regions};
 use rustc_span::Symbol;
 use tracing::{debug, instrument};
 

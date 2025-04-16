@@ -1,16 +1,3 @@
-error: item does not constrain `A::{opaque#0}`, but has it in its signature
-  --> $DIR/two_tait_defining_each_other2.rs:11:4
-   |
-LL | fn muh(x: A) -> B {
-   |    ^^^
-   |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/two_tait_defining_each_other2.rs:6:10
-   |
-LL | type A = impl Foo;
-   |          ^^^^^^^^
-
 error: opaque type's hidden type cannot be another opaque type from the same scope
   --> $DIR/two_tait_defining_each_other2.rs:14:5
    |
@@ -28,5 +15,5 @@ note: opaque type being used as hidden type
 LL | type A = impl Foo;
    |          ^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

@@ -70,3 +70,26 @@ pub mod rust_2024 {
     #[doc(no_inline)]
     pub use crate::future::{Future, IntoFuture};
 }
+
+/// The Future version of the core prelude.
+///
+/// See the [module-level documentation](self) for more.
+#[doc(hidden)]
+#[unstable(feature = "prelude_future", issue = "none")]
+pub mod rust_future {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(no_inline)]
+    pub use super::v1::*;
+
+    #[stable(feature = "prelude_2021", since = "1.55.0")]
+    #[doc(no_inline)]
+    pub use crate::iter::FromIterator;
+
+    #[stable(feature = "prelude_2021", since = "1.55.0")]
+    #[doc(no_inline)]
+    pub use crate::convert::{TryFrom, TryInto};
+
+    #[stable(feature = "prelude_2024", since = "1.85.0")]
+    #[doc(no_inline)]
+    pub use crate::future::{Future, IntoFuture};
+}

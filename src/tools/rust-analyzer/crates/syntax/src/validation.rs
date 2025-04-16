@@ -5,7 +5,7 @@
 mod block;
 
 use rowan::Direction;
-use rustc_lexer::unescape::{self, unescape_mixed, unescape_unicode, Mode};
+use rustc_literal_escaper::{unescape_mixed, unescape_unicode, EscapeError, Mode};
 
 use crate::{
     algo,
@@ -37,14 +37,15 @@ pub(crate) fn validate(root: &SyntaxNode, errors: &mut Vec<SyntaxError>) {
                 ast::FnPtrType(it) => validate_trait_object_fn_ptr_ret_ty(it, errors),
                 ast::MacroRules(it) => validate_macro_rules(it, errors),
                 ast::LetExpr(it) => validate_let_expr(it, errors),
+                ast::ImplTraitType(it) => validate_impl_object_ty(it, errors),
                 _ => (),
             }
         }
     }
 }
 
-fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> (&'static str, bool) {
-    use unescape::EscapeError as EE;
+fn rustc_unescape_error_to_string(err: EscapeError) -> (&'static str, bool) {
+    use rustc_literal_escaper::EscapeError as EE;
 
     #[rustfmt::skip]
     let err_message = match err {
@@ -126,7 +127,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
     let text = token.text();
 
     // FIXME: lift this lambda refactor to `fn` (https://github.com/rust-lang/rust-analyzer/pull/2834#discussion_r366199205)
-    let mut push_err = |prefix_len, off, err: unescape::EscapeError| {
+    let mut push_err = |prefix_len, off, err: EscapeError| {
         let off = token.text_range().start() + TextSize::try_from(off + prefix_len).unwrap();
         let (message, is_err) = rustc_unescape_error_to_string(err);
         // FIXME: Emit lexer warnings
@@ -340,17 +341,34 @@ fn validate_trait_object_fn_ptr_ret_ty(ty: ast::FnPtrType, errors: &mut Vec<Synt
 
 fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxError> {
     let tbl = ty.type_bound_list()?;
+    let bounds_count = tbl.bounds().count();
 
-    if tbl.bounds().count() > 1 {
-        let dyn_token = ty.dyn_token()?;
-        let potential_parenthesis =
-            algo::skip_trivia_token(dyn_token.prev_token()?, Direction::Prev)?;
-        let kind = potential_parenthesis.kind();
-        if !matches!(kind, T!['('] | T![<] | T![=]) {
-            return Some(SyntaxError::new("ambiguous `+` in a type", ty.syntax().text_range()));
+    match bounds_count {
+        0 => Some(SyntaxError::new(
+            "At least one trait is required for an object type",
+            ty.syntax().text_range(),
+        )),
+        _ if bounds_count > 1 => {
+            let dyn_token = ty.dyn_token()?;
+            let preceding_token =
+                algo::skip_trivia_token(dyn_token.prev_token()?, Direction::Prev)?;
+
+            if !matches!(preceding_token.kind(), T!['('] | T![<] | T![=]) {
+                return Some(SyntaxError::new("ambiguous `+` in a type", ty.syntax().text_range()));
+            }
+            None
         }
+        _ => None,
     }
-    None
+}
+
+fn validate_impl_object_ty(ty: ast::ImplTraitType, errors: &mut Vec<SyntaxError>) {
+    if ty.type_bound_list().map_or(0, |tbl| tbl.bounds().count()) == 0 {
+        errors.push(SyntaxError::new(
+            "At least one trait must be specified",
+            ty.syntax().text_range(),
+        ));
+    }
 }
 
 fn validate_macro_rules(mac: ast::MacroRules, errors: &mut Vec<SyntaxError>) {

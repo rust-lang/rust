@@ -6,5 +6,5 @@
 
 fn main() {
     #[deny(while_true)]
-    while true {}
+    while true {} //~ ERROR denote infinite loops with `loop { ... }`
 }

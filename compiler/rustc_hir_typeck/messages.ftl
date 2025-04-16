@@ -148,7 +148,7 @@ hir_typeck_never_type_fallback_flowing_into_unsafe_path = never type fallback af
 hir_typeck_never_type_fallback_flowing_into_unsafe_union_field = never type fallback affects this union access
     .help = specify the type explicitly
 
-hir_typeck_no_associated_item = no {$item_kind} named `{$item_name}` found for {$ty_prefix} `{$ty_str}`{$trait_missing_method ->
+hir_typeck_no_associated_item = no {$item_kind} named `{$item_ident}` found for {$ty_prefix} `{$ty_str}`{$trait_missing_method ->
     [true] {""}
     *[other] {" "}in the current scope
 }
@@ -171,10 +171,13 @@ hir_typeck_pass_to_variadic_function = can't pass `{$ty}` to variadic function
     .suggestion = cast the value to `{$cast_ty}`
     .teach_help = certain types, like `{$ty}`, must be casted before passing them to a variadic function, because of arcane ABI rules dictated by the C standard
 
-hir_typeck_ptr_cast_add_auto_to_object = adding {$traits_len ->
-    [1] an auto trait {$traits}
+hir_typeck_ptr_cast_add_auto_to_object = cannot add {$traits_len ->
+    [1] auto trait {$traits}
     *[other] auto traits {$traits}
-} to a trait object in a pointer cast may cause UB later on
+} to dyn bound via pointer cast
+    .note = this could allow UB elsewhere
+    .help = use `transmute` if you're sure this is sound
+    .label = unsupported cast
 
 hir_typeck_remove_semi_for_coerce = you might have meant to return the `match` expression
 hir_typeck_remove_semi_for_coerce_expr = this could be implicitly returned but it is a statement, not a tail expression

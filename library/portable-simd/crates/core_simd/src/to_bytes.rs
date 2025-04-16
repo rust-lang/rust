@@ -1,6 +1,6 @@
 use crate::simd::{
-    num::{SimdFloat, SimdInt, SimdUint},
     LaneCount, Simd, SimdElement, SupportedLaneCount,
+    num::{SimdFloat, SimdInt, SimdUint},
 };
 
 mod sealed {

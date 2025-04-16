@@ -4,7 +4,6 @@
 #![cfg_attr(feature = "nightly", feature(extend_one, step_trait, test))]
 #![cfg_attr(feature = "nightly", feature(new_range_api))]
 #![cfg_attr(feature = "nightly", feature(new_zeroed_alloc))]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod bit_set;

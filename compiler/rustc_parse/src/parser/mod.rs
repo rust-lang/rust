@@ -13,7 +13,6 @@ mod ty;
 
 use std::assert_matches::debug_assert_matches;
 use std::ops::Range;
-use std::sync::Arc;
 use std::{fmt, mem, slice};
 
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
@@ -24,7 +23,7 @@ pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use path::PathStyle;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{
-    self, Delimiter, IdentIsRaw, InvisibleOrigin, MetaVarKind, Nonterminal, NtPatKind, Token,
+    self, Delimiter, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token,
     TokenKind,
 };
 use rustc_ast::tokenstream::{AttrsTarget, Spacing, TokenStream, TokenTree};
@@ -96,20 +95,6 @@ enum BlockMode {
 pub enum ForceCollect {
     Yes,
     No,
-}
-
-#[macro_export]
-macro_rules! maybe_whole {
-    ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
-        if let token::Interpolated(nt) = &$p.token.kind
-            && let token::$constructor(x) = &**nt
-        {
-            #[allow(unused_mut)]
-            let mut $x = x.clone();
-            $p.bump();
-            return Ok($e);
-        }
-    };
 }
 
 /// If the next tokens are ill-formed `$ty::` recover them as `<$ty>::`.
@@ -299,6 +284,10 @@ impl TokenTreeCursor {
         self.stream.get(self.index)
     }
 
+    fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
+        self.stream.get(self.index + n)
+    }
+
     #[inline]
     fn bump(&mut self) {
         self.index += 1;
@@ -337,12 +326,12 @@ impl TokenCursor {
             // below can be removed.
             if let Some(tree) = self.curr.curr() {
                 match tree {
-                    &TokenTree::Token(ref token, spacing) => {
+                    &TokenTree::Token(token, spacing) => {
                         debug_assert!(!matches!(
                             token.kind,
                             token::OpenDelim(_) | token::CloseDelim(_)
                         ));
-                        let res = (token.clone(), spacing);
+                        let res = (token, spacing);
                         self.curr.bump();
                         return res;
                     }
@@ -454,7 +443,6 @@ pub fn token_descr(token: &Token) -> String {
         (Some(TokenDescription::MetaVar(kind)), _) => format!("`{kind}` metavariable"),
         (None, TokenKind::NtIdent(..)) => format!("identifier `{s}`"),
         (None, TokenKind::NtLifetime(..)) => format!("lifetime `{s}`"),
-        (None, TokenKind::Interpolated(node)) => format!("{} `{s}`", node.descr()),
         (None, _) => format!("`{s}`"),
     }
 }
@@ -505,6 +493,14 @@ impl<'a> Parser<'a> {
     pub fn recovery(mut self, recovery: Recovery) -> Self {
         self.recovery = recovery;
         self
+    }
+
+    #[inline]
+    fn with_recovery<T>(&mut self, recovery: Recovery, f: impl FnOnce(&mut Self) -> T) -> T {
+        let old = mem::replace(&mut self.recovery, recovery);
+        let res = f(self);
+        self.recovery = old;
+        res
     }
 
     /// Whether the parser is allowed to recover from broken code.
@@ -765,7 +761,21 @@ impl<'a> Parser<'a> {
             && match_mv_kind(mv_kind)
         {
             self.bump();
-            let res = f(self).expect("failed to reparse {mv_kind:?}");
+
+            // Recovery is disabled when parsing macro arguments, so it must
+            // also be disabled when reparsing pasted macro arguments,
+            // otherwise we get inconsistent results (e.g. #137874).
+            let res = self.with_recovery(Recovery::Forbidden, |this| f(this));
+
+            let res = match res {
+                Ok(res) => res,
+                Err(err) => {
+                    // This can occur in unusual error cases, e.g. #139445.
+                    err.delay_as_bug();
+                    return None;
+                }
+            };
+
             if let token::CloseDelim(delim) = self.token.kind
                 && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)) = delim
                 && match_mv_kind(mv_kind)
@@ -773,7 +783,12 @@ impl<'a> Parser<'a> {
                 self.bump();
                 Some(res)
             } else {
-                panic!("no close delim when reparsing {mv_kind:?}");
+                // This can occur when invalid syntax is passed to a decl macro. E.g. see #139248,
+                // where the reparse attempt of an invalid expr consumed the trailing invisible
+                // delimiter.
+                self.dcx()
+                    .span_delayed_bug(self.token.span, "no close delim with reparsing {mv_kind:?}");
+                None
             }
         } else {
             None
@@ -813,9 +828,9 @@ impl<'a> Parser<'a> {
         self.is_keyword_ahead(0, &[kw::Const])
             && self.look_ahead(1, |t| match &t.kind {
                 // async closures do not work with const closures, so we do not parse that here.
-                token::Ident(kw::Move | kw::Static, IdentIsRaw::No) | token::OrOr | token::Or => {
-                    true
-                }
+                token::Ident(kw::Move | kw::Use | kw::Static, IdentIsRaw::No)
+                | token::OrOr
+                | token::Or => true,
                 _ => false,
             })
     }
@@ -823,8 +838,10 @@ impl<'a> Parser<'a> {
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
             && self.look_ahead(dist + 1, |t| match &t.kind {
-                token::Interpolated(nt) => matches!(&**nt, token::NtBlock(..)),
                 token::OpenDelim(Delimiter::Brace) => true,
+                token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
+                    MetaVarKind::Block,
+                ))) => true,
                 _ => false,
             })
     }
@@ -1076,10 +1093,12 @@ impl<'a> Parser<'a> {
         let initial_semicolon = self.token.span;
 
         while self.eat(exp!(Semi)) {
-            let _ = self.parse_stmt_without_recovery(false, ForceCollect::No).unwrap_or_else(|e| {
-                e.cancel();
-                None
-            });
+            let _ = self
+                .parse_stmt_without_recovery(false, ForceCollect::No, false)
+                .unwrap_or_else(|e| {
+                    e.cancel();
+                    None
+                });
         }
 
         expect_err
@@ -1288,6 +1307,17 @@ impl<'a> Parser<'a> {
         looker(&token)
     }
 
+    /// Like `lookahead`, but skips over token trees rather than tokens. Useful
+    /// when looking past possible metavariable pasting sites.
+    pub fn tree_look_ahead<R>(
+        &self,
+        dist: usize,
+        looker: impl FnOnce(&TokenTree) -> R,
+    ) -> Option<R> {
+        assert_ne!(dist, 0);
+        self.token_cursor.curr.look_ahead(dist - 1).map(looker)
+    }
+
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
     pub(crate) fn is_keyword_ahead(&self, dist: usize, kws: &[Symbol]) -> bool {
         self.look_ahead(dist, |t| kws.iter().any(|&kw| t.is_keyword(kw)))
@@ -1295,14 +1325,14 @@ impl<'a> Parser<'a> {
 
     /// Parses asyncness: `async` or nothing.
     fn parse_coroutine_kind(&mut self, case: Case) -> Option<CoroutineKind> {
-        let span = self.token.uninterpolated_span();
+        let span = self.token_uninterpolated_span();
         if self.eat_keyword_case(exp!(Async), case) {
             // FIXME(gen_blocks): Do we want to unconditionally parse `gen` and then
             // error if edition <= 2024, like we do with async and edition <= 2018?
-            if self.token.uninterpolated_span().at_least_rust_2024()
+            if self.token_uninterpolated_span().at_least_rust_2024()
                 && self.eat_keyword_case(exp!(Gen), case)
             {
-                let gen_span = self.prev_token.uninterpolated_span();
+                let gen_span = self.prev_token_uninterpolated_span();
                 Some(CoroutineKind::AsyncGen {
                     span: span.to(gen_span),
                     closure_id: DUMMY_NODE_ID,
@@ -1315,7 +1345,7 @@ impl<'a> Parser<'a> {
                     return_impl_trait_id: DUMMY_NODE_ID,
                 })
             }
-        } else if self.token.uninterpolated_span().at_least_rust_2024()
+        } else if self.token_uninterpolated_span().at_least_rust_2024()
             && self.eat_keyword_case(exp!(Gen), case)
         {
             Some(CoroutineKind::Gen {
@@ -1331,9 +1361,9 @@ impl<'a> Parser<'a> {
     /// Parses fn unsafety: `unsafe`, `safe` or nothing.
     fn parse_safety(&mut self, case: Case) -> Safety {
         if self.eat_keyword_case(exp!(Unsafe), case) {
-            Safety::Unsafe(self.prev_token.uninterpolated_span())
+            Safety::Unsafe(self.prev_token_uninterpolated_span())
         } else if self.eat_keyword_case(exp!(Safe), case) {
-            Safety::Safe(self.prev_token.uninterpolated_span())
+            Safety::Safe(self.prev_token_uninterpolated_span())
         } else {
             Safety::Default
         }
@@ -1357,10 +1387,10 @@ impl<'a> Parser<'a> {
         // Avoid const blocks and const closures to be parsed as const items
         if (self.check_const_closure() == is_closure)
             && !self
-                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
+                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block())
             && self.eat_keyword_case(exp!(Const), case)
         {
-            Const::Yes(self.prev_token.uninterpolated_span())
+            Const::Yes(self.prev_token_uninterpolated_span())
         } else {
             Const::No
         }
@@ -1368,17 +1398,24 @@ impl<'a> Parser<'a> {
 
     /// Parses inline const expressions.
     fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, P<Expr>> {
-        if pat {
-            self.psess.gated_spans.gate(sym::inline_const_pat, span);
-        }
         self.expect_keyword(exp!(Const))?;
-        let (attrs, blk) = self.parse_inner_attrs_and_block()?;
+        let (attrs, blk) = self.parse_inner_attrs_and_block(None)?;
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,
             value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
         };
         let blk_span = anon_const.value.span;
-        Ok(self.mk_expr_with_attrs(span.to(blk_span), ExprKind::ConstBlock(anon_const), attrs))
+        let kind = if pat {
+            let guar = self
+                .dcx()
+                .struct_span_err(blk_span, "`inline_const_pat` has been removed")
+                .with_help("use a named `const`-item or an `if`-guard instead")
+                .emit();
+            ExprKind::Err(guar)
+        } else {
+            ExprKind::ConstBlock(anon_const)
+        };
+        Ok(self.mk_expr_with_attrs(span.to(blk_span), kind, attrs))
     }
 
     /// Parses mutability (`mut` or nothing).
@@ -1480,7 +1517,7 @@ impl<'a> Parser<'a> {
             _ => {
                 let prev_spacing = self.token_spacing;
                 self.bump();
-                TokenTree::Token(self.prev_token.clone(), prev_spacing)
+                TokenTree::Token(self.prev_token, prev_spacing)
             }
         }
     }
@@ -1666,7 +1703,7 @@ impl<'a> Parser<'a> {
             dbg_fmt.field("prev_token", &self.prev_token);
             let mut tokens = vec![];
             for i in 0..lookahead {
-                let tok = self.look_ahead(i, |tok| tok.kind.clone());
+                let tok = self.look_ahead(i, |tok| tok.kind);
                 let is_eof = tok == TokenKind::Eof;
                 tokens.push(tok);
                 if is_eof {
@@ -1696,6 +1733,33 @@ impl<'a> Parser<'a> {
 
     pub fn approx_token_stream_pos(&self) -> u32 {
         self.num_bump_calls
+    }
+
+    /// For interpolated `self.token`, returns a span of the fragment to which
+    /// the interpolated token refers. For all other tokens this is just a
+    /// regular span. It is particularly important to use this for identifiers
+    /// and lifetimes for which spans affect name resolution and edition
+    /// checks. Note that keywords are also identifiers, so they should use
+    /// this if they keep spans or perform edition checks.
+    pub fn token_uninterpolated_span(&self) -> Span {
+        match &self.token.kind {
+            token::NtIdent(ident, _) | token::NtLifetime(ident, _) => ident.span,
+            token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => {
+                self.look_ahead(1, |t| t.span)
+            }
+            _ => self.token.span,
+        }
+    }
+
+    /// Like `token_uninterpolated_span`, but works on `self.prev_token`.
+    pub fn prev_token_uninterpolated_span(&self) -> Span {
+        match &self.prev_token.kind {
+            token::NtIdent(ident, _) | token::NtLifetime(ident, _) => ident.span,
+            token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => {
+                self.look_ahead(0, |t| t.span)
+            }
+            _ => self.prev_token.span,
+        }
     }
 }
 
@@ -1746,12 +1810,14 @@ pub enum ParseNtResult {
     Tt(TokenTree),
     Ident(Ident, IdentIsRaw),
     Lifetime(Ident, IdentIsRaw),
+    Item(P<ast::Item>),
+    Block(P<ast::Block>),
+    Stmt(P<ast::Stmt>),
     Pat(P<ast::Pat>, NtPatKind),
+    Expr(P<ast::Expr>, NtExprKind),
+    Literal(P<ast::Expr>),
     Ty(P<ast::Ty>),
     Meta(P<ast::AttrItem>),
     Path(P<ast::Path>),
     Vis(P<ast::Visibility>),
-
-    /// This variant will eventually be removed, along with `Token::Interpolate`.
-    Nt(Arc<Nonterminal>),
 }

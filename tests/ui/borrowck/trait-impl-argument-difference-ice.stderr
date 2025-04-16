@@ -8,12 +8,6 @@ LL |     extern "C" fn read_dword(Self::Assoc<'_>) -> u16;
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
    = note: `#[warn(anonymous_parameters)]` on by default
 
-error[E0220]: associated type `Assoc` not found for `Self`
-  --> $DIR/trait-impl-argument-difference-ice.rs:4:36
-   |
-LL |     extern "C" fn read_dword(Self::Assoc<'_>) -> u16;
-   |                                    ^^^^^ associated type `Assoc` not found
-
 error[E0185]: method `read_dword` has a `&self` declaration in the impl, but not in the trait
   --> $DIR/trait-impl-argument-difference-ice.rs:14:5
    |
@@ -31,6 +25,12 @@ LL |     extern "C" fn read_word(&mut self) -> u8;
 ...
 LL | impl MemoryUnit for ROM {
    | ^^^^^^^^^^^^^^^^^^^^^^^ missing `read_word` in implementation
+
+error[E0220]: associated type `Assoc` not found for `Self`
+  --> $DIR/trait-impl-argument-difference-ice.rs:4:36
+   |
+LL |     extern "C" fn read_dword(Self::Assoc<'_>) -> u16;
+   |                                    ^^^^^ associated type `Assoc` not found
 
 error[E0596]: cannot borrow `*self` as mutable, as it is behind a `&` reference
   --> $DIR/trait-impl-argument-difference-ice.rs:16:19

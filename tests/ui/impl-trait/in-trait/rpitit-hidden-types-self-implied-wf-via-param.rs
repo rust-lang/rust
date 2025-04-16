@@ -6,7 +6,7 @@ impl Extend for () {
     fn extend<'a: 'a>(s: &'a str) -> (Option<&'static &'a ()>, &'static str)
     where
         'a: 'static,
-        //~^ impl has stricter requirements than trait
+        //~^ ERROR impl has stricter requirements than trait
     {
         (None, s)
     }

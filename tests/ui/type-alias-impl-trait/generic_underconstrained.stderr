@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: Trait` is not satisfied
-  --> $DIR/generic_underconstrained.rs:9:31
+  --> $DIR/generic_underconstrained.rs:10:31
    |
 LL | fn underconstrain<T>(_: T) -> Underconstrained<T> {
    |                               ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
@@ -15,7 +15,7 @@ LL | fn underconstrain<T: Trait>(_: T) -> Underconstrained<T> {
    |                    +++++++
 
 error[E0277]: the trait bound `T: Trait` is not satisfied
-  --> $DIR/generic_underconstrained.rs:9:31
+  --> $DIR/generic_underconstrained.rs:10:31
    |
 LL | fn underconstrain<T>(_: T) -> Underconstrained<T> {
    |                               ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`

@@ -25,9 +25,6 @@
 //@ revisions: bpfel_unknown_none
 //@ [bpfel_unknown_none] compile-flags: --target bpfel-unknown-none
 //@ [bpfel_unknown_none] needs-llvm-components: bpf
-//@ revisions: i586_pc_windows_msvc
-//@ [i586_pc_windows_msvc] compile-flags: --target i586-pc-windows-msvc
-//@ [i586_pc_windows_msvc] needs-llvm-components: x86
 //@ revisions: i686_pc_windows_gnu
 //@ [i686_pc_windows_gnu] compile-flags: --target i686-pc-windows-gnu
 //@ [i686_pc_windows_gnu] needs-llvm-components: x86

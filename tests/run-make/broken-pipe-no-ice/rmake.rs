@@ -11,12 +11,12 @@
 // Internal Compiler Error strangely, but it doesn't even go through normal diagnostic infra. Very
 // strange.
 
-#![feature(anonymous_pipe)]
-
 use std::io::Read;
 use std::process::{Command, Stdio};
 
-use run_make_support::env_var;
+// FIXME(#137532): replace `os_pipe` dependency with std `anonymous_pipe` once that stabilizes and
+// reaches beta.
+use run_make_support::{env_var, os_pipe};
 
 #[derive(Debug, PartialEq)]
 enum Binary {
@@ -25,7 +25,7 @@ enum Binary {
 }
 
 fn check_broken_pipe_handled_gracefully(bin: Binary, mut cmd: Command) {
-    let (reader, writer) = std::io::pipe().unwrap();
+    let (reader, writer) = os_pipe::pipe().unwrap();
     drop(reader); // close read-end
     cmd.stdout(writer).stderr(Stdio::piped());
 

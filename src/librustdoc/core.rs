@@ -154,13 +154,12 @@ pub(crate) fn new_dcx(
         false,
     );
     let emitter: Box<DynEmitter> = match error_format {
-        ErrorOutputType::HumanReadable(kind, color_config) => {
+        ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .sm(source_map.map(|sm| sm as _))
                     .short_message(short)
-                    .teach(unstable_opts.teach)
                     .diagnostic_width(diagnostic_width)
                     .track_diagnostics(unstable_opts.track_diagnostics)
                     .theme(if let HumanReadableErrorType::Unicode = kind {
@@ -211,7 +210,7 @@ pub(crate) fn create_config(
         unstable_opts,
         target,
         edition,
-        maybe_sysroot,
+        sysroot,
         lint_opts,
         describe_lints,
         lint_cap,
@@ -254,7 +253,7 @@ pub(crate) fn create_config(
     let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
     // plays with error output here!
     let sessopts = config::Options {
-        maybe_sysroot,
+        sysroot,
         search_paths: libs,
         crate_types,
         lint_opts,
@@ -322,6 +321,7 @@ pub(crate) fn create_config(
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
+        extra_symbols: Vec::new(),
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,

@@ -279,6 +279,11 @@ Adt =
 | Struct
 | Union
 
+VariantDef =
+  Struct
+| Union
+| Variant
+
 Const =
   Attr* Visibility?
   'default'?

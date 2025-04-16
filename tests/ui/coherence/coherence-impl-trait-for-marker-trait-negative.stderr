@@ -1,9 +1,3 @@
-error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker1`
-  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:15:1
-   |
-LL | impl !Marker1 for dyn Object + Marker2 {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker1`
-
 error[E0321]: traits with a default impl, like `Marker1`, cannot be implemented for trait object `(dyn Object + Marker2 + 'static)`
   --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:15:1
    |
@@ -12,11 +6,11 @@ LL | impl !Marker1 for dyn Object + Marker2 {}
    |
    = note: a trait object implements `Marker1` if and only if `Marker1` is one of the trait object's trait bounds
 
-error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker2`
-  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:18:1
+error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker1`
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:15:1
    |
-LL | impl !Marker2 for dyn Object + Marker2 {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker2`
+LL | impl !Marker1 for dyn Object + Marker2 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker1`
 
 error[E0321]: traits with a default impl, like `Marker2`, cannot be implemented for trait object `(dyn Object + Marker2 + 'static)`
   --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:18:1
@@ -25,6 +19,12 @@ LL | impl !Marker2 for dyn Object + Marker2 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: a trait object implements `Marker2` if and only if `Marker2` is one of the trait object's trait bounds
+
+error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker2`
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:18:1
+   |
+LL | impl !Marker2 for dyn Object + Marker2 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker2`
 
 error[E0321]: traits with a default impl, like `Marker2`, cannot be implemented for trait object `(dyn Object + 'static)`
   --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:26:1

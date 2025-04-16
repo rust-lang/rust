@@ -3,8 +3,6 @@ error[E0080]: evaluation of `get_elem::<4>::{constant#0}` failed
    |
 LL |     const { assert!(LANE < 4); } // the error should be here...
    |             ^^^^^^^^^^^^^^^^^ evaluation panicked: assertion failed: LANE < 4
-   |
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant encountered
   --> $DIR/const-err-trumps-simd-err.rs:16:5

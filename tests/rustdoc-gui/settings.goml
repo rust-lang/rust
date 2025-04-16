@@ -314,6 +314,13 @@ compare-elements-position: (".sub form", "#settings", ["x"])
 // Check that setting-line has the same margin in this mode as in the popover.
 assert-css: (".setting-line", {"margin": |setting_line_margin|})
 
+// We will check that the checkboxes size doesn't change either.
+assert-size: (
+    "#settings label > input[type='checkbox']",
+    {"width": 19, "height": 19},
+    ALL,
+)
+
 // We now check the display with JS disabled.
 assert-false: "noscript section"
 javascript: false
@@ -327,3 +334,10 @@ reload:
 set-window-size: (300, 1000)
 wait-for: "#settings"
 assert-css: (".setting-radio", {"cursor": "pointer"})
+
+// We ensure that the checkboxes size didn't change.
+assert-size: (
+    "#settings label > input[type='checkbox']",
+    {"width": 19, "height": 19},
+    ALL,
+)

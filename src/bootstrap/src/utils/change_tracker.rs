@@ -35,29 +35,25 @@ impl Display for ChangeSeverity {
     }
 }
 
-pub fn find_recent_config_change_ids(current_id: usize) -> Vec<ChangeInfo> {
-    if !CONFIG_CHANGE_HISTORY.iter().any(|config| config.change_id == current_id) {
+pub fn find_recent_config_change_ids(current_id: usize) -> &'static [ChangeInfo] {
+    if let Some(index) =
+        CONFIG_CHANGE_HISTORY.iter().position(|config| config.change_id == current_id)
+    {
+        // Skip the current_id and IDs before it
+        &CONFIG_CHANGE_HISTORY[index + 1..]
+    } else {
         // If the current change-id is greater than the most recent one, return
         // an empty list (it may be due to switching from a recent branch to an
         // older one); otherwise, return the full list (assuming the user provided
         // the incorrect change-id by accident).
         if let Some(config) = CONFIG_CHANGE_HISTORY.iter().max_by_key(|config| config.change_id) {
             if current_id > config.change_id {
-                return Vec::new();
+                return &[];
             }
         }
 
-        return CONFIG_CHANGE_HISTORY.to_vec();
+        CONFIG_CHANGE_HISTORY
     }
-
-    let index =
-        CONFIG_CHANGE_HISTORY.iter().position(|config| config.change_id == current_id).unwrap();
-
-    CONFIG_CHANGE_HISTORY
-        .iter()
-        .skip(index + 1) // Skip the current_id and IDs before it
-        .cloned()
-        .collect()
 }
 
 pub fn human_readable_changes(changes: &[ChangeInfo]) -> String {
@@ -364,5 +360,40 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         change_id: 137220,
         severity: ChangeSeverity::Info,
         summary: "`rust.channel` now supports \"auto-detect\" to load the channel from `src/ci/channel`",
+    },
+    ChangeInfo {
+        change_id: 137723,
+        severity: ChangeSeverity::Info,
+        summary: "The rust.description option has moved to build.description and rust.description is now deprecated.",
+    },
+    ChangeInfo {
+        change_id: 138051,
+        severity: ChangeSeverity::Info,
+        summary: "There is now a new `gcc` config section that can be used to download GCC from CI using `gcc.download-ci-gcc = true`",
+    },
+    ChangeInfo {
+        change_id: 126856,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `src/tools/rls` tool as it was deprecated long time ago.",
+    },
+    ChangeInfo {
+        change_id: 137147,
+        severity: ChangeSeverity::Info,
+        summary: "Added new option `build.exclude` which works the same way as `--exclude` flag on `x`.",
+    },
+    ChangeInfo {
+        change_id: 137081,
+        severity: ChangeSeverity::Warning,
+        summary: "The default configuration filename has changed from `config.toml` to `bootstrap.toml`. `config.toml` is deprecated but remains supported for backward compatibility.",
+    },
+    ChangeInfo {
+        change_id: 138986,
+        severity: ChangeSeverity::Info,
+        summary: "You can now use `change-id = \"ignore\"` to suppress `change-id ` warnings in the console.",
+    },
+    ChangeInfo {
+        change_id: 139386,
+        severity: ChangeSeverity::Info,
+        summary: "Added a new option `build.compiletest-use-stage0-libtest` to force `compiletest` to use the stage 0 libtest.",
     },
 ];

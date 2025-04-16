@@ -475,7 +475,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                 && !trimmed.starts_with("//")
                 && !file.ancestors().any(|a| {
                     (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
-                        || a.ends_with("library/alloc/tests")
+                        || a.ends_with("library/alloctests")
                 })
                 && filename != "tests.rs"
             {

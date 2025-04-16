@@ -2,7 +2,7 @@
 
 use std::{fmt::Write, iter, mem};
 
-use base_db::ra_salsa::Cycle;
+use base_db::{ra_salsa::Cycle, CrateId};
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
     data::adt::{StructKind, VariantData},
@@ -29,7 +29,7 @@ use triomphe::Arc;
 use crate::{
     consteval::ConstEvalError,
     db::{HirDatabase, InternedClosure},
-    display::{hir_display_with_types_map, HirDisplay},
+    display::{hir_display_with_types_map, DisplayTarget, HirDisplay},
     error_lifetime,
     generics::generics,
     infer::{cast::CastTy, unify::InferenceTable, CaptureKind, CapturedItem, TypeMismatch},
@@ -160,17 +160,17 @@ impl MirLowerError {
         f: &mut String,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
-        edition: Edition,
+        display_target: DisplayTarget,
     ) -> std::result::Result<(), std::fmt::Error> {
         match self {
             MirLowerError::ConstEvalError(name, e) => {
                 writeln!(f, "In evaluating constant {name}")?;
                 match &**e {
                     ConstEvalError::MirLowerError(e) => {
-                        e.pretty_print(f, db, span_formatter, edition)?
+                        e.pretty_print(f, db, span_formatter, display_target)?
                     }
                     ConstEvalError::MirEvalError(e) => {
-                        e.pretty_print(f, db, span_formatter, edition)?
+                        e.pretty_print(f, db, span_formatter, display_target)?
                     }
                 }
             }
@@ -179,15 +179,15 @@ impl MirLowerError {
                 writeln!(
                     f,
                     "Missing function definition for {}",
-                    body.pretty_print_expr(db.upcast(), *owner, *it, edition)
+                    body.pretty_print_expr(db.upcast(), *owner, *it, display_target.edition)
                 )?;
             }
             MirLowerError::HasErrors => writeln!(f, "Type inference result contains errors")?,
             MirLowerError::TypeMismatch(e) => writeln!(
                 f,
                 "Type mismatch: Expected {}, found {}",
-                e.expected.display(db, edition),
-                e.actual.display(db, edition),
+                e.expected.display(db, display_target),
+                e.actual.display(db, display_target),
             )?,
             MirLowerError::GenericArgNotProvided(id, subst) => {
                 let parent = id.parent;
@@ -195,11 +195,14 @@ impl MirLowerError {
                 writeln!(
                     f,
                     "Generic arg not provided for {}",
-                    param.name().unwrap_or(&Name::missing()).display(db.upcast(), edition)
+                    param
+                        .name()
+                        .unwrap_or(&Name::missing())
+                        .display(db.upcast(), display_target.edition)
                 )?;
                 writeln!(f, "Provided args: [")?;
                 for g in subst.iter(Interner) {
-                    write!(f, "    {},", g.display(db, edition))?;
+                    write!(f, "    {},", g.display(db, display_target))?;
                 }
                 writeln!(f, "]")?;
             }
@@ -251,11 +254,11 @@ impl MirLowerError {
     fn unresolved_path(
         db: &dyn HirDatabase,
         p: &Path,
-        edition: Edition,
+        display_target: DisplayTarget,
         types_map: &TypesMap,
     ) -> Self {
         Self::UnresolvedName(
-            hir_display_with_types_map(p, types_map).display(db, edition).to_string(),
+            hir_display_with_types_map(p, types_map).display(db, display_target).to_string(),
         )
     }
 }
@@ -462,7 +465,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             MirLowerError::unresolved_path(
                                 self.db,
                                 p,
-                                self.edition(),
+                                DisplayTarget::from_crate(self.db, self.krate()),
                                 &self.body.types,
                             )
                         })?;
@@ -838,7 +841,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     self.infer.variant_resolution_for_expr(expr_id).ok_or_else(|| match path {
                         Some(p) => MirLowerError::UnresolvedName(
                             hir_display_with_types_map(&**p, &self.body.types)
-                                .display(self.db, self.edition())
+                                .display(self.db, self.display_target())
                                 .to_string(),
                         ),
                         None => MirLowerError::RecordLiteralWithoutPath,
@@ -1362,9 +1365,16 @@ impl<'ctx> MirLowerCtx<'ctx> {
         match &self.body.exprs[*loc] {
             Expr::Literal(l) => self.lower_literal_to_operand(ty, l),
             Expr::Path(c) => {
-                let edition = self.edition();
-                let unresolved_name =
-                    || MirLowerError::unresolved_path(self.db, c, edition, &self.body.types);
+                let owner = self.owner;
+                let db = self.db;
+                let unresolved_name = || {
+                    MirLowerError::unresolved_path(
+                        self.db,
+                        c,
+                        DisplayTarget::from_crate(db, owner.krate(db.upcast())),
+                        &self.body.types,
+                    )
+                };
                 let pr = self
                     .resolver
                     .resolve_path_in_value_ns(self.db.upcast(), c, HygieneId::ROOT)
@@ -1394,7 +1404,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 .layout_of_ty(ty.clone(), self.db.trait_environment_for_body(self.owner))
                 .map(|it| it.size.bytes_usize())
         };
-        const USIZE_SIZE: usize = mem::size_of::<usize>();
+        const USIZE_SIZE: usize = size_of::<usize>();
         let bytes: Box<[_]> = match l {
             hir_def::hir::Literal::String(b) => {
                 let b = b.as_str();
@@ -1910,8 +1920,15 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 
     fn edition(&self) -> Edition {
-        let krate = self.owner.krate(self.db.upcast());
-        self.db.crate_graph()[krate].edition
+        self.db.crate_graph()[self.krate()].edition
+    }
+
+    fn krate(&self) -> CrateId {
+        self.owner.krate(self.db.upcast())
+    }
+
+    fn display_target(&self) -> DisplayTarget {
+        DisplayTarget::from_crate(self.db, self.krate())
     }
 
     fn drop_until_scope(

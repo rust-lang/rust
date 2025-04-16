@@ -12,11 +12,11 @@ use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
     Adt, AsAssocItem, AsExternAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType,
-    Const, Crate, DefWithBody, DeriveHelper, DocLinkDef, ExternAssocItem, ExternCrateDecl, Field,
-    Function, GenericDef, GenericParam, GenericSubstitution, HasContainer, HasVisibility,
-    HirDisplay, Impl, InlineAsmOperand, ItemContainer, Label, Local, Macro, Module, ModuleDef,
-    Name, PathResolution, Semantics, Static, StaticLifetime, Struct, ToolModule, Trait, TraitAlias,
-    TupleField, TypeAlias, Variant, VariantDef, Visibility,
+    Const, Crate, DefWithBody, DeriveHelper, DisplayTarget, DocLinkDef, ExternAssocItem,
+    ExternCrateDecl, Field, Function, GenericDef, GenericParam, GenericSubstitution, HasContainer,
+    HasVisibility, HirDisplay, Impl, InlineAsmOperand, ItemContainer, Label, Local, Macro, Module,
+    ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, Struct, ToolModule, Trait,
+    TraitAlias, TupleField, TypeAlias, Variant, VariantDef, Visibility,
 };
 use span::Edition;
 use stdx::{format_to, impl_from};
@@ -207,7 +207,7 @@ impl Definition {
         &self,
         db: &RootDatabase,
         famous_defs: Option<&FamousDefs<'_, '_>>,
-        edition: Edition,
+        display_target: DisplayTarget,
     ) -> Option<Documentation> {
         let docs = match self {
             Definition::Macro(it) => it.docs(db),
@@ -228,7 +228,7 @@ impl Definition {
                     let docs = adt.docs(db)?;
                     let docs = format!(
                         "*This is the documentation for* `{}`\n\n{}",
-                        adt.display(db, edition),
+                        adt.display(db, display_target),
                         docs.as_str()
                     );
                     Some(Documentation::new(docs))
@@ -237,8 +237,9 @@ impl Definition {
             Definition::BuiltinType(it) => {
                 famous_defs.and_then(|fd| {
                     // std exposes prim_{} modules with docstrings on the root to document the builtins
-                    let primitive_mod = format!("prim_{}", it.name().display(fd.0.db, edition));
-                    let doc_owner = find_std_module(fd, &primitive_mod, edition)?;
+                    let primitive_mod =
+                        format!("prim_{}", it.name().display(fd.0.db, display_target.edition));
+                    let doc_owner = find_std_module(fd, &primitive_mod, display_target.edition)?;
                     doc_owner.docs(fd.0.db)
                 })
             }
@@ -256,16 +257,21 @@ impl Definition {
                 let AttributeTemplate { word, list, name_value_str } = it.template(db)?;
                 let mut docs = "Valid forms are:".to_owned();
                 if word {
-                    format_to!(docs, "\n - #\\[{}]", name.display(db, edition));
+                    format_to!(docs, "\n - #\\[{}]", name.display(db, display_target.edition));
                 }
                 if let Some(list) = list {
-                    format_to!(docs, "\n - #\\[{}({})]", name.display(db, edition), list);
+                    format_to!(
+                        docs,
+                        "\n - #\\[{}({})]",
+                        name.display(db, display_target.edition),
+                        list
+                    );
                 }
                 if let Some(name_value_str) = name_value_str {
                     format_to!(
                         docs,
                         "\n - #\\[{} = {}]",
-                        name.display(db, edition),
+                        name.display(db, display_target.edition),
                         name_value_str
                     );
                 }
@@ -288,49 +294,60 @@ impl Definition {
         })
     }
 
-    pub fn label(&self, db: &RootDatabase, edition: Edition) -> String {
+    pub fn label(&self, db: &RootDatabase, display_target: DisplayTarget) -> String {
         match *self {
-            Definition::Macro(it) => it.display(db, edition).to_string(),
-            Definition::Field(it) => it.display(db, edition).to_string(),
-            Definition::TupleField(it) => it.display(db, edition).to_string(),
-            Definition::Module(it) => it.display(db, edition).to_string(),
-            Definition::Crate(it) => it.display(db, edition).to_string(),
-            Definition::Function(it) => it.display(db, edition).to_string(),
-            Definition::Adt(it) => it.display(db, edition).to_string(),
-            Definition::Variant(it) => it.display(db, edition).to_string(),
-            Definition::Const(it) => it.display(db, edition).to_string(),
-            Definition::Static(it) => it.display(db, edition).to_string(),
-            Definition::Trait(it) => it.display(db, edition).to_string(),
-            Definition::TraitAlias(it) => it.display(db, edition).to_string(),
-            Definition::TypeAlias(it) => it.display(db, edition).to_string(),
-            Definition::BuiltinType(it) => it.name().display(db, edition).to_string(),
-            Definition::BuiltinLifetime(it) => it.name().display(db, edition).to_string(),
+            Definition::Macro(it) => it.display(db, display_target).to_string(),
+            Definition::Field(it) => it.display(db, display_target).to_string(),
+            Definition::TupleField(it) => it.display(db, display_target).to_string(),
+            Definition::Module(it) => it.display(db, display_target).to_string(),
+            Definition::Crate(it) => it.display(db, display_target).to_string(),
+            Definition::Function(it) => it.display(db, display_target).to_string(),
+            Definition::Adt(it) => it.display(db, display_target).to_string(),
+            Definition::Variant(it) => it.display(db, display_target).to_string(),
+            Definition::Const(it) => it.display(db, display_target).to_string(),
+            Definition::Static(it) => it.display(db, display_target).to_string(),
+            Definition::Trait(it) => it.display(db, display_target).to_string(),
+            Definition::TraitAlias(it) => it.display(db, display_target).to_string(),
+            Definition::TypeAlias(it) => it.display(db, display_target).to_string(),
+            Definition::BuiltinType(it) => {
+                it.name().display(db, display_target.edition).to_string()
+            }
+            Definition::BuiltinLifetime(it) => {
+                it.name().display(db, display_target.edition).to_string()
+            }
             Definition::Local(it) => {
                 let ty = it.ty(db);
-                let ty_display = ty.display_truncated(db, None, edition);
+                let ty_display = ty.display_truncated(db, None, display_target);
                 let is_mut = if it.is_mut(db) { "mut " } else { "" };
                 if it.is_self(db) {
                     format!("{is_mut}self: {ty_display}")
                 } else {
                     let name = it.name(db);
                     let let_kw = if it.is_param(db) { "" } else { "let " };
-                    format!("{let_kw}{is_mut}{}: {ty_display}", name.display(db, edition))
+                    format!(
+                        "{let_kw}{is_mut}{}: {ty_display}",
+                        name.display(db, display_target.edition)
+                    )
                 }
             }
             Definition::SelfType(impl_def) => {
                 let self_ty = &impl_def.self_ty(db);
                 match self_ty.as_adt() {
-                    Some(it) => it.display(db, edition).to_string(),
-                    None => self_ty.display(db, edition).to_string(),
+                    Some(it) => it.display(db, display_target).to_string(),
+                    None => self_ty.display(db, display_target).to_string(),
                 }
             }
-            Definition::GenericParam(it) => it.display(db, edition).to_string(),
-            Definition::Label(it) => it.name(db).display(db, edition).to_string(),
-            Definition::ExternCrateDecl(it) => it.display(db, edition).to_string(),
-            Definition::BuiltinAttr(it) => format!("#[{}]", it.name(db).display(db, edition)),
-            Definition::ToolModule(it) => it.name(db).display(db, edition).to_string(),
+            Definition::GenericParam(it) => it.display(db, display_target).to_string(),
+            Definition::Label(it) => it.name(db).display(db, display_target.edition).to_string(),
+            Definition::ExternCrateDecl(it) => it.display(db, display_target).to_string(),
+            Definition::BuiltinAttr(it) => {
+                format!("#[{}]", it.name(db).display(db, display_target.edition))
+            }
+            Definition::ToolModule(it) => {
+                it.name(db).display(db, display_target.edition).to_string()
+            }
             Definition::DeriveHelper(it) => {
-                format!("derive_helper {}", it.name(db).display(db, edition))
+                format!("derive_helper {}", it.name(db).display(db, display_target.edition))
             }
             // FIXME
             Definition::InlineAsmRegOrRegClass(_) => "inline_asm_reg_or_reg_class".to_owned(),

@@ -19,7 +19,7 @@ pub type FileEncodeResult = Result<usize, (PathBuf, io::Error)>;
 pub const MAGIC_END_BYTES: &[u8] = b"rust-end-file";
 
 /// The size of the buffer in `FileEncoder`.
-const BUF_SIZE: usize = 8192;
+const BUF_SIZE: usize = 64 * 1024;
 
 /// `FileEncoder` encodes data to file via fixed-size buffer.
 ///
@@ -451,3 +451,6 @@ impl<'a> Decodable<MemDecoder<'a>> for IntEncodedWithFixedSize {
         IntEncodedWithFixedSize(u64::from_le_bytes(bytes))
     }
 }
+
+#[cfg(test)]
+mod tests;

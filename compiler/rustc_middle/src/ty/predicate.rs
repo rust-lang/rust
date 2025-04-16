@@ -63,7 +63,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Predicate<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::visit::Flags for Predicate<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Predicate<'tcx> {
     fn flags(&self) -> TypeFlags {
         self.0.flags
     }

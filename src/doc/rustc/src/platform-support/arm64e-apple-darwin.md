@@ -16,7 +16,7 @@ See the docs on [`*-apple-darwin`](apple-darwin.md) for general macOS requiremen
 
 ## Building the target
 
-You can build Rust with support for the targets by adding it to the `target` list in `config.toml`:
+You can build Rust with support for the targets by adding it to the `target` list in `bootstrap.toml`:
 
 ```toml
 [build]

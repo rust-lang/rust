@@ -33,18 +33,23 @@ impl EarlyLintPass for Pass {
         let predicate = true;
 
         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+            //~^ collapsible_span_lint_calls
             db.span_suggestion(expr.span, help_msg, sugg.to_string(), Applicability::MachineApplicable);
         });
         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+            //~^ collapsible_span_lint_calls
             db.span_help(expr.span, help_msg);
         });
         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+            //~^ collapsible_span_lint_calls
             db.help(help_msg);
         });
         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+            //~^ collapsible_span_lint_calls
             db.span_note(expr.span, note_msg);
         });
         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+            //~^ collapsible_span_lint_calls
             db.note(note_msg);
         });
 

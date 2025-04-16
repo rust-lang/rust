@@ -1,5 +1,4 @@
 use std::ops::{Bound, Range};
-use std::sync::Arc;
 
 use ast::token::IdentIsRaw;
 use pm::bridge::{
@@ -18,7 +17,7 @@ use rustc_parse::parser::Parser;
 use rustc_parse::{exp, new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
-use rustc_span::{BytePos, FileName, Pos, SourceFile, Span, Symbol, sym};
+use rustc_span::{BytePos, FileName, Pos, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 
 use crate::base::ExtCtxt;
@@ -115,11 +114,43 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
 
         while let Some(tree) = iter.next() {
             let (Token { kind, span }, joint) = match tree.clone() {
-                tokenstream::TokenTree::Delimited(span, _, delim, tts) => {
-                    let delimiter = pm::Delimiter::from_internal(delim);
+                tokenstream::TokenTree::Delimited(span, _, mut delim, mut stream) => {
+                    // We used to have an alternative behaviour for crates that
+                    // needed it: a hack used to pass AST fragments to
+                    // attribute and derive macros as a single nonterminal
+                    // token instead of a token stream. Such token needs to be
+                    // "unwrapped" and not represented as a delimited group. We
+                    // had a lint for a long time, but now we just emit a hard
+                    // error. Eventually we might remove the special case hard
+                    // error check altogether. See #73345.
+                    if let Delimiter::Invisible(InvisibleOrigin::MetaVar(kind)) = delim {
+                        crate::base::stream_pretty_printing_compatibility_hack(
+                            kind,
+                            &stream,
+                            rustc.psess(),
+                        );
+                    }
+
+                    // In `mk_delimited` we avoid nesting invisible delimited
+                    // of the same `MetaVarKind`. Here we do the same but
+                    // ignore the `MetaVarKind` because it is discarded when we
+                    // convert it to a `Group`.
+                    while let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim {
+                        if stream.len() == 1
+                            && let tree = stream.iter().next().unwrap()
+                            && let tokenstream::TokenTree::Delimited(_, _, delim2, stream2) = tree
+                            && let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim2
+                        {
+                            delim = *delim2;
+                            stream = stream2.clone();
+                        } else {
+                            break;
+                        }
+                    }
+
                     trees.push(TokenTree::Group(Group {
-                        delimiter,
-                        stream: Some(tts),
+                        delimiter: pm::Delimiter::from_internal(delim),
+                        stream: Some(stream),
                         span: DelimSpan {
                             open: span.open,
                             close: span.close,
@@ -277,24 +308,6 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }));
                 }
 
-                Interpolated(nt) => {
-                    let stream = TokenStream::from_nonterminal_ast(&nt);
-                    // We used to have an alternative behaviour for crates that
-                    // needed it: a hack used to pass AST fragments to
-                    // attribute and derive macros as a single nonterminal
-                    // token instead of a token stream. Such token needs to be
-                    // "unwrapped" and not represented as a delimited group. We
-                    // had a lint for a long time, but now we just emit a hard
-                    // error. Eventually we might remove the special case hard
-                    // error check altogether. See #73345.
-                    crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.ecx.sess);
-                    trees.push(TokenTree::Group(Group {
-                        delimiter: pm::Delimiter::None,
-                        stream: Some(stream),
-                        span: DelimSpan::from_single(span),
-                    }))
-                }
-
                 OpenDelim(..) | CloseDelim(..) => unreachable!(),
                 Eof => unreachable!(),
             }
@@ -371,8 +384,8 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 symbol,
                 suffix,
                 span,
-            }) if symbol.as_str().starts_with('-') => {
-                let symbol = Symbol::intern(&symbol.as_str()[1..]);
+            }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
+                let symbol = Symbol::intern(symbol);
                 let integer = TokenKind::lit(token::Integer, symbol, suffix);
                 let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
                 let b = tokenstream::TokenTree::token_alone(integer, span);
@@ -383,8 +396,8 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 symbol,
                 suffix,
                 span,
-            }) if symbol.as_str().starts_with('-') => {
-                let symbol = Symbol::intern(&symbol.as_str()[1..]);
+            }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
+                let symbol = Symbol::intern(symbol);
                 let float = TokenKind::lit(token::Float, symbol, suffix);
                 let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
                 let b = tokenstream::TokenTree::token_alone(float, span);
@@ -444,7 +457,6 @@ impl<'a, 'b> Rustc<'a, 'b> {
 impl server::Types for Rustc<'_, '_> {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type SourceFile = Arc<SourceFile>;
     type Span = Span;
     type Symbol = Symbol;
 }
@@ -650,28 +662,6 @@ impl server::TokenStream for Rustc<'_, '_> {
     }
 }
 
-impl server::SourceFile for Rustc<'_, '_> {
-    fn eq(&mut self, file1: &Self::SourceFile, file2: &Self::SourceFile) -> bool {
-        Arc::ptr_eq(file1, file2)
-    }
-
-    fn path(&mut self, file: &Self::SourceFile) -> String {
-        match &file.name {
-            FileName::Real(name) => name
-                .local_path()
-                .expect("attempting to get a file path in an imported file in `proc_macro::SourceFile::path`")
-                .to_str()
-                .expect("non-UTF8 file path in `proc_macro::SourceFile::path`")
-                .to_string(),
-            _ => file.name.prefer_local().to_string(),
-        }
-    }
-
-    fn is_real(&mut self, file: &Self::SourceFile) -> bool {
-        file.is_real_file()
-    }
-}
-
 impl server::Span for Rustc<'_, '_> {
     fn debug(&mut self, span: Self::Span) -> String {
         if self.ecx.ecfg.span_debug {
@@ -681,8 +671,29 @@ impl server::Span for Rustc<'_, '_> {
         }
     }
 
-    fn source_file(&mut self, span: Self::Span) -> Self::SourceFile {
-        self.psess().source_map().lookup_char_pos(span.lo()).file
+    fn file(&mut self, span: Self::Span) -> String {
+        self.psess()
+            .source_map()
+            .lookup_char_pos(span.lo())
+            .file
+            .name
+            .prefer_remapped_unconditionaly()
+            .to_string()
+    }
+
+    fn local_file(&mut self, span: Self::Span) -> Option<String> {
+        self.psess()
+            .source_map()
+            .lookup_char_pos(span.lo())
+            .file
+            .name
+            .clone()
+            .into_local_path()
+            .map(|p| {
+                p.to_str()
+                    .expect("non-UTF8 file path in `proc_macro::SourceFile::path`")
+                    .to_string()
+            })
     }
 
     fn parent(&mut self, span: Self::Span) -> Option<Self::Span> {

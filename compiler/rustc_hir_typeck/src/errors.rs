@@ -373,9 +373,14 @@ pub(crate) struct LossyProvenanceInt2Ptr<'tcx> {
     pub sugg: LossyProvenanceInt2PtrSuggestion,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(hir_typeck_ptr_cast_add_auto_to_object)]
+#[derive(Diagnostic)]
+#[diag(hir_typeck_ptr_cast_add_auto_to_object, code = E0804)]
+#[note]
+#[help]
 pub(crate) struct PtrCastAddAutoToObject {
+    #[primary_span]
+    #[label]
+    pub span: Span,
     pub traits_len: usize,
     pub traits: DiagSymbolList<String>,
 }
@@ -722,7 +727,7 @@ pub(crate) struct NoAssociatedItem {
     #[primary_span]
     pub span: Span,
     pub item_kind: &'static str,
-    pub item_name: Ident,
+    pub item_ident: Ident,
     pub ty_prefix: Cow<'static, str>,
     pub ty_str: String,
     pub trait_missing_method: bool,

@@ -11,6 +11,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
+use std::slice;
 
 use itertools::Either;
 use rustc_abi::ExternAbi;
@@ -283,7 +284,7 @@ impl clean::GenericBound {
                 } else {
                     f.write_str("use&lt;")?;
                 }
-                args.iter().joined(", ", f)?;
+                args.iter().map(|arg| arg.name()).joined(", ", f)?;
                 if f.alternate() { f.write_str(">") } else { f.write_str("&gt;") }
             }
         })
@@ -331,6 +332,9 @@ impl clean::GenericArgs {
                             write!(f, " -&gt; {}", ty.print(cx))?;
                         }
                     }
+                }
+                clean::GenericArgs::ReturnTypeNotation => {
+                    f.write_str("(..)")?;
                 }
             }
             Ok(())
@@ -623,10 +627,9 @@ pub(crate) fn href_relative_parts<'fqp>(
         // e.g. linking to std::iter from std::vec (`dissimilar_part_count` will be 1)
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
-            let fqp_module = &fqp[i..fqp.len()];
+            let fqp_module = &fqp[i..];
             return Box::new(
-                iter::repeat(sym::dotdot)
-                    .take(dissimilar_part_count)
+                iter::repeat_n(sym::dotdot, dissimilar_part_count)
                     .chain(fqp_module.iter().copied()),
             );
         }
@@ -639,7 +642,7 @@ pub(crate) fn href_relative_parts<'fqp>(
         Ordering::Greater => {
             // e.g. linking to std::sync from std::sync::atomic
             let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-            Box::new(iter::repeat(sym::dotdot).take(dissimilar_part_count))
+            Box::new(iter::repeat_n(sym::dotdot, dissimilar_part_count))
         }
         Ordering::Equal => {
             // linking to the same module
@@ -648,33 +651,35 @@ pub(crate) fn href_relative_parts<'fqp>(
     }
 }
 
-pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Context<'_>) -> String {
-    let cache = cx.cache();
-    let Some((fqp, shortty)) = cache.paths.get(&did).or_else(|| cache.external_paths.get(&did))
-    else {
-        return String::new();
-    };
-    let mut buf = String::new();
-    let fqp = if *shortty == ItemType::Primitive {
-        // primitives are documented in a crate, but not actually part of it
-        &fqp[fqp.len() - 1..]
-    } else {
-        fqp
-    };
-    if let &Some(UrlFragment::Item(id)) = fragment {
-        write_str(&mut buf, format_args!("{} ", cx.tcx().def_descr(id)));
-        for component in fqp {
-            write_str(&mut buf, format_args!("{component}::"));
+pub(crate) fn link_tooltip(
+    did: DefId,
+    fragment: &Option<UrlFragment>,
+    cx: &Context<'_>,
+) -> impl fmt::Display {
+    fmt::from_fn(move |f| {
+        let cache = cx.cache();
+        let Some((fqp, shortty)) = cache.paths.get(&did).or_else(|| cache.external_paths.get(&did))
+        else {
+            return Ok(());
+        };
+        let fqp = if *shortty == ItemType::Primitive {
+            // primitives are documented in a crate, but not actually part of it
+            slice::from_ref(fqp.last().unwrap())
+        } else {
+            fqp
+        };
+        if let &Some(UrlFragment::Item(id)) = fragment {
+            write!(f, "{} ", cx.tcx().def_descr(id))?;
+            for component in fqp {
+                write!(f, "{component}::")?;
+            }
+            write!(f, "{}", cx.tcx().item_name(id))?;
+        } else if !fqp.is_empty() {
+            write!(f, "{shortty} ")?;
+            fqp.iter().joined("::", f)?;
         }
-        write_str(&mut buf, format_args!("{}", cx.tcx().item_name(id)));
-    } else if !fqp.is_empty() {
-        let mut fqp_it = fqp.iter();
-        write_str(&mut buf, format_args!("{shortty} {}", fqp_it.next().unwrap()));
-        for component in fqp_it {
-            write_str(&mut buf, format_args!("::{component}"));
-        }
-    }
-    buf
+        Ok(())
+    })
 }
 
 /// Used to render a [`clean::Path`].
@@ -770,10 +775,9 @@ fn primitive_link_fragment(
                     ExternalLocation::Local => {
                         let cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
                         Some(if cx.current.first() == Some(&cname_sym) {
-                            iter::repeat(sym::dotdot).take(cx.current.len() - 1).collect()
+                            iter::repeat_n(sym::dotdot, cx.current.len() - 1).collect()
                         } else {
-                            iter::repeat(sym::dotdot)
-                                .take(cx.current.len())
+                            iter::repeat_n(sym::dotdot, cx.current.len())
                                 .chain(iter::once(cname_sym))
                                 .collect()
                         })

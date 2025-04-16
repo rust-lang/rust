@@ -50,10 +50,10 @@ fn smoketest_cell() {
 fn cell_update() {
     let x = Cell::new(10);
 
-    assert_eq!(x.update(|x| x + 5), 15);
+    x.update(|x| x + 5);
     assert_eq!(x.get(), 15);
 
-    assert_eq!(x.update(|x| x / 3), 5);
+    x.update(|x| x / 3);
     assert_eq!(x.get(), 5);
 }
 

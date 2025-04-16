@@ -39,3 +39,5 @@ pub fn check_async() {
 
     let _recovery_witness: () = 0; //~ ERROR mismatched types
 }
+
+//~? ERROR macro expansion ends with an incomplete expression

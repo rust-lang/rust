@@ -50,7 +50,7 @@ This target generates binaries in the ELF format.
 ## Building the target
 
 You can build Rust with support for the target by adding it to the `target`
-list in `config.toml` and providing paths to the devkitARM toolchain.
+list in `bootstrap.toml` and providing paths to the devkitARM toolchain.
 
 ```toml
 [build]

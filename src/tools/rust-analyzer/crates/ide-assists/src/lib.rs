@@ -105,6 +105,7 @@ mod handlers {
     pub(crate) type Handler = fn(&mut Assists, &AssistContext<'_>) -> Option<()>;
 
     mod add_braces;
+    mod add_explicit_enum_discriminant;
     mod add_explicit_type;
     mod add_label_to_loop;
     mod add_lifetime_to_type;
@@ -115,9 +116,9 @@ mod handlers {
     mod apply_demorgan;
     mod auto_import;
     mod bind_unused_param;
-    mod bool_to_enum;
     mod change_visibility;
     mod convert_bool_then;
+    mod convert_bool_to_enum;
     mod convert_closure_to_fn;
     mod convert_comment_block;
     mod convert_comment_from_or_to_doc;
@@ -138,14 +139,13 @@ mod handlers {
     mod destructure_tuple_binding;
     mod desugar_doc_comment;
     mod expand_glob_import;
-    mod explicit_enum_discriminant;
+    mod expand_rest_pattern;
     mod extract_expressions_from_format_string;
     mod extract_function;
     mod extract_module;
     mod extract_struct_from_enum_variant;
     mod extract_type_alias;
     mod extract_variable;
-    mod fill_record_pattern_fields;
     mod fix_visibility;
     mod flip_binexpr;
     mod flip_comma;
@@ -177,8 +177,8 @@ mod handlers {
     mod inline_macro;
     mod inline_type_alias;
     mod into_to_qualified_from;
-    mod introduce_named_generic;
     mod introduce_named_lifetime;
+    mod introduce_named_type_parameter;
     mod invert_if;
     mod merge_imports;
     mod merge_match_arms;
@@ -234,49 +234,47 @@ mod handlers {
         &[
             // These are alphabetic for the foolish consistency
             add_braces::add_braces,
+            add_explicit_enum_discriminant::add_explicit_enum_discriminant,
             add_explicit_type::add_explicit_type,
             add_label_to_loop::add_label_to_loop,
-            add_missing_match_arms::add_missing_match_arms,
             add_lifetime_to_type::add_lifetime_to_type,
+            add_missing_match_arms::add_missing_match_arms,
             add_return_type::add_return_type,
             add_turbo_fish::add_turbo_fish,
-            apply_demorgan::apply_demorgan,
             apply_demorgan::apply_demorgan_iterator,
+            apply_demorgan::apply_demorgan,
             auto_import::auto_import,
             bind_unused_param::bind_unused_param,
-            bool_to_enum::bool_to_enum,
             change_visibility::change_visibility,
             convert_bool_then::convert_bool_then_to_if,
             convert_bool_then::convert_if_to_bool_then,
-            toggle_async_sugar::desugar_async_into_impl_future,
-            toggle_async_sugar::sugar_impl_future_into_async,
+            convert_bool_to_enum::convert_bool_to_enum,
+            convert_closure_to_fn::convert_closure_to_fn,
             convert_comment_block::convert_comment_block,
             convert_comment_from_or_to_doc::convert_comment_from_or_to_doc,
-            convert_closure_to_fn::convert_closure_to_fn,
             convert_from_to_tryfrom::convert_from_to_tryfrom,
             convert_integer_literal::convert_integer_literal,
             convert_into_to_from::convert_into_to_from,
-            convert_iter_for_each_to_for::convert_iter_for_each_to_for,
             convert_iter_for_each_to_for::convert_for_loop_with_for_each,
+            convert_iter_for_each_to_for::convert_iter_for_each_to_for,
             convert_let_else_to_match::convert_let_else_to_match,
             convert_match_to_let_else::convert_match_to_let_else,
-            convert_tuple_return_type_to_struct::convert_tuple_return_type_to_struct,
             convert_named_struct_to_tuple_struct::convert_named_struct_to_tuple_struct,
             convert_nested_function_to_closure::convert_nested_function_to_closure,
             convert_to_guarded_return::convert_to_guarded_return,
+            convert_tuple_return_type_to_struct::convert_tuple_return_type_to_struct,
             convert_tuple_struct_to_named_struct::convert_tuple_struct_to_named_struct,
             convert_two_arm_bool_match_to_matches_macro::convert_two_arm_bool_match_to_matches_macro,
             convert_while_to_loop::convert_while_to_loop,
-            desugar_doc_comment::desugar_doc_comment,
-            destructure_tuple_binding::destructure_tuple_binding,
             destructure_struct_binding::destructure_struct_binding,
+            destructure_tuple_binding::destructure_tuple_binding,
+            desugar_doc_comment::desugar_doc_comment,
             expand_glob_import::expand_glob_import,
             expand_glob_import::expand_glob_reexport,
-            explicit_enum_discriminant::explicit_enum_discriminant,
+            expand_rest_pattern::expand_rest_pattern,
             extract_expressions_from_format_string::extract_expressions_from_format_string,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,
             extract_type_alias::extract_type_alias,
-            fill_record_pattern_fields::fill_record_pattern_fields,
             fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,
             flip_comma::flip_comma,
@@ -287,8 +285,8 @@ mod handlers {
             generate_default_from_new::generate_default_from_new,
             generate_delegate_trait::generate_delegate_trait,
             generate_derive::generate_derive,
-            generate_documentation_template::generate_documentation_template,
             generate_documentation_template::generate_doc_example,
+            generate_documentation_template::generate_documentation_template,
             generate_enum_is_method::generate_enum_is_method,
             generate_enum_projection_method::generate_enum_as_method,
             generate_enum_projection_method::generate_enum_try_into_method,
@@ -298,8 +296,8 @@ mod handlers {
             generate_function::generate_function,
             generate_impl::generate_impl,
             generate_impl::generate_trait_impl,
-            generate_mut_trait_impl::generate_mut_trait_impl,
             generate_is_empty_from_len::generate_is_empty_from_len,
+            generate_mut_trait_impl::generate_mut_trait_impl,
             generate_new::generate_new,
             generate_trait_from_impl::generate_trait_from_impl,
             inline_call::inline_call,
@@ -307,39 +305,41 @@ mod handlers {
             inline_const_as_literal::inline_const_as_literal,
             inline_local_variable::inline_local_variable,
             inline_macro::inline_macro,
-            inline_type_alias::inline_type_alias,
             inline_type_alias::inline_type_alias_uses,
+            inline_type_alias::inline_type_alias,
             into_to_qualified_from::into_to_qualified_from,
-            introduce_named_generic::introduce_named_generic,
             introduce_named_lifetime::introduce_named_lifetime,
+            introduce_named_type_parameter::introduce_named_type_parameter,
             invert_if::invert_if,
             merge_imports::merge_imports,
             merge_match_arms::merge_match_arms,
             merge_nested_if::merge_nested_if,
             move_bounds::move_bounds_to_where_clause,
             move_const_to_impl::move_const_to_impl,
+            move_from_mod_rs::move_from_mod_rs,
             move_guard::move_arm_cond_to_match_guard,
             move_guard::move_guard_to_arm_body,
             move_module_to_file::move_module_to_file,
             move_to_mod_rs::move_to_mod_rs,
-            move_from_mod_rs::move_from_mod_rs,
             normalize_import::normalize_import,
             number_representation::reformat_number_literal,
-            pull_assignment_up::pull_assignment_up,
             promote_local_to_const::promote_local_to_const,
-            qualify_path::qualify_path,
+            pull_assignment_up::pull_assignment_up,
             qualify_method_call::qualify_method_call,
+            qualify_path::qualify_path,
             raw_string::add_hash,
             raw_string::make_usual_string,
             raw_string::remove_hash,
             remove_dbg::remove_dbg,
             remove_mut::remove_mut,
+            remove_parentheses::remove_parentheses,
             remove_unused_imports::remove_unused_imports,
             remove_unused_param::remove_unused_param,
-            remove_parentheses::remove_parentheses,
             reorder_fields::reorder_fields,
             reorder_impl_items::reorder_impl_items,
-            replace_try_expr_with_match::replace_try_expr_with_match,
+            replace_arith_op::replace_arith_with_checked,
+            replace_arith_op::replace_arith_with_saturating,
+            replace_arith_op::replace_arith_with_wrapping,
             replace_derive_with_manual_impl::replace_derive_with_manual_impl,
             replace_if_let_with_match::replace_if_let_with_match,
             replace_if_let_with_match::replace_match_with_if_let,
@@ -348,23 +348,23 @@ mod handlers {
             replace_method_eager_lazy::replace_with_eager_method,
             replace_method_eager_lazy::replace_with_lazy_method,
             replace_named_generic_with_impl::replace_named_generic_with_impl,
-            replace_turbofish_with_explicit_type::replace_turbofish_with_explicit_type,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
-            replace_arith_op::replace_arith_with_wrapping,
-            replace_arith_op::replace_arith_with_checked,
-            replace_arith_op::replace_arith_with_saturating,
+            replace_try_expr_with_match::replace_try_expr_with_match,
+            replace_turbofish_with_explicit_type::replace_turbofish_with_explicit_type,
             sort_items::sort_items,
             split_import::split_import,
             term_search::term_search,
+            toggle_async_sugar::desugar_async_into_impl_future,
+            toggle_async_sugar::sugar_impl_future_into_async,
             toggle_ignore::toggle_ignore,
             toggle_macro_delimiter::toggle_macro_delimiter,
             unmerge_match_arm::unmerge_match_arm,
             unmerge_use::unmerge_use,
             unnecessary_async::unnecessary_async,
+            unqualify_method_call::unqualify_method_call,
             unwrap_block::unwrap_block,
             unwrap_return_type::unwrap_return_type,
             unwrap_tuple::unwrap_tuple,
-            unqualify_method_call::unqualify_method_call,
             wrap_return_type::wrap_return_type,
             wrap_unwrap_cfg_attr::wrap_unwrap_cfg_attr,
 

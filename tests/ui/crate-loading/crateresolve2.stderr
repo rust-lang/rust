@@ -4,9 +4,9 @@ error[E0464]: multiple candidates for `rmeta` dependency `crateresolve2` found
 LL | extern crate crateresolve2;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: candidate #1: $TEST_BUILD_DIR/crate-loading/crateresolve2/auxiliary/libcrateresolve2-1.rmeta
-   = note: candidate #2: $TEST_BUILD_DIR/crate-loading/crateresolve2/auxiliary/libcrateresolve2-2.rmeta
-   = note: candidate #3: $TEST_BUILD_DIR/crate-loading/crateresolve2/auxiliary/libcrateresolve2-3.rmeta
+   = note: candidate #1: $TEST_BUILD_DIR/auxiliary/libcrateresolve2-1.rmeta
+   = note: candidate #2: $TEST_BUILD_DIR/auxiliary/libcrateresolve2-2.rmeta
+   = note: candidate #3: $TEST_BUILD_DIR/auxiliary/libcrateresolve2-3.rmeta
 
 error: aborting due to 1 previous error
 

@@ -144,7 +144,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Directly return to caller of `try`.
                 StackPopCleanup::Goto {
                     ret: catch_unwind.ret,
-                    unwind: mir::UnwindAction::Continue,
+                    // `catch_fn` must not unwind.
+                    unwind: mir::UnwindAction::Unreachable,
                 },
             )?;
 

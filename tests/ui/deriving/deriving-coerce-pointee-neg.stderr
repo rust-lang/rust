@@ -3,40 +3,30 @@ error[E0802]: `CoercePointee` can only be derived on `struct`s with `#[repr(tran
    |
 LL | #[derive(CoercePointee)]
    |          ^^^^^^^^^^^^^
-   |
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0802]: `CoercePointee` can only be derived on `struct`s with at least one field
   --> $DIR/deriving-coerce-pointee-neg.rs:15:10
    |
 LL | #[derive(CoercePointee)]
    |          ^^^^^^^^^^^^^
-   |
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0802]: `CoercePointee` can only be derived on `struct`s with at least one field
   --> $DIR/deriving-coerce-pointee-neg.rs:22:10
    |
 LL | #[derive(CoercePointee)]
    |          ^^^^^^^^^^^^^
-   |
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0802]: `CoercePointee` can only be derived on `struct`s that are generic over at least one type
   --> $DIR/deriving-coerce-pointee-neg.rs:29:10
    |
 LL | #[derive(CoercePointee)]
    |          ^^^^^^^^^^^^^
-   |
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0802]: exactly one generic type parameter must be marked as `#[pointee]` to derive `CoercePointee` traits
   --> $DIR/deriving-coerce-pointee-neg.rs:34:10
    |
 LL | #[derive(CoercePointee)]
    |          ^^^^^^^^^^^^^
-   |
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0802]: only one type parameter can be marked as `#[pointee]` when deriving `CoercePointee` traits
   --> $DIR/deriving-coerce-pointee-neg.rs:43:39
@@ -126,8 +116,6 @@ LL | #[derive(CoercePointee)]
 ...
 LL |     inner: std::rc::Rc<(i32, Box<T>)>,
    |     --------------------------------- `Rc<(i32, Box<T>)>` must be a pointer, reference, or smart pointer that is allowed to be unsized
-   |
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0375]: implementing `CoerceUnsized` does not allow multiple fields to be coerced
   --> $DIR/deriving-coerce-pointee-neg.rs:153:10
@@ -142,7 +130,6 @@ LL |     inner1: Box<T>,
    |     ^^^^^^^^^^^^^^
 LL |     inner2: Box<T>,
    |     ^^^^^^^^^^^^^^
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: for `UsingNonCoercePointeeData<T>` to have a valid implementation of `CoerceUnsized`, it must be possible to coerce the field of type `NotCoercePointeeData<T>`
   --> $DIR/deriving-coerce-pointee-neg.rs:164:10
@@ -152,8 +139,6 @@ LL | #[derive(CoercePointee)]
 LL |
 LL | struct UsingNonCoercePointeeData<T: ?Sized>(NotCoercePointeeData<T>);
    |                                             ----------------------- `NotCoercePointeeData<T>` must be a pointer, reference, or smart pointer that is allowed to be unsized
-   |
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0690]: transparent struct needs at most one field with non-trivial size or alignment, but has 2
   --> $DIR/deriving-coerce-pointee-neg.rs:155:1

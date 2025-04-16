@@ -73,15 +73,15 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         }
         let parser_old = cmarko::Parser::new_ext(dox, main_body_opts_old()).into_offset_iter();
         for (event, span) in parser_old {
-            if let cmarko::Event::Start(cmarko::Tag::BlockQuote) = event {
-                if !dox[span.clone()].starts_with("> ") {
-                    spaceless_block_quotes.remove(&span.start);
-                }
+            if let cmarko::Event::Start(cmarko::Tag::BlockQuote) = event
+                && !dox[span.clone()].starts_with("> ")
+            {
+                spaceless_block_quotes.remove(&span.start);
             }
-            if let cmarko::Event::FootnoteReference(_) = event {
-                if !found_footnote_references.contains(&(span.start + 1)) {
-                    missing_footnote_references.insert(span.start + 1, span);
-                }
+            if let cmarko::Event::FootnoteReference(_) = event
+                && !found_footnote_references.contains(&(span.start + 1))
+            {
+                missing_footnote_references.insert(span.start + 1, span);
             }
         }
     }

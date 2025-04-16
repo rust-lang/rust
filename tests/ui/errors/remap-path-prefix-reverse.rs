@@ -13,5 +13,6 @@ extern crate remapped_dep;
 fn main() {
     // The actual error is irrelevant. The important part it that is should show
     // a snippet of the dependency's source.
-    let _ = remapped_dep::SomeStruct; // ~ERROR E0423
+    let _ = remapped_dep::SomeStruct;
+    //~^ ERROR expected value, found struct `remapped_dep::SomeStruct`
 }

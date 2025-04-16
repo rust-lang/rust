@@ -4,13 +4,16 @@ use std::fs::{File, remove_file};
 use std::io::Write;
 use std::path::Path;
 
+use build_helper::ci::CiEnv;
 use clap::CommandFactory;
 use serde::Deserialize;
 
 use super::flags::Flags;
 use super::{ChangeIdWrapper, Config, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
+use crate::ChangeId;
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm;
+use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
 use crate::core::config::{LldMode, Target, TargetSelection, TomlConfig};
 
 pub(crate) fn parse(config: &str) -> Config {
@@ -22,25 +25,13 @@ pub(crate) fn parse(config: &str) -> Config {
 
 #[test]
 fn download_ci_llvm() {
-    let config = parse("");
-    let is_available = llvm::is_ci_llvm_available(&config, config.llvm_assertions);
-    if is_available {
-        assert!(config.llvm_from_ci);
-    }
-
-    let config = parse("llvm.download-ci-llvm = true");
-    let is_available = llvm::is_ci_llvm_available(&config, config.llvm_assertions);
-    if is_available {
-        assert!(config.llvm_from_ci);
-    }
-
     let config = parse("llvm.download-ci-llvm = false");
     assert!(!config.llvm_from_ci);
 
     let if_unchanged_config = parse("llvm.download-ci-llvm = \"if-unchanged\"");
-    if if_unchanged_config.llvm_from_ci {
+    if if_unchanged_config.llvm_from_ci && if_unchanged_config.is_running_on_ci {
         let has_changes = if_unchanged_config
-            .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
+            .last_modified_commit(LLVM_INVALIDATION_PATHS, "download-ci-llvm", true)
             .is_none();
 
         assert!(
@@ -69,7 +60,7 @@ fn detect_src_and_out() {
         let expected_src = manifest_dir.ancestors().nth(2).unwrap();
         assert_eq!(&cfg.src, expected_src);
 
-        // test if build-dir was manually given in config.toml
+        // test if build-dir was manually given in bootstrap.toml
         if let Some(custom_build_dir) = build_dir {
             assert_eq!(&cfg.out, Path::new(custom_build_dir));
         }
@@ -161,7 +152,7 @@ runner = "x86_64-runner"
             )
         },
     );
-    assert_eq!(config.change_id, Some(1), "setting top-level value");
+    assert_eq!(config.change_id, Some(ChangeId::Id(1)), "setting top-level value");
     assert_eq!(
         config.rust_lto,
         crate::core::config::RustcLto::Fat,
@@ -229,13 +220,15 @@ fn override_toml_duplicate() {
 #[test]
 fn profile_user_dist() {
     fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
-        let contents =
-            if file.ends_with("config.toml") || env::var_os("RUST_BOOTSTRAP_CONFIG").is_some() {
-                "profile = \"user\"".to_owned()
-            } else {
-                assert!(file.ends_with("config.dist.toml"));
-                std::fs::read_to_string(file).unwrap()
-            };
+        let contents = if file.ends_with("bootstrap.toml")
+            || file.ends_with("config.toml")
+            || env::var_os("RUST_BOOTSTRAP_CONFIG").is_some()
+        {
+            "profile = \"user\"".to_owned()
+        } else {
+            assert!(file.ends_with("config.dist.toml") || file.ends_with("bootstrap.dist.toml"));
+            std::fs::read_to_string(file).unwrap()
+        };
 
         toml::from_str(&contents).and_then(|table: toml::Value| TomlConfig::deserialize(table))
     }
@@ -299,7 +292,7 @@ fn parse_change_id_with_unknown_field() {
     "#;
 
     let change_id_wrapper: ChangeIdWrapper = toml::from_str(config).unwrap();
-    assert_eq!(change_id_wrapper.inner, Some(3461));
+    assert_eq!(change_id_wrapper.inner, Some(ChangeId::Id(3461)));
 }
 
 #[test]
@@ -402,7 +395,7 @@ fn jobs_precedence() {
     );
     assert_eq!(config.jobs, Some(67890));
 
-    // `--set build.jobs` should take precedence over `config.toml`.
+    // `--set build.jobs` should take precedence over `bootstrap.toml`.
     let config = Config::parse_inner(
         Flags::parse(&[
             "check".to_owned(),
@@ -420,7 +413,7 @@ fn jobs_precedence() {
     );
     assert_eq!(config.jobs, Some(12345));
 
-    // `--jobs` > `--set build.jobs` > `config.toml`
+    // `--jobs` > `--set build.jobs` > `bootstrap.toml`
     let config = Config::parse_inner(
         Flags::parse(&[
             "check".to_owned(),
@@ -514,4 +507,35 @@ fn test_explicit_stage() {
     assert!(!config.explicit_stage_from_cli);
     assert!(!config.explicit_stage_from_config);
     assert!(!config.is_explicit_stage());
+}
+
+#[test]
+fn test_exclude() {
+    let exclude_path = "compiler";
+    let config = parse(&format!("build.exclude=[\"{}\"]", exclude_path));
+
+    let first_excluded = config
+        .skip
+        .first()
+        .expect("Expected at least one excluded path")
+        .to_str()
+        .expect("Failed to convert excluded path to string");
+
+    assert_eq!(first_excluded, exclude_path);
+}
+
+#[test]
+fn test_ci_flag() {
+    let config = Config::parse_inner(Flags::parse(&["check".into(), "--ci=false".into()]), |&_| {
+        toml::from_str("")
+    });
+    assert!(!config.is_running_on_ci);
+
+    let config = Config::parse_inner(Flags::parse(&["check".into(), "--ci=true".into()]), |&_| {
+        toml::from_str("")
+    });
+    assert!(config.is_running_on_ci);
+
+    let config = Config::parse_inner(Flags::parse(&["check".into()]), |&_| toml::from_str(""));
+    assert_eq!(config.is_running_on_ci, CiEnv::is_ci());
 }

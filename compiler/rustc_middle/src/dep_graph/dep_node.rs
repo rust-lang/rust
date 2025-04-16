@@ -21,6 +21,15 @@ macro_rules! define_dep_nodes {
             ($mod:ident) => {[ $($mod::$variant()),* ]};
         }
 
+        #[macro_export]
+        macro_rules! make_dep_kind_name_array {
+            ($mod:ident) => {
+                vec! {
+                    $(*$mod::$variant().name),*
+                }
+            };
+        }
+
         /// This enum serves as an index into arrays built by `make_dep_kind_array`.
         // This enum has more than u8::MAX variants so we need some kind of multi-byte
         // encoding. The derived Encodable/Decodable uses leb128 encoding which is
@@ -79,6 +88,8 @@ rustc_query_append!(define_dep_nodes![
     [] fn Null() -> (),
     /// We use this to create a forever-red node.
     [] fn Red() -> (),
+    [] fn SideEffect() -> (),
+    [] fn AnonZeroDeps() -> (),
     [] fn TraitSelect() -> (),
     [] fn CompileCodegenUnit() -> (),
     [] fn CompileMonoItem() -> (),

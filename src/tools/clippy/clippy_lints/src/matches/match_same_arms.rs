@@ -75,7 +75,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                         HirIdMapEntry::Occupied(entry) => return *entry.get() == b_id,
                     }
                     // the names technically don't have to match; this makes the lint more conservative
-                    && cx.tcx.hir().name(a_id) == cx.tcx.hir().name(b_id)
+                    && cx.tcx.hir_name(a_id) == cx.tcx.hir_name(b_id)
                     && cx.typeck_results().expr_ty(a) == cx.typeck_results().expr_ty(b)
                     && pat_contains_local(lhs.pat, a_id)
                     && pat_contains_local(rhs.pat, b_id)
@@ -253,6 +253,7 @@ fn iter_matching_struct_fields<'a>(
 impl<'a> NormalizedPat<'a> {
     fn from_pat(cx: &LateContext<'_>, arena: &'a DroplessArena, pat: &'a Pat<'_>) -> Self {
         match pat.kind {
+            PatKind::Missing => unreachable!(),
             PatKind::Wild | PatKind::Binding(.., None) => Self::Wild,
             PatKind::Binding(.., Some(pat))
             | PatKind::Box(pat)

@@ -20,7 +20,7 @@
 
 use core::intrinsics::unlikely;
 
-const USIZE_SIZE: usize = core::mem::size_of::<usize>();
+const USIZE_SIZE: usize = size_of::<usize>();
 const UNROLL_INNER: usize = 4;
 
 #[inline]

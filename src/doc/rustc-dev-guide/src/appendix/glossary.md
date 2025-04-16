@@ -31,7 +31,6 @@ Term                                                  | Meaning
 <span id="generics">generics</span>            |  The list of generic parameters defined on an item. There are three kinds of generic parameters: Type, lifetime and const parameters.
 <span id="hir">HIR</span>                      |  The _high-level [IR](#ir)_, created by lowering and desugaring the AST. ([see more](../hir.md))
 <span id="hir-id">`HirId`</span>               |  Identifies a particular node in the HIR by combining a def-id with an "intra-definition offset". See [the HIR chapter for more](../hir.md#identifiers-in-the-hir).
-<span id="hir-map">HIR map</span>              |  The HIR map, accessible via `tcx.hir()`, allows you to quickly navigate the HIR and convert between various forms of identifiers.
 <span id="ice">ICE</span>                      |  Short for _internal compiler error_, this is when the compiler crashes.
 <span id="ich">ICH</span>                      |  Short for _incremental compilation hash_, these are used as fingerprints for things such as HIR and crate metadata, to check if changes have been made. This is useful in incremental compilation to see if part of a crate has changed and should be recompiled.
 <span id="infcx">`infcx`</span>                |  The type inference context (`InferCtxt`). (see `rustc_middle::infer`)

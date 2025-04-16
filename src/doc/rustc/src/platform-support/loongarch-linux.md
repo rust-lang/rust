@@ -65,7 +65,7 @@ These targets are distributed through `rustup`, and otherwise require no
 special configuration.
 
 If you need to build your own Rust for some reason though, the targets can be
-simply enabled in `config.toml`. For example:
+simply enabled in `bootstrap.toml`. For example:
 
 ```toml
 [build]
@@ -73,7 +73,7 @@ target = ["loongarch64-unknown-linux-gnu"]
 ```
 
 Make sure the LoongArch toolchain binaries are reachable from `$PATH`.
-Alternatively, you can explicitly configure the paths in `config.toml`:
+Alternatively, you can explicitly configure the paths in `bootstrap.toml`:
 
 ```toml
 [target.loongarch64-unknown-linux-gnu]

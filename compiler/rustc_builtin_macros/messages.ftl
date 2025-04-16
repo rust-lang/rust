@@ -75,9 +75,11 @@ builtin_macros_autodiff_mode = unknown Mode: `{$mode}`. Use `Forward` or `Revers
 builtin_macros_autodiff_mode_activity = {$act} can not be used in {$mode} Mode
 builtin_macros_autodiff_not_build = this rustc version does not support autodiff
 builtin_macros_autodiff_number_activities = expected {$expected} activities, but found {$found}
+builtin_macros_autodiff_ret_activity = invalid return activity {$act} in {$mode} Mode
 builtin_macros_autodiff_ty_activity = {$act} can not be used for this type
-
 builtin_macros_autodiff_unknown_activity = did not recognize Activity: `{$act}`
+
+builtin_macros_autodiff_width = autodiff width must fit u32, but is {$width}
 builtin_macros_bad_derive_target = `derive` may only be applied to `struct`s, `enum`s and `union`s
     .label = not applicable here
     .label2 = not a `struct`, `enum` or `union`
@@ -228,8 +230,6 @@ builtin_macros_format_unused_args = multiple unused formatting arguments
     .label = multiple missing formatting specifiers
 
 builtin_macros_format_use_positional = consider using a positional formatting argument instead
-
-builtin_macros_invalid_crate_attribute = invalid crate attribute
 
 builtin_macros_multiple_default_attrs = multiple `#[default]` attributes
     .note = only one `#[default]` attribute is needed

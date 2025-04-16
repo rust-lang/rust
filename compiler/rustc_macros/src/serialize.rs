@@ -6,16 +6,11 @@ use syn::spanned::Spanned;
 pub(super) fn type_decodable_derive(
     mut s: synstructure::Structure<'_>,
 ) -> proc_macro2::TokenStream {
+    if !s.ast().generics.lifetimes().any(|lt| lt.lifetime.ident == "tcx") {
+        s.add_impl_generic(parse_quote! { 'tcx });
+    }
     let decoder_ty = quote! { __D };
-    let bound = if s.ast().generics.lifetimes().any(|lt| lt.lifetime.ident == "tcx") {
-        quote! { <I = ::rustc_middle::ty::TyCtxt<'tcx>> }
-    } else if s.ast().generics.type_params().any(|ty| ty.ident == "I") {
-        quote! { <I = I> }
-    } else {
-        quote! {}
-    };
-
-    s.add_impl_generic(parse_quote! { #decoder_ty: ::rustc_type_ir::codec::TyDecoder #bound });
+    s.add_impl_generic(parse_quote! { #decoder_ty: ::rustc_middle::ty::codec::TyDecoder<'tcx> });
     s.add_bounds(synstructure::AddBounds::Fields);
     s.underscore_const(true);
 
@@ -45,12 +40,12 @@ pub(super) fn decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro
     decodable_body(s, decoder_ty)
 }
 
-pub(super) fn decodable_generic_derive(
+pub(super) fn decodable_nocontext_derive(
     mut s: synstructure::Structure<'_>,
 ) -> proc_macro2::TokenStream {
     let decoder_ty = quote! { __D };
     s.add_impl_generic(parse_quote! { #decoder_ty: ::rustc_serialize::Decoder });
-    s.add_bounds(synstructure::AddBounds::Generics);
+    s.add_bounds(synstructure::AddBounds::Fields);
     s.underscore_const(true);
 
     decodable_body(s, decoder_ty)
@@ -132,16 +127,11 @@ fn decode_field(field: &syn::Field) -> proc_macro2::TokenStream {
 pub(super) fn type_encodable_derive(
     mut s: synstructure::Structure<'_>,
 ) -> proc_macro2::TokenStream {
-    let bound = if s.ast().generics.lifetimes().any(|lt| lt.lifetime.ident == "tcx") {
-        quote! { <I = ::rustc_middle::ty::TyCtxt<'tcx>> }
-    } else if s.ast().generics.type_params().any(|ty| ty.ident == "I") {
-        quote! { <I = I> }
-    } else {
-        quote! {}
-    };
-
     let encoder_ty = quote! { __E };
-    s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_type_ir::codec::TyEncoder #bound });
+    if !s.ast().generics.lifetimes().any(|lt| lt.lifetime.ident == "tcx") {
+        s.add_impl_generic(parse_quote! { 'tcx });
+    }
+    s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_middle::ty::codec::TyEncoder<'tcx> });
     s.add_bounds(synstructure::AddBounds::Fields);
     s.underscore_const(true);
 
@@ -171,12 +161,12 @@ pub(super) fn encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro
     encodable_body(s, encoder_ty, false)
 }
 
-pub(super) fn encodable_generic_derive(
+pub(super) fn encodable_nocontext_derive(
     mut s: synstructure::Structure<'_>,
 ) -> proc_macro2::TokenStream {
     let encoder_ty = quote! { __E };
     s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_serialize::Encoder });
-    s.add_bounds(synstructure::AddBounds::Generics);
+    s.add_bounds(synstructure::AddBounds::Fields);
     s.underscore_const(true);
 
     encodable_body(s, encoder_ty, false)

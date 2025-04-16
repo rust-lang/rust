@@ -81,7 +81,7 @@ cfg_if::cfg_if! {
             // while others require the alignment to be at least the pointer size (Illumos, macOS).
             // posix_memalign only has one, clear requirement: that the alignment be a multiple of
             // `sizeof(void*)`. Since these are all powers of 2, we can just use max.
-            let align = layout.align().max(crate::mem::size_of::<usize>());
+            let align = layout.align().max(size_of::<usize>());
             let ret = unsafe { libc::posix_memalign(&mut out, align, layout.size()) };
             if ret != 0 { ptr::null_mut() } else { out as *mut u8 }
         }

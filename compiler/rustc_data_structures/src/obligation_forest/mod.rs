@@ -313,8 +313,9 @@ pub struct Error<O, E> {
 
 mod helper {
     use super::*;
-    pub type ObligationTreeIdGenerator = impl Iterator<Item = ObligationTreeId>;
+    pub(super) type ObligationTreeIdGenerator = impl Iterator<Item = ObligationTreeId>;
     impl<O: ForestObligation> ObligationForest<O> {
+        #[define_opaque(ObligationTreeIdGenerator)]
         pub fn new() -> ObligationForest<O> {
             ObligationForest {
                 nodes: vec![],

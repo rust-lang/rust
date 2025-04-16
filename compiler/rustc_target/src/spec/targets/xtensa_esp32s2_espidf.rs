@@ -20,7 +20,7 @@ pub(crate) fn target() -> Target {
             vendor: "espressif".into(),
 
             executables: true,
-            cpu: "esp32-s2".into(),
+            cpu: "esp32s2".into(),
             linker: Some("xtensa-esp32s2-elf-gcc".into()),
 
             // See https://github.com/espressif/rust-esp32-example/issues/3#issuecomment-861054477

@@ -223,7 +223,7 @@ fn clean_middle_generic_args_with_constraints<'tcx>(
 
     let args = clean_middle_generic_args(cx, args.map_bound(|args| &args[..]), has_self, did);
 
-    GenericArgs::AngleBracketed { args: args.into(), constraints }
+    GenericArgs::AngleBracketed { args, constraints }
 }
 
 pub(super) fn clean_middle_path<'tcx>(
@@ -304,6 +304,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
     Symbol::intern(&match &p.kind {
         // FIXME(never_patterns): does this make sense?
+        PatKind::Missing => unreachable!(),
         PatKind::Wild
         | PatKind::Err(_)
         | PatKind::Never
@@ -394,7 +395,7 @@ pub(crate) fn print_evaluated_const(
 fn format_integer_with_underscore_sep(num: &str) -> String {
     let num_chars: Vec<_> = num.chars().collect();
     let mut num_start_index = if num_chars.first() == Some(&'-') { 1 } else { 0 };
-    let chunk_size = match num[num_start_index..].as_bytes() {
+    let chunk_size = match &num.as_bytes()[num_start_index..] {
         [b'0', b'b' | b'x', ..] => {
             num_start_index += 2;
             4
@@ -524,7 +525,7 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
             | AssocConst
             | Variant
             | Fn
-            | TyAlias { .. }
+            | TyAlias
             | Enum
             | Trait
             | Struct

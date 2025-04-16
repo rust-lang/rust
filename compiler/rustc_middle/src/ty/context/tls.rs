@@ -1,8 +1,6 @@
 use std::{mem, ptr};
 
-use rustc_data_structures::sync::{self, Lock};
-use rustc_errors::DiagInner;
-use thin_vec::ThinVec;
+use rustc_data_structures::sync;
 
 use super::{GlobalCtxt, TyCtxt};
 use crate::dep_graph::TaskDepsRef;
@@ -22,10 +20,6 @@ pub struct ImplicitCtxt<'a, 'tcx> {
     /// `ty::query::plumbing` when executing a query.
     pub query: Option<QueryJobId>,
 
-    /// Where to store diagnostics for the current query job, if any.
-    /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
-    pub diagnostics: Option<&'a Lock<ThinVec<DiagInner>>>,
-
     /// Used to prevent queries from calling too deeply.
     pub query_depth: usize,
 
@@ -37,13 +31,7 @@ pub struct ImplicitCtxt<'a, 'tcx> {
 impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
     pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> Self {
         let tcx = TyCtxt { gcx };
-        ImplicitCtxt {
-            tcx,
-            query: None,
-            diagnostics: None,
-            query_depth: 0,
-            task_deps: TaskDepsRef::Ignore,
-        }
+        ImplicitCtxt { tcx, query: None, query_depth: 0, task_deps: TaskDepsRef::Ignore }
     }
 }
 

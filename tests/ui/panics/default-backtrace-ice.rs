@@ -20,4 +20,4 @@
 // Ignored on msvc because the `__rust_{begin,end}_short_backtrace` symbols
 // aren't reliable.
 
-fn main() { missing_ident; }
+fn main() { missing_ident; } //~ ERROR cannot find value `missing_ident` in this scope

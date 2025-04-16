@@ -20,7 +20,9 @@ pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepsType>;
 pub type DepKindStruct<'tcx> = rustc_query_system::dep_graph::DepKindStruct<TyCtxt<'tcx>>;
 
 #[derive(Clone)]
-pub struct DepsType;
+pub struct DepsType {
+    pub dep_names: Vec<&'static str>,
+}
 
 impl Deps for DepsType {
     fn with_deps<OP, R>(task_deps: TaskDepsRef<'_>, op: OP) -> R
@@ -44,8 +46,14 @@ impl Deps for DepsType {
         })
     }
 
+    fn name(&self, dep_kind: DepKind) -> &'static str {
+        self.dep_names[dep_kind.as_usize()]
+    }
+
     const DEP_KIND_NULL: DepKind = dep_kinds::Null;
     const DEP_KIND_RED: DepKind = dep_kinds::Red;
+    const DEP_KIND_SIDE_EFFECT: DepKind = dep_kinds::SideEffect;
+    const DEP_KIND_ANON_ZERO_DEPS: DepKind = dep_kinds::AnonZeroDeps;
     const DEP_KIND_MAX: u16 = dep_node::DEP_KIND_VARIANTS - 1;
 }
 

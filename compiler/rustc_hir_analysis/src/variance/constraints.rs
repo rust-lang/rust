@@ -252,13 +252,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::Pat(typ, pat) => {
                 match *pat {
-                    ty::PatternKind::Range { start, end, include_end: _ } => {
-                        if let Some(start) = start {
-                            self.add_constraints_from_const(current, start, variance);
-                        }
-                        if let Some(end) = end {
-                            self.add_constraints_from_const(current, end, variance);
-                        }
+                    ty::PatternKind::Range { start, end } => {
+                        self.add_constraints_from_const(current, start, variance);
+                        self.add_constraints_from_const(current, end, variance);
                     }
                 }
                 self.add_constraints_from_ty(current, typ, variance);
@@ -432,7 +428,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         region: ty::Region<'tcx>,
         variance: VarianceTermPtr<'a>,
     ) {
-        match *region {
+        match region.kind() {
             ty::ReEarlyParam(ref data) => {
                 self.add_constraint(current, data.index, variance);
             }

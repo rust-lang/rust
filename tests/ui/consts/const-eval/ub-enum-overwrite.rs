@@ -10,7 +10,7 @@ const _: u8 = {
     e = E::B;
     unsafe { *p }
     //~^ ERROR evaluation of constant value failed
-    //~| uninitialized
+    //~| NOTE uninitialized
 };
 
 fn main() {}

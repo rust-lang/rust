@@ -416,7 +416,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if let Some(mir_place) = place_builder.try_to_place(this) {
                         this.cfg.push_fake_read(
                             block,
-                            this.source_info(this.tcx.hir().span(*hir_id)),
+                            this.source_info(this.tcx.hir_span(*hir_id)),
                             *cause,
                             mir_place,
                         );
@@ -569,6 +569,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         LocalInfo::Boring,
                         NeedsTemporary::No,
                     )
+                );
+                block.and(Rvalue::Use(operand))
+            }
+
+            ExprKind::ByUse { expr, span: _ } => {
+                let operand = unpack!(
+                    block =
+                        this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No)
                 );
                 block.and(Rvalue::Use(operand))
             }

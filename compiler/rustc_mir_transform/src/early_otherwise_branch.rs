@@ -103,9 +103,8 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
         let mut should_cleanup = false;
 
         // Also consider newly generated bbs in the same pass
-        for i in 0..body.basic_blocks.len() {
+        for parent in body.basic_blocks.indices() {
             let bbs = &*body.basic_blocks;
-            let parent = BasicBlock::from_usize(i);
             let Some(opt_data) = evaluate_candidate(tcx, body, parent) else { continue };
 
             trace!("SUCCESS: found optimization possibility to apply: {opt_data:?}");

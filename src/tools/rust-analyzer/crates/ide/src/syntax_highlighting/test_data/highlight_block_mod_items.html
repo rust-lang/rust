@@ -14,12 +14,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .string_literal     { color: #CC9393; }
 .field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
-.function.unsafe    { color: #BC8383; }
-.trait.unsafe       { color: #BC8383; }
-.operator.unsafe    { color: #BC8383; }
-.mutable.unsafe     { color: #BC8383; text-decoration: underline; }
-.keyword.unsafe     { color: #BC8383; font-weight: bold; }
-.macro.unsafe       { color: #BC8383; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
@@ -41,6 +35,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .control            { font-style: italic; }
 .reference          { font-style: italic; font-weight: bold; }
 .const              { font-weight: bolder; }
+.unsafe             { color: #BC8383; }
 
 .invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
 .unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
@@ -58,7 +53,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="macro public">foo</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="struct declaration macro public">Bar</span><span class="parenthesis">)</span><span class="semicolon">;</span>
         <span class="keyword">fn</span> <span class="function declaration">func</span><span class="parenthesis">(</span><span class="punctuation">_</span><span class="colon">:</span> <span class="module">y</span><span class="operator">::</span><span class="struct public">Bar</span><span class="parenthesis">)</span> <span class="brace">{</span>
             <span class="keyword">mod</span> <span class="module declaration">inner</span> <span class="brace">{</span>
-                <span class="keyword">struct</span> <span class="struct declaration">Innerest</span><span class="angle">&lt;</span><span class="keyword">const</span> <span class="const_param const declaration">C</span><span class="colon">:</span> <span class="unresolved_reference">usize</span><span class="angle">&gt;</span> <span class="brace">{</span> <span class="field declaration">field</span><span class="colon">:</span> <span class="bracket">[</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span> <span class="brace">{</span><span class="const_param const">C</span><span class="brace">}</span><span class="bracket">]</span> <span class="brace">}</span>
+                <span class="keyword">struct</span> <span class="struct declaration">Innerest</span><span class="angle">&lt;</span><span class="keyword const">const</span> <span class="const_param const declaration">C</span><span class="colon">:</span> <span class="unresolved_reference">usize</span><span class="angle">&gt;</span> <span class="brace">{</span> <span class="field declaration">field</span><span class="colon">:</span> <span class="bracket">[</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span> <span class="brace">{</span><span class="const_param const">C</span><span class="brace">}</span><span class="bracket">]</span> <span class="brace">}</span>
             <span class="brace">}</span>
         <span class="brace">}</span>
     <span class="brace">}</span>

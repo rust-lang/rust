@@ -20,6 +20,7 @@ mod m {
         }
     }
 
+    #[define_opaque(NotCalledFn)]
     fn mk_not_called() -> NotCalledFn {
         not_called::<i32>
     }

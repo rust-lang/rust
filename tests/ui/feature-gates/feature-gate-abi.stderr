@@ -1,23 +1,5 @@
-error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi.rs:12:8
-   |
-LL | extern "rust-intrinsic" fn f1() {}
-   |        ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi.rs:14:8
-   |
-LL | extern "rust-intrinsic" fn f2() {}
-   |        ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: the extern "rust-call" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:16:8
+  --> $DIR/feature-gate-abi.rs:11:8
    |
 LL | extern "rust-call" fn f4(_: ()) {}
    |        ^^^^^^^^^^^
@@ -26,26 +8,8 @@ LL | extern "rust-call" fn f4(_: ()) {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi.rs:20:12
-   |
-LL |     extern "rust-intrinsic" fn m1();
-   |            ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi.rs:22:12
-   |
-LL |     extern "rust-intrinsic" fn m2();
-   |            ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: the extern "rust-call" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:24:12
+  --> $DIR/feature-gate-abi.rs:15:12
    |
 LL |     extern "rust-call" fn m4(_: ());
    |            ^^^^^^^^^^^
@@ -55,7 +19,7 @@ LL |     extern "rust-call" fn m4(_: ());
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "rust-call" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:26:12
+  --> $DIR/feature-gate-abi.rs:17:12
    |
 LL |     extern "rust-call" fn dm4(_: ()) {}
    |            ^^^^^^^^^^^
@@ -64,26 +28,8 @@ LL |     extern "rust-call" fn dm4(_: ()) {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi.rs:33:12
-   |
-LL |     extern "rust-intrinsic" fn m1() {}
-   |            ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi.rs:35:12
-   |
-LL |     extern "rust-intrinsic" fn m2() {}
-   |            ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: the extern "rust-call" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:37:12
+  --> $DIR/feature-gate-abi.rs:24:12
    |
 LL |     extern "rust-call" fn m4(_: ()) {}
    |            ^^^^^^^^^^^
@@ -92,26 +38,8 @@ LL |     extern "rust-call" fn m4(_: ()) {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi.rs:42:12
-   |
-LL |     extern "rust-intrinsic" fn im1() {}
-   |            ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi.rs:44:12
-   |
-LL |     extern "rust-intrinsic" fn im2() {}
-   |            ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: the extern "rust-call" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:46:12
+  --> $DIR/feature-gate-abi.rs:29:12
    |
 LL |     extern "rust-call" fn im4(_: ()) {}
    |            ^^^^^^^^^^^
@@ -120,26 +48,8 @@ LL |     extern "rust-call" fn im4(_: ()) {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi.rs:50:18
-   |
-LL | type A1 = extern "rust-intrinsic" fn();
-   |                  ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi.rs:51:18
-   |
-LL | type A2 = extern "rust-intrinsic" fn();
-   |                  ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: the extern "rust-call" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:52:18
+  --> $DIR/feature-gate-abi.rs:33:18
    |
 LL | type A4 = extern "rust-call" fn(_: ());
    |                  ^^^^^^^^^^^
@@ -148,26 +58,8 @@ LL | type A4 = extern "rust-call" fn(_: ());
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi.rs:55:8
-   |
-LL | extern "rust-intrinsic" {}
-   |        ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi.rs:56:8
-   |
-LL | extern "rust-intrinsic" {}
-   |        ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: the extern "rust-call" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:57:8
+  --> $DIR/feature-gate-abi.rs:36:8
    |
 LL | extern "rust-call" {}
    |        ^^^^^^^^^^^
@@ -176,54 +68,6 @@ LL | extern "rust-call" {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:20:32
-   |
-LL |     extern "rust-intrinsic" fn m1();
-   |                                ^^
-
-error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:22:32
-   |
-LL |     extern "rust-intrinsic" fn m2();
-   |                                ^^
-
-error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:12:33
-   |
-LL | extern "rust-intrinsic" fn f1() {}
-   |                                 ^^
-
-error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:14:33
-   |
-LL | extern "rust-intrinsic" fn f2() {}
-   |                                 ^^
-
-error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:33:37
-   |
-LL |     extern "rust-intrinsic" fn m1() {}
-   |                                     ^^
-
-error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:35:37
-   |
-LL |     extern "rust-intrinsic" fn m2() {}
-   |                                     ^^
-
-error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:42:38
-   |
-LL |     extern "rust-intrinsic" fn im1() {}
-   |                                      ^^
-
-error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:44:38
-   |
-LL |     extern "rust-intrinsic" fn im2() {}
-   |                                      ^^
-
-error: aborting due to 27 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

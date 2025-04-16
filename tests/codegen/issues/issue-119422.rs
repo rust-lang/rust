@@ -1,7 +1,8 @@
 //! This test checks that compiler don't generate useless compares to zeros
 //! for `NonZero` integer types.
 //!
-//@ compile-flags: -Copt-level=3 --edition=2021 -Zmerge-functions=disabled
+//@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
+//@ edition: 2021
 //@ only-64bit (because the LLVM type of i64 for usize shows up)
 #![crate_type = "lib"]
 

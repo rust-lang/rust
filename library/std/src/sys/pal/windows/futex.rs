@@ -1,10 +1,10 @@
 use core::ffi::c_void;
+use core::ptr;
 use core::sync::atomic::{
     AtomicBool, AtomicI8, AtomicI16, AtomicI32, AtomicI64, AtomicIsize, AtomicPtr, AtomicU8,
     AtomicU16, AtomicU32, AtomicU64, AtomicUsize,
 };
 use core::time::Duration;
-use core::{mem, ptr};
 
 use super::api::{self, WinError};
 use crate::sys::{c, dur2timeout};
@@ -61,7 +61,7 @@ pub fn wait_on_address<W: Waitable>(
 ) -> bool {
     unsafe {
         let addr = ptr::from_ref(address).cast::<c_void>();
-        let size = mem::size_of::<W>();
+        let size = size_of::<W>();
         let compare_addr = (&raw const compare).cast::<c_void>();
         let timeout = timeout.map(dur2timeout).unwrap_or(c::INFINITE);
         c::WaitOnAddress(addr, compare_addr, size, timeout) == c::TRUE

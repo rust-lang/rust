@@ -8,7 +8,7 @@ use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
 use rustc_ast::{
     self as ast, BlockCheckMode, FormatAlignment, FormatArgPosition, FormatArgsPiece, FormatCount,
-    FormatDebugHex, FormatSign, FormatTrait, token,
+    FormatDebugHex, FormatSign, FormatTrait, YieldKind, token,
 };
 
 use crate::pp::Breaks::Inconsistent;
@@ -274,22 +274,22 @@ impl<'a> State<'a> {
 
     fn print_expr_binary(
         &mut self,
-        op: ast::BinOp,
+        op: ast::BinOpKind,
         lhs: &ast::Expr,
         rhs: &ast::Expr,
         fixup: FixupContext,
     ) {
-        let binop_prec = op.node.precedence();
+        let binop_prec = op.precedence();
         let left_prec = lhs.precedence();
         let right_prec = rhs.precedence();
 
-        let (mut left_needs_paren, right_needs_paren) = match op.node.fixity() {
+        let (mut left_needs_paren, right_needs_paren) = match op.fixity() {
             Fixity::Left => (left_prec < binop_prec, right_prec <= binop_prec),
             Fixity::Right => (left_prec <= binop_prec, right_prec < binop_prec),
             Fixity::None => (left_prec <= binop_prec, right_prec <= binop_prec),
         };
 
-        match (&lhs.kind, op.node) {
+        match (&lhs.kind, op) {
             // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
             // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
@@ -312,7 +312,7 @@ impl<'a> State<'a> {
 
         self.print_expr_cond_paren(lhs, left_needs_paren, fixup.leftmost_subexpression());
         self.space();
-        self.word_space(op.node.as_str());
+        self.word_space(op.as_str());
         self.print_expr_cond_paren(rhs, right_needs_paren, fixup.subsequent_subexpression());
     }
 
@@ -410,7 +410,7 @@ impl<'a> State<'a> {
                 self.print_expr_method_call(seg, receiver, args, fixup);
             }
             ast::ExprKind::Binary(op, lhs, rhs) => {
-                self.print_expr_binary(*op, lhs, rhs, fixup);
+                self.print_expr_binary(op.node, lhs, rhs, fixup);
             }
             ast::ExprKind::Unary(op, expr) => {
                 self.print_expr_unary(*op, expr, fixup);
@@ -574,6 +574,14 @@ impl<'a> State<'a> {
                 );
                 self.word(".await");
             }
+            ast::ExprKind::Use(expr, _) => {
+                self.print_expr_cond_paren(
+                    expr,
+                    expr.precedence() < ExprPrecedence::Unambiguous,
+                    fixup,
+                );
+                self.word(".use");
+            }
             ast::ExprKind::Assign(lhs, rhs, _) => {
                 self.print_expr_cond_paren(
                     lhs,
@@ -597,8 +605,7 @@ impl<'a> State<'a> {
                     fixup.leftmost_subexpression(),
                 );
                 self.space();
-                self.word(op.node.as_str());
-                self.word_space("=");
+                self.word_space(op.node.as_str());
                 self.print_expr_cond_paren(
                     rhs,
                     rhs.precedence() < ExprPrecedence::Assign,
@@ -753,7 +760,7 @@ impl<'a> State<'a> {
                 self.print_expr(e, FixupContext::default());
                 self.pclose();
             }
-            ast::ExprKind::Yield(e) => {
+            ast::ExprKind::Yield(YieldKind::Prefix(e)) => {
                 self.word("yield");
 
                 if let Some(expr) = e {
@@ -764,6 +771,14 @@ impl<'a> State<'a> {
                         fixup.subsequent_subexpression(),
                     );
                 }
+            }
+            ast::ExprKind::Yield(YieldKind::Postfix(e)) => {
+                self.print_expr_cond_paren(
+                    e,
+                    e.precedence() < ExprPrecedence::Unambiguous,
+                    fixup.leftmost_subexpression_with_dot(),
+                );
+                self.word(".yield");
             }
             ast::ExprKind::Try(e) => {
                 self.print_expr_cond_paren(
@@ -885,6 +900,7 @@ impl<'a> State<'a> {
     fn print_capture_clause(&mut self, capture_clause: ast::CaptureBy) {
         match capture_clause {
             ast::CaptureBy::Value { .. } => self.word_space("move"),
+            ast::CaptureBy::Use { .. } => self.word_space("use"),
             ast::CaptureBy::Ref => {}
         }
     }

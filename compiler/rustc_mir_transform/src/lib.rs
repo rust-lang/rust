@@ -11,8 +11,8 @@
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]
+#![feature(vec_deque_pop_if)]
 #![feature(yeet_expr)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use hir::ConstContext;
@@ -316,6 +316,10 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
     // All body-owners have MIR associated with them.
     let mut set: FxIndexSet<_> = tcx.hir_body_owners().collect();
 
+    // Remove the fake bodies for `global_asm!`, since they're not useful
+    // to be emitted (`--emit=mir`) or encoded (in metadata).
+    set.retain(|&def_id| !matches!(tcx.def_kind(def_id), DefKind::GlobalAsm));
+
     // Coroutine-closures (e.g. async closures) have an additional by-move MIR
     // body that isn't in the HIR.
     for body_owner in tcx.hir_body_owners() {
@@ -493,8 +497,11 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     }
 
     // We only need to borrowck non-synthetic MIR.
-    let tainted_by_errors =
-        if !tcx.is_synthetic_mir(def) { tcx.mir_borrowck(def).tainted_by_errors } else { None };
+    let tainted_by_errors = if !tcx.is_synthetic_mir(def) {
+        tcx.mir_borrowck(tcx.typeck_root_def_id(def.to_def_id()).expect_local()).err()
+    } else {
+        None
+    };
 
     let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
@@ -511,6 +518,24 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
 
     if let Some(error_reported) = tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
+    }
+
+    // Also taint the body if it's within a top-level item that is not well formed.
+    //
+    // We do this check here and not during `mir_promoted` because that may result
+    // in borrowck cycles if WF requires looking into an opaque hidden type.
+    let root = tcx.typeck_root_def_id(def.to_def_id());
+    match tcx.def_kind(root) {
+        DefKind::Fn
+        | DefKind::AssocFn
+        | DefKind::Static { .. }
+        | DefKind::Const
+        | DefKind::AssocConst => {
+            if let Err(guar) = tcx.ensure_ok().check_well_formed(root.expect_local()) {
+                body.tainted_by_errors = Some(guar);
+            }
+        }
+        _ => {}
     }
 
     run_analysis_to_runtime_passes(tcx, &mut body);
@@ -772,7 +797,7 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
     }
 
     if !tcx.is_synthetic_mir(def) {
-        tcx.ensure_done().mir_borrowck(def);
+        tcx.ensure_done().mir_borrowck(tcx.typeck_root_def_id(def.to_def_id()).expect_local());
     }
     let mut promoted = tcx.mir_promoted(def).1.steal();
 

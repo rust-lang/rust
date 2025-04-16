@@ -1,5 +1,4 @@
 use std::ffi::OsStr;
-use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -100,6 +99,34 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
         runner.run_out_command("gen_block_iterate", &[]);
     }),
     TestCase::build_bin_and_run("aot.raw-dylib", "example/raw-dylib.rs", &[]),
+    TestCase::custom("test.sysroot", &|runner| {
+        apply_patches(
+            &runner.dirs,
+            "sysroot_tests",
+            &runner.stdlib_source.join("library"),
+            &SYSROOT_TESTS_SRC.to_path(&runner.dirs),
+        );
+
+        SYSROOT_TESTS.clean(&runner.dirs);
+
+        let mut target_compiler = runner.target_compiler.clone();
+        // coretests and alloctests produce a bunch of warnings. When running
+        // in rust's CI warnings are denied, so we have to override that here.
+        target_compiler.rustflags.push("--cap-lints=allow".to_owned());
+        // The standard library may have been compiled with -Zrandomize-layout.
+        target_compiler.rustflags.extend(["--cfg".to_owned(), "randomized_layouts".to_owned()]);
+
+        if runner.is_native {
+            let mut test_cmd = SYSROOT_TESTS.test(&target_compiler, &runner.dirs);
+            test_cmd.args(["-p", "coretests", "-p", "alloctests", "--tests", "--", "-q"]);
+            spawn_and_wait(test_cmd);
+        } else {
+            eprintln!("Cross-Compiling: Not running tests");
+            let mut build_cmd = SYSROOT_TESTS.build(&target_compiler, &runner.dirs);
+            build_cmd.args(["-p", "coretests", "-p", "alloctests", "--tests"]);
+            spawn_and_wait(build_cmd);
+        }
+    }),
 ];
 
 pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
@@ -126,9 +153,9 @@ static PORTABLE_SIMD_SRC: RelPath = RelPath::build("portable-simd");
 
 static PORTABLE_SIMD: CargoProject = CargoProject::new(&PORTABLE_SIMD_SRC, "portable-simd_target");
 
-static LIBCORE_TESTS_SRC: RelPath = RelPath::build("coretests");
+static SYSROOT_TESTS_SRC: RelPath = RelPath::build("sysroot_tests");
 
-static LIBCORE_TESTS: CargoProject = CargoProject::new(&LIBCORE_TESTS_SRC, "coretests_target");
+static SYSROOT_TESTS: CargoProject = CargoProject::new(&SYSROOT_TESTS_SRC, "sysroot_tests_target");
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::custom("test.rust-random/rand", &|runner| {
@@ -144,31 +171,6 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             eprintln!("Cross-Compiling: Not running tests");
             let mut build_cmd = RAND.build(&runner.target_compiler, &runner.dirs);
             build_cmd.arg("--workspace").arg("--tests");
-            spawn_and_wait(build_cmd);
-        }
-    }),
-    TestCase::custom("test.libcore", &|runner| {
-        apply_patches(
-            &runner.dirs,
-            "coretests",
-            &runner.stdlib_source.join("library/coretests"),
-            &LIBCORE_TESTS_SRC.to_path(&runner.dirs),
-        );
-
-        let source_lockfile = runner.dirs.source_dir.join("patches/coretests-lock.toml");
-        let target_lockfile = LIBCORE_TESTS_SRC.to_path(&runner.dirs).join("Cargo.lock");
-        fs::copy(source_lockfile, target_lockfile).unwrap();
-
-        LIBCORE_TESTS.clean(&runner.dirs);
-
-        if runner.is_native {
-            let mut test_cmd = LIBCORE_TESTS.test(&runner.target_compiler, &runner.dirs);
-            test_cmd.arg("--").arg("-q");
-            spawn_and_wait(test_cmd);
-        } else {
-            eprintln!("Cross-Compiling: Not running tests");
-            let mut build_cmd = LIBCORE_TESTS.build(&runner.target_compiler, &runner.dirs);
-            build_cmd.arg("--tests");
             spawn_and_wait(build_cmd);
         }
     }),
@@ -330,10 +332,8 @@ impl<'a> TestRunner<'a> {
         target_compiler.rustflags.extend(rustflags_from_env("RUSTFLAGS"));
         target_compiler.rustdocflags.extend(rustflags_from_env("RUSTDOCFLAGS"));
 
-        let jit_supported = use_unstable_features
-            && is_native
-            && target_compiler.triple.contains("x86_64")
-            && !target_compiler.triple.contains("windows");
+        let jit_supported =
+            use_unstable_features && is_native && !target_compiler.triple.contains("windows");
 
         Self { is_native, jit_supported, skip_tests, dirs, target_compiler, stdlib_source }
     }
@@ -374,21 +374,7 @@ impl<'a> TestRunner<'a> {
                 TestCaseCmd::JitBin { source, args } => {
                     let mut jit_cmd = self.rustc_command([
                         "-Zunstable-options",
-                        "-Cllvm-args=mode=jit",
-                        "-Cprefer-dynamic",
-                        source,
-                        "--cfg",
-                        "jit",
-                    ]);
-                    if !args.is_empty() {
-                        jit_cmd.env("CG_CLIF_JIT_ARGS", args);
-                    }
-                    spawn_and_wait(jit_cmd);
-
-                    eprintln!("[JIT-lazy] {testname}");
-                    let mut jit_cmd = self.rustc_command([
-                        "-Zunstable-options",
-                        "-Cllvm-args=mode=jit-lazy",
+                        "-Cllvm-args=jit-mode",
                         "-Cprefer-dynamic",
                         source,
                         "--cfg",

@@ -96,6 +96,17 @@ impl Timespec {
         }
     }
 
+    // FIXME(#115199): Rust currently omits weak function definitions
+    // and its metadata from LLVM IR.
+    #[cfg_attr(
+        all(
+            target_os = "linux",
+            target_env = "gnu",
+            target_pointer_width = "32",
+            not(target_arch = "riscv32")
+        ),
+        no_sanitize(cfi)
+    )]
     pub fn now(clock: libc::clockid_t) -> Timespec {
         use crate::mem::MaybeUninit;
         use crate::sys::cvt;
@@ -112,7 +123,12 @@ impl Timespec {
 
             // __clock_gettime64 was added to 32-bit arches in glibc 2.34,
             // and it handles both vDSO calls and ENOSYS fallbacks itself.
-            weak!(fn __clock_gettime64(libc::clockid_t, *mut __timespec64) -> libc::c_int);
+            weak!(
+                fn __clock_gettime64(
+                    clockid: libc::clockid_t,
+                    tp: *mut __timespec64,
+                ) -> libc::c_int;
+            );
 
             if let Some(clock_gettime64) = __clock_gettime64.get() {
                 let mut t = MaybeUninit::uninit();

@@ -61,6 +61,8 @@ pub trait Pointee {
     // NOTE: Keep trait bounds in `static_assert_expected_bounds_for_metadata`
     // in `library/core/src/ptr/metadata.rs`
     // in sync with those here:
+    // NOTE: The metadata of `dyn Trait + 'a` is `DynMetadata<dyn Trait + 'a>`
+    // so a `'static` bound must not be added.
     type Metadata: fmt::Debug + Copy + Send + Sync + Ord + Hash + Unpin + Freeze;
 }
 
@@ -74,7 +76,7 @@ pub trait Pointee {
 /// #![feature(ptr_metadata)]
 ///
 /// fn this_never_panics<T: std::ptr::Thin>() {
-///     assert_eq!(std::mem::size_of::<&T>(), std::mem::size_of::<usize>())
+///     assert_eq!(size_of::<&T>(), size_of::<usize>())
 /// }
 /// ```
 #[unstable(feature = "ptr_metadata", issue = "81513")]

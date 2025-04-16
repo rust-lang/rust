@@ -58,6 +58,7 @@ fn trait_object_roundtrips_impl(syntax: TraitObjectSyntax) {
                     hir_id: HirId::INVALID,
                     ident: Ident::new(sym::name, DUMMY_SP),
                     res: LifetimeName::Static,
+                    is_anon_in_path: IsAnonInPath::No,
                 }
             },
             syntax,

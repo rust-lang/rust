@@ -3,14 +3,16 @@ use std::env;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
-use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 use tracing::*;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
+use crate::errors::ErrorKind;
+use crate::executor::{CollectedTestDesc, ShouldPanic};
 use crate::header::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::header::needs::CachedNeedsConditions;
 use crate::util::static_regex;
@@ -43,12 +45,12 @@ pub struct EarlyProps {
 }
 
 impl EarlyProps {
-    pub fn from_file(config: &Config, testfile: &Path) -> Self {
-        let file = File::open(testfile).expect("open test file to parse earlyprops");
+    pub fn from_file(config: &Config, testfile: &Utf8Path) -> Self {
+        let file = File::open(testfile.as_std_path()).expect("open test file to parse earlyprops");
         Self::from_reader(config, testfile, file)
     }
 
-    pub fn from_reader<R: Read>(config: &Config, testfile: &Path, rdr: R) -> Self {
+    pub fn from_reader<R: Read>(config: &Config, testfile: &Utf8Path, rdr: R) -> Self {
         let mut props = EarlyProps::default();
         let mut poisoned = false;
         iter_header(
@@ -64,7 +66,7 @@ impl EarlyProps {
         );
 
         if poisoned {
-            eprintln!("errors encountered during EarlyProps parsing: {}", testfile.display());
+            eprintln!("errors encountered during EarlyProps parsing: {}", testfile);
             panic!("errors encountered during EarlyProps parsing");
         }
 
@@ -86,7 +88,7 @@ pub struct TestProps {
     pub doc_flags: Vec<String>,
     // If present, the name of a file that this test should match when
     // pretty-printed
-    pub pp_exact: Option<PathBuf>,
+    pub pp_exact: Option<Utf8PathBuf>,
     /// Auxiliary crates that should be built and made available to this test.
     pub(crate) aux: AuxProps,
     // Environment settings to use for compiling
@@ -132,7 +134,7 @@ pub struct TestProps {
     // not set by end-users; rather it is set by the incremental
     // testing harness and used when generating compilation
     // arguments. (In particular, it propagates to the aux-builds.)
-    pub incremental_dir: Option<PathBuf>,
+    pub incremental_dir: Option<Utf8PathBuf>,
     // If `true`, this test will use incremental compilation.
     //
     // This can be set manually with the `incremental` header, or implicitly
@@ -195,6 +197,8 @@ pub struct TestProps {
     /// Build and use `minicore` as `core` stub for `no_core` tests in cross-compilation scenarios
     /// that don't otherwise want/need `-Z build-std`.
     pub add_core_stubs: bool,
+    /// Whether line annotatins are required for the given error kind.
+    pub dont_require_annotations: HashSet<ErrorKind>,
 }
 
 mod directives {
@@ -211,6 +215,7 @@ mod directives {
     pub const CHECK_RUN_RESULTS: &'static str = "check-run-results";
     pub const DONT_CHECK_COMPILER_STDOUT: &'static str = "dont-check-compiler-stdout";
     pub const DONT_CHECK_COMPILER_STDERR: &'static str = "dont-check-compiler-stderr";
+    pub const DONT_REQUIRE_ANNOTATIONS: &'static str = "dont-require-annotations";
     pub const NO_PREFER_DYNAMIC: &'static str = "no-prefer-dynamic";
     pub const PRETTY_MODE: &'static str = "pretty-mode";
     pub const PRETTY_COMPARE_ONLY: &'static str = "pretty-compare-only";
@@ -296,10 +301,16 @@ impl TestProps {
             no_auto_check_cfg: false,
             has_enzyme: false,
             add_core_stubs: false,
+            dont_require_annotations: Default::default(),
         }
     }
 
-    pub fn from_aux_file(&self, testfile: &Path, revision: Option<&str>, config: &Config) -> Self {
+    pub fn from_aux_file(
+        &self,
+        testfile: &Utf8Path,
+        revision: Option<&str>,
+        config: &Config,
+    ) -> Self {
         let mut props = TestProps::new();
 
         // copy over select properties to the aux build:
@@ -310,10 +321,10 @@ impl TestProps {
         props
     }
 
-    pub fn from_file(testfile: &Path, revision: Option<&str>, config: &Config) -> Self {
+    pub fn from_file(testfile: &Utf8Path, revision: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
         props.load_from(testfile, revision, config);
-        props.exec_env.push(("RUSTC".to_string(), config.rustc_path.display().to_string()));
+        props.exec_env.push(("RUSTC".to_string(), config.rustc_path.to_string()));
 
         match (props.pass_mode, props.fail_mode) {
             (None, None) if config.mode == Mode::Ui => props.fail_mode = Some(FailMode::Check),
@@ -328,10 +339,10 @@ impl TestProps {
     /// tied to a particular revision `foo` (indicated by writing
     /// `//@[foo]`), then the property is ignored unless `test_revision` is
     /// `Some("foo")`.
-    fn load_from(&mut self, testfile: &Path, test_revision: Option<&str>, config: &Config) {
+    fn load_from(&mut self, testfile: &Utf8Path, test_revision: Option<&str>, config: &Config) {
         let mut has_edition = false;
         if !testfile.is_dir() {
-            let file = File::open(testfile).unwrap();
+            let file = File::open(testfile.as_std_path()).unwrap();
 
             let mut poisoned = false;
 
@@ -377,14 +388,22 @@ impl TestProps {
                     }
 
                     if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
-                        self.compile_flags.extend(split_flags(&flags));
+                        let flags = split_flags(&flags);
+                        for flag in &flags {
+                            if flag == "--edition" || flag.starts_with("--edition=") {
+                                panic!("you must use `//@ edition` to configure the edition");
+                            }
+                        }
+                        self.compile_flags.extend(flags);
                     }
                     if config.parse_name_value_directive(ln, INCORRECT_COMPILER_FLAGS).is_some() {
                         panic!("`compiler-flags` directive should be spelled `compile-flags`");
                     }
 
                     if let Some(edition) = config.parse_edition(ln) {
-                        self.compile_flags.push(format!("--edition={}", edition.trim()));
+                        // The edition is added at the start, since flags from //@compile-flags must
+                        // be passed to rustc last.
+                        self.compile_flags.insert(0, format!("--edition={}", edition.trim()));
                         has_edition = true;
                     }
 
@@ -440,7 +459,7 @@ impl TestProps {
                         ln,
                         UNSET_EXEC_ENV,
                         &mut self.unset_exec_env,
-                        |r| r,
+                        |r| r.trim().to_owned(),
                     );
                     config.push_name_value_directive(
                         ln,
@@ -452,7 +471,7 @@ impl TestProps {
                         ln,
                         UNSET_RUSTC_ENV,
                         &mut self.unset_rustc_env,
-                        |r| r,
+                        |r| r.trim().to_owned(),
                     );
                     config.push_name_value_directive(
                         ln,
@@ -569,11 +588,18 @@ impl TestProps {
                     config.set_name_directive(ln, NO_AUTO_CHECK_CFG, &mut self.no_auto_check_cfg);
 
                     self.update_add_core_stubs(ln, config);
+
+                    if let Some(err_kind) =
+                        config.parse_name_value_directive(ln, DONT_REQUIRE_ANNOTATIONS)
+                    {
+                        self.dont_require_annotations
+                            .insert(ErrorKind::expect_from_user_str(err_kind.trim()));
+                    }
                 },
             );
 
             if poisoned {
-                eprintln!("errors encountered during TestProps parsing: {}", testfile.display());
+                eprintln!("errors encountered during TestProps parsing: {}", testfile);
                 panic!("errors encountered during TestProps parsing");
             }
         }
@@ -605,7 +631,9 @@ impl TestProps {
         }
 
         if let (Some(edition), false) = (&config.edition, has_edition) {
-            self.compile_flags.push(format!("--edition={}", edition));
+            // The edition is added at the start, since flags from //@compile-flags must be passed
+            // to rustc last.
+            self.compile_flags.insert(0, format!("--edition={}", edition));
         }
     }
 
@@ -709,11 +737,11 @@ impl TestProps {
 /// returns a struct containing various parts of the directive.
 fn line_directive<'line>(
     line_number: usize,
-    comment: &str,
     original_line: &'line str,
 ) -> Option<DirectiveLine<'line>> {
     // Ignore lines that don't start with the comment prefix.
-    let after_comment = original_line.trim_start().strip_prefix(comment)?.trim_start();
+    let after_comment =
+        original_line.trim_start().strip_prefix(COMPILETEST_DIRECTIVE_PREFIX)?.trim_start();
 
     let revision;
     let raw_directive;
@@ -722,7 +750,7 @@ fn line_directive<'line>(
         // A comment like `//@[foo]` only applies to revision `foo`.
         let Some((line_revision, after_close_bracket)) = after_open_bracket.split_once(']') else {
             panic!(
-                "malformed condition directive: expected `{comment}[foo]`, found `{original_line}`"
+                "malformed condition directive: expected `{COMPILETEST_DIRECTIVE_PREFIX}[foo]`, found `{original_line}`"
             )
         };
 
@@ -836,11 +864,13 @@ pub(crate) fn check_directive<'a>(
     CheckDirectiveResult { is_known_directive: is_known(&directive_name), trailing_directive }
 }
 
+const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
+
 fn iter_header(
     mode: Mode,
     _suite: &str,
     poisoned: &mut bool,
-    testfile: &Path,
+    testfile: &Utf8Path,
     rdr: impl Read,
     it: &mut dyn FnMut(DirectiveLine<'_>),
 ) {
@@ -849,8 +879,7 @@ fn iter_header(
     }
 
     // Coverage tests in coverage-run mode always have these extra directives, without needing to
-    // specify them manually in every test file. (Some of the comments below have been copied over
-    // from the old `tests/run-make/coverage-reports/Makefile`, which no longer exists.)
+    // specify them manually in every test file.
     //
     // FIXME(jieyouxu): I feel like there's a better way to do this, leaving for later.
     if mode == Mode::CoverageRun {
@@ -867,9 +896,6 @@ fn iter_header(
         }
     }
 
-    // NOTE(jieyouxu): once we get rid of `Makefile`s we can unconditionally check for `//@`.
-    let comment = if testfile.extension().is_some_and(|e| e == "rs") { "//@" } else { "#" };
-
     let mut rdr = BufReader::with_capacity(1024, rdr);
     let mut ln = String::new();
     let mut line_number = 0;
@@ -882,7 +908,7 @@ fn iter_header(
         }
         let ln = ln.trim();
 
-        let Some(directive_line) = line_directive(line_number, comment, ln) else {
+        let Some(directive_line) = line_directive(line_number, ln) else {
             continue;
         };
 
@@ -896,9 +922,7 @@ fn iter_header(
 
                 eprintln!(
                     "error: detected unknown compiletest test directive `{}` in {}:{}",
-                    directive_line.raw_directive,
-                    testfile.display(),
-                    line_number,
+                    directive_line.raw_directive, testfile, line_number,
                 );
 
                 return;
@@ -910,10 +934,7 @@ fn iter_header(
                 eprintln!(
                     "error: detected trailing compiletest test directive `{}` in {}:{}\n \
                       help: put the trailing directive in it's own line: `//@ {}`",
-                    trailing_directive,
-                    testfile.display(),
-                    line_number,
-                    trailing_directive,
+                    trailing_directive, testfile, line_number, trailing_directive,
                 );
 
                 return;
@@ -925,58 +946,72 @@ fn iter_header(
 }
 
 impl Config {
-    fn parse_and_update_revisions(&self, testfile: &Path, line: &str, existing: &mut Vec<String>) {
-        const FORBIDDEN_REVISION_NAMES: [&str; 9] =
+    fn parse_and_update_revisions(
+        &self,
+        testfile: &Utf8Path,
+        line: &str,
+        existing: &mut Vec<String>,
+    ) {
+        const FORBIDDEN_REVISION_NAMES: [&str; 2] = [
+            // `//@ revisions: true false` Implying `--cfg=true` and `--cfg=false` makes it very
+            // weird for the test, since if the test writer wants a cfg of the same revision name
+            // they'd have to use `cfg(r#true)` and `cfg(r#false)`.
+            "true", "false",
+        ];
+
+        const FILECHECK_FORBIDDEN_REVISION_NAMES: [&str; 9] =
             ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
 
         if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
             if self.mode == Mode::RunMake {
-                panic!("`run-make` tests do not support revisions: {}", testfile.display());
+                panic!("`run-make` tests do not support revisions: {}", testfile);
             }
 
             let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
-            for revision in raw.split_whitespace().map(|r| r.to_string()) {
-                if !duplicates.insert(revision.clone()) {
+            for revision in raw.split_whitespace() {
+                if !duplicates.insert(revision.to_string()) {
+                    panic!("duplicate revision: `{}` in line `{}`: {}", revision, raw, testfile);
+                }
+
+                if FORBIDDEN_REVISION_NAMES.contains(&revision) {
                     panic!(
-                        "duplicate revision: `{}` in line `{}`: {}",
-                        revision,
-                        raw,
-                        testfile.display()
-                    );
-                } else if matches!(self.mode, Mode::Assembly | Mode::Codegen | Mode::MirOpt)
-                    && FORBIDDEN_REVISION_NAMES.contains(&revision.as_str())
-                {
-                    panic!(
-                        "revision name `{revision}` is not permitted in a test suite that uses `FileCheck` annotations\n\
-                         as it is confusing when used as custom `FileCheck` prefix: `{revision}` in line `{}`: {}",
-                        raw,
-                        testfile.display()
+                        "revision name `{revision}` is not permitted: `{}` in line `{}`: {}",
+                        revision, raw, testfile
                     );
                 }
-                existing.push(revision);
+
+                if matches!(self.mode, Mode::Assembly | Mode::Codegen | Mode::MirOpt)
+                    && FILECHECK_FORBIDDEN_REVISION_NAMES.contains(&revision)
+                {
+                    panic!(
+                        "revision name `{revision}` is not permitted in a test suite that uses \
+                        `FileCheck` annotations as it is confusing when used as custom `FileCheck` \
+                        prefix: `{revision}` in line `{}`: {}",
+                        raw, testfile
+                    );
+                }
+
+                existing.push(revision.to_string());
             }
         }
     }
 
     fn parse_env(nv: String) -> (String, String) {
         // nv is either FOO or FOO=BAR
-        let mut strs: Vec<String> = nv.splitn(2, '=').map(str::to_owned).collect();
-
-        match strs.len() {
-            1 => (strs.pop().unwrap(), String::new()),
-            2 => {
-                let end = strs.pop().unwrap();
-                (strs.pop().unwrap(), end)
-            }
-            n => panic!("Expected 1 or 2 strings, not {}", n),
-        }
+        // FIXME(Zalathar): The form without `=` seems to be unused; should
+        // we drop support for it?
+        let (name, value) = nv.split_once('=').unwrap_or((&nv, ""));
+        // Trim whitespace from the name, so that `//@ exec-env: FOO=BAR`
+        // sees the name as `FOO` and not ` FOO`.
+        let name = name.trim();
+        (name.to_owned(), value.to_owned())
     }
 
-    fn parse_pp_exact(&self, line: &str, testfile: &Path) -> Option<PathBuf> {
+    fn parse_pp_exact(&self, line: &str, testfile: &Utf8Path) -> Option<Utf8PathBuf> {
         if let Some(s) = self.parse_name_value_directive(line, "pp-exact") {
-            Some(PathBuf::from(&s))
+            Some(Utf8PathBuf::from(&s))
         } else if self.parse_name_directive(line, "pp-exact") {
-            testfile.file_name().map(PathBuf::from)
+            testfile.file_name().map(Utf8PathBuf::from)
         } else {
             None
         }
@@ -1082,20 +1117,19 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 
     if value.contains(CWD) {
         let cwd = env::current_dir().unwrap();
-        value = value.replace(CWD, &cwd.to_string_lossy());
+        value = value.replace(CWD, &cwd.to_str().unwrap());
     }
 
     if value.contains(SRC_BASE) {
-        value = value.replace(SRC_BASE, &config.src_test_suite_root.to_str().unwrap());
+        value = value.replace(SRC_BASE, &config.src_test_suite_root.as_str());
     }
 
     if value.contains(TEST_SUITE_BUILD_BASE) {
-        value =
-            value.replace(TEST_SUITE_BUILD_BASE, &config.build_test_suite_root.to_str().unwrap());
+        value = value.replace(TEST_SUITE_BUILD_BASE, &config.build_test_suite_root.as_str());
     }
 
     if value.contains(SYSROOT_BASE) {
-        value = value.replace(SYSROOT_BASE, &config.sysroot_base.to_str().unwrap());
+        value = value.replace(SYSROOT_BASE, &config.sysroot_base.as_str());
     }
 
     if value.contains(TARGET_LINKER) {
@@ -1108,9 +1142,9 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 
     if value.contains(RUST_SRC_BASE) {
         let src_base = config.sysroot_base.join("lib/rustlib/src/rust");
-        src_base.try_exists().expect(&*format!("{} should exists", src_base.display()));
-        let src_base = src_base.read_link().unwrap_or(src_base);
-        value = value.replace(RUST_SRC_BASE, &src_base.to_string_lossy());
+        src_base.try_exists().expect(&*format!("{} should exists", src_base));
+        let src_base = src_base.read_link_utf8().unwrap_or(src_base);
+        value = value.replace(RUST_SRC_BASE, &src_base.as_str());
     }
 
     value
@@ -1213,14 +1247,14 @@ pub fn llvm_has_libzstd(config: &Config) -> bool {
     // contains a path to that static lib, and that it exists.
     //
     // See compiler/rustc_llvm/build.rs for more details and similar expectations.
-    fn is_zstd_in_config(llvm_bin_dir: &Path) -> Option<()> {
+    fn is_zstd_in_config(llvm_bin_dir: &Utf8Path) -> Option<()> {
         let llvm_config_path = llvm_bin_dir.join("llvm-config");
         let output = Command::new(llvm_config_path).arg("--system-libs").output().ok()?;
         assert!(output.status.success(), "running llvm-config --system-libs failed");
 
         let libs = String::from_utf8(output.stdout).ok()?;
         for lib in libs.split_whitespace() {
-            if lib.ends_with("libzstd.a") && Path::new(lib).exists() {
+            if lib.ends_with("libzstd.a") && Utf8Path::new(lib).exists() {
                 return Some(());
             }
         }
@@ -1238,7 +1272,7 @@ pub fn llvm_has_libzstd(config: &Config) -> bool {
     // `lld` supports it. If not, an error will be emitted: "LLVM was not built with
     // LLVM_ENABLE_ZSTD or did not find zstd at build time".
     #[cfg(unix)]
-    fn is_lld_built_with_zstd(llvm_bin_dir: &Path) -> Option<()> {
+    fn is_lld_built_with_zstd(llvm_bin_dir: &Utf8Path) -> Option<()> {
         let lld_path = llvm_bin_dir.join("lld");
         if lld_path.exists() {
             // We can't call `lld` as-is, it expects to be invoked by a compiler driver using a
@@ -1274,7 +1308,7 @@ pub fn llvm_has_libzstd(config: &Config) -> bool {
     }
 
     #[cfg(not(unix))]
-    fn is_lld_built_with_zstd(_llvm_bin_dir: &Path) -> Option<()> {
+    fn is_lld_built_with_zstd(_llvm_bin_dir: &Utf8Path) -> Option<()> {
         None
     }
 
@@ -1337,15 +1371,15 @@ where
     Some((min, max))
 }
 
-pub fn make_test_description<R: Read>(
+pub(crate) fn make_test_description<R: Read>(
     config: &Config,
     cache: &HeadersCache,
-    name: test::TestName,
-    path: &Path,
+    name: String,
+    path: &Utf8Path,
     src: R,
     test_revision: Option<&str>,
     poisoned: &mut bool,
-) -> test::TestDesc {
+) -> CollectedTestDesc {
     let mut ignore = false;
     let mut ignore_message = None;
     let mut should_fail = false;
@@ -1369,13 +1403,10 @@ pub fn make_test_description<R: Read>(
                     match $e {
                         IgnoreDecision::Ignore { reason } => {
                             ignore = true;
-                            // The ignore reason must be a &'static str, so we have to leak memory to
-                            // create it. This is fine, as the header is parsed only at the start of
-                            // compiletest so it won't grow indefinitely.
-                            ignore_message = Some(&*Box::leak(Box::<str>::from(reason)));
+                            ignore_message = Some(reason.into());
                         }
                         IgnoreDecision::Error { message } => {
-                            eprintln!("error: {}:{line_number}: {message}", path.display());
+                            eprintln!("error: {}:{line_number}: {message}", path);
                             *poisoned = true;
                             return;
                         }
@@ -1387,7 +1418,7 @@ pub fn make_test_description<R: Read>(
             decision!(cfg::handle_ignore(config, ln));
             decision!(cfg::handle_only(config, ln));
             decision!(needs::handle_needs(&cache.needs, config, ln));
-            decision!(ignore_llvm(config, ln));
+            decision!(ignore_llvm(config, path, ln));
             decision!(ignore_cdb(config, ln));
             decision!(ignore_gdb(config, ln));
             decision!(ignore_lldb(config, ln));
@@ -1405,7 +1436,7 @@ pub fn make_test_description<R: Read>(
     );
 
     if local_poisoned {
-        eprintln!("errors encountered when trying to make test description: {}", path.display());
+        eprintln!("errors encountered when trying to make test description: {}", path);
         panic!("errors encountered when trying to make test description");
     }
 
@@ -1413,25 +1444,12 @@ pub fn make_test_description<R: Read>(
     // since we run the pretty printer across all tests by default.
     // If desired, we could add a `should-fail-pretty` annotation.
     let should_panic = match config.mode {
-        crate::common::Pretty => test::ShouldPanic::No,
-        _ if should_fail => test::ShouldPanic::Yes,
-        _ => test::ShouldPanic::No,
+        crate::common::Pretty => ShouldPanic::No,
+        _ if should_fail => ShouldPanic::Yes,
+        _ => ShouldPanic::No,
     };
 
-    test::TestDesc {
-        name,
-        ignore,
-        ignore_message,
-        source_file: "",
-        start_line: 0,
-        start_col: 0,
-        end_line: 0,
-        end_col: 0,
-        should_panic,
-        compile_fail: false,
-        no_run: false,
-        test_type: test::TestType::Unknown,
-    }
+    CollectedTestDesc { name, ignore, ignore_message, should_panic }
 }
 
 fn ignore_cdb(config: &Config, line: &str) -> IgnoreDecision {
@@ -1527,7 +1545,7 @@ fn ignore_lldb(config: &Config, line: &str) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
+fn ignore_llvm(config: &Config, path: &Utf8Path, line: &str) -> IgnoreDecision {
     if let Some(needed_components) =
         config.parse_name_value_directive(line, "needs-llvm-components")
     {
@@ -1538,8 +1556,8 @@ fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
         {
             if env::var_os("COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS").is_some() {
                 panic!(
-                    "missing LLVM component {}, and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set",
-                    missing_component
+                    "missing LLVM component {}, and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set: {}",
+                    missing_component, path
                 );
             }
             return IgnoreDecision::Ignore {

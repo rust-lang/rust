@@ -275,5 +275,21 @@ LL |         },
 LL ~     };
    |
 
-error: aborting due to 16 previous errors
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:302:5
+   |
+LL |     let r;
+   |     ^^^^^^ created here
+LL |
+LL |     (r = 5);
+   |     ^^^^^^^ initialised here
+   |
+help: move the declaration `r` here
+   |
+LL ~     
+LL |
+LL ~     let r = 5;
+   |
+
+error: aborting due to 17 previous errors
 

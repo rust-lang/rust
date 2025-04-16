@@ -5,20 +5,26 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
+use std::assert_matches::assert_matches;
+use std::borrow::Borrow;
+use std::mem;
+use std::sync::Arc;
+
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir::{BindingMode, ByRef};
+use rustc_hir::{BindingMode, ByRef, LetStmt, LocalSource, Node};
 use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::{BytePos, Pos, Span, Symbol};
+use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::builder::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::builder::expr::as_place::PlaceBuilder;
+use crate::builder::matches::user_ty::ProjectedUserTypesNode;
 use crate::builder::scope::DropKind;
 use crate::builder::{
     BlockAnd, BlockAndExtension, Builder, GuardFrame, GuardFrameLocal, LocalsForNode,
@@ -26,14 +32,9 @@ use crate::builder::{
 
 // helper functions, broken out by category:
 mod match_pair;
-mod simplify;
 mod test;
+mod user_ty;
 mod util;
-
-use std::assert_matches::assert_matches;
-use std::borrow::Borrow;
-use std::mem;
-use std::sync::Arc;
 
 /// Arguments to [`Builder::then_else_break_inner`] that are usually forwarded
 /// to recursive invocations.
@@ -756,24 +757,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         guard: Option<ExprId>,
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
-        self.visit_primary_bindings(
+        self.visit_primary_bindings_special(
             pattern,
-            UserTypeProjections::none(),
-            &mut |this, name, mode, var, span, ty, user_ty| {
-                if visibility_scope.is_none() {
-                    visibility_scope =
-                        Some(this.new_source_scope(scope_span, LintLevel::Inherited));
-                }
+            &ProjectedUserTypesNode::None,
+            &mut |this, name, mode, var, span, ty, user_tys| {
+                let vis_scope = *visibility_scope
+                    .get_or_insert_with(|| this.new_source_scope(scope_span, LintLevel::Inherited));
                 let source_info = SourceInfo { span, scope: this.source_scope };
-                let visibility_scope = visibility_scope.unwrap();
+                let user_tys = user_tys.build_user_type_projections();
+
                 this.declare_binding(
                     source_info,
-                    visibility_scope,
+                    vis_scope,
                     name,
                     mode,
                     var,
                     ty,
-                    user_ty,
+                    user_tys,
                     ArmHasGuard(guard.is_some()),
                     opt_match_place.map(|(x, y)| (x.cloned(), y)),
                     pattern.span,
@@ -849,13 +849,35 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    /// Visit all of the primary bindings in a patterns, that is, visit the
-    /// leftmost occurrence of each variable bound in a pattern. A variable
-    /// will occur more than once in an or-pattern.
+    /// Visits all of the "primary" bindings in a pattern, i.e. the leftmost
+    /// occurrence of each variable bound by the pattern.
+    /// See [`PatKind::Binding::is_primary`] for more context.
+    ///
+    /// This variant provides only the limited subset of binding data needed
+    /// by its callers, and should be a "pure" visit without side-effects.
     pub(super) fn visit_primary_bindings(
         &mut self,
         pattern: &Pat<'tcx>,
-        pattern_user_ty: UserTypeProjections,
+        f: &mut impl FnMut(&mut Self, LocalVarId, Span),
+    ) {
+        pattern.walk_always(|pat| {
+            if let PatKind::Binding { var, is_primary: true, .. } = pat.kind {
+                f(self, var, pat.span);
+            }
+        })
+    }
+
+    /// Visits all of the "primary" bindings in a pattern, while preparing
+    /// additional user-type-annotation data needed by `declare_bindings`.
+    ///
+    /// This also has the side-effect of pushing all user type annotations
+    /// onto `canonical_user_type_annotations`, so that they end up in MIR
+    /// even if they aren't associated with any bindings.
+    #[instrument(level = "debug", skip(self, f))]
+    fn visit_primary_bindings_special(
+        &mut self,
+        pattern: &Pat<'tcx>,
+        user_tys: &ProjectedUserTypesNode<'_>,
         f: &mut impl FnMut(
             &mut Self,
             Symbol,
@@ -863,20 +885,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             LocalVarId,
             Span,
             Ty<'tcx>,
-            UserTypeProjections,
+            &ProjectedUserTypesNode<'_>,
         ),
     ) {
-        debug!(
-            "visit_primary_bindings: pattern={:?} pattern_user_ty={:?}",
-            pattern, pattern_user_ty
-        );
+        // Avoid having to write the full method name at each recursive call.
+        let visit_subpat = |this: &mut Self, subpat, user_tys: &_, f: &mut _| {
+            this.visit_primary_bindings_special(subpat, user_tys, f)
+        };
+
         match pattern.kind {
             PatKind::Binding { name, mode, var, ty, ref subpattern, is_primary, .. } => {
                 if is_primary {
-                    f(self, name, mode, var, pattern.span, ty, pattern_user_ty.clone());
+                    f(self, name, mode, var, pattern.span, ty, user_tys);
                 }
                 if let Some(subpattern) = subpattern.as_ref() {
-                    self.visit_primary_bindings(subpattern, pattern_user_ty, f);
+                    visit_subpat(self, subpattern, user_tys, f);
                 }
             }
 
@@ -885,32 +908,29 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let from = u64::try_from(prefix.len()).unwrap();
                 let to = u64::try_from(suffix.len()).unwrap();
                 for subpattern in prefix.iter() {
-                    self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
+                    visit_subpat(self, subpattern, &user_tys.index(), f);
                 }
                 if let Some(subpattern) = slice {
-                    self.visit_primary_bindings(
-                        subpattern,
-                        pattern_user_ty.clone().subslice(from, to),
-                        f,
-                    );
+                    visit_subpat(self, subpattern, &user_tys.subslice(from, to), f);
                 }
                 for subpattern in suffix.iter() {
-                    self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
+                    visit_subpat(self, subpattern, &user_tys.index(), f);
                 }
             }
 
             PatKind::Constant { .. }
             | PatKind::Range { .. }
+            | PatKind::Missing
             | PatKind::Wild
             | PatKind::Never
             | PatKind::Error(_) => {}
 
             PatKind::Deref { ref subpattern } => {
-                self.visit_primary_bindings(subpattern, pattern_user_ty.deref(), f);
+                visit_subpat(self, subpattern, &user_tys.deref(), f);
             }
 
             PatKind::DerefPattern { ref subpattern, .. } => {
-                self.visit_primary_bindings(subpattern, UserTypeProjections::none(), f);
+                visit_subpat(self, subpattern, &ProjectedUserTypesNode::None, f);
             }
 
             PatKind::AscribeUserType {
@@ -926,28 +946,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Note that the variance doesn't apply here, as we are tracking the effect
                 // of `user_ty` on any bindings contained with subpattern.
 
+                // Caution: Pushing this user type here is load-bearing even for
+                // patterns containing no bindings, to ensure that the type ends
+                // up represented in MIR _somewhere_.
                 let base_user_ty = self.canonical_user_type_annotations.push(annotation.clone());
-                let subpattern_user_ty = pattern_user_ty.push_user_type(base_user_ty);
-                self.visit_primary_bindings(subpattern, subpattern_user_ty, f)
+                let subpattern_user_tys = user_tys.push_user_type(base_user_ty);
+                visit_subpat(self, subpattern, &subpattern_user_tys, f)
             }
 
             PatKind::ExpandedConstant { ref subpattern, .. } => {
-                self.visit_primary_bindings(subpattern, pattern_user_ty, f)
+                visit_subpat(self, subpattern, user_tys, f)
             }
 
             PatKind::Leaf { ref subpatterns } => {
                 for subpattern in subpatterns {
-                    let subpattern_user_ty = pattern_user_ty.clone().leaf(subpattern.field);
-                    debug!("visit_primary_bindings: subpattern_user_ty={:?}", subpattern_user_ty);
-                    self.visit_primary_bindings(&subpattern.pattern, subpattern_user_ty, f);
+                    let subpattern_user_tys = user_tys.leaf(subpattern.field);
+                    debug!("visit_primary_bindings: subpattern_user_tys={subpattern_user_tys:?}");
+                    visit_subpat(self, &subpattern.pattern, &subpattern_user_tys, f);
                 }
             }
 
             PatKind::Variant { adt_def, args: _, variant_index, ref subpatterns } => {
                 for subpattern in subpatterns {
-                    let subpattern_user_ty =
-                        pattern_user_ty.clone().variant(adt_def, variant_index, subpattern.field);
-                    self.visit_primary_bindings(&subpattern.pattern, subpattern_user_ty, f);
+                    let subpattern_user_tys =
+                        user_tys.variant(adt_def, variant_index, subpattern.field);
+                    visit_subpat(self, &subpattern.pattern, &subpattern_user_tys, f);
                 }
             }
             PatKind::Or { ref pats } => {
@@ -956,7 +979,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // `let (x | y) = ...`, the primary binding of `y` occurs in
                 // the right subpattern
                 for subpattern in pats.iter() {
-                    self.visit_primary_bindings(subpattern, pattern_user_ty.clone(), f);
+                    visit_subpat(self, subpattern, user_tys, f);
                 }
             }
         }
@@ -987,18 +1010,16 @@ impl<'tcx> PatternExtraData<'tcx> {
 }
 
 /// A pattern in a form suitable for lowering the match tree, with all irrefutable
-/// patterns simplified away, and or-patterns sorted to the end.
+/// patterns simplified away.
 ///
-/// Here, "flat" indicates that the pattern's match pairs have been recursively
-/// simplified by [`Builder::simplify_match_pairs`]. They are not necessarily
-/// flat in an absolute sense.
+/// Here, "flat" indicates that irrefutable nodes in the pattern tree have been
+/// recursively replaced with their refutable subpatterns. They are not
+/// necessarily flat in an absolute sense.
 ///
 /// Will typically be incorporated into a [`Candidate`].
 #[derive(Debug, Clone)]
 struct FlatPat<'tcx> {
     /// To match the pattern, all of these must be satisfied...
-    // Invariant: all the match pairs are recursively simplified.
-    // Invariant: or-patterns must be sorted to the end.
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
     extra_data: PatternExtraData<'tcx>,
@@ -1008,17 +1029,15 @@ impl<'tcx> FlatPat<'tcx> {
     /// Creates a `FlatPat` containing a simplified [`MatchPairTree`] list/forest
     /// for the given pattern.
     fn new(place: PlaceBuilder<'tcx>, pattern: &Pat<'tcx>, cx: &mut Builder<'_, 'tcx>) -> Self {
-        // First, recursively build a tree of match pairs for the given pattern.
-        let mut match_pairs = vec![MatchPairTree::for_pattern(place, pattern, cx)];
+        // Recursively build a tree of match pairs for the given pattern.
+        let mut match_pairs = vec![];
         let mut extra_data = PatternExtraData {
             span: pattern.span,
             bindings: Vec::new(),
             ascriptions: Vec::new(),
             is_never: pattern.is_never_pattern(),
         };
-        // Recursively remove irrefutable match pairs, while recording their
-        // bindings/ascriptions, and sort or-patterns after other match pairs.
-        cx.simplify_match_pairs(&mut match_pairs, &mut extra_data);
+        MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
 
         Self { match_pairs, extra_data }
     }
@@ -1055,7 +1074,6 @@ struct Candidate<'tcx> {
     ///   (see [`Builder::test_remaining_match_pairs_after_or`]).
     ///
     /// Invariants:
-    /// - All [`TestCase::Irrefutable`] patterns have been removed by simplification.
     /// - All or-patterns ([`TestCase::Or`]) have been sorted to the end.
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
@@ -1126,7 +1144,7 @@ impl<'tcx> Candidate<'tcx> {
 
     /// Incorporates an already-simplified [`FlatPat`] into a new candidate.
     fn from_flat_pat(flat_pat: FlatPat<'tcx>, has_guard: bool) -> Self {
-        Candidate {
+        let mut this = Candidate {
             match_pairs: flat_pat.match_pairs,
             extra_data: flat_pat.extra_data,
             has_guard,
@@ -1135,7 +1153,14 @@ impl<'tcx> Candidate<'tcx> {
             otherwise_block: None,
             pre_binding_block: None,
             false_edge_start_block: None,
-        }
+        };
+        this.sort_match_pairs();
+        this
+    }
+
+    /// Restores the invariant that or-patterns must be sorted to the end.
+    fn sort_match_pairs(&mut self) {
+        self.match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
     }
 
     /// Returns whether the first match pair of this candidate is an or-pattern.
@@ -1227,17 +1252,11 @@ struct Ascription<'tcx> {
 /// - [`Builder::pick_test_for_match_pair`] (to choose a test)
 /// - [`Builder::sort_candidate`] (to see how the test interacts with a match pair)
 ///
-/// Two variants are unlike the others and deserve special mention:
-///
-/// - [`Self::Irrefutable`] is only used temporarily when building a [`MatchPairTree`].
-///   They are then flattened away by [`Builder::simplify_match_pairs`], with any
-///   bindings/ascriptions incorporated into the enclosing [`FlatPat`].
-/// - [`Self::Or`] are not tested directly like the other variants. Instead they
-///   participate in or-pattern expansion, where they are transformed into subcandidates.
-///   - See [`Builder::expand_and_match_or_candidates`].
+/// Note that or-patterns are not tested directly like the other variants.
+/// Instead they participate in or-pattern expansion, where they are transformed into
+/// subcandidates. See [`Builder::expand_and_match_or_candidates`].
 #[derive(Debug, Clone)]
 enum TestCase<'tcx> {
-    Irrefutable { binding: Option<Binding<'tcx>>, ascription: Option<Ascription<'tcx>> },
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
     Constant { value: mir::Const<'tcx> },
     Range(Arc<PatRange<'tcx>>),
@@ -1265,15 +1284,11 @@ pub(crate) struct MatchPairTree<'tcx> {
     /// ---
     /// This can be `None` if it referred to a non-captured place in a closure.
     ///
-    /// Invariant: Can only be `None` when `test_case` is `Irrefutable`.
-    /// Therefore this must be `Some(_)` after simplification.
+    /// Invariant: Can only be `None` when `test_case` is `Or`.
+    /// Therefore this must be `Some(_)` after or-pattern expansion.
     place: Option<Place<'tcx>>,
 
     /// ... must pass this test...
-    ///
-    /// ---
-    /// Invariant: after creation and simplification in [`FlatPat::new`],
-    /// this must not be [`TestCase::Irrefutable`].
     test_case: TestCase<'tcx>,
 
     /// ... and these subpairs must match.
@@ -1318,8 +1333,8 @@ enum TestKind<'tcx> {
     Eq {
         value: Const<'tcx>,
         // Integer types are handled by `SwitchInt`, and constants with ADT
-        // types are converted back into patterns, so this can only be `&str`,
-        // `&[T]`, `f32` or `f64`.
+        // types and `&[T]` types are converted back into patterns, so this can
+        // only be `&str`, `f32` or `f64`.
         ty: Ty<'tcx>,
     },
 
@@ -2764,7 +2779,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mode: BindingMode,
         var_id: LocalVarId,
         var_ty: Ty<'tcx>,
-        user_ty: UserTypeProjections,
+        user_ty: Option<Box<UserTypeProjections>>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
         pat_span: Span,
@@ -2774,7 +2789,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let local = LocalDecl {
             mutability: mode.1,
             ty: var_ty,
-            user_ty: if user_ty.is_empty() { None } else { Some(Box::new(user_ty)) },
+            user_ty,
             source_info,
             local_info: ClearCrossCrate::Set(Box::new(LocalInfo::User(BindingForm::Var(
                 VarBindingForm {
@@ -2790,13 +2805,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             )))),
         };
         let for_arm_body = self.local_decls.push(local);
-        self.var_debug_info.push(VarDebugInfo {
-            name,
-            source_info: debug_source_info,
-            value: VarDebugInfoContents::Place(for_arm_body.into()),
-            composite: None,
-            argument_index: None,
-        });
+        if self.should_emit_debug_info_for_binding(name, var_id) {
+            self.var_debug_info.push(VarDebugInfo {
+                name,
+                source_info: debug_source_info,
+                value: VarDebugInfoContents::Place(for_arm_body.into()),
+                composite: None,
+                argument_index: None,
+            });
+        }
         let locals = if has_guard.0 {
             let ref_for_guard = self.local_decls.push(LocalDecl::<'tcx> {
                 // This variable isn't mutated but has a name, so has to be
@@ -2809,18 +2826,42 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     BindingForm::RefForGuard,
                 ))),
             });
-            self.var_debug_info.push(VarDebugInfo {
-                name,
-                source_info: debug_source_info,
-                value: VarDebugInfoContents::Place(ref_for_guard.into()),
-                composite: None,
-                argument_index: None,
-            });
+            if self.should_emit_debug_info_for_binding(name, var_id) {
+                self.var_debug_info.push(VarDebugInfo {
+                    name,
+                    source_info: debug_source_info,
+                    value: VarDebugInfoContents::Place(ref_for_guard.into()),
+                    composite: None,
+                    argument_index: None,
+                });
+            }
             LocalsForNode::ForGuard { ref_for_guard, for_arm_body }
         } else {
             LocalsForNode::One(for_arm_body)
         };
         debug!(?locals);
         self.var_indices.insert(var_id, locals);
+    }
+
+    /// Some bindings are introduced when producing HIR from the AST and don't
+    /// actually exist in the source. Skip producing debug info for those when
+    /// we can recognize them.
+    fn should_emit_debug_info_for_binding(&self, name: Symbol, var_id: LocalVarId) -> bool {
+        // For now we only recognize the output of desugaring assigns.
+        if name != sym::lhs {
+            return true;
+        }
+
+        let tcx = self.tcx;
+        for (_, node) in tcx.hir_parent_iter(var_id.0) {
+            // FIXME(khuey) at what point is it safe to bail on the iterator?
+            // Can we stop at the first non-Pat node?
+            if matches!(node, Node::LetStmt(&LetStmt { source: LocalSource::AssignDesugar(_), .. }))
+            {
+                return false;
+            }
+        }
+
+        true
     }
 }

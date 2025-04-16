@@ -931,6 +931,11 @@ use crate::{
 };
 use crate::{cmp, fmt};
 
+mod unsafe_pinned;
+
+#[unstable(feature = "unsafe_pinned", issue = "125735")]
+pub use self::unsafe_pinned::UnsafePinned;
+
 /// A pointer which pins its pointee in place.
 ///
 /// [`Pin`] is a wrapper around some kind of pointer `Ptr` which makes that pointer "pin" its
@@ -1943,6 +1948,7 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 #[stable(feature = "pin_macro", since = "1.68.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(unsafe_pin_internals)]
+#[rustc_macro_edition_2021]
 pub macro pin($value:expr $(,)?) {
     // This is `Pin::new_unchecked(&mut { $value })`, so, for starters, let's
     // review such a hypothetical macro (that any user-code could define):

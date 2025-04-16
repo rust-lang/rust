@@ -12,11 +12,9 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::convert::FloatToInt;
-#[cfg(not(test))]
-use crate::intrinsics;
-use crate::mem;
 use crate::num::FpCategory;
 use crate::panic::const_assert;
+use crate::{cfg_match, intrinsics, mem};
 
 /// The radix or base of the internal representation of `f32`.
 /// Use [`f32::RADIX`] instead.
@@ -386,7 +384,6 @@ pub mod consts {
     pub const LN_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
-#[cfg(not(test))]
 impl f32 {
     /// The radix or base of the internal representation of `f32`.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
@@ -416,7 +413,7 @@ impl f32 {
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
     /// [`MANTISSA_DIGITS`]: f32::MANTISSA_DIGITS
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "f32_epsilon")]
+    #[rustc_diagnostic_item = "f32_epsilon"]
     pub const EPSILON: f32 = 1.19209290e-07_f32;
 
     /// Smallest finite `f32` value.
@@ -493,13 +490,13 @@ impl f32 {
     pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
 
     /// Sign bit
-    const SIGN_MASK: u32 = 0x8000_0000;
+    pub(crate) const SIGN_MASK: u32 = 0x8000_0000;
 
     /// Exponent mask
-    const EXP_MASK: u32 = 0x7f80_0000;
+    pub(crate) const EXP_MASK: u32 = 0x7f80_0000;
 
     /// Mantissa mask
-    const MAN_MASK: u32 = 0x007f_ffff;
+    pub(crate) const MAN_MASK: u32 = 0x007f_ffff;
 
     /// Minimum representable positive value (min subnormal)
     const TINY_BITS: u32 = 0x1;
@@ -999,21 +996,22 @@ impl f32 {
     #[stable(feature = "num_midpoint", since = "1.85.0")]
     #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
     pub const fn midpoint(self, other: f32) -> f32 {
-        cfg_if! {
+        cfg_match! {
             // Allow faster implementation that have known good 64-bit float
             // implementations. Falling back to the branchy code on targets that don't
             // have 64-bit hardware floats or buggy implementations.
             // https://github.com/rust-lang/rust/pull/121062#issuecomment-2123408114
-            if #[cfg(any(
-                    target_arch = "x86_64",
-                    target_arch = "aarch64",
-                    all(any(target_arch = "riscv32", target_arch = "riscv64"), target_feature = "d"),
-                    all(target_arch = "arm", target_feature = "vfp2"),
-                    target_arch = "wasm32",
-                    target_arch = "wasm64",
-                ))] {
+            any(
+                target_arch = "x86_64",
+                target_arch = "aarch64",
+                all(any(target_arch = "riscv32", target_arch = "riscv64"), target_feature = "d"),
+                all(target_arch = "arm", target_feature = "vfp2"),
+                target_arch = "wasm32",
+                target_arch = "wasm64",
+            ) => {
                 ((self as f64 + other as f64) / 2.0) as f32
-            } else {
+            }
+            _ => {
                 const LO: f32 = f32::MIN_POSITIVE * 2.;
                 const HI: f32 = f32::MAX / 2.;
 
@@ -1505,5 +1503,55 @@ impl f32 {
     pub const fn copysign(self, sign: f32) -> f32 {
         // SAFETY: this is actually a safe intrinsic
         unsafe { intrinsics::copysignf32(self, sign) }
+    }
+
+    /// Float addition that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[inline]
+    pub fn algebraic_add(self, rhs: f32) -> f32 {
+        intrinsics::fadd_algebraic(self, rhs)
+    }
+
+    /// Float subtraction that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[inline]
+    pub fn algebraic_sub(self, rhs: f32) -> f32 {
+        intrinsics::fsub_algebraic(self, rhs)
+    }
+
+    /// Float multiplication that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[inline]
+    pub fn algebraic_mul(self, rhs: f32) -> f32 {
+        intrinsics::fmul_algebraic(self, rhs)
+    }
+
+    /// Float division that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[inline]
+    pub fn algebraic_div(self, rhs: f32) -> f32 {
+        intrinsics::fdiv_algebraic(self, rhs)
+    }
+
+    /// Float remainder that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[inline]
+    pub fn algebraic_rem(self, rhs: f32) -> f32 {
+        intrinsics::frem_algebraic(self, rhs)
     }
 }

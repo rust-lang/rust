@@ -159,7 +159,10 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
         ExprKind::Path(..) => false,
 
         // Calls return rvalues.
-        ExprKind::Call(..) | ExprKind::MethodCall(..) | ExprKind::Binary(..) => true,
+        ExprKind::Call(..)
+        | ExprKind::MethodCall(..)
+        | ExprKind::Use(..)
+        | ExprKind::Binary(..) => true,
 
         // Inner blocks are rvalues.
         ExprKind::If(..) | ExprKind::Loop(..) | ExprKind::Match(..) | ExprKind::Block(..) => true,

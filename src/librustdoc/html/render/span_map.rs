@@ -95,10 +95,8 @@ impl SpanMapVisitor<'_> {
                     .unwrap_or(path.span);
                 self.matches.insert(span, link);
             }
-            Res::Local(_) => {
-                if let Some(span) = self.tcx.hir().res_span(path.res) {
-                    self.matches.insert(path.span, LinkFromSrc::Local(clean::Span::new(span)));
-                }
+            Res::Local(_) if let Some(span) = self.tcx.hir_res_span(path.res) => {
+                self.matches.insert(path.span, LinkFromSrc::Local(clean::Span::new(span)));
             }
             Res::PrimTy(p) => {
                 // FIXME: Doesn't handle "path-like" primitives like arrays or tuples.
@@ -111,15 +109,15 @@ impl SpanMapVisitor<'_> {
 
     /// Used to generate links on items' definition to go to their documentation page.
     pub(crate) fn extract_info_from_hir_id(&mut self, hir_id: HirId) {
-        if let Node::Item(item) = self.tcx.hir_node(hir_id) {
-            if let Some(span) = self.tcx.def_ident_span(item.owner_id) {
-                let cspan = clean::Span::new(span);
-                // If the span isn't from the current crate, we ignore it.
-                if cspan.inner().is_dummy() || cspan.cnum(self.tcx.sess) != LOCAL_CRATE {
-                    return;
-                }
-                self.matches.insert(span, LinkFromSrc::Doc(item.owner_id.to_def_id()));
+        if let Node::Item(item) = self.tcx.hir_node(hir_id)
+            && let Some(span) = self.tcx.def_ident_span(item.owner_id)
+        {
+            let cspan = clean::Span::new(span);
+            // If the span isn't from the current crate, we ignore it.
+            if cspan.inner().is_dummy() || cspan.cnum(self.tcx.sess) != LOCAL_CRATE {
+                return;
             }
+            self.matches.insert(span, LinkFromSrc::Doc(item.owner_id.to_def_id()));
         }
     }
 
@@ -244,16 +242,15 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             // Now that we confirmed it's a file import, we want to get the span for the module
             // name only and not all the "mod foo;".
             if let Node::Item(item) = self.tcx.hir_node(id) {
-                self.matches.insert(
-                    item.ident.span,
-                    LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)),
-                );
+                let (ident, _) = item.expect_mod();
+                self.matches
+                    .insert(ident.span, LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)));
             }
         } else {
             // If it's a "mod foo {}", we want to look to its documentation page.
             self.extract_info_from_hir_id(id);
         }
-        intravisit::walk_mod(self, m, id);
+        intravisit::walk_mod(self, m);
     }
 
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
@@ -274,23 +271,23 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         match item.kind {
-            ItemKind::Static(_, _, _)
-            | ItemKind::Const(_, _, _)
+            ItemKind::Static(..)
+            | ItemKind::Const(..)
             | ItemKind::Fn { .. }
-            | ItemKind::Macro(_, _)
-            | ItemKind::TyAlias(_, _)
-            | ItemKind::Enum(_, _)
-            | ItemKind::Struct(_, _)
-            | ItemKind::Union(_, _)
-            | ItemKind::Trait(_, _, _, _, _)
-            | ItemKind::TraitAlias(_, _) => self.extract_info_from_hir_id(item.hir_id()),
+            | ItemKind::Macro(..)
+            | ItemKind::TyAlias(..)
+            | ItemKind::Enum(..)
+            | ItemKind::Struct(..)
+            | ItemKind::Union(..)
+            | ItemKind::Trait(..)
+            | ItemKind::TraitAlias(..) => self.extract_info_from_hir_id(item.hir_id()),
             ItemKind::Impl(_)
-            | ItemKind::Use(_, _)
-            | ItemKind::ExternCrate(_)
+            | ItemKind::Use(..)
+            | ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
             // We already have "visit_mod" above so no need to check it here.
-            | ItemKind::Mod(_) => {}
+            | ItemKind::Mod(..) => {}
         }
         intravisit::walk_item(self, item);
     }

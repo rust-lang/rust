@@ -26,8 +26,6 @@ LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
 ...
 LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |     ----------------------------------------- this field does not implement `ConstParamTy_`
-   |
-   = note: this error originates in the derive macro `ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
   --> $DIR/unsizing-wfcheck-issue-126272.rs:8:32
@@ -53,7 +51,6 @@ note: the `ConstParamTy_` impl for `&'static Bar<(dyn Debug + 'static)>` require
    |
 LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the derive macro `ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
   --> $DIR/unsizing-wfcheck-issue-126272.rs:12:5
@@ -76,7 +73,6 @@ LL | struct Bar<T>(T);
    = note: 2 redundant requirements hidden
    = note: required for `&&'static Bar<(dyn Debug + 'static)>` to implement `Debug`
    = note: required for the cast from `&&&'static Bar<(dyn Debug + 'static)>` to `&dyn Debug`
-   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0369]: binary operation `==` cannot be applied to type `&Bar<dyn Debug>`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:12:5
@@ -86,8 +82,6 @@ LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
 ...
 LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `dyn Debug: Eq` is not satisfied
   --> $DIR/unsizing-wfcheck-issue-126272.rs:12:5
@@ -108,7 +102,6 @@ LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
    = note: required for `&'static Bar<dyn Debug>` to implement `Eq`
 note: required by a bound in `AssertParamIsEq`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   = note: this error originates in the derive macro `Eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the size for values of type `dyn Debug` cannot be known at compilation time
   --> $DIR/unsizing-wfcheck-issue-126272.rs:12:5
@@ -132,7 +125,6 @@ LL | struct Bar<T>(T);
    |            ^  - ...if indirection were used here: `Box<T>`
    |            |
    |            this could be changed to `T: ?Sized`...
-   = note: this error originates in the derive macro `Eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
   --> $DIR/unsizing-wfcheck-issue-126272.rs:26:33

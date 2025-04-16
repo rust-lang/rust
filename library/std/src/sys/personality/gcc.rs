@@ -220,7 +220,7 @@ cfg_if::cfg_if! {
                     Ok(action) => action,
                     Err(_) => return uw::_URC_FATAL_PHASE1_ERROR,
                 };
-                if actions as i32 & uw::_UA_SEARCH_PHASE as i32 != 0 {
+                if actions & uw::_UA_SEARCH_PHASE != 0 {
                     match eh_action {
                         EHAction::None | EHAction::Cleanup(_) => uw::_URC_CONTINUE_UNWIND,
                         EHAction::Catch(_) | EHAction::Filter(_) => uw::_URC_HANDLER_FOUND,
@@ -230,7 +230,7 @@ cfg_if::cfg_if! {
                     match eh_action {
                         EHAction::None => uw::_URC_CONTINUE_UNWIND,
                         // Forced unwinding hits a terminate action.
-                        EHAction::Filter(_) if actions as i32 & uw::_UA_FORCE_UNWIND as i32 != 0 => uw::_URC_CONTINUE_UNWIND,
+                        EHAction::Filter(_) if actions & uw::_UA_FORCE_UNWIND != 0 => uw::_URC_CONTINUE_UNWIND,
                         EHAction::Cleanup(lpad) | EHAction::Catch(lpad) | EHAction::Filter(lpad) => {
                             uw::_Unwind_SetGR(
                                 context,
@@ -248,7 +248,10 @@ cfg_if::cfg_if! {
         }
 
         cfg_if::cfg_if! {
-            if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
+            if #[cfg(any(
+                    all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"),
+                    target_os = "cygwin",
+                ))] {
                 /// personality fn called by [Windows Structured Exception Handling][windows-eh]
                 ///
                 /// On x86_64 and AArch64 MinGW targets, the unwinding mechanism is SEH,

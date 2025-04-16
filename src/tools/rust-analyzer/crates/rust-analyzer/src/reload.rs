@@ -178,6 +178,11 @@ impl GlobalState {
         }
 
         if !self.workspaces.is_empty() {
+            self.check_workspaces_msrv().for_each(|e| {
+                status.health |= lsp_ext::Health::Warning;
+                format_to!(message, "{e}");
+            });
+
             let proc_macro_clients =
                 self.proc_macro_clients.iter().map(Some).chain(iter::repeat_with(|| None));
 
@@ -513,6 +518,11 @@ impl GlobalState {
             // we don't care about build-script results, they are stale.
             // FIXME: can we abort the build scripts here if they are already running?
             self.workspaces = Arc::new(workspaces);
+            self.check_workspaces_msrv().for_each(|message| {
+                self.send_notification::<lsp_types::notification::ShowMessage>(
+                    lsp_types::ShowMessageParams { typ: lsp_types::MessageType::WARNING, message },
+                );
+            });
 
             if self.config.run_build_scripts(None) {
                 self.build_deps_changed = false;

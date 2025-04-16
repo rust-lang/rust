@@ -38,4 +38,4 @@ incremental compilation ([see here][config]). This will make compilation take
 longer (especially after a rebase), but will save a ton of space from the
 incremental caches.
 
-[config]: ./how-to-build-and-run.md#create-a-configtoml
+[config]: ./how-to-build-and-run.md#create-a-bootstraptoml

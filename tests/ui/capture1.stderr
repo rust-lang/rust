@@ -1,5 +1,5 @@
 error[E0434]: can't capture dynamic environment in a fn item
-  --> $DIR/capture1.rs:5:32
+  --> $DIR/capture1.rs:3:32
    |
 LL |     fn foo() -> isize { return bar; }
    |                                ^^^

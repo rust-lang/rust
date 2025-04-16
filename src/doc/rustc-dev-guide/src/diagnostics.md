@@ -954,9 +954,6 @@ application of these fields based on a variety of attributes when using
    `Self="std::iter::Iterator<char>"`. This is needed because `Self` is a
    keyword which cannot appear in attributes.
  - `direct`: user-specified rather than derived obligation.
- - `from_method`: usable both as boolean (whether the flag is present, like
-   `crate_local`) or matching against a particular method. Currently used
-   for `try`.
  - `from_desugaring`: usable both as boolean (whether the flag is present)
    or matching against a particular desugaring. The desugaring is identified
    with its variant name in the `DesugaringKind` enum.

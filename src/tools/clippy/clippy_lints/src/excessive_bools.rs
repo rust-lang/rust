@@ -15,12 +15,17 @@ declare_clippy_lint! {
     /// use of bools in structs.
     ///
     /// ### Why is this bad?
-    /// Excessive bools in a struct
-    /// is often a sign that it's used as a state machine,
-    /// which is much better implemented as an enum.
-    /// If it's not the case, excessive bools usually benefit
-    /// from refactoring into two-variant enums for better
-    /// readability and API.
+    /// Excessive bools in a struct is often a sign that
+    /// the type is being used to represent a state
+    /// machine, which is much better implemented as an
+    /// enum.
+    ///
+    /// The reason an enum is better for state machines
+    /// over structs is that enums more easily forbid
+    /// invalid states.
+    ///
+    /// Structs with too many booleans may benefit from refactoring
+    /// into multi variant enums for better readability and API.
     ///
     /// ### Example
     /// ```no_run
@@ -122,7 +127,7 @@ fn check_fn_decl(cx: &LateContext<'_>, decl: &FnDecl<'_>, sp: Span, max: u64) {
 
 impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if let ItemKind::Struct(variant_data, _) = &item.kind
+        if let ItemKind::Struct(_, variant_data, _) = &item.kind
             && variant_data.fields().len() as u64 > self.max_struct_bools
             && has_n_bools(
                 variant_data.fields().iter().map(|field| field.ty),

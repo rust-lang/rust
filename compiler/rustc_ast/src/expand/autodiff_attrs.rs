@@ -77,8 +77,25 @@ pub struct AutoDiffAttrs {
     /// e.g. in the [JAX
     /// Documentation](https://jax.readthedocs.io/en/latest/_tutorials/advanced-autodiff.html#how-it-s-made-two-foundational-autodiff-functions).
     pub mode: DiffMode,
+    /// A user-provided, batching width. If not given, we will default to 1 (no batching).
+    /// Calling a differentiated, non-batched function through a loop 100 times is equivalent to:
+    /// - Calling the function 50 times with a batch size of 2
+    /// - Calling the function 25 times with a batch size of 4,
+    /// etc. A batched function takes more (or longer) arguments, and might be able to benefit from
+    /// cache locality, better re-usal of primal values, and other optimizations.
+    /// We will (before LLVM's vectorizer runs) just generate most LLVM-IR instructions `width`
+    /// times, so this massively increases code size. As such, values like 1024 are unlikely to
+    /// work. We should consider limiting this to u8 or u16, but will leave it at u32 for
+    /// experiments for now and focus on documenting the implications of a large width.
+    pub width: u32,
     pub ret_activity: DiffActivity,
     pub input_activity: Vec<DiffActivity>,
+}
+
+impl AutoDiffAttrs {
+    pub fn has_primal_ret(&self) -> bool {
+        matches!(self.ret_activity, DiffActivity::Active | DiffActivity::Dual)
+    }
 }
 
 impl DiffMode {
@@ -222,6 +239,7 @@ impl AutoDiffAttrs {
     pub const fn error() -> Self {
         AutoDiffAttrs {
             mode: DiffMode::Error,
+            width: 0,
             ret_activity: DiffActivity::None,
             input_activity: Vec::new(),
         }
@@ -229,6 +247,7 @@ impl AutoDiffAttrs {
     pub fn source() -> Self {
         AutoDiffAttrs {
             mode: DiffMode::Source,
+            width: 0,
             ret_activity: DiffActivity::None,
             input_activity: Vec::new(),
         }

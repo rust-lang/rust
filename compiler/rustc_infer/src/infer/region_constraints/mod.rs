@@ -463,7 +463,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // cannot add constraints once regions are resolved
         debug!("origin = {:#?}", origin);
 
-        match (*sub, *sup) {
+        match (sub.kind(), sup.kind()) {
             (ReBound(..), _) | (_, ReBound(..)) => {
                 span_bug!(origin.span(), "cannot relate bound region: {:?} <= {:?}", sub, sup);
             }
@@ -595,7 +595,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     pub fn universe(&mut self, region: Region<'tcx>) -> ty::UniverseIndex {
-        match *region {
+        match region.kind() {
             ty::ReStatic
             | ty::ReErased
             | ty::ReLateParam(..)
@@ -618,9 +618,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             RegionVid::from(value_count)..RegionVid::from(self.storage.unification_table.len());
         (
             range.clone(),
-            (range.start.index()..range.end.index())
-                .map(|index| self.storage.var_infos[ty::RegionVid::from(index)].origin)
-                .collect(),
+            (range.start..range.end).map(|index| self.storage.var_infos[index].origin).collect(),
         )
     }
 

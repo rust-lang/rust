@@ -19,7 +19,7 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, AdtDef, AliasTy, AssocItem, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind,
+    self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind,
     GenericArgsRef, GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
@@ -156,7 +156,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
 pub fn get_iterator_item_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     cx.tcx
         .get_diagnostic_item(sym::Iterator)
-        .and_then(|iter_did| cx.get_associated_type(ty, iter_did, "Item"))
+        .and_then(|iter_did| cx.get_associated_type(ty, iter_did, sym::Item))
 }
 
 /// Get the diagnostic name of a type, e.g. `sym::HashMap`. To check if a type
@@ -1109,10 +1109,10 @@ pub fn make_projection<'tcx>(
         assoc_ty: Symbol,
         args: GenericArgsRef<'tcx>,
     ) -> Option<AliasTy<'tcx>> {
-        let Some(assoc_item) = tcx.associated_items(container_id).find_by_name_and_kind(
+        let Some(assoc_item) = tcx.associated_items(container_id).find_by_ident_and_kind(
             tcx,
             Ident::with_dummy_span(assoc_ty),
-            AssocKind::Type,
+            AssocTag::Type,
             container_id,
         ) else {
             debug_assert!(false, "type `{assoc_ty}` not found in `{container_id:?}`");
@@ -1345,7 +1345,7 @@ pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_n
                 .associated_items(did)
                 .filter_by_name_unhygienic(method_name)
                 .next()
-                .filter(|item| item.kind == AssocKind::Fn)
+                .filter(|item| item.as_tag() == AssocTag::Fn)
         })
     } else {
         None

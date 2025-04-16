@@ -141,7 +141,7 @@ impl PassByRefOrValue {
         // Gather all the lifetimes found in the output type which may affect whether
         // `TRIVIALLY_COPY_PASS_BY_REF` should be linted.
         let mut output_regions = FxHashSet::default();
-        for_each_top_level_late_bound_region(fn_sig.skip_binder().output(), |region| -> ControlFlow<!> {
+        let _ = for_each_top_level_late_bound_region(fn_sig.skip_binder().output(), |region| -> ControlFlow<!> {
             output_regions.insert(region);
             ControlFlow::Continue(())
         });
@@ -280,7 +280,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                 if header.abi != ExternAbi::Rust {
                     return;
                 }
-                let attrs = cx.tcx.hir().attrs(hir_id);
+                let attrs = cx.tcx.hir_attrs(hir_id);
                 for a in attrs {
                     if let Some(meta_items) = a.meta_item_list() {
                         if a.has_name(sym::proc_macro_derive)

@@ -181,7 +181,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let closure = self.add_moved_or_invoked_closure_note(location, used_place, &mut err);
 
             let mut is_loop_move = false;
-            let mut in_pattern = false;
             let mut seen_spans = FxIndexSet::default();
 
             for move_site in &move_site_vec {
@@ -204,7 +203,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     self.suggest_ref_or_clone(
                         mpi,
                         &mut err,
-                        &mut in_pattern,
                         move_spans,
                         moved_place.as_ref(),
                         &mut has_suggest_reborrow,
@@ -255,15 +253,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let mpi = self.move_data.moves[move_out_indices[0]].path;
             let place = &self.move_data.move_paths[mpi].place;
             let ty = place.ty(self.body, self.infcx.tcx).ty;
-
-            // If we're in pattern, we do nothing in favor of the previous suggestion (#80913).
-            // Same for if we're in a loop, see #101119.
-            if is_loop_move & !in_pattern && !matches!(use_spans, UseSpans::ClosureUse { .. }) {
-                if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
-                    // We have a `&mut` ref, we need to reborrow on each iteration (#62112).
-                    self.suggest_reborrow(&mut err, span, moved_place);
-                }
-            }
 
             if self.infcx.param_env.caller_bounds().iter().any(|c| {
                 c.as_trait_clause().is_some_and(|pred| {
@@ -330,7 +319,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         &self,
         mpi: MovePathIndex,
         err: &mut Diag<'infcx>,
-        in_pattern: &mut bool,
         move_spans: UseSpans<'tcx>,
         moved_place: PlaceRef<'tcx>,
         has_suggest_reborrow: &mut bool,
@@ -545,7 +533,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 && !move_span.is_dummy()
                 && !self.infcx.tcx.sess.source_map().is_imported(move_span)
             {
-                *in_pattern = true;
                 let mut sugg = vec![(pat.span.shrink_to_lo(), "ref ".to_string())];
                 if let Some(pat) = finder.parent_pat {
                     sugg.insert(0, (pat.span.shrink_to_lo(), "ref ".to_string()));
@@ -660,7 +647,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     && tc.polarity() == ty::PredicatePolarity::Positive
                     && supertrait_def_ids(tcx, tc.def_id())
                         .flat_map(|trait_did| tcx.associated_items(trait_did).in_definition_order())
-                        .any(|item| item.fn_has_self_parameter)
+                        .any(|item| item.is_method())
             })
         }) {
             return None;
@@ -1364,7 +1351,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
         // Try to find predicates on *generic params* that would allow copying `ty`
         let mut suggestion =
-            if let Some(symbol) = tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+            if let Some(symbol) = tcx.hir_maybe_get_struct_pattern_shorthand_field(expr) {
                 format!(": {symbol}.clone()")
             } else {
                 ".clone()".to_owned()
@@ -2513,13 +2500,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         );
         let ty::Tuple(params) = tupled_params.kind() else { return };
 
-        // Find the first argument with a matching type, get its name
-        let Some((_, this_name)) =
-            params.iter().zip(tcx.hir_body_param_names(closure.body)).find(|(param_ty, name)| {
+        // Find the first argument with a matching type and get its identifier.
+        let Some(this_name) = params.iter().zip(tcx.hir_body_param_idents(closure.body)).find_map(
+            |(param_ty, ident)| {
                 // FIXME: also support deref for stuff like `Rc` arguments
-                param_ty.peel_refs() == local_ty && name != &Ident::empty()
-            })
-        else {
+                if param_ty.peel_refs() == local_ty { ident } else { None }
+            },
+        ) else {
             return;
         };
 
@@ -3787,7 +3774,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 method_args,
                 *fn_span,
                 call_source.from_hir_call(),
-                Some(self.infcx.tcx.fn_arg_names(method_did)[0]),
+                self.infcx.tcx.fn_arg_idents(method_did)[0],
             )
         {
             err.note(format!("borrow occurs due to deref coercion to `{deref_target_ty}`"));

@@ -3,10 +3,12 @@
 
 use derive_where::derive_where;
 use rustc_type_ir::data_structures::HashMap;
-use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::{self as ty, Interner, Movability, Mutability, Upcast as _, elaborate};
+use rustc_type_ir::{
+    self as ty, Interner, Movability, Mutability, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    Upcast as _, elaborate,
+};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 
@@ -35,12 +37,16 @@ where
         | ty::Never
         | ty::Char => Ok(ty::Binder::dummy(vec![])),
 
+        // This branch is only for `experimental_default_bounds`.
+        // Other foreign types were rejected earlier in
+        // `disqualify_auto_trait_candidate_due_to_possible_impl`.
+        ty::Foreign(..) => Ok(ty::Binder::dummy(vec![])),
+
         // Treat `str` like it's defined as `struct str([u8]);`
         ty::Str => Ok(ty::Binder::dummy(vec![Ty::new_slice(cx, Ty::new_u8(cx))])),
 
         ty::Dynamic(..)
         | ty::Param(..)
-        | ty::Foreign(..)
         | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
         | ty::Placeholder(..)
         | ty::Bound(..)

@@ -51,6 +51,9 @@ pub enum UpvarCapture {
     /// depending on inference.
     ByValue,
 
+    /// Upvar is captured by use. This is true when the closure is labeled `use`.
+    ByUse,
+
     /// Upvar is captured by reference.
     ByRef(BorrowKind),
 }
@@ -147,9 +150,9 @@ impl<'tcx> CapturedPlace<'tcx> {
     /// Return span pointing to use that resulted in selecting the captured path
     pub fn get_path_span(&self, tcx: TyCtxt<'tcx>) -> Span {
         if let Some(path_expr_id) = self.info.path_expr_id {
-            tcx.hir().span(path_expr_id)
+            tcx.hir_span(path_expr_id)
         } else if let Some(capture_kind_expr_id) = self.info.capture_kind_expr_id {
-            tcx.hir().span(capture_kind_expr_id)
+            tcx.hir_span(capture_kind_expr_id)
         } else {
             // Fallback on upvars mentioned if neither path or capture expr id is captured
 
@@ -163,9 +166,9 @@ impl<'tcx> CapturedPlace<'tcx> {
     /// Return span pointing to use that resulted in selecting the current capture kind
     pub fn get_capture_kind_span(&self, tcx: TyCtxt<'tcx>) -> Span {
         if let Some(capture_kind_expr_id) = self.info.capture_kind_expr_id {
-            tcx.hir().span(capture_kind_expr_id)
+            tcx.hir_span(capture_kind_expr_id)
         } else if let Some(path_expr_id) = self.info.path_expr_id {
-            tcx.hir().span(path_expr_id)
+            tcx.hir_span(path_expr_id)
         } else {
             // Fallback on upvars mentioned if neither path or capture expr id is captured
 
@@ -178,7 +181,7 @@ impl<'tcx> CapturedPlace<'tcx> {
 
     pub fn is_by_ref(&self) -> bool {
         match self.info.capture_kind {
-            ty::UpvarCapture::ByValue => false,
+            ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => false,
             ty::UpvarCapture::ByRef(..) => true,
         }
     }
@@ -214,7 +217,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn closure_captures(self, def_id: LocalDefId) -> &'tcx [&'tcx ty::CapturedPlace<'tcx>] {
         if !self.is_closure_like(def_id.to_def_id()) {
             return &[];
-        };
+        }
         self.closure_typeinfo(def_id).captures
     }
 }
@@ -293,7 +296,7 @@ pub struct CaptureInfo {
 
 pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) -> String {
     let mut curr_string: String = match place.base {
-        HirPlaceBase::Upvar(upvar_id) => tcx.hir().name(upvar_id.var_path.hir_id).to_string(),
+        HirPlaceBase::Upvar(upvar_id) => tcx.hir_name(upvar_id.var_path.hir_id).to_string(),
         _ => bug!("Capture_information should only contain upvars"),
     };
 

@@ -10,12 +10,12 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
-use rustc_type_ir::solve::{Goal, NoSolution};
+use rustc_type_ir::solve::NoSolution;
 use tracing::{instrument, trace};
 
-use crate::solve::Certainty;
 use crate::solve::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
+use crate::solve::{Certainty, deeply_normalize_for_diagnostics};
 use crate::traits::{FulfillmentError, FulfillmentErrorCode, wf};
 
 pub(super) fn fulfillment_error_for_no_solution<'tcx>(
@@ -89,7 +89,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
     let (code, refine_obligation) = infcx.probe(|_| {
         match <&SolverDelegate<'tcx>>::from(infcx)
             .evaluate_root_goal(
-                root_obligation.clone().into(),
+                root_obligation.as_goal(),
                 GenerateProofTree::No,
                 root_obligation.cause.span,
             )
@@ -151,17 +151,18 @@ fn find_best_leaf_obligation<'tcx>(
     //
     // We should probably fix the visitor to not do so instead, as this also
     // means the leaf obligation may be incorrect.
-    infcx
+    let obligation = infcx
         .fudge_inference_if_ok(|| {
             infcx
                 .visit_proof_tree(
-                    obligation.clone().into(),
+                    obligation.as_goal(),
                     &mut BestObligation { obligation: obligation.clone(), consider_ambiguities },
                 )
                 .break_value()
                 .ok_or(())
         })
-        .unwrap_or(obligation)
+        .unwrap_or(obligation);
+    deeply_normalize_for_diagnostics(infcx, obligation.param_env, obligation)
 }
 
 struct BestObligation<'tcx> {
@@ -245,7 +246,7 @@ impl<'tcx> BestObligation<'tcx> {
         {
             let nested_goal = candidate.instantiate_proof_tree_for_nested_goal(
                 GoalSource::Misc,
-                Goal::new(infcx.tcx, obligation.param_env, obligation.predicate),
+                obligation.as_goal(),
                 self.span(),
             );
             // Skip nested goals that aren't the *reason* for our goal's failure.
@@ -279,6 +280,40 @@ impl<'tcx> BestObligation<'tcx> {
             );
             let obligation =
                 Obligation::new(tcx, self.obligation.cause.clone(), goal.goal().param_env, pred);
+            self.with_derived_obligation(obligation, |this| {
+                goal.infcx().visit_proof_tree_at_depth(
+                    goal.goal().with(tcx, pred),
+                    goal.depth() + 1,
+                    this,
+                )
+            })
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    /// When a higher-ranked projection goal fails, check that the corresponding
+    /// higher-ranked trait goal holds or not. This is because the process of
+    /// instantiating and then re-canonicalizing the binder of the projection goal
+    /// forces us to be unable to see that the leak check failed in the nested
+    /// `NormalizesTo` goal, so we don't fall back to the rigid projection check
+    /// that should catch when a projection goal fails due to an unsatisfied trait
+    /// goal.
+    fn detect_trait_error_in_higher_ranked_projection(
+        &mut self,
+        goal: &inspect::InspectGoal<'_, 'tcx>,
+    ) -> ControlFlow<PredicateObligation<'tcx>> {
+        let tcx = goal.infcx().tcx;
+        if let Some(projection_clause) = goal.goal().predicate.as_projection_clause()
+            && !projection_clause.bound_vars().is_empty()
+        {
+            let pred = projection_clause.map_bound(|proj| proj.projection_term.trait_ref(tcx));
+            let obligation = Obligation::new(
+                tcx,
+                self.obligation.cause.clone(),
+                goal.goal().param_env,
+                deeply_normalize_for_diagnostics(goal.infcx(), goal.goal().param_env, pred),
+            );
             self.with_derived_obligation(obligation, |this| {
                 goal.infcx().visit_proof_tree_at_depth(
                     goal.goal().with(tcx, pred),
@@ -360,7 +395,8 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity))) | (false, Err(_)) => {}
             _ => return ControlFlow::Continue(()),
         }
-        let pred_kind = goal.goal().predicate.kind();
+
+        let pred = goal.goal().predicate;
 
         let candidates = self.non_trivial_candidates(goal);
         let candidate = match candidates.as_slice() {
@@ -374,7 +410,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             source: CandidateSource::Impl(impl_def_id),
             result: _,
         } = candidate.kind()
-            && goal.infcx().tcx.do_not_recommend_impl(impl_def_id)
+            && tcx.do_not_recommend_impl(impl_def_id)
         {
             trace!("#[do_not_recommend] -> exit");
             return ControlFlow::Break(self.obligation.clone());
@@ -382,12 +418,12 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
 
         // FIXME: Also, what about considering >1 layer up the stack? May be necessary
         // for normalizes-to.
-        let child_mode = match pred_kind.skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-                ChildMode::Trait(pred_kind.rebind(pred))
+        let child_mode = match pred.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
+                ChildMode::Trait(pred.kind().rebind(trait_pred))
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(pred)) => {
-                ChildMode::Host(pred_kind.rebind(pred))
+            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(host_pred)) => {
+                ChildMode::Host(pred.kind().rebind(host_pred))
             }
             ty::PredicateKind::NormalizesTo(normalizes_to)
                 if matches!(
@@ -395,7 +431,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst
                 ) =>
             {
-                ChildMode::Trait(pred_kind.rebind(ty::TraitPredicate {
+                ChildMode::Trait(pred.kind().rebind(ty::TraitPredicate {
                     trait_ref: normalizes_to.alias.trait_ref(tcx),
                     polarity: ty::PredicatePolarity::Positive,
                 }))
@@ -429,10 +465,12 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         for nested_goal in nested_goals {
             trace!(nested_goal = ?(nested_goal.goal(), nested_goal.source(), nested_goal.result()));
 
+            let nested_pred = nested_goal.goal().predicate;
+
             let make_obligation = |cause| Obligation {
                 cause,
                 param_env: nested_goal.goal().param_env,
-                predicate: nested_goal.goal().predicate,
+                predicate: nested_pred,
                 recursion_depth: self.obligation.recursion_depth + 1,
             };
 
@@ -440,7 +478,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             match (child_mode, nested_goal.source()) {
                 (
                     ChildMode::Trait(_) | ChildMode::Host(_),
-                    GoalSource::Misc | GoalSource::NormalizeGoal(_),
+                    GoalSource::Misc | GoalSource::TypeRelating | GoalSource::NormalizeGoal(_),
                 ) => {
                     continue;
                 }
@@ -482,29 +520,20 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
 
         // alias-relate may fail because the lhs or rhs can't be normalized,
         // and therefore is treated as rigid.
-        if let Some(ty::PredicateKind::AliasRelate(lhs, rhs, _)) = pred_kind.no_bound_vars() {
-            if let Some(obligation) = goal
-                .infcx()
-                .visit_proof_tree_at_depth(
-                    goal.goal().with(goal.infcx().tcx, ty::ClauseKind::WellFormed(lhs.into())),
-                    goal.depth() + 1,
-                    self,
-                )
-                .break_value()
-            {
-                return ControlFlow::Break(obligation);
-            } else if let Some(obligation) = goal
-                .infcx()
-                .visit_proof_tree_at_depth(
-                    goal.goal().with(goal.infcx().tcx, ty::ClauseKind::WellFormed(rhs.into())),
-                    goal.depth() + 1,
-                    self,
-                )
-                .break_value()
-            {
-                return ControlFlow::Break(obligation);
-            }
+        if let Some(ty::PredicateKind::AliasRelate(lhs, rhs, _)) = pred.kind().no_bound_vars() {
+            goal.infcx().visit_proof_tree_at_depth(
+                goal.goal().with(tcx, ty::ClauseKind::WellFormed(lhs.into())),
+                goal.depth() + 1,
+                self,
+            )?;
+            goal.infcx().visit_proof_tree_at_depth(
+                goal.goal().with(tcx, ty::ClauseKind::WellFormed(rhs.into())),
+                goal.depth() + 1,
+                self,
+            )?;
         }
+
+        self.detect_trait_error_in_higher_ranked_projection(goal)?;
 
         ControlFlow::Break(self.obligation.clone())
     }

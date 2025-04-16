@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Trait<Bar, _>`
-  --> $DIR/issue-84660-unsoundness.rs:29:1
+  --> $DIR/issue-84660-unsoundness.rs:31:1
    |
 LL | impl<In, Out> Trait<Bar, In> for Out {
    | ------------------------------------ first implementation here
@@ -8,7 +8,7 @@ LL | impl<In, Out> Trait<(), In> for Out {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
 error[E0284]: type annotations needed: cannot satisfy `Bar == _`
-  --> $DIR/issue-84660-unsoundness.rs:22:37
+  --> $DIR/issue-84660-unsoundness.rs:24:37
    |
 LL |       fn convert(_i: In) -> Self::Out {
    |  _____________________________________^

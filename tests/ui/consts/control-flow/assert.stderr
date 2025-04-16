@@ -3,8 +3,6 @@ error[E0080]: evaluation of constant value failed
    |
 LL | const _: () = assert!(false);
    |               ^^^^^^^^^^^^^^ evaluation panicked: assertion failed: false
-   |
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

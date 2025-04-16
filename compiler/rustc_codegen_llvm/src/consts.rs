@@ -5,6 +5,7 @@ use rustc_abi::{
 };
 use rustc_codegen_ssa::common;
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -12,11 +13,10 @@ use rustc_middle::mir::interpret::{
     Allocation, ConstAllocation, ErrorHandled, InitChunk, Pointer, Scalar as InterpScalar,
     read_target_uint,
 };
-use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::Instance;
+use rustc_middle::mir::mono::{Linkage, MonoItem};
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
+use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::Lto;
 use tracing::{debug, instrument, trace};
 
 use crate::common::{AsCCharPtr, CodegenCx};
@@ -129,7 +129,12 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
         append_chunks_of_init_and_uninit_bytes(&mut llvals, cx, alloc, range);
     }
 
-    cx.const_struct(&llvals, true)
+    // Avoid wrapping in a struct if there is only a single value. This ensures
+    // that LLVM is able to perform the string merging optimization if the constant
+    // is a valid C string. LLVM only considers bare arrays for this optimization,
+    // not arrays wrapped in a struct. LLVM handles this at:
+    // https://github.com/rust-lang/llvm-project/blob/acaea3d2bb8f351b740db7ebce7d7a40b9e21488/llvm/lib/Target/TargetLoweringObjectFile.cpp#L249-L280
+    if let &[data] = &*llvals { data } else { cx.const_struct(&llvals, true) }
 }
 
 fn codegen_static_initializer<'ll, 'tcx>(
@@ -172,8 +177,27 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     if let Some(linkage) = attrs.import_linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
-        // Declare a symbol `foo` with the desired linkage.
-        let g1 = cx.declare_global(sym, cx.type_i8());
+        // Declare a symbol `foo`. If `foo` is an extern_weak symbol, we declare
+        // an extern_weak function, otherwise a global with the desired linkage.
+        let g1 = if matches!(attrs.import_linkage, Some(Linkage::ExternalWeak)) {
+            // An `extern_weak` function is represented as an `Option<unsafe extern ...>`,
+            // we extract the function signature and declare it as an extern_weak function
+            // instead of an extern_weak i8.
+            let instance = Instance::mono(cx.tcx, def_id);
+            if let ty::Adt(struct_def, args) = instance.ty(cx.tcx, cx.typing_env()).kind()
+                && cx.tcx.is_lang_item(struct_def.did(), LangItem::Option)
+                && let ty::FnPtr(sig, header) = args.type_at(0).kind()
+            {
+                let fn_sig = sig.with(*header);
+
+                let fn_abi = cx.fn_abi_of_fn_ptr(fn_sig, ty::List::empty());
+                cx.declare_fn(sym, &fn_abi, None)
+            } else {
+                cx.declare_global(sym, cx.type_i8())
+            }
+        } else {
+            cx.declare_global(sym, cx.type_i8())
+        };
         llvm::set_linkage(g1, base::linkage_to_llvm(linkage));
 
         // Declare an internal global `extern_with_linkage_foo` which
@@ -344,11 +368,11 @@ impl<'ll> CodegenCx<'ll, '_> {
                 // Local definitions can never be imported, so we must not apply
                 // the DLLImport annotation.
                 && !dso_local
-                // ThinLTO can't handle this workaround in all cases, so we don't
-                // emit the attrs. Instead we make them unnecessary by disallowing
-                // dynamic linking when linker plugin based LTO is enabled.
-                && !self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
-                && self.tcx.sess.lto() != Lto::Thin;
+                // Linker plugin ThinLTO doesn't create the self-dllimport Rust uses for rlibs
+                // as the code generation happens out of process. Instead we assume static linkage
+                // and disallow dynamic linking when linker plugin based LTO is enabled.
+                // Regular in-process ThinLTO doesn't need this workaround.
+                && !self.tcx.sess.opts.cg.linker_plugin_lto.enabled();
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
@@ -406,7 +430,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             let val_llty = self.val_ty(v);
 
             let g = self.get_static_inner(def_id, val_llty);
-            let llty = llvm::LLVMGlobalGetValueType(g);
+            let llty = self.get_type_of_global(g);
 
             let g = if val_llty == llty {
                 g
@@ -490,7 +514,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                         llvm::LLVMMDStringInContext2(self.llcx, bytes.as_c_char_ptr(), bytes.len());
                     let data = [section, alloc];
                     let meta = llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len());
-                    let val = llvm::LLVMMetadataAsValue(self.llcx, meta);
+                    let val = self.get_metadata_value(meta);
                     llvm::LLVMAddNamedMetadataOperand(
                         self.llmod,
                         c"wasm.custom_sections".as_ptr(),

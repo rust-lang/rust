@@ -21,7 +21,6 @@ use std::ops::ControlFlow;
 
 use mir::mono::Instance;
 use mir::TerminatorKind::*;
-use rustc_smir::rustc_internal;
 use stable_mir::ty::{RigidTy, TyKind};
 use stable_mir::*;
 

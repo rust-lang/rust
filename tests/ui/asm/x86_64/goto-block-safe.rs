@@ -2,7 +2,6 @@
 //@ needs-asm-support
 
 #![deny(unreachable_code)]
-#![feature(asm_goto)]
 
 use std::arch::asm;
 

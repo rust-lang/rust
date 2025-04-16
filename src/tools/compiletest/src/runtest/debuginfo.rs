@@ -1,9 +1,9 @@
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
-use std::path::Path;
 use std::process::{Command, Output, Stdio};
 
+use camino::Utf8Path;
 use tracing::debug;
 
 use super::debugger::DebuggerCommands;
@@ -73,11 +73,11 @@ impl TestCx<'_> {
         let mut js_extension = self.testpaths.file.clone();
         js_extension.set_extension("cdb.js");
         if js_extension.exists() {
-            script_str.push_str(&format!(".scriptload \"{}\"\n", js_extension.to_string_lossy()));
+            script_str.push_str(&format!(".scriptload \"{}\"\n", js_extension));
         }
 
         // Set breakpoints on every line that contains the string "#break"
-        let source_file_name = self.testpaths.file.file_name().unwrap().to_string_lossy();
+        let source_file_name = self.testpaths.file.file_name().unwrap();
         for line in &dbg_cmds.breakpoint_lines {
             script_str.push_str(&format!("bp `{}:{}`\n", source_file_name, line));
         }
@@ -104,7 +104,7 @@ impl TestCx<'_> {
 
         let debugger_run_result = self.compose_and_run(
             cdb,
-            self.config.run_lib_path.to_str().unwrap(),
+            self.config.run_lib_path.as_path(),
             None, // aux_path
             None, // input
         );
@@ -151,16 +151,11 @@ impl TestCx<'_> {
         if is_android_gdb_target(&self.config.target) {
             cmds = cmds.replace("run", "continue");
 
-            let tool_path = match self.config.android_cross_path.to_str() {
-                Some(x) => x.to_owned(),
-                None => self.fatal("cannot find android cross path"),
-            };
-
             // write debugger script
             let mut script_str = String::with_capacity(2048);
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
-            script_str.push_str(&format!("set sysroot {}\n", tool_path));
-            script_str.push_str(&format!("file {}\n", exe_file.to_str().unwrap()));
+            script_str.push_str(&format!("set sysroot {}\n", &self.config.android_cross_path));
+            script_str.push_str(&format!("file {}\n", exe_file));
             script_str.push_str("target remote :5039\n");
             script_str.push_str(&format!(
                 "set solib-search-path \
@@ -169,12 +164,8 @@ impl TestCx<'_> {
             ));
             for line in &dbg_cmds.breakpoint_lines {
                 script_str.push_str(
-                    format!(
-                        "break {:?}:{}\n",
-                        self.testpaths.file.file_name().unwrap().to_string_lossy(),
-                        *line
-                    )
-                    .as_str(),
+                    format!("break {}:{}\n", self.testpaths.file.file_name().unwrap(), *line)
+                        .as_str(),
                 );
             }
             script_str.push_str(&cmds);
@@ -203,7 +194,7 @@ impl TestCx<'_> {
                 self.config.adb_test_dir.clone(),
                 if self.config.target.contains("aarch64") { "64" } else { "" },
                 self.config.adb_test_dir.clone(),
-                exe_file.file_name().unwrap().to_str().unwrap()
+                exe_file.file_name().unwrap()
             );
 
             debug!("adb arg: {}", adb_arg);
@@ -241,7 +232,8 @@ impl TestCx<'_> {
             let cmdline = {
                 let mut gdb = Command::new(&format!("{}-gdb", self.config.target));
                 gdb.args(debugger_opts);
-                let cmdline = self.make_cmdline(&gdb, "");
+                // FIXME(jieyouxu): don't pass an empty Path
+                let cmdline = self.make_cmdline(&gdb, Utf8Path::new(""));
                 logv(self.config, format!("executing {}", cmdline));
                 cmdline
             };
@@ -258,7 +250,6 @@ impl TestCx<'_> {
             }
         } else {
             let rust_pp_module_abs_path = self.config.src_root.join("src").join("etc");
-            let rust_pp_module_abs_path = rust_pp_module_abs_path.to_str().unwrap();
             // write debugger script
             let mut script_str = String::with_capacity(2048);
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
@@ -273,17 +264,15 @@ impl TestCx<'_> {
                         // GDB's script auto loading safe path
                         script_str.push_str(&format!(
                             "add-auto-load-safe-path {}\n",
-                            rust_pp_module_abs_path.replace(r"\", r"\\")
+                            rust_pp_module_abs_path.as_str().replace(r"\", r"\\")
                         ));
-
-                        let output_base_dir = self.output_base_dir().to_str().unwrap().to_owned();
 
                         // Add the directory containing the output binary to
                         // include embedded pretty printers to GDB's script
                         // auto loading safe path
                         script_str.push_str(&format!(
                             "add-auto-load-safe-path {}\n",
-                            output_base_dir.replace(r"\", r"\\")
+                            self.output_base_dir().as_str().replace(r"\", r"\\")
                         ));
                     }
                 }
@@ -300,12 +289,13 @@ impl TestCx<'_> {
             script_str.push_str("set print pretty off\n");
 
             // Add the pretty printer directory to GDB's source-file search path
-            script_str
-                .push_str(&format!("directory {}\n", rust_pp_module_abs_path.replace(r"\", r"\\")));
+            script_str.push_str(&format!(
+                "directory {}\n",
+                rust_pp_module_abs_path.as_str().replace(r"\", r"\\")
+            ));
 
             // Load the target executable
-            script_str
-                .push_str(&format!("file {}\n", exe_file.to_str().unwrap().replace(r"\", r"\\")));
+            script_str.push_str(&format!("file {}\n", exe_file.as_str().replace(r"\", r"\\")));
 
             // Force GDB to print values in the Rust format.
             script_str.push_str("set language rust\n");
@@ -314,7 +304,7 @@ impl TestCx<'_> {
             for line in &dbg_cmds.breakpoint_lines {
                 script_str.push_str(&format!(
                     "break '{}':{}\n",
-                    self.testpaths.file.file_name().unwrap().to_string_lossy(),
+                    self.testpaths.file.file_name().unwrap(),
                     *line
                 ));
             }
@@ -340,7 +330,7 @@ impl TestCx<'_> {
             gdb.args(debugger_opts).env("PYTHONPATH", pythonpath);
 
             debugger_run_result =
-                self.compose_and_run(gdb, self.config.run_lib_path.to_str().unwrap(), None, None);
+                self.compose_and_run(gdb, self.config.run_lib_path.as_path(), None, None);
         }
 
         if !debugger_run_result.status.success() {
@@ -409,14 +399,14 @@ impl TestCx<'_> {
 
         script_str.push_str(&format!(
             "command script import {}/lldb_lookup.py\n",
-            rust_pp_module_abs_path.to_str().unwrap()
+            rust_pp_module_abs_path
         ));
         File::open(rust_pp_module_abs_path.join("lldb_commands"))
             .and_then(|mut file| file.read_to_string(&mut script_str))
             .expect("Failed to read lldb_commands");
 
         // Set breakpoints on every line that contains the string "#break"
-        let source_file_name = self.testpaths.file.file_name().unwrap().to_string_lossy();
+        let source_file_name = self.testpaths.file.file_name().unwrap();
         for line in &dbg_cmds.breakpoint_lines {
             script_str.push_str(&format!(
                 "breakpoint set --file '{}' --line {}\n",
@@ -450,7 +440,7 @@ impl TestCx<'_> {
         }
     }
 
-    fn run_lldb(&self, test_executable: &Path, debugger_script: &Path) -> ProcRes {
+    fn run_lldb(&self, test_executable: &Utf8Path, debugger_script: &Utf8Path) -> ProcRes {
         // Prepare the lldb_batchmode which executes the debugger script
         let lldb_script_path = self.config.src_root.join("src/etc/lldb_batchmode.py");
         let pythonpath = if let Ok(pp) = std::env::var("PYTHONPATH") {

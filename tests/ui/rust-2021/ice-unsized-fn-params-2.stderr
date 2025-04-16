@@ -4,7 +4,7 @@ error[E0782]: expected a type, found a trait
 LL | fn guard(_s: Copy) -> bool {
    |              ^^^^
    |
-   = note: `Copy` it is dyn-incompatible, so it can't be `dyn`
+   = note: `Copy` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `Copy`
    |
 LL - fn guard(_s: Copy) -> bool {

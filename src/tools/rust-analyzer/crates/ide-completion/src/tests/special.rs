@@ -1009,6 +1009,7 @@ fn here_we_go() {
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1059,6 +1060,7 @@ fn here_we_go() {
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1182,6 +1184,7 @@ fn bar() { qu$0 }
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1437,6 +1440,7 @@ fn foo() {
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod

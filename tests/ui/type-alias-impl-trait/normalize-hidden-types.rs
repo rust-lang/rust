@@ -23,6 +23,7 @@ fn dyn_hoops<T: Trait>(_: T) -> *const dyn FnOnce(T::Gat<'_>) {
 mod typeof_1 {
     use super::*;
     type Opaque = impl Sized;
+    #[define_opaque(Opaque)]
     fn define() -> Opaque {
         dyn_hoops::<_>(0)
     }
@@ -31,13 +32,16 @@ mod typeof_1 {
 mod typeof_2 {
     use super::*;
     type Opaque = impl Sized;
+    #[define_opaque(Opaque)]
     fn define_1() -> Opaque { dyn_hoops::<_>(0) }
+    #[define_opaque(Opaque)]
     fn define_2() -> Opaque { dyn_hoops::<u8>(0) }
 }
 
 mod typeck {
     use super::*;
     type Opaque = impl Sized;
+    #[define_opaque(Opaque)]
     fn define() -> Option<Opaque> {
         let _: Opaque = dyn_hoops::<_>(0);
         let _: Opaque = dyn_hoops::<u8>(0);
@@ -48,6 +52,7 @@ mod typeck {
 mod borrowck {
     use super::*;
     type Opaque = impl Sized;
+    #[define_opaque(Opaque)]
     fn define() -> Option<Opaque> {
         let _: Opaque = dyn_hoops::<_>(0);
         None

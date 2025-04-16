@@ -24,7 +24,7 @@ use rustc_apfloat::{
     Float,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, FileId};
+use span::FileId;
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
@@ -32,7 +32,7 @@ use triomphe::Arc;
 use crate::{
     consteval::{intern_const_scalar, try_const_usize, ConstEvalError},
     db::{HirDatabase, InternedClosure},
-    display::{ClosureStyle, HirDisplay},
+    display::{ClosureStyle, DisplayTarget, HirDisplay},
     infer::PointerCast,
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
     mapping::from_chalk,
@@ -302,7 +302,7 @@ impl Address {
         }
     }
 
-    fn to_bytes(&self) -> [u8; mem::size_of::<usize>()] {
+    fn to_bytes(&self) -> [u8; size_of::<usize>()] {
         usize::to_le_bytes(self.to_usize())
     }
 
@@ -359,7 +359,7 @@ impl MirEvalError {
         f: &mut String,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
-        edition: Edition,
+        display_target: DisplayTarget,
     ) -> std::result::Result<(), std::fmt::Error> {
         writeln!(f, "Mir eval error:")?;
         let mut err = self;
@@ -372,7 +372,7 @@ impl MirEvalError {
                         writeln!(
                             f,
                             "In function {} ({:?})",
-                            function_name.name.display(db.upcast(), edition),
+                            function_name.name.display(db.upcast(), display_target.edition),
                             func
                         )?;
                     }
@@ -417,7 +417,7 @@ impl MirEvalError {
                 write!(
                     f,
                     "Layout for type `{}` is not available due {err:?}",
-                    ty.display(db, edition).with_closure_style(ClosureStyle::ClosureWithId)
+                    ty.display(db, display_target).with_closure_style(ClosureStyle::ClosureWithId)
                 )?;
             }
             MirEvalError::MirLowerError(func, err) => {
@@ -428,12 +428,15 @@ impl MirEvalError {
                         let substs = generics.placeholder_subst(db);
                         db.impl_self_ty(impl_id)
                             .substitute(Interner, &substs)
-                            .display(db, edition)
+                            .display(db, display_target)
                             .to_string()
                     }),
-                    ItemContainerId::TraitId(it) => {
-                        Some(db.trait_data(it).name.display(db.upcast(), edition).to_string())
-                    }
+                    ItemContainerId::TraitId(it) => Some(
+                        db.trait_data(it)
+                            .name
+                            .display(db.upcast(), display_target.edition)
+                            .to_string(),
+                    ),
                     _ => None,
                 };
                 writeln!(
@@ -441,17 +444,17 @@ impl MirEvalError {
                     "MIR lowering for function `{}{}{}` ({:?}) failed due:",
                     self_.as_deref().unwrap_or_default(),
                     if self_.is_some() { "::" } else { "" },
-                    function_name.name.display(db.upcast(), edition),
+                    function_name.name.display(db.upcast(), display_target.edition),
                     func
                 )?;
-                err.pretty_print(f, db, span_formatter, edition)?;
+                err.pretty_print(f, db, span_formatter, display_target)?;
             }
             MirEvalError::ConstEvalError(name, err) => {
                 MirLowerError::ConstEvalError((**name).into(), err.clone()).pretty_print(
                     f,
                     db,
                     span_formatter,
-                    edition,
+                    display_target,
                 )?;
             }
             MirEvalError::UndefinedBehavior(_)
@@ -589,7 +592,7 @@ pub fn interpret_mir(
     let ty = body.locals[return_slot()].ty.clone();
     let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env)?;
     let it: Result<Const> = (|| {
-        if evaluator.ptr_size() != std::mem::size_of::<usize>() {
+        if evaluator.ptr_size() != size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
         }
         let interval = evaluator.interpret_mir(body.clone(), None.into_iter())?;

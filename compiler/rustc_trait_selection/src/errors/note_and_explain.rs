@@ -20,7 +20,7 @@ impl<'a> DescriptionCtx<'a> {
         region: ty::Region<'tcx>,
         alt_span: Option<Span>,
     ) -> Option<Self> {
-        let (span, kind, arg) = match *region {
+        let (span, kind, arg) = match region.kind() {
             ty::ReEarlyParam(br) => {
                 let scope = tcx
                     .parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id)

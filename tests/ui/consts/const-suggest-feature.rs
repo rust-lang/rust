@@ -1,4 +1,4 @@
-//@compile-flags: --edition 2018
+//@ edition: 2018
 use std::cell::Cell;
 
 const WRITE: () = unsafe {

@@ -1,6 +1,5 @@
-use hir::{ConstEvalError, DefWithBody, Semantics};
+use hir::{ConstEvalError, DefWithBody, DisplayTarget, Semantics};
 use ide_db::{base_db::SourceRootDatabase, FilePosition, LineIndexDatabase, RootDatabase};
-use span::Edition;
 use std::time::{Duration, Instant};
 use stdx::format_to;
 use syntax::{algo::ancestors_at_offset, ast, AstNode, TextRange};
@@ -46,15 +45,15 @@ fn find_and_interpret(db: &RootDatabase, position: FilePosition) -> Option<(Dura
             None => format!("file://{path} range {text_range:?}"),
         }
     };
-    let edition = def.module(db).krate().edition(db);
+    let display_target = def.module(db).krate().to_display_target(db);
     let start_time = Instant::now();
     let res = match def {
         DefWithBody::Function(it) => it.eval(db, span_formatter),
-        DefWithBody::Static(it) => it.eval(db).map(|it| it.render(db, edition)),
-        DefWithBody::Const(it) => it.eval(db).map(|it| it.render(db, edition)),
+        DefWithBody::Static(it) => it.eval(db).map(|it| it.render(db, display_target)),
+        DefWithBody::Const(it) => it.eval(db).map(|it| it.render(db, display_target)),
         _ => unreachable!(),
     };
-    let res = res.unwrap_or_else(|e| render_const_eval_error(db, e, edition));
+    let res = res.unwrap_or_else(|e| render_const_eval_error(db, e, display_target));
     let duration = Instant::now() - start_time;
     Some((duration, res))
 }
@@ -62,7 +61,7 @@ fn find_and_interpret(db: &RootDatabase, position: FilePosition) -> Option<(Dura
 pub(crate) fn render_const_eval_error(
     db: &RootDatabase,
     e: ConstEvalError,
-    edition: Edition,
+    display_target: DisplayTarget,
 ) -> String {
     let span_formatter = |file_id, text_range: TextRange| {
         let path = &db
@@ -76,6 +75,6 @@ pub(crate) fn render_const_eval_error(
         }
     };
     let mut r = String::new();
-    _ = e.pretty_print(&mut r, db, span_formatter, edition);
+    _ = e.pretty_print(&mut r, db, span_formatter, display_target);
     r
 }

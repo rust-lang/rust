@@ -56,6 +56,7 @@
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
 
+#![allow(incomplete_features)]
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
 #![doc(
@@ -92,7 +93,6 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(test, feature(str_as_str))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_chunks)]
@@ -104,6 +104,7 @@
 #![feature(async_iterator)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(char_internals)]
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
@@ -113,6 +114,7 @@
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
 #![feature(dispatch_from_dyn)]
+#![feature(ergonomic_clones)]
 #![feature(error_generic_member_access)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
@@ -134,6 +136,7 @@
 #![feature(pattern)]
 #![feature(pin_coerce_unsized_trait)]
 #![feature(pointer_like_trait)]
+#![feature(ptr_alignment_type)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
 #![feature(set_ptr_value)]
@@ -159,13 +162,11 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(not(test), feature(coroutine_trait))]
-#![cfg_attr(test, feature(panic_update_hook))]
-#![cfg_attr(test, feature(test))]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unstable)]
 #![feature(cfg_sanitize)]
 #![feature(const_precise_live_drops)]
+#![feature(coroutine_trait)]
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
 #![feature(fundamental)]
@@ -198,15 +199,6 @@
 // from other crates, but since this can only appear for lang items, it doesn't seem worth fixing.
 #![feature(intra_doc_pointers)]
 
-// Allow testing this library
-#[cfg(test)]
-#[macro_use]
-extern crate std;
-#[cfg(test)]
-extern crate test;
-#[cfg(test)]
-mod testing;
-
 // Module with internal macros used by other modules (needs to be included before other modules).
 #[macro_use]
 mod macros;
@@ -214,7 +206,6 @@ mod macros;
 mod raw_vec;
 
 // Heaps provided for low-level allocation strategies
-
 pub mod alloc;
 
 // Primitive types using the heaps above
@@ -222,13 +213,8 @@ pub mod alloc;
 // Need to conditionally define the mod from `boxed.rs` to avoid
 // duplicating the lang-items when building in test cfg; but also need
 // to allow code to have `use boxed::Box;` declarations.
-#[cfg(not(test))]
-pub mod boxed;
-#[cfg(test)]
-mod boxed {
-    pub(crate) use std::boxed::Box;
-}
 pub mod borrow;
+pub mod boxed;
 #[unstable(feature = "bstr", issue = "134915")]
 pub mod bstr;
 pub mod collections;
@@ -251,21 +237,4 @@ pub mod vec;
 pub mod __export {
     pub use core::format_args;
     pub use core::hint::must_use;
-}
-
-#[cfg(test)]
-#[allow(dead_code)] // Not used in all configurations
-pub(crate) mod test_helpers {
-    /// Copied from `std::test_helpers::test_rng`, since these tests rely on the
-    /// seed not being the same for every RNG invocation too.
-    pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
-        use std::hash::{BuildHasher, Hash, Hasher};
-        let mut hasher = std::hash::RandomState::new().build_hasher();
-        std::panic::Location::caller().hash(&mut hasher);
-        let hc64 = hasher.finish();
-        let seed_vec =
-            hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<crate::vec::Vec<u8>>();
-        let seed: [u8; 16] = seed_vec.as_slice().try_into().unwrap();
-        rand::SeedableRng::from_seed(seed)
-    }
 }

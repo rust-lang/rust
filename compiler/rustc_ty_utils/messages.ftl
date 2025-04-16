@@ -14,6 +14,8 @@ ty_utils_borrow_not_supported = borrowing is not supported in generic constants
 
 ty_utils_box_not_supported = allocations are not allowed in generic constants
 
+ty_utils_by_use_not_supported = .use is not allowed in generic constants
+
 ty_utils_closure_and_return_not_supported = closures and function keywords are not supported in generic constants
 
 ty_utils_const_block_not_supported = const blocks are not supported in generic constants

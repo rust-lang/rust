@@ -127,12 +127,29 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         // Attributes can't have attributes of their own [Editor's note: not with that attitude]
         self.collect_tokens_no_attrs(|this| {
+            let pound_hi = this.token.span.hi();
             assert!(this.eat(exp!(Pound)), "parse_attribute called in non-attribute position");
 
+            let not_lo = this.token.span.lo();
             let style =
                 if this.eat(exp!(Bang)) { ast::AttrStyle::Inner } else { ast::AttrStyle::Outer };
 
-            this.expect(exp!(OpenBracket))?;
+            let mut bracket_res = this.expect(exp!(OpenBracket));
+            // If `#!` is not followed by `[`
+            if let Err(err) = &mut bracket_res
+                && style == ast::AttrStyle::Inner
+                && pound_hi == not_lo
+            {
+                err.note(
+                    "the token sequence `#!` here looks like the start of \
+                    a shebang interpreter directive but it is not",
+                );
+                err.help(
+                    "if you meant this to be a shebang interpreter directive, \
+                    move it to the very start of the file",
+                );
+            }
+            bracket_res?;
             let item = this.parse_attr_item(ForceCollect::No)?;
             this.expect(exp!(CloseBracket))?;
             let attr_sp = lo.to(this.prev_token.span);

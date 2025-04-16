@@ -1,7 +1,7 @@
 //@ add-core-stubs
 //@ revisions: z10 z13_no_vector z13_soft_float
 //@ build-fail
-//@[z10] compile-flags: --target s390x-unknown-linux-gnu
+//@[z10] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z10
 //@[z10] needs-llvm-components: systemz
 //@[z13_no_vector] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13 -C target-feature=-vector
 //@[z13_no_vector] needs-llvm-components: systemz

@@ -15,8 +15,8 @@ where
     's: 'b,
 {
     [a]
-    //~^ E0700
-    //~| E0700
+    //~^ ERROR E0700
+    //~| ERROR E0700
 }
 
 // Same as the above but with late-bound regions.
@@ -26,8 +26,8 @@ fn fail_late_bound<'s, 'a, 'b>(
     _: &'b &'s u8,
 ) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b>> {
     [a]
-    //~^ E0700
-    //~| E0700
+    //~^ ERROR E0700
+    //~| ERROR E0700
 }
 
 fn main() {}

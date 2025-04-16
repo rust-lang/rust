@@ -22,6 +22,7 @@ use stable_mir::ty::IndexedVal;
 
 use crate::rustc_smir::context::TablesWrapper;
 use crate::rustc_smir::{Stable, Tables};
+use crate::stable_mir;
 
 mod internal;
 pub mod pretty;
@@ -147,6 +148,14 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::CoroutineWitnessDef(self.create_def_id(did))
     }
 
+    pub fn assoc_def(&mut self, did: DefId) -> stable_mir::ty::AssocDef {
+        stable_mir::ty::AssocDef(self.create_def_id(did))
+    }
+
+    pub fn opaque_def(&mut self, did: DefId) -> stable_mir::ty::OpaqueDef {
+        stable_mir::ty::OpaqueDef(self.create_def_id(did))
+    }
+
     pub fn prov(&mut self, aid: AllocId) -> stable_mir::ty::Prov {
         stable_mir::ty::Prov(self.create_alloc_id(aid))
     }
@@ -235,6 +244,7 @@ where
 /// ```ignore(needs-extern-crate)
 /// # extern crate rustc_driver;
 /// # extern crate rustc_interface;
+/// # extern crate rustc_middle;
 /// # #[macro_use]
 /// # extern crate rustc_smir;
 /// # extern crate stable_mir;
@@ -255,6 +265,7 @@ where
 /// ```ignore(needs-extern-crate)
 /// # extern crate rustc_driver;
 /// # extern crate rustc_interface;
+/// # extern crate rustc_middle;
 /// # #[macro_use]
 /// # extern crate rustc_smir;
 /// # extern crate stable_mir;
@@ -319,6 +330,7 @@ macro_rules! run_driver {
         use rustc_driver::{Callbacks, Compilation, run_compiler};
         use rustc_middle::ty::TyCtxt;
         use rustc_interface::interface;
+        use rustc_smir::rustc_internal;
         use stable_mir::CompilerError;
         use std::ops::ControlFlow;
 

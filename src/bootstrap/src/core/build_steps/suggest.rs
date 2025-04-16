@@ -1,7 +1,5 @@
 //! Attempt to magically identify good tests to run
 
-#![cfg_attr(feature = "build-metrics", allow(unused))]
-
 use std::path::PathBuf;
 use std::str::FromStr;
 

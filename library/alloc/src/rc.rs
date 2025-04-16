@@ -245,6 +245,7 @@ use core::any::Any;
 use core::cell::Cell;
 #[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
+use core::clone::UseCloned;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
@@ -262,22 +263,16 @@ use core::ptr::{self, NonNull, drop_in_place};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 use core::{borrow, fmt, hint};
-#[cfg(test)]
-use std::boxed::Box;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
-#[cfg(not(test))]
 use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
-
-#[cfg(test)]
-mod tests;
 
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
@@ -309,7 +304,7 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
 ///
 /// [get_mut]: Rc::get_mut
 #[doc(search_unbox)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
+#[rustc_diagnostic_item = "Rc"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
 pub struct Rc<
@@ -1332,10 +1327,13 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Rc::into_raw`, the
-    /// associated `Rc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Rc::into_raw` and must satisfy the
+    /// same layout requirements specified in [`Rc::from_raw_in`][from_raw_in].
+    /// The associated `Rc` instance must be valid (i.e. the strong count must be at
     /// least 1) for the duration of this method, and `ptr` must point to a block of memory
     /// allocated by the global allocator.
+    ///
+    /// [from_raw_in]: Rc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1365,11 +1363,14 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Rc::into_raw`, the
-    /// associated `Rc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Rc::into_raw`and must satisfy the
+    /// same layout requirements specified in [`Rc::from_raw_in`][from_raw_in].
+    /// The associated `Rc` instance must be valid (i.e. the strong count must be at
     /// least 1) when invoking this method, and `ptr` must point to a block of memory
     /// allocated by the global allocator. This method can be used to release the final `Rc` and
     /// backing storage, but **should not** be called after the final `Rc` has been released.
+    ///
+    /// [from_raw_in]: Rc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1628,10 +1629,13 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Rc::into_raw`, the
-    /// associated `Rc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Rc::into_raw` and must satisfy the
+    /// same layout requirements specified in [`Rc::from_raw_in`][from_raw_in].
+    /// The associated `Rc` instance must be valid (i.e. the strong count must be at
     /// least 1) for the duration of this method, and `ptr` must point to a block of memory
-    /// allocated by `alloc`
+    /// allocated by `alloc`.
+    ///
+    /// [from_raw_in]: Rc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1670,11 +1674,14 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Rc::into_raw`, the
-    /// associated `Rc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Rc::into_raw`and must satisfy the
+    /// same layout requirements specified in [`Rc::from_raw_in`][from_raw_in].
+    /// The associated `Rc` instance must be valid (i.e. the strong count must be at
     /// least 1) when invoking this method, and `ptr` must point to a block of memory
-    /// allocated by `alloc`. This method can be used to release the final `Rc` and backing storage,
-    /// but **should not** be called after the final `Rc` has been released.
+    /// allocated by `alloc`. This method can be used to release the final `Rc` and
+    /// backing storage, but **should not** be called after the final `Rc` has been released.
+    ///
+    /// [from_raw_in]: Rc::from_raw_in
     ///
     /// # Examples
     ///
@@ -2333,6 +2340,9 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Rc<T, A> {
     }
 }
 
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T: ?Sized, A: Allocator + Clone> UseCloned for Rc<T, A> {}
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Rc<T> {
@@ -2984,7 +2994,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
 ///
 /// [`upgrade`]: Weak::upgrade
 #[stable(feature = "rc_weak", since = "1.4.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "RcWeak")]
+#[rustc_diagnostic_item = "RcWeak"]
 pub struct Weak<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
@@ -3495,6 +3505,9 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Weak<T, A> {
         Weak { ptr: self.ptr, alloc: self.alloc.clone() }
     }
 }
+
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T: ?Sized, A: Allocator + Clone> UseCloned for Weak<T, A> {}
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized, A: Allocator> fmt::Debug for Weak<T, A> {

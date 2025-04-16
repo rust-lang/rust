@@ -7,19 +7,17 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
+use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
-use rustc_infer::infer::{DefineOpaqueTypes, RegionVariableOrigin};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, Term, Ty, TyCtxt, TypingMode, Upcast};
+use rustc_middle::ty::{
+    self, Term, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Upcast,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::sym;
-use rustc_type_ir::elaborate;
-use thin_vec::thin_vec;
 use tracing::{debug, instrument};
 
 use super::{
@@ -62,9 +60,6 @@ enum ProjectionCandidate<'tcx> {
 
     /// Bounds specified on an object type
     Object(ty::PolyProjectionPredicate<'tcx>),
-
-    /// Built-in bound for a dyn async fn in trait
-    ObjectRpitit,
 
     /// From an "impl" (or a "pseudo-impl" returned by select)
     Select(Selection<'tcx>),
@@ -674,30 +669,11 @@ fn project<'cx, 'tcx>(
 
     match candidates {
         ProjectionCandidateSet::Single(candidate) => {
-            Ok(Projected::Progress(confirm_candidate(selcx, obligation, candidate)))
+            confirm_candidate(selcx, obligation, candidate)
         }
         ProjectionCandidateSet::None => {
             let tcx = selcx.tcx();
-            let term = match tcx.def_kind(obligation.predicate.def_id) {
-                DefKind::AssocTy => Ty::new_projection_from_args(
-                    tcx,
-                    obligation.predicate.def_id,
-                    obligation.predicate.args,
-                )
-                .into(),
-                DefKind::AssocConst => ty::Const::new_unevaluated(
-                    tcx,
-                    ty::UnevaluatedConst::new(
-                        obligation.predicate.def_id,
-                        obligation.predicate.args,
-                    ),
-                )
-                .into(),
-                kind => {
-                    bug!("unknown projection def-id: {}", kind.descr(obligation.predicate.def_id))
-                }
-            };
-
+            let term = obligation.predicate.to_term(tcx);
             Ok(Projected::NoProgress(term))
         }
         // Error occurred while trying to processing impls.
@@ -743,7 +719,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
 ) {
     debug!("assemble_candidates_from_trait_def(..)");
     let mut ambiguous = false;
-    selcx.for_each_item_bound(
+    let _ = selcx.for_each_item_bound(
         obligation.predicate.self_ty(),
         |selcx, clause, _| {
             let Some(clause) = clause.as_projection_clause() else {
@@ -832,16 +808,6 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
         env_predicates,
         false,
     );
-
-    // `dyn Trait` automagically project their AFITs to `dyn* Future`.
-    if tcx.is_impl_trait_in_trait(obligation.predicate.def_id)
-        && let Some(out_trait_def_id) = data.principal_def_id()
-        && let rpitit_trait_def_id = tcx.parent(obligation.predicate.def_id)
-        && elaborate::supertrait_def_ids(tcx, out_trait_def_id)
-            .any(|trait_def_id| trait_def_id == rpitit_trait_def_id)
-    {
-        candidate_set.push_candidate(ProjectionCandidate::ObjectRpitit);
-    }
 }
 
 #[instrument(
@@ -967,6 +933,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             match selcx.infcx.typing_mode() {
                                 TypingMode::Coherence
                                 | TypingMode::Analysis { .. }
+                                | TypingMode::Borrowck { .. }
                                 | TypingMode::PostBorrowckAnalysis { .. } => {
                                     debug!(
                                         assoc_ty = ?selcx.tcx().def_path_str(node_item.item.def_id),
@@ -1232,8 +1199,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // why we special case object types.
                 false
             }
-            ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _)
-            | ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => {
+            ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _) => {
                 // These traits have no associated types.
                 selcx.tcx().dcx().span_delayed_bug(
                     obligation.cause.span,
@@ -1259,23 +1225,19 @@ fn confirm_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
     candidate: ProjectionCandidate<'tcx>,
-) -> Progress<'tcx> {
+) -> Result<Projected<'tcx>, ProjectionError<'tcx>> {
     debug!(?obligation, ?candidate, "confirm_candidate");
-    let mut progress = match candidate {
+    let mut result = match candidate {
         ProjectionCandidate::ParamEnv(poly_projection)
-        | ProjectionCandidate::Object(poly_projection) => {
-            confirm_param_env_candidate(selcx, obligation, poly_projection, false)
-        }
-
-        ProjectionCandidate::TraitDef(poly_projection) => {
-            confirm_param_env_candidate(selcx, obligation, poly_projection, true)
-        }
-
+        | ProjectionCandidate::Object(poly_projection) => Ok(Projected::Progress(
+            confirm_param_env_candidate(selcx, obligation, poly_projection, false),
+        )),
+        ProjectionCandidate::TraitDef(poly_projection) => Ok(Projected::Progress(
+            confirm_param_env_candidate(selcx, obligation, poly_projection, true),
+        )),
         ProjectionCandidate::Select(impl_source) => {
             confirm_select_candidate(selcx, obligation, impl_source)
         }
-
-        ProjectionCandidate::ObjectRpitit => confirm_object_rpitit_candidate(selcx, obligation),
     };
 
     // When checking for cycle during evaluation, we compare predicates with
@@ -1283,23 +1245,26 @@ fn confirm_candidate<'cx, 'tcx>(
     // with new region variables, we need to resolve them to existing variables
     // when possible for this to work. See `auto-trait-projection-recursion.rs`
     // for a case where this matters.
-    if progress.term.has_infer_regions() {
+    if let Ok(Projected::Progress(progress)) = &mut result
+        && progress.term.has_infer_regions()
+    {
         progress.term = progress.term.fold_with(&mut OpportunisticRegionResolver::new(selcx.infcx));
     }
-    progress
+
+    result
 }
 
 fn confirm_select_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
     impl_source: Selection<'tcx>,
-) -> Progress<'tcx> {
+) -> Result<Projected<'tcx>, ProjectionError<'tcx>> {
     match impl_source {
         ImplSource::UserDefined(data) => confirm_impl_candidate(selcx, obligation, data),
         ImplSource::Builtin(BuiltinImplSource::Misc | BuiltinImplSource::Trivial, data) => {
             let tcx = selcx.tcx();
             let trait_def_id = obligation.predicate.trait_def_id(tcx);
-            if tcx.is_lang_item(trait_def_id, LangItem::Coroutine) {
+            let progress = if tcx.is_lang_item(trait_def_id, LangItem::Coroutine) {
                 confirm_coroutine_candidate(selcx, obligation, data)
             } else if tcx.is_lang_item(trait_def_id, LangItem::Future) {
                 confirm_future_candidate(selcx, obligation, data)
@@ -1321,12 +1286,12 @@ fn confirm_select_candidate<'cx, 'tcx>(
                 confirm_async_fn_kind_helper_candidate(selcx, obligation, data)
             } else {
                 confirm_builtin_candidate(selcx, obligation, data)
-            }
+            };
+            Ok(Projected::Progress(progress))
         }
         ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)
         | ImplSource::Param(..)
-        | ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _)
-        | ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => {
+        | ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _) => {
             // we don't create Select candidates with this kind of resolution
             span_bug!(
                 obligation.cause.span,
@@ -1428,7 +1393,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
         coroutine_sig,
     );
 
-    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
+    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name(), sym::Output);
 
     let predicate = ty::ProjectionPredicate {
         projection_term: ty::AliasTerm::new_from_args(
@@ -1474,7 +1439,7 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
         gen_sig,
     );
 
-    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Item);
+    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name(), sym::Item);
 
     let predicate = ty::ProjectionPredicate {
         projection_term: ty::AliasTerm::new_from_args(
@@ -1520,7 +1485,7 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
         gen_sig,
     );
 
-    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Item);
+    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name(), sym::Item);
 
     let ty::Adt(_poll_adt, args) = *yield_ty.kind() else {
         bug!();
@@ -2018,7 +1983,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
     impl_impl_source: ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>>,
-) -> Progress<'tcx> {
+) -> Result<Projected<'tcx>, ProjectionError<'tcx>> {
     let tcx = selcx.tcx();
 
     let ImplSourceUserDefinedData { impl_def_id, args, mut nested } = impl_impl_source;
@@ -2029,19 +1994,34 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let param_env = obligation.param_env;
     let assoc_ty = match specialization_graph::assoc_def(tcx, impl_def_id, assoc_item_id) {
         Ok(assoc_ty) => assoc_ty,
-        Err(guar) => return Progress::error(tcx, guar),
+        Err(guar) => return Ok(Projected::Progress(Progress::error(tcx, guar))),
     };
+
+    // This means that the impl is missing a definition for the
+    // associated type. This is either because the associate item
+    // has impossible-to-satisfy predicates (since those were
+    // allowed in <https://github.com/rust-lang/rust/pull/135480>),
+    // or because the impl is literally missing the definition.
     if !assoc_ty.item.defaultness(tcx).has_value() {
-        // This means that the impl is missing a definition for the
-        // associated type. This error will be reported by the type
-        // checker method `check_impl_items_against_trait`, so here we
-        // just return Error.
         debug!(
             "confirm_impl_candidate: no associated type {:?} for {:?}",
-            assoc_ty.item.name, obligation.predicate
+            assoc_ty.item.name(),
+            obligation.predicate
         );
-        return Progress { term: Ty::new_misc_error(tcx).into(), obligations: nested };
+        if tcx.impl_self_is_guaranteed_unsized(impl_def_id) {
+            // We treat this projection as rigid here, which is represented via
+            // `Projected::NoProgress`. This will ensure that the projection is
+            // checked for well-formedness, and it's either satisfied by a trivial
+            // where clause in its env or it results in an error.
+            return Ok(Projected::NoProgress(obligation.predicate.to_term(tcx)));
+        } else {
+            return Ok(Projected::Progress(Progress {
+                term: Ty::new_misc_error(tcx).into(),
+                obligations: nested,
+            }));
+        }
     }
+
     // If we're trying to normalize `<Vec<u32> as X>::A<S>` using
     //`impl<T> X for Vec<T> { type A<Y> = Box<Y>; }`, then:
     //
@@ -2051,6 +2031,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let args = obligation.predicate.args.rebase_onto(tcx, trait_def_id, args);
     let args = translate_args(selcx.infcx, param_env, impl_def_id, args, assoc_ty.defining_node);
     let is_const = matches!(tcx.def_kind(assoc_ty.item.def_id), DefKind::AssocConst);
+
     let term: ty::EarlyBinder<'tcx, ty::Term<'tcx>> = if is_const {
         let did = assoc_ty.item.def_id;
         let identity_args = crate::traits::GenericArgs::identity_for_item(tcx, did);
@@ -2059,7 +2040,8 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     } else {
         tcx.type_of(assoc_ty.item.def_id).map_bound(|ty| ty.into())
     };
-    if !tcx.check_args_compatible(assoc_ty.item.def_id, args) {
+
+    let progress = if !tcx.check_args_compatible(assoc_ty.item.def_id, args) {
         let err = Ty::new_error_with_message(
             tcx,
             obligation.cause.span,
@@ -2069,46 +2051,8 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     } else {
         assoc_ty_own_obligations(selcx, obligation, &mut nested);
         Progress { term: term.instantiate(tcx, args), obligations: nested }
-    }
-}
-
-fn confirm_object_rpitit_candidate<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    obligation: &ProjectionTermObligation<'tcx>,
-) -> Progress<'tcx> {
-    let tcx = selcx.tcx();
-    let mut obligations = thin_vec![];
-
-    // Compute an intersection lifetime for all the input components of this GAT.
-    let intersection =
-        selcx.infcx.next_region_var(RegionVariableOrigin::MiscVariable(obligation.cause.span));
-    for component in obligation.predicate.args {
-        match component.unpack() {
-            ty::GenericArgKind::Lifetime(lt) => {
-                obligations.push(obligation.with(tcx, ty::OutlivesPredicate(lt, intersection)));
-            }
-            ty::GenericArgKind::Type(ty) => {
-                obligations.push(obligation.with(tcx, ty::OutlivesPredicate(ty, intersection)));
-            }
-            ty::GenericArgKind::Const(_ct) => {
-                // Consts have no outlives...
-            }
-        }
-    }
-
-    Progress {
-        term: Ty::new_dynamic(
-            tcx,
-            tcx.item_bounds_to_existential_predicates(
-                obligation.predicate.def_id,
-                obligation.predicate.args,
-            ),
-            intersection,
-            ty::DynStar,
-        )
-        .into(),
-        obligations,
-    }
+    };
+    Ok(Projected::Progress(progress))
 }
 
 // Get obligations corresponding to the predicates from the where-clause of the

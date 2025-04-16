@@ -1,12 +1,18 @@
 error[E0412]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:35:13
    |
+LL |     type A = $FromOutside;
+   |              ------------ due to this macro variable
+...
 LL |     genmod!(FromOutside, Outer);
    |             ^^^^^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:35:26
    |
+LL |     struct $Outer;
+   |            ------ due to this macro variable
+...
 LL |     genmod!(FromOutside, Outer);
    |                          ^^^^^ not found in this scope
 

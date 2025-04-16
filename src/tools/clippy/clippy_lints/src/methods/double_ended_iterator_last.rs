@@ -24,7 +24,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, self_expr: &'_ Exp
         && let Ok(Some(fn_def)) = Instance::try_resolve(cx.tcx, cx.typing_env(), id, args)
         // find the provided definition of Iterator::last
         && let Some(item) = cx.tcx.get_diagnostic_item(sym::Iterator)
-        && let Some(last_def) = cx.tcx.provided_trait_methods(item).find(|m| m.name.as_str() == "last")
+        && let Some(last_def) = cx.tcx.provided_trait_methods(item).find(|m| m.name().as_str() == "last")
         // if the resolved method is the same as the provided definition
         && fn_def.def_id() == last_def.def_id
     {

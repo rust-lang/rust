@@ -24,11 +24,11 @@ use serde_json::to_value;
 use vfs::AbsPath;
 
 use crate::{
-    completion_item_hash,
     config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, PositionEncoding},
     lsp::{
+        completion_item_hash,
         ext::ShellRunnableArgs,
         semantic_tokens::{self, standard_fallback_type},
         utils::invalid_params_error,
@@ -200,7 +200,10 @@ pub(crate) fn snippet_text_edit(
     line_index: &LineIndex,
     is_snippet: bool,
     indel: Indel,
+    client_supports_annotations: bool,
 ) -> lsp_ext::SnippetTextEdit {
+    let annotation_id =
+        indel.annotation.filter(|_| client_supports_annotations).map(|it| it.to_string());
     let text_edit = text_edit(line_index, indel);
     let insert_text_format =
         if is_snippet { Some(lsp_types::InsertTextFormat::SNIPPET) } else { None };
@@ -208,7 +211,7 @@ pub(crate) fn snippet_text_edit(
         range: text_edit.range,
         new_text: text_edit.new_text,
         insert_text_format,
-        annotation_id: None,
+        annotation_id,
     }
 }
 
@@ -223,10 +226,13 @@ pub(crate) fn snippet_text_edit_vec(
     line_index: &LineIndex,
     is_snippet: bool,
     text_edit: TextEdit,
+    clients_support_annotations: bool,
 ) -> Vec<lsp_ext::SnippetTextEdit> {
     text_edit
         .into_iter()
-        .map(|indel| self::snippet_text_edit(line_index, is_snippet, indel))
+        .map(|indel| {
+            self::snippet_text_edit(line_index, is_snippet, indel, clients_support_annotations)
+        })
         .collect()
 }
 
@@ -1072,6 +1078,7 @@ fn merge_text_and_snippet_edits(
     line_index: &LineIndex,
     edit: TextEdit,
     snippet_edit: SnippetEdit,
+    client_supports_annotations: bool,
 ) -> Vec<SnippetTextEdit> {
     let mut edits: Vec<SnippetTextEdit> = vec![];
     let mut snippets = snippet_edit.into_edit_ranges().into_iter().peekable();
@@ -1120,7 +1127,12 @@ fn merge_text_and_snippet_edits(
             edits.push(snippet_text_edit(
                 line_index,
                 true,
-                Indel { insert: format!("${snippet_index}"), delete: snippet_range },
+                Indel {
+                    insert: format!("${snippet_index}"),
+                    delete: snippet_range,
+                    annotation: None,
+                },
+                client_supports_annotations,
             ))
         }
 
@@ -1178,12 +1190,22 @@ fn merge_text_and_snippet_edits(
             edits.push(snippet_text_edit(
                 line_index,
                 true,
-                Indel { insert: new_text, delete: current_indel.delete },
+                Indel {
+                    insert: new_text,
+                    delete: current_indel.delete,
+                    annotation: current_indel.annotation,
+                },
+                client_supports_annotations,
             ))
         } else {
             // snippet edit was beyond the current one
             // since it wasn't consumed, it's available for the next pass
-            edits.push(snippet_text_edit(line_index, false, current_indel));
+            edits.push(snippet_text_edit(
+                line_index,
+                false,
+                current_indel,
+                client_supports_annotations,
+            ));
         }
 
         // update the final source -> initial source mapping offset
@@ -1208,7 +1230,8 @@ fn merge_text_and_snippet_edits(
         snippet_text_edit(
             line_index,
             true,
-            Indel { insert: format!("${snippet_index}"), delete: snippet_range },
+            Indel { insert: format!("${snippet_index}"), delete: snippet_range, annotation: None },
+            client_supports_annotations,
         )
     }));
 
@@ -1224,10 +1247,13 @@ pub(crate) fn snippet_text_document_edit(
 ) -> Cancellable<lsp_ext::SnippetTextDocumentEdit> {
     let text_document = optional_versioned_text_document_identifier(snap, file_id);
     let line_index = snap.file_line_index(file_id)?;
+    let client_supports_annotations = snap.config.change_annotation_support();
     let mut edits = if let Some(snippet_edit) = snippet_edit {
-        merge_text_and_snippet_edits(&line_index, edit, snippet_edit)
+        merge_text_and_snippet_edits(&line_index, edit, snippet_edit, client_supports_annotations)
     } else {
-        edit.into_iter().map(|it| snippet_text_edit(&line_index, is_snippet, it)).collect()
+        edit.into_iter()
+            .map(|it| snippet_text_edit(&line_index, is_snippet, it, client_supports_annotations))
+            .collect()
     };
 
     if snap.analysis.is_library_file(file_id)? && snap.config.change_annotation_support() {
@@ -1348,6 +1374,16 @@ pub(crate) fn snippet_workspace_edit(
                     )),
                 },
             ))
+            .chain(source_change.annotations.into_iter().map(|(id, annotation)| {
+                (
+                    id.to_string(),
+                    lsp_types::ChangeAnnotation {
+                        label: annotation.label,
+                        description: annotation.description,
+                        needs_confirmation: Some(annotation.needs_confirmation),
+                    },
+                )
+            }))
             .collect(),
         )
     }
@@ -2023,7 +2059,7 @@ fn bar(_: usize) {}
             encoding: PositionEncoding::Utf8,
         };
 
-        let res = merge_text_and_snippet_edits(&line_index, edit, snippets);
+        let res = merge_text_and_snippet_edits(&line_index, edit, snippets, true);
 
         // Ensure that none of the ranges overlap
         {

@@ -1,10 +1,10 @@
 error[E0614]: type `(..., ..., ..., ...)` cannot be dereferenced
-  --> $DIR/long-E0614.rs:10:5
+  --> $DIR/long-E0614.rs:9:5
    |
 LL |     *x;
    |     ^^ can't be dereferenced
    |
-   = note: the full name for the type has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0614.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 
 error: aborting due to 1 previous error

@@ -114,6 +114,7 @@ pub enum TokenType {
     KwSelfUpper,
     KwStatic,
     KwStruct,
+    KwSuper,
     KwTrait,
     KwTry,
     KwType,
@@ -250,6 +251,7 @@ impl TokenType {
             KwSelfUpper,
             KwStatic,
             KwStruct,
+            KwSuper,
             KwTrait,
             KwTry,
             KwType,
@@ -324,6 +326,7 @@ impl TokenType {
             TokenType::KwSelfUpper => Some(kw::SelfUpper),
             TokenType::KwStatic => Some(kw::Static),
             TokenType::KwStruct => Some(kw::Struct),
+            TokenType::KwSuper => Some(kw::Super),
             TokenType::KwTrait => Some(kw::Trait),
             TokenType::KwTry => Some(kw::Try),
             TokenType::KwType => Some(kw::Type),
@@ -549,6 +552,7 @@ macro_rules! exp {
     (SelfUpper)      => { exp!(@kw, SelfUpper,  KwSelfUpper) };
     (Static)         => { exp!(@kw, Static,     KwStatic) };
     (Struct)         => { exp!(@kw, Struct,     KwStruct) };
+    (Super)          => { exp!(@kw, Super,      KwSuper) };
     (Trait)          => { exp!(@kw, Trait,      KwTrait) };
     (Try)            => { exp!(@kw, Try,        KwTry) };
     (Type)           => { exp!(@kw, Type,       KwType) };
@@ -619,7 +623,7 @@ impl Iterator for TokenTypeSetIter {
     type Item = TokenType;
 
     fn next(&mut self) -> Option<TokenType> {
-        let num_bits: u32 = (std::mem::size_of_val(&self.0.0) * 8) as u32;
+        let num_bits: u32 = (size_of_val(&self.0.0) * 8) as u32;
         assert_eq!(num_bits, 128);
         let z = self.0.0.trailing_zeros();
         if z == num_bits {

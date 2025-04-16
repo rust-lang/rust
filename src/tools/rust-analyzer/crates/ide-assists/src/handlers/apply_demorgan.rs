@@ -128,7 +128,9 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                     let parent = neg_expr.syntax().parent();
                     editor = builder.make_editor(neg_expr.syntax());
 
-                    if parent.is_some_and(|parent| demorganed.needs_parens_in(&parent)) {
+                    if parent.is_some_and(|parent| {
+                        demorganed.needs_parens_in_place_of(&parent, neg_expr.syntax())
+                    }) {
                         cov_mark::hit!(demorgan_keep_parens_for_op_precedence2);
                         editor.replace(neg_expr.syntax(), make.expr_paren(demorganed).syntax());
                     } else {
@@ -392,15 +394,19 @@ fn f() { !(S <= S || S < S) }
 
     #[test]
     fn demorgan_keep_pars_for_op_precedence3() {
-        check_assist(apply_demorgan, "fn f() { (a || !(b &&$0 c); }", "fn f() { (a || !b || !c; }");
+        check_assist(
+            apply_demorgan,
+            "fn f() { (a || !(b &&$0 c); }",
+            "fn f() { (a || (!b || !c); }",
+        );
     }
 
     #[test]
-    fn demorgan_removes_pars_in_eq_precedence() {
+    fn demorgan_keeps_pars_in_eq_precedence() {
         check_assist(
             apply_demorgan,
             "fn() { let x = a && !(!b |$0| !c); }",
-            "fn() { let x = a && b && c; }",
+            "fn() { let x = a && (b && c); }",
         )
     }
 

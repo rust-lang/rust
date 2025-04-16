@@ -3,8 +3,6 @@ error[E0080]: evaluation of `PrintName::<i32>::VOID` failed
    |
 LL |     const VOID: ! = panic!();
    |                     ^^^^^^^^ evaluation panicked: explicit panic
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant encountered
   --> tests/fail/erroneous_const.rs:LL:CC

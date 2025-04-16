@@ -35,19 +35,48 @@ jobs:
             typescript:
               - 'editors/code/**'
             proc_macros:
+              - 'crates/tt/**'
               - 'crates/proc-macro-api/**'
               - 'crates/proc-macro-srv/**'
               - 'crates/proc-macro-srv-cli/**'
 
-  rust:
+  proc-macro-srv:
     needs: changes
+    if: github.repository == 'rust-lang/rust-analyzer' && needs.changes.outputs.proc_macros == 'true'
+    name: proc-macro-srv
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update nightly
+          rustup default nightly
+          rustup component add --toolchain nightly rust-src rustfmt
+      # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
+      - name: Install Rust Problem Matcher
+        if: matrix.os == 'ubuntu-latest'
+        run: echo "::add-matcher::.github/rust.json"
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+
+      - name: Bump opt-level
+        if: matrix.os == 'ubuntu-latest'
+        run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
+
+      - name: Test
+        run: cargo test --features sysroot-abi -p rust-analyzer -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -- --quiet
+
+  rust:
     if: github.repository == 'rust-lang/rust-analyzer'
     name: Rust
     runs-on: ${{ matrix.os }}
     env:
       CC: deny_c
-      RUST_CHANNEL: "${{ needs.changes.outputs.proc_macros == 'true' && 'nightly' || 'stable' }}"
-      USE_SYSROOT_ABI: "${{ needs.changes.outputs.proc_macros == 'true' && '--features sysroot-abi' || '' }}"
 
     strategy:
       fail-fast: false
@@ -62,13 +91,12 @@ jobs:
 
       - name: Install Rust toolchain
         run: |
-          rustup update --no-self-update ${{ env.RUST_CHANNEL }}
-          rustup default ${{ env.RUST_CHANNEL }}
-          rustup component add --toolchain ${{ env.RUST_CHANNEL }} rust-src
+          rustup update --no-self-update stable
+          rustup default stable
+          rustup component add --toolchain stable rust-src
           # We always use a nightly rustfmt, regardless of channel, because we need
           # --file-lines.
-          rustup toolchain add nightly --profile minimal
-          rustup component add --toolchain nightly rustfmt
+          rustup toolchain install nightly --profile minimal --component rustfmt
       # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
       - name: Install Rust Problem Matcher
         if: matrix.os == 'ubuntu-latest'
@@ -76,8 +104,6 @@ jobs:
 
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
-        with:
-          key: ${{ env.RUST_CHANNEL }}
 
       - name: Bump opt-level
         if: matrix.os == 'ubuntu-latest'
@@ -87,16 +113,16 @@ jobs:
         run: cargo codegen --check
 
       - name: Compile (tests)
-        run: cargo test --no-run --locked ${{ env.USE_SYSROOT_ABI }}
+        run: cargo test --no-run --locked
 
       # It's faster to `test` before `build` ¯\_(ツ)_/¯
       - name: Compile (rust-analyzer)
         if: matrix.os == 'ubuntu-latest'
-        run: cargo build --quiet ${{ env.USE_SYSROOT_ABI }}
+        run: cargo build --quiet
 
       - name: Test
         if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || github.event_name == 'push'
-        run: cargo test ${{ env.USE_SYSROOT_ABI }} -- --nocapture --quiet
+        run: cargo test -- --quiet
 
       - name: Switch to stable toolchain
         run: |
@@ -157,7 +183,7 @@ jobs:
 
   typescript:
     needs: changes
-    if: github.repository == 'rust-lang/rust-analyzer'
+    if: github.repository == 'rust-lang/rust-analyzer' && needs.changes.outputs.typescript == 'true'
     name: TypeScript
     strategy:
       fail-fast: false
@@ -169,21 +195,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        if: needs.changes.outputs.typescript == 'true'
 
       - name: Install Nodejs
         uses: actions/setup-node@v4
         with:
           node-version: 22
-        if: needs.changes.outputs.typescript == 'true'
 
       - name: Install xvfb
-        if: matrix.os == 'ubuntu-latest' && needs.changes.outputs.typescript == 'true'
+        if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y xvfb
 
       - run: npm ci
         working-directory: ./editors/code
-        if: needs.changes.outputs.typescript == 'true'
 
       #    - run: npm audit || { sleep 10 && npm audit; } || { sleep 30 && npm audit; }
       #      if: runner.os == 'Linux'
@@ -192,27 +215,24 @@ jobs:
       # If this steps fails, your code's type integrity might be wrong at some places at TypeScript level.
       - run: npm run typecheck
         working-directory: ./editors/code
-        if: needs.changes.outputs.typescript == 'true'
 
       # You may fix the code automatically by running `npm run lint:fix` if this steps fails.
       - run: npm run lint
         working-directory: ./editors/code
-        if: needs.changes.outputs.typescript == 'true'
 
       # To fix this steps, please run `npm run format`.
       - run: npm run format:check
         working-directory: ./editors/code
-        if: needs.changes.outputs.typescript == 'true'
 
       - name: Run VS Code tests (Linux)
-        if: matrix.os == 'ubuntu-latest' && needs.changes.outputs.typescript == 'true'
+        if: matrix.os == 'ubuntu-latest'
         env:
           VSCODE_CLI: 1
         run: xvfb-run npm test
         working-directory: ./editors/code
 
       - name: Run VS Code tests (Windows)
-        if: matrix.os == 'windows-latest' && needs.changes.outputs.typescript == 'true'
+        if: matrix.os == 'windows-latest'
         env:
           VSCODE_CLI: 1
         run: npm test
@@ -220,7 +240,6 @@ jobs:
 
       - run: npm run package --scripts-prepend-node-path
         working-directory: ./editors/code
-        if: needs.changes.outputs.typescript == 'true'
 
   typo-check:
     name: Typo Check
@@ -242,7 +261,7 @@ jobs:
         run: typos
 
   conclusion:
-    needs: [rust, rust-cross, typescript, typo-check]
+    needs: [rust, rust-cross, typescript, typo-check, proc-macro-srv]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
@@ -257,5 +276,5 @@ jobs:
         run: |
           # Print the dependent jobs to see them in the CI log
           jq -C <<< '${{ toJson(needs) }}'
-          # Check if all jobs that we depend on (in the needs array) were successful.
-          jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
+          # Check if all jobs that we depend on (in the needs array) were successful (or have been skipped).
+          jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'

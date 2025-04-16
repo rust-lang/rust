@@ -2554,7 +2554,7 @@ fn look(p: &Parser<'_>, dist: usize, kind: rustc_ast::token::TokenKind) {
     // Do the `assert_eq` outside the closure so that `track_caller` works.
     // (`#![feature(closure_track_caller)]` + `#[track_caller]` on the closure
     // doesn't give the line number in the test below if the assertion fails.)
-    let tok = p.look_ahead(dist, |tok| tok.clone());
+    let tok = p.look_ahead(dist, |tok| *tok);
     assert_eq!(kind, tok.kind);
 }
 
@@ -2922,7 +2922,7 @@ fn out_of_line_mod() {
         .unwrap()
         .unwrap();
 
-        let ast::ItemKind::Mod(_, mod_kind) = &item.kind else { panic!() };
+        let ast::ItemKind::Mod(_, _, mod_kind) = &item.kind else { panic!() };
         assert_matches!(mod_kind, ast::ModKind::Loaded(items, ..) if items.len() == 2);
     });
 }

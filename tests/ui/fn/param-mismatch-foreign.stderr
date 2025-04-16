@@ -1,5 +1,5 @@
 error[E0061]: this function takes 3 arguments but 2 arguments were supplied
-  --> $DIR/param-mismatch-foreign.rs:7:5
+  --> $DIR/param-mismatch-foreign.rs:8:5
    |
 LL |     foo(1i32, 2i32);
    |     ^^^       ---- argument #2 of type `u32` is missing

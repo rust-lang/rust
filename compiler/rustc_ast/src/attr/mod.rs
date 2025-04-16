@@ -570,6 +570,14 @@ impl MetaItemInner {
         }
     }
 
+    /// Returns the bool if `self` is a boolean `MetaItemInner::Literal`.
+    pub fn boolean_literal(&self) -> Option<bool> {
+        match self {
+            MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => Some(*b),
+            _ => None,
+        }
+    }
+
     /// Returns the `MetaItem` if `self` is a `MetaItemInner::MetaItem` or if it's
     /// `MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(_), .. })`.
     pub fn meta_item_or_bool(&self) -> Option<&MetaItemInner> {
@@ -619,7 +627,7 @@ pub fn mk_doc_comment(
     Attribute { kind: AttrKind::DocComment(comment_kind, data), id: g.mk_attr_id(), style, span }
 }
 
-pub fn mk_attr(
+fn mk_attr(
     g: &AttrIdGenerator,
     style: AttrStyle,
     unsafety: Safety,

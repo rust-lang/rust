@@ -226,7 +226,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
             && should_lint(cx, typeck_results, block)
         {
             // we intentionally only lint structs, see lint description
-            if let ItemKind::Struct(data, _) = &self_item.kind {
+            if let ItemKind::Struct(_, data, _) = &self_item.kind {
                 check_struct(cx, typeck_results, block, self_ty, item, data);
             }
         }

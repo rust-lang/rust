@@ -12,7 +12,7 @@ use rustc_ast::{AttrArgs, DelimArgs, Expr, ExprKind, LitKind, MetaItemLit, Norma
 use rustc_ast_pretty::pprust;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::{self as hir, AttrPath};
-use rustc_span::symbol::{Ident, kw};
+use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
 pub struct SegmentIterator<'a> {
@@ -360,7 +360,7 @@ fn expr_to_lit(dcx: DiagCtxtHandle<'_>, expr: &Expr, span: Span) -> MetaItemLit 
             span,
             "expr in place where literal is expected (builtin attr parsing)",
         );
-        MetaItemLit { symbol: kw::Empty, suffix: None, kind: LitKind::Err(guar), span }
+        MetaItemLit { symbol: sym::dummy, suffix: None, kind: LitKind::Err(guar), span }
     }
 }
 
@@ -473,28 +473,19 @@ impl<'a> MetaItemListParserContext<'a> {
         {
             self.inside_delimiters.next();
             return Some(MetaItemOrLitParser::Lit(lit));
+        } else if let Some(TokenTree::Delimited(.., Delimiter::Invisible(_), inner_tokens)) =
+            self.inside_delimiters.peek()
+        {
+            self.inside_delimiters.next();
+            return MetaItemListParserContext {
+                inside_delimiters: inner_tokens.iter().peekable(),
+                dcx: self.dcx,
+            }
+            .next();
         }
 
         // or a path.
-        let path =
-            if let Some(TokenTree::Token(Token { kind: token::Interpolated(_), span, .. }, _)) =
-                self.inside_delimiters.peek()
-            {
-                self.inside_delimiters.next();
-                // We go into this path if an expr ended up in an attribute that
-                // expansion did not turn into a literal. Say, `#[repr(align(macro!()))]`
-                // where the macro didn't expand to a literal. An error is already given
-                // for this at this point, and then we do continue. This makes this path
-                // reachable...
-                let e = self.dcx.span_delayed_bug(
-                    *span,
-                    "expr in place where literal is expected (builtin attr parsing)",
-                );
-
-                return Some(MetaItemOrLitParser::Err(*span, e));
-            } else {
-                self.next_path()?
-            };
+        let path = self.next_path()?;
 
         // Paths can be followed by:
         // - `(more meta items)` (another list)

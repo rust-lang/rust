@@ -692,6 +692,7 @@ impl ProjectWorkspace {
                         exclude: krate.exclude.clone(),
                     })
                     .collect(),
+                RustLibSrcWorkspace::Stitched(_) => vec![],
                 RustLibSrcWorkspace::Empty => vec![],
             };
 
@@ -1521,7 +1522,7 @@ fn extend_crate_graph_with_sysroot(
 ) -> (SysrootPublicDeps, Option<CrateId>) {
     let mut pub_deps = vec![];
     let mut libproc_macro = None;
-    let diff = CfgDiff::new(vec![], vec![CfgAtom::Flag(sym::test.clone())]).unwrap();
+    let diff = CfgDiff::new(vec![], vec![CfgAtom::Flag(sym::test.clone())]);
     for (cid, c) in sysroot_crate_graph.iter_mut() {
         // uninject `test` flag so `core` keeps working.
         Arc::make_mut(&mut c.cfg_options).apply_diff(diff.clone());
@@ -1599,8 +1600,7 @@ fn sysroot_to_crate_graph(
                             CfgAtom::Flag(sym::miri.clone()),
                         ],
                         vec![],
-                    )
-                    .unwrap(),
+                    ),
                     ..Default::default()
                 },
                 &WorkspaceBuildScripts::default(),
@@ -1623,8 +1623,7 @@ fn sysroot_to_crate_graph(
                             CfgAtom::Flag(sym::miri.clone()),
                         ],
                         vec![],
-                    )
-                    .unwrap(),
+                    ),
                     ..Default::default()
                 },
                 false,
@@ -1632,7 +1631,62 @@ fn sysroot_to_crate_graph(
 
             extend_crate_graph_with_sysroot(crate_graph, cg, pm)
         }
+        RustLibSrcWorkspace::Stitched(stitched) => {
+            let cfg_options = Arc::new({
+                let mut cfg_options = CfgOptions::default();
+                cfg_options.extend(rustc_cfg);
+                cfg_options.insert_atom(sym::debug_assertions.clone());
+                cfg_options.insert_atom(sym::miri.clone());
+                cfg_options
+            });
+            let sysroot_crates: FxHashMap<crate::sysroot::stitched::RustLibSrcCrate, CrateId> =
+                stitched
+                    .crates()
+                    .filter_map(|krate| {
+                        let file_id = load(&stitched[krate].root)?;
 
+                        let display_name =
+                            CrateDisplayName::from_canonical_name(&stitched[krate].name);
+                        let crate_id = crate_graph.add_crate_root(
+                            file_id,
+                            Edition::CURRENT_FIXME,
+                            Some(display_name),
+                            None,
+                            cfg_options.clone(),
+                            None,
+                            Env::default(),
+                            CrateOrigin::Lang(LangCrateOrigin::from(&*stitched[krate].name)),
+                            false,
+                            None,
+                        );
+                        Some((krate, crate_id))
+                    })
+                    .collect();
+
+            for from in stitched.crates() {
+                for &to in stitched[from].deps.iter() {
+                    let name = CrateName::new(&stitched[to].name).unwrap();
+                    if let (Some(&from), Some(&to)) =
+                        (sysroot_crates.get(&from), sysroot_crates.get(&to))
+                    {
+                        add_dep(crate_graph, from, name, to);
+                    }
+                }
+            }
+
+            let public_deps = SysrootPublicDeps {
+                deps: stitched
+                    .public_deps()
+                    .filter_map(|(name, idx, prelude)| {
+                        Some((name, *sysroot_crates.get(&idx)?, prelude))
+                    })
+                    .collect::<Vec<_>>(),
+            };
+
+            let libproc_macro =
+                stitched.proc_macro().and_then(|it| sysroot_crates.get(&it).copied());
+            (public_deps, libproc_macro)
+        }
         RustLibSrcWorkspace::Empty => (SysrootPublicDeps { deps: vec![] }, None),
     }
 }

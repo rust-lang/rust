@@ -8,7 +8,7 @@ use syntax::{AstNode, AstPtr};
 use test_fixture::WithFixture;
 
 use crate::db::{HirDatabase, InternedClosureId};
-use crate::display::HirDisplay;
+use crate::display::{DisplayTarget, HirDisplay};
 use crate::mir::MirSpan;
 use crate::test_db::TestDB;
 
@@ -66,7 +66,11 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
                         .join(", "),
                 };
                 let place = capture.display_place(closure.0, db);
-                let capture_ty = capture.ty.skip_binders().display_test(db).to_string();
+                let capture_ty = capture
+                    .ty
+                    .skip_binders()
+                    .display_test(db, DisplayTarget::from_crate(db, module.krate()))
+                    .to_string();
                 let spans = capture
                     .spans()
                     .iter()

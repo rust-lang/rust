@@ -42,7 +42,7 @@ pub(crate) fn inline_const_as_literal(acc: &mut Assists, ctx: &AssistContext<'_>
         let value = konst
             .eval(ctx.sema.db)
             .ok()?
-            .render(ctx.sema.db, konst.krate(ctx.sema.db).edition(ctx.sema.db));
+            .render(ctx.sema.db, konst.krate(ctx.sema.db).to_display_target(ctx.sema.db));
 
         let id = AssistId("inline_const_as_literal", AssistKind::RefactorInline);
 

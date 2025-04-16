@@ -9,8 +9,6 @@ error[E0412]: cannot find type `FooBar` in this scope
    |
 LL |     concat_idents!(Foo, Bar)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
-   |
-   = note: this error originates in the macro `concat_idents` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

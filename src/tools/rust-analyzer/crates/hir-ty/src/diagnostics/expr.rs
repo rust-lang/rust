@@ -16,7 +16,6 @@ use intern::sym;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::constructor::Constructor;
-use span::Edition;
 use syntax::{
     ast::{self, UnaryOp},
     AstNode,
@@ -31,7 +30,7 @@ use crate::{
         self,
         pat_analysis::{self, DeconstructedPat, MatchCheckCtx, WitnessPat},
     },
-    display::HirDisplay,
+    display::{DisplayTarget, HirDisplay},
     Adjust, InferenceResult, Interner, Ty, TyExt, TyKind,
 };
 
@@ -633,24 +632,24 @@ fn missing_match_arms<'p>(
     arms_is_empty: bool,
     krate: CrateId,
 ) -> String {
-    struct DisplayWitness<'a, 'p>(&'a WitnessPat<'p>, &'a MatchCheckCtx<'p>, Edition);
+    struct DisplayWitness<'a, 'p>(&'a WitnessPat<'p>, &'a MatchCheckCtx<'p>, DisplayTarget);
     impl fmt::Display for DisplayWitness<'_, '_> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let DisplayWitness(witness, cx, edition) = *self;
+            let DisplayWitness(witness, cx, display_target) = *self;
             let pat = cx.hoist_witness_pat(witness);
-            write!(f, "{}", pat.display(cx.db, edition))
+            write!(f, "{}", pat.display(cx.db, display_target))
         }
     }
 
-    let edition = cx.db.crate_graph()[krate].edition;
     let non_empty_enum = match scrut_ty.as_adt() {
         Some((AdtId::EnumId(e), _)) => !cx.db.enum_data(e).variants.is_empty(),
         _ => false,
     };
+    let display_target = DisplayTarget::from_crate(cx.db, krate);
     if arms_is_empty && !non_empty_enum {
-        format!("type `{}` is non-empty", scrut_ty.display(cx.db, edition))
+        format!("type `{}` is non-empty", scrut_ty.display(cx.db, display_target))
     } else {
-        let pat_display = |witness| DisplayWitness(witness, cx, edition);
+        let pat_display = |witness| DisplayWitness(witness, cx, display_target);
         const LIMIT: usize = 3;
         match &*witnesses {
             [witness] => format!("`{}` not covered", pat_display(witness)),

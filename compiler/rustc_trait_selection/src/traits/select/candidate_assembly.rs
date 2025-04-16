@@ -16,7 +16,7 @@ use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
-use rustc_type_ir::{Interner, elaborate};
+use rustc_type_ir::elaborate;
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
@@ -86,10 +86,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // `Pointee` is automatically implemented for every type.
                 candidates.vec.push(BuiltinCandidate { has_nested: false });
             } else if tcx.is_lang_item(def_id, LangItem::Sized) {
-                // Sized is never implementable by end-users, it is
-                // always automatically computed.
-                let sized_conditions = self.sized_conditions(obligation);
-                self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
+                self.assemble_builtin_sized_candidate(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Unsize) {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Destruct) {
@@ -176,7 +173,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // normalization, so try to deduplicate when possible to avoid
             // unnecessary ambiguity.
             let mut distinct_normalized_bounds = FxHashSet::default();
-            self.for_each_item_bound::<!>(
+            let _ = self.for_each_item_bound::<!>(
                 placeholder_trait_predicate.self_ty(),
                 |selcx, bound, idx| {
                     let Some(bound) = bound.as_trait_clause() else {
@@ -695,6 +692,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let def_id = obligation.predicate.def_id();
 
+        let mut check_impls = || {
+            // Only consider auto impls if there are no manual impls for the root of `self_ty`.
+            //
+            // For example, we only consider auto candidates for `&i32: Auto` if no explicit impl
+            // for `&SomeType: Auto` exists. Due to E0321 the only crate where impls
+            // for `&SomeType: Auto` can be defined is the crate where `Auto` has been defined.
+            //
+            // Generally, we have to guarantee that for all `SimplifiedType`s the only crate
+            // which may define impls for that type is either the crate defining the type
+            // or the trait. This should be guaranteed by the orphan check.
+            let mut has_impl = false;
+            self.tcx().for_each_relevant_impl(def_id, self_ty, |_| has_impl = true);
+            if !has_impl {
+                candidates.vec.push(AutoImplCandidate)
+            }
+        };
+
         if self.tcx().trait_is_auto(def_id) {
             match *self_ty.kind() {
                 ty::Dynamic(..) => {
@@ -708,6 +722,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // we don't add any `..` impl. Default traits could
                     // still be provided by a manual implementation for
                     // this trait and type.
+
+                    // Backward compatibility for default auto traits.
+                    // Test: ui/traits/default_auto_traits/extern-types.rs
+                    if self.tcx().is_default_trait(def_id) {
+                        check_impls()
+                    }
                 }
                 ty::Param(..)
                 | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
@@ -802,24 +822,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::UnsafeBinder(_) => {
                     // Only consider auto impls of unsafe traits when there are
                     // no unsafe fields.
-                    if self.tcx().trait_is_unsafe(def_id) && self_ty.has_unsafe_fields() {
+                    if self.tcx().trait_def(def_id).safety.is_unsafe()
+                        && self_ty.has_unsafe_fields()
+                    {
                         return;
                     }
 
-                    // Only consider auto impls if there are no manual impls for the root of `self_ty`.
-                    //
-                    // For example, we only consider auto candidates for `&i32: Auto` if no explicit impl
-                    // for `&SomeType: Auto` exists. Due to E0321 the only crate where impls
-                    // for `&SomeType: Auto` can be defined is the crate where `Auto` has been defined.
-                    //
-                    // Generally, we have to guarantee that for all `SimplifiedType`s the only crate
-                    // which may define impls for that type is either the crate defining the type
-                    // or the trait. This should be guaranteed by the orphan check.
-                    let mut has_impl = false;
-                    self.tcx().for_each_relevant_impl(def_id, self_ty, |_| has_impl = true);
-                    if !has_impl {
-                        candidates.vec.push(AutoImplCandidate)
-                    }
+                    check_impls();
                 }
                 ty::Error(_) => {
                     candidates.vec.push(AutoImplCandidate);
@@ -1017,13 +1026,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            // `(.., T)` -> `(.., U)`
-            (&ty::Tuple(tys_a), &ty::Tuple(tys_b)) => {
-                if tys_a.len() == tys_b.len() {
-                    candidates.vec.push(BuiltinUnsizeCandidate);
-                }
-            }
-
             _ => {}
         };
     }
@@ -1065,6 +1067,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Assembles the trait which are built-in to the language itself:
     /// `Copy`, `Clone` and `Sized`.
+    #[instrument(level = "debug", skip(self, candidates))]
+    fn assemble_builtin_sized_candidate(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        match self.sized_conditions(obligation) {
+            BuiltinImplConditions::Where(nested) => {
+                candidates
+                    .vec
+                    .push(SizedCandidate { has_nested: !nested.skip_binder().is_empty() });
+            }
+            BuiltinImplConditions::None => {}
+            BuiltinImplConditions::Ambiguous => {
+                candidates.ambiguous = true;
+            }
+        }
+    }
+
+    /// Assembles the trait which are built-in to the language itself:
+    /// e.g. `Copy` and `Clone`.
     #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_builtin_bound_candidates(
         &mut self,

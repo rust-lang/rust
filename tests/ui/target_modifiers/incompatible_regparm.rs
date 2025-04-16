@@ -14,3 +14,5 @@
 #![no_core]
 
 extern crate wrong_regparm;
+
+//[allow_no_value]~? ERROR codegen option `unsafe-allow-abi-mismatch` requires a comma-separated list of strings

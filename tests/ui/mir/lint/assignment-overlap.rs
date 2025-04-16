@@ -12,7 +12,7 @@ pub fn main() {
     mir! {
         let a: [u8; 1024];
         {
-            a = a;
+            a = a; //~ ERROR broken MIR
             Return()
         }
     }

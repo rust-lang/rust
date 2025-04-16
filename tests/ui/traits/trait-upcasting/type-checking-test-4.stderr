@@ -7,12 +7,12 @@ LL |     let _ = x as &dyn Bar<'static, 'a>; // Error
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ cast requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/type-checking-test-4.rs:22:18
+  --> $DIR/type-checking-test-4.rs:22:13
    |
 LL | fn test_wrong2<'a>(x: &dyn Foo<'static>, y: &'a u32) {
    |                -- lifetime `'a` defined here
 LL |     let _ = x as &dyn Bar<'a, 'static>; // Error
-   |                  ^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ cast requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
   --> $DIR/type-checking-test-4.rs:28:5

@@ -691,14 +691,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             true,
             td.is_local(),
             td.as_local().and_then(|tld| match self.infcx.tcx.hir_node_by_def_id(tld) {
-                Node::Item(hir::Item { kind: hir::ItemKind::Trait(_, _, _, _, items), .. }) => {
+                Node::Item(hir::Item {
+                    kind: hir::ItemKind::Trait(_, _, _, _, _, items), ..
+                }) => {
                     let mut f_in_trait_opt = None;
                     for hir::TraitItemRef { id: fi, kind: k, .. } in *items {
                         let hi = fi.hir_id();
                         if !matches!(k, hir::AssocItemKind::Fn { .. }) {
                             continue;
                         }
-                        if self.infcx.tcx.hir().name(hi) != self.infcx.tcx.hir().name(my_hir) {
+                        if self.infcx.tcx.hir_name(hi) != self.infcx.tcx.hir_name(my_hir) {
                             continue;
                         }
                         f_in_trait_opt = Some(hi);
@@ -823,7 +825,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             ) => {
                                 capture_reason = format!("mutable borrow of `{upvar}`");
                             }
-                            ty::UpvarCapture::ByValue => {
+                            ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {
                                 capture_reason = format!("possible mutation of `{upvar}`");
                             }
                             _ => bug!("upvar `{upvar}` borrowed, but not mutably"),
@@ -967,7 +969,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         };
 
-        // If we can detect the expression to be an function or method call where the closure was
+        // If we can detect the expression to be a function or method call where the closure was
         // an argument, we point at the function or method definition argument...
         if let Some((callee_def_id, call_span, call_args)) = get_call_details() {
             let arg_pos = call_args
@@ -980,7 +982,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let arg = match tcx.hir_get_if_local(callee_def_id) {
                 Some(
                     hir::Node::Item(hir::Item {
-                        ident, kind: hir::ItemKind::Fn { sig, .. }, ..
+                        kind: hir::ItemKind::Fn { ident, sig, .. }, ..
                     })
                     | hir::Node::TraitItem(hir::TraitItem {
                         ident,
@@ -1021,7 +1023,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             // return type.
             match tcx.hir_node_by_def_id(tcx.hir_get_parent_item(fn_call_id).def_id) {
                 hir::Node::Item(hir::Item {
-                    ident, kind: hir::ItemKind::Fn { sig, .. }, ..
+                    kind: hir::ItemKind::Fn { ident, sig, .. }, ..
                 })
                 | hir::Node::TraitItem(hir::TraitItem {
                     ident,
@@ -1632,8 +1634,8 @@ fn get_mut_span_in_struct_field<'tcx>(
 /// If possible, suggest replacing `ref` with `ref mut`.
 fn suggest_ref_mut(tcx: TyCtxt<'_>, span: Span) -> Option<Span> {
     let pattern_str = tcx.sess.source_map().span_to_snippet(span).ok()?;
-    if pattern_str.starts_with("ref")
-        && pattern_str["ref".len()..].starts_with(rustc_lexer::is_whitespace)
+    if let Some(rest) = pattern_str.strip_prefix("ref")
+        && rest.starts_with(rustc_lexer::is_whitespace)
     {
         let span = span.with_lo(span.lo() + BytePos(4)).shrink_to_lo();
         Some(span)

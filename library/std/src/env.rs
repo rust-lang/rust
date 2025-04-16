@@ -202,6 +202,9 @@ impl fmt::Debug for VarsOs {
 /// Returns [`VarError::NotUnicode`] if the variable's value is not valid
 /// Unicode. If this is not desired, consider using [`var_os`].
 ///
+/// Use [`env!`] or [`option_env!`] instead if you want to check environment
+/// variables at compile time.
+///
 /// # Examples
 ///
 /// ```
@@ -330,7 +333,7 @@ impl Error for VarError {
 ///
 /// Discussion of this unsafety on Unix may be found in:
 ///
-///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
+///  - [Austin Group Bugzilla (for POSIX)](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
 /// To pass an environment variable to a child process, you can instead use [`Command::env`].
@@ -641,11 +644,6 @@ impl Error for JoinPathsError {
 ///     None => println!("Impossible to get your home dir!"),
 /// }
 /// ```
-#[deprecated(
-    since = "1.29.0",
-    note = "This function's behavior may be unexpected on Windows. \
-            Consider using a crate from crates.io instead."
-)]
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn home_dir() -> Option<PathBuf> {

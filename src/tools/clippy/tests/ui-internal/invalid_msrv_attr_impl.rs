@@ -26,6 +26,7 @@ struct Pass {
 impl_lint_pass!(Pass => [TEST_LINT]);
 
 impl EarlyLintPass for Pass {
+    //~^ missing_msrv_attr_impl
     fn check_expr(&mut self, _: &EarlyContext<'_>, _: &rustc_ast::Expr) {}
 }
 

@@ -6,7 +6,6 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
 #![feature(proc_macro_tracked_env)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use proc_macro::TokenStream;
@@ -75,8 +74,8 @@ decl_derive!(
     hash_stable::hash_stable_no_context_derive
 );
 
-decl_derive!([Decodable_Generic] => serialize::decodable_generic_derive);
-decl_derive!([Encodable_Generic] => serialize::encodable_generic_derive);
+decl_derive!([Decodable_NoContext] => serialize::decodable_nocontext_derive);
+decl_derive!([Encodable_NoContext] => serialize::encodable_nocontext_derive);
 decl_derive!([Decodable] => serialize::decodable_derive);
 decl_derive!([Encodable] => serialize::encodable_derive);
 decl_derive!([TyDecodable] => serialize::type_decodable_derive);

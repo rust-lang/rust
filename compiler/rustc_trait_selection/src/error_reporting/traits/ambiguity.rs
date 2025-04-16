@@ -1,8 +1,6 @@
 use std::ops::ControlFlow;
 
-use rustc_errors::{
-    Applicability, Diag, E0283, E0284, E0790, MultiSpan, StashKey, struct_span_code_err,
-};
+use rustc_errors::{Applicability, Diag, E0283, E0284, E0790, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::{DefKind, Res};
@@ -197,7 +195,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // be ignoring the fact that we don't KNOW the type works
                 // out. Though even that would probably be harmless, given that
                 // we're only talking about builtin traits, which are known to be
-                // inhabited. We used to check for `self.tcx.sess.has_errors()` to
+                // inhabited. We used to check for `self.tainted_by_errors()` to
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
@@ -211,7 +209,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 TypeAnnotationNeeded::E0282,
                                 false,
                             );
-                            return err.stash(span, StashKey::MaybeForgetReturn).unwrap();
+                            return err.emit();
                         }
                         Some(e) => return e,
                     }
@@ -340,7 +338,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 ..
                             },
                             hir::PathSegment {
-                                ident: assoc_item_name,
+                                ident: assoc_item_ident,
                                 res: Res::Def(_, item_id),
                                 ..
                             },
@@ -350,11 +348,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && let None = self.tainted_by_errors()
                     {
                         let (verb, noun) = match self.tcx.associated_item(item_id).kind {
-                            ty::AssocKind::Const => ("refer to the", "constant"),
-                            ty::AssocKind::Fn => ("call", "function"),
+                            ty::AssocKind::Const { .. } => ("refer to the", "constant"),
+                            ty::AssocKind::Fn { .. } => ("call", "function"),
                             // This is already covered by E0223, but this following single match
                             // arm doesn't hurt here.
-                            ty::AssocKind::Type => ("refer to the", "type"),
+                            ty::AssocKind::Type { .. } => ("refer to the", "type"),
                         };
 
                         // Replace the more general E0283 with a more specific error
@@ -370,17 +368,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                         if let Some(local_def_id) = data.trait_ref.def_id.as_local()
                             && let hir::Node::Item(hir::Item {
-                                ident: trait_name,
-                                kind: hir::ItemKind::Trait(_, _, _, _, trait_item_refs),
+                                kind: hir::ItemKind::Trait(_, _, trait_ident, _, _, trait_item_refs),
                                 ..
                             }) = self.tcx.hir_node_by_def_id(local_def_id)
                             && let Some(method_ref) = trait_item_refs
                                 .iter()
-                                .find(|item_ref| item_ref.ident == *assoc_item_name)
+                                .find(|item_ref| item_ref.ident == *assoc_item_ident)
                         {
                             err.span_label(
                                 method_ref.span,
-                                format!("`{trait_name}::{assoc_item_name}` defined here"),
+                                format!("`{trait_ident}::{assoc_item_ident}` defined here"),
                             );
                         }
 

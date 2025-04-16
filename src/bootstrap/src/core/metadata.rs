@@ -28,7 +28,6 @@ struct Package {
     source: Option<String>,
     manifest_path: String,
     dependencies: Vec<Dependency>,
-    targets: Vec<Target>,
     features: BTreeMap<String, Vec<String>>,
 }
 
@@ -38,11 +37,6 @@ struct Package {
 struct Dependency {
     name: String,
     source: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct Target {
-    kind: Vec<String>,
 }
 
 /// Collects and stores package metadata of each workspace members into `build`,
@@ -59,12 +53,10 @@ pub fn build(build: &mut Build) {
                 .filter(|dep| dep.source.is_none())
                 .map(|dep| dep.name)
                 .collect();
-            let has_lib = package.targets.iter().any(|t| t.kind.iter().any(|k| k == "lib"));
             let krate = Crate {
                 name: name.clone(),
                 deps,
                 path,
-                has_lib,
                 features: package.features.keys().cloned().collect(),
             };
             let relative_path = krate.local_path(build);

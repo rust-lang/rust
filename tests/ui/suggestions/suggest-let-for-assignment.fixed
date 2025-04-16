@@ -7,10 +7,10 @@ fn main() {
     let x = "x"; //~ ERROR cannot find value `x` in this scope
     println!("x: {}", x); //~ ERROR cannot find value `x` in this scope
 
-    let some_variable = 6; //~ cannot find value `let_some_variable` in this scope
+    let some_variable = 6; //~ ERROR cannot find value `let_some_variable` in this scope
     println!("some_variable: {}", some_variable); //~ ERROR cannot find value `some_variable` in this scope
 
-    let other_variable = 6; //~ cannot find value `letother_variable` in this scope
+    let other_variable = 6; //~ ERROR cannot find value `letother_variable` in this scope
     println!("other_variable: {}", other_variable); //~ ERROR cannot find value `other_variable` in this scope
 
     if x == "x" {

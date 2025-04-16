@@ -1,0 +1,175 @@
+- // MIR for `float_to_exponential_common` before GVN
++ // MIR for `float_to_exponential_common` after GVN
+  
+  fn float_to_exponential_common(_1: &mut Formatter<'_>, _2: &T, _3: bool) -> Result<(), std::fmt::Error> {
+      debug fmt => _1;
+      debug num => _2;
+      debug upper => _3;
+      let mut _0: std::result::Result<(), std::fmt::Error>;
+      let _4: bool;
+      let mut _6: std::option::Option<usize>;
+      let mut _7: isize;
+      let mut _9: &mut std::fmt::Formatter<'_>;
+      let mut _10: &T;
+      let mut _11: core::num::flt2dec::Sign;
+      let mut _12: u32;
+      let mut _13: u32;
+      let mut _14: usize;
+      let mut _15: bool;
+      let mut _16: &mut std::fmt::Formatter<'_>;
+      let mut _17: &T;
+      let mut _18: core::num::flt2dec::Sign;
+      let mut _19: bool;
+      scope 1 {
+          debug force_sign => _4;
+          let _5: core::num::flt2dec::Sign;
+          scope 2 {
+              debug sign => _5;
+              scope 3 {
+                  debug precision => _8;
+                  let _8: usize;
+                  scope 5 (inlined Formatter::<'_>::precision) {
+                      let mut _22: u32;
+                      let mut _23: u32;
+                      let mut _24: usize;
+                      let mut _25: u16;
+                  }
+              }
+          }
+      }
+      scope 4 (inlined Formatter::<'_>::sign_plus) {
+          let mut _20: u32;
+          let mut _21: u32;
+      }
+  
+      bb0: {
+          StorageLive(_4);
+          StorageLive(_20);
+          StorageLive(_21);
+          _21 = copy (((*_1).0: std::fmt::FormattingOptions).0: u32);
+          _20 = BitAnd(move _21, const core::fmt::flags::SIGN_PLUS_FLAG);
+          StorageDead(_21);
+          _4 = Ne(move _20, const 0_u32);
+          StorageDead(_20);
+          StorageLive(_5);
+          switchInt(copy _4) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+-         _5 = MinusPlus;
++         _5 = const MinusPlus;
+          goto -> bb3;
+      }
+  
+      bb2: {
+-         _5 = core::num::flt2dec::Sign::Minus;
++         _5 = const core::num::flt2dec::Sign::Minus;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageLive(_6);
+          StorageLive(_22);
+          StorageLive(_23);
+          _23 = copy (((*_1).0: std::fmt::FormattingOptions).0: u32);
+          _22 = BitAnd(move _23, const core::fmt::flags::PRECISION_FLAG);
+          StorageDead(_23);
+          switchInt(move _22) -> [0: bb10, otherwise: bb11];
+      }
+  
+      bb4: {
+-         StorageLive(_8);
++         nop;
+          _8 = copy ((_6 as Some).0: usize);
+          StorageLive(_9);
+          _9 = copy _1;
+          StorageLive(_10);
+          _10 = copy _2;
+          StorageLive(_11);
+          _11 = copy _5;
+          StorageLive(_12);
+          StorageLive(_13);
+          StorageLive(_14);
+          _14 = copy _8;
+-         _13 = move _14 as u32 (IntToInt);
++         _13 = copy _8 as u32 (IntToInt);
+          StorageDead(_14);
+          _12 = Add(move _13, const 1_u32);
+          StorageDead(_13);
+          StorageLive(_15);
+          _15 = copy _3;
+-         _0 = float_to_exponential_common_exact::<T>(move _9, move _10, move _11, move _12, move _15) -> [return: bb5, unwind continue];
++         _0 = float_to_exponential_common_exact::<T>(copy _1, copy _2, move _11, move _12, copy _3) -> [return: bb5, unwind continue];
+      }
+  
+      bb5: {
+          StorageDead(_15);
+          StorageDead(_12);
+          StorageDead(_11);
+          StorageDead(_10);
+          StorageDead(_9);
+-         StorageDead(_8);
++         nop;
+          goto -> bb8;
+      }
+  
+      bb6: {
+          StorageLive(_16);
+          _16 = copy _1;
+          StorageLive(_17);
+          _17 = copy _2;
+          StorageLive(_18);
+          _18 = copy _5;
+          StorageLive(_19);
+          _19 = copy _3;
+-         _0 = float_to_exponential_common_shortest::<T>(move _16, move _17, move _18, move _19) -> [return: bb7, unwind continue];
++         _0 = float_to_exponential_common_shortest::<T>(copy _1, copy _2, move _18, copy _3) -> [return: bb7, unwind continue];
+      }
+  
+      bb7: {
+          StorageDead(_19);
+          StorageDead(_18);
+          StorageDead(_17);
+          StorageDead(_16);
+          goto -> bb8;
+      }
+  
+      bb8: {
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_6);
+          return;
+      }
+  
+      bb9: {
+          _7 = discriminant(_6);
+          switchInt(move _7) -> [1: bb4, 0: bb6, otherwise: bb12];
+      }
+  
+      bb10: {
+          StorageDead(_22);
+          _6 = const Option::<usize>::None;
+          goto -> bb9;
+      }
+  
+      bb11: {
+          StorageDead(_22);
+          StorageLive(_24);
+          StorageLive(_25);
+          _25 = copy (((*_1).0: std::fmt::FormattingOptions).2: u16);
+          _24 = move _25 as usize (IntToInt);
+          StorageDead(_25);
+          _6 = Option::<usize>::Some(move _24);
+          StorageDead(_24);
+          goto -> bb9;
+      }
+  
+      bb12: {
+          unreachable;
+      }
+  }
+  
+  ALLOC0 (size: 8, align: 4) {
+      00 00 00 00 __ __ __ __                         │ ....░░░░
+  }
+  

@@ -5,14 +5,14 @@ use rustc_middle::bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
+    self, BottomUpFolder, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
-use super::DefineOpaqueTypes;
+use super::{DefineOpaqueTypes, RegionVariableOrigin};
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{self, Obligation, PredicateObligations};
@@ -198,13 +198,12 @@ impl<'tcx> InferCtxt<'tcx> {
     /// it hasn't previously been defined. This does not emit any
     /// constraints and it's the responsibility of the caller to make
     /// sure that the item bounds of the opaque are checked.
-    pub fn inject_new_hidden_type_unchecked(
+    pub fn register_hidden_type_in_storage(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         hidden_ty: OpaqueHiddenType<'tcx>,
-    ) {
-        let prev = self.inner.borrow_mut().opaque_types().register(opaque_type_key, hidden_ty);
-        assert_eq!(prev, None);
+    ) -> Option<Ty<'tcx>> {
+        self.inner.borrow_mut().opaque_types().register(opaque_type_key, hidden_ty)
     }
 
     /// Insert a hidden type into the opaque type storage, equating it
@@ -222,6 +221,7 @@ impl<'tcx> InferCtxt<'tcx> {
         hidden_ty: Ty<'tcx>,
         goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> Result<(), TypeError<'tcx>> {
+        let tcx = self.tcx;
         // Ideally, we'd get the span where *this specific `ty` came
         // from*, but right now we just use the span from the overall
         // value being folded. In simple cases like `-> impl Foo`,
@@ -232,7 +232,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 // During intercrate we do not define opaque types but instead always
                 // force ambiguity unless the hidden type is known to not implement
                 // our trait.
-                goals.push(Goal::new(self.tcx, param_env, ty::PredicateKind::Ambiguous));
+                goals.push(Goal::new(tcx, param_env, ty::PredicateKind::Ambiguous));
             }
             ty::TypingMode::Analysis { .. } => {
                 let prev = self
@@ -246,10 +246,39 @@ impl<'tcx> InferCtxt<'tcx> {
                             .eq(DefineOpaqueTypes::Yes, prev, hidden_ty)?
                             .obligations
                             .into_iter()
-                            // FIXME: Shuttling between obligations and goals is awkward.
-                            .map(Goal::from),
+                            .map(|obligation| obligation.as_goal()),
                     );
                 }
+            }
+            ty::TypingMode::Borrowck { .. } => {
+                let prev = self
+                    .inner
+                    .borrow_mut()
+                    .opaque_types()
+                    .register(opaque_type_key, OpaqueHiddenType { ty: hidden_ty, span });
+
+                // We either equate the new hidden type with the previous entry or with the type
+                // inferred by HIR typeck.
+                let actual = prev.unwrap_or_else(|| {
+                    let actual = tcx
+                        .type_of_opaque_hir_typeck(opaque_type_key.def_id)
+                        .instantiate(self.tcx, opaque_type_key.args);
+                    let actual = ty::fold_regions(tcx, actual, |re, _dbi| match re.kind() {
+                        ty::ReErased => {
+                            self.next_region_var(RegionVariableOrigin::MiscVariable(span))
+                        }
+                        _ => re,
+                    });
+                    actual
+                });
+
+                goals.extend(
+                    self.at(&ObligationCause::dummy_with_span(span), param_env)
+                        .eq(DefineOpaqueTypes::Yes, hidden_ty, actual)?
+                        .obligations
+                        .into_iter()
+                        .map(|obligation| obligation.as_goal()),
+                );
             }
             mode @ (ty::TypingMode::PostBorrowckAnalysis { .. } | ty::TypingMode::PostAnalysis) => {
                 bug!("insert hidden type in {mode:?}")

@@ -10,7 +10,6 @@ note: `PartialEq` implemented here
 LL | impl PartialEq for Bar {
    | ^^^^^^^^^^^^^^^^^^^^^^
    = note: `#[deny(clippy::derived_hash_with_manual_eq)]` on by default
-   = note: this error originates in the derive macro `Hash` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `Hash` but have implemented `PartialEq` explicitly
   --> tests/ui/derived_hash_with_manual_eq.rs:23:10
@@ -23,7 +22,6 @@ note: `PartialEq` implemented here
    |
 LL | impl PartialEq<Baz> for Baz {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the derive macro `Hash` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

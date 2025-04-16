@@ -6,3 +6,5 @@
 //@ compile-flags: --target x86_64_unknown-linux-musl
 
 fn main() {}
+
+//~? ERROR error loading target specification: could not find specification for target "x86_64_unknown-linux-musl"

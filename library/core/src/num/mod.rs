@@ -99,8 +99,8 @@ macro_rules! i8_xe_bytes_doc {
 
 **Note**: This function is meaningless on `i8`. Byte order does not exist as a
 concept for byte-sized integers. This function is only provided in symmetry
-with larger integer types. You can cast from and to `u8` using `as i8` and `as
-u8`.
+with larger integer types. You can cast from and to `u8` using
+[`cast_signed`](u8::cast_signed) and [`cast_unsigned`](Self::cast_unsigned).
 
 "
     };
@@ -169,8 +169,8 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-7), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
-        #[stable(feature = "num_midpoint_signed", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "num_midpoint_signed", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "num_midpoint_signed", since = "1.87.0")]
+        #[rustc_const_stable(feature = "num_midpoint_signed", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -221,8 +221,8 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-7), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
-        #[stable(feature = "num_midpoint_signed", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "num_midpoint_signed", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "num_midpoint_signed", since = "1.87.0")]
+        #[rustc_const_stable(feature = "num_midpoint_signed", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1241,7 +1241,7 @@ impl usize {
     /// Returns an `usize` where every byte is equal to `x`.
     #[inline]
     pub(crate) const fn repeat_u8(x: u8) -> usize {
-        usize::from_ne_bytes([x; mem::size_of::<usize>()])
+        usize::from_ne_bytes([x; size_of::<usize>()])
     }
 
     /// Returns an `usize` where every byte pair is equal to `x`.
@@ -1249,7 +1249,7 @@ impl usize {
     pub(crate) const fn repeat_u16(x: u16) -> usize {
         let mut r = 0usize;
         let mut i = 0;
-        while i < mem::size_of::<usize>() {
+        while i < size_of::<usize>() {
             // Use `wrapping_shl` to make it work on targets with 16-bit `usize`
             r = r.wrapping_shl(16) | (x as usize);
             i += 2;
@@ -1330,7 +1330,7 @@ pub enum FpCategory {
 #[inline(always)]
 #[unstable(issue = "none", feature = "std_internals")]
 pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
-    radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
+    radix <= 16 && digits.len() <= size_of::<T>() * 2 - is_signed_ty as usize
 }
 
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]

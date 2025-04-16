@@ -34,7 +34,7 @@ This target is distributed through `rustup`, and otherwise requires no
 special configuration.
 
 If you need to build your own Rust for some reason though, the target can be
-enabled in `config.toml`. For example:
+enabled in `bootstrap.toml`. For example:
 
 ```toml
 [build]

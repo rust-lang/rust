@@ -171,6 +171,7 @@ language_item_table! {
     Copy,                    sym::copy,                copy_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
     CloneFn,                 sym::clone_fn,            clone_fn,                   Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    UseCloned,               sym::use_cloned,          use_cloned_trait,           Target::Trait,          GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait,          GenericRequirement::None;
     /// The associated item of the `DiscriminantKind` trait.
@@ -181,6 +182,7 @@ language_item_table! {
     DynMetadata,             sym::dyn_metadata,        dyn_metadata,               Target::Struct,         GenericRequirement::None;
 
     Freeze,                  sym::freeze,              freeze_trait,               Target::Trait,          GenericRequirement::Exact(0);
+    UnsafeUnpin,             sym::unsafe_unpin,        unsafe_unpin_trait,         Target::Trait,          GenericRequirement::Exact(0);
 
     FnPtrTrait,              sym::fn_ptr_trait,        fn_ptr_trait,               Target::Trait,          GenericRequirement::Exact(0);
     FnPtrAddr,               sym::fn_ptr_addr,         fn_ptr_addr,                Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
@@ -234,6 +236,8 @@ language_item_table! {
     IndexMut,                sym::index_mut,           index_mut_trait,            Target::Trait,          GenericRequirement::Exact(1);
 
     UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct,         GenericRequirement::None;
+    UnsafePinned,            sym::unsafe_pinned,       unsafe_pinned_type,         Target::Struct,         GenericRequirement::None;
+
     VaList,                  sym::va_list,             va_list,                    Target::Struct,         GenericRequirement::None;
 
     Deref,                   sym::deref,               deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
@@ -321,7 +325,6 @@ language_item_table! {
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
 
     // Lang items needed for `format_args!()`.
-    FormatAlignment,         sym::format_alignment,    format_alignment,           Target::Enum,           GenericRequirement::None;
     FormatArgument,          sym::format_argument,     format_argument,            Target::Struct,         GenericRequirement::None;
     FormatArguments,         sym::format_arguments,    format_arguments,           Target::Struct,         GenericRequirement::None;
     FormatCount,             sym::format_count,        format_count,               Target::Enum,           GenericRequirement::None;
@@ -418,6 +421,9 @@ language_item_table! {
     Range,                   sym::Range,               range_struct,               Target::Struct,         GenericRequirement::None;
     RangeToInclusive,        sym::RangeToInclusive,    range_to_inclusive_struct,  Target::Struct,         GenericRequirement::None;
     RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct,         GenericRequirement::None;
+    RangeMax,                sym::RangeMax,            range_max,                  Target::AssocConst,     GenericRequirement::Exact(0);
+    RangeMin,                sym::RangeMin,            range_min,                  Target::AssocConst,     GenericRequirement::Exact(0);
+    RangeSub,                sym::RangeSub,            range_sub,                  Target::Method(MethodKind::Trait { body: false }),     GenericRequirement::Exact(0);
 
     // `new_range` types that are `Copy + IntoIterator`
     RangeFromCopy,           sym::RangeFromCopy,       range_from_copy_struct,     Target::Struct,         GenericRequirement::None;
@@ -430,6 +436,14 @@ language_item_table! {
     // Experimental lang items for implementing contract pre- and post-condition checking.
     ContractBuildCheckEnsures, sym::contract_build_check_ensures, contract_build_check_ensures_fn, Target::Fn, GenericRequirement::None;
     ContractCheckRequires,     sym::contract_check_requires,      contract_check_requires_fn,      Target::Fn, GenericRequirement::None;
+
+    // Experimental lang items for `MCP: Low level components for async drop`(https://github.com/rust-lang/compiler-team/issues/727)
+    DefaultTrait4,           sym::default_trait4,      default_trait4_trait,       Target::Trait,          GenericRequirement::None;
+    DefaultTrait3,           sym::default_trait3,      default_trait3_trait,       Target::Trait,          GenericRequirement::None;
+    DefaultTrait2,           sym::default_trait2,      default_trait2_trait,       Target::Trait,          GenericRequirement::None;
+    DefaultTrait1,           sym::default_trait1,      default_trait1_trait,       Target::Trait,          GenericRequirement::None;
+
+    ContractCheckEnsures,     sym::contract_check_ensures,      contract_check_ensures_fn,      Target::Fn, GenericRequirement::None;
 }
 
 /// The requirement imposed on the generics of a lang item

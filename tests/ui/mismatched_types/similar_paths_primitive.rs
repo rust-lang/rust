@@ -4,8 +4,9 @@ struct bool; //~ NOTE the other `bool` is defined in the current crate
 struct str; //~ NOTE the other `str` is defined in the current crate
 
 fn foo(_: bool) {} //~ NOTE function defined here
+                   //~^ NOTE
 fn bar(_: &str) {} //~ NOTE function defined here
-
+                   //~^ NOTE
 fn main() {
     foo(true);
     //~^ ERROR mismatched types [E0308]

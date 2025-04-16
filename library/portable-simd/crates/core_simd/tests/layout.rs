@@ -7,8 +7,8 @@ macro_rules! layout_tests {
             test_helpers::test_lanes! {
                 fn no_padding<const LANES: usize>() {
                     assert_eq!(
-                        core::mem::size_of::<core_simd::simd::Simd::<$ty, LANES>>(),
-                        core::mem::size_of::<[$ty; LANES]>(),
+                        size_of::<core_simd::simd::Simd::<$ty, LANES>>(),
+                        size_of::<[$ty; LANES]>(),
                     );
                 }
             }

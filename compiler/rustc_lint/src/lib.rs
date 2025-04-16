@@ -32,7 +32,6 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod async_closures;
@@ -80,6 +79,7 @@ mod types;
 mod unit_bindings;
 mod unqualified_local_imports;
 mod unused;
+mod utils;
 
 use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
@@ -129,6 +129,7 @@ pub use context::{
 };
 pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
+pub use levels::LintLevelsBuilder;
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{
@@ -599,6 +600,16 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, \
          see <https://github.com/rust-lang/rust/issues/73333> for more information",
     );
+    store.register_removed(
+        "ptr_cast_add_auto_to_object",
+        "converted into hard error, see issue #127323 \
+         <https://github.com/rust-lang/rust/issues/127323> for more information",
+    );
+    store.register_removed(
+        "undefined_naked_function_abi",
+        "converted into hard error, see PR #139001 \
+         <https://github.com/rust-lang/rust/issues/139001> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
@@ -640,6 +651,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(USAGE_OF_QUALIFIED_TY),
             LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
             LintId::of(USAGE_OF_TYPE_IR_INHERENT),
+            LintId::of(USAGE_OF_TYPE_IR_TRAITS),
             LintId::of(BAD_OPT_ACCESS),
             LintId::of(SPAN_USE_EQ_CTXT),
         ],

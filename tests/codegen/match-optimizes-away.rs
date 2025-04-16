@@ -1,5 +1,4 @@
-//
-//@ compile-flags: -Copt-level=3
+//@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
 #![crate_type = "lib"]
 
 pub enum Three {
@@ -18,9 +17,9 @@ pub enum Four {
 
 #[no_mangle]
 pub fn three_valued(x: Three) -> Three {
-    // CHECK-LABEL: @three_valued
+    // CHECK-LABEL: i8 @three_valued(i8{{.+}}%x)
     // CHECK-NEXT: {{^.*:$}}
-    // CHECK-NEXT: ret i8 %0
+    // CHECK-NEXT: ret i8 %x
     match x {
         Three::A => Three::A,
         Three::B => Three::B,
@@ -30,9 +29,9 @@ pub fn three_valued(x: Three) -> Three {
 
 #[no_mangle]
 pub fn four_valued(x: Four) -> Four {
-    // CHECK-LABEL: @four_valued
+    // CHECK-LABEL: i16 @four_valued(i16{{.+}}%x)
     // CHECK-NEXT: {{^.*:$}}
-    // CHECK-NEXT: ret i16 %0
+    // CHECK-NEXT: ret i16 %x
     match x {
         Four::A => Four::A,
         Four::B => Four::B,

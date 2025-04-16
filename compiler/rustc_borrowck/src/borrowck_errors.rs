@@ -403,6 +403,7 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 .expect_closure();
             let span = match capture_clause {
                 rustc_hir::CaptureBy::Value { move_kw } => move_kw.shrink_to_lo(),
+                rustc_hir::CaptureBy::Use { use_kw } => use_kw.shrink_to_lo(),
                 rustc_hir::CaptureBy::Ref => fn_decl_span.shrink_to_lo(),
             };
             diag.span_suggestion_verbose(

@@ -6,7 +6,6 @@
 #![deny(rustdoc::invalid_codeblock_attributes)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 // This higher-order macro defines the error codes that are in use. It is used
@@ -398,7 +397,7 @@ E0618: 0618,
 E0619: 0619,
 E0620: 0620,
 E0621: 0621,
-E0622: 0622,
+E0622: 0622, // REMOVED: rustc-intrinsic ABI was removed
 E0623: 0623,
 E0624: 0624,
 E0625: 0625,
@@ -547,6 +546,7 @@ E0800: 0800,
 E0801: 0801,
 E0802: 0802,
 E0803: 0803,
+E0804: 0804,
         );
     )
 }

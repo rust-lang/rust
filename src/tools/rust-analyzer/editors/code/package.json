@@ -825,7 +825,7 @@
                 "title": "cargo",
                 "properties": {
                     "rust-analyzer.cargo.cfgs": {
-                        "markdownDescription": "List of cfg options to enable with the given values.",
+                        "markdownDescription": "List of cfg options to enable with the given values.\n\nTo enable a name without a value, use `\"key\"`.\nTo enable a name with a value, use `\"key=value\"`.\nTo disable, prefix the entry with a `!`.",
                         "default": [
                             "debug_assertions",
                             "miri"

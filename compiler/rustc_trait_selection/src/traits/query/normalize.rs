@@ -7,9 +7,10 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 pub use rustc_middle::traits::query::NormalizationResult;
-use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
-use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor, TypingMode};
+use rustc_middle::ty::{
+    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, info, instrument};
 
@@ -143,7 +144,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxEscapingBoundVarVisitor {
 
     #[inline]
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
-        match *r {
+        match r.kind() {
             ty::ReBound(debruijn, _) if debruijn > self.outer_index => {
                 self.escaping =
                     self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
@@ -215,6 +216,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                 match self.infcx.typing_mode() {
                     TypingMode::Coherence
                     | TypingMode::Analysis { .. }
+                    | TypingMode::Borrowck { .. }
                     | TypingMode::PostBorrowckAnalysis { .. } => ty.try_super_fold_with(self)?,
 
                     TypingMode::PostAnalysis => {

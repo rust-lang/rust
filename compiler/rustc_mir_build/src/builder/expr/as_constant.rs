@@ -105,19 +105,20 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
         return Const::Ty(Ty::new_error(tcx, guar), ty::Const::new_error(tcx, guar));
     }
 
-    let trunc = |n, width: ty::UintTy| {
-        let width = width
-            .normalize(tcx.data_layout.pointer_size.bits().try_into().unwrap())
-            .bit_width()
-            .unwrap();
-        let width = Size::from_bits(width);
+    let lit_ty = match *ty.kind() {
+        ty::Pat(base, _) => base,
+        _ => ty,
+    };
+
+    let trunc = |n| {
+        let width = lit_ty.primitive_size(tcx);
         trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
         let result = width.truncate(n);
         trace!("trunc result: {}", result);
         ConstValue::Scalar(Scalar::from_uint(result, width))
     };
 
-    let value = match (lit, ty.kind()) {
+    let value = match (lit, lit_ty.kind()) {
         (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
             let s = s.as_str();
             let allocation = Allocation::from_bytes_byte_aligned_immutable(s.as_bytes());
@@ -144,11 +145,10 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))
         }
-        (ast::LitKind::Int(n, _), ty::Uint(ui)) if !neg => trunc(n.get(), *ui),
-        (ast::LitKind::Int(n, _), ty::Int(i)) => trunc(
-            if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() },
-            i.to_unsigned(),
-        ),
+        (ast::LitKind::Int(n, _), ty::Uint(_)) if !neg => trunc(n.get()),
+        (ast::LitKind::Int(n, _), ty::Int(_)) => {
+            trunc(if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() })
+        }
         (ast::LitKind::Float(n, _), ty::Float(fty)) => {
             parse_float_into_constval(*n, *fty, neg).unwrap()
         }

@@ -25,7 +25,7 @@ use crate::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 /// assert_eq!(localhost_v4.is_ipv6(), false);
 /// assert_eq!(localhost_v4.is_ipv4(), true);
 /// ```
-#[cfg_attr(not(test), rustc_diagnostic_item = "IpAddr")]
+#[rustc_diagnostic_item = "IpAddr"]
 #[stable(feature = "ip_addr", since = "1.7.0")]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub enum IpAddr {
@@ -1623,6 +1623,8 @@ impl Ipv6Addr {
             // IANA says N/A.
             || matches!(self.segments(), [0x2002, _, _, _, _, _, _, _])
             || self.is_documentation()
+            // Segment Routing (SRv6) SIDs (`5f00::/16`)
+            || matches!(self.segments(), [0x5f00, ..])
             || self.is_unique_local()
             || self.is_unicast_link_local())
     }

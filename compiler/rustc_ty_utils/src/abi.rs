@@ -55,31 +55,6 @@ fn fn_sig_for_fn_abi<'tcx>(
                 sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
             }
 
-            // Modify `fn() -> impl Future` to `fn() -> dyn* Future`.
-            if let ty::InstanceKind::ReifyShim(def_id, _) = instance.def
-                && let Some((rpitit_def_id, fn_args)) =
-                    tcx.return_position_impl_trait_in_trait_shim_data(def_id)
-            {
-                let fn_args = fn_args.instantiate(tcx, args);
-                let rpitit_args =
-                    fn_args.extend_to(tcx, rpitit_def_id, |param, _| match param.kind {
-                        ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                        ty::GenericParamDefKind::Type { .. }
-                        | ty::GenericParamDefKind::Const { .. } => {
-                            unreachable!("rpitit should have no addition ty/ct")
-                        }
-                    });
-                let dyn_star_ty = Ty::new_dynamic(
-                    tcx,
-                    tcx.item_bounds_to_existential_predicates(rpitit_def_id, rpitit_args),
-                    tcx.lifetimes.re_erased,
-                    ty::DynStar,
-                );
-                let mut inputs_and_output = sig.inputs_and_output.to_vec();
-                *inputs_and_output.last_mut().unwrap() = dyn_star_ty;
-                sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
-            }
-
             sig
         }
         ty::Closure(def_id, args) => {
@@ -269,7 +244,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: ExternAbi, c_variadic: bool) -> Conv {
     use rustc_abi::ExternAbi::*;
     match tcx.sess.target.adjust_abi(abi, c_variadic) {
-        RustIntrinsic | Rust | RustCall => Conv::Rust,
+        Rust | RustCall => Conv::Rust,
 
         // This is intentionally not using `Conv::Cold`, as that has to preserve
         // even SIMD registers, which is generally not a good trade-off.
@@ -436,10 +411,7 @@ fn fn_abi_sanity_check<'tcx>(
     ) {
         let tcx = cx.tcx();
 
-        if spec_abi == ExternAbi::Rust
-            || spec_abi == ExternAbi::RustCall
-            || spec_abi == ExternAbi::RustCold
-        {
+        if spec_abi.is_rustic_abi() {
             if arg.layout.is_zst() {
                 // Casting closures to function pointers depends on ZST closure types being
                 // omitted entirely in the calling convention.
@@ -687,8 +659,8 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
     let tcx = cx.tcx();
 
-    if abi == ExternAbi::Rust || abi == ExternAbi::RustCall || abi == ExternAbi::RustIntrinsic {
-        fn_abi.adjust_for_rust_abi(cx, abi);
+    if abi.is_rustic_abi() {
+        fn_abi.adjust_for_rust_abi(cx);
 
         // Look up the deduced parameter attributes for this function, if we have its def ID and
         // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes

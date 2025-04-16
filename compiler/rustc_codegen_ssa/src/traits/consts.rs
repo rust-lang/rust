@@ -3,7 +3,7 @@ use rustc_middle::mir::interpret::{ConstAllocation, Scalar};
 
 use super::BackendTypes;
 
-pub trait ConstCodegenMethods<'tcx>: BackendTypes {
+pub trait ConstCodegenMethods: BackendTypes {
     // Constant constructors
     fn const_null(&self, t: Self::Type) -> Self::Value;
     /// Generate an uninitialized value (matching uninitialized memory in MIR).
@@ -37,7 +37,7 @@ pub trait ConstCodegenMethods<'tcx>: BackendTypes {
     fn const_to_opt_uint(&self, v: Self::Value) -> Option<u64>;
     fn const_to_opt_u128(&self, v: Self::Value, sign_ext: bool) -> Option<u128>;
 
-    fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value;
+    fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value;
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: Self::Type) -> Self::Value;
 

@@ -8,8 +8,9 @@
 
 use std::assert_matches::assert_matches;
 use std::borrow::{Borrow, Cow};
+use std::cell::Cell;
 use std::collections::VecDeque;
-use std::{fmt, mem, ptr};
+use std::{fmt, ptr};
 
 use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
@@ -131,7 +132,7 @@ pub struct Memory<'tcx, M: Machine<'tcx>> {
     /// This stores whether we are currently doing reads purely for the purpose of validation.
     /// Those reads do not trigger the machine's hooks for memory reads.
     /// Needless to say, this must only be set with great care!
-    validation_in_progress: bool,
+    validation_in_progress: Cell<bool>,
 }
 
 /// A reference to some allocation that was already bounds-checked for the given region
@@ -158,7 +159,7 @@ impl<'tcx, M: Machine<'tcx>> Memory<'tcx, M> {
             alloc_map: M::MemoryMap::default(),
             extra_fn_ptr_map: FxIndexMap::default(),
             dead_alloc_map: FxIndexMap::default(),
-            validation_in_progress: false,
+            validation_in_progress: Cell::new(false),
         }
     }
 
@@ -263,9 +264,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             M::GLOBAL_KIND.map(MemoryKind::Machine),
             "dynamically allocating global memory"
         );
-        // We have set things up so we don't need to call `adjust_from_tcx` here,
-        // so we avoid copying the entire allocation contents.
-        let extra = M::init_alloc_extra(self, id, kind, alloc.size(), alloc.align)?;
+        // This cannot be merged with the `adjust_global_allocation` code path
+        // since here we have an allocation that already uses `M::Bytes`.
+        let extra = M::init_local_allocation(self, id, kind, alloc.size(), alloc.align)?;
         let alloc = alloc.with_extra(extra);
         self.memory.alloc_map.insert(id, (kind, alloc));
         M::adjust_alloc_root_pointer(self, Pointer::from(id), Some(kind))
@@ -385,6 +386,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.tcx,
             &mut self.machine,
             &mut alloc.extra,
+            ptr,
             (alloc_id, prov),
             size,
             alloc.align,
@@ -714,7 +716,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // We want to call the hook on *all* accesses that involve an AllocId, including zero-sized
         // accesses. That means we cannot rely on the closure above or the `Some` branch below. We
         // do this after `check_and_deref_ptr` to ensure some basic sanity has already been checked.
-        if !self.memory.validation_in_progress {
+        if !self.memory.validation_in_progress.get() {
             if let Ok((alloc_id, ..)) = self.ptr_try_get_alloc_id(ptr, size_i64) {
                 M::before_alloc_read(self, alloc_id)?;
             }
@@ -722,11 +724,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         if let Some((alloc_id, offset, prov, alloc)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
-            if !self.memory.validation_in_progress {
+            if !self.memory.validation_in_progress.get() {
                 M::before_memory_read(
                     self.tcx,
                     &self.machine,
                     &alloc.extra,
+                    ptr,
                     (alloc_id, prov),
                     range,
                 )?;
@@ -799,7 +802,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, Option<AllocRefMut<'a, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
         let tcx = self.tcx;
-        let validation_in_progress = self.memory.validation_in_progress;
+        let validation_in_progress = self.memory.validation_in_progress.get();
 
         let size_i64 = i64::try_from(size.bytes()).unwrap(); // it would be an error to even ask for more than isize::MAX bytes
         let ptr_and_alloc = Self::check_and_deref_ptr(
@@ -816,7 +819,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if let Some((alloc_id, offset, prov, alloc, machine)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
             if !validation_in_progress {
-                M::before_memory_write(tcx, machine, &mut alloc.extra, (alloc_id, prov), range)?;
+                M::before_memory_write(
+                    tcx,
+                    machine,
+                    &mut alloc.extra,
+                    ptr,
+                    (alloc_id, prov),
+                    range,
+                )?;
             }
             interp_ok(Some(AllocRefMut { alloc, range, tcx: *tcx, alloc_id }))
         } else {
@@ -955,18 +965,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Handle the effect an FFI call might have on the state of allocations.
     /// This overapproximates the modifications which external code might make to memory:
-    /// We set all reachable allocations as initialized, mark all provenances as exposed
+    /// We set all reachable allocations as initialized, mark all reachable provenances as exposed
     /// and overwrite them with `Provenance::WILDCARD`.
-    pub fn prepare_for_native_call(
-        &mut self,
-        id: AllocId,
-        initial_prov: M::Provenance,
-    ) -> InterpResult<'tcx> {
-        // Expose provenance of the root allocation.
-        M::expose_provenance(self, initial_prov)?;
-
+    ///
+    /// The allocations in `ids` are assumed to be already exposed.
+    pub fn prepare_for_native_call(&mut self, ids: Vec<AllocId>) -> InterpResult<'tcx> {
         let mut done = FxHashSet::default();
-        let mut todo = vec![id];
+        let mut todo = ids;
         while let Some(id) = todo.pop() {
             if !done.insert(id) {
                 // We already saw this allocation before, don't process it again.
@@ -987,6 +992,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     todo.push(id);
                 }
             }
+            // Also expose the provenance of the interpreter-level allocation, so it can
+            // be read by FFI. The `black_box` is defensive programming as LLVM likes
+            // to (incorrectly) optimize away ptr2int casts whose result is unused.
+            std::hint::black_box(alloc.get_bytes_unchecked_raw().expose_provenance());
 
             // Prepare for possible write from native code if mutable.
             if info.mutbl.is_mut() {
@@ -1079,23 +1088,43 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ///
     /// We do this so Miri's allocation access tracking does not show the validation
     /// reads as spurious accesses.
-    pub fn run_for_validation<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+    pub fn run_for_validation_mut<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
         // This deliberately uses `==` on `bool` to follow the pattern
         // `assert!(val.replace(new) == old)`.
         assert!(
-            mem::replace(&mut self.memory.validation_in_progress, true) == false,
+            self.memory.validation_in_progress.replace(true) == false,
             "`validation_in_progress` was already set"
         );
         let res = f(self);
         assert!(
-            mem::replace(&mut self.memory.validation_in_progress, false) == true,
+            self.memory.validation_in_progress.replace(false) == true,
+            "`validation_in_progress` was unset by someone else"
+        );
+        res
+    }
+
+    /// Runs the closure in "validation" mode, which means the machine's memory read hooks will be
+    /// suppressed. Needless to say, this must only be set with great care! Cannot be nested.
+    ///
+    /// We do this so Miri's allocation access tracking does not show the validation
+    /// reads as spurious accesses.
+    pub fn run_for_validation_ref<R>(&self, f: impl FnOnce(&Self) -> R) -> R {
+        // This deliberately uses `==` on `bool` to follow the pattern
+        // `assert!(val.replace(new) == old)`.
+        assert!(
+            self.memory.validation_in_progress.replace(true) == false,
+            "`validation_in_progress` was already set"
+        );
+        let res = f(self);
+        assert!(
+            self.memory.validation_in_progress.replace(false) == true,
             "`validation_in_progress` was unset by someone else"
         );
         res
     }
 
     pub(super) fn validation_in_progress(&self) -> bool {
-        self.memory.validation_in_progress
+        self.memory.validation_in_progress.get()
     }
 }
 
@@ -1367,13 +1396,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         let src_alloc = self.get_alloc_raw(src_alloc_id)?;
         let src_range = alloc_range(src_offset, size);
-        assert!(!self.memory.validation_in_progress, "we can't be copying during validation");
+        assert!(!self.memory.validation_in_progress.get(), "we can't be copying during validation");
         // For the overlapping case, it is crucial that we trigger the read hook
         // before the write hook -- the aliasing model cares about the order.
         M::before_memory_read(
             tcx,
             &self.machine,
             &src_alloc.extra,
+            src,
             (src_alloc_id, src_prov),
             src_range,
         )?;
@@ -1404,6 +1434,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             tcx,
             extra,
             &mut dest_alloc.extra,
+            dest,
             (dest_alloc_id, dest_prov),
             dest_range,
         )?;

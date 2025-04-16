@@ -1,4 +1,4 @@
-#![feature(const_trait_impl, const_vec_string_slice)]
+#![feature(const_trait_impl)]
 
 struct Foo<'a> {
     bar: &'a mut Vec<usize>,

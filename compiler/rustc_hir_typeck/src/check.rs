@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir_analysis::check::{check_function_signature, forbid_intrinsic_abi};
+use rustc_hir_analysis::check::check_function_signature;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::traits::WellFormedLoc;
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
@@ -49,8 +49,6 @@ pub(super) fn check_fn<'a, 'tcx>(
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
 
     let span = body.value.span;
-
-    forbid_intrinsic_abi(tcx, span, fn_sig.abi);
 
     GatherLocalsVisitor::new(fcx).visit_body(body);
 

@@ -15,8 +15,8 @@ LL | #[derive(PartialEq)]
 LL | #[repr(C)]
 LL | struct Dealigned<T>(u8, T);
    |                         ^
-   |
-   = 
+
+
 Box<dyn Any>
 query stack during panic:
 #0 [mir_built] building MIR for `<impl at $DIR/multiple_definitions_attribute_merging.rs:15:10: 15:19>::eq`

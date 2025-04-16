@@ -58,25 +58,13 @@ struct ConstToPat<'tcx> {
     span: Span,
     id: hir::HirId,
 
-    treat_byte_string_as_slice: bool,
-
     c: ty::Const<'tcx>,
 }
 
 impl<'tcx> ConstToPat<'tcx> {
     fn new(pat_ctxt: &PatCtxt<'_, 'tcx>, id: hir::HirId, span: Span, c: ty::Const<'tcx>) -> Self {
         trace!(?pat_ctxt.typeck_results.hir_owner);
-        ConstToPat {
-            tcx: pat_ctxt.tcx,
-            typing_env: pat_ctxt.typing_env,
-            span,
-            id,
-            treat_byte_string_as_slice: pat_ctxt
-                .typeck_results
-                .treat_byte_string_as_slice
-                .contains(&id.local_id),
-            c,
-        }
+        ConstToPat { tcx: pat_ctxt.tcx, typing_env: pat_ctxt.typing_env, span, id, c }
     }
 
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {
@@ -108,8 +96,6 @@ impl<'tcx> ConstToPat<'tcx> {
         uv: ty::UnevaluatedConst<'tcx>,
         ty: Ty<'tcx>,
     ) -> Box<Pat<'tcx>> {
-        trace!(self.treat_byte_string_as_slice);
-
         // It's not *technically* correct to be revealing opaque types here as borrowcheck has
         // not run yet. However, CTFE itself uses `TypingMode::PostAnalysis` unconditionally even
         // during typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
@@ -196,7 +182,10 @@ impl<'tcx> ConstToPat<'tcx> {
             }
         }
 
-        inlined_const_as_pat
+        // Wrap the pattern in a marker node to indicate that it is the result of lowering a
+        // constant. This is used for diagnostics, and for unsafety checking of inline const blocks.
+        let kind = PatKind::ExpandedConstant { subpattern: inlined_const_as_pat, def_id: uv.def };
+        Box::new(Pat { kind, ty, span: self.span })
     }
 
     fn field_pats(
@@ -307,21 +296,8 @@ impl<'tcx> ConstToPat<'tcx> {
                             ty,
                         );
                     } else {
-                        // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
-                        // matching against references, you can only use byte string literals.
-                        // The typechecker has a special case for byte string literals, by treating them
-                        // as slices. This means we turn `&[T; N]` constants into slice patterns, which
-                        // has no negative effects on pattern matching, even if we're actually matching on
-                        // arrays.
-                        let pointee_ty = match *pointee_ty.kind() {
-                            ty::Array(elem_ty, _) if self.treat_byte_string_as_slice => {
-                                Ty::new_slice(tcx, elem_ty)
-                            }
-                            _ => *pointee_ty,
-                        };
                         // References have the same valtree representation as their pointee.
-                        let subpattern = self.valtree_to_pat(cv, pointee_ty);
-                        PatKind::Deref { subpattern }
+                        PatKind::Deref { subpattern: self.valtree_to_pat(cv, *pointee_ty) }
                     }
                 }
             },

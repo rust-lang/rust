@@ -4,11 +4,11 @@ error[E0277]: the trait bound `Something: Termination` is not satisfied
 LL |         fn main() -> Something {
    |                      ^^^^^^^^^ the trait `Termination` is not implemented for `Something`
    |
-note: required by a bound in `Main::{synthetic#0}`
+note: required by a bound in `Main::{anon_assoc#0}`
   --> $DIR/issue-103052-2.rs:3:27
    |
 LL |         fn main() -> impl std::process::Termination;
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Main::{synthetic#0}`
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Main::{anon_assoc#0}`
 
 error: aborting due to 1 previous error
 

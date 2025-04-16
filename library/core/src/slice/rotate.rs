@@ -1,4 +1,4 @@
-use crate::mem::{self, MaybeUninit, SizedTypeProperties};
+use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::{cmp, ptr};
 
 type BufType = [usize; 32];
@@ -21,12 +21,12 @@ pub(super) unsafe fn ptr_rotate<T>(left: usize, mid: *mut T, right: usize) {
     }
     // `T` is not a zero-sized type, so it's okay to divide by its size.
     if !cfg!(feature = "optimize_for_size")
-        && cmp::min(left, right) <= mem::size_of::<BufType>() / mem::size_of::<T>()
+        && cmp::min(left, right) <= size_of::<BufType>() / size_of::<T>()
     {
         // SAFETY: guaranteed by the caller
         unsafe { ptr_rotate_memmove(left, mid, right) };
     } else if !cfg!(feature = "optimize_for_size")
-        && ((left + right < 24) || (mem::size_of::<T>() > mem::size_of::<[usize; 4]>()))
+        && ((left + right < 24) || (size_of::<T>() > size_of::<[usize; 4]>()))
     {
         // SAFETY: guaranteed by the caller
         unsafe { ptr_rotate_gcd(left, mid, right) }

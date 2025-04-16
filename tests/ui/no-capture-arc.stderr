@@ -1,5 +1,5 @@
 error[E0382]: borrow of moved value: `arc_v`
-  --> $DIR/no-capture-arc.rs:14:18
+  --> $DIR/no-capture-arc.rs:12:18
    |
 LL |     let arc_v = Arc::new(v);
    |         ----- move occurs because `arc_v` has type `Arc<Vec<i32>>`, which does not implement the `Copy` trait

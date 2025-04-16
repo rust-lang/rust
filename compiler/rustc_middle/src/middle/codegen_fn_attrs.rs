@@ -1,6 +1,6 @@
 use rustc_abi::Align;
 use rustc_ast::expand::autodiff_attrs::AutoDiffAttrs;
-use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_attr_data_structures::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
@@ -172,8 +172,11 @@ impl CodegenFnAttrs {
     /// * `#[no_mangle]` is present
     /// * `#[export_name(...)]` is present
     /// * `#[linkage]` is present
+    ///
+    /// Keep this in sync with the logic for the unused_attributes for `#[inline]` lint.
     pub fn contains_extern_indicator(&self) -> bool {
         self.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
+            || self.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
             || self.export_name.is_some()
             || match self.linkage {
                 // These are private, so make sure we don't try to consider

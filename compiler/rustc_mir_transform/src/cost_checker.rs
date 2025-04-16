@@ -37,29 +37,11 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
     /// and even the full `Inline` doesn't call `visit_body`, so there's nowhere
     /// to put this logic in the visitor.
     pub(super) fn add_function_level_costs(&mut self) {
-        fn is_call_like(bbd: &BasicBlockData<'_>) -> bool {
-            use TerminatorKind::*;
-            match bbd.terminator().kind {
-                Call { .. } | TailCall { .. } | Drop { .. } | Assert { .. } | InlineAsm { .. } => {
-                    true
-                }
-
-                Goto { .. }
-                | SwitchInt { .. }
-                | UnwindResume
-                | UnwindTerminate(_)
-                | Return
-                | Unreachable => false,
-
-                Yield { .. } | CoroutineDrop | FalseEdge { .. } | FalseUnwind { .. } => {
-                    unreachable!()
-                }
-            }
-        }
-
         // If the only has one Call (or similar), inlining isn't increasing the total
         // number of calls, so give extra encouragement to inlining that.
-        if self.callee_body.basic_blocks.iter().filter(|bbd| is_call_like(bbd)).count() == 1 {
+        if self.callee_body.basic_blocks.iter().filter(|bbd| is_call_like(bbd.terminator())).count()
+            == 1
+        {
             self.bonus += CALL_PENALTY;
         }
     }
@@ -190,6 +172,29 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             | TerminatorKind::CoroutineDrop) => {
                 bug!("{kind:?} should not be in runtime MIR");
             }
+        }
+    }
+}
+
+/// A terminator that's more call-like (might do a bunch of work, might panic, etc)
+/// than it is goto-/return-like (no side effects, etc).
+///
+/// Used to treat multi-call functions (which could inline exponentially)
+/// different from those that only do one or none of these "complex" things.
+pub(super) fn is_call_like(terminator: &Terminator<'_>) -> bool {
+    use TerminatorKind::*;
+    match terminator.kind {
+        Call { .. } | TailCall { .. } | Drop { .. } | Assert { .. } | InlineAsm { .. } => true,
+
+        Goto { .. }
+        | SwitchInt { .. }
+        | UnwindResume
+        | UnwindTerminate(_)
+        | Return
+        | Unreachable => false,
+
+        Yield { .. } | CoroutineDrop | FalseEdge { .. } | FalseUnwind { .. } => {
+            unreachable!()
         }
     }
 }

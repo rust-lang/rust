@@ -28,3 +28,5 @@ fn main() {
     // this test only causes errors due to the line below, so post-monomorphization
     let y = <String as Bar<Vec<u32>, String>>::F;
 }
+
+//~? WARN skipping const checks

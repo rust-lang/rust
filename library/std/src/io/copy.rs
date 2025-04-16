@@ -248,8 +248,11 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
                     Err(e) => return Err(e),
                 }
             } else {
+                // All the bytes that were already in the buffer are initialized,
+                // treat them as such when the buffer is flushed.
+                init += buf.len();
+
                 self.flush_buf()?;
-                init = 0;
             }
         }
     }

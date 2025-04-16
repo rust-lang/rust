@@ -1,6 +1,6 @@
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, ExternAbi, HasDataLayout, Primitive, Reg, RegKind,
-    TyAbiInterface, TyAndLayout,
+    AddressSpace, Align, BackendRepr, HasDataLayout, Primitive, Reg, RegKind, TyAbiInterface,
+    TyAndLayout,
 };
 
 use crate::callconv::{ArgAttribute, FnAbi, PassMode};
@@ -36,7 +36,7 @@ where
             if t.abi_return_struct_as_int || opts.reg_struct_return {
                 // According to Clang, everyone but MSVC returns single-element
                 // float aggregates directly in a floating-point register.
-                if !t.is_like_msvc && fn_abi.ret.layout.is_single_fp_element(cx) {
+                if fn_abi.ret.layout.is_single_fp_element(cx) {
                     match fn_abi.ret.layout.size.bytes() {
                         4 => fn_abi.ret.cast_to(Reg::f32()),
                         8 => fn_abi.ret.cast_to(Reg::f64()),
@@ -64,31 +64,11 @@ where
             continue;
         }
 
-        // FIXME: MSVC 2015+ will pass the first 3 vector arguments in [XYZ]MM0-2
-        // See https://reviews.llvm.org/D72114 for Clang behavior
-
         let t = cx.target_spec();
         let align_4 = Align::from_bytes(4).unwrap();
         let align_16 = Align::from_bytes(16).unwrap();
 
-        if t.is_like_msvc
-            && arg.layout.is_adt()
-            && let Some(max_repr_align) = arg.layout.max_repr_align
-            && max_repr_align > align_4
-        {
-            // MSVC has special rules for overaligned arguments: https://reviews.llvm.org/D72114.
-            // Summarized here:
-            // - Arguments with _requested_ alignment > 4 are passed indirectly.
-            // - For backwards compatibility, arguments with natural alignment > 4 are still passed
-            //   on stack (via `byval`). For example, this includes `double`, `int64_t`,
-            //   and structs containing them, provided they lack an explicit alignment attribute.
-            assert!(
-                arg.layout.align.abi >= max_repr_align,
-                "abi alignment {:?} less than requested alignment {max_repr_align:?}",
-                arg.layout.align.abi,
-            );
-            arg.make_indirect();
-        } else if arg.layout.is_aggregate() {
+        if arg.layout.is_aggregate() {
             // We need to compute the alignment of the `byval` argument. The rules can be found in
             // `X86_32ABIInfo::getTypeStackAlignInBytes` in Clang's `TargetInfo.cpp`. Summarized
             // here, they are:
@@ -124,7 +104,7 @@ where
             let byval_align = if arg.layout.align.abi < align_4 {
                 // (1.)
                 align_4
-            } else if t.is_like_osx && contains_vector(cx, arg.layout) {
+            } else if t.is_like_darwin && contains_vector(cx, arg.layout) {
                 // (3.)
                 align_16
             } else {
@@ -213,7 +193,7 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
     }
 }
 
-pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: ExternAbi)
+pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
@@ -221,10 +201,7 @@ where
     // Avoid returning floats in x87 registers on x86 as loading and storing from x87
     // registers will quiet signalling NaNs. Also avoid using SSE registers since they
     // are not always available (depending on target features).
-    if !fn_abi.ret.is_ignore()
-        // Intrinsics themselves are not "real" functions, so theres no need to change their ABIs.
-        && abi != ExternAbi::RustIntrinsic
-    {
+    if !fn_abi.ret.is_ignore() {
         let has_float = match fn_abi.ret.layout.backend_repr {
             BackendRepr::Scalar(s) => matches!(s.primitive(), Primitive::Float(_)),
             BackendRepr::ScalarPair(s1, s2) => {

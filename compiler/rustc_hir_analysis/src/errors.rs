@@ -11,8 +11,6 @@ use rustc_middle::ty::Ty;
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
-mod pattern_types;
-pub(crate) use pattern_types::*;
 pub(crate) mod wrong_number_of_generic_args;
 
 mod precise_captures;
@@ -25,7 +23,7 @@ pub(crate) struct AmbiguousAssocItem<'a> {
     #[label]
     pub span: Span,
     pub assoc_kind: &'static str,
-    pub assoc_name: Ident,
+    pub assoc_ident: Ident,
     pub qself: &'a str,
 }
 
@@ -77,13 +75,15 @@ pub(crate) struct AssocItemIsPrivate {
 pub(crate) struct AssocItemNotFound<'a> {
     #[primary_span]
     pub span: Span,
-    pub assoc_name: Ident,
+    pub assoc_ident: Ident,
     pub assoc_kind: &'static str,
     pub qself: &'a str,
     #[subdiagnostic]
     pub label: Option<AssocItemNotFoundLabel<'a>>,
     #[subdiagnostic]
     pub sugg: Option<AssocItemNotFoundSugg<'a>>,
+    #[label(hir_analysis_within_macro)]
+    pub within_macro_span: Option<Span>,
 }
 
 #[derive(Subdiagnostic)]
@@ -425,16 +425,6 @@ pub(crate) struct UnconstrainedOpaqueType {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_tait_forward_compat)]
-#[note]
-pub(crate) struct TaitForwardCompat {
-    #[primary_span]
-    pub span: Span,
-    #[note]
-    pub item_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_tait_forward_compat2)]
 #[note]
 pub(crate) struct TaitForwardCompat2 {
@@ -711,17 +701,6 @@ pub(crate) struct InvalidUnionField {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_invalid_unsafe_field, code = E0740)]
-pub(crate) struct InvalidUnsafeField {
-    #[primary_span]
-    pub field_span: Span,
-    #[subdiagnostic]
-    pub sugg: InvalidUnsafeFieldSuggestion,
-    #[note]
-    pub note: (),
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_return_type_notation_on_non_rpitit)]
 pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
     #[primary_span]
@@ -736,18 +715,6 @@ pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(hir_analysis_invalid_union_field_sugg, applicability = "machine-applicable")]
 pub(crate) struct InvalidUnionFieldSuggestion {
-    #[suggestion_part(code = "std::mem::ManuallyDrop<")]
-    pub lo: Span,
-    #[suggestion_part(code = ">")]
-    pub hi: Span,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    hir_analysis_invalid_unsafe_field_sugg,
-    applicability = "machine-applicable"
-)]
-pub(crate) struct InvalidUnsafeFieldSuggestion {
     #[suggestion_part(code = "std::mem::ManuallyDrop<")]
     pub lo: Span,
     #[suggestion_part(code = ">")]
@@ -1739,4 +1706,12 @@ pub(crate) enum SupertraitItemShadowee {
         spans: MultiSpan,
         traits: DiagSymbolList,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_self_in_type_alias, code = E0411)]
+pub(crate) struct SelfInTypeAlias {
+    #[primary_span]
+    #[label]
+    pub span: Span,
 }
