@@ -17,7 +17,7 @@ use smallvec::SmallVec;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::{
     self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, FallibleTypeFolder, InlineConstArgs,
-    Lift, List, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitor, VisitorResult,
+    Lift, List, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, VisitorResult,
     walk_visitable_list,
 };
 
@@ -337,6 +337,14 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
             GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
         }
     }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        match self.unpack() {
+            GenericArgKind::Lifetime(lt) => lt.fold_with(folder).into(),
+            GenericArgKind::Type(ty) => ty.fold_with(folder).into(),
+            GenericArgKind::Const(ct) => ct.fold_with(folder).into(),
+        }
+    }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
@@ -606,6 +614,27 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArgsRef<'tcx> {
                 }
             }
             0 => Ok(self),
+            _ => ty::util::try_fold_list(self, folder, |tcx, v| tcx.mk_args(v)),
+        }
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        // See justification for this behavior in `try_fold_with`.
+        match self.len() {
+            1 => {
+                let param0 = self[0].fold_with(folder);
+                if param0 == self[0] { self } else { folder.cx().mk_args(&[param0]) }
+            }
+            2 => {
+                let param0 = self[0].fold_with(folder);
+                let param1 = self[1].fold_with(folder);
+                if param0 == self[0] && param1 == self[1] {
+                    self
+                } else {
+                    folder.cx().mk_args(&[param0, param1])
+                }
+            }
+            0 => self,
             _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk_args(v)),
         }
     }
@@ -639,6 +668,22 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
                     Ok(self)
                 } else {
                     Ok(folder.cx().mk_type_list(&[param0, param1]))
+                }
+            }
+            _ => ty::util::try_fold_list(self, folder, |tcx, v| tcx.mk_type_list(v)),
+        }
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        // See comment justifying behavior in `try_fold_with`.
+        match self.len() {
+            2 => {
+                let param0 = self[0].fold_with(folder);
+                let param1 = self[1].fold_with(folder);
+                if param0 == self[0] && param1 == self[1] {
+                    self
+                } else {
+                    folder.cx().mk_type_list(&[param0, param1])
                 }
             }
             _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk_type_list(v)),

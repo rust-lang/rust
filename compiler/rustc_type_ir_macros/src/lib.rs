@@ -83,7 +83,7 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
     s.add_where_predicate(parse_quote! { I: Interner });
     s.add_bounds(synstructure::AddBounds::Fields);
     s.bind_with(|_| synstructure::BindStyle::Move);
-    let body_fold = s.each_variant(|vi| {
+    let body_try_fold = s.each_variant(|vi| {
         let bindings = vi.bindings();
         vi.construct(|_, index| {
             let bind = &bindings[index];
@@ -94,6 +94,22 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
             } else {
                 quote! {
                     ::rustc_type_ir::TypeFoldable::try_fold_with(#bind, __folder)?
+                }
+            }
+        })
+    });
+
+    let body_fold = s.each_variant(|vi| {
+        let bindings = vi.bindings();
+        vi.construct(|_, index| {
+            let bind = &bindings[index];
+
+            // retain value of fields with #[type_foldable(identity)]
+            if has_ignore_attr(&bind.ast().attrs, "type_foldable", "identity") {
+                bind.to_token_stream()
+            } else {
+                quote! {
+                    ::rustc_type_ir::TypeFoldable::fold_with(#bind, __folder)
                 }
             }
         })
@@ -111,7 +127,14 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
                 self,
                 __folder: &mut __F
             ) -> Result<Self, __F::Error> {
-                Ok(match self { #body_fold })
+                Ok(match self { #body_try_fold })
+            }
+
+            fn fold_with<__F: ::rustc_type_ir::TypeFolder<I>>(
+                self,
+                __folder: &mut __F
+            ) -> Self {
+                match self { #body_fold }
             }
         },
     )

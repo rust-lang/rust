@@ -537,6 +537,13 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
             ty::TermKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
         }
     }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        match self.unpack() {
+            ty::TermKind::Ty(ty) => ty.fold_with(folder).into(),
+            ty::TermKind::Const(ct) => ct.fold_with(folder).into(),
+        }
+    }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
