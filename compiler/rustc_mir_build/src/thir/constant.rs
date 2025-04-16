@@ -44,12 +44,16 @@ pub(crate) fn lit_to_const<'tcx>(
             ty::ValTree::from_raw_bytes(tcx, str_bytes)
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _))
-            if matches!(inner_ty.kind(), ty::Slice(_)) =>
+            if matches!(inner_ty.kind(), ty::Slice(_) | ty::Array(..)) =>
         {
             let bytes = data as &[u8];
             ty::ValTree::from_raw_bytes(tcx, bytes)
         }
-        (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
+        (ast::LitKind::ByteStr(data, _), ty::Slice(_) | ty::Array(..))
+            if tcx.features().deref_patterns() =>
+        {
+            // Byte string literal patterns may have type `[u8]` or `[u8; N]` if `deref_patterns` is
+            // enabled, in order to allow, e.g., `deref!(b"..."): Vec<u8>`.
             let bytes = data as &[u8];
             ty::ValTree::from_raw_bytes(tcx, bytes)
         }
