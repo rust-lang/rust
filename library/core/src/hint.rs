@@ -735,9 +735,9 @@ pub const fn cold_path() {
     crate::intrinsics::cold_path()
 }
 
-/// Returns either `true_val` or `false_val` depending on the value of `b`,
-/// with a hint to the compiler that `b` is unlikely to be correctly
-/// predicted by a CPU’s branch predictor.
+/// Returns either `true_val` or `false_val` depending on the value of
+/// `condition`, with a hint to the compiler that `condition` is unlikely to be
+/// correctly predicted by a CPU’s branch predictor.
 ///
 /// This method is functionally equivalent to
 /// ```ignore (this is just for illustrative purposes)
@@ -753,9 +753,9 @@ pub const fn cold_path() {
 /// search.
 ///
 /// Note however that this lowering is not guaranteed (on any platform) and
-/// should not be relied upon when trying to write constant-time code. Also
-/// be aware that this lowering might *decrease* performance if `condition`
-/// is well-predictable. It is advisable to perform benchmarks to tell if
+/// should not be relied upon when trying to write cryptographic constant-time
+/// code. Also be aware that this lowering might *decrease* performance if
+/// `condition` is well-predictable. It is advisable to perform benchmarks to tell if
 /// this function is useful.
 ///
 /// # Examples
@@ -780,6 +780,6 @@ pub const fn cold_path() {
 /// ```
 #[inline(always)]
 #[unstable(feature = "select_unpredictable", issue = "133962")]
-pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
-    crate::intrinsics::select_unpredictable(b, true_val, false_val)
+pub fn select_unpredictable<T: Copy>(condition: bool, true_val: T, false_val: T) -> T {
+    crate::intrinsics::select_unpredictable(condition, true_val, false_val)
 }

@@ -20,6 +20,7 @@ pub fn test_pair(p: bool, a: (u64, u64), b: (u64, u64)) -> (u64, u64) {
     core::intrinsics::select_unpredictable(p, a, b)
 }
 
+#[derive(Copy)]
 struct Large {
     e: [u64; 100],
 }
