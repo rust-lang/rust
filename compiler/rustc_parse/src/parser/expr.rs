@@ -436,7 +436,7 @@ impl<'a> Parser<'a> {
     fn is_at_start_of_range_notation_rhs(&self) -> bool {
         if self.token.can_begin_expr() {
             // Parse `for i in 1.. { }` as infinite loop, not as `for i in (1..{})`.
-            if self.token == token::OpenDelim(Delimiter::Brace) {
+            if self.token == token::OpenBrace {
                 return !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
             }
             true
@@ -542,8 +542,8 @@ impl<'a> Parser<'a> {
             }
             // Recover from `++x`:
             token::Plus if this.look_ahead(1, |t| *t == token::Plus) => {
-                let starts_stmt = this.prev_token == token::Semi
-                    || this.prev_token == token::CloseDelim(Delimiter::Brace);
+                let starts_stmt =
+                    this.prev_token == token::Semi || this.prev_token == token::CloseBrace;
                 let pre_span = this.token.span.to(this.look_ahead(1, |t| t.span));
                 // Eat both `+`s.
                 this.bump();
@@ -637,8 +637,8 @@ impl<'a> Parser<'a> {
     /// Returns the span of expr if it was not interpolated, or the span of the interpolated token.
     fn interpolated_or_expr_span(&self, expr: &Expr) -> Span {
         match self.prev_token.kind {
-            TokenKind::NtIdent(..) | TokenKind::NtLifetime(..) => self.prev_token.span,
-            TokenKind::CloseDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => {
+            token::NtIdent(..) | token::NtLifetime(..) => self.prev_token.span,
+            token::CloseInvisible(InvisibleOrigin::MetaVar(_)) => {
                 // `expr.span` is the interpolated span, because invisible open
                 // and close delims both get marked with the same span, one
                 // that covers the entire thing between them. (See
@@ -912,8 +912,8 @@ impl<'a> Parser<'a> {
                     return Ok(e);
                 }
                 e = match self.token.kind {
-                    token::OpenDelim(Delimiter::Parenthesis) => self.parse_expr_fn_call(lo, e),
-                    token::OpenDelim(Delimiter::Bracket) => self.parse_expr_index(lo, e)?,
+                    token::OpenParen => self.parse_expr_fn_call(lo, e),
+                    token::OpenBracket => self.parse_expr_index(lo, e)?,
                     _ => return Ok(e),
                 }
             }
@@ -1002,7 +1002,7 @@ impl<'a> Parser<'a> {
             (token::Eof, Some(_)) if let Ok(snippet) = sm.span_to_snippet(sm.next_point(span)) => {
                 (span.shrink_to_hi(), format!("`{}`", snippet))
             }
-            (token::CloseDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))), _) => {
+            (token::CloseInvisible(InvisibleOrigin::MetaVar(_)), _) => {
                 // No need to report an error. This case will only occur when parsing a pasted
                 // metavariable, and we should have emitted an error when parsing the macro call in
                 // the first place. E.g. in this code:
@@ -1202,7 +1202,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            if matches!(self.token.kind, token::CloseDelim(..) | token::Comma) {
+            if self.token.kind.close_delim().is_some() || self.token.kind == token::Comma {
                 break;
             } else if trailing_dot.is_none() {
                 // This loop should only repeat if there is a trailing dot.
@@ -1232,7 +1232,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a function call expression, `expr(...)`.
     fn parse_expr_fn_call(&mut self, lo: Span, fun: P<Expr>) -> P<Expr> {
-        let snapshot = if self.token == token::OpenDelim(Delimiter::Parenthesis) {
+        let snapshot = if self.token == token::OpenParen {
             Some((self.create_snapshot_for_diagnostic(), fun.kind.clone()))
         } else {
             None
@@ -1676,14 +1676,11 @@ impl<'a> Parser<'a> {
             self.parse_expr_for(label, lo)
         } else if self.eat_keyword(exp!(Loop)) {
             self.parse_expr_loop(label, lo)
-        } else if self.check_noexpect(&token::OpenDelim(Delimiter::Brace))
-            || self.token.is_metavar_block()
-        {
+        } else if self.check_noexpect(&token::OpenBrace) || self.token.is_metavar_block() {
             self.parse_expr_block(label, lo, BlockCheckMode::Default)
         } else if !ate_colon
             && self.may_recover()
-            && (matches!(self.token.kind, token::CloseDelim(_) | token::Comma)
-                || self.token.is_punct())
+            && (self.token.kind.close_delim().is_some() || self.token.is_punct())
             && could_be_unclosed_char_literal(label_.ident)
         {
             let (lit, _) =
@@ -1878,7 +1875,7 @@ impl<'a> Parser<'a> {
                 },
             });
             Some(lexpr)
-        } else if self.token != token::OpenDelim(Delimiter::Brace)
+        } else if self.token != token::OpenBrace
             || !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
         {
             let mut expr = self.parse_expr_opt()?;
@@ -2016,7 +2013,7 @@ impl<'a> Parser<'a> {
 
         // Eat tokens until the macro call ends.
         if self.may_recover() {
-            while !matches!(self.token.kind, token::CloseDelim(..) | token::Eof) {
+            while !self.token.kind.is_close_delim_or_eof() {
                 self.bump();
             }
         }
@@ -2157,9 +2154,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 Some(token_lit)
             }
-            token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
-                MetaVarKind::Literal,
-            ))) => {
+            token::OpenInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Literal)) => {
                 let lit = self
                     .eat_metavar_seq(MetaVarKind::Literal, |this| this.parse_literal_maybe_minus())
                     .expect("metavar seq literal");
@@ -2168,9 +2163,9 @@ impl<'a> Parser<'a> {
                 };
                 Some(token_lit)
             }
-            token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
+            token::OpenInvisible(InvisibleOrigin::MetaVar(
                 mv_kind @ MetaVarKind::Expr { can_begin_literal_maybe_minus: true, .. },
-            ))) => {
+            )) => {
                 let expr = self
                     .eat_metavar_seq(mv_kind, |this| this.parse_expr())
                     .expect("metavar seq expr");
@@ -2275,7 +2270,7 @@ impl<'a> Parser<'a> {
     }
 
     fn is_array_like_block(&mut self) -> bool {
-        matches!(self.token.kind, TokenKind::OpenDelim(Delimiter::Brace))
+        self.token.kind == TokenKind::OpenBrace
             && self
                 .look_ahead(1, |t| matches!(t.kind, TokenKind::Ident(..) | TokenKind::Literal(_)))
             && self.look_ahead(2, |t| t == &token::Comma)
@@ -2328,8 +2323,8 @@ impl<'a> Parser<'a> {
                 |p| p.parse_expr(),
             ) {
                 Ok(_)
-                    // When the close delim is `)`, `token.kind` is expected to be `token::CloseDelim(Delimiter::Parenthesis)`,
-                    // but the actual `token.kind` is `token::CloseDelim(Delimiter::Bracket)`.
+                    // When the close delim is `)`, `token.kind` is expected to be `token::CloseParen`,
+                    // but the actual `token.kind` is `token::CloseBracket`.
                     // This is because the `token.kind` of the close delim is treated as the same as
                     // that of the open delim in `TokenTreesReader::parse_token_tree`, even if the delimiters of them are different.
                     // Therefore, `token.kind` should not be compared here.
@@ -2484,7 +2479,7 @@ impl<'a> Parser<'a> {
     fn parse_closure_block_body(&mut self, ret_span: Span) -> PResult<'a, P<Expr>> {
         if self.may_recover()
             && self.token.can_begin_expr()
-            && !matches!(self.token.kind, TokenKind::OpenDelim(Delimiter::Brace))
+            && self.token.kind != TokenKind::OpenBrace
             && !self.token.is_metavar_block()
         {
             let snapshot = self.create_snapshot_for_diagnostic();
@@ -2887,7 +2882,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_for_head(&mut self) -> PResult<'a, (P<Pat>, P<Expr>)> {
-        let begin_paren = if self.token == token::OpenDelim(Delimiter::Parenthesis) {
+        let begin_paren = if self.token == token::OpenParen {
             // Record whether we are about to parse `for (`.
             // This is used below for recovery in case of `for ( $stuff ) $block`
             // in which case we will suggest `for $stuff $block`.
@@ -2921,7 +2916,7 @@ impl<'a> Parser<'a> {
                         return Err(err);
                     }
                 };
-                return if self.token == token::CloseDelim(Delimiter::Parenthesis) {
+                return if self.token == token::CloseParen {
                     // We know for sure we have seen `for ($SOMETHING in $EXPR)`, so we recover the
                     // parser state and emit a targeted suggestion.
                     let span = vec![start_span, self.token.span];
@@ -2965,7 +2960,7 @@ impl<'a> Parser<'a> {
         let (pat, expr) = self.parse_for_head()?;
         // Recover from missing expression in `for` loop
         if matches!(expr.kind, ExprKind::Block(..))
-            && !matches!(self.token.kind, token::OpenDelim(Delimiter::Brace))
+            && self.token.kind != token::OpenBrace
             && self.may_recover()
         {
             let guar = self
@@ -3114,7 +3109,7 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_inner_attributes()?;
 
         let mut arms = ThinVec::new();
-        while self.token != token::CloseDelim(Delimiter::Brace) {
+        while self.token != token::CloseBrace {
             match self.parse_arm() {
                 Ok(arm) => arms.push(arm),
                 Err(e) => {
@@ -3122,7 +3117,7 @@ impl<'a> Parser<'a> {
                     let guar = e.emit();
                     self.recover_stmt();
                     let span = lo.to(self.token.span);
-                    if self.token == token::CloseDelim(Delimiter::Brace) {
+                    if self.token == token::CloseBrace {
                         self.bump();
                     }
                     // Always push at least one arm to make the match non-empty
@@ -3183,7 +3178,7 @@ impl<'a> Parser<'a> {
         // We might have either a `,` -> `;` typo, or a block without braces. We need
         // a more subtle parsing strategy.
         loop {
-            if self.token == token::CloseDelim(Delimiter::Brace) {
+            if self.token == token::CloseBrace {
                 // We have reached the closing brace of the `match` expression.
                 return Some(err(self, stmts));
             }
@@ -3242,7 +3237,7 @@ impl<'a> Parser<'a> {
             // this avoids the compiler saying that a `,` or `}` was expected even though
             // the pattern isn't a never pattern (and thus an arm body is required)
             let armless = (!is_fat_arrow && !is_almost_fat_arrow && pat.could_be_never_pattern())
-                || matches!(this.token.kind, token::Comma | token::CloseDelim(Delimiter::Brace));
+                || matches!(this.token.kind, token::Comma | token::CloseBrace);
 
             let mut result = if armless {
                 // A pattern without a body, allowed for never patterns.
@@ -3290,8 +3285,8 @@ impl<'a> Parser<'a> {
                         err
                     })?;
 
-                let require_comma = !classify::expr_is_complete(&expr)
-                    && this.token != token::CloseDelim(Delimiter::Brace);
+                let require_comma =
+                    !classify::expr_is_complete(&expr) && this.token != token::CloseBrace;
 
                 if !require_comma {
                     arm_body = Some(expr);
@@ -3442,7 +3437,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (P<Pat>, Option<P<Expr>>)> {
-        if self.token == token::OpenDelim(Delimiter::Parenthesis) {
+        if self.token == token::OpenParen {
             let left = self.token.span;
             let pat = self.parse_pat_no_top_guard(
                 None,
@@ -3488,7 +3483,7 @@ impl<'a> Parser<'a> {
         match self.parse_expr_res(Restrictions::ALLOW_LET | Restrictions::IN_IF_GUARD, attrs) {
             Ok((expr, _)) => Ok(expr),
             Err(mut err) => {
-                if self.prev_token == token::OpenDelim(Delimiter::Brace) {
+                if self.prev_token == token::OpenBrace {
                     let sugg_sp = self.prev_token.span.shrink_to_lo();
                     // Consume everything within the braces, let's avoid further parse
                     // errors.
@@ -3531,8 +3526,7 @@ impl<'a> Parser<'a> {
     fn is_do_catch_block(&self) -> bool {
         self.token.is_keyword(kw::Do)
             && self.is_keyword_ahead(1, &[kw::Catch])
-            && self
-                .look_ahead(2, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block())
+            && self.look_ahead(2, |t| *t == token::OpenBrace || t.is_metavar_block())
             && !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }
 
@@ -3542,8 +3536,7 @@ impl<'a> Parser<'a> {
 
     fn is_try_block(&self) -> bool {
         self.token.is_keyword(kw::Try)
-            && self
-                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block())
+            && self.look_ahead(1, |t| *t == token::OpenBrace || t.is_metavar_block())
             && self.token_uninterpolated_span().at_least_rust_2018()
     }
 
@@ -3577,13 +3570,11 @@ impl<'a> Parser<'a> {
                 // `async move {`
                 self.is_keyword_ahead(lookahead + 1, &[kw::Move, kw::Use])
                     && self.look_ahead(lookahead + 2, |t| {
-                        *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block()
+                        *t == token::OpenBrace || t.is_metavar_block()
                     })
             ) || (
                 // `async {`
-                self.look_ahead(lookahead + 1, |t| {
-                    *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block()
-                })
+                self.look_ahead(lookahead + 1, |t| *t == token::OpenBrace || t.is_metavar_block())
             ))
     }
 
@@ -3707,11 +3698,7 @@ impl<'a> Parser<'a> {
                             AssocOp::from_token(t).is_some()
                                 || matches!(
                                     t.kind,
-                                    token::OpenDelim(
-                                        Delimiter::Parenthesis
-                                            | Delimiter::Bracket
-                                            | Delimiter::Brace
-                                    )
+                                    token::OpenParen | token::OpenBracket | token::OpenBrace
                                 )
                                 || *t == token::Dot
                         })
@@ -3868,8 +3855,8 @@ impl<'a> Parser<'a> {
                     t == &token::Colon
                         || t == &token::Eq
                         || t == &token::Comma
-                        || t == &token::CloseDelim(Delimiter::Brace)
-                        || t == &token::CloseDelim(Delimiter::Parenthesis)
+                        || t == &token::CloseBrace
+                        || t == &token::CloseParen
                 });
             if is_wrong {
                 return Err(this.dcx().create_err(errors::ExpectedStructField {
