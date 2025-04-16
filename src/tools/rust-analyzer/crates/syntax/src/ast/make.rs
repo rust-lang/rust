@@ -32,12 +32,9 @@ pub mod ext {
     use super::*;
 
     pub fn simple_ident_pat(name: ast::Name) -> ast::IdentPat {
-        return from_text(&name.text());
-
-        fn from_text(text: &str) -> ast::IdentPat {
-            ast_from_text(&format!("fn f({text}: ())"))
-        }
+        ast_from_text(&format!("fn f({}: ())", name.text()))
     }
+
     pub fn ident_path(ident: &str) -> ast::Path {
         path_unqualified(path_segment(name_ref(ident)))
     }
@@ -81,7 +78,6 @@ pub mod ext {
     pub fn expr_self() -> ast::Expr {
         expr_from_text("self")
     }
-
     pub fn zero_number() -> ast::Expr {
         expr_from_text("0")
     }
@@ -115,6 +111,10 @@ pub mod ext {
     }
     pub fn ty_result(t: ast::Type, e: ast::Type) -> ast::Type {
         ty_from_text(&format!("Result<{t}, {e}>"))
+    }
+
+    pub fn token_tree_from_node(node: &ast::SyntaxNode) -> ast::TokenTree {
+        ast_from_text(&format!("todo!{node}"))
     }
 }
 
@@ -643,8 +643,8 @@ pub fn expr_method_call(
 ) -> ast::MethodCallExpr {
     expr_from_text(&format!("{receiver}.{method}{arg_list}"))
 }
-pub fn expr_macro(path: ast::Path, arg_list: ast::ArgList) -> ast::MacroExpr {
-    expr_from_text(&format!("{path}!{arg_list}"))
+pub fn expr_macro(path: ast::Path, tt: ast::TokenTree) -> ast::MacroExpr {
+    expr_from_text(&format!("{path}!{tt}"))
 }
 pub fn expr_ref(expr: ast::Expr, exclusive: bool) -> ast::Expr {
     expr_from_text(&if exclusive { format!("&mut {expr}") } else { format!("&{expr}") })
@@ -1226,7 +1226,7 @@ pub fn meta_path(path: ast::Path) -> ast::Meta {
 
 pub fn token_tree(
     delimiter: SyntaxKind,
-    tt: Vec<NodeOrToken<ast::TokenTree, SyntaxToken>>,
+    tt: impl IntoIterator<Item = NodeOrToken<ast::TokenTree, SyntaxToken>>,
 ) -> ast::TokenTree {
     let (l_delimiter, r_delimiter) = match delimiter {
         T!['('] => ('(', ')'),
