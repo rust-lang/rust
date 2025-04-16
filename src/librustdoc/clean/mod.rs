@@ -1103,7 +1103,10 @@ fn clean_function<'tcx>(
         let generics = clean_generics(generics, cx);
         let params = match params {
             ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl.inputs, body_id),
-            ParamsSrc::Idents(idents) => clean_params(cx, sig.decl.inputs, idents),
+            // Let's not perpetuate anon params from Rust 2015; use `_` for them.
+            ParamsSrc::Idents(idents) => clean_params(cx, sig.decl.inputs, idents, |ident| {
+                Some(ident.map_or(kw::Underscore, |ident| ident.name))
+            }),
         };
         let decl = clean_fn_decl_with_params(cx, sig.decl, Some(&sig.header), params);
         (generics, decl)
@@ -1115,30 +1118,13 @@ fn clean_params<'tcx>(
     cx: &mut DocContext<'tcx>,
     types: &[hir::Ty<'tcx>],
     idents: &[Option<Ident>],
+    postprocess: impl Fn(Option<Ident>) -> Option<Symbol>,
 ) -> Vec<Parameter> {
-    fn nonempty_name(ident: &Option<Ident>) -> Option<Symbol> {
-        if let Some(ident) = ident
-            && ident.name != kw::Underscore
-        {
-            Some(ident.name)
-        } else {
-            None
-        }
-    }
-
-    // If at least one argument has a name, use `_` as the name of unnamed
-    // arguments. Otherwise omit argument names.
-    let default_name = if idents.iter().any(|ident| nonempty_name(ident).is_some()) {
-        Some(kw::Underscore)
-    } else {
-        None
-    };
-
     types
         .iter()
         .enumerate()
         .map(|(i, ty)| Parameter {
-            name: idents.get(i).and_then(nonempty_name).or(default_name),
+            name: postprocess(idents[i]),
             type_: clean_ty(ty, cx),
             is_const: false,
         })
@@ -1184,8 +1170,6 @@ fn clean_poly_fn_sig<'tcx>(
     did: Option<DefId>,
     sig: ty::PolyFnSig<'tcx>,
 ) -> FnDecl {
-    let mut names = did.map_or(&[] as &[_], |did| cx.tcx.fn_arg_idents(did)).iter();
-
     let mut output = clean_middle_ty(sig.output(), cx, None, None);
 
     // If the return type isn't an `impl Trait`, we can safely assume that this
@@ -1198,16 +1182,20 @@ fn clean_poly_fn_sig<'tcx>(
         output = output.sugared_async_return_type();
     }
 
+    let mut idents = did.map(|did| cx.tcx.fn_arg_idents(did)).unwrap_or_default().iter().copied();
+
+    // If this comes from a fn item, let's not perpetuate anon params from Rust 2015; use `_` for them.
+    // If this comes from a fn ptr ty, we just keep params unnamed since it's more conventional stylistically.
+    // Since the param name is not part of the semantic type, these params never bear a name unlike
+    // in the HIR case, thus we can't peform any fancy fallback logic unlike `clean_bare_fn_ty`.
+    let fallback = did.map(|_| kw::Underscore);
+
     let params = sig
         .inputs()
         .iter()
-        .map(|t| Parameter {
-            type_: clean_middle_ty(t.map_bound(|t| *t), cx, None, None),
-            name: Some(if let Some(Some(ident)) = names.next() {
-                ident.name
-            } else {
-                kw::Underscore
-            }),
+        .map(|ty| Parameter {
+            name: idents.next().flatten().map(|ident| ident.name).or(fallback),
+            type_: clean_middle_ty(ty.map_bound(|ty| *ty), cx, None, None),
             is_const: false,
         })
         .collect();
@@ -2597,7 +2585,17 @@ fn clean_bare_fn_ty<'tcx>(
             .filter(|p| !is_elided_lifetime(p))
             .map(|x| clean_generic_param(cx, None, x))
             .collect();
-        let params = clean_params(cx, bare_fn.decl.inputs, bare_fn.param_idents);
+        // Since it's more conventional stylistically, elide the name of all params called `_`
+        // unless there's at least one interestingly named param in which case don't elide any
+        // name since mixing named and unnamed params is less legible.
+        let filter = |ident: Option<Ident>| {
+            ident.map(|ident| ident.name).filter(|&ident| ident != kw::Underscore)
+        };
+        let fallback =
+            bare_fn.param_idents.iter().copied().find_map(filter).map(|_| kw::Underscore);
+        let params = clean_params(cx, bare_fn.decl.inputs, bare_fn.param_idents, |ident| {
+            filter(ident).or(fallback)
+        });
         let decl = clean_fn_decl_with_params(cx, bare_fn.decl, None, params);
         (generic_params, decl)
     });
