@@ -1598,9 +1598,6 @@ pub(crate) struct PathSingleColon {
 
     #[suggestion(applicability = "machine-applicable", code = ":", style = "verbose")]
     pub suggestion: Span,
-
-    #[note(parse_type_ascription_removed)]
-    pub type_ascription: bool,
 }
 
 #[derive(Diagnostic)]
@@ -1617,9 +1614,6 @@ pub(crate) struct ColonAsSemi {
     #[primary_span]
     #[suggestion(applicability = "machine-applicable", code = ";", style = "verbose")]
     pub span: Span,
-
-    #[note(parse_type_ascription_removed)]
-    pub type_ascription: bool,
 }
 
 #[derive(Diagnostic)]

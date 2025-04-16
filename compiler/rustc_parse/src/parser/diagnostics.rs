@@ -1943,10 +1943,7 @@ impl<'a> Parser<'a> {
             && self.token == token::Colon
             && self.look_ahead(1, |next| line_idx(self.token.span) < line_idx(next.span))
         {
-            self.dcx().emit_err(ColonAsSemi {
-                span: self.token.span,
-                type_ascription: self.psess.unstable_features.is_nightly_build(),
-            });
+            self.dcx().emit_err(ColonAsSemi { span: self.token.span });
             self.bump();
             return true;
         }
