@@ -2888,6 +2888,13 @@ impl Config {
 
         let absolute_path = self.src.join(relative_path);
 
+        // NOTE: This check is required because `jj git clone` doesn't create directories for
+        // submodules, they are completely ignored. The code below assumes this directory exists,
+        // so create it here.
+        if !absolute_path.exists() {
+            t!(fs::create_dir_all(&absolute_path));
+        }
+
         // NOTE: The check for the empty directory is here because when running x.py the first time,
         // the submodule won't be checked out. Check it out now so we can build it.
         if !GitInfo::new(false, &absolute_path).is_managed_git_subrepository()

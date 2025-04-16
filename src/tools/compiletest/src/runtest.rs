@@ -2378,12 +2378,19 @@ impl<'test> TestCx<'test> {
         // eg.
         // /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui/<test_dir>/$name.$revision.$mode/
         normalize_path(&self.output_base_dir(), "$TEST_BUILD_DIR");
+        // Same as above, but with a canonicalized path.
+        // This is required because some tests print canonical paths inside test build directory,
+        // so if the build directory is a symlink, normalization doesn't help.
+        //
+        // NOTE: There are also tests which print the non-canonical name, so we need both this and
+        // the above normalizations.
+        normalize_path(&self.output_base_dir().canonicalize_utf8().unwrap(), "$TEST_BUILD_DIR");
         // eg. /home/user/rust/build
         normalize_path(&self.config.build_root, "$BUILD_DIR");
 
         if json {
             // escaped newlines in json strings should be readable
-            // in the stderr files. There's no point int being correct,
+            // in the stderr files. There's no point in being correct,
             // since only humans process the stderr files.
             // Thus we just turn escaped newlines back into newlines.
             normalized = normalized.replace("\\n", "\n");
