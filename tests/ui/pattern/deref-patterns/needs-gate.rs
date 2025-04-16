@@ -19,4 +19,14 @@ fn main() {
         //~^ ERROR: mismatched types
         _ => {}
     }
+    match *b"test" {
+        b"test" => {}
+        //~^ ERROR: mismatched types
+        _ => {}
+    }
+    match *(b"test" as &[u8]) {
+        b"test" => {}
+        //~^ ERROR: mismatched types
+        _ => {}
+    }
 }
