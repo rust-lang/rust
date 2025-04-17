@@ -268,7 +268,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Call this on things you got out of the MIR (so it is as generic as the current
     /// stack frame), to bring it into the proper environment for this interpreter.
-    pub(super) fn instantiate_from_current_frame_and_normalize_erasing_regions<
+    pub fn instantiate_from_current_frame_and_normalize_erasing_regions<
         T: TypeFoldable<TyCtxt<'tcx>>,
     >(
         &self,
@@ -279,9 +279,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Call this on things you got out of the MIR (so it is as generic as the provided
     /// stack frame), to bring it into the proper environment for this interpreter.
-    pub(super) fn instantiate_from_frame_and_normalize_erasing_regions<
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    >(
+    pub fn instantiate_from_frame_and_normalize_erasing_regions<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
         value: T,
