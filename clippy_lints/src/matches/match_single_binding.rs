@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::HirNode;
-use clippy_utils::source::{indent_of, snippet, snippet_block_with_context, snippet_with_applicability};
+use clippy_utils::source::{indent_of, snippet, snippet_block_with_context, snippet_with_context};
 use clippy_utils::{get_parent_expr, is_refutable, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, Expr, ExprKind, Node, PatKind, StmtKind};
@@ -24,16 +24,10 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
     let bind_names = arms[0].pat.span;
     let match_body = peel_blocks(arms[0].body);
     let mut app = Applicability::MaybeIncorrect;
-    let mut snippet_body = snippet_block_with_context(
-        cx,
-        match_body.span,
-        arms[0].span.ctxt(),
-        "..",
-        Some(expr.span),
-        &mut app,
-    )
-    .0
-    .to_string();
+    let ctxt = expr.span.ctxt();
+    let mut snippet_body = snippet_block_with_context(cx, match_body.span, ctxt, "..", Some(expr.span), &mut app)
+        .0
+        .to_string();
 
     // Do we need to add ';' to suggestion ?
     if let Node::Stmt(stmt) = cx.tcx.parent_hir_node(expr.hir_id)
@@ -77,10 +71,10 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                     span,
                     format!(
                         "let {} = {};\n{}let {} = {snippet_body};",
-                        snippet_with_applicability(cx, bind_names, "..", &mut app),
-                        snippet_with_applicability(cx, matched_vars, "..", &mut app),
+                        snippet_with_context(cx, bind_names, ctxt, "..", &mut app).0,
+                        snippet_with_context(cx, matched_vars, ctxt, "..", &mut app).0,
                         " ".repeat(indent_of(cx, expr.span).unwrap_or(0)),
-                        snippet_with_applicability(cx, pat_span, "..", &mut app)
+                        snippet_with_context(cx, pat_span, ctxt, "..", &mut app).0
                     ),
                 ),
                 None => {
@@ -204,14 +198,17 @@ fn sugg_with_curlies<'a>(
         s
     });
 
+    let ctxt = match_expr.span.ctxt();
     let scrutinee = if needs_var_binding {
         format!(
             "let {} = {}",
-            snippet_with_applicability(cx, bind_names, "..", applicability),
-            snippet_with_applicability(cx, matched_vars, "..", applicability)
+            snippet_with_context(cx, bind_names, ctxt, "..", applicability).0,
+            snippet_with_context(cx, matched_vars, ctxt, "..", applicability).0
         )
     } else {
-        snippet_with_applicability(cx, matched_vars, "..", applicability).to_string()
+        snippet_with_context(cx, matched_vars, ctxt, "..", applicability)
+            .0
+            .to_string()
     };
 
     format!("{cbrace_start}{scrutinee};\n{indent}{assignment_str}{snippet_body}{cbrace_end}")
