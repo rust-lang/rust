@@ -533,7 +533,10 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             | StatementKind::AscribeUserType(..) => {
                 self.super_statement(statement, location);
             }
-
+            StatementKind::Nop(Some(box StatementKind::Assign(box (ref place, ref rvalue)))) => {
+                self.visit_lhs(place, location);
+                self.visit_rvalue(rvalue, location);
+            }
             StatementKind::ConstEvalCounter | StatementKind::Nop(_) => {}
 
             StatementKind::StorageLive(_local) | StatementKind::StorageDead(_local) => {}
@@ -588,7 +591,17 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                     StatementKind::SetDiscriminant { place, .. }
                     | StatementKind::BackwardIncompatibleDropHint { place, reason: _ }
                     | StatementKind::Deinit(place) => used_locals.is_used(place.local),
-                    StatementKind::Nop(nop_stmt) => nop_stmt.is_some(),
+                    StatementKind::Nop(stmt) => {
+                        if let Some(box stmt) = stmt {
+                            if let Some((place, _)) = stmt.as_assign() {
+                                used_locals.is_used(place.local)
+                            } else {
+                                unimplemented!()
+                            }
+                        } else {
+                            false
+                        }
+                    }
                     _ => true,
                 };
 

@@ -33,10 +33,9 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     // If the user requests complete debuginfo, mark the locals that appear in it as live, so
     // we don't remove assignments to them.
-    let mut always_live = debuginfo_locals(body);
-    always_live.union(&borrowed_locals);
+    let debuginfo_locals = debuginfo_locals(body);
 
-    let mut live = MaybeTransitiveLiveLocals::new(&always_live)
+    let mut live = MaybeTransitiveLiveLocals::new(&borrowed_locals, &debuginfo_locals)
         .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
@@ -76,16 +75,26 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
         for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
             let loc = Location { block: bb, statement_index };
-            if let StatementKind::Assign(assign) = &statement.kind {
-                if !assign.1.is_safe_to_remove() {
-                    continue;
-                }
-            }
             match &statement.kind {
-                StatementKind::Assign(box (place, _))
-                | StatementKind::SetDiscriminant { place: box place, .. }
+                StatementKind::Assign(box (place, rvalue)) => {
+                    if rvalue.is_safe_to_remove()
+                        && !place.is_indirect()
+                        && !borrowed_locals.contains(place.local)
+                        && (!debuginfo_locals.contains(place.local)
+                            || (place.as_local().is_some() && matches!(rvalue, Rvalue::Ref(..))))
+                    {
+                        live.seek_before_primary_effect(loc);
+                        if !live.get().contains(place.local) {
+                            patch.push(loc);
+                        }
+                    }
+                }
+                StatementKind::SetDiscriminant { place: box place, .. }
                 | StatementKind::Deinit(box place) => {
-                    if !place.is_indirect() && !always_live.contains(place.local) {
+                    if !place.is_indirect()
+                        && !borrowed_locals.contains(place.local)
+                        && !debuginfo_locals.contains(place.local)
+                    {
                         live.seek_before_primary_effect(loc);
                         if !live.get().contains(place.local) {
                             patch.push(loc);
@@ -115,7 +124,23 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     let bbs = body.basic_blocks.as_mut_preserves_cfg();
     for Location { block, statement_index } in patch {
-        bbs[block].statements[statement_index].make_nop(false);
+        let save_stmt = match bbs[block].statements[statement_index].kind {
+            StatementKind::Assign(box (place, _)) => debuginfo_locals.contains(place.local),
+            StatementKind::SetDiscriminant { .. }
+            | StatementKind::Deinit(_)
+            | StatementKind::Retag(_, _)
+            | StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_)
+            | StatementKind::Coverage(_)
+            | StatementKind::Intrinsic(_)
+            | StatementKind::ConstEvalCounter
+            | StatementKind::PlaceMention(_)
+            | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::FakeRead(_)
+            | StatementKind::AscribeUserType(_, _)
+            | StatementKind::Nop(_) => false,
+        };
+        bbs[block].statements[statement_index].make_nop(save_stmt);
     }
     for (block, argument_index) in call_operands_to_move {
         let TerminatorKind::Call { ref mut args, .. } = bbs[block].terminator_mut().kind else {

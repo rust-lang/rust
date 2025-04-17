@@ -1,7 +1,7 @@
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges,
+    self, CallReturnPlaces, Local, Location, Place, Rvalue, StatementKind, TerminatorEdges,
 };
 
 use crate::{Analysis, Backward, GenKill};
@@ -205,6 +205,7 @@ impl DefUse {
 /// All of the caveats of `MaybeLiveLocals` apply.
 pub struct MaybeTransitiveLiveLocals<'a> {
     always_live: &'a DenseBitSet<Local>,
+    debuginfo_locals: &'a DenseBitSet<Local>,
 }
 
 impl<'a> MaybeTransitiveLiveLocals<'a> {
@@ -212,8 +213,11 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
     /// considered live.
     ///
     /// This should include at least all locals that are ever borrowed.
-    pub fn new(always_live: &'a DenseBitSet<Local>) -> Self {
-        MaybeTransitiveLiveLocals { always_live }
+    pub fn new(
+        always_live: &'a DenseBitSet<Local>,
+        debuginfo_locals: &'a DenseBitSet<Local>,
+    ) -> Self {
+        MaybeTransitiveLiveLocals { always_live, debuginfo_locals }
     }
 }
 
@@ -240,9 +244,17 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     ) {
         // Compute the place that we are storing to, if any
         let destination = match &statement.kind {
-            StatementKind::Assign(assign) => assign.1.is_safe_to_remove().then_some(assign.0),
+            StatementKind::Assign(box (place, rvalue)) => {
+                if !self.debuginfo_locals.contains(place.local)
+                    || (place.as_local().is_some() && matches!(rvalue, Rvalue::Ref(..)))
+                {
+                    rvalue.is_safe_to_remove().then_some(*place)
+                } else {
+                    None
+                }
+            }
             StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
-                Some(**place)
+                if self.debuginfo_locals.contains(place.local) { None } else { Some(**place) }
             }
             StatementKind::FakeRead(_)
             | StatementKind::StorageLive(_)

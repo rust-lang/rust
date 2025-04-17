@@ -13,7 +13,7 @@ fn clone_as_copy(_1: &NestCopy) -> NestCopy {
 
     bb0: {
         StorageLive(_2);
-        _2 = &((*_1).1: AllCopy);
+        Nop(Assign((_2, &((*_1).1: AllCopy))));
         _0 = copy (*_1);
         StorageDead(_2);
         return;

@@ -35,15 +35,15 @@ fn enum_clone_as_copy(_1: &Enum1) -> Enum1 {
     }
 
     bb1: {
-        _3 = &(((*_1) as A).0: AllCopy);
+        Nop(Assign((_3, &(((*_1) as A).0: AllCopy))));
         _0 = copy (*_1);
         goto -> bb3;
     }
 
     bb2: {
-        _4 = &(((*_1) as B).0: NestCopy);
+        Nop(Assign((_4, &(((*_1) as B).0: NestCopy))));
         StorageLive(_5);
-        _5 = &((((*_1) as B).0: NestCopy).1: AllCopy);
+        Nop(Assign((_5, &((((*_1) as B).0: NestCopy).1: AllCopy))));
         StorageDead(_5);
         _0 = copy (*_1);
         goto -> bb3;

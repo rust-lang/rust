@@ -465,7 +465,28 @@ macro_rules! make_mir_visitor {
                         );
                     }
                     StatementKind::ConstEvalCounter => {}
-                    StatementKind::Nop(_) => {}
+                    StatementKind::Nop(stmt) => {
+                        if let Some(box stmt) = stmt {
+                            match stmt {
+                                StatementKind::Assign(box (place, rvalue)) => {
+                                    self.visit_place(
+                                        place,
+                                        PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                                        location
+                                    );
+                                    match rvalue {
+                                        Rvalue::Ref(_, _, path) => {
+                                            self.visit_place(path, PlaceContext::NonUse(NonUseContext::VarDebugInfo), location);
+                                        }
+                                        _ => unimplemented!()
+                                    }
+                                },
+                                _ => {
+                                    unimplemented!()
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
