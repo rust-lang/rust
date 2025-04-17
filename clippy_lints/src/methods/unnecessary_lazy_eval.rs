@@ -24,7 +24,12 @@ pub(super) fn check<'tcx>(
     let is_bool = cx.typeck_results().expr_ty(recv).is_bool();
 
     if (is_option || is_result || is_bool)
-        && let hir::ExprKind::Closure(&hir::Closure { body, fn_decl, .. }) = arg.kind
+        && let hir::ExprKind::Closure(&hir::Closure {
+            body,
+            fn_decl,
+            kind: hir::ClosureKind::Closure,
+            ..
+        }) = arg.kind
     {
         let body = cx.tcx.hir_body(body);
         let body_expr = &body.value;
