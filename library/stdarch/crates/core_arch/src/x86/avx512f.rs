@@ -33841,8 +33841,8 @@ pub unsafe fn _mm_loadu_epi32(mem_addr: *const i32) -> __m128i {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovdw))]
-pub unsafe fn _mm512_mask_cvtepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask16, a: __m512i) {
-    vpmovdwmem(mem_addr, a.as_i32x16(), k);
+pub unsafe fn _mm512_mask_cvtepi32_storeu_epi16(mem_addr: *mut i16, k: __mmask16, a: __m512i) {
+    vpmovdwmem(mem_addr.cast(), a.as_i32x16(), k);
 }
 
 /// Convert packed 32-bit integers in a to packed 16-bit integers with truncation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -33852,8 +33852,8 @@ pub unsafe fn _mm512_mask_cvtepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask16,
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovdw))]
-pub unsafe fn _mm256_mask_cvtepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m256i) {
-    vpmovdwmem256(mem_addr, a.as_i32x8(), k);
+pub unsafe fn _mm256_mask_cvtepi32_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m256i) {
+    vpmovdwmem256(mem_addr.cast(), a.as_i32x8(), k);
 }
 
 /// Convert packed 32-bit integers in a to packed 16-bit integers with truncation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -33863,8 +33863,8 @@ pub unsafe fn _mm256_mask_cvtepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask8, 
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovdw))]
-pub unsafe fn _mm_mask_cvtepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m128i) {
-    vpmovdwmem128(mem_addr, a.as_i32x4(), k);
+pub unsafe fn _mm_mask_cvtepi32_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m128i) {
+    vpmovdwmem128(mem_addr.cast(), a.as_i32x4(), k);
 }
 
 /// Convert packed signed 32-bit integers in a to packed 16-bit integers with signed saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -33874,8 +33874,8 @@ pub unsafe fn _mm_mask_cvtepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: 
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovsdw))]
-pub unsafe fn _mm512_mask_cvtsepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask16, a: __m512i) {
-    vpmovsdwmem(mem_addr, a.as_i32x16(), k);
+pub unsafe fn _mm512_mask_cvtsepi32_storeu_epi16(mem_addr: *mut i16, k: __mmask16, a: __m512i) {
+    vpmovsdwmem(mem_addr.cast(), a.as_i32x16(), k);
 }
 
 /// Convert packed signed 32-bit integers in a to packed 16-bit integers with signed saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -33885,8 +33885,8 @@ pub unsafe fn _mm512_mask_cvtsepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask16
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovsdw))]
-pub unsafe fn _mm256_mask_cvtsepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m256i) {
-    vpmovsdwmem256(mem_addr, a.as_i32x8(), k);
+pub unsafe fn _mm256_mask_cvtsepi32_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m256i) {
+    vpmovsdwmem256(mem_addr.cast(), a.as_i32x8(), k);
 }
 
 /// Convert packed signed 32-bit integers in a to packed 16-bit integers with signed saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -33896,8 +33896,8 @@ pub unsafe fn _mm256_mask_cvtsepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask8,
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovsdw))]
-pub unsafe fn _mm_mask_cvtsepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m128i) {
-    vpmovsdwmem128(mem_addr, a.as_i32x4(), k);
+pub unsafe fn _mm_mask_cvtsepi32_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m128i) {
+    vpmovsdwmem128(mem_addr.cast(), a.as_i32x4(), k);
 }
 
 /// Convert packed unsigned 32-bit integers in a to packed 16-bit integers with unsigned saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -33907,8 +33907,8 @@ pub unsafe fn _mm_mask_cvtsepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a:
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovusdw))]
-pub unsafe fn _mm512_mask_cvtusepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask16, a: __m512i) {
-    vpmovusdwmem(mem_addr, a.as_i32x16(), k);
+pub unsafe fn _mm512_mask_cvtusepi32_storeu_epi16(mem_addr: *mut i16, k: __mmask16, a: __m512i) {
+    vpmovusdwmem(mem_addr.cast(), a.as_i32x16(), k);
 }
 
 /// Convert packed unsigned 32-bit integers in a to packed unsigned 16-bit integers with unsigned saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -33918,8 +33918,8 @@ pub unsafe fn _mm512_mask_cvtusepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask1
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovusdw))]
-pub unsafe fn _mm256_mask_cvtusepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m256i) {
-    vpmovusdwmem256(mem_addr, a.as_i32x8(), k);
+pub unsafe fn _mm256_mask_cvtusepi32_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m256i) {
+    vpmovusdwmem256(mem_addr.cast(), a.as_i32x8(), k);
 }
 
 /// Convert packed unsigned 32-bit integers in a to packed unsigned 16-bit integers with unsigned saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -33929,8 +33929,8 @@ pub unsafe fn _mm256_mask_cvtusepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask8
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovusdw))]
-pub unsafe fn _mm_mask_cvtusepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m128i) {
-    vpmovusdwmem128(mem_addr, a.as_i32x4(), k);
+pub unsafe fn _mm_mask_cvtusepi32_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m128i) {
+    vpmovusdwmem128(mem_addr.cast(), a.as_i32x4(), k);
 }
 
 /// Convert packed 32-bit integers in a to packed 8-bit integers with truncation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34039,8 +34039,8 @@ pub unsafe fn _mm_mask_cvtusepi32_storeu_epi8(mem_addr: *mut i8, k: __mmask8, a:
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovqw))]
-pub unsafe fn _mm512_mask_cvtepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m512i) {
-    vpmovqwmem(mem_addr, a.as_i64x8(), k);
+pub unsafe fn _mm512_mask_cvtepi64_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m512i) {
+    vpmovqwmem(mem_addr.cast(), a.as_i64x8(), k);
 }
 
 /// Convert packed 64-bit integers in a to packed 16-bit integers with truncation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34050,8 +34050,8 @@ pub unsafe fn _mm512_mask_cvtepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, 
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovqw))]
-pub unsafe fn _mm256_mask_cvtepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m256i) {
-    vpmovqwmem256(mem_addr, a.as_i64x4(), k);
+pub unsafe fn _mm256_mask_cvtepi64_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m256i) {
+    vpmovqwmem256(mem_addr.cast(), a.as_i64x4(), k);
 }
 
 /// Convert packed 64-bit integers in a to packed 16-bit integers with truncation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34061,8 +34061,8 @@ pub unsafe fn _mm256_mask_cvtepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, 
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovqw))]
-pub unsafe fn _mm_mask_cvtepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m128i) {
-    vpmovqwmem128(mem_addr, a.as_i64x2(), k);
+pub unsafe fn _mm_mask_cvtepi64_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m128i) {
+    vpmovqwmem128(mem_addr.cast(), a.as_i64x2(), k);
 }
 
 /// Convert packed signed 64-bit integers in a to packed 16-bit integers with signed saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34072,8 +34072,8 @@ pub unsafe fn _mm_mask_cvtepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: 
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovsqw))]
-pub unsafe fn _mm512_mask_cvtsepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m512i) {
-    vpmovsqwmem(mem_addr, a.as_i64x8(), k);
+pub unsafe fn _mm512_mask_cvtsepi64_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m512i) {
+    vpmovsqwmem(mem_addr.cast(), a.as_i64x8(), k);
 }
 
 /// Convert packed signed 64-bit integers in a to packed 16-bit integers with signed saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34083,8 +34083,8 @@ pub unsafe fn _mm512_mask_cvtsepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8,
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovsqw))]
-pub unsafe fn _mm256_mask_cvtsepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m256i) {
-    vpmovsqwmem256(mem_addr, a.as_i64x4(), k);
+pub unsafe fn _mm256_mask_cvtsepi64_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m256i) {
+    vpmovsqwmem256(mem_addr.cast(), a.as_i64x4(), k);
 }
 
 /// Convert packed signed 64-bit integers in a to packed 16-bit integers with signed saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34094,8 +34094,8 @@ pub unsafe fn _mm256_mask_cvtsepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8,
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovsqw))]
-pub unsafe fn _mm_mask_cvtsepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m128i) {
-    vpmovsqwmem128(mem_addr, a.as_i64x2(), k);
+pub unsafe fn _mm_mask_cvtsepi64_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m128i) {
+    vpmovsqwmem128(mem_addr.cast(), a.as_i64x2(), k);
 }
 
 /// Convert packed unsigned 64-bit integers in a to packed 16-bit integers with unsigned saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34105,8 +34105,8 @@ pub unsafe fn _mm_mask_cvtsepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a:
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovusqw))]
-pub unsafe fn _mm512_mask_cvtusepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m512i) {
-    vpmovusqwmem(mem_addr, a.as_i64x8(), k);
+pub unsafe fn _mm512_mask_cvtusepi64_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m512i) {
+    vpmovusqwmem(mem_addr.cast(), a.as_i64x8(), k);
 }
 
 /// Convert packed unsigned 64-bit integers in a to packed 16-bit integers with unsigned saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34116,8 +34116,8 @@ pub unsafe fn _mm512_mask_cvtusepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovusqw))]
-pub unsafe fn _mm256_mask_cvtusepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m256i) {
-    vpmovusqwmem256(mem_addr, a.as_i64x4(), k);
+pub unsafe fn _mm256_mask_cvtusepi64_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m256i) {
+    vpmovusqwmem256(mem_addr.cast(), a.as_i64x4(), k);
 }
 
 /// Convert packed unsigned 64-bit integers in a to packed 16-bit integers with unsigned saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34127,8 +34127,8 @@ pub unsafe fn _mm256_mask_cvtusepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovusqw))]
-pub unsafe fn _mm_mask_cvtusepi64_storeu_epi16(mem_addr: *mut i8, k: __mmask8, a: __m128i) {
-    vpmovusqwmem128(mem_addr, a.as_i64x2(), k);
+pub unsafe fn _mm_mask_cvtusepi64_storeu_epi16(mem_addr: *mut i16, k: __mmask8, a: __m128i) {
+    vpmovusqwmem128(mem_addr.cast(), a.as_i64x2(), k);
 }
 
 /// Convert packed 64-bit integers in a to packed 8-bit integers with truncation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34237,8 +34237,8 @@ pub unsafe fn _mm_mask_cvtusepi64_storeu_epi8(mem_addr: *mut i8, k: __mmask8, a:
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovqd))]
-pub unsafe fn _mm512_mask_cvtepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, a: __m512i) {
-    vpmovqdmem(mem_addr, a.as_i64x8(), k);
+pub unsafe fn _mm512_mask_cvtepi64_storeu_epi32(mem_addr: *mut i32, k: __mmask8, a: __m512i) {
+    vpmovqdmem(mem_addr.cast(), a.as_i64x8(), k);
 }
 
 ///Convert packed 64-bit integers in a to packed 32-bit integers with truncation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34248,8 +34248,8 @@ pub unsafe fn _mm512_mask_cvtepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, 
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovqd))]
-pub unsafe fn _mm256_mask_cvtepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, a: __m256i) {
-    vpmovqdmem256(mem_addr, a.as_i64x4(), k);
+pub unsafe fn _mm256_mask_cvtepi64_storeu_epi32(mem_addr: *mut i32, k: __mmask8, a: __m256i) {
+    vpmovqdmem256(mem_addr.cast(), a.as_i64x4(), k);
 }
 
 ///Convert packed 64-bit integers in a to packed 32-bit integers with truncation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34259,8 +34259,8 @@ pub unsafe fn _mm256_mask_cvtepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, 
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovqd))]
-pub unsafe fn _mm_mask_cvtepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, a: __m128i) {
-    vpmovqdmem128(mem_addr, a.as_i64x2(), k);
+pub unsafe fn _mm_mask_cvtepi64_storeu_epi32(mem_addr: *mut i32, k: __mmask8, a: __m128i) {
+    vpmovqdmem128(mem_addr.cast(), a.as_i64x2(), k);
 }
 
 /// Convert packed signed 64-bit integers in a to packed 32-bit integers with signed saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34270,8 +34270,8 @@ pub unsafe fn _mm_mask_cvtepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, a: 
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovsqd))]
-pub unsafe fn _mm512_mask_cvtsepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, a: __m512i) {
-    vpmovsqdmem(mem_addr, a.as_i64x8(), k);
+pub unsafe fn _mm512_mask_cvtsepi64_storeu_epi32(mem_addr: *mut i32, k: __mmask8, a: __m512i) {
+    vpmovsqdmem(mem_addr.cast(), a.as_i64x8(), k);
 }
 
 /// Convert packed signed 64-bit integers in a to packed 32-bit integers with signed saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34281,8 +34281,8 @@ pub unsafe fn _mm512_mask_cvtsepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8,
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovsqd))]
-pub unsafe fn _mm256_mask_cvtsepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, a: __m256i) {
-    vpmovsqdmem256(mem_addr, a.as_i64x4(), k);
+pub unsafe fn _mm256_mask_cvtsepi64_storeu_epi32(mem_addr: *mut i32, k: __mmask8, a: __m256i) {
+    vpmovsqdmem256(mem_addr.cast(), a.as_i64x4(), k);
 }
 
 /// Convert packed signed 64-bit integers in a to packed 32-bit integers with signed saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34292,8 +34292,8 @@ pub unsafe fn _mm256_mask_cvtsepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8,
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovsqd))]
-pub unsafe fn _mm_mask_cvtsepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, a: __m128i) {
-    vpmovsqdmem128(mem_addr, a.as_i64x2(), k);
+pub unsafe fn _mm_mask_cvtsepi64_storeu_epi32(mem_addr: *mut i32, k: __mmask8, a: __m128i) {
+    vpmovsqdmem128(mem_addr.cast(), a.as_i64x2(), k);
 }
 
 /// Convert packed unsigned 64-bit integers in a to packed 32-bit integers with unsigned saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34303,8 +34303,8 @@ pub unsafe fn _mm_mask_cvtsepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, a:
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovusqd))]
-pub unsafe fn _mm512_mask_cvtusepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, a: __m512i) {
-    vpmovusqdmem(mem_addr, a.as_i64x8(), k);
+pub unsafe fn _mm512_mask_cvtusepi64_storeu_epi32(mem_addr: *mut i32, k: __mmask8, a: __m512i) {
+    vpmovusqdmem(mem_addr.cast(), a.as_i64x8(), k);
 }
 
 /// Convert packed unsigned 64-bit integers in a to packed 32-bit integers with unsigned saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34314,8 +34314,8 @@ pub unsafe fn _mm512_mask_cvtusepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovusqd))]
-pub unsafe fn _mm256_mask_cvtusepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, a: __m256i) {
-    vpmovusqdmem256(mem_addr, a.as_i64x4(), k);
+pub unsafe fn _mm256_mask_cvtusepi64_storeu_epi32(mem_addr: *mut i32, k: __mmask8, a: __m256i) {
+    vpmovusqdmem256(mem_addr.cast(), a.as_i64x4(), k);
 }
 
 /// Convert packed unsigned 64-bit integers in a to packed 32-bit integers with unsigned saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -34325,8 +34325,8 @@ pub unsafe fn _mm256_mask_cvtusepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovusqd))]
-pub unsafe fn _mm_mask_cvtusepi64_storeu_epi32(mem_addr: *mut i8, k: __mmask8, a: __m128i) {
-    vpmovusqdmem128(mem_addr, a.as_i64x2(), k);
+pub unsafe fn _mm_mask_cvtusepi64_storeu_epi32(mem_addr: *mut i32, k: __mmask8, a: __m128i) {
+    vpmovusqdmem128(mem_addr.cast(), a.as_i64x2(), k);
 }
 
 /// Store 512-bits (composed of 16 packed 32-bit integers) from a into memory. mem_addr does not need to be aligned on any particular boundary.
@@ -57013,7 +57013,7 @@ mod tests {
     unsafe fn test_mm512_mask_cvtepi32_storeu_epi16() {
         let a = _mm512_set1_epi32(9);
         let mut r = _mm256_undefined_si256();
-        _mm512_mask_cvtepi32_storeu_epi16(&mut r as *mut _ as *mut i8, 0b11111111_11111111, a);
+        _mm512_mask_cvtepi32_storeu_epi16(&mut r as *mut _ as *mut i16, 0b11111111_11111111, a);
         let e = _mm256_set1_epi16(9);
         assert_eq_m256i(r, e);
     }
@@ -57022,7 +57022,7 @@ mod tests {
     unsafe fn test_mm256_mask_cvtepi32_storeu_epi16() {
         let a = _mm256_set1_epi32(9);
         let mut r = _mm_undefined_si128();
-        _mm256_mask_cvtepi32_storeu_epi16(&mut r as *mut _ as *mut i8, 0b11111111, a);
+        _mm256_mask_cvtepi32_storeu_epi16(&mut r as *mut _ as *mut i16, 0b11111111, a);
         let e = _mm_set1_epi16(9);
         assert_eq_m128i(r, e);
     }
@@ -57031,7 +57031,7 @@ mod tests {
     unsafe fn test_mm_mask_cvtepi32_storeu_epi16() {
         let a = _mm_set1_epi32(9);
         let mut r = _mm_set1_epi8(0);
-        _mm_mask_cvtepi32_storeu_epi16(&mut r as *mut _ as *mut i8, 0b11111111, a);
+        _mm_mask_cvtepi32_storeu_epi16(&mut r as *mut _ as *mut i16, 0b11111111, a);
         let e = _mm_set_epi16(0, 0, 0, 0, 9, 9, 9, 9);
         assert_eq_m128i(r, e);
     }
@@ -57040,7 +57040,7 @@ mod tests {
     unsafe fn test_mm512_mask_cvtsepi32_storeu_epi16() {
         let a = _mm512_set1_epi32(i32::MAX);
         let mut r = _mm256_undefined_si256();
-        _mm512_mask_cvtsepi32_storeu_epi16(&mut r as *mut _ as *mut i8, 0b11111111_11111111, a);
+        _mm512_mask_cvtsepi32_storeu_epi16(&mut r as *mut _ as *mut i16, 0b11111111_11111111, a);
         let e = _mm256_set1_epi16(i16::MAX);
         assert_eq_m256i(r, e);
     }
@@ -57049,7 +57049,7 @@ mod tests {
     unsafe fn test_mm256_mask_cvtsepi32_storeu_epi16() {
         let a = _mm256_set1_epi32(i32::MAX);
         let mut r = _mm_undefined_si128();
-        _mm256_mask_cvtsepi32_storeu_epi16(&mut r as *mut _ as *mut i8, 0b11111111, a);
+        _mm256_mask_cvtsepi32_storeu_epi16(&mut r as *mut _ as *mut i16, 0b11111111, a);
         let e = _mm_set1_epi16(i16::MAX);
         assert_eq_m128i(r, e);
     }
@@ -57058,7 +57058,7 @@ mod tests {
     unsafe fn test_mm_mask_cvtsepi32_storeu_epi16() {
         let a = _mm_set1_epi32(i32::MAX);
         let mut r = _mm_set1_epi8(0);
-        _mm_mask_cvtsepi32_storeu_epi16(&mut r as *mut _ as *mut i8, 0b11111111, a);
+        _mm_mask_cvtsepi32_storeu_epi16(&mut r as *mut _ as *mut i16, 0b11111111, a);
         let e = _mm_set_epi16(0, 0, 0, 0, i16::MAX, i16::MAX, i16::MAX, i16::MAX);
         assert_eq_m128i(r, e);
     }
@@ -57067,7 +57067,7 @@ mod tests {
     unsafe fn test_mm512_mask_cvtusepi32_storeu_epi16() {
         let a = _mm512_set1_epi32(i32::MAX);
         let mut r = _mm256_undefined_si256();
-        _mm512_mask_cvtusepi32_storeu_epi16(&mut r as *mut _ as *mut i8, 0b11111111_11111111, a);
+        _mm512_mask_cvtusepi32_storeu_epi16(&mut r as *mut _ as *mut i16, 0b11111111_11111111, a);
         let e = _mm256_set1_epi16(u16::MAX as i16);
         assert_eq_m256i(r, e);
     }
@@ -57076,7 +57076,7 @@ mod tests {
     unsafe fn test_mm256_mask_cvtusepi32_storeu_epi16() {
         let a = _mm256_set1_epi32(i32::MAX);
         let mut r = _mm_undefined_si128();
-        _mm256_mask_cvtusepi32_storeu_epi16(&mut r as *mut _ as *mut i8, 0b11111111, a);
+        _mm256_mask_cvtusepi32_storeu_epi16(&mut r as *mut _ as *mut i16, 0b11111111, a);
         let e = _mm_set1_epi16(u16::MAX as i16);
         assert_eq_m128i(r, e);
     }
@@ -57085,7 +57085,7 @@ mod tests {
     unsafe fn test_mm_mask_cvtusepi32_storeu_epi16() {
         let a = _mm_set1_epi32(i32::MAX);
         let mut r = _mm_set1_epi8(0);
-        _mm_mask_cvtusepi32_storeu_epi16(&mut r as *mut _ as *mut i8, 0b11111111, a);
+        _mm_mask_cvtusepi32_storeu_epi16(&mut r as *mut _ as *mut i16, 0b11111111, a);
         let e = _mm_set_epi16(
             0,
             0,
