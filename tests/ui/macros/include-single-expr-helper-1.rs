@@ -1,4 +1,4 @@
-//@ ignore-test auxiliary file for include-single-expr.rs
+//@ ignore-auxiliary (used by `./include-single-expr.rs`)
 
 0
 
