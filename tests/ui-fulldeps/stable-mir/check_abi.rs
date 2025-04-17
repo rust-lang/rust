@@ -17,7 +17,6 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_smir::rustc_internal;
 use stable_mir::abi::{
     ArgAbi, CallConvention, FieldsShape, IntegerLength, PassMode, Primitive, Scalar, ValueAbi,
     VariantsShape,

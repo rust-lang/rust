@@ -191,7 +191,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 let pointer_target = ExprKind::Field {
                     lhs: self.thir.exprs.push(expr),
                     variant_index: FIRST_VARIANT,
-                    name: FieldIdx::from(0u32),
+                    name: FieldIdx::ZERO,
                 };
                 let arg = Expr { temp_lifetime, ty: pin_ty, span, kind: pointer_target };
                 let arg = self.thir.exprs.push(arg);
@@ -226,7 +226,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     adt_def: self.tcx.adt_def(pin_did),
                     variant_index: FIRST_VARIANT,
                     args,
-                    fields: Box::new([FieldExpr { name: FieldIdx::from(0u32), expr }]),
+                    fields: Box::new([FieldExpr { name: FieldIdx::ZERO, expr }]),
                     user_ty: None,
                     base: AdtExprBase::None,
                 }));

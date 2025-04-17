@@ -164,6 +164,7 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
+        let cx = ecx.cx();
         if goal.predicate.polarity != ty::PredicatePolarity::Positive {
             return Err(NoSolution);
         }
@@ -174,20 +175,37 @@ where
 
         // Only consider auto impls of unsafe traits when there are no unsafe
         // fields.
-        if ecx.cx().trait_is_unsafe(goal.predicate.def_id())
+        if cx.trait_is_unsafe(goal.predicate.def_id())
             && goal.predicate.self_ty().has_unsafe_fields()
         {
             return Err(NoSolution);
         }
 
-        // We only look into opaque types during analysis for opaque types
-        // outside of their defining scope. Doing so for opaques in the
-        // defining scope may require calling `typeck` on the same item we're
-        // currently type checking, which will result in a fatal cycle that
-        // ideally we want to avoid, since we can make progress on this goal
-        // via an alias bound or a locally-inferred hidden type instead.
+        // We leak the implemented auto traits of opaques outside of their defining scope.
+        // This depends on `typeck` of the defining scope of that opaque, which may result in
+        // fatal query cycles.
+        //
+        // We only get to this point if we're outside of the defining scope as we'd otherwise
+        // be able to normalize the opaque type. We may also cycle in case `typeck` of a defining
+        // scope relies on the current context, e.g. either because it also leaks auto trait
+        // bounds of opaques defined in the current context or by evaluating the current item.
+        //
+        // To avoid this we don't try to leak auto trait bounds if they can also be proven via
+        // item bounds of the opaque. These bounds are always applicable as auto traits must not
+        // have any generic parameters. They would also get preferred over the impl candidate
+        // when merging candidates anyways.
+        //
+        // See tests/ui/impl-trait/auto-trait-leakage/avoid-query-cycle-via-item-bound.rs.
         if let ty::Alias(ty::Opaque, opaque_ty) = goal.predicate.self_ty().kind() {
             debug_assert!(ecx.opaque_type_is_rigid(opaque_ty.def_id));
+            for item_bound in cx.item_self_bounds(opaque_ty.def_id).skip_binder() {
+                if item_bound
+                    .as_trait_clause()
+                    .is_some_and(|b| b.def_id() == goal.predicate.def_id())
+                {
+                    return Err(NoSolution);
+                }
+            }
         }
 
         ecx.probe_and_evaluate_goal_for_constituent_tys(
@@ -1238,10 +1256,11 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
+    #[instrument(level = "debug", skip(self, goal), ret)]
     pub(super) fn merge_trait_candidates(
         &mut self,
         goal: Goal<I, TraitPredicate<I>>,
-        candidates: Vec<Candidate<I>>,
+        mut candidates: Vec<Candidate<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         if let TypingMode::Coherence = self.typing_mode() {
             let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();
@@ -1323,13 +1342,16 @@ where
 
         // If there are *only* global where bounds, then make sure to return that this
         // is still reported as being proven-via the param-env so that rigid projections
-        // operate correctly.
+        // operate correctly. Otherwise, drop all global where-bounds before merging the
+        // remaining candidates.
         let proven_via =
             if candidates.iter().all(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
                 TraitGoalProvenVia::ParamEnv
             } else {
+                candidates.retain(|c| !matches!(c.source, CandidateSource::ParamEnv(_)));
                 TraitGoalProvenVia::Misc
             };
+
         let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();
         if let Some(response) = self.try_merge_responses(&all_candidates) {
             Ok((response, Some(proven_via)))

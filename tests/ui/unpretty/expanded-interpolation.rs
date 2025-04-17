@@ -1,5 +1,6 @@
 //@ compile-flags: -Zunpretty=expanded
 //@ check-pass
+//@ edition: 2015
 
 // This test covers the AST pretty-printer's insertion of parentheses in some
 // macro metavariable edge cases. Synthetic parentheses (i.e. not appearing in

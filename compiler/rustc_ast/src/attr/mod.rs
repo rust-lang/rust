@@ -627,7 +627,7 @@ pub fn mk_doc_comment(
     Attribute { kind: AttrKind::DocComment(comment_kind, data), id: g.mk_attr_id(), style, span }
 }
 
-pub fn mk_attr(
+fn mk_attr(
     g: &AttrIdGenerator,
     style: AttrStyle,
     unsafety: Safety,

@@ -7,7 +7,7 @@ use crate::char::{EscapeDebugExtArgs, MAX_LEN_UTF8};
 use crate::marker::PhantomData;
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
-use crate::{iter, mem, result, str};
+use crate::{iter, result, str};
 
 mod builders;
 #[cfg(not(no_fp_fmt_parse))]

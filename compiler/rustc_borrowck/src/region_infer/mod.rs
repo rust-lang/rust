@@ -9,7 +9,7 @@ use rustc_errors::Diag;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_index::IndexVec;
 use rustc_infer::infer::outlives::test_type_match;
-use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound, VerifyIfEq};
+use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound, VerifyIfEq};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::mir::{
@@ -145,7 +145,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// variables are identified by their index (`RegionVid`). The
     /// definition contains information about where the region came
     /// from as well as its final inferred value.
-    pub(crate) definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    pub(crate) definitions: Frozen<IndexVec<RegionVid, RegionDefinition<'tcx>>>,
 
     /// The liveness constraints added to each region. For most
     /// regions, these start out empty and steadily grow, though for
@@ -338,8 +338,7 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
     let num_components = sccs.num_sccs();
     let mut components = vec![FxIndexSet::default(); num_components];
 
-    for (reg_var_idx, scc_idx) in sccs.scc_indices().iter().enumerate() {
-        let reg_var = ty::RegionVid::from_usize(reg_var_idx);
+    for (reg_var, scc_idx) in sccs.scc_indices().iter_enumerated() {
         let origin = var_to_origin.get(&reg_var).unwrap_or(&RegionCtxt::Unknown);
         components[scc_idx.as_usize()].insert((reg_var, *origin));
     }
@@ -385,6 +384,26 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
     debug!("SCC edges {:#?}", scc_node_to_edges);
 }
 
+fn create_definitions<'tcx>(
+    infcx: &BorrowckInferCtxt<'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
+) -> Frozen<IndexVec<RegionVid, RegionDefinition<'tcx>>> {
+    // Create a RegionDefinition for each inference variable.
+    let mut definitions: IndexVec<_, _> = infcx
+        .get_region_var_infos()
+        .iter()
+        .map(|info| RegionDefinition::new(info.universe, info.origin))
+        .collect();
+
+    // Add the external name for all universal regions.
+    for (external_name, variable) in universal_regions.named_universal_regions_iter() {
+        debug!("region {variable:?} has external name {external_name:?}");
+        definitions[variable].external_name = Some(external_name);
+    }
+
+    Frozen::freeze(definitions)
+}
+
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Creates a new region inference context with a total of
     /// `num_region_variables` valid inference variables; the first N
@@ -395,7 +414,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// of constraints produced by the MIR type check.
     pub(crate) fn new(
         infcx: &BorrowckInferCtxt<'tcx>,
-        var_infos: VarInfos,
         constraints: MirTypeckRegionConstraints<'tcx>,
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
         location_map: Rc<DenseLocationMap>,
@@ -426,11 +444,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             infcx.set_tainted_by_errors(guar);
         }
 
-        // Create a RegionDefinition for each inference variable.
-        let definitions: IndexVec<_, _> = var_infos
-            .iter()
-            .map(|info| RegionDefinition::new(info.universe, info.origin))
-            .collect();
+        let definitions = create_definitions(infcx, &universal_regions);
 
         let constraint_sccs =
             outlives_constraints.add_outlives_static(&universal_regions, &definitions);
@@ -526,18 +540,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// means that the `R1: !1` constraint here will cause
     /// `R1` to become `'static`.
     fn init_free_and_bound_regions(&mut self) {
-        // Update the names (if any)
-        // This iterator has unstable order but we collect it all into an IndexVec
-        for (external_name, variable) in
-            self.universal_region_relations.universal_regions.named_universal_regions_iter()
-        {
-            debug!(
-                "init_free_and_bound_regions: region {:?} has external name {:?}",
-                variable, external_name
-            );
-            self.definitions[variable].external_name = Some(external_name);
-        }
-
         for variable in self.definitions.indices() {
             let scc = self.constraint_sccs.scc(variable);
 

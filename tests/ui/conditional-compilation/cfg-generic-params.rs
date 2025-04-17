@@ -1,18 +1,18 @@
 //@ compile-flags:--cfg yes --check-cfg=cfg(yes,no)
 
-fn f_lt<#[cfg(yes)] 'a: 'a, #[cfg(FALSE)] T>() {}
-fn f_ty<#[cfg(FALSE)] 'a: 'a, #[cfg(yes)] T>() {}
+fn f_lt<#[cfg(yes)] 'a: 'a, #[cfg(false)] T>() {}
+fn f_ty<#[cfg(false)] 'a: 'a, #[cfg(yes)] T>() {}
 
-type FnGood = for<#[cfg(yes)] 'a, #[cfg(FALSE)] T> fn(); // OK
-type FnBad = for<#[cfg(FALSE)] 'a, #[cfg(yes)] T> fn();
+type FnGood = for<#[cfg(yes)] 'a, #[cfg(false)] T> fn(); // OK
+type FnBad = for<#[cfg(false)] 'a, #[cfg(yes)] T> fn();
 //~^ ERROR only lifetime parameters can be used in this context
 
-type PolyGood = dyn for<#[cfg(yes)] 'a, #[cfg(FALSE)] T> Copy; // OK
-type PolyBad = dyn for<#[cfg(FALSE)] 'a, #[cfg(yes)] T> Copy;
+type PolyGood = dyn for<#[cfg(yes)] 'a, #[cfg(false)] T> Copy; // OK
+type PolyBad = dyn for<#[cfg(false)] 'a, #[cfg(yes)] T> Copy;
 //~^ ERROR only lifetime parameters can be used in this context
 
-struct WhereGood where for<#[cfg(yes)] 'a, #[cfg(FALSE)] T> u8: Copy; // OK
-struct WhereBad where for<#[cfg(FALSE)] 'a, #[cfg(yes)] T> u8: Copy;
+struct WhereGood where for<#[cfg(yes)] 'a, #[cfg(false)] T> u8: Copy; // OK
+struct WhereBad where for<#[cfg(false)] 'a, #[cfg(yes)] T> u8: Copy;
 //~^ ERROR only lifetime parameters can be used in this context
 
 fn f_lt_no<#[cfg_attr(FALSE, unknown)] 'a>() {} // OK

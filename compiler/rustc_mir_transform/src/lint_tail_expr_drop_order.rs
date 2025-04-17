@@ -512,23 +512,17 @@ struct LocalLabel<'a> {
 
 /// A custom `Subdiagnostic` implementation so that the notes are delivered in a specific order
 impl Subdiagnostic for LocalLabel<'_> {
-    fn add_to_diag_with<
-        G: rustc_errors::EmissionGuarantee,
-        F: rustc_errors::SubdiagMessageOp<G>,
-    >(
-        self,
-        diag: &mut rustc_errors::Diag<'_, G>,
-        f: &F,
-    ) {
+    fn add_to_diag<G: rustc_errors::EmissionGuarantee>(self, diag: &mut rustc_errors::Diag<'_, G>) {
         diag.arg("name", self.name);
         diag.arg("is_generated_name", self.is_generated_name);
         diag.arg("is_dropped_first_edition_2024", self.is_dropped_first_edition_2024);
-        let msg = f(diag, crate::fluent_generated::mir_transform_tail_expr_local.into());
+        let msg = diag.eagerly_translate(crate::fluent_generated::mir_transform_tail_expr_local);
         diag.span_label(self.span, msg);
         for dtor in self.destructors {
-            dtor.add_to_diag_with(diag, f);
+            dtor.add_to_diag(diag);
         }
-        let msg = f(diag, crate::fluent_generated::mir_transform_label_local_epilogue);
+        let msg =
+            diag.eagerly_translate(crate::fluent_generated::mir_transform_label_local_epilogue);
         diag.span_label(self.span, msg);
     }
 }

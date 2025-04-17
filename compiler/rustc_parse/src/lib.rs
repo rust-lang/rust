@@ -4,7 +4,6 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]

@@ -647,7 +647,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     && tc.polarity() == ty::PredicatePolarity::Positive
                     && supertrait_def_ids(tcx, tc.def_id())
                         .flat_map(|trait_did| tcx.associated_items(trait_did).in_definition_order())
-                        .any(|item| item.fn_has_self_parameter)
+                        .any(|item| item.is_method())
             })
         }) {
             return None;
@@ -3376,10 +3376,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         let (sugg_span, suggestion) = match tcx.sess.source_map().span_to_snippet(args_span) {
             Ok(string) => {
-                let coro_prefix = if string.starts_with("async") {
-                    // `async` is 5 chars long. Not using `.len()` to avoid the cast from `usize`
-                    // to `u32`.
-                    Some(5)
+                let coro_prefix = if let Some(sub) = string.strip_prefix("async") {
+                    let trimmed_sub = sub.trim_end();
+                    if trimmed_sub.ends_with("gen") {
+                        // `async` is 5 chars long.
+                        Some((trimmed_sub.len() + 5) as _)
+                    } else {
+                        // `async` is 5 chars long.
+                        Some(5)
+                    }
                 } else if string.starts_with("gen") {
                     // `gen` is 3 chars long
                     Some(3)

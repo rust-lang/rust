@@ -1,4 +1,4 @@
-use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, SubdiagMessageOp, Subdiagnostic};
+use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, Subdiagnostic};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
@@ -162,17 +162,13 @@ impl RegionExplanation<'_> {
 }
 
 impl Subdiagnostic for RegionExplanation<'_> {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("pref_kind", self.prefix);
         diag.arg("suff_kind", self.suffix);
         diag.arg("desc_kind", self.desc.kind);
         diag.arg("desc_arg", self.desc.arg);
 
-        let msg = f(diag, fluent::trait_selection_region_explanation.into());
+        let msg = diag.eagerly_translate(fluent::trait_selection_region_explanation);
         if let Some(span) = self.desc.span {
             diag.span_note(span, msg);
         } else {

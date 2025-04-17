@@ -231,9 +231,7 @@ impl MaxUniverse {
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         if let ty::Placeholder(placeholder) = t.kind() {
-            self.max_universe = ty::UniverseIndex::from_u32(
-                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
-            );
+            self.max_universe = self.max_universe.max(placeholder.universe);
         }
 
         t.super_visit_with(self)
@@ -241,9 +239,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
 
     fn visit_const(&mut self, c: ty::consts::Const<'tcx>) {
         if let ty::ConstKind::Placeholder(placeholder) = c.kind() {
-            self.max_universe = ty::UniverseIndex::from_u32(
-                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
-            );
+            self.max_universe = self.max_universe.max(placeholder.universe);
         }
 
         c.super_visit_with(self)
@@ -251,9 +247,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
         if let ty::RePlaceholder(placeholder) = r.kind() {
-            self.max_universe = ty::UniverseIndex::from_u32(
-                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
-            );
+            self.max_universe = self.max_universe.max(placeholder.universe);
         }
     }
 }

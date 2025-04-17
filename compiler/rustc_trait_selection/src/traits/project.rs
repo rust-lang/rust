@@ -1393,7 +1393,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
         coroutine_sig,
     );
 
-    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
+    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name(), sym::Output);
 
     let predicate = ty::ProjectionPredicate {
         projection_term: ty::AliasTerm::new_from_args(
@@ -1439,7 +1439,7 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
         gen_sig,
     );
 
-    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Item);
+    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name(), sym::Item);
 
     let predicate = ty::ProjectionPredicate {
         projection_term: ty::AliasTerm::new_from_args(
@@ -1485,7 +1485,7 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
         gen_sig,
     );
 
-    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Item);
+    debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name(), sym::Item);
 
     let ty::Adt(_poll_adt, args) = *yield_ty.kind() else {
         bug!();
@@ -2005,7 +2005,8 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     if !assoc_ty.item.defaultness(tcx).has_value() {
         debug!(
             "confirm_impl_candidate: no associated type {:?} for {:?}",
-            assoc_ty.item.name, obligation.predicate
+            assoc_ty.item.name(),
+            obligation.predicate
         );
         if tcx.impl_self_is_guaranteed_unsized(impl_def_id) {
             // We treat this projection as rigid here, which is represented via

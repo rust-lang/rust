@@ -1,11 +1,11 @@
 #![allow(unexpected_cfgs)] // since we want to recognize them as unexpected
 
 pub mod inner {
-    #[cfg(FALSE)] //~ NOTE the item is gated here
+    #[cfg(false)] //~ NOTE the item is gated here
     pub fn uwu() {}
     //~^ NOTE found an item that was configured out
 
-    #[cfg(FALSE)] //~ NOTE the item is gated here
+    #[cfg(false)] //~ NOTE the item is gated here
     //~^ NOTE the item is gated here
     //~| NOTE the item is gated here
     pub mod doesnt_exist {

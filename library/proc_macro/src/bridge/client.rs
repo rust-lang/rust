@@ -111,12 +111,6 @@ impl Clone for TokenStream {
     }
 }
 
-impl Clone for SourceFile {
-    fn clone(&self) -> Self {
-        self.clone()
-    }
-}
-
 impl Span {
     pub(crate) fn def_site() -> Span {
         Bridge::with(|bridge| bridge.globals.def_site)

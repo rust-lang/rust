@@ -244,6 +244,7 @@ where
 /// ```ignore(needs-extern-crate)
 /// # extern crate rustc_driver;
 /// # extern crate rustc_interface;
+/// # extern crate rustc_middle;
 /// # #[macro_use]
 /// # extern crate rustc_smir;
 /// # extern crate stable_mir;
@@ -264,6 +265,7 @@ where
 /// ```ignore(needs-extern-crate)
 /// # extern crate rustc_driver;
 /// # extern crate rustc_interface;
+/// # extern crate rustc_middle;
 /// # #[macro_use]
 /// # extern crate rustc_smir;
 /// # extern crate stable_mir;
@@ -328,6 +330,7 @@ macro_rules! run_driver {
         use rustc_driver::{Callbacks, Compilation, run_compiler};
         use rustc_middle::ty::TyCtxt;
         use rustc_interface::interface;
+        use rustc_smir::rustc_internal;
         use stable_mir::CompilerError;
         use std::ops::ControlFlow;
 

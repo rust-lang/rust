@@ -43,9 +43,11 @@ pub(super) fn compare_impl_item(
     debug!(?impl_trait_ref);
 
     match impl_item.kind {
-        ty::AssocKind::Fn => compare_impl_method(tcx, impl_item, trait_item, impl_trait_ref),
-        ty::AssocKind::Type => compare_impl_ty(tcx, impl_item, trait_item, impl_trait_ref),
-        ty::AssocKind::Const => compare_impl_const(tcx, impl_item, trait_item, impl_trait_ref),
+        ty::AssocKind::Fn { .. } => compare_impl_method(tcx, impl_item, trait_item, impl_trait_ref),
+        ty::AssocKind::Type { .. } => compare_impl_ty(tcx, impl_item, trait_item, impl_trait_ref),
+        ty::AssocKind::Const { .. } => {
+            compare_impl_const(tcx, impl_item, trait_item, impl_trait_ref)
+        }
     }
 }
 
@@ -606,7 +608,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // with placeholders, which imply nothing about outlives bounds, and then
     // prove below that the hidden types are well formed.
     let universe = infcx.create_next_universe();
-    let mut idx = 0;
+    let mut idx = ty::BoundVar::ZERO;
     let mapping: FxIndexMap<_, _> = collector
         .types
         .iter()
@@ -623,10 +625,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     tcx,
                     ty::Placeholder {
                         universe,
-                        bound: ty::BoundTy {
-                            var: ty::BoundVar::from_usize(idx),
-                            kind: ty::BoundTyKind::Anon,
-                        },
+                        bound: ty::BoundTy { var: idx, kind: ty::BoundTyKind::Anon },
                     },
                 ),
             )
@@ -654,7 +653,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 cause.span,
                 E0053,
                 "method `{}` has an incompatible return type for trait",
-                trait_m.name
+                trait_m.name()
             );
             infcx.err_ctxt().note_type_err(
                 &mut diag,
@@ -1032,11 +1031,11 @@ fn report_trait_method_mismatch<'tcx>(
         impl_err_span,
         E0053,
         "method `{}` has an incompatible type for trait",
-        trait_m.name
+        trait_m.name()
     );
     match &terr {
         TypeError::ArgumentMutability(0) | TypeError::ArgumentSorts(_, 0)
-            if trait_m.fn_has_self_parameter =>
+            if trait_m.is_method() =>
         {
             let ty = trait_sig.inputs()[0];
             let sugg = get_self_string(ty, |ty| ty == impl_trait_ref.self_ty());
@@ -1255,7 +1254,7 @@ fn compare_self_type<'tcx>(
         get_self_string(self_arg_ty, can_eq_self)
     };
 
-    match (trait_m.fn_has_self_parameter, impl_m.fn_has_self_parameter) {
+    match (trait_m.is_method(), impl_m.is_method()) {
         (false, false) | (true, true) => {}
 
         (false, true) => {
@@ -1266,14 +1265,14 @@ fn compare_self_type<'tcx>(
                 impl_m_span,
                 E0185,
                 "method `{}` has a `{}` declaration in the impl, but not in the trait",
-                trait_m.name,
+                trait_m.name(),
                 self_descr
             );
             err.span_label(impl_m_span, format!("`{self_descr}` used in impl"));
             if let Some(span) = tcx.hir_span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("trait method declared without `{self_descr}`"));
             } else {
-                err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
+                err.note_trait_signature(trait_m.name(), trait_m.signature(tcx));
             }
             return Err(err.emit_unless(delay));
         }
@@ -1286,14 +1285,14 @@ fn compare_self_type<'tcx>(
                 impl_m_span,
                 E0186,
                 "method `{}` has a `{}` declaration in the trait, but not in the impl",
-                trait_m.name,
+                trait_m.name(),
                 self_descr
             );
             err.span_label(impl_m_span, format!("expected `{self_descr}` in impl"));
             if let Some(span) = tcx.hir_span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("`{self_descr}` used in trait"));
             } else {
-                err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
+                err.note_trait_signature(trait_m.name(), trait_m.signature(tcx));
             }
 
             return Err(err.emit_unless(delay));
@@ -1363,7 +1362,7 @@ fn compare_number_of_generics<'tcx>(
     let mut err_occurred = None;
     for (kind, trait_count, impl_count) in matchings {
         if impl_count != trait_count {
-            let arg_spans = |kind: ty::AssocKind, generics: &hir::Generics<'_>| {
+            let arg_spans = |item: &ty::AssocItem, generics: &hir::Generics<'_>| {
                 let mut spans = generics
                     .params
                     .iter()
@@ -1373,7 +1372,7 @@ fn compare_number_of_generics<'tcx>(
                         } => {
                             // A fn can have an arbitrary number of extra elided lifetimes for the
                             // same signature.
-                            !matches!(kind, ty::AssocKind::Fn)
+                            !item.is_fn()
                         }
                         _ => true,
                     })
@@ -1386,7 +1385,7 @@ fn compare_number_of_generics<'tcx>(
             };
             let (trait_spans, impl_trait_spans) = if let Some(def_id) = trait_.def_id.as_local() {
                 let trait_item = tcx.hir_expect_trait_item(def_id);
-                let arg_spans: Vec<Span> = arg_spans(trait_.kind, trait_item.generics);
+                let arg_spans: Vec<Span> = arg_spans(&trait_, trait_item.generics);
                 let impl_trait_spans: Vec<Span> = trait_item
                     .generics
                     .params
@@ -1412,7 +1411,7 @@ fn compare_number_of_generics<'tcx>(
                     _ => None,
                 })
                 .collect();
-            let spans = arg_spans(impl_.kind, impl_item.generics);
+            let spans = arg_spans(&impl_, impl_item.generics);
             let span = spans.first().copied();
 
             let mut err = tcx.dcx().struct_span_err(
@@ -1421,7 +1420,7 @@ fn compare_number_of_generics<'tcx>(
                     "{} `{}` has {} {kind} parameter{} but its trait \
                      declaration has {} {kind} parameter{}",
                     item_kind,
-                    trait_.name,
+                    trait_.name(),
                     impl_count,
                     pluralize!(impl_count),
                     trait_count,
@@ -1512,7 +1511,7 @@ fn compare_number_of_method_arguments<'tcx>(
             impl_span,
             E0050,
             "method `{}` has {} but the declaration in trait `{}` has {}",
-            trait_m.name,
+            trait_m.name(),
             potentially_plural_count(impl_number_args, "parameter"),
             tcx.def_path_str(trait_m.def_id),
             trait_number_args
@@ -1527,7 +1526,7 @@ fn compare_number_of_method_arguments<'tcx>(
                 ),
             );
         } else {
-            err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
+            err.note_trait_signature(trait_m.name(), trait_m.signature(tcx));
         }
 
         err.span_label(
@@ -1581,7 +1580,7 @@ fn compare_synthetic_generics<'tcx>(
                 impl_span,
                 E0643,
                 "method `{}` has incompatible signature for trait",
-                trait_m.name
+                trait_m.name()
             );
             err.span_label(trait_span, "declaration in trait here");
             if impl_synthetic {
@@ -1703,7 +1702,7 @@ fn compare_generic_param_kinds<'tcx>(
     trait_item: ty::AssocItem,
     delay: bool,
 ) -> Result<(), ErrorGuaranteed> {
-    assert_eq!(impl_item.kind, trait_item.kind);
+    assert_eq!(impl_item.as_tag(), trait_item.as_tag());
 
     let ty_const_params_of = |def_id| {
         tcx.generics_of(def_id).own_params.iter().filter(|param| {
@@ -1741,7 +1740,7 @@ fn compare_generic_param_kinds<'tcx>(
                 E0053,
                 "{} `{}` has an incompatible generic parameter for trait `{}`",
                 impl_item.descr(),
-                trait_item.name,
+                trait_item.name(),
                 &tcx.def_path_str(tcx.parent(trait_item.def_id))
             );
 
@@ -1877,7 +1876,7 @@ fn compare_const_predicate_entailment<'tcx>(
             cause.span,
             E0326,
             "implemented const `{}` has an incompatible type for trait",
-            trait_ct.name
+            trait_ct.name()
         );
 
         let trait_c_span = trait_ct.def_id.as_local().map(|trait_ct_def_id| {
@@ -2235,16 +2234,19 @@ fn param_env_with_gat_bounds<'tcx>(
     // of the RPITITs associated with the same body. This is because checking
     // the item bounds of RPITITs often involves nested RPITITs having to prove
     // bounds about themselves.
-    let impl_tys_to_install = match impl_ty.opt_rpitit_info {
-        None => vec![impl_ty],
-        Some(
-            ty::ImplTraitInTraitData::Impl { fn_def_id }
-            | ty::ImplTraitInTraitData::Trait { fn_def_id, .. },
-        ) => tcx
+    let impl_tys_to_install = match impl_ty.kind {
+        ty::AssocKind::Type {
+            data:
+                ty::AssocTypeData::Rpitit(
+                    ty::ImplTraitInTraitData::Impl { fn_def_id }
+                    | ty::ImplTraitInTraitData::Trait { fn_def_id, .. },
+                ),
+        } => tcx
             .associated_types_for_impl_traits_in_associated_fn(fn_def_id)
             .iter()
             .map(|def_id| tcx.associated_item(*def_id))
             .collect(),
+        _ => vec![impl_ty],
     };
 
     for impl_ty in impl_tys_to_install {

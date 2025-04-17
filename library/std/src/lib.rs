@@ -312,7 +312,6 @@
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]
-#![feature(no_sanitize)]
 #![feature(optimize_attribute)]
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]

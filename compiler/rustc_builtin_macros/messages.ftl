@@ -231,8 +231,6 @@ builtin_macros_format_unused_args = multiple unused formatting arguments
 
 builtin_macros_format_use_positional = consider using a positional formatting argument instead
 
-builtin_macros_invalid_crate_attribute = invalid crate attribute
-
 builtin_macros_multiple_default_attrs = multiple `#[default]` attributes
     .note = only one `#[default]` attribute is needed
     .label = `#[default]` used here

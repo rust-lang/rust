@@ -719,6 +719,7 @@ version = "0.0.0"
 dependencies = [
  "anstyle-svg",
  "build_helper",
+ "camino",
  "colored",
  "diff",
  "getopts",
@@ -929,15 +930,6 @@ dependencies = [
  "libc",
  "libdbus-sys",
  "winapi",
-]
-
-[[package]]
-name = "deranged"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c9e6a11ca8224451684bc0d7d5a7adbf8f2fd6887261a1cfc3c0432f9d4068e"
-dependencies = [
- "powerfmt",
 ]
 
 [[package]]
@@ -1221,7 +1213,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ced92e76e966ca2fd84c8f7aa01a4aea65b0eb6648d72f7c8f3e2764a67fece"
 dependencies = [
  "crc32fast",
- "miniz_oxide 0.8.7",
+ "miniz_oxide 0.8.8",
 ]
 
 [[package]]
@@ -2291,9 +2283,9 @@ dependencies = [
 
 [[package]]
 name = "miniz_oxide"
-version = "0.8.7"
+version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff70ce3e48ae43fa075863cef62e8b43b71a4f2382229920e0df362592919430"
+checksum = "3be647b768db090acb35d5ec5db2b0e1f1de11133ca123b9eacf5137868f892a"
 dependencies = [
  "adler2",
 ]
@@ -2424,12 +2416,6 @@ checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
 dependencies = [
  "num-traits",
 ]
-
-[[package]]
-name = "num-conv"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51d515d32fb182ee37cda2ccdcb92950d6a3c2893aa280e540671c2cd0f3b1d9"
 
 [[package]]
 name = "num-integer"
@@ -2807,12 +2793,6 @@ checksum = "d8a2f0d8d040d7848a709caf78912debcc3f33ee4b3cac47d73d1e1069e83507"
 dependencies = [
  "portable-atomic",
 ]
-
-[[package]]
-name = "powerfmt"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391"
 
 [[package]]
 name = "ppv-lite86"
@@ -3616,6 +3596,7 @@ name = "rustc_driver_impl"
 version = "0.0.0"
 dependencies = [
  "ctrlc",
+ "jiff",
  "libc",
  "rustc_abi",
  "rustc_ast",
@@ -3662,7 +3643,6 @@ dependencies = [
  "rustc_ty_utils",
  "serde_json",
  "shlex",
- "time",
  "tracing",
  "windows 0.59.0",
 ]
@@ -4692,6 +4672,7 @@ name = "rustdoc-gui-test"
 version = "0.1.0"
 dependencies = [
  "build_helper",
+ "camino",
  "compiletest",
  "getopts",
  "walkdir",
@@ -5354,37 +5335,6 @@ checksum = "cd3c60906412afa9c2b5b5a48ca6a5abe5736aec9eb48ad05037a677e52e4e2d"
 dependencies = [
  "cc",
  "libc",
-]
-
-[[package]]
-name = "time"
-version = "0.3.41"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a7619e19bc266e0f9c5e6686659d394bc57973859340060a69221e57dbc0c40"
-dependencies = [
- "deranged",
- "itoa",
- "num-conv",
- "powerfmt",
- "serde",
- "time-core",
- "time-macros",
-]
-
-[[package]]
-name = "time-core"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9e9a38711f559d9e3ce1cdb06dd7c5b8ea546bc90052da6d06bb76da74bb07c"
-
-[[package]]
-name = "time-macros"
-version = "0.2.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3526739392ec93fd8b359c8e98514cb3e8e021beb4e5f597b00a0221f8ed8a49"
-dependencies = [
- "num-conv",
- "time-core",
 ]
 
 [[package]]
@@ -6111,11 +6061,13 @@ dependencies = [
 
 [[package]]
 name = "windows-bindgen"
-version = "0.59.0"
+version = "0.61.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b7fb600834d7e868f6e5bb748a86101427330fafbf9485c331b9d5f562d54a5"
+checksum = "ac1c59c20569610dd9ed784d5f003fb493ec57b4cf39d974eb03a84bb7156c90"
 dependencies = [
  "rayon",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

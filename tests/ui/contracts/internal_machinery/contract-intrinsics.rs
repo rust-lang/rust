@@ -26,11 +26,11 @@ fn main() {
     #[cfg(any(default, unchk_pass, chk_fail_requires))]
     core::intrinsics::contract_check_requires(|| false);
 
-    let doubles_to_two = { let old = 2; move |ret| ret + ret == old };
+    let doubles_to_two = { let old = 2; move |ret: &u32 | ret + ret == old };
     // Always pass
-    core::intrinsics::contract_check_ensures(&1, doubles_to_two);
+    core::intrinsics::contract_check_ensures(doubles_to_two, 1);
 
     // Fail if enabled
     #[cfg(any(default, unchk_pass, chk_fail_ensures))]
-    core::intrinsics::contract_check_ensures(&2, doubles_to_two);
+    core::intrinsics::contract_check_ensures(doubles_to_two, 2);
 }

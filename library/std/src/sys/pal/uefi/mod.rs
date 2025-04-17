@@ -13,7 +13,6 @@
 //! [`OsString`]: crate::ffi::OsString
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-pub mod args;
 pub mod env;
 pub mod helpers;
 pub mod os;

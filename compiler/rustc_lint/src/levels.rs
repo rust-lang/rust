@@ -517,11 +517,11 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
             let lint_flag_val = Symbol::intern(lint_name);
 
-            let Ok(ids) = self.store.find_lints(lint_name) else {
+            let Some(ids) = self.store.find_lints(lint_name) else {
                 // errors already handled above
                 continue;
             };
-            for id in ids {
+            for &id in ids {
                 // ForceWarn and Forbid cannot be overridden
                 if let Some(LevelAndSource { level: Level::ForceWarn | Level::Forbid, .. }) =
                     self.current_specs().get(&id)

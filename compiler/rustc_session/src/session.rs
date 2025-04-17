@@ -764,7 +764,11 @@ impl Session {
 
     /// Returns the DWARF version passed on the CLI or the default for the target.
     pub fn dwarf_version(&self) -> u32 {
-        self.opts.unstable_opts.dwarf_version.unwrap_or(self.target.default_dwarf_version)
+        self.opts
+            .cg
+            .dwarf_version
+            .or(self.opts.unstable_opts.dwarf_version)
+            .unwrap_or(self.target.default_dwarf_version)
     }
 
     pub fn stack_protector(&self) -> StackProtector {
@@ -1327,7 +1331,9 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.dcx().emit_err(errors::BranchProtectionRequiresAArch64);
     }
 
-    if let Some(dwarf_version) = sess.opts.unstable_opts.dwarf_version {
+    if let Some(dwarf_version) =
+        sess.opts.cg.dwarf_version.or(sess.opts.unstable_opts.dwarf_version)
+    {
         // DWARF 1 is not supported by LLVM and DWARF 6 is not yet finalized.
         if dwarf_version < 2 || dwarf_version > 5 {
             sess.dcx().emit_err(errors::UnsupportedDwarfVersion { dwarf_version });

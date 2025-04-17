@@ -14,31 +14,33 @@ pub(super) fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_m
 
     s.add_bounds(synstructure::AddBounds::Generics);
     s.bind_with(|_| synstructure::BindStyle::Move);
+    let try_body_fold = s.each_variant(|vi| {
+        let bindings = vi.bindings();
+        vi.construct(|_, index| {
+            let bind = &bindings[index];
+
+            // retain value of fields with #[type_foldable(identity)]
+            if has_ignore_attr(&bind.ast().attrs, "type_foldable", "identity") {
+                bind.to_token_stream()
+            } else {
+                quote! {
+                    ::rustc_middle::ty::TypeFoldable::try_fold_with(#bind, __folder)?
+                }
+            }
+        })
+    });
+
     let body_fold = s.each_variant(|vi| {
         let bindings = vi.bindings();
         vi.construct(|_, index| {
             let bind = &bindings[index];
 
-            let mut fixed = false;
-
             // retain value of fields with #[type_foldable(identity)]
-            bind.ast().attrs.iter().for_each(|x| {
-                if !x.path().is_ident("type_foldable") {
-                    return;
-                }
-                let _ = x.parse_nested_meta(|nested| {
-                    if nested.path.is_ident("identity") {
-                        fixed = true;
-                    }
-                    Ok(())
-                });
-            });
-
-            if fixed {
+            if has_ignore_attr(&bind.ast().attrs, "type_foldable", "identity") {
                 bind.to_token_stream()
             } else {
                 quote! {
-                    ::rustc_middle::ty::TypeFoldable::try_fold_with(#bind, __folder)?
+                    ::rustc_middle::ty::TypeFoldable::fold_with(#bind, __folder)
                 }
             }
         })
@@ -51,8 +53,32 @@ pub(super) fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_m
                 self,
                 __folder: &mut __F
             ) -> Result<Self, __F::Error> {
-                Ok(match self { #body_fold })
+                Ok(match self { #try_body_fold })
+            }
+
+            fn fold_with<__F: ::rustc_middle::ty::TypeFolder<::rustc_middle::ty::TyCtxt<'tcx>>>(
+                self,
+                __folder: &mut __F
+            ) -> Self {
+                match self { #body_fold }
             }
         },
     )
+}
+
+fn has_ignore_attr(attrs: &[syn::Attribute], name: &'static str, meta: &'static str) -> bool {
+    let mut ignored = false;
+    attrs.iter().for_each(|attr| {
+        if !attr.path().is_ident(name) {
+            return;
+        }
+        let _ = attr.parse_nested_meta(|nested| {
+            if nested.path.is_ident(meta) {
+                ignored = true;
+            }
+            Ok(())
+        });
+    });
+
+    ignored
 }

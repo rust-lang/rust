@@ -3,7 +3,7 @@
 // over time, but this test used to exhibit some pretty bogus messages
 // that were not remotely helpful.
 
-//@ error-pattern:requires that `'a` must outlive `'static`
+//@ dont-require-annotations: NOTE
 
 struct Invariant<'a>(Option<&'a mut &'a mut ()>);
 
@@ -14,6 +14,7 @@ fn unify<'a>(x: Option<Invariant<'a>>, f: fn(Invariant<'a>)) {
         x.unwrap()
     } else {
         mk_static() //~ ERROR lifetime may not live long enough
+                    //~| NOTE assignment requires that `'a` must outlive `'static`
     };
     f(bad);
 }

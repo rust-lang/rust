@@ -1948,7 +1948,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         self.record_lifetime_res(
             anchor_id,
-            LifetimeRes::ElidedAnchor { start: id, end: NodeId::from_u32(id.as_u32() + 1) },
+            LifetimeRes::ElidedAnchor { start: id, end: id + 1 },
             LifetimeElisionCandidate::Ignore,
         );
         self.resolve_anonymous_lifetime(&lt, anchor_id, true);
@@ -4605,6 +4605,11 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         feature_err(tcx.sess, sym, span, msg).emit();
                     }
                 };
+
+                // Fix up partial res of segment from `resolve_path` call.
+                if let Some(id) = path[0].id {
+                    self.r.partial_res_map.insert(id, PartialRes::new(Res::PrimTy(prim)));
+                }
 
                 PartialRes::with_unresolved_segments(Res::PrimTy(prim), path.len() - 1)
             }

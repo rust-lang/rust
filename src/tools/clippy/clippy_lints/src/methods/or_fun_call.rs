@@ -78,7 +78,7 @@ pub(super) fn check<'tcx>(
                 .iter()
                 .flat_map(|impl_id| cx.tcx.associated_items(impl_id).filter_by_name_unhygienic(sugg))
                 .find_map(|assoc| {
-                    if assoc.fn_has_self_parameter
+                    if assoc.is_method()
                         && cx.tcx.fn_sig(assoc.def_id).skip_binder().inputs().skip_binder().len() == 1
                     {
                         Some(assoc.def_id)

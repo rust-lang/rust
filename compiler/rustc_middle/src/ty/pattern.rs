@@ -1,13 +1,39 @@
 use std::fmt;
 
 use rustc_data_structures::intern::Interned;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::HashStable;
+use rustc_type_ir::ir_print::IrPrint;
+use rustc_type_ir::{
+    FlagComputation, Flags, {self as ir},
+};
 
+use super::TyCtxt;
 use crate::ty;
+
+pub type PatternKind<'tcx> = ir::PatternKind<TyCtxt<'tcx>>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Pattern<'tcx>(pub Interned<'tcx, PatternKind<'tcx>>);
+
+impl<'tcx> Flags for Pattern<'tcx> {
+    fn flags(&self) -> rustc_type_ir::TypeFlags {
+        match &**self {
+            ty::PatternKind::Range { start, end } => {
+                FlagComputation::for_const_kind(&start.kind()).flags
+                    | FlagComputation::for_const_kind(&end.kind()).flags
+            }
+        }
+    }
+
+    fn outer_exclusive_binder(&self) -> rustc_type_ir::DebruijnIndex {
+        match &**self {
+            ty::PatternKind::Range { start, end } => {
+                start.outer_exclusive_binder().max(end.outer_exclusive_binder())
+            }
+        }
+    }
+}
 
 impl<'tcx> std::ops::Deref for Pattern<'tcx> {
     type Target = PatternKind<'tcx>;
@@ -23,9 +49,9 @@ impl<'tcx> fmt::Debug for Pattern<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for PatternKind<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
+impl<'tcx> IrPrint<PatternKind<'tcx>> for TyCtxt<'tcx> {
+    fn print(t: &PatternKind<'tcx>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *t {
             PatternKind::Range { start, end } => {
                 write!(f, "{start}")?;
 
@@ -53,10 +79,15 @@ impl<'tcx> fmt::Debug for PatternKind<'tcx> {
             }
         }
     }
+
+    fn print_debug(t: &PatternKind<'tcx>, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Self::print(t, fmt)
+    }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-#[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
-pub enum PatternKind<'tcx> {
-    Range { start: ty::Const<'tcx>, end: ty::Const<'tcx> },
+impl<'tcx> rustc_type_ir::inherent::IntoKind for Pattern<'tcx> {
+    type Kind = PatternKind<'tcx>;
+    fn kind(self) -> Self::Kind {
+        *self
+    }
 }

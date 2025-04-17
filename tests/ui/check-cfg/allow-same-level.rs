@@ -12,7 +12,7 @@
 //@ compile-flags: --check-cfg=cfg() --cfg=unknown_but_active_cfg
 
 #[allow(unexpected_cfgs)]
-#[cfg(FALSE)]
+#[cfg(unknown_and_inactive_cfg)]
 //~^ WARNING unexpected `cfg` condition name
 fn bar() {}
 

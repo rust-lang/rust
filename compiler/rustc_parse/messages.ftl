@@ -543,7 +543,7 @@ parse_maybe_recover_from_bad_qpath_stage_2 =
     .suggestion = types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
 
 parse_maybe_recover_from_bad_type_plus =
-    expected a path on the left-hand side of `+`, not `{$ty}`
+    expected a path on the left-hand side of `+`
 
 parse_maybe_report_ambiguous_plus =
     ambiguous `+` in a type
@@ -642,7 +642,9 @@ parse_mut_on_nested_ident_pattern = `mut` must be attached to each individual bi
     .suggestion = add `mut` to each binding
 parse_mut_on_non_ident_pattern = `mut` must be followed by a named binding
     .suggestion = remove the `mut` prefix
-parse_need_plus_after_trait_object_lifetime = lifetime in trait object type must be followed by `+`
+
+parse_need_plus_after_trait_object_lifetime = lifetimes must be followed by `+` to form a trait object type
+    .suggestion = consider adding a trait bound after the potential lifetime bound
 
 parse_nested_adt = `{$kw_str}` definition cannot be nested inside `{$keyword}`
     .suggestion = consider creating a new `{$kw_str}` definition instead of nesting
@@ -805,9 +807,6 @@ parse_trait_alias_cannot_be_unsafe = trait aliases cannot be `unsafe`
 
 parse_transpose_dyn_or_impl = `for<...>` expected after `{$kw}`, not before
     .suggestion = move `{$kw}` before the `for<...>`
-
-parse_type_ascription_removed =
-    if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 parse_unclosed_unicode_escape = unterminated unicode escape
     .label = missing a closing `{"}"}`

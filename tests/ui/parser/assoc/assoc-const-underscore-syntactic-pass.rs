@@ -4,7 +4,7 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 const _: () = {
     pub trait A {
         const _: () = ();

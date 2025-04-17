@@ -20,7 +20,7 @@ impl SingleAttributeParser for TransparencyParser {
     fn convert(cx: &AcceptContext<'_>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         match args.name_value().and_then(|nv| nv.value_as_str()) {
             Some(sym::transparent) => Some(Transparency::Transparent),
-            Some(sym::semitransparent) => Some(Transparency::SemiTransparent),
+            Some(sym::semiopaque | sym::semitransparent) => Some(Transparency::SemiOpaque),
             Some(sym::opaque) => Some(Transparency::Opaque),
             Some(other) => {
                 cx.dcx().span_err(cx.attr_span, format!("unknown macro transparency: `{other}`"));

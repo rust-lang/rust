@@ -1,5 +1,4 @@
 //@ compile-flags: --passes unknown-pass
-//@ error-pattern: the `passes` flag no longer functions
 
 #![doc(no_default_passes)]
 //~^ ERROR unknown `doc` attribute `no_default_passes`

@@ -408,7 +408,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
             let gat_def_id = gat_item.def_id.expect_local();
             let gat_item = tcx.associated_item(gat_def_id);
             // If this item is not an assoc ty, or has no args, then it's not a GAT
-            if gat_item.kind != ty::AssocKind::Type {
+            if !gat_item.is_type() {
                 continue;
             }
             let gat_generics = tcx.generics_of(gat_def_id);
@@ -432,7 +432,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
 
                 let item_required_bounds = match tcx.associated_item(item_def_id).kind {
                     // In our example, this corresponds to `into_iter` method
-                    ty::AssocKind::Fn => {
+                    ty::AssocKind::Fn { .. } => {
                         // For methods, we check the function signature's return type for any GATs
                         // to constrain. In the `into_iter` case, we see that the return type
                         // `Self::Iter<'a>` is a GAT we want to gather any potential missing bounds from.
@@ -453,7 +453,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
                         )
                     }
                     // In our example, this corresponds to the `Iter` and `Item` associated types
-                    ty::AssocKind::Type => {
+                    ty::AssocKind::Type { .. } => {
                         // If our associated item is a GAT with missing bounds, add them to
                         // the param-env here. This allows this GAT to propagate missing bounds
                         // to other GATs.
@@ -474,7 +474,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
                             gat_generics,
                         )
                     }
-                    ty::AssocKind::Const => None,
+                    ty::AssocKind::Const { .. } => None,
                 };
 
                 if let Some(item_required_bounds) = item_required_bounds {
@@ -1076,7 +1076,7 @@ fn check_associated_item(
         };
 
         match item.kind {
-            ty::AssocKind::Const => {
+            ty::AssocKind::Const { .. } => {
                 let ty = tcx.type_of(item.def_id).instantiate_identity();
                 let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());
@@ -1089,7 +1089,7 @@ fn check_associated_item(
                 );
                 Ok(())
             }
-            ty::AssocKind::Fn => {
+            ty::AssocKind::Fn { .. } => {
                 let sig = tcx.fn_sig(item.def_id).instantiate_identity();
                 let hir_sig = sig_if_method.expect("bad signature for method");
                 check_fn_or_method(
@@ -1101,7 +1101,7 @@ fn check_associated_item(
                 );
                 check_method_receiver(wfcx, hir_sig, item, self_ty)
             }
-            ty::AssocKind::Type => {
+            ty::AssocKind::Type { .. } => {
                 if let ty::AssocItemContainer::Trait = item.container {
                     check_associated_type_bounds(wfcx, item, span)
                 }
@@ -1716,7 +1716,7 @@ fn check_method_receiver<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = wfcx.tcx();
 
-    if !method.fn_has_self_parameter {
+    if !method.is_method() {
         return Ok(());
     }
 

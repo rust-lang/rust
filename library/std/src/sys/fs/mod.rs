@@ -20,6 +20,7 @@ cfg_if::cfg_if! {
         mod windows;
         use windows as imp;
         pub use windows::{symlink_inner, junction_point};
+        use crate::sys::path::with_native_path;
     } else if #[cfg(target_os = "hermit")] {
         mod hermit;
         use hermit as imp;
@@ -39,7 +40,7 @@ cfg_if::cfg_if! {
 }
 
 // FIXME: Replace this with platform-specific path conversion functions.
-#[cfg(not(target_family = "unix"))]
+#[cfg(not(any(target_family = "unix", target_os = "windows")))]
 #[inline]
 pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> io::Result<T> {
     f(path)
@@ -51,7 +52,7 @@ pub use imp::{
 };
 
 pub fn read_dir(path: &Path) -> io::Result<ReadDir> {
-    // FIXME: use with_native_path
+    // FIXME: use with_native_path on all platforms
     imp::readdir(path)
 }
 
@@ -68,8 +69,11 @@ pub fn remove_dir(path: &Path) -> io::Result<()> {
 }
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
-    // FIXME: use with_native_path
-    imp::remove_dir_all(path)
+    // FIXME: use with_native_path on all platforms
+    #[cfg(not(windows))]
+    return imp::remove_dir_all(path);
+    #[cfg(windows)]
+    with_native_path(path, &imp::remove_dir_all)
 }
 
 pub fn read_link(path: &Path) -> io::Result<PathBuf> {
@@ -77,6 +81,10 @@ pub fn read_link(path: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
+    // FIXME: use with_native_path on all platforms
+    #[cfg(windows)]
+    return imp::symlink(original, link);
+    #[cfg(not(windows))]
     with_native_path(original, &|original| {
         with_native_path(link, &|link| imp::symlink(original, link))
     })
@@ -105,11 +113,17 @@ pub fn canonicalize(path: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    // FIXME: use with_native_path
-    imp::copy(from, to)
+    // FIXME: use with_native_path on all platforms
+    #[cfg(not(windows))]
+    return imp::copy(from, to);
+    #[cfg(windows)]
+    with_native_path(from, &|from| with_native_path(to, &|to| imp::copy(from, to)))
 }
 
 pub fn exists(path: &Path) -> io::Result<bool> {
-    // FIXME: use with_native_path
-    imp::exists(path)
+    // FIXME: use with_native_path on all platforms
+    #[cfg(not(windows))]
+    return imp::exists(path);
+    #[cfg(windows)]
+    with_native_path(path, &imp::exists)
 }

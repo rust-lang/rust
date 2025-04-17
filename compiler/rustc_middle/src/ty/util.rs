@@ -819,7 +819,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Get an English description for the item's kind.
     pub fn def_kind_descr(self, def_kind: DefKind, def_id: DefId) -> &'static str {
         match def_kind {
-            DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "method",
+            DefKind::AssocFn if self.associated_item(def_id).is_method() => "method",
             DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
                     hir::CoroutineKind::Desugared(
@@ -873,7 +873,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Gets an English article for the [`TyCtxt::def_kind_descr`].
     pub fn def_kind_descr_article(self, def_kind: DefKind, def_id: DefId) -> &'static str {
         match def_kind {
-            DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "a",
+            DefKind::AssocFn if self.associated_item(def_id).is_method() => "a",
             DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, ..) => "an",
@@ -1644,6 +1644,42 @@ pub fn needs_drop_components_with_async<'tcx>(
 /// folder.tcx().intern_*(&v)
 /// ```
 pub fn fold_list<'tcx, F, L, T>(
+    list: L,
+    folder: &mut F,
+    intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> L,
+) -> L
+where
+    F: TypeFolder<TyCtxt<'tcx>>,
+    L: AsRef<[T]>,
+    T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy,
+{
+    let slice = list.as_ref();
+    let mut iter = slice.iter().copied();
+    // Look for the first element that changed
+    match iter.by_ref().enumerate().find_map(|(i, t)| {
+        let new_t = t.fold_with(folder);
+        if new_t != t { Some((i, new_t)) } else { None }
+    }) {
+        Some((i, new_t)) => {
+            // An element changed, prepare to intern the resulting list
+            let mut new_list = SmallVec::<[_; 8]>::with_capacity(slice.len());
+            new_list.extend_from_slice(&slice[..i]);
+            new_list.push(new_t);
+            for t in iter {
+                new_list.push(t.fold_with(folder))
+            }
+            intern(folder.cx(), &new_list)
+        }
+        None => list,
+    }
+}
+
+/// Does the equivalent of
+/// ```ignore (illustrative)
+/// let v = self.iter().map(|p| p.try_fold_with(folder)).collect::<SmallVec<[_; 8]>>();
+/// folder.tcx().intern_*(&v)
+/// ```
+pub fn try_fold_list<'tcx, F, L, T>(
     list: L,
     folder: &mut F,
     intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> L,
