@@ -2065,7 +2065,8 @@ fn collect_print_requests(
             check_print_request_stability(early_dcx, unstable_opts, (print_name, *print_kind));
             *print_kind
         } else {
-            emit_unknown_print_request_help(early_dcx, req)
+            let is_nightly = nightly_options::match_is_nightly_build(matches);
+            emit_unknown_print_request_help(early_dcx, req, is_nightly)
         };
 
         let out = out.unwrap_or(OutFileName::Stdout);
@@ -2089,25 +2090,37 @@ fn check_print_request_stability(
     unstable_opts: &UnstableOptions,
     (print_name, print_kind): (&str, PrintKind),
 ) {
+    if !is_print_request_stable(print_kind) && !unstable_opts.unstable_options {
+        early_dcx.early_fatal(format!(
+            "the `-Z unstable-options` flag must also be passed to enable the `{print_name}` \
+                print option"
+        ));
+    }
+}
+
+fn is_print_request_stable(print_kind: PrintKind) -> bool {
     match print_kind {
         PrintKind::AllTargetSpecsJson
         | PrintKind::CheckCfg
         | PrintKind::CrateRootLintLevels
         | PrintKind::SupportedCrateTypes
-        | PrintKind::TargetSpecJson
-            if !unstable_opts.unstable_options =>
-        {
-            early_dcx.early_fatal(format!(
-                "the `-Z unstable-options` flag must also be passed to enable the `{print_name}` \
-                print option"
-            ));
-        }
-        _ => {}
+        | PrintKind::TargetSpecJson => false,
+        _ => true,
     }
 }
 
-fn emit_unknown_print_request_help(early_dcx: &EarlyDiagCtxt, req: &str) -> ! {
-    let prints = PRINT_KINDS.iter().map(|(name, _)| format!("`{name}`")).collect::<Vec<_>>();
+fn emit_unknown_print_request_help(early_dcx: &EarlyDiagCtxt, req: &str, is_nightly: bool) -> ! {
+    let prints = PRINT_KINDS
+        .iter()
+        .filter_map(|(name, kind)| {
+            // If we're not on nightly, we don't want to print unstable options
+            if !is_nightly && !is_print_request_stable(*kind) {
+                None
+            } else {
+                Some(format!("`{name}`"))
+            }
+        })
+        .collect::<Vec<_>>();
     let prints = prints.join(", ");
 
     let mut diag = early_dcx.early_struct_fatal(format!("unknown print request: `{req}`"));
