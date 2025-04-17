@@ -1202,7 +1202,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            if self.token.kind.is_close_delim().is_some() || self.token.kind == token::Comma {
+            if self.token.kind.close_delim().is_some() || self.token.kind == token::Comma {
                 break;
             } else if trailing_dot.is_none() {
                 // This loop should only repeat if there is a trailing dot.
@@ -1680,7 +1680,7 @@ impl<'a> Parser<'a> {
             self.parse_expr_block(label, lo, BlockCheckMode::Default)
         } else if !ate_colon
             && self.may_recover()
-            && (self.token.kind.is_close_delim().is_some() || self.token.is_punct())
+            && (self.token.kind.close_delim().is_some() || self.token.is_punct())
             && could_be_unclosed_char_literal(label_.ident)
         {
             let (lit, _) =
@@ -2268,7 +2268,7 @@ impl<'a> Parser<'a> {
     }
 
     fn is_array_like_block(&mut self) -> bool {
-        matches!(self.token.kind, TokenKind::OpenBrace)
+        self.token.kind == TokenKind::OpenBrace
             && self
                 .look_ahead(1, |t| matches!(t.kind, TokenKind::Ident(..) | TokenKind::Literal(_)))
             && self.look_ahead(2, |t| t == &token::Comma)
@@ -2477,7 +2477,7 @@ impl<'a> Parser<'a> {
     fn parse_closure_block_body(&mut self, ret_span: Span) -> PResult<'a, P<Expr>> {
         if self.may_recover()
             && self.token.can_begin_expr()
-            && !matches!(self.token.kind, TokenKind::OpenBrace)
+            && self.token.kind != TokenKind::OpenBrace
             && !self.token.is_metavar_block()
         {
             let snapshot = self.create_snapshot_for_diagnostic();
@@ -2958,7 +2958,7 @@ impl<'a> Parser<'a> {
         let (pat, expr) = self.parse_for_head()?;
         // Recover from missing expression in `for` loop
         if matches!(expr.kind, ExprKind::Block(..))
-            && !matches!(self.token.kind, token::OpenBrace)
+            && self.token.kind != token::OpenBrace
             && self.may_recover()
         {
             let guar = self

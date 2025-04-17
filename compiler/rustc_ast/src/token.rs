@@ -573,10 +573,10 @@ impl TokenKind {
     }
 
     pub fn is_delim(&self) -> bool {
-        self.is_open_delim().is_some() | self.is_close_delim().is_some()
+        self.open_delim().is_some() || self.close_delim().is_some()
     }
 
-    pub fn is_open_delim(&self) -> Option<Delimiter> {
+    pub fn open_delim(&self) -> Option<Delimiter> {
         match *self {
             OpenParen => Some(Delimiter::Parenthesis),
             OpenBrace => Some(Delimiter::Brace),
@@ -586,7 +586,7 @@ impl TokenKind {
         }
     }
 
-    pub fn is_close_delim(&self) -> Option<Delimiter> {
+    pub fn close_delim(&self) -> Option<Delimiter> {
         match *self {
             CloseParen => Some(Delimiter::Parenthesis),
             CloseBrace => Some(Delimiter::Brace),

@@ -401,7 +401,7 @@ impl<'a> Parser<'a> {
         let ident = if self.token.is_ident()
             && (!is_const || self.look_ahead(1, |t| *t == token::OpenParen))
             && self.look_ahead(1, |t| {
-                [token::Lt, token::OpenBrace, token::OpenParen].contains(&t.kind)
+                matches!(t.kind, token::Lt | token::OpenBrace | token::OpenParen)
             }) {
             self.parse_ident().unwrap()
         } else {

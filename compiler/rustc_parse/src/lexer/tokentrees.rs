@@ -18,7 +18,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 
         let mut buf = Vec::new();
         loop {
-            if let Some(delim) = self.token.kind.is_open_delim() {
+            if let Some(delim) = self.token.kind.open_delim() {
                 // Invisible delimiters cannot occur here because `TokenTreesReader` parses
                 // code directly from strings, with no macro expansion involved.
                 debug_assert!(!matches!(delim, Delimiter::Invisible(_)));
@@ -26,7 +26,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     Ok(val) => val,
                     Err(errs) => return Err(errs),
                 })
-            } else if let Some(delim) = self.token.kind.is_close_delim() {
+            } else if let Some(delim) = self.token.kind.close_delim() {
                 // Invisible delimiters cannot occur here because `TokenTreesReader` parses
                 // code directly from strings, with no macro expansion involved.
                 debug_assert!(!matches!(delim, Delimiter::Invisible(_)));
@@ -35,7 +35,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 } else {
                     Err(vec![self.close_delim_err(delim)])
                 };
-            } else if let token::Eof = self.token.kind {
+            } else if self.token.kind == token::Eof {
                 return if is_delimited {
                     Err(vec![self.eof_err()])
                 } else {
@@ -106,7 +106,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
         let sm = self.psess.source_map();
 
-        let close_spacing = if let Some(close_delim) = self.token.kind.is_close_delim() {
+        let close_spacing = if let Some(close_delim) = self.token.kind.close_delim() {
             if close_delim == open_delim {
                 // Correct delimiter.
                 let (open_brace, open_brace_span) = self.diag_info.open_braces.pop().unwrap();

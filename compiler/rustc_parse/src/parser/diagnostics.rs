@@ -1033,7 +1033,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Expr>> {
         err.span_label(lo.to(decl_hi), "while parsing the body of this closure");
         let guar = match before.kind {
-            token::OpenBrace if !matches!(token.kind, token::OpenBrace) => {
+            token::OpenBrace if token.kind != token::OpenBrace => {
                 // `{ || () }` should have been `|| { () }`
                 err.multipart_suggestion(
                     "you might have meant to open the body of the closure, instead of enclosing \
@@ -1048,7 +1048,7 @@ impl<'a> Parser<'a> {
                 self.eat_to_tokens(&[exp!(CloseBrace)]);
                 guar
             }
-            token::OpenParen if !matches!(token.kind, token::OpenBrace) => {
+            token::OpenParen if token.kind != token::OpenBrace => {
                 // We are within a function call or tuple, we can emit the error
                 // and recover.
                 self.eat_to_tokens(&[exp!(CloseParen), exp!(Comma)]);
@@ -1063,7 +1063,7 @@ impl<'a> Parser<'a> {
                 );
                 err.emit()
             }
-            _ if !matches!(token.kind, token::OpenBrace) => {
+            _ if token.kind != token::OpenBrace => {
                 // We don't have a heuristic to correctly identify where the block
                 // should be closed.
                 err.multipart_suggestion_verbose(
@@ -1462,7 +1462,7 @@ impl<'a> Parser<'a> {
                         let modifiers = [(token::Lt, 1), (token::Gt, -1), (token::Shr, -2)];
                         self.consume_tts(1, &modifiers);
 
-                        if !&[token::OpenParen, token::PathSep].contains(&self.token.kind) {
+                        if !matches!(self.token.kind, token::OpenParen | token::PathSep) {
                             // We don't have `foo< bar >(` or `foo< bar >::`, so we rewind the
                             // parser and bail out.
                             self.restore_snapshot(snapshot);

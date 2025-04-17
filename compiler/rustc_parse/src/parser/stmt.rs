@@ -864,7 +864,7 @@ impl<'a> Parser<'a> {
             StmtKind::Expr(expr)
                 if classify::expr_requires_semi_to_be_stmt(expr)
                     && !expr.attrs.is_empty()
-                    && ![token::Eof, token::Semi, token::CloseBrace].contains(&self.token.kind) =>
+                    && !matches!(self.token.kind, token::Eof | token::Semi | token::CloseBrace) =>
             {
                 // The user has written `#[attr] expr` which is unsupported. (#106020)
                 let guar = self.attr_on_non_tail_expr(&expr);

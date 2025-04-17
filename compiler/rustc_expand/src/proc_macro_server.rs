@@ -309,8 +309,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 }
 
                 OpenParen | CloseParen | OpenBrace | CloseBrace | OpenBracket | CloseBracket
-                | OpenInvisible(_) | CloseInvisible(_) => unreachable!(),
-                Eof => unreachable!(),
+                | OpenInvisible(_) | CloseInvisible(_) | Eof => unreachable!(),
             }
         }
         trees

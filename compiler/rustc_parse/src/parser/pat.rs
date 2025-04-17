@@ -323,7 +323,7 @@ impl<'a> Parser<'a> {
     fn eat_or_separator(&mut self, lo: Option<Span>) -> EatOrResult {
         if self.recover_trailing_vert(lo) {
             EatOrResult::TrailingVert
-        } else if matches!(self.token.kind, token::OrOr) {
+        } else if self.token.kind == token::OrOr {
             // Found `||`; Recover and pretend we parsed `|`.
             self.dcx().emit_err(UnexpectedVertVertInPattern { span: self.token.span, start: lo });
             self.bump();
@@ -364,7 +364,7 @@ impl<'a> Parser<'a> {
                     span: self.token.span,
                     start: lo,
                     token: self.token,
-                    note_double_vert: matches!(self.token.kind, token::OrOr),
+                    note_double_vert: self.token.kind == token::OrOr,
                 });
                 self.bump();
                 true
@@ -835,7 +835,7 @@ impl<'a> Parser<'a> {
             // because we never have `'a: label {}` in a pattern position anyways, but it does
             // keep us from suggesting something like `let 'a: Ty = ..` => `let 'a': Ty = ..`
             && could_be_unclosed_char_literal(lt)
-            && !self.look_ahead(1, |token| matches!(token.kind, token::Colon))
+            && !self.look_ahead(1, |token| token.kind == token::Colon)
         {
             // Recover a `'a` as a `'a'` literal
             let lt = self.expect_lifetime();

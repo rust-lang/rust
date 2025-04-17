@@ -502,12 +502,12 @@ fn make_attr_token_stream(
     for flat_token in iter {
         match flat_token {
             FlatToken::Token((token @ Token { kind, span }, spacing)) => {
-                if let Some(delim) = kind.is_open_delim() {
+                if let Some(delim) = kind.open_delim() {
                     stack_rest.push(mem::replace(
                         &mut stack_top,
                         FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] },
                     ));
-                } else if let Some(delim) = kind.is_close_delim() {
+                } else if let Some(delim) = kind.close_delim() {
                     let frame_data = mem::replace(&mut stack_top, stack_rest.pop().unwrap());
                     let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
                     assert!(

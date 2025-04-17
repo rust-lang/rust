@@ -355,7 +355,7 @@ impl<'a> Parser<'a> {
                 }
             }
         } else if self.check_keyword(exp!(Unsafe))
-            && self.look_ahead(1, |tok| matches!(tok.kind, token::Lt))
+            && self.look_ahead(1, |tok| tok.kind == token::Lt)
         {
             self.parse_unsafe_binder_ty()?
         } else {

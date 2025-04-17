@@ -1300,7 +1300,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
     use mbe::TokenTree;
 
     if let TokenTree::Token(Token { kind, .. }) = tok
-        && kind.is_close_delim().is_some()
+        && kind.close_delim().is_some()
     {
         // closing a token tree can never be matched by any fragment;
         // iow, we always require that `(` and `)` match, etc.

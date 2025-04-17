@@ -103,7 +103,7 @@ impl<'a> Parser<'a> {
                 _ => false,
             },
             NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
-                token.kind.is_close_delim().is_none()
+                token.kind.close_delim().is_none()
             }
         }
     }

@@ -547,7 +547,7 @@ impl<'a> Parser<'a> {
                         matches!(t.kind, token::Gt | token::Comma | token::Colon | token::Eq)
                         // Recovery-only branch -- this could be removed,
                         // since it only affects diagnostics currently.
-                            || matches!(t.kind, token::Question)
+                            || t.kind == token::Question
                     })
                 || self.is_keyword_ahead(start + 1, &[kw::Const]))
     }

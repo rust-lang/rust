@@ -1476,7 +1476,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a single token tree from the input.
     pub fn parse_token_tree(&mut self) -> TokenTree {
-        if self.token.kind.is_open_delim().is_some() {
+        if self.token.kind.open_delim().is_some() {
             // Clone the `TokenTree::Delimited` that we are currently
             // within. That's what we are going to return.
             let tree = self.token_cursor.stack.last().unwrap().curr().unwrap().clone();
@@ -1493,7 +1493,7 @@ impl<'a> Parser<'a> {
                 // can capture these tokens if necessary.
                 self.bump();
                 if self.token_cursor.stack.len() == target_depth {
-                    debug_assert!(self.token.kind.is_close_delim().is_some());
+                    debug_assert!(self.token.kind.close_delim().is_some());
                     break;
                 }
             }
