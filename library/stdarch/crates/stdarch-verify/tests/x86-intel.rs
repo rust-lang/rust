@@ -67,7 +67,7 @@ static TUPLE: Type = Type::Tuple;
 static CPUID: Type = Type::CpuidResult;
 static NEVER: Type = Type::Never;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 enum Type {
     PrimFloat(u8),
     PrimSigned(u8),
@@ -520,7 +520,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
 
     // Make sure we've got the right return type.
     if let Some(t) = rust.ret {
-        equate(t, &intel.return_.type_, "", rust.name, false)?;
+        equate(t, &intel.return_.type_, "", intel, false)?;
     } else if !intel.return_.type_.is_empty() && intel.return_.type_ != "void" {
         bail!(
             "{} returns `{}` with intel, void in rust",
@@ -542,7 +542,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         }
         for (i, (a, b)) in intel.parameters.iter().zip(rust.arguments).enumerate() {
             let is_const = rust.required_const.contains(&i);
-            equate(b, &a.type_, &a.etype, &intel.name, is_const)?;
+            equate(b, &a.type_, &a.etype, &intel, is_const)?;
         }
     }
 
@@ -655,11 +655,59 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
     Ok(())
 }
 
+fn pointed_type(intrinsic: &Intrinsic) -> Result<Type, String> {
+    Ok(
+        if intrinsic.tech == "AMX"
+            || intrinsic
+                .cpuid
+                .iter()
+                .any(|cpuid| matches!(&**cpuid, "KEYLOCKER" | "KEYLOCKER_WIDE" | "XSAVE" | "FXSR"))
+        {
+            // AMX, KEYLOCKER and XSAVE intrinsics should take `*u8`
+            U8
+        } else if intrinsic.name == "_mm_clflush" {
+            // Just a false match in the following logic
+            U8
+        } else if ["_mm_storeu_si", "_mm_loadu_si"]
+            .iter()
+            .any(|x| intrinsic.name.starts_with(x))
+        {
+            // These have already been stabilized, so cannot be changed anymore
+            U8
+        } else if intrinsic.name.ends_with("i8") {
+            I8
+        } else if intrinsic.name.ends_with("i16") {
+            I16
+        } else if intrinsic.name.ends_with("i32") {
+            I32
+        } else if intrinsic.name.ends_with("i64") {
+            I64
+        } else if intrinsic.name.ends_with("i128") {
+            M128I
+        } else if intrinsic.name.ends_with("i256") {
+            M256I
+        } else if intrinsic.name.ends_with("i512") {
+            M512I
+        } else if intrinsic.name.ends_with("h") {
+            F16
+        } else if intrinsic.name.ends_with("s") {
+            F32
+        } else if intrinsic.name.ends_with("d") {
+            F64
+        } else {
+            bail!(
+                "Don't know what type of *void to use for {}",
+                intrinsic.name
+            );
+        },
+    )
+}
+
 fn equate(
     t: &Type,
     intel: &str,
     etype: &str,
-    intrinsic: &str,
+    intrinsic: &Intrinsic,
     is_const: bool,
 ) -> Result<(), String> {
     // Make pointer adjacent to the type: float * foo => float* foo
@@ -676,7 +724,7 @@ fn equate(
     if etype == "IMM" || intel == "constexpr int" {
         // The _bittest intrinsics claim to only accept immediates but actually
         // accept run-time values as well.
-        if !is_const && !intrinsic.starts_with("_bittest") {
+        if !is_const && !intrinsic.name.starts_with("_bittest") {
             bail!("argument required to be const but isn't");
         }
     } else {
@@ -723,7 +771,16 @@ fn equate(
         (&Type::MMASK16, "__mmask16") => {}
         (&Type::MMASK8, "__mmask8") => {}
 
-        (&Type::MutPtr(_), "void*") => {}
+        (&Type::MutPtr(_type), "void*") | (&Type::ConstPtr(_type), "void const*") => {
+            let pointed_type = pointed_type(intrinsic)?;
+            if _type != &pointed_type {
+                bail!(
+                    "incorrect void pointer type {_type:?} in {}, should be pointer to {pointed_type:?}",
+                    intrinsic.name,
+                );
+            }
+        }
+
         (&Type::MutPtr(&Type::PrimFloat(32)), "float*") => {}
         (&Type::MutPtr(&Type::PrimFloat(64)), "double*") => {}
         (&Type::MutPtr(&Type::PrimSigned(8)), "char*") => {}
@@ -752,7 +809,6 @@ fn equate(
         (&Type::MutPtr(&Type::M512I), "__m512i*") => {}
         (&Type::MutPtr(&Type::M512D), "__m512d*") => {}
 
-        (&Type::ConstPtr(_), "void const*") => {}
         (&Type::ConstPtr(&Type::PrimFloat(16)), "_Float16 const*") => {}
         (&Type::ConstPtr(&Type::PrimFloat(32)), "float const*") => {}
         (&Type::ConstPtr(&Type::PrimFloat(64)), "double const*") => {}
@@ -792,34 +848,32 @@ fn equate(
         // This is a macro (?) in C which seems to mutate its arguments, but
         // that means that we're taking pointers to arguments in rust
         // as we're not exposing it as a macro.
-        (&Type::MutPtr(&Type::M128), "__m128") if intrinsic == "_MM_TRANSPOSE4_PS" => {}
+        (&Type::MutPtr(&Type::M128), "__m128") if intrinsic.name == "_MM_TRANSPOSE4_PS" => {}
 
         // The _rdtsc intrinsic uses a __int64 return type, but this is a bug in
         // the intrinsics guide: https://github.com/rust-lang/stdarch/issues/559
         // We have manually fixed the bug by changing the return type to `u64`.
-        (&Type::PrimUnsigned(64), "__int64") if intrinsic == "_rdtsc" => {}
+        (&Type::PrimUnsigned(64), "__int64") if intrinsic.name == "_rdtsc" => {}
 
         // The _bittest and _bittest64 intrinsics takes a mutable pointer in the
         // intrinsics guide even though it never writes through the pointer:
-        (&Type::ConstPtr(&Type::PrimSigned(32)), "__int32*") if intrinsic == "_bittest" => {}
-        (&Type::ConstPtr(&Type::PrimSigned(64)), "__int64*") if intrinsic == "_bittest64" => {}
+        (&Type::ConstPtr(&Type::PrimSigned(32)), "__int32*") if intrinsic.name == "_bittest" => {}
+        (&Type::ConstPtr(&Type::PrimSigned(64)), "__int64*") if intrinsic.name == "_bittest64" => {}
         // The _xrstor, _fxrstor, _xrstor64, _fxrstor64 intrinsics take a
         // mutable pointer in the intrinsics guide even though they never write
         // through the pointer:
         (&Type::ConstPtr(&Type::PrimUnsigned(8)), "void*")
-            if intrinsic == "_xrstor"
-                || intrinsic == "_xrstor64"
-                || intrinsic == "_fxrstor"
-                || intrinsic == "_fxrstor64" => {}
+            if matches!(
+                &*intrinsic.name,
+                "_xrstor" | "_xrstor64" | "_fxrstor" | "_fxrstor64"
+            ) => {}
         // The _mm_stream_load_si128 intrinsic take a mutable pointer in the intrinsics
         // guide even though they never write through the pointer
-        (&Type::ConstPtr(&Type::M128I), "void*") if intrinsic == "_mm_stream_load_si128" => {}
+        (&Type::ConstPtr(&Type::M128I), "void*") if intrinsic.name == "_mm_stream_load_si128" => {}
 
         _ => bail!(
-            "failed to equate: `{}` and {:?} for {}",
-            intel,
-            t,
-            intrinsic
+            "failed to equate: `{intel}` and {t:?} for {}",
+            intrinsic.name
         ),
     }
     Ok(())
