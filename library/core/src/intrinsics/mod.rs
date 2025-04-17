@@ -1327,6 +1327,8 @@ pub const fn unlikely(b: bool) -> bool {
 /// any safety invariants.
 ///
 /// The public form of this instrinsic is [`core::hint::select_unpredictable`].
+/// However unlike the public form, the intrinsic will not drop the value that
+/// is not selected.
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
