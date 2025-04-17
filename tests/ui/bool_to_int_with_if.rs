@@ -157,3 +157,27 @@ fn if_let(a: Enum, b: Enum) {
         0
     };
 }
+
+fn issue14628() {
+    macro_rules! mac {
+        (if $cond:expr, $then:expr, $else:expr) => {
+            if $cond { $then } else { $else }
+        };
+        (zero) => {
+            0
+        };
+        (one) => {
+            1
+        };
+    }
+
+    let _ = if dbg!(4 > 0) { 1 } else { 0 };
+    //~^ bool_to_int_with_if
+
+    let _ = dbg!(if 4 > 0 { 1 } else { 0 });
+    //~^ bool_to_int_with_if
+
+    let _ = mac!(if 4 > 0, 1, 0);
+    let _ = if 4 > 0 { mac!(one) } else { 0 };
+    let _ = if 4 > 0 { 1 } else { mac!(zero) };
+}
