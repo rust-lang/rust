@@ -269,6 +269,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
             },
+            DerefPattern(pointee_ty) => reveal_and_alloc(cx, once(pointee_ty.inner())),
             Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
             | F128Range(..) | Str(..) | Opaque(..) | Never | NonExhaustive | Hidden | Missing
             | PrivateUninhabited | Wildcard => &[],
@@ -296,7 +297,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 }
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
             },
-            Ref => 1,
+            Ref | DerefPattern(_) => 1,
             Slice(slice) => slice.arity(),
             Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
             | F128Range(..) | Str(..) | Opaque(..) | Never | NonExhaustive | Hidden | Missing
@@ -493,11 +494,15 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     ),
                 };
             }
-            PatKind::DerefPattern { .. } => {
-                // FIXME(deref_patterns): At least detect that `box _` is irrefutable.
-                fields = vec![];
-                arity = 0;
-                ctor = Opaque(OpaqueId::new());
+            PatKind::DerefPattern { subpattern, .. } => {
+                // NB(deref_patterns): This assumes the deref pattern is matching on a trusted
+                // `DerefPure` type. If the `Deref` impl isn't trusted, exhaustiveness must take
+                // into account that multiple calls to deref may return different results. Hence
+                // multiple deref! patterns cannot be exhaustive together unless each is exhaustive
+                // by itself.
+                fields = vec![self.lower_pat(subpattern).at_index(0)];
+                arity = 1;
+                ctor = DerefPattern(cx.reveal_opaque_ty(subpattern.ty));
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
                 match ty.kind() {
@@ -874,6 +879,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 print::write_ref_like(&mut s, pat.ty().inner(), &print(&pat.fields[0])).unwrap();
                 s
             }
+            DerefPattern(_) => format!("deref!({})", print(&pat.fields[0])),
             Slice(slice) => {
                 let (prefix_len, has_dot_dot) = match slice.kind {
                     SliceKind::FixedLen(len) => (len, false),
