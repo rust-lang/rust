@@ -92,16 +92,20 @@ where
             let ty::Dynamic(bounds, _, _) = goal.predicate.self_ty().kind() else {
                 panic!("expected object type in `probe_and_consider_object_bound_candidate`");
             };
-            ecx.add_goals(
-                GoalSource::ImplWhereBound,
-                structural_traits::predicates_for_object_candidate(
-                    ecx,
-                    goal.param_env,
-                    goal.predicate.trait_ref(cx),
-                    bounds,
-                ),
-            );
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            match structural_traits::predicates_for_object_candidate(
+                ecx,
+                goal.param_env,
+                goal.predicate.trait_ref(cx),
+                bounds,
+            ) {
+                Ok(requirements) => {
+                    ecx.add_goals(GoalSource::ImplWhereBound, requirements);
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+                Err(_) => {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                }
+            }
         })
     }
 
