@@ -40,6 +40,8 @@ pub enum ProjectionKind {
 
     /// A conversion from an opaque type to its hidden type so we can
     /// do further projections on it.
+    ///
+    /// This is unused if `-Znext-solver` is enabled.
     OpaqueCast,
 }
 
