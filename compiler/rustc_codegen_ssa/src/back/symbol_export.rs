@@ -320,8 +320,9 @@ fn exported_symbols_provider_local(
         let need_visibility = tcx.sess.target.dynamic_linking && !tcx.sess.target.only_cdylib;
 
         let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
+
+        // Do not export symbols that cannot be instantiated by downstream crates.
         let reachable_set = tcx.reachable_set(());
-        let visibilities = tcx.effective_visibilities(());
         let is_local_to_current_crate = |ty: Ty<'_>| {
             let no_refs = ty.peel_refs();
             let root_def_id = match no_refs.kind() {
@@ -341,6 +342,17 @@ fn exported_symbols_provider_local(
 
             let is_local = !reachable_set.contains(&root_def_id);
             is_local
+        };
+
+        let is_instantiable_downstream = |did, type_args| {
+            std::iter::once(tcx.type_of(did).skip_binder()).chain(type_args).all(|arg| {
+                arg.walk().all(|ty| {
+                    let Some(ty) = ty.as_type() else {
+                        return true;
+                    };
+                    !is_local_to_current_crate(ty)
+                })
+            })
         };
         // The symbols created in this loop are sorted below it
         #[allow(rustc::potential_query_instability)]
@@ -370,20 +382,10 @@ fn exported_symbols_provider_local(
 
             match *mono_item {
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
-                    let types = args.types();
                     let has_generics = args.non_erasable_generics().next().is_some();
 
-                    let should_export = has_generics
-                        && Some(tcx.type_of(def).skip_binder()).into_iter().chain(types).all(
-                            |arg| {
-                                arg.walk().all(|ty| {
-                                    let Some(ty) = ty.as_type() else {
-                                        return true;
-                                    };
-                                    !is_local_to_current_crate(ty)
-                                })
-                            },
-                        );
+                    let should_export =
+                        has_generics && is_instantiable_downstream(def, args.types());
 
                     if should_export {
                         let symbol = ExportedSymbol::Generic(def, args);
@@ -408,20 +410,9 @@ fn exported_symbols_provider_local(
                             rustc_middle::ty::Closure(id, args) => Some((*id, args)),
                             _ => None,
                         };
-                        if let Some((did, args)) = root_identifier {
-                            did.as_local().is_some_and(|local_did| {
-                                visibilities.public_at_level(local_did).is_some()
-                            }) || args.types().all(|arg| {
-                                arg.walk().all(|ty| {
-                                    let Some(ty) = ty.as_type() else {
-                                        return true;
-                                    };
-                                    !is_local_to_current_crate(ty)
-                                })
-                            })
-                        } else {
-                            true
-                        }
+                        root_identifier.map_or(true, |(did, args)| {
+                            is_instantiable_downstream(did, args.types())
+                        })
                     };
                     if should_export {
                         symbols.push((
