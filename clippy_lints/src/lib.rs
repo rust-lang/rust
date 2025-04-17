@@ -858,7 +858,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(write::Write::new(conf, format_args.clone())));
     store.register_late_pass(move |_| Box::new(cargo::Cargo::new(conf)));
     store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));
-    store.register_early_pass(|| Box::new(empty_with_brackets::EmptyWithBrackets));
+    store.register_late_pass(|_| Box::new(empty_with_brackets::EmptyWithBrackets::default()));
     store.register_late_pass(|_| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings));
     store.register_early_pass(|| Box::new(pub_use::PubUse));
     store.register_late_pass(|_| Box::new(format_push_string::FormatPushString));
