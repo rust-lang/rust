@@ -1,0 +1,18 @@
+{% extends "layout.askama" %}
+
+{% block content %}
+<h1>Rust CI Test Dashboard</h1>
+<div class="test-suites">
+    <div class="summary">
+        Total tests: {{ test_count }}
+    </div>
+
+    <ul>
+    {% for suite in suites.suites %}
+        {% if suite.kind == TestSuiteKind::Compiletest %}
+            {{ suite.group|safe }}
+        {% endif %}
+    {% endfor %}
+    </ul>
+</div>
+{% endblock %}

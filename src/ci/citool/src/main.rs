@@ -4,6 +4,7 @@ mod datadog;
 mod github;
 mod jobs;
 mod metrics;
+mod test_dashboard;
 mod utils;
 
 use std::collections::{BTreeMap, HashMap};
@@ -22,6 +23,7 @@ use crate::datadog::upload_datadog_metric;
 use crate::github::JobInfoResolver;
 use crate::jobs::RunType;
 use crate::metrics::{JobMetrics, download_auto_job_metrics, download_job_metrics, load_metrics};
+use crate::test_dashboard::generate_test_dashboard;
 use crate::utils::load_env_var;
 
 const CI_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
@@ -234,6 +236,14 @@ enum Args {
         /// Current commit that will be compared to `parent`.
         current: String,
     },
+    /// Generate a directory containing a HTML dashboard of test results from a CI run.
+    TestDashboard {
+        /// Commit SHA that was tested on CI to analyze.
+        current: String,
+        /// Output path for the HTML directory.
+        #[clap(long)]
+        output_dir: PathBuf,
+    },
 }
 
 #[derive(clap::ValueEnum, Clone)]
@@ -275,7 +285,11 @@ fn main() -> anyhow::Result<()> {
             postprocess_metrics(metrics_path, parent, job_name)?;
         }
         Args::PostMergeReport { current, parent } => {
-            post_merge_report(load_db(default_jobs_file)?, current, parent)?;
+            post_merge_report(load_db(&default_jobs_file)?, current, parent)?;
+        }
+        Args::TestDashboard { current, output_dir } => {
+            let db = load_db(&default_jobs_file)?;
+            generate_test_dashboard(db, &current, &output_dir)?;
         }
     }
 

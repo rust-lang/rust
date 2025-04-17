@@ -1,0 +1,71 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Rust CI Test Dashboard</title>
+  <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        max-width: 1500px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #F5F5F5;
+      }
+
+      h1 {
+        text-align: center;
+        color: #333333;
+        margin-bottom: 30px;
+      }
+
+      .test-suites {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+      }
+
+      ul {
+        padding-left: 0;
+      }
+
+      li {
+        list-style: none;
+        padding-left: 20px;
+      }
+      summary {
+        margin-bottom: 5px;
+        padding: 6px;
+        background-color: #F4F4F4;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      summary:hover {
+        background-color: #CFCFCF;
+      }
+
+      /* Style the disclosure triangles */
+      details > summary {
+          list-style: none;
+          position: relative;
+      }
+
+      details > summary::before {
+          content: "▶";
+          position: absolute;
+          left: -15px;
+          transform: rotate(0);
+          transition: transform 0.2s;
+      }
+
+      details[open] > summary::before {
+          transform: rotate(90deg);
+      }
+  </style>
+</head>
+
+<body>
+{% block content %}{% endblock %}
+</body>
+</html>
