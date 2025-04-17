@@ -799,7 +799,12 @@ pub enum PatKind<'tcx> {
     /// Deref pattern, written `box P` for now.
     DerefPattern {
         subpattern: Box<Pat<'tcx>>,
-        mutability: hir::Mutability,
+        /// Whether the pattern scrutinee needs to be borrowed in order to call `Deref::deref` or
+        /// `DerefMut::deref_mut`, and if so, which. This is `ByRef::No` for deref patterns on
+        /// boxes; they are lowered using a built-in deref rather than a method call, thus they
+        /// don't borrow the scrutinee.
+        #[type_visitable(ignore)]
+        borrow: ByRef,
     },
 
     /// One of the following:
