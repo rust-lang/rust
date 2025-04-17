@@ -114,5 +114,21 @@ LL |     if a { 1 } else { 0 }
    |
    = note: `a as u8` or `a.into()` can also be valid options
 
-error: aborting due to 9 previous errors
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:174:13
+   |
+LL |     let _ = if dbg!(4 > 0) { 1 } else { 0 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with from: `i32::from(dbg!(4 > 0))`
+   |
+   = note: `dbg!(4 > 0) as i32` or `dbg!(4 > 0).into()` can also be valid options
+
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:177:18
+   |
+LL |     let _ = dbg!(if 4 > 0 { 1 } else { 0 });
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with from: `i32::from(4 > 0)`
+   |
+   = note: `(4 > 0) as i32` or `(4 > 0).into()` can also be valid options
+
+error: aborting due to 11 previous errors
 

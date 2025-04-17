@@ -1,4 +1,4 @@
-#![allow(unused_assignments)]
+#![allow(unused_assignments, clippy::uninlined_format_args)]
 #![warn(clippy::unnecessary_to_owned)]
 
 #[allow(dead_code)]

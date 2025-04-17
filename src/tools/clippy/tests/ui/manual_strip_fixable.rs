@@ -1,4 +1,5 @@
 #![warn(clippy::manual_strip)]
+#![allow(clippy::uninlined_format_args)]
 
 fn main() {
     let s = "abc";

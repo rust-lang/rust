@@ -129,5 +129,21 @@ LL |         pub(crate) fn g() {} // private due to m4_2
    |         |
    |         help: consider using: `pub`
 
-error: aborting due to 16 previous errors
+error: pub(crate) import inside private module
+  --> tests/ui/redundant_pub_crate.rs:137:5
+   |
+LL |     pub(crate) use m5_1::*;
+   |     ----------^^^^^^^^^^^^^
+   |     |
+   |     help: consider using: `pub`
+
+error: pub(crate) import inside private module
+  --> tests/ui/redundant_pub_crate.rs:139:27
+   |
+LL |     pub(crate) use m5_1::{*};
+   |     ----------            ^
+   |     |
+   |     help: consider using: `pub`
+
+error: aborting due to 18 previous errors
 

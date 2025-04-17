@@ -73,3 +73,46 @@ fn main() {
     for _i in Vec::<&i32>::from_iter([1, 2, 3].iter()) {}
     //~^ from_iter_instead_of_collect
 }
+
+fn issue14581() {
+    let nums = [0, 1, 2];
+    let _ = &String::from_iter(nums.iter().map(|&num| char::from_u32(num).unwrap()));
+    //~^ from_iter_instead_of_collect
+}
+
+fn test_implicit_generic_args(iter: impl Iterator<Item = &'static i32> + Copy) {
+    struct S<'l, T = i32, const A: usize = 3, const B: usize = 3> {
+        a: [&'l T; A],
+        b: [&'l T; B],
+    }
+
+    impl<'l, T, const A: usize, const B: usize> FromIterator<&'l T> for S<'l, T, A, B> {
+        fn from_iter<I: IntoIterator<Item = &'l T>>(_: I) -> Self {
+            todo!()
+        }
+    }
+
+    let _ = <S<'static, i32, 7>>::from_iter(iter);
+    //~^ from_iter_instead_of_collect
+
+    let _ = <S<'static, i32>>::from_iter(iter);
+    //~^ from_iter_instead_of_collect
+
+    let _ = <S<'static, _, 7>>::from_iter(iter);
+    //~^ from_iter_instead_of_collect
+
+    let _ = <S<'static, _, 7, 8>>::from_iter(iter);
+    //~^ from_iter_instead_of_collect
+
+    let _ = <S<'_, _, 7, 8>>::from_iter(iter);
+    //~^ from_iter_instead_of_collect
+
+    let _ = <S<i32>>::from_iter(iter);
+    //~^ from_iter_instead_of_collect
+
+    let _ = <S<'_, i32>>::from_iter(iter);
+    //~^ from_iter_instead_of_collect
+
+    let _ = <S>::from_iter(iter);
+    //~^ from_iter_instead_of_collect
+}

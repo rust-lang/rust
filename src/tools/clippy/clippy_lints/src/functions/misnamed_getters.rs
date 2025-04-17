@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, ExprKind, FnDecl, ImplicitSelfKind};
+use rustc_hir::{BlockCheckMode, Body, ExprKind, FnDecl, ImplicitSelfKind, UnsafeSource};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Span;
@@ -40,14 +40,25 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
         name
     };
 
-    // Body must be &(mut) <self_data>.name
+    // Body must be `&(mut) <self_data>.name`, potentially in an `unsafe` block
     // self_data is not necessarily self, to also lint sub-getters, etc…
 
     let block_expr = if let ExprKind::Block(block, _) = body.value.kind
         && block.stmts.is_empty()
         && let Some(block_expr) = block.expr
     {
-        block_expr
+        if let ExprKind::Block(unsafe_block, _) = block_expr.kind
+            && unsafe_block.stmts.is_empty()
+            && matches!(
+                unsafe_block.rules,
+                BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+            )
+            && let Some(unsafe_block_expr) = unsafe_block.expr
+        {
+            unsafe_block_expr
+        } else {
+            block_expr
+        }
     } else {
         return;
     };

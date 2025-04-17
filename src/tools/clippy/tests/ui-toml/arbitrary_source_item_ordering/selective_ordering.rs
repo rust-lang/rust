@@ -4,6 +4,7 @@
 //@[ord_within] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_within
 //@[ord_in_2] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_in_2
 //@[ord_in_3] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_in_3
+//@compile-flags: --test
 
 #![allow(dead_code)]
 #![deny(clippy::arbitrary_source_item_ordering)]
@@ -44,3 +45,10 @@ fn main() {
 
 fn before_main() {}
 //~[ord_within]^ arbitrary_source_item_ordering
+
+#[cfg(test)]
+mod test {
+    const B: i8 = 1;
+    const A: i8 = 0;
+    //~[ord_within]^ arbitrary_source_item_ordering
+}

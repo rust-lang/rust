@@ -15,9 +15,17 @@ union MyOwnMaybeUninit {
 
 // https://github.com/rust-lang/rust/issues/119620
 unsafe fn requires_paramenv<S>() {
-    let mut vec = Vec::<UnsafeCell<*mut S>>::with_capacity(1);
+    unsafe {
+        let mut vec = Vec::<UnsafeCell<*mut S>>::with_capacity(1);
+        //~^ uninit_vec
+        vec.set_len(1);
+    }
+
+    let mut vec = Vec::<UnsafeCell<*mut S>>::with_capacity(2);
     //~^ uninit_vec
-    vec.set_len(1);
+    unsafe {
+        vec.set_len(2);
+    }
 }
 
 fn main() {

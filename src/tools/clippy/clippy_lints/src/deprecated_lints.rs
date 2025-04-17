@@ -42,6 +42,8 @@ declare_with_version! { DEPRECATED(DEPRECATED_VERSION): &[(&str, &str)] = &[
     ("clippy::wrong_pub_self_convention", "`clippy::wrong_self_convention` now covers this case via the `avoid-breaking-exported-api` config"),
     #[clippy::version = "1.86.0"]
     ("clippy::option_map_or_err_ok", "`clippy::manual_ok_or` covers this case"),
+    #[clippy::version = "1.86.0"]
+    ("clippy::match_on_vec_items", "`clippy::indexing_slicing` covers indexing and slicing on `Vec<_>`"),
     // end deprecated lints. used by `cargo dev deprecate_lint`
 ]}
 

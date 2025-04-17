@@ -98,3 +98,15 @@ impl Mul<A> for A {
         self * &rhs
     }
 }
+
+mod issue_2597 {
+    fn ex1() {
+        let a: &str = "abc";
+        let b: String = "abc".to_owned();
+        println!("{}", a > &b);
+    }
+
+    pub fn ex2<T: Ord + PartialOrd>(array: &[T], val: &T, idx: usize) -> bool {
+        &array[idx] < val
+    }
+}

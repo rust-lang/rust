@@ -1,5 +1,5 @@
 error: this looks like you are swapping `bar.a` and `bar.b` manually
-  --> tests/ui/swap.rs:28:5
+  --> tests/ui/swap.rs:23:5
    |
 LL | /     let temp = bar.a;
 LL | |
@@ -12,7 +12,7 @@ LL | |     bar.b = temp;
    = help: to override `-D warnings` add `#[allow(clippy::manual_swap)]`
 
 error: this looks like you are swapping elements of `foo` manually
-  --> tests/ui/swap.rs:41:5
+  --> tests/ui/swap.rs:36:5
    |
 LL | /     let temp = foo[0];
 LL | |
@@ -21,7 +21,7 @@ LL | |     foo[1] = temp;
    | |__________________^ help: try: `foo.swap(0, 1);`
 
 error: this looks like you are swapping elements of `foo` manually
-  --> tests/ui/swap.rs:51:5
+  --> tests/ui/swap.rs:46:5
    |
 LL | /     let temp = foo[0];
 LL | |
@@ -30,7 +30,7 @@ LL | |     foo[1] = temp;
    | |__________________^ help: try: `foo.swap(0, 1);`
 
 error: this looks like you are swapping elements of `foo` manually
-  --> tests/ui/swap.rs:71:5
+  --> tests/ui/swap.rs:66:5
    |
 LL | /     let temp = foo[0];
 LL | |
@@ -39,7 +39,7 @@ LL | |     foo[1] = temp;
    | |__________________^ help: try: `foo.swap(0, 1);`
 
 error: this looks like you are swapping `a` and `b` manually
-  --> tests/ui/swap.rs:83:5
+  --> tests/ui/swap.rs:78:5
    |
 LL | /     a ^= b;
 LL | |
@@ -48,7 +48,7 @@ LL | |     a ^= b;
    | |___________^ help: try: `std::mem::swap(&mut a, &mut b);`
 
 error: this looks like you are swapping `bar.a` and `bar.b` manually
-  --> tests/ui/swap.rs:92:5
+  --> tests/ui/swap.rs:87:5
    |
 LL | /     bar.a ^= bar.b;
 LL | |
@@ -57,7 +57,7 @@ LL | |     bar.a ^= bar.b;
    | |___________________^ help: try: `std::mem::swap(&mut bar.a, &mut bar.b);`
 
 error: this looks like you are swapping elements of `foo` manually
-  --> tests/ui/swap.rs:101:5
+  --> tests/ui/swap.rs:96:5
    |
 LL | /     foo[0] ^= foo[1];
 LL | |
@@ -66,7 +66,7 @@ LL | |     foo[0] ^= foo[1];
    | |_____________________^ help: try: `foo.swap(0, 1);`
 
 error: this looks like you are swapping `foo[0][1]` and `bar[1][0]` manually
-  --> tests/ui/swap.rs:131:5
+  --> tests/ui/swap.rs:126:5
    |
 LL | /     let temp = foo[0][1];
 LL | |
@@ -77,7 +77,7 @@ LL | |     bar[1][0] = temp;
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are swapping `a` and `b` manually
-  --> tests/ui/swap.rs:147:7
+  --> tests/ui/swap.rs:142:7
    |
 LL |       ; let t = a;
    |  _______^
@@ -89,7 +89,7 @@ LL | |     b = t;
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are swapping `c.0` and `a` manually
-  --> tests/ui/swap.rs:158:7
+  --> tests/ui/swap.rs:153:7
    |
 LL |       ; let t = c.0;
    |  _______^
@@ -101,7 +101,7 @@ LL | |     a = t;
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are swapping `b` and `a` manually
-  --> tests/ui/swap.rs:188:5
+  --> tests/ui/swap.rs:183:5
    |
 LL | /     let t = b;
 LL | |
@@ -112,7 +112,7 @@ LL | |     a = t;
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are trying to swap `a` and `b`
-  --> tests/ui/swap.rs:143:5
+  --> tests/ui/swap.rs:138:5
    |
 LL | /     a = b;
 LL | |
@@ -120,11 +120,10 @@ LL | |     b = a;
    | |_________^ help: try: `std::mem::swap(&mut a, &mut b)`
    |
    = note: or maybe you should use `std::mem::replace`?
-   = note: `-D clippy::almost-swapped` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::almost_swapped)]`
+   = note: `#[deny(clippy::almost_swapped)]` on by default
 
 error: this looks like you are trying to swap `c.0` and `a`
-  --> tests/ui/swap.rs:154:5
+  --> tests/ui/swap.rs:149:5
    |
 LL | /     c.0 = a;
 LL | |
@@ -134,7 +133,7 @@ LL | |     a = c.0;
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are trying to swap `a` and `b`
-  --> tests/ui/swap.rs:163:5
+  --> tests/ui/swap.rs:158:5
    |
 LL | /     let a = b;
 LL | |
@@ -144,7 +143,7 @@ LL | |     let b = a;
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are trying to swap `d` and `c`
-  --> tests/ui/swap.rs:169:5
+  --> tests/ui/swap.rs:164:5
    |
 LL | /     d = c;
 LL | |
@@ -154,7 +153,7 @@ LL | |     c = d;
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are trying to swap `a` and `b`
-  --> tests/ui/swap.rs:174:5
+  --> tests/ui/swap.rs:169:5
    |
 LL | /     let a = b;
 LL | |
@@ -164,7 +163,7 @@ LL | |     b = a;
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are swapping `s.0.x` and `s.0.y` manually
-  --> tests/ui/swap.rs:224:5
+  --> tests/ui/swap.rs:219:5
    |
 LL | /     let t = s.0.x;
 LL | |

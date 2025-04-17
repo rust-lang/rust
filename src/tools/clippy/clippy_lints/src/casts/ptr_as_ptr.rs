@@ -81,7 +81,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
 
             (
                 "try `pointer::cast`, a safer alternative",
-                format!("{}.cast{turbofish}()", cast_expr_sugg.maybe_par()),
+                format!("{}.cast{turbofish}()", cast_expr_sugg.maybe_paren()),
             )
         };
 

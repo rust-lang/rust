@@ -1,5 +1,5 @@
 error: manually reimplementing `is_power_of_two`
-  --> tests/ui/manual_is_power_of_two.rs:6:13
+  --> tests/ui/manual_is_power_of_two.rs:19:13
    |
 LL |     let _ = a.count_ones() == 1;
    |             ^^^^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
@@ -8,34 +8,52 @@ LL |     let _ = a.count_ones() == 1;
    = help: to override `-D warnings` add `#[allow(clippy::manual_is_power_of_two)]`
 
 error: manually reimplementing `is_power_of_two`
-  --> tests/ui/manual_is_power_of_two.rs:8:13
+  --> tests/ui/manual_is_power_of_two.rs:21:13
+   |
+LL |     let _ = u64::count_ones(a) == 1;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
+
+error: manually reimplementing `is_power_of_two`
+  --> tests/ui/manual_is_power_of_two.rs:23:13
    |
 LL |     let _ = a & (a - 1) == 0;
    |             ^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
 
 error: manually reimplementing `is_power_of_two`
-  --> tests/ui/manual_is_power_of_two.rs:12:13
+  --> tests/ui/manual_is_power_of_two.rs:27:13
    |
 LL |     let _ = 1 == a.count_ones();
    |             ^^^^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
 
 error: manually reimplementing `is_power_of_two`
-  --> tests/ui/manual_is_power_of_two.rs:14:13
+  --> tests/ui/manual_is_power_of_two.rs:29:13
    |
 LL |     let _ = (a - 1) & a == 0;
    |             ^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
 
 error: manually reimplementing `is_power_of_two`
-  --> tests/ui/manual_is_power_of_two.rs:16:13
+  --> tests/ui/manual_is_power_of_two.rs:31:13
    |
 LL |     let _ = 0 == a & (a - 1);
    |             ^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
 
 error: manually reimplementing `is_power_of_two`
-  --> tests/ui/manual_is_power_of_two.rs:18:13
+  --> tests/ui/manual_is_power_of_two.rs:33:13
    |
 LL |     let _ = 0 == (a - 1) & a;
    |             ^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
 
-error: aborting due to 6 previous errors
+error: manually reimplementing `is_power_of_two`
+  --> tests/ui/manual_is_power_of_two.rs:43:13
+   |
+LL |     let _ = i as u32 & (i as u32 - 1) == 0;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `(i as u32).is_power_of_two()`
+
+error: manually reimplementing `is_power_of_two`
+  --> tests/ui/manual_is_power_of_two.rs:58:5
+   |
+LL |     a & (a - 1) == 0
+   |     ^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
+
+error: aborting due to 9 previous errors
 

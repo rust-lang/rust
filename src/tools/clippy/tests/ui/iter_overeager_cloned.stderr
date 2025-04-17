@@ -120,10 +120,10 @@ LL |         let _ = vec.iter().cloned().find(f);
 error: unnecessarily eager cloning of iterator items
   --> tests/ui/iter_overeager_cloned.rs:63:9
    |
-LL |         iter.cloned().filter(move |(&a, b)| a == 1 && b == &target)
-   |         ^^^^-------------------------------------------------------
+LL |         iter.cloned().filter(move |&(&a, ref b)| a == 1 && b == &target)
+   |         ^^^^------------------------------------------------------------
    |             |
-   |             help: try: `.filter(move |&(&a, b)| a == 1 && b == &target).cloned()`
+   |             help: try: `.filter(move |&&(&a, ref b)| a == 1 && b == &target).cloned()`
 
 error: unnecessarily eager cloning of iterator items
   --> tests/ui/iter_overeager_cloned.rs:75:13

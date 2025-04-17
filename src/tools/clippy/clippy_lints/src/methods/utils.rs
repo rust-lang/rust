@@ -8,6 +8,9 @@ use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_span::symbol::sym;
 
+/// Checks if `expr`, of type `ty`, corresponds to a slice or can be dereferenced to a slice, or if
+/// `expr` is a method call to `.iter()` on such a type. In these cases, return the slice-like
+/// expression.
 pub(super) fn derefs_to_slice<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,

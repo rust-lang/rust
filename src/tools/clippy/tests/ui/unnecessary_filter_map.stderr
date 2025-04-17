@@ -1,14 +1,14 @@
-error: this `.filter_map` can be written more simply
-  --> tests/ui/unnecessary_filter_map.rs:5:13
+error: this `.filter_map(..)` can be written more simply using `.filter(..)`
+  --> tests/ui/unnecessary_filter_map.rs:4:13
    |
 LL |     let _ = (0..4).filter_map(|x| if x > 1 { Some(x) } else { None });
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try instead: `filter`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnecessary-filter-map` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_filter_map)]`
 
-error: this `.filter_map` can be written more simply
-  --> tests/ui/unnecessary_filter_map.rs:8:13
+error: this `.filter_map(..)` can be written more simply using `.filter(..)`
+  --> tests/ui/unnecessary_filter_map.rs:7:13
    |
 LL |       let _ = (0..4).filter_map(|x| {
    |  _____________^
@@ -18,10 +18,10 @@ LL | |         if x > 1 {
 ...  |
 LL | |         None
 LL | |     });
-   | |______^ help: try instead: `filter`
+   | |______^
 
-error: this `.filter_map` can be written more simply
-  --> tests/ui/unnecessary_filter_map.rs:16:13
+error: this `.filter_map(..)` can be written more simply using `.filter(..)`
+  --> tests/ui/unnecessary_filter_map.rs:15:13
    |
 LL |       let _ = (0..4).filter_map(|x| match x {
    |  _____________^
@@ -29,40 +29,25 @@ LL | |
 LL | |         0 | 1 => None,
 LL | |         _ => Some(x),
 LL | |     });
-   | |______^ help: try instead: `filter`
+   | |______^
 
-error: this `.filter_map` can be written more simply
-  --> tests/ui/unnecessary_filter_map.rs:22:13
+error: this `.filter_map(..)` can be written more simply using `.map(..)`
+  --> tests/ui/unnecessary_filter_map.rs:21:13
    |
 LL |     let _ = (0..4).filter_map(|x| Some(x + 1));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try instead: `map`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: redundant closure
-  --> tests/ui/unnecessary_filter_map.rs:29:57
+error: this call to `.filter_map(..)` is unnecessary
+  --> tests/ui/unnecessary_filter_map.rs:28:61
    |
 LL |     let _ = vec![Some(10), None].into_iter().filter_map(|x| Some(x));
-   |                                                         ^^^^^^^^^^^ help: replace the closure with the function itself: `Some`
-   |
-   = note: `-D clippy::redundant-closure` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_closure)]`
+   |                                                             ^^^^
 
-error: filter_map is unnecessary
-  --> tests/ui/unnecessary_filter_map.rs:29:61
-   |
-LL |     let _ = vec![Some(10), None].into_iter().filter_map(|x| Some(x));
-   |                                                             ^^^^ help: try removing the filter_map
-
-error: this `.filter_map` can be written more simply
-  --> tests/ui/unnecessary_filter_map.rs:29:13
-   |
-LL |     let _ = vec![Some(10), None].into_iter().filter_map(|x| Some(x));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try instead: `map`
-
-error: this `.filter_map` can be written more simply
-  --> tests/ui/unnecessary_filter_map.rs:169:14
+error: this `.filter_map(..)` can be written more simply using `.filter(..)`
+  --> tests/ui/unnecessary_filter_map.rs:166:14
    |
 LL |     let _x = std::iter::once(1).filter_map(|n| (n > 1).then_some(n));
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try instead: `filter`
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 

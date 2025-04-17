@@ -33,3 +33,30 @@ fn main() {
     let _: Vec<isize> = v.iter().copied().collect();
     //~^ iter_cloned_collect
 }
+
+mod issue9119 {
+
+    use std::iter;
+
+    #[derive(Clone)]
+    struct Example(u16);
+
+    impl iter::FromIterator<Example> for Vec<u8> {
+        fn from_iter<T>(iter: T) -> Self
+        where
+            T: IntoIterator<Item = Example>,
+        {
+            iter.into_iter().flat_map(|e| e.0.to_le_bytes()).collect()
+        }
+    }
+
+    fn foo() {
+        let examples = [Example(1), Example(0x1234)];
+        let encoded: Vec<u8> = examples.iter().cloned().collect();
+        assert_eq!(encoded, vec![0x01, 0x00, 0x34, 0x12]);
+
+        let a = [&&String::new()];
+        let v: Vec<&&String> = a.iter().cloned().collect();
+        //~^ iter_cloned_collect
+    }
+}

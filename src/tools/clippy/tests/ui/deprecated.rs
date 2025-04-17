@@ -16,5 +16,6 @@
 #![warn(clippy::pub_enum_variant_names)] //~ ERROR: lint `clippy::pub_enum_variant_names`
 #![warn(clippy::wrong_pub_self_convention)] //~ ERROR: lint `clippy::wrong_pub_self_convention`
 #![warn(clippy::option_map_or_err_ok)] //~ ERROR: lint `clippy::option_map_or_err_ok`
+#![warn(clippy::match_on_vec_items)] //~ ERROR: lint `clippy::match_on_vec_items`
 
 fn main() {}

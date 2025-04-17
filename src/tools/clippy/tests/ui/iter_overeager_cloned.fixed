@@ -59,7 +59,7 @@ fn main() {
         iter: impl Iterator<Item = &'a (&'a u32, String)> + 'a,
         target: String,
     ) -> impl Iterator<Item = (&'a u32, String)> + 'a {
-        iter.filter(move |&(&a, b)| a == 1 && b == &target).cloned()
+        iter.filter(move |&&(&a, ref b)| a == 1 && b == &target).cloned()
         //~^ iter_overeager_cloned
     }
 

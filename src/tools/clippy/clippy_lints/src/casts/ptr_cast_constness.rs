@@ -65,7 +65,7 @@ pub(super) fn check<'tcx>(
                 expr.span,
                 "`as` casting between raw pointers while changing only its constness",
                 format!("try `pointer::cast_{constness}`, a safer alternative"),
-                format!("{}.cast_{constness}()", sugg.maybe_par()),
+                format!("{}.cast_{constness}()", sugg.maybe_paren()),
                 Applicability::MachineApplicable,
             );
         }

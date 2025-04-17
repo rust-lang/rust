@@ -101,7 +101,7 @@ fn main() {
 
     match &mut Some(String::new()) {
         //~^ manual_map
-        Some(ref x) => Some(x.len()),
+        &mut Some(ref x) => Some(x.len()),
         None => None,
     };
 

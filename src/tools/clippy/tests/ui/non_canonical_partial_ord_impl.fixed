@@ -162,3 +162,36 @@ impl PartialOrd for I {
         return Some(self.cmp(other));
     }
 }
+
+// #13640, do not lint
+
+#[derive(Eq, PartialEq)]
+struct J(u32);
+
+impl Ord for J {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for J {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.cmp(other).into()
+    }
+}
+
+// #13640, check that a simple `.into()` does not obliterate the lint
+
+#[derive(Eq, PartialEq)]
+struct K(u32);
+
+impl Ord for K {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for K {
+    //~^ non_canonical_partial_ord_impl
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+}

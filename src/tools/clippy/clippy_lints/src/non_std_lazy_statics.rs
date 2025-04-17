@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// static FOO: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "FOO".to_lowercase());
     /// static BAR: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "BAR".to_lowercase());
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.86.0"]
     pub NON_STD_LAZY_STATICS,
     pedantic,
     "lazy static that could be replaced by `std::sync::LazyLock`"
@@ -121,7 +121,7 @@ impl<'hir> LateLintPass<'hir> for NonStdLazyStatic {
                 cx,
                 NON_STD_LAZY_STATICS,
                 macro_call.span,
-                "this macro has been superceded by `std::sync::LazyLock`",
+                "this macro has been superseded by `std::sync::LazyLock`",
             );
             return;
         }
@@ -240,7 +240,7 @@ impl LazyInfo {
             cx,
             NON_STD_LAZY_STATICS,
             self.ty_span_no_args,
-            "this type has been superceded by `LazyLock` in the standard library",
+            "this type has been superseded by `LazyLock` in the standard library",
             |diag| {
                 diag.multipart_suggestion("use `std::sync::LazyLock` instead", suggs, appl);
             },

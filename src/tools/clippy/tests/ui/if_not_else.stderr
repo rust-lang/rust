@@ -1,5 +1,5 @@
 error: unnecessary boolean `not` operation
-  --> tests/ui/if_not_else.rs:12:5
+  --> tests/ui/if_not_else.rs:11:5
    |
 LL | /     if !bla() {
 LL | |
@@ -24,7 +24,7 @@ LL +     }
    |
 
 error: unnecessary `!=` operation
-  --> tests/ui/if_not_else.rs:19:5
+  --> tests/ui/if_not_else.rs:18:5
    |
 LL | /     if 4 != 5 {
 LL | |
@@ -47,7 +47,7 @@ LL +     }
    |
 
 error: unnecessary boolean `not` operation
-  --> tests/ui/if_not_else.rs:34:5
+  --> tests/ui/if_not_else.rs:33:5
    |
 LL | /     if !(foo() && bla()) {
 LL | |
@@ -79,7 +79,7 @@ LL +     }
    |
 
 error: unnecessary boolean `not` operation
-  --> tests/ui/if_not_else.rs:53:5
+  --> tests/ui/if_not_else.rs:52:5
    |
 LL | /     if !foo() {
 LL | |
@@ -102,7 +102,7 @@ LL +     }
    |
 
 error: unnecessary boolean `not` operation
-  --> tests/ui/if_not_else.rs:61:5
+  --> tests/ui/if_not_else.rs:60:5
    |
 LL | /     if !bla() {
 LL | |
@@ -125,7 +125,7 @@ LL +     }
    |
 
 error: unnecessary boolean `not` operation
-  --> tests/ui/if_not_else.rs:72:5
+  --> tests/ui/if_not_else.rs:71:5
    |
 LL | /     if !foo() {
 LL | |

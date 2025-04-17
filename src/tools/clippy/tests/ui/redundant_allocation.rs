@@ -1,4 +1,3 @@
-#![warn(clippy::all)]
 #![allow(clippy::boxed_local, clippy::disallowed_names)]
 
 pub struct MyStruct;

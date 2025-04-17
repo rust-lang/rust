@@ -1,4 +1,3 @@
-#![warn(clippy::all, clippy::pedantic)]
 #![allow(
     clippy::missing_errors_doc,
     clippy::needless_pass_by_value,

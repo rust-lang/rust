@@ -3,7 +3,6 @@
 //@[private] rustc-env:CLIPPY_CONF_DIR=tests/ui/ref_option/private
 //@[all] rustc-env:CLIPPY_CONF_DIR=tests/ui/ref_option/all
 
-#![allow(unused, clippy::all)]
 #![warn(clippy::ref_option)]
 
 pub trait PubTrait {

@@ -6,10 +6,10 @@ use rustc_span::Span;
 use semver::Version;
 
 pub(super) fn check(cx: &EarlyContext<'_>, span: Span, lit: &MetaItemLit) {
-    if let LitKind::Str(is, _) = lit.kind {
-        if is.as_str() == "TBD" || Version::parse(is.as_str()).is_ok() {
-            return;
-        }
+    if let LitKind::Str(is, _) = lit.kind
+        && (is.as_str() == "TBD" || Version::parse(is.as_str()).is_ok())
+    {
+        return;
     }
     span_lint(
         cx,

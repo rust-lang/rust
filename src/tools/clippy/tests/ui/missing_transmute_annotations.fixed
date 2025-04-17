@@ -18,8 +18,10 @@ fn bar(x: i32) -> i32 {
 }
 
 unsafe fn foo1() -> i32 {
-    // Should not warn!
-    std::mem::transmute([1u16, 2u16])
+    unsafe {
+        // Should not warn!
+        std::mem::transmute([1u16, 2u16])
+    }
 }
 
 // Should not warn!
@@ -31,33 +33,35 @@ enum Foo {
 }
 
 unsafe fn foo2() -> i32 {
-    let mut i: i32 = 0;
-    i = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
-    //~^ ERROR: transmute used without annotations
-    i = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
-    //~^ ERROR: transmute used without annotations
-    i = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
-    //~^ ERROR: transmute used without annotations
-    i = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
-    //~^ ERROR: transmute used without annotations
+    unsafe {
+        let mut i: i32 = 0;
+        i = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
+        //~^ ERROR: transmute used without annotations
+        i = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
+        //~^ ERROR: transmute used without annotations
+        i = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
+        //~^ ERROR: transmute used without annotations
+        i = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
+        //~^ ERROR: transmute used without annotations
 
-    let x: i32 = bar(std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]));
-    //~^ ERROR: transmute used without annotations
-    bar(std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]));
-    //~^ ERROR: transmute used without annotations
+        let x: i32 = bar(std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]));
+        //~^ ERROR: transmute used without annotations
+        bar(std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]));
+        //~^ ERROR: transmute used without annotations
 
-    i = local_bad_transmute!([1u16, 2u16]);
+        i = local_bad_transmute!([1u16, 2u16]);
 
-    // Should not warn.
-    i = bad_transmute!([1u16, 2u16]);
+        // Should not warn.
+        i = bad_transmute!([1u16, 2u16]);
 
-    i = std::mem::transmute::<[i16; 2], i32>([0i16, 0i16]);
-    //~^ ERROR: transmute used without annotations
+        i = std::mem::transmute::<[i16; 2], i32>([0i16, 0i16]);
+        //~^ ERROR: transmute used without annotations
 
-    i = std::mem::transmute::<Foo, i32>(Foo::A);
-    //~^ ERROR: transmute used without annotations
+        i = std::mem::transmute::<Foo, i32>(Foo::A);
+        //~^ ERROR: transmute used without annotations
 
-    i
+        i
+    }
 }
 
 fn main() {

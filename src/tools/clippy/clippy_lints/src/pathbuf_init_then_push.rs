@@ -173,16 +173,15 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if let Some(mut searcher) = self.searcher.take() {
-            if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind
-                && let ExprKind::MethodCall(name, self_arg, [arg_expr], _) = expr.kind
-                && path_to_local_id(self_arg, searcher.local_id)
-                && name.ident.as_str() == "push"
-            {
-                searcher.err_span = searcher.err_span.to(stmt.span);
-                searcher.arg = Some(*arg_expr);
-                searcher.display_err(cx);
-            }
+        if let Some(mut searcher) = self.searcher.take()
+            && let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind
+            && let ExprKind::MethodCall(name, self_arg, [arg_expr], _) = expr.kind
+            && path_to_local_id(self_arg, searcher.local_id)
+            && name.ident.as_str() == "push"
+        {
+            searcher.err_span = searcher.err_span.to(stmt.span);
+            searcher.arg = Some(*arg_expr);
+            searcher.display_err(cx);
         }
     }
 

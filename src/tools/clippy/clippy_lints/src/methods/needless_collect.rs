@@ -377,20 +377,20 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                 return;
             }
 
-            if let Some(hir_id) = path_to_local(recv) {
-                if let Some(index) = self.hir_id_uses_map.remove(&hir_id) {
-                    if self
-                        .illegal_mutable_capture_ids
-                        .intersection(&self.current_mutably_captured_ids)
-                        .next()
-                        .is_none()
-                    {
-                        if let Some(hir_id) = self.current_statement_hir_id {
-                            self.hir_id_uses_map.insert(hir_id, index);
-                        }
-                    } else {
-                        self.uses[index] = None;
+            if let Some(hir_id) = path_to_local(recv)
+                && let Some(index) = self.hir_id_uses_map.remove(&hir_id)
+            {
+                if self
+                    .illegal_mutable_capture_ids
+                    .intersection(&self.current_mutably_captured_ids)
+                    .next()
+                    .is_none()
+                {
+                    if let Some(hir_id) = self.current_statement_hir_id {
+                        self.hir_id_uses_map.insert(hir_id, index);
                     }
+                } else {
+                    self.uses[index] = None;
                 }
             }
         }

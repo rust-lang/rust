@@ -1,4 +1,4 @@
-#![warn(clippy::all, clippy::or_fun_call)]
+#![warn(clippy::or_fun_call)]
 #![allow(clippy::unnecessary_literal_unwrap)]
 
 fn main() {

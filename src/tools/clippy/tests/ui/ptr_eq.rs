@@ -4,6 +4,9 @@ macro_rules! mac {
     ($a:expr, $b:expr) => {
         $a as *const _ as usize == $b as *const _ as usize
     };
+    (cast $a:expr) => {
+        $a as *const [i32; 3]
+    };
 }
 
 macro_rules! another_mac {
@@ -50,5 +53,9 @@ fn main() {
 
     #[allow(clippy::eq_op)]
     let _issue14337 = main as *const () == main as *const ();
+    //~^ ptr_eq
+
+    // Do not peel the content of macros
+    let _ = mac!(cast a) as *const _ == mac!(cast b) as *const _;
     //~^ ptr_eq
 }

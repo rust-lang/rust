@@ -47,7 +47,7 @@ pub(super) fn check<'tcx>(
                         }
                     }
 
-                    sugg = sugg::Sugg::NonParen(format!("{}.to_bits()", sugg.maybe_par()).into());
+                    sugg = sugg::Sugg::NonParen(format!("{}.to_bits()", sugg.maybe_paren()).into());
 
                     // cast the result of `to_bits` if `to_ty` is signed
                     sugg = if let ty::Int(int_ty) = to_ty.kind() {

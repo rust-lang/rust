@@ -1,0 +1,125 @@
+error: swapping temporary values has no effect
+  --> tests/ui/swap_with_temporary_unfixable.rs:20:5
+   |
+LL |     swap(&mut func(), &mut func());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this expression returns a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:20:15
+   |
+LL |     swap(&mut func(), &mut func());
+   |               ^^^^^^
+note: this expression returns a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:20:28
+   |
+LL |     swap(&mut func(), &mut func());
+   |                            ^^^^^^
+   = note: `-D clippy::swap-with-temporary` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::swap_with_temporary)]`
+
+error: swapping temporary values has no effect
+  --> tests/ui/swap_with_temporary_unfixable.rs:23:17
+   |
+LL |     if matches!(swap(&mut func(), &mut func()), ()) {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this expression returns a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:23:27
+   |
+LL |     if matches!(swap(&mut func(), &mut func()), ()) {
+   |                           ^^^^^^
+note: this expression returns a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:23:40
+   |
+LL |     if matches!(swap(&mut func(), &mut func()), ()) {
+   |                                        ^^^^^^
+
+error: swapping with a temporary value is inefficient
+  --> tests/ui/swap_with_temporary_unfixable.rs:28:17
+   |
+LL |     if matches!(swap(z, &mut func()), ()) {
+   |                 ^^^^^^^^^^^^^^^^^^^^
+   |
+note: this expression returns a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:28:30
+   |
+LL |     if matches!(swap(z, &mut func()), ()) {
+   |                              ^^^^^^
+
+error: swapping with a temporary value is inefficient
+  --> tests/ui/swap_with_temporary_unfixable.rs:45:5
+   |
+LL |     swap(mac!(refmut func()), z);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this is a mutable reference to a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:45:10
+   |
+LL |     swap(mac!(refmut func()), z);
+   |          ^^^^^^^^^^^^^^^^^^^
+
+error: swapping temporary values has no effect
+  --> tests/ui/swap_with_temporary_unfixable.rs:47:5
+   |
+LL |     swap(&mut mac!(funcall func), &mut mac!(funcall func));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this expression returns a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:47:15
+   |
+LL |     swap(&mut mac!(funcall func), &mut mac!(funcall func));
+   |               ^^^^^^^^^^^^^^^^^^
+note: this expression returns a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:47:40
+   |
+LL |     swap(&mut mac!(funcall func), &mut mac!(funcall func));
+   |                                        ^^^^^^^^^^^^^^^^^^
+
+error: swapping temporary values has no effect
+  --> tests/ui/swap_with_temporary_unfixable.rs:49:5
+   |
+LL |     swap(mac!(refmut), mac!(refmut));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this is a mutable reference to a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:49:10
+   |
+LL |     swap(mac!(refmut), mac!(refmut));
+   |          ^^^^^^^^^^^^
+note: this is a mutable reference to a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:49:24
+   |
+LL |     swap(mac!(refmut), mac!(refmut));
+   |                        ^^^^^^^^^^^^
+
+error: swapping with a temporary value is inefficient
+  --> tests/ui/swap_with_temporary_unfixable.rs:51:5
+   |
+LL |     swap(mac!(refmut y), mac!(refmut));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this is a mutable reference to a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:51:26
+   |
+LL |     swap(mac!(refmut y), mac!(refmut));
+   |                          ^^^^^^^^^^^^
+
+error: swapping temporary values has no effect
+  --> tests/ui/swap_with_temporary_unfixable.rs:57:5
+   |
+LL |     std::mem::swap(&mut v1.last_mut().unwrap(), &mut v2.last_mut().unwrap());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this expression returns a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:57:25
+   |
+LL |     std::mem::swap(&mut v1.last_mut().unwrap(), &mut v2.last_mut().unwrap());
+   |                         ^^^^^^^^^^^^^^^^^^^^^^
+note: this expression returns a temporary value
+  --> tests/ui/swap_with_temporary_unfixable.rs:57:54
+   |
+LL |     std::mem::swap(&mut v1.last_mut().unwrap(), &mut v2.last_mut().unwrap());
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

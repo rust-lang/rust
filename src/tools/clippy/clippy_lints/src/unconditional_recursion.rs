@@ -23,8 +23,8 @@ declare_clippy_lint! {
     /// implementations.
     ///
     /// ### Why is this bad?
-    /// This is a hard to find infinite recursion that will crash any code
-    /// using it.
+    /// Infinite recursion in trait implementation will either cause crashes
+    /// or result in an infinite loop, and it is hard to detect.
     ///
     /// ### Example
     /// ```no_run
@@ -39,9 +39,31 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    ///
     /// Use instead:
     ///
-    /// In such cases, either use `#[derive(PartialEq)]` or don't implement it.
+    /// ```no_run
+    /// #[derive(PartialEq)]
+    /// enum Foo {
+    ///     A,
+    ///     B,
+    /// }
+    /// ```
+    ///
+    /// As an alternative, rewrite the logic without recursion:
+    ///
+    /// ```no_run
+    /// enum Foo {
+    ///     A,
+    ///     B,
+    /// }
+    ///
+    /// impl PartialEq for Foo {
+    ///     fn eq(&self, other: &Self) -> bool {
+    ///         matches!((self, other), (Foo::A, Foo::A) | (Foo::B, Foo::B))
+    ///     }
+    /// }
+    /// ```
     #[clippy::version = "1.77.0"]
     pub UNCONDITIONAL_RECURSION,
     suspicious,
@@ -113,7 +135,7 @@ fn get_impl_trait_def_id(cx: &LateContext<'_>, method_def_id: LocalDefId) -> Opt
         }),
     )) = cx.tcx.hir_parent_iter(hir_id).next()
         // We exclude `impl` blocks generated from rustc's proc macros.
-        && !cx.tcx.has_attr(*owner_id, sym::automatically_derived)
+        && !cx.tcx.is_automatically_derived(owner_id.to_def_id())
         // It is a implementation of a trait.
         && let Some(trait_) = impl_.of_trait
     {
@@ -218,7 +240,7 @@ fn check_to_string(cx: &LateContext<'_>, method_span: Span, method_def_id: Local
             }),
         )) = cx.tcx.hir_parent_iter(hir_id).next()
         // We exclude `impl` blocks generated from rustc's proc macros.
-        && !cx.tcx.has_attr(*owner_id, sym::automatically_derived)
+        && !cx.tcx.is_automatically_derived(owner_id.to_def_id())
         // It is a implementation of a trait.
         && let Some(trait_) = impl_.of_trait
         && let Some(trait_def_id) = trait_.trait_def_id()
@@ -315,7 +337,7 @@ impl UnconditionalRecursion {
             for (ty, impl_def_ids) in impls.non_blanket_impls() {
                 let Some(self_def_id) = ty.def() else { continue };
                 for impl_def_id in impl_def_ids {
-                    if !cx.tcx.has_attr(*impl_def_id, sym::automatically_derived) &&
+                    if !cx.tcx.is_automatically_derived(*impl_def_id) &&
                         let Some(assoc_item) = cx
                             .tcx
                             .associated_items(impl_def_id)

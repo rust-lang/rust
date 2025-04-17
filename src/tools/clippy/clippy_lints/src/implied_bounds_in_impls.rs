@@ -8,7 +8,7 @@ use rustc_hir::{
 };
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, ClauseKind, Generics, Ty, TyCtxt};
+use rustc_middle::ty::{self, AssocItem, ClauseKind, Generics, Ty, TyCtxt};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -315,7 +315,7 @@ fn check<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds<'tcx>) {
                 assocs
                     .filter_by_name_unhygienic(constraint.ident.name)
                     .next()
-                    .is_some_and(|assoc| assoc.is_type())
+                    .is_some_and(AssocItem::is_type)
                 })
         {
             emit_lint(cx, poly_trait, bounds, index, implied_constraints, bound);

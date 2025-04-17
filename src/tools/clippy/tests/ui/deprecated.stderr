@@ -85,5 +85,11 @@ error: lint `clippy::option_map_or_err_ok` has been removed: `clippy::manual_ok_
 LL | #![warn(clippy::option_map_or_err_ok)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: lint `clippy::match_on_vec_items` has been removed: `clippy::indexing_slicing` covers indexing and slicing on `Vec<_>`
+  --> tests/ui/deprecated.rs:19:9
+   |
+LL | #![warn(clippy::match_on_vec_items)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
 

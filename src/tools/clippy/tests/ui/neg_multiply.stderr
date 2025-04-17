@@ -49,5 +49,53 @@ error: this multiplication by -1 can be written more succinctly
 LL |     (3_usize as i32) * -1;
    |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `-(3_usize as i32)`
 
-error: aborting due to 8 previous errors
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:60:5
+   |
+LL |     x * -1.0;
+   |     ^^^^^^^^ help: consider using: `-x`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:63:5
+   |
+LL |     -1.0 * x;
+   |     ^^^^^^^^ help: consider using: `-x`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:66:13
+   |
+LL |     100.0 + x * -1.0;
+   |             ^^^^^^^^ help: consider using: `-x`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:69:5
+   |
+LL |     (100.0 + x) * -1.0;
+   |     ^^^^^^^^^^^^^^^^^^ help: consider using: `-(100.0 + x)`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:72:5
+   |
+LL |     -1.0 * 17.0;
+   |     ^^^^^^^^^^^ help: consider using: `-17.0`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:75:11
+   |
+LL |     0.0 + 0.0 * -1.0;
+   |           ^^^^^^^^^^ help: consider using: `-0.0`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:78:5
+   |
+LL |     3.0_f32 as f64 * -1.0;
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `-(3.0_f32 as f64)`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:80:5
+   |
+LL |     (3.0_f32 as f64) * -1.0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `-(3.0_f32 as f64)`
+
+error: aborting due to 16 previous errors
 

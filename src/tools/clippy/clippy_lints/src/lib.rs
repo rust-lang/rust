@@ -205,6 +205,7 @@ mod loops;
 mod macro_metavars_in_unsafe;
 mod macro_use;
 mod main_recursion;
+mod manual_abs_diff;
 mod manual_assert;
 mod manual_async_fn;
 mod manual_bits;
@@ -226,7 +227,6 @@ mod manual_rotate;
 mod manual_slice_size_calculation;
 mod manual_string_new;
 mod manual_strip;
-mod manual_unwrap_or_default;
 mod map_unit_fn;
 mod match_result_ok;
 mod matches;
@@ -320,6 +320,7 @@ mod redundant_locals;
 mod redundant_pub_crate;
 mod redundant_slicing;
 mod redundant_static_lifetimes;
+mod redundant_test_prefix;
 mod redundant_type_annotations;
 mod ref_option_ref;
 mod ref_patterns;
@@ -772,7 +773,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(redundant_closure_call::RedundantClosureCall));
     store.register_early_pass(|| Box::new(unused_unit::UnusedUnit));
     store.register_late_pass(|_| Box::new(returns::Return));
-    store.register_early_pass(|| Box::new(collapsible_if::CollapsibleIf));
+    store.register_late_pass(move |tcx| Box::new(collapsible_if::CollapsibleIf::new(tcx, conf)));
     store.register_late_pass(|_| Box::new(items_after_statements::ItemsAfterStatements));
     store.register_early_pass(|| Box::new(precedence::Precedence));
     store.register_late_pass(|_| Box::new(needless_parens_on_range_literals::NeedlessParensOnRangeLiterals));
@@ -879,6 +880,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(std_instead_of_core::StdReexports::new(conf)));
     store.register_late_pass(move |_| Box::new(instant_subtraction::InstantSubtraction::new(conf)));
     store.register_late_pass(|_| Box::new(partialeq_to_none::PartialeqToNone));
+    store.register_late_pass(move |_| Box::new(manual_abs_diff::ManualAbsDiff::new(conf)));
     store.register_late_pass(move |_| Box::new(manual_clamp::ManualClamp::new(conf)));
     store.register_late_pass(|_| Box::new(manual_string_new::ManualStringNew));
     store.register_late_pass(|_| Box::new(unused_peekable::UnusedPeekable));
@@ -960,7 +962,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_early_pass(|| Box::new(multiple_bound_locations::MultipleBoundLocations));
     store.register_late_pass(move |_| Box::new(assigning_clones::AssigningClones::new(conf)));
     store.register_late_pass(|_| Box::new(zero_repeat_side_effects::ZeroRepeatSideEffects));
-    store.register_late_pass(|_| Box::new(manual_unwrap_or_default::ManualUnwrapOrDefault));
     store.register_late_pass(|_| Box::new(integer_division_remainder_used::IntegerDivisionRemainderUsed));
     store.register_late_pass(move |_| Box::new(macro_metavars_in_unsafe::ExprMetavarsInUnsafe::new(conf)));
     store.register_late_pass(move |_| Box::new(string_patterns::StringPatterns::new(conf)));
@@ -971,7 +972,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(zombie_processes::ZombieProcesses));
     store.register_late_pass(|_| Box::new(pointers_in_nomem_asm_block::PointersInNomemAsmBlock));
     store.register_late_pass(move |_| Box::new(manual_div_ceil::ManualDivCeil::new(conf)));
-    store.register_late_pass(|_| Box::new(manual_is_power_of_two::ManualIsPowerOfTwo));
+    store.register_late_pass(move |_| Box::new(manual_is_power_of_two::ManualIsPowerOfTwo::new(conf)));
     store.register_late_pass(|_| Box::new(non_zero_suggestions::NonZeroSuggestions));
     store.register_late_pass(|_| Box::new(literal_string_with_formatting_args::LiteralStringWithFormattingArg));
     store.register_late_pass(move |_| Box::new(unused_trait_names::UnusedTraitNames::new(conf)));
@@ -984,5 +985,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(non_std_lazy_statics::NonStdLazyStatic::new(conf)));
     store.register_late_pass(|_| Box::new(manual_option_as_slice::ManualOptionAsSlice::new(conf)));
     store.register_late_pass(|_| Box::new(single_option_map::SingleOptionMap));
+    store.register_late_pass(move |_| Box::new(redundant_test_prefix::RedundantTestPrefix));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

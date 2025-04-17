@@ -14,14 +14,17 @@ pub(super) fn check<'tcx>(
     expr: &'tcx hir::Expr<'_>,
     then_recv: &'tcx hir::Expr<'_>,
     then_arg: &'tcx hir::Expr<'_>,
-    unwrap_arg: &'tcx hir::Expr<'_>,
+    unwrap_arg: Option<&'tcx hir::Expr<'_>>,
     then_method_name: &str,
     unwrap_method_name: &str,
 ) {
     let recv_ty = cx.typeck_results().expr_ty(then_recv);
 
     if recv_ty.is_bool() {
-        let mut applicability = if switch_to_eager_eval(cx, then_arg) && switch_to_eager_eval(cx, unwrap_arg) {
+        let then_eager = switch_to_eager_eval(cx, then_arg);
+        let unwrap_eager = unwrap_arg.is_none_or(|arg| switch_to_eager_eval(cx, arg));
+
+        let mut applicability = if then_eager && unwrap_eager {
             Applicability::MachineApplicable
         } else {
             Applicability::MaybeIncorrect
@@ -36,16 +39,17 @@ pub(super) fn check<'tcx>(
             _ => return,
         };
 
-        // FIXME: Add `unwrap_or_else` symbol
+        // FIXME: Add `unwrap_or_else` and `unwrap_or_default` symbol
         let els = match unwrap_method_name {
-            "unwrap_or" => snippet_with_applicability(cx, unwrap_arg.span, "..", &mut applicability),
-            "unwrap_or_else" if let ExprKind::Closure(closure) = unwrap_arg.kind => {
+            "unwrap_or" => snippet_with_applicability(cx, unwrap_arg.unwrap().span, "..", &mut applicability),
+            "unwrap_or_else" if let ExprKind::Closure(closure) = unwrap_arg.unwrap().kind => {
                 let body = cx.tcx.hir_body(closure.body);
                 snippet_with_applicability(cx, body.value.span, "..", &mut applicability)
             },
-            "unwrap_or_else" if let ExprKind::Path(_) = unwrap_arg.kind => {
-                snippet_with_applicability(cx, unwrap_arg.span, "_", &mut applicability) + "()"
+            "unwrap_or_else" if let ExprKind::Path(_) = unwrap_arg.unwrap().kind => {
+                snippet_with_applicability(cx, unwrap_arg.unwrap().span, "_", &mut applicability) + "()"
             },
+            "unwrap_or_default" => "Default::default()".into(),
             _ => return,
         };
 

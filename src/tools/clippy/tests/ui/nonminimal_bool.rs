@@ -216,3 +216,23 @@ fn issue14184(a: f32, b: bool) {
         println!("Hi");
     }
 }
+
+mod issue14404 {
+    enum TyKind {
+        Ref(i32, i32, i32),
+        Other,
+    }
+
+    struct Expr;
+
+    fn is_mutable(expr: &Expr) -> bool {
+        todo!()
+    }
+
+    fn should_not_give_macro(ty: TyKind, expr: Expr) {
+        if !(matches!(ty, TyKind::Ref(_, _, _)) && !is_mutable(&expr)) {
+            //~^ nonminimal_bool
+            todo!()
+        }
+    }
+}

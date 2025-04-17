@@ -99,6 +99,7 @@ struct A;
 impl A {
     pub fn fo(&self) {}
     pub fn foo(&self) {}
+    //~^ foo_functions
     pub fn food(&self) {}
 }
 
@@ -106,12 +107,14 @@ impl A {
 trait B {
     fn fo(&self) {}
     fn foo(&self) {}
+    //~^ foo_functions
     fn food(&self) {}
 }
 
 // Plain functions
 fn fo() {}
 fn foo() {}
+//~^ foo_functions
 fn food() {}
 
 fn main() {
@@ -122,17 +125,24 @@ fn main() {
 }
 ```
 
-Now we can run the test with `TESTNAME=foo_functions cargo uibless`, currently
-this test is meaningless though.
+Note that we are adding comment annotations with the name of our lint to mark
+lines where we expect an error. Except for very specific situations
+(`//@check-pass`), at least one error marker must be present in a test file for
+it to be accepted.
+
+Once we have implemented our lint we can run `TESTNAME=foo_functions cargo
+uibless` to generate the `.stderr` file. If our lint makes use of structured
+suggestions then this command will also generate the corresponding `.fixed`
+file.
 
 While we are working on implementing our lint, we can keep running the UI test.
 That allows us to check if the output is turning into what we want by checking the
 `.stderr` file that gets updated on every test run.
 
-Running `TESTNAME=foo_functions cargo uitest` should pass on its own. When we
-commit our lint, we need to commit the generated `.stderr` files, too. In
-general, you should only commit files changed by `cargo bless` for the
-specific lint you are creating/editing.
+Once we have implemented our lint running `TESTNAME=foo_functions cargo uitest`
+should pass on its own. When we commit our lint, we need to commit the generated
+ `.stderr` and if applicable `.fixed` files, too. In general, you should only
+ commit files changed by `cargo bless` for the specific lint you are creating/editing.
 
 > _Note:_ you can run multiple test files by specifying a comma separated list:
 > `TESTNAME=foo_functions,test2,test3`.

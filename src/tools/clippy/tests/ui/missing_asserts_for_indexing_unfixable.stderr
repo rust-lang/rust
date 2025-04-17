@@ -180,5 +180,48 @@ LL |     let _ = x[0] + x[1];
    |                    ^^^^
    = note: asserting the length before indexing will elide bounds checks
 
-error: aborting due to 8 previous errors
+error: indexing into a slice multiple times without an `assert`
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:77:13
+   |
+LL |     let _ = v1[1] + v1[2];
+   |             ^^^^^^^^^^^^^
+   |
+   = help: consider asserting the length before indexing: `assert!(v1.len() > 2);`
+note: slice indexed here
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:77:13
+   |
+LL |     let _ = v1[1] + v1[2];
+   |             ^^^^^
+note: slice indexed here
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:77:21
+   |
+LL |     let _ = v1[1] + v1[2];
+   |                     ^^^^^
+   = note: asserting the length before indexing will elide bounds checks
+
+error: indexing into a slice multiple times without an `assert`
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:85:13
+   |
+LL |     let _ = v1[0] + v1[1] + v1[2];
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider asserting the length before indexing: `assert!(v1.len() > 2);`
+note: slice indexed here
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:85:13
+   |
+LL |     let _ = v1[0] + v1[1] + v1[2];
+   |             ^^^^^
+note: slice indexed here
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:85:21
+   |
+LL |     let _ = v1[0] + v1[1] + v1[2];
+   |                     ^^^^^
+note: slice indexed here
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:85:29
+   |
+LL |     let _ = v1[0] + v1[1] + v1[2];
+   |                             ^^^^^
+   = note: asserting the length before indexing will elide bounds checks
+
+error: aborting due to 10 previous errors
 
