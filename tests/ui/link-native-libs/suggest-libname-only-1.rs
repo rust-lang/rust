@@ -2,7 +2,7 @@
 //@ compile-flags: --crate-type rlib
 
 #[link(name = "libfoo.a", kind = "static")]
-extern { } //~ WARN extern declarations without an explicit ABI are deprecated
+extern { } //~ WARN `extern` declarations without an explicit ABI are deprecated
            //~| HELP explicitly specify the "C" ABI
 
 pub fn main() { }

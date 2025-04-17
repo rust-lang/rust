@@ -194,9 +194,6 @@ impl Thread {
     }
 
     #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
-    // FIXME(#115199): Rust currently omits weak function definitions
-    // and its metadata from LLVM IR.
-    #[no_sanitize(cfi)]
     pub fn set_name(name: &CStr) {
         weak!(
             fn pthread_setname_np(

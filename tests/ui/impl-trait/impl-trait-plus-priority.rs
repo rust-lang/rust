@@ -27,7 +27,7 @@ type A = fn() -> impl A + B;
 type A = fn() -> dyn A + B;
 //~^ ERROR ambiguous `+` in a type
 type A = fn() -> A + B;
-//~^ ERROR expected a path on the left-hand side of `+`, not `fn() -> A`
+//~^ ERROR expected a path on the left-hand side of `+`
 
 type A = Fn() -> impl A +;
 //~^ ERROR ambiguous `+` in a type
@@ -44,6 +44,6 @@ type A = &impl A + B;
 type A = &dyn A + B;
 //~^ ERROR ambiguous `+` in a type
 type A = &A + B;
-//~^ ERROR expected a path on the left-hand side of `+`, not `&A`
+//~^ ERROR expected a path on the left-hand side of `+`
 
 fn main() {}
