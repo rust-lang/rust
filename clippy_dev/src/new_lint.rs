@@ -448,7 +448,7 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
 
     let mut file_contents = fs::read_to_string(path)?;
     assert!(
-        !file_contents.contains(&lint_name_upper),
+        !file_contents.contains(&format!("pub {lint_name_upper},")),
         "Lint `{}` already defined in `{}`",
         lint.name,
         path.display()
