@@ -24,7 +24,7 @@ use crate::github::JobInfoResolver;
 use crate::jobs::RunType;
 use crate::metrics::{JobMetrics, download_auto_job_metrics, download_job_metrics, load_metrics};
 use crate::test_dashboard::generate_test_dashboard;
-use crate::utils::load_env_var;
+use crate::utils::{load_env_var, output_details};
 
 const CI_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
 const DOCKER_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../docker");
@@ -188,6 +188,20 @@ fn post_merge_report(db: JobDatabase, current: String, parent: String) -> anyhow
 
     let mut job_info_resolver = JobInfoResolver::new();
     output_test_diffs(&metrics, &mut job_info_resolver);
+
+    output_details("Test dashboard", || {
+        println!(
+            r#"\nRun
+
+```bash
+cargo run --manifest-path src/ci/citool/Cargo.toml -- \
+    test-dashboard {current} --output-dir test-dashboard
+```
+And then open `test-dashboard/index.html` in your browser to see an overview of all executed tests.
+"#
+        );
+    });
+
     output_largest_duration_changes(&metrics, &mut job_info_resolver);
 
     Ok(())
