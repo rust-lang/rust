@@ -5,7 +5,7 @@ use rustc_ast::Label;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, SubdiagMessageOp, Subdiagnostic,
+    MultiSpan, Subdiagnostic,
 };
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -1852,11 +1852,7 @@ pub(crate) struct UnusedVariableStringInterp {
 }
 
 impl Subdiagnostic for UnusedVariableStringInterp {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.span_label(self.lit, crate::fluent_generated::passes_maybe_string_interpolation);
         diag.multipart_suggestion(
             crate::fluent_generated::passes_string_interpolation_only_works,

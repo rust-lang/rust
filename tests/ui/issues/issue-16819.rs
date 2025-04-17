@@ -3,7 +3,7 @@
 // `#[cfg]` on struct field permits empty unusable struct
 
 struct S {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     a: int,
 }
 

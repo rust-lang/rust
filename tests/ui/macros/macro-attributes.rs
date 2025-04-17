@@ -9,7 +9,7 @@ macro_rules! compiles_fine {
 
         // check that the attributes are recognised by requiring this
         // to be removed to avoid a compile error
-        #[cfg(FALSE)]
+        #[cfg(false)]
         static MISTYPED: () = "foo";
     }
 }

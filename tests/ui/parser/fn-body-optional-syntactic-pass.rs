@@ -4,7 +4,7 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn syntax() {
     fn f();
     fn f() {}

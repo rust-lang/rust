@@ -12,7 +12,7 @@ fn main() {
     //~^^ ERROR `yield` can only be used
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn foo() {
     // Ok in 2024 edition
     yield; //~ ERROR yield syntax is experimental

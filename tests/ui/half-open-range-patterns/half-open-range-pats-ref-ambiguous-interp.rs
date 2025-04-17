@@ -1,6 +1,6 @@
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn syntax() {
     match &0 {
         &0.. | _ => {}

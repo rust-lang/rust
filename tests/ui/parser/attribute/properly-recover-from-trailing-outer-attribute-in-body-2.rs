@@ -5,7 +5,7 @@ macro_rules! the_macro {
         #[cfg()]
         $foo //~ ERROR expected `;`, found `#`
 
-        #[cfg(FALSE)]
+        #[cfg(false)]
         $bar
     };
 }
