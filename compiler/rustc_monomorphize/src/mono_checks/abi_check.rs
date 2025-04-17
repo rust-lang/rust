@@ -111,6 +111,11 @@ fn wasm_abi_safe<'tcx>(tcx: TyCtxt<'tcx>, arg: &ArgAbi<'tcx, Ty<'tcx>>) -> bool 
         }
     }
 
+    // Zero-sized types are dropped in both ABIs, so they're safe
+    if arg.layout.is_zst() {
+        return true;
+    }
+
     false
 }
 

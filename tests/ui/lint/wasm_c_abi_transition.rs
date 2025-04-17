@@ -39,3 +39,9 @@ pub fn call_other_fun(x: MyType) {
     unsafe { other_fun(x) } //~ERROR: wasm ABI transition
     //~^WARN: previously accepted
 }
+
+// Zero-sized types are safe in both ABIs
+#[repr(C)]
+pub struct MyZstType;
+#[allow(improper_ctypes_definitions)]
+pub extern "C" fn zst_safe(_x: (), _y: MyZstType) {}
