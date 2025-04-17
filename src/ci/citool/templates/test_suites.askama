@@ -4,7 +4,11 @@
 <h1>Rust CI Test Dashboard</h1>
 <div class="test-suites">
     <div class="summary">
-        Total tests: {{ test_count }}
+        <span>Total tests: {{ test_count }}</span>
+        <div>
+            <button onclick="openAll()">Open all</button>
+            <button onclick="closeAll()">Close all</button>
+        </div>
     </div>
 
     <ul>
@@ -15,4 +19,79 @@
     {% endfor %}
     </ul>
 </div>
+{% endblock %}
+
+{% block styles %}
+h1 {
+    text-align: center;
+    color: #333333;
+    margin-bottom: 30px;
+}
+
+.summary {
+    display: flex;
+    justify-content: space-between;
+}
+
+.test-suites {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+
+ul {
+    padding-left: 0;
+}
+
+li {
+    list-style: none;
+    padding-left: 20px;
+}
+summary {
+    margin-bottom: 5px;
+    padding: 6px;
+    background-color: #F4F4F4;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+summary:hover {
+    background-color: #CFCFCF;
+}
+
+/* Style the disclosure triangles */
+details > summary {
+    list-style: none;
+    position: relative;
+}
+
+details > summary::before {
+    content: "▶";
+    position: absolute;
+    left: -15px;
+    transform: rotate(0);
+    transition: transform 0.2s;
+}
+
+details[open] > summary::before {
+    transform: rotate(90deg);
+}
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript">
+function openAll() {
+    const details = document.getElementsByTagName("details");
+    for (const elem of details) {
+        elem.open = true;
+    }
+}
+function closeAll() {
+    const details = document.getElementsByTagName("details");
+    for (const elem of details) {
+        elem.open = false;
+    }
+}
+</script>
 {% endblock %}
