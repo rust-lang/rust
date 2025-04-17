@@ -6,7 +6,7 @@ on:
     branches:
       - 'master'
   schedule:
-    - cron: '44 4,17 * * *' # At 4:44 UTC every day.
+    - cron: '44 4 * * *' # At 4:44 UTC every day.
 
 defaults:
   run:
