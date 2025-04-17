@@ -4,5 +4,5 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 static X: u8;

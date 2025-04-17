@@ -2,10 +2,10 @@
 #![feature(custom_test_frameworks)]
 
 fn main() {
-    let _ = #[cfg(FALSE)] ();
+    let _ = #[cfg(false)] ();
     //~^ ERROR removing an expression is not supported in this position
-    let _ = 1 + 2 + #[cfg(FALSE)] 3;
+    let _ = 1 + 2 + #[cfg(false)] 3;
     //~^ ERROR removing an expression is not supported in this position
-    let _ = [1, 2, 3][#[cfg(FALSE)] 1];
+    let _ = [1, 2, 3][#[cfg(false)] 1];
     //~^ ERROR removing an expression is not supported in this position
 }

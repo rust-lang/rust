@@ -17,7 +17,7 @@ macro_rules! foo2 {
     () => {};
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 macro_rules! foo {
     () => {};
 }
