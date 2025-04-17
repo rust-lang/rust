@@ -55,9 +55,11 @@ jobs:
           - os: macos-13
             target: x86_64-apple-darwin
             code-target: darwin-x64
+            pgo: clap-rs/clap
           - os: macos-13
             target: aarch64-apple-darwin
             code-target: darwin-arm64
+            pgo: clap-rs/clap
 
     name: dist (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
