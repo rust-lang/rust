@@ -16515,7 +16515,10 @@ pub fn _mm512_setr_epi64(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn _mm512_i32gather_pd<const SCALE: i32>(offsets: __m256i, slice: *const u8) -> __m512d {
+pub unsafe fn _mm512_i32gather_pd<const SCALE: i32>(
+    offsets: __m256i,
+    slice: *const f64,
+) -> __m512d {
     static_assert_imm8_scale!(SCALE);
     let zero = f64x8::ZERO;
     let neg_one = -1;
@@ -16537,7 +16540,7 @@ pub unsafe fn _mm512_mask_i32gather_pd<const SCALE: i32>(
     src: __m512d,
     mask: __mmask8,
     offsets: __m256i,
-    slice: *const u8,
+    slice: *const f64,
 ) -> __m512d {
     static_assert_imm8_scale!(SCALE);
     let src = src.as_f64x8();
@@ -16555,7 +16558,10 @@ pub unsafe fn _mm512_mask_i32gather_pd<const SCALE: i32>(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vgatherqpd, SCALE = 1))]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn _mm512_i64gather_pd<const SCALE: i32>(offsets: __m512i, slice: *const u8) -> __m512d {
+pub unsafe fn _mm512_i64gather_pd<const SCALE: i32>(
+    offsets: __m512i,
+    slice: *const f64,
+) -> __m512d {
     static_assert_imm8_scale!(SCALE);
     let zero = f64x8::ZERO;
     let neg_one = -1;
@@ -16577,7 +16583,7 @@ pub unsafe fn _mm512_mask_i64gather_pd<const SCALE: i32>(
     src: __m512d,
     mask: __mmask8,
     offsets: __m512i,
-    slice: *const u8,
+    slice: *const f64,
 ) -> __m512d {
     static_assert_imm8_scale!(SCALE);
     let src = src.as_f64x8();
@@ -16595,7 +16601,7 @@ pub unsafe fn _mm512_mask_i64gather_pd<const SCALE: i32>(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vgatherqps, SCALE = 1))]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn _mm512_i64gather_ps<const SCALE: i32>(offsets: __m512i, slice: *const u8) -> __m256 {
+pub unsafe fn _mm512_i64gather_ps<const SCALE: i32>(offsets: __m512i, slice: *const f32) -> __m256 {
     static_assert_imm8_scale!(SCALE);
     let zero = f32x8::ZERO;
     let neg_one = -1;
@@ -16617,7 +16623,7 @@ pub unsafe fn _mm512_mask_i64gather_ps<const SCALE: i32>(
     src: __m256,
     mask: __mmask8,
     offsets: __m512i,
-    slice: *const u8,
+    slice: *const f32,
 ) -> __m256 {
     static_assert_imm8_scale!(SCALE);
     let src = src.as_f32x8();
@@ -16635,7 +16641,7 @@ pub unsafe fn _mm512_mask_i64gather_ps<const SCALE: i32>(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vgatherdps, SCALE = 1))]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn _mm512_i32gather_ps<const SCALE: i32>(offsets: __m512i, slice: *const u8) -> __m512 {
+pub unsafe fn _mm512_i32gather_ps<const SCALE: i32>(offsets: __m512i, slice: *const f32) -> __m512 {
     static_assert_imm8_scale!(SCALE);
     let zero = f32x16::ZERO;
     let neg_one = -1;
@@ -16657,7 +16663,7 @@ pub unsafe fn _mm512_mask_i32gather_ps<const SCALE: i32>(
     src: __m512,
     mask: __mmask16,
     offsets: __m512i,
-    slice: *const u8,
+    slice: *const f32,
 ) -> __m512 {
     static_assert_imm8_scale!(SCALE);
     let src = src.as_f32x16();
@@ -16677,7 +16683,7 @@ pub unsafe fn _mm512_mask_i32gather_ps<const SCALE: i32>(
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_i32gather_epi32<const SCALE: i32>(
     offsets: __m512i,
-    slice: *const u8,
+    slice: *const i32,
 ) -> __m512i {
     static_assert_imm8_scale!(SCALE);
     let zero = i32x16::ZERO;
@@ -16700,7 +16706,7 @@ pub unsafe fn _mm512_mask_i32gather_epi32<const SCALE: i32>(
     src: __m512i,
     mask: __mmask16,
     offsets: __m512i,
-    slice: *const u8,
+    slice: *const i32,
 ) -> __m512i {
     static_assert_imm8_scale!(SCALE);
     let src = src.as_i32x16();
@@ -16721,7 +16727,7 @@ pub unsafe fn _mm512_mask_i32gather_epi32<const SCALE: i32>(
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_i32gather_epi64<const SCALE: i32>(
     offsets: __m256i,
-    slice: *const u8,
+    slice: *const i64,
 ) -> __m512i {
     static_assert_imm8_scale!(SCALE);
     let zero = i64x8::ZERO;
@@ -16744,7 +16750,7 @@ pub unsafe fn _mm512_mask_i32gather_epi64<const SCALE: i32>(
     src: __m512i,
     mask: __mmask8,
     offsets: __m256i,
-    slice: *const u8,
+    slice: *const i64,
 ) -> __m512i {
     static_assert_imm8_scale!(SCALE);
     let src = src.as_i64x8();
@@ -16765,7 +16771,7 @@ pub unsafe fn _mm512_mask_i32gather_epi64<const SCALE: i32>(
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_i64gather_epi64<const SCALE: i32>(
     offsets: __m512i,
-    slice: *const u8,
+    slice: *const i64,
 ) -> __m512i {
     static_assert_imm8_scale!(SCALE);
     let zero = i64x8::ZERO;
@@ -16788,7 +16794,7 @@ pub unsafe fn _mm512_mask_i64gather_epi64<const SCALE: i32>(
     src: __m512i,
     mask: __mmask8,
     offsets: __m512i,
-    slice: *const u8,
+    slice: *const i64,
 ) -> __m512i {
     static_assert_imm8_scale!(SCALE);
     let src = src.as_i64x8();
@@ -16809,7 +16815,7 @@ pub unsafe fn _mm512_mask_i64gather_epi64<const SCALE: i32>(
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_i64gather_epi32<const SCALE: i32>(
     offsets: __m512i,
-    slice: *const u8,
+    slice: *const i32,
 ) -> __m256i {
     static_assert_imm8_scale!(SCALE);
     let zeros = i32x8::ZERO;
@@ -16832,7 +16838,7 @@ pub unsafe fn _mm512_mask_i64gather_epi32<const SCALE: i32>(
     src: __m256i,
     mask: __mmask8,
     offsets: __m512i,
-    slice: *const u8,
+    slice: *const i32,
 ) -> __m256i {
     static_assert_imm8_scale!(SCALE);
     let src = src.as_i32x8();
@@ -16852,7 +16858,7 @@ pub unsafe fn _mm512_mask_i64gather_epi32<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vscatterdpd, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_i32scatter_pd<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut f64,
     offsets: __m256i,
     src: __m512d,
 ) {
@@ -16873,7 +16879,7 @@ pub unsafe fn _mm512_i32scatter_pd<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vscatterdpd, SCALE = 1))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_i32scatter_pd<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut f64,
     mask: __mmask8,
     offsets: __m256i,
     src: __m512d,
@@ -16894,7 +16900,7 @@ pub unsafe fn _mm512_mask_i32scatter_pd<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vscatterqpd, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_i64scatter_pd<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut f64,
     offsets: __m512i,
     src: __m512d,
 ) {
@@ -16915,7 +16921,7 @@ pub unsafe fn _mm512_i64scatter_pd<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vscatterqpd, SCALE = 1))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_i64scatter_pd<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut f64,
     mask: __mmask8,
     offsets: __m512i,
     src: __m512d,
@@ -16936,7 +16942,7 @@ pub unsafe fn _mm512_mask_i64scatter_pd<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vscatterdps, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_i32scatter_ps<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut f32,
     offsets: __m512i,
     src: __m512,
 ) {
@@ -16957,7 +16963,7 @@ pub unsafe fn _mm512_i32scatter_ps<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vscatterdps, SCALE = 1))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_i32scatter_ps<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut f32,
     mask: __mmask16,
     offsets: __m512i,
     src: __m512,
@@ -16978,7 +16984,7 @@ pub unsafe fn _mm512_mask_i32scatter_ps<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vscatterqps, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_i64scatter_ps<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut f32,
     offsets: __m512i,
     src: __m256,
 ) {
@@ -16999,7 +17005,7 @@ pub unsafe fn _mm512_i64scatter_ps<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vscatterqps, SCALE = 1))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_i64scatter_ps<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut f32,
     mask: __mmask8,
     offsets: __m512i,
     src: __m256,
@@ -17020,7 +17026,7 @@ pub unsafe fn _mm512_mask_i64scatter_ps<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vpscatterdq, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_i32scatter_epi64<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut i64,
     offsets: __m256i,
     src: __m512i,
 ) {
@@ -17041,7 +17047,7 @@ pub unsafe fn _mm512_i32scatter_epi64<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vpscatterdq, SCALE = 1))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_i32scatter_epi64<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut i64,
     mask: __mmask8,
     offsets: __m256i,
     src: __m512i,
@@ -17063,7 +17069,7 @@ pub unsafe fn _mm512_mask_i32scatter_epi64<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vpscatterqq, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_i64scatter_epi64<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut i64,
     offsets: __m512i,
     src: __m512i,
 ) {
@@ -17084,7 +17090,7 @@ pub unsafe fn _mm512_i64scatter_epi64<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vpscatterqq, SCALE = 1))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_i64scatter_epi64<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut i64,
     mask: __mmask8,
     offsets: __m512i,
     src: __m512i,
@@ -17106,7 +17112,7 @@ pub unsafe fn _mm512_mask_i64scatter_epi64<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vpscatterdd, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_i32scatter_epi32<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut i32,
     offsets: __m512i,
     src: __m512i,
 ) {
@@ -17127,7 +17133,7 @@ pub unsafe fn _mm512_i32scatter_epi32<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vpscatterdd, SCALE = 1))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_i32scatter_epi32<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut i32,
     mask: __mmask16,
     offsets: __m512i,
     src: __m512i,
@@ -17149,7 +17155,7 @@ pub unsafe fn _mm512_mask_i32scatter_epi32<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vpscatterqd, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_i64scatter_epi32<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut i32,
     offsets: __m512i,
     src: __m256i,
 ) {
@@ -17170,7 +17176,7 @@ pub unsafe fn _mm512_i64scatter_epi32<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vpscatterqd, SCALE = 1))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_i64scatter_epi32<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut i32,
     mask: __mmask8,
     offsets: __m512i,
     src: __m256i,
@@ -17194,9 +17200,9 @@ pub unsafe fn _mm512_mask_i64scatter_epi32<const SCALE: i32>(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_i32logather_epi64<const SCALE: i32>(
     vindex: __m512i,
-    base_addr: *const u8,
+    base_addr: *const i64,
 ) -> __m512i {
-    _mm512_i32gather_epi64::<SCALE>(_mm512_castsi512_si256(vindex), base_addr as _)
+    _mm512_i32gather_epi64::<SCALE>(_mm512_castsi512_si256(vindex), base_addr)
 }
 
 /// Loads 8 64-bit integer elements from memory starting at location base_addr at packed 32-bit integer
@@ -17213,9 +17219,9 @@ pub unsafe fn _mm512_mask_i32logather_epi64<const SCALE: i32>(
     src: __m512i,
     k: __mmask8,
     vindex: __m512i,
-    base_addr: *const u8,
+    base_addr: *const i64,
 ) -> __m512i {
-    _mm512_mask_i32gather_epi64::<SCALE>(src, k, _mm512_castsi512_si256(vindex), base_addr as _)
+    _mm512_mask_i32gather_epi64::<SCALE>(src, k, _mm512_castsi512_si256(vindex), base_addr)
 }
 
 /// Loads 8 double-precision (64-bit) floating-point elements from memory starting at location base_addr
@@ -17229,9 +17235,9 @@ pub unsafe fn _mm512_mask_i32logather_epi64<const SCALE: i32>(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_i32logather_pd<const SCALE: i32>(
     vindex: __m512i,
-    base_addr: *const u8,
+    base_addr: *const f64,
 ) -> __m512d {
-    _mm512_i32gather_pd::<SCALE>(_mm512_castsi512_si256(vindex), base_addr as _)
+    _mm512_i32gather_pd::<SCALE>(_mm512_castsi512_si256(vindex), base_addr)
 }
 
 /// Loads 8 double-precision (64-bit) floating-point elements from memory starting at location base_addr
@@ -17248,9 +17254,9 @@ pub unsafe fn _mm512_mask_i32logather_pd<const SCALE: i32>(
     src: __m512d,
     k: __mmask8,
     vindex: __m512i,
-    base_addr: *const u8,
+    base_addr: *const f64,
 ) -> __m512d {
-    _mm512_mask_i32gather_pd::<SCALE>(src, k, _mm512_castsi512_si256(vindex), base_addr as _)
+    _mm512_mask_i32gather_pd::<SCALE>(src, k, _mm512_castsi512_si256(vindex), base_addr)
 }
 
 /// Stores 8 64-bit integer elements from a to memory starting at location base_addr at packed 32-bit integer
@@ -17263,11 +17269,11 @@ pub unsafe fn _mm512_mask_i32logather_pd<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_i32loscatter_epi64<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i64,
     vindex: __m512i,
     a: __m512i,
 ) {
-    _mm512_i32scatter_epi64::<SCALE>(base_addr as _, _mm512_castsi512_si256(vindex), a)
+    _mm512_i32scatter_epi64::<SCALE>(base_addr, _mm512_castsi512_si256(vindex), a)
 }
 
 /// Stores 8 64-bit integer elements from a to memory starting at location base_addr at packed 32-bit integer
@@ -17281,12 +17287,12 @@ pub unsafe fn _mm512_i32loscatter_epi64<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_i32loscatter_epi64<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i64,
     k: __mmask8,
     vindex: __m512i,
     a: __m512i,
 ) {
-    _mm512_mask_i32scatter_epi64::<SCALE>(base_addr as _, k, _mm512_castsi512_si256(vindex), a)
+    _mm512_mask_i32scatter_epi64::<SCALE>(base_addr, k, _mm512_castsi512_si256(vindex), a)
 }
 
 /// Stores 8 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
@@ -17299,11 +17305,11 @@ pub unsafe fn _mm512_mask_i32loscatter_epi64<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_i32loscatter_pd<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f64,
     vindex: __m512i,
     a: __m512d,
 ) {
-    _mm512_i32scatter_pd::<SCALE>(base_addr as _, _mm512_castsi512_si256(vindex), a)
+    _mm512_i32scatter_pd::<SCALE>(base_addr, _mm512_castsi512_si256(vindex), a)
 }
 
 /// Stores 8 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
@@ -17317,12 +17323,12 @@ pub unsafe fn _mm512_i32loscatter_pd<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_i32loscatter_pd<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f64,
     k: __mmask8,
     vindex: __m512i,
     a: __m512d,
 ) {
-    _mm512_mask_i32scatter_pd::<SCALE>(base_addr as _, k, _mm512_castsi512_si256(vindex), a)
+    _mm512_mask_i32scatter_pd::<SCALE>(base_addr, k, _mm512_castsi512_si256(vindex), a)
 }
 
 /// Stores 8 32-bit integer elements from a to memory starting at location base_addr at packed 32-bit integer
@@ -17335,7 +17341,7 @@ pub unsafe fn _mm512_mask_i32loscatter_pd<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_i32scatter_epi32<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i32,
     vindex: __m256i,
     a: __m256i,
 ) {
@@ -17354,7 +17360,7 @@ pub unsafe fn _mm256_i32scatter_epi32<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_i32scatter_epi32<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i32,
     k: __mmask8,
     vindex: __m256i,
     a: __m256i,
@@ -17372,7 +17378,7 @@ pub unsafe fn _mm256_mask_i32scatter_epi32<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vpscatterdq, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm256_i32scatter_epi64<const SCALE: i32>(
-    slice: *mut u8,
+    slice: *mut i64,
     offsets: __m128i,
     src: __m256i,
 ) {
@@ -17394,7 +17400,7 @@ pub unsafe fn _mm256_i32scatter_epi64<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_i32scatter_epi64<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i64,
     k: __mmask8,
     vindex: __m128i,
     a: __m256i,
@@ -17413,7 +17419,7 @@ pub unsafe fn _mm256_mask_i32scatter_epi64<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_i32scatter_pd<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f64,
     vindex: __m128i,
     a: __m256d,
 ) {
@@ -17432,7 +17438,7 @@ pub unsafe fn _mm256_i32scatter_pd<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_i32scatter_pd<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f64,
     k: __mmask8,
     vindex: __m128i,
     a: __m256d,
@@ -17451,7 +17457,7 @@ pub unsafe fn _mm256_mask_i32scatter_pd<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_i32scatter_ps<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f32,
     vindex: __m256i,
     a: __m256,
 ) {
@@ -17470,7 +17476,7 @@ pub unsafe fn _mm256_i32scatter_ps<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_i32scatter_ps<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f32,
     k: __mmask8,
     vindex: __m256i,
     a: __m256,
@@ -17489,7 +17495,7 @@ pub unsafe fn _mm256_mask_i32scatter_ps<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_i64scatter_epi32<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i32,
     vindex: __m256i,
     a: __m128i,
 ) {
@@ -17508,7 +17514,7 @@ pub unsafe fn _mm256_i64scatter_epi32<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_i64scatter_epi32<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i32,
     k: __mmask8,
     vindex: __m256i,
     a: __m128i,
@@ -17527,7 +17533,7 @@ pub unsafe fn _mm256_mask_i64scatter_epi32<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_i64scatter_epi64<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i64,
     vindex: __m256i,
     a: __m256i,
 ) {
@@ -17546,7 +17552,7 @@ pub unsafe fn _mm256_i64scatter_epi64<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_i64scatter_epi64<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i64,
     k: __mmask8,
     vindex: __m256i,
     a: __m256i,
@@ -17565,7 +17571,7 @@ pub unsafe fn _mm256_mask_i64scatter_epi64<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_i64scatter_pd<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f64,
     vindex: __m256i,
     a: __m256d,
 ) {
@@ -17584,7 +17590,7 @@ pub unsafe fn _mm256_i64scatter_pd<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_i64scatter_pd<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f64,
     k: __mmask8,
     vindex: __m256i,
     a: __m256d,
@@ -17603,7 +17609,7 @@ pub unsafe fn _mm256_mask_i64scatter_pd<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_i64scatter_ps<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f32,
     vindex: __m256i,
     a: __m128,
 ) {
@@ -17622,7 +17628,7 @@ pub unsafe fn _mm256_i64scatter_ps<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_i64scatter_ps<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f32,
     k: __mmask8,
     vindex: __m256i,
     a: __m128,
@@ -17645,7 +17651,7 @@ pub unsafe fn _mm256_mmask_i32gather_epi32<const SCALE: i32>(
     src: __m256i,
     k: __mmask8,
     vindex: __m256i,
-    base_addr: *const u8,
+    base_addr: *const i32,
 ) -> __m256i {
     static_assert_imm8_scale!(SCALE);
     transmute(vpgatherdd_256(
@@ -17671,7 +17677,7 @@ pub unsafe fn _mm256_mmask_i32gather_epi64<const SCALE: i32>(
     src: __m256i,
     k: __mmask8,
     vindex: __m128i,
-    base_addr: *const u8,
+    base_addr: *const i64,
 ) -> __m256i {
     static_assert_imm8_scale!(SCALE);
     transmute(vpgatherdq_256(
@@ -17697,7 +17703,7 @@ pub unsafe fn _mm256_mmask_i32gather_pd<const SCALE: i32>(
     src: __m256d,
     k: __mmask8,
     vindex: __m128i,
-    base_addr: *const u8,
+    base_addr: *const f64,
 ) -> __m256d {
     static_assert_imm8_scale!(SCALE);
     transmute(vgatherdpd_256(
@@ -17723,7 +17729,7 @@ pub unsafe fn _mm256_mmask_i32gather_ps<const SCALE: i32>(
     src: __m256,
     k: __mmask8,
     vindex: __m256i,
-    base_addr: *const u8,
+    base_addr: *const f32,
 ) -> __m256 {
     static_assert_imm8_scale!(SCALE);
     transmute(vgatherdps_256(
@@ -17749,7 +17755,7 @@ pub unsafe fn _mm256_mmask_i64gather_epi32<const SCALE: i32>(
     src: __m128i,
     k: __mmask8,
     vindex: __m256i,
-    base_addr: *const u8,
+    base_addr: *const i32,
 ) -> __m128i {
     static_assert_imm8_scale!(SCALE);
     transmute(vpgatherqd_256(
@@ -17775,7 +17781,7 @@ pub unsafe fn _mm256_mmask_i64gather_epi64<const SCALE: i32>(
     src: __m256i,
     k: __mmask8,
     vindex: __m256i,
-    base_addr: *const u8,
+    base_addr: *const i64,
 ) -> __m256i {
     static_assert_imm8_scale!(SCALE);
     transmute(vpgatherqq_256(
@@ -17801,7 +17807,7 @@ pub unsafe fn _mm256_mmask_i64gather_pd<const SCALE: i32>(
     src: __m256d,
     k: __mmask8,
     vindex: __m256i,
-    base_addr: *const u8,
+    base_addr: *const f64,
 ) -> __m256d {
     static_assert_imm8_scale!(SCALE);
     transmute(vgatherqpd_256(
@@ -17827,7 +17833,7 @@ pub unsafe fn _mm256_mmask_i64gather_ps<const SCALE: i32>(
     src: __m128,
     k: __mmask8,
     vindex: __m256i,
-    base_addr: *const u8,
+    base_addr: *const f32,
 ) -> __m128 {
     static_assert_imm8_scale!(SCALE);
     transmute(vgatherqps_256(
@@ -17849,7 +17855,7 @@ pub unsafe fn _mm256_mmask_i64gather_ps<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_i32scatter_epi32<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i32,
     vindex: __m128i,
     a: __m128i,
 ) {
@@ -17868,7 +17874,7 @@ pub unsafe fn _mm_i32scatter_epi32<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_i32scatter_epi32<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i32,
     k: __mmask8,
     vindex: __m128i,
     a: __m128i,
@@ -17887,7 +17893,7 @@ pub unsafe fn _mm_mask_i32scatter_epi32<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_i32scatter_epi64<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i64,
     vindex: __m128i,
     a: __m128i,
 ) {
@@ -17906,7 +17912,7 @@ pub unsafe fn _mm_i32scatter_epi64<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_i32scatter_epi64<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i64,
     k: __mmask8,
     vindex: __m128i,
     a: __m128i,
@@ -17924,7 +17930,11 @@ pub unsafe fn _mm_mask_i32scatter_epi64<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vscatterdpd, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-pub unsafe fn _mm_i32scatter_pd<const SCALE: i32>(base_addr: *mut u8, vindex: __m128i, a: __m128d) {
+pub unsafe fn _mm_i32scatter_pd<const SCALE: i32>(
+    base_addr: *mut f64,
+    vindex: __m128i,
+    a: __m128d,
+) {
     static_assert_imm8_scale!(SCALE);
     vscatterdpd_128(base_addr as _, 0xff, vindex.as_i32x4(), a.as_f64x2(), SCALE)
 }
@@ -17940,7 +17950,7 @@ pub unsafe fn _mm_i32scatter_pd<const SCALE: i32>(base_addr: *mut u8, vindex: __
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_i32scatter_pd<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f64,
     k: __mmask8,
     vindex: __m128i,
     a: __m128d,
@@ -17958,7 +17968,7 @@ pub unsafe fn _mm_mask_i32scatter_pd<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vscatterdps, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-pub unsafe fn _mm_i32scatter_ps<const SCALE: i32>(base_addr: *mut u8, vindex: __m128i, a: __m128) {
+pub unsafe fn _mm_i32scatter_ps<const SCALE: i32>(base_addr: *mut f32, vindex: __m128i, a: __m128) {
     static_assert_imm8_scale!(SCALE);
     vscatterdps_128(base_addr as _, 0xff, vindex.as_i32x4(), a.as_f32x4(), SCALE)
 }
@@ -17974,7 +17984,7 @@ pub unsafe fn _mm_i32scatter_ps<const SCALE: i32>(base_addr: *mut u8, vindex: __
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_i32scatter_ps<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f32,
     k: __mmask8,
     vindex: __m128i,
     a: __m128,
@@ -17993,7 +18003,7 @@ pub unsafe fn _mm_mask_i32scatter_ps<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_i64scatter_epi32<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i32,
     vindex: __m128i,
     a: __m128i,
 ) {
@@ -18012,7 +18022,7 @@ pub unsafe fn _mm_i64scatter_epi32<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_i64scatter_epi32<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i32,
     k: __mmask8,
     vindex: __m128i,
     a: __m128i,
@@ -18031,7 +18041,7 @@ pub unsafe fn _mm_mask_i64scatter_epi32<const SCALE: i32>(
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_i64scatter_epi64<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i64,
     vindex: __m128i,
     a: __m128i,
 ) {
@@ -18050,7 +18060,7 @@ pub unsafe fn _mm_i64scatter_epi64<const SCALE: i32>(
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_i64scatter_epi64<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut i64,
     k: __mmask8,
     vindex: __m128i,
     a: __m128i,
@@ -18068,7 +18078,11 @@ pub unsafe fn _mm_mask_i64scatter_epi64<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vscatterqpd, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-pub unsafe fn _mm_i64scatter_pd<const SCALE: i32>(base_addr: *mut u8, vindex: __m128i, a: __m128d) {
+pub unsafe fn _mm_i64scatter_pd<const SCALE: i32>(
+    base_addr: *mut f64,
+    vindex: __m128i,
+    a: __m128d,
+) {
     static_assert_imm8_scale!(SCALE);
     vscatterqpd_128(base_addr as _, 0xff, vindex.as_i64x2(), a.as_f64x2(), SCALE)
 }
@@ -18084,7 +18098,7 @@ pub unsafe fn _mm_i64scatter_pd<const SCALE: i32>(base_addr: *mut u8, vindex: __
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_i64scatter_pd<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f64,
     k: __mmask8,
     vindex: __m128i,
     a: __m128d,
@@ -18102,7 +18116,7 @@ pub unsafe fn _mm_mask_i64scatter_pd<const SCALE: i32>(
 #[cfg_attr(test, assert_instr(vscatterqps, SCALE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-pub unsafe fn _mm_i64scatter_ps<const SCALE: i32>(base_addr: *mut u8, vindex: __m128i, a: __m128) {
+pub unsafe fn _mm_i64scatter_ps<const SCALE: i32>(base_addr: *mut f32, vindex: __m128i, a: __m128) {
     static_assert_imm8_scale!(SCALE);
     vscatterqps_128(base_addr as _, 0xff, vindex.as_i64x2(), a.as_f32x4(), SCALE)
 }
@@ -18117,7 +18131,7 @@ pub unsafe fn _mm_i64scatter_ps<const SCALE: i32>(base_addr: *mut u8, vindex: __
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_i64scatter_ps<const SCALE: i32>(
-    base_addr: *mut u8,
+    base_addr: *mut f32,
     k: __mmask8,
     vindex: __m128i,
     a: __m128,
@@ -18140,7 +18154,7 @@ pub unsafe fn _mm_mmask_i32gather_epi32<const SCALE: i32>(
     src: __m128i,
     k: __mmask8,
     vindex: __m128i,
-    base_addr: *const u8,
+    base_addr: *const i32,
 ) -> __m128i {
     static_assert_imm8_scale!(SCALE);
     transmute(vpgatherdd_128(
@@ -18166,7 +18180,7 @@ pub unsafe fn _mm_mmask_i32gather_epi64<const SCALE: i32>(
     src: __m128i,
     k: __mmask8,
     vindex: __m128i,
-    base_addr: *const u8,
+    base_addr: *const i64,
 ) -> __m128i {
     static_assert_imm8_scale!(SCALE);
     transmute(vpgatherdq_128(
@@ -18192,7 +18206,7 @@ pub unsafe fn _mm_mmask_i32gather_pd<const SCALE: i32>(
     src: __m128d,
     k: __mmask8,
     vindex: __m128i,
-    base_addr: *const u8,
+    base_addr: *const f64,
 ) -> __m128d {
     static_assert_imm8_scale!(SCALE);
     transmute(vgatherdpd_128(
@@ -18218,7 +18232,7 @@ pub unsafe fn _mm_mmask_i32gather_ps<const SCALE: i32>(
     src: __m128,
     k: __mmask8,
     vindex: __m128i,
-    base_addr: *const u8,
+    base_addr: *const f32,
 ) -> __m128 {
     static_assert_imm8_scale!(SCALE);
     transmute(vgatherdps_128(
@@ -18244,7 +18258,7 @@ pub unsafe fn _mm_mmask_i64gather_epi32<const SCALE: i32>(
     src: __m128i,
     k: __mmask8,
     vindex: __m128i,
-    base_addr: *const u8,
+    base_addr: *const i32,
 ) -> __m128i {
     static_assert_imm8_scale!(SCALE);
     transmute(vpgatherqd_128(
@@ -18270,7 +18284,7 @@ pub unsafe fn _mm_mmask_i64gather_epi64<const SCALE: i32>(
     src: __m128i,
     k: __mmask8,
     vindex: __m128i,
-    base_addr: *const u8,
+    base_addr: *const i64,
 ) -> __m128i {
     static_assert_imm8_scale!(SCALE);
     transmute(vpgatherqq_128(
@@ -18296,7 +18310,7 @@ pub unsafe fn _mm_mmask_i64gather_pd<const SCALE: i32>(
     src: __m128d,
     k: __mmask8,
     vindex: __m128i,
-    base_addr: *const u8,
+    base_addr: *const f64,
 ) -> __m128d {
     static_assert_imm8_scale!(SCALE);
     transmute(vgatherqpd_128(
@@ -18322,7 +18336,7 @@ pub unsafe fn _mm_mmask_i64gather_ps<const SCALE: i32>(
     src: __m128,
     k: __mmask8,
     vindex: __m128i,
-    base_addr: *const u8,
+    base_addr: *const f32,
 ) -> __m128 {
     static_assert_imm8_scale!(SCALE);
     transmute(vgatherqps_128(
@@ -49637,7 +49651,7 @@ mod tests {
         #[rustfmt::skip]
         let index = _mm512_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112,
                                       120, 128, 136, 144, 152, 160, 168, 176);
-        let r = _mm512_i32gather_ps::<4>(index, arr.as_ptr() as *const u8);
+        let r = _mm512_i32gather_ps::<4>(index, arr.as_ptr());
         #[rustfmt::skip]
         assert_eq_m512(r, _mm512_setr_ps(0., 16., 32., 48., 64., 80., 96., 112.,
                                          120., 128., 136., 144., 152., 160., 168., 176.));
@@ -49652,7 +49666,7 @@ mod tests {
         let index = _mm512_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112,
                                       120, 128, 136, 144, 152, 160, 168, 176);
         // A multiplier of 4 is word-addressing
-        let r = _mm512_mask_i32gather_ps::<4>(src, mask, index, arr.as_ptr() as *const u8);
+        let r = _mm512_mask_i32gather_ps::<4>(src, mask, index, arr.as_ptr());
         #[rustfmt::skip]
         assert_eq_m512(r, _mm512_setr_ps(2., 16., 2., 48., 2., 80., 2., 112.,
                                          2., 128., 2., 144., 2., 160., 2., 176.));
@@ -49665,7 +49679,7 @@ mod tests {
         #[rustfmt::skip]
         let index = _mm512_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112,
                                       120, 128, 136, 144, 152, 160, 168, 176);
-        let r = _mm512_i32gather_epi32::<4>(index, arr.as_ptr() as *const u8);
+        let r = _mm512_i32gather_epi32::<4>(index, arr.as_ptr());
         #[rustfmt::skip]
         assert_eq_m512i(r, _mm512_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112,
                                              120, 128, 136, 144, 152, 160, 168, 176));
@@ -49680,7 +49694,7 @@ mod tests {
             0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240,
         );
         // A multiplier of 4 is word-addressing
-        let r = _mm512_mask_i32gather_epi32::<4>(src, mask, index, arr.as_ptr() as *const u8);
+        let r = _mm512_mask_i32gather_epi32::<4>(src, mask, index, arr.as_ptr());
         assert_eq_m512i(
             r,
             _mm512_setr_epi32(2, 16, 2, 48, 2, 80, 2, 112, 2, 144, 2, 176, 2, 208, 2, 240),
@@ -49697,7 +49711,7 @@ mod tests {
             1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.,
         );
         // A multiplier of 4 is word-addressing
-        _mm512_i32scatter_ps::<4>(arr.as_mut_ptr() as *mut u8, index, src);
+        _mm512_i32scatter_ps::<4>(arr.as_mut_ptr(), index, src);
         let mut expected = [0f32; 256];
         for i in 0..16 {
             expected[i * 16] = (i + 1) as f32;
@@ -49716,7 +49730,7 @@ mod tests {
             1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.,
         );
         // A multiplier of 4 is word-addressing
-        _mm512_mask_i32scatter_ps::<4>(arr.as_mut_ptr() as *mut u8, mask, index, src);
+        _mm512_mask_i32scatter_ps::<4>(arr.as_mut_ptr(), mask, index, src);
         let mut expected = [0f32; 256];
         for i in 0..8 {
             expected[i * 32 + 16] = 2. * (i + 1) as f32;
@@ -49733,7 +49747,7 @@ mod tests {
                                       128, 144, 160, 176, 192, 208, 224, 240);
         let src = _mm512_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         // A multiplier of 4 is word-addressing
-        _mm512_i32scatter_epi32::<4>(arr.as_mut_ptr() as *mut u8, index, src);
+        _mm512_i32scatter_epi32::<4>(arr.as_mut_ptr(), index, src);
         let mut expected = [0i32; 256];
         for i in 0..16 {
             expected[i * 16] = (i + 1) as i32;
@@ -49750,7 +49764,7 @@ mod tests {
                                       128, 144, 160, 176, 192, 208, 224, 240);
         let src = _mm512_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         // A multiplier of 4 is word-addressing
-        _mm512_mask_i32scatter_epi32::<4>(arr.as_mut_ptr() as *mut u8, mask, index, src);
+        _mm512_mask_i32scatter_epi32::<4>(arr.as_mut_ptr(), mask, index, src);
         let mut expected = [0i32; 256];
         for i in 0..8 {
             expected[i * 32 + 16] = 2 * (i + 1) as i32;

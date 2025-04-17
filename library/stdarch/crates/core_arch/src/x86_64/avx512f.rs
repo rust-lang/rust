@@ -7441,7 +7441,7 @@ mod tests {
         let arr: [f64; 128] = core::array::from_fn(|i| i as f64);
         // A multiplier of 8 is word-addressing
         let index = _mm256_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112);
-        let r = _mm512_i32gather_pd::<8>(index, arr.as_ptr() as *const u8);
+        let r = _mm512_i32gather_pd::<8>(index, arr.as_ptr());
         assert_eq_m512d(r, _mm512_setr_pd(0., 16., 32., 48., 64., 80., 96., 112.));
     }
 
@@ -7452,7 +7452,7 @@ mod tests {
         let mask = 0b10101010;
         let index = _mm256_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112);
         // A multiplier of 8 is word-addressing
-        let r = _mm512_mask_i32gather_pd::<8>(src, mask, index, arr.as_ptr() as *const u8);
+        let r = _mm512_mask_i32gather_pd::<8>(src, mask, index, arr.as_ptr());
         assert_eq_m512d(r, _mm512_setr_pd(2., 16., 2., 48., 2., 80., 2., 112.));
     }
 
@@ -7461,7 +7461,7 @@ mod tests {
         let arr: [f64; 128] = core::array::from_fn(|i| i as f64);
         // A multiplier of 8 is word-addressing
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
-        let r = _mm512_i64gather_pd::<8>(index, arr.as_ptr() as *const u8);
+        let r = _mm512_i64gather_pd::<8>(index, arr.as_ptr());
         assert_eq_m512d(r, _mm512_setr_pd(0., 16., 32., 48., 64., 80., 96., 112.));
     }
 
@@ -7472,7 +7472,7 @@ mod tests {
         let mask = 0b10101010;
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         // A multiplier of 8 is word-addressing
-        let r = _mm512_mask_i64gather_pd::<8>(src, mask, index, arr.as_ptr() as *const u8);
+        let r = _mm512_mask_i64gather_pd::<8>(src, mask, index, arr.as_ptr());
         assert_eq_m512d(r, _mm512_setr_pd(2., 16., 2., 48., 2., 80., 2., 112.));
     }
 
@@ -7482,7 +7482,7 @@ mod tests {
         // A multiplier of 4 is word-addressing
         #[rustfmt::skip]
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
-        let r = _mm512_i64gather_ps::<4>(index, arr.as_ptr() as *const u8);
+        let r = _mm512_i64gather_ps::<4>(index, arr.as_ptr());
         assert_eq_m256(r, _mm256_setr_ps(0., 16., 32., 48., 64., 80., 96., 112.));
     }
 
@@ -7494,7 +7494,7 @@ mod tests {
         #[rustfmt::skip]
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         // A multiplier of 4 is word-addressing
-        let r = _mm512_mask_i64gather_ps::<4>(src, mask, index, arr.as_ptr() as *const u8);
+        let r = _mm512_mask_i64gather_ps::<4>(src, mask, index, arr.as_ptr());
         assert_eq_m256(r, _mm256_setr_ps(2., 16., 2., 48., 2., 80., 2., 112.));
     }
 
@@ -7506,7 +7506,7 @@ mod tests {
         }
         // A multiplier of 8 is word-addressing
         let index = _mm256_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112);
-        let r = _mm512_i32gather_epi64::<8>(index, arr.as_ptr() as *const u8);
+        let r = _mm512_i32gather_epi64::<8>(index, arr.as_ptr());
         assert_eq_m512i(r, _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112));
     }
 
@@ -7520,7 +7520,7 @@ mod tests {
         let mask = 0b10101010;
         let index = _mm256_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112);
         // A multiplier of 8 is word-addressing
-        let r = _mm512_mask_i32gather_epi64::<8>(src, mask, index, arr.as_ptr() as *const u8);
+        let r = _mm512_mask_i32gather_epi64::<8>(src, mask, index, arr.as_ptr());
         assert_eq_m512i(r, _mm512_setr_epi64(2, 16, 2, 48, 2, 80, 2, 112));
     }
 
@@ -7532,7 +7532,7 @@ mod tests {
         }
         // A multiplier of 8 is word-addressing
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
-        let r = _mm512_i64gather_epi64::<8>(index, arr.as_ptr() as *const u8);
+        let r = _mm512_i64gather_epi64::<8>(index, arr.as_ptr());
         assert_eq_m512i(r, _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112));
     }
 
@@ -7546,7 +7546,7 @@ mod tests {
         let mask = 0b10101010;
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         // A multiplier of 8 is word-addressing
-        let r = _mm512_mask_i64gather_epi64::<8>(src, mask, index, arr.as_ptr() as *const u8);
+        let r = _mm512_mask_i64gather_epi64::<8>(src, mask, index, arr.as_ptr());
         assert_eq_m512i(r, _mm512_setr_epi64(2, 16, 2, 48, 2, 80, 2, 112));
     }
 
@@ -7558,7 +7558,7 @@ mod tests {
         }
         // A multiplier of 8 is word-addressing
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
-        let r = _mm512_i64gather_epi32::<8>(index, arr.as_ptr() as *const u8);
+        let r = _mm512_i64gather_epi32::<8>(index, arr.as_ptr() as *const i32);
         assert_eq_m256i(r, _mm256_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112));
     }
 
@@ -7572,7 +7572,7 @@ mod tests {
         let mask = 0b10101010;
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         // A multiplier of 8 is word-addressing
-        let r = _mm512_mask_i64gather_epi32::<8>(src, mask, index, arr.as_ptr() as *const u8);
+        let r = _mm512_mask_i64gather_epi32::<8>(src, mask, index, arr.as_ptr() as *const i32);
         assert_eq_m256i(r, _mm256_setr_epi32(2, 16, 2, 48, 2, 80, 2, 112));
     }
 
@@ -7582,7 +7582,7 @@ mod tests {
         let index = _mm256_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112);
         let src = _mm512_setr_pd(1., 2., 3., 4., 5., 6., 7., 8.);
         // A multiplier of 8 is word-addressing
-        _mm512_i32scatter_pd::<8>(arr.as_mut_ptr() as *mut u8, index, src);
+        _mm512_i32scatter_pd::<8>(arr.as_mut_ptr(), index, src);
         let mut expected = [0f64; 128];
         for i in 0..8 {
             expected[i * 16] = (i + 1) as f64;
@@ -7597,7 +7597,7 @@ mod tests {
         let index = _mm256_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112);
         let src = _mm512_setr_pd(1., 2., 3., 4., 5., 6., 7., 8.);
         // A multiplier of 8 is word-addressing
-        _mm512_mask_i32scatter_pd::<8>(arr.as_mut_ptr() as *mut u8, mask, index, src);
+        _mm512_mask_i32scatter_pd::<8>(arr.as_mut_ptr(), mask, index, src);
         let mut expected = [0f64; 128];
         for i in 0..4 {
             expected[i * 32 + 16] = 2. * (i + 1) as f64;
@@ -7611,7 +7611,7 @@ mod tests {
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         let src = _mm512_setr_pd(1., 2., 3., 4., 5., 6., 7., 8.);
         // A multiplier of 8 is word-addressing
-        _mm512_i64scatter_pd::<8>(arr.as_mut_ptr() as *mut u8, index, src);
+        _mm512_i64scatter_pd::<8>(arr.as_mut_ptr(), index, src);
         let mut expected = [0f64; 128];
         for i in 0..8 {
             expected[i * 16] = (i + 1) as f64;
@@ -7626,7 +7626,7 @@ mod tests {
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         let src = _mm512_setr_pd(1., 2., 3., 4., 5., 6., 7., 8.);
         // A multiplier of 8 is word-addressing
-        _mm512_mask_i64scatter_pd::<8>(arr.as_mut_ptr() as *mut u8, mask, index, src);
+        _mm512_mask_i64scatter_pd::<8>(arr.as_mut_ptr(), mask, index, src);
         let mut expected = [0f64; 128];
         for i in 0..4 {
             expected[i * 32 + 16] = 2. * (i + 1) as f64;
@@ -7640,7 +7640,7 @@ mod tests {
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         let src = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         // A multiplier of 4 is word-addressing
-        _mm512_i64scatter_ps::<4>(arr.as_mut_ptr() as *mut u8, index, src);
+        _mm512_i64scatter_ps::<4>(arr.as_mut_ptr(), index, src);
         let mut expected = [0f32; 128];
         for i in 0..8 {
             expected[i * 16] = (i + 1) as f32;
@@ -7655,7 +7655,7 @@ mod tests {
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         let src = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         // A multiplier of 4 is word-addressing
-        _mm512_mask_i64scatter_ps::<4>(arr.as_mut_ptr() as *mut u8, mask, index, src);
+        _mm512_mask_i64scatter_ps::<4>(arr.as_mut_ptr(), mask, index, src);
         let mut expected = [0f32; 128];
         for i in 0..4 {
             expected[i * 32 + 16] = 2. * (i + 1) as f32;
@@ -7669,7 +7669,7 @@ mod tests {
         let index = _mm256_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112);
         let src = _mm512_setr_epi64(1, 2, 3, 4, 5, 6, 7, 8);
         // A multiplier of 8 is word-addressing
-        _mm512_i32scatter_epi64::<8>(arr.as_mut_ptr() as *mut u8, index, src);
+        _mm512_i32scatter_epi64::<8>(arr.as_mut_ptr(), index, src);
         let mut expected = [0i64; 128];
         for i in 0..8 {
             expected[i * 16] = (i + 1) as i64;
@@ -7684,7 +7684,7 @@ mod tests {
         let index = _mm256_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112);
         let src = _mm512_setr_epi64(1, 2, 3, 4, 5, 6, 7, 8);
         // A multiplier of 8 is word-addressing
-        _mm512_mask_i32scatter_epi64::<8>(arr.as_mut_ptr() as *mut u8, mask, index, src);
+        _mm512_mask_i32scatter_epi64::<8>(arr.as_mut_ptr(), mask, index, src);
         let mut expected = [0i64; 128];
         for i in 0..4 {
             expected[i * 32 + 16] = 2 * (i + 1) as i64;
@@ -7698,7 +7698,7 @@ mod tests {
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         let src = _mm512_setr_epi64(1, 2, 3, 4, 5, 6, 7, 8);
         // A multiplier of 8 is word-addressing
-        _mm512_i64scatter_epi64::<8>(arr.as_mut_ptr() as *mut u8, index, src);
+        _mm512_i64scatter_epi64::<8>(arr.as_mut_ptr(), index, src);
         let mut expected = [0i64; 128];
         for i in 0..8 {
             expected[i * 16] = (i + 1) as i64;
@@ -7713,7 +7713,7 @@ mod tests {
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         let src = _mm512_setr_epi64(1, 2, 3, 4, 5, 6, 7, 8);
         // A multiplier of 8 is word-addressing
-        _mm512_mask_i64scatter_epi64::<8>(arr.as_mut_ptr() as *mut u8, mask, index, src);
+        _mm512_mask_i64scatter_epi64::<8>(arr.as_mut_ptr(), mask, index, src);
         let mut expected = [0i64; 128];
         for i in 0..4 {
             expected[i * 32 + 16] = 2 * (i + 1) as i64;
@@ -7727,7 +7727,7 @@ mod tests {
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         let src = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         // A multiplier of 4 is word-addressing
-        _mm512_i64scatter_epi32::<4>(arr.as_mut_ptr() as *mut u8, index, src);
+        _mm512_i64scatter_epi32::<4>(arr.as_mut_ptr(), index, src);
         let mut expected = [0i32; 128];
         for i in 0..8 {
             expected[i * 16] = (i + 1) as i32;
@@ -7742,7 +7742,7 @@ mod tests {
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         let src = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         // A multiplier of 4 is word-addressing
-        _mm512_mask_i64scatter_epi32::<4>(arr.as_mut_ptr() as *mut u8, mask, index, src);
+        _mm512_mask_i64scatter_epi32::<4>(arr.as_mut_ptr(), mask, index, src);
         let mut expected = [0i32; 128];
         for i in 0..4 {
             expected[i * 32 + 16] = 2 * (i + 1) as i32;
@@ -7754,7 +7754,7 @@ mod tests {
     unsafe fn test_mm512_i32logather_epi64() {
         let base_addr: [i64; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
         let vindex = _mm512_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0, -1, -1, -1, -1, -1, -1, -1, -1);
-        let r = _mm512_i32logather_epi64::<8>(vindex, base_addr.as_ptr().cast());
+        let r = _mm512_i32logather_epi64::<8>(vindex, base_addr.as_ptr());
         let expected = _mm512_setr_epi64(2, 3, 4, 5, 6, 7, 8, 1);
         assert_eq_m512i(expected, r);
     }
@@ -7764,8 +7764,7 @@ mod tests {
         let base_addr: [i64; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
         let src = _mm512_setr_epi64(9, 10, 11, 12, 13, 14, 15, 16);
         let vindex = _mm512_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0, -1, -1, -1, -1, -1, -1, -1, -1);
-        let r =
-            _mm512_mask_i32logather_epi64::<8>(src, 0b01010101, vindex, base_addr.as_ptr().cast());
+        let r = _mm512_mask_i32logather_epi64::<8>(src, 0b01010101, vindex, base_addr.as_ptr());
         let expected = _mm512_setr_epi64(2, 10, 4, 12, 6, 14, 8, 16);
         assert_eq_m512i(expected, r);
     }
@@ -7774,7 +7773,7 @@ mod tests {
     unsafe fn test_mm512_i32logather_pd() {
         let base_addr: [f64; 8] = [1., 2., 3., 4., 5., 6., 7., 8.];
         let vindex = _mm512_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0, -1, -1, -1, -1, -1, -1, -1, -1);
-        let r = _mm512_i32logather_pd::<8>(vindex, base_addr.as_ptr().cast());
+        let r = _mm512_i32logather_pd::<8>(vindex, base_addr.as_ptr());
         let expected = _mm512_setr_pd(2., 3., 4., 5., 6., 7., 8., 1.);
         assert_eq_m512d(expected, r);
     }
@@ -7784,7 +7783,7 @@ mod tests {
         let base_addr: [f64; 8] = [1., 2., 3., 4., 5., 6., 7., 8.];
         let src = _mm512_setr_pd(9., 10., 11., 12., 13., 14., 15., 16.);
         let vindex = _mm512_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0, -1, -1, -1, -1, -1, -1, -1, -1);
-        let r = _mm512_mask_i32logather_pd::<8>(src, 0b01010101, vindex, base_addr.as_ptr().cast());
+        let r = _mm512_mask_i32logather_pd::<8>(src, 0b01010101, vindex, base_addr.as_ptr());
         let expected = _mm512_setr_pd(2., 10., 4., 12., 6., 14., 8., 16.);
         assert_eq_m512d(expected, r);
     }
@@ -7794,7 +7793,7 @@ mod tests {
         let mut base_addr: [i64; 8] = [0; 8];
         let vindex = _mm512_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0, -1, -1, -1, -1, -1, -1, -1, -1);
         let src = _mm512_setr_epi64(2, 3, 4, 5, 6, 7, 8, 1);
-        _mm512_i32loscatter_epi64::<8>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm512_i32loscatter_epi64::<8>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1, 2, 3, 4, 5, 6, 7, 8];
         assert_eq!(expected, base_addr);
     }
@@ -7804,7 +7803,7 @@ mod tests {
         let mut base_addr: [i64; 8] = [0; 8];
         let vindex = _mm512_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0, -1, -1, -1, -1, -1, -1, -1, -1);
         let src = _mm512_setr_epi64(2, 3, 4, 5, 6, 7, 8, 1);
-        _mm512_mask_i32loscatter_epi64::<8>(base_addr.as_mut_ptr().cast(), 0b01010101, vindex, src);
+        _mm512_mask_i32loscatter_epi64::<8>(base_addr.as_mut_ptr(), 0b01010101, vindex, src);
         let expected = [0, 2, 0, 4, 0, 6, 0, 8];
         assert_eq!(expected, base_addr);
     }
@@ -7814,7 +7813,7 @@ mod tests {
         let mut base_addr: [f64; 8] = [0.; 8];
         let vindex = _mm512_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0, -1, -1, -1, -1, -1, -1, -1, -1);
         let src = _mm512_setr_pd(2., 3., 4., 5., 6., 7., 8., 1.);
-        _mm512_i32loscatter_pd::<8>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm512_i32loscatter_pd::<8>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1., 2., 3., 4., 5., 6., 7., 8.];
         assert_eq!(expected, base_addr);
     }
@@ -7824,7 +7823,7 @@ mod tests {
         let mut base_addr: [f64; 8] = [0.; 8];
         let vindex = _mm512_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0, -1, -1, -1, -1, -1, -1, -1, -1);
         let src = _mm512_setr_pd(2., 3., 4., 5., 6., 7., 8., 1.);
-        _mm512_mask_i32loscatter_pd::<8>(base_addr.as_mut_ptr().cast(), 0b01010101, vindex, src);
+        _mm512_mask_i32loscatter_pd::<8>(base_addr.as_mut_ptr(), 0b01010101, vindex, src);
         let expected = [0., 2., 0., 4., 0., 6., 0., 8.];
         assert_eq!(expected, base_addr);
     }
@@ -7834,7 +7833,7 @@ mod tests {
         let base_addr: [i32; 4] = [1, 2, 3, 4];
         let src = _mm_setr_epi32(5, 6, 7, 8);
         let vindex = _mm_setr_epi32(1, 2, 3, 0);
-        let r = _mm_mmask_i32gather_epi32::<4>(src, 0b0101, vindex, base_addr.as_ptr().cast());
+        let r = _mm_mmask_i32gather_epi32::<4>(src, 0b0101, vindex, base_addr.as_ptr());
         let expected = _mm_setr_epi32(2, 6, 4, 8);
         assert_eq_m128i(expected, r);
     }
@@ -7844,7 +7843,7 @@ mod tests {
         let base_addr: [i64; 2] = [1, 2];
         let src = _mm_setr_epi64x(5, 6);
         let vindex = _mm_setr_epi32(1, 0, -1, -1);
-        let r = _mm_mmask_i32gather_epi64::<8>(src, 0b01, vindex, base_addr.as_ptr().cast());
+        let r = _mm_mmask_i32gather_epi64::<8>(src, 0b01, vindex, base_addr.as_ptr());
         let expected = _mm_setr_epi64x(2, 6);
         assert_eq_m128i(expected, r);
     }
@@ -7854,7 +7853,7 @@ mod tests {
         let base_addr: [f64; 2] = [1., 2.];
         let src = _mm_setr_pd(5., 6.);
         let vindex = _mm_setr_epi32(1, 0, -1, -1);
-        let r = _mm_mmask_i32gather_pd::<8>(src, 0b01, vindex, base_addr.as_ptr().cast());
+        let r = _mm_mmask_i32gather_pd::<8>(src, 0b01, vindex, base_addr.as_ptr());
         let expected = _mm_setr_pd(2., 6.);
         assert_eq_m128d(expected, r);
     }
@@ -7864,7 +7863,7 @@ mod tests {
         let base_addr: [f32; 4] = [1., 2., 3., 4.];
         let src = _mm_setr_ps(5., 6., 7., 8.);
         let vindex = _mm_setr_epi32(1, 2, 3, 0);
-        let r = _mm_mmask_i32gather_ps::<4>(src, 0b0101, vindex, base_addr.as_ptr().cast());
+        let r = _mm_mmask_i32gather_ps::<4>(src, 0b0101, vindex, base_addr.as_ptr());
         let expected = _mm_setr_ps(2., 6., 4., 8.);
         assert_eq_m128(expected, r);
     }
@@ -7874,7 +7873,7 @@ mod tests {
         let base_addr: [i32; 2] = [1, 2];
         let src = _mm_setr_epi32(5, 6, 7, 8);
         let vindex = _mm_setr_epi64x(1, 0);
-        let r = _mm_mmask_i64gather_epi32::<4>(src, 0b01, vindex, base_addr.as_ptr().cast());
+        let r = _mm_mmask_i64gather_epi32::<4>(src, 0b01, vindex, base_addr.as_ptr());
         let expected = _mm_setr_epi32(2, 6, 0, 0);
         assert_eq_m128i(expected, r);
     }
@@ -7884,7 +7883,7 @@ mod tests {
         let base_addr: [i64; 2] = [1, 2];
         let src = _mm_setr_epi64x(5, 6);
         let vindex = _mm_setr_epi64x(1, 0);
-        let r = _mm_mmask_i64gather_epi64::<8>(src, 0b01, vindex, base_addr.as_ptr().cast());
+        let r = _mm_mmask_i64gather_epi64::<8>(src, 0b01, vindex, base_addr.as_ptr());
         let expected = _mm_setr_epi64x(2, 6);
         assert_eq_m128i(expected, r);
     }
@@ -7894,7 +7893,7 @@ mod tests {
         let base_addr: [f64; 2] = [1., 2.];
         let src = _mm_setr_pd(5., 6.);
         let vindex = _mm_setr_epi64x(1, 0);
-        let r = _mm_mmask_i64gather_pd::<8>(src, 0b01, vindex, base_addr.as_ptr().cast());
+        let r = _mm_mmask_i64gather_pd::<8>(src, 0b01, vindex, base_addr.as_ptr());
         let expected = _mm_setr_pd(2., 6.);
         assert_eq_m128d(expected, r);
     }
@@ -7904,7 +7903,7 @@ mod tests {
         let base_addr: [f32; 2] = [1., 2.];
         let src = _mm_setr_ps(5., 6., 7., 8.);
         let vindex = _mm_setr_epi64x(1, 0);
-        let r = _mm_mmask_i64gather_ps::<4>(src, 0b01, vindex, base_addr.as_ptr().cast());
+        let r = _mm_mmask_i64gather_ps::<4>(src, 0b01, vindex, base_addr.as_ptr());
         let expected = _mm_setr_ps(2., 6., 0., 0.);
         assert_eq_m128(expected, r);
     }
@@ -7914,8 +7913,7 @@ mod tests {
         let base_addr: [i32; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
         let src = _mm256_setr_epi32(9, 10, 11, 12, 13, 14, 15, 16);
         let vindex = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0);
-        let r =
-            _mm256_mmask_i32gather_epi32::<4>(src, 0b01010101, vindex, base_addr.as_ptr().cast());
+        let r = _mm256_mmask_i32gather_epi32::<4>(src, 0b01010101, vindex, base_addr.as_ptr());
         let expected = _mm256_setr_epi32(2, 10, 4, 12, 6, 14, 8, 16);
         assert_eq_m256i(expected, r);
     }
@@ -7925,7 +7923,7 @@ mod tests {
         let base_addr: [i64; 4] = [1, 2, 3, 4];
         let src = _mm256_setr_epi64x(9, 10, 11, 12);
         let vindex = _mm_setr_epi32(1, 2, 3, 4);
-        let r = _mm256_mmask_i32gather_epi64::<8>(src, 0b0101, vindex, base_addr.as_ptr().cast());
+        let r = _mm256_mmask_i32gather_epi64::<8>(src, 0b0101, vindex, base_addr.as_ptr());
         let expected = _mm256_setr_epi64x(2, 10, 4, 12);
         assert_eq_m256i(expected, r);
     }
@@ -7935,7 +7933,7 @@ mod tests {
         let base_addr: [f64; 4] = [1., 2., 3., 4.];
         let src = _mm256_setr_pd(9., 10., 11., 12.);
         let vindex = _mm_setr_epi32(1, 2, 3, 4);
-        let r = _mm256_mmask_i32gather_pd::<8>(src, 0b0101, vindex, base_addr.as_ptr().cast());
+        let r = _mm256_mmask_i32gather_pd::<8>(src, 0b0101, vindex, base_addr.as_ptr());
         let expected = _mm256_setr_pd(2., 10., 4., 12.);
         assert_eq_m256d(expected, r);
     }
@@ -7945,7 +7943,7 @@ mod tests {
         let base_addr: [f32; 8] = [1., 2., 3., 4., 5., 6., 7., 8.];
         let src = _mm256_setr_ps(9., 10., 11., 12., 13., 14., 15., 16.);
         let vindex = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0);
-        let r = _mm256_mmask_i32gather_ps::<4>(src, 0b01010101, vindex, base_addr.as_ptr().cast());
+        let r = _mm256_mmask_i32gather_ps::<4>(src, 0b01010101, vindex, base_addr.as_ptr());
         let expected = _mm256_setr_ps(2., 10., 4., 12., 6., 14., 8., 16.);
         assert_eq_m256(expected, r);
     }
@@ -7955,7 +7953,7 @@ mod tests {
         let base_addr: [i32; 4] = [1, 2, 3, 4];
         let src = _mm_setr_epi32(9, 10, 11, 12);
         let vindex = _mm256_setr_epi64x(1, 2, 3, 0);
-        let r = _mm256_mmask_i64gather_epi32::<4>(src, 0b0101, vindex, base_addr.as_ptr().cast());
+        let r = _mm256_mmask_i64gather_epi32::<4>(src, 0b0101, vindex, base_addr.as_ptr());
         let expected = _mm_setr_epi32(2, 10, 4, 12);
         assert_eq_m128i(expected, r);
     }
@@ -7965,7 +7963,7 @@ mod tests {
         let base_addr: [i64; 4] = [1, 2, 3, 4];
         let src = _mm256_setr_epi64x(9, 10, 11, 12);
         let vindex = _mm256_setr_epi64x(1, 2, 3, 0);
-        let r = _mm256_mmask_i64gather_epi64::<8>(src, 0b0101, vindex, base_addr.as_ptr().cast());
+        let r = _mm256_mmask_i64gather_epi64::<8>(src, 0b0101, vindex, base_addr.as_ptr());
         let expected = _mm256_setr_epi64x(2, 10, 4, 12);
         assert_eq_m256i(expected, r);
     }
@@ -7975,7 +7973,7 @@ mod tests {
         let base_addr: [f64; 4] = [1., 2., 3., 4.];
         let src = _mm256_setr_pd(9., 10., 11., 12.);
         let vindex = _mm256_setr_epi64x(1, 2, 3, 0);
-        let r = _mm256_mmask_i64gather_pd::<8>(src, 0b0101, vindex, base_addr.as_ptr().cast());
+        let r = _mm256_mmask_i64gather_pd::<8>(src, 0b0101, vindex, base_addr.as_ptr());
         let expected = _mm256_setr_pd(2., 10., 4., 12.);
         assert_eq_m256d(expected, r);
     }
@@ -7985,7 +7983,7 @@ mod tests {
         let base_addr: [f32; 4] = [1., 2., 3., 4.];
         let src = _mm_setr_ps(9., 10., 11., 12.);
         let vindex = _mm256_setr_epi64x(1, 2, 3, 0);
-        let r = _mm256_mmask_i64gather_ps::<4>(src, 0b0101, vindex, base_addr.as_ptr().cast());
+        let r = _mm256_mmask_i64gather_ps::<4>(src, 0b0101, vindex, base_addr.as_ptr());
         let expected = _mm_setr_ps(2., 10., 4., 12.);
         assert_eq_m128(expected, r);
     }
@@ -7995,7 +7993,7 @@ mod tests {
         let mut base_addr: [i32; 4] = [0; 4];
         let vindex = _mm_setr_epi32(1, 2, 3, 0);
         let src = _mm_setr_epi32(2, 3, 4, 1);
-        _mm_i32scatter_epi32::<4>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm_i32scatter_epi32::<4>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1, 2, 3, 4];
         assert_eq!(expected, base_addr);
     }
@@ -8005,7 +8003,7 @@ mod tests {
         let mut base_addr: [i32; 4] = [0; 4];
         let vindex = _mm_setr_epi32(1, 2, 3, 0);
         let src = _mm_setr_epi32(2, 3, 4, 1);
-        _mm_mask_i32scatter_epi32::<4>(base_addr.as_mut_ptr().cast(), 0b0101, vindex, src);
+        _mm_mask_i32scatter_epi32::<4>(base_addr.as_mut_ptr(), 0b0101, vindex, src);
         let expected = [0, 2, 0, 4];
         assert_eq!(expected, base_addr);
     }
@@ -8015,7 +8013,7 @@ mod tests {
         let mut base_addr: [i64; 2] = [0; 2];
         let vindex = _mm_setr_epi32(1, 0, -1, -1);
         let src = _mm_setr_epi64x(2, 1);
-        _mm_i32scatter_epi64::<8>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm_i32scatter_epi64::<8>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1, 2];
         assert_eq!(expected, base_addr);
     }
@@ -8025,7 +8023,7 @@ mod tests {
         let mut base_addr: [i64; 2] = [0; 2];
         let vindex = _mm_setr_epi32(1, 0, -1, -1);
         let src = _mm_setr_epi64x(2, 1);
-        _mm_mask_i32scatter_epi64::<8>(base_addr.as_mut_ptr().cast(), 0b01, vindex, src);
+        _mm_mask_i32scatter_epi64::<8>(base_addr.as_mut_ptr(), 0b01, vindex, src);
         let expected = [0, 2];
         assert_eq!(expected, base_addr);
     }
@@ -8035,7 +8033,7 @@ mod tests {
         let mut base_addr: [f64; 2] = [0.; 2];
         let vindex = _mm_setr_epi32(1, 0, -1, -1);
         let src = _mm_setr_pd(2., 1.);
-        _mm_i32scatter_pd::<8>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm_i32scatter_pd::<8>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1., 2.];
         assert_eq!(expected, base_addr);
     }
@@ -8045,7 +8043,7 @@ mod tests {
         let mut base_addr: [f64; 2] = [0.; 2];
         let vindex = _mm_setr_epi32(1, 0, -1, -1);
         let src = _mm_setr_pd(2., 1.);
-        _mm_mask_i32scatter_pd::<8>(base_addr.as_mut_ptr().cast(), 0b01, vindex, src);
+        _mm_mask_i32scatter_pd::<8>(base_addr.as_mut_ptr(), 0b01, vindex, src);
         let expected = [0., 2.];
         assert_eq!(expected, base_addr);
     }
@@ -8055,7 +8053,7 @@ mod tests {
         let mut base_addr: [f32; 4] = [0.; 4];
         let vindex = _mm_setr_epi32(1, 2, 3, 0);
         let src = _mm_setr_ps(2., 3., 4., 1.);
-        _mm_i32scatter_ps::<4>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm_i32scatter_ps::<4>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1., 2., 3., 4.];
         assert_eq!(expected, base_addr);
     }
@@ -8065,7 +8063,7 @@ mod tests {
         let mut base_addr: [f32; 4] = [0.; 4];
         let vindex = _mm_setr_epi32(1, 2, 3, 0);
         let src = _mm_setr_ps(2., 3., 4., 1.);
-        _mm_mask_i32scatter_ps::<4>(base_addr.as_mut_ptr().cast(), 0b0101, vindex, src);
+        _mm_mask_i32scatter_ps::<4>(base_addr.as_mut_ptr(), 0b0101, vindex, src);
         let expected = [0., 2., 0., 4.];
         assert_eq!(expected, base_addr);
     }
@@ -8075,7 +8073,7 @@ mod tests {
         let mut base_addr: [i32; 2] = [0; 2];
         let vindex = _mm_setr_epi64x(1, 0);
         let src = _mm_setr_epi32(2, 1, -1, -1);
-        _mm_i64scatter_epi32::<4>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm_i64scatter_epi32::<4>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1, 2];
         assert_eq!(expected, base_addr);
     }
@@ -8085,7 +8083,7 @@ mod tests {
         let mut base_addr: [i32; 2] = [0; 2];
         let vindex = _mm_setr_epi64x(1, 0);
         let src = _mm_setr_epi32(2, 1, -1, -1);
-        _mm_mask_i64scatter_epi32::<4>(base_addr.as_mut_ptr().cast(), 0b01, vindex, src);
+        _mm_mask_i64scatter_epi32::<4>(base_addr.as_mut_ptr(), 0b01, vindex, src);
         let expected = [0, 2];
         assert_eq!(expected, base_addr);
     }
@@ -8095,7 +8093,7 @@ mod tests {
         let mut base_addr: [i64; 2] = [0; 2];
         let vindex = _mm_setr_epi64x(1, 0);
         let src = _mm_setr_epi64x(2, 1);
-        _mm_i64scatter_epi64::<8>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm_i64scatter_epi64::<8>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1, 2];
         assert_eq!(expected, base_addr);
     }
@@ -8105,7 +8103,7 @@ mod tests {
         let mut base_addr: [i64; 2] = [0; 2];
         let vindex = _mm_setr_epi64x(1, 0);
         let src = _mm_setr_epi64x(2, 1);
-        _mm_mask_i64scatter_epi64::<8>(base_addr.as_mut_ptr().cast(), 0b01, vindex, src);
+        _mm_mask_i64scatter_epi64::<8>(base_addr.as_mut_ptr(), 0b01, vindex, src);
         let expected = [0, 2];
         assert_eq!(expected, base_addr);
     }
@@ -8115,7 +8113,7 @@ mod tests {
         let mut base_addr: [f64; 2] = [0.; 2];
         let vindex = _mm_setr_epi64x(1, 0);
         let src = _mm_setr_pd(2., 1.);
-        _mm_i64scatter_pd::<8>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm_i64scatter_pd::<8>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1., 2.];
         assert_eq!(expected, base_addr);
     }
@@ -8125,7 +8123,7 @@ mod tests {
         let mut base_addr: [f64; 2] = [0.; 2];
         let vindex = _mm_setr_epi64x(1, 0);
         let src = _mm_setr_pd(2., 1.);
-        _mm_mask_i64scatter_pd::<8>(base_addr.as_mut_ptr().cast(), 0b01, vindex, src);
+        _mm_mask_i64scatter_pd::<8>(base_addr.as_mut_ptr(), 0b01, vindex, src);
         let expected = [0., 2.];
         assert_eq!(expected, base_addr);
     }
@@ -8135,7 +8133,7 @@ mod tests {
         let mut base_addr: [f32; 2] = [0.; 2];
         let vindex = _mm_setr_epi64x(1, 0);
         let src = _mm_setr_ps(2., 1., -1., -1.);
-        _mm_i64scatter_ps::<4>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm_i64scatter_ps::<4>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1., 2.];
         assert_eq!(expected, base_addr);
     }
@@ -8145,7 +8143,7 @@ mod tests {
         let mut base_addr: [f32; 2] = [0.; 2];
         let vindex = _mm_setr_epi64x(1, 0);
         let src = _mm_setr_ps(2., 1., -1., -1.);
-        _mm_mask_i64scatter_ps::<4>(base_addr.as_mut_ptr().cast(), 0b01, vindex, src);
+        _mm_mask_i64scatter_ps::<4>(base_addr.as_mut_ptr(), 0b01, vindex, src);
         let expected = [0., 2.];
         assert_eq!(expected, base_addr);
     }
@@ -8155,7 +8153,7 @@ mod tests {
         let mut base_addr: [i32; 8] = [0; 8];
         let vindex = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0);
         let src = _mm256_setr_epi32(2, 3, 4, 5, 6, 7, 8, 1);
-        _mm256_i32scatter_epi32::<4>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm256_i32scatter_epi32::<4>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1, 2, 3, 4, 5, 6, 7, 8];
         assert_eq!(expected, base_addr);
     }
@@ -8165,7 +8163,7 @@ mod tests {
         let mut base_addr: [i32; 8] = [0; 8];
         let vindex = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0);
         let src = _mm256_setr_epi32(2, 3, 4, 5, 6, 7, 8, 1);
-        _mm256_mask_i32scatter_epi32::<4>(base_addr.as_mut_ptr().cast(), 0b01010101, vindex, src);
+        _mm256_mask_i32scatter_epi32::<4>(base_addr.as_mut_ptr(), 0b01010101, vindex, src);
         let expected = [0, 2, 0, 4, 0, 6, 0, 8];
         assert_eq!(expected, base_addr);
     }
@@ -8175,7 +8173,7 @@ mod tests {
         let mut base_addr: [i64; 4] = [0; 4];
         let vindex = _mm_setr_epi32(1, 2, 3, 0);
         let src = _mm256_setr_epi64x(2, 3, 4, 1);
-        _mm256_i32scatter_epi64::<8>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm256_i32scatter_epi64::<8>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1, 2, 3, 4];
         assert_eq!(expected, base_addr);
     }
@@ -8185,7 +8183,7 @@ mod tests {
         let mut base_addr: [i64; 4] = [0; 4];
         let vindex = _mm_setr_epi32(1, 2, 3, 0);
         let src = _mm256_setr_epi64x(2, 3, 4, 1);
-        _mm256_mask_i32scatter_epi64::<8>(base_addr.as_mut_ptr().cast(), 0b0101, vindex, src);
+        _mm256_mask_i32scatter_epi64::<8>(base_addr.as_mut_ptr(), 0b0101, vindex, src);
         let expected = [0, 2, 0, 4];
         assert_eq!(expected, base_addr);
     }
@@ -8195,7 +8193,7 @@ mod tests {
         let mut base_addr: [f64; 4] = [0.; 4];
         let vindex = _mm_setr_epi32(1, 2, 3, 0);
         let src = _mm256_setr_pd(2., 3., 4., 1.);
-        _mm256_i32scatter_pd::<8>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm256_i32scatter_pd::<8>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1., 2., 3., 4.];
         assert_eq!(expected, base_addr);
     }
@@ -8205,7 +8203,7 @@ mod tests {
         let mut base_addr: [f64; 4] = [0.; 4];
         let vindex = _mm_setr_epi32(1, 2, 3, 0);
         let src = _mm256_setr_pd(2., 3., 4., 1.);
-        _mm256_mask_i32scatter_pd::<8>(base_addr.as_mut_ptr().cast(), 0b0101, vindex, src);
+        _mm256_mask_i32scatter_pd::<8>(base_addr.as_mut_ptr(), 0b0101, vindex, src);
         let expected = [0., 2., 0., 4.];
         assert_eq!(expected, base_addr);
     }
@@ -8215,7 +8213,7 @@ mod tests {
         let mut base_addr: [f32; 8] = [0.; 8];
         let vindex = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0);
         let src = _mm256_setr_ps(2., 3., 4., 5., 6., 7., 8., 1.);
-        _mm256_i32scatter_ps::<4>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm256_i32scatter_ps::<4>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1., 2., 3., 4., 5., 6., 7., 8.];
         assert_eq!(expected, base_addr);
     }
@@ -8225,7 +8223,7 @@ mod tests {
         let mut base_addr: [f32; 8] = [0.; 8];
         let vindex = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0);
         let src = _mm256_setr_ps(2., 3., 4., 5., 6., 7., 8., 1.);
-        _mm256_mask_i32scatter_ps::<4>(base_addr.as_mut_ptr().cast(), 0b01010101, vindex, src);
+        _mm256_mask_i32scatter_ps::<4>(base_addr.as_mut_ptr(), 0b01010101, vindex, src);
         let expected = [0., 2., 0., 4., 0., 6., 0., 8.];
         assert_eq!(expected, base_addr);
     }
@@ -8235,7 +8233,7 @@ mod tests {
         let mut base_addr: [i32; 4] = [0; 4];
         let vindex = _mm256_setr_epi64x(1, 2, 3, 0);
         let src = _mm_setr_epi32(2, 3, 4, 1);
-        _mm256_i64scatter_epi32::<4>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm256_i64scatter_epi32::<4>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1, 2, 3, 4];
         assert_eq!(expected, base_addr);
     }
@@ -8245,7 +8243,7 @@ mod tests {
         let mut base_addr: [i32; 4] = [0; 4];
         let vindex = _mm256_setr_epi64x(1, 2, 3, 0);
         let src = _mm_setr_epi32(2, 3, 4, 1);
-        _mm256_mask_i64scatter_epi32::<4>(base_addr.as_mut_ptr().cast(), 0b0101, vindex, src);
+        _mm256_mask_i64scatter_epi32::<4>(base_addr.as_mut_ptr(), 0b0101, vindex, src);
         let expected = [0, 2, 0, 4];
         assert_eq!(expected, base_addr);
     }
@@ -8255,7 +8253,7 @@ mod tests {
         let mut base_addr: [i64; 4] = [0; 4];
         let vindex = _mm256_setr_epi64x(1, 2, 3, 0);
         let src = _mm256_setr_epi64x(2, 3, 4, 1);
-        _mm256_i64scatter_epi64::<8>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm256_i64scatter_epi64::<8>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1, 2, 3, 4];
         assert_eq!(expected, base_addr);
     }
@@ -8265,7 +8263,7 @@ mod tests {
         let mut base_addr: [i64; 4] = [0; 4];
         let vindex = _mm256_setr_epi64x(1, 2, 3, 0);
         let src = _mm256_setr_epi64x(2, 3, 4, 1);
-        _mm256_mask_i64scatter_epi64::<8>(base_addr.as_mut_ptr().cast(), 0b0101, vindex, src);
+        _mm256_mask_i64scatter_epi64::<8>(base_addr.as_mut_ptr(), 0b0101, vindex, src);
         let expected = [0, 2, 0, 4];
         assert_eq!(expected, base_addr);
     }
@@ -8275,7 +8273,7 @@ mod tests {
         let mut base_addr: [f64; 4] = [0.; 4];
         let vindex = _mm256_setr_epi64x(1, 2, 3, 0);
         let src = _mm256_setr_pd(2., 3., 4., 1.);
-        _mm256_i64scatter_pd::<8>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm256_i64scatter_pd::<8>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1., 2., 3., 4.];
         assert_eq!(expected, base_addr);
     }
@@ -8285,7 +8283,7 @@ mod tests {
         let mut base_addr: [f64; 4] = [0.; 4];
         let vindex = _mm256_setr_epi64x(1, 2, 3, 0);
         let src = _mm256_setr_pd(2., 3., 4., 1.);
-        _mm256_mask_i64scatter_pd::<8>(base_addr.as_mut_ptr().cast(), 0b0101, vindex, src);
+        _mm256_mask_i64scatter_pd::<8>(base_addr.as_mut_ptr(), 0b0101, vindex, src);
         let expected = [0., 2., 0., 4.];
         assert_eq!(expected, base_addr);
     }
@@ -8295,7 +8293,7 @@ mod tests {
         let mut base_addr: [f32; 4] = [0.; 4];
         let vindex = _mm256_setr_epi64x(1, 2, 3, 0);
         let src = _mm_setr_ps(2., 3., 4., 1.);
-        _mm256_i64scatter_ps::<4>(base_addr.as_mut_ptr().cast(), vindex, src);
+        _mm256_i64scatter_ps::<4>(base_addr.as_mut_ptr(), vindex, src);
         let expected = [1., 2., 3., 4.];
         assert_eq!(expected, base_addr);
     }
@@ -8305,7 +8303,7 @@ mod tests {
         let mut base_addr: [f32; 4] = [0.; 4];
         let vindex = _mm256_setr_epi64x(1, 2, 3, 0);
         let src = _mm_setr_ps(2., 3., 4., 1.);
-        _mm256_mask_i64scatter_ps::<4>(base_addr.as_mut_ptr().cast(), 0b0101, vindex, src);
+        _mm256_mask_i64scatter_ps::<4>(base_addr.as_mut_ptr(), 0b0101, vindex, src);
         let expected = [0., 2., 0., 4.];
         assert_eq!(expected, base_addr);
     }
