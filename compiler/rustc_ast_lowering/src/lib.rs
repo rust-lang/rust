@@ -54,8 +54,8 @@ use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{
-    self as hir, ConstArg, GenericArg, HirId, IsAnonInPath, ItemLocalMap, LangItem, ParamName,
-    TraitCandidate,
+    self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem, LifetimeSource,
+    LifetimeSyntax, ParamName, TraitCandidate, TySource,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -1079,7 +1079,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: ImplTraitContext,
     ) -> hir::GenericArg<'hir> {
         match arg {
-            ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(lt)),
+            ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(
+                lt,
+                LifetimeSource::Path { with_angle_brackets: true },
+                lt.ident.into(),
+            )),
             ast::GenericArg::Type(ty) => {
                 // We cannot just match on `TyKind::Infer` as `(_)` is represented as
                 // `TyKind::Paren(TyKind::Infer)` and should also be lowered to `GenericArg::Infer`
@@ -1167,7 +1171,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 bounds,
                 TaggedRef::new(lifetime_bound, TraitObjectSyntax::None),
             );
-            return hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.next_id() };
+            return hir::Ty {
+                kind,
+                span: self.lower_span(t.span),
+                hir_id: self.next_id(),
+                source: TySource::Other,
+            };
         }
 
         let id = self.lower_node_id(t.id);
@@ -1184,7 +1193,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn ty(&mut self, span: Span, kind: hir::TyKind<'hir>) -> hir::Ty<'hir> {
-        hir::Ty { hir_id: self.next_id(), kind, span: self.lower_span(span) }
+        hir::Ty {
+            hir_id: self.next_id(),
+            kind,
+            span: self.lower_span(span),
+            source: TySource::Other,
+        }
     }
 
     fn ty_tup(&mut self, span: Span, tys: &'hir [hir::Ty<'hir>]) -> hir::Ty<'hir> {
@@ -1198,38 +1212,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Slice(ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
             TyKind::Ptr(mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
             TyKind::Ref(region, mt) => {
-                let region = region.unwrap_or_else(|| {
-                    let id = if let Some(LifetimeRes::ElidedAnchor { start, end }) =
-                        self.resolver.get_lifetime_res(t.id)
-                    {
-                        debug_assert_eq!(start.plus(1), end);
-                        start
-                    } else {
-                        self.next_node_id()
-                    };
-                    let span = self.tcx.sess.source_map().start_point(t.span).shrink_to_hi();
-                    Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
-                });
-                let lifetime = self.lower_lifetime(&region);
+                let lifetime = self.lower_ty_direct_lifetime(t, *region);
                 hir::TyKind::Ref(lifetime, self.lower_mt(mt, itctx))
             }
             TyKind::PinnedRef(region, mt) => {
-                let region = region.unwrap_or_else(|| {
-                    let id = if let Some(LifetimeRes::ElidedAnchor { start, end }) =
-                        self.resolver.get_lifetime_res(t.id)
-                    {
-                        debug_assert_eq!(start.plus(1), end);
-                        start
-                    } else {
-                        self.next_node_id()
-                    };
-                    let span = self.tcx.sess.source_map().start_point(t.span).shrink_to_hi();
-                    Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
-                });
-                let lifetime = self.lower_lifetime(&region);
+                let lifetime = self.lower_ty_direct_lifetime(t, *region);
                 let kind = hir::TyKind::Ref(lifetime, self.lower_mt(mt, itctx));
                 let span = self.lower_span(t.span);
-                let arg = hir::Ty { kind, span, hir_id: self.next_id() };
+                let arg = hir::Ty { kind, span, hir_id: self.next_id(), source: TySource::Other };
                 let args = self.arena.alloc(hir::GenericArgs {
                     args: self.arena.alloc([hir::GenericArg::Type(self.arena.alloc(arg))]),
                     constraints: &[],
@@ -1302,7 +1292,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             }
                             GenericBound::Outlives(lifetime) => {
                                 if lifetime_bound.is_none() {
-                                    lifetime_bound = Some(this.lower_lifetime(lifetime));
+                                    lifetime_bound = Some(this.lower_lifetime(
+                                        lifetime,
+                                        LifetimeSource::Other,
+                                        lifetime.ident.into(),
+                                    ));
                                 }
                                 None
                             }
@@ -1390,7 +1384,37 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Dummy => panic!("`TyKind::Dummy` should never be lowered"),
         };
 
-        hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.lower_node_id(t.id) }
+        hir::Ty {
+            kind,
+            span: self.lower_span(t.span),
+            hir_id: self.lower_node_id(t.id),
+            source: TySource::Other,
+        }
+    }
+
+    fn lower_ty_direct_lifetime(
+        &mut self,
+        t: &Ty,
+        region: Option<Lifetime>,
+    ) -> &'hir hir::Lifetime {
+        let (region, syntax) = match region {
+            Some(region) => (region, region.ident.into()),
+
+            None => {
+                let id = if let Some(LifetimeRes::ElidedAnchor { start, end }) =
+                    self.resolver.get_lifetime_res(t.id)
+                {
+                    debug_assert_eq!(start.plus(1), end);
+                    start
+                } else {
+                    self.next_node_id()
+                };
+                let span = self.tcx.sess.source_map().start_point(t.span).shrink_to_hi();
+                let region = Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id };
+                (region, LifetimeSyntax::Hidden)
+            }
+        };
+        self.lower_lifetime(&region, LifetimeSource::Reference, syntax)
     }
 
     /// Lowers a `ReturnPositionOpaqueTy` (`-> impl Trait`) or a `TypeAliasesOpaqueTy` (`type F =
@@ -1474,9 +1498,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         precise_capturing_args: &[PreciseCapturingArg],
     ) -> &'hir [hir::PreciseCapturingArg<'hir>] {
         self.arena.alloc_from_iter(precise_capturing_args.iter().map(|arg| match arg {
-            PreciseCapturingArg::Lifetime(lt) => {
-                hir::PreciseCapturingArg::Lifetime(self.lower_lifetime(lt))
-            }
+            PreciseCapturingArg::Lifetime(lt) => hir::PreciseCapturingArg::Lifetime(
+                self.lower_lifetime(lt, LifetimeSource::PreciseCapturing, lt.ident.into()),
+            ),
             PreciseCapturingArg::Arg(path, id) => {
                 let [segment] = path.segments.as_slice() else {
                     panic!();
@@ -1739,9 +1763,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::GenericBound<'hir> {
         match tpb {
             GenericBound::Trait(p) => hir::GenericBound::Trait(self.lower_poly_trait_ref(p, itctx)),
-            GenericBound::Outlives(lifetime) => {
-                hir::GenericBound::Outlives(self.lower_lifetime(lifetime))
-            }
+            GenericBound::Outlives(lifetime) => hir::GenericBound::Outlives(self.lower_lifetime(
+                lifetime,
+                LifetimeSource::OutlivesBound,
+                lifetime.ident.into(),
+            )),
             GenericBound::Use(args, span) => hir::GenericBound::Use(
                 self.lower_precise_capturing_args(args),
                 self.lower_span(*span),
@@ -1749,12 +1775,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_lifetime(&mut self, l: &Lifetime) -> &'hir hir::Lifetime {
-        self.new_named_lifetime(l.id, l.id, l.ident, IsAnonInPath::No)
+    fn lower_lifetime(
+        &mut self,
+        l: &Lifetime,
+        source: LifetimeSource,
+        syntax: LifetimeSyntax,
+    ) -> &'hir hir::Lifetime {
+        self.new_named_lifetime(l.id, l.id, l.ident, source, syntax)
     }
 
-    fn lower_lifetime_anon_in_path(&mut self, id: NodeId, span: Span) -> &'hir hir::Lifetime {
-        self.new_named_lifetime(id, id, Ident::new(kw::UnderscoreLifetime, span), IsAnonInPath::Yes)
+    fn lower_lifetime_hidden_in_path(
+        &mut self,
+        id: NodeId,
+        span: Span,
+        with_angle_brackets: bool,
+    ) -> &'hir hir::Lifetime {
+        self.new_named_lifetime(
+            id,
+            id,
+            Ident::new(kw::UnderscoreLifetime, span),
+            LifetimeSource::Path { with_angle_brackets },
+            LifetimeSyntax::Hidden,
+        )
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1763,7 +1805,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         id: NodeId,
         new_id: NodeId,
         ident: Ident,
-        is_anon_in_path: IsAnonInPath,
+        source: LifetimeSource,
+        syntax: LifetimeSyntax,
     ) -> &'hir hir::Lifetime {
         let res = self.resolver.get_lifetime_res(id).unwrap_or(LifetimeRes::Error);
         let res = match res {
@@ -1787,17 +1830,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         };
 
-        #[cfg(debug_assertions)]
-        if is_anon_in_path == IsAnonInPath::Yes {
-            debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
-        }
-
         debug!(?res);
         self.arena.alloc(hir::Lifetime::new(
             self.lower_node_id(new_id),
             self.lower_ident(ident),
             res,
-            is_anon_in_path,
+            source,
+            syntax,
         ))
     }
 
@@ -2350,7 +2389,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn ty_path(&mut self, mut hir_id: HirId, span: Span, qpath: hir::QPath<'hir>) -> hir::Ty<'hir> {
+    fn ty_path(&mut self, hir_id: HirId, span: Span, qpath: hir::QPath<'hir>) -> hir::Ty<'hir> {
+        self.ty_path_with_source(hir_id, span, qpath, TySource::Other)
+    }
+
+    fn ty_path_with_source(
+        &mut self,
+        mut hir_id: HirId,
+        span: Span,
+        qpath: hir::QPath<'hir>,
+        source: TySource,
+    ) -> hir::Ty<'hir> {
         let kind = match qpath {
             hir::QPath::Resolved(None, path) => {
                 // Turn trait object paths into `TyKind::TraitObject` instead.
@@ -2377,7 +2426,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             _ => hir::TyKind::Path(qpath),
         };
 
-        hir::Ty { hir_id, kind, span: self.lower_span(span) }
+        hir::Ty { hir_id, kind, span: self.lower_span(span), source }
     }
 
     /// Invoked to create the lifetime argument(s) for an elided trait object
@@ -2389,7 +2438,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.next_id(),
             Ident::new(kw::UnderscoreLifetime, self.lower_span(span)),
             hir::LifetimeName::ImplicitObjectLifetimeDefault,
-            IsAnonInPath::No,
+            LifetimeSource::Other,
+            LifetimeSyntax::Hidden,
         );
         debug!("elided_dyn_bound: r={:?}", r);
         self.arena.alloc(r)
