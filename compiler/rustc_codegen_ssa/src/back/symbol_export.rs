@@ -320,9 +320,10 @@ fn exported_symbols_provider_local(
         let need_visibility = tcx.sess.target.dynamic_linking && !tcx.sess.target.only_cdylib;
 
         let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
-
+        let reachable_set = tcx.reachable_set(());
         let visibilities = tcx.effective_visibilities(());
         let is_local_to_current_crate = |ty: Ty<'_>| {
+
             let no_refs = ty.peel_refs();
             let root_def_id = match no_refs.kind() {
                 rustc_middle::ty::Adt(adt_def, _) => adt_def.did(),
@@ -340,8 +341,7 @@ fn exported_symbols_provider_local(
                 return false;
             };
 
-            let is_local = visibilities.public_at_level(root_def_id).is_none();
-
+            let is_local = !reachable_set.contains(&root_def_id);
             is_local
         };
         // The symbols created in this loop are sorted below it
@@ -366,21 +366,22 @@ fn exported_symbols_provider_local(
                     // this is OK, we explicitly allow sharing inline(never) across crates even
                     // without share-generics.
                 } else {
+
                     continue;
                 }
             }
 
             match *mono_item {
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
-                    let mut types = args.types();
+                    let types = args.types();
                     let has_generics = args.non_erasable_generics().next().is_some();
+
                     let should_export = has_generics
-                        && (def.as_local().is_some_and(|local_did| {
-                            visibilities.public_at_level(local_did).is_some()
-                        }) || (tcx.codegen_fn_attrs(mono_item.def_id()).inline
+                        && ( (tcx.codegen_fn_attrs(mono_item.def_id()).inline
                             != rustc_attr_parsing::InlineAttr::None)
-                            || types.all(|arg| {
+                            || Some(tcx.type_of(def).skip_binder()).into_iter().chain(types).all(|arg| {
                                 arg.walk().all(|ty| {
+
                                     let Some(ty) = ty.as_type() else {
                                         return true;
                                     };
