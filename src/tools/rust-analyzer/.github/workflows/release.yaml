@@ -56,7 +56,7 @@ jobs:
             target: x86_64-apple-darwin
             code-target: darwin-x64
             pgo: clap-rs/clap
-          - os: macos-13
+          - os: macos-14
             target: aarch64-apple-darwin
             code-target: darwin-arm64
             pgo: clap-rs/clap
