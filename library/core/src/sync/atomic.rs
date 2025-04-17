@@ -1115,13 +1115,8 @@ impl AtomicBool {
     ///
     /// Doing non-atomic reads and writes on the resulting boolean can be a data race.
     /// This method is mostly useful for FFI, where the function signature may use
-    /// `*mut bool` instead of `&AtomicBool`.
-    ///
-    /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
-    /// atomic types work with interior mutability. All modifications of an atomic change the value
-    /// through a shared reference, and can do so safely as long as they use atomic operations. Any
-    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-    /// restriction: operations on it must be atomic.
+    /// `*mut bool` instead of `&AtomicBool`. All modifications of an atomic change the value
+    /// through a shared reference, and can do so safely as long as they use atomic operations.
     ///
     /// # Examples
     ///
@@ -1134,6 +1129,8 @@ impl AtomicBool {
     /// }
     ///
     /// let mut atomic = AtomicBool::new(true);
+    ///
+    /// // SAFETY: `my_atomic_op` only uses atomic operations so it will not lead to a data race.
     /// unsafe {
     ///     my_atomic_op(atomic.as_ptr());
     /// }
@@ -2308,13 +2305,8 @@ impl<T> AtomicPtr<T> {
     ///
     /// Doing non-atomic reads and writes on the resulting pointer can be a data race.
     /// This method is mostly useful for FFI, where the function signature may use
-    /// `*mut *mut T` instead of `&AtomicPtr<T>`.
-    ///
-    /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
-    /// atomic types work with interior mutability. All modifications of an atomic change the value
-    /// through a shared reference, and can do so safely as long as they use atomic operations. Any
-    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-    /// restriction: operations on it must be atomic.
+    /// `*mut *mut T` instead of `&AtomicPtr<T>`. All modifications of an atomic change the value
+    /// through a shared reference, and can do so safely as long as they use atomic operations.
     ///
     /// # Examples
     ///
