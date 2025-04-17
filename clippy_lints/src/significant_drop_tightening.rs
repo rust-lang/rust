@@ -144,7 +144,10 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
         Self { cx, type_cache }
     }
 
-    fn has_sig_drop_attr(&mut self, ty: Ty<'tcx>) -> bool {
+    fn has_sig_drop_attr(&mut self, ty: Ty<'tcx>, depth: usize) -> bool {
+        if !self.cx.tcx.recursion_limit().value_within_limit(depth) {
+            return false;
+        }
         let ty = self
             .cx
             .tcx
@@ -156,12 +159,12 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
                 e.insert(false);
             },
         }
-        let value = self.has_sig_drop_attr_uncached(ty);
+        let value = self.has_sig_drop_attr_uncached(ty, depth + 1);
         self.type_cache.insert(ty, value);
         value
     }
 
-    fn has_sig_drop_attr_uncached(&mut self, ty: Ty<'tcx>) -> bool {
+    fn has_sig_drop_attr_uncached(&mut self, ty: Ty<'tcx>, depth: usize) -> bool {
         if let Some(adt) = ty.ty_adt_def() {
             let mut iter = get_attr(
                 self.cx.sess(),
@@ -176,13 +179,13 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
             rustc_middle::ty::Adt(a, b) => {
                 for f in a.all_fields() {
                     let ty = f.ty(self.cx.tcx, b);
-                    if self.has_sig_drop_attr(ty) {
+                    if self.has_sig_drop_attr(ty, depth) {
                         return true;
                     }
                 }
                 for generic_arg in *b {
                     if let GenericArgKind::Type(ty) = generic_arg.unpack()
-                        && self.has_sig_drop_attr(ty)
+                        && self.has_sig_drop_attr(ty, depth)
                     {
                         return true;
                     }
@@ -192,7 +195,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
             rustc_middle::ty::Array(ty, _)
             | rustc_middle::ty::RawPtr(ty, _)
             | rustc_middle::ty::Ref(_, ty, _)
-            | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(*ty),
+            | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(*ty, depth),
             _ => false,
         }
     }
@@ -268,7 +271,7 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
             apa.has_expensive_expr_after_last_attr = false;
         };
         let mut ac = AttrChecker::new(self.cx, self.type_cache);
-        if ac.has_sig_drop_attr(self.cx.typeck_results().expr_ty(expr)) {
+        if ac.has_sig_drop_attr(self.cx.typeck_results().expr_ty(expr), 0) {
             if let hir::StmtKind::Let(local) = self.ap.curr_stmt.kind
                 && let hir::PatKind::Binding(_, hir_id, ident, _) = local.pat.kind
                 && !self.ap.apas.contains_key(&hir_id)
