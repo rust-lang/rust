@@ -314,7 +314,7 @@ fn could_use_elision<'tcx>(
             return None;
         }
 
-        let mut checker = BodyLifetimeChecker;
+        let mut checker = BodyLifetimeChecker::new(cx);
         if checker.visit_expr(body.value).is_break() {
             return None;
         }
@@ -911,10 +911,23 @@ fn elision_suggestions(
     Some(suggestions)
 }
 
-struct BodyLifetimeChecker;
+struct BodyLifetimeChecker<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
 
-impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
+impl<'tcx> BodyLifetimeChecker<'tcx> {
+    fn new(cx: &LateContext<'tcx>) -> Self {
+        Self { tcx: cx.tcx }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker<'tcx> {
     type Result = ControlFlow<()>;
+    type NestedFilter = middle_nested_filter::OnlyBodies;
+
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
+    }
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) -> ControlFlow<()> {
         if !lifetime.is_anonymous() && lifetime.ident.name != kw::StaticLifetime {
