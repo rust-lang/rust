@@ -205,8 +205,8 @@ pub struct Instant(time::Instant);
 ///            println!("{}", elapsed.as_secs());
 ///        }
 ///        Err(e) => {
-///            // an error occurred!
-///            println!("Error: {e:?}");
+///            // the system clock went backwards!
+///            println!("Great Scott! {e:?}");
 ///        }
 ///    }
 /// }
