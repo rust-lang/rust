@@ -650,10 +650,15 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 LifetimeName::Param(def_id) => {
                     self.resolve_lifetime_ref(def_id, lt);
                 }
-                LifetimeName::Error => {}
-                LifetimeName::ImplicitObjectLifetimeDefault
-                | LifetimeName::Infer
-                | LifetimeName::Static => {
+                LifetimeName::Infer | LifetimeName::Error => {
+                    // We don't check for explicit `'_` lifetimes because we'll already have an
+                    // explicit error from late resolution explaining `use<'_>` is invalid.
+                    self.tcx.dcx().span_delayed_bug(
+                        lt.ident.span,
+                        "found infer or error lifetime but no prior error",
+                    );
+                }
+                LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Static => {
                     self.tcx.dcx().emit_err(errors::BadPreciseCapture {
                         span: lt.ident.span,
                         kind: "lifetime",

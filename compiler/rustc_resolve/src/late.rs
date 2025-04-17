@@ -1157,6 +1157,18 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
 
     fn visit_precise_capturing_arg(&mut self, arg: &'ast PreciseCapturingArg) {
         match arg {
+            PreciseCapturingArg::Lifetime(lt) if lt.ident.name == kw::UnderscoreLifetime => {
+                // We account for `+ use<'_>` explicitly to avoid providing an invalid suggestion
+                // for `+ use<'static>`.
+                let outer_failures = take(&mut self.diag_metadata.current_elision_failures);
+                visit::walk_precise_capturing_arg(self, arg);
+                let elision_failures =
+                    replace(&mut self.diag_metadata.current_elision_failures, outer_failures);
+                if !elision_failures.is_empty() {
+                    self.report_missing_lifetime_specifiers(elision_failures, None, true);
+                }
+                return;
+            }
             // Lower the lifetime regularly; we'll resolve the lifetime and check
             // it's a parameter later on in HIR lowering.
             PreciseCapturingArg::Lifetime(_) => {}
@@ -1938,7 +1950,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         }
         self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
-        self.report_missing_lifetime_specifiers(vec![missing_lifetime], None);
+        self.report_missing_lifetime_specifiers(vec![missing_lifetime], None, false);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -2159,7 +2171,11 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                 LifetimeElisionCandidate::Ignore,
                             );
                         }
-                        self.report_missing_lifetime_specifiers(vec![missing_lifetime], None);
+                        self.report_missing_lifetime_specifiers(
+                            vec![missing_lifetime],
+                            None,
+                            false,
+                        );
                         break;
                     }
                     LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstParamTy => {}
@@ -2282,7 +2298,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             replace(&mut self.diag_metadata.current_elision_failures, outer_failures);
         if !elision_failures.is_empty() {
             let Err(failure_info) = elision_lifetime else { bug!() };
-            self.report_missing_lifetime_specifiers(elision_failures, Some(failure_info));
+            self.report_missing_lifetime_specifiers(elision_failures, Some(failure_info), false);
         }
     }
 
