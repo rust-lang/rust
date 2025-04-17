@@ -550,7 +550,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         // a `Target` that is in `self.ty_msrv_map`.
         if let Some(deref_trait_id) = self.cx.tcx.lang_items().deref_trait()
             && implements_trait(self.cx, ty, deref_trait_id, &[])
-            && let Some(target_ty) = self.cx.get_associated_type(ty, deref_trait_id, "Target")
+            && let Some(target_ty) = self.cx.get_associated_type(ty, deref_trait_id, sym::Target)
             && let Some(msrv) = self.ty_msrv_map.get(&target_ty)
             && msrv.is_none_or(|msrv| self.msrv.meets(self.cx, msrv))
         {

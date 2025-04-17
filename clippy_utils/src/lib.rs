@@ -2,6 +2,7 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(macro_metavar_expr_concat)]
+#![feature(macro_metavar_expr)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustc_private)]
@@ -72,6 +73,7 @@ pub mod qualify_min_const_fn;
 pub mod source;
 pub mod str_utils;
 pub mod sugg;
+pub mod sym;
 pub mod ty;
 pub mod usage;
 pub mod visitors;
@@ -112,6 +114,7 @@ use rustc_hir::{
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
+use rustc_middle::lint::LevelAndSource;
 use rustc_middle::mir::{AggregateKind, Operand, RETURN_PLACE, Rvalue, StatementKind, TerminatorKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -123,7 +126,7 @@ use rustc_middle::ty::{
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{InnerSpan, Span, sym};
+use rustc_span::{InnerSpan, Span};
 use source::walk_span_to_context;
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
@@ -1853,6 +1856,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
     }
 
     match pat.kind {
+        PatKind::Missing => unreachable!(),
         PatKind::Wild | PatKind::Never => false, // If `!` typechecked then the type is empty, so not refutable.
         PatKind::Binding(_, _, _, pat) => pat.is_some_and(|pat| is_refutable(cx, pat)),
         PatKind::Box(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
@@ -1972,14 +1976,14 @@ pub fn fulfill_or_allowed(cx: &LateContext<'_>, lint: &'static Lint, ids: impl I
     let mut suppress_lint = false;
 
     for id in ids {
-        let (level, _) = cx.tcx.lint_level_at_node(lint, id);
-        if let Some(expectation) = level.get_expectation_id() {
+        let LevelAndSource { level, lint_id, .. } = cx.tcx.lint_level_at_node(lint, id);
+        if let Some(expectation) = lint_id {
             cx.fulfill_expectation(expectation);
         }
 
         match level {
-            Level::Allow | Level::Expect(_) => suppress_lint = true,
-            Level::Warn | Level::ForceWarn(_) | Level::Deny | Level::Forbid => {},
+            Level::Allow | Level::Expect => suppress_lint = true,
+            Level::Warn | Level::ForceWarn | Level::Deny | Level::Forbid => {},
         }
     }
 
@@ -1994,7 +1998,7 @@ pub fn fulfill_or_allowed(cx: &LateContext<'_>, lint: &'static Lint, ids: impl I
 /// make sure to use `span_lint_hir` functions to emit the lint. This ensures that
 /// expectations at the checked nodes will be fulfilled.
 pub fn is_lint_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool {
-    cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
+    cx.tcx.lint_level_at_node(lint, id).level == Level::Allow
 }
 
 pub fn strip_pat_refs<'hir>(mut pat: &'hir Pat<'hir>) -> &'hir Pat<'hir> {
@@ -3523,7 +3527,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
                 // a::b::c  ::d::sym refers to
                 // e::f::sym:: ::
                 // result should be super::super::super::super::e::f
-                if let DefPathData::TypeNs(Some(s)) = l {
+                if let DefPathData::TypeNs(s) = l {
                     path.push(s.to_string());
                 }
                 if let DefPathData::TypeNs(_) = r {
@@ -3534,7 +3538,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
             // a::b::sym:: ::    refers to
             // c::d::e  ::f::sym
             // when looking at `f`
-            Left(DefPathData::TypeNs(Some(sym))) => path.push(sym.to_string()),
+            Left(DefPathData::TypeNs(sym)) => path.push(sym.to_string()),
             // consider:
             // a::b::c  ::d::sym refers to
             // e::f::sym:: ::
@@ -3548,7 +3552,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
         // `super` chain would be too long, just use the absolute path instead
         once(String::from("crate"))
             .chain(to.data.iter().filter_map(|el| {
-                if let DefPathData::TypeNs(Some(sym)) = el.data {
+                if let DefPathData::TypeNs(sym) = el.data {
                     Some(sym.to_string())
                 } else {
                     None

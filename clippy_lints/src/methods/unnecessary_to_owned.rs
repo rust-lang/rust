@@ -153,7 +153,7 @@ fn check_addr_of_expr(
         }
         if let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
             && implements_trait(cx, receiver_ty, deref_trait_id, &[])
-            && cx.get_associated_type(receiver_ty, deref_trait_id, "Target") == Some(target_ty)
+            && cx.get_associated_type(receiver_ty, deref_trait_id, sym::Target) == Some(target_ty)
             // Make sure that it's actually calling the right `.to_string()`, (#10033)
             // *or* this is a `Cow::into_owned()` call (which would be the wrong into_owned receiver (str != Cow)
             // but that's ok for Cow::into_owned specifically)
@@ -322,7 +322,7 @@ fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symb
         // add `.as_ref()` to the suggestion.
         let as_ref = if is_type_lang_item(cx, cx.typeck_results().expr_ty(expr), LangItem::String)
             && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
-            && cx.get_associated_type(cx.typeck_results().expr_ty(receiver), deref_trait_id, "Target")
+            && cx.get_associated_type(cx.typeck_results().expr_ty(receiver), deref_trait_id, sym::Target)
                 != Some(cx.tcx.types.str_)
         {
             ".as_ref()"
@@ -648,7 +648,7 @@ fn is_to_string_on_string_like<'a>(
         && let GenericArgKind::Type(ty) = generic_arg.unpack()
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
-        && (cx.get_associated_type(ty, deref_trait_id, "Target") == Some(cx.tcx.types.str_)
+        && (cx.get_associated_type(ty, deref_trait_id, sym::Target) == Some(cx.tcx.types.str_)
             || implements_trait(cx, ty, as_ref_trait_id, &[cx.tcx.types.str_.into()]))
     {
         true

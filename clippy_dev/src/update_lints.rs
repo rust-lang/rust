@@ -1,7 +1,8 @@
 use crate::utils::{UpdateMode, clippy_project_root, exit_with_failure, replace_region_in_file};
 use aho_corasick::AhoCorasickBuilder;
 use itertools::Itertools;
-use rustc_lexer::{LiteralKind, TokenKind, tokenize, unescape};
+use rustc_lexer::{LiteralKind, TokenKind, tokenize};
+use rustc_literal_escaper::{Mode, unescape_unicode};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fmt::{self, Write};
@@ -830,7 +831,7 @@ fn remove_line_splices(s: &str) -> String {
         .and_then(|s| s.strip_suffix('"'))
         .unwrap_or_else(|| panic!("expected quoted string, found `{s}`"));
     let mut res = String::with_capacity(s.len());
-    unescape::unescape_unicode(s, unescape::Mode::Str, &mut |range, ch| {
+    unescape_unicode(s, Mode::Str, &mut |range, ch| {
         if ch.is_ok() {
             res.push_str(&s[range]);
         }

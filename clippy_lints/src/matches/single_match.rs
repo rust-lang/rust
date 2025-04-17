@@ -407,6 +407,7 @@ impl<'a> PatState<'a> {
                 pats.iter().map(|p| p.pat),
             ),
 
+            PatKind::Missing => unreachable!(),
             PatKind::Wild
             | PatKind::Binding(_, _, _, None)
             | PatKind::Expr(_)
