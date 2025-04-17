@@ -3401,12 +3401,8 @@ macro_rules! atomic_int {
             /// Doing non-atomic reads and writes on the resulting integer can be a data race.
             /// This method is mostly useful for FFI, where the function signature may use
             #[doc = concat!("`*mut ", stringify!($int_type), "` instead of `&", stringify!($atomic_type), "`.")]
-            ///
-            /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
-            /// atomic types work with interior mutability. All modifications of an atomic change the value
-            /// through a shared reference, and can do so safely as long as they use atomic operations. Any
-            /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-            /// restriction: operations on it must be atomic.
+            /// All modifications of an atomic change the value through a shared reference, and can do so safely
+            /// as long as they use atomic operations.
             ///
             /// # Examples
             ///
@@ -3420,7 +3416,7 @@ macro_rules! atomic_int {
             ///
             #[doc = concat!("let atomic = ", stringify!($atomic_type), "::new(1);")]
             ///
-            /// // SAFETY: Safe as long as `my_atomic_op` is atomic.
+            /// // SAFETY: `my_atomic_op` only uses atomic operations so it will not lead to a data race.
             /// unsafe {
             ///     my_atomic_op(atomic.as_ptr());
             /// }
