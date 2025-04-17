@@ -323,10 +323,8 @@ fn exported_symbols_provider_local(
         let reachable_set = tcx.reachable_set(());
         let visibilities = tcx.effective_visibilities(());
         let is_local_to_current_crate = |ty: Ty<'_>| {
-
             let no_refs = ty.peel_refs();
             let root_def_id = match no_refs.kind() {
-                rustc_middle::ty::Adt(adt_def, _) => adt_def.did(),
                 rustc_middle::ty::Closure(closure, _) => *closure,
                 rustc_middle::ty::FnDef(def_id, _) => *def_id,
                 rustc_middle::ty::Coroutine(def_id, _) => *def_id,
@@ -366,7 +364,6 @@ fn exported_symbols_provider_local(
                     // this is OK, we explicitly allow sharing inline(never) across crates even
                     // without share-generics.
                 } else {
-
                     continue;
                 }
             }
@@ -377,17 +374,16 @@ fn exported_symbols_provider_local(
                     let has_generics = args.non_erasable_generics().next().is_some();
 
                     let should_export = has_generics
-                        && ( (tcx.codegen_fn_attrs(mono_item.def_id()).inline
-                            != rustc_attr_parsing::InlineAttr::None)
-                            || Some(tcx.type_of(def).skip_binder()).into_iter().chain(types).all(|arg| {
+                        && Some(tcx.type_of(def).skip_binder()).into_iter().chain(types).all(
+                            |arg| {
                                 arg.walk().all(|ty| {
-
                                     let Some(ty) = ty.as_type() else {
                                         return true;
                                     };
                                     !is_local_to_current_crate(ty)
                                 })
-                            }));
+                            },
+                        );
 
                     if should_export {
                         let symbol = ExportedSymbol::Generic(def, args);
