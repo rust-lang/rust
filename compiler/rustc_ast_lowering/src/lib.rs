@@ -494,7 +494,6 @@ enum GenericArgsMode {
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn create_def(
         &mut self,
-        parent: LocalDefId,
         node_id: ast::NodeId,
         name: Option<Symbol>,
         def_kind: DefKind,
@@ -509,7 +508,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.tcx.hir_def_key(self.local_def_id(node_id)),
         );
 
-        let def_id = self.tcx.at(span).create_def(parent, name, def_kind).def_id();
+        let def_id =
+            self.tcx.at(span).create_def(self.current_hir_id_owner.def_id, name, def_kind).def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
         self.resolver.node_id_to_def_id.insert(node_id, def_id);
@@ -781,7 +781,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Fresh { param, kind, .. } => {
                 // Late resolution delegates to us the creation of the `LocalDefId`.
                 let _def_id = self.create_def(
-                    self.current_hir_id_owner.def_id,
                     param,
                     Some(kw::UnderscoreLifetime),
                     DefKind::LifetimeParam,
@@ -2084,7 +2083,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             // Construct an AnonConst where the expr is the "ty"'s path.
 
-            let parent_def_id = self.current_hir_id_owner.def_id;
             let node_id = self.next_node_id();
             let span = self.lower_span(span);
 
@@ -2092,7 +2090,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // We're lowering a const argument that was originally thought to be a type argument,
             // so the def collector didn't create the def ahead of time. That's why we have to do
             // it here.
-            let def_id = self.create_def(parent_def_id, node_id, None, DefKind::AnonConst, span);
+            let def_id = self.create_def(node_id, None, DefKind::AnonConst, span);
             let hir_id = self.lower_node_id(node_id);
 
             let path_expr = Expr {
