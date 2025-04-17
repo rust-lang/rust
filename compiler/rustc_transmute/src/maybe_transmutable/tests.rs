@@ -126,7 +126,7 @@ mod bool {
 
         let into_set = |alts: Vec<_>| {
             #[cfg(feature = "rustc")]
-            let mut set = crate::Set::default();
+            let mut set = rustc_data_structures::fx::FxIndexSet::default();
             #[cfg(not(feature = "rustc"))]
             let mut set = std::collections::HashSet::new();
             set.extend(alts);
@@ -172,5 +172,34 @@ mod bool {
                 }
             }
         }
+    }
+}
+
+mod union {
+    use super::*;
+
+    #[test]
+    fn union() {
+        let [a, b, c, d] = [0, 1, 2, 3];
+        let s = Dfa::from_edges(a, d, &[(a, 0, b), (b, 0, d), (a, 1, c), (c, 1, d)]);
+
+        let t = Dfa::from_edges(a, c, &[(a, 1, b), (b, 0, c)]);
+
+        let mut ctr = 0;
+        let new_state = || {
+            let state = crate::layout::dfa::State(ctr);
+            ctr += 1;
+            state
+        };
+
+        let u = s.clone().union(t.clone(), new_state);
+
+        let expected_u =
+            Dfa::from_edges(b, a, &[(b, 0, c), (b, 1, d), (d, 1, a), (d, 0, a), (c, 0, a)]);
+
+        assert_eq!(u, expected_u);
+
+        assert_eq!(is_transmutable(&s, &u, Assume::default()), Answer::Yes);
+        assert_eq!(is_transmutable(&t, &u, Assume::default()), Answer::Yes);
     }
 }
