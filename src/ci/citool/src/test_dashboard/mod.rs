@@ -10,22 +10,6 @@ use crate::jobs::JobDatabase;
 use crate::metrics::{JobMetrics, JobName, download_auto_job_metrics, get_test_suites};
 use crate::utils::normalize_path_delimiters;
 
-pub struct TestInfo {
-    name: String,
-    jobs: Vec<JobTestResult>,
-}
-
-struct JobTestResult {
-    job_name: String,
-    outcome: TestOutcome,
-}
-
-#[derive(Default)]
-struct TestSuiteInfo {
-    name: String,
-    tests: BTreeMap<String, TestInfo>,
-}
-
 /// Generate a set of HTML files into a directory that contain a dashboard of test results.
 pub fn generate_test_dashboard(
     db: JobDatabase,
@@ -33,7 +17,6 @@ pub fn generate_test_dashboard(
     output_dir: &Path,
 ) -> anyhow::Result<()> {
     let metrics = download_auto_job_metrics(&db, None, current)?;
-
     let suites = gather_test_suites(&metrics);
 
     std::fs::create_dir_all(output_dir)?;
@@ -52,27 +35,27 @@ fn write_page<T: Template>(dir: &Path, name: &str, template: &T) -> anyhow::Resu
 
 fn gather_test_suites(job_metrics: &HashMap<JobName, JobMetrics>) -> TestSuites {
     struct CoarseTestSuite<'a> {
-        kind: TestSuiteKind,
         tests: BTreeMap<String, Test<'a>>,
     }
 
     let mut suites: HashMap<String, CoarseTestSuite> = HashMap::new();
 
     // First, gather tests from all jobs, stages and targets, and aggregate them per suite
+    // Only work with compiletest suites.
     for (job, metrics) in job_metrics {
         let test_suites = get_test_suites(&metrics.current);
         for suite in test_suites {
-            let (suite_name, stage, target, kind) = match &suite.metadata {
-                TestSuiteMetadata::CargoPackage { crates, stage, target, .. } => {
-                    (crates.join(","), *stage, target, TestSuiteKind::Cargo)
+            let (suite_name, stage, target) = match &suite.metadata {
+                TestSuiteMetadata::CargoPackage { .. } => {
+                    continue;
                 }
                 TestSuiteMetadata::Compiletest { suite, stage, target, .. } => {
-                    (suite.clone(), *stage, target, TestSuiteKind::Compiletest)
+                    (suite.clone(), *stage, target)
                 }
             };
             let suite_entry = suites
                 .entry(suite_name.clone())
-                .or_insert_with(|| CoarseTestSuite { kind, tests: Default::default() });
+                .or_insert_with(|| CoarseTestSuite { tests: Default::default() });
             let test_metadata = TestMetadata { job, stage, target };
 
             for test in &suite.tests {
@@ -98,29 +81,13 @@ fn gather_test_suites(job_metrics: &HashMap<JobName, JobMetrics>) -> TestSuites 
 
     // Then, split the suites per directory
     let mut suites = suites.into_iter().collect::<Vec<_>>();
-    suites.sort_by(|a, b| a.1.kind.cmp(&b.1.kind).then_with(|| a.0.cmp(&b.0)));
+    suites.sort_by(|a, b| a.0.cmp(&b.0));
 
     let mut target_suites = vec![];
     for (suite_name, suite) in suites {
-        let suite = match suite.kind {
-            TestSuiteKind::Compiletest => TestSuite {
-                name: suite_name.clone(),
-                kind: TestSuiteKind::Compiletest,
-                group: build_test_group(&suite_name, suite.tests),
-            },
-            TestSuiteKind::Cargo => {
-                let mut tests: Vec<_> = suite.tests.into_iter().collect();
-                tests.sort_by(|a, b| a.0.cmp(&b.0));
-                TestSuite {
-                    name: format!("[cargo] {}", suite_name.clone()),
-                    kind: TestSuiteKind::Cargo,
-                    group: TestGroup {
-                        name: suite_name,
-                        root_tests: tests.into_iter().map(|t| t.1).collect(),
-                        groups: vec![],
-                    },
-                }
-            }
+        let suite = TestSuite {
+            name: suite_name.clone(),
+            group: build_test_group(&suite_name, suite.tests),
         };
         target_suites.push(suite);
     }
@@ -187,7 +154,6 @@ impl<'a> TestSuites<'a> {
 #[derive(serde::Serialize)]
 struct TestSuite<'a> {
     name: String,
-    kind: TestSuiteKind,
     group: TestGroup<'a>,
 }
 
@@ -223,12 +189,6 @@ impl<'a> TestGroup<'a> {
         let root = self.root_tests.len() as u64;
         self.groups.iter().map(|(_, group)| group.test_count()).sum::<u64>() + root
     }
-}
-
-#[derive(PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
-enum TestSuiteKind {
-    Compiletest,
-    Cargo,
 }
 
 #[derive(Template)]

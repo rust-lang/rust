@@ -1,10 +1,15 @@
 {% extends "layout.askama" %}
 
 {% block content %}
-<h1>Rust CI Test Dashboard</h1>
+<h1>Rust CI test dashboard</h1>
 <div class="test-suites">
     <div class="summary">
-        <span>Total tests: {{ test_count }}</span>
+        <div>
+            <div class="test-count">Total tests: {{ test_count }}</div>
+            <div>
+                To find tests that haven't been executed anywhere, click on "Open all" and search for "(0 passed".
+            </div>
+        </div>
         <div>
             <button onclick="openAll()">Open all</button>
             <button onclick="closeAll()">Close all</button>
@@ -13,9 +18,7 @@
 
     <ul>
     {% for suite in suites.suites %}
-        {% if suite.kind == TestSuiteKind::Compiletest %}
-            {{ suite.group|safe }}
-        {% endif %}
+        {{ suite.group|safe }}
     {% endfor %}
     </ul>
 </div>
@@ -31,6 +34,10 @@ h1 {
 .summary {
     display: flex;
     justify-content: space-between;
+}
+
+.test-count {
+    font-size: 1.2em;
 }
 
 .test-suites {
