@@ -527,15 +527,14 @@ impl<'a> TraitDef<'a> {
                     item.attrs
                         .iter()
                         .filter(|a| {
-                            [
+                            a.has_any_name(&[
                                 sym::allow,
                                 sym::warn,
                                 sym::deny,
                                 sym::forbid,
                                 sym::stable,
                                 sym::unstable,
-                            ]
-                            .contains(&a.name_or_empty())
+                            ])
                         })
                         .cloned(),
                 );

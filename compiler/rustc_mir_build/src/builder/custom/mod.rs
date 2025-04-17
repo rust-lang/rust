@@ -103,8 +103,9 @@ fn parse_attribute(attr: &Attribute) -> MirPhase {
     let mut dialect: Option<String> = None;
     let mut phase: Option<String> = None;
 
+    // Not handling errors properly for this internal attribute; will just abort on errors.
     for nested in meta_items {
-        let name = nested.name_or_empty();
+        let name = nested.name().unwrap();
         let value = nested.value_str().unwrap().as_str().to_string();
         match name.as_str() {
             "dialect" => {
