@@ -1,20 +1,16 @@
 #![cfg(not(feature = "no-asm"))]
-#![allow(unused_imports)]
 
-use core::intrinsics;
-
-// Apple symbols have a leading underscore.
-#[cfg(target_vendor = "apple")]
-macro_rules! bl {
-    ($func:literal) => {
-        concat!("bl _", $func)
-    };
+// Interfaces used by naked trampolines.
+extern "C" {
+    fn __udivmodsi4(a: u32, b: u32, rem: *mut u32) -> u32;
+    fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64;
+    fn __divmoddi4(a: i64, b: i64, rem: *mut i64) -> i64;
 }
-#[cfg(not(target_vendor = "apple"))]
-macro_rules! bl {
-    ($func:literal) => {
-        concat!("bl ", $func)
-    };
+
+extern "aapcs" {
+    // AAPCS is not always the correct ABI for these intrinsics, but we only use this to
+    // forward another `__aeabi_` call so it doesn't matter.
+    fn __aeabi_idiv(a: i32, b: i32) -> i32;
 }
 
 intrinsics! {
@@ -27,10 +23,11 @@ intrinsics! {
             "push {{lr}}",
             "sub sp, sp, #4",
             "mov r2, sp",
-            bl!("__udivmodsi4"),
+            "bl {trampoline}",
             "ldr r1, [sp]",
             "add sp, sp, #4",
             "pop {{pc}}",
+            trampoline = sym crate::arm::__udivmodsi4
         );
     }
 
@@ -41,11 +38,12 @@ intrinsics! {
             "sub sp, sp, #16",
             "add r4, sp, #8",
             "str r4, [sp]",
-            bl!("__udivmoddi4"),
+            "bl {trampoline}",
             "ldr r2, [sp, #8]",
             "ldr r3, [sp, #12]",
             "add sp, sp, #16",
             "pop {{r4, pc}}",
+            trampoline = sym crate::arm::__udivmoddi4
         );
     }
 
@@ -53,11 +51,12 @@ intrinsics! {
     pub unsafe extern "C" fn __aeabi_idivmod() {
         core::arch::naked_asm!(
             "push {{r0, r1, r4, lr}}",
-            bl!("__aeabi_idiv"),
+            "bl {trampoline}",
             "pop {{r1, r2}}",
             "muls r2, r2, r0",
             "subs r1, r1, r2",
             "pop {{r4, pc}}",
+            trampoline = sym crate::arm::__aeabi_idiv,
         );
     }
 
@@ -68,11 +67,12 @@ intrinsics! {
             "sub sp, sp, #16",
             "add r4, sp, #8",
             "str r4, [sp]",
-            bl!("__divmoddi4"),
+            "bl {trampoline}",
             "ldr r2, [sp, #8]",
             "ldr r3, [sp, #12]",
             "add sp, sp, #16",
             "pop {{r4, pc}}",
+            trampoline = sym crate::arm::__divmoddi4,
         );
     }
 
