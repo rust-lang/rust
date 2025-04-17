@@ -1186,6 +1186,7 @@ symbols! {
         instruction_set,
         integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
         integral,
+        internal_features,
         into_async_iter_into_iter,
         into_future,
         into_iter,
