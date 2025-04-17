@@ -485,7 +485,7 @@ impl Step for Llvm {
         }
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
-        if !builder.is_builder_target(target) {
+        if !builder.config.is_host_target(target) {
             let LlvmResult { llvm_config, .. } =
                 builder.ensure(Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
@@ -637,7 +637,7 @@ fn configure_cmake(
     }
     cfg.target(&target.triple).host(&builder.config.build.triple);
 
-    if !builder.is_builder_target(target) {
+    if !builder.config.is_host_target(target) {
         cfg.define("CMAKE_CROSSCOMPILING", "True");
 
         // NOTE: Ideally, we wouldn't have to do this, and `cmake-rs` would just handle it for us.
@@ -1098,7 +1098,7 @@ impl Step for Lld {
             .define("LLVM_CMAKE_DIR", llvm_cmake_dir)
             .define("LLVM_INCLUDE_TESTS", "OFF");
 
-        if !builder.is_builder_target(target) {
+        if !builder.config.is_host_target(target) {
             // Use the host llvm-tblgen binary.
             cfg.define(
                 "LLVM_TABLEGEN_EXE",
