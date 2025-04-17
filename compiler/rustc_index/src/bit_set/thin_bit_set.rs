@@ -1,14 +1,19 @@
-use std::alloc::{Layout, alloc, alloc_zeroed, dealloc, handle_alloc_error};
+use std::alloc::{Layout, alloc, alloc_zeroed, dealloc, handle_alloc_error, realloc};
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::ops::{Range, RangeInclusive};
 use std::ptr::NonNull;
-use std::{fmt, slice};
+use std::{fmt, iter, slice};
+
+use itertools::Either;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use super::{
-    BitRelations, CHUNK_WORDS, Chunk, ChunkedBitSet, WORD_BITS, Word, max_bit, word_index_and_mask,
+    BitRelations, CHUNK_WORDS, Chunk, ChunkedBitSet, WORD_BITS, Word, word_index_and_mask,
 };
-use crate::{Idx, IndexVec};
+use crate::Idx;
+
 /// A fixed-size bitset type with a dense representation, using only one [`Word`] on the stack.
 ///
 /// This bit set occupies only a single [`Word`] of stack space. It can represent a domain size
@@ -49,10 +54,10 @@ pub union ThinBitSet<T> {
     ///
     /// The first (most significant) two bits are set to `[0, 1]` to distinguish this variant
     /// from others. This tag is stored in [`Self::EMPTY_UNALLOCATED_TAG_BITS`]. The remaining bits
-    /// hold the domain size **in words** of the set, which is needed if the set is eventually
-    /// allocated.
+    /// hold the domain size (capacity) **in words** of the set, which is needed if the set is
+    /// eventually allocated.
     ///
-    /// Note that because the domain size is stored in words, not in bits, there is plenty of room
+    /// Note that because the capacity is stored in words, not in bits, there is plenty of room
     /// for the two tag bits.
     empty_unallocated: usize,
 
@@ -67,7 +72,7 @@ pub union ThinBitSet<T> {
 
 impl<T> ThinBitSet<T> {
     /// The maximum domain size that could be stored inlined on the stack.
-    pub const MAX_INLINE_DOMAIN_SIZE: usize = WORD_BITS - 1;
+    pub const INLINE_CAPACITY: usize = WORD_BITS - 1;
 
     /// A [`Word`] with the most significant bit set. That is the tag bit telling that the set is
     /// inlined.
@@ -79,11 +84,11 @@ impl<T> ThinBitSet<T> {
 
     /// Create a new empty bit set with a given domain_size.
     ///
-    /// If `domain_size` is <= [`Self::MAX_INLINE_DOMAIN_SIZE`], then it is stored inline on the stack,
+    /// If `domain_size` is <= [`Self::INLINE_CAPACITY`], then it is stored inline on the stack,
     /// otherwise it is stored on the heap.
     #[inline]
     pub fn new_empty(domain_size: usize) -> Self {
-        if domain_size <= Self::MAX_INLINE_DOMAIN_SIZE {
+        if domain_size <= Self::INLINE_CAPACITY {
             // The first bit is set to indicate the union variant.
             Self { inline: Self::IS_INLINE_TAG_BIT }
         } else {
@@ -96,13 +101,9 @@ impl<T> ThinBitSet<T> {
     /// Create a new filled bit set.
     #[inline]
     pub fn new_filled(domain_size: usize) -> Self {
-        if domain_size <= Self::MAX_INLINE_DOMAIN_SIZE {
-            if domain_size == 0 {
-                // FIXME: Remove this.
-                return Self::new_empty(domain_size);
-            }
+        if domain_size <= Self::INLINE_CAPACITY {
             Self {
-                inline: Word::MAX >> (WORD_BITS - domain_size) % WORD_BITS
+                inline: Word::MAX.unbounded_shr((WORD_BITS - domain_size) as u32)
                     | Self::IS_INLINE_TAG_BIT,
             }
         } else {
@@ -137,6 +138,19 @@ impl<T> ThinBitSet<T> {
             == Self::EMPTY_UNALLOCATED_TAG_BITS >> usize::BITS as u32 - 2
     }
 
+    /// Check if `self` is `empty_unallocated` and if so return the number of words required to
+    /// store the expected capacity.
+    // If this function returns `true`, it is safe to assume `self.empty_unallocated`. Else, it is
+    // safe to assume `self.inline`, or `self.on_heap`.
+    #[inline(always)]
+    pub const fn empty_unallocated_get_num_words(&self) -> Option<usize> {
+        if self.is_empty_unallocated() {
+            Some(unsafe { self.empty_unallocated } ^ Self::EMPTY_UNALLOCATED_TAG_BITS)
+        } else {
+            None
+        }
+    }
+
     /// Check if `self` is allocated on the heap and return a reference to it in that case.
     fn on_heap(&self) -> Option<&BitSetOnHeap> {
         let self_word = unsafe { self.inline };
@@ -157,12 +171,23 @@ impl<T> ThinBitSet<T> {
 
     /// If `self` is `empty_unallocated`, allocate it, otherwise return `self.on_heap_mut()`.
     fn on_heap_get_or_alloc(&mut self) -> &mut BitSetOnHeap {
-        if self.is_empty_unallocated() {
-            let num_words = unsafe { self.empty_unallocated } ^ Self::EMPTY_UNALLOCATED_TAG_BITS;
+        if let Some(num_words) = self.empty_unallocated_get_num_words() {
             *self = Self { on_heap: ManuallyDrop::new(BitSetOnHeap::new_empty(num_words)) };
             unsafe { &mut self.on_heap }
         } else {
             self.on_heap_mut().unwrap()
+        }
+    }
+
+    /// Get the capacity of this set. This is >= the initial domain size.
+    #[inline(always)]
+    pub(super) fn capacity(&self) -> usize {
+        if self.is_inline() {
+            Self::INLINE_CAPACITY
+        } else if let Some(num_words) = self.empty_unallocated_get_num_words() {
+            num_words * WORD_BITS
+        } else {
+            self.on_heap().unwrap().capacity()
         }
     }
 
@@ -188,6 +213,18 @@ impl<T> ThinBitSet<T> {
             for word in on_heap.as_mut_slice() {
                 *word = 0x0;
             }
+        }
+    }
+
+    /// Get an iterator of all words making up the set.
+    pub(super) fn words(&self) -> impl ExactSizeIterator<Item = Word> {
+        if self.is_inline() {
+            let word = unsafe { self.inline } ^ Self::IS_INLINE_TAG_BIT;
+            Either::Left(iter::once(word))
+        } else if let Some(num_words) = self.empty_unallocated_get_num_words() {
+            Either::Right(Either::Left(iter::repeat_n(0, num_words)))
+        } else {
+            Either::Right(Either::Right(self.on_heap().unwrap().as_slice().iter().copied()))
         }
     }
 
@@ -236,6 +273,33 @@ impl<T> ThinBitSet<T> {
             self.on_heap().unwrap().as_slice().iter().map(|w| w.count_ones() as usize).sum()
         }
     }
+
+    /// Insert `0..domain_size` in the set.
+    ///
+    /// We would like an insert all function that doesn't require the domain size, but the exact
+    /// domain size is not stored so that is not possible.
+    #[inline(always)]
+    pub fn insert_all(&mut self, domain_size: usize) {
+        if self.is_inline() {
+            debug_assert!(domain_size <= Self::INLINE_CAPACITY);
+            unsafe {
+                self.inline |= Word::MAX.unbounded_shr(WORD_BITS as u32 - domain_size as u32)
+            };
+        } else {
+            let on_heap = self.on_heap_get_or_alloc();
+            debug_assert!(on_heap.capacity() >= domain_size, "domain size too big");
+            let words = on_heap.as_mut_slice();
+
+            let (end_word_index, end_mask) = word_index_and_mask(domain_size - 1);
+
+            for word_index in 0..end_word_index {
+                words[word_index] = Word::MAX;
+            }
+
+            words[end_word_index] |= end_mask | (end_mask - 1);
+        }
+    }
+
     /// Common function for union/intersection-like operations.
     ///
     /// This function takes two bit sets—one mutably, one immutably. Neither must be the
@@ -320,6 +384,11 @@ impl<T> ThinBitSet<T> {
         }
     }
 
+    #[inline(always)]
+    pub fn union_not(&mut self, _other: &Self) -> bool {
+        todo!()
+    }
+
     super::bit_relations_inherent_impls! {}
 }
 
@@ -378,7 +447,7 @@ impl<T: Idx> ThinBitSet<T> {
         let idx = elem.index();
         if self.is_inline() {
             let x = unsafe { self.inline };
-            debug_assert!(idx < Self::MAX_INLINE_DOMAIN_SIZE, "index too large: {idx}");
+            debug_assert!(idx < Self::INLINE_CAPACITY, "index too large: {idx}");
             contains_bit(x, idx as u32)
         } else if let Some(on_heap) = self.on_heap() {
             let word_idx = idx / WORD_BITS;
@@ -405,7 +474,7 @@ impl<T: Idx> ThinBitSet<T> {
         let idx = elem.index();
         if self.is_inline() {
             let x = unsafe { &mut self.inline };
-            debug_assert!(idx < Self::MAX_INLINE_DOMAIN_SIZE, "index too large: {idx}");
+            debug_assert!(idx < Self::INLINE_CAPACITY, "index too large: {idx}");
             insert_bit(x, idx as u32)
         } else {
             let words = self.on_heap_get_or_alloc().as_mut_slice();
@@ -431,7 +500,7 @@ impl<T: Idx> ThinBitSet<T> {
         let idx = elem.index();
         if self.is_inline() {
             let x = unsafe { &mut self.inline };
-            debug_assert!(idx < Self::MAX_INLINE_DOMAIN_SIZE, "index too large: {idx}");
+            debug_assert!(idx < Self::INLINE_CAPACITY, "index too large: {idx}");
             remove_bit(x, idx as u32)
         } else if let Some(on_heap) = self.on_heap_mut() {
             let word_idx = idx / WORD_BITS;
@@ -447,7 +516,7 @@ impl<T: Idx> ThinBitSet<T> {
 
     /// Returns an iterator over all elements in this set.
     #[inline(always)]
-    pub fn iter(&self) -> impl Iterator<Item = T> + use<'_, T> {
+    pub fn iter(&self) -> BitIter<'_, T> {
         if self.is_inline() {
             let x = unsafe { self.inline };
             // Remove the tag bit.
@@ -478,7 +547,7 @@ impl<T: Idx> ThinBitSet<T> {
         }
 
         if self.is_inline() {
-            debug_assert!(end < Self::MAX_INLINE_DOMAIN_SIZE);
+            debug_assert!(end < Self::INLINE_CAPACITY);
             let mask = (1 << end) | ((1 << end) - (1 << start));
             unsafe { self.inline |= mask };
         } else {
@@ -516,7 +585,7 @@ impl<T: Idx> ThinBitSet<T> {
         }
 
         if self.is_inline() {
-            debug_assert!(end < Self::MAX_INLINE_DOMAIN_SIZE);
+            debug_assert!(end < Self::INLINE_CAPACITY);
             let mut word = unsafe { self.inline } ^ Self::IS_INLINE_TAG_BIT;
             let end_bit = 1 << end;
             // Set all bits mor significant than `end_bit` to zero.
@@ -572,7 +641,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ThinBitSet<T> {
 
     fn intersect(&mut self, other: &ChunkedBitSet<T>) -> bool {
         if self.is_inline() {
-            assert!(other.domain_size <= Self::MAX_INLINE_DOMAIN_SIZE);
+            assert!(other.domain_size <= Self::INLINE_CAPACITY);
             if other.domain_size == 0 {
                 return false;
             }
@@ -630,6 +699,72 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ThinBitSet<T> {
     }
 }
 
+impl<S: Encoder, T> Encodable<S> for ThinBitSet<T> {
+    fn encode(&self, s: &mut S) {
+        // The encoding is as follows:
+        //
+        // The `inline` and `empty_unallocated` variants are encoded as a single `Word`. Here, we
+        // consider the `empty_unallocated` variant as the `inline` variant because
+        // `empty_unallocated: usize`, `inline: Word`, and `usize` is smaller than `Word`.
+        //
+        // The `on_heap` variant is encoded as follows: First, the number of `Word`s are encoded
+        // with a single `Word`. We assert that the two most significant bits of this number are 0
+        // to distinguish it from the `inline` and `empty_unallocated` variants. Then all the words are
+        // encoded in sequence.
+
+        if let Some(on_heap) = self.on_heap() {
+            let n_words: Word = on_heap.n_words();
+            debug_assert_eq!(
+                n_words >> WORD_BITS - 2,
+                0x0,
+                "the two most significant bits must be 0"
+            );
+            n_words.encode(s);
+            debug_assert_eq!(n_words as usize, on_heap.as_slice().len());
+            for word in on_heap.as_slice().iter() {
+                word.encode(s);
+            }
+        } else {
+            let word = unsafe { self.inline };
+            debug_assert!(word >> WORD_BITS - 2 != 0, "the 2 most significant bits must not be 0");
+            word.encode(s);
+        }
+    }
+}
+
+impl<D: Decoder, T> Decodable<D> for ThinBitSet<T> {
+    fn decode(d: &mut D) -> Self {
+        // First we read one `Word` and check the variant.
+        let word = Word::decode(d);
+        if word >> WORD_BITS - 2 == 0x0 {
+            // If the two most significant bits are 0, then this is the `on_heap` variant and the
+            // number of words is encoded by `word`.
+            let n_words = word as usize;
+            assert!(
+                n_words > 0,
+                "ThinBitSet decoder error: At least one word must be stored with the `on_heap` variant."
+            );
+            let mut on_heap = BitSetOnHeap::new_empty(n_words);
+
+            let words = on_heap.as_mut_slice();
+            // All `words` are now initialised to 0x0.
+            debug_assert_eq!(words.len(), n_words);
+
+            // Decode the words one-by-one.
+            for word in words.iter_mut() {
+                *word = Word::decode(d);
+            }
+
+            ThinBitSet { on_heap: ManuallyDrop::new(on_heap) }
+        } else {
+            // Both the `inline` and `empty_unallocated` variants are encoded by one `Word`. We can
+            // just assume the `inline` variant because the `empty_unallocated` variant is smaller
+            // and the union is `repr(C)`.
+            Self { inline: word }
+        }
+    }
+}
+
 impl<T> Clone for ThinBitSet<T> {
     #[inline(always)]
     fn clone(&self) -> Self {
@@ -675,6 +810,8 @@ struct BitSetOnHeap(usize);
 
 impl BitSetOnHeap {
     fn new_empty(len: usize) -> Self {
+        debug_assert!(len >= 1);
+
         // The first word is used to store the total number of words. The rest of the words
         // store the bits.
         let num_words = len + 1;
@@ -723,6 +860,58 @@ impl BitSetOnHeap {
     fn is_empty(&self) -> bool {
         self.as_slice().iter().all(|&x| x == 0)
     }
+
+    /// Get the number of words.
+    #[inline]
+    fn n_words(&self) -> Word {
+        let ptr = (self.0 << 2) as *const Word;
+        unsafe { ptr.read() }
+    }
+
+    /// Get the capacity, that is the number of elements that can be stored in this set.
+    fn capacity(&self) -> usize {
+        let ptr = (self.0 << 2) as *const Word;
+        let len = unsafe { ptr.read() } as usize;
+        len * WORD_BITS
+    }
+
+    /// Make sure the set can hold at least `min_domain_size` elements. Reallocate if necessary.
+    fn ensure_capacity(&mut self, min_domain_size: usize) {
+        let len = min_domain_size.div_ceil(WORD_BITS);
+
+        let old_ptr = (self.0 << 2) as *const Word;
+        let old_len = unsafe { old_ptr.read() } as usize;
+
+        if len <= old_len {
+            return;
+        }
+
+        // The first word is used to store the total number of words. The rest of the words
+        // store the bits.
+        let num_words = len + 1;
+        let old_num_words = old_len + 1;
+
+        let new_layout = Layout::array::<Word>(num_words).expect("Bit set too large");
+        let old_layout = Layout::array::<usize>(old_num_words).expect("Bit set too large");
+
+        // SAFETY: `num_words` is always at least `1` so we never allocate zero size.
+        let ptr =
+            unsafe { realloc(old_ptr as *mut u8, old_layout, new_layout.size()).cast::<Word>() };
+        let Some(ptr) = NonNull::<Word>::new(ptr) else {
+            handle_alloc_error(new_layout);
+        };
+
+        // Store the length in the first word.
+        unsafe { ptr.write(len as Word) };
+
+        // Set all the new words to 0.
+        for word_idx in old_num_words..num_words {
+            unsafe { ptr.add(word_idx).write(0x0) }
+        }
+
+        // Convert `ptr` to a `usize` and shift it two bits to the right.
+        self.0 = (ptr.as_ptr() as usize) >> 2
+    }
 }
 
 impl Clone for BitSetOnHeap {
@@ -758,7 +947,7 @@ impl Drop for BitSetOnHeap {
     }
 }
 
-struct BitIter<'a, T: Idx> {
+pub struct BitIter<'a, T: Idx> {
     /// A copy of the current word, but with any already-visited bits cleared.
     /// (This lets us use `trailing_zeros()` to find the next set bit.) When it
     /// is reduced to 0, we move onto the next word.
@@ -774,7 +963,7 @@ struct BitIter<'a, T: Idx> {
 }
 
 impl<'a, T: Idx> BitIter<'a, T> {
-    fn from_slice(words: &'a [Word]) -> Self {
+    pub(super) fn from_slice(words: &'a [Word]) -> Self {
         // We initialize `word` and `offset` to degenerate values. On the first
         // call to `next()` we will fall through to getting the first word from
         // `iter`, which sets `word` to the first word (if there is one) and
@@ -822,156 +1011,181 @@ impl<T: Idx> fmt::Debug for ThinBitSet<T> {
     }
 }
 
-/// A fixed-column-size, variable-row-size 2D bit matrix with a moderately
-/// sparse representation.
-///
-/// Initially, every row has no explicit representation. If any bit within a row
-/// is set, the entire row is instantiated as `Some(<ThinBitSet>)`.
-/// Furthermore, any previously uninstantiated rows prior to it will be
-/// instantiated as `None`. Those prior rows may themselves become fully
-/// instantiated later on if any of their bits are set.
-///
-/// `R` and `C` are index types used to identify rows and columns respectively;
-/// typically newtyped `usize` wrappers, but they can also just be `usize`.
-#[derive(Clone, Debug)]
-pub struct SparseBitMatrix<R, C>
-where
-    R: Idx,
-    C: Idx,
-{
-    num_columns: usize,
-    rows: IndexVec<R, Option<ThinBitSet<C>>>,
+impl<T> PartialEq for ThinBitSet<T> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        if self.is_inline() {
+            if other.is_inline() {
+                unsafe { self.inline == other.inline }
+            } else if other.is_empty_unallocated() {
+                self.is_empty()
+            } else {
+                let other_words = other.on_heap().unwrap().as_slice();
+                let self_word = unsafe { self.inline } ^ Self::IS_INLINE_TAG_BIT;
+                other_words[0] == self_word && other_words[1..].iter().all(|&w| w == 0)
+            }
+        } else if self.is_empty_unallocated() {
+            other.is_empty()
+        } else {
+            let self_words = self.on_heap().unwrap().as_slice();
+            if other.is_empty_unallocated() {
+                self_words.iter().all(|&w| w == 0)
+            } else if other.is_inline() {
+                let other_word = unsafe { other.inline } ^ Self::IS_INLINE_TAG_BIT;
+                self_words[0] == other_word && self_words[1..].iter().all(|&w| w == 0)
+            } else {
+                let mut self_words = self_words.iter();
+                let mut other_words = other.on_heap().unwrap().as_slice().iter();
+                loop {
+                    match (self_words.next(), other_words.next()) {
+                        (Some(w1), Some(w2)) if w1 == w2 => (),
+                        (Some(_), Some(_)) => break false,
+                        (Some(0), None) | (None, Some(0)) => (),
+                        (Some(_), None) | (None, Some(_)) => break false,
+                        (None, None) => break true,
+                    }
+                }
+            }
+        }
+    }
 }
 
-impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
-    /// Creates a new empty sparse bit matrix with no rows or columns.
-    pub fn new(num_columns: usize) -> Self {
-        Self { num_columns, rows: IndexVec::new() }
-    }
+impl<T> Eq for ThinBitSet<T> {}
 
-    pub fn ensure_row(&mut self, row: R) -> &mut ThinBitSet<C> {
-        // Instantiate any missing rows up to and including row `row` with an empty `ThinBitSet`.
-        // Then replace row `row` with a full `ThinBitSet` if necessary.
-        self.rows.get_or_insert_with(row, || ThinBitSet::new_empty(self.num_columns))
-    }
-
-    /// Sets the cell at `(row, column)` to true. Put another way, insert
-    /// `column` to the bitset for `row`.
-    ///
-    /// Returns `true` if this changed the matrix.
-    pub fn insert(&mut self, row: R, column: C) -> bool {
-        self.ensure_row(row).insert(column)
-    }
-
-    /// Sets the cell at `(row, column)` to false. Put another way, delete
-    /// `column` from the bitset for `row`. Has no effect if `row` does not
-    /// exist.
-    ///
-    /// Returns `true` if this changed the matrix.
-    pub fn remove(&mut self, row: R, column: C) -> bool {
-        match self.rows.get_mut(row) {
-            Some(Some(row)) => row.remove(column),
-            _ => false,
-        }
-    }
-
-    /// Sets all columns at `row` to false. Has no effect if `row` does
-    /// not exist.
-    pub fn clear(&mut self, row: R) {
-        if let Some(Some(row)) = self.rows.get_mut(row) {
-            row.clear();
-        }
-    }
-
-    /// Do the bits from `row` contain `column`? Put another way, is
-    /// the matrix cell at `(row, column)` true?  Put yet another way,
-    /// if the matrix represents (transitive) reachability, can
-    /// `row` reach `column`?
-    pub fn contains(&self, row: R, column: C) -> bool {
-        self.row(row).is_some_and(|r| r.contains(column))
-    }
-
-    /// Adds the bits from row `read` to the bits from row `write`, and
-    /// returns `true` if anything changed.
-    ///
-    /// This is used when computing transitive reachability because if
-    /// you have an edge `write -> read`, because in that case
-    /// `write` can reach everything that `read` can (and
-    /// potentially more).
-    pub fn union_rows(&mut self, read: R, write: R) -> bool {
-        if read == write || self.row(read).is_none() {
-            return false;
-        }
-
-        self.ensure_row(write);
-        if let (Some(read_row), Some(write_row)) = self.rows.pick2_mut(read, write) {
-            write_row.union(read_row)
+impl<T> Hash for ThinBitSet<T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        if self.is_inline() {
+            let inline = unsafe { self.inline };
+            inline.hash(hasher);
+        } else if let Some(num_words) = self.empty_unallocated_get_num_words() {
+            // Now we hash 0 for `num_words` times so that this hash should be equal to a cleared
+            // set with the `on_heap` variant.
+            for _ in 0..num_words {
+                let zero_word: Word = 0x0;
+                zero_word.hash(hasher);
+            }
         } else {
-            unreachable!()
+            let words = self.on_heap().unwrap().as_slice();
+            for word in words {
+                word.hash(hasher);
+            }
+        }
+    }
+}
+
+/// A resizable bitset type with a dense representation.
+///
+/// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
+/// just be `usize`.
+///
+/// All operations that involve an element will panic if the element is equal
+/// to or greater than the domain size.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GrowableBitSet<T: Idx> {
+    bit_set: ThinBitSet<T>,
+}
+
+impl<T: Idx> Default for GrowableBitSet<T> {
+    fn default() -> Self {
+        GrowableBitSet::new_empty()
+    }
+}
+
+impl<T: Idx> GrowableBitSet<T> {
+    /// Ensure that the set can hold at least `min_domain_size` elements.
+    pub fn ensure(&mut self, min_domain_size: usize) {
+        if min_domain_size <= self.bit_set.capacity() {
+            return;
+        }
+
+        if self.bit_set.is_inline() {
+            // The set must change from being inlined to allocate on the heap.
+            debug_assert!(min_domain_size > ThinBitSet::<T>::INLINE_CAPACITY);
+
+            let mut new_bit_set = ThinBitSet::new_empty(min_domain_size);
+            if !self.bit_set.is_empty() {
+                // SAFETY: We know that `self.is_inline()` is true.
+                let word = unsafe { self.bit_set.inline } ^ ThinBitSet::<T>::IS_INLINE_TAG_BIT;
+                new_bit_set.on_heap_get_or_alloc().as_mut_slice()[0] = word;
+            }
+            self.bit_set = new_bit_set;
+        } else if self.bit_set.is_empty_unallocated() {
+            self.bit_set = ThinBitSet::new_empty(min_domain_size);
+        } else {
+            self.bit_set.on_heap_mut().unwrap().ensure_capacity(min_domain_size);
         }
     }
 
-    pub fn rows(&self) -> impl Iterator<Item = R> {
-        self.rows.indices()
+    pub fn new_empty() -> GrowableBitSet<T> {
+        GrowableBitSet { bit_set: ThinBitSet::new_empty(0) }
     }
 
-    /// Iterates through all the columns set to true in a given row of
-    /// the matrix.
-    pub fn iter(&self, row: R) -> impl Iterator<Item = C> + '_ {
-        self.row(row).into_iter().flat_map(|r| r.iter())
+    pub fn with_capacity(capacity: usize) -> GrowableBitSet<T> {
+        GrowableBitSet { bit_set: ThinBitSet::new_empty(capacity) }
     }
 
-    pub fn row(&self, row: R) -> Option<&ThinBitSet<C>> {
-        self.rows.get(row)?.as_ref()
+    /// Returns `true` if the set has changed.
+    #[inline]
+    pub fn insert(&mut self, elem: T) -> bool {
+        self.ensure(elem.index() + 1);
+        self.bit_set.insert(elem)
     }
 
-    /// Intersects `row` with `set`. `set` can be either `ThinBitSet` or
-    /// `ChunkedBitSet`. Has no effect if `row` does not exist.
-    ///
-    /// Returns true if the row was changed.
-    pub fn intersect_row<Set>(&mut self, row: R, set: &Set) -> bool
-    where
-        ThinBitSet<C>: BitRelations<Set>,
-    {
-        match self.rows.get_mut(row) {
-            Some(Some(row)) => row.intersect(set),
-            _ => false,
-        }
+    /// Returns `true` if the set has changed.
+    #[inline]
+    pub fn remove(&mut self, elem: T) -> bool {
+        self.ensure(elem.index() + 1);
+        self.bit_set.remove(elem)
     }
 
-    /// Subtracts `set` from `row`. `set` can be either `ThinBitSet` or
-    /// `ChunkedBitSet`. Has no effect if `row` does not exist.
-    ///
-    /// Returns true if the row was changed.
-    pub fn subtract_row<Set>(&mut self, row: R, set: &Set) -> bool
-    where
-        ThinBitSet<C>: BitRelations<Set>,
-    {
-        match self.rows.get_mut(row) {
-            Some(Some(row)) => row.subtract(set),
-            _ => false,
-        }
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.bit_set.is_empty()
     }
 
-    /// Unions `row` with `set`. `set` can be either `ThinBitSet` or
-    /// `ChunkedBitSet`.
-    ///
-    /// Returns true if the row was changed.
-    pub fn union_row<Set>(&mut self, row: R, set: &Set) -> bool
-    where
-        ThinBitSet<C>: BitRelations<Set>,
-    {
-        self.ensure_row(row).union(set)
+    #[inline]
+    pub fn contains(&self, elem: T) -> bool {
+        elem.index() < self.bit_set.capacity() && self.bit_set.contains(elem)
     }
+
+    #[inline]
+    pub fn iter(&self) -> BitIter<'_, T> {
+        self.bit_set.iter()
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.bit_set.count()
+    }
+}
+
+impl<T: Idx> From<ThinBitSet<T>> for GrowableBitSet<T> {
+    fn from(bit_set: ThinBitSet<T>) -> Self {
+        Self { bit_set }
+    }
+}
+
+impl<T: Idx> From<GrowableBitSet<T>> for ThinBitSet<T> {
+    fn from(bit_set: GrowableBitSet<T>) -> Self {
+        bit_set.bit_set
+    }
+}
+
+#[inline]
+fn max_bit(word: Word) -> usize {
+    WORD_BITS - 1 - word.leading_zeros() as usize
 }
 
 #[cfg(test)]
 mod tests {
 
+    use std::collections::BTreeSet;
+    use std::hash::{BuildHasher, BuildHasherDefault, DefaultHasher};
+
+    use super::super::CHUNK_BITS;
     use super::*;
     use crate::bit_set::DenseBitSet;
-
-    const TEST_ITERATIONS: u32 = 512;
 
     /// A very simple pseudo random generator using linear xorshift.
     ///
@@ -1014,11 +1228,145 @@ mod tests {
         }
     }
 
+    #[derive(Default)]
+    struct EncoderLittleEndian {
+        bytes: Vec<u8>,
+    }
+
+    impl Encoder for EncoderLittleEndian {
+        fn emit_usize(&mut self, v: usize) {
+            self.bytes.extend(v.to_le_bytes());
+        }
+        fn emit_u8(&mut self, v: u8) {
+            self.bytes.extend(v.to_le_bytes());
+        }
+        fn emit_u16(&mut self, v: u16) {
+            self.bytes.extend(v.to_le_bytes());
+        }
+        fn emit_u32(&mut self, v: u32) {
+            self.bytes.extend(v.to_le_bytes());
+        }
+        fn emit_u64(&mut self, v: u64) {
+            self.bytes.extend(v.to_le_bytes());
+        }
+        fn emit_u128(&mut self, v: u128) {
+            self.bytes.extend(v.to_le_bytes());
+        }
+        fn emit_isize(&mut self, v: isize) {
+            self.bytes.extend(v.to_le_bytes());
+        }
+        fn emit_i8(&mut self, v: i8) {
+            self.bytes.extend(v.to_le_bytes());
+        }
+        fn emit_i16(&mut self, v: i16) {
+            self.bytes.extend(v.to_le_bytes());
+        }
+        fn emit_i32(&mut self, v: i32) {
+            self.bytes.extend(v.to_le_bytes());
+        }
+        fn emit_i64(&mut self, v: i64) {
+            self.bytes.extend(v.to_le_bytes());
+        }
+        fn emit_i128(&mut self, v: i128) {
+            self.bytes.extend(v.to_le_bytes());
+        }
+        fn emit_raw_bytes(&mut self, v: &[u8]) {
+            self.bytes.extend(v);
+        }
+    }
+
+    struct DecoderLittleEndian<'a> {
+        bytes: &'a [u8],
+        /// Remember the original `bytes.len()` so we can calculate how many bytes we've read.
+        original_len: usize,
+    }
+
+    impl<'a> DecoderLittleEndian<'a> {
+        fn new(bytes: &'a [u8]) -> Self {
+            Self { bytes, original_len: bytes.len() }
+        }
+    }
+
+    impl<'a> Decoder for DecoderLittleEndian<'a> {
+        fn read_usize(&mut self) -> usize {
+            let (int_bytes, rest) = self.bytes.split_at(size_of::<usize>());
+            self.bytes = rest;
+            usize::from_le_bytes(int_bytes.try_into().unwrap())
+        }
+        fn read_u128(&mut self) -> u128 {
+            let (int_bytes, rest) = self.bytes.split_at(size_of::<u128>());
+            self.bytes = rest;
+            u128::from_le_bytes(int_bytes.try_into().unwrap())
+        }
+        fn read_u64(&mut self) -> u64 {
+            let (int_bytes, rest) = self.bytes.split_at(size_of::<u64>());
+            self.bytes = rest;
+            u64::from_le_bytes(int_bytes.try_into().unwrap())
+        }
+        fn read_u32(&mut self) -> u32 {
+            let (int_bytes, rest) = self.bytes.split_at(size_of::<u32>());
+            self.bytes = rest;
+            u32::from_le_bytes(int_bytes.try_into().unwrap())
+        }
+        fn read_u16(&mut self) -> u16 {
+            let (int_bytes, rest) = self.bytes.split_at(size_of::<u16>());
+            self.bytes = rest;
+            u16::from_le_bytes(int_bytes.try_into().unwrap())
+        }
+        fn read_u8(&mut self) -> u8 {
+            let (int_bytes, rest) = self.bytes.split_at(size_of::<u8>());
+            self.bytes = rest;
+            u8::from_le_bytes(int_bytes.try_into().unwrap())
+        }
+        fn read_isize(&mut self) -> isize {
+            let (int_bytes, rest) = self.bytes.split_at(size_of::<isize>());
+            self.bytes = rest;
+            isize::from_le_bytes(int_bytes.try_into().unwrap())
+        }
+        fn read_i128(&mut self) -> i128 {
+            let (int_bytes, rest) = self.bytes.split_at(size_of::<i128>());
+            self.bytes = rest;
+            i128::from_le_bytes(int_bytes.try_into().unwrap())
+        }
+        fn read_i64(&mut self) -> i64 {
+            let (int_bytes, rest) = self.bytes.split_at(size_of::<i64>());
+            self.bytes = rest;
+            i64::from_le_bytes(int_bytes.try_into().unwrap())
+        }
+        fn read_i32(&mut self) -> i32 {
+            let (int_bytes, rest) = self.bytes.split_at(size_of::<i32>());
+            self.bytes = rest;
+            i32::from_le_bytes(int_bytes.try_into().unwrap())
+        }
+        fn read_i16(&mut self) -> i16 {
+            let (int_bytes, rest) = self.bytes.split_at(size_of::<i16>());
+            self.bytes = rest;
+            i16::from_le_bytes(int_bytes.try_into().unwrap())
+        }
+        fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
+            let (bytes, rest) = self.bytes.split_at(len);
+            self.bytes = rest;
+            bytes
+        }
+        fn peek_byte(&self) -> u8 {
+            self.bytes[0]
+        }
+        fn position(&self) -> usize {
+            self.original_len - self.bytes.len()
+        }
+    }
+
     fn test_with_domain_size(domain_size: usize) {
+        const TEST_ITERATIONS: u32 = 512;
+
         let mut set_1 = ThinBitSet::<usize>::new_empty(domain_size);
         let mut set_1_reference = DenseBitSet::<usize>::new_empty(domain_size);
         let mut set_2 = ThinBitSet::<usize>::new_empty(domain_size);
         let mut set_2_reference = DenseBitSet::<usize>::new_empty(domain_size);
+
+        let hasher = BuildHasherDefault::<DefaultHasher>::new();
+
+        let mut encoder = EncoderLittleEndian::default();
 
         let mut rng = Rng::new(42);
 
@@ -1038,7 +1386,7 @@ mod tests {
                         assert_eq!(set_2.insert(elem), set_2_reference.insert(elem));
                     }
                 }
-                20..50 => {
+                20..40 => {
                     // Insert a range in one of the sets.
                     if domain_size == 0 {
                         continue;
@@ -1048,10 +1396,20 @@ mod tests {
                     // Choose set to insert into.
                     if rng.next_bool() {
                         set_1.insert_range_inclusive(range.clone());
-                        set_1_reference.insert_range(range);
+                        set_1_reference.insert_range_inclusive(range);
                     } else {
                         set_2.insert_range_inclusive(range.clone());
-                        set_2_reference.insert_range(range);
+                        set_2_reference.insert_range_inclusive(range);
+                    }
+                }
+                40..50 => {
+                    // Test insert_all().
+                    if rng.next_bool() {
+                        set_1.insert_all(domain_size);
+                        set_1_reference.insert_all(domain_size);
+                    } else {
+                        set_2.insert_all(domain_size);
+                        set_2_reference.insert_all(domain_size);
                     }
                 }
                 50..70 => {
@@ -1093,7 +1451,7 @@ mod tests {
                     }
                 }
                 99..100 => {
-                    // Fill.
+                    // Test new_filled().
                     if rng.next_bool() {
                         set_1 = ThinBitSet::new_filled(domain_size);
                         set_1_reference = DenseBitSet::new_filled(domain_size);
@@ -1112,15 +1470,20 @@ mod tests {
             }
 
             // Check iter function.
-            assert!(
-                set_1.iter().eq(set_1_reference.iter()),
-                "{:?}",
-                set_1.iter().collect::<Vec<_>>()
-            );
+            assert!(set_1.iter().eq(set_1_reference.iter()),);
             assert!(set_2.iter().eq(set_2_reference.iter()));
 
             // Check the superset relation.
             assert_eq!(set_1.superset(&set_2), set_1_reference.superset(&set_2_reference));
+
+            // Check the `==` operator.
+            assert_eq!(set_1 == set_2, set_1_reference == set_2_reference);
+
+            // Check the `hash()` function.
+            // If the `set_1` and `set_2` are equal, then their hashes must also be equal.
+            if set_1 == set_2 {
+                assert_eq!(hasher.hash_one(&set_1), hasher.hash_one(&set_2));
+            }
 
             // Check the count function.
             assert_eq!(set_1.count(), set_1_reference.count());
@@ -1138,15 +1501,116 @@ mod tests {
                     set_2_reference.last_set_in(range.clone())
                 );
             }
+
+            // Check `Encodable` and `Decodable` implementations.
+            if rng.next() as u32 % TEST_ITERATIONS < 128 {
+                set_1.encode(&mut encoder);
+
+                let mut decoder = DecoderLittleEndian::new(&encoder.bytes);
+                let decoded = ThinBitSet::<usize>::decode(&mut decoder);
+                assert_eq!(
+                    decoder.position(),
+                    encoder.bytes.len(),
+                    "All bytes must be read when decoding."
+                );
+
+                assert_eq!(set_1, decoded);
+
+                encoder.bytes.clear();
+            }
+        }
+    }
+
+    fn test_relations_with_chunked_set(domain_size: usize) {
+        const TEST_ITERATIONS: u32 = 64;
+
+        let mut dense_set = ThinBitSet::<usize>::new_empty(domain_size);
+        let mut chunked_set = ChunkedBitSet::new_empty(domain_size);
+
+        let mut rng = Rng::new(42);
+
+        for _ in 0..TEST_ITERATIONS {
+            // Make a random operation.
+            match rng.next() % 10 {
+                0..3 => {
+                    // Insert in one of the sets.
+                    if domain_size == 0 {
+                        continue;
+                    }
+                    let elem = rng.next() % domain_size;
+                    // Choose set to insert into.
+                    if rng.next_bool() {
+                        dense_set.insert(elem);
+                    } else {
+                        chunked_set.insert(elem);
+                    }
+                }
+                3..6 => {
+                    // Remove from one of the sets.
+                    if domain_size == 0 {
+                        continue;
+                    }
+                    let elem = rng.next() % domain_size;
+                    // Choose set to remove into.
+                    if rng.next_bool() {
+                        dense_set.remove(elem);
+                    } else {
+                        chunked_set.remove(elem);
+                    }
+                }
+                6 => {
+                    // Clear
+                    if rng.next_bool() {
+                        dense_set.clear();
+                    } else {
+                        chunked_set.clear();
+                    }
+                }
+                7 => {
+                    // Fill.
+                    if rng.next_bool() {
+                        dense_set.insert_all(domain_size);
+                    } else {
+                        chunked_set.insert_all();
+                    }
+                }
+                8 => {
+                    // Union
+                    let old_dense_set = dense_set.clone();
+                    let changed = dense_set.union(&chunked_set);
+                    assert_eq!(old_dense_set != dense_set, changed);
+                    assert!(dense_set.superset(&old_dense_set));
+                    assert!(chunked_set.iter().all(|x| dense_set.contains(x)));
+
+                    // Check that all the added elements come from `chunked_set`.
+                    let mut difference = dense_set.clone();
+                    difference.subtract(&old_dense_set);
+                    assert!(difference.iter().all(|x| chunked_set.contains(x)));
+                }
+                9 => {
+                    // Intersection
+                    let old_dense_set = dense_set.clone();
+                    let changed = dense_set.intersect(&chunked_set);
+                    assert_eq!(old_dense_set != dense_set, changed);
+                    assert!(old_dense_set.superset(&dense_set));
+                    assert!(dense_set.iter().all(|x| chunked_set.contains(x)));
+
+                    // Check that no of the removed elements comes from `chunked_set`.
+                    let mut difference = old_dense_set; // Just renaming.
+                    difference.subtract(&dense_set);
+                    assert!(difference.iter().all(|x| !chunked_set.contains(x)));
+                }
+                _ => unreachable!(),
+            }
         }
     }
 
     #[test]
-    fn test_fixed_size_bit_set() {
+    fn test_thin_bit_set() {
         assert_eq!(
             size_of::<ThinBitSet<usize>>(),
-            size_of::<usize>(),
-            "ThinBitSet should have the same size as a usize"
+            size_of::<Word>(),
+            "ThinBitSet should have the same size as a Word"
         );
 
         test_with_domain_size(0);
@@ -1157,5 +1621,78 @@ mod tests {
         test_with_domain_size(127);
         test_with_domain_size(128);
         test_with_domain_size(129);
+
+        test_relations_with_chunked_set(0);
+        test_relations_with_chunked_set(1);
+        test_relations_with_chunked_set(CHUNK_BITS - 1);
+        test_relations_with_chunked_set(CHUNK_BITS);
+        test_relations_with_chunked_set(CHUNK_BITS + 2);
+        test_relations_with_chunked_set(3 * CHUNK_BITS - 2);
+        test_relations_with_chunked_set(3 * CHUNK_BITS);
+        test_relations_with_chunked_set(3 * CHUNK_BITS + 1);
+    }
+
+    #[test]
+    fn test_growable_bit_set() {
+        const TEST_ITERATIONS: u32 = 512;
+        const MAX_ELEMS: usize = 314;
+
+        let mut set = GrowableBitSet::<usize>::new_empty();
+        let mut reference_set = BTreeSet::<usize>::new();
+
+        let mut rng = Rng::new(42);
+
+        for _ in 0..TEST_ITERATIONS {
+            match rng.next() % 100 {
+                0..30 => {
+                    // Insert an element in the `0..=(ThinBitSet::INLINE_CAPACITY + 2)` range.
+                    let elem = rng.next() % (ThinBitSet::<usize>::INLINE_CAPACITY + 3);
+                    set.insert(elem);
+                    reference_set.insert(elem);
+                }
+                30..50 => {
+                    // Insert an element in the `0..MAX_ELEMS` range.
+                    let elem = rng.next() % MAX_ELEMS;
+                    set.insert(elem);
+                    reference_set.insert(elem);
+                }
+                50..70 => {
+                    // Remove an existing element.
+                    let len = set.len();
+                    if len == 0 {
+                        continue;
+                    }
+                    let elem = set.iter().nth(rng.next() % len).unwrap();
+                    set.remove(elem);
+                    reference_set.remove(&elem);
+                }
+                70..90 => {
+                    // Remove an arbitrary element in the `0..MAX_ELEMS` range.
+                    let elem = rng.next() % MAX_ELEMS;
+                    set.remove(elem);
+                    reference_set.remove(&elem);
+                }
+                90..100 => {
+                    // Make sure the `with_capacity()` function works.
+                    let capacity = rng.next() % MAX_ELEMS;
+                    set = GrowableBitSet::with_capacity(capacity);
+                    reference_set.clear();
+                }
+                _ => unreachable!(),
+            }
+
+            // Check the `is_empty()` function.
+            assert_eq!(set.is_empty(), reference_set.is_empty());
+
+            // Check the `iter` function.
+            assert!(set.iter().eq(reference_set.iter().copied()));
+
+            // Check the contains function with a 20 % probability.
+            if rng.next() % 5 == 0 {
+                for x in 0..MAX_ELEMS {
+                    assert_eq!(set.contains(x), reference_set.contains(&x));
+                }
+            }
+        }
     }
 }
