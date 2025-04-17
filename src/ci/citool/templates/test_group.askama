@@ -4,7 +4,12 @@ passed: {{ r.passed.len() }}, ignored: {{ r.ignored.len() }}
 
 <li>
 <details>
-<summary>{{ name }} ({{ test_count() }} test{{ test_count() | pluralize }})</summary>
+<summary>{{ name }} ({{ test_count() }} test{{ test_count() | pluralize }}{% if !root_tests.is_empty() && root_tests.len() as u64 != test_count() -%}
+    , {{ root_tests.len() }} root test{{ root_tests.len() | pluralize }}
+{%- endif %}{% if !groups.is_empty() -%}
+    , {{ groups.len() }} subdir{{ groups.len() | pluralize }}
+{%- endif %})
+</summary>
 
 {% if !groups.is_empty() %}
 <ul>
