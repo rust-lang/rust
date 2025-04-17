@@ -1112,7 +1112,7 @@ fn simplify_fn_type<'a, 'tcx>(
         }
         Type::BareFunction(ref bf) => {
             let mut ty_generics = Vec::new();
-            for ty in bf.decl.inputs.values.iter().map(|arg| &arg.type_) {
+            for ty in bf.decl.inputs.iter().map(|arg| &arg.type_) {
                 simplify_fn_type(
                     self_,
                     generics,
@@ -1418,15 +1418,15 @@ fn get_fn_inputs_and_outputs(
         (None, &func.generics)
     };
 
-    let mut arg_types = Vec::new();
-    for arg in decl.inputs.values.iter() {
+    let mut param_types = Vec::new();
+    for param in decl.inputs.iter() {
         simplify_fn_type(
             self_,
             generics,
-            &arg.type_,
+            &param.type_,
             tcx,
             0,
-            &mut arg_types,
+            &mut param_types,
             &mut rgen,
             false,
             cache,
@@ -1439,7 +1439,7 @@ fn get_fn_inputs_and_outputs(
     let mut simplified_params = rgen.into_iter().collect::<Vec<_>>();
     simplified_params.sort_by_key(|(_, (idx, _))| -idx);
     (
-        arg_types,
+        param_types,
         ret_types,
         simplified_params
             .iter()
