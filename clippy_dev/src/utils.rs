@@ -1,4 +1,5 @@
 use core::fmt::{self, Display};
+use core::ops::Range;
 use core::slice;
 use core::str::FromStr;
 use rustc_lexer::{self as lexer, FrontmatterAllowed};
@@ -166,9 +167,85 @@ impl Version {
     }
 }
 
+enum TomlPart<'a> {
+    Table(&'a str),
+    Value(&'a str, &'a str),
+}
+
+fn toml_iter(s: &str) -> impl Iterator<Item = (usize, TomlPart<'_>)> {
+    let mut pos = 0;
+    s.split('\n')
+        .map(move |s| {
+            let x = pos;
+            pos += s.len() + 1;
+            (x, s)
+        })
+        .filter_map(|(pos, s)| {
+            if let Some(s) = s.strip_prefix('[') {
+                s.split_once(']').map(|(name, _)| (pos, TomlPart::Table(name)))
+            } else if matches!(
+                s.as_bytes().get(0),
+                Some(b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')
+            ) {
+                s.split_once('=').map(|(key, value)| (pos, TomlPart::Value(key, value)))
+            } else {
+                None
+            }
+        })
+}
+
+pub struct CargoPackage<'a> {
+    pub name: &'a str,
+    pub version_range: Range<usize>,
+    pub not_a_platform_range: Range<usize>,
+}
+
+pub fn parse_cargo_package(s: &str) -> CargoPackage<'_> {
+    let mut in_package = false;
+    let mut in_platform_deps = false;
+    let mut name = "";
+    let mut version_range = 0..0;
+    let mut not_a_platform_range = 0..0;
+    for (offset, part) in toml_iter(s) {
+        match part {
+            TomlPart::Table(name) => {
+                if in_platform_deps {
+                    not_a_platform_range.end = offset;
+                }
+                in_package = false;
+                in_platform_deps = false;
+
+                match name.trim() {
+                    "package" => in_package = true,
+                    "target.'cfg(NOT_A_PLATFORM)'.dependencies" => {
+                        in_platform_deps = true;
+                        not_a_platform_range.start = offset;
+                    },
+                    _ => {},
+                }
+            },
+            TomlPart::Value(key, value) if in_package => match key.trim_end() {
+                "name" => name = value.trim(),
+                "version" => {
+                    version_range.start = offset + (value.len() - value.trim().len()) + key.len() + 1;
+                    version_range.end = offset + key.len() + value.trim_end().len() + 1;
+                },
+                _ => {},
+            },
+            _ => {},
+        }
+    }
+    CargoPackage {
+        name,
+        version_range,
+        not_a_platform_range,
+    }
+}
+
 pub struct ClippyInfo {
     pub path: PathBuf,
     pub version: Version,
+    pub has_intellij_hook: bool,
 }
 impl ClippyInfo {
     #[must_use]
@@ -178,35 +255,22 @@ impl ClippyInfo {
         loop {
             path.push("Cargo.toml");
             if let Some(mut file) = File::open_if_exists(&path, OpenOptions::new().read(true)) {
-                let mut in_package = false;
-                let mut is_clippy = false;
-                let mut version: Option<Version> = None;
-
-                // Ad-hoc parsing to avoid dependencies. We control all the file so this
-                // isn't actually a problem
-                for line in file.read_to_cleared_string(&mut buf).lines() {
-                    if line.starts_with('[') {
-                        in_package = line.starts_with("[package]");
-                    } else if in_package && let Some((name, value)) = line.split_once('=') {
-                        match name.trim() {
-                            "name" => is_clippy = value.trim() == "\"clippy\"",
-                            "version"
-                                if let Some(value) = value.trim().strip_prefix('"')
-                                    && let Some(value) = value.strip_suffix('"') =>
-                            {
-                                version = value.parse().ok();
-                            },
-                            _ => {},
-                        }
-                    }
-                }
-
-                if is_clippy {
-                    let Some(version) = version else {
+                file.read_to_cleared_string(&mut buf);
+                let package = parse_cargo_package(&buf);
+                if package.name == "\"clippy\"" {
+                    if let Some(version) = buf[package.version_range].strip_prefix('"')
+                        && let Some(version) = version.strip_suffix('"')
+                        && let Ok(version) = version.parse()
+                    {
+                        path.pop();
+                        return ClippyInfo {
+                            path,
+                            version,
+                            has_intellij_hook: !package.not_a_platform_range.is_empty(),
+                        };
+                    } else {
                         panic!("error reading clippy version from {}", file.path.display());
-                    };
-                    path.pop();
-                    return ClippyInfo { path, version };
+                    }
                 }
             }
 
