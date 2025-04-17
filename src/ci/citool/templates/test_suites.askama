@@ -7,7 +7,7 @@
         <div>
             <div class="test-count">Total tests: {{ test_count }}</div>
             <div>
-                To find tests that haven't been executed anywhere, click on "Open all" and search for "(0 passed".
+                To find tests that haven't been executed anywhere, click on "Open all" and search for "passed: 0".
             </div>
         </div>
         <div>

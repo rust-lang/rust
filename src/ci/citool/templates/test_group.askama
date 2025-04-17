@@ -1,3 +1,7 @@
+{% macro test_result(r) -%}
+passed: {{ r.passed.len() }}, ignored: {{ r.ignored.len() }}
+{%- endmacro %}
+
 <li>
 <details>
 <summary>{{ name }} ({{ test_count() }} test{{ test_count() | pluralize }})</summary>
@@ -15,12 +19,12 @@
     {% for test in root_tests %}
         <li>
         {% if let Some(result) = test.single_test() %}
-            <b>{{ test.name }}</b> ({{ result.passed.len() }} passed, {{ result.ignored.len() }} ignored)
+            <b>{{ test.name }}</b> ({% call test_result(result) %})
         {% else %}
             <b>{{ test.name }}</b> ({{ test.revisions.len() }} revision{{ test.revisions.len() | pluralize }})
             <ul>
             {% for (revision, result) in test.revisions %}
-                <li>#<i>{{ revision }}</i> ({{ result.passed.len() }} passed, {{ result.ignored.len() }} ignored)</li>
+                <li>#<i>{{ revision }}</i> ({% call test_result(result) %})</li>
             {% endfor %}
             </ul>
         {% endif %}
