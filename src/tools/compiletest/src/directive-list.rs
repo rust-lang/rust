@@ -44,6 +44,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-arm-unknown-linux-gnueabihf",
     "ignore-arm-unknown-linux-musleabi",
     "ignore-arm-unknown-linux-musleabihf",
+    "ignore-auxiliary",
     "ignore-avr",
     "ignore-beta",
     "ignore-cdb",
