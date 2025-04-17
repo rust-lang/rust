@@ -60,19 +60,27 @@ fn gather_test_suites(job_metrics: &HashMap<JobName, JobMetrics>) -> TestSuites 
 
             for test in &suite.tests {
                 let test_name = normalize_test_name(&test.name, &suite_name);
-                let test_entry = suite_entry
-                    .tests
-                    .entry(test_name.clone())
-                    .or_insert_with(|| Test { name: test_name, passed: vec![], ignored: vec![] });
+                let (test_name, variant_name) = match test_name.rsplit_once('#') {
+                    Some((name, variant)) => (name.to_string(), variant.to_string()),
+                    None => (test_name, "".to_string()),
+                };
+                let test_entry = suite_entry.tests.entry(test_name.clone()).or_insert_with(|| {
+                    Test { name: test_name.clone(), revisions: Default::default() }
+                });
+                let variant_entry = test_entry
+                    .revisions
+                    .entry(variant_name)
+                    .or_insert_with(|| TestResults { passed: vec![], ignored: vec![] });
+
                 match test.outcome {
                     TestOutcome::Passed => {
-                        test_entry.passed.push(test_metadata);
+                        variant_entry.passed.push(test_metadata);
                     }
                     TestOutcome::Ignored { ignore_reason: _ } => {
-                        test_entry.ignored.push(test_metadata);
+                        variant_entry.ignored.push(test_metadata);
                     }
                     TestOutcome::Failed => {
-                        eprintln!("Warning: failed test");
+                        eprintln!("Warning: failed test {test_name}");
                     }
                 }
             }
@@ -158,10 +166,27 @@ struct TestSuite<'a> {
 }
 
 #[derive(Debug, serde::Serialize)]
-struct Test<'a> {
-    name: String,
+struct TestResults<'a> {
     passed: Vec<TestMetadata<'a>>,
     ignored: Vec<TestMetadata<'a>>,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct Test<'a> {
+    name: String,
+    revisions: BTreeMap<String, TestResults<'a>>,
+}
+
+impl<'a> Test<'a> {
+    /// If this is a test without revisions, it will have a single entry in `revisions` with
+    /// an empty string as the revision name.
+    fn single_test(&self) -> Option<&TestResults<'a>> {
+        if self.revisions.len() == 1 {
+            self.revisions.iter().next().take_if(|e| e.0.is_empty()).map(|e| e.1)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize)]

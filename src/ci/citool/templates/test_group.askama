@@ -13,7 +13,18 @@
 {% if !root_tests.is_empty() %}
 <ul>
     {% for test in root_tests %}
-    <li><b>{{ test.name }}</b> ({{ test.passed.len() }} passed, {{ test.ignored.len() }} ignored)</li>
+        <li>
+        {% if let Some(result) = test.single_test() %}
+            <b>{{ test.name }}</b> ({{ result.passed.len() }} passed, {{ result.ignored.len() }} ignored)
+        {% else %}
+            <b>{{ test.name }}</b> ({{ test.revisions.len() }} revision{{ test.revisions.len() | pluralize }})
+            <ul>
+            {% for (revision, result) in test.revisions %}
+                <li>#<i>{{ revision }}</i> ({{ result.passed.len() }} passed, {{ result.ignored.len() }} ignored)</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+        </li>
     {% endfor %}
 </ul>
 {% endif %}
