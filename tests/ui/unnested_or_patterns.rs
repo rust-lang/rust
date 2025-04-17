@@ -64,3 +64,16 @@ fn msrv_1_53() {
     if let [1] | [53] = [0] {}
     //~^ unnested_or_patterns
 }
+
+mod issue9952 {
+    fn or_in_local() {
+        let (0 | (1 | _)) = 0;
+        //~^ unnested_or_patterns
+
+        if let (0 | (1 | _)) = 0 {}
+        //~^ unnested_or_patterns
+    }
+
+    fn or_in_param((x | (x | x)): i32) {}
+    //~^ unnested_or_patterns
+}

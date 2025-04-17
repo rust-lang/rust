@@ -165,3 +165,46 @@ with_span!(
         x
     }
 );
+
+fn desugared_closure_14446() {
+    let _ = async || 0;
+    //~^ implicit_return
+    #[rustfmt::skip]
+    let _ = async || -> i32 { 0 };
+    //~^ implicit_return
+    let _ = async |a: i32| a;
+    //~^ implicit_return
+    #[rustfmt::skip]
+    let _ = async |a: i32| { a };
+    //~^ implicit_return
+
+    let _ = async || return 0;
+    let _ = async || -> i32 { return 0 };
+    let _ = async |a: i32| return a;
+    #[rustfmt::skip]
+    let _ = async |a: i32| { return a; };
+
+    let _ = async || foo().await;
+    //~^ implicit_return
+    let _ = async || {
+        foo().await;
+        foo().await
+    };
+    //~^^ implicit_return
+    #[rustfmt::skip]
+    let _ = async || { foo().await };
+    //~^ implicit_return
+    let _ = async || -> bool { foo().await };
+    //~^ implicit_return
+
+    let _ = async || return foo().await;
+    let _ = async || {
+        foo().await;
+        return foo().await;
+    };
+    #[rustfmt::skip]
+    let _ = async || { return foo().await; };
+    let _ = async || -> bool {
+        return foo().await;
+    };
+}

@@ -1,6 +1,6 @@
 #![allow(non_upper_case_globals)]
 
-use rustc_span::symbol::{Symbol, PREDEFINED_SYMBOLS_COUNT};
+use rustc_span::symbol::{PREDEFINED_SYMBOLS_COUNT, Symbol};
 
 pub use rustc_span::sym::*;
 

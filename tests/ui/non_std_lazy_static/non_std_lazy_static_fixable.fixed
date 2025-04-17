@@ -9,16 +9,16 @@ use once_cell::sync::Lazy;
 fn main() {}
 
 static LAZY_FOO: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "foo".to_uppercase());
-//~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+//~^ ERROR: this type has been superseded by `LazyLock` in the standard library
 static LAZY_BAR: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
-    //~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+    //~^ ERROR: this type has been superseded by `LazyLock` in the standard library
     let x = "bar";
     x.to_uppercase()
 });
 static LAZY_BAZ: std::sync::LazyLock<String> = { std::sync::LazyLock::new(|| "baz".to_uppercase()) };
-//~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+//~^ ERROR: this type has been superseded by `LazyLock` in the standard library
 static LAZY_QUX: std::sync::LazyLock<String> = {
-    //~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+    //~^ ERROR: this type has been superseded by `LazyLock` in the standard library
     if "qux".len() == 3 {
         std::sync::LazyLock::new(|| "qux".to_uppercase())
     } else if "qux".is_ascii() {
@@ -39,11 +39,11 @@ mod once_cell_lazy_with_fns {
     use once_cell::sync::Lazy;
 
     static LAZY_FOO: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "foo".to_uppercase());
-    //~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+    //~^ ERROR: this type has been superseded by `LazyLock` in the standard library
     static LAZY_BAR: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "bar".to_uppercase());
-    //~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+    //~^ ERROR: this type has been superseded by `LazyLock` in the standard library
     static mut LAZY_BAZ: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "baz".to_uppercase());
-    //~^ ERROR: this type has been superceded by `LazyLock` in the standard library
+    //~^ ERROR: this type has been superseded by `LazyLock` in the standard library
 
     fn calling_replaceable_fns() {
         let _ = std::sync::LazyLock::force(&LAZY_FOO);

@@ -139,4 +139,31 @@ fn issue11835(v1: &[u8], v2: &[u8], v3: &[u8], v4: &[u8]) {
     let _ = v4[0] + v4[1] + v4[2];
 }
 
+// ok
+fn same_index_multiple_times(v1: &[u8]) {
+    let _ = v1[0] + v1[0];
+}
+
+// ok
+fn highest_index_first(v1: &[u8]) {
+    let _ = v1[2] + v1[1] + v1[0];
+}
+
+fn issue14255(v1: &[u8], v2: &[u8], v3: &[u8], v4: &[u8]) {
+    assert_eq!(v1.len(), 2);
+    assert_eq!(v2.len(), 4);
+    assert_eq!(2, v3.len());
+    assert_eq!(4, v4.len());
+
+    let _ = v1[0] + v1[1] + v1[2];
+    //~^ missing_asserts_for_indexing
+
+    let _ = v2[0] + v2[1] + v2[2];
+
+    let _ = v3[0] + v3[1] + v3[2];
+    //~^ missing_asserts_for_indexing
+
+    let _ = v4[0] + v4[1] + v4[2];
+}
+
 fn main() {}

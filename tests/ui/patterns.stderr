@@ -1,5 +1,5 @@
 error: the `y @ _` pattern can be written as just `y`
-  --> tests/ui/patterns.rs:14:9
+  --> tests/ui/patterns.rs:12:9
    |
 LL |         y @ _ => (),
    |         ^^^^^ help: try: `y`
@@ -8,13 +8,13 @@ LL |         y @ _ => (),
    = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern)]`
 
 error: the `x @ _` pattern can be written as just `x`
-  --> tests/ui/patterns.rs:30:9
+  --> tests/ui/patterns.rs:28:9
    |
 LL |         ref mut x @ _ => {
    |         ^^^^^^^^^^^^^ help: try: `ref mut x`
 
 error: the `x @ _` pattern can be written as just `x`
-  --> tests/ui/patterns.rs:39:9
+  --> tests/ui/patterns.rs:37:9
    |
 LL |         ref x @ _ => println!("vec: {:?}", x),
    |         ^^^^^^^^^ help: try: `ref x`

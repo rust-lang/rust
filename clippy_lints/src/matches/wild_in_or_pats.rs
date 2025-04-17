@@ -15,18 +15,18 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arms: &[Arm<'_>]) {
         return;
     }
     for arm in arms {
-        if let PatKind::Or(fields) = arm.pat.kind {
+        if let PatKind::Or(fields) = arm.pat.kind
             // look for multiple fields in this arm that contains at least one Wild pattern
-            if fields.len() > 1 && fields.iter().any(is_wild) {
-                span_lint_and_help(
-                    cx,
-                    WILDCARD_IN_OR_PATTERNS,
-                    arm.pat.span,
-                    "wildcard pattern covers any other pattern as it will match anyway",
-                    None,
-                    "consider handling `_` separately",
-                );
-            }
+            && fields.len() > 1 && fields.iter().any(is_wild)
+        {
+            span_lint_and_help(
+                cx,
+                WILDCARD_IN_OR_PATTERNS,
+                arm.pat.span,
+                "wildcard pattern covers any other pattern as it will match anyway",
+                None,
+                "consider handling `_` separately",
+            );
         }
     }
 }

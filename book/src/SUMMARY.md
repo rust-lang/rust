@@ -30,6 +30,7 @@
         - [Updating the Changelog](development/infrastructure/changelog_update.md)
         - [Release a New Version](development/infrastructure/release.md)
         - [The Clippy Book](development/infrastructure/book.md)
+        - [Benchmarking Clippy](development/infrastructure/benchmarking.md)
     - [Proposals](development/proposals/README.md)
         - [Roadmap 2021](development/proposals/roadmap-2021.md)
         - [Syntax Tree Patterns](development/proposals/syntax-tree-patterns.md)
