@@ -5,19 +5,12 @@
 //   stdout: 1
 
 #![feature(no_core)]
-
 #![no_std]
 #![no_core]
 #![no_main]
 
 extern crate mini_core;
-
-mod libc {
-    #[link(name = "c")]
-    extern "C" {
-        pub fn printf(format: *const i8, ...) -> i32;
-    }
-}
+use mini_core::*;
 
 static mut ONE: usize = 1;
 

@@ -1,11 +1,9 @@
 tests/ui/allocator/no_std-alloc-error-handler-custom.rs
 tests/ui/allocator/no_std-alloc-error-handler-default.rs
 tests/ui/asm/may_unwind.rs
-tests/ui/asm/x86_64/multiple-clobber-abi.rs
 tests/ui/functions-closures/parallel-codegen-closures.rs
 tests/ui/linkage-attr/linkage1.rs
 tests/ui/lto/dylib-works.rs
-tests/ui/numbers-arithmetic/saturating-float-casts.rs
 tests/ui/sepcomp/sepcomp-cci.rs
 tests/ui/sepcomp/sepcomp-extern.rs
 tests/ui/sepcomp/sepcomp-fns-backwards.rs

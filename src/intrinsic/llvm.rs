@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use gccjit::{CType, Context, Function, FunctionPtrType, RValue, ToRValue, UnaryOp};
+use gccjit::{CType, Context, Function, FunctionPtrType, RValue, ToRValue};
 use rustc_codegen_ssa::traits::BuilderMethods;
 
 use crate::builder::Builder;
@@ -43,7 +43,6 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
     gcc_func: FunctionPtrType<'gcc>,
     mut args: Cow<'b, [RValue<'gcc>]>,
     func_name: &str,
-    original_function_name: Option<&String>,
 ) -> Cow<'b, [RValue<'gcc>]> {
     // TODO: this might not be a good way to workaround the missing tile builtins.
     if func_name == "__builtin_trap" {
@@ -541,33 +540,6 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 let c = builder.context.new_rvalue_from_vector(None, arg3_type, &[new_args[2]; 2]);
                 args = vec![a, b, c, new_args[3]].into();
             }
-            "__builtin_ia32_vfmaddsubpd256"
-            | "__builtin_ia32_vfmaddsubps"
-            | "__builtin_ia32_vfmaddsubps256"
-            | "__builtin_ia32_vfmaddsubpd" => {
-                if let Some(original_function_name) = original_function_name {
-                    match &**original_function_name {
-                        "llvm.x86.fma.vfmsubadd.pd.256"
-                        | "llvm.x86.fma.vfmsubadd.ps"
-                        | "llvm.x86.fma.vfmsubadd.ps.256"
-                        | "llvm.x86.fma.vfmsubadd.pd" => {
-                            // NOTE: since both llvm.x86.fma.vfmsubadd.ps and llvm.x86.fma.vfmaddsub.ps maps to
-                            // __builtin_ia32_vfmaddsubps, only add minus if this comes from a
-                            // subadd LLVM intrinsic, e.g. _mm256_fmsubadd_pd.
-                            let mut new_args = args.to_vec();
-                            let arg3 = &mut new_args[2];
-                            *arg3 = builder.context.new_unary_op(
-                                None,
-                                UnaryOp::Minus,
-                                arg3.get_type(),
-                                *arg3,
-                            );
-                            args = new_args.into();
-                        }
-                        _ => (),
-                    }
-                }
-            }
             "__builtin_ia32_ldmxcsr" => {
                 // The builtin __builtin_ia32_ldmxcsr takes an integer value while llvm.x86.sse.ldmxcsr takes a pointer,
                 // so dereference the pointer.
@@ -915,16 +887,6 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.ctlz.v4i64" => "__builtin_ia32_vplzcntq_256_mask",
         "llvm.ctlz.v2i64" => "__builtin_ia32_vplzcntq_128_mask",
         "llvm.ctpop.v32i16" => "__builtin_ia32_vpopcountw_v32hi",
-        "llvm.x86.fma.vfmsub.sd" => "__builtin_ia32_vfmsubsd3",
-        "llvm.x86.fma.vfmsub.ss" => "__builtin_ia32_vfmsubss3",
-        "llvm.x86.fma.vfmsubadd.pd" => "__builtin_ia32_vfmaddsubpd",
-        "llvm.x86.fma.vfmsubadd.pd.256" => "__builtin_ia32_vfmaddsubpd256",
-        "llvm.x86.fma.vfmsubadd.ps" => "__builtin_ia32_vfmaddsubps",
-        "llvm.x86.fma.vfmsubadd.ps.256" => "__builtin_ia32_vfmaddsubps256",
-        "llvm.x86.fma.vfnmadd.sd" => "__builtin_ia32_vfnmaddsd3",
-        "llvm.x86.fma.vfnmadd.ss" => "__builtin_ia32_vfnmaddss3",
-        "llvm.x86.fma.vfnmsub.sd" => "__builtin_ia32_vfnmsubsd3",
-        "llvm.x86.fma.vfnmsub.ss" => "__builtin_ia32_vfnmsubss3",
         "llvm.x86.avx512.conflict.d.512" => "__builtin_ia32_vpconflictsi_512_mask",
         "llvm.x86.avx512.conflict.d.256" => "__builtin_ia32_vpconflictsi_256_mask",
         "llvm.x86.avx512.conflict.d.128" => "__builtin_ia32_vpconflictsi_128_mask",
@@ -1002,8 +964,6 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.fshr.v32i16" => "__builtin_ia32_vpshrdv_v32hi",
         "llvm.fshr.v16i16" => "__builtin_ia32_vpshrdv_v16hi",
         "llvm.fshr.v8i16" => "__builtin_ia32_vpshrdv_v8hi",
-        "llvm.x86.fma.vfmadd.sd" => "__builtin_ia32_vfmaddsd3",
-        "llvm.x86.fma.vfmadd.ss" => "__builtin_ia32_vfmaddss3",
         "llvm.x86.rdrand.64" => "__builtin_ia32_rdrand64_step",
 
         // The above doc points to unknown builtins for the following, so override them:

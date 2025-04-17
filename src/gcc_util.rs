@@ -194,6 +194,7 @@ pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]>
 
 fn arch_to_gcc(name: &str) -> &str {
     match name {
+        "M68000" => "68000",
         "M68020" => "68020",
         _ => name,
     }

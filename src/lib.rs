@@ -188,10 +188,10 @@ impl CodegenBackend for GccCodegenBackend {
         crate::DEFAULT_LOCALE_RESOURCE
     }
 
-    fn init(&self, sess: &Session) {
+    fn init(&self, _sess: &Session) {
         #[cfg(feature = "master")]
         {
-            let target_cpu = target_cpu(sess);
+            let target_cpu = target_cpu(_sess);
 
             // Get the second TargetInfo with the correct CPU features by setting the arch.
             let context = Context::default();

@@ -3,9 +3,7 @@
 // Run-time:
 //   status: 0
 
-/*
- * Code
- */
+#![feature(const_black_box)]
 
 fn main() {
     use std::hint::black_box;
