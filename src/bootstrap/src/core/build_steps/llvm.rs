@@ -370,8 +370,8 @@ impl Step for Llvm {
             cfg.define("LLVM_PROFDATA_FILE", path);
         }
 
-        // Libraries for ELF section compression.
-        if !target.is_windows() {
+        // Libraries for ELF section compression and profraw files merging.
+        if !target.is_msvc() {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
         } else {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
