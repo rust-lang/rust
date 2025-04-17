@@ -118,10 +118,12 @@ pub enum ProbeKind<I: Interner> {
     /// Used in the probe that wraps normalizing the non-self type for the unsize
     /// trait, which is also structurally matched on.
     UnsizeAssembly,
-    /// During upcasting from some source object to target object type, used to
-    /// do a probe to find out what projection type(s) may be used to prove that
-    /// the source type upholds all of the target type's object bounds.
-    UpcastProjectionCompatibility,
+    /// Used to do a probe to find out what projection type(s) match a given
+    /// alias bound or projection predicate. For trait upcasting, this is used
+    /// to prove that the source type upholds all of the target type's object
+    /// bounds. For object type bounds, this is used when eagerly replacing
+    /// supertrait aliases.
+    ProjectionCompatibility,
     /// Looking for param-env candidates that satisfy the trait ref for a projection.
     ShadowedEnvProbing,
     /// Try to unify an opaque type with an existing key in the storage.
