@@ -57,7 +57,7 @@ pub enum PathFreshness {
 /// whose modifications would invalidate the artifact.
 /// Each pathspec can also be a negative match, i.e. `:!foo`. This matches changes outside
 /// the `foo` directory.
-/// See https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-aiddefpathspecapathspec
+/// See <https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-aiddefpathspecapathspec>
 /// for how git `pathspec` works.
 ///
 /// The function behaves differently in CI and outside CI.
