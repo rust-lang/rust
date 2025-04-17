@@ -490,17 +490,17 @@ pub(crate) fn build_impl(
                         return true;
                     }
                     if let Some(associated_trait) = associated_trait {
-                        let assoc_kind = match item.kind {
-                            hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
-                            hir::ImplItemKind::Fn(..) => ty::AssocKind::Fn,
-                            hir::ImplItemKind::Type(..) => ty::AssocKind::Type,
+                        let assoc_tag = match item.kind {
+                            hir::ImplItemKind::Const(..) => ty::AssocTag::Const,
+                            hir::ImplItemKind::Fn(..) => ty::AssocTag::Fn,
+                            hir::ImplItemKind::Type(..) => ty::AssocTag::Type,
                         };
                         let trait_item = tcx
                             .associated_items(associated_trait.def_id)
                             .find_by_ident_and_kind(
                                 tcx,
                                 item.ident,
-                                assoc_kind,
+                                assoc_tag,
                                 associated_trait.def_id,
                             )
                             .unwrap(); // SAFETY: For all impl items there exists trait item that has the same name.
@@ -527,7 +527,7 @@ pub(crate) fn build_impl(
                             .find_by_ident_and_kind(
                                 tcx,
                                 item.ident(tcx),
-                                item.kind,
+                                item.as_tag(),
                                 associated_trait.def_id,
                             )
                             .unwrap(); // corresponding associated item has to exist

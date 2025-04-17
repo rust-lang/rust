@@ -1,6 +1,7 @@
 // This ensures that ICEs like rust#94953 don't happen
 //@ check-pass
 //@ compile-flags: -Z unpretty=expanded
+//@ edition: 2015
 
 // This `expect` will create an expectation with an unstable expectation id
 #[expect(while_true)]

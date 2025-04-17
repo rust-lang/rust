@@ -5,19 +5,19 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         stream: TokenStream [
             Ident {
                 ident: "struct",
-                span: $DIR/nonterminal-token-hygiene.rs:32:5: 32:11 (#5),
+                span: $DIR/nonterminal-token-hygiene.rs:33:5: 33:11 (#5),
             },
             Ident {
                 ident: "S",
-                span: $DIR/nonterminal-token-hygiene.rs:32:12: 32:13 (#5),
+                span: $DIR/nonterminal-token-hygiene.rs:33:12: 33:13 (#5),
             },
             Punct {
                 ch: ';',
                 spacing: Alone,
-                span: $DIR/nonterminal-token-hygiene.rs:32:13: 32:14 (#5),
+                span: $DIR/nonterminal-token-hygiene.rs:33:13: 33:14 (#5),
             },
         ],
-        span: $DIR/nonterminal-token-hygiene.rs:22:27: 22:32 (#4),
+        span: $DIR/nonterminal-token-hygiene.rs:23:27: 23:32 (#4),
     },
 ]
 #![feature /* 0#0 */(prelude_import)]
@@ -32,6 +32,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
 //@ normalize-stdout: "expn\d{3,}" -> "expnNNN"
 //@ normalize-stdout: "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
 //@ proc-macro: test-macros.rs
+//@ edition: 2015
 
 #![feature /* 0#0 */(decl_macro)]
 #![no_std /* 0#0 */]
@@ -82,10 +83,10 @@ SyntaxContexts:
 #0: parent: #0, outer_mark: (crate0::{{expn0}}, Opaque)
 #1: parent: #0, outer_mark: (crate0::{{expn1}}, Opaque)
 #2: parent: #0, outer_mark: (crate0::{{expn1}}, Transparent)
-#3: parent: #0, outer_mark: (crate0::{{expn2}}, SemiTransparent)
+#3: parent: #0, outer_mark: (crate0::{{expn2}}, SemiOpaque)
 #4: parent: #3, outer_mark: (crate0::{{expn3}}, Opaque)
 #5: parent: #0, outer_mark: (crate0::{{expn3}}, Opaque)
 #6: parent: #0, outer_mark: (crate0::{{expn4}}, Opaque)
 #7: parent: #4, outer_mark: (crate0::{{expn4}}, Transparent)
-#8: parent: #5, outer_mark: (crate0::{{expn4}}, SemiTransparent)
+#8: parent: #5, outer_mark: (crate0::{{expn4}}, SemiOpaque)
 */

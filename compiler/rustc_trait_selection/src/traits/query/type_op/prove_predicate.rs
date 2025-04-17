@@ -1,4 +1,3 @@
-use rustc_hir::LangItem;
 use rustc_infer::traits::Obligation;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
@@ -7,7 +6,7 @@ use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
 use rustc_span::Span;
 
 use crate::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};
-use crate::traits::ObligationCtxt;
+use crate::traits::{ObligationCtxt, sizedness_fast_path};
 
 impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
     type QueryResponse = ();
@@ -16,15 +15,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
         tcx: TyCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
-        // Proving Sized, very often on "obviously sized" types like
-        // `&T`, accounts for about 60% percentage of the predicates
-        // we have to prove. No need to canonicalize and all that for
-        // such cases.
-        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_ref)) =
-            key.value.predicate.kind().skip_binder()
-            && tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized)
-            && trait_ref.self_ty().is_trivially_sized(tcx)
-        {
+        if sizedness_fast_path(tcx, key.value.predicate) {
             return Some(());
         }
 

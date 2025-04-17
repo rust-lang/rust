@@ -13,7 +13,6 @@ mod ty;
 
 use std::assert_matches::debug_assert_matches;
 use std::ops::Range;
-use std::sync::Arc;
 use std::{fmt, mem, slice};
 
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
@@ -24,8 +23,8 @@ pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use path::PathStyle;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{
-    self, Delimiter, IdentIsRaw, InvisibleOrigin, MetaVarKind, Nonterminal, NtExprKind, NtPatKind,
-    Token, TokenKind,
+    self, Delimiter, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token,
+    TokenKind,
 };
 use rustc_ast::tokenstream::{AttrsTarget, Spacing, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
@@ -96,21 +95,6 @@ enum BlockMode {
 pub enum ForceCollect {
     Yes,
     No,
-}
-
-#[macro_export]
-macro_rules! maybe_whole {
-    ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
-        #[allow(irrefutable_let_patterns)] // FIXME: temporary
-        if let token::Interpolated(nt) = &$p.token.kind
-            && let token::$constructor(x) = &**nt
-        {
-            #[allow(unused_mut)]
-            let mut $x = x.clone();
-            $p.bump();
-            return Ok($e);
-        }
-    };
 }
 
 /// If the next tokens are ill-formed `$ty::` recover them as `<$ty>::`.
@@ -342,12 +326,12 @@ impl TokenCursor {
             // below can be removed.
             if let Some(tree) = self.curr.curr() {
                 match tree {
-                    &TokenTree::Token(ref token, spacing) => {
+                    &TokenTree::Token(token, spacing) => {
                         debug_assert!(!matches!(
                             token.kind,
                             token::OpenDelim(_) | token::CloseDelim(_)
                         ));
-                        let res = (token.clone(), spacing);
+                        let res = (token, spacing);
                         self.curr.bump();
                         return res;
                     }
@@ -459,7 +443,6 @@ pub fn token_descr(token: &Token) -> String {
         (Some(TokenDescription::MetaVar(kind)), _) => format!("`{kind}` metavariable"),
         (None, TokenKind::NtIdent(..)) => format!("identifier `{s}`"),
         (None, TokenKind::NtLifetime(..)) => format!("lifetime `{s}`"),
-        (None, TokenKind::Interpolated(node)) => format!("{} `{s}`", node.descr()),
         (None, _) => format!("`{s}`"),
     }
 }
@@ -855,8 +838,10 @@ impl<'a> Parser<'a> {
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
             && self.look_ahead(dist + 1, |t| match &t.kind {
-                token::Interpolated(nt) => matches!(&**nt, token::NtBlock(..)),
                 token::OpenDelim(Delimiter::Brace) => true,
+                token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
+                    MetaVarKind::Block,
+                ))) => true,
                 _ => false,
             })
     }
@@ -1402,7 +1387,7 @@ impl<'a> Parser<'a> {
         // Avoid const blocks and const closures to be parsed as const items
         if (self.check_const_closure() == is_closure)
             && !self
-                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
+                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_metavar_block())
             && self.eat_keyword_case(exp!(Const), case)
         {
             Const::Yes(self.prev_token_uninterpolated_span())
@@ -1532,7 +1517,7 @@ impl<'a> Parser<'a> {
             _ => {
                 let prev_spacing = self.token_spacing;
                 self.bump();
-                TokenTree::Token(self.prev_token.clone(), prev_spacing)
+                TokenTree::Token(self.prev_token, prev_spacing)
             }
         }
     }
@@ -1718,7 +1703,7 @@ impl<'a> Parser<'a> {
             dbg_fmt.field("prev_token", &self.prev_token);
             let mut tokens = vec![];
             for i in 0..lookahead {
-                let tok = self.look_ahead(i, |tok| tok.kind.clone());
+                let tok = self.look_ahead(i, |tok| tok.kind);
                 let is_eof = tok == TokenKind::Eof;
                 tokens.push(tok);
                 if is_eof {
@@ -1759,7 +1744,6 @@ impl<'a> Parser<'a> {
     pub fn token_uninterpolated_span(&self) -> Span {
         match &self.token.kind {
             token::NtIdent(ident, _) | token::NtLifetime(ident, _) => ident.span,
-            token::Interpolated(nt) => nt.use_span(),
             token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => {
                 self.look_ahead(1, |t| t.span)
             }
@@ -1771,7 +1755,6 @@ impl<'a> Parser<'a> {
     pub fn prev_token_uninterpolated_span(&self) -> Span {
         match &self.prev_token.kind {
             token::NtIdent(ident, _) | token::NtLifetime(ident, _) => ident.span,
-            token::Interpolated(nt) => nt.use_span(),
             token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => {
                 self.look_ahead(0, |t| t.span)
             }
@@ -1828,6 +1811,7 @@ pub enum ParseNtResult {
     Ident(Ident, IdentIsRaw),
     Lifetime(Ident, IdentIsRaw),
     Item(P<ast::Item>),
+    Block(P<ast::Block>),
     Stmt(P<ast::Stmt>),
     Pat(P<ast::Pat>, NtPatKind),
     Expr(P<ast::Expr>, NtExprKind),
@@ -1836,7 +1820,4 @@ pub enum ParseNtResult {
     Meta(P<ast::AttrItem>),
     Path(P<ast::Path>),
     Vis(P<ast::Visibility>),
-
-    /// This variant will eventually be removed, along with `Token::Interpolate`.
-    Nt(Arc<Nonterminal>),
 }

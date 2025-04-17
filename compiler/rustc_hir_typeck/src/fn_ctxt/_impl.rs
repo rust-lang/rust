@@ -27,9 +27,9 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{Span, kw};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCauseCode, StructurallyNormalizeExt,
@@ -833,7 +833,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let trait_missing_method =
                     matches!(error, method::MethodError::NoMatch(_)) && ty.normalized.is_trait();
-                assert_ne!(item_name.name, kw::Empty);
                 self.report_method_error(
                     hir_id,
                     ty.normalized,

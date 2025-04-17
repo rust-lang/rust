@@ -903,9 +903,9 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
 
     let mut integrator = Integrator {
         args: &args,
-        new_locals: Local::new(caller_body.local_decls.len())..,
-        new_scopes: SourceScope::new(caller_body.source_scopes.len())..,
-        new_blocks: BasicBlock::new(caller_body.basic_blocks.len())..,
+        new_locals: caller_body.local_decls.next_index()..,
+        new_scopes: caller_body.source_scopes.next_index()..,
+        new_blocks: caller_body.basic_blocks.next_index()..,
         destination: destination_local,
         callsite_scope: caller_body.source_scopes[callsite.source_info.scope].clone(),
         callsite,
@@ -1169,7 +1169,7 @@ impl Integrator<'_, '_> {
             if idx < self.args.len() {
                 self.args[idx]
             } else {
-                Local::new(self.new_locals.start.index() + (idx - self.args.len()))
+                self.new_locals.start + (idx - self.args.len())
             }
         };
         trace!("mapping local `{:?}` to `{:?}`", local, new);
@@ -1177,13 +1177,13 @@ impl Integrator<'_, '_> {
     }
 
     fn map_scope(&self, scope: SourceScope) -> SourceScope {
-        let new = SourceScope::new(self.new_scopes.start.index() + scope.index());
+        let new = self.new_scopes.start + scope.index();
         trace!("mapping scope `{:?}` to `{:?}`", scope, new);
         new
     }
 
     fn map_block(&self, block: BasicBlock) -> BasicBlock {
-        let new = BasicBlock::new(self.new_blocks.start.index() + block.index());
+        let new = self.new_blocks.start + block.index();
         trace!("mapping block `{:?}` to `{:?}`", block, new);
         new
     }

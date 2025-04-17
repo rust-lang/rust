@@ -113,7 +113,6 @@ pub(crate) fn type_check<'a, 'tcx>(
     move_data: &MoveData<'tcx>,
     location_map: Rc<DenseLocationMap>,
 ) -> MirTypeckResults<'tcx> {
-    let implicit_region_bound = ty::Region::new_var(infcx.tcx, universal_regions.fr_fn_body);
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
@@ -129,13 +128,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         region_bound_pairs,
         normalized_inputs_and_output,
         known_type_outlives_obligations,
-    } = free_region_relations::create(
-        infcx,
-        infcx.param_env,
-        implicit_region_bound,
-        universal_regions,
-        &mut constraints,
-    );
+    } = free_region_relations::create(infcx, infcx.param_env, universal_regions, &mut constraints);
 
     let pre_obligations = infcx.take_registered_region_obligations();
     assert!(
@@ -160,7 +153,6 @@ pub(crate) fn type_check<'a, 'tcx>(
         user_type_annotations: &body.user_type_annotations,
         region_bound_pairs,
         known_type_outlives_obligations,
-        implicit_region_bound,
         reported_errors: Default::default(),
         universal_regions: &universal_region_relations.universal_regions,
         location_table,
@@ -226,7 +218,6 @@ struct TypeChecker<'a, 'tcx> {
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
     region_bound_pairs: RegionBoundPairs<'tcx>,
     known_type_outlives_obligations: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
-    implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a PoloniusLocationTable,
@@ -422,7 +413,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.infcx,
             self.universal_regions,
             &self.region_bound_pairs,
-            self.implicit_region_bound,
             self.infcx.param_env,
             &self.known_type_outlives_obligations,
             locations,
@@ -1567,11 +1557,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::Transmute => {
-                        span_mirbug!(
-                            self,
-                            rvalue,
-                            "Unexpected CastKind::Transmute, which is not permitted in Analysis MIR",
-                        );
+                        let ty_from = op.ty(self.body, tcx);
+                        match ty_from.kind() {
+                            ty::Pat(base, _) if base == ty => {}
+                            _ => span_mirbug!(
+                                self,
+                                rvalue,
+                                "Unexpected CastKind::Transmute {ty_from:?} -> {ty:?}, which is not permitted in Analysis MIR",
+                            ),
+                        }
                     }
                 }
             }
@@ -2507,7 +2501,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.infcx,
                 self.universal_regions,
                 &self.region_bound_pairs,
-                self.implicit_region_bound,
                 self.infcx.param_env,
                 &self.known_type_outlives_obligations,
                 locations,

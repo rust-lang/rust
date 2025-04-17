@@ -9,7 +9,6 @@ use crate::io::ErrorKind;
 use crate::sync::atomic::{AtomicBool, Ordering};
 
 pub mod abi;
-pub mod args;
 pub mod env;
 mod libunwind_integration;
 pub mod os;
@@ -24,7 +23,7 @@ pub mod waitqueue;
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     unsafe {
-        args::init(argc, argv);
+        crate::sys::args::init(argc, argv);
     }
 }
 

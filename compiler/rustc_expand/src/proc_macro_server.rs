@@ -1,5 +1,4 @@
 use std::ops::{Bound, Range};
-use std::sync::Arc;
 
 use ast::token::IdentIsRaw;
 use pm::bridge::{
@@ -18,7 +17,7 @@ use rustc_parse::parser::Parser;
 use rustc_parse::{exp, new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
-use rustc_span::{BytePos, FileName, Pos, SourceFile, Span, Symbol, sym};
+use rustc_span::{BytePos, FileName, Pos, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 
 use crate::base::ExtCtxt;
@@ -309,15 +308,6 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }));
                 }
 
-                Interpolated(nt) => {
-                    let stream = TokenStream::from_nonterminal_ast(&nt);
-                    trees.push(TokenTree::Group(Group {
-                        delimiter: pm::Delimiter::None,
-                        stream: Some(stream),
-                        span: DelimSpan::from_single(span),
-                    }))
-                }
-
                 OpenDelim(..) | CloseDelim(..) => unreachable!(),
                 Eof => unreachable!(),
             }
@@ -467,7 +457,6 @@ impl<'a, 'b> Rustc<'a, 'b> {
 impl server::Types for Rustc<'_, '_> {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type SourceFile = Arc<SourceFile>;
     type Span = Span;
     type Symbol = Symbol;
 }
@@ -673,28 +662,6 @@ impl server::TokenStream for Rustc<'_, '_> {
     }
 }
 
-impl server::SourceFile for Rustc<'_, '_> {
-    fn eq(&mut self, file1: &Self::SourceFile, file2: &Self::SourceFile) -> bool {
-        Arc::ptr_eq(file1, file2)
-    }
-
-    fn path(&mut self, file: &Self::SourceFile) -> String {
-        match &file.name {
-            FileName::Real(name) => name
-                .local_path()
-                .expect("attempting to get a file path in an imported file in `proc_macro::SourceFile::path`")
-                .to_str()
-                .expect("non-UTF8 file path in `proc_macro::SourceFile::path`")
-                .to_string(),
-            _ => file.name.prefer_local().to_string(),
-        }
-    }
-
-    fn is_real(&mut self, file: &Self::SourceFile) -> bool {
-        file.is_real_file()
-    }
-}
-
 impl server::Span for Rustc<'_, '_> {
     fn debug(&mut self, span: Self::Span) -> String {
         if self.ecx.ecfg.span_debug {
@@ -704,8 +671,29 @@ impl server::Span for Rustc<'_, '_> {
         }
     }
 
-    fn source_file(&mut self, span: Self::Span) -> Self::SourceFile {
-        self.psess().source_map().lookup_char_pos(span.lo()).file
+    fn file(&mut self, span: Self::Span) -> String {
+        self.psess()
+            .source_map()
+            .lookup_char_pos(span.lo())
+            .file
+            .name
+            .prefer_remapped_unconditionaly()
+            .to_string()
+    }
+
+    fn local_file(&mut self, span: Self::Span) -> Option<String> {
+        self.psess()
+            .source_map()
+            .lookup_char_pos(span.lo())
+            .file
+            .name
+            .clone()
+            .into_local_path()
+            .map(|p| {
+                p.to_str()
+                    .expect("non-UTF8 file path in `proc_macro::SourceFile::path`")
+                    .to_string()
+            })
     }
 
     fn parent(&mut self, span: Self::Span) -> Option<Self::Span> {

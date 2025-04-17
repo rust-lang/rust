@@ -1636,8 +1636,8 @@ pub fn find_self_call<'tcx>(
         &body[block].terminator
         && let Operand::Constant(box ConstOperand { const_, .. }) = func
         && let ty::FnDef(def_id, fn_args) = *const_.ty().kind()
-        && let Some(ty::AssocItem { fn_has_self_parameter: true, .. }) =
-            tcx.opt_associated_item(def_id)
+        && let Some(item) = tcx.opt_associated_item(def_id)
+        && item.is_method()
         && let [Spanned { node: Operand::Move(self_place) | Operand::Copy(self_place), .. }, ..] =
             **args
     {

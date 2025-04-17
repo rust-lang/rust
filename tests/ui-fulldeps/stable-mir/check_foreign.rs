@@ -17,7 +17,6 @@ extern crate rustc_interface;
 extern crate rustc_span;
 extern crate stable_mir;
 
-use rustc_smir::rustc_internal;
 use stable_mir::{
     ty::{Abi, ForeignItemKind},
     *,

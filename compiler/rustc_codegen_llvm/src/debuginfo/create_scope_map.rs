@@ -3,7 +3,6 @@ use std::collections::hash_map::Entry;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::Idx;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{Body, SourceScope};
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
@@ -43,8 +42,7 @@ pub(crate) fn compute_mir_scopes<'ll, 'tcx>(
     let mut instantiated = DenseBitSet::new_empty(mir.source_scopes.len());
     let mut discriminators = FxHashMap::default();
     // Instantiate all scopes.
-    for idx in 0..mir.source_scopes.len() {
-        let scope = SourceScope::new(idx);
+    for scope in mir.source_scopes.indices() {
         make_mir_scope(
             cx,
             instance,

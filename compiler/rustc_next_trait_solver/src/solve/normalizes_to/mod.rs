@@ -45,7 +45,6 @@ where
                             goal,
                             goal.predicate.alias,
                         );
-                        this.add_goal(GoalSource::AliasWellFormed, goal.with(cx, trait_ref));
                         this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     })
                 })

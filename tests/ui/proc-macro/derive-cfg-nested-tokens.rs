@@ -15,7 +15,7 @@ struct S {
     // - on eagerly configured `S` (from `impl Copy`), only 11 should be printed
     // - on non-configured `S` (from `struct S`), both 10 and 11 should be printed
     field: [u8; #[print_attr] {
-        #[cfg(FALSE)] { 10 }
+        #[cfg(false)] { 10 }
         #[cfg(not(FALSE))]  { 11 }
     }],
 }

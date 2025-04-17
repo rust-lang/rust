@@ -181,21 +181,8 @@ where
     Self: Sized,
 {
     /// Add a subdiagnostic to an existing diagnostic.
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        self.add_to_diag_with(diag, &|_, m| m);
-    }
-
-    /// Add a subdiagnostic to an existing diagnostic where `f` is invoked on every message used
-    /// (to optionally perform eager translation).
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        f: &F,
-    );
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>);
 }
-
-pub trait SubdiagMessageOp<G: EmissionGuarantee> =
-    Fn(&mut Diag<'_, G>, SubdiagMessage) -> SubdiagMessage;
 
 /// Trait implemented by lint types. This should not be implemented manually. Instead, use
 /// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
@@ -1227,13 +1214,19 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// interpolated variables).
     #[rustc_lint_diagnostics]
     pub fn subdiagnostic(&mut self, subdiagnostic: impl Subdiagnostic) -> &mut Self {
-        let dcx = self.dcx;
-        subdiagnostic.add_to_diag_with(self, &|diag, msg| {
-            let args = diag.args.iter();
-            let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
-            dcx.eagerly_translate(msg, args)
-        });
+        subdiagnostic.add_to_diag(self);
         self
+    }
+
+    /// Fluent variables are not namespaced from each other, so when
+    /// `Diagnostic`s and `Subdiagnostic`s use the same variable name,
+    /// one value will clobber the other. Eagerly translating the
+    /// diagnostic uses the variables defined right then, before the
+    /// clobbering occurs.
+    pub fn eagerly_translate(&self, msg: impl Into<SubdiagMessage>) -> SubdiagMessage {
+        let args = self.args.iter();
+        let msg = self.subdiagnostic_message_to_diagnostic_message(msg.into());
+        self.dcx.eagerly_translate(msg, args)
     }
 
     with_fn! { with_span,

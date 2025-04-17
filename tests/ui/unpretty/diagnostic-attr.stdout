@@ -4,6 +4,7 @@ use ::std::prelude::rust_2015::*;
 extern crate std;
 //@ compile-flags: -Zunpretty=hir
 //@ check-pass
+//@ edition: 2015
 
 #[diagnostic::on_unimplemented(message =
 "My Message for `ImportantTrait<{A}>` implemented for `{Self}`", label =

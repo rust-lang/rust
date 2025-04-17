@@ -10,11 +10,11 @@ LL - fn x<'a>(x: &mut 'a i32){}
 LL + fn x<'a>(x: &'a mut i32){}
    |
 
-error[E0178]: expected a path on the left-hand side of `+`, not `&mut 'a`
+error[E0178]: expected a path on the left-hand side of `+`
   --> $DIR/issue-73568-lifetime-after-mut.rs:14:13
    |
 LL | fn y<'a>(y: &mut 'a + Send) {
-   |             ^^^^^^^^^^^^^^
+   |             ^^^^^^^
    |
 help: try adding parentheses
    |

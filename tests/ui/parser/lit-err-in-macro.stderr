@@ -4,7 +4,7 @@ error: suffixes on string literals are invalid
 LL | f!("Foo"__);
    |    ^^^^^^^ invalid suffix `__`
 
-warning: extern declarations without an explicit ABI are deprecated
+warning: `extern` declarations without an explicit ABI are deprecated
   --> $DIR/lit-err-in-macro.rs:3:9
    |
 LL |         extern $abi fn f() {}

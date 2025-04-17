@@ -35,7 +35,8 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
                         // MIR building, and are not needed after InstrumentCoverage.
                         CoverageKind::BlockMarker { .. } | CoverageKind::SpanMarker { .. },
                     )
-                    | StatementKind::FakeRead(..) => statement.make_nop(),
+                    | StatementKind::FakeRead(..)
+                    | StatementKind::BackwardIncompatibleDropHint { .. } => statement.make_nop(),
                     StatementKind::Assign(box (
                         _,
                         Rvalue::Cast(

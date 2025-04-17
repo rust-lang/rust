@@ -278,7 +278,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let shift_bv = |bv: ty::BoundVar| ty::BoundVar::from_usize(bv.as_usize() + bound_vars);
+        let shift_bv = |bv: ty::BoundVar| bv + bound_vars;
         self.replace_escaping_bound_vars_uncached(
             value,
             FnMutDelegate {

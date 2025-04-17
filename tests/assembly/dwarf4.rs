@@ -1,7 +1,7 @@
-// Makes sure that `-Z dwarf-version=4` causes `rustc` to emit DWARF version 4.
+// Makes sure that `-C dwarf-version=4` causes `rustc` to emit DWARF version 4.
 //@ assembly-output: emit-asm
 //@ add-core-stubs
-//@ compile-flags: -g --target x86_64-unknown-linux-gnu -Z dwarf-version=4 -Copt-level=0
+//@ compile-flags: -g --target x86_64-unknown-linux-gnu -C dwarf-version=4 -Copt-level=0
 //@ needs-llvm-components: x86
 
 #![feature(no_core, lang_items)]

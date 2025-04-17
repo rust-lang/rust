@@ -5,7 +5,7 @@ LL | fn server() -> impl {
    |                ^^^^
 
 error[E0412]: cannot find type `F` in this scope
-  --> $DIR/issue-78720.rs:13:12
+  --> $DIR/issue-78720.rs:14:12
    |
 LL |     _func: F,
    |            ^
@@ -22,8 +22,14 @@ help: you might be missing a type parameter
 LL | struct Map2<Segment2, F> {
    |                     +++
 
+error[E0282]: type annotations needed
+  --> $DIR/issue-78720.rs:1:16
+   |
+LL | fn server() -> impl {
+   |                ^^^^ cannot infer type
+
 error[E0308]: mismatched types
-  --> $DIR/issue-78720.rs:7:39
+  --> $DIR/issue-78720.rs:8:39
    |
 LL |     fn map2<F>(self, f: F) -> Map2<F> {}
    |                                       ^^ expected `Map2<F>`, found `()`
@@ -32,7 +38,7 @@ LL |     fn map2<F>(self, f: F) -> Map2<F> {}
            found unit type `()`
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/issue-78720.rs:7:16
+  --> $DIR/issue-78720.rs:8:16
    |
 LL |     fn map2<F>(self, f: F) -> Map2<F> {}
    |                ^^^^ doesn't have a size known at compile-time
@@ -47,7 +53,7 @@ help: function arguments must have a statically known size, borrowed types alway
 LL |     fn map2<F>(&self, f: F) -> Map2<F> {}
    |                +
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0277, E0308, E0412.
+Some errors have detailed explanations: E0277, E0282, E0308, E0412.
 For more information about an error, try `rustc --explain E0277`.

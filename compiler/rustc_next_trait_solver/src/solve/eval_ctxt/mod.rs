@@ -286,18 +286,23 @@ where
             // fixing it may cause inference breakage or introduce ambiguity.
             GoalSource::Misc => PathKind::Unknown,
             GoalSource::NormalizeGoal(path_kind) => path_kind,
-            GoalSource::ImplWhereBound => {
+            GoalSource::ImplWhereBound => match self.current_goal_kind {
                 // We currently only consider a cycle coinductive if it steps
                 // into a where-clause of a coinductive trait.
+                CurrentGoalKind::CoinductiveTrait => PathKind::Coinductive,
+                // While normalizing via an impl does step into a where-clause of
+                // an impl, accessing the associated item immediately steps out of
+                // it again. This means cycles/recursive calls are not guarded
+                // by impls used for normalization.
                 //
+                // See tests/ui/traits/next-solver/cycles/normalizes-to-is-not-productive.rs
+                // for how this can go wrong.
+                CurrentGoalKind::NormalizesTo => PathKind::Inductive,
                 // We probably want to make all traits coinductive in the future,
-                // so we treat cycles involving their where-clauses as ambiguous.
-                if let CurrentGoalKind::CoinductiveTrait = self.current_goal_kind {
-                    PathKind::Coinductive
-                } else {
-                    PathKind::Unknown
-                }
-            }
+                // so we treat cycles involving where-clauses of not-yet coinductive
+                // traits as ambiguous for now.
+                CurrentGoalKind::Misc => PathKind::Unknown,
+            },
             // Relating types is always unproductive. If we were to map proof trees to
             // corecursive functions as explained in #136824, relating types never
             // introduces a constructor which could cause the recursion to be guarded.

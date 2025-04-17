@@ -1,4 +1,4 @@
-error: extern declarations without an explicit ABI are deprecated
+error: `extern` declarations without an explicit ABI are deprecated
   --> $DIR/cli-lint-override.rs:12:1
    |
 LL | extern fn foo() {}

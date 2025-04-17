@@ -6,20 +6,19 @@
 use std::fmt::{self, Debug};
 
 use rustc_abi::TyAndLayout;
-use rustc_ast::InlineAsmTemplatePiece;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LocalDefId;
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_type_ir::{ConstKind, VisitorResult, try_visit};
+use rustc_type_ir::{ConstKind, TypeFolder, VisitorResult, try_visit};
 
 use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Pattern, Region};
+use crate::infer::canonical::CanonicalVarInfos;
 use crate::mir::PlaceElem;
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
 use crate::ty::{
-    self, FallibleTypeFolder, InferConst, Lift, Term, TermKind, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, FallibleTypeFolder, Lift, Term, TermKind, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 
 impl fmt::Debug for ty::TraitDef {
@@ -271,6 +270,7 @@ TrivialTypeTraversalImpls! {
     crate::ty::AssocKind,
     crate::ty::BoundRegion,
     crate::ty::BoundVar,
+    crate::ty::InferConst,
     crate::ty::Placeholder<crate::ty::BoundRegion>,
     crate::ty::Placeholder<crate::ty::BoundTy>,
     crate::ty::Placeholder<ty::BoundVar>,
@@ -337,24 +337,6 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_poly_existential_predicates(v))
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Const<'tcx>> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_const_list(v))
-    }
-}
-
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Pattern<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
@@ -362,6 +344,11 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Pattern<'tcx> {
     ) -> Result<Self, F::Error> {
         let pat = (*self).clone().try_fold_with(folder)?;
         Ok(if pat == *self { self } else { folder.cx().mk_pat(pat) })
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        let pat = (*self).clone().fold_with(folder);
+        if pat == *self { self } else { folder.cx().mk_pat(pat) }
     }
 }
 
@@ -377,6 +364,10 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         folder.try_fold_ty(self)
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        folder.fold_ty(self)
     }
 }
 
@@ -435,6 +426,45 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
         };
 
         Ok(if *self.kind() == kind { self } else { folder.cx().mk_ty_from_kind(kind) })
+    }
+
+    fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        let kind = match *self.kind() {
+            ty::RawPtr(ty, mutbl) => ty::RawPtr(ty.fold_with(folder), mutbl),
+            ty::Array(typ, sz) => ty::Array(typ.fold_with(folder), sz.fold_with(folder)),
+            ty::Slice(typ) => ty::Slice(typ.fold_with(folder)),
+            ty::Adt(tid, args) => ty::Adt(tid, args.fold_with(folder)),
+            ty::Dynamic(trait_ty, region, representation) => {
+                ty::Dynamic(trait_ty.fold_with(folder), region.fold_with(folder), representation)
+            }
+            ty::Tuple(ts) => ty::Tuple(ts.fold_with(folder)),
+            ty::FnDef(def_id, args) => ty::FnDef(def_id, args.fold_with(folder)),
+            ty::FnPtr(sig_tys, hdr) => ty::FnPtr(sig_tys.fold_with(folder), hdr),
+            ty::UnsafeBinder(f) => ty::UnsafeBinder(f.fold_with(folder)),
+            ty::Ref(r, ty, mutbl) => ty::Ref(r.fold_with(folder), ty.fold_with(folder), mutbl),
+            ty::Coroutine(did, args) => ty::Coroutine(did, args.fold_with(folder)),
+            ty::CoroutineWitness(did, args) => ty::CoroutineWitness(did, args.fold_with(folder)),
+            ty::Closure(did, args) => ty::Closure(did, args.fold_with(folder)),
+            ty::CoroutineClosure(did, args) => ty::CoroutineClosure(did, args.fold_with(folder)),
+            ty::Alias(kind, data) => ty::Alias(kind, data.fold_with(folder)),
+            ty::Pat(ty, pat) => ty::Pat(ty.fold_with(folder), pat.fold_with(folder)),
+
+            ty::Bool
+            | ty::Char
+            | ty::Str
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Error(_)
+            | ty::Infer(_)
+            | ty::Param(..)
+            | ty::Bound(..)
+            | ty::Placeholder(..)
+            | ty::Never
+            | ty::Foreign(..) => return self,
+        };
+
+        if *self.kind() == kind { self } else { folder.cx().mk_ty_from_kind(kind) }
     }
 }
 
@@ -496,6 +526,10 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Region<'tcx> {
     ) -> Result<Self, F::Error> {
         folder.try_fold_region(self)
     }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        folder.fold_region(self)
+    }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
@@ -511,6 +545,10 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     ) -> Result<Self, F::Error> {
         folder.try_fold_predicate(self)
     }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        folder.fold_predicate(self)
+    }
 }
 
 // FIXME(clause): This is wonky
@@ -520,6 +558,10 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         Ok(folder.try_fold_predicate(self.as_predicate())?.expect_clause())
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        folder.fold_predicate(self.as_predicate()).expect_clause()
     }
 }
 
@@ -543,6 +585,11 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
         let new = self.kind().try_fold_with(folder)?;
         Ok(folder.cx().reuse_or_mk_predicate(self, new))
     }
+
+    fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        let new = self.kind().fold_with(folder);
+        folder.cx().reuse_or_mk_predicate(self, new)
+    }
 }
 
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
@@ -563,21 +610,16 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_clauses(v))
-    }
-}
-
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         folder.try_fold_const(self)
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        folder.fold_const(self)
     }
 }
 
@@ -605,6 +647,20 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
             ConstKind::Expr(e) => ConstKind::Expr(e.try_fold_with(folder)?),
         };
         if kind != self.kind() { Ok(folder.cx().mk_ct_from_kind(kind)) } else { Ok(self) }
+    }
+
+    fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        let kind = match self.kind() {
+            ConstKind::Param(p) => ConstKind::Param(p.fold_with(folder)),
+            ConstKind::Infer(i) => ConstKind::Infer(i.fold_with(folder)),
+            ConstKind::Bound(d, b) => ConstKind::Bound(d.fold_with(folder), b.fold_with(folder)),
+            ConstKind::Placeholder(p) => ConstKind::Placeholder(p.fold_with(folder)),
+            ConstKind::Unevaluated(uv) => ConstKind::Unevaluated(uv.fold_with(folder)),
+            ConstKind::Value(v) => ConstKind::Value(v.fold_with(folder)),
+            ConstKind::Error(e) => ConstKind::Error(e.fold_with(folder)),
+            ConstKind::Expr(e) => ConstKind::Expr(e.fold_with(folder)),
+        };
+        if kind != self.kind() { folder.cx().mk_ct_from_kind(kind) } else { self }
     }
 }
 
@@ -639,20 +695,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for rustc_span::ErrorGuaranteed {
     ) -> Result<Self, F::Error> {
         Ok(self)
     }
-}
 
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for InferConst {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for InferConst {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, _visitor: &mut V) -> V::Result {
-        V::Result::output()
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, _folder: &mut F) -> Self {
+        self
     }
 }
 
@@ -683,23 +728,9 @@ impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Debug + Clone> TypeFoldable<TyCtxt<'t
             span: self.span.try_fold_with(folder)?,
         })
     }
-}
 
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx [InlineAsmTemplatePiece] {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx [Span] {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        Spanned { node: self.node.fold_with(folder), span: self.span.fold_with(folder) }
     }
 }
 
@@ -710,13 +741,37 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<LocalDefId> {
     ) -> Result<Self, F::Error> {
         Ok(self)
     }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, _folder: &mut F) -> Self {
+        self
+    }
 }
 
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<PlaceElem<'tcx>> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_place_elems(v))
+macro_rules! list_fold {
+    ($($ty:ty : $mk:ident),+ $(,)?) => {
+        $(
+            impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for $ty {
+                fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+                    self,
+                    folder: &mut F,
+                ) -> Result<Self, F::Error> {
+                    ty::util::try_fold_list(self, folder, |tcx, v| tcx.$mk(v))
+                }
+
+                fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(
+                    self,
+                    folder: &mut F,
+                ) -> Self {
+                    ty::util::fold_list(self, folder, |tcx, v| tcx.$mk(v))
+                }
+            }
+        )*
     }
+}
+
+list_fold! {
+    ty::Clauses<'tcx> : mk_clauses,
+    &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> : mk_poly_existential_predicates,
+    &'tcx ty::List<PlaceElem<'tcx>> : mk_place_elems,
+    CanonicalVarInfos<'tcx> : mk_canonical_var_infos,
 }

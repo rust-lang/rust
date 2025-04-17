@@ -1,6 +1,6 @@
 use std::fs;
-use std::path::{Path, PathBuf};
 
+use camino::{Utf8Path, Utf8PathBuf};
 use glob::glob;
 use miropt_test_tools::{MiroptTest, MiroptTestFile, files_for_miropt_test};
 use tracing::debug;
@@ -14,7 +14,7 @@ impl TestCx<'_> {
         let should_run = self.should_run(pm);
 
         let mut test_info = files_for_miropt_test(
-            &self.testpaths.file,
+            &self.testpaths.file.as_std_path(),
             self.config.get_pointer_width(),
             self.config.target_cfg().panic.for_miropt_test_tools(),
         );
@@ -38,20 +38,15 @@ impl TestCx<'_> {
 
     fn check_mir_dump(&self, test_info: MiroptTest) {
         let test_dir = self.testpaths.file.parent().unwrap();
-        let test_crate =
-            self.testpaths.file.file_stem().unwrap().to_str().unwrap().replace('-', "_");
+        let test_crate = self.testpaths.file.file_stem().unwrap().replace('-', "_");
 
         let MiroptTest { run_filecheck, suffix, files, passes: _ } = test_info;
 
         if self.config.bless {
-            for e in
-                glob(&format!("{}/{}.*{}.mir", test_dir.display(), test_crate, suffix)).unwrap()
-            {
+            for e in glob(&format!("{}/{}.*{}.mir", test_dir, test_crate, suffix)).unwrap() {
                 fs::remove_file(e.unwrap()).unwrap();
             }
-            for e in
-                glob(&format!("{}/{}.*{}.diff", test_dir.display(), test_crate, suffix)).unwrap()
-            {
+            for e in glob(&format!("{}/{}.*{}.diff", test_dir, test_crate, suffix)).unwrap() {
                 fs::remove_file(e.unwrap()).unwrap();
             }
         }
@@ -60,19 +55,15 @@ impl TestCx<'_> {
             let dumped_string = if let Some(after) = to_file {
                 self.diff_mir_files(from_file.into(), after.into())
             } else {
-                let mut output_file = PathBuf::new();
+                let mut output_file = Utf8PathBuf::new();
                 output_file.push(self.get_mir_dump_dir());
                 output_file.push(&from_file);
-                debug!(
-                    "comparing the contents of: {} with {}",
-                    output_file.display(),
-                    expected_file.display()
-                );
+                debug!("comparing the contents of: {} with {:?}", output_file, expected_file);
                 if !output_file.exists() {
                     panic!(
                         "Output file `{}` from test does not exist, available files are in `{}`",
-                        output_file.display(),
-                        output_file.parent().unwrap().display()
+                        output_file,
+                        output_file.parent().unwrap()
                     );
                 }
                 self.check_mir_test_timestamp(&from_file, &output_file);
@@ -107,21 +98,20 @@ impl TestCx<'_> {
         }
     }
 
-    fn diff_mir_files(&self, before: PathBuf, after: PathBuf) -> String {
-        let to_full_path = |path: PathBuf| {
+    fn diff_mir_files(&self, before: Utf8PathBuf, after: Utf8PathBuf) -> String {
+        let to_full_path = |path: Utf8PathBuf| {
             let full = self.get_mir_dump_dir().join(&path);
             if !full.exists() {
                 panic!(
                     "the mir dump file for {} does not exist (requested in {})",
-                    path.display(),
-                    self.testpaths.file.display(),
+                    path, self.testpaths.file,
                 );
             }
             full
         };
         let before = to_full_path(before);
         let after = to_full_path(after);
-        debug!("comparing the contents of: {} with {}", before.display(), after.display());
+        debug!("comparing the contents of: {} with {}", before, after);
         let before = fs::read_to_string(before).unwrap();
         let after = fs::read_to_string(after).unwrap();
         let before = self.normalize_output(&before, &[]);
@@ -138,8 +128,8 @@ impl TestCx<'_> {
         dumped_string
     }
 
-    fn check_mir_test_timestamp(&self, test_name: &str, output_file: &Path) {
-        let t = |file| fs::metadata(file).unwrap().modified().unwrap();
+    fn check_mir_test_timestamp(&self, test_name: &str, output_file: &Utf8Path) {
+        let t = |file: &Utf8Path| fs::metadata(file.as_std_path()).unwrap().modified().unwrap();
         let source_file = &self.testpaths.file;
         let output_time = t(output_file);
         let source_time = t(source_file);
@@ -147,8 +137,7 @@ impl TestCx<'_> {
             debug!("source file time: {:?} output file time: {:?}", source_time, output_time);
             panic!(
                 "test source file `{}` is newer than potentially stale output file `{}`.",
-                source_file.display(),
-                test_name
+                source_file, test_name
             );
         }
     }

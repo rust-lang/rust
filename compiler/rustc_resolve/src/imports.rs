@@ -1012,7 +1012,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
                         // 2 segments, so the `resolve_path` above won't trigger it.
                         let mut full_path = import.module_path.clone();
-                        full_path.push(Segment::from_ident(Ident::empty()));
+                        full_path.push(Segment::from_ident(Ident::dummy()));
                         self.lint_if_path_starts_with_module(Some(finalize), &full_path, None);
                     }
 

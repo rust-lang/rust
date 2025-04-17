@@ -2112,16 +2112,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_ref: DefId,
     ) {
         if let Some(assoc_item) = self.tcx.opt_associated_item(item_def_id) {
-            if let ty::AssocKind::Const | ty::AssocKind::Type = assoc_item.kind {
+            if let ty::AssocKind::Const { .. } | ty::AssocKind::Type { .. } = assoc_item.kind {
                 err.note(format!(
                     "{}s cannot be accessed directly on a `trait`, they can only be \
                         accessed through a specific `impl`",
-                    self.tcx.def_kind_descr(assoc_item.kind.as_def_kind(), item_def_id)
+                    self.tcx.def_kind_descr(assoc_item.as_def_kind(), item_def_id)
                 ));
                 err.span_suggestion(
                     span,
                     "use the fully qualified path to an implementation",
-                    format!("<Type as {}>::{}", self.tcx.def_path_str(trait_ref), assoc_item.name),
+                    format!(
+                        "<Type as {}>::{}",
+                        self.tcx.def_path_str(trait_ref),
+                        assoc_item.name()
+                    ),
                     Applicability::HasPlaceholders,
                 );
             }
@@ -5411,7 +5415,7 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
                 tcx.associated_items(data.impl_or_alias_def_id).find_by_ident_and_kind(
                     tcx,
                     Ident::with_dummy_span(name),
-                    ty::AssocKind::Type,
+                    ty::AssocTag::Type,
                     data.impl_or_alias_def_id,
                 )
             {

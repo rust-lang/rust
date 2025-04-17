@@ -12,7 +12,7 @@ LL |     pub mod doesnt_exist {
 note: the item is gated here
   --> $DIR/auxiliary/cfged_out.rs:5:5
    |
-LL |     #[cfg(FALSE)]
+LL |     #[cfg(false)]
    |     ^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `uwu` in crate `cfged_out`
@@ -35,7 +35,7 @@ LL |     pub fn uwu() {}
 note: the item is gated here
   --> $DIR/auxiliary/cfged_out.rs:2:5
    |
-LL |     #[cfg(FALSE)]
+LL |     #[cfg(false)]
    |     ^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `meow` in module `cfged_out::inner::right`

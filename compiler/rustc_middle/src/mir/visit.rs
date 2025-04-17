@@ -457,9 +457,15 @@ macro_rules! make_mir_visitor {
                             }
                         }
                     }
+                    StatementKind::BackwardIncompatibleDropHint { place, .. } => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::BackwardIncompatibleDropHint),
+                            location
+                        );
+                    }
                     StatementKind::ConstEvalCounter => {}
                     StatementKind::Nop => {}
-                    StatementKind::BackwardIncompatibleDropHint { .. } => {}
                 }
             }
 
@@ -1348,6 +1354,8 @@ pub enum NonUseContext {
     AscribeUserTy(ty::Variance),
     /// The data of a user variable, for debug info.
     VarDebugInfo,
+    /// A `BackwardIncompatibleDropHint` statement, meant for edition 2024 lints.
+    BackwardIncompatibleDropHint,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1422,7 +1430,9 @@ impl PlaceContext {
         use NonUseContext::*;
         match self {
             PlaceContext::MutatingUse(_) => ty::Invariant,
-            PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
+            PlaceContext::NonUse(
+                StorageDead | StorageLive | VarDebugInfo | BackwardIncompatibleDropHint,
+            ) => ty::Invariant,
             PlaceContext::NonMutatingUse(
                 Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | RawBorrow
                 | Projection,

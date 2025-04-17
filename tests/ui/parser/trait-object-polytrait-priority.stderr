@@ -1,8 +1,8 @@
-error[E0178]: expected a path on the left-hand side of `+`, not `&for<'a> Trait<'a>`
+error[E0178]: expected a path on the left-hand side of `+`
   --> $DIR/trait-object-polytrait-priority.rs:6:12
    |
 LL |     let _: &for<'a> Trait<'a> + 'static;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^
    |
 help: try adding parentheses
    |

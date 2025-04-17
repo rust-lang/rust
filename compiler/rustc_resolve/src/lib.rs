@@ -2007,16 +2007,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 result,
                 result.map(|r| r.expn_data())
             );
-            // Then find the last semi-transparent mark from the end if it exists.
+            // Then find the last semi-opaque mark from the end if it exists.
             for (mark, transparency) in iter {
-                if transparency == Transparency::SemiTransparent {
+                if transparency == Transparency::SemiOpaque {
                     result = Some(mark);
                 } else {
                     break;
                 }
             }
             debug!(
-                "resolve_crate_root: found semi-transparent mark {:?} {:?}",
+                "resolve_crate_root: found semi-opaque mark {:?} {:?}",
                 result,
                 result.map(|r| r.expn_data())
             );

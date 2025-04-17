@@ -25,7 +25,7 @@ use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
 
 use crate::ast::AttrStyle;
 use crate::ast_traits::{HasAttrs, HasTokens};
-use crate::token::{self, Delimiter, InvisibleOrigin, Nonterminal, Token, TokenKind};
+use crate::token::{self, Delimiter, Token, TokenKind};
 use crate::{AttrVec, Attribute};
 
 /// Part of a `TokenStream`.
@@ -305,11 +305,6 @@ pub struct AttrsTarget {
 }
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
-///
-/// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
-/// instead of a representation of the abstract syntax tree.
-/// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
-/// backwards compatibility.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
 
@@ -474,61 +469,6 @@ impl TokenStream {
         let mut tts = vec![];
         attrs_and_tokens_to_token_trees(node.attrs(), tokens, &mut tts);
         TokenStream::new(tts)
-    }
-
-    pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {
-        match nt {
-            Nonterminal::NtBlock(block) => TokenStream::from_ast(block),
-        }
-    }
-
-    fn flatten_token(token: &Token, spacing: Spacing) -> TokenTree {
-        match token.kind {
-            token::NtIdent(ident, is_raw) => {
-                TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span), spacing)
-            }
-            token::NtLifetime(ident, is_raw) => TokenTree::Delimited(
-                DelimSpan::from_single(token.span),
-                DelimSpacing::new(Spacing::JointHidden, spacing),
-                Delimiter::Invisible(InvisibleOrigin::FlattenToken),
-                TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span),
-            ),
-            token::Interpolated(ref nt) => TokenTree::Delimited(
-                DelimSpan::from_single(token.span),
-                DelimSpacing::new(Spacing::JointHidden, spacing),
-                Delimiter::Invisible(InvisibleOrigin::FlattenToken),
-                TokenStream::from_nonterminal_ast(&nt).flattened(),
-            ),
-            _ => TokenTree::Token(token.clone(), spacing),
-        }
-    }
-
-    fn flatten_token_tree(tree: &TokenTree) -> TokenTree {
-        match tree {
-            TokenTree::Token(token, spacing) => TokenStream::flatten_token(token, *spacing),
-            TokenTree::Delimited(span, spacing, delim, tts) => {
-                TokenTree::Delimited(*span, *spacing, *delim, tts.flattened())
-            }
-        }
-    }
-
-    #[must_use]
-    pub fn flattened(&self) -> TokenStream {
-        fn can_skip(stream: &TokenStream) -> bool {
-            stream.iter().all(|tree| match tree {
-                TokenTree::Token(token, _) => !matches!(
-                    token.kind,
-                    token::NtIdent(..) | token::NtLifetime(..) | token::Interpolated(..)
-                ),
-                TokenTree::Delimited(.., inner) => can_skip(inner),
-            })
-        }
-
-        if can_skip(self) {
-            return self.clone();
-        }
-
-        self.iter().map(|tree| TokenStream::flatten_token_tree(tree)).collect()
     }
 
     // If `vec` is not empty, try to glue `tt` onto its last token. The return

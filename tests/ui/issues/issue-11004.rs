@@ -9,7 +9,7 @@ unsafe fn access(n:*mut A) -> (i32, f64) {
     (x, y)
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 unsafe fn access(n:*mut A) -> (i32, f64) {
     let x : i32 = (*n).x;
     let y : f64 = (*n).y;

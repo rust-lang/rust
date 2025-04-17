@@ -1,19 +1,19 @@
-error[E0178]: expected a path on the left-hand side of `+`, not `&Copy`
+error[E0178]: expected a path on the left-hand side of `+`
   --> $DIR/trait-object-reference-without-parens-suggestion.rs:4:12
    |
 LL |     let _: &Copy + 'static;
-   |            ^^^^^^^^^^^^^^^
+   |            ^^^^^
    |
 help: try adding parentheses
    |
 LL |     let _: &(Copy + 'static);
    |             +              +
 
-error[E0178]: expected a path on the left-hand side of `+`, not `&'static Copy`
+error[E0178]: expected a path on the left-hand side of `+`
   --> $DIR/trait-object-reference-without-parens-suggestion.rs:6:12
    |
 LL |     let _: &'static Copy + 'static;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^
    |
 help: try adding parentheses
    |

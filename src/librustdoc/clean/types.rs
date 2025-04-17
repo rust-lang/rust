@@ -517,7 +517,7 @@ impl Item {
                     Some(RenderedLink {
                         original_text: s.clone(),
                         new_text: link_text.clone(),
-                        tooltip: link_tooltip(*id, fragment, cx),
+                        tooltip: link_tooltip(*id, fragment, cx).to_string(),
                         href,
                     })
                 } else {
@@ -1426,7 +1426,7 @@ pub(crate) struct Arguments {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct Argument {
     pub(crate) type_: Type,
-    pub(crate) name: Symbol,
+    pub(crate) name: Option<Symbol>,
     /// This field is used to represent "const" arguments from the `rustc_legacy_const_generics`
     /// feature. More information in <https://github.com/rust-lang/rust/issues/83167>.
     pub(crate) is_const: bool,
@@ -1434,7 +1434,7 @@ pub(crate) struct Argument {
 
 impl Argument {
     pub(crate) fn to_receiver(&self) -> Option<&Type> {
-        if self.name == kw::SelfLower { Some(&self.type_) } else { None }
+        if self.name == Some(kw::SelfLower) { Some(&self.type_) } else { None }
     }
 }
 
@@ -2504,7 +2504,7 @@ impl Impl {
         self.trait_
             .as_ref()
             .map(|t| t.def_id())
-            .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.name).collect())
+            .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.name()).collect())
             .unwrap_or_default()
     }
 

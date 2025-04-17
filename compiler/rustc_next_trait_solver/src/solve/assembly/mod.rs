@@ -792,37 +792,46 @@ where
         };
 
         match proven_via {
-            // Even when a trait bound has been proven using a where-bound, we
-            // still need to consider alias-bounds for normalization, see
-            // tests/ui/next-solver/alias-bound-shadowed-by-env.rs.
-            //
-            // FIXME(const_trait_impl): should this behavior also be used by
-            // constness checking. Doing so is *at least theoretically* breaking,
-            // see github.com/rust-lang/rust/issues/133044#issuecomment-2500709754
             TraitGoalProvenVia::ParamEnv | TraitGoalProvenVia::AliasBound => {
-                let mut candidates_from_env_and_bounds: Vec<_> = candidates
-                    .iter()
-                    .filter(|c| {
-                        matches!(
-                            c.source,
-                            CandidateSource::AliasBound | CandidateSource::ParamEnv(_)
-                        )
-                    })
-                    .map(|c| c.result)
-                    .collect();
+                let mut considered_candidates = Vec::new();
+                considered_candidates.extend(
+                    candidates
+                        .iter()
+                        .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                        .map(|c| c.result),
+                );
+
+                // Even when a trait bound has been proven using a where-bound, we
+                // still need to consider alias-bounds for normalization, see
+                // tests/ui/next-solver/alias-bound-shadowed-by-env.rs.
+                //
+                // We still need to prefer where-bounds over alias-bounds however.
+                // See tests/ui/winnowing/norm-where-bound-gt-alias-bound.rs.
+                //
+                // FIXME(const_trait_impl): should this behavior also be used by
+                // constness checking. Doing so is *at least theoretically* breaking,
+                // see github.com/rust-lang/rust/issues/133044#issuecomment-2500709754
+                if considered_candidates.is_empty() {
+                    considered_candidates.extend(
+                        candidates
+                            .iter()
+                            .filter(|c| matches!(c.source, CandidateSource::AliasBound))
+                            .map(|c| c.result),
+                    );
+                }
 
                 // If the trait goal has been proven by using the environment, we want to treat
                 // aliases as rigid if there are no applicable projection bounds in the environment.
-                if candidates_from_env_and_bounds.is_empty() {
+                if considered_candidates.is_empty() {
                     if let Ok(response) = inject_normalize_to_rigid_candidate(self) {
-                        candidates_from_env_and_bounds.push(response);
+                        considered_candidates.push(response);
                     }
                 }
 
-                if let Some(response) = self.try_merge_responses(&candidates_from_env_and_bounds) {
+                if let Some(response) = self.try_merge_responses(&considered_candidates) {
                     Ok(response)
                 } else {
-                    self.flounder(&candidates_from_env_and_bounds)
+                    self.flounder(&considered_candidates)
                 }
             }
             TraitGoalProvenVia::Misc => {

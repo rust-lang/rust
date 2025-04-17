@@ -376,7 +376,7 @@ pub(super) fn check_for_substitution(
             ascii_name,
         })
     };
-    (token.clone(), sugg)
+    (*token, sugg)
 }
 
 /// Extract string if found at current position with given delimiters

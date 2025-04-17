@@ -6,8 +6,6 @@
 //! To begin with, this target mirrors the wasi target 1 to 1, but over
 //! time this will change significantly.
 
-#[path = "../wasi/args.rs"]
-pub mod args;
 #[path = "../wasi/env.rs"]
 pub mod env;
 #[allow(unused)]

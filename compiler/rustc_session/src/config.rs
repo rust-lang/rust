@@ -14,6 +14,7 @@ use std::str::{self, FromStr};
 use std::sync::LazyLock;
 use std::{cmp, fmt, fs, iter};
 
+use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
@@ -39,6 +40,7 @@ use crate::utils::CanonicalizedPath;
 use crate::{EarlyDiagCtxt, HashStableContext, Session, filesearch, lint};
 
 mod cfg;
+mod externs;
 mod native_libs;
 pub mod sigpipe;
 
@@ -1560,9 +1562,10 @@ The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE
     )
 });
 
-static PRINT_KINDS_STRING: LazyLock<String> = LazyLock::new(|| {
+static PRINT_HELP: LazyLock<String> = LazyLock::new(|| {
     format!(
-        "[{}]",
+        "Compiler information to print on stdout (or to a file)\n\
+        INFO may be one of ({}).",
         PRINT_KINDS.iter().map(|(name, _)| format!("{name}")).collect::<Vec<_>>().join("|")
     )
 });
@@ -1621,14 +1624,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Comma separated list of types of output for the compiler to emit",
             "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info|mir]",
         ),
-        opt(
-            Stable,
-            Multi,
-            "",
-            "print",
-            "Compiler information to print on stdout",
-            &PRINT_KINDS_STRING,
-        ),
+        opt(Stable, Multi, "", "print", &PRINT_HELP, "INFO[=FILE]"),
         opt(Stable, FlagMulti, "g", "", "Equivalent to -C debuginfo=2", ""),
         opt(Stable, FlagMulti, "O", "", "Equivalent to -C opt-level=3", ""),
         opt(Stable, Opt, "o", "", "Write output to <filename>", "FILENAME"),
@@ -2211,44 +2207,13 @@ pub fn parse_externs(
     matches: &getopts::Matches,
     unstable_opts: &UnstableOptions,
 ) -> Externs {
-    fn is_ascii_ident(string: &str) -> bool {
-        let mut chars = string.chars();
-        if let Some(start) = chars.next()
-            && (start.is_ascii_alphabetic() || start == '_')
-        {
-            chars.all(|char| char.is_ascii_alphanumeric() || char == '_')
-        } else {
-            false
-        }
-    }
-
     let is_unstable_enabled = unstable_opts.unstable_options;
     let mut externs: BTreeMap<String, ExternEntry> = BTreeMap::new();
     for arg in matches.opt_strs("extern") {
-        let (name, path) = match arg.split_once('=') {
-            None => (arg, None),
-            Some((name, path)) => (name.to_string(), Some(Path::new(path))),
-        };
-        let (options, name) = match name.split_once(':') {
-            None => (None, name),
-            Some((opts, name)) => (Some(opts), name.to_string()),
-        };
+        let ExternOpt { crate_name: name, path, options } =
+            split_extern_opt(early_dcx, unstable_opts, &arg).unwrap_or_else(|e| e.emit());
 
-        if !is_ascii_ident(&name) {
-            let mut error = early_dcx.early_struct_fatal(format!(
-                "crate name `{name}` passed to `--extern` is not a valid ASCII identifier"
-            ));
-            let adjusted_name = name.replace('-', "_");
-            if is_ascii_ident(&adjusted_name) {
-                #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
-                error.help(format!(
-                    "consider replacing the dashes with underscores: `{adjusted_name}`"
-                ));
-            }
-            error.emit();
-        }
-
-        let path = path.map(|p| CanonicalizedPath::new(p));
+        let path = path.map(|p| CanonicalizedPath::new(p.as_path()));
 
         let entry = externs.entry(name.to_owned());
 

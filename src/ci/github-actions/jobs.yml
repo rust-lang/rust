@@ -23,8 +23,8 @@ runners:
     os: ubuntu-24.04-16core-64gb
     <<: *base-job
 
-  - &job-macos-xl
-    os: macos-13 # We use the standard runner for now
+  - &job-macos
+    os: macos-13
     <<: *base-job
 
   - &job-macos-m1
@@ -304,6 +304,31 @@ auto:
   - name: x86_64-gnu-distcheck
     <<: *job-linux-8c
 
+  # The x86_64-gnu-llvm-20 job is split into multiple jobs to run tests in parallel.
+  # x86_64-gnu-llvm-20-1 skips tests that run in x86_64-gnu-llvm-20-{2,3}.
+  - name: x86_64-gnu-llvm-20-1
+    env:
+      RUST_BACKTRACE: 1
+      IMAGE: x86_64-gnu-llvm-20
+      DOCKER_SCRIPT: stage_2_test_set1.sh
+    <<: *job-linux-4c
+
+  # Skip tests that run in x86_64-gnu-llvm-20-{1,3}
+  - name: x86_64-gnu-llvm-20-2
+    env:
+      RUST_BACKTRACE: 1
+      IMAGE: x86_64-gnu-llvm-20
+      DOCKER_SCRIPT: x86_64-gnu-llvm2.sh
+    <<: *job-linux-4c
+
+  # Skip tests that run in x86_64-gnu-llvm-20-{1,2}
+  - name: x86_64-gnu-llvm-20-3
+    env:
+      RUST_BACKTRACE: 1
+      IMAGE: x86_64-gnu-llvm-20
+      DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
+    <<: *job-linux-4c
+
   # The x86_64-gnu-llvm-19 job is split into multiple jobs to run tests in parallel.
   # x86_64-gnu-llvm-19-1 skips tests that run in x86_64-gnu-llvm-19-{2,3}.
   - name: x86_64-gnu-llvm-19-1
@@ -355,7 +380,7 @@ auto:
       NO_OVERFLOW_CHECKS: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-macos-xl
+    <<: *job-macos
 
   - name: dist-apple-various
     env:
@@ -372,18 +397,18 @@ auto:
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
       NO_OVERFLOW_CHECKS: 1
-    <<: *job-macos-xl
+    <<: *job-macos
 
   - name: x86_64-apple-1
     env:
       <<: *env-x86_64-apple-tests
-    <<: *job-macos-xl
+    <<: *job-macos
 
   - name: x86_64-apple-2
     env:
       SCRIPT: ./x.py --stage 2 test tests/ui tests/rustdoc
       <<: *env-x86_64-apple-tests
-    <<: *job-macos-xl
+    <<: *job-macos
 
   - name: dist-aarch64-apple
     env:

@@ -273,7 +273,6 @@ impl<'a> Parser<'a> {
                         self.dcx().emit_err(PathSingleColon {
                             span: self.prev_token.span,
                             suggestion: self.prev_token.span.shrink_to_hi(),
-                            type_ascription: self.psess.unstable_features.is_nightly_build(),
                         });
                     }
                     continue;
@@ -348,7 +347,6 @@ impl<'a> Parser<'a> {
                             err = self.dcx().create_err(PathSingleColon {
                                 span: self.token.span,
                                 suggestion: self.prev_token.span.shrink_to_hi(),
-                                type_ascription: self.psess.unstable_features.is_nightly_build(),
                             });
                         }
                         // Attempt to find places where a missing `>` might belong.
@@ -393,8 +391,8 @@ impl<'a> Parser<'a> {
                 } else {
                     // `(T, U) -> R`
 
-                    let prev_token_before_parsing = self.prev_token.clone();
-                    let token_before_parsing = self.token.clone();
+                    let prev_token_before_parsing = self.prev_token;
+                    let token_before_parsing = self.token;
                     let mut snapshot = None;
                     if self.may_recover()
                         && prev_token_before_parsing == token::PathSep

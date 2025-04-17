@@ -7,9 +7,9 @@ use std::{fmt, iter, mem, ptr, slice};
 use rustc_data_structures::aligned::{Aligned, align_of};
 use rustc_data_structures::sync::DynSync;
 use rustc_serialize::{Encodable, Encoder};
+use rustc_type_ir::FlagComputation;
 
-use super::flags::FlagComputation;
-use super::{DebruijnIndex, TypeFlags};
+use super::{DebruijnIndex, TyCtxt, TypeFlags};
 use crate::arena::Arena;
 
 /// `List<T>` is a bit like `&[T]`, but with some critical differences.
@@ -299,8 +299,8 @@ impl TypeInfo {
     }
 }
 
-impl From<FlagComputation> for TypeInfo {
-    fn from(computation: FlagComputation) -> TypeInfo {
+impl<'tcx> From<FlagComputation<TyCtxt<'tcx>>> for TypeInfo {
+    fn from(computation: FlagComputation<TyCtxt<'tcx>>) -> TypeInfo {
         TypeInfo {
             flags: computation.flags,
             outer_exclusive_binder: computation.outer_exclusive_binder,

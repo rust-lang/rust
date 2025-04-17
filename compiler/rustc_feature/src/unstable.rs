@@ -391,8 +391,6 @@ declare_features! (
     (unstable, async_trait_bounds, "1.85.0", Some(62290)),
     /// Allows using C-variadics.
     (unstable, c_variadic, "1.34.0", Some(44930)),
-    /// Allows the use of `#[cfg(<true/false>)]`.
-    (unstable, cfg_boolean_literals, "1.83.0", Some(131204)),
     /// Allows the use of `#[cfg(contract_checks)` to check if contract checks are enabled.
     (unstable, cfg_contract_checks, "1.86.0", Some(128044)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
@@ -477,6 +475,8 @@ declare_features! (
     (incomplete, ergonomic_clones, "1.87.0", Some(132290)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (unstable, exhaustive_patterns, "1.13.0", Some(51085)),
+    /// Disallows `extern` without an explicit ABI.
+    (unstable, explicit_extern_abis, "CURRENT_RUSTC_VERSION", Some(134986)),
     /// Allows explicit tail calls via `become` expression.
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
     /// Allows using `aapcs`, `efiapi`, `sysv64` and `win64` as calling conventions
@@ -565,6 +565,8 @@ declare_features! (
     (incomplete, mut_ref, "1.79.0", Some(123076)),
     /// Allows using `#[naked]` on functions.
     (unstable, naked_functions, "1.9.0", Some(90957)),
+    /// Allows using `#[naked]` on `extern "Rust"` functions.
+    (unstable, naked_functions_rustic_abi, "CURRENT_RUSTC_VERSION", Some(138997)),
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
     (unstable, naked_functions_target_feature, "1.86.0", Some(138568)),
     /// Allows specifying the as-needed link modifier
