@@ -1,5 +1,5 @@
 error: called `map(<f>).unwrap_or_default()` on an `Option` value
-  --> tests/ui/manual_is_variant_and.rs:13:17
+  --> tests/ui/manual_is_variant_and.rs:51:17
    |
 LL |       let _ = opt.map(|x| x > 1)
    |  _________________^
@@ -11,7 +11,7 @@ LL | |         .unwrap_or_default();
    = help: to override `-D warnings` add `#[allow(clippy::manual_is_variant_and)]`
 
 error: called `map(<f>).unwrap_or_default()` on an `Option` value
-  --> tests/ui/manual_is_variant_and.rs:18:17
+  --> tests/ui/manual_is_variant_and.rs:56:17
    |
 LL |       let _ = opt.map(|x| {
    |  _________________^
@@ -30,13 +30,13 @@ LL ~     });
    |
 
 error: called `map(<f>).unwrap_or_default()` on an `Option` value
-  --> tests/ui/manual_is_variant_and.rs:23:17
+  --> tests/ui/manual_is_variant_and.rs:61:17
    |
 LL |     let _ = opt.map(|x| x > 1).unwrap_or_default();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `is_some_and(|x| x > 1)`
 
 error: called `map(<f>).unwrap_or_default()` on an `Option` value
-  --> tests/ui/manual_is_variant_and.rs:26:10
+  --> tests/ui/manual_is_variant_and.rs:64:10
    |
 LL |           .map(|x| x > 1)
    |  __________^
@@ -44,14 +44,38 @@ LL | |
 LL | |         .unwrap_or_default();
    | |____________________________^ help: use: `is_some_and(|x| x > 1)`
 
+error: called `.map() == Some()`
+  --> tests/ui/manual_is_variant_and.rs:68:13
+   |
+LL |     let _ = Some(2).map(|x| x % 2 == 0) == Some(true);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `Some(2).is_some_and(|x| x % 2 == 0)`
+
+error: called `.map() != Some()`
+  --> tests/ui/manual_is_variant_and.rs:70:13
+   |
+LL |     let _ = Some(2).map(|x| x % 2 == 0) != Some(true);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `Some(2).is_none_or(|x| x % 2 == 0)`
+
+error: called `.map() == Some()`
+  --> tests/ui/manual_is_variant_and.rs:72:13
+   |
+LL |     let _ = Some(2).map(|x| x % 2 == 0) == some_true!();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `Some(2).is_some_and(|x| x % 2 == 0)`
+
+error: called `.map() != Some()`
+  --> tests/ui/manual_is_variant_and.rs:74:13
+   |
+LL |     let _ = Some(2).map(|x| x % 2 == 0) != some_false!();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `Some(2).is_none_or(|x| x % 2 == 0)`
+
 error: called `map(<f>).unwrap_or_default()` on an `Option` value
-  --> tests/ui/manual_is_variant_and.rs:34:18
+  --> tests/ui/manual_is_variant_and.rs:81:18
    |
 LL |     let _ = opt2.map(char::is_alphanumeric).unwrap_or_default(); // should lint
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `is_some_and(char::is_alphanumeric)`
 
 error: called `map(<f>).unwrap_or_default()` on a `Result` value
-  --> tests/ui/manual_is_variant_and.rs:44:17
+  --> tests/ui/manual_is_variant_and.rs:99:17
    |
 LL |       let _ = res.map(|x| {
    |  _________________^
@@ -70,7 +94,7 @@ LL ~     });
    |
 
 error: called `map(<f>).unwrap_or_default()` on a `Result` value
-  --> tests/ui/manual_is_variant_and.rs:49:17
+  --> tests/ui/manual_is_variant_and.rs:104:17
    |
 LL |       let _ = res.map(|x| x > 1)
    |  _________________^
@@ -78,11 +102,29 @@ LL | |
 LL | |         .unwrap_or_default();
    | |____________________________^ help: use: `is_ok_and(|x| x > 1)`
 
+error: called `.map() == Ok()`
+  --> tests/ui/manual_is_variant_and.rs:108:13
+   |
+LL |     let _ = Ok::<usize, ()>(2).map(|x| x % 2 == 0) == Ok(true);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `Ok::<usize, ()>(2).is_ok_and(|x| x % 2 == 0)`
+
+error: called `.map() != Ok()`
+  --> tests/ui/manual_is_variant_and.rs:110:13
+   |
+LL |     let _ = Ok::<usize, ()>(2).map(|x| x % 2 == 0) != Ok(true);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `!Ok::<usize, ()>(2).is_ok_and(|x| x % 2 == 0)`
+
+error: called `.map() != Ok()`
+  --> tests/ui/manual_is_variant_and.rs:112:13
+   |
+LL |     let _ = Ok::<usize, ()>(2).map(|x| x % 2 == 0) != Ok(true);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `!Ok::<usize, ()>(2).is_ok_and(|x| x % 2 == 0)`
+
 error: called `map(<f>).unwrap_or_default()` on a `Result` value
-  --> tests/ui/manual_is_variant_and.rs:57:18
+  --> tests/ui/manual_is_variant_and.rs:119:18
    |
 LL |     let _ = res2.map(char::is_alphanumeric).unwrap_or_default(); // should lint
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `is_ok_and(char::is_alphanumeric)`
 
-error: aborting due to 8 previous errors
+error: aborting due to 15 previous errors
 
