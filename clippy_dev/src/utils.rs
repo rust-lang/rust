@@ -4,10 +4,11 @@ use core::slice;
 use core::str::FromStr;
 use rustc_lexer::{self as lexer, FrontmatterAllowed};
 use std::env;
+use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::process::{self, ExitStatus};
+use std::process::{self, Command, ExitStatus, Stdio};
 
 #[cfg(not(windows))]
 static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
@@ -15,15 +16,16 @@ static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
 static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
 
 #[derive(Clone, Copy)]
-pub enum FileAction {
+pub enum ErrAction {
     Open,
     Read,
     Write,
     Create,
     Rename,
     Delete,
+    Run,
 }
-impl FileAction {
+impl ErrAction {
     fn as_str(self) -> &'static str {
         match self {
             Self::Open => "opening",
@@ -32,13 +34,14 @@ impl FileAction {
             Self::Create => "creating",
             Self::Rename => "renaming",
             Self::Delete => "deleting",
+            Self::Run => "running",
         }
     }
 }
 
 #[cold]
 #[track_caller]
-pub fn panic_file(err: &impl Display, action: FileAction, path: &Path) -> ! {
+pub fn panic_action(err: &impl Display, action: ErrAction, path: &Path) -> ! {
     panic!("error {} `{}`: {}", action.as_str(), path.display(), *err)
 }
 
@@ -54,7 +57,7 @@ impl<'a> File<'a> {
         let path = path.as_ref();
         match options.open(path) {
             Ok(inner) => Self { inner, path },
-            Err(e) => panic_file(&e, FileAction::Open, path),
+            Err(e) => panic_action(&e, ErrAction::Open, path),
         }
     }
 
@@ -65,7 +68,7 @@ impl<'a> File<'a> {
         match options.open(path) {
             Ok(inner) => Some(Self { inner, path }),
             Err(e) if e.kind() == io::ErrorKind::NotFound => None,
-            Err(e) => panic_file(&e, FileAction::Open, path),
+            Err(e) => panic_action(&e, ErrAction::Open, path),
         }
     }
 
@@ -83,7 +86,7 @@ impl<'a> File<'a> {
     pub fn read_append_to_string<'dst>(&mut self, dst: &'dst mut String) -> &'dst mut String {
         match self.inner.read_to_string(dst) {
             Ok(_) => {},
-            Err(e) => panic_file(&e, FileAction::Read, self.path),
+            Err(e) => panic_action(&e, ErrAction::Read, self.path),
         }
         dst
     }
@@ -105,7 +108,7 @@ impl<'a> File<'a> {
             Err(e) => Err(e),
         };
         if let Err(e) = res {
-            panic_file(&e, FileAction::Write, self.path);
+            panic_action(&e, ErrAction::Write, self.path);
         }
     }
 }
@@ -183,10 +186,7 @@ fn toml_iter(s: &str) -> impl Iterator<Item = (usize, TomlPart<'_>)> {
         .filter_map(|(pos, s)| {
             if let Some(s) = s.strip_prefix('[') {
                 s.split_once(']').map(|(name, _)| (pos, TomlPart::Table(name)))
-            } else if matches!(
-                s.as_bytes().get(0),
-                Some(b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')
-            ) {
+            } else if matches!(s.bytes().next(), Some(b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')) {
                 s.split_once('=').map(|(key, value)| (pos, TomlPart::Value(key, value)))
             } else {
                 None
@@ -200,6 +200,7 @@ pub struct CargoPackage<'a> {
     pub not_a_platform_range: Range<usize>,
 }
 
+#[must_use]
 pub fn parse_cargo_package(s: &str) -> CargoPackage<'_> {
     let mut in_package = false;
     let mut in_platform_deps = false;
@@ -232,7 +233,7 @@ pub fn parse_cargo_package(s: &str) -> CargoPackage<'_> {
                 },
                 _ => {},
             },
-            _ => {},
+            TomlPart::Value(..) => {},
         }
     }
     CargoPackage {
@@ -268,9 +269,8 @@ impl ClippyInfo {
                             version,
                             has_intellij_hook: !package.not_a_platform_range.is_empty(),
                         };
-                    } else {
-                        panic!("error reading clippy version from {}", file.path.display());
                     }
+                    panic!("error reading clippy version from `{}`", file.path.display());
                 }
             }
 
@@ -322,6 +322,11 @@ impl UpdateMode {
     #[must_use]
     pub fn from_check(check: bool) -> Self {
         if check { Self::Check } else { Self::Change }
+    }
+
+    #[must_use]
+    pub fn is_check(self) -> bool {
+        matches!(self, Self::Check)
     }
 }
 
@@ -611,7 +616,7 @@ pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
     match OpenOptions::new().create_new(true).write(true).open(new_name) {
         Ok(file) => drop(file),
         Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
-        Err(ref e) => panic_file(e, FileAction::Create, new_name),
+        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
     }
     match fs::rename(old_name, new_name) {
         Ok(()) => true,
@@ -622,7 +627,7 @@ pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
             if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
                 false
             } else {
-                panic_file(e, FileAction::Rename, old_name);
+                panic_action(e, ErrAction::Rename, old_name);
             }
         },
     }
@@ -633,7 +638,7 @@ pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
     match fs::create_dir(new_name) {
         Ok(()) => {},
         Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
-        Err(ref e) => panic_file(e, FileAction::Create, new_name),
+        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
     }
     // Windows can't reliably rename to an empty directory.
     #[cfg(windows)]
@@ -648,14 +653,55 @@ pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
             if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
                 false
             } else {
-                panic_file(e, FileAction::Rename, old_name);
+                panic_action(e, ErrAction::Rename, old_name);
             }
         },
     }
 }
 
 pub fn write_file(path: &Path, contents: &str) {
-    fs::write(path, contents).unwrap_or_else(|e| panic_file(&e, FileAction::Write, path));
+    fs::write(path, contents).unwrap_or_else(|e| panic_action(&e, ErrAction::Write, path));
+}
+
+#[must_use]
+pub fn run_with_output(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) -> Vec<u8> {
+    fn f(path: &Path, cmd: &mut Command) -> Vec<u8> {
+        match cmd
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .output()
+        {
+            Ok(x) => match x.status.exit_ok() {
+                Ok(()) => x.stdout,
+                Err(ref e) => panic_action(e, ErrAction::Run, path),
+            },
+            Err(ref e) => panic_action(e, ErrAction::Run, path),
+        }
+    }
+    f(path.as_ref(), cmd)
+}
+
+pub fn run_with_args_split(
+    mut make_cmd: impl FnMut() -> Command,
+    mut run_cmd: impl FnMut(&mut Command),
+    args: impl Iterator<Item: AsRef<OsStr>>,
+) {
+    let mut cmd = make_cmd();
+    let mut len = 0;
+    for arg in args {
+        len += arg.as_ref().len();
+        cmd.arg(arg);
+        // Very conservative limit
+        if len > 10000 {
+            run_cmd(&mut cmd);
+            cmd = make_cmd();
+            len = 0;
+        }
+    }
+    if len != 0 {
+        run_cmd(&mut cmd);
+    }
 }
 
 #[expect(clippy::must_use_candidate)]
@@ -663,7 +709,7 @@ pub fn delete_file_if_exists(path: &Path) -> bool {
     match fs::remove_file(path) {
         Ok(()) => true,
         Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::IsADirectory) => false,
-        Err(ref e) => panic_file(e, FileAction::Delete, path),
+        Err(ref e) => panic_action(e, ErrAction::Delete, path),
     }
 }
 
@@ -671,6 +717,6 @@ pub fn delete_dir_if_exists(path: &Path) {
     match fs::remove_dir_all(path) {
         Ok(()) => {},
         Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) => {},
-        Err(ref e) => panic_file(e, FileAction::Delete, path),
+        Err(ref e) => panic_action(e, ErrAction::Delete, path),
     }
 }
