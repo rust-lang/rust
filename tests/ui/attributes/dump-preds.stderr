@@ -4,6 +4,7 @@ error: rustc_dump_predicates
 LL | trait Trait<T>: Iterator<Item: Copy>
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: Binder { value: TraitPredicate(<Self as std::marker::MetaSized>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<Self as std::iter::Iterator>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as std::iter::Iterator>::Item as std::marker::Copy>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }
@@ -16,6 +17,7 @@ error: rustc_dump_predicates
 LL |     type Assoc<P: Eq>: std::ops::Deref<Target = ()>
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: Binder { value: TraitPredicate(<Self as std::marker::MetaSized>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<Self as std::iter::Iterator>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as std::iter::Iterator>::Item as std::marker::Copy>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }

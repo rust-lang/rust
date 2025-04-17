@@ -263,7 +263,14 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
     let predicates = cx.tcx.predicates_of(did);
     let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
     let generics = filter_non_trait_generics(did, generics);
-    let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
+    let (generics, mut supertrait_bounds) = separate_supertrait_bounds(generics);
+
+    supertrait_bounds.retain(|b| {
+        // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
+        // is shown and none of the new sizedness traits leak into documentation.
+        !b.is_meta_sized_bound(cx)
+    });
+
     clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
 }
 

@@ -7,8 +7,14 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang="sized"]
-trait Sized {}
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
+#[lang = "sized"]
+pub trait Sized: MetaSized {}
 
 // Can't use `compile_error!` here without `core`/`std` but requiring these makes this test only
 // work if you have libcore built in the sysroot for `aarch64-unknown-linux-gnu`. Can't run this

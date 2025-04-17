@@ -50,6 +50,7 @@ pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
 pub use rustc_type_ir::relate::VarianceDiagInfo;
+pub use rustc_type_ir::solve::SizedTraitKind;
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
 pub use vtable::*;
