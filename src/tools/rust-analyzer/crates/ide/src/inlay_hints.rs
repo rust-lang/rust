@@ -1032,4 +1032,23 @@ fn bar() {
         "#,
         );
     }
+
+    #[test]
+    fn regression_19610() {
+        check(
+            r#"
+trait Trait {
+    type Assoc;
+}
+struct Foo<A>(A);
+impl<A: Trait<Assoc = impl Trait>> Foo<A> {
+    fn foo<'a, 'b>(_: &'a [i32], _: &'b [i32]) {}
+}
+
+fn bar() {
+    Foo::foo(&[1], &[2]);
+}
+"#,
+        );
+    }
 }

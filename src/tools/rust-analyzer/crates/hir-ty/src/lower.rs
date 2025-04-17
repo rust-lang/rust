@@ -464,10 +464,14 @@ impl<'a> TyLoweringContext<'a> {
         self.lower_trait_ref_from_path(trait_ref.path, explicit_self_ty).map(|it| it.0)
     }
 
+    /// When lowering predicates from parents (impl, traits) for children defs (fns, consts, types), `generics` should
+    /// contain the `Generics` for the **child**, while `predicate_owner` should contain the `GenericDefId` of the
+    /// **parent**. This is important so we generate the correct bound var/placeholder.
     pub(crate) fn lower_where_predicate<'b>(
         &'b mut self,
         where_predicate: &'b WherePredicate,
         generics: &'b Generics,
+        predicate_owner: GenericDefId,
         ignore_bindings: bool,
     ) -> impl Iterator<Item = QuantifiedWhereClause> + use<'a, 'b> {
         match where_predicate {
@@ -477,7 +481,7 @@ impl<'a> TyLoweringContext<'a> {
                     WherePredicateTypeTarget::TypeRef(type_ref) => self.lower_ty(*type_ref),
                     &WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
                         let param_id =
-                            hir_def::TypeOrConstParamId { parent: generics.def(), local_id };
+                            hir_def::TypeOrConstParamId { parent: predicate_owner, local_id };
                         match self.type_param_mode {
                             ParamLoweringMode::Placeholder => {
                                 TyKind::Placeholder(to_placeholder_idx(self.db, param_id))
@@ -887,7 +891,7 @@ pub(crate) fn generic_predicates_for_param_query(
             if invalid_target {
                 // If this is filtered out without lowering, `?Sized` is not gathered into `ctx.unsized_types`
                 if let TypeBound::Path(_, TraitBoundModifier::Maybe) = bound {
-                    ctx.lower_where_predicate(pred, generics, true).for_each(drop);
+                    ctx.lower_where_predicate(pred, generics, generics.def(), true).for_each(drop);
                 }
                 return false;
             }
@@ -924,7 +928,7 @@ pub(crate) fn generic_predicates_for_param_query(
         for pred in maybe_parent_generics.where_predicates() {
             if predicate(pred, maybe_parent_generics, &mut ctx) {
                 predicates.extend(
-                    ctx.lower_where_predicate(pred, maybe_parent_generics, true)
+                    ctx.lower_where_predicate(pred, &generics, maybe_parent_generics.def(), true)
                         .map(|p| make_binders(db, &generics, p)),
                 );
             }
@@ -987,7 +991,9 @@ pub(crate) fn trait_environment_query(
     {
         ctx.store = maybe_parent_generics.store();
         for pred in maybe_parent_generics.where_predicates() {
-            for pred in ctx.lower_where_predicate(pred, maybe_parent_generics, false) {
+            for pred in
+                ctx.lower_where_predicate(pred, &generics, maybe_parent_generics.def(), false)
+            {
                 if let WhereClause::Implemented(tr) = pred.skip_binders() {
                     traits_in_scope
                         .push((tr.self_type_parameter(Interner).clone(), tr.hir_trait_id()));
@@ -1085,8 +1091,10 @@ where
         ctx.store = maybe_parent_generics.store();
         for pred in maybe_parent_generics.where_predicates() {
             if filter(pred, maybe_parent_generics.def()) {
+                // We deliberately use `generics` and not `maybe_parent_generics` here. This is not a mistake!
+                // If we use the parent generics
                 predicates.extend(
-                    ctx.lower_where_predicate(pred, maybe_parent_generics, false)
+                    ctx.lower_where_predicate(pred, &generics, maybe_parent_generics.def(), false)
                         .map(|p| make_binders(db, &generics, p)),
                 );
             }
