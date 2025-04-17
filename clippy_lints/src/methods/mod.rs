@@ -114,6 +114,7 @@ mod suspicious_command_arg_space;
 mod suspicious_map;
 mod suspicious_splitn;
 mod suspicious_to_owned;
+mod swap_with_temporary;
 mod type_id_on_box;
 mod unbuffered_bytes;
 mod uninit_assumed_init;
@@ -4481,6 +4482,53 @@ declare_clippy_lint! {
     "calling `std::io::Error::new(std::io::ErrorKind::Other, _)`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `std::mem::swap` with temporary values.
+    ///
+    /// ### Why is this bad?
+    /// Storing a new value in place of a temporary value which will
+    /// be dropped right after the `swap` is an inefficient way of performing
+    /// an assignment. The same result can be achieved by using a regular
+    /// assignment.
+    ///
+    /// ### Examples
+    /// ```no_run
+    /// fn replace_string(s: &mut String) {
+    ///     std::mem::swap(s, &mut String::from("replaced"));
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn replace_string(s: &mut String) {
+    ///     *s = String::from("replaced");
+    /// }
+    /// ```
+    ///
+    /// Also, swapping two temporary values has no effect, as they will
+    /// both be dropped right after swapping them. This is likely an indication
+    /// of a bug. For example, the following code swaps the references to
+    /// the last element of the vectors, instead of swapping the elements
+    /// themselves:
+    ///
+    /// ```no_run
+    /// fn bug(v1: &mut [i32], v2: &mut [i32]) {
+    ///     // Incorrect: swapping temporary references (`&mut &mut` passed to swap)
+    ///     std::mem::swap(&mut v1.last_mut().unwrap(), &mut v2.last_mut().unwrap());
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn correct(v1: &mut [i32], v2: &mut [i32]) {
+    ///     std::mem::swap(v1.last_mut().unwrap(), v2.last_mut().unwrap());
+    /// }
+    /// ```
+    #[clippy::version = "1.88.0"]
+    pub SWAP_WITH_TEMPORARY,
+    complexity,
+    "detect swap with a temporary value"
+}
+
 #[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
@@ -4658,6 +4706,7 @@ impl_lint_pass!(Methods => [
     UNBUFFERED_BYTES,
     MANUAL_CONTAINS,
     IO_OTHER_ERROR,
+    SWAP_WITH_TEMPORARY,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4689,6 +4738,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 manual_c_str_literals::check(cx, expr, func, args, self.msrv);
                 useless_nonzero_new_unchecked::check(cx, expr, func, args, self.msrv);
                 io_other_error::check(cx, expr, func, args, self.msrv);
+                swap_with_temporary::check(cx, expr, func, args);
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
