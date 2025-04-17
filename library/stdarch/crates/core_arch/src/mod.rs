@@ -1,5 +1,7 @@
 //! `core_arch`
 
+#![allow(unknown_lints, unnecessary_transmutes)]
+
 #[macro_use]
 mod macros;
 
