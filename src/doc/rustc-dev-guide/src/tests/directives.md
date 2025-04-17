@@ -124,6 +124,9 @@ means the test won't be compiled or run.
 * `ignore-X` where `X` is a target detail or other criteria on which to ignore the test (see below)
 * `only-X` is like `ignore-X`, but will *only* run the test on that target or
   stage
+* `ignore-auxiliary` is intended for files that *participate* in one or more other
+  main test files but that `compiletest` should not try to build the file itself.
+  Please backlink to which main test is actually using the auxiliary file.
 * `ignore-test` always ignores the test. This can be used to temporarily disable
   a test if it is currently not working, but you want to keep it in tree to
   re-enable it later.
