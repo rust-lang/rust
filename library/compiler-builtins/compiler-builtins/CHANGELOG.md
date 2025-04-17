@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.155](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.154...compiler_builtins-v0.1.155) - 2025-04-17
+
+### Other
+
+- use `#[cfg(bootstrap)]` for rustc sync
+- Replace the `bl!` macro with `asm_sym`
+- __udivmod(h|q)i4
+
 ## [0.1.154](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.153...compiler_builtins-v0.1.154) - 2025-04-16
 
 ### Other
