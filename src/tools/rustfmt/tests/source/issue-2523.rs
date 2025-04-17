@@ -4,7 +4,7 @@
 // Do not unindent macro calls in comment with unformattable syntax.
 //! ```rust
 //! let x = 3  ;
-//! some_macro!(pub fn fn foo() (
+//! some_macro!(pub fn foo() (
 //!     println!("Don't unindent me!");
 //! ));
 //! ```
