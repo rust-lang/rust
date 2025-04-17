@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - reproducible
   pull_request:
     branches:
       - master
@@ -34,43 +33,69 @@ jobs:
           echo "Present Directory : `pwd`"
           echo "work contents : `ls ..`"
 
-      - name: Build and store binaries from source 1
+      - name: Build and store buildA binaries
         run: |
           echo "Repo storage available: `df -h .`"
-          cd ../buildA
+          pushd ../buildA
           SOURCE_DIR=$(dirname $(find . -maxdepth 2  -name x.py))
           $SOURCE_DIR/configure --set rust.channel=nightly
-          $SOURCE_DIR/x.py build --stage 1 -j$(($(nproc)*2/3))
+          $SOURCE_DIR/x.py build --stage 2 -j$(($(nproc)*2/3))
           rm -rf $SOURCE_DIR
-          STAGE1_DIR=`find build -name stage1`
-          cp -r "$STAGE1_DIR" .
-          echo "Contents stage 1 dir : `ls stage1`"
+          STAGE2_DIR=`find build -name stage2`
+          cp -r "$STAGE2_DIR" .
+          echo "Contents stage 2 dir : `ls stage2`"
           rm -rf build
+          popd
 
-      - name: Build and store binaries from source 2
+      - name: Build and store buildA_extended binaries
         run: |
-          cd ../buildA_extended
           echo "Repo storage available: `df -h .`"
+          pushd ../buildA_extended
           SOURCE_DIR=$(dirname $(find . -maxdepth 2  -name x.py))
           $SOURCE_DIR/configure --set rust.channel=nightly
-          $SOURCE_DIR/x.py build --stage 1 -j$(($(nproc)*2/3))
+          $SOURCE_DIR/x.py build --stage 2 -j$(($(nproc)*2/3))
           rm -rf $SOURCE_DIR
-          STAGE1_DIR=`find build -name stage1`
-          cp -r "$STAGE1_DIR" .
-          echo "Contents stage 1 dir : `ls stage1`"
+          STAGE2_DIR=`find build -name stage2`
+          cp -r "$STAGE2_DIR" .
+          echo "Contents stage 2 dir : `ls stage2`"
           rm -rf build
-          cd ..
+          popd
 
-      - name: Compare builds using git diff
+      - name: Install diffoscope
         run: |
-          # Go back to the root directory
-          cd ..
+          sudo apt-get update
+          sudo apt-get install -y diffoscope
 
+      - name: Compare builds
+        run: |
           # Ensure the directories exist
-          if [[ ! -d "buildA" || ! -d "buildA_extended" ]]; then
+          if [[ ! -d "../buildA" || ! -d "../buildA_extended" ]]; then
             echo "Error: Build directories not found!"
             exit 1
           fi
 
           # Perform a diff between the two builds
-          diff -r buildA/stage1 buildA_extended/stage1 || echo "Differences found!"
+          diffoscope ../buildA/stage2 ../buildA_extended/stage2 > diffoscope_output.txt || echo "Differences found!"
+
+      - name: Upload diffoscope output
+        uses: actions/upload-artifact@v4
+        with:
+          name: diffoscope-report
+          path: diffoscope_output.txt
+
+      - name: Archive buildA and buildA_extended
+        run: |
+          tar -czf buildA.tar.gz ../buildA
+          tar -czf buildA_extended.tar.gz ../buildA_extended
+
+      - name: Upload buildA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildA
+          path: buildA.tar.gz
+
+      - name: Upload buildA_extended artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildA_extended
+          path: buildA_extended.tar.gz
