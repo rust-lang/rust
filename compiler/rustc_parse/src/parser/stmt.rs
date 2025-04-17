@@ -771,10 +771,6 @@ impl<'a> Parser<'a> {
                                     Applicability::MaybeIncorrect,
                                 );
                             }
-                            if self.psess.unstable_features.is_nightly_build() {
-                                // FIXME(Nilstrieb): Remove this again after a few months.
-                                err.note("type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>");
-                            }
                         }
                     }
 

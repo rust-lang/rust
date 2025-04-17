@@ -1882,6 +1882,7 @@ symbols! {
         select_unpredictable,
         self_in_typedefs,
         self_struct_ctor,
+        semiopaque,
         semitransparent,
         sha2,
         sha3,
