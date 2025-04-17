@@ -18605,7 +18605,7 @@ pub fn _mm_maskz_compress_pd(k: __mmask8, a: __m128d) -> __m128d {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressd))]
-pub unsafe fn _mm512_mask_compressstoreu_epi32(base_addr: *mut u8, k: __mmask16, a: __m512i) {
+pub unsafe fn _mm512_mask_compressstoreu_epi32(base_addr: *mut i32, k: __mmask16, a: __m512i) {
     vcompressstored(base_addr as *mut _, a.as_i32x16(), k)
 }
 
@@ -18616,7 +18616,7 @@ pub unsafe fn _mm512_mask_compressstoreu_epi32(base_addr: *mut u8, k: __mmask16,
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressd))]
-pub unsafe fn _mm256_mask_compressstoreu_epi32(base_addr: *mut u8, k: __mmask8, a: __m256i) {
+pub unsafe fn _mm256_mask_compressstoreu_epi32(base_addr: *mut i32, k: __mmask8, a: __m256i) {
     vcompressstored256(base_addr as *mut _, a.as_i32x8(), k)
 }
 
@@ -18627,7 +18627,7 @@ pub unsafe fn _mm256_mask_compressstoreu_epi32(base_addr: *mut u8, k: __mmask8, 
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressd))]
-pub unsafe fn _mm_mask_compressstoreu_epi32(base_addr: *mut u8, k: __mmask8, a: __m128i) {
+pub unsafe fn _mm_mask_compressstoreu_epi32(base_addr: *mut i32, k: __mmask8, a: __m128i) {
     vcompressstored128(base_addr as *mut _, a.as_i32x4(), k)
 }
 
@@ -18638,7 +18638,7 @@ pub unsafe fn _mm_mask_compressstoreu_epi32(base_addr: *mut u8, k: __mmask8, a: 
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressq))]
-pub unsafe fn _mm512_mask_compressstoreu_epi64(base_addr: *mut u8, k: __mmask8, a: __m512i) {
+pub unsafe fn _mm512_mask_compressstoreu_epi64(base_addr: *mut i64, k: __mmask8, a: __m512i) {
     vcompressstoreq(base_addr as *mut _, a.as_i64x8(), k)
 }
 
@@ -18649,7 +18649,7 @@ pub unsafe fn _mm512_mask_compressstoreu_epi64(base_addr: *mut u8, k: __mmask8, 
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressq))]
-pub unsafe fn _mm256_mask_compressstoreu_epi64(base_addr: *mut u8, k: __mmask8, a: __m256i) {
+pub unsafe fn _mm256_mask_compressstoreu_epi64(base_addr: *mut i64, k: __mmask8, a: __m256i) {
     vcompressstoreq256(base_addr as *mut _, a.as_i64x4(), k)
 }
 
@@ -18660,7 +18660,7 @@ pub unsafe fn _mm256_mask_compressstoreu_epi64(base_addr: *mut u8, k: __mmask8, 
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressq))]
-pub unsafe fn _mm_mask_compressstoreu_epi64(base_addr: *mut u8, k: __mmask8, a: __m128i) {
+pub unsafe fn _mm_mask_compressstoreu_epi64(base_addr: *mut i64, k: __mmask8, a: __m128i) {
     vcompressstoreq128(base_addr as *mut _, a.as_i64x2(), k)
 }
 
@@ -18671,7 +18671,7 @@ pub unsafe fn _mm_mask_compressstoreu_epi64(base_addr: *mut u8, k: __mmask8, a: 
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vcompressps))]
-pub unsafe fn _mm512_mask_compressstoreu_ps(base_addr: *mut u8, k: __mmask16, a: __m512) {
+pub unsafe fn _mm512_mask_compressstoreu_ps(base_addr: *mut f32, k: __mmask16, a: __m512) {
     vcompressstoreps(base_addr as *mut _, a.as_f32x16(), k)
 }
 
@@ -18682,7 +18682,7 @@ pub unsafe fn _mm512_mask_compressstoreu_ps(base_addr: *mut u8, k: __mmask16, a:
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vcompressps))]
-pub unsafe fn _mm256_mask_compressstoreu_ps(base_addr: *mut u8, k: __mmask8, a: __m256) {
+pub unsafe fn _mm256_mask_compressstoreu_ps(base_addr: *mut f32, k: __mmask8, a: __m256) {
     vcompressstoreps256(base_addr as *mut _, a.as_f32x8(), k)
 }
 
@@ -18693,7 +18693,7 @@ pub unsafe fn _mm256_mask_compressstoreu_ps(base_addr: *mut u8, k: __mmask8, a: 
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vcompressps))]
-pub unsafe fn _mm_mask_compressstoreu_ps(base_addr: *mut u8, k: __mmask8, a: __m128) {
+pub unsafe fn _mm_mask_compressstoreu_ps(base_addr: *mut f32, k: __mmask8, a: __m128) {
     vcompressstoreps128(base_addr as *mut _, a.as_f32x4(), k)
 }
 
@@ -18704,7 +18704,7 @@ pub unsafe fn _mm_mask_compressstoreu_ps(base_addr: *mut u8, k: __mmask8, a: __m
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vcompresspd))]
-pub unsafe fn _mm512_mask_compressstoreu_pd(base_addr: *mut u8, k: __mmask8, a: __m512d) {
+pub unsafe fn _mm512_mask_compressstoreu_pd(base_addr: *mut f64, k: __mmask8, a: __m512d) {
     vcompressstorepd(base_addr as *mut _, a.as_f64x8(), k)
 }
 
@@ -18715,7 +18715,7 @@ pub unsafe fn _mm512_mask_compressstoreu_pd(base_addr: *mut u8, k: __mmask8, a: 
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vcompresspd))]
-pub unsafe fn _mm256_mask_compressstoreu_pd(base_addr: *mut u8, k: __mmask8, a: __m256d) {
+pub unsafe fn _mm256_mask_compressstoreu_pd(base_addr: *mut f64, k: __mmask8, a: __m256d) {
     vcompressstorepd256(base_addr as *mut _, a.as_f64x4(), k)
 }
 
@@ -18726,7 +18726,7 @@ pub unsafe fn _mm256_mask_compressstoreu_pd(base_addr: *mut u8, k: __mmask8, a: 
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vcompresspd))]
-pub unsafe fn _mm_mask_compressstoreu_pd(base_addr: *mut u8, k: __mmask8, a: __m128d) {
+pub unsafe fn _mm_mask_compressstoreu_pd(base_addr: *mut f64, k: __mmask8, a: __m128d) {
     vcompressstorepd128(base_addr as *mut _, a.as_f64x2(), k)
 }
 
@@ -56718,9 +56718,9 @@ mod tests {
     unsafe fn test_mm512_mask_compressstoreu_epi32() {
         let a = _mm512_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let mut r = [0_i32; 16];
-        _mm512_mask_compressstoreu_epi32(r.as_mut_ptr() as *mut _, 0, a);
+        _mm512_mask_compressstoreu_epi32(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_i32; 16]);
-        _mm512_mask_compressstoreu_epi32(r.as_mut_ptr() as *mut _, 0b1111000011001010, a);
+        _mm512_mask_compressstoreu_epi32(r.as_mut_ptr(), 0b1111000011001010, a);
         assert_eq!(&r, &[2, 4, 7, 8, 13, 14, 15, 16, 0, 0, 0, 0, 0, 0, 0, 0]);
     }
 
@@ -56728,9 +56728,9 @@ mod tests {
     unsafe fn test_mm256_mask_compressstoreu_epi32() {
         let a = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         let mut r = [0_i32; 8];
-        _mm256_mask_compressstoreu_epi32(r.as_mut_ptr() as *mut _, 0, a);
+        _mm256_mask_compressstoreu_epi32(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_i32; 8]);
-        _mm256_mask_compressstoreu_epi32(r.as_mut_ptr() as *mut _, 0b11001010, a);
+        _mm256_mask_compressstoreu_epi32(r.as_mut_ptr(), 0b11001010, a);
         assert_eq!(&r, &[2, 4, 7, 8, 0, 0, 0, 0]);
     }
 
@@ -56738,9 +56738,9 @@ mod tests {
     unsafe fn test_mm_mask_compressstoreu_epi32() {
         let a = _mm_setr_epi32(1, 2, 3, 4);
         let mut r = [0_i32; 4];
-        _mm_mask_compressstoreu_epi32(r.as_mut_ptr() as *mut _, 0, a);
+        _mm_mask_compressstoreu_epi32(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_i32; 4]);
-        _mm_mask_compressstoreu_epi32(r.as_mut_ptr() as *mut _, 0b1011, a);
+        _mm_mask_compressstoreu_epi32(r.as_mut_ptr(), 0b1011, a);
         assert_eq!(&r, &[1, 2, 4, 0]);
     }
 
@@ -56748,9 +56748,9 @@ mod tests {
     unsafe fn test_mm512_mask_compressstoreu_epi64() {
         let a = _mm512_setr_epi64(1, 2, 3, 4, 5, 6, 7, 8);
         let mut r = [0_i64; 8];
-        _mm512_mask_compressstoreu_epi64(r.as_mut_ptr() as *mut _, 0, a);
+        _mm512_mask_compressstoreu_epi64(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_i64; 8]);
-        _mm512_mask_compressstoreu_epi64(r.as_mut_ptr() as *mut _, 0b11001010, a);
+        _mm512_mask_compressstoreu_epi64(r.as_mut_ptr(), 0b11001010, a);
         assert_eq!(&r, &[2, 4, 7, 8, 0, 0, 0, 0]);
     }
 
@@ -56758,9 +56758,9 @@ mod tests {
     unsafe fn test_mm256_mask_compressstoreu_epi64() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let mut r = [0_i64; 4];
-        _mm256_mask_compressstoreu_epi64(r.as_mut_ptr() as *mut _, 0, a);
+        _mm256_mask_compressstoreu_epi64(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_i64; 4]);
-        _mm256_mask_compressstoreu_epi64(r.as_mut_ptr() as *mut _, 0b1011, a);
+        _mm256_mask_compressstoreu_epi64(r.as_mut_ptr(), 0b1011, a);
         assert_eq!(&r, &[1, 2, 4, 0]);
     }
 
@@ -56768,9 +56768,9 @@ mod tests {
     unsafe fn test_mm_mask_compressstoreu_epi64() {
         let a = _mm_setr_epi64x(1, 2);
         let mut r = [0_i64; 2];
-        _mm_mask_compressstoreu_epi64(r.as_mut_ptr() as *mut _, 0, a);
+        _mm_mask_compressstoreu_epi64(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_i64; 2]);
-        _mm_mask_compressstoreu_epi64(r.as_mut_ptr() as *mut _, 0b10, a);
+        _mm_mask_compressstoreu_epi64(r.as_mut_ptr(), 0b10, a);
         assert_eq!(&r, &[2, 0]);
     }
 
@@ -56781,9 +56781,9 @@ mod tests {
             13_f32, 14_f32, 15_f32, 16_f32,
         );
         let mut r = [0_f32; 16];
-        _mm512_mask_compressstoreu_ps(r.as_mut_ptr() as *mut _, 0, a);
+        _mm512_mask_compressstoreu_ps(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_f32; 16]);
-        _mm512_mask_compressstoreu_ps(r.as_mut_ptr() as *mut _, 0b1111000011001010, a);
+        _mm512_mask_compressstoreu_ps(r.as_mut_ptr(), 0b1111000011001010, a);
         assert_eq!(
             &r,
             &[
@@ -56797,9 +56797,9 @@ mod tests {
     unsafe fn test_mm256_mask_compressstoreu_ps() {
         let a = _mm256_setr_ps(1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32);
         let mut r = [0_f32; 8];
-        _mm256_mask_compressstoreu_ps(r.as_mut_ptr() as *mut _, 0, a);
+        _mm256_mask_compressstoreu_ps(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_f32; 8]);
-        _mm256_mask_compressstoreu_ps(r.as_mut_ptr() as *mut _, 0b11001010, a);
+        _mm256_mask_compressstoreu_ps(r.as_mut_ptr(), 0b11001010, a);
         assert_eq!(
             &r,
             &[2_f32, 4_f32, 7_f32, 8_f32, 0_f32, 0_f32, 0_f32, 0_f32]
@@ -56810,9 +56810,9 @@ mod tests {
     unsafe fn test_mm_mask_compressstoreu_ps() {
         let a = _mm_setr_ps(1_f32, 2_f32, 3_f32, 4_f32);
         let mut r = [0.; 4];
-        _mm_mask_compressstoreu_ps(r.as_mut_ptr() as *mut _, 0, a);
+        _mm_mask_compressstoreu_ps(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0.; 4]);
-        _mm_mask_compressstoreu_ps(r.as_mut_ptr() as *mut _, 0b1011, a);
+        _mm_mask_compressstoreu_ps(r.as_mut_ptr(), 0b1011, a);
         assert_eq!(&r, &[1_f32, 2_f32, 4_f32, 0_f32]);
     }
 
@@ -56820,9 +56820,9 @@ mod tests {
     unsafe fn test_mm512_mask_compressstoreu_pd() {
         let a = _mm512_setr_pd(1., 2., 3., 4., 5., 6., 7., 8.);
         let mut r = [0.; 8];
-        _mm512_mask_compressstoreu_pd(r.as_mut_ptr() as *mut _, 0, a);
+        _mm512_mask_compressstoreu_pd(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0.; 8]);
-        _mm512_mask_compressstoreu_pd(r.as_mut_ptr() as *mut _, 0b11001010, a);
+        _mm512_mask_compressstoreu_pd(r.as_mut_ptr(), 0b11001010, a);
         assert_eq!(&r, &[2., 4., 7., 8., 0., 0., 0., 0.]);
     }
 
@@ -56830,9 +56830,9 @@ mod tests {
     unsafe fn test_mm256_mask_compressstoreu_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let mut r = [0.; 4];
-        _mm256_mask_compressstoreu_pd(r.as_mut_ptr() as *mut _, 0, a);
+        _mm256_mask_compressstoreu_pd(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0.; 4]);
-        _mm256_mask_compressstoreu_pd(r.as_mut_ptr() as *mut _, 0b1011, a);
+        _mm256_mask_compressstoreu_pd(r.as_mut_ptr(), 0b1011, a);
         assert_eq!(&r, &[1., 2., 4., 0.]);
     }
 
@@ -56840,9 +56840,9 @@ mod tests {
     unsafe fn test_mm_mask_compressstoreu_pd() {
         let a = _mm_setr_pd(1., 2.);
         let mut r = [0.; 2];
-        _mm_mask_compressstoreu_pd(r.as_mut_ptr() as *mut _, 0, a);
+        _mm_mask_compressstoreu_pd(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0.; 2]);
-        _mm_mask_compressstoreu_pd(r.as_mut_ptr() as *mut _, 0b10, a);
+        _mm_mask_compressstoreu_pd(r.as_mut_ptr(), 0b10, a);
         assert_eq!(&r, &[2., 0.]);
     }
 

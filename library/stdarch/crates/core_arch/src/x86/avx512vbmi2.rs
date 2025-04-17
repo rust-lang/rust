@@ -169,7 +169,7 @@ pub unsafe fn _mm_maskz_expandloadu_epi8(k: __mmask16, mem_addr: *const i8) -> _
 #[target_feature(enable = "avx512vbmi2")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
-pub unsafe fn _mm512_mask_compressstoreu_epi16(base_addr: *mut u8, k: __mmask32, a: __m512i) {
+pub unsafe fn _mm512_mask_compressstoreu_epi16(base_addr: *mut i16, k: __mmask32, a: __m512i) {
     vcompressstorew(base_addr as *mut _, a.as_i16x32(), k)
 }
 
@@ -180,7 +180,7 @@ pub unsafe fn _mm512_mask_compressstoreu_epi16(base_addr: *mut u8, k: __mmask32,
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
-pub unsafe fn _mm256_mask_compressstoreu_epi16(base_addr: *mut u8, k: __mmask16, a: __m256i) {
+pub unsafe fn _mm256_mask_compressstoreu_epi16(base_addr: *mut i16, k: __mmask16, a: __m256i) {
     vcompressstorew256(base_addr as *mut _, a.as_i16x16(), k)
 }
 
@@ -191,7 +191,7 @@ pub unsafe fn _mm256_mask_compressstoreu_epi16(base_addr: *mut u8, k: __mmask16,
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
-pub unsafe fn _mm_mask_compressstoreu_epi16(base_addr: *mut u8, k: __mmask8, a: __m128i) {
+pub unsafe fn _mm_mask_compressstoreu_epi16(base_addr: *mut i16, k: __mmask8, a: __m128i) {
     vcompressstorew128(base_addr as *mut _, a.as_i16x8(), k)
 }
 
@@ -202,8 +202,8 @@ pub unsafe fn _mm_mask_compressstoreu_epi16(base_addr: *mut u8, k: __mmask8, a: 
 #[target_feature(enable = "avx512vbmi2")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
-pub unsafe fn _mm512_mask_compressstoreu_epi8(base_addr: *mut u8, k: __mmask64, a: __m512i) {
-    vcompressstoreb(base_addr as *mut _, a.as_i8x64(), k)
+pub unsafe fn _mm512_mask_compressstoreu_epi8(base_addr: *mut i8, k: __mmask64, a: __m512i) {
+    vcompressstoreb(base_addr, a.as_i8x64(), k)
 }
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -213,8 +213,8 @@ pub unsafe fn _mm512_mask_compressstoreu_epi8(base_addr: *mut u8, k: __mmask64, 
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
-pub unsafe fn _mm256_mask_compressstoreu_epi8(base_addr: *mut u8, k: __mmask32, a: __m256i) {
-    vcompressstoreb256(base_addr as *mut _, a.as_i8x32(), k)
+pub unsafe fn _mm256_mask_compressstoreu_epi8(base_addr: *mut i8, k: __mmask32, a: __m256i) {
+    vcompressstoreb256(base_addr, a.as_i8x32(), k)
 }
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -224,8 +224,8 @@ pub unsafe fn _mm256_mask_compressstoreu_epi8(base_addr: *mut u8, k: __mmask32, 
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
-pub unsafe fn _mm_mask_compressstoreu_epi8(base_addr: *mut u8, k: __mmask16, a: __m128i) {
-    vcompressstoreb128(base_addr as *mut _, a.as_i8x16(), k)
+pub unsafe fn _mm_mask_compressstoreu_epi8(base_addr: *mut i8, k: __mmask16, a: __m128i) {
+    vcompressstoreb128(base_addr, a.as_i8x16(), k)
 }
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
@@ -3853,13 +3853,9 @@ mod tests {
             10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
         );
         let mut r = [0_i16; 32];
-        _mm512_mask_compressstoreu_epi16(r.as_mut_ptr() as *mut _, 0, a);
+        _mm512_mask_compressstoreu_epi16(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_i16; 32]);
-        _mm512_mask_compressstoreu_epi16(
-            r.as_mut_ptr() as *mut _,
-            0b11110000_11001010_11111111_00000000,
-            a,
-        );
+        _mm512_mask_compressstoreu_epi16(r.as_mut_ptr(), 0b11110000_11001010_11111111_00000000, a);
         assert_eq!(
             &r,
             &[
@@ -3873,9 +3869,9 @@ mod tests {
     unsafe fn test_mm256_mask_compressstoreu_epi16() {
         let a = _mm256_set_epi16(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
         let mut r = [0_i16; 16];
-        _mm256_mask_compressstoreu_epi16(r.as_mut_ptr() as *mut _, 0, a);
+        _mm256_mask_compressstoreu_epi16(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_i16; 16]);
-        _mm256_mask_compressstoreu_epi16(r.as_mut_ptr() as *mut _, 0b11110000_11001010, a);
+        _mm256_mask_compressstoreu_epi16(r.as_mut_ptr(), 0b11110000_11001010, a);
         assert_eq!(&r, &[2, 4, 7, 8, 13, 14, 15, 16, 0, 0, 0, 0, 0, 0, 0, 0]);
     }
 
@@ -3883,9 +3879,9 @@ mod tests {
     unsafe fn test_mm_mask_compressstoreu_epi16() {
         let a = _mm_set_epi16(8, 7, 6, 5, 4, 3, 2, 1);
         let mut r = [0_i16; 8];
-        _mm_mask_compressstoreu_epi16(r.as_mut_ptr() as *mut _, 0, a);
+        _mm_mask_compressstoreu_epi16(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_i16; 8]);
-        _mm_mask_compressstoreu_epi16(r.as_mut_ptr() as *mut _, 0b11110000, a);
+        _mm_mask_compressstoreu_epi16(r.as_mut_ptr(), 0b11110000, a);
         assert_eq!(&r, &[5, 6, 7, 8, 0, 0, 0, 0]);
     }
 
@@ -3897,10 +3893,10 @@ mod tests {
             20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
         );
         let mut r = [0_i8; 64];
-        _mm512_mask_compressstoreu_epi8(r.as_mut_ptr() as *mut _, 0, a);
+        _mm512_mask_compressstoreu_epi8(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_i8; 64]);
         _mm512_mask_compressstoreu_epi8(
-            r.as_mut_ptr() as *mut _,
+            r.as_mut_ptr(),
             0b11110000_11001010_11111111_00000000_10101010_01010101_11110000_00001111,
             a,
         );
@@ -3921,13 +3917,9 @@ mod tests {
             10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
         );
         let mut r = [0_i8; 32];
-        _mm256_mask_compressstoreu_epi8(r.as_mut_ptr() as *mut _, 0, a);
+        _mm256_mask_compressstoreu_epi8(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_i8; 32]);
-        _mm256_mask_compressstoreu_epi8(
-            r.as_mut_ptr() as *mut _,
-            0b11110000_11001010_11111111_00000000,
-            a,
-        );
+        _mm256_mask_compressstoreu_epi8(r.as_mut_ptr(), 0b11110000_11001010_11111111_00000000, a);
         assert_eq!(
             &r,
             &[
@@ -3941,9 +3933,9 @@ mod tests {
     unsafe fn test_mm_mask_compressstoreu_epi8() {
         let a = _mm_set_epi8(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
         let mut r = [0_i8; 16];
-        _mm_mask_compressstoreu_epi8(r.as_mut_ptr() as *mut _, 0, a);
+        _mm_mask_compressstoreu_epi8(r.as_mut_ptr(), 0, a);
         assert_eq!(&r, &[0_i8; 16]);
-        _mm_mask_compressstoreu_epi8(r.as_mut_ptr() as *mut _, 0b11110000_11001010, a);
+        _mm_mask_compressstoreu_epi8(r.as_mut_ptr(), 0b11110000_11001010, a);
         assert_eq!(&r, &[2, 4, 7, 8, 13, 14, 15, 16, 0, 0, 0, 0, 0, 0, 0, 0]);
     }
 }
