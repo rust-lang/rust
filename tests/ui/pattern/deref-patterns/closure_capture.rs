@@ -4,6 +4,8 @@
 
 use std::rc::Rc;
 
+struct NoCopy;
+
 fn main() {
     let b = Rc::new("aaa".to_string());
     let f = || {
@@ -47,4 +49,20 @@ fn main() {
     };
     f();
     assert_eq!(v, [1, 2, 4]);
+
+    let b = Box::new(NoCopy);
+    let f = || {
+        // this should move out of the box rather than borrow.
+        let deref!(x) = b else { unreachable!() };
+        drop::<NoCopy>(x);
+    };
+    f();
+
+    let b = Box::new((NoCopy,));
+    let f = || {
+        // this should move out of the box rather than borrow.
+        let (x,) = b else { unreachable!() };
+        drop::<NoCopy>(x);
+    };
+    f();
 }
