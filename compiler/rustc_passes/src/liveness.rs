@@ -1020,7 +1020,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Call(ref f, args) => {
-                let succ = self.check_is_ty_uninhabited(expr, succ);
+                let is_ctor = |f: &Expr<'_>| matches!(f.kind, hir::ExprKind::Path(hir::QPath::Resolved(_, path)) if matches!(path.res, rustc_hir::def::Res::Def(rustc_hir::def::DefKind::Ctor(_, _), _)));
+                let succ =
+                    if !is_ctor(f) { self.check_is_ty_uninhabited(expr, succ) } else { succ };
+
                 let succ = self.propagate_through_exprs(args, succ);
                 self.propagate_through_expr(f, succ)
             }
