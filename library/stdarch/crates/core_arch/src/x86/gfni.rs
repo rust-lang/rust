@@ -867,7 +867,7 @@ mod tests {
     #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
     unsafe fn load_m512i_word<T>(data: &[T], word_index: usize) -> __m512i {
         let byte_offset = word_index * 64 / size_of::<T>();
-        let pointer = data.as_ptr().add(byte_offset) as *const i32;
+        let pointer = data.as_ptr().add(byte_offset) as *const _;
         _mm512_loadu_si512(black_box(pointer))
     }
 

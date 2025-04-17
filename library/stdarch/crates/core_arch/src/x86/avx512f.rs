@@ -29696,7 +29696,7 @@ pub unsafe fn _mm512_stream_pd(mem_addr: *mut f64, a: __m512d) {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vmovntdq))]
 #[allow(clippy::cast_ptr_alignment)]
-pub unsafe fn _mm512_stream_si512(mem_addr: *mut i32, a: __m512i) {
+pub unsafe fn _mm512_stream_si512(mem_addr: *mut __m512i, a: __m512i) {
     crate::arch::asm!(
         vps!("vmovntdq", ",{a}"),
         p = in(reg) mem_addr,
@@ -34435,8 +34435,8 @@ pub unsafe fn _mm_storeu_epi64(mem_addr: *mut i64, a: __m128i) {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu32
-pub unsafe fn _mm512_loadu_si512(mem_addr: *const i32) -> __m512i {
-    ptr::read_unaligned(mem_addr as *const __m512i)
+pub unsafe fn _mm512_loadu_si512(mem_addr: *const __m512i) -> __m512i {
+    ptr::read_unaligned(mem_addr)
 }
 
 /// Store 512-bits of integer data from a into memory. mem_addr does not need to be aligned on any particular boundary.
@@ -34509,8 +34509,8 @@ pub unsafe fn _mm512_storeu_ps(mem_addr: *mut f32, a: __m512) {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa32
-pub unsafe fn _mm512_load_si512(mem_addr: *const i32) -> __m512i {
-    ptr::read(mem_addr as *const __m512i)
+pub unsafe fn _mm512_load_si512(mem_addr: *const __m512i) -> __m512i {
+    ptr::read(mem_addr)
 }
 
 /// Store 512-bits of integer data from a into memory. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
@@ -57231,7 +57231,7 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_loadu_si512() {
         let a = &[4, 3, 2, 5, 8, 9, 64, 50, -4, -3, -2, -5, -8, -9, -64, -50];
-        let p = a.as_ptr();
+        let p = a.as_ptr().cast();
         let r = _mm512_loadu_si512(black_box(p));
         let e = _mm512_setr_epi32(4, 3, 2, 5, 8, 9, 64, 50, -4, -3, -2, -5, -8, -9, -64, -50);
         assert_eq_m512i(r, e);
@@ -57254,7 +57254,7 @@ mod tests {
         let a = Align {
             data: [4, 3, 2, 5, 8, 9, 64, 50, -4, -3, -2, -5, -8, -9, -64, -50],
         };
-        let p = (a.data).as_ptr();
+        let p = (a.data).as_ptr().cast();
         let r = _mm512_load_si512(black_box(p));
         let e = _mm512_setr_epi32(4, 3, 2, 5, 8, 9, 64, 50, -4, -3, -2, -5, -8, -9, -64, -50);
         assert_eq_m512i(r, e);
