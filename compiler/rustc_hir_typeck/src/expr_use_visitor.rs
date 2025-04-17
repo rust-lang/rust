@@ -1502,16 +1502,21 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let mut projections = base_place.place.projections;
 
         let node_ty = self.cx.typeck_results().node_type(node);
-        // Opaque types can't have field projections, but we can instead convert
-        // the current place in-place (heh) to the hidden type, and then apply all
-        // follow up projections on that.
-        if node_ty != place_ty
-            && self
-                .cx
-                .try_structurally_resolve_type(self.cx.tcx().hir_span(base_place.hir_id), place_ty)
-                .is_impl_trait()
-        {
-            projections.push(Projection { kind: ProjectionKind::OpaqueCast, ty: node_ty });
+        if !self.cx.tcx().next_trait_solver_globally() {
+            // Opaque types can't have field projections, but we can instead convert
+            // the current place in-place (heh) to the hidden type, and then apply all
+            // follow up projections on that.
+            if node_ty != place_ty
+                && self
+                    .cx
+                    .try_structurally_resolve_type(
+                        self.cx.tcx().hir_span(base_place.hir_id),
+                        place_ty,
+                    )
+                    .is_impl_trait()
+            {
+                projections.push(Projection { kind: ProjectionKind::OpaqueCast, ty: node_ty });
+            }
         }
         projections.push(Projection { kind, ty });
         PlaceWithHirId::new(node, base_place.place.base_ty, base_place.place.base, projections)

@@ -1,3 +1,5 @@
+//@ revisions: current next
+//@ [next] compile-flags: -Znext-solver
 //@ build-pass
 //@ edition: 2021
 
