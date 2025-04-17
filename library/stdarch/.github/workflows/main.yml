@@ -50,8 +50,6 @@ jobs:
           os: ubuntu-latest
         - tuple: x86_64-unknown-linux-gnu
           os: ubuntu-latest
-        - tuple: x86_64-unknown-linux-gnu-emulated
-          os: ubuntu-latest
         - tuple: arm-unknown-linux-gnueabihf
           os: ubuntu-latest
         - tuple: armv7-unknown-linux-gnueabihf
@@ -159,7 +157,7 @@ jobs:
             os: ubuntu-latest
           test_everything: true
         - target:
-            tuple: x86_64-unknown-linux-gnu-emulated
+            tuple: x86_64-unknown-linux-gnu
             os: ubuntu-latest
           test_everything: true
         # MIPS targets disabled since they are dropped to tier 3.
@@ -202,7 +200,6 @@ jobs:
         rustup update nightly --no-self-update
         rustup default nightly
     - run: rustup target add ${{ matrix.target.tuple }}
-      if: "!endsWith(matrix.target.tuple, 'emulated')"
     - run: cargo generate-lockfile
 
     # Configure some env vars based on matrix configuration

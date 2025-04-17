@@ -11,7 +11,6 @@ if [ $# -lt 1 ]; then
 fi
 
 run() {
-    target=$(echo "${1}" | sed 's/-emulated//')
     echo "Building docker container for TARGET=${1}"
     docker build -t stdarch -f "ci/docker/${1}/Dockerfile" ci/
     mkdir -p target c_programs rust_programs
@@ -22,7 +21,7 @@ run() {
       --user "$(id -u)":"$(id -g)" \
       --env CARGO_HOME=/cargo \
       --env CARGO_TARGET_DIR=/checkout/target \
-      --env TARGET="${target}" \
+      --env TARGET="${1}" \
       --env STDARCH_TEST_EVERYTHING \
       --env STDARCH_ASSERT_INSTR_IGNORE \
       --env STDARCH_DISABLE_ASSERT_INSTR \

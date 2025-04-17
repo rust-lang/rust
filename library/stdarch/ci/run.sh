@@ -99,7 +99,7 @@ fi
 
 # Test targets compiled with extra features.
 case ${TARGET} in
-    x86_64*emulated)
+    x86_64-unknown-linux-gnu)
         export STDARCH_DISABLE_ASSERT_INSTR=1
 
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
