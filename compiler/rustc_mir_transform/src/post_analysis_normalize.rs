@@ -39,20 +39,22 @@ impl<'tcx> MutVisitor<'tcx> for PostAnalysisNormalizeVisitor<'tcx> {
         _context: PlaceContext,
         _location: Location,
     ) {
-        // Performance optimization: don't reintern if there is no `OpaqueCast` to remove.
-        if place.projection.iter().all(|elem| !matches!(elem, ProjectionElem::OpaqueCast(_))) {
-            return;
+        if !self.tcx.next_trait_solver_globally() {
+            // `OpaqueCast` projections are only needed if there are opaque types on which projections
+            // are performed. After the `PostAnalysisNormalize` pass, all opaque types are replaced with their
+            // hidden types, so we don't need these projections anymore.
+            //
+            // Performance optimization: don't reintern if there is no `OpaqueCast` to remove.
+            if place.projection.iter().any(|elem| matches!(elem, ProjectionElem::OpaqueCast(_))) {
+                place.projection = self.tcx.mk_place_elems(
+                    &place
+                        .projection
+                        .into_iter()
+                        .filter(|elem| !matches!(elem, ProjectionElem::OpaqueCast(_)))
+                        .collect::<Vec<_>>(),
+                );
+            };
         }
-        // `OpaqueCast` projections are only needed if there are opaque types on which projections
-        // are performed. After the `PostAnalysisNormalize` pass, all opaque types are replaced with their
-        // hidden types, so we don't need these projections anymore.
-        place.projection = self.tcx.mk_place_elems(
-            &place
-                .projection
-                .into_iter()
-                .filter(|elem| !matches!(elem, ProjectionElem::OpaqueCast(_)))
-                .collect::<Vec<_>>(),
-        );
         self.super_place(place, _context, _location);
     }
 

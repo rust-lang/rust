@@ -101,18 +101,21 @@ impl<'tcx> MatchPairTree<'tcx> {
             place_builder = resolved;
         }
 
-        // Only add the OpaqueCast projection if the given place is an opaque type and the
-        // expected type from the pattern is not.
-        let may_need_cast = match place_builder.base() {
-            PlaceBase::Local(local) => {
-                let ty =
-                    Place::ty_from(local, place_builder.projection(), &cx.local_decls, cx.tcx).ty;
-                ty != pattern.ty && ty.has_opaque_types()
+        if !cx.tcx.next_trait_solver_globally() {
+            // Only add the OpaqueCast projection if the given place is an opaque type and the
+            // expected type from the pattern is not.
+            let may_need_cast = match place_builder.base() {
+                PlaceBase::Local(local) => {
+                    let ty =
+                        Place::ty_from(local, place_builder.projection(), &cx.local_decls, cx.tcx)
+                            .ty;
+                    ty != pattern.ty && ty.has_opaque_types()
+                }
+                _ => true,
+            };
+            if may_need_cast {
+                place_builder = place_builder.project(ProjectionElem::OpaqueCast(pattern.ty));
             }
-            _ => true,
-        };
-        if may_need_cast {
-            place_builder = place_builder.project(ProjectionElem::OpaqueCast(pattern.ty));
         }
 
         let place = place_builder.try_to_place(cx);
