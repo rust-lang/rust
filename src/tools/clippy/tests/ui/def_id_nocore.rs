@@ -5,7 +5,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 #[link(name = "c")]
-extern "C" {}
+unsafe extern "C" {}
 
 #[lang = "sized"]
 pub trait Sized {}

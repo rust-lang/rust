@@ -591,26 +591,26 @@ impl Types {
             TyKind::Path(ref qpath) if !context.in_body => {
                 let hir_id = hir_ty.hir_id;
                 let res = cx.qpath_res(qpath, hir_id);
-                if let Some(def_id) = res.opt_def_id() {
-                    if self.is_type_change_allowed(context) {
-                        // All lints that are being checked in this block are guarded by
-                        // the `avoid_breaking_exported_api` configuration. When adding a
-                        // new lint, please also add the name to the configuration documentation
-                        // in `clippy_config::conf`
+                if let Some(def_id) = res.opt_def_id()
+                    && self.is_type_change_allowed(context)
+                {
+                    // All lints that are being checked in this block are guarded by
+                    // the `avoid_breaking_exported_api` configuration. When adding a
+                    // new lint, please also add the name to the configuration documentation
+                    // in `clippy_config::conf`
 
-                        let mut triggered = false;
-                        triggered |= box_collection::check(cx, hir_ty, qpath, def_id);
-                        triggered |= redundant_allocation::check(cx, hir_ty, qpath, def_id);
-                        triggered |= rc_buffer::check(cx, hir_ty, qpath, def_id);
-                        triggered |= vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
-                        triggered |= option_option::check(cx, hir_ty, qpath, def_id);
-                        triggered |= linked_list::check(cx, hir_ty, def_id);
-                        triggered |= rc_mutex::check(cx, hir_ty, qpath, def_id);
-                        triggered |= owned_cow::check(cx, qpath, def_id);
+                    let mut triggered = false;
+                    triggered |= box_collection::check(cx, hir_ty, qpath, def_id);
+                    triggered |= redundant_allocation::check(cx, hir_ty, qpath, def_id);
+                    triggered |= rc_buffer::check(cx, hir_ty, qpath, def_id);
+                    triggered |= vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
+                    triggered |= option_option::check(cx, hir_ty, qpath, def_id);
+                    triggered |= linked_list::check(cx, hir_ty, def_id);
+                    triggered |= rc_mutex::check(cx, hir_ty, qpath, def_id);
+                    triggered |= owned_cow::check(cx, qpath, def_id);
 
-                        if triggered {
-                            return;
-                        }
+                    if triggered {
+                        return;
                     }
                 }
                 match *qpath {

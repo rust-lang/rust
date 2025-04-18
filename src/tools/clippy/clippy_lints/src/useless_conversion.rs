@@ -92,36 +92,36 @@ fn into_iter_bound<'tcx>(
     let mut into_iter_span = None;
 
     for (pred, span) in cx.tcx.explicit_predicates_of(fn_did).predicates {
-        if let ty::ClauseKind::Trait(tr) = pred.kind().skip_binder() {
-            if tr.self_ty().is_param(param_index) {
-                if tr.def_id() == into_iter_did {
-                    into_iter_span = Some(*span);
-                } else {
-                    let tr = cx.tcx.erase_regions(tr);
-                    if tr.has_escaping_bound_vars() {
-                        return None;
-                    }
+        if let ty::ClauseKind::Trait(tr) = pred.kind().skip_binder()
+            && tr.self_ty().is_param(param_index)
+        {
+            if tr.def_id() == into_iter_did {
+                into_iter_span = Some(*span);
+            } else {
+                let tr = cx.tcx.erase_regions(tr);
+                if tr.has_escaping_bound_vars() {
+                    return None;
+                }
 
-                    // Substitute generics in the predicate and replace the IntoIterator type parameter with the
-                    // `.into_iter()` receiver to see if the bound also holds for that type.
-                    let args = cx.tcx.mk_args_from_iter(node_args.iter().enumerate().map(|(i, arg)| {
-                        if i == param_index as usize {
-                            GenericArg::from(into_iter_receiver)
-                        } else {
-                            arg
-                        }
-                    }));
-
-                    let predicate = EarlyBinder::bind(tr).instantiate(cx.tcx, args);
-                    let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
-                    if !cx
-                        .tcx
-                        .infer_ctxt()
-                        .build(cx.typing_mode())
-                        .predicate_must_hold_modulo_regions(&obligation)
-                    {
-                        return None;
+                // Substitute generics in the predicate and replace the IntoIterator type parameter with the
+                // `.into_iter()` receiver to see if the bound also holds for that type.
+                let args = cx.tcx.mk_args_from_iter(node_args.iter().enumerate().map(|(i, arg)| {
+                    if i == param_index as usize {
+                        GenericArg::from(into_iter_receiver)
+                    } else {
+                        arg
                     }
+                }));
+
+                let predicate = EarlyBinder::bind(tr).instantiate(cx.tcx, args);
+                let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
+                if !cx
+                    .tcx
+                    .infer_ctxt()
+                    .build(cx.typing_mode())
+                    .predicate_must_hold_modulo_regions(&obligation)
+                {
+                    return None;
                 }
             }
         }
@@ -356,7 +356,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 
                     if cx.tcx.is_diagnostic_item(sym::from_fn, def_id) && same_type_and_consts(a, b) {
                         let mut app = Applicability::MachineApplicable;
-                        let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_par();
+                        let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_paren();
                         let sugg_msg = format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
                         span_lint_and_sugg(
                             cx,

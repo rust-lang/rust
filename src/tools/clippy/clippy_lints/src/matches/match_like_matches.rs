@@ -76,17 +76,18 @@ where
         && first_attrs.is_empty()
         && iter.all(|arm| find_bool_lit(&arm.2.kind).is_some_and(|b| b == b0) && arm.3.is_none() && arm.0.is_empty())
     {
-        if let Some(last_pat) = last_pat_opt {
-            if !is_wild(last_pat) {
-                return false;
-            }
+        if let Some(last_pat) = last_pat_opt
+            && !is_wild(last_pat)
+        {
+            return false;
         }
 
         for arm in iter_without_last.clone() {
-            if let Some(pat) = arm.1 {
-                if !is_lint_allowed(cx, REDUNDANT_PATTERN_MATCHING, pat.hir_id) && is_some(pat.kind) {
-                    return false;
-                }
+            if let Some(pat) = arm.1
+                && !is_lint_allowed(cx, REDUNDANT_PATTERN_MATCHING, pat.hir_id)
+                && is_some(pat.kind)
+            {
+                return false;
             }
         }
 
@@ -113,10 +114,10 @@ where
 
         // strip potential borrows (#6503), but only if the type is a reference
         let mut ex_new = ex;
-        if let ExprKind::AddrOf(BorrowKind::Ref, .., ex_inner) = ex.kind {
-            if let ty::Ref(..) = cx.typeck_results().expr_ty(ex_inner).kind() {
-                ex_new = ex_inner;
-            }
+        if let ExprKind::AddrOf(BorrowKind::Ref, .., ex_inner) = ex.kind
+            && let ty::Ref(..) = cx.typeck_results().expr_ty(ex_inner).kind()
+        {
+            ex_new = ex_inner;
         }
         span_lint_and_sugg(
             cx,

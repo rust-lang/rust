@@ -1,5 +1,5 @@
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/pattern_alternatives.rs:15:12
+  --> tests/ui/pattern_type_mismatch/pattern_alternatives.rs:14:12
    |
 LL |     if let Value::B | Value::A(_) = ref_value {}
    |            ^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     if let Value::B | Value::A(_) = ref_value {}
    = help: to override `-D warnings` add `#[allow(clippy::pattern_type_mismatch)]`
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/pattern_alternatives.rs:18:34
+  --> tests/ui/pattern_type_mismatch/pattern_alternatives.rs:17:34
    |
 LL |     if let &Value::B | &Value::A(Some(_)) = ref_value {}
    |                                  ^^^^^^^
@@ -17,7 +17,7 @@ LL |     if let &Value::B | &Value::A(Some(_)) = ref_value {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/pattern_alternatives.rs:21:32
+  --> tests/ui/pattern_type_mismatch/pattern_alternatives.rs:20:32
    |
 LL |     if let Value::B | Value::A(Some(_)) = *ref_value {}
    |                                ^^^^^^^

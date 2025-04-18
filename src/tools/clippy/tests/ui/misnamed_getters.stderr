@@ -73,8 +73,8 @@ error: getter function appears to return the wrong field
 LL | /     unsafe fn a(&self) -> &u8 {
 LL | |
 LL | |
-LL | |         &self.b
-   | |         ------- help: consider using: `&self.a`
+LL | |         unsafe { &self.b }
+   | |                  ------- help: consider using: `&self.a`
 LL | |     }
    | |_____^
 
@@ -84,8 +84,8 @@ error: getter function appears to return the wrong field
 LL | /     unsafe fn a_mut(&mut self) -> &mut u8 {
 LL | |
 LL | |
-LL | |         &mut self.b
-   | |         ----------- help: consider using: `&mut self.a`
+LL | |         unsafe { &mut self.b }
+   | |                  ----------- help: consider using: `&mut self.a`
 LL | |     }
    | |_____^
 
@@ -95,8 +95,8 @@ error: getter function appears to return the wrong field
 LL | /     unsafe fn b(self) -> u8 {
 LL | |
 LL | |
-LL | |         self.a
-   | |         ------ help: consider using: `self.b`
+LL | |         unsafe { self.a }
+   | |                  ------ help: consider using: `self.b`
 LL | |     }
    | |_____^
 
@@ -106,8 +106,8 @@ error: getter function appears to return the wrong field
 LL | /     unsafe fn b_mut(&mut self) -> &mut u8 {
 LL | |
 LL | |
-LL | |         &mut self.a
-   | |         ----------- help: consider using: `&mut self.b`
+LL | |         unsafe { &mut self.a }
+   | |                  ----------- help: consider using: `&mut self.b`
 LL | |     }
    | |_____^
 
@@ -117,8 +117,8 @@ error: getter function appears to return the wrong field
 LL | /     unsafe fn a_unchecked(&self) -> &u8 {
 LL | |
 LL | |
-LL | |         &self.b
-   | |         ------- help: consider using: `&self.a`
+LL | |         unsafe { &self.b }
+   | |                  ------- help: consider using: `&self.a`
 LL | |     }
    | |_____^
 
@@ -128,8 +128,8 @@ error: getter function appears to return the wrong field
 LL | /     unsafe fn a_unchecked_mut(&mut self) -> &mut u8 {
 LL | |
 LL | |
-LL | |         &mut self.b
-   | |         ----------- help: consider using: `&mut self.a`
+LL | |         unsafe { &mut self.b }
+   | |                  ----------- help: consider using: `&mut self.a`
 LL | |     }
    | |_____^
 
@@ -139,8 +139,8 @@ error: getter function appears to return the wrong field
 LL | /     unsafe fn b_unchecked(self) -> u8 {
 LL | |
 LL | |
-LL | |         self.a
-   | |         ------ help: consider using: `self.b`
+LL | |         unsafe { self.a }
+   | |                  ------ help: consider using: `self.b`
 LL | |     }
    | |_____^
 
@@ -150,8 +150,8 @@ error: getter function appears to return the wrong field
 LL | /     unsafe fn b_unchecked_mut(&mut self) -> &mut u8 {
 LL | |
 LL | |
-LL | |         &mut self.a
-   | |         ----------- help: consider using: `&mut self.b`
+LL | |         unsafe { &mut self.a }
+   | |                  ----------- help: consider using: `&mut self.b`
 LL | |     }
    | |_____^
 

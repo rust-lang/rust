@@ -88,9 +88,6 @@ git push upstream stable
 After updating the `stable` branch, tag the HEAD commit and push it to the
 Clippy repo.
 
-> Note: Only push the tag once the Deploy GitHub action of the `beta` branch is
-> finished. Otherwise the deploy for the tag might fail.
-
 ```bash
 git tag rust-1.XX.0               # XX should be exchanged with the corresponding version
 git push upstream rust-1.XX.0     # `upstream` is the `rust-lang/rust-clippy` remote

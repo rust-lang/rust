@@ -142,10 +142,9 @@ fn collect_unsafe_exprs<'tcx>(
                     .typeck_results()
                     .type_dependent_def_id(expr.hir_id)
                     .map(|def_id| cx.tcx.fn_sig(def_id))
+                    && sig.skip_binder().safety().is_unsafe()
                 {
-                    if sig.skip_binder().safety().is_unsafe() {
-                        unsafe_ops.push(("unsafe method call occurs here", expr.span));
-                    }
+                    unsafe_ops.push(("unsafe method call occurs here", expr.span));
                 }
             },
 

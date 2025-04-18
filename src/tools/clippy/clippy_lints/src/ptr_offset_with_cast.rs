@@ -77,10 +77,10 @@ impl<'tcx> LateLintPass<'tcx> for PtrOffsetWithCast {
 
 // If the given expression is a cast from a usize, return the lhs of the cast
 fn expr_as_cast_from_usize<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Cast(cast_lhs_expr, _) = expr.kind {
-        if is_expr_ty_usize(cx, cast_lhs_expr) {
-            return Some(cast_lhs_expr);
-        }
+    if let ExprKind::Cast(cast_lhs_expr, _) = expr.kind
+        && is_expr_ty_usize(cx, cast_lhs_expr)
+    {
+        return Some(cast_lhs_expr);
     }
     None
 }
@@ -91,14 +91,14 @@ fn expr_as_ptr_offset_call<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
 ) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Method)> {
-    if let ExprKind::MethodCall(path_segment, arg_0, [arg_1], _) = &expr.kind {
-        if is_expr_ty_raw_ptr(cx, arg_0) {
-            if path_segment.ident.name == sym::offset {
-                return Some((arg_0, arg_1, Method::Offset));
-            }
-            if path_segment.ident.name.as_str() == "wrapping_offset" {
-                return Some((arg_0, arg_1, Method::WrappingOffset));
-            }
+    if let ExprKind::MethodCall(path_segment, arg_0, [arg_1], _) = &expr.kind
+        && is_expr_ty_raw_ptr(cx, arg_0)
+    {
+        if path_segment.ident.name == sym::offset {
+            return Some((arg_0, arg_1, Method::Offset));
+        }
+        if path_segment.ident.name.as_str() == "wrapping_offset" {
+            return Some((arg_0, arg_1, Method::WrappingOffset));
         }
     }
     None

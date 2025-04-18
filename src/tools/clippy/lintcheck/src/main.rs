@@ -120,14 +120,17 @@ impl Crate {
 
         if config.perf {
             cmd = Command::new("perf");
+            let perf_data_filename = get_perf_data_filename(&self.path);
             cmd.args(&[
                 "record",
                 "-e",
                 "instructions", // Only count instructions
                 "-g",           // Enable call-graph, useful for flamegraphs and produces richer reports
                 "--quiet",      // Do not tamper with lintcheck's normal output
+                "--compression-level=22",
+                "--freq=3000", // Slow down program to capture all events
                 "-o",
-                "perf.data",
+                &perf_data_filename,
                 "--",
                 "cargo",
             ]);
@@ -165,7 +168,7 @@ impl Crate {
             return Vec::new();
         }
 
-        if !config.fix {
+        if !config.fix && !config.perf {
             cmd.arg("--message-format=json");
         }
 
@@ -201,6 +204,11 @@ impl Crate {
             }
             // fast path, we don't need the warnings anyway
             return Vec::new();
+        }
+
+        // We don't want to keep target directories if benchmarking
+        if config.perf {
+            let _ = fs::remove_dir_all(&shared_target_dir);
         }
 
         // get all clippy warnings and ICEs
@@ -439,6 +447,35 @@ fn lintcheck(config: LintcheckConfig) {
     println!("Writing logs to {}", config.lintcheck_results_path.display());
     fs::create_dir_all(config.lintcheck_results_path.parent().unwrap()).unwrap();
     fs::write(&config.lintcheck_results_path, text).unwrap();
+}
+
+/// Traverse a directory looking for `perf.data.<number>` files, and adds one
+/// to the most recent of those files, returning the new most recent `perf.data`
+/// file name.
+fn get_perf_data_filename(source_path: &Path) -> String {
+    if source_path.join("perf.data").exists() {
+        let mut max_number = 0;
+        fs::read_dir(source_path)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|path| {
+                path.file_name()
+                    .as_os_str()
+                    .to_string_lossy() // We don't care about data loss, as we're checking for equality
+                    .starts_with("perf.data")
+            })
+            .for_each(|path| {
+                let file_name = path.file_name();
+                let file_name = file_name.as_os_str().to_str().unwrap().split('.').next_back().unwrap();
+                if let Ok(parsed_file_name) = file_name.parse::<usize>()
+                    && parsed_file_name >= max_number
+                {
+                    max_number = parsed_file_name + 1;
+                }
+            });
+        return format!("perf.data.{max_number}");
+    }
+    String::from("perf.data")
 }
 
 /// Returns the path to the Clippy project directory

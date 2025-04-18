@@ -54,10 +54,11 @@ pub(super) fn check<'tcx>(
         if is_type_lang_item(cx, arg_ty, hir::LangItem::String) {
             return false;
         }
-        if let ty::Ref(_, ty, ..) = arg_ty.kind() {
-            if ty.is_str() && can_be_static_str(cx, arg) {
-                return false;
-            }
+        if let ty::Ref(_, ty, ..) = arg_ty.kind()
+            && ty.is_str()
+            && can_be_static_str(cx, arg)
+        {
+            return false;
         }
         true
     }

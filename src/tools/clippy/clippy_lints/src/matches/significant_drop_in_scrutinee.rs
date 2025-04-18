@@ -182,17 +182,16 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
     }
 
     fn has_sig_drop_attr_impl(&mut self, ty: Ty<'tcx>) -> bool {
-        if let Some(adt) = ty.ty_adt_def() {
-            if get_attr(
+        if let Some(adt) = ty.ty_adt_def()
+            && get_attr(
                 self.cx.sess(),
                 self.cx.tcx.get_attrs_unchecked(adt.did()),
                 "has_significant_drop",
             )
             .count()
                 > 0
-            {
-                return true;
-            }
+        {
+            return true;
         }
 
         if !self.seen_types.insert(ty) {

@@ -1,5 +1,5 @@
 error: transmuting a known null pointer into a function pointer
-  --> tests/ui/transmute_null_to_fn.rs:8:23
+  --> tests/ui/transmute_null_to_fn.rs:9:23
    |
 LL |         let _: fn() = std::mem::transmute(0 as *const ());
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this transmute results in undefined behavior
@@ -9,7 +9,7 @@ LL |         let _: fn() = std::mem::transmute(0 as *const ());
    = help: to override `-D warnings` add `#[allow(clippy::transmute_null_to_fn)]`
 
 error: transmuting a known null pointer into a function pointer
-  --> tests/ui/transmute_null_to_fn.rs:11:23
+  --> tests/ui/transmute_null_to_fn.rs:12:23
    |
 LL |         let _: fn() = std::mem::transmute(std::ptr::null::<()>());
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this transmute results in undefined behavior
@@ -17,7 +17,7 @@ LL |         let _: fn() = std::mem::transmute(std::ptr::null::<()>());
    = help: try wrapping your function pointer type in `Option<T>` instead, and using `None` as a null pointer value
 
 error: transmuting a known null pointer into a function pointer
-  --> tests/ui/transmute_null_to_fn.rs:22:23
+  --> tests/ui/transmute_null_to_fn.rs:23:23
    |
 LL |         let _: fn() = std::mem::transmute(ZPTR);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ this transmute results in undefined behavior
@@ -25,7 +25,7 @@ LL |         let _: fn() = std::mem::transmute(ZPTR);
    = help: try wrapping your function pointer type in `Option<T>` instead, and using `None` as a null pointer value
 
 error: transmuting a known null pointer into a function pointer
-  --> tests/ui/transmute_null_to_fn.rs:32:23
+  --> tests/ui/transmute_null_to_fn.rs:33:23
    |
 LL |         let _: fn() = std::mem::transmute(0 as *const u8 as *const ());
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this transmute results in undefined behavior
@@ -33,7 +33,7 @@ LL |         let _: fn() = std::mem::transmute(0 as *const u8 as *const ());
    = help: try wrapping your function pointer type in `Option<T>` instead, and using `None` as a null pointer value
 
 error: transmuting a known null pointer into a function pointer
-  --> tests/ui/transmute_null_to_fn.rs:35:23
+  --> tests/ui/transmute_null_to_fn.rs:36:23
    |
 LL |         let _: fn() = std::mem::transmute(std::ptr::null::<()>() as *const u8);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this transmute results in undefined behavior
@@ -41,7 +41,7 @@ LL |         let _: fn() = std::mem::transmute(std::ptr::null::<()>() as *const 
    = help: try wrapping your function pointer type in `Option<T>` instead, and using `None` as a null pointer value
 
 error: transmuting a known null pointer into a function pointer
-  --> tests/ui/transmute_null_to_fn.rs:38:23
+  --> tests/ui/transmute_null_to_fn.rs:39:23
    |
 LL |         let _: fn() = std::mem::transmute(ZPTR as *const u8);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this transmute results in undefined behavior

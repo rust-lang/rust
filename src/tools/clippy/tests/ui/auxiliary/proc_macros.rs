@@ -131,12 +131,12 @@ fn write_with_span(s: Span, mut input: IntoIter, out: &mut TokenStream) -> Resul
 pub fn make_it_big(input: TokenStream) -> TokenStream {
     let mut expr_repeat = syn::parse_macro_input!(input as syn::ExprRepeat);
     let len_span = expr_repeat.len.span();
-    if let syn::Expr::Lit(expr_lit) = &mut *expr_repeat.len {
-        if let syn::Lit::Int(lit_int) = &expr_lit.lit {
-            let orig_val = lit_int.base10_parse::<usize>().expect("not a valid length parameter");
-            let new_val = orig_val.saturating_mul(10);
-            expr_lit.lit = syn::parse_quote_spanned!( len_span => #new_val);
-        }
+    if let syn::Expr::Lit(expr_lit) = &mut *expr_repeat.len
+        && let syn::Lit::Int(lit_int) = &expr_lit.lit
+    {
+        let orig_val = lit_int.base10_parse::<usize>().expect("not a valid length parameter");
+        let new_val = orig_val.saturating_mul(10);
+        expr_lit.lit = syn::parse_quote_spanned!( len_span => #new_val);
     }
     quote::quote!(#expr_repeat).into()
 }

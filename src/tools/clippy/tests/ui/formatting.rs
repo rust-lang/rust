@@ -1,6 +1,3 @@
-#![warn(clippy::all)]
-#![allow(unused_variables)]
-#![allow(unused_assignments)]
 #![allow(clippy::if_same_then_else)]
 #![allow(clippy::deref_addrof)]
 #![allow(clippy::nonminimal_bool)]

@@ -1133,61 +1133,60 @@ fn report<'tcx>(
 
 impl<'tcx> Dereferencing<'tcx> {
     fn check_local_usage(&mut self, cx: &LateContext<'tcx>, e: &Expr<'tcx>, local: HirId) {
-        if let Some(outer_pat) = self.ref_locals.get_mut(&local) {
-            if let Some(pat) = outer_pat {
-                // Check for auto-deref
-                if !matches!(
-                    cx.typeck_results().expr_adjustments(e),
-                    [
-                        Adjustment {
-                            kind: Adjust::Deref(_),
-                            ..
-                        },
-                        Adjustment {
-                            kind: Adjust::Deref(_),
-                            ..
-                        },
+        if let Some(outer_pat) = self.ref_locals.get_mut(&local)
+            && let Some(pat) = outer_pat
+            // Check for auto-deref
+            && !matches!(
+                cx.typeck_results().expr_adjustments(e),
+                [
+                    Adjustment {
+                        kind: Adjust::Deref(_),
                         ..
-                    ]
-                ) {
-                    match get_parent_expr(cx, e) {
-                        // Field accesses are the same no matter the number of references.
-                        Some(Expr {
-                            kind: ExprKind::Field(..),
-                            ..
-                        }) => (),
-                        Some(&Expr {
-                            span,
-                            kind: ExprKind::Unary(UnOp::Deref, _),
-                            ..
-                        }) if !span.from_expansion() => {
-                            // Remove explicit deref.
-                            let snip = snippet_with_context(cx, e.span, span.ctxt(), "..", &mut pat.app).0;
-                            pat.replacements.push((span, snip.into()));
-                        },
-                        Some(parent) if !parent.span.from_expansion() => {
-                            // Double reference might be needed at this point.
-                            if parent.precedence() == ExprPrecedence::Unambiguous {
-                                // Parentheses would be needed here, don't lint.
-                                *outer_pat = None;
-                            } else {
-                                pat.always_deref = false;
-                                let snip = snippet_with_context(cx, e.span, parent.span.ctxt(), "..", &mut pat.app).0;
-                                pat.replacements.push((e.span, format!("&{snip}")));
-                            }
-                        },
-                        _ if !e.span.from_expansion() => {
-                            // Double reference might be needed at this point.
-                            pat.always_deref = false;
-                            let snip = snippet_with_applicability(cx, e.span, "..", &mut pat.app);
-                            pat.replacements.push((e.span, format!("&{snip}")));
-                        },
-                        // Edge case for macros. The span of the identifier will usually match the context of the
-                        // binding, but not if the identifier was created in a macro. e.g. `concat_idents` and proc
-                        // macros
-                        _ => *outer_pat = None,
+                    },
+                    Adjustment {
+                        kind: Adjust::Deref(_),
+                        ..
+                    },
+                    ..
+                ]
+            )
+        {
+            match get_parent_expr(cx, e) {
+                // Field accesses are the same no matter the number of references.
+                Some(Expr {
+                    kind: ExprKind::Field(..),
+                    ..
+                }) => (),
+                Some(&Expr {
+                    span,
+                    kind: ExprKind::Unary(UnOp::Deref, _),
+                    ..
+                }) if !span.from_expansion() => {
+                    // Remove explicit deref.
+                    let snip = snippet_with_context(cx, e.span, span.ctxt(), "..", &mut pat.app).0;
+                    pat.replacements.push((span, snip.into()));
+                },
+                Some(parent) if !parent.span.from_expansion() => {
+                    // Double reference might be needed at this point.
+                    if parent.precedence() == ExprPrecedence::Unambiguous {
+                        // Parentheses would be needed here, don't lint.
+                        *outer_pat = None;
+                    } else {
+                        pat.always_deref = false;
+                        let snip = snippet_with_context(cx, e.span, parent.span.ctxt(), "..", &mut pat.app).0;
+                        pat.replacements.push((e.span, format!("&{snip}")));
                     }
-                }
+                },
+                _ if !e.span.from_expansion() => {
+                    // Double reference might be needed at this point.
+                    pat.always_deref = false;
+                    let snip = snippet_with_applicability(cx, e.span, "..", &mut pat.app);
+                    pat.replacements.push((e.span, format!("&{snip}")));
+                },
+                // Edge case for macros. The span of the identifier will usually match the context of the
+                // binding, but not if the identifier was created in a macro. e.g. `concat_idents` and proc
+                // macros
+                _ => *outer_pat = None,
             }
         }
     }

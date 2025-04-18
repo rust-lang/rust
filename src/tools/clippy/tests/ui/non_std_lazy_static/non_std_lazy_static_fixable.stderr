@@ -1,4 +1,4 @@
-error: this type has been superceded by `LazyLock` in the standard library
+error: this type has been superseded by `LazyLock` in the standard library
   --> tests/ui/non_std_lazy_static/non_std_lazy_static_fixable.rs:11:18
    |
 LL | static LAZY_FOO: Lazy<String> = Lazy::new(|| "foo".to_uppercase());
@@ -12,7 +12,7 @@ LL - static LAZY_FOO: Lazy<String> = Lazy::new(|| "foo".to_uppercase());
 LL + static LAZY_FOO: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "foo".to_uppercase());
    |
 
-error: this type has been superceded by `LazyLock` in the standard library
+error: this type has been superseded by `LazyLock` in the standard library
   --> tests/ui/non_std_lazy_static/non_std_lazy_static_fixable.rs:13:18
    |
 LL | static LAZY_BAR: Lazy<String> = Lazy::new(|| {
@@ -24,7 +24,7 @@ LL - static LAZY_BAR: Lazy<String> = Lazy::new(|| {
 LL + static LAZY_BAR: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
    |
 
-error: this type has been superceded by `LazyLock` in the standard library
+error: this type has been superseded by `LazyLock` in the standard library
   --> tests/ui/non_std_lazy_static/non_std_lazy_static_fixable.rs:18:18
    |
 LL | static LAZY_BAZ: Lazy<String> = { Lazy::new(|| "baz".to_uppercase()) };
@@ -36,7 +36,7 @@ LL - static LAZY_BAZ: Lazy<String> = { Lazy::new(|| "baz".to_uppercase()) };
 LL + static LAZY_BAZ: std::sync::LazyLock<String> = { std::sync::LazyLock::new(|| "baz".to_uppercase()) };
    |
 
-error: this type has been superceded by `LazyLock` in the standard library
+error: this type has been superseded by `LazyLock` in the standard library
   --> tests/ui/non_std_lazy_static/non_std_lazy_static_fixable.rs:20:18
    |
 LL | static LAZY_QUX: Lazy<String> = {
@@ -54,7 +54,7 @@ LL |     } else {
 LL ~         std::sync::LazyLock::new(|| "qux".to_string())
    |
 
-error: this type has been superceded by `LazyLock` in the standard library
+error: this type has been superseded by `LazyLock` in the standard library
   --> tests/ui/non_std_lazy_static/non_std_lazy_static_fixable.rs:41:22
    |
 LL |     static LAZY_FOO: Lazy<String> = Lazy::new(|| "foo".to_uppercase());
@@ -69,7 +69,7 @@ LL |     fn calling_replaceable_fns() {
 LL ~         let _ = std::sync::LazyLock::force(&LAZY_FOO);
    |
 
-error: this type has been superceded by `LazyLock` in the standard library
+error: this type has been superseded by `LazyLock` in the standard library
   --> tests/ui/non_std_lazy_static/non_std_lazy_static_fixable.rs:43:22
    |
 LL |     static LAZY_BAR: Lazy<String> = Lazy::new(|| "bar".to_uppercase());
@@ -84,7 +84,7 @@ LL |         let _ = Lazy::force(&LAZY_FOO);
 LL ~         let _ = std::sync::LazyLock::force(&LAZY_BAR);
    |
 
-error: this type has been superceded by `LazyLock` in the standard library
+error: this type has been superseded by `LazyLock` in the standard library
   --> tests/ui/non_std_lazy_static/non_std_lazy_static_fixable.rs:45:26
    |
 LL |     static mut LAZY_BAZ: Lazy<String> = Lazy::new(|| "baz".to_uppercase());

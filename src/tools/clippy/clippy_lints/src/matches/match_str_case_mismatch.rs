@@ -26,10 +26,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'_>, arm
         && let ty::Str = ty.kind()
     {
         let mut visitor = MatchExprVisitor { cx };
-        if let ControlFlow::Break(case_method) = visitor.visit_expr(scrutinee) {
-            if let Some((bad_case_span, bad_case_sym)) = verify_case(&case_method, arms) {
-                lint(cx, &case_method, bad_case_span, bad_case_sym.as_str());
-            }
+        if let ControlFlow::Break(case_method) = visitor.visit_expr(scrutinee)
+            && let Some((bad_case_span, bad_case_sym)) = verify_case(&case_method, arms)
+        {
+            lint(cx, &case_method, bad_case_span, bad_case_sym.as_str());
         }
     }
 }

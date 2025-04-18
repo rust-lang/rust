@@ -232,4 +232,26 @@ fn issue11976() {
     }
 }
 
+mod issue14449 {
+    use std::collections::BTreeMap;
+
+    pub struct Meow {
+        map: BTreeMap<String, String>,
+    }
+
+    impl Meow {
+        fn pet(&self, _key: &str, _v: u32) -> u32 {
+            42
+        }
+    }
+
+    pub fn f(meow: &Meow, x: String) {
+        if meow.map.contains_key(&x) {
+            let _ = meow.pet(&x, 1);
+        } else {
+            let _ = meow.pet(&x, 0);
+        }
+    }
+}
+
 fn main() {}

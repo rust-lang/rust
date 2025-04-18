@@ -155,4 +155,10 @@ impl Foo for LineComment {
     fn bar() {}
 }
 
+//~v empty_line_after_doc_comments
+/// Docs for this item.
+// fn some_item() {}
+
+impl LineComment {} // or any other nameless item kind
+
 fn main() {}

@@ -303,6 +303,18 @@ pub fn test_2(x: Issue9647) {
     }
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/14281
+fn lint_emitted_at_right_node(opt: Option<Result<u64, String>>) {
+    let n = match opt {
+        #[expect(clippy::collapsible_match)]
+        Some(n) => match n {
+            Ok(n) => n,
+            _ => return,
+        },
+        None => return,
+    };
+}
+
 fn make<T>() -> T {
     unimplemented!()
 }

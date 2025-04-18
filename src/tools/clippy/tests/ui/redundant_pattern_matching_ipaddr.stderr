@@ -1,5 +1,5 @@
 error: redundant pattern matching, consider using `is_ipv4()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:15:12
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:14:12
    |
 LL |     if let V4(_) = &ipaddr {}
    |     -------^^^^^---------- help: try: `if ipaddr.is_ipv4()`
@@ -8,43 +8,43 @@ LL |     if let V4(_) = &ipaddr {}
    = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 
 error: redundant pattern matching, consider using `is_ipv4()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:18:12
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:17:12
    |
 LL |     if let V4(_) = V4(Ipv4Addr::LOCALHOST) {}
    |     -------^^^^^-------------------------- help: try: `if V4(Ipv4Addr::LOCALHOST).is_ipv4()`
 
 error: redundant pattern matching, consider using `is_ipv6()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:21:12
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:20:12
    |
 LL |     if let V6(_) = V6(Ipv6Addr::LOCALHOST) {}
    |     -------^^^^^-------------------------- help: try: `if V6(Ipv6Addr::LOCALHOST).is_ipv6()`
 
 error: redundant pattern matching, consider using `is_ipv4()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:25:8
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:24:8
    |
 LL |     if matches!(V4(Ipv4Addr::LOCALHOST), V4(_)) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `V4(Ipv4Addr::LOCALHOST).is_ipv4()`
 
 error: redundant pattern matching, consider using `is_ipv6()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:29:8
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:28:8
    |
 LL |     if matches!(V6(Ipv6Addr::LOCALHOST), V6(_)) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `V6(Ipv6Addr::LOCALHOST).is_ipv6()`
 
 error: redundant pattern matching, consider using `is_ipv4()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:32:15
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:31:15
    |
 LL |     while let V4(_) = V4(Ipv4Addr::LOCALHOST) {}
    |     ----------^^^^^-------------------------- help: try: `while V4(Ipv4Addr::LOCALHOST).is_ipv4()`
 
 error: redundant pattern matching, consider using `is_ipv6()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:35:15
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:34:15
    |
 LL |     while let V6(_) = V6(Ipv6Addr::LOCALHOST) {}
    |     ----------^^^^^-------------------------- help: try: `while V6(Ipv6Addr::LOCALHOST).is_ipv6()`
 
 error: redundant pattern matching, consider using `is_ipv4()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:46:5
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:45:5
    |
 LL | /     match V4(Ipv4Addr::LOCALHOST) {
 LL | |
@@ -54,7 +54,7 @@ LL | |     };
    | |_____^ help: try: `V4(Ipv4Addr::LOCALHOST).is_ipv4()`
 
 error: redundant pattern matching, consider using `is_ipv6()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:52:5
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:51:5
    |
 LL | /     match V4(Ipv4Addr::LOCALHOST) {
 LL | |
@@ -64,7 +64,7 @@ LL | |     };
    | |_____^ help: try: `V4(Ipv4Addr::LOCALHOST).is_ipv6()`
 
 error: redundant pattern matching, consider using `is_ipv6()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:58:5
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:57:5
    |
 LL | /     match V6(Ipv6Addr::LOCALHOST) {
 LL | |
@@ -74,7 +74,7 @@ LL | |     };
    | |_____^ help: try: `V6(Ipv6Addr::LOCALHOST).is_ipv6()`
 
 error: redundant pattern matching, consider using `is_ipv4()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:64:5
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:63:5
    |
 LL | /     match V6(Ipv6Addr::LOCALHOST) {
 LL | |
@@ -84,49 +84,49 @@ LL | |     };
    | |_____^ help: try: `V6(Ipv6Addr::LOCALHOST).is_ipv4()`
 
 error: redundant pattern matching, consider using `is_ipv4()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:70:20
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:69:20
    |
 LL |     let _ = if let V4(_) = V4(Ipv4Addr::LOCALHOST) {
    |             -------^^^^^-------------------------- help: try: `if V4(Ipv4Addr::LOCALHOST).is_ipv4()`
 
 error: redundant pattern matching, consider using `is_ipv4()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:79:20
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:78:20
    |
 LL |     let _ = if let V4(_) = gen_ipaddr() {
    |             -------^^^^^--------------- help: try: `if gen_ipaddr().is_ipv4()`
 
 error: redundant pattern matching, consider using `is_ipv6()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:82:19
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:81:19
    |
 LL |     } else if let V6(_) = gen_ipaddr() {
    |            -------^^^^^--------------- help: try: `if gen_ipaddr().is_ipv6()`
 
 error: redundant pattern matching, consider using `is_ipv4()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:95:12
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:94:12
    |
 LL |     if let V4(_) = V4(Ipv4Addr::LOCALHOST) {}
    |     -------^^^^^-------------------------- help: try: `if V4(Ipv4Addr::LOCALHOST).is_ipv4()`
 
 error: redundant pattern matching, consider using `is_ipv6()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:98:12
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:97:12
    |
 LL |     if let V6(_) = V6(Ipv6Addr::LOCALHOST) {}
    |     -------^^^^^-------------------------- help: try: `if V6(Ipv6Addr::LOCALHOST).is_ipv6()`
 
 error: redundant pattern matching, consider using `is_ipv4()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:101:15
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:100:15
    |
 LL |     while let V4(_) = V4(Ipv4Addr::LOCALHOST) {}
    |     ----------^^^^^-------------------------- help: try: `while V4(Ipv4Addr::LOCALHOST).is_ipv4()`
 
 error: redundant pattern matching, consider using `is_ipv6()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:104:15
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:103:15
    |
 LL |     while let V6(_) = V6(Ipv6Addr::LOCALHOST) {}
    |     ----------^^^^^-------------------------- help: try: `while V6(Ipv6Addr::LOCALHOST).is_ipv6()`
 
 error: redundant pattern matching, consider using `is_ipv4()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:107:5
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:106:5
    |
 LL | /     match V4(Ipv4Addr::LOCALHOST) {
 LL | |
@@ -136,7 +136,7 @@ LL | |     };
    | |_____^ help: try: `V4(Ipv4Addr::LOCALHOST).is_ipv4()`
 
 error: redundant pattern matching, consider using `is_ipv6()`
-  --> tests/ui/redundant_pattern_matching_ipaddr.rs:113:5
+  --> tests/ui/redundant_pattern_matching_ipaddr.rs:112:5
    |
 LL | /     match V6(Ipv6Addr::LOCALHOST) {
 LL | |

@@ -13,7 +13,7 @@ use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Level};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, SyntaxContext, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -242,11 +242,11 @@ struct Hir2Qmm<'a, 'tcx, 'v> {
 impl<'v> Hir2Qmm<'_, '_, 'v> {
     fn extract(&mut self, op: BinOpKind, a: &[&'v Expr<'_>], mut v: Vec<Bool>) -> Result<Vec<Bool>, String> {
         for a in a {
-            if let ExprKind::Binary(binop, lhs, rhs) = &a.kind {
-                if binop.node == op {
-                    v = self.extract(op, &[lhs, rhs], v)?;
-                    continue;
-                }
+            if let ExprKind::Binary(binop, lhs, rhs) = &a.kind
+                && binop.node == op
+            {
+                v = self.extract(op, &[lhs, rhs], v)?;
+                continue;
             }
             v.push(self.run(a)?);
         }
@@ -349,9 +349,13 @@ impl SuggestContext<'_, '_, '_> {
                     if let Some(str) = simplify_not(self.cx, self.msrv, terminal) {
                         self.output.push_str(&str);
                     } else {
-                        self.output.push('!');
-                        self.output
-                            .push_str(&Sugg::hir_opt(self.cx, terminal)?.maybe_par().to_string());
+                        let mut app = Applicability::MachineApplicable;
+                        let snip = Sugg::hir_with_context(self.cx, terminal, SyntaxContext::root(), "", &mut app);
+                        // Ignore the case If the expression is inside a macro expansion, or the default snippet is used
+                        if app != Applicability::MachineApplicable {
+                            return None;
+                        }
+                        self.output.push_str(&(!snip).to_string());
                     }
                 },
                 True | False | Not(_) => {
@@ -414,12 +418,12 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
                 let lhs_snippet = lhs.span.get_source_text(cx)?;
                 let rhs_snippet = rhs.span.get_source_text(cx)?;
 
-                if !(lhs_snippet.starts_with('(') && lhs_snippet.ends_with(')')) {
-                    if let (ExprKind::Cast(..), BinOpKind::Ge) = (&lhs.kind, binop.node) {
-                        // e.g. `(a as u64) < b`. Without the parens the `<` is
-                        // interpreted as a start of generic arguments for `u64`
-                        return Some(format!("({lhs_snippet}){op}{rhs_snippet}"));
-                    }
+                if !(lhs_snippet.starts_with('(') && lhs_snippet.ends_with(')'))
+                    && let (ExprKind::Cast(..), BinOpKind::Ge) = (&lhs.kind, binop.node)
+                {
+                    // e.g. `(a as u64) < b`. Without the parens the `<` is
+                    // interpreted as a start of generic arguments for `u64`
+                    return Some(format!("({lhs_snippet}){op}{rhs_snippet}"));
                 }
 
                 Some(format!("{lhs_snippet}{op}{rhs_snippet}"))

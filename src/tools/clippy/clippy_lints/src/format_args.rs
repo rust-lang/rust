@@ -141,7 +141,7 @@ declare_clippy_lint! {
     /// format!("{var:.prec$}");
     /// ```
     ///
-    /// If allow-mixed-uninlined-format-args is set to false in clippy.toml,
+    /// If `allow-mixed-uninlined-format-args` is set to `false` in clippy.toml,
     /// the following code will also trigger the lint:
     /// ```no_run
     /// # let var = 42;
@@ -159,7 +159,7 @@ declare_clippy_lint! {
     /// nothing will be suggested, e.g. `println!("{0}={1}", var, 1+2)`.
     #[clippy::version = "1.66.0"]
     pub UNINLINED_FORMAT_ARGS,
-    pedantic,
+    style,
     "using non-inlined variables in `format!` calls"
 }
 

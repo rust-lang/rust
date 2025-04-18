@@ -1,5 +1,4 @@
 #![warn(clippy::case_sensitive_file_extension_comparisons)]
-#![allow(clippy::unnecessary_map_or)]
 
 use std::string::String;
 
@@ -63,4 +62,10 @@ fn main() {
     let _ = String::new().ends_with(".123");
     let _ = "str".ends_with(".123");
     TestStruct {}.ends_with(".123");
+}
+
+#[clippy::msrv = "1.69"]
+fn msrv_check() {
+    let _ = String::new().ends_with(".ext12");
+    //~^ case_sensitive_file_extension_comparisons
 }

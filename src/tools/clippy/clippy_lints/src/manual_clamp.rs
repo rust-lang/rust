@@ -181,7 +181,7 @@ fn maybe_emit_suggestion<'tcx>(cx: &LateContext<'tcx>, suggestion: &ClampSuggest
         make_assignment,
         hir_with_ignore_attr,
     } = suggestion;
-    let input = Sugg::hir(cx, input, "..").maybe_par();
+    let input = Sugg::hir(cx, input, "..").maybe_paren();
     let min = Sugg::hir(cx, min, "..");
     let max = Sugg::hir(cx, max, "..");
     let semicolon = if make_assignment.is_some() { ";" } else { "" };

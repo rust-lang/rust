@@ -1,5 +1,5 @@
 error: methods called `new` usually return `Self`
-  --> tests/ui/methods.rs:104:5
+  --> tests/ui/methods.rs:102:5
    |
 LL | /     fn new() -> i32 {
 LL | |
@@ -11,7 +11,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::new_ret_no_self)]`
 
 error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead
-  --> tests/ui/methods.rs:126:13
+  --> tests/ui/methods.rs:124:13
    |
 LL |       let _ = v.iter().filter(|&x| {
    |  _____________^

@@ -114,6 +114,7 @@ mod suspicious_command_arg_space;
 mod suspicious_map;
 mod suspicious_splitn;
 mod suspicious_to_owned;
+mod swap_with_temporary;
 mod type_id_on_box;
 mod unbuffered_bytes;
 mod uninit_assumed_init;
@@ -477,9 +478,6 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Because you usually call `expect()` on the `Result`
     /// directly to get a better error message.
-    ///
-    /// ### Known problems
-    /// The error type needs to implement `Debug`
     ///
     /// ### Example
     /// ```no_run
@@ -2429,7 +2427,7 @@ declare_clippy_lint! {
     ///
     /// ### Limitations
     /// This lint currently only looks for usages of
-    /// `.then_some(..).unwrap_or(..)` and `.then(..).unwrap_or(..)`, but will be expanded
+    /// `.{then, then_some}(..).{unwrap_or, unwrap_or_else, unwrap_or_default}(..)`, but will be expanded
     /// to account for similar patterns.
     ///
     /// ### Example
@@ -4286,7 +4284,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let last_arg = "echo hello world".split(' ').next_back();
     /// ```
-    #[clippy::version = "1.85.0"]
+    #[clippy::version = "1.86.0"]
     pub DOUBLE_ENDED_ITERATOR_LAST,
     perf,
     "using `Iterator::last` on a `DoubleEndedIterator`"
@@ -4478,10 +4476,57 @@ declare_clippy_lint! {
     /// ```no_run
     /// let _ = std::io::Error::other("bad".to_string());
     /// ```
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.87.0"]
     pub IO_OTHER_ERROR,
     style,
     "calling `std::io::Error::new(std::io::ErrorKind::Other, _)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `std::mem::swap` with temporary values.
+    ///
+    /// ### Why is this bad?
+    /// Storing a new value in place of a temporary value which will
+    /// be dropped right after the `swap` is an inefficient way of performing
+    /// an assignment. The same result can be achieved by using a regular
+    /// assignment.
+    ///
+    /// ### Examples
+    /// ```no_run
+    /// fn replace_string(s: &mut String) {
+    ///     std::mem::swap(s, &mut String::from("replaced"));
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn replace_string(s: &mut String) {
+    ///     *s = String::from("replaced");
+    /// }
+    /// ```
+    ///
+    /// Also, swapping two temporary values has no effect, as they will
+    /// both be dropped right after swapping them. This is likely an indication
+    /// of a bug. For example, the following code swaps the references to
+    /// the last element of the vectors, instead of swapping the elements
+    /// themselves:
+    ///
+    /// ```no_run
+    /// fn bug(v1: &mut [i32], v2: &mut [i32]) {
+    ///     // Incorrect: swapping temporary references (`&mut &mut` passed to swap)
+    ///     std::mem::swap(&mut v1.last_mut().unwrap(), &mut v2.last_mut().unwrap());
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn correct(v1: &mut [i32], v2: &mut [i32]) {
+    ///     std::mem::swap(v1.last_mut().unwrap(), v2.last_mut().unwrap());
+    /// }
+    /// ```
+    #[clippy::version = "1.88.0"]
+    pub SWAP_WITH_TEMPORARY,
+    complexity,
+    "detect swap with a temporary value"
 }
 
 #[expect(clippy::struct_excessive_bools)]
@@ -4661,17 +4706,19 @@ impl_lint_pass!(Methods => [
     UNBUFFERED_BYTES,
     MANUAL_CONTAINS,
     IO_OTHER_ERROR,
+    SWAP_WITH_TEMPORARY,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
 pub fn method_call<'tcx>(
     recv: &'tcx Expr<'tcx>,
 ) -> Option<(&'tcx str, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span)> {
-    if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind {
-        if !args.iter().any(|e| e.span.from_expansion()) && !receiver.span.from_expansion() {
-            let name = path.ident.name.as_str();
-            return Some((name, receiver, args, path.ident.span, call_span));
-        }
+    if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind
+        && !args.iter().any(|e| e.span.from_expansion())
+        && !receiver.span.from_expansion()
+    {
+        let name = path.ident.name.as_str();
+        return Some((name, receiver, args, path.ident.span, call_span));
     }
     None
 }
@@ -4691,6 +4738,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 manual_c_str_literals::check(cx, expr, func, args, self.msrv);
                 useless_nonzero_new_unchecked::check(cx, expr, func, args, self.msrv);
                 io_other_error::check(cx, expr, func, args, self.msrv);
+                swap_with_temporary::check(cx, expr, func, args);
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
@@ -4992,7 +5040,7 @@ impl Methods {
                 },
                 ("ends_with", [arg]) => {
                     if let ExprKind::MethodCall(.., span) = expr.kind {
-                        case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg);
+                        case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg, self.msrv);
                     }
                     path_ends_with_ext::check(cx, recv, arg, expr, self.msrv, &self.allowed_dotfiles);
                 },
@@ -5421,15 +5469,21 @@ impl Methods {
                             option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, self.msrv);
                         },
                         Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg, then_method, "unwrap_or");
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, Some(u_arg), then_method, "unwrap_or");
                         },
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("unwrap_or_default", []) => {
-                    if let Some(("map", m_recv, [arg], span, _)) = method_call(recv) {
-                        manual_is_variant_and::check(cx, expr, m_recv, arg, span, self.msrv);
+                    match method_call(recv) {
+                        Some(("map", m_recv, [arg], span, _)) => {
+                            manual_is_variant_and::check(cx, expr, m_recv, arg, span, self.msrv);
+                        },
+                        Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, None, then_method, "unwrap_or_default");
+                        },
+                        _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
@@ -5441,7 +5495,15 @@ impl Methods {
                         Some(("map", recv, [map_arg], _, _))
                             if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, self.msrv) => {},
                         Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg, then_method, "unwrap_or_else");
+                            obfuscated_if_else::check(
+                                cx,
+                                expr,
+                                t_recv,
+                                t_arg,
+                                Some(u_arg),
+                                then_method,
+                                "unwrap_or_else",
+                            );
                         },
                         _ => {
                             unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");

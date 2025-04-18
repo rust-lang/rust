@@ -22,8 +22,8 @@ LL |     binary_heap = binary_heap.iter().filter(|&x| x % 2 == 0).cloned().colle
 error: this expression can be written more simply using `.retain()`
   --> tests/ui/manual_retain.rs:34:5
    |
-LL |     tuples = tuples.iter().filter(|(ref x, ref y)| *x == 0).copied().collect();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `tuples.retain(|(ref x, ref y)| *x == 0)`
+LL |     tuples = tuples.iter().filter(|&&(ref x, ref y)| *x == 0).copied().collect();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `tuples.retain(|&(ref x, ref y)| *x == 0)`
 
 error: this expression can be written more simply using `.retain()`
   --> tests/ui/manual_retain.rs:36:5
@@ -74,8 +74,8 @@ LL |     btree_set = btree_set.into_iter().filter(|x| x % 2 == 0).collect();
 error: this expression can be written more simply using `.retain()`
   --> tests/ui/manual_retain.rs:106:5
    |
-LL |     tuples = tuples.iter().filter(|(ref x, ref y)| *x == 0).copied().collect();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `tuples.retain(|(ref x, ref y)| *x == 0)`
+LL |     tuples = tuples.iter().filter(|&&(ref x, ref y)| *x == 0).copied().collect();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `tuples.retain(|&(ref x, ref y)| *x == 0)`
 
 error: this expression can be written more simply using `.retain()`
   --> tests/ui/manual_retain.rs:108:5
@@ -126,8 +126,8 @@ LL |     hash_set = hash_set.iter().filter(|&x| x % 2 == 0).cloned().collect();
 error: this expression can be written more simply using `.retain()`
   --> tests/ui/manual_retain.rs:177:5
    |
-LL |     tuples = tuples.iter().filter(|(ref x, ref y)| *x == 0).copied().collect();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `tuples.retain(|(ref x, ref y)| *x == 0)`
+LL |     tuples = tuples.iter().filter(|&&(ref x, ref y)| *x == 0).copied().collect();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `tuples.retain(|&(ref x, ref y)| *x == 0)`
 
 error: this expression can be written more simply using `.retain()`
   --> tests/ui/manual_retain.rs:179:5
@@ -162,8 +162,8 @@ LL |     vec = vec.into_iter().filter(|x| x % 2 == 0).collect();
 error: this expression can be written more simply using `.retain()`
   --> tests/ui/manual_retain.rs:231:5
    |
-LL |     tuples = tuples.iter().filter(|(ref x, ref y)| *x == 0).copied().collect();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `tuples.retain(|(ref x, ref y)| *x == 0)`
+LL |     tuples = tuples.iter().filter(|&&(ref x, ref y)| *x == 0).copied().collect();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `tuples.retain(|&(ref x, ref y)| *x == 0)`
 
 error: this expression can be written more simply using `.retain()`
   --> tests/ui/manual_retain.rs:233:5

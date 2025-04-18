@@ -8,12 +8,12 @@ use std::mem::transmute;
 
 // Make sure we can do static lifetime transmutes
 unsafe fn transmute_lifetime_to_static<'a, T>(t: &'a T) -> &'static T {
-    transmute::<&'a T, &'static T>(t)
+    unsafe { transmute::<&'a T, &'static T>(t) }
 }
 
 // Make sure we can do non-static lifetime transmutes
 unsafe fn transmute_lifetime<'a, 'b, T>(t: &'a T, u: &'b T) -> &'b T {
-    transmute::<&'a T, &'b T>(t)
+    unsafe { transmute::<&'a T, &'b T>(t) }
 }
 
 struct LifetimeParam<'a> {

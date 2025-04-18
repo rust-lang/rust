@@ -1,0 +1,12 @@
+error: `#[ignore]` without reason
+  --> tests/ui/ignore_without_reason.rs:13:1
+   |
+LL | #[ignore]
+   | ^^^^^^^^^
+   |
+   = help: add a reason with `= ".."`
+   = note: `-D clippy::ignore-without-reason` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ignore_without_reason)]`
+
+error: aborting due to 1 previous error
+

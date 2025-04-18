@@ -214,10 +214,9 @@ mod issue7392 {
     }
 
     fn ref_bindings() {
-        let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y);
-        //~^ search_is_some
-        let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y);
-        //~^ search_is_some
+        let _ = [&(&1, 2), &(&3, 4), &(&5, 4)]
+            .iter()
+            .any(|&&(&x, ref y)| x == *y);
     }
 
     fn test_string_1(s: &str) -> bool {

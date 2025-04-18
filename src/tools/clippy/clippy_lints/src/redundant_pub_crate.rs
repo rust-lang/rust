@@ -52,13 +52,10 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
             && is_not_macro_export(item)
             && !item.span.in_external_macro(cx.sess().source_map())
         {
-            // FIXME: `DUMMY_SP` isn't right here, because it causes the
-            // resulting span to begin at the start of the file.
-            let span = item.span.with_hi(
-                item.kind
-                    .ident()
-                    .map_or(rustc_span::DUMMY_SP.hi(), |ident| ident.span.hi()),
-            );
+            let span = item
+                .kind
+                .ident()
+                .map_or(item.span, |ident| item.span.with_hi(ident.span.hi()));
             let descr = cx.tcx.def_kind(item.owner_id).descr(item.owner_id.to_def_id());
             span_lint_and_then(
                 cx,

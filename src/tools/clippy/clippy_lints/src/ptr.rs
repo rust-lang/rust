@@ -264,8 +264,8 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                 is_null_path(cx, l),
                 is_null_path(cx, r),
             ) {
-                (false, true, false) if let Some(sugg) = Sugg::hir_opt(cx, r) => sugg.maybe_par(),
-                (false, false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_par(),
+                (false, true, false) if let Some(sugg) = Sugg::hir_opt(cx, r) => sugg.maybe_paren(),
+                (false, false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_paren(),
                 _ => return check_ptr_eq(cx, expr, op.node, l, r),
             };
 
@@ -498,29 +498,33 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
 }
 
 fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Option<&Body<'tcx>>) {
-    if let FnRetTy::Return(ty) = sig.decl.output
-        && let Some((out, Mutability::Mut, _)) = get_ref_lm(ty)
-    {
+    let FnRetTy::Return(ty) = sig.decl.output else { return };
+    for (out, mutability, out_span) in get_lifetimes(ty) {
+        if mutability != Some(Mutability::Mut) {
+            continue;
+        }
         let out_region = cx.tcx.named_bound_var(out.hir_id);
-        let args: Option<Vec<_>> = sig
+        // `None` if one of the types contains `&'a mut T` or `T<'a>`.
+        // Else, contains all the locations of `&'a T` types.
+        let args_immut_refs: Option<Vec<Span>> = sig
             .decl
             .inputs
             .iter()
-            .filter_map(get_ref_lm)
+            .flat_map(get_lifetimes)
             .filter(|&(lt, _, _)| cx.tcx.named_bound_var(lt.hir_id) == out_region)
-            .map(|(_, mutability, span)| (mutability == Mutability::Not).then_some(span))
+            .map(|(_, mutability, span)| (mutability == Some(Mutability::Not)).then_some(span))
             .collect();
-        if let Some(args) = args
-            && !args.is_empty()
+        if let Some(args_immut_refs) = args_immut_refs
+            && !args_immut_refs.is_empty()
             && body.is_none_or(|body| sig.header.is_unsafe() || contains_unsafe_block(cx, body.value))
         {
             span_lint_and_then(
                 cx,
                 MUT_FROM_REF,
-                ty.span,
+                out_span,
                 "mutable borrow from immutable input(s)",
                 |diag| {
-                    let ms = MultiSpan::from_spans(args);
+                    let ms = MultiSpan::from_spans(args_immut_refs);
                     diag.span_note(ms, "immutable borrow here");
                 },
             );
@@ -686,12 +690,36 @@ fn matches_preds<'tcx>(
         })
 }
 
-fn get_ref_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, Span)> {
-    if let TyKind::Ref(lt, ref m) = ty.kind {
-        Some((lt, m.mutbl, ty.span))
-    } else {
-        None
+struct LifetimeVisitor<'tcx> {
+    result: Vec<(&'tcx Lifetime, Option<Mutability>, Span)>,
+}
+
+impl<'tcx> Visitor<'tcx> for LifetimeVisitor<'tcx> {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, hir::AmbigArg>) {
+        if let TyKind::Ref(lt, ref m) = ty.kind {
+            self.result.push((lt, Some(m.mutbl), ty.span));
+        }
+        hir::intravisit::walk_ty(self, ty);
     }
+
+    fn visit_generic_arg(&mut self, generic_arg: &'tcx GenericArg<'tcx>) {
+        if let GenericArg::Lifetime(lt) = generic_arg {
+            self.result.push((lt, None, generic_arg.span()));
+        }
+        hir::intravisit::walk_generic_arg(self, generic_arg);
+    }
+}
+
+/// Visit `ty` and collect the all the lifetimes appearing in it, implicit or not.
+///
+/// The second field of the vector's elements indicate if the lifetime is attached to a
+/// shared reference, a mutable reference, or neither.
+fn get_lifetimes<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Vec<(&'tcx Lifetime, Option<Mutability>, Span)> {
+    use hir::intravisit::VisitorExt as _;
+
+    let mut visitor = LifetimeVisitor { result: Vec::new() };
+    visitor.visit_ty_unambig(ty);
+    visitor.result
 }
 
 fn is_null_path(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
@@ -728,8 +756,9 @@ fn check_ptr_eq<'tcx>(
 
     let (left_var, right_var) = (peel_raw_casts(cx, left, left_ty), peel_raw_casts(cx, right, right_ty));
 
-    if let Some(left_snip) = left_var.span.get_source_text(cx)
-        && let Some(right_snip) = right_var.span.get_source_text(cx)
+    let mut app = Applicability::MachineApplicable;
+    let left_snip = Sugg::hir_with_context(cx, left_var, expr.span.ctxt(), "_", &mut app);
+    let right_snip = Sugg::hir_with_context(cx, right_var, expr.span.ctxt(), "_", &mut app);
     {
         let Some(top_crate) = std_or_core(cx) else { return };
         let invert = if op == BinOpKind::Eq { "" } else { "!" };
@@ -740,7 +769,7 @@ fn check_ptr_eq<'tcx>(
             format!("use `{top_crate}::ptr::eq` when comparing raw pointers"),
             "try",
             format!("{invert}{top_crate}::ptr::eq({left_snip}, {right_snip})"),
-            Applicability::MachineApplicable,
+            app,
         );
     }
 }
@@ -748,7 +777,8 @@ fn check_ptr_eq<'tcx>(
 // If the given expression is a cast to a usize, return the lhs of the cast
 // E.g., `foo as *const _ as usize` returns `foo as *const _`.
 fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if cx.typeck_results().expr_ty(cast_expr) == cx.tcx.types.usize
+    if !cast_expr.span.from_expansion()
+        && cx.typeck_results().expr_ty(cast_expr) == cx.tcx.types.usize
         && let ExprKind::Cast(expr, _) = cast_expr.kind
     {
         Some(expr)
@@ -759,7 +789,8 @@ fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>
 
 // Peel raw casts if the remaining expression can be coerced to it
 fn peel_raw_casts<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, expr_ty: Ty<'tcx>) -> &'tcx Expr<'tcx> {
-    if let ExprKind::Cast(inner, _) = expr.kind
+    if !expr.span.from_expansion()
+        && let ExprKind::Cast(inner, _) = expr.kind
         && let ty::RawPtr(target_ty, _) = expr_ty.kind()
         && let inner_ty = cx.typeck_results().expr_ty(inner)
         && let ty::RawPtr(inner_target_ty, _) | ty::Ref(_, inner_target_ty, _) = inner_ty.kind()

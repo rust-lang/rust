@@ -179,10 +179,10 @@ impl_lint_pass!(Ranges => [
 
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref op, l, r) = expr.kind {
-            if self.msrv.meets(cx, msrvs::RANGE_CONTAINS) {
-                check_possible_range_contains(cx, op.node, l, r, expr, expr.span);
-            }
+        if let ExprKind::Binary(ref op, l, r) = expr.kind
+            && self.msrv.meets(cx, msrvs::RANGE_CONTAINS)
+        {
+            check_possible_range_contains(cx, op.node, l, r, expr, expr.span);
         }
 
         check_exclusive_range_plus_one(cx, expr);
@@ -327,18 +327,18 @@ fn check_range_bounds<'a, 'tcx>(cx: &'a LateContext<'tcx>, ex: &'a Expr<'_>) -> 
                     inc: inclusive,
                 });
             }
-        } else if let Some(id) = path_to_local(r) {
-            if let Some(c) = ConstEvalCtxt::new(cx).eval(l) {
-                return Some(RangeBounds {
-                    val: c,
-                    expr: l,
-                    id,
-                    name_span: r.span,
-                    val_span: l.span,
-                    ord: ordering.reverse(),
-                    inc: inclusive,
-                });
-            }
+        } else if let Some(id) = path_to_local(r)
+            && let Some(c) = ConstEvalCtxt::new(cx).eval(l)
+        {
+            return Some(RangeBounds {
+                val: c,
+                expr: l,
+                id,
+                name_span: r.span,
+                val_span: l.span,
+                ord: ordering.reverse(),
+                inc: inclusive,
+            });
         }
     }
     None
@@ -361,8 +361,8 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             span,
             "an inclusive range would be more readable",
             |diag| {
-                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_par().to_string());
-                let end = Sugg::hir(cx, y, "y").maybe_par();
+                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_paren().to_string());
+                let end = Sugg::hir(cx, y, "y").maybe_paren();
                 match span.with_source_text(cx, |src| src.starts_with('(') && src.ends_with(')')) {
                     Some(true) => {
                         diag.span_suggestion(span, "use", format!("({start}..={end})"), Applicability::MaybeIncorrect);
@@ -398,8 +398,8 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             expr.span,
             "an exclusive range would be more readable",
             |diag| {
-                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_par().to_string());
-                let end = Sugg::hir(cx, y, "y").maybe_par();
+                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_paren().to_string());
+                let end = Sugg::hir(cx, y, "y").maybe_paren();
                 diag.span_suggestion(
                     expr.span,
                     "use",

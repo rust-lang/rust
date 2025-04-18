@@ -259,3 +259,35 @@ fn false_negative_5707() {
     let _z = x.clone(); // pr 7346 can't lint on `x`
     drop(y);
 }
+
+mod issue10074 {
+    #[derive(Debug, Clone)]
+    enum MyEnum {
+        A = 1,
+    }
+
+    fn false_positive_on_as() {
+        let e = MyEnum::A;
+        let v = e.clone() as u16;
+
+        println!("{e:?}");
+        println!("{v}");
+    }
+}
+
+mod issue13900 {
+    use std::fmt::Display;
+
+    fn do_something(f: impl Display + Clone) -> String {
+        let g = f.clone();
+        format!("{} + {}", f, g)
+    }
+
+    fn regression() {
+        let mut a = String::new();
+        let mut b = String::new();
+        for _ in 1..10 {
+            b = a.clone();
+        }
+    }
+}

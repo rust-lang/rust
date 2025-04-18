@@ -534,4 +534,11 @@ mod issue13749bis {
     impl<'a, T: 'a> Generic<T> {}
 }
 
+pub fn issue14607<'s>(x: &'s u8) {
+    #[expect(clippy::redundant_closure_call)]
+    (|| {
+        let _: &'s u8 = x;
+    })();
+}
+
 fn main() {}

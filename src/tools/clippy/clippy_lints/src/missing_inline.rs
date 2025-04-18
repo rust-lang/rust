@@ -160,12 +160,13 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             AssocItemContainer::Impl => cx.tcx.impl_trait_ref(container_id).map(|t| t.skip_binder().def_id),
         };
 
-        if let Some(trait_def_id) = trait_def_id {
-            if trait_def_id.is_local() && !cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) {
-                // If a trait is being implemented for an item, and the
-                // trait is not exported, we don't need #[inline]
-                return;
-            }
+        if let Some(trait_def_id) = trait_def_id
+            && trait_def_id.is_local()
+            && !cx.effective_visibilities.is_exported(impl_item.owner_id.def_id)
+        {
+            // If a trait is being implemented for an item, and the
+            // trait is not exported, we don't need #[inline]
+            return;
         }
 
         let attrs = cx.tcx.hir_attrs(impl_item.hir_id());

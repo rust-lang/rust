@@ -1,5 +1,5 @@
 error: you seem to be trying to use `Box<Vec<..>>`. Consider using just `Vec<..>`
-  --> tests/ui/box_collection.rs:21:15
+  --> tests/ui/box_collection.rs:20:15
    |
 LL | fn test1(foo: Box<Vec<bool>>) {}
    |               ^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | fn test1(foo: Box<Vec<bool>>) {}
    = help: to override `-D warnings` add `#[allow(clippy::box_collection)]`
 
 error: you seem to be trying to use `Box<String>`. Consider using just `String`
-  --> tests/ui/box_collection.rs:29:15
+  --> tests/ui/box_collection.rs:28:15
    |
 LL | fn test3(foo: Box<String>) {}
    |               ^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | fn test3(foo: Box<String>) {}
    = help: `String` is already on the heap, `Box<String>` makes an extra allocation
 
 error: you seem to be trying to use `Box<HashMap<..>>`. Consider using just `HashMap<..>`
-  --> tests/ui/box_collection.rs:32:15
+  --> tests/ui/box_collection.rs:31:15
    |
 LL | fn test4(foo: Box<HashMap<String, String>>) {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL | fn test4(foo: Box<HashMap<String, String>>) {}
    = help: `HashMap<..>` is already on the heap, `Box<HashMap<..>>` makes an extra allocation
 
 error: you seem to be trying to use `Box<HashSet<..>>`. Consider using just `HashSet<..>`
-  --> tests/ui/box_collection.rs:35:15
+  --> tests/ui/box_collection.rs:34:15
    |
 LL | fn test5(foo: Box<HashSet<i64>>) {}
    |               ^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL | fn test5(foo: Box<HashSet<i64>>) {}
    = help: `HashSet<..>` is already on the heap, `Box<HashSet<..>>` makes an extra allocation
 
 error: you seem to be trying to use `Box<VecDeque<..>>`. Consider using just `VecDeque<..>`
-  --> tests/ui/box_collection.rs:38:15
+  --> tests/ui/box_collection.rs:37:15
    |
 LL | fn test6(foo: Box<VecDeque<i32>>) {}
    |               ^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL | fn test6(foo: Box<VecDeque<i32>>) {}
    = help: `VecDeque<..>` is already on the heap, `Box<VecDeque<..>>` makes an extra allocation
 
 error: you seem to be trying to use `Box<LinkedList<..>>`. Consider using just `LinkedList<..>`
-  --> tests/ui/box_collection.rs:41:15
+  --> tests/ui/box_collection.rs:40:15
    |
 LL | fn test7(foo: Box<LinkedList<i16>>) {}
    |               ^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL | fn test7(foo: Box<LinkedList<i16>>) {}
    = help: `LinkedList<..>` is already on the heap, `Box<LinkedList<..>>` makes an extra allocation
 
 error: you seem to be trying to use `Box<BTreeMap<..>>`. Consider using just `BTreeMap<..>`
-  --> tests/ui/box_collection.rs:44:15
+  --> tests/ui/box_collection.rs:43:15
    |
 LL | fn test8(foo: Box<BTreeMap<i8, String>>) {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -57,7 +57,7 @@ LL | fn test8(foo: Box<BTreeMap<i8, String>>) {}
    = help: `BTreeMap<..>` is already on the heap, `Box<BTreeMap<..>>` makes an extra allocation
 
 error: you seem to be trying to use `Box<BTreeSet<..>>`. Consider using just `BTreeSet<..>`
-  --> tests/ui/box_collection.rs:47:15
+  --> tests/ui/box_collection.rs:46:15
    |
 LL | fn test9(foo: Box<BTreeSet<u64>>) {}
    |               ^^^^^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL | fn test9(foo: Box<BTreeSet<u64>>) {}
    = help: `BTreeSet<..>` is already on the heap, `Box<BTreeSet<..>>` makes an extra allocation
 
 error: you seem to be trying to use `Box<BinaryHeap<..>>`. Consider using just `BinaryHeap<..>`
-  --> tests/ui/box_collection.rs:50:16
+  --> tests/ui/box_collection.rs:49:16
    |
 LL | fn test10(foo: Box<BinaryHeap<u32>>) {}
    |                ^^^^^^^^^^^^^^^^^^^^

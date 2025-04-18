@@ -16,6 +16,7 @@
 //@[bad_conf_4] error-in-other-file:
 //@[bad_conf_5] error-in-other-file:
 //@[bad_conf_6] error-in-other-file:
+//@compile-flags: --test
 
 #![allow(dead_code)]
 #![warn(clippy::arbitrary_source_item_ordering)]

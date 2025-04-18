@@ -1,5 +1,5 @@
 error: consider choosing a more descriptive name
-  --> tests/ui/non_expressive_names.rs:28:9
+  --> tests/ui/non_expressive_names.rs:27:9
    |
 LL |     let _1 = 1;
    |         ^^
@@ -8,31 +8,31 @@ LL |     let _1 = 1;
    = help: to override `-D warnings` add `#[allow(clippy::just_underscores_and_digits)]`
 
 error: consider choosing a more descriptive name
-  --> tests/ui/non_expressive_names.rs:30:9
+  --> tests/ui/non_expressive_names.rs:29:9
    |
 LL |     let ____1 = 1;
    |         ^^^^^
 
 error: consider choosing a more descriptive name
-  --> tests/ui/non_expressive_names.rs:32:9
+  --> tests/ui/non_expressive_names.rs:31:9
    |
 LL |     let __1___2 = 12;
    |         ^^^^^^^
 
 error: consider choosing a more descriptive name
-  --> tests/ui/non_expressive_names.rs:54:13
+  --> tests/ui/non_expressive_names.rs:53:13
    |
 LL |         let _1 = 1;
    |             ^^
 
 error: consider choosing a more descriptive name
-  --> tests/ui/non_expressive_names.rs:56:13
+  --> tests/ui/non_expressive_names.rs:55:13
    |
 LL |         let ____1 = 1;
    |             ^^^^^
 
 error: consider choosing a more descriptive name
-  --> tests/ui/non_expressive_names.rs:58:13
+  --> tests/ui/non_expressive_names.rs:57:13
    |
 LL |         let __1___2 = 12;
    |             ^^^^^^^

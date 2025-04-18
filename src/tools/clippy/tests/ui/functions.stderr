@@ -1,5 +1,5 @@
 error: this function has too many arguments (8/7)
-  --> tests/ui/functions.rs:8:1
+  --> tests/ui/functions.rs:6:1
    |
 LL | fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f
    = help: to override `-D warnings` add `#[allow(clippy::too_many_arguments)]`
 
 error: this function has too many arguments (8/7)
-  --> tests/ui/functions.rs:12:1
+  --> tests/ui/functions.rs:10:1
    |
 LL | / fn bad_multiline(
 LL | |
@@ -20,88 +20,87 @@ LL | | ) {
    | |_^
 
 error: this function has too many arguments (8/7)
-  --> tests/ui/functions.rs:48:5
+  --> tests/ui/functions.rs:46:5
    |
 LL |     fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this function has too many arguments (8/7)
-  --> tests/ui/functions.rs:58:5
+  --> tests/ui/functions.rs:56:5
    |
 LL |     fn bad_method(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> tests/ui/functions.rs:68:34
+  --> tests/ui/functions.rs:66:34
    |
 LL |         println!("{}", unsafe { *p });
    |                                  ^
    |
-   = note: `-D clippy::not-unsafe-ptr-arg-deref` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::not_unsafe_ptr_arg_deref)]`
+   = note: `#[deny(clippy::not_unsafe_ptr_arg_deref)]` on by default
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> tests/ui/functions.rs:71:35
+  --> tests/ui/functions.rs:69:35
    |
 LL |         println!("{:?}", unsafe { p.as_ref() });
    |                                   ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> tests/ui/functions.rs:74:33
+  --> tests/ui/functions.rs:72:33
    |
 LL |         unsafe { std::ptr::read(p) };
    |                                 ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> tests/ui/functions.rs:86:30
+  --> tests/ui/functions.rs:84:30
    |
 LL |     println!("{}", unsafe { *p });
    |                              ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> tests/ui/functions.rs:89:31
+  --> tests/ui/functions.rs:87:31
    |
 LL |     println!("{:?}", unsafe { p.as_ref() });
    |                               ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> tests/ui/functions.rs:92:29
+  --> tests/ui/functions.rs:90:29
    |
 LL |     unsafe { std::ptr::read(p) };
    |                             ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> tests/ui/functions.rs:99:30
+  --> tests/ui/functions.rs:97:30
    |
 LL |     println!("{}", unsafe { *p });
    |                              ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> tests/ui/functions.rs:102:31
+  --> tests/ui/functions.rs:100:31
    |
 LL |     println!("{:?}", unsafe { p.as_ref() });
    |                               ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> tests/ui/functions.rs:105:29
+  --> tests/ui/functions.rs:103:29
    |
 LL |     unsafe { std::ptr::read(p) };
    |                             ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> tests/ui/functions.rs:115:34
+  --> tests/ui/functions.rs:113:34
    |
 LL |         println!("{}", unsafe { *p });
    |                                  ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> tests/ui/functions.rs:118:35
+  --> tests/ui/functions.rs:116:35
    |
 LL |         println!("{:?}", unsafe { p.as_ref() });
    |                                   ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> tests/ui/functions.rs:121:33
+  --> tests/ui/functions.rs:119:33
    |
 LL |         unsafe { std::ptr::read(p) };
    |                                 ^

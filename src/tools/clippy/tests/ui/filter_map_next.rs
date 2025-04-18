@@ -1,4 +1,4 @@
-#![warn(clippy::all, clippy::pedantic)]
+#![warn(clippy::filter_map_next)]
 
 fn main() {
     let a = ["1", "lol", "3", "NaN", "5"];

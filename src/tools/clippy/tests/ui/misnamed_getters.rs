@@ -54,63 +54,63 @@ impl B {
     unsafe fn a(&self) -> &u8 {
         //~^ misnamed_getters
 
-        &self.b
+        unsafe { &self.b }
     }
     unsafe fn a_mut(&mut self) -> &mut u8 {
         //~^ misnamed_getters
 
-        &mut self.b
+        unsafe { &mut self.b }
     }
 
     unsafe fn b(self) -> u8 {
         //~^ misnamed_getters
 
-        self.a
+        unsafe { self.a }
     }
 
     unsafe fn b_mut(&mut self) -> &mut u8 {
         //~^ misnamed_getters
 
-        &mut self.a
+        unsafe { &mut self.a }
     }
 
     unsafe fn c(&self) -> &u8 {
-        &self.b
+        unsafe { &self.b }
     }
 
     unsafe fn c_mut(&mut self) -> &mut u8 {
-        &mut self.a
+        unsafe { &mut self.a }
     }
 
     unsafe fn a_unchecked(&self) -> &u8 {
         //~^ misnamed_getters
 
-        &self.b
+        unsafe { &self.b }
     }
     unsafe fn a_unchecked_mut(&mut self) -> &mut u8 {
         //~^ misnamed_getters
 
-        &mut self.b
+        unsafe { &mut self.b }
     }
 
     unsafe fn b_unchecked(self) -> u8 {
         //~^ misnamed_getters
 
-        self.a
+        unsafe { self.a }
     }
 
     unsafe fn b_unchecked_mut(&mut self) -> &mut u8 {
         //~^ misnamed_getters
 
-        &mut self.a
+        unsafe { &mut self.a }
     }
 
     unsafe fn c_unchecked(&self) -> &u8 {
-        &self.b
+        unsafe { &self.b }
     }
 
     unsafe fn c_unchecked_mut(&mut self) -> &mut u8 {
-        &mut self.a
+        unsafe { &mut self.a }
     }
 }
 

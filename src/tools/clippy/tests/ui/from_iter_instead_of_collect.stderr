@@ -91,5 +91,59 @@ error: usage of `FromIterator::from_iter`
 LL |     for _i in Vec::<&i32>::from_iter([1, 2, 3].iter()) {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `[1, 2, 3].iter().collect::<Vec<&i32>>()`
 
-error: aborting due to 15 previous errors
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:79:14
+   |
+LL |     let _ = &String::from_iter(nums.iter().map(|&num| char::from_u32(num).unwrap()));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `nums.iter().map(|&num| char::from_u32(num).unwrap()).collect::<String>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:95:13
+   |
+LL |     let _ = <S<'static, i32, 7>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<'static, i32, 7>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:98:13
+   |
+LL |     let _ = <S<'static, i32>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<'static, i32>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:101:13
+   |
+LL |     let _ = <S<'static, _, 7>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<'static, _, 7>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:104:13
+   |
+LL |     let _ = <S<'static, _, 7, 8>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<'static, _, 7, 8>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:107:13
+   |
+LL |     let _ = <S<'_, _, 7, 8>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<_, 7, 8>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:110:13
+   |
+LL |     let _ = <S<i32>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<i32>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:113:13
+   |
+LL |     let _ = <S<'_, i32>>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S<i32>>()`
+
+error: usage of `FromIterator::from_iter`
+  --> tests/ui/from_iter_instead_of_collect.rs:116:13
+   |
+LL |     let _ = <S>::from_iter(iter);
+   |             ^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.collect::<S>()`
+
+error: aborting due to 24 previous errors
 

@@ -162,13 +162,12 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 if is_string(cx, left) {
                     if !is_lint_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
                         let parent = get_parent_expr(cx, e);
-                        if let Some(p) = parent {
-                            if let ExprKind::Assign(target, _, _) = p.kind {
+                        if let Some(p) = parent
+                            && let ExprKind::Assign(target, _, _) = p.kind
                                 // avoid duplicate matches
-                                if SpanlessEq::new(cx).eq_expr(target, left) {
-                                    return;
-                                }
-                            }
+                                && SpanlessEq::new(cx).eq_expr(target, left)
+                        {
+                            return;
                         }
                     }
                     span_lint(
