@@ -95,6 +95,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![cfg_attr(not(bootstrap), feature(eii))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(bigint_helper_methods)]
@@ -237,6 +238,9 @@ pub mod contracts;
 
 #[unstable(feature = "cfg_match", issue = "115585")]
 pub use crate::macros::cfg_match;
+#[cfg(not(bootstrap))]
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+pub use crate::panic::panic_handler;
 
 #[macro_use]
 mod internal_macros;

@@ -494,7 +494,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(NameValueStr: "windows|console"), FutureWarnFollowing,
         EncodeCrossCrate::No
     ),
-    ungated!(panic_handler, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes), // RFC 2070
 
     // Code generation:
     ungated!(inline, Normal, template!(Word, List: "always|never"), FutureWarnFollowing, EncodeCrossCrate::No),

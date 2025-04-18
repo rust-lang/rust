@@ -56,23 +56,36 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
+    #[cfg(bootstrap)]
+    {
+        // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+        // that gets resolved to the `#[panic_handler]` function.
+        unsafe extern "Rust" {
+            #[lang = "panic_impl"]
+            fn panic_impl(pi: &PanicInfo<'_>) -> !;
+        }
 
-    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-    // that gets resolved to the `#[panic_handler]` function.
-    unsafe extern "Rust" {
-        #[lang = "panic_impl"]
-        fn panic_impl(pi: &PanicInfo<'_>) -> !;
+        let pi = PanicInfo::new(
+            &fmt,
+            Location::caller(),
+            /* can_unwind */ true,
+            /* force_no_backtrace */ false,
+        );
+
+        // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+        unsafe { panic_impl(&pi) }
     }
+    #[cfg(not(bootstrap))]
+    {
+        let pi = PanicInfo::new(
+            &fmt,
+            Location::caller(),
+            /* can_unwind */ true,
+            /* force_no_backtrace */ false,
+        );
 
-    let pi = PanicInfo::new(
-        &fmt,
-        Location::caller(),
-        /* can_unwind */ true,
-        /* force_no_backtrace */ false,
-    );
-
-    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
-    unsafe { panic_impl(&pi) }
+        crate::panic::panic_impl(&pi)
+    }
 }
 
 /// Like `panic_fmt`, but for non-unwinding panics.
@@ -98,23 +111,39 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
                 super::intrinsics::abort()
             }
 
-            // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-            // that gets resolved to the `#[panic_handler]` function.
-            unsafe extern "Rust" {
-                #[lang = "panic_impl"]
-                fn panic_impl(pi: &PanicInfo<'_>) -> !;
+            #[cfg(bootstrap)]
+            {
+                // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+                // that gets resolved to the `#[panic_handler]` function.
+                unsafe extern "Rust" {
+                    #[lang = "panic_impl"]
+                    fn panic_impl(pi: &PanicInfo<'_>) -> !;
+                }
+
+                // PanicInfo with the `can_unwind` flag set to false forces an abort.
+                let pi = PanicInfo::new(
+                    &fmt,
+                    Location::caller(),
+                    /* can_unwind */ false,
+                    force_no_backtrace,
+                );
+
+                // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+                unsafe { panic_impl(&pi) }
             }
 
-            // PanicInfo with the `can_unwind` flag set to false forces an abort.
-            let pi = PanicInfo::new(
-                &fmt,
-                Location::caller(),
-                /* can_unwind */ false,
-                force_no_backtrace,
-            );
+            #[cfg(not(bootstrap))]
+            {
+                // PanicInfo with the `can_unwind` flag set to false forces an abort.
+                let pi = PanicInfo::new(
+                    &fmt,
+                    Location::caller(),
+                    /* can_unwind */ false,
+                    force_no_backtrace,
+                );
 
-            // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
-            unsafe { panic_impl(&pi) }
+                crate::panic::panic_impl(&pi)
+            }
         }
     )
 }

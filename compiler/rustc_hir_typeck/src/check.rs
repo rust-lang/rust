@@ -149,70 +149,11 @@ pub(super) fn check_fn<'a, 'tcx>(
     // we have a recursive call site and do the sadly stabilized fallback to `()`.
     fcx.demand_suptype(span, ret_ty, actual_return_ty);
 
-    // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
-    if tcx.is_lang_item(fn_def_id.to_def_id(), LangItem::PanicImpl) {
-        check_panic_info_fn(tcx, fn_def_id, fn_sig);
-    }
-
     if tcx.is_lang_item(fn_def_id.to_def_id(), LangItem::Start) {
         check_lang_start_fn(tcx, fn_sig, fn_def_id);
     }
 
     fcx.coroutine_types
-}
-
-fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>) {
-    let span = tcx.def_span(fn_id);
-
-    let DefKind::Fn = tcx.def_kind(fn_id) else {
-        tcx.dcx().span_err(span, "should be a function");
-        return;
-    };
-
-    let generic_counts = tcx.generics_of(fn_id).own_counts();
-    if generic_counts.types != 0 {
-        tcx.dcx().span_err(span, "should have no type parameters");
-    }
-    if generic_counts.consts != 0 {
-        tcx.dcx().span_err(span, "should have no const parameters");
-    }
-
-    let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, Some(span));
-
-    // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
-    let panic_info_ty = tcx.type_of(panic_info_did).instantiate(
-        tcx,
-        &[ty::GenericArg::from(ty::Region::new_bound(
-            tcx,
-            ty::INNERMOST,
-            ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BoundRegionKind::Anon },
-        ))],
-    );
-    let panic_info_ref_ty = Ty::new_imm_ref(
-        tcx,
-        ty::Region::new_bound(
-            tcx,
-            ty::INNERMOST,
-            ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon },
-        ),
-        panic_info_ty,
-    );
-
-    let bounds = tcx.mk_bound_variable_kinds(&[
-        ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
-        ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
-    ]);
-    let expected_sig = ty::Binder::bind_with_vars(
-        tcx.mk_fn_sig([panic_info_ref_ty], tcx.types.never, false, fn_sig.safety, ExternAbi::Rust),
-        bounds,
-    );
-
-    let _ = check_function_signature(
-        tcx,
-        ObligationCause::new(span, fn_id, ObligationCauseCode::LangFunctionType(sym::panic_impl)),
-        fn_id.into(),
-        expected_sig,
-    );
 }
 
 fn check_lang_start_fn<'tcx>(tcx: TyCtxt<'tcx>, fn_sig: ty::FnSig<'tcx>, def_id: LocalDefId) {

@@ -402,6 +402,7 @@ impl Resolver<'_, '_> {
                         !tcx.is_compiler_builtins(cnum)
                             && !tcx.is_panic_runtime(cnum)
                             && !tcx.has_global_allocator(cnum)
+                        // TODO: test for EII in the crate
                     }) {
                         maybe_unused_extern_crates.insert(id, import.span);
                     }
