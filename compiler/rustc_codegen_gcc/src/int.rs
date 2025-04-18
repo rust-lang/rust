@@ -404,7 +404,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let ret_indirect = matches!(fn_abi.ret.mode, PassMode::Indirect { .. });
 
-        let result = if ret_indirect {
+        let call = if ret_indirect {
             let res_value = self.current_func().new_local(self.location, res_type, "result_value");
             let res_addr = res_value.get_address(self.location);
             let res_param_type = res_type.make_pointer();
