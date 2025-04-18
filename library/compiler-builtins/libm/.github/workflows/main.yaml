@@ -261,7 +261,7 @@ jobs:
       - clippy
       - calculate_extensive_matrix
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 240 # 4 hours
     strategy:
       matrix:
         # Use the output from `calculate_extensive_matrix` to calculate the matrix
