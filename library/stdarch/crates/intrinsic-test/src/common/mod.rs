@@ -4,6 +4,7 @@ use std::io::Write;
 
 pub mod argument;
 pub mod compare;
+pub mod compile_c;
 pub mod format;
 pub mod gen_c;
 pub mod gen_rust;

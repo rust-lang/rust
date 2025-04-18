@@ -2,6 +2,7 @@ use super::config::{AARCH_CONFIGURATIONS, POLY128_OSTREAM_DEF, build_notices};
 use super::intrinsic::ArmIntrinsicType;
 use crate::arm::constraint::Constraint;
 use crate::common::argument::Argument;
+use crate::common::compile_c::CompilationCommandBuilder;
 use crate::common::format::Indentation;
 use crate::common::gen_c::{compile_c, create_c_filenames, generate_c_program};
 use crate::common::gen_rust::{compile_rust, create_rust_filenames, generate_rust_program};
@@ -161,70 +162,55 @@ fn generate_rust_program_arm(
 
 fn compile_c_arm(
     intrinsics_name_list: &Vec<String>,
-    filename_mapping: BTreeMap<&String, String>,
+    _filename_mapping: BTreeMap<&String, String>,
     compiler: &str,
     target: &str,
     cxx_toolchain_dir: Option<&str>,
 ) -> bool {
-    let compiler_commands = intrinsics_name_list.iter().map(|intrinsic_name| {
-        let c_filename = filename_mapping.get(intrinsic_name).unwrap();
-        let flags = std::env::var("CPPFLAGS").unwrap_or("".into());
-        let arch_flags = if target.contains("v7") {
-            "-march=armv8.6-a+crypto+crc+dotprod+fp16"
-        } else {
-            "-march=armv8.6-a+crypto+sha3+crc+dotprod+fp16+faminmax+lut"
-        };
+    let mut command = CompilationCommandBuilder::new()
+        .add_arch_flags(vec!["armv8.6-a", "crypto", "crc", "dotprod", "fp16"])
+        .set_compiler(compiler)
+        .set_target(target)
+        .set_opt_level("2")
+        .set_cxx_toolchain_dir(cxx_toolchain_dir)
+        .set_project_root("c_programs")
+        .add_extra_flags(vec!["-ffp-contract=off", "-Wno-narrowing"]);
 
-        let compiler_command = if target == "aarch64_be-unknown-linux-gnu" {
-            let Some(cxx_toolchain_dir) = cxx_toolchain_dir else {
-                panic!(
-                    "When setting `--target aarch64_be-unknown-linux-gnu` the C++ compilers toolchain directory must be set with `--cxx-toolchain-dir <dest>`"
-                );
-            };
+    if !target.contains("v7") {
+        command = command.add_arch_flags(vec!["faminmax", "lut", "sha3"]);
+    }
 
-            /* clang++ cannot link an aarch64_be object file, so we invoke
-             * aarch64_be-unknown-linux-gnu's C++ linker. This ensures that we
-             * are testing the intrinsics against LLVM.
-             *
-             * Note: setting `--sysroot=<...>` which is the obvious thing to do
-             * does not work as it gets caught up with `#include_next <stdlib.h>`
-             * not existing... */
-            format!(
-                "{compiler} {flags} {arch_flags} \
-                -ffp-contract=off \
-                -Wno-narrowing \
-                -O2 \
-                --target=aarch64_be-unknown-linux-gnu \
-                -I{cxx_toolchain_dir}/include \
-                -I{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/include \
-                -I{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/include/c++/14.2.1 \
-                -I{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/include/c++/14.2.1/aarch64_be-none-linux-gnu \
-                -I{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/include/c++/14.2.1/backward \
-                -I{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/libc/usr/include \
-                -c {c_filename} \
-                -o c_programs/{intrinsic_name}.o && \
-                {cxx_toolchain_dir}/bin/aarch64_be-none-linux-gnu-g++ c_programs/{intrinsic_name}.o -o c_programs/{intrinsic_name} && \
-                rm c_programs/{intrinsic_name}.o",
+    command = if target == "aarch64_be-unknown-linux-gnu" {
+        command
+            .set_linker(
+                cxx_toolchain_dir.unwrap_or("").to_string() + "/bin/aarch64_be-none-linux-gnu-g++",
             )
+            .set_include_paths(vec![
+                "/include",
+                "/aarch64_be-none-linux-gnu/include",
+                "/aarch64_be-none-linux-gnu/include/c++/14.2.1",
+                "/aarch64_be-none-linux-gnu/include/c++/14.2.1/aarch64_be-none-linux-gnu",
+                "/aarch64_be-none-linux-gnu/include/c++/14.2.1/backward",
+                "/aarch64_be-none-linux-gnu/libc/usr/include",
+            ])
+    } else {
+        if compiler.contains("clang") {
+            command.add_extra_flag(format!("-target {target}").as_str())
         } else {
-            // -ffp-contract=off emulates Rust's approach of not fusing separate mul-add operations
-            let base_compiler_command = format!(
-                "{compiler} {flags} {arch_flags} -o c_programs/{intrinsic_name} {c_filename} -ffp-contract=off -Wno-narrowing -O2"
-            );
+            command.add_extra_flag("-flax-vector-conversions")
+        }
+    };
 
-            /* `-target` can be passed to some c++ compilers, however if we want to
-             *   use a c++ compiler does not support this flag we do not want to pass
-             *   the flag. */
-            if compiler.contains("clang") {
-                format!("{base_compiler_command} -target {target}")
-            } else {
-                format!("{base_compiler_command} -flax-vector-conversions")
-            }
-        };
-
-        compiler_command
-    })
-    .collect::<Vec<_>>();
+    let compiler_commands = intrinsics_name_list
+        .iter()
+        .map(|intrinsic_name| {
+            command
+                .clone()
+                .set_input_name(intrinsic_name)
+                .set_output_name(intrinsic_name)
+                .to_string()
+        })
+        .collect::<Vec<_>>();
 
     compile_c(&compiler_commands)
 }
