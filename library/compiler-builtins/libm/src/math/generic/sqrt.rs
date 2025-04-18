@@ -44,6 +44,7 @@
 use super::super::support::{FpResult, IntTy, Round, Status, cold_path};
 use super::super::{CastFrom, CastInto, DInt, Float, HInt, Int, MinInt};
 
+#[inline]
 pub fn sqrt<F>(x: F) -> F
 where
     F: Float + SqrtHelper,
@@ -57,6 +58,7 @@ where
     sqrt_round(x, Round::Nearest).val
 }
 
+#[inline]
 pub fn sqrt_round<F>(x: F, _round: Round) -> FpResult<F>
 where
     F: Float + SqrtHelper,

@@ -30,6 +30,7 @@ pub fn roundevenf128(x: f128) -> f128 {
     roundeven_impl(x)
 }
 
+#[inline]
 pub fn roundeven_impl<F: Float>(x: F) -> F {
     super::generic::rint_round(x, Round::Nearest).val
 }

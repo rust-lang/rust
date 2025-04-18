@@ -28,6 +28,7 @@ pub fn fmaf(x: f32, y: f32, z: f32) -> f32 {
 
 /// Fma implementation when a hardware-backed larger float type is available. For `f32` and `f64`,
 /// `f64` has enough precision to represent the `f32` in its entirety, except for double rounding.
+#[inline]
 pub fn fma_wide_round<F, B>(x: F, y: F, z: F, round: Round) -> FpResult<F>
 where
     F: Float + HFloat<D = B>,

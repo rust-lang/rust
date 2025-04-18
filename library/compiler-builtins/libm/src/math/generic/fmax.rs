@@ -16,7 +16,7 @@
 
 use super::super::Float;
 
-#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
+#[inline]
 pub fn fmax<F: Float>(x: F, y: F) -> F {
     let res = if x.is_nan() || x < y { y } else { x };
     // Canonicalize

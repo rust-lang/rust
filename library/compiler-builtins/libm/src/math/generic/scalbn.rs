@@ -16,6 +16,7 @@ use super::super::{CastFrom, CastInto, Float, IntTy, MinInt};
 /// >
 /// > If the calculation does not overflow or underflow, the returned value is exact and
 /// > independent of the current rounding direction mode.
+#[inline]
 pub fn scalbn<F: Float>(mut x: F, mut n: i32) -> F
 where
     u32: CastInto<F::Int>,

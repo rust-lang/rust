@@ -13,6 +13,7 @@
 
 use super::super::Float;
 
+#[inline]
 pub fn fminimum_num<F: Float>(x: F, y: F) -> F {
     let res =
         if y.is_nan() || x < y || (x.to_bits() == F::NEG_ZERO.to_bits() && y.is_sign_positive()) {

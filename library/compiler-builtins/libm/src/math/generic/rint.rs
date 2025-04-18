@@ -6,6 +6,7 @@ use super::super::support::{FpResult, Round};
 
 /// IEEE 754-2019 `roundToIntegralExact`, which respects rounding mode and raises inexact if
 /// applicable.
+#[inline]
 pub fn rint_round<F: Float>(x: F, _round: Round) -> FpResult<F> {
     let toint = F::ONE / F::EPSILON;
     let e = x.ex();

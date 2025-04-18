@@ -10,10 +10,12 @@
 use super::super::support::{FpResult, Status};
 use super::super::{Float, Int, IntTy, MinInt};
 
+#[inline]
 pub fn ceil<F: Float>(x: F) -> F {
     ceil_status(x).val
 }
 
+#[inline]
 pub fn ceil_status<F: Float>(x: F) -> FpResult<F> {
     let zero = IntTy::<F>::ZERO;
 

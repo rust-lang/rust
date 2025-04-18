@@ -11,6 +11,7 @@
 
 use super::super::Float;
 
+#[inline]
 pub fn fmaximum<F: Float>(x: F, y: F) -> F {
     let res = if x.is_nan() {
         x

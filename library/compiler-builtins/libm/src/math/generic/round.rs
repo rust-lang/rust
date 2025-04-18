@@ -1,6 +1,7 @@
 use super::super::{Float, MinInt};
 use super::{copysign, trunc};
 
+#[inline]
 pub fn round<F: Float>(x: F) -> F {
     let f0p5 = F::from_parts(false, F::EXP_BIAS - 1, F::Int::ZERO); // 0.5
     let f0p25 = F::from_parts(false, F::EXP_BIAS - 2, F::Int::ZERO); // 0.25

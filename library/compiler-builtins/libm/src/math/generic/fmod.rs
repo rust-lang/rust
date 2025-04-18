@@ -3,7 +3,7 @@
 
 use super::super::{CastFrom, Float, Int, MinInt};
 
-#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
+#[inline]
 pub fn fmod<F: Float>(x: F, y: F) -> F {
     let zero = F::Int::ZERO;
     let one = F::Int::ONE;

@@ -1,3 +1,6 @@
+// Note: generic functions are marked `#[inline]` because, even though generic functions are
+// typically inlined, this does not seem to always be the case.
+
 mod ceil;
 mod copysign;
 mod fabs;

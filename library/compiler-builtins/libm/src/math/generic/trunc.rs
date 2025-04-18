@@ -4,10 +4,12 @@
 use super::super::support::{FpResult, Status};
 use super::super::{Float, Int, IntTy, MinInt};
 
+#[inline]
 pub fn trunc<F: Float>(x: F) -> F {
     trunc_status(x).val
 }
 
+#[inline]
 pub fn trunc_status<F: Float>(x: F) -> FpResult<F> {
     let mut xi: F::Int = x.to_bits();
     let e: i32 = x.exp_unbiased();

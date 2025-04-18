@@ -10,10 +10,12 @@
 use super::super::support::{FpResult, Status};
 use super::super::{Float, Int, IntTy, MinInt};
 
+#[inline]
 pub fn floor<F: Float>(x: F) -> F {
     floor_status(x).val
 }
 
+#[inline]
 pub fn floor_status<F: Float>(x: F) -> FpResult<F> {
     let zero = IntTy::<F>::ZERO;
 

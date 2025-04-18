@@ -29,6 +29,7 @@ pub fn fmaf128(x: f128, y: f128, z: f128) -> f128 {
 
 /// Fused multiply-add that works when there is not a larger float size available. Computes
 /// `(x * y) + z`.
+#[inline]
 pub fn fma_round<F>(x: F, y: F, z: F, _round: Round) -> FpResult<F>
 where
     F: Float,
