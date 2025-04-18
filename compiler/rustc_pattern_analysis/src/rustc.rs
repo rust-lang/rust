@@ -4,8 +4,8 @@ use std::ops::ControlFlow;
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 use rustc_arena::DroplessArena;
-use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{HirId, LangItem};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir::{self, Const};
@@ -484,6 +484,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 ctor = match ty.kind() {
                     // This is a box pattern.
                     ty::Adt(adt, ..) if adt.is_box() => Struct,
+                    // This is a pin ref pattern.
+                    ty::Adt(adt, ..) if self.tcx.is_lang_item(adt.did(), LangItem::Pin) => Ref,
                     ty::Ref(..) => Ref,
                     _ => span_bug!(
                         pat.span,

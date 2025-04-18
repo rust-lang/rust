@@ -618,6 +618,10 @@ passes_pass_by_value =
     `pass_by_value` attribute should be applied to a struct, enum or type alias
     .label = is not a struct, enum or type alias
 
+passes_pin_bad_location =
+    `pin` attribute should be applied to a field
+    .label = expect field, but apllied to this {$target}
+
 passes_proc_macro_bad_sig = {$kind} has incorrect signature
 
 passes_remove_fields =

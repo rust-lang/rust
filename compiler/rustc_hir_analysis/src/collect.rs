@@ -20,7 +20,7 @@ use std::iter;
 use std::ops::Bound;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::Recovered;
+use rustc_ast::{Pinnedness, Recovered};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{
@@ -1061,6 +1061,11 @@ fn lower_variant<'tcx>(
             vis: tcx.visibility(f.def_id),
             safety: f.safety,
             value: f.default.map(|v| v.def_id.to_def_id()),
+            pinnedness: if tcx.has_attr(f.def_id, sym::pin) {
+                Pinnedness::Pinned
+            } else {
+                Pinnedness::Not
+            },
         })
         .collect();
     let recovered = match def {

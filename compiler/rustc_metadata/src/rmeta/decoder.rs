@@ -32,7 +32,7 @@ use rustc_session::Session;
 use rustc_session::config::TargetModifier;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
-use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext, kw};
+use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext, kw, sym};
 use tracing::debug;
 
 use crate::creader::CStore;
@@ -1084,6 +1084,7 @@ impl<'a> CrateMetadataRef<'a> {
         kind: DefKind,
         index: DefIndex,
         parent_did: DefId,
+        sess: &'a Session,
     ) -> (VariantIdx, ty::VariantDef) {
         let adt_kind = match kind {
             DefKind::Variant => ty::AdtKind::Enum,
@@ -1112,6 +1113,15 @@ impl<'a> CrateMetadataRef<'a> {
                         vis: self.get_visibility(did.index),
                         safety: self.get_safety(did.index),
                         value: self.get_default_field(did.index),
+                        pinnedness: if self
+                            .get_item_attrs(did.index, sess)
+                            .find(|attr| attr.has_name(sym::pin))
+                            .is_some()
+                        {
+                            ast::Pinnedness::Pinned
+                        } else {
+                            ast::Pinnedness::Not
+                        },
                     })
                     .collect(),
                 parent_did,
@@ -1144,12 +1154,12 @@ impl<'a> CrateMetadataRef<'a> {
                     let kind = self.def_kind(index);
                     match kind {
                         DefKind::Ctor(..) => None,
-                        _ => Some(self.get_variant(kind, index, did)),
+                        _ => Some(self.get_variant(kind, index, did, tcx.sess)),
                     }
                 })
                 .collect()
         } else {
-            std::iter::once(self.get_variant(kind, item_id, did)).collect()
+            std::iter::once(self.get_variant(kind, item_id, did, tcx.sess)).collect()
         };
 
         variants.sort_by_key(|(idx, _)| *idx);
