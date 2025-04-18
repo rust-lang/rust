@@ -1036,67 +1036,75 @@ pub fn libm() {
     // and thus must be exactly equal to that value
     // C standard says:
     // 1^y = 1 for any y, even a NaN.
-    assert_eq!(1f32.powf(10.0), 1f32);
-    assert_eq!(1f64.powf(100.0), 1f64);
-    assert_eq!(1f32.powf(f32::INFINITY), 1f32);
-    assert_eq!(1f64.powf(f64::INFINITY), 1f64);
-    assert_eq!(1f32.powf(f32::NAN), 1f32);
-    assert_eq!(1f64.powf(f64::NAN), 1f64);
+    assert_eq!(1f32.powf(10.0), 1.0);
+    assert_eq!(1f64.powf(100.0), 1.0);
+    assert_eq!(1f32.powf(f32::INFINITY), 1.0);
+    assert_eq!(1f64.powf(f64::INFINITY), 1.0);
+    assert_eq!(1f32.powf(f32::NAN), 1.0);
+    assert_eq!(1f64.powf(f64::NAN), 1.0);
+
+
+    // For pow (powf in rust) the C standard says:
+    // x^0 = 1 for all x even a sNaN
+    // FIXME: But the ecosystem is inconistent with this, in the future we should return either
+    // 1 or the NaN. Add correct tests when we actually do this.
+    // Currently we return 1.
+    assert_eq!(SINGLE_SNAN.powf(0.0), 1.0);
+    assert_eq!(DOUBLE_SNAN.powf(0.0), 1.0);
+    // f*::NAN is a quiet NAN and should return 1 as well.
+    assert_eq!(f32::NAN.powf(0.0), 1.0);
+    assert_eq!(f64::NAN.powf(0.0), 1.0);
+
+    assert_eq!(42f32.powf(0.0), 1.0);
+    assert_eq!(42f64.powf(0.0), 1.0);
+    assert_eq!(f32::INFINITY.powf(0.0), 1.0);
+    assert_eq!(f64::INFINITY.powf(0.0), 1.0);
 
     // For pown (powi in rust) the C standard says:
     // x^0 = 1 for all x not a sNaN.
-    assert_ne!((SINGLE_SNAN).powi(0), 1.0);
-    assert_ne!((DOUBLE_SNAN).powi(0), 1.0);
-    assert_ne!((SINGLE_SNAN).powi(0), 1.0);
-    assert_ne!((DOUBLE_SNAN).powi(0), 1.0);
-    // f*::NAN is a quiet NAN and should return 1.
-    assert_eq!(f32::NAN.powi(0), 1f32);
-    assert_eq!(f64::NAN.powi(0), 1f64);
+    assert_ne!(SINGLE_SNAN.powi(0), 1.0);
+    assert_ne!(DOUBLE_SNAN.powi(0), 1.0);
+    // f*::NAN is a quiet NAN and should return 1 as well.
+    assert_eq!(f32::NAN.powi(0), 1.0);
+    assert_eq!(f64::NAN.powi(0), 1.0);
 
-    assert_eq!((-1f32).powf(f32::INFINITY), 1f32);
-    assert_eq!((-1f32).powf(f32::NEG_INFINITY), 1f32);
-    assert_eq!((-1f64).powf(f64::INFINITY), 1f64);
-    assert_eq!((-1f64).powf(f64::NEG_INFINITY), 1f64);
+    assert_eq!(10.0f32.powi(0), 1.0);
+    assert_eq!(10.0f64.powi(0), 1.0);
+    assert_eq!(f32::INFINITY.powi(0), 1.0);
+    assert_eq!(f64::INFINITY.powi(0), 1.0);
 
-    assert_eq!(42f32.powf(0.0), 1f32);
-    assert_eq!(42f32.powf(-0.0), 1f32);
-    assert_eq!(42f64.powf(0.0), 1f64);
-    assert_eq!(42f64.powf(-0.0), 1f64);
+    assert_eq!((-1f32).powf(f32::INFINITY), 1.0);
+    assert_eq!((-1f64).powf(f64::INFINITY), 1.0);
+    assert_eq!((-1f32).powf(f32::NEG_INFINITY), 1.0);
+    assert_eq!((-1f64).powf(f64::NEG_INFINITY), 1.0);
 
-    assert_eq!(0f32.powi(10), 0f32);
-    assert_eq!(0f64.powi(100), 0f64);
-    assert_eq!(0f32.powi(9), 0f32);
-    assert_eq!(0f64.powi(99), 0f64);
+    assert_eq!(0f32.powi(10), 0.0);
+    assert_eq!(0f64.powi(100), 0.0);
+    assert_eq!(0f32.powi(9), 0.0);
+    assert_eq!(0f64.powi(99), 0.0);
 
-    // C standard says:
-    // x^0 = 1, if x is not a Signaling NaN
-    assert_eq!(10.0f32.powi(0), 1.0f32);
-    assert_eq!(10.0f64.powi(0), 1.0f64);
-    assert_eq!(f32::INFINITY.powi(0), 1.0f32);
-    assert_eq!(f64::INFINITY.powi(0), 1.0f64);
-
-    assert_eq!((-0f32).powi(10), 0f32);
-    assert_eq!((-0f64).powi(100), 0f64);
-    assert_eq!((-0f32).powi(9), -0f32);
-    assert_eq!((-0f64).powi(99), -0f64);
+    assert_eq!((-0f32).powi(10), 0.0);
+    assert_eq!((-0f64).powi(100), 0.0);
+    assert_eq!((-0f32).powi(9), -0.0);
+    assert_eq!((-0f64).powi(99), -0.0);
 
     assert_approx_eq!(1f32.exp(), f32::consts::E);
     assert_approx_eq!(1f64.exp(), f64::consts::E);
-    assert_eq!(0f32.exp(), 1f32);
-    assert_eq!(0f64.exp(), 1f64);
+    assert_eq!(0f32.exp(), 1.0);
+    assert_eq!(0f64.exp(), 1.0);
 
     assert_approx_eq!(1f32.exp_m1(), f32::consts::E - 1.0);
     assert_approx_eq!(1f64.exp_m1(), f64::consts::E - 1.0);
 
     assert_approx_eq!(10f32.exp2(), 1024f32);
     assert_approx_eq!(50f64.exp2(), 1125899906842624f64);
-    assert_eq!(0f32.exp2(), 1f32);
-    assert_eq!(0f64.exp2(), 1f64);
+    assert_eq!(0f32.exp2(), 1.0);
+    assert_eq!(0f64.exp2(), 1.0);
 
     assert_approx_eq!(f32::consts::E.ln(), 1f32);
     assert_approx_eq!(f64::consts::E.ln(), 1f64);
-    assert_eq!(1f32.ln(), 0f32);
-    assert_eq!(1f64.ln(), 0f64);
+    assert_eq!(1f32.ln(), 0.0);
+    assert_eq!(1f64.ln(), 0.0);
 
     assert_approx_eq!(0f32.ln_1p(), 0f32);
     assert_approx_eq!(0f64.ln_1p(), 0f64);
