@@ -2,6 +2,10 @@
 
 {% block content %}
 <h1>Rust CI test dashboard</h1>
+<div>
+Here's how to interpret the "passed" and "ignored" counts:
+the count includes all combinations of "stage" x "target" x "CI job where the test was executed or ignored".
+</div>
 <div class="test-suites">
     <div class="summary">
         <div>
