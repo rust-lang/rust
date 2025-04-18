@@ -1,0 +1,130 @@
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/deep-norm-pending.rs:15:5
+   |
+LL |     fn method() {}
+   |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
+   |
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL |     <T as Foo>::Assoc: Sized, T: Foo
+   |                               ++++++
+
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/deep-norm-pending.rs:9:1
+   |
+LL | / impl<T> Bar for T
+LL | |
+LL | |
+LL | | where
+LL | |     <T as Foo>::Assoc: Sized,
+   | |_____________________________^ the trait `Foo` is not implemented for `T`
+   |
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL |     <T as Foo>::Assoc: Sized, T: Foo
+   |                               ++++++
+
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/deep-norm-pending.rs:9:1
+   |
+LL | / impl<T> Bar for T
+LL | |
+LL | |
+LL | | where
+...  |
+LL | | }
+   | |_^ the trait `Foo` is not implemented for `T`
+   |
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL |     <T as Foo>::Assoc: Sized, T: Foo
+   |                               ++++++
+
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/deep-norm-pending.rs:15:5
+   |
+LL |     fn method() {}
+   |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL |     <T as Foo>::Assoc: Sized, T: Foo
+   |                               ++++++
+
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/deep-norm-pending.rs:15:5
+   |
+LL |     fn method() {}
+   |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
+   |
+note: required for `T` to implement `Bar`
+  --> $DIR/deep-norm-pending.rs:9:9
+   |
+LL | impl<T> Bar for T
+   |         ^^^     ^
+...
+LL |     <T as Foo>::Assoc: Sized,
+   |                        ----- unsatisfied trait bound introduced here
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL |     <T as Foo>::Assoc: Sized, T: Foo
+   |                               ++++++
+
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/deep-norm-pending.rs:15:5
+   |
+LL |     fn method() {}
+   |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL |     <T as Foo>::Assoc: Sized, T: Foo
+   |                               ++++++
+
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/deep-norm-pending.rs:6:20
+   |
+LL |     fn method() -> impl Sized;
+   |                    ^^^^^^^^^^ the trait `Foo` is not implemented for `T`
+   |
+note: required for `T` to implement `Bar`
+  --> $DIR/deep-norm-pending.rs:9:9
+   |
+LL | impl<T> Bar for T
+   |         ^^^     ^
+...
+LL |     <T as Foo>::Assoc: Sized,
+   |                        ----- unsatisfied trait bound introduced here
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL |     <T as Foo>::Assoc: Sized, T: Foo
+   |                               ++++++
+
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/deep-norm-pending.rs:15:5
+   |
+LL |     fn method() {}
+   |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL |     <T as Foo>::Assoc: Sized, T: Foo
+   |                               ++++++
+
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/deep-norm-pending.rs:15:8
+   |
+LL |     fn method() {}
+   |        ^^^^^^ the trait `Foo` is not implemented for `T`
+   |
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL |     <T as Foo>::Assoc: Sized, T: Foo
+   |                               ++++++
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
