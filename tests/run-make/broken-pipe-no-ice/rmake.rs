@@ -14,9 +14,7 @@
 use std::io::Read;
 use std::process::{Command, Stdio};
 
-// FIXME(#137532): replace `os_pipe` dependency with std `anonymous_pipe` once that stabilizes and
-// reaches beta.
-use run_make_support::{env_var, os_pipe};
+use run_make_support::env_var;
 
 #[derive(Debug, PartialEq)]
 enum Binary {
@@ -25,7 +23,7 @@ enum Binary {
 }
 
 fn check_broken_pipe_handled_gracefully(bin: Binary, mut cmd: Command) {
-    let (reader, writer) = os_pipe::pipe().unwrap();
+    let (reader, writer) = std::io::pipe().unwrap();
     drop(reader); // close read-end
     cmd.stdout(writer).stderr(Stdio::piped());
 
