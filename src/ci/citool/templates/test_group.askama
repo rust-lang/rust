@@ -1,0 +1,42 @@
+{% macro test_result(r) -%}
+passed: {{ r.passed.len() }}, ignored: {{ r.ignored.len() }}
+{%- endmacro %}
+
+<li>
+<details>
+<summary>{{ name }} ({{ test_count() }} test{{ test_count() | pluralize }}{% if !root_tests.is_empty() && root_tests.len() as u64 != test_count() -%}
+    , {{ root_tests.len() }} root test{{ root_tests.len() | pluralize }}
+{%- endif %}{% if !groups.is_empty() -%}
+    , {{ groups.len() }} subdir{{ groups.len() | pluralize }}
+{%- endif %})
+</summary>
+
+{% if !groups.is_empty() %}
+<ul>
+    {% for (dir_name, subgroup) in groups %}
+    {{ subgroup|safe }}
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if !root_tests.is_empty() %}
+<ul>
+    {% for (name, test) in root_tests %}
+        <li>
+        {% if let Some(result) = test.single_test() %}
+            <b>{{ name }}</b> ({% call test_result(result) %})
+        {% else %}
+            <b>{{ name }}</b> ({{ test.revisions.len() }} revision{{ test.revisions.len() | pluralize }})
+            <ul>
+            {% for (revision, result) in test.revisions %}
+                <li>#<i>{{ revision }}</i> ({% call test_result(result) %})</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+        </li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+</details>
+</li>
