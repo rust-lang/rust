@@ -1387,6 +1387,9 @@ pub struct GlobalCtxt<'tcx> {
     /// Common consts, pre-interned for your convenience.
     pub consts: CommonConsts<'tcx>,
 
+    /// A cache for the `erase_regions` function.
+    pub(in crate::ty) erased_region_cache: ShardedHashMap<Ty<'tcx>, Ty<'tcx>>,
+
     /// Hooks to be able to register functions in other crates that can then still
     /// be called from rustc_middle.
     pub(crate) hooks: crate::hooks::Providers,
@@ -1647,6 +1650,7 @@ impl<'tcx> TyCtxt<'tcx> {
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
+            erased_region_cache: Default::default(),
             untracked,
             query_system,
             query_kinds,
