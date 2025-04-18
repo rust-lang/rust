@@ -44,6 +44,31 @@ macro_rules! assert_approx_eq {
     };
 }
 
+
+/// From IEEE 754 a Signaling NaN for single precision has the following representation:
+/// ```
+/// s | 1111 1111 | 0x..x
+/// ````
+/// Were at least one `x` is a 1.
+/// 
+/// This sNaN has the following representation and is used for testing purposes.:
+/// ```
+/// 0 | 1111111 | 01..0
+/// ```
+const SINGLE_SNAN: f32 = f32::from_bits(0x7fa00000);
+
+/// From IEEE 754 a Signaling NaN for double precision has the following representation:
+/// ```
+/// s | 1111 1111 111 | 0x..x
+/// ````
+/// Were at least one `x` is a 1.
+///
+/// This sNaN has the following representation and is used for testing purposes.:
+/// ```
+/// 0 | 1111 1111 111 | 01..0
+/// ```
+const DOUBLE_SNAN: f64 = f64::from_bits(0x7ff4000000000000);
+
 fn main() {
     basic();
     casts();
@@ -1018,6 +1043,16 @@ pub fn libm() {
     assert_eq!(1f32.powf(f32::NAN), 1f32);
     assert_eq!(1f64.powf(f64::NAN), 1f64);
 
+    // For pown (powi in rust) the C standard says:
+    // x^0 = 1 for all x not a sNaN.
+    assert_ne!((SINGLE_SNAN).powi(0), 1.0);
+    assert_ne!((DOUBLE_SNAN).powi(0), 1.0);
+    assert_ne!((SINGLE_SNAN).powi(0), 1.0);
+    assert_ne!((DOUBLE_SNAN).powi(0), 1.0);
+    // f*::NAN is a quiet NAN and should return 1.
+    assert_eq!(f32::NAN.powi(0), 1f32);
+    assert_eq!(f64::NAN.powi(0), 1f64);
+
     assert_eq!((-1f32).powf(f32::INFINITY), 1f32);
     assert_eq!((-1f32).powf(f32::NEG_INFINITY), 1f32);
     assert_eq!((-1f64).powf(f64::INFINITY), 1f64);
@@ -1039,11 +1074,6 @@ pub fn libm() {
     assert_eq!(10.0f64.powi(0), 1.0f64);
     assert_eq!(f32::INFINITY.powi(0), 1.0f32);
     assert_eq!(f64::INFINITY.powi(0), 1.0f64);
-    // f*::NAN doesn't specify which what kind of bit pattern
-    // the NAN will have.
-    // We **assume** f*::NAN is not signaling.
-    assert_eq!(f32::NAN.powi(0), 1.0f32);
-    assert_eq!(f64::NAN.powi(0), 1.0f64);
 
     assert_eq!((-0f32).powi(10), 0f32);
     assert_eq!((-0f64).powi(100), 0f64);

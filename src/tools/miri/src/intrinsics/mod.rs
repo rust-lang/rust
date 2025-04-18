@@ -632,6 +632,8 @@ fn fixed_powi_float_value<S: Semantics>(base: IeeeFloat<S>, exp: i32) -> Option<
         (Category::Zero, x) if x % 2 == 0 => Some(IeeeFloat::<S>::ZERO),
 
         // x^0 = 1, if x is not a Signaling NaN
+        // FIXME: The C ecosystem is inconsistent with handling sNaN's, some return 1 others propogate
+        // the NaN. We should return either 1 or the NaN non-deterministically here.
         (_, 0) if !base.is_signaling() => Some(IeeeFloat::<S>::one()),
 
         _ => None,
