@@ -10,4 +10,6 @@
 /// attempted link to method: [`Foo.bar()`] //~ERROR unresolved link
 ///
 /// classic broken intra-doc link: [`Bar`] //~ERROR unresolved link
+///
+/// no backticks, so we let this one slide: [Foo.bar()]
 pub struct Foo;
