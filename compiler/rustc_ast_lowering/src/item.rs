@@ -187,6 +187,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ident,
                 generics,
                 ty,
+                body_id,
                 expr,
                 define_opaque,
                 ..
@@ -199,7 +200,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
-                        (ty, this.lower_const_item(span, expr.as_deref()))
+                        (ty, this.lower_const_item(span, body_id.zip(expr.as_deref())))
                     },
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
@@ -483,21 +484,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_const_item(&mut self, span: Span, body: Option<&Expr>) -> hir::BodyId {
-        self.lower_const_body(span, body)
+    fn lower_const_item(&mut self, span: Span, body: Option<(NodeId, &Expr)>) -> hir::BodyId {
+        self.lower_const_body(span, body.map(|b| b.1))
         // TODO: code to add next
-        // let ct_arg = if self.tcx.features().min_generic_const_args()
-        //     && let Some(expr) = body
-        // {
+        // let mgca = self.tcx.features().min_generic_const_args();
+        // let ct_arg = if mgca && let Some((_, expr)) = body {
         //     self.try_lower_as_const_path(expr)
         // } else {
         //     None
         // };
-        // let body_id = if body.is_some() && ct_arg.is_none() {
-        //     // TODO: lower as const block instead
-        //     self.lower_const_body(span, body)
+        // let body_id = if mgca && ct_arg.is_none() {
+        //     self.lower_const_body_with_const_block(span, body)
         // } else {
-        //     self.lower_const_body(span, body)
+        //     self.lower_const_body(span, body.map(|(_, e)| e))
         // };
         // (body_id, ct_arg)
     }
@@ -797,6 +796,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ident,
                 generics,
                 ty,
+                body_id,
                 expr,
                 define_opaque,
                 ..
@@ -808,7 +808,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
-                        let body = expr.as_deref().map(|e| this.lower_const_item(i.span, Some(e)));
+                        let body = expr
+                            .as_deref()
+                            .map(|e| this.lower_const_item(i.span, Some((body_id.unwrap(), e))));
                         hir::TraitItemKind::Const(ty, body)
                     },
                 );
@@ -988,6 +990,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ident,
                 generics,
                 ty,
+                body_id,
                 expr,
                 define_opaque,
                 ..
@@ -1001,7 +1004,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
                         this.lower_define_opaque(hir_id, &define_opaque);
-                        let body = this.lower_const_item(i.span, expr.as_deref());
+                        let body = this.lower_const_item(i.span, body_id.zip(expr.as_deref()));
                         hir::ImplItemKind::Const(ty, body)
                     },
                 ),
@@ -1277,6 +1280,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::BodyId {
         self.lower_fn_body(decl, contract, |this| this.lower_block_expr(body))
     }
+
+    // TODO: add lower_const_body_with_const_block
 
     pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
         self.lower_body(|this| {

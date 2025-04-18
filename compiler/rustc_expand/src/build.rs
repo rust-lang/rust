@@ -724,6 +724,7 @@ impl<'a> ExtCtxt<'a> {
                     // FIXME(generic_const_items): Pass the generics as a parameter.
                     generics: ast::Generics::default(),
                     ty,
+                    body_id: Some(ast::DUMMY_NODE_ID),
                     expr: Some(expr),
                     define_opaque: None,
                 }
