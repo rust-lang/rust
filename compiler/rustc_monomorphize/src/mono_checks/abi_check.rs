@@ -99,6 +99,12 @@ fn wasm_abi_safe<'tcx>(tcx: TyCtxt<'tcx>, arg: &ArgAbi<'tcx, Ty<'tcx>>) -> bool 
         return true;
     }
 
+    // Both the old and the new ABIs treat vector types like `v128` the same
+    // way.
+    if uses_vector_registers(&arg.mode, &arg.layout.backend_repr) {
+        return true;
+    }
+
     // This matches `unwrap_trivial_aggregate` in the wasm ABI logic.
     if arg.layout.is_aggregate() {
         let cx = LayoutCx::new(tcx, TypingEnv::fully_monomorphized());
@@ -109,6 +115,11 @@ fn wasm_abi_safe<'tcx>(tcx: TyCtxt<'tcx>, arg: &ArgAbi<'tcx, Ty<'tcx>>) -> bool 
                 return true;
             }
         }
+    }
+
+    // Zero-sized types are dropped in both ABIs, so they're safe
+    if arg.layout.is_zst() {
+        return true;
     }
 
     false

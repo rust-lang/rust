@@ -1232,12 +1232,13 @@ fn item_trait_alias(
         wrap_item(w, |w| {
             write!(
                 w,
-                "{attrs}trait {name}{generics}{where_b} = {bounds};",
+                "{attrs}trait {name}{generics} = {bounds}{where_clause};",
                 attrs = render_attributes_in_pre(it, "", cx),
                 name = it.name.unwrap(),
                 generics = t.generics.print(cx),
-                where_b = print_where_clause(&t.generics, cx, 0, Ending::Newline).maybe_display(),
                 bounds = bounds(&t.bounds, true, cx),
+                where_clause =
+                    print_where_clause(&t.generics, cx, 0, Ending::NoNewline).maybe_display(),
             )
         })?;
 

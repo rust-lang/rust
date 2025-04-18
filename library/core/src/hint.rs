@@ -4,6 +4,7 @@
 //!
 //! Hints may be compile time or runtime.
 
+use crate::mem::MaybeUninit;
 use crate::{intrinsics, ub_checks};
 
 /// Informs the compiler that the site which is calling this function is not
@@ -735,9 +736,9 @@ pub const fn cold_path() {
     crate::intrinsics::cold_path()
 }
 
-/// Returns either `true_val` or `false_val` depending on the value of `b`,
-/// with a hint to the compiler that `b` is unlikely to be correctly
-/// predicted by a CPU’s branch predictor.
+/// Returns either `true_val` or `false_val` depending on the value of
+/// `condition`, with a hint to the compiler that `condition` is unlikely to be
+/// correctly predicted by a CPU’s branch predictor.
 ///
 /// This method is functionally equivalent to
 /// ```ignore (this is just for illustrative purposes)
@@ -753,10 +754,10 @@ pub const fn cold_path() {
 /// search.
 ///
 /// Note however that this lowering is not guaranteed (on any platform) and
-/// should not be relied upon when trying to write constant-time code. Also
-/// be aware that this lowering might *decrease* performance if `condition`
-/// is well-predictable. It is advisable to perform benchmarks to tell if
-/// this function is useful.
+/// should not be relied upon when trying to write cryptographic constant-time
+/// code. Also be aware that this lowering might *decrease* performance if
+/// `condition` is well-predictable. It is advisable to perform benchmarks to
+/// tell if this function is useful.
 ///
 /// # Examples
 ///
@@ -780,6 +781,17 @@ pub const fn cold_path() {
 /// ```
 #[inline(always)]
 #[unstable(feature = "select_unpredictable", issue = "133962")]
-pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
-    crate::intrinsics::select_unpredictable(b, true_val, false_val)
+pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T {
+    // FIXME(https://github.com/rust-lang/unsafe-code-guidelines/issues/245):
+    // Change this to use ManuallyDrop instead.
+    let mut true_val = MaybeUninit::new(true_val);
+    let mut false_val = MaybeUninit::new(false_val);
+    // SAFETY: The value that is not selected is dropped, and the selected one
+    // is returned. This is necessary because the intrinsic doesn't drop the
+    // value that is  not selected.
+    unsafe {
+        crate::intrinsics::select_unpredictable(!condition, &mut true_val, &mut false_val)
+            .assume_init_drop();
+        crate::intrinsics::select_unpredictable(condition, true_val, false_val).assume_init()
+    }
 }

@@ -10,7 +10,7 @@ use rustc_middle::bug;
 use tracing::{debug, trace};
 
 use crate::back::write::llvm_err;
-use crate::builder::SBuilder;
+use crate::builder::{SBuilder, UNNAMED};
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
 use crate::errors::{AutoDiffWithoutEnable, LlvmError};
@@ -51,6 +51,7 @@ fn has_sret(fnc: &Value) -> bool {
 // using iterators and peek()?
 fn match_args_from_caller_to_enzyme<'ll>(
     cx: &SimpleCx<'ll>,
+    builder: &SBuilder<'ll, 'll>,
     width: u32,
     args: &mut Vec<&'ll llvm::Value>,
     inputs: &[DiffActivity],
@@ -78,7 +79,9 @@ fn match_args_from_caller_to_enzyme<'ll>(
     let enzyme_const = cx.create_metadata("enzyme_const".to_string()).unwrap();
     let enzyme_out = cx.create_metadata("enzyme_out".to_string()).unwrap();
     let enzyme_dup = cx.create_metadata("enzyme_dup".to_string()).unwrap();
+    let enzyme_dupv = cx.create_metadata("enzyme_dupv".to_string()).unwrap();
     let enzyme_dupnoneed = cx.create_metadata("enzyme_dupnoneed".to_string()).unwrap();
+    let enzyme_dupnoneedv = cx.create_metadata("enzyme_dupnoneedv".to_string()).unwrap();
 
     while activity_pos < inputs.len() {
         let diff_activity = inputs[activity_pos as usize];
@@ -90,13 +93,34 @@ fn match_args_from_caller_to_enzyme<'ll>(
             DiffActivity::Active => (enzyme_out, false),
             DiffActivity::ActiveOnly => (enzyme_out, false),
             DiffActivity::Dual => (enzyme_dup, true),
+            DiffActivity::Dualv => (enzyme_dupv, true),
             DiffActivity::DualOnly => (enzyme_dupnoneed, true),
+            DiffActivity::DualvOnly => (enzyme_dupnoneedv, true),
             DiffActivity::Duplicated => (enzyme_dup, true),
             DiffActivity::DuplicatedOnly => (enzyme_dupnoneed, true),
-            DiffActivity::FakeActivitySize => (enzyme_const, false),
+            DiffActivity::FakeActivitySize(_) => (enzyme_const, false),
         };
         let outer_arg = outer_args[outer_pos];
         args.push(cx.get_metadata_value(activity));
+        if matches!(diff_activity, DiffActivity::Dualv) {
+            let next_outer_arg = outer_args[outer_pos + 1];
+            let elem_bytes_size: u64 = match inputs[activity_pos + 1] {
+                DiffActivity::FakeActivitySize(Some(s)) => s.into(),
+                _ => bug!("incorrect Dualv handling recognized."),
+            };
+            // stride: sizeof(T) * n_elems.
+            // n_elems is the next integer.
+            // Now we multiply `4 * next_outer_arg` to get the stride.
+            let mul = unsafe {
+                llvm::LLVMBuildMul(
+                    builder.llbuilder,
+                    cx.get_const_i64(elem_bytes_size),
+                    next_outer_arg,
+                    UNNAMED,
+                )
+            };
+            args.push(mul);
+        }
         args.push(outer_arg);
         if duplicated {
             // We know that duplicated args by construction have a following argument,
@@ -114,7 +138,7 @@ fn match_args_from_caller_to_enzyme<'ll>(
                 } else {
                     let next_activity = inputs[activity_pos + 1];
                     // We analyze the MIR types and add this dummy activity if we visit a slice.
-                    next_activity == DiffActivity::FakeActivitySize
+                    matches!(next_activity, DiffActivity::FakeActivitySize(_))
                 }
             };
             if slice {
@@ -125,7 +149,10 @@ fn match_args_from_caller_to_enzyme<'ll>(
                 // int2 >= int1, which means the shadow vector is large enough to store the gradient.
                 assert_eq!(cx.type_kind(next_outer_ty), TypeKind::Integer);
 
-                for i in 0..(width as usize) {
+                let iterations =
+                    if matches!(diff_activity, DiffActivity::Dualv) { 1 } else { width as usize };
+
+                for i in 0..iterations {
                     let next_outer_arg2 = outer_args[outer_pos + 2 * (i + 1)];
                     let next_outer_ty2 = cx.val_ty(next_outer_arg2);
                     assert_eq!(cx.type_kind(next_outer_ty2), TypeKind::Pointer);
@@ -136,7 +163,7 @@ fn match_args_from_caller_to_enzyme<'ll>(
                 }
                 args.push(cx.get_metadata_value(enzyme_const));
                 args.push(next_outer_arg);
-                outer_pos += 2 + 2 * width as usize;
+                outer_pos += 2 + 2 * iterations;
                 activity_pos += 2;
             } else {
                 // A duplicated pointer will have the following two outer_fn arguments:
@@ -360,6 +387,7 @@ fn generate_enzyme_call<'ll>(
         let outer_args: Vec<&llvm::Value> = get_params(outer_fn);
         match_args_from_caller_to_enzyme(
             &cx,
+            &builder,
             attrs.width,
             &mut args,
             &attrs.input_activity,

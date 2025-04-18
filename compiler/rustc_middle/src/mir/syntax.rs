@@ -1242,6 +1242,8 @@ pub enum ProjectionElem<V, T> {
 
     /// Like an explicit cast from an opaque type to a concrete type, but without
     /// requiring an intermediate variable.
+    ///
+    /// This is unused with `-Znext-solver`.
     OpaqueCast(T),
 
     /// A transmute from an unsafe binder to the type that it wraps. This is a projection

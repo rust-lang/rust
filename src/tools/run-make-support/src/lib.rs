@@ -41,8 +41,6 @@ pub use bstr;
 pub use gimli;
 pub use libc;
 pub use object;
-// FIXME(#137532): replace with std `anonymous_pipe` once it stabilizes and reaches beta.
-pub use os_pipe;
 pub use regex;
 pub use serde_json;
 pub use similar;

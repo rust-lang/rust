@@ -175,6 +175,8 @@ See [compiletest directives] for a listing of directives.
 - For `ignore-*`/`needs-*`/`only-*` directives, unless extremely obvious,
   provide a brief remark on why the directive is needed. E.g. `"//@ ignore-wasi
   (wasi codegens the main symbol differently)"`.
+- When using `//@ ignore-auxiliary`, specify the corresponding main test files,
+  e.g. ``//@ ignore-auxiliary (used by `./foo.rs`)``.
 
 ## FileCheck best practices
 

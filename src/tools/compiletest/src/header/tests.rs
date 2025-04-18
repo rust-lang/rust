@@ -940,3 +940,9 @@ fn test_supported_crate_types() {
         "//@ needs-crate-type: bin, cdylib, dylib, lib, proc-macro, rlib, staticlib"
     ));
 }
+
+#[test]
+fn test_ignore_auxiliary() {
+    let config = cfg().build();
+    assert!(check_ignore(&config, "//@ ignore-auxiliary"));
+}
