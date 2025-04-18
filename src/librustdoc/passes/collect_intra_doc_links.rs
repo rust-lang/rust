@@ -996,7 +996,9 @@ fn preprocess_link(
         }
     };
 
-    if can_be_url && should_ignore_link(path_str) {
+    // If there's no backticks, be lenient revert to old behavior.
+    // This is to prevent churn by linting on stuff that isn't meant to be a link.
+    if (can_be_url || !ori_link.link.contains('`')) && should_ignore_link(path_str) {
         return None;
     }
 
