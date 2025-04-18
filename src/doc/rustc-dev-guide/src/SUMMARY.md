@@ -100,6 +100,7 @@
     - [Search](./rustdoc-internals/search.md)
 	- [The `rustdoc` test suite](./rustdoc-internals/rustdoc-test-suite.md)
 - [Autodiff internals](./autodiff/internals.md)
+    - [Installation](./autodiff/installation.md)
     - [How to debug](./autodiff/debugging.md)
     - [Autodiff flags](./autodiff/flags.md)
     - [Current limitations](./autodiff/limitations.md)
