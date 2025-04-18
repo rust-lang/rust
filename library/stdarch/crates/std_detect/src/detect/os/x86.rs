@@ -106,9 +106,11 @@ pub(crate) fn detect_features() -> cache::Initializer {
     {
         // borrows value till the end of this scope:
         let mut enable = |r, rb, f| {
-            if bit::test(r as usize, rb) {
+            let present = bit::test(r as usize, rb);
+            if present {
                 value.set(f as u32);
             }
+            present
         };
 
         enable(proc_info_ecx, 0, Feature::sse3);
@@ -120,7 +122,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
         enable(proc_info_ecx, 22, Feature::movbe);
         enable(proc_info_ecx, 23, Feature::popcnt);
         enable(proc_info_ecx, 25, Feature::aes);
-        enable(proc_info_ecx, 29, Feature::f16c);
+        let f16c = enable(proc_info_ecx, 29, Feature::f16c);
         enable(proc_info_ecx, 30, Feature::rdrand);
         enable(extended_features_ebx, 18, Feature::rdseed);
         enable(extended_features_ebx, 19, Feature::adx);
@@ -216,7 +218,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
                     }
 
                     // FMA (uses 256-bit wide registers):
-                    enable(proc_info_ecx, 12, Feature::fma);
+                    let fma = enable(proc_info_ecx, 12, Feature::fma);
 
                     // And AVX/AVX2:
                     enable(proc_info_ecx, 28, Feature::avx);
@@ -235,7 +237,11 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
                     // For AVX-512 the OS also needs to support saving/restoring
                     // the extended state, only then we enable AVX-512 support:
-                    if os_avx512_support {
+                    // Also, Rust makes `avx512f` imply `fma` and `f16c`, because
+                    // otherwise the assembler is broken. But Intel doesn't guarantee
+                    // that `fma` and `f16c` are available with `avx512f`, so we
+                    // need to check for them separately.
+                    if os_avx512_support && f16c && fma {
                         enable(extended_features_ebx, 16, Feature::avx512f);
                         enable(extended_features_ebx, 17, Feature::avx512dq);
                         enable(extended_features_ebx, 21, Feature::avx512ifma);
