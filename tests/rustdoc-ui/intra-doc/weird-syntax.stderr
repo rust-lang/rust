@@ -123,14 +123,6 @@ LL - /// [x][struct@Clone ]
 LL + /// [x][trait@Clone ]
    |
 
-error: unresolved link to `Clone\(\)`
-  --> $DIR/weird-syntax.rs:68:9
-   |
-LL | /// [x][Clone\(\)]
-   |         ^^^^^^^^^ no item named `Clone\(\)` in scope
-   |
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
-
 error: unresolved link to `Clone`
   --> $DIR/weird-syntax.rs:74:9
    |
@@ -306,22 +298,6 @@ LL | /// - [`SDL_PROP_WINDOW_CREATE_COCOA_WINDOW_POINTER`]: the
    |                                                        ^^^ no item named `the` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
-
-error: unresolved link to `Clone`
-  --> $DIR/weird-syntax.rs:132:9
-   |
-LL | /// The [cln][] link here will produce a plain text suggestion
-   |         ^^^^^ this link resolves to the trait `Clone`, which is not a function
-   |
-   = help: to link to the trait, prefix with `trait@`: trait@Clone
-
-error: incompatible link kind for `Clone`
-  --> $DIR/weird-syntax.rs:137:9
-   |
-LL | /// The [cln][] link here will produce a plain text suggestion
-   |         ^^^^^ this link resolved to a trait, which is not a struct
-   |
-   = help: to link to the trait, prefix with `trait@`: trait@Clone
 
 error: aborting due to 27 previous errors
 
