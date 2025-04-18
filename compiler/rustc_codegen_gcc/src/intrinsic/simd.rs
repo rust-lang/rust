@@ -399,7 +399,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     }
 
     #[cfg(feature = "master")]
-    if name == sym::simd_insert {
+    if name == sym::simd_insert || name == sym::simd_insert_dyn {
         require!(
             in_elem == arg_tys[2],
             InvalidMonomorphization::InsertedType {
@@ -410,6 +410,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 out_ty: arg_tys[2]
             }
         );
+
+        // TODO(antoyo): For simd_insert, check if the index is a constant of the correct size.
         let vector = args[0].immediate();
         let index = args[1].immediate();
         let value = args[2].immediate();
@@ -422,13 +424,15 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     }
 
     #[cfg(feature = "master")]
-    if name == sym::simd_extract {
+    if name == sym::simd_extract || name == sym::simd_extract_dyn {
         require!(
             ret_ty == in_elem,
             InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
         );
+        // TODO(antoyo): For simd_extract, check if the index is a constant of the correct size.
         let vector = args[0].immediate();
-        return Ok(bx.context.new_vector_access(None, vector, args[1].immediate()).to_rvalue());
+        let index = args[1].immediate();
+        return Ok(bx.context.new_vector_access(None, vector, index).to_rvalue());
     }
 
     if name == sym::simd_select {

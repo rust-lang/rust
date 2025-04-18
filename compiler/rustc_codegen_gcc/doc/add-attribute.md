@@ -14,4 +14,4 @@ Finally, you need to update this repository by calling the relevant API you adde
 
 To test it, build `gcc`, run `cargo update -p gccjit` and then you can test the generated output for a given Rust crate.
 
-[gccjit.rs]: https://github.com/antoyo/gccjit.rs
+[gccjit.rs]: https://github.com/rust-lang/gccjit.rs
