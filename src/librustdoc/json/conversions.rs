@@ -609,11 +609,12 @@ impl FromClean<clean::FnDecl> for FunctionSignature {
         let clean::FnDecl { inputs, output, c_variadic } = decl;
         FunctionSignature {
             inputs: inputs
-                .values
                 .into_iter()
-                // `_` is the most sensible name for missing param names.
-                .map(|arg| {
-                    (arg.name.unwrap_or(kw::Underscore).to_string(), arg.type_.into_json(renderer))
+                .map(|param| {
+                    // `_` is the most sensible name for missing param names.
+                    let name = param.name.unwrap_or(kw::Underscore).to_string();
+                    let type_ = param.type_.into_json(renderer);
+                    (name, type_)
                 })
                 .collect(),
             output: if output.is_unit() { None } else { Some(output.into_json(renderer)) },
