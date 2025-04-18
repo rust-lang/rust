@@ -635,7 +635,12 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 ty::InstanceKind::Item(def) => def,
                 // EII shims have a characteristic defid.
                 // But it's not their own, its the one of the extern item it is implementing.
-                ty::InstanceKind::EiiShim { def_id: _, extern_item, chosen_impl: _ } => extern_item,
+                ty::InstanceKind::EiiShim {
+                    def_id: _,
+                    extern_item,
+                    chosen_impl: _,
+                    weak_linkage: _,
+                } => extern_item,
                 ty::InstanceKind::VTableShim(..)
                 | ty::InstanceKind::ReifyShim(..)
                 | ty::InstanceKind::FnPtrShim(..)
@@ -770,8 +775,10 @@ fn mono_item_linkage_and_visibility<'tcx>(
     // together anyway. LLVM ensures the last one is the one that's chosen
     // TODO: this isn't the problem if they both decided to choose either the default or the
     // same explicit impl but if their view on it differs it is a problem!
-    if let MonoItem::Fn(Instance { def: InstanceKind::EiiShim { .. }, .. }) = mono_item {
-        (Linkage::WeakAny, vis)
+    if let MonoItem::Fn(Instance { def: InstanceKind::EiiShim { weak_linkage, .. }, .. }) =
+        mono_item
+    {
+        if *weak_linkage { (Linkage::WeakAny, vis) } else { (Linkage::External, vis) }
     } else {
         (Linkage::External, vis)
     }

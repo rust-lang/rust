@@ -75,6 +75,10 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                         actual_target,
                     );
                 }
+                // Exception: for EIIs the macro gets copied to both a generated macro *and* the
+                // generated extern item. We need to ignore one of these, and it must be the
+                // macrodef.
+                Some(LangItem::PanicImpl) if actual_target == Target::MacroDef => return,
                 // Known lang item with attribute on incorrect target.
                 Some(lang_item) => {
                     self.tcx.dcx().emit_err(LangItemOnIncorrectTarget {

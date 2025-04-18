@@ -225,6 +225,12 @@ impl<O> AssertKind<O> {
         }
     }
 
+    /// Generally do not use this and use `panic_function` instead.
+    /// Gives the lang item that is required to exist for this assertion
+    /// to be emitted. This sometimes causes the assertion not to be emitted
+    /// if a lang item isn't there.
+    pub fn required_lang_item(&self) {}
+
     /// Format the message arguments for the `assert(cond, msg..)` terminator in MIR printing.
     ///
     /// Needs to be kept in sync with the run-time behavior (which is defined by

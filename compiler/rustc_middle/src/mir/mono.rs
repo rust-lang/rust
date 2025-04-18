@@ -383,7 +383,7 @@ pub struct MonoItemData {
 /// Specifies the linkage type for a `MonoItem`.
 ///
 /// See <https://llvm.org/docs/LangRef.html#linkage-types> for more details about these variants.
-#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable, Eq, Hash)]
 pub enum Linkage {
     External,
     AvailableExternally,

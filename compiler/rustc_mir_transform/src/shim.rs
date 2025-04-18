@@ -114,7 +114,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             receiver_by_ref,
         } => build_construct_coroutine_by_move_shim(tcx, coroutine_closure_def_id, receiver_by_ref),
 
-        e @ ty::InstanceKind::EiiShim { def_id: _, extern_item, chosen_impl } => {
+        e @ ty::InstanceKind::EiiShim { def_id: _, extern_item, chosen_impl, weak_linkage: _ } => {
             let source = MirSource::from_instance(e);
 
             // get the signature for the new function this shim is creating
