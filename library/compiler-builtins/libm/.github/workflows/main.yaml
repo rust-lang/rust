@@ -5,6 +5,11 @@ on:
       - master
   pull_request:
 
+concurrency:
+  # Make sure that new pushes cancel running jobs
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   RUSTDOCFLAGS: -Dwarnings
