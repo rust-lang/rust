@@ -21,12 +21,12 @@ passed: {{ r.passed.len() }}, ignored: {{ r.ignored.len() }}
 
 {% if !root_tests.is_empty() %}
 <ul>
-    {% for test in root_tests %}
+    {% for (name, test) in root_tests %}
         <li>
         {% if let Some(result) = test.single_test() %}
-            <b>{{ test.name }}</b> ({% call test_result(result) %})
+            <b>{{ name }}</b> ({% call test_result(result) %})
         {% else %}
-            <b>{{ test.name }}</b> ({{ test.revisions.len() }} revision{{ test.revisions.len() | pluralize }})
+            <b>{{ name }}</b> ({{ test.revisions.len() }} revision{{ test.revisions.len() | pluralize }})
             <ul>
             {% for (revision, result) in test.revisions %}
                 <li>#<i>{{ revision }}</i> ({% call test_result(result) %})</li>

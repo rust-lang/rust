@@ -64,9 +64,10 @@ fn gather_test_suites(job_metrics: &HashMap<JobName, JobMetrics>) -> TestSuites 
                     Some((name, variant)) => (name.to_string(), variant.to_string()),
                     None => (test_name, "".to_string()),
                 };
-                let test_entry = suite_entry.tests.entry(test_name.clone()).or_insert_with(|| {
-                    Test { name: test_name.clone(), revisions: Default::default() }
-                });
+                let test_entry = suite_entry
+                    .tests
+                    .entry(test_name.clone())
+                    .or_insert_with(|| Test { revisions: Default::default() });
                 let variant_entry = test_entry
                     .revisions
                     .entry(variant_name)
@@ -91,16 +92,12 @@ fn gather_test_suites(job_metrics: &HashMap<JobName, JobMetrics>) -> TestSuites 
     let mut suites = suites.into_iter().collect::<Vec<_>>();
     suites.sort_by(|a, b| a.0.cmp(&b.0));
 
-    let mut target_suites = vec![];
-    for (suite_name, suite) in suites {
-        let suite = TestSuite {
-            name: suite_name.clone(),
-            group: build_test_group(&suite_name, suite.tests),
-        };
-        target_suites.push(suite);
-    }
+    let suites = suites
+        .into_iter()
+        .map(|(suite_name, suite)| TestSuite { group: build_test_group(&suite_name, suite.tests) })
+        .collect();
 
-    TestSuites { suites: target_suites }
+    TestSuites { suites }
 }
 
 /// Recursively expand a test group based on filesystem hierarchy.
@@ -115,7 +112,7 @@ fn build_test_group<'a>(name: &str, tests: BTreeMap<String, Test<'a>>) -> TestGr
 
         if components.peek().is_none() {
             // This is a root test
-            root_tests.push(test);
+            root_tests.push((name, test));
         } else {
             // This is a test in a nested directory
             let subdir_tests =
@@ -148,7 +145,6 @@ fn normalize_test_name(name: &str, suite_name: &str) -> String {
     name.trim_start_matches("/").to_string()
 }
 
-#[derive(serde::Serialize)]
 struct TestSuites<'a> {
     suites: Vec<TestSuite<'a>>,
 }
@@ -159,21 +155,16 @@ impl<'a> TestSuites<'a> {
     }
 }
 
-#[derive(serde::Serialize)]
 struct TestSuite<'a> {
-    name: String,
     group: TestGroup<'a>,
 }
 
-#[derive(Debug, serde::Serialize)]
 struct TestResults<'a> {
     passed: Vec<TestMetadata<'a>>,
     ignored: Vec<TestMetadata<'a>>,
 }
 
-#[derive(Debug, serde::Serialize)]
 struct Test<'a> {
-    name: String,
     revisions: BTreeMap<String, TestResults<'a>>,
 }
 
@@ -189,7 +180,8 @@ impl<'a> Test<'a> {
     }
 }
 
-#[derive(Clone, Copy, Debug, serde::Serialize)]
+#[derive(Clone, Copy)]
+#[allow(dead_code)]
 struct TestMetadata<'a> {
     job: &'a str,
     stage: u32,
@@ -198,13 +190,13 @@ struct TestMetadata<'a> {
 
 // We have to use a template for the TestGroup instead of a macro, because
 // macros cannot be recursive in askama at the moment.
-#[derive(Template, serde::Serialize)]
+#[derive(Template)]
 #[template(path = "test_group.askama")]
 /// Represents a group of tests
 struct TestGroup<'a> {
     name: String,
     /// Tests located directly in this directory
-    root_tests: Vec<Test<'a>>,
+    root_tests: Vec<(String, Test<'a>)>,
     /// Nested directories with additional tests
     groups: Vec<(String, TestGroup<'a>)>,
 }
