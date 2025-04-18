@@ -1,8 +1,8 @@
 //! Builtin attributes.
 use intern::sym;
-use span::{MacroCallId, Span};
+use span::Span;
 
-use crate::{ExpandResult, MacroCallKind, db::ExpandDatabase, name, tt};
+use crate::{ExpandResult, MacroCallId, MacroCallKind, db::ExpandDatabase, name, tt};
 
 use super::quote;
 

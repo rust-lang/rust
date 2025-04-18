@@ -98,12 +98,12 @@ use hir_def::{
     hir::{BindingId, Expr, LabelId},
 };
 use hir_expand::{
-    ExpansionInfo, HirFileId, HirFileIdExt, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
-    attrs::AttrId, name::AsName,
+    EditionedFileId, ExpansionInfo, HirFileId, InMacroFile, MacroCallId, attrs::AttrId,
+    name::AsName,
 };
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::{EditionedFileId, FileId};
+use span::FileId;
 use stdx::impl_from;
 use syntax::{
     AstNode, AstPtr, SyntaxNode,
@@ -116,9 +116,9 @@ use crate::{InFile, InlineAsmOperand, db::HirDatabase, semantics::child_by_sourc
 #[derive(Default)]
 pub(super) struct SourceToDefCache {
     pub(super) dynmap_cache: FxHashMap<(ChildContainer, HirFileId), DynMap>,
-    expansion_info_cache: FxHashMap<MacroFileId, ExpansionInfo>,
+    expansion_info_cache: FxHashMap<MacroCallId, ExpansionInfo>,
     pub(super) file_to_def_cache: FxHashMap<FileId, SmallVec<[ModuleId; 1]>>,
-    pub(super) included_file_cache: FxHashMap<EditionedFileId, Option<MacroFileId>>,
+    pub(super) included_file_cache: FxHashMap<EditionedFileId, Option<MacroCallId>>,
     /// Rootnode to HirFileId cache
     pub(super) root_to_file_cache: FxHashMap<SyntaxNode, HirFileId>,
 }
@@ -138,14 +138,14 @@ impl SourceToDefCache {
         &mut self,
         db: &dyn HirDatabase,
         file: EditionedFileId,
-    ) -> Option<MacroFileId> {
+    ) -> Option<MacroCallId> {
         if let Some(&m) = self.included_file_cache.get(&file) {
             return m;
         }
         self.included_file_cache.insert(file, None);
-        for &crate_id in db.relevant_crates(file.into()).iter() {
+        for &crate_id in db.relevant_crates(file.file_id(db)).iter() {
             db.include_macro_invoc(crate_id).iter().for_each(|&(macro_call_id, file_id)| {
-                self.included_file_cache.insert(file_id, Some(MacroFileId { macro_call_id }));
+                self.included_file_cache.insert(file_id, Some(macro_call_id));
             });
         }
         self.included_file_cache.get(&file).copied().flatten()
@@ -154,7 +154,7 @@ impl SourceToDefCache {
     pub(super) fn get_or_insert_expansion(
         &mut self,
         db: &dyn HirDatabase,
-        macro_file: MacroFileId,
+        macro_file: MacroCallId,
     ) -> &ExpansionInfo {
         self.expansion_info_cache.entry(macro_file).or_insert_with(|| {
             let exp_info = macro_file.expansion_info(db);
@@ -184,7 +184,7 @@ impl SourceToDefCtx<'_, '_> {
                 let n_mods = mods.len();
                 let modules = |file| {
                     crate_def_map
-                        .modules_for_file(file)
+                        .modules_for_file(self.db, file)
                         .map(|local_id| crate_def_map.module_id(local_id))
                 };
                 mods.extend(modules(file));
@@ -193,18 +193,16 @@ impl SourceToDefCtx<'_, '_> {
                         self.db
                             .include_macro_invoc(crate_id)
                             .iter()
-                            .filter(|&&(_, file_id)| file_id == file)
+                            .filter(|&&(_, file_id)| file_id.file_id(self.db) == file)
                             .flat_map(|&(macro_call_id, file_id)| {
-                                self.cache
-                                    .included_file_cache
-                                    .insert(file_id, Some(MacroFileId { macro_call_id }));
+                                self.cache.included_file_cache.insert(file_id, Some(macro_call_id));
                                 modules(
                                     macro_call_id
                                         .lookup(self.db)
                                         .kind
                                         .file_id()
                                         .original_file(self.db)
-                                        .file_id(),
+                                        .file_id(self.db),
                                 )
                             }),
                     );
@@ -234,7 +232,7 @@ impl SourceToDefCtx<'_, '_> {
             }
             None => {
                 let file_id = src.file_id.original_file(self.db);
-                self.file_to_def(file_id.file_id()).first().copied()
+                self.file_to_def(file_id.file_id(self.db)).first().copied()
             }
         }?;
 
@@ -247,7 +245,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn source_file_to_def(&mut self, src: InFile<&ast::SourceFile>) -> Option<ModuleId> {
         let _p = tracing::info_span!("source_file_to_def").entered();
         let file_id = src.file_id.original_file(self.db);
-        self.file_to_def(file_id.file_id()).first().copied()
+        self.file_to_def(file_id.file_id(self.db)).first().copied()
     }
 
     pub(super) fn trait_to_def(&mut self, src: InFile<&ast::Trait>) -> Option<TraitId> {
@@ -526,8 +524,10 @@ impl SourceToDefCtx<'_, '_> {
             return Some(def);
         }
 
-        let def =
-            self.file_to_def(src.file_id.original_file(self.db).file_id()).first().copied()?;
+        let def = self
+            .file_to_def(src.file_id.original_file(self.db).file_id(self.db))
+            .first()
+            .copied()?;
         Some(def.into())
     }
 

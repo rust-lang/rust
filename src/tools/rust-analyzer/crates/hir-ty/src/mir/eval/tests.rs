@@ -1,5 +1,6 @@
 use hir_def::db::DefDatabase;
-use span::{Edition, EditionedFileId};
+use hir_expand::EditionedFileId;
+use span::Edition;
 use syntax::{TextRange, TextSize};
 use test_fixture::WithFixture;
 
@@ -9,7 +10,7 @@ use crate::{Interner, Substitution, db::HirDatabase, mir::MirLowerError, test_db
 use super::{MirEvalError, interpret_mir};
 
 fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), MirEvalError> {
-    let module_id = db.module_for_file(file_id);
+    let module_id = db.module_for_file(file_id.file_id(db));
     let def_map = module_id.def_map(db);
     let scope = &def_map[module_id.local_id].scope;
     let func_id = scope
@@ -69,7 +70,7 @@ fn check_pass_and_stdio(
             let span_formatter = |file, range: TextRange| {
                 format!("{:?} {:?}..{:?}", file, line_index(range.start()), line_index(range.end()))
             };
-            let krate = db.module_for_file(file_id).krate();
+            let krate = db.module_for_file(file_id.file_id(&db)).krate();
             e.pretty_print(&mut err, &db, span_formatter, DisplayTarget::from_crate(&db, krate))
                 .unwrap();
             panic!("Error in interpreting: {err}");

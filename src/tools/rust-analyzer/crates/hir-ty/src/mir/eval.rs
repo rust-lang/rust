@@ -16,7 +16,7 @@ use hir_def::{
     resolver::{HasResolver, TypeNs, ValueNs},
     signatures::{StaticFlags, StructFlags},
 };
-use hir_expand::{HirFileIdExt, InFile, mod_path::path, name::Name};
+use hir_expand::{InFile, mod_path::path, name::Name};
 use intern::sym;
 use la_arena::ArenaMap;
 use rustc_abi::TargetDataLayout;
@@ -409,7 +409,7 @@ impl MirEvalError {
                 };
                 let file_id = span.file_id.original_file(db);
                 let text_range = span.value.text_range();
-                writeln!(f, "{}", span_formatter(file_id.file_id(), text_range))?;
+                writeln!(f, "{}", span_formatter(file_id.file_id(db), text_range))?;
             }
         }
         match err {

@@ -15,11 +15,9 @@
 
 mod on_enter;
 
-use ide_db::{
-    FilePosition, RootDatabase,
-    base_db::{RootQueryDb, salsa::AsDynDatabase},
-};
-use span::{Edition, EditionedFileId};
+use hir::EditionedFileId;
+use ide_db::{FilePosition, RootDatabase, base_db::RootQueryDb};
+use span::Edition;
 use std::iter;
 
 use syntax::{
@@ -76,10 +74,7 @@ pub(crate) fn on_char_typed(
     // FIXME: We are hitting the database here, if we are unlucky this call might block momentarily
     // causing the editor to feel sluggish!
     let edition = Edition::CURRENT_FIXME;
-    let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
-        db.as_dyn_database(),
-        EditionedFileId::new(position.file_id, edition),
-    );
+    let editioned_file_id_wrapper = EditionedFileId::new(db, position.file_id, edition);
     let file = &db.parse(editioned_file_id_wrapper);
     let char_matches_position =
         file.tree().syntax().text().char_at(position.offset) == Some(char_typed);

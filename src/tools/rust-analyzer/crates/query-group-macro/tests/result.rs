@@ -12,8 +12,10 @@ pub trait ResultDatabase: salsa::Database {
     #[salsa::input]
     fn input_string(&self) -> String;
 
+    #[salsa::invoke_interned(length)]
     fn length(&self, key: ()) -> Result<usize, Error>;
 
+    #[salsa::invoke_interned(length2)]
     fn length2(&self, key: ()) -> Result<usize, Error>;
 }
 

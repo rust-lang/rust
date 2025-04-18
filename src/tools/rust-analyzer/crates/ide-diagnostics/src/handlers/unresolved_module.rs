@@ -1,4 +1,4 @@
-use hir::{HirFileIdExt, db::ExpandDatabase};
+use hir::db::ExpandDatabase;
 use ide_db::{assists::Assist, base_db::AnchoredPathBuf, source_change::FileSystemEdit};
 use itertools::Itertools;
 use syntax::AstNode;
@@ -43,7 +43,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedModule) -> Option<Vec<
                     &format!("Create module at `{candidate}`"),
                     FileSystemEdit::CreateFile {
                         dst: AnchoredPathBuf {
-                            anchor: d.decl.file_id.original_file(ctx.sema.db).file_id(),
+                            anchor: d.decl.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
                             path: candidate.clone(),
                         },
                         initial_contents: "".to_owned(),

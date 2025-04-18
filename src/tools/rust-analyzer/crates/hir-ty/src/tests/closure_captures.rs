@@ -1,9 +1,9 @@
 use expect_test::{Expect, expect};
 use hir_def::db::DefDatabase;
-use hir_expand::files::InFileWrapper;
+use hir_expand::{HirFileId, files::InFileWrapper};
 use itertools::Itertools;
 use salsa::plumbing::FromId;
-use span::{HirFileId, TextRange};
+use span::TextRange;
 use syntax::{AstNode, AstPtr};
 use test_fixture::WithFixture;
 
@@ -16,7 +16,7 @@ use super::visit_module;
 
 fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
-    let module = db.module_for_file(file_id);
+    let module = db.module_for_file(file_id.file_id(&db));
     let def_map = module.def_map(&db);
 
     let mut defs = Vec::new();

@@ -94,12 +94,7 @@ fn cycle_a(db: &dyn CycleDatabase, abc: ABC) -> Result<(), Error> {
     abc.a(db).invoke(db, abc)
 }
 
-fn recover_a(
-    _db: &dyn CycleDatabase,
-    cycle: &salsa::Cycle,
-    _: CycleDatabaseData,
-    _abc: ABC,
-) -> Result<(), Error> {
+fn recover_a(_db: &dyn CycleDatabase, cycle: &salsa::Cycle, _abc: ABC) -> Result<(), Error> {
     Err(Error { cycle: cycle.participant_keys().map(|k| format!("{k:?}")).collect() })
 }
 
@@ -107,12 +102,7 @@ fn cycle_b(db: &dyn CycleDatabase, abc: ABC) -> Result<(), Error> {
     abc.b(db).invoke(db, abc)
 }
 
-fn recover_b(
-    _db: &dyn CycleDatabase,
-    cycle: &salsa::Cycle,
-    _: CycleDatabaseData,
-    _abc: ABC,
-) -> Result<(), Error> {
+fn recover_b(_db: &dyn CycleDatabase, cycle: &salsa::Cycle, _abc: ABC) -> Result<(), Error> {
     Err(Error { cycle: cycle.participant_keys().map(|k| format!("{k:?}")).collect() })
 }
 
@@ -156,11 +146,11 @@ fn inner_cycle() {
     let err = db.cycle_c(abc);
     assert!(err.is_err());
     let expected = expect![[r#"
-            [
-                "cycle_a_shim(Id(1400))",
-                "cycle_b_shim(Id(1000))",
-            ]
-        "#]];
+        [
+            "cycle_a_shim(Id(0))",
+            "cycle_b_shim(Id(0))",
+        ]
+    "#]];
     expected.assert_debug_eq(&err.unwrap_err().cycle);
 }
 
@@ -241,16 +231,16 @@ fn cycle_multiple() {
     let expected = expect![[r#"
         (
             [
-                "cycle_a_shim(Id(1000))",
-                "cycle_b_shim(Id(1400))",
+                "cycle_a_shim(Id(0))",
+                "cycle_b_shim(Id(0))",
             ],
             [
-                "cycle_a_shim(Id(1000))",
-                "cycle_b_shim(Id(1400))",
+                "cycle_a_shim(Id(0))",
+                "cycle_b_shim(Id(0))",
             ],
             [
-                "cycle_a_shim(Id(1000))",
-                "cycle_b_shim(Id(1400))",
+                "cycle_a_shim(Id(0))",
+                "cycle_b_shim(Id(0))",
             ],
         )
     "#]];
@@ -267,8 +257,8 @@ fn cycle_mixed_1() {
 
     let expected = expect![[r#"
         [
-            "cycle_b_shim(Id(1000))",
-            "cycle_c_shim(Id(c00))",
+            "cycle_b_shim(Id(0))",
+            "cycle_c_shim(Id(0))",
         ]
     "#]];
     expected.assert_debug_eq(&db.cycle_c(abc).unwrap_err().cycle);

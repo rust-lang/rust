@@ -1,13 +1,12 @@
 //! Expansion of associated items
 
 use hir_expand::{AstId, InFile, Intern, Lookup, MacroCallKind, MacroDefKind, name::Name};
-use span::MacroCallId;
 use syntax::ast;
 use triomphe::Arc;
 
 use crate::{
     AssocItemId, AstIdWithPath, ConstLoc, FunctionId, FunctionLoc, ImplId, ItemContainerId,
-    ItemLoc, ModuleId, TraitId, TypeAliasId, TypeAliasLoc,
+    ItemLoc, MacroCallId, ModuleId, TraitId, TypeAliasId, TypeAliasLoc,
     db::DefDatabase,
     item_tree::{AssocItem, ItemTree, ItemTreeId, MacroCall, ModItem, TreeId},
     macro_call_as_call_id,
@@ -296,9 +295,8 @@ impl<'a> AssocItemCollector<'a> {
             tracing::warn!("macro expansion is too deep");
             return;
         }
-        let file_id = macro_call_id.as_file();
-        let tree_id = TreeId::new(file_id, None);
-        let item_tree = self.db.file_item_tree(file_id);
+        let tree_id = TreeId::new(macro_call_id.into(), None);
+        let item_tree = self.db.file_item_tree(macro_call_id.into());
 
         self.depth += 1;
         for item in item_tree.top_level_items().iter().filter_map(ModItem::as_assoc_item) {

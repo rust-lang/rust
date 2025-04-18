@@ -42,7 +42,7 @@ pub(crate) fn bind_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         format!("Bind as `let _ = {ident_pat};`"),
         param.syntax().text_range(),
         |builder| {
-            let line_index = ctx.db().line_index(ctx.file_id().into());
+            let line_index = ctx.db().line_index(ctx.vfs_file_id());
 
             let indent = func.indent_level();
             let text_indent = indent + 1;

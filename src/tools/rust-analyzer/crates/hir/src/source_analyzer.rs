@@ -29,7 +29,7 @@ use hir_def::{
     type_ref::{Mutability, TypeRef, TypeRefId},
 };
 use hir_expand::{
-    HirFileId, InFile, MacroFileId, MacroFileIdExt,
+    HirFileId, InFile, MacroCallId,
     mod_path::{ModPath, PathKind, path},
     name::{AsName, Name},
 };
@@ -47,10 +47,9 @@ use hir_ty::{
 use intern::sym;
 use itertools::Itertools;
 use smallvec::SmallVec;
-use syntax::ast::{RangeItem, RangeOp};
 use syntax::{
     SyntaxKind, SyntaxNode, TextRange, TextSize,
-    ast::{self, AstNode},
+    ast::{self, AstNode, RangeItem, RangeOp},
 };
 use triomphe::Arc;
 
@@ -216,7 +215,7 @@ impl SourceAnalyzer {
         })
     }
 
-    pub(crate) fn expansion(&self, node: InFile<&ast::MacroCall>) -> Option<MacroFileId> {
+    pub(crate) fn expansion(&self, node: InFile<&ast::MacroCall>) -> Option<MacroCallId> {
         self.store_sm()?.expansion(node)
     }
 
@@ -750,7 +749,7 @@ impl SourceAnalyzer {
         let bs = self.store_sm()?;
         bs.expansion(macro_call).and_then(|it| {
             // FIXME: Block def maps
-            let def = it.macro_call_id.lookup(db).def;
+            let def = it.lookup(db).def;
             db.crate_def_map(def.krate)
                 .macro_def_to_macro_id
                 .get(&def.kind.erased_ast_id())
@@ -1197,15 +1196,11 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
-    ) -> Option<MacroFileId> {
+    ) -> Option<MacroCallId> {
         self.store_sm().and_then(|bs| bs.expansion(macro_call)).or_else(|| {
-            self.resolver
-                .item_scope()
-                .macro_invoc(
-                    macro_call
-                        .with_value(db.ast_id_map(macro_call.file_id).ast_id(macro_call.value)),
-                )
-                .map(|it| it.as_macro_file())
+            self.resolver.item_scope().macro_invoc(
+                macro_call.with_value(db.ast_id_map(macro_call.file_id).ast_id(macro_call.value)),
+            )
         })
     }
 

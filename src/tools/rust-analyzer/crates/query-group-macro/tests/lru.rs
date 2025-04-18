@@ -11,10 +11,11 @@ pub trait LruDB: salsa::Database {
     fn input_string(&self) -> String;
 
     #[salsa::lru(16)]
+    #[salsa::invoke_interned(length_query)]
     fn length_query(&self, key: ()) -> usize;
 
     #[salsa::lru(16)]
-    #[salsa::invoke(invoked_query)]
+    #[salsa::invoke_interned(invoked_query)]
     fn length_query_invoke(&self, key: ()) -> usize;
 }
 

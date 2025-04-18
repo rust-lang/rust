@@ -8,7 +8,7 @@ use base_db::{
 };
 use hir_expand::{InFile, files::FilePosition};
 use salsa::{AsDynDatabase, Durability};
-use span::{EditionedFileId, FileId};
+use span::FileId;
 use syntax::{AstNode, algo, ast};
 use triomphe::Arc;
 
@@ -135,7 +135,7 @@ impl TestDB {
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = self.crate_def_map(krate);
             for (local_id, data) in crate_def_map.modules() {
-                if data.origin.file_id().map(EditionedFileId::file_id) == Some(file_id) {
+                if data.origin.file_id().map(|file_id| file_id.file_id(self)) == Some(file_id) {
                     return crate_def_map.module_id(local_id);
                 }
             }
@@ -144,7 +144,7 @@ impl TestDB {
     }
 
     pub(crate) fn module_at_position(&self, position: FilePosition) -> ModuleId {
-        let file_module = self.module_for_file(position.file_id.file_id());
+        let file_module = self.module_for_file(position.file_id.file_id(self));
         let mut def_map = file_module.def_map(self);
         let module = self.mod_at_position(&def_map, position);
 
@@ -246,10 +246,7 @@ impl TestDB {
         let source_map = self.body_with_source_map(def_with_body).1;
         let scopes = self.expr_scopes(def_with_body);
 
-        let editioned_file_id_wrapper =
-            base_db::EditionedFileId::new(self.as_dyn_database(), position.file_id);
-
-        let root_syntax_node = self.parse(editioned_file_id_wrapper).syntax_node();
+        let root_syntax_node = self.parse(position.file_id).syntax_node();
         let scope_iter =
             algo::ancestors_at_offset(&root_syntax_node, position.offset).filter_map(|node| {
                 let block = ast::BlockExpr::cast(node)?;

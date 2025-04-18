@@ -105,7 +105,8 @@ fn fixes(
 
         let root_module = &crate_def_map[DefMap::ROOT];
         let Some(root_file_id) = root_module.origin.file_id() else { continue };
-        let Some(crate_root_path) = source_root.path_for_file(&root_file_id.file_id()) else {
+        let Some(crate_root_path) = source_root.path_for_file(&root_file_id.file_id(ctx.sema.db))
+        else {
             continue;
         };
         let Some(rel) = parent.strip_prefix(&crate_root_path.parent()?) else { continue };
@@ -131,7 +132,12 @@ fn fixes(
         let InFile { file_id: parent_file_id, value: source } =
             current.definition_source(ctx.sema.db);
         let parent_file_id = parent_file_id.file_id()?;
-        return make_fixes(parent_file_id.file_id(), source, &module_name, trigger_range);
+        return make_fixes(
+            parent_file_id.file_id(ctx.sema.db),
+            source,
+            &module_name,
+            trigger_range,
+        );
     }
 
     // if we aren't adding to a crate root, walk backwards such that we support `#[path = ...]` overrides if possible
@@ -152,7 +158,8 @@ fn fixes(
     'crates: for &krate in relevant_crates.iter() {
         let crate_def_map = ctx.sema.db.crate_def_map(krate);
         let Some((_, module)) = crate_def_map.modules().find(|(_, module)| {
-            module.origin.file_id().map(Into::into) == Some(parent_id) && !module.origin.is_inline()
+            module.origin.file_id().map(|file_id| file_id.file_id(ctx.sema.db)) == Some(parent_id)
+                && !module.origin.is_inline()
         }) else {
             continue;
         };
@@ -182,7 +189,12 @@ fn fixes(
             let InFile { file_id: parent_file_id, value: source } =
                 current.definition_source(ctx.sema.db);
             let parent_file_id = parent_file_id.file_id()?;
-            return make_fixes(parent_file_id.file_id(), source, &module_name, trigger_range);
+            return make_fixes(
+                parent_file_id.file_id(ctx.sema.db),
+                source,
+                &module_name,
+                trigger_range,
+            );
         }
     }
 

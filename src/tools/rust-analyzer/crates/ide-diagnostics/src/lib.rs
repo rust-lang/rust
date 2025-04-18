@@ -86,7 +86,6 @@ use hir::{
     Crate, DisplayTarget, HirFileId, InFile, Semantics, db::ExpandDatabase,
     diagnostics::AnyDiagnostic,
 };
-use ide_db::base_db::salsa::AsDynDatabase;
 use ide_db::{
     EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
     assists::{Assist, AssistId, AssistResolveStrategy},
@@ -303,8 +302,11 @@ impl DiagnosticsContext<'_> {
                 }
             }
         })()
+        .map(|frange| ide_db::FileRange {
+            file_id: frange.file_id.file_id(self.sema.db),
+            range: frange.range,
+        })
         .unwrap_or_else(|| sema.diagnostics_display_range(*node))
-        .into()
     }
 }
 
@@ -323,15 +325,12 @@ pub fn syntax_diagnostics(
     let sema = Semantics::new(db);
     let editioned_file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
 
-    let (file_id, _) = editioned_file_id.unpack();
-
-    let editioned_file_id_wrapper =
-        ide_db::base_db::EditionedFileId::new(db.as_dyn_database(), editioned_file_id);
+    let (file_id, _) = editioned_file_id.unpack(db);
 
     // [#3434] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
-    db.parse_errors(editioned_file_id_wrapper)
+    db.parse_errors(editioned_file_id)
         .into_iter()
         .flatten()
         .take(128)
@@ -357,22 +356,19 @@ pub fn semantic_diagnostics(
     let sema = Semantics::new(db);
     let editioned_file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
 
-    let (file_id, edition) = editioned_file_id.unpack();
-    let editioned_file_id_wrapper =
-        ide_db::base_db::EditionedFileId::new(db.as_dyn_database(), editioned_file_id);
-
+    let (file_id, edition) = editioned_file_id.unpack(db);
     let mut res = Vec::new();
 
-    let parse = sema.parse(editioned_file_id_wrapper);
+    let parse = sema.parse(editioned_file_id);
 
     // FIXME: This iterates the entire file which is a rather expensive operation.
     // We should implement these differently in some form?
     // Salsa caching + incremental re-parse would be better here
     for node in parse.syntax().descendants() {
-        handlers::useless_braces::useless_braces(&mut res, editioned_file_id, &node);
-        handlers::field_shorthand::field_shorthand(&mut res, editioned_file_id, &node);
+        handlers::useless_braces::useless_braces(db, &mut res, editioned_file_id, &node);
+        handlers::field_shorthand::field_shorthand(db, &mut res, editioned_file_id, &node);
         handlers::json_is_not_rust::json_in_items(
             &sema,
             &mut res,
@@ -408,11 +404,13 @@ pub fn semantic_diagnostics(
         // A bunch of parse errors in a file indicate some bigger structural parse changes in the
         // file, so we skip semantic diagnostics so we can show these faster.
         Some(m) => {
-            if db.parse_errors(editioned_file_id_wrapper).is_none_or(|es| es.len() < 16) {
+            if db.parse_errors(editioned_file_id).is_none_or(|es| es.len() < 16) {
                 m.diagnostics(db, &mut diags, config.style_lints);
             }
         }
-        None => handlers::unlinked_file::unlinked_file(&ctx, &mut res, editioned_file_id.file_id()),
+        None => {
+            handlers::unlinked_file::unlinked_file(&ctx, &mut res, editioned_file_id.file_id(db))
+        }
     }
 
     for diag in diags {
@@ -530,7 +528,7 @@ pub fn semantic_diagnostics(
         &mut FxHashMap::default(),
         &mut lints,
         &mut Vec::new(),
-        editioned_file_id.edition(),
+        editioned_file_id.edition(db),
     );
 
     res.retain(|d| d.severity != Severity::Allow);
@@ -573,8 +571,7 @@ fn handle_diag_from_macros(
     let mut spans = span_map.spans_for_range(node.text_range());
     if spans.any(|span| {
         span.ctx.outer_expn(sema.db).is_some_and(|expansion| {
-            let macro_call =
-                sema.db.lookup_intern_macro_call(expansion.as_macro_file().macro_call_id);
+            let macro_call = sema.db.lookup_intern_macro_call(expansion.into());
             // We don't want to show diagnostics for non-local macros at all, but proc macros authors
             // seem to rely on being able to emit non-warning-free code, so we don't want to show warnings
             // for them even when the proc macro comes from the same workspace (in rustc that's not a
@@ -1006,8 +1003,8 @@ fn adjusted_display_range<N: AstNode>(
 ) -> FileRange {
     let source_file = ctx.sema.parse_or_expand(diag_ptr.file_id);
     let node = diag_ptr.value.to_node(&source_file);
-    diag_ptr
+    let hir::FileRange { file_id, range } = diag_ptr
         .with_value(adj(node).unwrap_or_else(|| diag_ptr.value.text_range()))
-        .original_node_file_range_rooted(ctx.sema.db)
-        .into()
+        .original_node_file_range_rooted(ctx.sema.db);
+    ide_db::FileRange { file_id: file_id.file_id(ctx.sema.db), range }
 }

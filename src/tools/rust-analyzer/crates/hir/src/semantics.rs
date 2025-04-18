@@ -20,11 +20,11 @@ use hir_def::{
     type_ref::Mutability,
 };
 use hir_expand::{
-    ExpandResult, FileRange, HirFileIdExt, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
+    EditionedFileId, ExpandResult, FileRange, HirFileId, InMacroFile, MacroCallId,
     attrs::collect_attrs,
     builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
-    files::InRealFile,
+    files::{FileRangeWrapper, InRealFile},
     hygiene::SyntaxContextExt as _,
     inert_attr_macro::find_builtin_attr_idx,
     mod_path::{ModPath, PathKind},
@@ -35,7 +35,7 @@ use intern::{Interned, Symbol, sym};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{SmallVec, smallvec};
-use span::{EditionedFileId, FileId, HirFileIdRepr, SyntaxContext};
+use span::{Edition, FileId, SyntaxContext};
 use stdx::TupleExt;
 use syntax::{
     AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
@@ -46,10 +46,10 @@ use syntax::{
 
 use crate::{
     Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const, ConstParam,
-    Crate, DefWithBody, DeriveHelper, Enum, Field, Function, GenericSubstitution, HasSource,
-    HirFileId, Impl, InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro,
-    Module, ModuleDef, Name, OverloadedDeref, ScopeDef, Static, Struct, ToolModule, Trait,
-    TraitAlias, TupleField, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
+    Crate, DefWithBody, DeriveHelper, Enum, Field, Function, GenericSubstitution, HasSource, Impl,
+    InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro, Module, ModuleDef,
+    Name, OverloadedDeref, ScopeDef, Static, Struct, ToolModule, Trait, TraitAlias, TupleField,
+    Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{SourceAnalyzer, name_hygiene, resolve_hir_path},
@@ -136,8 +136,8 @@ pub struct Semantics<'db, DB> {
 pub struct SemanticsImpl<'db> {
     pub db: &'db dyn HirDatabase,
     s2d_cache: RefCell<SourceToDefCache>,
-    /// MacroCall to its expansion's MacroFileId cache
-    macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, MacroFileId>>,
+    /// MacroCall to its expansion's MacroCallId cache
+    macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, MacroCallId>>,
 }
 
 impl<DB> fmt::Debug for Semantics<'_, DB> {
@@ -305,8 +305,8 @@ impl<'db> SemanticsImpl<'db> {
         SemanticsImpl { db, s2d_cache: Default::default(), macro_call_cache: Default::default() }
     }
 
-    pub fn parse(&self, file_id: base_db::EditionedFileId) -> ast::SourceFile {
-        let hir_file_id = file_id.editioned_file_id(self.db).into();
+    pub fn parse(&self, file_id: EditionedFileId) -> ast::SourceFile {
+        let hir_file_id = file_id.into();
         let tree = self.db.parse(file_id).tree();
         self.cache(tree.syntax().clone(), hir_file_id);
         tree
@@ -322,27 +322,26 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn attach_first_edition(&self, file: FileId) -> Option<EditionedFileId> {
         Some(EditionedFileId::new(
+            self.db,
             file,
             self.file_to_module_defs(file).next()?.krate().edition(self.db),
         ))
     }
 
     pub fn parse_guess_edition(&self, file_id: FileId) -> ast::SourceFile {
-        let editioned_file_id = self
+        let file_id = self
             .attach_first_edition(file_id)
-            .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
-
-        let file_id = base_db::EditionedFileId::new(self.db, editioned_file_id);
+            .unwrap_or_else(|| EditionedFileId::new(self.db, file_id, Edition::CURRENT));
 
         let tree = self.db.parse(file_id).tree();
-        self.cache(tree.syntax().clone(), editioned_file_id.into());
+        self.cache(tree.syntax().clone(), file_id.into());
         tree
     }
 
     pub fn find_parent_file(&self, file_id: HirFileId) -> Option<InFile<SyntaxNode>> {
-        match file_id.repr() {
-            HirFileIdRepr::FileId(file_id) => {
-                let module = self.file_to_module_defs(file_id.file_id()).next()?;
+        match file_id {
+            HirFileId::FileId(file_id) => {
+                let module = self.file_to_module_defs(file_id.file_id(self.db)).next()?;
                 let def_map = self.db.crate_def_map(module.krate().id);
                 match def_map[module.id.local_id].origin {
                     ModuleOrigin::CrateRoot { .. } => None,
@@ -357,9 +356,8 @@ impl<'db> SemanticsImpl<'db> {
                     _ => unreachable!("FileId can only belong to a file module"),
                 }
             }
-            HirFileIdRepr::MacroFile(macro_file) => {
-                let node =
-                    self.db.lookup_intern_macro_call(macro_file.macro_call_id).to_node(self.db);
+            HirFileId::MacroFile(macro_file) => {
+                let node = self.db.lookup_intern_macro_call(macro_file).to_node(self.db);
                 let root = find_root(&node.value);
                 self.cache(root, node.file_id);
                 Some(node)
@@ -384,7 +382,7 @@ impl<'db> SemanticsImpl<'db> {
         node
     }
 
-    pub fn expand(&self, file_id: MacroFileId) -> ExpandResult<SyntaxNode> {
+    pub fn expand(&self, file_id: MacroCallId) -> ExpandResult<SyntaxNode> {
         let res = self.db.parse_macro_expansion(file_id).map(|it| it.0.syntax_node());
         self.cache(res.value.clone(), file_id.into());
         res
@@ -402,13 +400,11 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn check_cfg_attr(&self, attr: &ast::TokenTree) -> Option<bool> {
         let file_id = self.find_file(attr.syntax()).file_id;
-        let krate = match file_id.repr() {
-            HirFileIdRepr::FileId(file_id) => {
-                self.file_to_module_defs(file_id.file_id()).next()?.krate().id
+        let krate = match file_id {
+            HirFileId::FileId(file_id) => {
+                self.file_to_module_defs(file_id.file_id(self.db)).next()?.krate().id
             }
-            HirFileIdRepr::MacroFile(macro_file) => {
-                self.db.lookup_intern_macro_call(macro_file.macro_call_id).krate
-            }
+            HirFileId::MacroFile(macro_file) => self.db.lookup_intern_macro_call(macro_file).krate,
         };
         hir_expand::check_cfg_attr_value(self.db, attr, krate)
     }
@@ -423,7 +419,7 @@ impl<'db> SemanticsImpl<'db> {
 
         let macro_call = InFile::new(sa.file_id, macro_call);
         let file_id = sa.expand(self.db, macro_call)?;
-        let macro_call = self.db.lookup_intern_macro_call(file_id.macro_call_id);
+        let macro_call = self.db.lookup_intern_macro_call(file_id);
 
         let skip = matches!(
             macro_call.def.kind,
@@ -456,7 +452,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn expand_attr_macro(&self, item: &ast::Item) -> Option<ExpandResult<SyntaxNode>> {
         let src = self.wrap_node_infile(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src.as_ref()))?;
-        Some(self.expand(macro_call_id.as_macro_file()))
+        Some(self.expand(macro_call_id))
     }
 
     pub fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
@@ -465,7 +461,7 @@ impl<'db> SemanticsImpl<'db> {
         let call_id = self.with_ctx(|ctx| {
             ctx.attr_to_derive_macro_call(src.with_value(&adt), src).map(|(_, it, _)| it)
         })?;
-        Some(self.parse_or_expand(call_id.as_file()))
+        Some(self.parse_or_expand(call_id.into()))
     }
 
     pub fn resolve_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<Option<Macro>>> {
@@ -485,7 +481,7 @@ impl<'db> SemanticsImpl<'db> {
             .derive_macro_calls(attr)?
             .into_iter()
             .flat_map(|call| {
-                let file_id = call?.as_macro_file();
+                let file_id = call?;
                 let ExpandResult { value, err } = self.db.parse_macro_expansion(file_id);
                 let root_node = value.0.syntax_node();
                 self.cache(root_node.clone(), file_id.into());
@@ -526,7 +522,7 @@ impl<'db> SemanticsImpl<'db> {
         Some(result)
     }
 
-    pub fn derive_helper(&self, attr: &ast::Attr) -> Option<Vec<(Macro, MacroFileId)>> {
+    pub fn derive_helper(&self, attr: &ast::Attr) -> Option<Vec<(Macro, MacroCallId)>> {
         let adt = attr.syntax().ancestors().find_map(ast::Item::cast).and_then(|it| match it {
             ast::Item::Struct(it) => Some(ast::Adt::Struct(it)),
             ast::Item::Enum(it) => Some(ast::Adt::Enum(it)),
@@ -542,7 +538,7 @@ impl<'db> SemanticsImpl<'db> {
             .derive_helpers_in_scope(InFile::new(sa.file_id, id))?
             .iter()
             .filter(|&(name, _, _)| *name == attr_name)
-            .map(|&(_, macro_, call)| (macro_.into(), call.as_macro_file()))
+            .map(|&(_, macro_, call)| (macro_.into(), call))
             .collect();
         res.is_empty().not().then_some(res)
     }
@@ -564,7 +560,7 @@ impl<'db> SemanticsImpl<'db> {
         let macro_file = analyzer.expansion(macro_call)?;
         hir_expand::db::expand_speculative(
             self.db,
-            macro_file.macro_call_id,
+            macro_file,
             speculative_args.syntax(),
             token_to_map,
         )
@@ -572,16 +568,11 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn speculative_expand_raw(
         &self,
-        macro_file: MacroFileId,
+        macro_file: MacroCallId,
         speculative_args: &SyntaxNode,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
-        hir_expand::db::expand_speculative(
-            self.db,
-            macro_file.macro_call_id,
-            speculative_args,
-            token_to_map,
-        )
+        hir_expand::db::expand_speculative(self.db, macro_file, speculative_args, token_to_map)
     }
 
     /// Expand the macro call with a different item as the input, mapping the `token_to_map` down into the
@@ -1025,7 +1016,7 @@ impl<'db> SemanticsImpl<'db> {
             None => {
                 stack.push((
                     file_id.into(),
-                    smallvec![(token, SyntaxContext::root(file_id.edition()))],
+                    smallvec![(token, SyntaxContext::root(file_id.edition(self.db)))],
                 ));
             }
         }
@@ -1054,7 +1045,6 @@ impl<'db> SemanticsImpl<'db> {
                         })
                     });
                     if let Some((call_id, item)) = containing_attribute_macro_call {
-                        let file_id = call_id.as_macro_file();
                         let attr_id = match self.db.lookup_intern_macro_call(call_id).kind {
                             hir_expand::MacroCallKind::Attr { invoc_attr_index, .. } => {
                                 invoc_attr_index.ast_index()
@@ -1083,7 +1073,7 @@ impl<'db> SemanticsImpl<'db> {
                             .unwrap_or_else(|| text_range.start());
                         let text_range = TextRange::new(start, text_range.end());
                         filter_duplicates(tokens, text_range);
-                        return process_expansion_for_token(&mut stack, file_id);
+                        return process_expansion_for_token(&mut stack, call_id);
                     }
 
                     // Then check for token trees, that means we are either in a function-like macro or
@@ -1127,7 +1117,7 @@ impl<'db> SemanticsImpl<'db> {
                                 .eager_arg(self.db)
                                 .and_then(|arg| {
                                     // also descend into eager expansions
-                                    process_expansion_for_token(&mut stack, arg.as_macro_file())
+                                    process_expansion_for_token(&mut stack, arg)
                                 }))
                         }
                         // derive or derive helper
@@ -1151,7 +1141,6 @@ impl<'db> SemanticsImpl<'db> {
                                     match derive_call {
                                         Some(call_id) => {
                                             // resolved to a derive
-                                            let file_id = call_id.as_macro_file();
                                             let text_range = attr.syntax().text_range();
                                             // remove any other token in this macro input, all their mappings are the
                                             // same as this
@@ -1159,7 +1148,7 @@ impl<'db> SemanticsImpl<'db> {
                                                 !text_range.contains_range(t.text_range())
                                             });
                                             return process_expansion_for_token(
-                                                &mut stack, file_id,
+                                                &mut stack, call_id,
                                             );
                                         }
                                         None => Some(adt),
@@ -1207,10 +1196,7 @@ impl<'db> SemanticsImpl<'db> {
                                 // as there may be multiple derives registering the same helper
                                 // name, we gotta make sure to call this for all of them!
                                 // FIXME: We need to call `f` for all of them as well though!
-                                res = res.or(process_expansion_for_token(
-                                    &mut stack,
-                                    derive.as_macro_file(),
-                                ));
+                                res = res.or(process_expansion_for_token(&mut stack, *derive));
                             }
                             res
                         }
@@ -1288,10 +1274,14 @@ impl<'db> SemanticsImpl<'db> {
         )
     }
 
-    pub fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
+    pub fn diagnostics_display_range(
+        &self,
+        src: InFile<SyntaxNodePtr>,
+    ) -> FileRangeWrapper<FileId> {
         let root = self.parse_or_expand(src.file_id);
         let node = src.map(|it| it.to_node(&root));
-        node.as_ref().original_file_range_rooted(self.db)
+        let FileRange { file_id, range } = node.as_ref().original_file_range_rooted(self.db);
+        FileRangeWrapper { file_id: file_id.file_id(self.db), range }
     }
 
     fn token_ancestors_with_macros(
@@ -1890,20 +1880,16 @@ fn macro_call_to_macro_id(
     ctx: &mut SourceToDefCtx<'_, '_>,
     macro_call_id: MacroCallId,
 ) -> Option<MacroId> {
-    use span::HirFileIdRepr;
-
     let db: &dyn ExpandDatabase = ctx.db;
     let loc = db.lookup_intern_macro_call(macro_call_id);
 
     match loc.def.ast_id() {
         Either::Left(it) => {
-            let node = match it.file_id.repr() {
-                HirFileIdRepr::FileId(editioned_file_id) => {
-                    let file_id = base_db::EditionedFileId::new(db, editioned_file_id);
-
+            let node = match it.file_id {
+                HirFileId::FileId(file_id) => {
                     it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
                 }
-                HirFileIdRepr::MacroFile(macro_file) => {
+                HirFileId::MacroFile(macro_file) => {
                     let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
                     it.to_ptr(db).to_node(&expansion_info.expanded().value)
                 }
@@ -1911,13 +1897,11 @@ fn macro_call_to_macro_id(
             ctx.macro_to_def(InFile::new(it.file_id, &node))
         }
         Either::Right(it) => {
-            let node = match it.file_id.repr() {
-                HirFileIdRepr::FileId(editioned_file_id) => {
-                    let file_id = base_db::EditionedFileId::new(db, editioned_file_id);
-
+            let node = match it.file_id {
+                HirFileId::FileId(file_id) => {
                     it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
                 }
-                HirFileIdRepr::MacroFile(macro_file) => {
+                HirFileId::MacroFile(macro_file) => {
                     let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
                     it.to_ptr(db).to_node(&expansion_info.expanded().value)
                 }

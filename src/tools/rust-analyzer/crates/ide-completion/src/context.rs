@@ -6,7 +6,7 @@ mod tests;
 
 use std::{iter, ops::ControlFlow};
 
-use base_db::{RootQueryDb as _, salsa::AsDynDatabase};
+use base_db::RootQueryDb as _;
 use hir::{
     DisplayTarget, HasAttrs, Local, ModuleDef, ModuleSource, Name, PathResolution, ScopeDef,
     Semantics, SemanticsScope, Symbol, Type, TypeInfo,
@@ -705,17 +705,14 @@ impl<'a> CompletionContext<'a> {
         let sema = Semantics::new(db);
 
         let editioned_file_id = sema.attach_first_edition(file_id)?;
-        let editioned_file_id_wrapper =
-            ide_db::base_db::EditionedFileId::new(sema.db.as_dyn_database(), editioned_file_id);
-
-        let original_file = sema.parse(editioned_file_id_wrapper);
+        let original_file = sema.parse(editioned_file_id);
 
         // Insert a fake ident to get a valid parse tree. We will use this file
         // to determine context, though the original_file will be used for
         // actual completion.
         let file_with_fake_ident = {
-            let (_, edition) = editioned_file_id.unpack();
-            let parse = db.parse(editioned_file_id_wrapper);
+            let (_, edition) = editioned_file_id.unpack(db);
+            let parse = db.parse(editioned_file_id);
             parse.reparse(TextRange::empty(offset), COMPLETION_MARKER, edition).tree()
         };
 

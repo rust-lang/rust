@@ -75,7 +75,7 @@ fn check_nth_fix_with_config(
         &db,
         &config,
         &AssistResolveStrategy::All,
-        file_position.file_id.into(),
+        file_position.file_id.file_id(&db),
     )
     .pop()
     .expect("no diagnostics");
@@ -128,7 +128,7 @@ pub(crate) fn check_has_fix(
         &db,
         &conf,
         &AssistResolveStrategy::All,
-        file_position.file_id.into(),
+        file_position.file_id.file_id(&db),
     )
     .into_iter()
     .find(|d| {
@@ -175,7 +175,7 @@ pub(crate) fn check_has_single_fix(
         &db,
         &conf,
         &AssistResolveStrategy::All,
-        file_position.file_id.into(),
+        file_position.file_id.file_id(&db),
     )
     .into_iter()
     .find(|d| {
@@ -216,7 +216,7 @@ pub(crate) fn check_no_fix(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         &db,
         &DiagnosticsConfig::test_sample(),
         &AssistResolveStrategy::All,
-        file_position.file_id.into(),
+        file_position.file_id.file_id(&db),
     )
     .pop()
     .unwrap();
@@ -250,7 +250,7 @@ pub(crate) fn check_diagnostics_with_config(
         .iter()
         .copied()
         .flat_map(|file_id| {
-            super::full_diagnostics(&db, &config, &AssistResolveStrategy::All, file_id.into())
+            super::full_diagnostics(&db, &config, &AssistResolveStrategy::All, file_id.file_id(&db))
                 .into_iter()
                 .map(|d| {
                     let mut annotation = String::new();
@@ -272,7 +272,7 @@ pub(crate) fn check_diagnostics_with_config(
         .map(|(diagnostic, annotation)| (diagnostic.file_id, (diagnostic.range, annotation)))
         .into_group_map();
     for file_id in files {
-        let file_id = file_id.into();
+        let file_id = file_id.file_id(&db);
         let line_index = db.line_index(file_id);
 
         let mut actual = annotations.remove(&file_id).unwrap_or_default();
@@ -317,7 +317,7 @@ fn test_disabled_diagnostics() {
     config.disabled.insert("E0583".into());
 
     let (db, file_id) = RootDatabase::with_single_file(r#"mod foo;"#);
-    let file_id = file_id.into();
+    let file_id = file_id.file_id(&db);
 
     let diagnostics = super::full_diagnostics(&db, &config, &AssistResolveStrategy::All, file_id);
     assert!(diagnostics.is_empty());

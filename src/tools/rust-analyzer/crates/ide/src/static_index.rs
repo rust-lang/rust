@@ -2,7 +2,7 @@
 //! read-only code browsers and emitting LSIF
 
 use arrayvec::ArrayVec;
-use hir::{Crate, HirFileIdExt, Module, Semantics, db::HirDatabase};
+use hir::{Crate, Module, Semantics, db::HirDatabase};
 use ide_db::{
     FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
     base_db::{RootQueryDb, SourceDatabase, VfsPath},
@@ -191,8 +191,10 @@ impl StaticIndex<'_> {
         // hovers
         let sema = hir::Semantics::new(self.db);
         let root = sema.parse_guess_edition(file_id).syntax().clone();
-        let edition =
-            sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
+        let edition = sema
+            .attach_first_edition(file_id)
+            .map(|it| it.edition(self.db))
+            .unwrap_or(Edition::CURRENT);
         let display_target = match sema.first_crate(file_id) {
             Some(krate) => krate.to_display_target(sema.db),
             None => return,
@@ -292,11 +294,11 @@ impl StaticIndex<'_> {
         let db = &analysis.db;
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source_file_id(db).original_file(db);
-            let source_root = db.file_source_root(file_id.into()).source_root_id(db);
+            let source_root = db.file_source_root(file_id.file_id(&analysis.db)).source_root_id(db);
             let source_root = db.source_root(source_root).source_root(db);
             let is_vendored = match vendored_libs_config {
                 VendoredLibrariesConfig::Included { workspace_root } => source_root
-                    .path_for_file(&file_id.into())
+                    .path_for_file(&file_id.file_id(&analysis.db))
                     .is_some_and(|module_path| module_path.starts_with(workspace_root)),
                 VendoredLibrariesConfig::Excluded => false,
             };
@@ -316,7 +318,7 @@ impl StaticIndex<'_> {
             if visited_files.contains(&file_id) {
                 continue;
             }
-            this.add_file(file_id.into());
+            this.add_file(file_id.file_id(&analysis.db));
             // mark the file
             visited_files.insert(file_id);
         }

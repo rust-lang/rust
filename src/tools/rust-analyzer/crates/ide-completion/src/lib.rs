@@ -12,7 +12,6 @@ mod tests;
 
 use ide_db::{
     FilePosition, FxHashSet, RootDatabase,
-    base_db::salsa::AsDynDatabase,
     imports::insert_use::{self, ImportScope},
     syntax_helpers::tree_diff::diff,
     text_edit::TextEdit,
@@ -277,8 +276,6 @@ pub fn resolve_completion_edits(
     let sema = hir::Semantics::new(db);
 
     let editioned_file_id = sema.attach_first_edition(file_id)?;
-    let editioned_file_id =
-        ide_db::base_db::EditionedFileId::new(db.as_dyn_database(), editioned_file_id);
 
     let original_file = sema.parse(editioned_file_id);
     let original_token =

@@ -28,6 +28,6 @@ pub(crate) fn remove_mut(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
             _ => (),
         }
         editor.delete(mut_token);
-        builder.add_file_edits(ctx.file_id(), editor);
+        builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }

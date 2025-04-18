@@ -9,13 +9,12 @@ use std::mem;
 
 use either::Either;
 use hir_expand::{
-    InFile, Lookup, MacroDefId,
+    HirFileId, InFile, Lookup, MacroDefId,
     mod_path::tool_path,
     name::{AsName, Name},
 };
 use intern::{Symbol, sym};
 use rustc_hash::FxHashMap;
-use span::HirFileId;
 use stdx::never;
 use syntax::{
     AstNode, AstPtr, AstToken as _, SyntaxNodePtr,
@@ -1887,10 +1886,7 @@ impl ExprCollector<'_> {
                     self.module.krate(),
                     resolver,
                     &mut |ptr, call| {
-                        _ = self
-                            .source_map
-                            .expansions
-                            .insert(ptr.map(|(it, _)| it), call.as_macro_file());
+                        _ = self.source_map.expansions.insert(ptr.map(|(it, _)| it), call);
                     },
                 )
             }
@@ -2516,7 +2512,7 @@ impl ExprCollector<'_> {
             None
         } else {
             hygiene_id.lookup().outer_expn(self.db).map(|expansion| {
-                let expansion = self.db.lookup_intern_macro_call(expansion);
+                let expansion = self.db.lookup_intern_macro_call(expansion.into());
                 (hygiene_id.lookup().parent(self.db), expansion.def)
             })
         };
@@ -2546,7 +2542,7 @@ impl ExprCollector<'_> {
                             hygiene_id =
                                 HygieneId::new(parent_ctx.opaque_and_semitransparent(self.db));
                             hygiene_info = parent_ctx.outer_expn(self.db).map(|expansion| {
-                                let expansion = self.db.lookup_intern_macro_call(expansion);
+                                let expansion = self.db.lookup_intern_macro_call(expansion.into());
                                 (parent_ctx.parent(self.db), expansion.def)
                             });
                         }

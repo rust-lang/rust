@@ -3,7 +3,7 @@
 use std::ops::ControlFlow;
 
 use either::Either;
-use hir::{AsAssocItem, HasVisibility, MacroFileIdExt, Semantics};
+use hir::{AsAssocItem, HasVisibility, Semantics};
 use ide_db::{
     FxHashMap, RootDatabase, SymbolKind,
     defs::{Definition, IdentClass, NameClass, NameRefClass},

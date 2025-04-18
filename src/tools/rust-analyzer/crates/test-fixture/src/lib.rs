@@ -4,11 +4,11 @@ use std::{mem, str::FromStr, sync};
 use base_db::{
     Crate, CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CrateWorkspaceData,
     DependencyBuilder, Env, FileChange, FileSet, LangCrateOrigin, SourceDatabase, SourceRoot,
-    Version, VfsPath,
+    Version, VfsPath, salsa,
 };
 use cfg::CfgOptions;
 use hir_expand::{
-    FileRange,
+    EditionedFileId, FileRange,
     change::ChangeWithProcMacros,
     db::ExpandDatabase,
     files::FilePosition,
@@ -21,7 +21,7 @@ use hir_expand::{
 use intern::{Symbol, sym};
 use paths::AbsPathBuf;
 use rustc_hash::FxHashMap;
-use span::{Edition, EditionedFileId, FileId, Span};
+use span::{Edition, FileId, Span};
 use stdx::itertools::Itertools;
 use test_utils::{
     CURSOR_MARKER, ESCAPED_CURSOR_MARKER, Fixture, FixtureWithProjectMeta, RangeOrOffset,
@@ -36,8 +36,8 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
     fn with_single_file(
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) -> (Self, EditionedFileId) {
-        let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
+        let fixture = ChangeFixture::parse(&db, ra_fixture);
         fixture.change.apply(&mut db);
         assert_eq!(fixture.files.len(), 1, "Multiple file found in the fixture");
         (db, fixture.files[0])
@@ -47,8 +47,8 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
     fn with_many_files(
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) -> (Self, Vec<EditionedFileId>) {
-        let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
+        let fixture = ChangeFixture::parse(&db, ra_fixture);
         fixture.change.apply(&mut db);
         assert!(fixture.file_position.is_none());
         (db, fixture.files)
@@ -56,8 +56,8 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
 
     #[track_caller]
     fn with_files(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> Self {
-        let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
+        let fixture = ChangeFixture::parse(&db, ra_fixture);
         fixture.change.apply(&mut db);
         assert!(fixture.file_position.is_none());
         db
@@ -68,8 +68,8 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
         proc_macros: Vec<(String, ProcMacro)>,
     ) -> Self {
-        let fixture = ChangeFixture::parse_with_proc_macros(ra_fixture, proc_macros);
         let mut db = Self::default();
+        let fixture = ChangeFixture::parse_with_proc_macros(&db, ra_fixture, proc_macros);
         fixture.change.apply(&mut db);
         assert!(fixture.file_position.is_none());
         db
@@ -93,8 +93,8 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
     fn with_range_or_offset(
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) -> (Self, EditionedFileId, RangeOrOffset) {
-        let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
+        let fixture = ChangeFixture::parse(&db, ra_fixture);
         fixture.change.apply(&mut db);
 
         let (file_id, range_or_offset) = fixture
@@ -119,11 +119,15 @@ pub struct ChangeFixture {
 const SOURCE_ROOT_PREFIX: &str = "/";
 
 impl ChangeFixture {
-    pub fn parse(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> ChangeFixture {
-        Self::parse_with_proc_macros(ra_fixture, Vec::new())
+    pub fn parse(
+        db: &dyn salsa::Database,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) -> ChangeFixture {
+        Self::parse_with_proc_macros(db, ra_fixture, Vec::new())
     }
 
     pub fn parse_with_proc_macros(
+        db: &dyn salsa::Database,
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
         mut proc_macro_defs: Vec<(String, ProcMacro)>,
     ) -> ChangeFixture {
@@ -184,7 +188,7 @@ impl ChangeFixture {
             let meta = FileMeta::from_fixture(entry, current_source_root_kind);
             if let Some(range_or_offset) = range_or_offset {
                 file_position =
-                    Some((EditionedFileId::new(file_id, meta.edition), range_or_offset));
+                    Some((EditionedFileId::new(db, file_id, meta.edition), range_or_offset));
             }
 
             assert!(meta.path.starts_with(SOURCE_ROOT_PREFIX));
@@ -241,7 +245,7 @@ impl ChangeFixture {
             source_change.change_file(file_id, Some(text));
             let path = VfsPath::new_virtual_path(meta.path);
             file_set.insert(file_id, path);
-            files.push(EditionedFileId::new(file_id, meta.edition));
+            files.push(EditionedFileId::new(db, file_id, meta.edition));
             file_id = FileId::from_raw(file_id.index() + 1);
         }
 

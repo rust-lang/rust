@@ -126,7 +126,7 @@ fn check_impl(
 
     let mut defs: Vec<(DefWithBodyId, Crate)> = Vec::new();
     for file_id in files {
-        let module = db.module_for_file_opt(file_id);
+        let module = db.module_for_file_opt(file_id.file_id(&db));
         let module = match module {
             Some(m) => m,
             None => continue,
@@ -387,7 +387,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         }
     };
 
-    let module = db.module_for_file(file_id);
+    let module = db.module_for_file(file_id.file_id(&db));
     let def_map = module.def_map(&db);
 
     let mut defs: Vec<(DefWithBodyId, Crate)> = Vec::new();
@@ -568,7 +568,7 @@ fn salsa_bug() {
     ",
     );
 
-    let module = db.module_for_file(pos.file_id);
+    let module = db.module_for_file(pos.file_id.file_id(&db));
     let crate_def_map = module.def_map(&db);
     visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
         db.infer(match def {
@@ -605,9 +605,9 @@ fn salsa_bug() {
         }
     ";
 
-    db.set_file_text(pos.file_id.file_id(), new_text);
+    db.set_file_text(pos.file_id.file_id(&db), new_text);
 
-    let module = db.module_for_file(pos.file_id);
+    let module = db.module_for_file(pos.file_id.file_id(&db));
     let crate_def_map = module.def_map(&db);
     visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
         db.infer(match def {

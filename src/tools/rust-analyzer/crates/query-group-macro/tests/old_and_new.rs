@@ -46,9 +46,7 @@ fn unadorned_query() {
     db.assert_logs(expect![[r#"
         [
             "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: create_data_PartialMigrationDatabase(Id(400)) })",
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: length_query_shim(Id(c00)) })",
+            "salsa_event(WillExecute { database_key: length_query_shim(Id(0)) })",
         ]"#]]);
 }
 
@@ -63,9 +61,7 @@ fn invoke_query() {
     db.assert_logs(expect![[r#"
         [
             "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: create_data_PartialMigrationDatabase(Id(400)) })",
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: invoke_length_query_shim(Id(c00)) })",
+            "salsa_event(WillExecute { database_key: invoke_length_query_shim(Id(0)) })",
         ]"#]]);
 }
 
@@ -81,9 +77,7 @@ fn invoke_tracked_query() {
     db.assert_logs(expect![[r#"
         [
             "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: create_data_PartialMigrationDatabase(Id(400)) })",
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: invoke_length_tracked_shim(Id(c00)) })",
+            "salsa_event(WillExecute { database_key: invoke_length_tracked_shim(Id(0)) })",
             "salsa_event(WillCheckCancellation)",
             "salsa_event(WillExecute { database_key: invoke_length_tracked_actual(Id(0)) })",
         ]"#]]);

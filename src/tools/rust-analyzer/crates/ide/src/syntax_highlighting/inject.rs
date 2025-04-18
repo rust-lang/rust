@@ -3,12 +3,11 @@
 use std::mem;
 
 use either::Either;
-use hir::{HirFileId, InFile, Semantics, sym};
+use hir::{EditionedFileId, HirFileId, InFile, Semantics, sym};
 use ide_db::{
     SymbolKind, active_parameter::ActiveParameter, defs::Definition,
     documentation::docs_with_rangemap, rust_doc::is_rust_fence,
 };
-use span::EditionedFileId;
 use syntax::{
     AstToken, NodeOrToken, SyntaxNode, TextRange, TextSize,
     ast::{self, AstNode, IsString, QuoteOffsets},

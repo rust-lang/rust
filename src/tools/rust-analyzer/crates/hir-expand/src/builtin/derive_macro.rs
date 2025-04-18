@@ -4,13 +4,13 @@ use intern::sym;
 use itertools::{Itertools, izip};
 use parser::SyntaxKind;
 use rustc_hash::FxHashSet;
-use span::{Edition, MacroCallId, Span, SyntaxContext};
+use span::{Edition, Span, SyntaxContext};
 use stdx::never;
 use syntax_bridge::DocCommentDesugarMode;
 use tracing::debug;
 
 use crate::{
-    ExpandError, ExpandResult,
+    ExpandError, ExpandResult, MacroCallId,
     builtin::quote::{dollar_crate, quote},
     db::ExpandDatabase,
     hygiene::span_with_def_site_ctxt,
@@ -59,7 +59,7 @@ impl BuiltinDeriveExpander {
         tt: &tt::TopSubtree,
         span: Span,
     ) -> ExpandResult<tt::TopSubtree> {
-        let span = span_with_def_site_ctxt(db, span, id, Edition::CURRENT);
+        let span = span_with_def_site_ctxt(db, span, id.into(), Edition::CURRENT);
         self.expander()(db, span, tt)
     }
 }

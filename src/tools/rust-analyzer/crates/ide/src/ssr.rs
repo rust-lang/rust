@@ -78,7 +78,7 @@ mod tests {
         ssr_assists(
             &db,
             &resolve,
-            FileRange { file_id: file_id.into(), range: range_or_offset.into() },
+            FileRange { file_id: file_id.file_id(&db), range: range_or_offset.into() },
         )
     }
 

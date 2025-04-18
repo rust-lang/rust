@@ -283,7 +283,7 @@ fn get_receiver_text(
     if receiver_is_ambiguous_float_literal {
         range.range = TextRange::at(range.range.start(), range.range.len() - TextSize::of('.'))
     }
-    let file_text = sema.db.file_text(range.file_id.file_id());
+    let file_text = sema.db.file_text(range.file_id.file_id(sema.db));
     let mut text = file_text.text(sema.db)[range.range].to_owned();
 
     // The receiver texts should be interpreted as-is, as they are expected to be

@@ -82,7 +82,7 @@ use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
-use span::{Edition, EditionedFileId, FileId, MacroCallId};
+use span::{Edition, FileId};
 use stdx::{format_to, impl_from, never};
 use syntax::{
     AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, T, TextRange, ToSmolStr,
@@ -129,7 +129,7 @@ pub use {
         {ModuleDefId, TraitId},
     },
     hir_expand::{
-        ExpandResult, HirFileId, HirFileIdExt, MacroFileId, MacroFileIdExt, MacroKind,
+        EditionedFileId, ExpandResult, HirFileId, MacroCallId, MacroKind,
         attrs::{Attr, AttrId},
         change::ChangeWithProcMacros,
         files::{
@@ -954,10 +954,11 @@ fn macro_call_diagnostics(
         let node =
             InFile::new(file_id, db.ast_id_map(file_id).get_erased(loc.kind.erased_ast_id()));
         let RenderedExpandError { message, error, kind } = err.render_to_string(db);
-        let precise_location = if err.span().anchor.file_id == file_id {
+        let editioned_file_id = EditionedFileId::from_span(db, err.span().anchor.file_id);
+        let precise_location = if editioned_file_id == file_id {
             Some(
                 err.span().range
-                    + db.ast_id_map(err.span().anchor.file_id.into())
+                    + db.ast_id_map(editioned_file_id.into())
                         .get_erased(err.span().anchor.ast_id)
                         .text_range()
                         .start(),
@@ -1926,7 +1927,7 @@ impl DefWithBody {
 
         source_map
             .macro_calls()
-            .for_each(|(_ast_id, call_id)| macro_call_diagnostics(db, call_id.macro_call_id, acc));
+            .for_each(|(_ast_id, call_id)| macro_call_diagnostics(db, call_id, acc));
 
         expr_store_diagnostics(db, acc, &source_map);
 
@@ -2145,10 +2146,11 @@ fn expr_store_diagnostics(
             ExpressionStoreDiagnostics::MacroError { node, err } => {
                 let RenderedExpandError { message, error, kind } = err.render_to_string(db);
 
-                let precise_location = if err.span().anchor.file_id == node.file_id {
+                let editioned_file_id = EditionedFileId::from_span(db, err.span().anchor.file_id);
+                let precise_location = if editioned_file_id == node.file_id {
                     Some(
                         err.span().range
-                            + db.ast_id_map(err.span().anchor.file_id.into())
+                            + db.ast_id_map(editioned_file_id.into())
                                 .get_erased(err.span().anchor.ast_id)
                                 .text_range()
                                 .start(),
@@ -4469,7 +4471,7 @@ impl Impl {
         let src = self.source(db)?;
 
         let macro_file = src.file_id.macro_file()?;
-        let loc = macro_file.macro_call_id.lookup(db);
+        let loc = macro_file.lookup(db);
         let (derive_attr, derive_index) = match loc.kind {
             MacroCallKind::Derive { ast_id, derive_attr_index, derive_index, .. } => {
                 let module_id = self.id.lookup(db).container;
@@ -4482,9 +4484,8 @@ impl Impl {
             }
             _ => return None,
         };
-        let file_id = MacroFileId { macro_call_id: derive_attr };
         let path = db
-            .parse_macro_expansion(file_id)
+            .parse_macro_expansion(derive_attr)
             .value
             .0
             .syntax_node()
@@ -4492,7 +4493,7 @@ impl Impl {
             .nth(derive_index as usize)
             .and_then(<ast::Attr as AstNode>::cast)
             .and_then(|it| it.path())?;
-        Some(InMacroFile { file_id, value: path })
+        Some(InMacroFile { file_id: derive_attr, value: path })
     }
 
     pub fn check_orphan_rules(self, db: &dyn HirDatabase) -> bool {

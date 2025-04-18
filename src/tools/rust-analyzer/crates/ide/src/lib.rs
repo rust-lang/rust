@@ -58,20 +58,19 @@ mod view_memory_layout;
 mod view_mir;
 mod view_syntax_tree;
 
-use std::panic::UnwindSafe;
+use std::panic::{AssertUnwindSafe, UnwindSafe};
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
-use hir::{ChangeWithProcMacros, sym};
+use hir::{ChangeWithProcMacros, EditionedFileId, sym};
 use ide_db::{
     FxHashMap, FxIndexSet, LineIndexDatabase,
     base_db::{
         CrateOrigin, CrateWorkspaceData, Env, FileSet, RootQueryDb, SourceDatabase, VfsPath,
-        salsa::{AsDynDatabase, Cancelled},
+        salsa::Cancelled,
     },
     prime_caches, symbol_index,
 };
-use span::EditionedFileId;
 use syntax::SourceFile;
 use triomphe::Arc;
 use view_memory_layout::{RecursiveMemoryLayout, view_memory_layout};
@@ -306,10 +305,7 @@ impl Analysis {
     pub fn parse(&self, file_id: FileId) -> Cancellable<SourceFile> {
         // FIXME edition
         self.with_db(|db| {
-            let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
-                self.db.as_dyn_database(),
-                EditionedFileId::current_edition(file_id),
-            );
+            let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
 
             db.parse(editioned_file_id_wrapper).tree()
         })
@@ -338,10 +334,7 @@ impl Analysis {
     /// supported).
     pub fn matching_brace(&self, position: FilePosition) -> Cancellable<Option<TextSize>> {
         self.with_db(|db| {
-            let file_id = ide_db::base_db::EditionedFileId::new(
-                self.db.as_dyn_database(),
-                EditionedFileId::current_edition(position.file_id),
-            );
+            let file_id = EditionedFileId::current_edition(&self.db, position.file_id);
             let parse = db.parse(file_id);
             let file = parse.tree();
             matching_brace::matching_brace(&file, position.offset)
@@ -401,10 +394,8 @@ impl Analysis {
     /// stuff like trailing commas.
     pub fn join_lines(&self, config: &JoinLinesConfig, frange: FileRange) -> Cancellable<TextEdit> {
         self.with_db(|db| {
-            let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
-                self.db.as_dyn_database(),
-                EditionedFileId::current_edition(frange.file_id),
-            );
+            let editioned_file_id_wrapper =
+                EditionedFileId::current_edition(&self.db, frange.file_id);
             let parse = db.parse(editioned_file_id_wrapper);
             join_lines::join_lines(config, &parse.tree(), frange.range)
         })
@@ -441,10 +432,7 @@ impl Analysis {
     pub fn file_structure(&self, file_id: FileId) -> Cancellable<Vec<StructureNode>> {
         // FIXME: Edition
         self.with_db(|db| {
-            let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
-                self.db.as_dyn_database(),
-                EditionedFileId::current_edition(file_id),
-            );
+            let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
 
             file_structure::file_structure(&db.parse(editioned_file_id_wrapper).tree())
         })
@@ -475,10 +463,7 @@ impl Analysis {
     /// Returns the set of folding ranges.
     pub fn folding_ranges(&self, file_id: FileId) -> Cancellable<Vec<Fold>> {
         self.with_db(|db| {
-            let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
-                self.db.as_dyn_database(),
-                EditionedFileId::current_edition(file_id),
-            );
+            let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
 
             folding_ranges::folding_ranges(&db.parse(editioned_file_id_wrapper).tree())
         })
@@ -534,7 +519,11 @@ impl Analysis {
         position: FilePosition,
         search_scope: Option<SearchScope>,
     ) -> Cancellable<Option<Vec<ReferenceSearchResult>>> {
-        self.with_db(|db| references::find_all_refs(&Semantics::new(db), position, search_scope))
+        let search_scope = AssertUnwindSafe(search_scope);
+        self.with_db(|db| {
+            let _ = &search_scope;
+            references::find_all_refs(&Semantics::new(db), position, search_scope.0)
+        })
     }
 
     /// Returns a short text describing element at position.
@@ -656,7 +645,11 @@ impl Analysis {
         position: FilePosition,
         search_scope: Option<SearchScope>,
     ) -> Cancellable<Vec<Runnable>> {
-        self.with_db(|db| runnables::related_tests(db, position, search_scope))
+        let search_scope = AssertUnwindSafe(search_scope);
+        self.with_db(|db| {
+            let _ = &search_scope;
+            runnables::related_tests(db, position, search_scope.0)
+        })
     }
 
     /// Computes syntax highlighting for the given file
@@ -847,6 +840,10 @@ impl Analysis {
         position: FilePosition,
     ) -> Cancellable<Option<RecursiveMemoryLayout>> {
         self.with_db(|db| view_memory_layout(db, position))
+    }
+
+    pub fn editioned_file_id_to_vfs(&self, file_id: hir::EditionedFileId) -> FileId {
+        file_id.file_id(&self.db)
     }
 
     /// Performs an operation on the database that may be canceled.

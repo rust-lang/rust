@@ -1,10 +1,7 @@
 //! This module allows building an SSR MatchFinder by parsing the SSR rule
 //! from a comment.
 
-use ide_db::{
-    EditionedFileId, FilePosition, FileRange, RootDatabase,
-    base_db::{RootQueryDb, salsa::AsDynDatabase},
-};
+use ide_db::{EditionedFileId, FilePosition, FileRange, RootDatabase, base_db::RootQueryDb};
 use syntax::{
     TextRange,
     ast::{self, AstNode, AstToken},
@@ -20,9 +17,7 @@ pub fn ssr_from_comment(
     frange: FileRange,
 ) -> Option<(MatchFinder<'_>, TextRange)> {
     let comment = {
-        let editioned_file_id = EditionedFileId::current_edition(frange.file_id);
-        let file_id =
-            ide_db::base_db::EditionedFileId::new(db.as_dyn_database(), editioned_file_id);
+        let file_id = EditionedFileId::current_edition(db, frange.file_id);
 
         let file = db.parse(file_id);
         file.tree().syntax().token_at_offset(frange.range.start()).find_map(ast::Comment::cast)

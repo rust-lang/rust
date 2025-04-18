@@ -169,7 +169,7 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         }
 
         editor.add_mappings(make.finish_with_mappings());
-        builder.add_file_edits(ctx.file_id(), editor);
+        builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
 

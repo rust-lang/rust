@@ -10,7 +10,6 @@ use either::Either;
 use hir::Semantics;
 use ide_db::{RootDatabase, famous_defs::FamousDefs};
 
-use span::EditionedFileId;
 use stdx::to_lower_snake_case;
 use syntax::ast::{self, AstNode, HasArgList, HasName, UnaryOp};
 
@@ -20,7 +19,6 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, krate): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
     expr: ast::Expr,
 ) -> Option<()> {
     if !config.parameter_hints {
@@ -67,7 +65,10 @@ pub(super) fn hints(
                             _ => None,
                         },
                     }?;
-                    sema.original_range_opt(name_syntax.syntax()).map(Into::into)
+                    sema.original_range_opt(name_syntax.syntax()).map(|frange| ide_db::FileRange {
+                        file_id: frange.file_id.file_id(sema.db),
+                        range: frange.range,
+                    })
                 }),
             );
             InlayHint {

@@ -38,7 +38,7 @@ fn eval_goal(
     let adt_or_type_alias_id = file_ids
         .into_iter()
         .find_map(|file_id| {
-            let module_id = db.module_for_file(file_id.file_id());
+            let module_id = db.module_for_file(file_id.file_id(&db));
             let def_map = module_id.def_map(&db);
             let scope = &def_map[module_id.local_id].scope;
             let adt_or_type_alias_id = scope.declarations().find_map(|x| match x {
@@ -47,14 +47,18 @@ fn eval_goal(
                         hir_def::AdtId::StructId(x) => db
                             .struct_signature(x)
                             .name
-                            .display_no_db(file_id.edition())
+                            .display_no_db(file_id.edition(&db))
                             .to_smolstr(),
-                        hir_def::AdtId::UnionId(x) => {
-                            db.union_signature(x).name.display_no_db(file_id.edition()).to_smolstr()
-                        }
-                        hir_def::AdtId::EnumId(x) => {
-                            db.enum_signature(x).name.display_no_db(file_id.edition()).to_smolstr()
-                        }
+                        hir_def::AdtId::UnionId(x) => db
+                            .union_signature(x)
+                            .name
+                            .display_no_db(file_id.edition(&db))
+                            .to_smolstr(),
+                        hir_def::AdtId::EnumId(x) => db
+                            .enum_signature(x)
+                            .name
+                            .display_no_db(file_id.edition(&db))
+                            .to_smolstr(),
                     };
                     (name == "Goal").then_some(Either::Left(x))
                 }
@@ -62,7 +66,7 @@ fn eval_goal(
                     let name = db
                         .type_alias_signature(x)
                         .name
-                        .display_no_db(file_id.edition())
+                        .display_no_db(file_id.edition(&db))
                         .to_smolstr();
                     (name == "Goal").then_some(Either::Right(x))
                 }
@@ -99,7 +103,7 @@ fn eval_expr(
     );
 
     let (db, file_id) = TestDB::with_single_file(&ra_fixture);
-    let module_id = db.module_for_file(file_id.file_id());
+    let module_id = db.module_for_file(file_id.file_id(&db));
     let def_map = module_id.def_map(&db);
     let scope = &def_map[module_id.local_id].scope;
     let function_id = scope
@@ -107,7 +111,7 @@ fn eval_expr(
         .find_map(|x| match x {
             hir_def::ModuleDefId::FunctionId(x) => {
                 let name =
-                    db.function_signature(x).name.display_no_db(file_id.edition()).to_smolstr();
+                    db.function_signature(x).name.display_no_db(file_id.edition(&db)).to_smolstr();
                 (name == "main").then_some(x)
             }
             _ => None,
@@ -117,7 +121,7 @@ fn eval_expr(
     let b = hir_body
         .bindings
         .iter()
-        .find(|x| x.1.name.display_no_db(file_id.edition()).to_smolstr() == "goal")
+        .find(|x| x.1.name.display_no_db(file_id.edition(&db)).to_smolstr() == "goal")
         .unwrap()
         .0;
     let infer = db.infer(function_id.into());

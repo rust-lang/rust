@@ -71,6 +71,7 @@ use crate::{
 // ```
 pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let def_file = ctx.file_id();
+    let vfs_def_file = ctx.vfs_file_id();
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let ast_func = name.syntax().parent().and_then(ast::Fn::cast)?;
     let func_body = ast_func.body()?;
@@ -106,7 +107,8 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             let current_file_usage = usages.references.remove(&def_file);
 
             let mut remove_def = true;
-            let mut inline_refs_for_file = |file_id, refs: Vec<FileReference>| {
+            let mut inline_refs_for_file = |file_id: EditionedFileId, refs: Vec<FileReference>| {
+                let file_id = file_id.file_id(ctx.db());
                 builder.edit_file(file_id);
                 let call_krate = ctx.sema.file_to_module_def(file_id).map(|it| it.krate());
                 let count = refs.len();
@@ -143,7 +145,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             }
             match current_file_usage {
                 Some(refs) => inline_refs_for_file(def_file, refs),
-                None => builder.edit_file(def_file),
+                None => builder.edit_file(vfs_def_file),
             }
             if remove_def {
                 builder.delete(ast_func.syntax().text_range());
@@ -194,7 +196,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     let name_ref: ast::NameRef = ctx.find_node_at_offset()?;
     let call_info = CallInfo::from_name_ref(
         name_ref.clone(),
-        ctx.sema.file_to_module_def(ctx.file_id())?.krate().into(),
+        ctx.sema.file_to_module_def(ctx.vfs_file_id())?.krate().into(),
     )?;
     let (function, label) = match &call_info.node {
         ast::CallableExpr::Call(call) => {

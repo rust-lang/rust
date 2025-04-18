@@ -117,7 +117,7 @@ pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>)
                     }
                 }
 
-                builder.add_file_edits(ctx.file_id(), edit);
+                builder.add_file_edits(ctx.vfs_file_id(), edit);
             },
         );
     }

@@ -19,7 +19,7 @@ use triomphe::Arc;
 use crate::{
     Const, Interner, ProjectionTy, Substitution, TraitEnvironment, Ty, TyKind,
     consteval::{intern_const_scalar, unknown_const},
-    db::{HirDatabase, HirDatabaseData, InternedClosure, InternedClosureId},
+    db::{HirDatabase, InternedClosure, InternedClosureId},
     from_placeholder_idx,
     generics::{Generics, generics},
     infer::normalize,
@@ -316,7 +316,6 @@ pub fn monomorphized_mir_body_query(
 pub(crate) fn monomorphized_mir_body_recover(
     _: &dyn HirDatabase,
     _: &salsa::Cycle,
-    _: HirDatabaseData,
     _: DefWithBodyId,
     _: Substitution,
     _: Arc<crate::TraitEnvironment>,

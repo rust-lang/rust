@@ -82,10 +82,7 @@ use crate::{errors::bail, matching::MatchFailureReason};
 use hir::{FileRange, Semantics};
 use ide_db::symbol_index::SymbolsDatabase;
 use ide_db::text_edit::TextEdit;
-use ide_db::{
-    EditionedFileId, FileId, FxHashMap, RootDatabase,
-    base_db::{SourceDatabase, salsa::AsDynDatabase},
-};
+use ide_db::{EditionedFileId, FileId, FxHashMap, RootDatabase, base_db::SourceDatabase};
 use resolving::ResolvedRule;
 use syntax::{AstNode, SyntaxNode, TextRange, ast};
 
@@ -130,7 +127,7 @@ impl<'db> MatchFinder<'db> {
         let sema = Semantics::new(db);
         let file_id = sema
             .attach_first_edition(lookup_context.file_id)
-            .unwrap_or_else(|| EditionedFileId::current_edition(lookup_context.file_id));
+            .unwrap_or_else(|| EditionedFileId::current_edition(db, lookup_context.file_id));
         let resolution_scope = resolving::ResolutionScope::new(
             &sema,
             hir::FilePosition { file_id, offset: lookup_context.offset },
@@ -176,7 +173,7 @@ impl<'db> MatchFinder<'db> {
         let mut matches_by_file = FxHashMap::default();
         for m in self.matches().matches {
             matches_by_file
-                .entry(m.range.file_id.file_id())
+                .entry(m.range.file_id.file_id(self.sema.db))
                 .or_insert_with(SsrMatches::default)
                 .matches
                 .push(m);
@@ -228,12 +225,9 @@ impl<'db> MatchFinder<'db> {
         file_id: EditionedFileId,
         snippet: &str,
     ) -> Vec<MatchDebugInfo> {
-        let editioned_file_id_wrapper =
-            ide_db::base_db::EditionedFileId::new(self.sema.db.as_dyn_database(), file_id);
-
-        let file = self.sema.parse(editioned_file_id_wrapper);
+        let file = self.sema.parse(file_id);
         let mut res = Vec::new();
-        let file_text = self.sema.db.file_text(file_id.into()).text(self.sema.db);
+        let file_text = self.sema.db.file_text(file_id.file_id(self.sema.db)).text(self.sema.db);
         let mut remaining_text = &*file_text;
         let mut base = 0;
         let len = snippet.len() as u32;

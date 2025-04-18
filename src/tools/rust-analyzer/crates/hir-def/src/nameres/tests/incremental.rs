@@ -18,7 +18,7 @@ fn check_def_map_is_not_recomputed(ra_fixture_initial: &str, ra_fixture_change: 
         });
         assert!(format!("{events:?}").contains("crate_def_map"), "{events:#?}")
     }
-    db.set_file_text(pos.file_id.file_id(), ra_fixture_change);
+    db.set_file_text(pos.file_id.file_id(&db), ra_fixture_change);
 
     {
         let events = db.log_executed(|| {
@@ -55,7 +55,7 @@ pub const BAZ: u32 = 0;
 
         let mut add_crate = |crate_name, root_file_idx: usize| {
             new_crate_graph.add_crate_root(
-                files[root_file_idx].file_id(),
+                files[root_file_idx].file_id(&db),
                 Edition::CURRENT,
                 Some(CrateDisplayName::from_canonical_name(crate_name)),
                 None,
@@ -348,7 +348,7 @@ fn quux() { 92 }
 m!(Y);
 m!(Z);
 "#;
-    db.set_file_text(pos.file_id.file_id(), new_text);
+    db.set_file_text(pos.file_id.file_id(&db), new_text);
 
     {
         let events = db.log_executed(|| {

@@ -28,8 +28,8 @@ use crate::{
 };
 use base_db::AnchoredPathBuf;
 use either::Either;
-use hir::{FieldSource, FileRange, HirFileIdExt, InFile, ModuleSource, Semantics};
-use span::{Edition, EditionedFileId, FileId, SyntaxContext};
+use hir::{EditionedFileId, FieldSource, FileRange, InFile, ModuleSource, Semantics};
+use span::{Edition, FileId, SyntaxContext};
 use stdx::{TupleExt, never};
 use syntax::{
     AstNode, SyntaxKind, T, TextRange,
@@ -249,7 +249,7 @@ fn rename_mod(
 
     let InFile { file_id, value: def_source } = module.definition_source(sema.db);
     if let ModuleSource::SourceFile(..) = def_source {
-        let anchor = file_id.original_file(sema.db).file_id();
+        let anchor = file_id.original_file(sema.db).file_id(sema.db);
 
         let is_mod_rs = module.is_mod_rs(sema.db);
         let has_detached_child = module.children(sema.db).any(|child| !child.is_inline(sema.db));
@@ -296,13 +296,13 @@ fn rename_mod(
                     .original_file_range_opt(sema.db)
                     .map(TupleExt::head)
                 {
-                    let new_name = if is_raw_identifier(new_name, file_id.edition()) {
+                    let new_name = if is_raw_identifier(new_name, file_id.edition(sema.db)) {
                         format!("r#{new_name}")
                     } else {
                         new_name.to_owned()
                     };
                     source_change.insert_source_edit(
-                        file_id.file_id(),
+                        file_id.file_id(sema.db),
                         TextEdit::replace(file_range.range, new_name),
                     )
                 };
@@ -315,8 +315,8 @@ fn rename_mod(
     let usages = def.usages(sema).all();
     let ref_edits = usages.iter().map(|(file_id, references)| {
         (
-            EditionedFileId::file_id(file_id),
-            source_edit_from_references(references, def, new_name, file_id.edition()),
+            file_id.file_id(sema.db),
+            source_edit_from_references(references, def, new_name, file_id.edition(sema.db)),
         )
     });
     source_change.extend(ref_edits);
@@ -362,8 +362,8 @@ fn rename_reference(
     let mut source_change = SourceChange::default();
     source_change.extend(usages.iter().map(|(file_id, references)| {
         (
-            EditionedFileId::file_id(file_id),
-            source_edit_from_references(references, def, new_name, file_id.edition()),
+            file_id.file_id(sema.db),
+            source_edit_from_references(references, def, new_name, file_id.edition(sema.db)),
         )
     }));
 
@@ -541,7 +541,7 @@ fn source_edit_from_def(
     source_change: &mut SourceChange,
 ) -> Result<(FileId, TextEdit)> {
     let new_name_edition_aware = |new_name: &str, file_id: EditionedFileId| {
-        if is_raw_identifier(new_name, file_id.edition()) {
+        if is_raw_identifier(new_name, file_id.edition(sema.db)) {
             format!("r#{new_name}")
         } else {
             new_name.to_owned()
@@ -638,7 +638,7 @@ fn source_edit_from_def(
         edit.set_annotation(conflict_annotation);
 
         let Some(file_id) = file_id else { bail!("No file available to rename") };
-        return Ok((EditionedFileId::file_id(file_id), edit));
+        return Ok((file_id.file_id(sema.db), edit));
     }
     let FileRange { file_id, range } = def
         .range_for_rename(sema)
@@ -654,7 +654,7 @@ fn source_edit_from_def(
         _ => (range, new_name.to_owned()),
     };
     edit.replace(range, new_name_edition_aware(&new_name, file_id));
-    Ok((file_id.file_id(), edit.finish()))
+    Ok((file_id.file_id(sema.db), edit.finish()))
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

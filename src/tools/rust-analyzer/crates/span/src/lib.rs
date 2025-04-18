@@ -183,7 +183,7 @@ impl EditionedFileId {
 #[cfg(not(feature = "salsa"))]
 mod salsa {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-    pub(crate) struct Id(u32);
+    pub struct Id(u32);
 
     impl Id {
         pub(crate) const fn from_u32(u32: u32) -> Self {
@@ -210,32 +210,11 @@ mod salsa {
 /// (`MacroCallId` uses the location interning. You can check details here:
 /// <https://en.wikipedia.org/wiki/String_interning>).
 ///
-/// The two variants are encoded in a single u32 which are differentiated by the MSB.
-/// If the MSB is 0, the value represents a `FileId`, otherwise the remaining 31 bits represent a
-/// `MacroCallId`.
+/// Internally this holds a `salsa::Id`, but we cannot use this definition here
+/// as it references things from base-db and hir-expand.
 // FIXME: Give this a better fitting name
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct HirFileId(salsa::Id);
-
-#[cfg(feature = "salsa")]
-impl salsa::plumbing::AsId for HirFileId {
-    fn as_id(&self) -> salsa::Id {
-        self.0
-    }
-}
-
-#[cfg(feature = "salsa")]
-impl salsa::plumbing::FromId for HirFileId {
-    fn from_id(id: salsa::Id) -> Self {
-        HirFileId(id)
-    }
-}
-
-impl From<HirFileId> for u32 {
-    fn from(value: HirFileId) -> Self {
-        value.0.as_u32()
-    }
-}
+pub struct HirFileId(pub salsa::Id);
 
 impl From<MacroCallId> for HirFileId {
     fn from(value: MacroCallId) -> Self {
@@ -260,27 +239,6 @@ impl PartialEq<HirFileId> for FileId {
     }
 }
 
-impl PartialEq<EditionedFileId> for HirFileId {
-    fn eq(&self, &other: &EditionedFileId) -> bool {
-        *self == HirFileId::from(other)
-    }
-}
-impl PartialEq<HirFileId> for EditionedFileId {
-    fn eq(&self, &other: &HirFileId) -> bool {
-        other == HirFileId::from(*self)
-    }
-}
-impl PartialEq<EditionedFileId> for FileId {
-    fn eq(&self, &other: &EditionedFileId) -> bool {
-        *self == FileId::from(other)
-    }
-}
-impl PartialEq<FileId> for EditionedFileId {
-    fn eq(&self, &other: &FileId) -> bool {
-        other == FileId::from(*self)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroFileId {
     pub macro_call_id: MacroCallId,
@@ -289,21 +247,7 @@ pub struct MacroFileId {
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct MacroCallId(salsa::Id);
-
-#[cfg(feature = "salsa")]
-impl salsa::plumbing::AsId for MacroCallId {
-    fn as_id(&self) -> salsa::Id {
-        self.0
-    }
-}
-
-#[cfg(feature = "salsa")]
-impl salsa::plumbing::FromId for MacroCallId {
-    fn from_id(id: salsa::Id) -> Self {
-        MacroCallId(id)
-    }
-}
+pub struct MacroCallId(pub salsa::Id);
 
 impl MacroCallId {
     pub const MAX_ID: u32 = 0x7fff_ffff;

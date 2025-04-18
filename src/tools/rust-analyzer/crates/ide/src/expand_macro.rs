@@ -1,5 +1,5 @@
 use hir::db::ExpandDatabase;
-use hir::{ExpandResult, InFile, MacroFileIdExt, Semantics};
+use hir::{ExpandResult, InFile, Semantics};
 use ide_db::{
     FileId, RootDatabase, base_db::Crate, helpers::pick_best_token,
     syntax_helpers::prettify_macro_expansion,
@@ -99,7 +99,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
                         .display(
                             db,
                             sema.attach_first_edition(position.file_id)
-                                .map(|it| it.edition())
+                                .map(|it| it.edition(db))
                                 .unwrap_or(Edition::CURRENT),
                         )
                         .to_string(),

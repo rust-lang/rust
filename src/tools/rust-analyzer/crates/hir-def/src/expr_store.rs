@@ -13,11 +13,11 @@ use std::ops::{Deref, Index};
 
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use hir_expand::{ExpandError, InFile, mod_path::ModPath, name::Name};
+use hir_expand::{ExpandError, InFile, MacroCallId, mod_path::ModPath, name::Name};
 use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::{Edition, MacroFileId, SyntaxContext};
+use span::{Edition, SyntaxContext};
 use syntax::{AstPtr, SyntaxNodePtr, ast};
 use triomphe::Arc;
 use tt::TextRange;
@@ -138,7 +138,7 @@ pub struct ExpressionStoreSourceMap {
 
     template_map: Option<Box<FormatTemplate>>,
 
-    pub expansions: FxHashMap<InFile<MacroCallPtr>, MacroFileId>,
+    pub expansions: FxHashMap<InFile<MacroCallPtr>, MacroCallId>,
 
     /// Diagnostics accumulated during lowering. These contain `AstPtr`s and so are stored in
     /// the source map (since they're just as volatile).
@@ -645,12 +645,12 @@ impl ExpressionStoreSourceMap {
         self.expr_map.get(&src).cloned()
     }
 
-    pub fn node_macro_file(&self, node: InFile<&ast::MacroCall>) -> Option<MacroFileId> {
+    pub fn node_macro_file(&self, node: InFile<&ast::MacroCall>) -> Option<MacroCallId> {
         let src = node.map(AstPtr::new);
         self.expansions.get(&src).cloned()
     }
 
-    pub fn macro_calls(&self) -> impl Iterator<Item = (InFile<MacroCallPtr>, MacroFileId)> + '_ {
+    pub fn macro_calls(&self) -> impl Iterator<Item = (InFile<MacroCallPtr>, MacroCallId)> + '_ {
         self.expansions.iter().map(|(&a, &b)| (a, b))
     }
 
@@ -696,11 +696,11 @@ impl ExpressionStoreSourceMap {
         self.expr_map.get(&src).copied()
     }
 
-    pub fn expansions(&self) -> impl Iterator<Item = (&InFile<MacroCallPtr>, &MacroFileId)> {
+    pub fn expansions(&self) -> impl Iterator<Item = (&InFile<MacroCallPtr>, &MacroCallId)> {
         self.expansions.iter()
     }
 
-    pub fn expansion(&self, node: InFile<&ast::MacroCall>) -> Option<MacroFileId> {
+    pub fn expansion(&self, node: InFile<&ast::MacroCall>) -> Option<MacroCallId> {
         self.expansions.get(&node.map(AstPtr::new)).copied()
     }
 

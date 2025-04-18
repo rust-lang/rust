@@ -4,8 +4,8 @@ use arrayvec::ArrayVec;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
-    AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, HirFileIdExt, ModPath, Name,
-    PathKind, Semantics, Symbol, db::HirDatabase, sym, symbols::FxIndexSet,
+    AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, ModPath, Name, PathKind, Semantics,
+    Symbol, db::HirDatabase, sym, symbols::FxIndexSet,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
@@ -285,8 +285,10 @@ fn find_related_tests_in_module(
 
     let file_id = mod_source.file_id.original_file(sema.db);
     let mod_scope = SearchScope::file_range(hir::FileRange { file_id, range: mod_source.value });
-    let fn_pos =
-        FilePosition { file_id: file_id.into(), offset: fn_name.syntax().text_range().start() };
+    let fn_pos = FilePosition {
+        file_id: file_id.file_id(sema.db),
+        offset: fn_name.syntax().text_range().start(),
+    };
     find_related_tests(sema, syntax, fn_pos, Some(mod_scope), tests)
 }
 

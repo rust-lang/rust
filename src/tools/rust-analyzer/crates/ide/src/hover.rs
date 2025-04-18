@@ -133,7 +133,7 @@ pub(crate) fn hover(
     let sema = &hir::Semantics::new(db);
     let file = sema.parse_guess_edition(file_id).syntax().clone();
     let edition =
-        sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
+        sema.attach_first_edition(file_id).map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
     let display_target = sema.first_crate(file_id)?.to_display_target(db);
     let mut res = if range.is_empty() {
         hover_offset(
@@ -551,7 +551,7 @@ fn runnable_action(
         Definition::Module(it) => runnable_mod(sema, it).map(HoverAction::Runnable),
         Definition::Function(func) => {
             let src = func.source(sema.db)?;
-            if src.file_id != file_id {
+            if src.file_id.file_id().is_none_or(|f| f.file_id(sema.db) != file_id) {
                 cov_mark::hit!(hover_macro_generated_struct_fn_doc_comment);
                 cov_mark::hit!(hover_macro_generated_struct_fn_doc_attr);
                 return None;

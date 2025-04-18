@@ -1,7 +1,7 @@
 //! This module is responsible for resolving paths within rules.
 
 use hir::AsAssocItem;
-use ide_db::{FxHashMap, base_db::salsa::AsDynDatabase};
+use ide_db::FxHashMap;
 use parsing::Placeholder;
 use syntax::{
     SmolStr, SyntaxKind, SyntaxNode, SyntaxToken,
@@ -198,12 +198,7 @@ impl<'db> ResolutionScope<'db> {
         resolve_context: hir::FilePosition,
     ) -> Option<ResolutionScope<'db>> {
         use syntax::ast::AstNode;
-        let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
-            sema.db.as_dyn_database(),
-            resolve_context.file_id,
-        );
-
-        let file = sema.parse(editioned_file_id_wrapper);
+        let file = sema.parse(resolve_context.file_id);
         // Find a node at the requested position, falling back to the whole file.
         let node = file
             .syntax()

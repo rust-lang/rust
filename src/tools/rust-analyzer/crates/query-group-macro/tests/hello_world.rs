@@ -12,13 +12,14 @@ pub trait HelloWorldDatabase: salsa::Database {
     fn input_string(&self) -> String;
 
     // unadorned query
+    #[salsa::invoke_interned(length_query)]
     fn length_query(&self, key: ()) -> usize;
 
     // unadorned query
     fn length_query_with_no_params(&self) -> usize;
 
     // renamed/invoke query
-    #[salsa::invoke(invoke_length_query_actual)]
+    #[salsa::invoke_interned(invoke_length_query_actual)]
     fn invoke_length_query(&self, key: ()) -> usize;
 
     // not a query. should not invoked
@@ -26,7 +27,7 @@ pub trait HelloWorldDatabase: salsa::Database {
     fn transparent_length(&self, key: ()) -> usize;
 
     #[salsa::transparent]
-    #[salsa::invoke(transparent_and_invoke_length_actual)]
+    #[salsa::invoke_interned(transparent_and_invoke_length_actual)]
     fn transparent_and_invoke_length(&self, key: ()) -> usize;
 }
 
@@ -121,5 +122,8 @@ fn transparent_invoke() {
             "salsa_event(WillExecute { database_key: create_data_HelloWorldDatabase(Id(0)) })",
             "salsa_event(WillCheckCancellation)",
             "salsa_event(DidValidateMemoizedValue { database_key: create_data_HelloWorldDatabase(Id(0)) })",
+            "salsa_event(WillCheckCancellation)",
+            "salsa_event(WillExecute { database_key: transparent_and_invoke_length_shim(Id(800)) })",
+            "salsa_event(WillCheckCancellation)",
         ]"#]]);
 }

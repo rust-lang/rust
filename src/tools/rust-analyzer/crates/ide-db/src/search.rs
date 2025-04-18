@@ -10,15 +10,14 @@ use std::{cell::LazyCell, cmp::Reverse};
 use base_db::{RootQueryDb, SourceDatabase};
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, DefWithBody, FileRange, FileRangeWrapper, HasAttrs, HasContainer, HasSource,
-    HirFileIdExt, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer, ModuleSource,
-    PathResolution, Semantics, Visibility, sym,
+    Adt, AsAssocItem, DefWithBody, EditionedFileId, FileRange, FileRangeWrapper, HasAttrs,
+    HasContainer, HasSource, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer,
+    ModuleSource, PathResolution, Semantics, Visibility, sym,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Database;
-use span::EditionedFileId;
 use syntax::{
     AstNode, AstToken, SmolStr, SyntaxElement, SyntaxNode, TextRange, TextSize, ToSmolStr,
     ast::{self, HasName, Rename},
@@ -168,7 +167,9 @@ impl SearchScope {
             let source_root = db.file_source_root(crate_data.root_file_id).source_root_id(db);
             let source_root = db.source_root(source_root).source_root(db);
             entries.extend(
-                source_root.iter().map(|id| (EditionedFileId::new(id, crate_data.edition), None)),
+                source_root
+                    .iter()
+                    .map(|id| (EditionedFileId::new(db, id, crate_data.edition), None)),
             );
         }
         SearchScope { entries }
@@ -183,7 +184,9 @@ impl SearchScope {
             let source_root = db.file_source_root(root_file).source_root_id(db);
             let source_root = db.source_root(source_root).source_root(db);
             entries.extend(
-                source_root.iter().map(|id| (EditionedFileId::new(id, rev_dep.edition(db)), None)),
+                source_root
+                    .iter()
+                    .map(|id| (EditionedFileId::new(db, id, rev_dep.edition(db)), None)),
             );
         }
         SearchScope { entries }
@@ -198,7 +201,7 @@ impl SearchScope {
         SearchScope {
             entries: source_root
                 .iter()
-                .map(|id| (EditionedFileId::new(id, of.edition(db)), None))
+                .map(|id| (EditionedFileId::new(db, id, of.edition(db)), None))
                 .collect(),
         }
     }
@@ -482,7 +485,7 @@ impl<'a> FindUsages<'a> {
         scope: &'b SearchScope,
     ) -> impl Iterator<Item = (Arc<str>, EditionedFileId, TextRange)> + 'b {
         scope.entries.iter().map(|(&file_id, &search_range)| {
-            let text = db.file_text(file_id.file_id()).text(db);
+            let text = db.file_text(file_id.file_id(db)).text(db);
             let search_range =
                 search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
 
@@ -648,8 +651,6 @@ impl<'a> FindUsages<'a> {
                 for (file_text, file_id, search_range) in
                     FindUsages::scope_files(db, &current_to_process_search_scope)
                 {
-                    let file_id = crate::base_db::EditionedFileId::new(db, file_id);
-
                     let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
                     for offset in FindUsages::match_indices(&file_text, &finder, search_range) {
@@ -809,9 +810,7 @@ impl<'a> FindUsages<'a> {
             sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
         ) {
             for (file_text, file_id, search_range) in files {
-                let file_id_wrapper = crate::base_db::EditionedFileId::new(this.sema.db, file_id);
-
-                let tree = LazyCell::new(move || this.sema.parse(file_id_wrapper).syntax().clone());
+                let tree = LazyCell::new(move || this.sema.parse(file_id).syntax().clone());
 
                 for offset in FindUsages::match_indices(&file_text, finder, search_range) {
                     let usages = FindUsages::find_nodes(this.sema, name, &tree, offset)
@@ -856,7 +855,10 @@ impl<'a> FindUsages<'a> {
                 name,
                 is_possibly_self.into_iter().map(|position| {
                     (
-                        self.sema.db.file_text(position.file_id.file_id()).text(self.sema.db),
+                        self.sema
+                            .db
+                            .file_text(position.file_id.file_id(self.sema.db))
+                            .text(self.sema.db),
                         position.file_id,
                         position.range,
                     )
@@ -950,9 +952,7 @@ impl<'a> FindUsages<'a> {
         let include_self_kw_refs =
             self.include_self_kw_refs.as_ref().map(|ty| (ty, Finder::new("Self")));
         for (text, file_id, search_range) in Self::scope_files(sema.db, &search_scope) {
-            let file_id_wrapper = crate::base_db::EditionedFileId::new(sema.db, file_id);
-
-            let tree = LazyCell::new(move || sema.parse(file_id_wrapper).syntax().clone());
+            let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
             // Search for occurrences of the items name
             for offset in Self::match_indices(&text, finder, search_range) {
@@ -1007,8 +1007,7 @@ impl<'a> FindUsages<'a> {
             for (text, file_id, search_range) in Self::scope_files(sema.db, &scope) {
                 self.sema.db.unwind_if_revision_cancelled();
 
-                let file_id_wrapper = crate::base_db::EditionedFileId::new(sema.db, file_id);
-                let tree = LazyCell::new(move || sema.parse(file_id_wrapper).syntax().clone());
+                let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
                 for offset in Self::match_indices(&text, finder, search_range) {
                     for name_ref in Self::find_nodes(sema, "super", &tree, offset)
@@ -1056,12 +1055,10 @@ impl<'a> FindUsages<'a> {
                     return;
                 };
 
-                let file_text = sema.db.file_text(file_id.file_id());
+                let file_text = sema.db.file_text(file_id.file_id(self.sema.db));
                 let text = file_text.text(sema.db);
                 let search_range =
                     search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
-
-                let file_id = crate::base_db::EditionedFileId::new(sema.db, file_id);
 
                 let tree = LazyCell::new(|| sema.parse(file_id).syntax().clone());
                 let finder = &Finder::new("self");

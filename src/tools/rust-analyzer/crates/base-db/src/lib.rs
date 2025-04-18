@@ -20,6 +20,7 @@ use rustc_hash::{FxHashSet, FxHasher};
 pub use salsa::{self};
 use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
+use span::Edition;
 use syntax::{Parse, SyntaxError, ast};
 use triomphe::Arc;
 pub use vfs::{AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet};
@@ -151,20 +152,38 @@ impl Files {
     }
 }
 
-#[salsa::interned(no_lifetime)]
+#[salsa::interned(no_lifetime, constructor=from_span)]
 pub struct EditionedFileId {
     pub editioned_file_id: span::EditionedFileId,
 }
 
 impl EditionedFileId {
-    pub fn file_id(&self, db: &dyn salsa::Database) -> vfs::FileId {
+    // Salsa already uses the name `new`...
+    #[inline]
+    pub fn new(db: &dyn salsa::Database, file_id: FileId, edition: Edition) -> Self {
+        EditionedFileId::from_span(db, span::EditionedFileId::new(file_id, edition))
+    }
+
+    #[inline]
+    pub fn current_edition(db: &dyn salsa::Database, file_id: FileId) -> Self {
+        EditionedFileId::new(db, file_id, Edition::CURRENT)
+    }
+
+    #[inline]
+    pub fn file_id(self, db: &dyn salsa::Database) -> vfs::FileId {
         let id = self.editioned_file_id(db);
         id.file_id()
     }
 
-    fn unpack(&self, db: &dyn salsa::Database) -> (vfs::FileId, span::Edition) {
+    #[inline]
+    pub fn unpack(self, db: &dyn salsa::Database) -> (vfs::FileId, span::Edition) {
         let id = self.editioned_file_id(db);
         (id.file_id(), id.edition())
+    }
+
+    #[inline]
+    pub fn edition(self, db: &dyn SourceDatabase) -> Edition {
+        self.editioned_file_id(db).edition()
     }
 }
 
@@ -189,7 +208,7 @@ pub struct SourceRootInput {
 #[query_group::query_group]
 pub trait RootQueryDb: SourceDatabase + salsa::Database {
     /// Parses the file into the syntax tree.
-    #[salsa::invoke_actual(parse)]
+    #[salsa::invoke(parse)]
     #[salsa::lru(128)]
     fn parse(&self, file_id: EditionedFileId) -> Parse<ast::SourceFile>;
 
@@ -201,6 +220,7 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     fn toolchain_channel(&self, krate: Crate) -> Option<ReleaseChannel>;
 
     /// Crates whose root file is in `id`.
+    #[salsa::invoke_interned(source_root_crates)]
     fn source_root_crates(&self, id: SourceRootId) -> Arc<[Crate]>;
 
     #[salsa::transparent]

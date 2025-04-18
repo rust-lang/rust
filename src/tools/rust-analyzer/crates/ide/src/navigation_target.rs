@@ -817,14 +817,10 @@ pub(crate) fn orig_range_with_focus_r(
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     let Some(name) = focus_range else { return orig_range_r(db, hir_file, value) };
 
-    let call_kind =
-        || db.lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id).kind;
+    let call_kind = || db.lookup_intern_macro_call(hir_file.macro_file().unwrap()).kind;
 
-    let def_range = || {
-        db.lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id)
-            .def
-            .definition_range(db)
-    };
+    let def_range =
+        || db.lookup_intern_macro_call(hir_file.macro_file().unwrap()).def.definition_range(db);
 
     // FIXME: Also make use of the syntax context to determine which site we are at?
     let value_range = InFile::new(hir_file, value).original_node_file_range_opt(db);
@@ -901,7 +897,7 @@ pub(crate) fn orig_range_with_focus_r(
 
     UpmappingResult {
         call_site: (
-            call_site_range.into(),
+            call_site_range.into_file_id(db),
             call_site_focus.and_then(|hir::FileRange { file_id, range }| {
                 if call_site_range.file_id == file_id && call_site_range.range.contains_range(range)
                 {
@@ -913,7 +909,7 @@ pub(crate) fn orig_range_with_focus_r(
         ),
         def_site: def_site.map(|(def_site_range, def_site_focus)| {
             (
-                def_site_range.into(),
+                def_site_range.into_file_id(db),
                 def_site_focus.and_then(|hir::FileRange { file_id, range }| {
                     if def_site_range.file_id == file_id
                         && def_site_range.range.contains_range(range)
@@ -934,7 +930,10 @@ fn orig_range(
     value: &SyntaxNode,
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     UpmappingResult {
-        call_site: (InFile::new(hir_file, value).original_file_range_rooted(db).into(), None),
+        call_site: (
+            InFile::new(hir_file, value).original_file_range_rooted(db).into_file_id(db),
+            None,
+        ),
         def_site: None,
     }
 }
@@ -945,7 +944,10 @@ fn orig_range_r(
     value: TextRange,
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     UpmappingResult {
-        call_site: (InFile::new(hir_file, value).original_node_file_range(db).0.into(), None),
+        call_site: (
+            InFile::new(hir_file, value).original_node_file_range(db).0.into_file_id(db),
+            None,
+        ),
         def_site: None,
     }
 }

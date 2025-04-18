@@ -9,8 +9,7 @@ use std::{
 
 use cfg::{CfgAtom, CfgDiff};
 use hir::{
-    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, HirFileIdExt, ImportPathConfig,
-    ModuleDef, Name,
+    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, ImportPathConfig, ModuleDef, Name,
     db::{DefDatabase, ExpandDatabase, HirDatabase},
 };
 use hir_def::{
@@ -142,7 +141,9 @@ impl flags::AnalysisStats {
                         if !source_root.is_library || self.with_deps {
                             let length = db.file_text(file_id).text(db).lines().count();
                             let item_stats = db
-                                .file_item_tree(EditionedFileId::current_edition(file_id).into())
+                                .file_item_tree(
+                                    EditionedFileId::current_edition(db, file_id).into(),
+                                )
                                 .item_tree_stats()
                                 .into();
 
@@ -152,7 +153,9 @@ impl flags::AnalysisStats {
                         } else {
                             let length = db.file_text(file_id).text(db).lines().count();
                             let item_stats = db
-                                .file_item_tree(EditionedFileId::current_edition(file_id).into())
+                                .file_item_tree(
+                                    EditionedFileId::current_edition(db, file_id).into(),
+                                )
                                 .item_tree_stats()
                                 .into();
 
@@ -203,7 +206,7 @@ impl flags::AnalysisStats {
             let file_id = module.definition_source_file_id(db);
             let file_id = file_id.original_file(db);
 
-            let source_root = db.file_source_root(file_id.into()).source_root_id(db);
+            let source_root = db.file_source_root(file_id.file_id(db)).source_root_id(db);
             let source_root = db.source_root(source_root).source_root(db);
             if !source_root.is_library || self.with_deps {
                 num_crates += 1;
@@ -457,6 +460,7 @@ impl flags::AnalysisStats {
         let mut sw = self.stop_watch();
 
         for &file_id in &file_ids {
+            let file_id = file_id.editioned_file_id(db);
             let sema = hir::Semantics::new(db);
             let display_target = match sema.first_crate(file_id.file_id()) {
                 Some(krate) => krate.to_display_target(sema.db),
@@ -756,7 +760,7 @@ impl flags::AnalysisStats {
                     };
                     if let Some(src) = source {
                         let original_file = src.file_id.original_file(db);
-                        let path = vfs.file_path(original_file.into());
+                        let path = vfs.file_path(original_file.file_id(db));
                         let syntax_range = src.text_range();
                         format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
                     } else {
@@ -1069,7 +1073,7 @@ impl flags::AnalysisStats {
                     };
                     if let Some(src) = source {
                         let original_file = src.file_id.original_file(db);
-                        let path = vfs.file_path(original_file.into());
+                        let path = vfs.file_path(original_file.file_id(db));
                         let syntax_range = src.text_range();
                         format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
                     } else {
@@ -1123,7 +1127,7 @@ impl flags::AnalysisStats {
                     term_search_borrowck: true,
                 },
                 ide::AssistResolveStrategy::All,
-                file_id.into(),
+                analysis.editioned_file_id_to_vfs(file_id),
             );
         }
         for &file_id in &file_ids {
@@ -1158,7 +1162,7 @@ impl flags::AnalysisStats {
                     fields_to_resolve: InlayFieldsToResolve::empty(),
                     range_exclusive_hints: true,
                 },
-                file_id.into(),
+                analysis.editioned_file_id_to_vfs(file_id),
                 None,
             );
         }
@@ -1174,7 +1178,7 @@ impl flags::AnalysisStats {
                         annotate_enum_variant_references: false,
                         location: ide::AnnotationLocation::AboveName,
                     },
-                    file_id.into(),
+                    analysis.editioned_file_id_to_vfs(file_id),
                 )
                 .unwrap()
                 .into_iter()
@@ -1199,8 +1203,8 @@ fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: 
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range_rooted(db);
-    let path = vfs.file_path(original_range.file_id.into());
-    let line_index = db.line_index(original_range.file_id.into());
+    let path = vfs.file_path(original_range.file_id.file_id(db));
+    let line_index = db.line_index(original_range.file_id.file_id(db));
     let text_range = original_range.range;
     let (start, end) =
         (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -1215,8 +1219,8 @@ fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: Pa
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range_rooted(db);
-    let path = vfs.file_path(original_range.file_id.into());
-    let line_index = db.line_index(original_range.file_id.into());
+    let path = vfs.file_path(original_range.file_id.file_id(db));
+    let line_index = db.line_index(original_range.file_id.file_id(db));
     let text_range = original_range.range;
     let (start, end) =
         (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -1234,8 +1238,8 @@ fn expr_syntax_range<'a>(
         let root = db.parse_or_expand(src.file_id);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range_rooted(db);
-        let path = vfs.file_path(original_range.file_id.into());
-        let line_index = db.line_index(original_range.file_id.into());
+        let path = vfs.file_path(original_range.file_id.file_id(db));
+        let line_index = db.line_index(original_range.file_id.file_id(db));
         let text_range = original_range.range;
         let (start, end) =
             (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -1255,8 +1259,8 @@ fn pat_syntax_range<'a>(
         let root = db.parse_or_expand(src.file_id);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range_rooted(db);
-        let path = vfs.file_path(original_range.file_id.into());
-        let line_index = db.line_index(original_range.file_id.into());
+        let path = vfs.file_path(original_range.file_id.file_id(db));
+        let line_index = db.line_index(original_range.file_id.file_id(db));
         let text_range = original_range.range;
         let (start, end) =
             (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));

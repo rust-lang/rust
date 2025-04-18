@@ -1,4 +1,4 @@
-use hir::{InFile, MacroFileIdExt, ModuleDef};
+use hir::{InFile, ModuleDef};
 use ide_db::{helpers::mod_path_to_ast, imports::import_assets::NameToImport, items_locator};
 use itertools::Itertools;
 use syntax::{
