@@ -199,6 +199,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ident,
                 generics,
                 ty,
+                body_id,
                 expr,
                 define_opaque,
                 ..
@@ -211,7 +212,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
-                        (ty, this.lower_const_item(span, expr.as_deref()))
+                        (ty, this.lower_const_item(span, body_id.zip(expr.as_deref())))
                     },
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
@@ -498,15 +499,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_const_item(
         &mut self,
         span: Span,
-        body: Option<&Expr>,
+        body: Option<(NodeId, &Expr)>,
     ) -> (hir::BodyId, Option<&'hir hir::ConstArg<'hir>>) {
         let mgca = self.tcx.features().min_generic_const_args();
-        let ct_arg =
-            if mgca && let Some(expr) = body { self.try_lower_as_const_path(expr) } else { None };
+        let ct_arg = if mgca && let Some((_, expr)) = body {
+            self.try_lower_as_const_path(expr)
+        } else {
+            None
+        };
         let body_id = if mgca && ct_arg.is_none() {
             self.lower_const_body_with_const_block(span, body)
         } else {
-            self.lower_const_body(span, body)
+            self.lower_const_body(span, body.map(|(_, e)| e))
         };
         (body_id, ct_arg)
     }
@@ -809,6 +813,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ident,
                 generics,
                 ty,
+                body_id,
                 expr,
                 define_opaque,
                 ..
@@ -820,7 +825,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
-                        match expr.as_deref().map(|e| this.lower_const_item(i.span, Some(e))) {
+                        let lowered_body = expr
+                            .as_deref()
+                            .map(|e| this.lower_const_item(i.span, Some((body_id.unwrap(), e))));
+                        match lowered_body {
                             Some((body, ct_arg)) => {
                                 hir::TraitItemKind::Const(ty, Some(body), ct_arg)
                             }
@@ -1004,6 +1012,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ident,
                 generics,
                 ty,
+                body_id,
                 expr,
                 define_opaque,
                 ..
@@ -1017,7 +1026,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
                         this.lower_define_opaque(hir_id, &define_opaque);
-                        let (body, ct_arg) = this.lower_const_item(i.span, expr.as_deref());
+                        let (body, ct_arg) =
+                            this.lower_const_item(i.span, body_id.zip(expr.as_deref()));
                         hir::ImplItemKind::Const(ty, body, ct_arg)
                     },
                 ),
@@ -1293,23 +1303,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_const_body_with_const_block(
         &mut self,
         span: Span,
-        expr: Option<&Expr>,
+        body: Option<(NodeId, &Expr)>,
     ) -> hir::BodyId {
         self.lower_body(|this| {
             (
                 &[],
-                match expr {
-                    Some(expr) => {
-                        let def_id = this.local_def_id(expr.id);
-                        // TODO: somehow avoid reusing the same nodeid for the const block and the body expr
-                        let hir_id = this.lower_node_id(expr.id);
+                match body {
+                    Some((body_id, expr)) => {
                         let block = hir::ConstBlock {
-                            def_id,
-                            hir_id,
+                            def_id: this.local_def_id(body_id),
+                            hir_id: this.lower_node_id(body_id),
                             body: this.lower_const_body(expr.span, Some(expr)),
                         };
                         hir::Expr {
-                            hir_id,
+                            hir_id: this.next_id(),
                             span: this.lower_span(expr.span),
                             kind: hir::ExprKind::ConstBlock(block),
                         }

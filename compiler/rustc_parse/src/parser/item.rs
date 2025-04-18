@@ -258,6 +258,7 @@ impl<'a> Parser<'a> {
                     ident,
                     generics,
                     ty,
+                    body_id: expr.is_some().then_some(DUMMY_NODE_ID),
                     expr,
                     define_opaque: None,
                 }))
@@ -984,6 +985,7 @@ impl<'a> Parser<'a> {
                                 ident,
                                 generics: Generics::default(),
                                 ty,
+                                body_id: expr.is_some().then_some(DUMMY_NODE_ID),
                                 expr,
                                 define_opaque,
                             }))
