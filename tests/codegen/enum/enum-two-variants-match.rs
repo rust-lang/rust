@@ -60,8 +60,8 @@ pub fn result_match(x: Result<u64, i64>) -> u16 {
 #[no_mangle]
 pub fn option_bool_match(x: Option<bool>) -> char {
     // CHECK: %[[RAW:.+]] = load i8, ptr %x
-    // CHECK: %[[IS_NONE:.+]] = icmp eq i8 %[[RAW]], 2
-    // CHECK: %[[OPT_DISCR:.+]] = select i1 %[[IS_NONE]], i64 0, i64 1
+    // CHECK: %[[IS_SOME:.+]] = icmp ne i8 %[[RAW]], 2
+    // CHECK: %[[OPT_DISCR:.+]] = zext i1 %[[IS_SOME]] to i64
     // CHECK: %[[OPT_DISCR_T:.+]] = trunc nuw i64 %[[OPT_DISCR]] to i1
     // CHECK: br i1 %[[OPT_DISCR_T]], label %[[BB_SOME:.+]], label %[[BB_NONE:.+]]
 
@@ -81,8 +81,8 @@ use std::cmp::Ordering::{self, *};
 #[no_mangle]
 pub fn option_ordering_match(x: Option<Ordering>) -> char {
     // CHECK: %[[RAW:.+]] = load i8, ptr %x
-    // CHECK: %[[IS_NONE:.+]] = icmp eq i8 %[[RAW]], 2
-    // CHECK: %[[OPT_DISCR:.+]] = select i1 %[[IS_NONE]], i64 0, i64 1
+    // CHECK: %[[IS_SOME:.+]] = icmp ne i8 %[[RAW]], 2
+    // CHECK: %[[OPT_DISCR:.+]] = zext i1 %[[IS_SOME]] to i64
     // CHECK: %[[OPT_DISCR_T:.+]] = trunc nuw i64 %[[OPT_DISCR]] to i1
     // CHECK: br i1 %[[OPT_DISCR_T]], label %[[BB_SOME:.+]], label %[[BB_NONE:.+]]
 
@@ -109,8 +109,8 @@ pub fn option_ordering_match(x: Option<Ordering>) -> char {
 pub fn option_nonzero_match(x: Option<std::num::NonZero<u16>>) -> u16 {
     // CHECK: %[[OUT:.+]] = alloca [2 x i8]
 
-    // CHECK: %[[IS_NONE:.+]] = icmp eq i16 %x, 0
-    // CHECK: %[[OPT_DISCR:.+]] = select i1 %[[IS_NONE]], i64 0, i64 1
+    // CHECK: %[[IS_SOME:.+]] = icmp ne i16 %x, 0
+    // CHECK: %[[OPT_DISCR:.+]] = zext i1 %[[IS_SOME]] to i64
     // CHECK: %[[OPT_DISCR_T:.+]] = trunc nuw i64 %[[OPT_DISCR]] to i1
     // CHECK: br i1 %[[OPT_DISCR_T]], label %[[BB_SOME:.+]], label %[[BB_NONE:.+]]
 
