@@ -27,6 +27,7 @@ clippy_config = { path = "clippy_config" }
 clippy_lints = { path = "clippy_lints" }
 clippy_utils = { path = "clippy_utils" }
 rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
+clippy_lints_internal = { path = "clippy_lints_internal", optional = true }
 tempfile = { version = "3.3", optional = true }
 termize = "0.1"
 color-print = "0.3.4"
@@ -58,8 +59,8 @@ tokio = { version = "1", features = ["io-util"] }
 rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 
 [features]
-integration = ["tempfile"]
-internal = ["clippy_lints/internal", "tempfile"]
+integration = ["dep:tempfile"]
+internal = ["dep:clippy_lints_internal", "dep:tempfile"]
 
 [package.metadata.rust-analyzer]
 # This package uses #[feature(rustc_private)]

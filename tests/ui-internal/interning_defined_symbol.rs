@@ -1,4 +1,4 @@
-#![deny(clippy::internal)]
+#![deny(clippy::interning_defined_symbol)]
 #![allow(clippy::missing_clippy_version_attribute, clippy::let_unit_value)]
 #![feature(rustc_private)]
 

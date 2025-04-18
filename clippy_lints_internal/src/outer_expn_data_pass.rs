@@ -4,10 +4,11 @@ use clippy_utils::{is_lint_allowed, method_calls, paths};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint_defs::declare_tool_lint;
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Checks for calls to `cx.outer().expn_data()` and suggests to use
     /// the `cx.outer_expn_data()`
@@ -24,9 +25,10 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// expr.span.ctxt().outer_expn_data()
     /// ```
-    pub OUTER_EXPN_EXPN_DATA,
-    internal,
-    "using `cx.outer_expn().expn_data()` instead of `cx.outer_expn_data()`"
+    pub clippy::OUTER_EXPN_EXPN_DATA,
+    Warn,
+    "using `cx.outer_expn().expn_data()` instead of `cx.outer_expn_data()`",
+    report_in_external_macro: true
 }
 
 declare_lint_pass!(OuterExpnDataPass => [OUTER_EXPN_EXPN_DATA]);

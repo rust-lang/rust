@@ -4,12 +4,13 @@ use clippy_utils::{SpanlessEq, is_expr_path_def_path, is_lint_allowed, peel_bloc
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint_defs::declare_tool_lint;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 use std::borrow::{Borrow, Cow};
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Lints `span_lint_and_then` function calls, where the
     /// closure argument has only one statement and that statement is a method
@@ -64,9 +65,10 @@ declare_clippy_lint! {
     /// span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), note_msg);
     /// span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, None, note_msg);
     /// ```
-    pub COLLAPSIBLE_SPAN_LINT_CALLS,
-    internal,
-    "found collapsible `span_lint_and_then` calls"
+    pub clippy::COLLAPSIBLE_SPAN_LINT_CALLS,
+    Warn,
+    "found collapsible `span_lint_and_then` calls",
+    report_in_external_macro: true
 }
 
 declare_lint_pass!(CollapsibleCalls => [COLLAPSIBLE_SPAN_LINT_CALLS]);

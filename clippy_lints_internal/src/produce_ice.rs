@@ -1,10 +1,11 @@
 use rustc_ast::ast::NodeId;
 use rustc_ast::visit::FnKind;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_lint_defs::declare_tool_lint;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Not an actual lint. This lint is only meant for testing our customized internal compiler
     /// error message by calling `panic`.
@@ -16,9 +17,10 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// 🍦🍦🍦🍦🍦
     /// ```
-    pub PRODUCE_ICE,
-    internal,
-    "this message should not appear anywhere as we ICE before and don't emit the lint"
+    pub clippy::PRODUCE_ICE,
+    Warn,
+    "this message should not appear anywhere as we ICE before and don't emit the lint",
+    report_in_external_macro: true
 }
 
 declare_lint_pass!(ProduceIce => [PRODUCE_ICE]);

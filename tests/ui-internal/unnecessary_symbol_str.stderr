@@ -7,9 +7,8 @@ LL |     Symbol::intern("foo").as_str() == "clippy";
 note: the lint level is defined here
   --> tests/ui-internal/unnecessary_symbol_str.rs:2:9
    |
-LL | #![deny(clippy::internal)]
-   |         ^^^^^^^^^^^^^^^^
-   = note: `#[deny(clippy::unnecessary_symbol_str)]` implied by `#[deny(clippy::internal)]`
+LL | #![deny(clippy::unnecessary_symbol_str)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unnecessary `Symbol` to string conversion
   --> tests/ui-internal/unnecessary_symbol_str.rs:18:5

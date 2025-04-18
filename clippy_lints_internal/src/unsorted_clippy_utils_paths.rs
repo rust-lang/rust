@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast::{Crate, ItemKind, ModKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint_defs::declare_tool_lint;
 use rustc_session::declare_lint_pass;
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Checks that [`clippy_utils::paths`] is sorted lexically
     ///
@@ -12,9 +13,10 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// Wrong ordering of the util::paths constants.
-    pub UNSORTED_CLIPPY_UTILS_PATHS,
-    internal,
-    "various things that will negatively affect your clippy experience"
+    pub clippy::UNSORTED_CLIPPY_UTILS_PATHS,
+    Warn,
+    "various things that will negatively affect your clippy experience",
+    report_in_external_macro: true
 }
 
 declare_lint_pass!(UnsortedClippyUtilsPaths => [UNSORTED_CLIPPY_UTILS_PATHS]);

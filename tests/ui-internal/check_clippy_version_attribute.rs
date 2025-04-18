@@ -1,5 +1,5 @@
-#![deny(clippy::internal)]
 #![feature(rustc_private)]
+#![deny(clippy::invalid_clippy_version_attribute, clippy::missing_clippy_version_attribute)]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -86,6 +86,15 @@ mod internal_clippy_lints {
 }
 
 use crate::internal_clippy_lints::ALLOW_MISSING_ATTRIBUTE_ONE;
-declare_lint_pass!(Pass2 => [VALID_ONE, VALID_TWO, VALID_THREE, INVALID_ONE, INVALID_TWO, MISSING_ATTRIBUTE_ONE, MISSING_ATTRIBUTE_TWO, ALLOW_MISSING_ATTRIBUTE_ONE]);
+declare_lint_pass!(Pass2 => [
+    VALID_ONE,
+    VALID_TWO,
+    VALID_THREE,
+    INVALID_ONE,
+    INVALID_TWO,
+    MISSING_ATTRIBUTE_ONE,
+    MISSING_ATTRIBUTE_TWO,
+    ALLOW_MISSING_ATTRIBUTE_ONE,
+]);
 
 fn main() {}

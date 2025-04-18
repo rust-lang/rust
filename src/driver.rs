@@ -158,7 +158,8 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
 
             let conf = clippy_config::Conf::read(sess, &conf_path);
             clippy_lints::register_lints(lint_store, conf);
-            clippy_lints::register_pre_expansion_lints(lint_store, conf);
+            #[cfg(feature = "internal")]
+            clippy_lints_internal::register_lints(lint_store);
         }));
         config.extra_symbols = clippy_utils::sym::EXTRA_SYMBOLS.into();
 

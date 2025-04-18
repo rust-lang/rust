@@ -9,6 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint_defs::declare_tool_lint;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
@@ -17,7 +18,7 @@ use rustc_span::symbol::Symbol;
 
 use std::borrow::Cow;
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Checks for interning symbols that have already been pre-interned and defined as constants.
     ///
@@ -33,12 +34,13 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let _ = sym::f32;
     /// ```
-    pub INTERNING_DEFINED_SYMBOL,
-    internal,
-    "interning a symbol that is pre-interned and defined as a constant"
+    pub clippy::INTERNING_DEFINED_SYMBOL,
+    Warn,
+    "interning a symbol that is pre-interned and defined as a constant",
+    report_in_external_macro: true
 }
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Checks for unnecessary conversion from Symbol to a string.
     ///
@@ -54,9 +56,10 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// symbol == sym::clippy;
     /// ```
-    pub UNNECESSARY_SYMBOL_STR,
-    internal,
-    "unnecessary conversion between Symbol and string"
+    pub clippy::UNNECESSARY_SYMBOL_STR,
+    Warn,
+    "unnecessary conversion between Symbol and string",
+    report_in_external_macro: true
 }
 
 #[derive(Default)]

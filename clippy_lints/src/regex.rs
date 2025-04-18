@@ -76,7 +76,7 @@ declare_clippy_lint! {
     /// This is documented as an antipattern [on the regex documentation](https://docs.rs/regex/latest/regex/#avoid-re-compiling-regexes-especially-in-a-loop)
     ///
     /// ### Example
-    /// ```no_run
+    /// ```rust,ignore
     /// # let haystacks = [""];
     /// # const MY_REGEX: &str = "a.b";
     /// for haystack in haystacks {
@@ -87,7 +87,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// can be replaced with
-    /// ```no_run
+    /// ```rust,ignore
     /// # let haystacks = [""];
     /// # const MY_REGEX: &str = "a.b";
     /// let regex = regex::Regex::new(MY_REGEX).unwrap();

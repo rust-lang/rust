@@ -170,7 +170,6 @@ enum DevCommand {
                 "restriction",
                 "cargo",
                 "nursery",
-                "internal",
             ],
             default_value = "nursery",
         )]

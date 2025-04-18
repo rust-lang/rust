@@ -6,10 +6,11 @@ use clippy_utils::ty::match_type;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint_defs::declare_tool_lint;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, sym};
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     ///
     /// Detects symbol comparison using `Symbol::intern`.
@@ -21,9 +22,10 @@ declare_clippy_lint! {
     /// ### Example
     ///
     /// None, see suggestion.
-    pub SLOW_SYMBOL_COMPARISONS,
-    internal,
-    "detects slow comparisons of symbol"
+    pub clippy::SLOW_SYMBOL_COMPARISONS,
+    Warn,
+    "detects slow comparisons of symbol",
+    report_in_external_macro: true
 }
 
 declare_lint_pass!(SlowSymbolComparisons => [SLOW_SYMBOL_COMPARISONS]);

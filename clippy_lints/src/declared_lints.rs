@@ -3,36 +3,6 @@
 // Manual edits will be overwritten.
 
 pub static LINTS: &[&crate::LintInfo] = &[
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::almost_standard_lint_formulation::ALMOST_STANDARD_LINT_FORMULATION_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::collapsible_calls::COLLAPSIBLE_SPAN_LINT_CALLS_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::interning_defined_symbol::INTERNING_DEFINED_SYMBOL_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::interning_defined_symbol::UNNECESSARY_SYMBOL_STR_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::invalid_paths::INVALID_PATHS_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::lint_without_lint_pass::DEFAULT_LINT_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::lint_without_lint_pass::INVALID_CLIPPY_VERSION_ATTRIBUTE_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::lint_without_lint_pass::LINT_WITHOUT_LINT_PASS_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::lint_without_lint_pass::MISSING_CLIPPY_VERSION_ATTRIBUTE_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::msrv_attr_impl::MISSING_MSRV_ATTR_IMPL_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::outer_expn_data_pass::OUTER_EXPN_EXPN_DATA_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::produce_ice::PRODUCE_ICE_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::slow_symbol_comparisons::SLOW_SYMBOL_COMPARISONS_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::unnecessary_def_path::UNNECESSARY_DEF_PATH_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::unsorted_clippy_utils_paths::UNSORTED_CLIPPY_UTILS_PATHS_INFO,
     crate::absolute_paths::ABSOLUTE_PATHS_INFO,
     crate::almost_complete_range::ALMOST_COMPLETE_RANGE_INFO,
     crate::approx_const::APPROX_CONSTANT_INFO,

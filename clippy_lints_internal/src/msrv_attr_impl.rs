@@ -5,16 +5,17 @@ use clippy_utils::{match_def_path, paths};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint_defs::declare_tool_lint;
 use rustc_middle::ty::{self, EarlyBinder, GenericArgKind};
 use rustc_session::declare_lint_pass;
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Check that the `extract_msrv_attr!` macro is used, when a lint has a MSRV.
-    ///
-    pub MISSING_MSRV_ATTR_IMPL,
-    internal,
-    "checking if all necessary steps were taken when adding a MSRV to a lint"
+    pub clippy::MISSING_MSRV_ATTR_IMPL,
+    Warn,
+    "checking if all necessary steps were taken when adding a MSRV to a lint",
+    report_in_external_macro: true
 }
 
 declare_lint_pass!(MsrvAttrImpl => [MISSING_MSRV_ATTR_IMPL]);

@@ -5,12 +5,13 @@ use rustc_hir as hir;
 use rustc_hir::Item;
 use rustc_hir::def::DefKind;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint_defs::declare_tool_lint;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, FloatTy};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Checks the paths module for invalid paths.
     ///
@@ -19,9 +20,10 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// None.
-    pub INVALID_PATHS,
-    internal,
-    "invalid path"
+    pub clippy::INVALID_PATHS,
+    Warn,
+    "invalid path",
+    report_in_external_macro: true
 }
 
 declare_lint_pass!(InvalidPaths => [INVALID_PATHS]);
