@@ -881,8 +881,8 @@ pub(crate) struct MissingLangItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_lang_item_fn_with_track_caller)]
-pub(crate) struct LangItemWithTrackCaller {
+#[diag(passes_eii_fn_with_track_caller)]
+pub(crate) struct EiiWithTrackCaller {
     #[primary_span]
     pub attr_span: Span,
     pub name: Symbol,
@@ -891,8 +891,8 @@ pub(crate) struct LangItemWithTrackCaller {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_lang_item_fn_with_target_feature)]
-pub(crate) struct LangItemWithTargetFeature {
+#[diag(passes_eii_fn_with_target_feature)]
+pub(crate) struct EiiWithTargetFeature {
     #[primary_span]
     pub attr_span: Span,
     pub name: Symbol,
@@ -2012,6 +2012,7 @@ pub(crate) struct EiiWithoutImpl {
     pub name: Symbol,
 
     pub current_crate_name: Symbol,
+    pub decl_crate_name: Symbol,
     #[help]
     pub help: (),
 }

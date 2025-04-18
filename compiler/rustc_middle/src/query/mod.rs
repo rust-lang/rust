@@ -52,6 +52,7 @@ use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
+use crate::middle::eii::EiiMap;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -1114,7 +1115,7 @@ rustc_queries! {
         desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
     }
 
-    query get_externally_implementable_item_impls(_: ()) -> &'tcx rustc_data_structures::fx::FxIndexMap<DefId, (DefId, LocalDefId)> {
+    query get_externally_implementable_item_impls(_: ()) -> &'tcx EiiMap {
         desc { "check externally implementable items" }
     }
 
@@ -1734,11 +1735,6 @@ rustc_queries! {
         eval_always
         fatal_cycle
         desc { "checking if the crate has_alloc_error_handler" }
-        separate_provide_extern
-    }
-    query has_panic_handler(_: CrateNum) -> bool {
-        fatal_cycle
-        desc { "checking if the crate has_panic_handler" }
         separate_provide_extern
     }
     query is_profiler_runtime(_: CrateNum) -> bool {

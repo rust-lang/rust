@@ -115,7 +115,7 @@ use rustc_middle::mir::mono::{
     MonoItemPartitions, Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
-use rustc_middle::ty::{self, InstanceKind, TyCtxt};
+use rustc_middle::ty::{self, Instance, InstanceKind, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
@@ -755,6 +755,7 @@ fn mono_item_linkage_and_visibility<'tcx>(
     if let Some(explicit_linkage) = mono_item.explicit_linkage(tcx) {
         return (explicit_linkage, Visibility::Default);
     }
+
     let vis = mono_item_visibility(
         tcx,
         mono_item,
@@ -762,7 +763,18 @@ fn mono_item_linkage_and_visibility<'tcx>(
         can_export_generics,
         always_export_generics,
     );
-    (Linkage::External, vis)
+
+    // The check for EII implementations and their defaults is also done in shared and static
+    // libraries. And shared libraries may later be linked together, both implementing the EII.
+    // This conflicting implementations may show up. We want to ignore this and just link em
+    // together anyway. LLVM ensures the last one is the one that's chosen
+    // TODO: this isn't the problem if they both decided to choose either the default or the
+    // same explicit impl but if their view on it differs it is a problem!
+    if let MonoItem::Fn(Instance { def: InstanceKind::EiiShim { .. }, .. }) = mono_item {
+        (Linkage::WeakAny, vis)
+    } else {
+        (Linkage::External, vis)
+    }
 }
 
 type CguNameCache = UnordMap<(DefId, bool), Symbol>;
@@ -806,6 +818,7 @@ fn mono_item_visibility<'tcx>(
         | InstanceKind::AsyncDropGlueCtorShim(def_id, _) => def_id,
 
         InstanceKind::EiiShim { .. } => {
+            *can_be_internalized = false;
             // Out of the three visibilities, only Default makes symbols visible outside the current
             // DSO. For EIIs this is explicitly the intended visibilty. If another DSO is refering
             // to an extern item, the implementation may be generated downstream. That symbol does

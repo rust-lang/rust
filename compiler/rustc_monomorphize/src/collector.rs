@@ -208,7 +208,7 @@
 use std::cell::OnceCell;
 use std::path::PathBuf;
 
-use rustc_attr_parsing::{AttributeKind, EIIDecl, InlineAttr, find_attr};
+use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -217,6 +217,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::eii::EiiMapping;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{CollectionMode, InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
@@ -1613,26 +1614,20 @@ impl<'v> RootCollector<'_, 'v> {
     /// For each externally implementable item, we should generate an alias MonoItem that
     /// determines what implementation is called. This could be a default implementation.
     fn push_extra_eii_roots(&mut self) {
-        for (decl, (chosen_impl, shim_did)) in self.tcx.get_externally_implementable_item_impls(())
+        for (shim_did, &EiiMapping { extern_item, chosen_impl, .. }) in
+            self.tcx.get_externally_implementable_item_impls(())
         {
-            let Some((eii_extern_item, span)) = find_attr!(
-                self.tcx.get_all_attrs(*decl),
-                AttributeKind::EiiMacroFor(EIIDecl { eii_extern_item, span, .. }) => (*eii_extern_item, *span)
-            ) else {
-                bug!("missing attr on EII macro");
-            };
-
             self.output.push(create_fn_mono_item(
                 self.tcx,
                 ty::Instance {
                     def: ty::InstanceKind::EiiShim {
                         def_id: (*shim_did).into(),
-                        extern_item: eii_extern_item,
-                        chosen_impl: *chosen_impl,
+                        extern_item,
+                        chosen_impl,
                     },
                     args: ty::GenericArgs::empty(),
                 },
-                span,
+                DUMMY_SP,
             ));
         }
     }

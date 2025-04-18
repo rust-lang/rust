@@ -33,6 +33,7 @@ use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgK
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::eii::EiiMapping;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypingMode, fold_regions};
@@ -1370,6 +1371,16 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
             //
             //    args.as_closure().sig(def_id, tcx)
             bug!("to get the signature of a closure, use `args.as_closure().sig()` not `fn_sig()`",);
+        }
+
+        x @ Synthetic => {
+            if let Some(EiiMapping { extern_item, .. }) =
+                tcx.get_externally_implementable_item_impls(()).get(&def_id)
+            {
+                return tcx.fn_sig(extern_item);
+            } else {
+                bug!("unexpected sort of node in fn_sig(): {:?}", x);
+            }
         }
 
         x => {

@@ -803,11 +803,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 {
                     let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
 
-                    self.dcx().emit_err(errors::LangItemWithTrackCaller {
+                    self.dcx().emit_err(errors::EiiWithTrackCaller {
                         attr_span,
                         name: lang_item,
                         sig_span: sig.span,
                     });
+                }
+
+                if let Some(impls) = find_attr!(attrs, AttributeKind::EiiImpl(impls) => impls) {
+                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
+                    for i in impls {
+                        self.dcx().emit_err(errors::EiiWithTrackCaller {
+                            attr_span,
+                            name: self.tcx.item_name(i.eii_macro),
+                            sig_span: sig.span,
+                        });
+                    }
                 }
             }
             Target::Method(..) | Target::ForeignFn | Target::Closure => {}
@@ -912,11 +923,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 {
                     let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
 
-                    self.dcx().emit_err(errors::LangItemWithTargetFeature {
+                    self.dcx().emit_err(errors::EiiWithTargetFeature {
                         attr_span: attr.span(),
                         name: lang_item,
                         sig_span: sig.span,
                     });
+                }
+
+                if let Some(impls) = find_attr!(attrs, AttributeKind::EiiImpl(impls) => impls) {
+                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
+                    for i in impls {
+                        self.dcx().emit_err(errors::EiiWithTargetFeature {
+                            attr_span: attr.span(),
+                            name: self.tcx.item_name(i.eii_macro),
+                            sig_span: sig.span,
+                        });
+                    }
                 }
             }
             // FIXME: #[target_feature] was previously erroneously allowed on statements and some

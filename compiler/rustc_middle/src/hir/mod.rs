@@ -16,6 +16,7 @@ use rustc_hir::*;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
+use crate::middle::eii::EiiMapping;
 use crate::query::Providers;
 use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
 
@@ -223,6 +224,10 @@ pub fn provide(providers: &mut Providers) {
         }) = tcx.hir_node(tcx.local_def_id_to_hir_id(def_id))
         {
             idents
+        } else if let Some(EiiMapping { chosen_impl, .. }) =
+            tcx.get_externally_implementable_item_impls(()).get(&def_id)
+        {
+            tcx.fn_arg_names(chosen_impl)
         } else {
             span_bug!(
                 tcx.hir_span(tcx.local_def_id_to_hir_id(def_id)),

@@ -8,6 +8,7 @@ use std::mem;
 use hir::ItemKind;
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
+use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -813,6 +814,12 @@ fn check_item<'tcx>(
         DefKind::GlobalAsm => {
             // global_asm! is always live.
             worklist.push((id.owner_id.def_id, ComesFromAllowExpect::No));
+        }
+        DefKind::Fn => {
+            // Implementations of EII are always considered live.
+            if find_attr!(tcx.get_all_attrs(id.owner_id.def_id), AttributeKind::EiiImpl(_)) {
+                worklist.push((id.owner_id.def_id, ComesFromAllowExpect::No));
+            }
         }
         _ => {}
     }

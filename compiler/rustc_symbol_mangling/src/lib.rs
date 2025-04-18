@@ -99,6 +99,7 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::middle::eii::EiiMapping;
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Instance, TyCtxt};
@@ -262,8 +263,9 @@ fn compute_symbol_name<'tcx>(
     // but when we generate a symbol for it the name must actually match the name of the extern
     // generated as part of the declaration of the EII. So, we use an instance of `extern_item` as
     // the instance used for ocmputing the symbol name.
-    let instance = if let ty::InstanceKind::EiiShim { def_id: _, extern_item, chosen_impl: _ } =
-        instance.def
+    let eii_map = tcx.get_externally_implementable_item_impls(());
+    let instance = if let Some(EiiMapping { extern_item, .. }) =
+        instance.def_id().as_local().and_then(|x| eii_map.get(&x)).copied()
     {
         Instance::mono(tcx, extern_item)
     } else {

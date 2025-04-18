@@ -59,6 +59,8 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
     let special_runtime_crate =
         tcx.is_panic_runtime(LOCAL_CRATE) || tcx.is_compiler_builtins(LOCAL_CRATE);
 
+    let eii_map = tcx.get_externally_implementable_item_impls(());
+
     let mut reachable_non_generics: DefIdMap<_> = tcx
         .reachable_set(())
         .items()
@@ -96,6 +98,17 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
             }
 
             if Instance::mono(tcx, def_id.into()).def.requires_inline(tcx) {
+                return None;
+            }
+
+            // We don't want to export EII shims. These are always created in final crates of a
+            // compile graph. The are exported in the linker sense - other compilation units can access them.
+            // But once we made a shim, we're the last one so we don't have to export downwards.
+            // The reason we explicitly need to exclude these is that for dylibs (.so) we already
+            // generate EII shims. However, these aren't always the final crate. However, in that
+            // case the final crate will generate its own shim so we shouldn't export the existing
+            // one from the dylib.
+            if eii_map.contains_key(&def_id) {
                 return None;
             }
 

@@ -322,6 +322,14 @@ passes_duplicate_lang_item_crate_depends =
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
+passes_eii_fn_with_target_feature =
+    `#[{$name}]` is not allowed to have `#[target_feature]`
+    .label = `#[{$name}]` is not allowed to have `#[target_feature]`
+
+passes_eii_fn_with_track_caller =
+    `#[{$name}]` is not allowed to have `#[track_caller]`
+    .label = `#[{$name}]` is not allowed to have `#[track_caller]`
+
 passes_eii_impl_not_function =
     `eii_macro_for` is only valid on functions
 
@@ -330,8 +338,8 @@ passes_eii_impl_requires_unsafe =
 passes_eii_impl_requires_unsafe_suggestion = wrap the attribute in `unsafe(...)`
 
 passes_eii_without_impl =
-    couldn't find an implementation for `#[{$name}]`
-    .label = an implementation was expected by this declaration
+    `#[{$name}]` required, but not found
+    .label = expected because `#[{$name}]` was declared here in crate `{$decl_crate_name}`
     .help = expected at least one implementation in crate `{$current_crate_name}` or any of its dependencies
 passes_export_name =
     attribute should be applied to a free function, impl method or static
@@ -437,14 +445,6 @@ passes_lang_item_fn = {$name ->
     *[other] `{$name}` lang item
 } function
 
-passes_lang_item_fn_with_target_feature =
-    {passes_lang_item_fn} is not allowed to have `#[target_feature]`
-    .label = {passes_lang_item_fn} is not allowed to have `#[target_feature]`
-
-passes_lang_item_fn_with_track_caller =
-    {passes_lang_item_fn} is not allowed to have `#[track_caller]`
-    .label = {passes_lang_item_fn} is not allowed to have `#[track_caller]`
-
 passes_lang_item_on_incorrect_target =
     `{$name}` lang item must be applied to a {$expected_target}
     .label = attribute should be applied to a {$expected_target}, not a {$actual_target}
@@ -512,9 +512,6 @@ passes_missing_lang_item =
     lang item required, but not found: `{$name}`
     .note = this can occur when a binary crate with `#![no_std]` is compiled for a target where `{$name}` is defined in the standard library
     .help = you may be able to compile for a target that doesn't need `{$name}`, specify a target with `--target` or in `.cargo/config`
-
-passes_missing_panic_handler =
-    `#[panic_handler]` function required, but not found
 
 passes_missing_stability_attr =
     {$descr} has missing stability attribute

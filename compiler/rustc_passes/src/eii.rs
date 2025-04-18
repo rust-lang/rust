@@ -2,11 +2,12 @@
 
 use std::iter;
 
-use rustc_attr_parsing::EIIImpl;
+use rustc_attr_parsing::{EIIDecl, EIIImpl};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::DisambiguatorState;
+use rustc_middle::middle::eii::EiiMapping;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_span::Symbol;
@@ -17,19 +18,33 @@ use crate::errors::{DuplicateEiiImpls, EiiWithoutImpl};
 /// chosen. This could be a default implementation if no explicit implementation is found.
 ///
 /// The returned map maps the defid of declaration macros to the defid of implementations.
-pub(crate) fn get_eii_impls<'tcx>(
+pub(crate) fn get_externally_implementable_item_impls<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> &'tcx FxIndexMap<DefId, (DefId, LocalDefId)> {
+) -> &'tcx FxIndexMap<LocalDefId, EiiMapping> {
     // We only need to check whether there are duplicate or missing EIIs if we're
     // emitting something that's not an rlib.
     let needs_check = tcx.crate_types().iter().any(|kind| match *kind {
-        CrateType::Dylib
-            | CrateType::ProcMacro
-            | CrateType::Cdylib
-            | CrateType::Executable
-            | CrateType::Staticlib
-            | CrateType::Sdylib => true,
+        // Executables are leafs of the crate graph and need all EIIs to be satisfied,
+        // either with defaults or explicit implementations. So they check their crate
+        // graph to make sure this is the case.
+        CrateType::Executable => true,
+        // Proc macros are leafs of their crate graph and will be run,
+        // and so need to check the EIIs of their dependencies.
+        CrateType::ProcMacro => true,
+
+        // These are a litte difficult. We don't know whether things depending on these
+        // will perform checks to see if EIIs are implemented, or duplicated, or any other
+        // of the checks performed in this function. So we must do the checks. However,
+        // this can later lead to duplicate symbols when linking them together.
+        // For this reason, we later mark EII symbols as "globally shared" and "may conflict".
+        // In other words, if two shared libraries both provide an implementation for an EII,
+        // that's fine! Just choose one... And because their mangled symbol names are the same
+        // (that's exactly the conflict we're having) we hopefully have the same exact implementation.
+        CrateType::Dylib | CrateType::Cdylib | CrateType::Staticlib | CrateType::Sdylib => true,
+
+        // Rlibs are just a step in the crate graph.
+        // Later on we'll link it together into an executable and over there we can check for EIIs
         CrateType::Rlib => false,
     });
     if !needs_check {
@@ -38,7 +53,8 @@ pub(crate) fn get_eii_impls<'tcx>(
         return &*tcx.arena.alloc(FxIndexMap::default());
     }
 
-    let mut eiis = FxIndexMap::<_, (_, FxIndexMap<DefId, (EIIImpl, CrateNum)>)>::default();
+    let mut eiis =
+        FxIndexMap::<DefId, (EIIDecl, CrateNum, FxIndexMap<DefId, (EIIImpl, CrateNum)>)>::default();
 
     // println!("current crate: {}", tcx.crate_name(LOCAL_CRATE));
 
@@ -50,9 +66,9 @@ pub(crate) fn get_eii_impls<'tcx>(
 
         // update or insert the corresponding entries
         for (did, (decl, impls)) in crate_eiis {
-            eiis.entry(did)
-                .or_insert_with(|| (decl, Default::default()))
-                .1
+            eiis.entry(*did)
+                .or_insert_with(|| (*decl, cnum, Default::default()))
+                .2
                 .extend(impls.into_iter().map(|(did, i)| (*did, (*i, cnum))));
         }
     }
@@ -61,7 +77,7 @@ pub(crate) fn get_eii_impls<'tcx>(
 
     // now we have all eiis! For each of them, choose one we want to actually generate.
 
-    for (decl_did, (decl, impls)) in eiis {
+    for (decl_did, (decl, decl_crate, impls)) in eiis {
         // println!("for decl: {decl_did:?}: {decl:?}");
         let mut default_impls = Vec::new();
         let mut explicit_impls = Vec::new();
@@ -78,7 +94,7 @@ pub(crate) fn get_eii_impls<'tcx>(
 
         if explicit_impls.len() > 1 {
             tcx.dcx().emit_err(DuplicateEiiImpls {
-                name: tcx.item_name(*decl_did),
+                name: tcx.item_name(decl_did),
                 first_span: tcx.def_span(explicit_impls[0].0),
                 first_crate: tcx.crate_name(explicit_impls[0].1),
                 second_span: tcx.def_span(explicit_impls[1].0),
@@ -111,20 +127,30 @@ pub(crate) fn get_eii_impls<'tcx>(
         None,
         &mut DisambiguatorState::new(),
             );
-            feed.generics_of(tcx.generics_of(*chosen_impl).clone());
-            feed.type_of(tcx.type_of(*chosen_impl).clone());
-            feed.def_span(tcx.def_span(*chosen_impl));
+
+            let extern_item_did = decl.eii_extern_item;
+
+            feed.generics_of(tcx.generics_of(extern_item_did).clone());
+            feed.type_of(tcx.type_of(extern_item_did).clone());
+            feed.def_span(tcx.def_span(chosen_impl));
+            feed.visibility(tcx.visibility(chosen_impl));
             feed.feed_hir();
+
+            // println!("generating {extern_item_did:?} for impl {chosen_impl:?} in crate {} with did {decl_did:?}", tcx.crate_name(LOCAL_CRATE));
 
             let shim_did = feed.def_id();
 
             // println!("shim: {shim_did:?}");
 
-            final_impls.insert(*decl_did, (*chosen_impl, shim_did));
+            final_impls.insert(
+                shim_did,
+                EiiMapping { extern_item: extern_item_did, chosen_impl: *chosen_impl },
+            );
         } else {
             tcx.dcx().emit_err(EiiWithoutImpl {
                 current_crate_name: tcx.crate_name(LOCAL_CRATE),
-                name: tcx.item_name(*decl_did),
+                decl_crate_name: tcx.crate_name(decl_crate),
+                name: tcx.item_name(decl_did),
                 span: decl.span,
                 help: (),
             });

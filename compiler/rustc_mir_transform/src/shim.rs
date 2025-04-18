@@ -114,22 +114,29 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             receiver_by_ref,
         } => build_construct_coroutine_by_move_shim(tcx, coroutine_closure_def_id, receiver_by_ref),
 
-        e @ ty::InstanceKind::EiiShim { def_id: _, extern_item: _, chosen_impl } => {
+        e @ ty::InstanceKind::EiiShim { def_id: _, extern_item, chosen_impl } => {
             let source = MirSource::from_instance(e);
 
-            let fn_sig = tcx.fn_sig(chosen_impl).instantiate_identity().skip_binder();
-            let func_ty = Ty::new_fn_def(tcx, chosen_impl, GenericArgs::empty());
+            // get the signature for the new function this shim is creating
+            let shim_fn_sig = tcx.fn_sig(extern_item).instantiate_identity();
+            let shim_fn_sig = tcx.instantiate_bound_regions_with_erased(shim_fn_sig);
 
             let span = tcx.def_span(chosen_impl);
             let source_info = SourceInfo::outermost(span);
 
+            // we want to generate a call to this function
+            let args = ty::GenericArgs::identity_for_item(tcx, chosen_impl);
+            let chosen_fn_ty = Ty::new_fn_def(tcx, chosen_impl, args);
+
             let func = Operand::Constant(Box::new(ConstOperand {
                 span,
                 user_ty: None,
-                const_: Const::zero_sized(func_ty),
+                const_: Const::zero_sized(chosen_fn_ty),
             }));
 
-            let locals = local_decls_for_sig(&fn_sig, span);
+            // println!("generating EII shim for extern item {extern_item:?} and impl {chosen_impl:?}");
+
+            let locals = local_decls_for_sig(&shim_fn_sig, span);
             let mut blocks = IndexVec::new();
 
             let return_block = BasicBlock::new(1);
@@ -162,7 +169,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                 is_cleanup: false,
             });
 
-            new_body(source, blocks, locals, fn_sig.inputs().len(), span)
+            new_body(source, blocks, locals, shim_fn_sig.inputs().len(), span)
         }
 
         ty::InstanceKind::DropGlue(def_id, ty) => {
