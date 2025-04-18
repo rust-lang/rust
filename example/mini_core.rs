@@ -58,6 +58,9 @@ trait Receiver {
 #[lang = "copy"]
 pub trait Copy {}
 
+#[lang = "bikeshed_guaranteed_no_drop"]
+pub trait BikeshedGuaranteedNoDrop {}
+
 impl Copy for bool {}
 impl Copy for u8 {}
 impl Copy for u16 {}
@@ -128,6 +131,14 @@ pub trait Mul<RHS = Self> {
 }
 
 impl Mul for u8 {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self * rhs
+    }
+}
+
+impl Mul for i32 {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -238,6 +249,14 @@ impl Sub for i8 {
 }
 
 impl Sub for i16 {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        self - rhs
+    }
+}
+
+impl Sub for i32 {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -617,40 +636,28 @@ pub union MaybeUninit<T> {
 pub mod intrinsics {
     #[rustc_intrinsic]
     pub fn abort() -> !;
-
     #[rustc_intrinsic]
     pub fn size_of<T>() -> usize;
-
     #[rustc_intrinsic]
-    pub unsafe fn size_of_val<T: ?::Sized>(_val: *const T) -> usize;
-
+    pub unsafe fn size_of_val<T: ?::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
     pub fn min_align_of<T>() -> usize;
-
     #[rustc_intrinsic]
-    pub unsafe fn min_align_of_val<T: ?::Sized>(_val: *const T) -> usize;
-
+    pub unsafe fn min_align_of_val<T: ?::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
-    pub unsafe fn copy<T>(_src: *const T, _dst: *mut T, _count: usize);
-
+    pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
     #[rustc_intrinsic]
-    pub unsafe fn transmute<T, U>(_e: T) -> U;
-
+    pub unsafe fn transmute<T, U>(e: T) -> U;
     #[rustc_intrinsic]
-    pub unsafe fn ctlz_nonzero<T>(_x: T) -> u32;
-
+    pub unsafe fn ctlz_nonzero<T>(x: T) -> u32;
     #[rustc_intrinsic]
     pub fn needs_drop<T: ?::Sized>() -> bool;
-
     #[rustc_intrinsic]
-    pub fn bitreverse<T>(_x: T) -> T;
-
+    pub fn bitreverse<T>(x: T) -> T;
     #[rustc_intrinsic]
-    pub fn bswap<T>(_x: T) -> T;
-
+    pub fn bswap<T>(x: T) -> T;
     #[rustc_intrinsic]
-    pub unsafe fn write_bytes<T>(_dst: *mut T, _val: u8, _count: usize);
-
+    pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     #[rustc_intrinsic]
     pub unsafe fn unreachable() -> !;
 }
@@ -694,7 +701,7 @@ impl<T> Index<usize> for [T] {
     }
 }
 
-extern {
+extern "C" {
     type VaListImpl;
 }
 

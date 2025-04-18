@@ -9,9 +9,10 @@
 //      12
 //      1
 
-#![feature(no_core, start)]
+#![feature(no_core)]
 #![no_std]
 #![no_core]
+#![no_main]
 
 extern crate mini_core;
 use mini_core::*;
@@ -32,8 +33,8 @@ static mut TEST2: Test = Test { field: 14 };
 
 static mut WITH_REF: WithRef = WithRef { refe: unsafe { &TEST } };
 
-#[start]
-fn main(mut argc: isize, _argv: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(argc: isize, _argv: *const *const u8) -> i32 {
     unsafe {
         libc::printf(b"%ld\n\0" as *const u8 as *const i8, CONSTANT);
         libc::printf(b"%ld\n\0" as *const u8 as *const i8, TEST2.field);

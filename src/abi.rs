@@ -1,6 +1,7 @@
 #[cfg(feature = "master")]
 use gccjit::FnAttribute;
 use gccjit::{ToLValue, ToRValue, Type};
+use rustc_abi::{Reg, RegKind};
 use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeCodegenMethods};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
@@ -8,16 +9,16 @@ use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
 use rustc_session::config;
-use rustc_target::abi::call::{ArgAttributes, CastTarget, FnAbi, PassMode, Reg, RegKind};
 #[cfg(feature = "master")]
 use rustc_target::callconv::Conv;
+use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, PassMode};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::intrinsic::ArgAbiExt;
 use crate::type_of::LayoutGccExt;
 
-impl<'a, 'gcc, 'tcx> AbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
+impl AbiBuilderMethods for Builder<'_, '_, '_> {
     fn get_param(&mut self, index: usize) -> Self::Value {
         let func = self.current_func();
         let param = func.get_param(index as i32);
@@ -136,10 +137,10 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             if cx.sess().opts.optimize == config::OptLevel::No {
                 return ty;
             }
-            if attrs.regular.contains(rustc_target::abi::call::ArgAttribute::NoAlias) {
+            if attrs.regular.contains(rustc_target::callconv::ArgAttribute::NoAlias) {
                 ty = ty.make_restrict()
             }
-            if attrs.regular.contains(rustc_target::abi::call::ArgAttribute::NonNull) {
+            if attrs.regular.contains(rustc_target::callconv::ArgAttribute::NonNull) {
                 non_null_args.push(arg_index as i32 + 1);
             }
             ty
@@ -238,7 +239,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 }
 
 #[cfg(feature = "master")]
-pub fn conv_to_fn_attribute<'gcc>(conv: Conv, _arch: &str) -> Option<FnAttribute<'gcc>> {
+pub fn conv_to_fn_attribute<'gcc>(conv: Conv, arch: &str) -> Option<FnAttribute<'gcc>> {
     // TODO: handle the calling conventions returning None.
     let attribute = match conv {
         Conv::C
@@ -249,20 +250,21 @@ pub fn conv_to_fn_attribute<'gcc>(conv: Conv, _arch: &str) -> Option<FnAttribute
         Conv::Cold => return None,
         Conv::PreserveMost => return None,
         Conv::PreserveAll => return None,
-        /*Conv::GpuKernel => {
+        Conv::GpuKernel => {
+            // TODO(antoyo): remove clippy allow attribute when this is implemented.
+            #[allow(clippy::if_same_then_else)]
             if arch == "amdgpu" {
-                return None
+                return None;
             } else if arch == "nvptx64" {
-                return None
+                return None;
             } else {
-                panic!("Architecture {arch} does not support GpuKernel calling convention");
+                panic!("Architecture {} does not support GpuKernel calling convention", arch);
             }
-        }*/
+        }
         Conv::AvrInterrupt => return None,
         Conv::AvrNonBlockingInterrupt => return None,
         Conv::ArmAapcs => return None,
         Conv::Msp430Intr => return None,
-        Conv::PtxKernel => return None,
         Conv::X86Fastcall => return None,
         Conv::X86Intr => return None,
         Conv::X86Stdcall => return None,

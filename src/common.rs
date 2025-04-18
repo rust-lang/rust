@@ -59,7 +59,7 @@ pub fn type_is_pointer(typ: Type<'_>) -> bool {
     typ.get_pointee().is_some()
 }
 
-impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
+impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
     fn const_null(&self, typ: Type<'gcc>) -> RValue<'gcc> {
         if type_is_pointer(typ) { self.context.new_null(typ) } else { self.const_int(typ, 0) }
     }
@@ -141,13 +141,12 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn const_str(&self, s: &str) -> (RValue<'gcc>, RValue<'gcc>) {
-        let str_global = *self
-            .const_str_cache
-            .borrow_mut()
-            .raw_entry_mut()
-            .from_key(s)
-            .or_insert_with(|| (s.to_owned(), self.global_string(s)))
-            .1;
+        let mut const_str_cache = self.const_str_cache.borrow_mut();
+        let str_global = const_str_cache.get(s).copied().unwrap_or_else(|| {
+            let g = self.global_string(s);
+            const_str_cache.insert(s.to_owned(), g);
+            g
+        });
         let len = s.len();
         let cs = self.const_ptrcast(
             str_global.get_address(None),
@@ -229,7 +228,12 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     GlobalAlloc::VTable(ty, dyn_ty) => {
                         let alloc = self
                             .tcx
-                            .global_alloc(self.tcx.vtable_allocation((ty, dyn_ty.principal())))
+                            .global_alloc(self.tcx.vtable_allocation((
+                                ty,
+                                dyn_ty.principal().map(|principal| {
+                                    self.tcx.instantiate_bound_regions_with_erased(principal)
+                                }),
+                            )))
                             .unwrap_memory();
                         let init = const_alloc_to_gcc(self, alloc);
                         self.static_addr_of(init, alloc.inner().align, None)
@@ -253,7 +257,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         }
     }
 
-    fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
+    fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value {
         const_alloc_to_gcc(self, alloc)
     }
 
