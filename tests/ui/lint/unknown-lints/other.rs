@@ -1,6 +1,4 @@
-//@ ignore-test (auxiliary)
-
-// Companion to allow-in-other-module.rs
+//@ ignore-auxiliary (used by `./allow-in-other-module.rs`)
 
 // This should not warn.
 #![allow(not_a_real_lint)]

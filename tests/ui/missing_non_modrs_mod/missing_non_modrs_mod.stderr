@@ -1,5 +1,5 @@
 error[E0583]: file not found for module `missing`
-  --> $DIR/foo.rs:4:1
+  --> $DIR/foo.rs:3:1
    |
 LL | mod missing;
    | ^^^^^^^^^^^^

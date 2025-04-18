@@ -27,7 +27,7 @@ use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use tracing::{debug, info};
 
-use crate::clean::inline::build_external_trait;
+use crate::clean::inline::build_trait;
 use crate::clean::{self, ItemId};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
@@ -385,7 +385,7 @@ pub(crate) fn run_global_ctxt(
     //
     // Note that in case of `#![no_core]`, the trait is not available.
     if let Some(sized_trait_did) = ctxt.tcx.lang_items().sized_trait() {
-        let sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
+        let sized_trait = build_trait(&mut ctxt, sized_trait_did);
         ctxt.external_traits.insert(sized_trait_did, sized_trait);
     }
 

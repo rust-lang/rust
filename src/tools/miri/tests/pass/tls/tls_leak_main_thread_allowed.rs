@@ -13,7 +13,7 @@ pub fn main() {
     TLS.set(Some(Box::leak(Box::new(123))));
 
     // We can only ignore leaks on targets that use `#[thread_local]` statics to implement
-    // `thread_local!`. Ignore the test on targest that don't.
+    // `thread_local!`. Ignore the test on targets that don't.
     if cfg!(target_thread_local) {
         thread_local! {
             static TLS_KEY: Cell<Option<&'static i32>> = Cell::new(None);

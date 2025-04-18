@@ -101,6 +101,10 @@ fn parse_cfg_name_directive<'a>(
         message: "always"
     }
     condition! {
+        name: "auxiliary",
+        message: "used by another main test file"
+    }
+    condition! {
         name: &config.target,
         allowed_names: &target_cfgs.all_targets,
         message: "when the target is {name}"
