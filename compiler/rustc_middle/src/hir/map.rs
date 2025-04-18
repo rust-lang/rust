@@ -1030,9 +1030,9 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::PreciseCapturingNonLifetimeArg(param) => param.ident.span,
             Node::Synthetic => {
                 if let Some(EiiMapping { chosen_impl, .. }) =
-                    self.tcx.get_externally_implementable_item_impls(()).get(&hir_id.owner.def_id)
+                    self.get_externally_implementable_item_impls(()).get(&hir_id.owner.def_id)
                 {
-                    self.tcx.def_span(chosen_impl)
+                    self.def_span(chosen_impl)
                 } else {
                     unreachable!()
                 }

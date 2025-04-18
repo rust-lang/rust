@@ -1,9 +1,14 @@
-error[E0053]: function `other` has a type that is incompatible with the declaration
+error[E0053]: function `other` has a type that is incompatible with the declaration of `#[foo]`
   --> $DIR/wrong_ret_ty.rs:18:18
    |
 LL | fn other(_x: u64) {
    |                  ^ expected `u64`, found `()`
    |
+note: expected this because of this attribute
+  --> $DIR/wrong_ret_ty.rs:17:1
+   |
+LL | #[foo]
+   | ^^^^^^
 note: type in declaration
   --> $DIR/wrong_ret_ty.rs:14:28
    |

@@ -782,10 +782,9 @@ impl MetadataBlob {
                     )?;
                     writeln!(
                         out,
-                        "has_global_allocator {} has_alloc_error_handler {} has_panic_handler {} has_default_lib_allocator {}",
+                        "has_global_allocator {} has_alloc_error_handler {} has_default_lib_allocator {}",
                         root.has_global_allocator,
                         root.has_alloc_error_handler,
-                        root.has_panic_handler,
                         root.has_default_lib_allocator
                     )?;
                     writeln!(

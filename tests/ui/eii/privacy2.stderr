@@ -16,19 +16,19 @@ note: the function `decl1` is defined here
 LL | fn decl1(x: u64);
    | ^^^^^^^^^^^^^^^^^
 
-error: couldn't find an implementation for `#[eii2]`
+error: `#[eii2]` required, but not found
   --> $DIR/auxiliary/codegen3.rs:9:1
    |
 LL | #[eii(eii2)]
-   | ^^^^^^^^^^^^ an implementation was expected by this declaration
+   | ^^^^^^^^^^^^ expected because `#[eii2]` was declared here in crate `codegen3`
    |
    = help: expected at least one implementation in crate `privacy2` or any of its dependencies
 
-error: couldn't find an implementation for `#[eii3]`
+error: `#[eii3]` required, but not found
   --> $DIR/auxiliary/codegen3.rs:13:5
    |
 LL |     #[eii(eii3)]
-   |     ^^^^^^^^^^^^ an implementation was expected by this declaration
+   |     ^^^^^^^^^^^^ expected because `#[eii3]` was declared here in crate `codegen3`
    |
    = help: expected at least one implementation in crate `privacy2` or any of its dependencies
 

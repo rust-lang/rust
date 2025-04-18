@@ -1,12 +1,22 @@
-error[E0308]: `#[panic_handler]` function has wrong type
+error[E0053]: function `panic` has a type that is incompatible with the declaration of `#[panic_handler]`
   --> $DIR/panic-handler-bad-signature-1.rs:9:16
    |
 LL | fn panic(info: PanicInfo) -> () {}
    |                ^^^^^^^^^ expected `&PanicInfo<'_>`, found `PanicInfo<'_>`
    |
+note: expected this because of this attribute
+  --> $DIR/panic-handler-bad-signature-1.rs:8:1
+   |
+LL | #[panic_handler]
+   | ^^^^^^^^^^^^^^^^
    = note: expected signature `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
-              found signature `for<'a> fn(PanicInfo<'a>) -> ()`
+              found signature `fn(PanicInfo<'_>) -> ()`
+help: change the parameter type to match the declaration
+   |
+LL - fn panic(info: PanicInfo) -> () {}
+LL + fn panic(info: &PanicInfo<'_>) -> () {}
+   |
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0053`.

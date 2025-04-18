@@ -7,7 +7,7 @@
 
 use core::panic::PanicInfo;
 
-#[lang = "panic_impl"]
+#[core::panic_handler]
 fn panic_impl(info: &PanicInfo) -> ! { loop {} }
 #[lang = "eh_personality"]
 fn eh_personality() {}

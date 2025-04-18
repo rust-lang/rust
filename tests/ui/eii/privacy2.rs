@@ -4,8 +4,8 @@
 extern crate codegen3 as codegen;
 
 // has a span but in the other crate
-//~? ERROR couldn't find an implementation for `#[eii2]`
-//~? ERROR couldn't find an implementation for `#[eii3]`
+//~? ERROR `#[eii2]` required, but not found
+//~? ERROR `#[eii3]` required, but not found
 
 #[codegen::eii1]
 fn eii1_impl(x: u64) {

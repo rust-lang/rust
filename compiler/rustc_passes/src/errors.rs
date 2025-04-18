@@ -863,10 +863,6 @@ pub(crate) struct UnknownExternLangItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_missing_panic_handler)]
-pub(crate) struct MissingPanicHandler;
-
-#[derive(Diagnostic)]
 #[diag(passes_panic_unwind_without_std)]
 #[help]
 #[note]

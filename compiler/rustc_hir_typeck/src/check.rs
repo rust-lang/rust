@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 
 use rustc_abi::ExternAbi;
-use rustc_hir::def::DefKind;
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
