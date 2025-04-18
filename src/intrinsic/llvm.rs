@@ -22,6 +22,7 @@ fn encode_key_128_type<'a, 'gcc, 'tcx>(
         "EncodeKey128Output",
         &[field1, field2, field3, field4, field5, field6, field7],
     );
+    #[cfg(feature = "master")]
     encode_type.as_type().set_packed();
     (encode_type.as_type(), field1, field2)
 }
@@ -43,6 +44,7 @@ fn encode_key_256_type<'a, 'gcc, 'tcx>(
         "EncodeKey256Output",
         &[field1, field2, field3, field4, field5, field6, field7, field8],
     );
+    #[cfg(feature = "master")]
     encode_type.as_type().set_packed();
     (encode_type.as_type(), field1, field2)
 }
@@ -55,6 +57,7 @@ fn aes_output_type<'a, 'gcc, 'tcx>(
     let field2 = builder.context.new_field(None, m128i, "field2");
     let aes_output_type = builder.context.new_struct_type(None, "AesOutput", &[field1, field2]);
     let typ = aes_output_type.as_type();
+    #[cfg(feature = "master")]
     typ.set_packed();
     (typ, field1, field2)
 }
@@ -77,6 +80,7 @@ fn wide_aes_output_type<'a, 'gcc, 'tcx>(
         "WideAesOutput",
         &[field1, field2, field3, field4, field5, field6, field7, field8, field9],
     );
+    #[cfg(feature = "master")]
     aes_output_type.as_type().set_packed();
     (aes_output_type.as_type(), field1, field2)
 }
