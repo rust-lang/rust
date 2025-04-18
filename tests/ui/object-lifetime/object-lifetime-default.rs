@@ -2,13 +2,13 @@
 
 #[rustc_object_lifetime_default]
 struct A<
-    T, //~ ERROR BaseDefault
+    T, //~ ERROR Empty
 >(T);
 
 #[rustc_object_lifetime_default]
 struct B<
     'a,
-    T, //~ ERROR BaseDefault
+    T, //~ ERROR Empty
 >(&'a (), T);
 
 #[rustc_object_lifetime_default]
