@@ -6,8 +6,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         llvm
 
 ENV CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER=riscv64-linux-gnu-gcc \
-    CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER="qemu-riscv64 \
-      -L /usr/riscv64-linux-gnu \
-      -cpu rv64,zk=true,zks=true,zbb=true,zbc=true \
-    " \
+    CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER="qemu-riscv64 -cpu max -L /usr/riscv64-linux-gnu" \
     OBJDUMP=llvm-objdump

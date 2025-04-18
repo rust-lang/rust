@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         file make
 
 ENV CARGO_TARGET_POWERPC64_UNKNOWN_LINUX_GNU_LINKER=powerpc64-linux-gnu-gcc \
-    CARGO_TARGET_POWERPC64_UNKNOWN_LINUX_GNU_RUNNER="qemu-ppc64 -cpu power10 -L /usr/powerpc64-linux-gnu" \
+    CARGO_TARGET_POWERPC64_UNKNOWN_LINUX_GNU_RUNNER="qemu-ppc64 -cpu power11 -L /usr/powerpc64-linux-gnu" \
     CC=powerpc64-linux-gnu-gcc \
     OBJDUMP=powerpc64-linux-gnu-objdump \
 #   These 2 tests have erratic behaviour with qemu, see https://gitlab.com/qemu-project/qemu/-/issues/1623#note_2449012173

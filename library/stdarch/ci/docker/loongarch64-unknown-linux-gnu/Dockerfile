@@ -7,5 +7,5 @@ RUN apt-get update && \
 
 
 ENV CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNU_LINKER=loongarch64-linux-gnu-gcc-14 \
-    CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-loongarch64-static -L /usr/loongarch64-linux-gnu" \
+    CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-loongarch64-static -cpu max -L /usr/loongarch64-linux-gnu" \
     OBJDUMP=loongarch64-linux-gnu-objdump
