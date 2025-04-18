@@ -140,9 +140,7 @@ mod atanhf;
 mod cbrt;
 mod cbrtf;
 mod ceil;
-mod ceilf;
 mod copysign;
-mod copysignf;
 mod cos;
 mod cosf;
 mod cosh;
@@ -158,11 +156,8 @@ mod expf;
 mod expm1;
 mod expm1f;
 mod fabs;
-mod fabsf;
 mod fdim;
-mod fdimf;
 mod floor;
-mod floorf;
 mod fma;
 mod fma_wide;
 mod fmin_fmax;
@@ -183,7 +178,6 @@ mod j1f;
 mod jn;
 mod jnf;
 mod ldexp;
-mod ldexpf;
 mod lgamma;
 mod lgamma_r;
 mod lgammaf;
@@ -209,9 +203,7 @@ mod remquof;
 mod rint;
 mod round;
 mod roundeven;
-mod roundf;
 mod scalbn;
-mod scalbnf;
 mod sin;
 mod sincos;
 mod sincosf;
@@ -219,7 +211,6 @@ mod sinf;
 mod sinh;
 mod sinhf;
 mod sqrt;
-mod sqrtf;
 mod tan;
 mod tanf;
 mod tanh;
@@ -227,7 +218,6 @@ mod tanhf;
 mod tgamma;
 mod tgammaf;
 mod trunc;
-mod truncf;
 
 // Use separated imports instead of {}-grouped imports for easier merging.
 pub use self::acos::acos;
@@ -246,10 +236,8 @@ pub use self::atanh::atanh;
 pub use self::atanhf::atanhf;
 pub use self::cbrt::cbrt;
 pub use self::cbrtf::cbrtf;
-pub use self::ceil::ceil;
-pub use self::ceilf::ceilf;
-pub use self::copysign::copysign;
-pub use self::copysignf::copysignf;
+pub use self::ceil::{ceil, ceilf};
+pub use self::copysign::{copysign, copysignf};
 pub use self::cos::cos;
 pub use self::cosf::cosf;
 pub use self::cosh::cosh;
@@ -264,12 +252,9 @@ pub use self::exp10f::exp10f;
 pub use self::expf::expf;
 pub use self::expm1::expm1;
 pub use self::expm1f::expm1f;
-pub use self::fabs::fabs;
-pub use self::fabsf::fabsf;
-pub use self::fdim::fdim;
-pub use self::fdimf::fdimf;
-pub use self::floor::floor;
-pub use self::floorf::floorf;
+pub use self::fabs::{fabs, fabsf};
+pub use self::fdim::{fdim, fdimf};
+pub use self::floor::{floor, floorf};
 pub use self::fma::fma;
 pub use self::fma_wide::fmaf;
 pub use self::fmin_fmax::{fmax, fmaxf, fmin, fminf};
@@ -289,8 +274,7 @@ pub use self::j1::{j1, y1};
 pub use self::j1f::{j1f, y1f};
 pub use self::jn::{jn, yn};
 pub use self::jnf::{jnf, ynf};
-pub use self::ldexp::ldexp;
-pub use self::ldexpf::ldexpf;
+pub use self::ldexp::{ldexp, ldexpf};
 pub use self::lgamma::lgamma;
 pub use self::lgamma_r::lgamma_r;
 pub use self::lgammaf::lgammaf;
@@ -314,61 +298,47 @@ pub use self::remainderf::remainderf;
 pub use self::remquo::remquo;
 pub use self::remquof::remquof;
 pub use self::rint::{rint, rintf};
-pub use self::round::round;
+pub use self::round::{round, roundf};
 pub use self::roundeven::{roundeven, roundevenf};
-pub use self::roundf::roundf;
-pub use self::scalbn::scalbn;
-pub use self::scalbnf::scalbnf;
+pub use self::scalbn::{scalbn, scalbnf};
 pub use self::sin::sin;
 pub use self::sincos::sincos;
 pub use self::sincosf::sincosf;
 pub use self::sinf::sinf;
 pub use self::sinh::sinh;
 pub use self::sinhf::sinhf;
-pub use self::sqrt::sqrt;
-pub use self::sqrtf::sqrtf;
+pub use self::sqrt::{sqrt, sqrtf};
 pub use self::tan::tan;
 pub use self::tanf::tanf;
 pub use self::tanh::tanh;
 pub use self::tanhf::tanhf;
 pub use self::tgamma::tgamma;
 pub use self::tgammaf::tgammaf;
-pub use self::trunc::trunc;
-pub use self::truncf::truncf;
+pub use self::trunc::{trunc, truncf};
 
 cfg_if! {
     if #[cfg(f16_enabled)] {
         // verify-sorted-start
-        mod ceilf16;
-        mod copysignf16;
-        mod fabsf16;
-        mod fdimf16;
-        mod floorf16;
         mod fmodf16;
-        mod ldexpf16;
-        mod roundf16;
-        mod scalbnf16;
-        mod sqrtf16;
-        mod truncf16;
         // verify-sorted-end
 
         // verify-sorted-start
-        pub use self::ceilf16::ceilf16;
-        pub use self::copysignf16::copysignf16;
-        pub use self::fabsf16::fabsf16;
-        pub use self::fdimf16::fdimf16;
-        pub use self::floorf16::floorf16;
+        pub use self::ceil::ceilf16;
+        pub use self::copysign::copysignf16;
+        pub use self::fabs::fabsf16;
+        pub use self::fdim::fdimf16;
+        pub use self::floor::floorf16;
         pub use self::fmin_fmax::{fmaxf16, fminf16};
         pub use self::fminimum_fmaximum::{fmaximumf16, fminimumf16};
         pub use self::fminimum_fmaximum_num::{fmaximum_numf16, fminimum_numf16};
         pub use self::fmodf16::fmodf16;
-        pub use self::ldexpf16::ldexpf16;
+        pub use self::ldexp::ldexpf16;
         pub use self::rint::rintf16;
+        pub use self::round::roundf16;
         pub use self::roundeven::roundevenf16;
-        pub use self::roundf16::roundf16;
-        pub use self::scalbnf16::scalbnf16;
-        pub use self::sqrtf16::sqrtf16;
-        pub use self::truncf16::truncf16;
+        pub use self::scalbn::scalbnf16;
+        pub use self::sqrt::sqrtf16;
+        pub use self::trunc::truncf16;
         // verify-sorted-end
 
         #[allow(unused_imports)]
@@ -379,37 +349,27 @@ cfg_if! {
 cfg_if! {
     if #[cfg(f128_enabled)] {
         // verify-sorted-start
-        mod ceilf128;
-        mod copysignf128;
-        mod fabsf128;
-        mod fdimf128;
-        mod floorf128;
         mod fmodf128;
-        mod ldexpf128;
-        mod roundf128;
-        mod scalbnf128;
-        mod sqrtf128;
-        mod truncf128;
         // verify-sorted-end
 
         // verify-sorted-start
-        pub use self::ceilf128::ceilf128;
-        pub use self::copysignf128::copysignf128;
-        pub use self::fabsf128::fabsf128;
-        pub use self::fdimf128::fdimf128;
-        pub use self::floorf128::floorf128;
+        pub use self::ceil::ceilf128;
+        pub use self::copysign::copysignf128;
+        pub use self::fabs::fabsf128;
+        pub use self::fdim::fdimf128;
+        pub use self::floor::floorf128;
         pub use self::fma::fmaf128;
         pub use self::fmin_fmax::{fmaxf128, fminf128};
         pub use self::fminimum_fmaximum::{fmaximumf128, fminimumf128};
         pub use self::fminimum_fmaximum_num::{fmaximum_numf128, fminimum_numf128};
         pub use self::fmodf128::fmodf128;
-        pub use self::ldexpf128::ldexpf128;
+        pub use self::ldexp::ldexpf128;
         pub use self::rint::rintf128;
+        pub use self::round::roundf128;
         pub use self::roundeven::roundevenf128;
-        pub use self::roundf128::roundf128;
-        pub use self::scalbnf128::scalbnf128;
-        pub use self::sqrtf128::sqrtf128;
-        pub use self::truncf128::truncf128;
+        pub use self::scalbn::scalbnf128;
+        pub use self::sqrt::sqrtf128;
+        pub use self::trunc::truncf128;
         // verify-sorted-end
     }
 }

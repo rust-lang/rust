@@ -108,21 +108,21 @@
     "ceilf": {
         "sources": [
             "src/math/arch/wasm32.rs",
-            "src/math/ceilf.rs",
+            "src/math/ceil.rs",
             "src/math/generic/ceil.rs"
         ],
         "type": "f32"
     },
     "ceilf128": {
         "sources": [
-            "src/math/ceilf128.rs",
+            "src/math/ceil.rs",
             "src/math/generic/ceil.rs"
         ],
         "type": "f128"
     },
     "ceilf16": {
         "sources": [
-            "src/math/ceilf16.rs",
+            "src/math/ceil.rs",
             "src/math/generic/ceil.rs"
         ],
         "type": "f16"
@@ -136,21 +136,21 @@
     },
     "copysignf": {
         "sources": [
-            "src/math/copysignf.rs",
+            "src/math/copysign.rs",
             "src/math/generic/copysign.rs"
         ],
         "type": "f32"
     },
     "copysignf128": {
         "sources": [
-            "src/math/copysignf128.rs",
+            "src/math/copysign.rs",
             "src/math/generic/copysign.rs"
         ],
         "type": "f128"
     },
     "copysignf16": {
         "sources": [
-            "src/math/copysignf16.rs",
+            "src/math/copysign.rs",
             "src/math/generic/copysign.rs"
         ],
         "type": "f16"
@@ -262,21 +262,21 @@
     "fabsf": {
         "sources": [
             "src/math/arch/wasm32.rs",
-            "src/math/fabsf.rs",
+            "src/math/fabs.rs",
             "src/math/generic/fabs.rs"
         ],
         "type": "f32"
     },
     "fabsf128": {
         "sources": [
-            "src/math/fabsf128.rs",
+            "src/math/fabs.rs",
             "src/math/generic/fabs.rs"
         ],
         "type": "f128"
     },
     "fabsf16": {
         "sources": [
-            "src/math/fabsf16.rs",
+            "src/math/fabs.rs",
             "src/math/generic/fabs.rs"
         ],
         "type": "f16"
@@ -290,21 +290,21 @@
     },
     "fdimf": {
         "sources": [
-            "src/math/fdimf.rs",
+            "src/math/fdim.rs",
             "src/math/generic/fdim.rs"
         ],
         "type": "f32"
     },
     "fdimf128": {
         "sources": [
-            "src/math/fdimf128.rs",
+            "src/math/fdim.rs",
             "src/math/generic/fdim.rs"
         ],
         "type": "f128"
     },
     "fdimf16": {
         "sources": [
-            "src/math/fdimf16.rs",
+            "src/math/fdim.rs",
             "src/math/generic/fdim.rs"
         ],
         "type": "f16"
@@ -321,21 +321,21 @@
     "floorf": {
         "sources": [
             "src/math/arch/wasm32.rs",
-            "src/math/floorf.rs",
+            "src/math/floor.rs",
             "src/math/generic/floor.rs"
         ],
         "type": "f32"
     },
     "floorf128": {
         "sources": [
-            "src/math/floorf128.rs",
+            "src/math/floor.rs",
             "src/math/generic/floor.rs"
         ],
         "type": "f128"
     },
     "floorf16": {
         "sources": [
-            "src/math/floorf16.rs",
+            "src/math/floor.rs",
             "src/math/generic/floor.rs"
         ],
         "type": "f16"
@@ -636,19 +636,19 @@
     },
     "ldexpf": {
         "sources": [
-            "src/math/ldexpf.rs"
+            "src/math/ldexp.rs"
         ],
         "type": "f32"
     },
     "ldexpf128": {
         "sources": [
-            "src/math/ldexpf128.rs"
+            "src/math/ldexp.rs"
         ],
         "type": "f128"
     },
     "ldexpf16": {
         "sources": [
-            "src/math/ldexpf16.rs"
+            "src/math/ldexp.rs"
         ],
         "type": "f16"
     },
@@ -847,21 +847,21 @@
     "roundf": {
         "sources": [
             "src/math/generic/round.rs",
-            "src/math/roundf.rs"
+            "src/math/round.rs"
         ],
         "type": "f32"
     },
     "roundf128": {
         "sources": [
             "src/math/generic/round.rs",
-            "src/math/roundf128.rs"
+            "src/math/round.rs"
         ],
         "type": "f128"
     },
     "roundf16": {
         "sources": [
             "src/math/generic/round.rs",
-            "src/math/roundf16.rs"
+            "src/math/round.rs"
         ],
         "type": "f16"
     },
@@ -875,21 +875,21 @@
     "scalbnf": {
         "sources": [
             "src/math/generic/scalbn.rs",
-            "src/math/scalbnf.rs"
+            "src/math/scalbn.rs"
         ],
         "type": "f32"
     },
     "scalbnf128": {
         "sources": [
             "src/math/generic/scalbn.rs",
-            "src/math/scalbnf128.rs"
+            "src/math/scalbn.rs"
         ],
         "type": "f128"
     },
     "scalbnf16": {
         "sources": [
             "src/math/generic/scalbn.rs",
-            "src/math/scalbnf16.rs"
+            "src/math/scalbn.rs"
         ],
         "type": "f16"
     },
@@ -945,14 +945,14 @@
             "src/math/arch/i686.rs",
             "src/math/arch/wasm32.rs",
             "src/math/generic/sqrt.rs",
-            "src/math/sqrtf.rs"
+            "src/math/sqrt.rs"
         ],
         "type": "f32"
     },
     "sqrtf128": {
         "sources": [
             "src/math/generic/sqrt.rs",
-            "src/math/sqrtf128.rs"
+            "src/math/sqrt.rs"
         ],
         "type": "f128"
     },
@@ -960,7 +960,7 @@
         "sources": [
             "src/math/arch/aarch64.rs",
             "src/math/generic/sqrt.rs",
-            "src/math/sqrtf16.rs"
+            "src/math/sqrt.rs"
         ],
         "type": "f16"
     },
@@ -1012,21 +1012,21 @@
         "sources": [
             "src/math/arch/wasm32.rs",
             "src/math/generic/trunc.rs",
-            "src/math/truncf.rs"
+            "src/math/trunc.rs"
         ],
         "type": "f32"
     },
     "truncf128": {
         "sources": [
             "src/math/generic/trunc.rs",
-            "src/math/truncf128.rs"
+            "src/math/trunc.rs"
         ],
         "type": "f128"
     },
     "truncf16": {
         "sources": [
             "src/math/generic/trunc.rs",
-            "src/math/truncf16.rs"
+            "src/math/trunc.rs"
         ],
         "type": "f16"
     },

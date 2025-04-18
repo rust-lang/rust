@@ -73,3 +73,95 @@ pub fn fmax(x: f64, y: f64) -> f64 {
 pub fn fmaxf128(x: f128, y: f128) -> f128 {
     super::generic::fmax(x, y)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::support::{Float, Hexf};
+
+    fn fmin_spec_test<F: Float>(f: impl Fn(F, F) -> F) {
+        let cases = [
+            (F::ZERO, F::ZERO, F::ZERO),
+            (F::ONE, F::ONE, F::ONE),
+            (F::ZERO, F::ONE, F::ZERO),
+            (F::ONE, F::ZERO, F::ZERO),
+            (F::ZERO, F::NEG_ONE, F::NEG_ONE),
+            (F::NEG_ONE, F::ZERO, F::NEG_ONE),
+            (F::INFINITY, F::ZERO, F::ZERO),
+            (F::NEG_INFINITY, F::ZERO, F::NEG_INFINITY),
+            (F::NAN, F::ZERO, F::ZERO),
+            (F::ZERO, F::NAN, F::ZERO),
+            (F::NAN, F::NAN, F::NAN),
+        ];
+
+        for (x, y, res) in cases {
+            let val = f(x, y);
+            assert_biteq!(val, res, "fmin({}, {})", Hexf(x), Hexf(y));
+        }
+    }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    fn fmin_spec_tests_f16() {
+        fmin_spec_test::<f16>(fminf16);
+    }
+
+    #[test]
+    fn fmin_spec_tests_f32() {
+        fmin_spec_test::<f32>(fminf);
+    }
+
+    #[test]
+    fn fmin_spec_tests_f64() {
+        fmin_spec_test::<f64>(fmin);
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    fn fmin_spec_tests_f128() {
+        fmin_spec_test::<f128>(fminf128);
+    }
+
+    fn fmax_spec_test<F: Float>(f: impl Fn(F, F) -> F) {
+        let cases = [
+            (F::ZERO, F::ZERO, F::ZERO),
+            (F::ONE, F::ONE, F::ONE),
+            (F::ZERO, F::ONE, F::ONE),
+            (F::ONE, F::ZERO, F::ONE),
+            (F::ZERO, F::NEG_ONE, F::ZERO),
+            (F::NEG_ONE, F::ZERO, F::ZERO),
+            (F::INFINITY, F::ZERO, F::INFINITY),
+            (F::NEG_INFINITY, F::ZERO, F::ZERO),
+            (F::NAN, F::ZERO, F::ZERO),
+            (F::ZERO, F::NAN, F::ZERO),
+            (F::NAN, F::NAN, F::NAN),
+        ];
+
+        for (x, y, res) in cases {
+            let val = f(x, y);
+            assert_biteq!(val, res, "fmax({}, {})", Hexf(x), Hexf(y));
+        }
+    }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    fn fmax_spec_tests_f16() {
+        fmax_spec_test::<f16>(fmaxf16);
+    }
+
+    #[test]
+    fn fmax_spec_tests_f32() {
+        fmax_spec_test::<f32>(fmaxf);
+    }
+
+    #[test]
+    fn fmax_spec_tests_f64() {
+        fmax_spec_test::<f64>(fmax);
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    fn fmax_spec_tests_f128() {
+        fmax_spec_test::<f128>(fmaxf128);
+    }
+}

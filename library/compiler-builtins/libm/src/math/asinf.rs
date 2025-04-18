@@ -13,8 +13,8 @@
  * ====================================================
  */
 
-use super::fabsf::fabsf;
 use super::sqrt::sqrt;
+use super::support::Float;
 
 const PIO2: f64 = 1.570796326794896558e+00;
 
@@ -61,7 +61,7 @@ pub fn asinf(mut x: f32) -> f32 {
     }
 
     /* 1 > |x| >= 0.5 */
-    let z = (1. - fabsf(x)) * 0.5;
+    let z = (1. - Float::abs(x)) * 0.5;
     let s = sqrt(z as f64);
     x = (PIO2 - 2. * (s + s * (r(z) as f64))) as f32;
     if (hx >> 31) != 0 { -x } else { x }

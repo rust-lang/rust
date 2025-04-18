@@ -13,7 +13,7 @@
  * ====================================================
  */
 
-use super::sqrtf::sqrtf;
+use super::sqrt::sqrtf;
 
 const PIO2_HI: f32 = 1.5707962513e+00; /* 0x3fc90fda */
 const PIO2_LO: f32 = 7.5497894159e-08; /* 0x33a22168 */
