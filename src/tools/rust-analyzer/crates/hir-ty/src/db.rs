@@ -127,18 +127,21 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn impl_self_ty_with_diagnostics(&self, def: ImplId) -> (Binders<Ty>, Diagnostics);
 
     #[salsa::invoke_actual(crate::lower::impl_self_ty_query)]
+    #[salsa::transparent]
     fn impl_self_ty(&self, def: ImplId) -> Binders<Ty>;
 
     #[salsa::invoke(crate::lower::const_param_ty_with_diagnostics_query)]
     fn const_param_ty_with_diagnostics(&self, def: ConstParamId) -> (Ty, Diagnostics);
 
     #[salsa::invoke(crate::lower::const_param_ty_query)]
+    #[salsa::transparent]
     fn const_param_ty(&self, def: ConstParamId) -> Ty;
 
     #[salsa::invoke_actual(crate::lower::impl_trait_with_diagnostics_query)]
     fn impl_trait_with_diagnostics(&self, def: ImplId) -> Option<(Binders<TraitRef>, Diagnostics)>;
 
     #[salsa::invoke_actual(crate::lower::impl_trait_query)]
+    #[salsa::transparent]
     fn impl_trait(&self, def: ImplId) -> Option<Binders<TraitRef>>;
 
     #[salsa::invoke_actual(crate::lower::field_types_with_diagnostics_query)]
@@ -148,6 +151,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     ) -> (Arc<ArenaMap<LocalFieldId, Binders<Ty>>>, Diagnostics);
 
     #[salsa::invoke_actual(crate::lower::field_types_query)]
+    #[salsa::transparent]
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>>;
 
     #[salsa::invoke_actual(crate::lower::callable_item_signature_query)]
@@ -178,6 +182,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     ) -> (GenericPredicates, Diagnostics);
 
     #[salsa::invoke_actual(crate::lower::generic_predicates_without_parent_query)]
+    #[salsa::transparent]
     fn generic_predicates_without_parent(&self, def: GenericDefId) -> GenericPredicates;
 
     #[salsa::invoke_actual(crate::lower::trait_environment_for_body_query)]
@@ -195,6 +200,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     ) -> (GenericDefaults, Diagnostics);
 
     #[salsa::invoke_actual(crate::lower::generic_defaults_query)]
+    #[salsa::transparent]
     fn generic_defaults(&self, def: GenericDefId) -> GenericDefaults;
 
     #[salsa::invoke_actual(InherentImpls::inherent_impls_in_crate_query)]
