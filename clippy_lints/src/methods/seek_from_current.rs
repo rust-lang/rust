@@ -3,12 +3,11 @@ use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_span::sym;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_enum_variant_ctor;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
+use clippy_utils::{is_enum_variant_ctor, sym};
 
 use super::SEEK_FROM_CURRENT;
 
@@ -38,7 +37,7 @@ fn arg_is_seek_from_current<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) 
     if let ExprKind::Call(f, [arg]) = expr.kind
         && let ExprKind::Path(ref path) = f.kind
         && let Some(ctor_call_id) = cx.qpath_res(path, f.hir_id).opt_def_id()
-        && is_enum_variant_ctor(cx, sym::SeekFrom, sym!(Current), ctor_call_id)
+        && is_enum_variant_ctor(cx, sym::SeekFrom, sym::Current, ctor_call_id)
         // check if argument of `SeekFrom::Current` is `0`
         && let ExprKind::Lit(lit) = arg.kind
         && let LitKind::Int(Pu128(0), LitIntType::Unsuffixed) = lit.node
