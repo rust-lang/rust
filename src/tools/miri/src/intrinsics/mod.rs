@@ -552,6 +552,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 /// Applies a random ULP floating point error to `val` and returns the new value.
 /// So if you want an X ULP error, `ulp_exponent` should be log2(X).
+///
 /// Will fail if `val` is not a floating point number.
 fn apply_random_float_error_to_imm<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
@@ -582,30 +583,18 @@ fn apply_random_float_error_to_imm<'tcx>(
 /// - powf32, powf64
 ///
 /// Returns Some(`output`) if the `intrinsic` results in a defined fixed `output` specified in the C standard when given `args`
-/// as arguments, else None.
+/// as arguments. Outputs such as INF and zero are not considered. Otherwise this returns None.
 fn fixed_float_value<S: Semantics>(
     intrinsic_name: &str,
     args: &[IeeeFloat<S>],
 ) -> Option<IeeeFloat<S>> {
     let one = IeeeFloat::<S>::one();
     match (intrinsic_name, args) {
-        // sin(+- 0) = +- 0.
-        ("sinf32" | "sinf64", [input]) if input.is_zero() => Some(*input),
-
         // cos(+- 0) = 1
         ("cosf32" | "cosf64", [input]) if input.is_zero() => Some(one),
 
         // e^0 = 1
         ("expf32" | "expf64" | "exp2f32" | "exp2f64", [input]) if input.is_zero() => Some(one),
-
-        // log(1) = 0
-        #[rustfmt::skip]
-        ("logf32"
-        | "logf64"
-        | "log10f32"
-        | "log10f64"
-        | "log2f32"
-        | "log2f64", [input]) if *input == one => Some(IeeeFloat::<S>::ZERO),
 
         // 1^y = 1 for any y, even a NaN.
         ("powf32" | "powf64", [base, _]) if *base == one => Some(one),
@@ -616,8 +605,8 @@ fn fixed_float_value<S: Semantics>(
         // x^(±0) = 1 for any x, even a NaN
         ("powf32" | "powf64", [_, exp]) if exp.is_zero() => Some(one),
 
-        // C standard doesn't specify any fixed outputs for other combinations of `intrinsic_name` and `args`,
-        // or an invalid combination was given.
+        // There are a lot of cases for fixed outputs according to the C Standard, but these are mainly INF or zero
+        // which are not affected by the applied error.
         _ => None,
     }
 }
