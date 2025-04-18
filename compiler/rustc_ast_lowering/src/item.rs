@@ -158,7 +158,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 vec![hir::Attribute::Parsed(AttributeKind::EiiImpl(
                     eii_impl
                         .iter()
-                        .map(
+                        .flat_map(
                             |EIIImpl {
                                  node_id,
                                  eii_macro_path,
@@ -167,16 +167,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                  inner_span,
                                  is_default,
                              }| {
-                                let did = self.lower_path_simple_eii(*node_id, eii_macro_path);
-                                rustc_attr_parsing::EIIImpl {
-                                    eii_macro: did,
-                                    span: self.lower_span(*span),
-                                    inner_span: self.lower_span(*inner_span),
-                                    impl_marked_unsafe: self
-                                        .lower_safety(*impl_safety, hir::Safety::Safe)
-                                        .is_unsafe(),
-                                    is_default: *is_default,
-                                }
+                                self.lower_path_simple_eii(*node_id, eii_macro_path).map(|did| {
+                                    rustc_attr_parsing::EIIImpl {
+                                        eii_macro: did,
+                                        span: self.lower_span(*span),
+                                        inner_span: self.lower_span(*inner_span),
+                                        impl_marked_unsafe: self
+                                            .lower_safety(*impl_safety, hir::Safety::Safe)
+                                            .is_unsafe(),
+                                        is_default: *is_default,
+                                    }
+                                })
                             },
                         )
                         .collect(),
@@ -188,13 +189,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     eii_macro_for: Some(EIIMacroFor { extern_item_path, impl_unsafe, span }),
                     ..
                 },
-            ) => {
-                vec![hir::Attribute::Parsed(AttributeKind::EiiMacroFor(EIIDecl {
-                    eii_extern_item: self.lower_path_simple_eii(id, extern_item_path),
-                    impl_unsafe: *impl_unsafe,
-                    span: self.lower_span(*span),
-                }))]
-            }
+            ) => self
+                .lower_path_simple_eii(id, extern_item_path)
+                .map(|did| {
+                    vec![hir::Attribute::Parsed(AttributeKind::EiiMacroFor(EIIDecl {
+                        eii_extern_item: did,
+                        impl_unsafe: *impl_unsafe,
+                        span: self.lower_span(*span),
+                    }))]
+                })
+                .unwrap_or_default(),
             ItemKind::ExternCrate(..)
             | ItemKind::Use(..)
             | ItemKind::Static(..)
@@ -571,14 +575,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_path_simple_eii(&mut self, id: NodeId, path: &Path) -> DefId {
+    fn lower_path_simple_eii(&mut self, id: NodeId, path: &Path) -> Option<DefId> {
         let res = self.resolver.get_partial_res(id).unwrap();
         let Some(did) = res.expect_full_res().opt_def_id() else {
             self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
-            todo!()
+            return None;
         };
 
-        did
+        Some(did)
     }
 
     fn lower_const_item(
