@@ -34,6 +34,7 @@ pub trait Float:
     const INFINITY: Self;
     const NEG_INFINITY: Self;
     const NAN: Self;
+    const NEG_NAN: Self;
     const MAX: Self;
     const MIN: Self;
     const EPSILON: Self;
@@ -187,6 +188,7 @@ macro_rules! float_impl {
         $bits:expr,
         $significand_bits:expr,
         $from_bits:path,
+        $to_bits:path,
         $fma_fn:ident,
         $fma_intrinsic:ident
     ) => {
@@ -201,6 +203,9 @@ macro_rules! float_impl {
             const INFINITY: Self = Self::INFINITY;
             const NEG_INFINITY: Self = Self::NEG_INFINITY;
             const NAN: Self = Self::NAN;
+            // NAN isn't guaranteed to be positive but it usually is. We only use this for
+            // tests.
+            const NEG_NAN: Self = $from_bits($to_bits(Self::NAN) | Self::SIGN_MASK);
             const MAX: Self = -Self::MIN;
             // Sign bit set, saturated mantissa, saturated exponent with last bit zeroed
             const MIN: Self = $from_bits(Self::Int::MAX & !(1 << Self::SIG_BITS));
@@ -275,11 +280,11 @@ macro_rules! float_impl {
 }
 
 #[cfg(f16_enabled)]
-float_impl!(f16, u16, i16, 16, 10, f16::from_bits, fmaf16, fmaf16);
-float_impl!(f32, u32, i32, 32, 23, f32_from_bits, fmaf, fmaf32);
-float_impl!(f64, u64, i64, 64, 52, f64_from_bits, fma, fmaf64);
+float_impl!(f16, u16, i16, 16, 10, f16::from_bits, f16::to_bits, fmaf16, fmaf16);
+float_impl!(f32, u32, i32, 32, 23, f32_from_bits, f32_to_bits, fmaf, fmaf32);
+float_impl!(f64, u64, i64, 64, 52, f64_from_bits, f64_to_bits, fma, fmaf64);
 #[cfg(f128_enabled)]
-float_impl!(f128, u128, i128, 128, 112, f128::from_bits, fmaf128, fmaf128);
+float_impl!(f128, u128, i128, 128, 112, f128::from_bits, f128::to_bits, fmaf128, fmaf128);
 
 /* FIXME(msrv): vendor some things that are not const stable at our MSRV */
 
@@ -289,10 +294,22 @@ pub const fn f32_from_bits(bits: u32) -> f32 {
     unsafe { mem::transmute::<u32, f32>(bits) }
 }
 
+/// `f32::to_bits`
+pub const fn f32_to_bits(x: f32) -> u32 {
+    // SAFETY: POD cast with no preconditions
+    unsafe { mem::transmute::<f32, u32>(x) }
+}
+
 /// `f64::from_bits`
 pub const fn f64_from_bits(bits: u64) -> f64 {
     // SAFETY: POD cast with no preconditions
     unsafe { mem::transmute::<u64, f64>(bits) }
+}
+
+/// `f64::to_bits`
+pub const fn f64_to_bits(x: f64) -> u64 {
+    // SAFETY: POD cast with no preconditions
+    unsafe { mem::transmute::<f64, u64>(x) }
 }
 
 /// Trait for floats twice the bit width of another integer.
