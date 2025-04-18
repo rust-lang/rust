@@ -309,6 +309,7 @@ impl<'tcx> CValue<'tcx> {
         match self.0 {
             CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => unreachable!(),
             CValueInner::ByRef(ptr, None) => {
+                let lane_idx = clif_intcast(fx, lane_idx, fx.pointer_type, false);
                 let field_offset = fx.bcx.ins().imul_imm(lane_idx, lane_layout.size.bytes() as i64);
                 let field_ptr = ptr.offset_value(fx, field_offset);
                 CValue::by_ref(field_ptr, lane_layout)
@@ -823,6 +824,7 @@ impl<'tcx> CPlace<'tcx> {
             CPlaceInner::Var(_, _) => unreachable!(),
             CPlaceInner::VarPair(_, _, _) => unreachable!(),
             CPlaceInner::Addr(ptr, None) => {
+                let lane_idx = clif_intcast(fx, lane_idx, fx.pointer_type, false);
                 let field_offset = fx
                     .bcx
                     .ins()
