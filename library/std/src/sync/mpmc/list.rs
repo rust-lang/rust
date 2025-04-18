@@ -213,6 +213,11 @@ impl<T> Channel<T> {
                     .compare_exchange(block, new, Ordering::Release, Ordering::Relaxed)
                     .is_ok()
                 {
+                    // This yield point leaves the channel in a half-initialized state where the
+                    // tail.block pointer is set but the head.block is not. This is used to
+                    // facilitate the test in src/tools/miri/tests/pass/issues/issue-139553.rs
+                    #[cfg(miri)]
+                    crate::thread::yield_now();
                     self.head.block.store(new, Ordering::Release);
                     block = new;
                 } else {
@@ -564,9 +569,15 @@ impl<T> Channel<T> {
             // In that case, just wait until it gets initialized.
             while block.is_null() {
                 backoff.spin_heavy();
-                block = self.head.block.load(Ordering::Acquire);
+                block = self.head.block.swap(ptr::null_mut(), Ordering::AcqRel);
             }
         }
+        // After this point `head.block` is not modified again and it will be deallocated if it's
+        // non-null. The `Drop` code of the channel, which runs after this function, also attempts
+        // to deallocate `head.block` if it's non-null. Therefore this function must maintain the
+        // invariant that if a deallocation of head.block is attemped then it must also be set to
+        // NULL. Failing to do so will lead to the Drop code attempting a double free. For this
+        // reason both reads above do an atomic swap instead of a simple atomic load.
 
         unsafe {
             // Drop all messages between head and tail and deallocate the heap-allocated blocks.
