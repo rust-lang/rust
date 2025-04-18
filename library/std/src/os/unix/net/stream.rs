@@ -1,3 +1,18 @@
+#[cfg(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "openbsd",
+    target_os = "netbsd",
+    target_os = "solaris",
+    target_os = "illumos",
+    target_os = "haiku",
+    target_os = "nto",
+    target_os = "cygwin"
+))]
+use libc::MSG_NOSIGNAL;
+
 use super::{SocketAddr, sockaddr_un};
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
 use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to};
@@ -13,16 +28,32 @@ use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_wi
     target_os = "cygwin"
 ))]
 use super::{UCred, peer_cred};
-use crate::fmt;
+use crate::ffi::c_void;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::Shutdown;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sealed::Sealed;
 use crate::sys::cvt;
-use crate::sys::net::Socket;
+use crate::sys::net::{Socket, wrlen_t};
 use crate::sys_common::{AsInner, FromInner};
 use crate::time::Duration;
+use crate::{cmp, fmt};
+
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "openbsd",
+    target_os = "netbsd",
+    target_os = "solaris",
+    target_os = "illumos",
+    target_os = "haiku",
+    target_os = "nto",
+    target_os = "cygwin"
+)))]
+const MSG_NOSIGNAL: core::ffi::c_int = 0x0;
 
 /// A Unix stream socket.
 ///
@@ -633,7 +664,11 @@ impl io::Write for UnixStream {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl<'a> io::Write for &'a UnixStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.write(buf)
+        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let ret = cvt(unsafe {
+            libc::send(self.0.as_raw(), buf.as_ptr() as *const c_void, len, MSG_NOSIGNAL)
+        })?;
+        Ok(ret as usize)
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
