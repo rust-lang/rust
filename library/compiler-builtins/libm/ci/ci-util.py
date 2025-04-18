@@ -205,7 +205,7 @@ class Context:
         skip_tests = False
         error_on_many_tests = False
 
-        if pr_number is not None:
+        if pr_number is not None and len(pr_number) > 0:
             pr = PrInfo.load(pr_number)
             skip_tests = pr.contains_directive(SKIP_EXTENSIVE_DIRECTIVE)
             error_on_many_tests = not pr.contains_directive(
