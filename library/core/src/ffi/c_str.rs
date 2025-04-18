@@ -162,10 +162,12 @@ impl fmt::Display for FromBytesUntilNulError {
     }
 }
 
+/// Shows the underlying bytes as a normal string, with invalid UTF-8
+/// presented as hex escape sequences.
 #[stable(feature = "cstr_debug", since = "1.3.0")]
 impl fmt::Debug for CStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "\"{}\"", self.to_bytes().escape_ascii())
+        fmt::Debug::fmt(crate::bstr::ByteStr::from_bytes(self.to_bytes()), f)
     }
 }
 
