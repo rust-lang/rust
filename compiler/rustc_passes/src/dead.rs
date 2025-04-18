@@ -8,6 +8,7 @@ use std::mem;
 use hir::ItemKind;
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
+use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -690,8 +691,6 @@ fn has_allow_dead_code_or_lang_attr(
 ) -> Option<ComesFromAllowExpect> {
     fn has_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         tcx.has_attr(def_id, sym::lang)
-            // Stable attribute for #[lang = "panic_impl"]
-            || tcx.has_attr(def_id, sym::panic_handler)
     }
 
     fn has_allow_expect_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
@@ -813,6 +812,12 @@ fn check_item<'tcx>(
         DefKind::GlobalAsm => {
             // global_asm! is always live.
             worklist.push((id.owner_id.def_id, ComesFromAllowExpect::No));
+        }
+        DefKind::Fn => {
+            // Implementations of EII are always considered live.
+            if find_attr!(tcx.get_all_attrs(id.owner_id.def_id), AttributeKind::EiiImpl(_)) {
+                worklist.push((id.owner_id.def_id, ComesFromAllowExpect::No));
+            }
         }
         _ => {}
     }

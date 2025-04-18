@@ -108,6 +108,7 @@ bitflags::bitflags! {
         /// `#[no_mangle]`: an indicator that the function's name should be the same
         /// as its symbol.
         const NO_MANGLE                 = 1 << 5;
+        // TODO: EIIs can replace this, most likely
         /// `#[rustc_std_internal_symbol]`: an indicator that this symbol is a
         /// "weird symbol" for the standard library in that it has slightly
         /// different linkage, visibility, and reachability rules.
@@ -139,12 +140,15 @@ bitflags::bitflags! {
         const ALLOCATOR_ZEROED          = 1 << 18;
         /// `#[no_builtins]`: indicates that disable implicit builtin knowledge of functions for the function.
         const NO_BUILTINS               = 1 << 19;
+        /// Usually items in extern blocks aren't mangled, but for EII this is exactly what we want
+        /// This signals that.
+        const EII_MANGLE_EXTERN         = 1 << 20;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }
 
-impl CodegenFnAttrs {
-    pub const EMPTY: &'static Self = &Self::new();
+impl<'tcx> CodegenFnAttrs {
+    pub const EMPTY: &'tcx Self = &Self::new();
 
     pub const fn new() -> CodegenFnAttrs {
         CodegenFnAttrs {

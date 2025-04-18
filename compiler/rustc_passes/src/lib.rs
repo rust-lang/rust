@@ -21,6 +21,7 @@ mod check_attr;
 pub mod dead;
 mod debugger_visualizer;
 mod diagnostic_items;
+mod eii;
 pub mod entry;
 mod errors;
 #[cfg(debug_assertions)]
@@ -53,4 +54,6 @@ pub fn provide(providers: &mut Providers) {
     reachable::provide(providers);
     stability::provide(providers);
     upvars::provide(providers);
+    providers.get_externally_implementable_item_impls =
+        eii::get_externally_implementable_item_impls;
 }

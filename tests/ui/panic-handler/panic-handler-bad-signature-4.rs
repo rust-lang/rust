@@ -7,6 +7,6 @@ use core::panic::PanicInfo;
 
 #[panic_handler]
 fn panic<T>(pi: &PanicInfo) -> ! {
-    //~^ ERROR should have no type parameters
+    //~^ ERROR #[panic_handler] cannot have generic parameters other than lifetimes
     loop {}
 }

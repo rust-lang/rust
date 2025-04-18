@@ -1,11 +1,16 @@
 error: extern location for std does not exist: 
 
-error: `#[panic_handler]` function required, but not found
-
 error: unwinding panics are not supported without std
    |
    = help: using nightly cargo, use -Zbuild-std with panic="abort" to avoid unwinding
    = note: since the core library is usually precompiled with panic="unwind", rebuilding your crate with panic="abort" may not be enough to fix the problem
+
+error: `#[panic_handler]` required, but not found
+  --> $SRC_DIR/core/src/panic.rs:LL:COL
+   |
+   = note: expected because `#[panic_handler]` was declared here in crate `core`
+   |
+   = help: expected at least one implementation in crate `empty_extern_arg` or any of its dependencies
 
 error: aborting due to 3 previous errors
 

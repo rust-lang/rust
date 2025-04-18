@@ -942,10 +942,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     contract: _,
                     body,
                     define_opaque: _,
+                    eii_impl,
                 },
             ) => {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                 self.check_defaultness(item.span, *defaultness);
+
+                for EIIImpl { node_id, eii_macro_path, .. } in eii_impl {
+                    self.visit_path(eii_macro_path, *node_id);
+                }
 
                 let is_intrinsic =
                     item.attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic);

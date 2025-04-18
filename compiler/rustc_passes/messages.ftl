@@ -278,6 +278,17 @@ passes_duplicate_diagnostic_item_in_crate =
     duplicate diagnostic item in crate `{$crate_name}`: `{$name}`
     .note = the diagnostic item is first defined in crate `{$orig_crate_name}`
 
+passes_duplicate_eii_impls =
+    multiple implementations of `#[{$name}]`
+    .first = first implemented here in crate `{$first_crate}`
+    .second = also implemented here in crate `{$second_crate}`
+    .note = in addition to these two, { $num_additional_crates ->
+         [one] another implementation was found in crate {$additional_crate_names}
+         *[other] more implementations were also found in the following crates: {$additional_crate_names}
+    }
+
+    .help = an "externally implementable item" can only have a single implementation in the final artifact. When multiple implementations are found, also in different crates, they conflict
+
 passes_duplicate_feature_err =
     the feature `{$feature}` has already been enabled
 
@@ -311,6 +322,25 @@ passes_duplicate_lang_item_crate_depends =
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
+passes_eii_fn_with_target_feature =
+    `#[{$name}]` is not allowed to have `#[target_feature]`
+    .label = `#[{$name}]` is not allowed to have `#[target_feature]`
+
+passes_eii_fn_with_track_caller =
+    `#[{$name}]` is not allowed to have `#[track_caller]`
+    .label = `#[{$name}]` is not allowed to have `#[track_caller]`
+
+passes_eii_impl_not_function =
+    `eii_macro_for` is only valid on functions
+
+passes_eii_impl_requires_unsafe =
+    `#[{$name}]` is unsafe to implement
+passes_eii_impl_requires_unsafe_suggestion = wrap the attribute in `unsafe(...)`
+
+passes_eii_without_impl =
+    `#[{$name}]` required, but not found
+    .label = expected because `#[{$name}]` was declared here in crate `{$decl_crate_name}`
+    .help = expected at least one implementation in crate `{$current_crate_name}` or any of its dependencies
 passes_export_name =
     attribute should be applied to a free function, impl method or static
     .label = not a free function, impl method or static
@@ -413,14 +443,6 @@ passes_lang_item_fn = {$name ->
     *[other] `{$name}` lang item
 } function
 
-passes_lang_item_fn_with_target_feature =
-    {passes_lang_item_fn} is not allowed to have `#[target_feature]`
-    .label = {passes_lang_item_fn} is not allowed to have `#[target_feature]`
-
-passes_lang_item_fn_with_track_caller =
-    {passes_lang_item_fn} is not allowed to have `#[track_caller]`
-    .label = {passes_lang_item_fn} is not allowed to have `#[track_caller]`
-
 passes_lang_item_on_incorrect_target =
     `{$name}` lang item must be applied to a {$expected_target}
     .label = attribute should be applied to a {$expected_target}, not a {$actual_target}
@@ -488,9 +510,6 @@ passes_missing_lang_item =
     lang item required, but not found: `{$name}`
     .note = this can occur when a binary crate with `#![no_std]` is compiled for a target where `{$name}` is defined in the standard library
     .help = you may be able to compile for a target that doesn't need `{$name}`, specify a target with `--target` or in `.cargo/config`
-
-passes_missing_panic_handler =
-    `#[panic_handler]` function required, but not found
 
 passes_missing_stability_attr =
     {$descr} has missing stability attribute
@@ -741,6 +760,9 @@ passes_trait_impl_const_stable =
 
 passes_transparent_incompatible =
     transparent {$target} cannot have other repr hints
+
+passes_undefined_naked_function_abi =
+    Rust ABI is unsupported in naked functions
 
 passes_unknown_external_lang_item =
     unknown external lang item: `{$lang_item}`

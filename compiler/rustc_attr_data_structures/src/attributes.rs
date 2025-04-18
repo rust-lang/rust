@@ -2,6 +2,7 @@ use rustc_abi::Align;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
+use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
@@ -138,6 +139,23 @@ impl Deprecation {
     }
 }
 
+#[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct EIIImpl {
+    pub eii_macro: DefId,
+    pub impl_marked_unsafe: bool,
+    pub span: Span,
+    pub inner_span: Span,
+    pub is_default: bool,
+}
+
+#[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct EIIDecl {
+    pub eii_extern_item: DefId,
+    /// whether or not it is unsafe to implement this EII
+    pub impl_unsafe: bool,
+    pub span: Span,
+}
+
 /// Represent parsed, *built in*, inert attributes.
 ///
 /// That means attributes that are not actually ever expanded.
@@ -189,6 +207,9 @@ pub enum AttributeKind {
         span: Span,
         comment: Symbol,
     },
+    EiiImpl(ThinVec<EIIImpl>),
+    EiiMacroFor(EIIDecl),
+    EiiMangleExtern,
     MacroTransparency(Transparency),
     Repr(ThinVec<(ReprAttr, Span)>),
     RustcMacroEdition2021,

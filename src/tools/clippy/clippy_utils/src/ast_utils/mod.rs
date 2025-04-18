@@ -384,6 +384,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
+                eii_impl: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -393,6 +394,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
+                eii_impl: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -547,6 +549,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
+                eii_impl: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -556,6 +559,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
+                eii_impl: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -630,6 +634,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
+                eii_impl: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -639,6 +644,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
+                eii_impl: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)

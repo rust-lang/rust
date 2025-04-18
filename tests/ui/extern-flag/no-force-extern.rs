@@ -8,5 +8,5 @@
 
 fn foo() {} //~ ERROR `main` function not found in crate `no_force_extern`
 
-//~? ERROR `#[panic_handler]` function required, but not found
+//~? ERROR `#[panic_handler]` required, but not found
 //~? ERROR unwinding panics are not supported without std

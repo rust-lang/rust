@@ -208,6 +208,31 @@ pub(crate) struct LifetimesOrBoundsMismatchOnTrait {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_lifetimes_or_bounds_mismatch_on_eii)]
+pub(crate) struct LifetimesOrBoundsMismatchOnEII {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(hir_analysis_generics_label)]
+    pub generics_span: Option<Span>,
+    #[label(hir_analysis_where_label)]
+    pub where_span: Option<Span>,
+    #[label(hir_analysis_bounds_label)]
+    pub bounds_span: Vec<Span>,
+    pub ident: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_eii_with_generics)]
+pub(crate) struct EiiWithGenerics {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub attr: Span,
+    pub eii_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_drop_impl_on_wrong_item, code = E0120)]
 pub(crate) struct DropImplOnWrongItem {
     #[primary_span]
