@@ -54,6 +54,10 @@ shlex = "1.0"
 tracing = { version = "0.1.35" }
 # tidy-alphabetical-end
 
+[dependencies.mimalloc]
+version = "0.1.44"
+optional = true
+
 [target.'cfg(all(unix, any(target_env = "gnu", target_os = "macos")))'.dependencies]
 # tidy-alphabetical-start
 libc = "0.2"
@@ -74,6 +78,7 @@ ctrlc = "3.4.4"
 # tidy-alphabetical-start
 llvm = ['rustc_interface/llvm']
 max_level_info = ['rustc_log/max_level_info']
+mimalloc = ['dep:mimalloc']
 rustc_randomized_layouts = [
     'rustc_index/rustc_randomized_layouts',
     'rustc_middle/rustc_randomized_layouts'
