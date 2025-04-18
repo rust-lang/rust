@@ -137,9 +137,10 @@ macro_rules! hf128 {
 #[cfg(test)]
 macro_rules! assert_biteq {
     ($left:expr, $right:expr, $($tt:tt)*) => {{
+        use $crate::support::Int;
         let l = $left;
         let r = $right;
-        let bits = (l.to_bits() - l.to_bits()).leading_zeros(); // hack to get the width from the value
+        let bits = Int::leading_zeros(l.to_bits() - l.to_bits()); // hack to get the width from the value
         assert!(
             l.biteq(r),
             "{}\nl: {l:?} ({lb:#0width$x})\nr: {r:?} ({rb:#0width$x})",

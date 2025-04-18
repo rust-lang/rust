@@ -121,7 +121,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::Int;
     use super::*;
 
     // Tests against N3220

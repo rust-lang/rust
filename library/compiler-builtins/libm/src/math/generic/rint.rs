@@ -43,7 +43,7 @@ pub fn rint_round<F: Float>(x: F, _round: Round) -> FpResult<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::support::{Hexf, Int, Status};
+    use crate::support::{Hexf, Status};
 
     fn spec_test<F: Float>(cases: &[(F, F, Status)]) {
         let roundtrip = [F::ZERO, F::ONE, F::NEG_ONE, F::NEG_ZERO, F::INFINITY, F::NEG_INFINITY];

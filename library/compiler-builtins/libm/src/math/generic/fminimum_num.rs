@@ -28,7 +28,7 @@ pub fn fminimum_num<F: Float>(x: F, y: F) -> F {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::support::{Hexf, Int};
+    use crate::support::Hexf;
 
     fn spec_test<F: Float>() {
         let cases = [
