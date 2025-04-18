@@ -60,6 +60,12 @@ impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Debug for ty::adjustment::PatAdjustment<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} -> {:?}", self.source, self.kind)
+    }
+}
+
 impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {

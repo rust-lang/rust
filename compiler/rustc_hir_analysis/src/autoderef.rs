@@ -2,8 +2,8 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Limit;
-use rustc_span::Span;
 use rustc_span::def_id::{LOCAL_CRATE, LocalDefId};
+use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 
@@ -259,7 +259,11 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     }
 }
 
-pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Span, ty: Ty<'tcx>) {
+pub fn report_autoderef_recursion_limit_error<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    span: Span,
+    ty: Ty<'tcx>,
+) -> ErrorGuaranteed {
     // We've reached the recursion limit, error gracefully.
     let suggested_limit = match tcx.recursion_limit() {
         Limit(0) => Limit(2),
@@ -270,5 +274,5 @@ pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Spa
         ty,
         suggested_limit,
         crate_name: tcx.crate_name(LOCAL_CRATE),
-    });
+    })
 }
