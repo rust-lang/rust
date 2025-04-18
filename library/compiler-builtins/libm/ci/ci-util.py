@@ -6,6 +6,7 @@ git history.
 """
 
 import json
+import os
 import subprocess as sp
 import sys
 from dataclasses import dataclass
@@ -13,7 +14,7 @@ from glob import glob, iglob
 from inspect import cleandoc
 from os import getenv
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, Self
 
 USAGE = cleandoc(
     """
@@ -51,6 +52,8 @@ WORKFLOW_NAME = "CI"  # Workflow that generates the benchmark artifacts
 ARTIFACT_GLOB = "baseline-icount*"
 # Place this in a PR body to skip regression checks (must be at the start of a line).
 REGRESSION_DIRECTIVE = "ci: allow-regressions"
+# Place this in a PR body to skip extensive tests
+SKIP_EXTENSIVE_DIRECTIVE = "ci: skip-extensive"
 
 # Don't run exhaustive tests if these files change, even if they contaiin a function
 # definition.
@@ -66,6 +69,39 @@ TYPES = ["f16", "f32", "f64", "f128"]
 def eprint(*args, **kwargs):
     """Print to stderr."""
     print(*args, file=sys.stderr, **kwargs)
+
+
+@dataclass
+class PrInfo:
+    """GitHub response for PR query"""
+
+    body: str
+    commits: list[str]
+    created_at: str
+    number: int
+
+    @classmethod
+    def load(cls, pr_number: int | str) -> Self:
+        """For a given PR number, query the body and commit list"""
+        pr_info = sp.check_output(
+            [
+                "gh",
+                "pr",
+                "view",
+                str(pr_number),
+                "--json=number,commits,body,createdAt",
+                # Flatten the commit list to only hashes, change a key to snake naming
+                "--jq=.commits |= map(.oid) | .created_at = .createdAt | del(.createdAt)",
+            ],
+            text=True,
+        )
+        eprint("PR info:", json.dumps(pr_info, indent=4))
+        return cls(**json.loads(pr_info))
+
+    def contains_directive(self, directive: str) -> bool:
+        """Return true if the provided directive is on a line in the PR body"""
+        lines = self.body.splitlines()
+        return any(line.startswith(directive) for line in lines)
 
 
 class FunctionDef(TypedDict):
@@ -149,7 +185,7 @@ class Context:
                 eprint(f"changed files for {name}: {changed}")
                 routines.add(name)
 
-        ret = {}
+        ret: dict[str, list[str]] = {}
         for r in sorted(routines):
             ret.setdefault(self.defs[r]["type"], []).append(r)
 
@@ -159,13 +195,27 @@ class Context:
         """Create a JSON object a list items for each type's changed files, if any
         did change, and the routines that were affected by the change.
         """
+
+        pr_number = os.environ.get("PR_NUMBER")
+        skip_tests = False
+
+        if pr_number is not None:
+            pr = PrInfo.load(pr_number)
+            skip_tests = pr.contains_directive(SKIP_EXTENSIVE_DIRECTIVE)
+
+            if skip_tests:
+                eprint("Skipping all extensive tests")
+
         changed = self.changed_routines()
         ret = []
         for ty in TYPES:
             ty_changed = changed.get(ty, [])
+            changed_str = ",".join(ty_changed)
+
             item = {
                 "ty": ty,
-                "changed": ",".join(ty_changed),
+                "changed": changed_str,
+                "to_test": "" if skip_tests else changed_str,
             }
             ret.append(item)
         output = json.dumps({"matrix": ret}, separators=(",", ":"))
@@ -266,13 +316,13 @@ def check_iai_regressions(args: list[str]):
     found.
     """
 
-    iai_home = "iai-home"
-    pr_number = False
+    iai_home_str = "iai-home"
+    pr_number = None
 
     while len(args) > 0:
         match args:
             case ["--home", home, *rest]:
-                iai_home = home
+                iai_home_str = home
                 args = rest
             case ["--allow-pr-override", pr_num, *rest]:
                 pr_number = pr_num
@@ -281,10 +331,10 @@ def check_iai_regressions(args: list[str]):
                 eprint(USAGE)
                 exit(1)
 
-    iai_home = Path(iai_home)
+    iai_home = Path(iai_home_str)
 
     found_summaries = False
-    regressions = []
+    regressions: list[dict] = []
     for summary_path in iglob("**/summary.json", root_dir=iai_home, recursive=True):
         found_summaries = True
         with open(iai_home / summary_path, "r") as f:
@@ -292,7 +342,9 @@ def check_iai_regressions(args: list[str]):
 
         summary_regs = []
         run = summary["callgrind_summary"]["callgrind_run"]
-        name_entry = {"name": f"{summary["function_name"]}.{summary["id"]}"}
+        fname = summary["function_name"]
+        id = summary["id"]
+        name_entry = {"name": f"{fname}.{id}"}
 
         for segment in run["segments"]:
             summary_regs.extend(segment["regressions"])
@@ -312,22 +364,8 @@ def check_iai_regressions(args: list[str]):
     eprint("Found regressions:", json.dumps(regressions, indent=4))
 
     if pr_number is not None:
-        pr_info = sp.check_output(
-            [
-                "gh",
-                "pr",
-                "view",
-                str(pr_number),
-                "--json=number,commits,body,createdAt",
-                "--jq=.commits |= map(.oid)",
-            ],
-            text=True,
-        )
-        pr = json.loads(pr_info)
-        eprint("PR info:", json.dumps(pr, indent=4))
-
-        lines = pr["body"].splitlines()
-        if any(line.startswith(REGRESSION_DIRECTIVE) for line in lines):
+        pr = PrInfo.load(pr_number)
+        if pr.contains_directive(REGRESSION_DIRECTIVE):
             eprint("PR allows regressions, returning")
             return
 

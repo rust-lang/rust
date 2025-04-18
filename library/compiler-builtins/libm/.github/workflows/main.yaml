@@ -239,6 +239,9 @@ jobs:
     name: Calculate job matrix
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
     outputs:
       matrix: ${{ steps.script.outputs.matrix }}
     steps:
@@ -267,7 +270,7 @@ jobs:
         # this is not currently possible https://github.com/actions/runner/issues/1985.
         include: ${{ fromJSON(needs.calculate_extensive_matrix.outputs.matrix).matrix }}
     env:
-      CHANGED: ${{ matrix.changed }}
+      TO_TEST: ${{ matrix.to_test }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -279,16 +282,18 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Run extensive tests
         run: |
-          echo "Changed: '$CHANGED'"
-          if [ -z "$CHANGED" ]; then
+          echo "Tests to run: '$TO_TEST'"
+          if [ -z "$TO_TEST" ]; then
             echo "No tests to run, exiting."
             exit
           fi
 
-          # Run the non-extensive tests first to catch any easy failures
-          cargo t --profile release-checked -- "$CHANGED"
+          set -x
 
-          LIBM_EXTENSIVE_TESTS="$CHANGED" cargo t \
+          # Run the non-extensive tests first to catch any easy failures
+          cargo t --profile release-checked -- "$TO_TEST"
+
+          LIBM_EXTENSIVE_TESTS="$TO_TEST" cargo t \
             --features build-mpfr,unstable,force-soft-floats \
             --profile release-checked \
             -- extensive
