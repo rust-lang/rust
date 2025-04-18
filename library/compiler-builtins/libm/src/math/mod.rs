@@ -164,7 +164,6 @@ mod fmin_fmax;
 mod fminimum_fmaximum;
 mod fminimum_fmaximum_num;
 mod fmod;
-mod fmodf;
 mod frexp;
 mod frexpf;
 mod hypot;
@@ -260,8 +259,7 @@ pub use self::fma_wide::fmaf;
 pub use self::fmin_fmax::{fmax, fmaxf, fmin, fminf};
 pub use self::fminimum_fmaximum::{fmaximum, fmaximumf, fminimum, fminimumf};
 pub use self::fminimum_fmaximum_num::{fmaximum_num, fmaximum_numf, fminimum_num, fminimum_numf};
-pub use self::fmod::fmod;
-pub use self::fmodf::fmodf;
+pub use self::fmod::{fmod, fmodf};
 pub use self::frexp::frexp;
 pub use self::frexpf::frexpf;
 pub use self::hypot::hypot;
@@ -319,10 +317,6 @@ pub use self::trunc::{trunc, truncf};
 cfg_if! {
     if #[cfg(f16_enabled)] {
         // verify-sorted-start
-        mod fmodf16;
-        // verify-sorted-end
-
-        // verify-sorted-start
         pub use self::ceil::ceilf16;
         pub use self::copysign::copysignf16;
         pub use self::fabs::fabsf16;
@@ -331,7 +325,7 @@ cfg_if! {
         pub use self::fmin_fmax::{fmaxf16, fminf16};
         pub use self::fminimum_fmaximum::{fmaximumf16, fminimumf16};
         pub use self::fminimum_fmaximum_num::{fmaximum_numf16, fminimum_numf16};
-        pub use self::fmodf16::fmodf16;
+        pub use self::fmod::fmodf16;
         pub use self::ldexp::ldexpf16;
         pub use self::rint::rintf16;
         pub use self::round::roundf16;
@@ -349,10 +343,6 @@ cfg_if! {
 cfg_if! {
     if #[cfg(f128_enabled)] {
         // verify-sorted-start
-        mod fmodf128;
-        // verify-sorted-end
-
-        // verify-sorted-start
         pub use self::ceil::ceilf128;
         pub use self::copysign::copysignf128;
         pub use self::fabs::fabsf128;
@@ -362,7 +352,7 @@ cfg_if! {
         pub use self::fmin_fmax::{fmaxf128, fminf128};
         pub use self::fminimum_fmaximum::{fmaximumf128, fminimumf128};
         pub use self::fminimum_fmaximum_num::{fmaximum_numf128, fminimum_numf128};
-        pub use self::fmodf128::fmodf128;
+        pub use self::fmod::fmodf128;
         pub use self::ldexp::ldexpf128;
         pub use self::rint::rintf128;
         pub use self::round::roundf128;
