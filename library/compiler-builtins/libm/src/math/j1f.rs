@@ -64,6 +64,7 @@ const S04: f32 = 5.0463624390e-09; /* 0x31ad6446 */
 const S05: f32 = 1.2354227016e-11; /* 0x2d59567e */
 
 /// First order of the [Bessel function](https://en.wikipedia.org/wiki/Bessel_function) of the first kind (f32).
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn j1f(x: f32) -> f32 {
     let mut z: f32;
     let r: f32;
@@ -109,6 +110,7 @@ const V0: [f32; 5] = [
 ];
 
 /// First order of the [Bessel function](https://en.wikipedia.org/wiki/Bessel_function) of the second kind (f32).
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn y1f(x: f32) -> f32 {
     let z: f32;
     let u: f32;
