@@ -66,6 +66,7 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
 
     type_map: metadata::TypeMap<'ll, 'tcx>,
+    adt_stack: RefCell<Vec<(DefId, GenericArgsRef<'tcx>)>>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
 }
@@ -80,6 +81,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             builder,
             created_files: Default::default(),
             type_map: Default::default(),
+            adt_stack: Default::default(),
             namespace_map: RefCell::new(Default::default()),
             recursion_marker_type: OnceCell::new(),
         }
