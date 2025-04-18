@@ -19,6 +19,7 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym, with_metavar_spa
 
 use crate::hir::{ModuleItems, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
+use crate::middle::eii::EiiMapping;
 use crate::query::LocalCrate;
 use crate::ty::TyCtxt;
 
@@ -1027,7 +1028,15 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::Crate(item) => item.spans.inner_span,
             Node::WherePredicate(pred) => pred.span,
             Node::PreciseCapturingNonLifetimeArg(param) => param.ident.span,
-            Node::Synthetic => unreachable!(),
+            Node::Synthetic => {
+                if let Some(EiiMapping { chosen_impl, .. }) =
+                    self.tcx.get_externally_implementable_item_impls(()).get(&hir_id.owner.def_id)
+                {
+                    self.tcx.def_span(chosen_impl)
+                } else {
+                    unreachable!()
+                }
+            }
             Node::Err(span) => span,
         }
     }

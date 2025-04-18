@@ -16,7 +16,7 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 
 use super::potentially_plural_count;
-use crate::errors::LifetimesOrBoundsMismatchOnEII;
+use crate::errors::{EiiWithGenerics, LifetimesOrBoundsMismatchOnEII};
 
 /// Checks a bunch of different properties of the impl/trait methods for
 /// compatibility, such as asyncness, number of argument, self receiver kind,
@@ -28,9 +28,28 @@ fn check_is_structurally_compatible<'tcx>(
     eii_name: Symbol,
     eii_attr_span: Span,
 ) -> Result<(), ErrorGuaranteed> {
-    // FIXME(jdonszelmann): check no generics
+    check_no_generics(tcx, external_impl, declaration, eii_name, eii_attr_span)?;
     compare_number_of_method_arguments(tcx, external_impl, declaration, eii_name, eii_attr_span)?;
     check_region_bounds_on_impl_item(tcx, external_impl, declaration, eii_attr_span)?;
+    Ok(())
+}
+
+fn check_no_generics<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    external_impl: LocalDefId,
+    _declaration: DefId,
+    eii_name: Symbol,
+    eii_attr_span: Span,
+) -> Result<(), ErrorGuaranteed> {
+    let generics = tcx.generics_of(external_impl);
+    if generics.own_requires_monomorphization() {
+        tcx.dcx().emit_err(EiiWithGenerics {
+            span: tcx.def_span(external_impl),
+            attr: eii_attr_span,
+            eii_name,
+        });
+    }
+
     Ok(())
 }
 
@@ -268,6 +287,8 @@ pub(crate) fn compare_eii_function_types<'tcx>(
             terr,
             (declaration, declaration_sig),
             (external_impl, external_impl_sig),
+            eii_attr_span,
+            eii_name,
         );
         return Err(emitted);
     }
@@ -299,6 +320,8 @@ fn report_eii_mismatch<'tcx>(
     terr: TypeError<'tcx>,
     (declaration_did, declaration_sig): (DefId, ty::FnSig<'tcx>),
     (external_impl_did, external_impl_sig): (LocalDefId, ty::FnSig<'tcx>),
+    eii_attr_span: Span,
+    eii_name: Symbol,
 ) -> ErrorGuaranteed {
     let tcx = infcx.tcx;
     let (impl_err_span, trait_err_span, external_impl_name) =
@@ -308,9 +331,12 @@ fn report_eii_mismatch<'tcx>(
         tcx.dcx(),
         impl_err_span,
         E0053, // TODO: new error code
-        "function `{}` has a type that is incompatible with the declaration",
+        "function `{}` has a type that is incompatible with the declaration of `#[{eii_name}]`",
         external_impl_name
     );
+
+    diag.span_note(eii_attr_span, "expected this because of this attribute");
+
     match &terr {
         TypeError::ArgumentMutability(i) | TypeError::ArgumentSorts(_, i) => {
             if declaration_sig.inputs().len() == *i {

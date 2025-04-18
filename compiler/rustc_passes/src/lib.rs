@@ -54,5 +54,6 @@ pub fn provide(providers: &mut Providers) {
     reachable::provide(providers);
     stability::provide(providers);
     upvars::provide(providers);
-    providers.get_externally_implementable_item_impls = eii::get_eii_impls;
+    providers.get_externally_implementable_item_impls =
+        eii::get_externally_implementable_item_impls;
 }

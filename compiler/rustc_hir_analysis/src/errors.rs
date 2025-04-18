@@ -223,6 +223,16 @@ pub(crate) struct LifetimesOrBoundsMismatchOnEII {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_eii_with_generics)]
+pub(crate) struct EiiWithGenerics {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub attr: Span,
+    pub eii_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_drop_impl_on_wrong_item, code = E0120)]
 pub(crate) struct DropImplOnWrongItem {
     #[primary_span]

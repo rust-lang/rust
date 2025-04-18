@@ -181,8 +181,11 @@ impl<'tcx> MonoItem<'tcx> {
             return opt_incr_drop_glue_mode(tcx, ty);
         }
 
-        // eii shims are only generated in the final crate.
-        // As such, they will be both globally shared and unique.
+        // Eii shims are only generated in the final crate because we need to resolve defaults.
+        // Specifically, only when making the final crate we know whether there was an explicit
+        // implementation given *somewhere* and if not we then have to decide whether there is
+        // a default which we need to insert. That default needs to be shared between all
+        // dependencies; hence globally shared.
         if let InstanceKind::EiiShim { .. } = instance.def {
             return InstantiationMode::GloballyShared { may_conflict: false };
         }
