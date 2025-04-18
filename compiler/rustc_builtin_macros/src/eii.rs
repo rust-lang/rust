@@ -209,7 +209,7 @@ fn eii_(
             safety: ast::Safety::Unsafe(span),
             abi,
             items: From::from([P(ast::ForeignItem {
-                attrs,
+                attrs: attrs.clone(),
                 id: ast::DUMMY_NODE_ID,
                 span: item_span,
                 vis,
@@ -220,31 +220,34 @@ fn eii_(
         tokens: None,
     }));
 
-    let macro_def = Annotatable::Item(P(ast::Item {
-        attrs: ast::AttrVec::from_iter([
-            // #[builtin_macro(eii_macro)]
-            ast::Attribute {
-                kind: ast::AttrKind::Normal(P(ast::NormalAttr {
-                    item: ast::AttrItem {
-                        unsafety: ast::Safety::Default,
-                        path: ast::Path::from_ident(Ident::new(sym::rustc_builtin_macro, span)),
-                        args: ast::AttrArgs::Delimited(ast::DelimArgs {
-                            dspan: DelimSpan::from_single(span),
-                            delim: Delimiter::Parenthesis,
-                            tokens: TokenStream::new(vec![tokenstream::TokenTree::token_alone(
-                                token::TokenKind::Ident(sym::eii_macro, token::IdentIsRaw::No),
-                                span,
-                            )]),
-                        }),
-                        tokens: None,
-                    },
+    let mut macro_attrs = attrs.clone();
+    macro_attrs.push(
+        // #[builtin_macro(eii_macro)]
+        ast::Attribute {
+            kind: ast::AttrKind::Normal(P(ast::NormalAttr {
+                item: ast::AttrItem {
+                    unsafety: ast::Safety::Default,
+                    path: ast::Path::from_ident(Ident::new(sym::rustc_builtin_macro, span)),
+                    args: ast::AttrArgs::Delimited(ast::DelimArgs {
+                        dspan: DelimSpan::from_single(span),
+                        delim: Delimiter::Parenthesis,
+                        tokens: TokenStream::new(vec![tokenstream::TokenTree::token_alone(
+                            token::TokenKind::Ident(sym::eii_macro, token::IdentIsRaw::No),
+                            span,
+                        )]),
+                    }),
                     tokens: None,
-                })),
-                id: ecx.sess.psess.attr_id_generator.mk_attr_id(),
-                style: ast::AttrStyle::Outer,
-                span,
-            },
-        ]),
+                },
+                tokens: None,
+            })),
+            id: ecx.sess.psess.attr_id_generator.mk_attr_id(),
+            style: ast::AttrStyle::Outer,
+            span,
+        },
+    );
+
+    let macro_def = Annotatable::Item(P(ast::Item {
+        attrs: macro_attrs,
         id: ast::DUMMY_NODE_ID,
         span,
         // pub
