@@ -10,7 +10,8 @@ use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
 use rustc_session::config;
 #[cfg(feature = "master")]
-use rustc_target::callconv::{ArgAttributes, CastTarget, Conv, FnAbi, PassMode};
+use rustc_target::callconv::Conv;
+use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, PassMode};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
