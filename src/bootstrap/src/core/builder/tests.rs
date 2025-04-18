@@ -234,7 +234,7 @@ fn alias_and_path_for_library() {
     );
     assert_eq!(
         first(cache.all::<doc::Std>()),
-        &[doc_std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0)]
+        &[doc_std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1)]
     );
 }
 
@@ -259,16 +259,10 @@ fn ci_rustc_if_unchanged_logic() {
     builder.run_step_descriptions(&Builder::get_step_descriptions(config.cmd.kind()), &[]);
 
     // Make sure "if-unchanged" logic doesn't try to use CI rustc while there are changes
-    // in compiler and/or library.
+    // in "compiler" tree.
     if config.download_rustc_commit.is_some() {
-        let mut paths = vec!["compiler"];
-
-        // Handle library tree the same way as in `Config::download_ci_rustc_commit`.
-        if builder.config.is_running_on_ci {
-            paths.push("library");
-        }
-
-        let has_changes = config.last_modified_commit(&paths, "download-rustc", true).is_none();
+        let has_changes =
+            config.last_modified_commit(&["compiler"], "download-rustc", true).is_none();
 
         assert!(
             !has_changes,
@@ -392,14 +386,14 @@ mod defaults {
         assert_eq!(first(cache.all::<doc::ErrorIndex>()), &[doc::ErrorIndex { target: a },]);
         assert_eq!(
             first(cache.all::<tool::ErrorIndex>()),
-            &[tool::ErrorIndex { compiler: Compiler::new(0, a) }]
+            &[tool::ErrorIndex { compiler: Compiler::new(1, a) }]
         );
-        // docs should be built with the beta compiler, not with the stage0 artifacts.
+        // docs should be built with the stage0 compiler, not with the stage0 artifacts.
         // recall that rustdoc is off-by-one: `stage` is the compiler rustdoc is _linked_ to,
         // not the one it was built by.
         assert_eq!(
             first(cache.all::<tool::Rustdoc>()),
-            &[tool::Rustdoc { compiler: Compiler::new(0, a) },]
+            &[tool::Rustdoc { compiler: Compiler::new(1, a) },]
         );
     }
 }
