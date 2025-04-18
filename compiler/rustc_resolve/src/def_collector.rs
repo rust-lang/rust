@@ -174,6 +174,12 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                             );
                         }
                     }
+                    // HACK(mgca): see lower_const_body_with_const_block in ast_lowering
+                    ItemKind::Const(box ConstItem { body_id: Some(body_id), .. })
+                        if this.resolver.tcx.features().min_generic_const_args() =>
+                    {
+                        this.create_def(body_id, None, DefKind::InlineConst, i.span);
+                    }
                     _ => {}
                 }
                 visit::walk_item(this, i);
@@ -334,7 +340,15 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         };
 
         let def = self.create_def(i.id, Some(ident.name), def_kind, i.span);
-        self.with_parent(def, |this| visit::walk_assoc_item(this, i, ctxt));
+        self.with_parent(def, |this| {
+            // HACK(mgca): see lower_const_body_with_const_block in ast_lowering
+            if let AssocItemKind::Const(box ConstItem { body_id: Some(body_id), .. }) = i.kind
+                && this.resolver.tcx.features().min_generic_const_args()
+            {
+                this.create_def(body_id, None, DefKind::InlineConst, i.span);
+            }
+            visit::walk_assoc_item(this, i, ctxt)
+        });
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
