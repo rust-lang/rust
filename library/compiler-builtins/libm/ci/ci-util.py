@@ -54,6 +54,11 @@ ARTIFACT_GLOB = "baseline-icount*"
 REGRESSION_DIRECTIVE = "ci: allow-regressions"
 # Place this in a PR body to skip extensive tests
 SKIP_EXTENSIVE_DIRECTIVE = "ci: skip-extensive"
+# Place this in a PR body to allow running a large number of extensive tests. If not
+# set, this script will error out if a threshold is exceeded in order to avoid
+# accidentally spending huge amounts of CI time.
+ALLOW_MANY_EXTENSIVE_DIRECTIVE = "ci: allow-many-extensive"
+MANY_EXTENSIVE_THRESHOLD = 20
 
 # Don't run exhaustive tests if these files change, even if they contaiin a function
 # definition.
@@ -198,28 +203,45 @@ class Context:
 
         pr_number = os.environ.get("PR_NUMBER")
         skip_tests = False
+        error_on_many_tests = False
 
         if pr_number is not None:
             pr = PrInfo.load(pr_number)
             skip_tests = pr.contains_directive(SKIP_EXTENSIVE_DIRECTIVE)
+            error_on_many_tests = not pr.contains_directive(
+                ALLOW_MANY_EXTENSIVE_DIRECTIVE
+            )
 
             if skip_tests:
                 eprint("Skipping all extensive tests")
 
         changed = self.changed_routines()
         ret = []
+        total_to_test = 0
+
         for ty in TYPES:
             ty_changed = changed.get(ty, [])
-            changed_str = ",".join(ty_changed)
+            ty_to_test = [] if skip_tests else ty_changed
+            total_to_test += len(ty_to_test)
 
             item = {
                 "ty": ty,
-                "changed": changed_str,
-                "to_test": "" if skip_tests else changed_str,
+                "changed": ",".join(ty_changed),
+                "to_test": ",".join(ty_to_test),
             }
+
             ret.append(item)
         output = json.dumps({"matrix": ret}, separators=(",", ":"))
         eprint(f"output: {output}")
+        eprint(f"total extensive tests: {total_to_test}")
+
+        if error_on_many_tests and total_to_test > MANY_EXTENSIVE_THRESHOLD:
+            eprint(
+                f"More than {MANY_EXTENSIVE_THRESHOLD} tests would be run; add"
+                f" `{ALLOW_MANY_EXTENSIVE_DIRECTIVE}` to the PR body if this is intentional"
+            )
+            exit(1)
+
         return output
 
 
