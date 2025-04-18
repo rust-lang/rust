@@ -1,4 +1,4 @@
-error: lifetime parameters or bounds `other` do not match the declaration
+error: lifetime parameters or bounds of `other` do not match the declaration
   --> $DIR/subtype_2.rs:18:9
    |
 LL |     safe fn bar<'a>(x: &'static u64) -> &'a u64;

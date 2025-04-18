@@ -1,5 +1,5 @@
-error: lifetime parameters or bounds `other` do not match the declaration
-  --> $DIR/subtype_1.rs:19:9
+error: lifetime parameters or bounds of `other` do not match the declaration
+  --> $DIR/subtype_1.rs:18:9
    |
 LL |     safe fn bar<'a, 'b>(x: &'b u64) -> &'a u64;
    |                -------- lifetimes in impl do not match this signature

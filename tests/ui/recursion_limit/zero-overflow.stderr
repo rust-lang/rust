@@ -2,6 +2,11 @@ error[E0275]: overflow evaluating the requirement `&mut Self: DispatchFromDyn<&m
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "2"]` attribute to your crate (`zero_overflow`)
 
-error: aborting due to 1 previous error
+error: queries overflow the depth limit!
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "2"]` attribute to your crate (`zero_overflow`)
+   = note: query depth increased by 2 when computing layout of `core::panic::panic_info::PanicInfo<'_>`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0275`.

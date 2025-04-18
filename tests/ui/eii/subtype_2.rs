@@ -16,7 +16,7 @@ unsafe extern "Rust" {
 
 #[foo]
 fn other<'a>(x: &'a u64) -> &'static u64 {
-//~^ ERROR lifetime parameters or bounds `other` do not match the declaration
+//~^ ERROR lifetime parameters or bounds of `other` do not match the declaration
     &0
 }
 

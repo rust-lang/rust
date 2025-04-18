@@ -9,5 +9,5 @@
 #![issue_59191::no_main]
 #![issue_59191::no_main]
 
-//~? ERROR `#[panic_handler]` function required, but not found
+//~? ERROR `#[panic_handler]` required, but not found
 //~? ERROR unwinding panics are not supported without std

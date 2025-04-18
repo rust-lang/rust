@@ -6,8 +6,8 @@
 #![no_main]
 
 #[panic_handler]
+//~^ ERROR cannot find attribute `panic_handler` in this scope
 fn panic() -> ! {
-    //~^ ERROR requires `panic_info` lang_item
     loop {}
 }
 

@@ -227,7 +227,7 @@ pub fn provide(providers: &mut Providers) {
         } else if let Some(EiiMapping { chosen_impl, .. }) =
             tcx.get_externally_implementable_item_impls(()).get(&def_id)
         {
-            tcx.fn_arg_names(chosen_impl)
+            tcx.fn_arg_idents(chosen_impl)
         } else {
             span_bug!(
                 tcx.hir_span(tcx.local_def_id_to_hir_id(def_id)),

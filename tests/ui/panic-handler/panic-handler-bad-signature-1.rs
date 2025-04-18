@@ -7,4 +7,4 @@ use core::panic::PanicInfo;
 
 #[panic_handler]
 fn panic(info: PanicInfo) -> () {}
-//~^ ERROR `#[panic_handler]` function has wrong type [E0308]
+//~^ ERROR function `panic` has a type that is incompatible with the declaration of `#[panic_handler]`

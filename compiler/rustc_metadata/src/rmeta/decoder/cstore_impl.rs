@@ -348,7 +348,6 @@ provide! { tcx, def_id, other, cdata,
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
     has_alloc_error_handler => { cdata.root.has_alloc_error_handler }
-    has_panic_handler => { cdata.root.has_panic_handler }
     is_profiler_runtime => { cdata.root.profiler_runtime }
     required_panic_strategy => { cdata.root.required_panic_strategy }
     panic_in_drop_strategy => { cdata.root.panic_in_drop_strategy }

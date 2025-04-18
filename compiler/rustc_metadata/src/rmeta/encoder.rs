@@ -716,7 +716,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 edition: tcx.sess.edition(),
                 has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
                 has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
-                has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
                 externally_implementable_items,
 
                 has_default_lib_allocator: ast::attr::contains_name(

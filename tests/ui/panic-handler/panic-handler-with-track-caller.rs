@@ -8,7 +8,7 @@ use core::panic::PanicInfo;
 
 #[panic_handler]
 #[track_caller]
-//~^ ERROR `#[panic_handler]` function is not allowed to have `#[track_caller]`
+//~^ ERROR `#[panic_handler]` is not allowed to have `#[track_caller]`
 fn panic(info: &PanicInfo) -> ! {
     unimplemented!();
 }
