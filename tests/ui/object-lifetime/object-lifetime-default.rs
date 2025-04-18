@@ -2,13 +2,13 @@
 
 #[rustc_object_lifetime_default]
 struct A<
-    T, //~ ERROR BaseDefault
+    T, //~ ERROR Empty
 >(T);
 
 #[rustc_object_lifetime_default]
 struct B<
     'a,
-    T, //~ ERROR BaseDefault
+    T, //~ ERROR Empty
 >(&'a (), T);
 
 #[rustc_object_lifetime_default]
@@ -46,5 +46,13 @@ struct G<
     T: 'a,      //~ ERROR 'a
     U: 'a + 'b, //~ ERROR Ambiguous
 >(&'a T, &'b U);
+
+// Check that we also dump the default for the implicit `Self` type param of traits.
+#[rustc_object_lifetime_default]
+trait H< //~ ERROR 'a
+    'a,
+    'b,
+    T: 'b, //~ ERROR 'b
+>: 'a {}
 
 fn main() {}
