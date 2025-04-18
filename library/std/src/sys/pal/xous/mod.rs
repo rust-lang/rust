@@ -1,7 +1,5 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-#[path = "../unsupported/env.rs"]
-pub mod env;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
