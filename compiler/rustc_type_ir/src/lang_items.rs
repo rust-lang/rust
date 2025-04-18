@@ -36,6 +36,7 @@ pub enum TraitSolverLangItem {
     Poll,
     Sized,
     TransmuteTrait,
+    TrivialClone,
     Tuple,
     Unpin,
     Unsize,
