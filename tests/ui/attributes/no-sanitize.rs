@@ -38,3 +38,8 @@ fn valid() {}
 
 #[no_sanitize(address)]
 static VALID : i32 = 0;
+
+#[no_sanitize("address")]
+//~^ ERROR `#[no_sanitize(...)]` should be applied to a function
+//~| ERROR invalid argument for `no_sanitize`
+static VALID2 : i32 = 0;

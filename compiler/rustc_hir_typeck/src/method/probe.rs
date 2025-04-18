@@ -2334,8 +2334,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
         let attrs = self.fcx.tcx.hir_attrs(hir_id);
         for attr in attrs {
-            if sym::doc == attr.name_or_empty() {
-            } else if sym::rustc_confusables == attr.name_or_empty() {
+            if attr.has_name(sym::doc) {
+                // do nothing
+            } else if attr.has_name(sym::rustc_confusables) {
                 let Some(confusables) = attr.meta_item_list() else {
                     continue;
                 };
@@ -2355,7 +2356,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 continue;
             };
             for v in values {
-                if v.name_or_empty() != sym::alias {
+                if !v.has_name(sym::alias) {
                     continue;
                 }
                 if let Some(nested) = v.meta_item_list() {

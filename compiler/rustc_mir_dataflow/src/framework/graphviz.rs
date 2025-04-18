@@ -109,27 +109,29 @@ impl RustcMirAttrs {
             .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
 
         for attr in rustc_mir_attrs {
-            let attr_result = if attr.has_name(sym::borrowck_graphviz_postflow) {
-                Self::set_field(&mut ret.basename_and_suffix, tcx, &attr, |s| {
-                    let path = PathBuf::from(s.to_string());
-                    match path.file_name() {
-                        Some(_) => Ok(path),
-                        None => {
-                            tcx.dcx().emit_err(PathMustEndInFilename { span: attr.span() });
+            let attr_result = match attr.name() {
+                Some(name @ sym::borrowck_graphviz_postflow) => {
+                    Self::set_field(&mut ret.basename_and_suffix, tcx, name, &attr, |s| {
+                        let path = PathBuf::from(s.to_string());
+                        match path.file_name() {
+                            Some(_) => Ok(path),
+                            None => {
+                                tcx.dcx().emit_err(PathMustEndInFilename { span: attr.span() });
+                                Err(())
+                            }
+                        }
+                    })
+                }
+                Some(name @ sym::borrowck_graphviz_format) => {
+                    Self::set_field(&mut ret.formatter, tcx, name, &attr, |s| match s {
+                        sym::two_phase => Ok(s),
+                        _ => {
+                            tcx.dcx().emit_err(UnknownFormatter { span: attr.span() });
                             Err(())
                         }
-                    }
-                })
-            } else if attr.has_name(sym::borrowck_graphviz_format) {
-                Self::set_field(&mut ret.formatter, tcx, &attr, |s| match s {
-                    sym::two_phase => Ok(s),
-                    _ => {
-                        tcx.dcx().emit_err(UnknownFormatter { span: attr.span() });
-                        Err(())
-                    }
-                })
-            } else {
-                Ok(())
+                    })
+                }
+                _ => Ok(()),
             };
 
             result = result.and(attr_result);
@@ -141,12 +143,12 @@ impl RustcMirAttrs {
     fn set_field<T>(
         field: &mut Option<T>,
         tcx: TyCtxt<'_>,
+        name: Symbol,
         attr: &ast::MetaItemInner,
         mapper: impl FnOnce(Symbol) -> Result<T, ()>,
     ) -> Result<(), ()> {
         if field.is_some() {
-            tcx.dcx()
-                .emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name_or_empty() });
+            tcx.dcx().emit_err(DuplicateValuesFor { span: attr.span(), name });
 
             return Err(());
         }
@@ -156,7 +158,7 @@ impl RustcMirAttrs {
             Ok(())
         } else {
             tcx.dcx()
-                .emit_err(RequiresAnArgument { span: attr.span(), name: attr.name_or_empty() });
+                .emit_err(RequiresAnArgument { span: attr.span(), name: attr.name().unwrap() });
             Err(())
         }
     }
