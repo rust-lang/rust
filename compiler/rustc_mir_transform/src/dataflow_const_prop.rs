@@ -23,7 +23,7 @@ use rustc_mir_dataflow::lattice::{FlatSet, HasBottom};
 use rustc_mir_dataflow::value_analysis::{
     Map, PlaceIndex, State, TrackElem, ValueOrPlace, debug_with_context,
 };
-use rustc_mir_dataflow::{Analysis, ResultsVisitor};
+use rustc_mir_dataflow::{Analysis, ResultsVisitor, visit_reachable_results};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, debug_span, instrument};
 
@@ -61,13 +61,14 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
         let map = Map::new(tcx, body, place_limit);
 
         // Perform the actual dataflow analysis.
-        let analysis = ConstAnalysis::new(tcx, body, map);
-        let mut results =
-            debug_span!("analyze").in_scope(|| analysis.iterate_to_fixpoint(tcx, body, None));
+        let mut const_ = debug_span!("analyze")
+            .in_scope(|| ConstAnalysis::new(tcx, body, map).iterate_to_fixpoint(tcx, body, None));
 
         // Collect results and patch the body afterwards.
         let mut visitor = Collector::new(tcx, &body.local_decls);
-        debug_span!("collect").in_scope(|| results.visit_reachable_with(body, &mut visitor));
+        debug_span!("collect").in_scope(|| {
+            visit_reachable_results(body, &mut const_.analysis, &const_.results, &mut visitor)
+        });
         let mut patch = visitor.patch;
         debug_span!("patch").in_scope(|| patch.visit_body_preserves_cfg(body));
     }

@@ -1,4 +1,4 @@
-use rustc_middle::mir::{self, BasicBlock, Location};
+use rustc_middle::mir::{self, BasicBlock, Location, traversal};
 
 use super::{Analysis, Direction, Results};
 
@@ -7,12 +7,13 @@ use super::{Analysis, Direction, Results};
 pub fn visit_results<'mir, 'tcx, A>(
     body: &'mir mir::Body<'tcx>,
     blocks: impl IntoIterator<Item = BasicBlock>,
-    results: &mut Results<'tcx, A>,
+    analysis: &mut A,
+    results: &Results<A::Domain>,
     vis: &mut impl ResultsVisitor<'tcx, A>,
 ) where
     A: Analysis<'tcx>,
 {
-    let mut state = results.analysis.bottom_value(body);
+    let mut state = analysis.bottom_value(body);
 
     #[cfg(debug_assertions)]
     let reachable_blocks = mir::traversal::reachable_as_bitset(body);
@@ -22,8 +23,22 @@ pub fn visit_results<'mir, 'tcx, A>(
         assert!(reachable_blocks.contains(block));
 
         let block_data = &body[block];
-        A::Direction::visit_results_in_block(&mut state, block, block_data, results, vis);
+        state.clone_from(&results[block]);
+        A::Direction::visit_results_in_block(&mut state, block, block_data, analysis, vis);
     }
+}
+
+/// Like `visit_results`, but only for reachable blocks.
+pub fn visit_reachable_results<'mir, 'tcx, A>(
+    body: &'mir mir::Body<'tcx>,
+    analysis: &mut A,
+    results: &Results<A::Domain>,
+    vis: &mut impl ResultsVisitor<'tcx, A>,
+) where
+    A: Analysis<'tcx>,
+{
+    let blocks = traversal::reachable(body).map(|(bb, _)| bb);
+    visit_results(body, blocks, analysis, results, vis)
 }
 
 /// A visitor over the results of an `Analysis`. Use this when you want to inspect domain values in
