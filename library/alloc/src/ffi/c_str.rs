@@ -714,6 +714,8 @@ impl ops::Deref for CString {
     }
 }
 
+/// Delegates to the [`CStr`] implementation of [`fmt::Debug`],
+/// showing invalid UTF-8 as hex escapes.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for CString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
