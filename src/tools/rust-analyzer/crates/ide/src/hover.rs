@@ -505,6 +505,7 @@ fn notable_traits(
                 )
             })
         })
+        .sorted_by_cached_key(|(trait_, _)| trait_.name(db))
         .collect::<Vec<_>>()
 }
 
