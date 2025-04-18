@@ -22,20 +22,10 @@ jobs:
         with:
           python-version: '3.x'  # Adjust to the version you need
 
-      - name: Copy source files to two separate folders
-        run: |
-          # Copy source files into two separate folders
-          mkdir ../buildA ../buildA_extended
-          # Copy the repo contents into both
-          cp -r "$(pwd)" ../buildA
-          cp -r "$(pwd)" ../buildA_extended
-
-          echo "Present Directory : `pwd`"
-          echo "work contents : `ls ..`"
-
       - name: Build and store buildA binaries
         run: |
-          echo "Repo storage available: `df -h .`"
+          mkdir ../buildA
+          cp -r "$(pwd)" ../buildA
           pushd ../buildA
           SOURCE_DIR=$(dirname $(find . -maxdepth 2  -name x.py))
           $SOURCE_DIR/configure --set rust.channel=nightly
@@ -49,7 +39,8 @@ jobs:
 
       - name: Build and store buildA_extended binaries
         run: |
-          echo "Repo storage available: `df -h .`"
+          mkdir ../buildA_extended
+          cp -r "$(pwd)" ../buildA_extended
           pushd ../buildA_extended
           SOURCE_DIR=$(dirname $(find . -maxdepth 2  -name x.py))
           $SOURCE_DIR/configure --set rust.channel=nightly
@@ -61,13 +52,10 @@ jobs:
           rm -rf build
           popd
 
-      - name: Install diffoscope
+      - name: Compare builds and archive artifacts
         run: |
           sudo apt-get update
           sudo apt-get install -y diffoscope
-
-      - name: Compare builds
-        run: |
           # Ensure the directories exist
           if [[ ! -d "../buildA" || ! -d "../buildA_extended" ]]; then
             echo "Error: Build directories not found!"
@@ -77,16 +65,14 @@ jobs:
           # Perform a diff between the two builds
           diffoscope ../buildA/stage2 ../buildA_extended/stage2 > diffoscope_output.txt || echo "Differences found!"
 
+          tar -czf buildA.tar.gz ../buildA
+          tar -czf buildA_extended.tar.gz ../buildA_extended
+
       - name: Upload diffoscope output
         uses: actions/upload-artifact@v4
         with:
           name: diffoscope-report
           path: diffoscope_output.txt
-
-      - name: Archive buildA and buildA_extended
-        run: |
-          tar -czf buildA.tar.gz ../buildA
-          tar -czf buildA_extended.tar.gz ../buildA_extended
 
       - name: Upload buildA artifact
         uses: actions/upload-artifact@v4
