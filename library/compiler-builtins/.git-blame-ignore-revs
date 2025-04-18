@@ -2,4 +2,5 @@
 # `git blame` ignore the following commits.
 
 # Reformat with a new `.rustfmt.toml`
-5882cabb83c30bf7c36023f9a55a80583636b0e8
+# In rust-lang/libm this was 5882cabb83c30bf7c36023f9a55a80583636b0e8
+4bb07a6275cc628ef81c65ac971dc6479963322f
