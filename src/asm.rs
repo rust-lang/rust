@@ -36,7 +36,8 @@ use crate::type_of::LayoutGccExt;
 //
 // 3. Clobbers. GCC has a separate list of clobbers, and clobbers don't have indexes.
 //    Contrary, Rust expresses clobbers through "out" operands that aren't tied to
-//    a variable (`_`),  and such "clobbers" do have index.
+//    a variable (`_`),  and such "clobbers" do have index. Input operands cannot also
+//    be clobbered.
 //
 // 4. Furthermore, GCC Extended Asm does not support explicit register constraints
 //    (like `out("eax")`) directly, offering so-called "local register variables"
@@ -161,6 +162,16 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // Also, we don't emit any asm operands immediately; we save them to
         // the one of the buffers to be emitted later.
 
+        let mut input_registers = vec![];
+
+        for op in rust_operands {
+            if let InlineAsmOperandRef::In { reg, .. } = *op {
+                if let ConstraintOrRegister::Register(reg_name) = reg_to_gcc(reg) {
+                    input_registers.push(reg_name);
+                }
+            }
+        }
+
         // 1. Normal variables (and saving operands to buffers).
         for (rust_idx, op) in rust_operands.iter().enumerate() {
             match *op {
@@ -183,25 +194,39 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             continue;
                         }
                         (Register(reg_name), None) => {
-                            // `clobber_abi` can add lots of clobbers that are not supported by the target,
-                            // such as AVX-512 registers, so we just ignore unsupported registers
-                            let is_target_supported =
-                                reg.reg_class().supported_types(asm_arch, true).iter().any(
-                                    |&(_, feature)| {
-                                        if let Some(feature) = feature {
-                                            self.tcx
-                                                .asm_target_features(instance.def_id())
-                                                .contains(&feature)
-                                        } else {
-                                            true // Register class is unconditionally supported
-                                        }
-                                    },
-                                );
+                            if input_registers.contains(&reg_name) {
+                                // the `clobber_abi` operand is converted into a series of
+                                // `lateout("reg") _` operands. Of course, a user could also
+                                // explicitly define such an output operand.
+                                //
+                                // GCC does not allow input registers to be clobbered, so if this out register
+                                // is also used as an in register, do not add it to the clobbers list.
+                                // it will be treated as a lateout register with `out_place: None`
+                                if !late {
+                                    bug!("input registers can only be used as lateout regisers");
+                                }
+                                ("r", dummy_output_type(self.cx, reg.reg_class()))
+                            } else {
+                                // `clobber_abi` can add lots of clobbers that are not supported by the target,
+                                // such as AVX-512 registers, so we just ignore unsupported registers
+                                let is_target_supported =
+                                    reg.reg_class().supported_types(asm_arch, true).iter().any(
+                                        |&(_, feature)| {
+                                            if let Some(feature) = feature {
+                                                self.tcx
+                                                    .asm_target_features(instance.def_id())
+                                                    .contains(&feature)
+                                            } else {
+                                                true // Register class is unconditionally supported
+                                            }
+                                        },
+                                    );
 
-                            if is_target_supported && !clobbers.contains(&reg_name) {
-                                clobbers.push(reg_name);
+                                if is_target_supported && !clobbers.contains(&reg_name) {
+                                    clobbers.push(reg_name);
+                                }
+                                continue;
                             }
-                            continue;
                         }
                     };
 
@@ -230,13 +255,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 }
 
                 InlineAsmOperandRef::InOut { reg, late, in_value, out_place } => {
-                    let constraint =
-                        if let ConstraintOrRegister::Constraint(constraint) = reg_to_gcc(reg) {
-                            constraint
-                        } else {
-                            // left for the next pass
-                            continue;
-                        };
+                    let ConstraintOrRegister::Constraint(constraint) = reg_to_gcc(reg) else {
+                        // left for the next pass
+                        continue;
+                    };
 
                     // Rustc frontend guarantees that input and output types are "compatible",
                     // so we can just use input var's type for the output variable.
@@ -589,114 +611,127 @@ fn estimate_template_length(
 }
 
 /// Converts a register class to a GCC constraint code.
-fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
-    let constraint = match reg {
-        // For vector registers LLVM wants the register name to match the type size.
+fn reg_to_gcc(reg_or_reg_class: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
+    match reg_or_reg_class {
         InlineAsmRegOrRegClass::Reg(reg) => {
-            match reg {
-                InlineAsmReg::X86(_) => {
-                    // TODO(antoyo): add support for vector register.
-                    //
-                    // // For explicit registers, we have to create a register variable: https://stackoverflow.com/a/31774784/389119
-                    return ConstraintOrRegister::Register(match reg.name() {
-                        // Some of registers' names does not map 1-1 from rust to gcc
-                        "st(0)" => "st",
+            ConstraintOrRegister::Register(explicit_reg_to_gcc(reg))
+        }
+        InlineAsmRegOrRegClass::RegClass(reg_class) => {
+            ConstraintOrRegister::Constraint(reg_class_to_gcc(reg_class))
+        }
+    }
+}
 
-                        name => name,
-                    });
+fn explicit_reg_to_gcc(reg: InlineAsmReg) -> &'static str {
+    // For explicit registers, we have to create a register variable: https://stackoverflow.com/a/31774784/389119
+    match reg {
+        InlineAsmReg::X86(reg) => {
+            // TODO(antoyo): add support for vector register.
+            match reg.reg_class() {
+                X86InlineAsmRegClass::reg_byte => {
+                    // GCC does not support the `b` suffix, so we just strip it
+                    // see https://github.com/rust-lang/rustc_codegen_gcc/issues/485
+                    reg.name().trim_end_matches('b')
                 }
+                _ => match reg.name() {
+                    // Some of registers' names does not map 1-1 from rust to gcc
+                    "st(0)" => "st",
 
-                _ => unimplemented!(),
+                    name => name,
+                },
             }
         }
-        // They can be retrieved from https://gcc.gnu.org/onlinedocs/gcc/Machine-Constraints.html
-        InlineAsmRegOrRegClass::RegClass(reg) => match reg {
-            InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg) => "w",
-            InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => "x",
-            InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
-                unreachable!("clobber-only")
-            }
-            InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
-            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low16)
-            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low8)
-            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg_low16)
-            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low8)
-            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low4)
-            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg)
-            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg) => "t",
-            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_upper) => "d",
-            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_pair) => "r",
-            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_iw) => "w",
-            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) => "e",
-            InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::wreg) => "w",
-            InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::preg) => {
-                unreachable!("clobber-only")
-            }
-            InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::freg) => "f",
-            InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_addr) => "a",
-            InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) => "d",
-            InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) => "f",
-            InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => "d", // more specific than "r"
-            InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => "f",
-            InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => "r",
-            // https://github.com/gcc-mirror/gcc/blob/master/gcc/config/nvptx/nvptx.md -> look for
-            // "define_constraint".
-            InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => "h",
-            InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => "r",
-            InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => "l",
 
-            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => "b",
-            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::freg) => "f",
-            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::vreg) => "v",
-            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::cr)
-            | InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::xer) => {
-                unreachable!("clobber-only")
-            }
-            InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => "f",
-            InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => {
-                unreachable!("clobber-only")
-            }
-            InlineAsmRegClass::X86(X86InlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd) => "Q",
-            InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_byte) => "q",
-            InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg)
-            | InlineAsmRegClass::X86(X86InlineAsmRegClass::ymm_reg) => "x",
-            InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => "v",
-            InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => "Yk",
-            InlineAsmRegClass::X86(
-                X86InlineAsmRegClass::kreg0
-                | X86InlineAsmRegClass::x87_reg
-                | X86InlineAsmRegClass::mmx_reg
-                | X86InlineAsmRegClass::tmm_reg,
-            ) => unreachable!("clobber-only"),
-            InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
-                bug!("GCC backend does not support SPIR-V")
-            }
-            InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => "r",
-            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg_addr) => "a",
-            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => "f",
-            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::vreg) => "v",
-            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::areg) => {
-                unreachable!("clobber-only")
-            }
-            InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
-            InlineAsmRegClass::Err => unreachable!(),
-        },
-    };
+        _ => unimplemented!(),
+    }
+}
 
-    ConstraintOrRegister::Constraint(constraint)
+/// They can be retrieved from https://gcc.gnu.org/onlinedocs/gcc/Machine-Constraints.html
+fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
+    match reg_class {
+        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg) => "w",
+        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => "x",
+        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
+            unreachable!("clobber-only")
+        }
+        InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
+        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low16)
+        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low8)
+        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg_low16)
+        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low8)
+        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low4)
+        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg)
+        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg) => "t",
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_upper) => "d",
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_pair) => "r",
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_iw) => "w",
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) => "e",
+        InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::wreg) => "w",
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::preg) => {
+            unreachable!("clobber-only")
+        }
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_addr) => "a",
+        InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) => "d",
+        InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => "d", // more specific than "r"
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => "r",
+        // https://github.com/gcc-mirror/gcc/blob/master/gcc/config/nvptx/nvptx.md -> look for
+        // "define_constraint".
+        InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => "h",
+        InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => "r",
+        InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => "l",
+
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => "b",
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::vreg) => "v",
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::cr)
+        | InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::xer) => {
+            unreachable!("clobber-only")
+        }
+        InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => {
+            unreachable!("clobber-only")
+        }
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd) => "Q",
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_byte) => "q",
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg)
+        | InlineAsmRegClass::X86(X86InlineAsmRegClass::ymm_reg) => "x",
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => "v",
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => "Yk",
+        InlineAsmRegClass::X86(
+            X86InlineAsmRegClass::kreg0
+            | X86InlineAsmRegClass::x87_reg
+            | X86InlineAsmRegClass::mmx_reg
+            | X86InlineAsmRegClass::tmm_reg,
+        ) => unreachable!("clobber-only"),
+        InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
+            bug!("GCC backend does not support SPIR-V")
+        }
+        InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => "r",
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg_addr) => "a",
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::vreg) => "v",
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::areg) => {
+            unreachable!("clobber-only")
+        }
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
+        InlineAsmRegClass::Err => unreachable!(),
+    }
 }
 
 /// Type to use for outputs that are discarded. It doesn't really matter what

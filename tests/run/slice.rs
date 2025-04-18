@@ -5,26 +5,17 @@
 //   stdout: 5
 
 #![feature(no_core)]
-
 #![no_std]
 #![no_core]
 #![no_main]
 
 extern crate mini_core;
-
-mod libc {
-    #[link(name = "c")]
-    extern "C" {
-        pub fn printf(format: *const i8, ...) -> i32;
-    }
-}
+use mini_core::*;
 
 static mut TWO: usize = 2;
 
 fn index_slice(s: &[u32]) -> u32 {
-    unsafe {
-        s[TWO]
-    }
+    unsafe { s[TWO] }
 }
 
 #[no_mangle]
