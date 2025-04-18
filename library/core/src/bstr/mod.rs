@@ -37,7 +37,6 @@ use crate::ops::{Deref, DerefMut, DerefPure};
 ///
 /// The `Display` implementation behaves as if the `ByteStr` were first lossily converted to a
 /// `str`, with invalid UTF-8 presented as the Unicode replacement character: �
-///
 #[unstable(feature = "bstr", issue = "134915")]
 #[repr(transparent)]
 #[doc(alias = "BStr")]

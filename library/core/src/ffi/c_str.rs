@@ -150,7 +150,6 @@ impl Error for FromBytesWithNulError {
 /// within the slice.
 ///
 /// This error is created by the [`CStr::from_bytes_until_nul`] method.
-///
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 pub struct FromBytesUntilNulError(());
