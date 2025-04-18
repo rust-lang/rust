@@ -2352,37 +2352,11 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `soft_unstable` lint detects unstable features that were
-    /// unintentionally allowed on stable.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #[cfg(test)]
-    /// extern crate test;
-    ///
-    /// #[bench]
-    /// fn name(b: &mut test::Bencher) {
-    ///     b.iter(|| 123)
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The [`bench` attribute] was accidentally allowed to be specified on
-    /// the [stable release channel]. Turning this to a hard error would have
-    /// broken some projects. This lint allows those projects to continue to
-    /// build correctly when [`--cap-lints`] is used, but otherwise signal an
-    /// error that `#[bench]` should not be used on the stable channel. This
-    /// is a [future-incompatible] lint to transition this to a hard error in
-    /// the future. See [issue #64266] for more details.
+    /// The `soft_unstable` lint detects unstable features that were unintentionally allowed on
+    /// stable. This is a [future-incompatible] lint to transition this to a hard error in the
+    /// future. See [issue #64266] for more details.
     ///
     /// [issue #64266]: https://github.com/rust-lang/rust/issues/64266
-    /// [`bench` attribute]: https://doc.rust-lang.org/nightly/unstable-book/library-features/test.html
-    /// [stable release channel]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
-    /// [`--cap-lints`]: https://doc.rust-lang.org/rustc/lints/levels.html#capping-lints
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub SOFT_UNSTABLE,
     Deny,
