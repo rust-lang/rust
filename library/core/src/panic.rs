@@ -21,6 +21,7 @@ use crate::any::Any;
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[cfg(not(bootstrap))]
 #[eii(panic_handler)]
+#[lang = "panic_impl"]
 pub(crate) fn panic_impl(info: &PanicInfo<'_>) -> !;
 
 #[doc(hidden)]

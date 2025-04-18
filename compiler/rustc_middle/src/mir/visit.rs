@@ -355,7 +355,7 @@ macro_rules! make_mir_visitor {
                         }
                         | ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, None)
                         | ty::InstanceKind::DropGlue(_def_id, None)
-                        | ty::InstanceKind::EiiShim { def_id: _def_id, extern_item: _, chosen_impl: _ } => {}
+                        | ty::InstanceKind::EiiShim { def_id: _def_id, extern_item: _, chosen_impl: _, weak_linkage: _ } => {}
 
                         ty::InstanceKind::FnPtrShim(_def_id, ty)
                         | ty::InstanceKind::DropGlue(_def_id, Some(ty))

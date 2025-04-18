@@ -7,6 +7,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 pub struct EiiMapping {
     pub extern_item: DefId,
     pub chosen_impl: DefId,
+    pub weak_linkage: bool,
 }
 
 pub type EiiMap = FxIndexMap<LocalDefId, EiiMapping>;

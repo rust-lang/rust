@@ -1594,7 +1594,7 @@ impl<'v> RootCollector<'_, 'v> {
     /// For each externally implementable item, we should generate an alias MonoItem that
     /// determines what implementation is called. This could be a default implementation.
     fn push_extra_eii_roots(&mut self) {
-        for (shim_did, &EiiMapping { extern_item, chosen_impl, .. }) in
+        for (shim_did, &EiiMapping { extern_item, chosen_impl, weak_linkage, .. }) in
             self.tcx.get_externally_implementable_item_impls(())
         {
             self.output.push(create_fn_mono_item(
@@ -1604,6 +1604,7 @@ impl<'v> RootCollector<'_, 'v> {
                         def_id: (*shim_did).into(),
                         extern_item,
                         chosen_impl,
+                        weak_linkage,
                     },
                     args: ty::GenericArgs::empty(),
                 },
