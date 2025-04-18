@@ -603,11 +603,9 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
             | "__builtin_ia32_aesenc256kl_u8"
             | "__builtin_ia32_aesdec256kl_u8" => {
                 let mut new_args = vec![];
-                // TODO: directly create a variable of type m128i instead of the whole struct?
-                let (aes_output_type, _, field2) = aes_output_type(builder);
-                let result = builder.current_func().new_local(None, aes_output_type, "result");
-                let field2 = result.access_field(None, field2);
-                new_args.push(field2.get_address(None));
+                let m128i = builder.context.new_vector_type(builder.i64_type, 2);
+                let result = builder.current_func().new_local(None, m128i, "result");
+                new_args.push(result.get_address(None));
                 new_args.extend(args.to_vec());
                 args = new_args.into();
             }
