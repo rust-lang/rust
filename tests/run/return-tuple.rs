@@ -6,13 +6,7 @@
 //     10
 //     42
 
-<<<<<<< HEAD
-#![feature(auto_traits, lang_items, no_core, intrinsics)]
-#![allow(internal_features)]
-
-=======
 #![feature(no_core)]
->>>>>>> db1a31c243a649e1fe20f5466ba181da5be35c14
 #![no_std]
 #![no_core]
 #![no_main]
