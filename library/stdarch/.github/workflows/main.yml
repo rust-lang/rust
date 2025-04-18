@@ -122,6 +122,42 @@ jobs:
 
         # Add additional variables to the matrix variations generated above using `include`:
         include:
+        # `TEST_EVERYTHING` setups - there should be at least 1 for each architecture
+        - target:
+            tuple: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
+        - target:
+            tuple: armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+          test_everything: true
+        - target:
+            tuple: loongarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
+        - target:
+            tuple: powerpc-unknown-linux-gnu
+            os: ubuntu-latest
+          disable_assert_instr: true
+          test_everything: true
+        - target:
+            tuple: powerpc64-unknown-linux-gnu
+            os: ubuntu-latest
+          disable_assert_instr: true
+          test_everything: true
+        - target:
+            tuple: powerpc64le-unknown-linux-gnu
+            os: ubuntu-latest
+          disable_assert_instr: true
+          test_everything: true
+        - target:
+            tuple: riscv64gc-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
+        - target:
+            tuple: s390x-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
         - target:
             tuple: x86_64-unknown-linux-gnu-emulated
             os: ubuntu-latest
@@ -144,18 +180,6 @@ jobs:
         #    tuple: mipsel-unknown-linux-musl
         #    os: ubuntu-latest
         #  norun: true
-        - target:
-            tuple: powerpc-unknown-linux-gnu
-            os: ubuntu-latest
-          disable_assert_instr: true
-        - target:
-            tuple: powerpc64-unknown-linux-gnu
-            os: ubuntu-latest
-          disable_assert_instr: true
-        - target:
-            tuple: powerpc64le-unknown-linux-gnu
-            os: ubuntu-latest
-          disable_assert_instr: true
         - target:
             tuple: aarch64-apple-darwin
             os: macos-15

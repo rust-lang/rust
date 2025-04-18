@@ -749,7 +749,8 @@ fn equate(
             &Type::PrimUnsigned(32),
             "unsigned __int32" | "unsigned int" | "unsigned long" | "const unsigned int",
         ) => {}
-        (&Type::PrimUnsigned(64), "unsigned __int64" | "size_t") => {}
+        (&Type::PrimUnsigned(64), "unsigned __int64") => {}
+        (&Type::PrimUnsigned(SS), "size_t") => {}
 
         (&Type::M128, "__m128") => {}
         (&Type::M128BH, "__m128bh") => {}

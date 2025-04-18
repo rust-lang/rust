@@ -121,13 +121,15 @@ case ${TARGET} in
         cargo_test "${PROFILE}"
 	      ;;
     powerpc64*)
-        # We don't build the ppc 32-bit targets with these - these targets
-        # are mostly unsupported for now.
-        OLD_RUSTFLAGS="${RUSTFLAGS}"
-        export RUSTFLAGS="${OLD_RUSTFLAGS} -C target-feature=+altivec"
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+altivec"
         cargo_test "${PROFILE}"
 
-        export RUSTFLAGS="${OLD_RUSTFLAGS} -C target-feature=+vsx"
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+vsx"
+        cargo_test "${PROFILE}"
+        ;;
+    powerpc*)
+        # qemu has a bug in PPC32 which leads to a crash when compiled with `vsx`
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+altivec"
         cargo_test "${PROFILE}"
         ;;
 
