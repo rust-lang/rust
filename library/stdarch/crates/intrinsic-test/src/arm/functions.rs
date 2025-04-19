@@ -11,7 +11,6 @@ use crate::common::intrinsic_types::IntrinsicTypeDefinition;
 use crate::common::write_file;
 use itertools::Itertools;
 use rayon::prelude::*;
-use std::collections::BTreeMap;
 
 // The number of times each intrinsic will be called.
 const PASSES: u32 = 20;
@@ -162,11 +161,11 @@ fn generate_rust_program_arm(
 
 fn compile_c_arm(
     intrinsics_name_list: &Vec<String>,
-    _filename_mapping: BTreeMap<&String, String>,
     compiler: &str,
     target: &str,
     cxx_toolchain_dir: Option<&str>,
 ) -> bool {
+    // -ffp-contract=off emulates Rust's approach of not fusing separate mul-add operations
     let mut command = CompilationCommandBuilder::new()
         .add_arch_flags(vec!["armv8.6-a", "crypto", "crc", "dotprod", "fp16"])
         .set_compiler(compiler)
@@ -180,8 +179,17 @@ fn compile_c_arm(
         command = command.add_arch_flags(vec!["faminmax", "lut", "sha3"]);
     }
 
-    command = if target == "aarch64_be-unknown-linux-gnu" {
-        command
+    /*
+     * clang++ cannot link an aarch64_be object file, so we invoke
+     * aarch64_be-unknown-linux-gnu's C++ linker. This ensures that we
+     * are testing the intrinsics against LLVM.
+     *
+     * Note: setting `--sysroot=<...>` which is the obvious thing to do
+     * does not work as it gets caught up with `#include_next <stdlib.h>`
+     * not existing...
+     */
+    if target == "aarch64_be-unknown-linux-gnu" {
+        command = command
             .set_linker(
                 cxx_toolchain_dir.unwrap_or("").to_string() + "/bin/aarch64_be-none-linux-gnu-g++",
             )
@@ -192,14 +200,12 @@ fn compile_c_arm(
                 "/aarch64_be-none-linux-gnu/include/c++/14.2.1/aarch64_be-none-linux-gnu",
                 "/aarch64_be-none-linux-gnu/include/c++/14.2.1/backward",
                 "/aarch64_be-none-linux-gnu/libc/usr/include",
-            ])
-    } else {
-        if compiler.contains("clang") {
-            command.add_extra_flag(format!("-target {target}").as_str())
-        } else {
-            command.add_extra_flag("-flax-vector-conversions")
-        }
-    };
+            ]);
+    }
+
+    if !compiler.contains("clang") {
+        command = command.add_extra_flag("-flax-vector-conversions");
+    }
 
     let compiler_commands = intrinsics_name_list
         .iter()
@@ -237,13 +243,7 @@ pub fn build_c(
 
     match compiler {
         None => true,
-        Some(compiler) => compile_c_arm(
-            &intrinsics_name_list,
-            filename_mapping,
-            compiler,
-            target,
-            cxx_toolchain_dir,
-        ),
+        Some(compiler) => compile_c_arm(&intrinsics_name_list, compiler, target, cxx_toolchain_dir),
     }
 }
 

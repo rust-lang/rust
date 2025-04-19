@@ -116,11 +116,11 @@ impl CompilationCommandBuilder {
 
         command = command + " " + self.extra_flags.join(" ").as_str();
 
-        if let (Some(linker), Some(cxx_toolchain_dir)) = (&self.linker, &self.cxx_toolchain_dir) {
-            if let Some(target) = &self.target {
-                command = command + " --target=" + target;
-            }
+        if let Some(target) = &self.target {
+            command = command + " --target=" + target;
+        }
 
+        if let (Some(linker), Some(cxx_toolchain_dir)) = (&self.linker, &self.cxx_toolchain_dir) {
             let include_args = self
                 .include_paths
                 .iter()
