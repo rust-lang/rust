@@ -2,12 +2,16 @@ use query_group_macro::query_group;
 
 #[query_group]
 pub trait ArityDb: salsa::Database {
+    #[salsa::invoke_interned(one)]
     fn one(&self, a: ()) -> String;
 
+    #[salsa::invoke_interned(two)]
     fn two(&self, a: (), b: ()) -> String;
 
+    #[salsa::invoke_interned(three)]
     fn three(&self, a: (), b: (), c: ()) -> String;
 
+    #[salsa::invoke_interned(none)]
     fn none(&self) -> String;
 }
 

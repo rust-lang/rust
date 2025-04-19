@@ -7,7 +7,6 @@ use crate::{
 use hir::FileRange;
 use ide_db::{
     EditionedFileId, FileId, FxHashSet,
-    base_db::salsa::AsDynDatabase,
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
 };
@@ -74,12 +73,7 @@ impl MatchFinder<'_> {
         resolved_path: &ResolvedPath,
         file_range: FileRange,
     ) -> Vec<SyntaxNode> {
-        let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
-            self.sema.db.as_dyn_database(),
-            file_range.file_id,
-        );
-
-        let file = self.sema.parse(editioned_file_id_wrapper);
+        let file = self.sema.parse(file_range.file_id);
         let depth = resolved_path.depth as usize;
         let offset = file_range.range.start();
 
@@ -144,7 +138,7 @@ impl MatchFinder<'_> {
             files.push(
                 self.sema
                     .attach_first_edition(file_id)
-                    .unwrap_or_else(|| EditionedFileId::current_edition(file_id)),
+                    .unwrap_or_else(|| EditionedFileId::current_edition(self.sema.db, file_id)),
             );
         });
         SearchScope::files(&files)
@@ -235,7 +229,9 @@ impl MatchFinder<'_> {
         }
         let Some(node_range) = self.sema.original_range_opt(code) else { return false };
         for range in &self.restrict_ranges {
-            if range.file_id == node_range.file_id && range.range.contains_range(node_range.range) {
+            if range.file_id == node_range.file_id.file_id(self.sema.db)
+                && range.range.contains_range(node_range.range)
+            {
                 return true;
             }
         }

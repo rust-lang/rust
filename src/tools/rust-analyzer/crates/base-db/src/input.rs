@@ -16,11 +16,11 @@ use intern::Symbol;
 use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 use salsa::{Durability, Setter};
-use span::{Edition, EditionedFileId};
+use span::Edition;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, AnchoredPath, FileId, VfsPath, file_set::FileSet};
 
-use crate::{CrateWorkspaceData, RootQueryDb};
+use crate::{CrateWorkspaceData, EditionedFileId, RootQueryDb};
 
 pub type ProcMacroPaths = FxHashMap<CrateBuilderId, Result<(String, AbsPathBuf), String>>;
 
@@ -773,8 +773,8 @@ pub(crate) fn transitive_rev_deps(db: &dyn RootQueryDb, of: Crate) -> FxHashSet<
 }
 
 impl BuiltCrateData {
-    pub fn root_file_id(&self) -> EditionedFileId {
-        EditionedFileId::new(self.root_file_id, self.edition)
+    pub fn root_file_id(&self, db: &dyn salsa::Database) -> EditionedFileId {
+        EditionedFileId::new(db, self.root_file_id, self.edition)
     }
 }
 

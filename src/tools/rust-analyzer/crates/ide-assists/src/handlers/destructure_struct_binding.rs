@@ -66,7 +66,7 @@ fn destructure_struct_binding_impl(
     let mut editor = builder.make_editor(data.ident_pat.syntax());
     destructure_pat(ctx, &mut editor, data, &field_names);
     update_usages(ctx, &mut editor, data, &field_names.into_iter().collect());
-    builder.add_file_edits(ctx.file_id(), editor);
+    builder.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
 struct StructEditData {

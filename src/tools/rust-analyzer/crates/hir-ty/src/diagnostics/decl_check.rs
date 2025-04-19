@@ -21,7 +21,7 @@ use hir_def::{
     item_tree::FieldsShape, signatures::StaticFlags, src::HasSource,
 };
 use hir_expand::{
-    HirFileId, HirFileIdExt,
+    HirFileId,
     name::{AsName, Name},
 };
 use intern::sym;
@@ -644,7 +644,7 @@ impl<'a> DeclValidator<'a> {
             return;
         };
 
-        let edition = file_id.original_file(self.db).edition();
+        let edition = file_id.original_file(self.db).edition(self.db);
         let diagnostic = IncorrectCase {
             file: file_id,
             ident_type,

@@ -116,7 +116,6 @@ mod tests {
     use expect_test::{Expect, expect};
     use hir::FilePosition;
     use hir::Semantics;
-    use salsa::AsDynDatabase;
     use span::Edition;
     use syntax::ast::{self, AstNode};
     use test_fixture::ChangeFixture;
@@ -127,8 +126,8 @@ mod tests {
     pub(crate) fn position(
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) -> (RootDatabase, FilePosition) {
-        let change_fixture = ChangeFixture::parse(ra_fixture);
         let mut database = RootDatabase::default();
+        let change_fixture = ChangeFixture::parse(&database, ra_fixture);
         database.apply_change(change_fixture.change);
         let (file_id, range_or_offset) =
             change_fixture.file_position.expect("expected a marker ($0)");
@@ -140,10 +139,7 @@ mod tests {
         let (db, position) = position(ra_fixture);
         let sema = Semantics::new(&db);
 
-        let editioned_file_id =
-            crate::base_db::EditionedFileId::new(sema.db.as_dyn_database(), position.file_id);
-
-        let file = sema.parse(editioned_file_id);
+        let file = sema.parse(position.file_id);
         let impl_block: ast::Impl =
             sema.find_node_at_offset_with_descend(file.syntax(), position.offset).unwrap();
         let trait_ = crate::traits::resolve_target_trait(&sema, &impl_block);
@@ -158,10 +154,7 @@ mod tests {
         let (db, position) = position(ra_fixture);
         let sema = Semantics::new(&db);
 
-        let editioned_file_id =
-            crate::base_db::EditionedFileId::new(sema.db.as_dyn_database(), position.file_id);
-
-        let file = sema.parse(editioned_file_id);
+        let file = sema.parse(position.file_id);
         let impl_block: ast::Impl =
             sema.find_node_at_offset_with_descend(file.syntax(), position.offset).unwrap();
         let items = crate::traits::get_missing_assoc_items(&sema, &impl_block);

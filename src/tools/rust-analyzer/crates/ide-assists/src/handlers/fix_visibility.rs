@@ -1,6 +1,4 @@
-use hir::{
-    HasSource, HasVisibility, HirFileIdExt, ModuleDef, PathResolution, ScopeDef, db::HirDatabase,
-};
+use hir::{HasSource, HasVisibility, ModuleDef, PathResolution, ScopeDef, db::HirDatabase};
 use ide_db::FileId;
 use syntax::{
     AstNode, TextRange,
@@ -132,7 +130,7 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
     );
 
     acc.add(AssistId::quick_fix("fix_visibility"), assist_label, target, |edit| {
-        edit.edit_file(target_file.file_id());
+        edit.edit_file(target_file.file_id(ctx.db()));
 
         let vis_owner = edit.make_mut(vis_owner);
         vis_owner.set_visibility(Some(missing_visibility.clone_for_update()));
@@ -159,7 +157,11 @@ fn target_data_for_def(
         let in_file_syntax = source.syntax();
         let file_id = in_file_syntax.file_id;
         let range = in_file_syntax.value.text_range();
-        Some((ast::AnyHasVisibility::new(source.value), range, file_id.original_file(db).file_id()))
+        Some((
+            ast::AnyHasVisibility::new(source.value),
+            range,
+            file_id.original_file(db).file_id(db),
+        ))
     }
 
     let target_name;
@@ -201,7 +203,7 @@ fn target_data_for_def(
             let in_file_source = m.declaration_source(db)?;
             let file_id = in_file_source.file_id.original_file(db);
             let range = in_file_source.value.syntax().text_range();
-            (ast::AnyHasVisibility::new(in_file_source.value), range, file_id.file_id())
+            (ast::AnyHasVisibility::new(in_file_source.value), range, file_id.file_id(db))
         }
         // FIXME
         hir::ModuleDef::Macro(_) => return None,

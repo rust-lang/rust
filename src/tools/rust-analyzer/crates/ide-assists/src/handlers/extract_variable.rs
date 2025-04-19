@@ -263,7 +263,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 }
 
                 editor.add_mappings(make.finish_with_mappings());
-                edit.add_file_edits(ctx.file_id(), editor);
+                edit.add_file_edits(ctx.vfs_file_id(), editor);
                 edit.rename();
             },
         );
@@ -378,7 +378,7 @@ fn get_literal_name(ctx: &AssistContext<'_>, expr: &ast::Expr) -> Option<String>
         return None;
     }
 
-    match LexedStr::single_token(ctx.file_id().edition(), &inner) {
+    match LexedStr::single_token(ctx.edition(), &inner) {
         Some((SyntaxKind::IDENT, None)) => Some(inner),
         _ => None,
     }

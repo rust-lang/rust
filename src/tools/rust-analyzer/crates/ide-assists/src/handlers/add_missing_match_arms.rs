@@ -3,7 +3,6 @@ use std::iter::{self, Peekable};
 use either::Either;
 use hir::{Adt, Crate, HasAttrs, ImportPathConfig, ModuleDef, Semantics, sym};
 use ide_db::RootDatabase;
-use ide_db::base_db::salsa::AsDynDatabase;
 use ide_db::syntax_helpers::suggest_name;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
@@ -257,12 +256,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             // Just replace the element that the original range came from
             let old_place = {
                 // Find the original element
-                let editioned_file_id = ide_db::base_db::EditionedFileId::new(
-                    ctx.sema.db.as_dyn_database(),
-                    arm_list_range.file_id,
-                );
-
-                let file = ctx.sema.parse(editioned_file_id);
+                let file = ctx.sema.parse(arm_list_range.file_id);
                 let old_place = file.syntax().covering_element(arm_list_range.range);
 
                 match old_place {
@@ -300,7 +294,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             }
 
             editor.add_mappings(make.take());
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

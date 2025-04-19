@@ -55,7 +55,7 @@ pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             editor.replace(lhs.syntax(), rhs.syntax());
             editor.replace(rhs.syntax(), lhs.syntax());
             editor.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

@@ -9,6 +9,7 @@ pub trait HelloWorldDatabase: salsa::Database {
     #[salsa::input]
     fn input_string(&self) -> String;
 
+    #[salsa::invoke_interned(length_query)]
     fn length_query(&self, key: ()) -> (usize, usize);
 }
 

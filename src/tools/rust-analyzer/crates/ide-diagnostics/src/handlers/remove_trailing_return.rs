@@ -49,7 +49,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveTrailingReturn) -> Option<Vec<A
     let replacement =
         return_expr.expr().map_or_else(String::new, |expr| format!("{}", expr.syntax().text()));
     let edit = TextEdit::replace(range, replacement);
-    let source_change = SourceChange::from_text_edit(file_id, edit);
+    let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.sema.db), edit);
 
     Some(vec![fix(
         "remove_trailing_return",

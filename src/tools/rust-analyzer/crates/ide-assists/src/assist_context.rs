@@ -1,8 +1,6 @@
 //! See [`AssistContext`].
 
-use hir::{FileRange, Semantics};
-use ide_db::EditionedFileId;
-use ide_db::base_db::salsa::AsDynDatabase;
+use hir::{EditionedFileId, FileRange, Semantics};
 use ide_db::{FileId, RootDatabase, label::Label};
 use syntax::Edition;
 use syntax::{
@@ -65,10 +63,7 @@ impl<'a> AssistContext<'a> {
         config: &'a AssistConfig,
         frange: FileRange,
     ) -> AssistContext<'a> {
-        let editioned_file_id =
-            ide_db::base_db::EditionedFileId::new(sema.db.as_dyn_database(), frange.file_id);
-
-        let source_file = sema.parse(editioned_file_id);
+        let source_file = sema.parse(frange.file_id);
 
         let start = frange.range.start();
         let end = frange.range.end();
@@ -109,12 +104,16 @@ impl<'a> AssistContext<'a> {
         self.frange.range.start()
     }
 
+    pub(crate) fn vfs_file_id(&self) -> FileId {
+        self.frange.file_id.file_id(self.db())
+    }
+
     pub(crate) fn file_id(&self) -> EditionedFileId {
         self.frange.file_id
     }
 
     pub(crate) fn edition(&self) -> Edition {
-        self.frange.file_id.edition()
+        self.frange.file_id.edition(self.db())
     }
 
     pub(crate) fn has_empty_selection(&self) -> bool {
@@ -169,7 +168,7 @@ impl Assists {
     pub(crate) fn new(ctx: &AssistContext<'_>, resolve: AssistResolveStrategy) -> Assists {
         Assists {
             resolve,
-            file: ctx.frange.file_id.file_id(),
+            file: ctx.frange.file_id.file_id(ctx.db()),
             buf: Vec::new(),
             allowed: ctx.config.allowed.clone(),
         }

@@ -83,7 +83,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
             group: Some(GroupLabel("Replace `_` with a term".to_owned())),
             target: original_range.range,
             source_change: Some(SourceChange::from_text_edit(
-                original_range.file_id,
+                original_range.file_id.file_id(ctx.sema.db),
                 TextEdit::replace(original_range.range, code),
             )),
             command: None,

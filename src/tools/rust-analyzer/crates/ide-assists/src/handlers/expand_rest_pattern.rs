@@ -64,7 +64,7 @@ fn expand_record_rest_pattern(
             editor.replace(old_field_list.syntax(), new_field_list.syntax());
 
             editor.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -154,7 +154,7 @@ fn expand_tuple_struct_rest_pattern(
             editor.replace(pat.syntax(), new_pat.syntax());
 
             editor.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

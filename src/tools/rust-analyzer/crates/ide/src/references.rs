@@ -68,7 +68,7 @@ pub(crate) fn find_all_refs(
                 .into_iter()
                 .map(|(file_id, refs)| {
                     (
-                        file_id.into(),
+                        file_id.file_id(sema.db),
                         refs.into_iter()
                             .map(|file_ref| (file_ref.range, file_ref.category))
                             .unique()
@@ -307,8 +307,10 @@ fn handle_control_flow_keywords(
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<ReferenceSearchResult> {
     let file = sema.parse_guess_edition(file_id);
-    let edition =
-        sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
+    let edition = sema
+        .attach_first_edition(file_id)
+        .map(|it| it.edition(sema.db))
+        .unwrap_or(Edition::CURRENT);
     let token = file.syntax().token_at_offset(offset).find(|t| t.kind().is_keyword(edition))?;
 
     let references = match token.kind() {
@@ -328,7 +330,7 @@ fn handle_control_flow_keywords(
             .into_iter()
             .map(|HighlightedRange { range, category }| (range, category))
             .collect();
-        (file_id.into(), ranges)
+        (file_id.file_id(sema.db), ranges)
     })
     .collect();
 
@@ -338,8 +340,8 @@ fn handle_control_flow_keywords(
 #[cfg(test)]
 mod tests {
     use expect_test::{Expect, expect};
-    use ide_db::FileId;
-    use span::EditionedFileId;
+    use hir::EditionedFileId;
+    use ide_db::{FileId, RootDatabase};
     use stdx::format_to;
 
     use crate::{SearchScope, fixture};
@@ -1004,7 +1006,9 @@ pub(super) struct Foo$0 {
 
         check_with_scope(
             code,
-            Some(SearchScope::single_file(EditionedFileId::current_edition(FileId::from_raw(2)))),
+            Some(&mut |db| {
+                SearchScope::single_file(EditionedFileId::current_edition(db, FileId::from_raw(2)))
+            }),
             expect![[r#"
                 quux Function FileId(0) 19..35 26..30
 
@@ -1260,11 +1264,12 @@ impl Foo {
 
     fn check_with_scope(
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
-        search_scope: Option<SearchScope>,
+        search_scope: Option<&mut dyn FnMut(&RootDatabase) -> SearchScope>,
         expect: Expect,
     ) {
         let (analysis, pos) = fixture::position(ra_fixture);
-        let refs = analysis.find_all_refs(pos, search_scope).unwrap().unwrap();
+        let refs =
+            analysis.find_all_refs(pos, search_scope.map(|it| it(&analysis.db))).unwrap().unwrap();
 
         let mut actual = String::new();
         for mut refs in refs {

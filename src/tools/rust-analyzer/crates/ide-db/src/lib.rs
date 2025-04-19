@@ -45,7 +45,7 @@ pub mod syntax_helpers {
     pub use parser::LexedStr;
 }
 
-pub use hir::ChangeWithProcMacros;
+pub use hir::{ChangeWithProcMacros, EditionedFileId};
 use salsa::Durability;
 
 use std::{fmt, mem::ManuallyDrop};
@@ -67,7 +67,7 @@ pub use ::line_index;
 
 /// `base_db` is normally also needed in places where `ide_db` is used, so this re-export is for convenience.
 pub use base_db;
-pub use span::{EditionedFileId, FileId};
+pub use span::{self, FileId};
 
 pub type FxIndexSet<T> = indexmap::IndexSet<T, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 pub type FxIndexMap<K, V> =
@@ -246,6 +246,7 @@ impl RootDatabase {
 
 #[query_group::query_group]
 pub trait LineIndexDatabase: base_db::RootQueryDb {
+    #[salsa::invoke_interned(line_index)]
     fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
 

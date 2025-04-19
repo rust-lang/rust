@@ -209,7 +209,7 @@ fn replace_usages(
     delayed_mutations: &mut Vec<(ImportScope, ast::Path)>,
 ) {
     for (file_id, references) in usages {
-        edit.edit_file(file_id.file_id());
+        edit.edit_file(file_id.file_id(ctx.db()));
 
         let refs_with_imports = augment_references_with_imports(ctx, references, target_module);
 

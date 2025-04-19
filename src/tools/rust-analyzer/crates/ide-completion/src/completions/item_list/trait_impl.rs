@@ -31,7 +31,7 @@
 //! }
 //! ```
 
-use hir::{MacroFileId, Name, db::ExpandDatabase};
+use hir::{MacroCallId, Name, db::ExpandDatabase};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     SymbolKind, documentation::HasDocs, path_transform::PathTransform,
@@ -465,7 +465,7 @@ fn add_const_impl(
 fn make_const_compl_syntax(
     ctx: &CompletionContext<'_>,
     const_: &ast::Const,
-    macro_file: Option<MacroFileId>,
+    macro_file: Option<MacroCallId>,
 ) -> SmolStr {
     let const_ = if let Some(macro_file) = macro_file {
         let span_map = ctx.db.expansion_span_map(macro_file);
@@ -493,7 +493,7 @@ fn make_const_compl_syntax(
 fn function_declaration(
     ctx: &CompletionContext<'_>,
     node: &ast::Fn,
-    macro_file: Option<MacroFileId>,
+    macro_file: Option<MacroCallId>,
 ) -> String {
     let node = if let Some(macro_file) = macro_file {
         let span_map = ctx.db.expansion_span_map(macro_file);

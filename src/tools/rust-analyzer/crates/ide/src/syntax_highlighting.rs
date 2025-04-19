@@ -15,13 +15,8 @@ mod tests;
 use std::ops::ControlFlow;
 
 use either::Either;
-use hir::{
-    DefWithBody, HirFileIdExt, InFile, InRealFile, MacroFileIdExt, MacroKind, Name, Semantics,
-};
-use ide_db::{
-    FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind, base_db::salsa::AsDynDatabase,
-};
-use span::EditionedFileId;
+use hir::{DefWithBody, EditionedFileId, InFile, InRealFile, MacroKind, Name, Semantics};
+use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind};
 use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
@@ -201,13 +196,11 @@ pub(crate) fn highlight(
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
 
     // Determine the root based on the given range.
     let (root, range_to_highlight) = {
-        let editioned_file_id_wrapper =
-            ide_db::base_db::EditionedFileId::new(db.as_dyn_database(), file_id);
-        let file = sema.parse(editioned_file_id_wrapper);
+        let file = sema.parse(file_id);
         let source_file = file.syntax();
         match range_to_highlight {
             Some(range) => {
@@ -235,7 +228,7 @@ fn traverse(
     krate: Option<hir::Crate>,
     range_to_highlight: TextRange,
 ) {
-    let is_unlinked = sema.file_to_module_def(file_id).is_none();
+    let is_unlinked = sema.file_to_module_def(file_id.file_id(sema.db)).is_none();
 
     enum AttrOrDerive {
         Attr(ast::Item),
@@ -509,7 +502,14 @@ fn string_injections(
             {
                 return ControlFlow::Break(());
             }
-            highlight_format_string(hl, sema, krate, &string, &descended_string, file_id.edition());
+            highlight_format_string(
+                hl,
+                sema,
+                krate,
+                &string,
+                &descended_string,
+                file_id.edition(sema.db),
+            );
 
             if !string.is_raw() {
                 highlight_escape_string(hl, &string);

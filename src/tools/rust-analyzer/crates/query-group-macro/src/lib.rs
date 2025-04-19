@@ -136,7 +136,7 @@ pub(crate) fn query_group_impl(
 
             let (_attrs, salsa_attrs) = filter_attrs(method.attrs.clone());
 
-            let mut query_kind = QueryKind::Tracked;
+            let mut query_kind = QueryKind::TrackedWithSalsaStruct;
             let mut invoke = None;
             let mut cycle = None;
             let mut interned_struct_path = None;
@@ -183,14 +183,17 @@ pub(crate) fn query_group_impl(
                         interned_struct_path = Some(path.path.clone());
                         query_kind = QueryKind::Interned;
                     }
+                    "invoke_interned" => {
+                        let path = syn::parse::<Parenthesized<Path>>(tts)?;
+                        invoke = Some(path.0.clone());
+                        query_kind = QueryKind::Tracked;
+                    }
                     "invoke" => {
                         let path = syn::parse::<Parenthesized<Path>>(tts)?;
                         invoke = Some(path.0.clone());
-                    }
-                    "invoke_actual" => {
-                        let path = syn::parse::<Parenthesized<Path>>(tts)?;
-                        invoke = Some(path.0.clone());
-                        query_kind = QueryKind::TrackedWithSalsaStruct;
+                        if query_kind != QueryKind::Transparent {
+                            query_kind = QueryKind::TrackedWithSalsaStruct;
+                        }
                     }
                     "tracked" if method.default.is_some() => {
                         query_kind = QueryKind::TrackedWithSalsaStruct;
@@ -292,10 +295,6 @@ pub(crate) fn query_group_impl(
                     trait_methods.push(Queries::TrackedQuery(method));
                 }
                 (QueryKind::TrackedWithSalsaStruct, invoke) => {
-                    // while it is possible to make this reachable, it's not really worthwhile for a migration aid.
-                    // doing this would require attaching an attribute to the salsa struct parameter
-                    // in the query.
-                    assert_ne!(invoke.is_none(), method.default.is_none());
                     let method = TrackedQuery {
                         trait_name: trait_name_ident.clone(),
                         generated_struct: None,

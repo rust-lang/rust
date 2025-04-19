@@ -45,8 +45,6 @@ fn intern_with_query() {
     db.assert_logs(expect![[r#"
         [
             "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: create_data_InternedDB(Id(400)) })",
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: interned_len_shim(Id(c00)) })",
+            "salsa_event(WillExecute { database_key: interned_len_shim(Id(0)) })",
         ]"#]]);
 }

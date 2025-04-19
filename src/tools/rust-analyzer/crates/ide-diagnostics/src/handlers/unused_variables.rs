@@ -46,7 +46,7 @@ pub(crate) fn unused_variables(
                 ctx.sema.db,
                 var_name,
                 it.range,
-                diagnostic_range.into(),
+                diagnostic_range,
                 ast.file_id.is_macro(),
                 ctx.edition,
             )

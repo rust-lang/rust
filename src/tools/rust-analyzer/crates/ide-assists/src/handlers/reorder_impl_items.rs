@@ -106,7 +106,7 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 .zip(sorted)
                 .for_each(|(old, new)| editor.replace(old.syntax(), new.syntax()));
 
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

@@ -1,6 +1,4 @@
-use ide_db::{
-    EditionedFileId, base_db::salsa::AsDynDatabase, defs::Definition, search::FileReference,
-};
+use ide_db::{EditionedFileId, defs::Definition, search::FileReference};
 use syntax::{
     AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, T, TextRange,
     algo::{find_node_at_range, least_common_ancestor_element},
@@ -90,7 +88,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             for (file_id, references) in fn_def.usages(&ctx.sema).all() {
                 process_usages(ctx, builder, file_id, references, param_position, is_self_present);
             }
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -98,15 +96,13 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 fn process_usages(
     ctx: &AssistContext<'_>,
     builder: &mut SourceChangeBuilder,
-    file_id: EditionedFileId,
+    editioned_file_id: EditionedFileId,
     references: Vec<FileReference>,
     arg_to_remove: usize,
     is_self_present: bool,
 ) {
-    let editioned_file_id_wrapper =
-        ide_db::base_db::EditionedFileId::new(ctx.sema.db.as_dyn_database(), file_id);
-
-    let source_file = ctx.sema.parse(editioned_file_id_wrapper);
+    let source_file = ctx.sema.parse(editioned_file_id);
+    let file_id = editioned_file_id.file_id(ctx.db());
     builder.edit_file(file_id);
     let possible_ranges = references
         .into_iter()

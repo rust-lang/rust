@@ -5,14 +5,13 @@ use std::{
 
 use either::Either;
 use hir::{
-    ClosureStyle, DisplayTarget, HasVisibility, HirDisplay, HirDisplayError, HirWrite, ModuleDef,
-    ModuleDefId, Semantics, sym,
+    ClosureStyle, DisplayTarget, EditionedFileId, HasVisibility, HirDisplay, HirDisplayError,
+    HirWrite, ModuleDef, ModuleDefId, Semantics, sym,
 };
-use ide_db::{FileRange, RootDatabase, base_db::salsa::AsDynDatabase, famous_defs::FamousDefs};
+use ide_db::{FileRange, RootDatabase, famous_defs::FamousDefs};
 use ide_db::{FxHashSet, text_edit::TextEdit};
 use itertools::Itertools;
 use smallvec::{SmallVec, smallvec};
-use span::EditionedFileId;
 use stdx::never;
 use syntax::{
     SmolStr, SyntaxNode, TextRange, TextSize, WalkEvent,
@@ -86,10 +85,8 @@ pub(crate) fn inlay_hints(
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
-    let editioned_file_id_wrapper =
-        ide_db::base_db::EditionedFileId::new(sema.db.as_dyn_database(), file_id);
-    let file = sema.parse(editioned_file_id_wrapper);
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
+    let file = sema.parse(file_id);
     let file = file.syntax();
 
     let mut acc = Vec::new();
@@ -139,10 +136,8 @@ pub(crate) fn inlay_hints_resolve(
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
-    let editioned_file_id_wrapper =
-        ide_db::base_db::EditionedFileId::new(sema.db.as_dyn_database(), file_id);
-    let file = sema.parse(editioned_file_id_wrapper);
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
+    let file = sema.parse(file_id);
     let file = file.syntax();
 
     let scope = sema.scope(file)?;
@@ -212,6 +207,7 @@ fn hints(
     file_id: EditionedFileId,
     node: SyntaxNode,
 ) {
+    let file_id = file_id.editioned_file_id(sema.db);
     let Some(krate) = sema.first_crate(file_id.file_id()) else {
         return;
     };
@@ -227,12 +223,12 @@ fn hints(
                 chaining::hints(hints, famous_defs, config, display_target, &expr);
                 adjustment::hints(hints, famous_defs, config, display_target, &expr);
                 match expr {
-                    ast::Expr::CallExpr(it) => param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it)),
+                    ast::Expr::CallExpr(it) => param_name::hints(hints, famous_defs, config, ast::Expr::from(it)),
                     ast::Expr::MethodCallExpr(it) => {
-                        param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it))
+                        param_name::hints(hints, famous_defs, config, ast::Expr::from(it))
                     }
                     ast::Expr::ClosureExpr(it) => {
-                        closure_captures::hints(hints, famous_defs, config, file_id, it.clone());
+                        closure_captures::hints(hints, famous_defs, config, it.clone());
                         closure_ret::hints(hints, famous_defs, config, display_target, it)
                     },
                     ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, famous_defs, config, file_id,  it),

@@ -30,16 +30,16 @@ use crate::{
 
 #[query_group::query_group]
 pub trait HirDatabase: DefDatabase + std::fmt::Debug {
-    #[salsa::invoke_actual(crate::infer::infer_query)]
+    #[salsa::invoke(crate::infer::infer_query)]
     fn infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 
     // region:mir
 
-    #[salsa::invoke_actual(crate::mir::mir_body_query)]
+    #[salsa::invoke(crate::mir::mir_body_query)]
     #[salsa::cycle(crate::mir::mir_body_recover)]
     fn mir_body(&self, def: DefWithBodyId) -> Result<Arc<MirBody>, MirLowerError>;
 
-    #[salsa::invoke_actual(crate::mir::mir_body_for_closure_query)]
+    #[salsa::invoke(crate::mir::mir_body_for_closure_query)]
     fn mir_body_for_closure(&self, def: InternedClosureId) -> Result<Arc<MirBody>, MirLowerError>;
 
     #[salsa::invoke(crate::mir::monomorphized_mir_body_query)]
@@ -59,7 +59,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         env: Arc<TraitEnvironment>,
     ) -> Result<Arc<MirBody>, MirLowerError>;
 
-    #[salsa::invoke_actual(crate::mir::borrowck_query)]
+    #[salsa::invoke(crate::mir::borrowck_query)]
     #[salsa::lru(2024)]
     fn borrowck(&self, def: DefWithBodyId) -> Result<Arc<[BorrowckResult]>, MirLowerError>;
 
@@ -72,11 +72,11 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         trait_env: Option<Arc<TraitEnvironment>>,
     ) -> Result<Const, ConstEvalError>;
 
-    #[salsa::invoke_actual(crate::consteval::const_eval_static_query)]
+    #[salsa::invoke(crate::consteval::const_eval_static_query)]
     #[salsa::cycle(crate::consteval::const_eval_static_recover)]
     fn const_eval_static(&self, def: StaticId) -> Result<Const, ConstEvalError>;
 
-    #[salsa::invoke_actual(crate::consteval::const_eval_discriminant_variant)]
+    #[salsa::invoke(crate::consteval::const_eval_discriminant_variant)]
     #[salsa::cycle(crate::consteval::const_eval_discriminant_recover)]
     fn const_eval_discriminant(&self, def: EnumVariantId) -> Result<i128, ConstEvalError>;
 
@@ -103,10 +103,10 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::cycle(crate::layout::layout_of_ty_recover)]
     fn layout_of_ty(&self, ty: Ty, env: Arc<TraitEnvironment>) -> Result<Arc<Layout>, LayoutError>;
 
-    #[salsa::invoke_actual(crate::layout::target_data_layout_query)]
+    #[salsa::invoke(crate::layout::target_data_layout_query)]
     fn target_data_layout(&self, krate: Crate) -> Result<Arc<TargetDataLayout>, Arc<str>>;
 
-    #[salsa::invoke_actual(crate::dyn_compatibility::dyn_compatibility_of_trait_query)]
+    #[salsa::invoke(crate::dyn_compatibility::dyn_compatibility_of_trait_query)]
     fn dyn_compatibility_of_trait(&self, trait_: TraitId) -> Option<DynCompatibilityViolation>;
 
     #[salsa::invoke(crate::lower::ty_query)]
@@ -114,53 +114,54 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn ty(&self, def: TyDefId) -> Binders<Ty>;
 
     #[salsa::cycle(crate::lower::type_for_type_alias_with_diagnostics_query_recover)]
-    #[salsa::invoke_actual(crate::lower::type_for_type_alias_with_diagnostics_query)]
+    #[salsa::invoke(crate::lower::type_for_type_alias_with_diagnostics_query)]
     fn type_for_type_alias_with_diagnostics(&self, def: TypeAliasId) -> (Binders<Ty>, Diagnostics);
 
     /// Returns the type of the value of the given constant, or `None` if the `ValueTyDefId` is
     /// a `StructId` or `EnumVariantId` with a record constructor.
-    #[salsa::invoke_actual(crate::lower::value_ty_query)]
+    #[salsa::invoke(crate::lower::value_ty_query)]
     fn value_ty(&self, def: ValueTyDefId) -> Option<Binders<Ty>>;
 
-    #[salsa::invoke_actual(crate::lower::impl_self_ty_with_diagnostics_query)]
+    #[salsa::invoke(crate::lower::impl_self_ty_with_diagnostics_query)]
     #[salsa::cycle(crate::lower::impl_self_ty_with_diagnostics_recover)]
     fn impl_self_ty_with_diagnostics(&self, def: ImplId) -> (Binders<Ty>, Diagnostics);
 
-    #[salsa::invoke_actual(crate::lower::impl_self_ty_query)]
+    #[salsa::invoke(crate::lower::impl_self_ty_query)]
     #[salsa::transparent]
     fn impl_self_ty(&self, def: ImplId) -> Binders<Ty>;
 
-    #[salsa::invoke(crate::lower::const_param_ty_with_diagnostics_query)]
+    // FIXME: Make this a non-interned query.
+    #[salsa::invoke_interned(crate::lower::const_param_ty_with_diagnostics_query)]
     fn const_param_ty_with_diagnostics(&self, def: ConstParamId) -> (Ty, Diagnostics);
 
     #[salsa::invoke(crate::lower::const_param_ty_query)]
     #[salsa::transparent]
     fn const_param_ty(&self, def: ConstParamId) -> Ty;
 
-    #[salsa::invoke_actual(crate::lower::impl_trait_with_diagnostics_query)]
+    #[salsa::invoke(crate::lower::impl_trait_with_diagnostics_query)]
     fn impl_trait_with_diagnostics(&self, def: ImplId) -> Option<(Binders<TraitRef>, Diagnostics)>;
 
-    #[salsa::invoke_actual(crate::lower::impl_trait_query)]
+    #[salsa::invoke(crate::lower::impl_trait_query)]
     #[salsa::transparent]
     fn impl_trait(&self, def: ImplId) -> Option<Binders<TraitRef>>;
 
-    #[salsa::invoke_actual(crate::lower::field_types_with_diagnostics_query)]
+    #[salsa::invoke(crate::lower::field_types_with_diagnostics_query)]
     fn field_types_with_diagnostics(
         &self,
         var: VariantId,
     ) -> (Arc<ArenaMap<LocalFieldId, Binders<Ty>>>, Diagnostics);
 
-    #[salsa::invoke_actual(crate::lower::field_types_query)]
+    #[salsa::invoke(crate::lower::field_types_query)]
     #[salsa::transparent]
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>>;
 
-    #[salsa::invoke_actual(crate::lower::callable_item_signature_query)]
+    #[salsa::invoke(crate::lower::callable_item_signature_query)]
     fn callable_item_signature(&self, def: CallableDefId) -> PolyFnSig;
 
-    #[salsa::invoke_actual(crate::lower::return_type_impl_traits)]
+    #[salsa::invoke(crate::lower::return_type_impl_traits)]
     fn return_type_impl_traits(&self, def: FunctionId) -> Option<Arc<Binders<ImplTraits>>>;
 
-    #[salsa::invoke_actual(crate::lower::type_alias_impl_traits)]
+    #[salsa::invoke(crate::lower::type_alias_impl_traits)]
     fn type_alias_impl_traits(&self, def: TypeAliasId) -> Option<Arc<Binders<ImplTraits>>>;
 
     #[salsa::invoke(crate::lower::generic_predicates_for_param_query)]
@@ -172,41 +173,41 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         assoc_name: Option<Name>,
     ) -> GenericPredicates;
 
-    #[salsa::invoke_actual(crate::lower::generic_predicates_query)]
+    #[salsa::invoke(crate::lower::generic_predicates_query)]
     fn generic_predicates(&self, def: GenericDefId) -> GenericPredicates;
 
-    #[salsa::invoke_actual(crate::lower::generic_predicates_without_parent_with_diagnostics_query)]
+    #[salsa::invoke(crate::lower::generic_predicates_without_parent_with_diagnostics_query)]
     fn generic_predicates_without_parent_with_diagnostics(
         &self,
         def: GenericDefId,
     ) -> (GenericPredicates, Diagnostics);
 
-    #[salsa::invoke_actual(crate::lower::generic_predicates_without_parent_query)]
+    #[salsa::invoke(crate::lower::generic_predicates_without_parent_query)]
     #[salsa::transparent]
     fn generic_predicates_without_parent(&self, def: GenericDefId) -> GenericPredicates;
 
-    #[salsa::invoke_actual(crate::lower::trait_environment_for_body_query)]
+    #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
     #[salsa::transparent]
     fn trait_environment_for_body(&self, def: DefWithBodyId) -> Arc<TraitEnvironment>;
 
-    #[salsa::invoke_actual(crate::lower::trait_environment_query)]
+    #[salsa::invoke(crate::lower::trait_environment_query)]
     fn trait_environment(&self, def: GenericDefId) -> Arc<TraitEnvironment>;
 
-    #[salsa::invoke_actual(crate::lower::generic_defaults_with_diagnostics_query)]
+    #[salsa::invoke(crate::lower::generic_defaults_with_diagnostics_query)]
     #[salsa::cycle(crate::lower::generic_defaults_with_diagnostics_recover)]
     fn generic_defaults_with_diagnostics(
         &self,
         def: GenericDefId,
     ) -> (GenericDefaults, Diagnostics);
 
-    #[salsa::invoke_actual(crate::lower::generic_defaults_query)]
+    #[salsa::invoke(crate::lower::generic_defaults_query)]
     #[salsa::transparent]
     fn generic_defaults(&self, def: GenericDefId) -> GenericDefaults;
 
-    #[salsa::invoke_actual(InherentImpls::inherent_impls_in_crate_query)]
+    #[salsa::invoke(InherentImpls::inherent_impls_in_crate_query)]
     fn inherent_impls_in_crate(&self, krate: Crate) -> Arc<InherentImpls>;
 
-    #[salsa::invoke_actual(InherentImpls::inherent_impls_in_block_query)]
+    #[salsa::invoke(InherentImpls::inherent_impls_in_block_query)]
     fn inherent_impls_in_block(&self, block: BlockId) -> Option<Arc<InherentImpls>>;
 
     /// Collects all crates in the dependency graph that have impls for the
@@ -220,13 +221,13 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         fp: TyFingerprint,
     ) -> SmallVec<[Crate; 2]>;
 
-    #[salsa::invoke_actual(TraitImpls::trait_impls_in_crate_query)]
+    #[salsa::invoke(TraitImpls::trait_impls_in_crate_query)]
     fn trait_impls_in_crate(&self, krate: Crate) -> Arc<TraitImpls>;
 
-    #[salsa::invoke_actual(TraitImpls::trait_impls_in_block_query)]
+    #[salsa::invoke(TraitImpls::trait_impls_in_block_query)]
     fn trait_impls_in_block(&self, block: BlockId) -> Option<Arc<TraitImpls>>;
 
-    #[salsa::invoke_actual(TraitImpls::trait_impls_in_deps_query)]
+    #[salsa::invoke(TraitImpls::trait_impls_in_deps_query)]
     fn trait_impls_in_deps(&self, krate: Crate) -> Arc<[Arc<TraitImpls>]>;
 
     // Interned IDs for Chalk integration
@@ -251,7 +252,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::interned]
     fn intern_coroutine(&self, id: InternedCoroutine) -> InternedCoroutineId;
 
-    #[salsa::invoke_actual(chalk_db::associated_ty_data_query)]
+    #[salsa::invoke(chalk_db::associated_ty_data_query)]
     fn associated_ty_data(&self, id: TypeAliasId) -> sync::Arc<chalk_db::AssociatedTyDatum>;
 
     #[salsa::invoke(chalk_db::trait_datum_query)]
@@ -268,16 +269,16 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn impl_datum(&self, krate: Crate, impl_id: chalk_db::ImplId)
     -> sync::Arc<chalk_db::ImplDatum>;
 
-    #[salsa::invoke_actual(chalk_db::fn_def_datum_query)]
+    #[salsa::invoke(chalk_db::fn_def_datum_query)]
     fn fn_def_datum(&self, fn_def_id: CallableDefId) -> sync::Arc<chalk_db::FnDefDatum>;
 
-    #[salsa::invoke_actual(chalk_db::fn_def_variance_query)]
+    #[salsa::invoke(chalk_db::fn_def_variance_query)]
     fn fn_def_variance(&self, fn_def_id: CallableDefId) -> chalk_db::Variances;
 
-    #[salsa::invoke_actual(chalk_db::adt_variance_query)]
+    #[salsa::invoke(chalk_db::adt_variance_query)]
     fn adt_variance(&self, adt_id: AdtId) -> chalk_db::Variances;
 
-    #[salsa::invoke_actual(crate::variance::variances_of)]
+    #[salsa::invoke(crate::variance::variances_of)]
     #[salsa::cycle(crate::variance::variances_of_cycle)]
     fn variances_of(&self, def: GenericDefId) -> Option<Arc<[crate::variance::Variance]>>;
 

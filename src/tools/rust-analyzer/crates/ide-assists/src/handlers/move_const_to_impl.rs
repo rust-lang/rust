@@ -105,7 +105,7 @@ pub(crate) fn move_const_to_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             builder.delete(range_to_delete);
 
             let usages = usages.iter().flat_map(|(file_id, usages)| {
-                let edition = file_id.edition();
+                let edition = file_id.edition(ctx.db());
                 usages.iter().map(move |usage| (edition, usage.range))
             });
             for (edition, range) in usages {

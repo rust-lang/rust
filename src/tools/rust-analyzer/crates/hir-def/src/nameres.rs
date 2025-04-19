@@ -62,14 +62,14 @@ use std::ops::Deref;
 
 use base_db::Crate;
 use hir_expand::{
-    ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId, mod_path::ModPath, name::Name,
-    proc_macro::ProcMacroKind,
+    EditionedFileId, ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId, mod_path::ModPath,
+    name::Name, proc_macro::ProcMacroKind,
 };
 use intern::Symbol;
 use itertools::Itertools;
 use la_arena::Arena;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, EditionedFileId, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
+use span::{Edition, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{AstNode, SmolStr, SyntaxNode, ToSmolStr, ast};
 use triomphe::Arc;
@@ -328,9 +328,7 @@ impl ModuleOrigin {
         match self {
             &ModuleOrigin::File { definition: editioned_file_id, .. }
             | &ModuleOrigin::CrateRoot { definition: editioned_file_id } => {
-                let definition = base_db::EditionedFileId::new(db, editioned_file_id);
-
-                let sf = db.parse(definition).tree();
+                let sf = db.parse(editioned_file_id).tree();
                 InFile::new(editioned_file_id.into(), ModuleSource::SourceFile(sf))
             }
             &ModuleOrigin::Inline { definition, definition_tree_id } => InFile::new(
@@ -389,7 +387,7 @@ impl DefMap {
         .entered();
 
         let module_data = ModuleData::new(
-            ModuleOrigin::CrateRoot { definition: krate.root_file_id() },
+            ModuleOrigin::CrateRoot { definition: krate.root_file_id(db) },
             Visibility::Public,
         );
 
@@ -402,7 +400,7 @@ impl DefMap {
         let (def_map, local_def_map) = collector::collect_defs(
             db,
             def_map,
-            TreeId::new(krate.root_file_id().into(), None),
+            TreeId::new(krate.root_file_id(db).into(), None),
             None,
         );
 
@@ -488,11 +486,15 @@ impl DefMap {
 }
 
 impl DefMap {
-    pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = LocalModuleId> + '_ {
+    pub fn modules_for_file<'a>(
+        &'a self,
+        db: &'a dyn DefDatabase,
+        file_id: FileId,
+    ) -> impl Iterator<Item = LocalModuleId> + 'a {
         self.modules
             .iter()
             .filter(move |(_id, data)| {
-                data.origin.file_id().map(EditionedFileId::file_id) == Some(file_id)
+                data.origin.file_id().map(|file_id| file_id.file_id(db)) == Some(file_id)
             })
             .map(|(id, _data)| id)
     }

@@ -6,9 +6,8 @@ use hir_def::{
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource as _},
 };
-use hir_expand::{HirFileId, InFile};
+use hir_expand::{EditionedFileId, HirFileId, InFile};
 use hir_ty::db::InternedClosure;
-use span::EditionedFileId;
 use syntax::ast;
 use tt::TextRange;
 

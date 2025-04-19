@@ -16,13 +16,8 @@ use triomphe::Arc;
 
 use crate::{
     Const, ConstData, ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution,
-    TraitEnvironment, Ty, TyBuilder,
-    db::{HirDatabase, HirDatabaseData},
-    display::DisplayTarget,
-    generics::Generics,
-    infer::InferenceContext,
-    lower::ParamLoweringMode,
-    to_placeholder_idx,
+    TraitEnvironment, Ty, TyBuilder, db::HirDatabase, display::DisplayTarget, generics::Generics,
+    infer::InferenceContext, lower::ParamLoweringMode, to_placeholder_idx,
 };
 
 use super::mir::{MirEvalError, MirLowerError, interpret_mir, lower_to_mir, pad16};
@@ -228,7 +223,6 @@ pub fn try_const_isize(db: &dyn HirDatabase, c: &Const) -> Option<i128> {
 pub(crate) fn const_eval_recover(
     _: &dyn HirDatabase,
     _: &Cycle,
-    _: HirDatabaseData,
     _: GeneralConstId,
     _: Substitution,
     _: Option<Arc<TraitEnvironment>>,

@@ -101,8 +101,8 @@ fn field_fix(
         group: None,
         target: range,
         source_change: Some(SourceChange::from_iter([
-            (file_id.into(), TextEdit::insert(range.start(), "(".to_owned())),
-            (file_id.into(), TextEdit::insert(range.end(), ")".to_owned())),
+            (file_id.file_id(ctx.sema.db), TextEdit::insert(range.start(), "(".to_owned())),
+            (file_id.file_id(ctx.sema.db), TextEdit::insert(range.end(), ")".to_owned())),
         ])),
         command: None,
     })
@@ -182,7 +182,7 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
             group: None,
             target: range,
             source_change: Some(SourceChange::from_text_edit(
-                file_id,
+                file_id.file_id(ctx.sema.db),
                 TextEdit::replace(range, assoc_func_call_expr_string),
             )),
             command: None,

@@ -4,11 +4,9 @@ use std::mem;
 
 use base_db::Crate;
 use drop_bomb::DropBomb;
-use hir_expand::attrs::RawAttrs;
-use hir_expand::eager::EagerCallBackFn;
 use hir_expand::{
     ExpandError, ExpandErrorKind, ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
-    mod_path::ModPath, span_map::SpanMap,
+    attrs::RawAttrs, eager::EagerCallBackFn, mod_path::ModPath, span_map::SpanMap,
 };
 use span::{AstIdMap, Edition, SyntaxContext};
 use syntax::ast::HasAttrs;
@@ -183,8 +181,7 @@ impl Expander {
             ));
         }
 
-        let macro_file = call_id.as_macro_file();
-        let res = db.parse_macro_expansion(macro_file);
+        let res = db.parse_macro_expansion(call_id);
 
         let err = err.or(res.err);
         ExpandResult {
@@ -192,7 +189,7 @@ impl Expander {
                 let parse = res.value.0.cast::<T>();
 
                 self.recursion_depth += 1;
-                let old_file_id = std::mem::replace(&mut self.current_file_id, macro_file.into());
+                let old_file_id = std::mem::replace(&mut self.current_file_id, call_id.into());
                 let old_span_map =
                     std::mem::replace(&mut self.span_map, db.span_map(self.current_file_id));
                 let prev_ast_id_map =

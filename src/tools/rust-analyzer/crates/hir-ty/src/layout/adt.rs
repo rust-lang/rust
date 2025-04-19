@@ -20,7 +20,7 @@ use crate::{
     layout::{Layout, LayoutError, field_ty},
 };
 
-use super::{HirDatabaseData, LayoutCx};
+use super::LayoutCx;
 
 pub fn layout_of_adt_query(
     db: &dyn HirDatabase,
@@ -134,7 +134,6 @@ fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, 
 pub(crate) fn layout_of_adt_recover(
     _: &dyn HirDatabase,
     _: &Cycle,
-    _: HirDatabaseData,
     _: AdtId,
     _: Substitution,
     _: Arc<TraitEnvironment>,

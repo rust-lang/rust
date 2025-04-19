@@ -101,7 +101,7 @@ pub(crate) fn convert_for_loop_to_while_let(
             editor.replace(for_loop.syntax(), while_loop.syntax());
 
             editor.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

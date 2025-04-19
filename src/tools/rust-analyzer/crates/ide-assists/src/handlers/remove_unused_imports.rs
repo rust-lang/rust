@@ -1,6 +1,6 @@
 use std::collections::hash_map::Entry;
 
-use hir::{FileRange, HirFileIdExt, InFile, InRealFile, Module, ModuleSource};
+use hir::{FileRange, InFile, InRealFile, Module, ModuleSource};
 use ide_db::text_edit::TextRange;
 use ide_db::{
     FxHashMap, RootDatabase,

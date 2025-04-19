@@ -278,7 +278,7 @@ fn convert_path(
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
             let syn_ctx = span_for_range(segment.syntax().text_range());
             if let Some(macro_call_id) = syn_ctx.outer_expn(db) {
-                if db.lookup_intern_macro_call(macro_call_id).def.local_inner {
+                if db.lookup_intern_macro_call(macro_call_id.into()).def.local_inner {
                     mod_path.kind = match resolve_crate_root(db, syn_ctx) {
                         Some(crate_root) => PathKind::DollarCrate(crate_root),
                         None => PathKind::Crate,
@@ -353,7 +353,7 @@ pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContext) -> O
         result_mark = Some(mark);
     }
 
-    result_mark.map(|call| db.lookup_intern_macro_call(call).def.krate)
+    result_mark.map(|call| db.lookup_intern_macro_call(call.into()).def.krate)
 }
 
 pub use crate::name as __name;

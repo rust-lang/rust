@@ -1,10 +1,9 @@
 //! Defines database & queries for name resolution.
 use base_db::{Crate, RootQueryDb, SourceDatabase};
 use either::Either;
-use hir_expand::{HirFileId, MacroDefId, db::ExpandDatabase};
+use hir_expand::{EditionedFileId, HirFileId, MacroCallId, MacroDefId, db::ExpandDatabase};
 use intern::sym;
 use la_arena::ArenaMap;
-use span::{EditionedFileId, MacroCallId};
 use syntax::{AstPtr, ast};
 use thin_vec::ThinVec;
 use triomphe::Arc;
@@ -109,26 +108,26 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     #[salsa::invoke(ItemTree::file_item_tree_query)]
     fn file_item_tree(&self, file_id: HirFileId) -> Arc<ItemTree>;
 
-    #[salsa::invoke_actual(ItemTree::block_item_tree_query)]
+    #[salsa::invoke(ItemTree::block_item_tree_query)]
     fn block_item_tree(&self, block_id: BlockId) -> Arc<ItemTree>;
 
-    #[salsa::invoke_actual(DefMap::crate_local_def_map_query)]
+    #[salsa::invoke(DefMap::crate_local_def_map_query)]
     fn crate_local_def_map(&self, krate: Crate) -> (Arc<DefMap>, Arc<LocalDefMap>);
 
-    #[salsa::invoke_actual(DefMap::crate_def_map_query)]
+    #[salsa::invoke(DefMap::crate_def_map_query)]
     fn crate_def_map(&self, krate: Crate) -> Arc<DefMap>;
 
     /// Computes the block-level `DefMap`.
-    #[salsa::invoke_actual(DefMap::block_def_map_query)]
+    #[salsa::invoke(DefMap::block_def_map_query)]
     fn block_def_map(&self, block: BlockId) -> Arc<DefMap>;
 
     /// Turns a MacroId into a MacroDefId, describing the macro's definition post name resolution.
-    #[salsa::invoke_actual(macro_def)]
+    #[salsa::invoke(macro_def)]
     fn macro_def(&self, m: MacroId) -> MacroDefId;
 
     // region:data
 
-    #[salsa::invoke_actual(VariantFields::query)]
+    #[salsa::invoke(VariantFields::query)]
     fn variant_fields_with_source_map(
         &self,
         id: VariantId,
@@ -139,24 +138,24 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
         self.enum_variants_with_diagnostics(id).0
     }
 
-    #[salsa::invoke_actual(EnumVariants::enum_variants_query)]
+    #[salsa::invoke(EnumVariants::enum_variants_query)]
     fn enum_variants_with_diagnostics(
         &self,
         id: EnumId,
     ) -> (Arc<EnumVariants>, Option<Arc<ThinVec<InactiveEnumVariantCode>>>);
 
     #[salsa::transparent]
-    #[salsa::invoke_actual(ImplItems::impl_items_query)]
+    #[salsa::invoke(ImplItems::impl_items_query)]
     fn impl_items(&self, e: ImplId) -> Arc<ImplItems>;
 
-    #[salsa::invoke_actual(ImplItems::impl_items_with_diagnostics_query)]
+    #[salsa::invoke(ImplItems::impl_items_with_diagnostics_query)]
     fn impl_items_with_diagnostics(&self, e: ImplId) -> (Arc<ImplItems>, DefDiagnostics);
 
     #[salsa::transparent]
-    #[salsa::invoke_actual(TraitItems::trait_items_query)]
+    #[salsa::invoke(TraitItems::trait_items_query)]
     fn trait_items(&self, e: TraitId) -> Arc<TraitItems>;
 
-    #[salsa::invoke_actual(TraitItems::trait_items_with_diagnostics_query)]
+    #[salsa::invoke(TraitItems::trait_items_with_diagnostics_query)]
     fn trait_items_with_diagnostics(&self, tr: TraitId) -> (Arc<TraitItems>, DefDiagnostics);
 
     #[salsa::tracked]
@@ -214,61 +213,61 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
         self.type_alias_signature_with_source_map(e).0
     }
 
-    #[salsa::invoke_actual(TraitSignature::query)]
+    #[salsa::invoke(TraitSignature::query)]
     fn trait_signature_with_source_map(
         &self,
         trait_: TraitId,
     ) -> (Arc<TraitSignature>, Arc<ExpressionStoreSourceMap>);
 
-    #[salsa::invoke_actual(ImplSignature::query)]
+    #[salsa::invoke(ImplSignature::query)]
     fn impl_signature_with_source_map(
         &self,
         impl_: ImplId,
     ) -> (Arc<ImplSignature>, Arc<ExpressionStoreSourceMap>);
 
-    #[salsa::invoke_actual(StructSignature::query)]
+    #[salsa::invoke(StructSignature::query)]
     fn struct_signature_with_source_map(
         &self,
         struct_: StructId,
     ) -> (Arc<StructSignature>, Arc<ExpressionStoreSourceMap>);
 
-    #[salsa::invoke_actual(UnionSignature::query)]
+    #[salsa::invoke(UnionSignature::query)]
     fn union_signature_with_source_map(
         &self,
         union_: UnionId,
     ) -> (Arc<UnionSignature>, Arc<ExpressionStoreSourceMap>);
 
-    #[salsa::invoke_actual(EnumSignature::query)]
+    #[salsa::invoke(EnumSignature::query)]
     fn enum_signature_with_source_map(
         &self,
         e: EnumId,
     ) -> (Arc<EnumSignature>, Arc<ExpressionStoreSourceMap>);
 
-    #[salsa::invoke_actual(ConstSignature::query)]
+    #[salsa::invoke(ConstSignature::query)]
     fn const_signature_with_source_map(
         &self,
         e: ConstId,
     ) -> (Arc<ConstSignature>, Arc<ExpressionStoreSourceMap>);
 
-    #[salsa::invoke_actual(StaticSignature::query)]
+    #[salsa::invoke(StaticSignature::query)]
     fn static_signature_with_source_map(
         &self,
         e: StaticId,
     ) -> (Arc<StaticSignature>, Arc<ExpressionStoreSourceMap>);
 
-    #[salsa::invoke_actual(FunctionSignature::query)]
+    #[salsa::invoke(FunctionSignature::query)]
     fn function_signature_with_source_map(
         &self,
         e: FunctionId,
     ) -> (Arc<FunctionSignature>, Arc<ExpressionStoreSourceMap>);
 
-    #[salsa::invoke_actual(TraitAliasSignature::query)]
+    #[salsa::invoke(TraitAliasSignature::query)]
     fn trait_alias_signature_with_source_map(
         &self,
         e: TraitAliasId,
     ) -> (Arc<TraitAliasSignature>, Arc<ExpressionStoreSourceMap>);
 
-    #[salsa::invoke_actual(TypeAliasSignature::query)]
+    #[salsa::invoke(TypeAliasSignature::query)]
     fn type_alias_signature_with_source_map(
         &self,
         e: TypeAliasId,
@@ -283,7 +282,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     #[salsa::invoke(Body::body_query)]
     fn body(&self, def: DefWithBodyId) -> Arc<Body>;
 
-    #[salsa::invoke_actual(ExprScopes::expr_scopes_query)]
+    #[salsa::invoke(ExprScopes::expr_scopes_query)]
     fn expr_scopes(&self, def: DefWithBodyId) -> Arc<ExprScopes>;
 
     #[salsa::transparent]
@@ -306,17 +305,18 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
 
     // region:attrs
 
-    #[salsa::invoke_actual(Attrs::fields_attrs_query)]
+    #[salsa::invoke(Attrs::fields_attrs_query)]
     fn fields_attrs(&self, def: VariantId) -> Arc<ArenaMap<LocalFieldId, Attrs>>;
 
     // should this really be a query?
-    #[salsa::invoke_actual(crate::attr::fields_attrs_source_map)]
+    #[salsa::invoke(crate::attr::fields_attrs_source_map)]
     fn fields_attrs_source_map(
         &self,
         def: VariantId,
     ) -> Arc<ArenaMap<LocalFieldId, AstPtr<Either<ast::TupleField, ast::RecordField>>>>;
 
-    #[salsa::invoke(AttrsWithOwner::attrs_query)]
+    // FIXME: Make this a non-interned query.
+    #[salsa::invoke_interned(AttrsWithOwner::attrs_query)]
     fn attrs(&self, def: AttrDefId) -> Attrs;
 
     #[salsa::transparent]
@@ -328,39 +328,39 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     #[salsa::invoke(LangItems::lang_item_query)]
     fn lang_item(&self, start_crate: Crate, item: LangItem) -> Option<LangItemTarget>;
 
-    #[salsa::invoke_actual(ImportMap::import_map_query)]
+    #[salsa::invoke(ImportMap::import_map_query)]
     fn import_map(&self, krate: Crate) -> Arc<ImportMap>;
 
     // region:visibilities
 
-    #[salsa::invoke_actual(visibility::field_visibilities_query)]
+    #[salsa::invoke(visibility::field_visibilities_query)]
     fn field_visibilities(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Visibility>>;
 
     // FIXME: unify function_visibility and const_visibility?
 
-    #[salsa::invoke_actual(visibility::function_visibility_query)]
+    #[salsa::invoke(visibility::function_visibility_query)]
     fn function_visibility(&self, def: FunctionId) -> Visibility;
 
-    #[salsa::invoke_actual(visibility::const_visibility_query)]
+    #[salsa::invoke(visibility::const_visibility_query)]
     fn const_visibility(&self, def: ConstId) -> Visibility;
 
-    #[salsa::invoke_actual(visibility::type_alias_visibility_query)]
+    #[salsa::invoke(visibility::type_alias_visibility_query)]
     fn type_alias_visibility(&self, def: TypeAliasId) -> Visibility;
 
     // endregion:visibilities
 
-    #[salsa::invoke_actual(LangItems::crate_lang_items_query)]
+    #[salsa::invoke(LangItems::crate_lang_items_query)]
     fn crate_lang_items(&self, krate: Crate) -> Option<Arc<LangItems>>;
 
-    #[salsa::invoke_actual(crate::lang_item::notable_traits_in_deps)]
+    #[salsa::invoke(crate::lang_item::notable_traits_in_deps)]
     fn notable_traits_in_deps(&self, krate: Crate) -> Arc<[Arc<[TraitId]>]>;
-    #[salsa::invoke_actual(crate::lang_item::crate_notable_traits)]
+    #[salsa::invoke(crate::lang_item::crate_notable_traits)]
     fn crate_notable_traits(&self, krate: Crate) -> Option<Arc<[TraitId]>>;
 
-    #[salsa::invoke_actual(crate_supports_no_std)]
+    #[salsa::invoke(crate_supports_no_std)]
     fn crate_supports_no_std(&self, crate_id: Crate) -> bool;
 
-    #[salsa::invoke_actual(include_macro_invoc)]
+    #[salsa::invoke(include_macro_invoc)]
     fn include_macro_invoc(&self, crate_id: Crate) -> Arc<[(MacroCallId, EditionedFileId)]>;
 }
 
@@ -382,7 +382,7 @@ fn include_macro_invoc(
 }
 
 fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: Crate) -> bool {
-    let file = crate_id.data(db).root_file_id();
+    let file = crate_id.data(db).root_file_id(db);
     let item_tree = db.file_item_tree(file.into());
     let attrs = item_tree.raw_attrs(AttrOwner::TopLevel);
     for attr in &**attrs {

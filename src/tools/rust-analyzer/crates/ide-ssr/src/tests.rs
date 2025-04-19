@@ -98,10 +98,18 @@ fn assert_ssr_transform(rule: &str, input: &str, expected: Expect) {
 
 fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
     let (db, position, selections) = single_file(input);
+    let position =
+        ide_db::FilePosition { file_id: position.file_id.file_id(&db), offset: position.offset };
     let mut match_finder = MatchFinder::in_context(
         &db,
-        position.into(),
-        selections.into_iter().map(Into::into).collect(),
+        position,
+        selections
+            .into_iter()
+            .map(|selection| ide_db::FileRange {
+                file_id: selection.file_id.file_id(&db),
+                range: selection.range,
+            })
+            .collect(),
     )
     .unwrap();
     for rule in rules {
@@ -114,8 +122,8 @@ fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
     }
     // Note, db.file_text is not necessarily the same as `input`, since fixture parsing alters
     // stuff.
-    let mut actual = db.file_text(position.file_id.into()).text(&db).to_string();
-    edits[&position.file_id.into()].apply(&mut actual);
+    let mut actual = db.file_text(position.file_id).text(&db).to_string();
+    edits[&position.file_id].apply(&mut actual);
     expected.assert_eq(&actual);
 }
 
@@ -136,8 +144,14 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     let (db, position, selections) = single_file(code);
     let mut match_finder = MatchFinder::in_context(
         &db,
-        position.into(),
-        selections.into_iter().map(Into::into).collect(),
+        ide_db::FilePosition { file_id: position.file_id.file_id(&db), offset: position.offset },
+        selections
+            .into_iter()
+            .map(|selection| ide_db::FileRange {
+                file_id: selection.file_id.file_id(&db),
+                range: selection.range,
+            })
+            .collect(),
     )
     .unwrap();
     match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
@@ -153,8 +167,14 @@ fn assert_no_match(pattern: &str, code: &str) {
     let (db, position, selections) = single_file(code);
     let mut match_finder = MatchFinder::in_context(
         &db,
-        position.into(),
-        selections.into_iter().map(Into::into).collect(),
+        ide_db::FilePosition { file_id: position.file_id.file_id(&db), offset: position.offset },
+        selections
+            .into_iter()
+            .map(|selection| ide_db::FileRange {
+                file_id: selection.file_id.file_id(&db),
+                range: selection.range,
+            })
+            .collect(),
     )
     .unwrap();
     match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
@@ -169,8 +189,14 @@ fn assert_match_failure_reason(pattern: &str, code: &str, snippet: &str, expecte
     let (db, position, selections) = single_file(code);
     let mut match_finder = MatchFinder::in_context(
         &db,
-        position.into(),
-        selections.into_iter().map(Into::into).collect(),
+        ide_db::FilePosition { file_id: position.file_id.file_id(&db), offset: position.offset },
+        selections
+            .into_iter()
+            .map(|selection| ide_db::FileRange {
+                file_id: selection.file_id.file_id(&db),
+                range: selection.range,
+            })
+            .collect(),
     )
     .unwrap();
     match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();

@@ -87,17 +87,17 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
                     builder.replace(target, replacement);
                 }
 
-                if file_id == ctx.file_id() {
+                if file_id == ctx.vfs_file_id() {
                     builder.delete(ast_alias.syntax().text_range());
                     definition_deleted = true;
                 }
             };
 
             for (file_id, refs) in usages.into_iter() {
-                inline_refs_for_file(file_id.file_id(), refs);
+                inline_refs_for_file(file_id.file_id(ctx.db()), refs);
             }
             if !definition_deleted {
-                builder.edit_file(ctx.file_id());
+                builder.edit_file(ctx.vfs_file_id());
                 builder.delete(ast_alias.syntax().text_range());
             }
         },

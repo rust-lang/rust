@@ -1,8 +1,7 @@
 use hir::{
-    Adt, AsAssocItem, HasSource, HirDisplay, HirFileIdExt, Module, PathResolution, Semantics,
-    StructKind, Type, TypeInfo,
+    Adt, AsAssocItem, HasSource, HirDisplay, Module, PathResolution, Semantics, StructKind, Type,
+    TypeInfo,
 };
-use ide_db::base_db::salsa::AsDynDatabase;
 use ide_db::{
     FileId, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
     defs::{Definition, NameRefClass},
@@ -207,14 +206,11 @@ fn get_adt_source(
 ) -> Option<(Option<ast::Impl>, FileId)> {
     let range = adt.source(ctx.sema.db)?.syntax().original_file_range_rooted(ctx.sema.db);
 
-    let editioned_file_id =
-        ide_db::base_db::EditionedFileId::new(ctx.sema.db.as_dyn_database(), range.file_id);
-
-    let file = ctx.sema.parse(editioned_file_id);
+    let file = ctx.sema.parse(range.file_id);
     let adt_source =
         ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
     find_struct_impl(ctx, &adt_source, &[fn_name.to_owned()])
-        .map(|impl_| (impl_, range.file_id.file_id()))
+        .map(|impl_| (impl_, range.file_id.file_id(ctx.db())))
 }
 
 struct FunctionBuilder {
@@ -501,7 +497,7 @@ fn get_fn_target(
     target_module: Option<Module>,
     call: CallExpr,
 ) -> Option<(GeneratedFunctionTarget, FileId)> {
-    let mut file = ctx.file_id().into();
+    let mut file = ctx.vfs_file_id();
     let target = match target_module {
         Some(target_module) => {
             let (in_file, target) = next_space_for_fn_in_module(ctx.db(), target_module);
@@ -1191,7 +1187,7 @@ fn next_space_for_fn_in_module(
         }
     };
 
-    (file.file_id(), assist_item)
+    (file.file_id(db), assist_item)
 }
 
 #[derive(Clone, Copy)]

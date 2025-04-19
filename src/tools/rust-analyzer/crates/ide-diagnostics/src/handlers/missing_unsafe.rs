@@ -1,5 +1,5 @@
 use hir::db::ExpandDatabase;
-use hir::{HirFileIdExt, UnsafeLint, UnsafetyReason};
+use hir::{UnsafeLint, UnsafetyReason};
 use ide_db::text_edit::TextEdit;
 use ide_db::{assists::Assist, source_change::SourceChange};
 use syntax::{AstNode, match_ast};
@@ -51,8 +51,10 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Option<Vec<Ass
 
     let replacement = format!("unsafe {{ {} }}", node_to_add_unsafe_block.text());
     let edit = TextEdit::replace(node_to_add_unsafe_block.text_range(), replacement);
-    let source_change =
-        SourceChange::from_text_edit(d.node.file_id.original_file(ctx.sema.db), edit);
+    let source_change = SourceChange::from_text_edit(
+        d.node.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
+        edit,
+    );
     Some(vec![fix("add_unsafe", "Add unsafe block", source_change, expr.syntax().text_range())])
 }
 

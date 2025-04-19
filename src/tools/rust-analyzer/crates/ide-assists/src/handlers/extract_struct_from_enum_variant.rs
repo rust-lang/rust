@@ -74,7 +74,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                     def_file_references = Some(references);
                     continue;
                 }
-                builder.edit_file(file_id.file_id());
+                builder.edit_file(file_id.file_id(ctx.db()));
                 let processed = process_references(
                     ctx,
                     builder,
@@ -87,7 +87,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                     apply_references(ctx.config.insert_use, path, node, import, edition)
                 });
             }
-            builder.edit_file(ctx.file_id());
+            builder.edit_file(ctx.vfs_file_id());
 
             let variant = builder.make_mut(variant.clone());
             if let Some(references) = def_file_references {

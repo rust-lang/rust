@@ -215,7 +215,7 @@ pub(super) fn lower_path(
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
             let syn_ctxt = collector.expander.ctx_for_range(path.segment()?.syntax().text_range());
             if let Some(macro_call_id) = syn_ctxt.outer_expn(collector.db) {
-                if collector.db.lookup_intern_macro_call(macro_call_id).def.local_inner {
+                if collector.db.lookup_intern_macro_call(macro_call_id.into()).def.local_inner {
                     kind = match resolve_crate_root(collector.db, syn_ctxt) {
                         Some(crate_root) => PathKind::DollarCrate(crate_root),
                         None => PathKind::Crate,

@@ -149,7 +149,7 @@ pub(crate) fn annotations(
             source_file_id: FileId,
         ) -> Option<(TextRange, Option<TextRange>)> {
             if let Some(InRealFile { file_id, value }) = node.original_ast_node_rooted(db) {
-                if file_id == source_file_id {
+                if file_id.file_id(db) == source_file_id {
                     return Some((
                         value.syntax().text_range(),
                         value.name().map(|name| name.syntax().text_range()),

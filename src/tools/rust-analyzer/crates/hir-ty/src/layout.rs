@@ -20,7 +20,7 @@ use triomphe::Arc;
 use crate::{
     Interner, ProjectionTy, Substitution, TraitEnvironment, Ty,
     consteval::try_const_usize,
-    db::{HirDatabase, HirDatabaseData, InternedClosure},
+    db::{HirDatabase, InternedClosure},
     infer::normalize,
     utils::ClosureSubst,
 };
@@ -368,7 +368,6 @@ pub fn layout_of_ty_query(
 pub(crate) fn layout_of_ty_recover(
     _: &dyn HirDatabase,
     _: &Cycle,
-    _: HirDatabaseData,
     _: Ty,
     _: Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {

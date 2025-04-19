@@ -19,14 +19,13 @@ use std::{iter, ops::Range, sync};
 use base_db::RootQueryDb;
 use expect_test::Expect;
 use hir_expand::{
-    InFile, MacroCallKind, MacroFileId, MacroFileIdExt, MacroKind,
+    InFile, MacroCallKind, MacroKind,
     db::ExpandDatabase,
     proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
     span_map::SpanMapRef,
 };
 use intern::Symbol;
 use itertools::Itertools;
-use salsa::AsDynDatabase;
 use span::{Edition, Span};
 use stdx::{format_to, format_to_acc};
 use syntax::{
@@ -67,8 +66,6 @@ fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect)
 
             let editioned_file_id =
                 ast_id.file_id.file_id().expect("macros inside macros are not supported");
-            let editioned_file_id =
-                base_db::EditionedFileId::new(db.as_dyn_database(), editioned_file_id);
 
             let ast = db.parse(editioned_file_id).syntax_node();
             let ast_id_map = db.ast_id_map(ast_id.file_id);
@@ -143,8 +140,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             )
             .unwrap();
         let macro_call_id = res.value.unwrap();
-        let macro_file = MacroFileId { macro_call_id };
-        let mut expansion_result = db.parse_macro_expansion(macro_file);
+        let mut expansion_result = db.parse_macro_expansion(macro_call_id);
         expansion_result.err = expansion_result.err.or(res.err);
         expansions.push((macro_call.value.clone(), expansion_result));
     }

@@ -9,8 +9,8 @@ use base_db::{BuiltDependency, Crate, CrateOrigin, LangCrateOrigin};
 use cfg::{CfgAtom, CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
-    ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
-    MacroFileIdExt,
+    EditionedFileId, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId,
+    MacroDefKind,
     attrs::{Attr, AttrId},
     builtin::{find_builtin_attr, find_builtin_derive, find_builtin_macro},
     mod_path::{ModPath, PathKind},
@@ -21,7 +21,7 @@ use intern::{Interned, sym};
 use itertools::{Itertools, izip};
 use la_arena::Idx;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, EditionedFileId, FileAstId, SyntaxContext};
+use span::{Edition, FileAstId, SyntaxContext};
 use syntax::ast;
 use triomphe::Arc;
 
@@ -250,7 +250,7 @@ impl DefCollector<'_> {
     fn seed_with_top_level(&mut self) {
         let _p = tracing::info_span!("seed_with_top_level").entered();
 
-        let file_id = self.def_map.krate.data(self.db).root_file_id();
+        let file_id = self.def_map.krate.data(self.db).root_file_id(self.db);
         let item_tree = self.db.file_item_tree(file_id.into());
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
         let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
@@ -1512,11 +1512,11 @@ impl DefCollector<'_> {
             tracing::warn!("macro expansion is too deep");
             return;
         }
-        let file_id = macro_call_id.as_file();
+        let file_id = macro_call_id.into();
 
         let item_tree = self.db.file_item_tree(file_id);
 
-        let mod_dir = if macro_call_id.as_macro_file().is_include_macro(self.db) {
+        let mod_dir = if macro_call_id.is_include_macro(self.db) {
             ModDir::root()
         } else {
             self.mod_dirs[&module_id].clone()

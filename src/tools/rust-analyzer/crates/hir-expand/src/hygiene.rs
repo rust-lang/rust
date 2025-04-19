@@ -81,7 +81,7 @@ pub(super) fn apply_mark(
         return apply_mark_internal(db, ctxt, call_id, transparency, edition);
     }
 
-    let call_site_ctxt = db.lookup_intern_macro_call(call_id).ctxt;
+    let call_site_ctxt = db.lookup_intern_macro_call(call_id.into()).ctxt;
     let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
         call_site_ctxt.normalize_to_macros_2_0(db)
     } else {

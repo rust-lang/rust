@@ -100,9 +100,13 @@ impl Query {
 pub trait SymbolsDatabase: HirDatabase + SourceDatabase {
     /// The symbol index for a given module. These modules should only be in source roots that
     /// are inside local_roots.
+    // FIXME: Is it worth breaking the encapsulation boundary of `hir`, and make this take a `ModuleId`,
+    // in order for it to be a non-interned query?
+    #[salsa::invoke_interned(module_symbols)]
     fn module_symbols(&self, module: Module) -> Arc<SymbolIndex>;
 
     /// The symbol index for a given source root within library_roots.
+    #[salsa::invoke_interned(library_symbols)]
     fn library_symbols(&self, source_root_id: SourceRootId) -> Arc<SymbolIndex>;
 
     #[salsa::transparent]

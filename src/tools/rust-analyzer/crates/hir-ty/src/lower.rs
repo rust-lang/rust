@@ -59,7 +59,7 @@ use crate::{
     QuantifiedWhereClauses, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder,
     TyKind, WhereClause, all_super_traits,
     consteval::{intern_const_ref, path_to_const, unknown_const, unknown_const_as_generic},
-    db::{HirDatabase, HirDatabaseData},
+    db::HirDatabase,
     error_lifetime,
     generics::{Generics, generics, trait_self_param_idx},
     lower::{
@@ -957,7 +957,6 @@ pub(crate) fn generic_predicates_for_param_query(
 pub(crate) fn generic_predicates_for_param_recover(
     _db: &dyn HirDatabase,
     _cycle: &salsa::Cycle,
-    _: HirDatabaseData,
     _def: GenericDefId,
     _param_id: TypeOrConstParamId,
     _assoc_name: Option<Name>,
