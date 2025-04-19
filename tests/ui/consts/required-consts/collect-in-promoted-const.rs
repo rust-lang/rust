@@ -7,7 +7,7 @@
 struct Fail<T>(T);
 impl<T> Fail<T> {
     const C: () = panic!(); //~ERROR evaluation of `Fail::<i32>::C` failed
-    //[opt]~^ ERROR evaluation of `Fail::<T>::C` failed
+    //~^ ERROR evaluation of `Fail::<T>::C` failed
     // (Not sure why optimizations lead to this being emitted twice, but as long as compilation
     // fails either way it's fine.)
 }

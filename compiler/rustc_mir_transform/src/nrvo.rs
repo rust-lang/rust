@@ -33,9 +33,9 @@ use tracing::{debug, trace};
 pub(super) struct RenameReturnPlace;
 
 impl<'tcx> crate::MirPass<'tcx> for RenameReturnPlace {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
         // unsound: #111005
-        sess.mir_opt_level() > 0 && sess.opts.unstable_opts.unsound_mir_opts
+        tcx.sess.mir_opt_level() > 0 && tcx.sess.opts.unstable_opts.unsound_mir_opts
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {

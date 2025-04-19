@@ -13,8 +13,8 @@ use crate::patch::MirPatch;
 pub(super) struct MatchBranchSimplification;
 
 impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 1
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.mir_opt_level() >= 1
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
