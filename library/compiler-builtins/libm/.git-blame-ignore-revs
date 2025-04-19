@@ -1,0 +1,5 @@
+# Use `git config blame.ignorerevsfile .git-blame-ignore-revs` to make
+# `git blame` ignore the following commits.
+
+# Reformat with a new `.rustfmt.toml`
+5882cabb83c30bf7c36023f9a55a80583636b0e8

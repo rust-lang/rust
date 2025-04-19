@@ -1,0 +1,13 @@
+[package]
+name = "musl-math-sys"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+
+[dev-dependencies]
+libm = { path = "../../libm" }
+
+[build-dependencies]
+cc = "1.2.16"

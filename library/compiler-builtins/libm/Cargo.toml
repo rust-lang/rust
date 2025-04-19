@@ -1,0 +1,37 @@
+[workspace]
+resolver = "2"
+members = [
+  "libm",
+  "crates/libm-macros",
+  "crates/libm-test",
+  "crates/musl-math-sys",
+  "crates/util",
+]
+default-members = [
+  "libm",
+  "crates/libm-macros",
+  "crates/libm-test"
+]
+exclude = [
+  # Requires `panic = abort` so can't be a member of the workspace
+  "crates/compiler-builtins-smoke-test",
+]
+
+# The default release profile is unchanged.
+
+# Release mode with debug assertions
+[profile.release-checked]
+inherits = "release"
+debug-assertions = true
+overflow-checks = true
+
+# Release with maximum optimizations, which is very slow to build. This is also
+# what is needed to check `no-panic`.
+[profile.release-opt]
+inherits = "release"
+codegen-units = 1
+lto = "fat"
+
+[profile.bench]
+# Required for iai-callgrind
+debug = true
