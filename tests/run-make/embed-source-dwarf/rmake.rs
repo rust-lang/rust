@@ -1,5 +1,6 @@
-//@ ignore-windows
-//@ ignore-apple
+//@ ignore-apple (needs DWARF)
+//@ ignore-windows-msvc (needs DWARF)
+//@ ignore-cross-compile (cross-compiled target can produce artifacts `object` can't yet parse)
 
 // This test should be replaced with one in tests/debuginfo once we can easily
 // tell via GDB or LLDB if debuginfo contains source code. Cheap tricks in LLDB
