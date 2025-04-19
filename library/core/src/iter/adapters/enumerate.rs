@@ -30,6 +30,27 @@ impl<I> Enumerate<I> {
     ///
     /// The position may also exceed the bounds of the iterator to allow for calculating
     /// the displacement of the iterator from following calls to [`Iterator::next`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(next_index)]
+    ///
+    /// let arr = ['a', 'b'];
+    ///
+    /// let mut iter = arr.iter().enumerate();
+    ///
+    /// assert_eq!(iter.next_index(), 0);
+    /// assert_eq!(iter.next(), Some((0, &'a')));
+    ///
+    /// assert_eq!(iter.next_index(), 1);
+    /// assert_eq!(iter.next_index(), 1);
+    /// assert_eq!(iter.next(), Some((1, &'b')));
+    ///
+    /// assert_eq!(iter.next_index(), 2);
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.next_index(), 2);
+    /// ```
     #[inline]
     #[unstable(feature = "next_index", issue = "130711")]
     pub fn next_index(&self) -> usize {
