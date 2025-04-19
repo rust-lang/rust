@@ -105,10 +105,11 @@ impl fmt::Display for ServerError {
 
 impl ProcMacroClient {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
-    pub fn spawn(
+    pub fn spawn<'a>(
         process_path: &AbsPath,
-        env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>
-        + Clone,
+        env: impl IntoIterator<
+            Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
+        > + Clone,
     ) -> io::Result<ProcMacroClient> {
         let process = ProcMacroServerProcess::run(process_path, env)?;
         Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })

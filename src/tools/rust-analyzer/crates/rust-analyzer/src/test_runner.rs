@@ -101,7 +101,7 @@ impl CargoTestHandle {
         test_target: TestTarget,
         sender: Sender<CargoTestMessage>,
     ) -> std::io::Result<Self> {
-        let mut cmd = toolchain::command(Tool::Cargo.path(), root);
+        let mut cmd = toolchain::command(Tool::Cargo.path(), root, &options.extra_env);
         cmd.env("RUSTC_BOOTSTRAP", "1");
         cmd.arg("test");
 

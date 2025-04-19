@@ -602,7 +602,7 @@ config_data! {
         cargo_extraArgs: Vec<String> = vec![],
         /// Extra environment variables that will be set when running cargo, rustc
         /// or other commands within the workspace. Useful for setting RUSTFLAGS.
-        cargo_extraEnv: FxHashMap<String, String> = FxHashMap::default(),
+        cargo_extraEnv: FxHashMap<String, Option<String>> = FxHashMap::default(),
         /// List of features to activate.
         ///
         /// Set this to `"all"` to pass `--all-features` to cargo.
@@ -652,7 +652,7 @@ config_data! {
         check_extraArgs | checkOnSave_extraArgs: Vec<String>             = vec![],
         /// Extra environment variables that will be set when running `cargo check`.
         /// Extends `#rust-analyzer.cargo.extraEnv#`.
-        check_extraEnv | checkOnSave_extraEnv: FxHashMap<String, String> = FxHashMap::default(),
+        check_extraEnv | checkOnSave_extraEnv: FxHashMap<String, Option<String>> = FxHashMap::default(),
         /// List of features to activate. Defaults to
         /// `#rust-analyzer.cargo.features#`.
         ///
@@ -1879,7 +1879,10 @@ impl Config {
         self.cargo_extraArgs(source_root)
     }
 
-    pub fn extra_env(&self, source_root: Option<SourceRootId>) -> &FxHashMap<String, String> {
+    pub fn extra_env(
+        &self,
+        source_root: Option<SourceRootId>,
+    ) -> &FxHashMap<String, Option<String>> {
         self.cargo_extraEnv(source_root)
     }
 
@@ -1889,7 +1892,10 @@ impl Config {
         extra_args
     }
 
-    pub fn check_extra_env(&self, source_root: Option<SourceRootId>) -> FxHashMap<String, String> {
+    pub fn check_extra_env(
+        &self,
+        source_root: Option<SourceRootId>,
+    ) -> FxHashMap<String, Option<String>> {
         let mut extra_env = self.cargo_extraEnv(source_root).clone();
         extra_env.extend(self.check_extraEnv(source_root).clone());
         extra_env

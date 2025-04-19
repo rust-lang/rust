@@ -66,7 +66,7 @@ pub fn load_workspace_at(
 
 pub fn load_workspace(
     ws: ProjectWorkspace,
-    extra_env: &FxHashMap<String, String>,
+    extra_env: &FxHashMap<String, Option<String>>,
     load_config: &LoadCargoConfig,
 ) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroClient>)> {
     let (sender, receiver) = unbounded();

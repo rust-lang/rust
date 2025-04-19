@@ -163,7 +163,7 @@ impl WorkspaceBuildScripts {
     pub(crate) fn rustc_crates(
         rustc: &CargoWorkspace,
         current_dir: &AbsPath,
-        extra_env: &FxHashMap<String, String>,
+        extra_env: &FxHashMap<String, Option<String>>,
         sysroot: &Sysroot,
     ) -> Self {
         let mut bs = WorkspaceBuildScripts::default();
@@ -172,16 +172,14 @@ impl WorkspaceBuildScripts {
         }
         let res = (|| {
             let target_libdir = (|| {
-                let mut cargo_config = sysroot.tool(Tool::Cargo, current_dir);
-                cargo_config.envs(extra_env);
+                let mut cargo_config = sysroot.tool(Tool::Cargo, current_dir, extra_env);
                 cargo_config
                     .args(["rustc", "-Z", "unstable-options", "--print", "target-libdir"])
                     .env("RUSTC_BOOTSTRAP", "1");
                 if let Ok(it) = utf8_stdout(&mut cargo_config) {
                     return Ok(it);
                 }
-                let mut cmd = sysroot.tool(Tool::Rustc, current_dir);
-                cmd.envs(extra_env);
+                let mut cmd = sysroot.tool(Tool::Rustc, current_dir, extra_env);
                 cmd.args(["--print", "target-libdir"]);
                 utf8_stdout(&mut cmd)
             })()?;
@@ -390,12 +388,12 @@ impl WorkspaceBuildScripts {
     ) -> io::Result<Command> {
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
-                let mut cmd = toolchain::command(program, current_dir);
+                let mut cmd = toolchain::command(program, current_dir, &config.extra_env);
                 cmd.args(args);
                 cmd
             }
             _ => {
-                let mut cmd = sysroot.tool(Tool::Cargo, current_dir);
+                let mut cmd = sysroot.tool(Tool::Cargo, current_dir, &config.extra_env);
 
                 cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
                 cmd.args(&config.extra_args);
@@ -448,7 +446,6 @@ impl WorkspaceBuildScripts {
             }
         };
 
-        cmd.envs(&config.extra_env);
         if config.wrap_rustc_in_build_scripts {
             // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
             // that to compile only proc macros and build scripts during the initial

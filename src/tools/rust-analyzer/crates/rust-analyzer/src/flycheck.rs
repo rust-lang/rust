@@ -35,7 +35,7 @@ pub(crate) struct CargoOptions {
     pub(crate) features: Vec<String>,
     pub(crate) extra_args: Vec<String>,
     pub(crate) extra_test_bin_args: Vec<String>,
-    pub(crate) extra_env: FxHashMap<String, String>,
+    pub(crate) extra_env: FxHashMap<String, Option<String>>,
     pub(crate) target_dir: Option<Utf8PathBuf>,
 }
 
@@ -69,7 +69,6 @@ impl CargoOptions {
         if let Some(target_dir) = &self.target_dir {
             cmd.arg("--target-dir").arg(target_dir);
         }
-        cmd.envs(&self.extra_env);
     }
 }
 
@@ -83,7 +82,7 @@ pub(crate) enum FlycheckConfig {
     CustomCommand {
         command: String,
         args: Vec<String>,
-        extra_env: FxHashMap<String, String>,
+        extra_env: FxHashMap<String, Option<String>>,
         invocation_strategy: InvocationStrategy,
     },
 }
@@ -468,7 +467,8 @@ impl FlycheckActor {
     ) -> Option<Command> {
         match &self.config {
             FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
-                let mut cmd = toolchain::command(Tool::Cargo.path(), &*self.root);
+                let mut cmd =
+                    toolchain::command(Tool::Cargo.path(), &*self.root, &options.extra_env);
                 if let Some(sysroot_root) = &self.sysroot_root {
                     cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
                 }
@@ -516,8 +516,7 @@ impl FlycheckActor {
                         &*self.root
                     }
                 };
-                let mut cmd = toolchain::command(command, root);
-                cmd.envs(extra_env);
+                let mut cmd = toolchain::command(command, root, extra_env);
 
                 // If the custom command has a $saved_file placeholder, and
                 // we're saving a file, replace the placeholder in the arguments.
