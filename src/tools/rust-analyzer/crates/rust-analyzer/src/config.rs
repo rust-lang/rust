@@ -1382,18 +1382,21 @@ impl ConfigErrors {
 
 impl fmt::Display for ConfigErrors {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let errors = self.0.iter().format_with("\n", |inner, f| match &**inner {
-            ConfigErrorInner::Json { config_key: key, error: e } => {
-                f(key)?;
-                f(&": ")?;
-                f(e)
-            }
-            ConfigErrorInner::Toml { config_key: key, error: e } => {
-                f(key)?;
-                f(&": ")?;
-                f(e)
-            }
-            ConfigErrorInner::ParseError { reason } => f(reason),
+        let errors = self.0.iter().format_with("\n", |inner, f| {
+            match &**inner {
+                ConfigErrorInner::Json { config_key: key, error: e } => {
+                    f(key)?;
+                    f(&": ")?;
+                    f(e)
+                }
+                ConfigErrorInner::Toml { config_key: key, error: e } => {
+                    f(key)?;
+                    f(&": ")?;
+                    f(e)
+                }
+                ConfigErrorInner::ParseError { reason } => f(reason),
+            }?;
+            f(&";")
         });
         write!(f, "invalid config value{}:\n{}", if self.0.len() == 1 { "" } else { "s" }, errors)
     }
@@ -3091,8 +3094,7 @@ fn get_field_json<T: DeserializeOwned>(
             json.pointer_mut(&pointer)
                 .map(|it| serde_json::from_value(it.take()).map_err(|e| (e, pointer)))
         })
-        .find(Result::is_ok)
-        .and_then(|res| match res {
+        .flat_map(|res| match res {
             Ok(it) => Some(it),
             Err((e, pointer)) => {
                 tracing::warn!("Failed to deserialize config field at {}: {:?}", pointer, e);
@@ -3100,6 +3102,7 @@ fn get_field_json<T: DeserializeOwned>(
                 None
             }
         })
+        .next()
 }
 
 fn get_field_toml<T: DeserializeOwned>(
