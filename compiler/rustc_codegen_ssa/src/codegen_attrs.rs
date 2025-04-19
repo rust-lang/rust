@@ -450,7 +450,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
     // Apply the minimum function alignment here, so that individual backends don't have to.
     codegen_fn_attrs.alignment =
-        Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
+        Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.cg.min_function_alignment);
 
     let inline_span;
     (codegen_fn_attrs.inline, inline_span) = if let Some((inline_attr, span)) =

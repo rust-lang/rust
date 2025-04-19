@@ -2020,6 +2020,8 @@ options! {
         "perform LLVM link-time optimizations"),
     metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "metadata to mangle symbol names with"),
+    min_function_alignment: Option<Align> = (None, parse_align, [TRACKED],
+        "align all functions to at least this many bytes. Must be a power of 2"),
     no_prepopulate_passes: bool = (false, parse_no_value, [TRACKED],
         "give an empty list of passes to the pass manager"),
     no_redzone: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2333,8 +2335,6 @@ options! {
         "gather metadata statistics (default: no)"),
     metrics_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "the directory metrics emitted by rustc are dumped into (implicitly enables default set of metrics)"),
-    min_function_alignment: Option<Align> = (None, parse_align, [TRACKED],
-        "align all functions to at least this many bytes. Must be a power of 2"),
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
