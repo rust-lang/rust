@@ -337,7 +337,8 @@ possible, including `//~?` annotations for diagnostics without span.
 
 If the compile time output is target dependent or too verbose, use directive
 `//@ dont-require-annotations: <diagnostic-kind>` to make the line annotation checking
-non-exhaustive, some of the compiler messages can stay uncovered by annotations in this mode.
+non-exhaustive.
+Some of the compiler messages can stay uncovered by annotations in this mode.
 
 For checking runtime output `//@ check-run-results` may be preferable.
 
