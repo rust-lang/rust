@@ -1,3 +1,4 @@
+//@ ignore-cross-compile (cross-compile targets can produce artifacts `object` can't parse)
 //@ ignore-windows
 // This test should be replaced with one in tests/debuginfo once GDB or LLDB support 128-bit enums.
 
