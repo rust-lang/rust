@@ -191,8 +191,8 @@ pub fn f10<T: std::ops::Mul<Output = T> + Copy>(x: &T) -> T { *x * *x }
 pub fn d_square<T: std::ops::Mul<Output = T> +
     Copy>(x: &T, dx_0: &mut T, dret: T) -> T {
     unsafe { asm!("NOP", options(pure, nomem)); };
-    ::core::hint::black_box(f10(x));
+    ::core::hint::black_box(f10::<T>(x));
     ::core::hint::black_box((dx_0, dret));
-    ::core::hint::black_box(f10(x))
+    ::core::hint::black_box(f10::<T>(x))
 }
 fn main() {}
