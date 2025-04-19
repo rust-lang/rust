@@ -3774,24 +3774,25 @@ impl GenericSubstitution {
             TypeOrConstParamData::TypeParamData(param) => Some(param.name.clone()),
             TypeOrConstParamData::ConstParamData(_) => None,
         });
-        // The `Substitution` is first self then container, we want the reverse order.
-        let subst_type_params = self.subst.type_parameters(Interner).collect::<Vec<_>>();
-        let mut self_params = subst_type_params
+        let parent_len = self.subst.len(Interner)
+            - generics
+                .iter_type_or_consts()
+                .filter(|g| matches!(g.1, TypeOrConstParamData::TypeParamData(..)))
+                .count();
+        let container_params = self.subst.as_slice(Interner)[..parent_len]
             .iter()
-            .zip(type_params)
-            .filter_map(|(ty, name)| {
-                Some((name?.symbol().clone(), Type { ty: ty.clone(), env: self.env.clone() }))
-            })
-            .collect::<Vec<_>>();
-        let mut container_params = subst_type_params[self_params.len()..]
+            .filter_map(|param| param.ty(Interner).cloned())
+            .zip(container_type_params.into_iter().flatten());
+        let self_params = self.subst.as_slice(Interner)[parent_len..]
             .iter()
-            .zip(container_type_params.into_iter().flatten())
-            .filter_map(|(ty, name)| {
-                Some((name?.symbol().clone(), Type { ty: ty.clone(), env: self.env.clone() }))
-            })
-            .collect::<Vec<_>>();
-        container_params.append(&mut self_params);
+            .filter_map(|param| param.ty(Interner).cloned())
+            .zip(type_params);
         container_params
+            .chain(self_params)
+            .filter_map(|(ty, name)| {
+                Some((name?.symbol().clone(), Type { ty: ty.clone(), env: self.env.clone() }))
+            })
+            .collect()
     }
 }
 

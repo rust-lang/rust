@@ -55,6 +55,22 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     fn associated_ty_data(&self, id: AssocTypeId) -> Arc<AssociatedTyDatum> {
         self.db.associated_ty_data(from_assoc_type_id(id))
     }
+    fn associated_ty_from_impl(
+        &self,
+        impl_id: chalk_ir::ImplId<Interner>,
+        assoc_type_id: chalk_ir::AssocTypeId<Interner>,
+    ) -> Option<rust_ir::AssociatedTyValueId<Interner>> {
+        let alias_id = from_assoc_type_id(assoc_type_id);
+        let trait_sig = self.db.type_alias_signature(alias_id);
+        self.db.impl_items(hir_def::ImplId::from_chalk(self.db, impl_id)).items.iter().find_map(
+            |(name, item)| match item {
+                AssocItemId::TypeAliasId(alias) if &trait_sig.name == name => {
+                    Some(TypeAliasAsValue(*alias).to_chalk(self.db))
+                }
+                _ => None,
+            },
+        )
+    }
     fn trait_datum(&self, trait_id: TraitId) -> Arc<TraitDatum> {
         self.db.trait_datum(self.krate, trait_id)
     }
@@ -467,12 +483,13 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         // `resume_type`, `yield_type`, and `return_type` of the coroutine in question.
         let subst = TyBuilder::subst_for_coroutine(self.db, parent).fill_with_unknown().build();
 
+        let len = subst.len(Interner);
         let input_output = rust_ir::CoroutineInputOutputDatum {
-            resume_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
+            resume_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, len - 3))
                 .intern(Interner),
-            yield_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 1))
+            yield_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, len - 2))
                 .intern(Interner),
-            return_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 2))
+            return_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, len - 1))
                 .intern(Interner),
             // FIXME: calculate upvars
             upvars: vec![],
@@ -619,10 +636,10 @@ pub(crate) fn associated_ty_data_query(
             .with_type_param_mode(crate::lower::ParamLoweringMode::Variable);
 
     let trait_subst = TyBuilder::subst_for_def(db, trait_, None)
-        .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, generic_params.len_self())
+        .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, 0)
         .build();
     let pro_ty = TyBuilder::assoc_type_projection(db, type_alias, Some(trait_subst))
-        .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, 0)
+        .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, generic_params.len_self())
         .build();
     let self_ty = TyKind::Alias(AliasTy::Projection(pro_ty)).intern(Interner);
 
@@ -1021,8 +1038,9 @@ pub(super) fn generic_predicate_to_inline_bound(
         }
         WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
             let generics = generics(db, from_assoc_type_id(projection_ty.associated_ty_id).into());
-            let (assoc_args, trait_args) =
-                projection_ty.substitution.as_slice(Interner).split_at(generics.len_self());
+            let parent_len = generics.parent_generics().map_or(0, |g| g.len_self());
+            let (trait_args, assoc_args) =
+                projection_ty.substitution.as_slice(Interner).split_at(parent_len);
             let (self_ty, args_no_self) =
                 trait_args.split_first().expect("projection without trait self type");
             if self_ty.assert_ty_ref(Interner) != &self_ty_shifted_in {

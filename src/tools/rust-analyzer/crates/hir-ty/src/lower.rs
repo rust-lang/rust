@@ -769,14 +769,8 @@ fn named_associated_type_shorthand_candidates<R>(
 
             let impl_id_as_generic_def: GenericDefId = impl_id.into();
             if impl_id_as_generic_def != def {
-                // `trait_ref` contains `BoundVar`s bound by impl's `Binders`, but here we need
-                // `BoundVar`s from `def`'s point of view.
-                // FIXME: A `HirDatabase` query may be handy if this process is needed in more
-                // places. It'd be almost identical as `impl_trait_query` where `resolver` would be
-                // of `def` instead of `impl_id`.
-                let starting_idx = generics(db, def).len_self();
                 let subst = TyBuilder::subst_for_def(db, impl_id, None)
-                    .fill_with_bound_vars(DebruijnIndex::INNERMOST, starting_idx)
+                    .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
                     .build();
                 let trait_ref = subst.apply(trait_ref, Interner);
                 search(trait_ref)
@@ -802,16 +796,8 @@ fn named_associated_type_shorthand_candidates<R>(
             if let GenericDefId::TraitId(trait_id) = param_id.parent() {
                 let trait_generics = generics(db, trait_id.into());
                 if trait_generics[param_id.local_id()].is_trait_self() {
-                    let def_generics = generics(db, def);
-                    let starting_idx = match def {
-                        GenericDefId::TraitId(_) => 0,
-                        // `def` is an item within trait. We need to substitute `BoundVar`s but
-                        // remember that they are for parent (i.e. trait) generic params so they
-                        // come after our own params.
-                        _ => def_generics.len_self(),
-                    };
                     let trait_ref = TyBuilder::trait_ref(db, trait_id)
-                        .fill_with_bound_vars(DebruijnIndex::INNERMOST, starting_idx)
+                        .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
                         .build();
                     return search(trait_ref);
                 }
@@ -1181,7 +1167,6 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
         return (GenericDefaults(None), None);
     }
     let resolver = def.resolver(db);
-    let parent_start_idx = generic_params.len_self();
 
     let mut ctx = TyLoweringContext::new(db, &resolver, generic_params.store(), def)
         .with_impl_trait_mode(ImplTraitLoweringMode::Disallowed)
@@ -1190,8 +1175,7 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
     let mut defaults = generic_params
         .iter_self()
         .map(|(id, p)| {
-            let result =
-                handle_generic_param(&mut ctx, idx, id, p, parent_start_idx, &generic_params);
+            let result = handle_generic_param(&mut ctx, idx, id, p, &generic_params);
             idx += 1;
             result
         })
@@ -1199,7 +1183,7 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
     let diagnostics = create_diagnostics(mem::take(&mut ctx.diagnostics));
     defaults.extend(generic_params.iter_parents_with_store().map(|((id, p), store)| {
         ctx.store = store;
-        let result = handle_generic_param(&mut ctx, idx, id, p, parent_start_idx, &generic_params);
+        let result = handle_generic_param(&mut ctx, idx, id, p, &generic_params);
         idx += 1;
         result
     }));
@@ -1211,7 +1195,6 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
         idx: usize,
         id: GenericParamId,
         p: GenericParamDataRef<'_>,
-        parent_start_idx: usize,
         generic_params: &Generics,
     ) -> Binders<crate::GenericArg> {
         match p {
@@ -1220,7 +1203,7 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
                     // Each default can only refer to previous parameters.
                     // Type variable default referring to parameter coming
                     // after it is forbidden (FIXME: report diagnostic)
-                    fallback_bound_vars(ctx.lower_ty(*ty), idx, parent_start_idx)
+                    fallback_bound_vars(ctx.lower_ty(*ty), idx, 0)
                 });
                 crate::make_binders(ctx.db, generic_params, ty.cast(Interner))
             }
@@ -1238,7 +1221,7 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
                     },
                 );
                 // Each default can only refer to previous parameters, see above.
-                val = fallback_bound_vars(val, idx, parent_start_idx);
+                val = fallback_bound_vars(val, idx, 0);
                 make_binders(ctx.db, generic_params, val)
             }
             GenericParamDataRef::LifetimeParamData(_) => {

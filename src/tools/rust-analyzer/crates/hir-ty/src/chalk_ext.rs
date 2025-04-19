@@ -418,10 +418,9 @@ impl ProjectionTyExt for ProjectionTy {
     fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef {
         // FIXME: something like `Split` trait from chalk-solve might be nice.
         let generics = generics(db, from_assoc_type_id(self.associated_ty_id).into());
-        let substitution = Substitution::from_iter(
-            Interner,
-            self.substitution.iter(Interner).skip(generics.len_self()),
-        );
+        let parent_len = generics.parent_generics().map_or(0, |g| g.len_self());
+        let substitution =
+            Substitution::from_iter(Interner, self.substitution.iter(Interner).take(parent_len));
         TraitRef { trait_id: to_chalk_trait_id(self.trait_(db)), substitution }
     }
 

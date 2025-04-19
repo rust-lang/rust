@@ -76,7 +76,7 @@ impl<D> TyBuilder<D> {
         }
         let subst = Substitution::from_iter(
             Interner,
-            self.vec.into_iter().chain(self.parent_subst.iter(Interner).cloned()),
+            self.parent_subst.iter(Interner).cloned().chain(self.vec),
         );
         (self.data, subst)
     }
@@ -278,8 +278,10 @@ impl TyBuilder<()> {
         };
         Substitution::from_iter(
             Interner,
-            self_subst
-                .chain(generics(db, parent).placeholder_subst(db).iter(Interner))
+            generics(db, parent)
+                .placeholder_subst(db)
+                .iter(Interner)
+                .chain(self_subst)
                 .cloned()
                 .collect::<Vec<_>>(),
         )

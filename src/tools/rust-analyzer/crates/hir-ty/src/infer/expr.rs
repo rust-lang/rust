@@ -2065,7 +2065,16 @@ impl InferenceContext<'_> {
         assert!(!has_self_param); // method shouldn't have another Self param
         let total_len =
             parent_params + type_params + const_params + impl_trait_params + lifetime_params;
-        let mut substs = Vec::with_capacity(total_len);
+
+        let param_to_var = |id| match id {
+            GenericParamId::TypeParamId(_) => self.table.new_type_var().cast(Interner),
+            GenericParamId::ConstParamId(id) => {
+                self.table.new_const_var(self.db.const_param_ty(id)).cast(Interner)
+            }
+            GenericParamId::LifetimeParamId(_) => self.table.new_lifetime_var().cast(Interner),
+        };
+
+        let mut substs: Vec<_> = def_generics.iter_parent_id().map(param_to_var).collect();
 
         // handle provided arguments
         if let Some(generic_args) = generic_args {
@@ -2105,20 +2114,17 @@ impl InferenceContext<'_> {
             }
         };
 
-        // Handle everything else as unknown. This also handles generic arguments for the method's
-        // parent (impl or trait), which should come after those for the method.
-        for (id, _data) in def_generics.iter().skip(substs.len()) {
-            match id {
-                GenericParamId::TypeParamId(_) => {
-                    substs.push(self.table.new_type_var().cast(Interner))
-                }
-                GenericParamId::ConstParamId(id) => {
-                    substs.push(self.table.new_const_var(self.db.const_param_ty(id)).cast(Interner))
-                }
-                GenericParamId::LifetimeParamId(_) => {
-                    substs.push(self.table.new_lifetime_var().cast(Interner))
-                }
+        let mut param_to_var = |id| match id {
+            GenericParamId::TypeParamId(_) => self.table.new_type_var().cast(Interner),
+            GenericParamId::ConstParamId(id) => {
+                self.table.new_const_var(self.db.const_param_ty(id)).cast(Interner)
             }
+            GenericParamId::LifetimeParamId(_) => self.table.new_lifetime_var().cast(Interner),
+        };
+
+        // Handle everything else as unknown.
+        for (id, _data) in def_generics.iter().skip(substs.len()) {
+            substs.push(param_to_var(id));
         }
         assert_eq!(substs.len(), total_len);
         Substitution::from_iter(Interner, substs)
@@ -2143,13 +2149,12 @@ impl InferenceContext<'_> {
                 CallableDefId::FunctionId(f) => {
                     if let ItemContainerId::TraitId(trait_) = f.lookup(self.db).container {
                         // construct a TraitRef
-                        let params_len = parameters.len(Interner);
                         let trait_params_len = generics(self.db, trait_.into()).len();
                         let substs = Substitution::from_iter(
                             Interner,
                             // The generic parameters for the trait come after those for the
                             // function.
-                            &parameters.as_slice(Interner)[params_len - trait_params_len..],
+                            &parameters.as_slice(Interner)[..trait_params_len],
                         );
                         self.push_obligation(
                             TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs }
