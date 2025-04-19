@@ -3138,7 +3138,6 @@ ui/nll/user-annotations/issue-55241.rs
 ui/nll/user-annotations/issue-55748-pat-types-constrain-bindings.rs
 ui/nll/user-annotations/issue-57731-ascibed-coupled-types.rs
 ui/numbers-arithmetic/issue-8460.rs
-ui/on-unimplemented/issue-104140.rs
 ui/or-patterns/issue-64879-trailing-before-guard.rs
 ui/or-patterns/issue-67514-irrefutable-param.rs
 ui/or-patterns/issue-68785-irrefutable-param-with-at.rs
