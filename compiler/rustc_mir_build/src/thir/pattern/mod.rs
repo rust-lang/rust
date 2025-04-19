@@ -18,6 +18,7 @@ use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
     Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
+use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
@@ -63,13 +64,15 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
-        let adjustments: &[Ty<'tcx>] =
+        let adjustments: &[PatAdjustment<'tcx>] =
             self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
 
         // Track the default binding mode for the Rust 2024 migration suggestion.
+        // Implicitly dereferencing references changes the default binding mode, but implicit deref
+        // patterns do not. Only track binding mode changes if a ref type is in the adjustments.
         let mut opt_old_mode_span = None;
         if let Some(s) = &mut self.rust_2024_migration
-            && !adjustments.is_empty()
+            && adjustments.iter().any(|adjust| adjust.kind == PatAdjust::BuiltinDeref)
         {
             opt_old_mode_span = s.visit_implicit_derefs(pat.span, adjustments);
         }
@@ -102,17 +105,23 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => self.lower_pattern_unadjusted(pat),
         };
 
-        let adjusted_pat = adjustments.iter().rev().fold(unadjusted_pat, |thir_pat, ref_ty| {
-            debug!("{:?}: wrapping pattern with type {:?}", thir_pat, ref_ty);
-            Box::new(Pat {
-                span: thir_pat.span,
-                ty: *ref_ty,
-                kind: PatKind::Deref { subpattern: thir_pat },
-            })
+        let adjusted_pat = adjustments.iter().rev().fold(unadjusted_pat, |thir_pat, adjust| {
+            debug!("{:?}: wrapping pattern with adjustment {:?}", thir_pat, adjust);
+            let span = thir_pat.span;
+            let kind = match adjust.kind {
+                PatAdjust::BuiltinDeref => PatKind::Deref { subpattern: thir_pat },
+                PatAdjust::OverloadedDeref => {
+                    let mutable = self.typeck_results.pat_has_ref_mut_binding(pat);
+                    let mutability =
+                        if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
+                    PatKind::DerefPattern { subpattern: thir_pat, mutability }
+                }
+            };
+            Box::new(Pat { span, ty: adjust.source, kind })
         });
 
         if let Some(s) = &mut self.rust_2024_migration
-            && !adjustments.is_empty()
+            && adjustments.iter().any(|adjust| adjust.kind == PatAdjust::BuiltinDeref)
         {
             s.leave_ref(opt_old_mode_span);
         }

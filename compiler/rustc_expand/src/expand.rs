@@ -2053,8 +2053,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     ) -> Node::OutputTy {
         loop {
             return match self.take_first_attr(&mut node) {
-                Some((attr, pos, derives)) => match attr.name_or_empty() {
-                    sym::cfg => {
+                Some((attr, pos, derives)) => match attr.name() {
+                    Some(sym::cfg) => {
                         let (res, meta_item) = self.expand_cfg_true(&mut node, attr, pos);
                         if res {
                             continue;
@@ -2071,7 +2071,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         }
                         Default::default()
                     }
-                    sym::cfg_attr => {
+                    Some(sym::cfg_attr) => {
                         self.expand_cfg_attr(&mut node, &attr, pos);
                         continue;
                     }
@@ -2144,8 +2144,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     ) {
         loop {
             return match self.take_first_attr(node) {
-                Some((attr, pos, derives)) => match attr.name_or_empty() {
-                    sym::cfg => {
+                Some((attr, pos, derives)) => match attr.name() {
+                    Some(sym::cfg) => {
                         let span = attr.span;
                         if self.expand_cfg_true(node, attr, pos).0 {
                             continue;
@@ -2154,7 +2154,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         node.expand_cfg_false(self, pos, span);
                         continue;
                     }
-                    sym::cfg_attr => {
+                    Some(sym::cfg_attr) => {
                         self.expand_cfg_attr(node, &attr, pos);
                         continue;
                     }

@@ -35,7 +35,7 @@ use utils::channel::GitInfo;
 
 use crate::core::builder;
 use crate::core::builder::Kind;
-use crate::core::config::{DryRun, LldMode, LlvmLibunwind, Target, TargetSelection, flags};
+use crate::core::config::{DryRun, LldMode, LlvmLibunwind, TargetSelection, flags};
 use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, command};
 use crate::utils::helpers::{
     self, dir_is_empty, exe, libdir, output, set_file_times, split_debuginfo, symlink_dir,
@@ -803,7 +803,7 @@ impl Build {
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
     fn llvm_out(&self, target: TargetSelection) -> PathBuf {
-        if self.config.llvm_from_ci && self.is_builder_target(target) {
+        if self.config.llvm_from_ci && self.config.is_host_target(target) {
             self.config.ci_llvm_root()
         } else {
             self.out.join(target).join("llvm")
@@ -849,37 +849,6 @@ impl Build {
     /// Path to the vendored Rust crates.
     fn vendored_crates_path(&self) -> Option<PathBuf> {
         if self.config.vendor { Some(self.src.join(VENDOR_DIR)) } else { None }
-    }
-
-    /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
-    /// In particular, we expect llvm sources to be available when this is false.
-    ///
-    /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
-    fn is_system_llvm(&self, target: TargetSelection) -> bool {
-        match self.config.target_config.get(&target) {
-            Some(Target { llvm_config: Some(_), .. }) => {
-                let ci_llvm = self.config.llvm_from_ci && self.is_builder_target(target);
-                !ci_llvm
-            }
-            // We're building from the in-tree src/llvm-project sources.
-            Some(Target { llvm_config: None, .. }) => false,
-            None => false,
-        }
-    }
-
-    /// Returns `true` if this is our custom, patched, version of LLVM.
-    ///
-    /// This does not necessarily imply that we're managing the `llvm-project` submodule.
-    fn is_rust_llvm(&self, target: TargetSelection) -> bool {
-        match self.config.target_config.get(&target) {
-            // We're using a user-controlled version of LLVM. The user has explicitly told us whether the version has our patches.
-            // (They might be wrong, but that's not a supported use-case.)
-            // In particular, this tries to support `submodules = false` and `patches = false`, for using a newer version of LLVM that's not through `rust-lang/llvm-project`.
-            Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
-            // The user hasn't promised the patches match.
-            // This only has our patches if it's downloaded from CI or built from source.
-            _ => !self.is_system_llvm(target),
-        }
     }
 
     /// Returns the path to `FileCheck` binary for the specified target
@@ -1356,7 +1325,7 @@ Executed at: {executed_at}"#,
             // need to use CXX compiler as linker to resolve the exception functions
             // that are only existed in CXX libraries
             Some(self.cxx.borrow()[&target].path().into())
-        } else if !self.is_builder_target(target)
+        } else if !self.config.is_host_target(target)
             && helpers::use_host_linker(target)
             && !target.is_msvc()
         {
@@ -2024,11 +1993,6 @@ to download LLVM rather than building it.
         let result = f(&mut stream);
         stream.reset().unwrap();
         result
-    }
-
-    /// Checks if the given target is the same as the builder target.
-    fn is_builder_target(&self, target: TargetSelection) -> bool {
-        self.config.build == target
     }
 }
 
