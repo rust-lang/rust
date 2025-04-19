@@ -33,6 +33,10 @@ fn unwrap(_1: Option<T>) -> T {
         _0 = move _3;
         StorageDead(_3);
         _5 = discriminant(_1);
+        switchInt(move _5) -> [1: bb4, otherwise: bb4];
+    }
+
+    bb4: {
         return;
     }
 }

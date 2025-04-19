@@ -14,7 +14,7 @@ fn single_switchint() -> () {
     }
 
     bb1: {
-        switchInt(copy (_2.0: i32)) -> [3: bb8, 4: bb8, otherwise: bb7];
+        switchInt(copy (_2.0: i32)) -> [3: bb9, 4: bb9, otherwise: bb8];
     }
 
     bb2: {
@@ -22,7 +22,7 @@ fn single_switchint() -> () {
     }
 
     bb3: {
-        falseEdge -> [real: bb12, imaginary: bb4];
+        falseEdge -> [real: bb14, imaginary: bb4];
     }
 
     bb4: {
@@ -30,43 +30,51 @@ fn single_switchint() -> () {
     }
 
     bb5: {
-        falseEdge -> [real: bb11, imaginary: bb6];
+        falseEdge -> [real: bb13, imaginary: bb6];
     }
 
     bb6: {
-        falseEdge -> [real: bb10, imaginary: bb1];
+        switchInt(copy (_2.1: bool)) -> [0: bb7, otherwise: bb7];
     }
 
     bb7: {
-        _1 = const 5_i32;
-        goto -> bb13;
+        falseEdge -> [real: bb12, imaginary: bb1];
     }
 
     bb8: {
-        falseEdge -> [real: bb9, imaginary: bb7];
+        _1 = const 5_i32;
+        goto -> bb15;
     }
 
     bb9: {
-        _1 = const 4_i32;
-        goto -> bb13;
+        switchInt(copy (_2.1: bool)) -> [0: bb10, otherwise: bb10];
     }
 
     bb10: {
-        _1 = const 3_i32;
-        goto -> bb13;
+        falseEdge -> [real: bb11, imaginary: bb8];
     }
 
     bb11: {
-        _1 = const 2_i32;
-        goto -> bb13;
+        _1 = const 4_i32;
+        goto -> bb15;
     }
 
     bb12: {
-        _1 = const 1_i32;
-        goto -> bb13;
+        _1 = const 3_i32;
+        goto -> bb15;
     }
 
     bb13: {
+        _1 = const 2_i32;
+        goto -> bb15;
+    }
+
+    bb14: {
+        _1 = const 1_i32;
+        goto -> bb15;
+    }
+
+    bb15: {
         StorageDead(_2);
         StorageDead(_1);
         _0 = const ();
