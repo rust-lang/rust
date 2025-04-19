@@ -42,7 +42,9 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
 
-use rustc_abi::{Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
+use rustc_abi::{
+    Align, Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors,
+};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -3598,6 +3600,25 @@ impl Target {
             // Unsupported architecture.
             _ => return None,
         })
+    }
+
+    /// Returns whether this target is known to have unreliable alignment:
+    /// native C code for the target fails to align some data to the degree
+    /// required by the C standard. We can't *really* do anything about that
+    /// since unsafe Rust code may assume alignment any time, but we can at least
+    /// inhibit some optimizations, and we suppress the alignment checks that
+    /// would detect this unsoundness.
+    ///
+    /// Every target that returns less than `Align::MAX` here is still has a soundness bug.
+    pub fn max_reliable_alignment(&self) -> Align {
+        // FIXME(#112480) MSVC on x86-32 is unsound and fails to properly align many types with
+        // more-than-4-byte-alignment on the stack. This makes alignments larger than 4 generally
+        // unreliable on 32bit Windows.
+        if self.is_like_windows && self.arch == "x86" {
+            Align::from_bytes(4).unwrap()
+        } else {
+            Align::MAX
+        }
     }
 }
 

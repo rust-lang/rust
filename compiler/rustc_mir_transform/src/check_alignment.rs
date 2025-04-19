@@ -1,3 +1,4 @@
+use rustc_abi::Align;
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::PlaceContext;
@@ -11,10 +12,6 @@ pub(super) struct CheckAlignment;
 
 impl<'tcx> crate::MirPass<'tcx> for CheckAlignment {
     fn is_enabled(&self, sess: &Session) -> bool {
-        // FIXME(#112480) MSVC and rustc disagree on minimum stack alignment on x86 Windows
-        if sess.target.llvm_target == "i686-pc-windows-msvc" {
-            return false;
-        }
         sess.ub_checks()
     }
 
@@ -86,6 +83,33 @@ fn insert_alignment_check<'tcx>(
             Rvalue::BinaryOp(BinOp::Sub, Box::new((Operand::Copy(alignment), one))),
         ))),
     });
+
+    // If this target does not have reliable alignment, further limit the mask by anding it with
+    // the mask for the highest reliable alignment.
+    #[allow(irrefutable_let_patterns)]
+    if let max_align = tcx.sess.target.max_reliable_alignment()
+        && max_align < Align::MAX
+    {
+        let max_mask = max_align.bytes() - 1;
+        let max_mask = Operand::Constant(Box::new(ConstOperand {
+            span: source_info.span,
+            user_ty: None,
+            const_: Const::Val(
+                ConstValue::Scalar(Scalar::from_target_usize(max_mask, &tcx)),
+                tcx.types.usize,
+            ),
+        }));
+        stmts.push(Statement {
+            source_info,
+            kind: StatementKind::Assign(Box::new((
+                alignment_mask,
+                Rvalue::BinaryOp(
+                    BinOp::BitAnd,
+                    Box::new((Operand::Copy(alignment_mask), max_mask)),
+                ),
+            ))),
+        });
+    }
 
     // BitAnd the alignment mask with the pointer
     let alignment_bits =
