@@ -88,7 +88,7 @@ declare_clippy_lint! {
     ///     x.chars()
     /// }
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.87.0"]
     pub ELIDABLE_LIFETIME_NAMES,
     pedantic,
     "lifetime name that can be replaced with the anonymous lifetime"
