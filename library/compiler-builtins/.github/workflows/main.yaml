@@ -1,105 +1,85 @@
 name: CI
-on: [push, pull_request]
+on:
+  push: { branches: [master] }
+  pull_request:
+
+concurrency:
+  # Make sure that new pushes cancel running jobs
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
+  CARGO_TERM_COLOR: always
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
+  RUST_BACKTRACE: full
 
 jobs:
   test:
-    name: Test
-    runs-on: ${{ matrix.os }}
+    name: Build and test
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
         - target: aarch64-apple-darwin
-          os: macos-latest
-          rust: nightly
+          os: macos-15
         - target: aarch64-unknown-linux-gnu
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04-arm
         - target: aarch64-pc-windows-msvc
-          os: windows-latest
-          rust: nightly
+          os: windows-2025
           test_verbatim: 1
-          no_std: 1
+          build_only: 1
         - target: arm-unknown-linux-gnueabi
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: arm-unknown-linux-gnueabihf
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
+        - target: armv7-unknown-linux-gnueabihf
+          os: ubuntu-24.04
         - target: i586-unknown-linux-gnu
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: i686-unknown-linux-gnu
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: loongarch64-unknown-linux-gnu
-          os: ubuntu-latest
-          rust: nightly
-        # MIPS targets disabled since they are dropped to tier 3.
-        # See https://github.com/rust-lang/compiler-team/issues/648
-        #- target: mips-unknown-linux-gnu
-        #  os: ubuntu-latest
-        #  rust: nightly
-        #- target: mips64-unknown-linux-gnuabi64
-        #  os: ubuntu-latest
-        #  rust: nightly
-        #- target: mips64el-unknown-linux-gnuabi64
-        #  os: ubuntu-latest
-        #  rust: nightly
-        #- target: mipsel-unknown-linux-gnu
-        #  os: ubuntu-latest
-        #  rust: nightly
+          os: ubuntu-24.04
         - target: powerpc-unknown-linux-gnu
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: powerpc64-unknown-linux-gnu
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: powerpc64le-unknown-linux-gnu
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: riscv64gc-unknown-linux-gnu
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: thumbv6m-none-eabi
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: thumbv7em-none-eabi
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: thumbv7em-none-eabihf
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: thumbv7m-none-eabi
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: wasm32-unknown-unknown
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: x86_64-unknown-linux-gnu
-          os: ubuntu-latest
-          rust: nightly
+          os: ubuntu-24.04
         - target: x86_64-apple-darwin
           os: macos-13
-          rust: nightly
         - target: i686-pc-windows-msvc
-          os: windows-latest
-          rust: nightly
+          os: windows-2025
           test_verbatim: 1
         - target: x86_64-pc-windows-msvc
-          os: windows-latest
-          rust: nightly
+          os: windows-2025
           test_verbatim: 1
         - target: i686-pc-windows-gnu
-          os: windows-latest
-          rust: nightly-i686-gnu
+          os: windows-2025
+          channel: nightly-i686-gnu
         - target: x86_64-pc-windows-gnu
-          os: windows-latest
-          rust: nightly-x86_64-gnu
+          os: windows-2025
+          channel: nightly-x86_64-gnu
+    runs-on: ${{ matrix.os }}
+    env:
+      BUILD_ONLY: ${{ matrix.build_only }}
+      TEST_VERBATIM: ${{ matrix.test_verbatim }}
     steps:
     - name: Print runner information
       run: uname -a
@@ -107,16 +87,21 @@ jobs:
       with:
         submodules: true
     - name: Install Rust (rustup)
-      run: rustup update ${{ matrix.rust }} --no-self-update && rustup default ${{ matrix.rust }}
       shell: bash
-    - run: rustup target add ${{ matrix.target }}
-    - run: rustup component add llvm-tools-preview
+      run: |
+        channel="nightly"
+        # Account for channels that have required components (MinGW)
+        [ -n "${{ matrix.channel }}" ] && channel="${{ matrix.channel }}"
+        rustup update "$channel" --no-self-update
+        rustup default "$channel"
+        rustup target add "${{ matrix.target }}"
+        rustup component add llvm-tools-preview
     - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.target }}
     - name: Cache Docker layers
       uses: actions/cache@v4
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-24.04'
       with:
         path: /tmp/.buildx-cache
         key: ${{ matrix.target }}-buildx-${{ github.sha }}
@@ -136,33 +121,49 @@ jobs:
       shell: bash
 
     # Non-linux tests just use our raw script
-    - run: ./ci/run.sh ${{ matrix.target }}
-      if: matrix.os != 'ubuntu-latest'
+    - name: Run locally
+      if: matrix.os != 'ubuntu-24.04'
       shell: bash
-      env:
-        NO_STD: ${{ matrix.no_std }}
-        TEST_VERBATIM: ${{ matrix.test_verbatim }}
+      run: ./ci/run.sh ${{ matrix.target }}
 
     # Configure buildx to use Docker layer caching
     - uses: docker/setup-buildx-action@v3
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-24.04'
 
     # Otherwise we use our docker containers to run builds
-    - run: cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
-      if: matrix.os == 'ubuntu-latest'
+    - name: Run in Docker
+      if: matrix.os == 'ubuntu-24.04'
+      run: cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
 
     # Workaround to keep Docker cache smaller
     # https://github.com/docker/build-push-action/issues/252
     # https://github.com/moby/buildkit/issues/1896
     - name: Move Docker cache
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-24.04'
       run: |
         rm -rf /tmp/.buildx-cache
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    # Unlike rustfmt, stable clippy does not work on code with nightly features.
+    - name: Install nightly `clippy`
+      run: |
+        rustup set profile minimal
+        rustup default nightly
+        rustup component add clippy
+    - uses: Swatinem/rust-cache@v2
+    - run: cargo clippy -- -D clippy::all
+
   miri:
     name: Miri
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
       with:
@@ -177,7 +178,7 @@ jobs:
 
   rustfmt:
     name: Rustfmt
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
       with:
@@ -186,27 +187,13 @@ jobs:
       run: rustup set profile minimal && rustup default stable && rustup component add rustfmt
     - run: cargo fmt -- --check
 
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-    # Unlike rustfmt, stable clippy does not work on code with nightly features.
-    - name: Install nightly `clippy`
-      run: |
-        rustup set profile minimal && rustup default nightly && rustup component add clippy
-    - uses: Swatinem/rust-cache@v2
-    - run: cargo clippy -- -D clippy::all
-
   success:
     needs:
       - test
       - rustfmt
       - clippy
       - miri
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # GitHub branch protection is exceedingly silly and treats "jobs skipped because a dependency
     # failed" as success. So we have to do some contortions to ensure the job fails if any of its
     # dependencies fails.

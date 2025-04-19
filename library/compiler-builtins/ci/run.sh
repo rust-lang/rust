@@ -2,9 +2,10 @@
 
 set -eux
 
-target="${1:-}"
-
 export RUST_BACKTRACE="${RUST_BACKTRACE:-full}"
+export NEXTEST_STATUS_LEVEL=all
+
+target="${1:-}"
 
 if [ -z "$target" ]; then
     host_target=$(rustc -vV | awk '/^host/ { print $2 }')
@@ -20,7 +21,7 @@ if [ "${USING_CONTAINER_RUSTC:-}" = 1 ]; then
 fi
 
 # Test our implementation
-if [ "${NO_STD:-}" = "1" ]; then
+if [ "${BUILD_ONLY:-}" = "1" ]; then
     echo "nothing to do for no_std"
 else
     run="cargo test --package builtins-test --no-fail-fast --target $target"
