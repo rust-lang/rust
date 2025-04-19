@@ -26,7 +26,8 @@
     f16,
     f128,
     asm_experimental_arch,
-    unboxed_closures
+    unboxed_closures,
+    intrinsics
 )]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 #![no_std]
@@ -191,3 +192,44 @@ impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b 
 trait Drop {
     fn drop(&mut self);
 }
+
+#[lang = "neg"]
+trait Neg: Sized {
+    type Output;
+
+    fn neg(self) -> Self::Output;
+}
+
+// Macro to implement Neg for a list of primitive numeric types
+macro_rules! impl_neg_trait {
+    ( $($ty:ty),* $(,)? ) => {
+        $(
+            impl Neg for $ty {
+                type Output = $ty;
+
+                fn neg(self) -> Self::Output {
+                    -self
+                }
+            }
+        )*
+    }
+}
+
+impl_neg_trait!(isize, i8, i16, i32, i64, i128,);
+
+#[lang = "Ordering"]
+#[repr(i8)]
+pub enum Ordering {
+    Less = -1,
+    Equal = 0,
+    Greater = 1,
+}
+
+#[rustc_intrinsic]
+pub fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> Ordering;
+
+#[rustc_intrinsic]
+pub unsafe fn simd_gather<V, M, P>(values: V, mask: M, pointer: P) -> V;
+
+#[rustc_intrinsic]
+pub unsafe fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
