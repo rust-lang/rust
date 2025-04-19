@@ -2814,7 +2814,7 @@ impl<T> [T] {
             let half = size / 2;
             let mid = base + half;
 
-            // SAFETY: the call is made safe by the following inconstants:
+            // SAFETY: the call is made safe by the following invariants:
             // - `mid >= 0`: by definition
             // - `mid < size`: `mid = size / 2 + size / 4 + size / 8 ...`
             let cmp = f(unsafe { self.get_unchecked(mid) });
