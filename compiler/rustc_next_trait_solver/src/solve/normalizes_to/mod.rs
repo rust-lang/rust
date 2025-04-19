@@ -32,14 +32,13 @@ where
         let cx = self.cx();
         match goal.predicate.alias.kind(cx) {
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
-                let candidates = self.assemble_and_evaluate_candidates(goal);
                 let trait_ref = goal.predicate.alias.trait_ref(cx);
                 let (_, proven_via) =
                     self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
                         let trait_goal: Goal<I, ty::TraitPredicate<I>> = goal.with(cx, trait_ref);
                         ecx.compute_trait_goal(trait_goal)
                     })?;
-                self.merge_candidates(proven_via, candidates, |ecx| {
+                self.assemble_and_merge_candidates(proven_via, goal, |ecx| {
                     ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
                         this.structurally_instantiate_normalizes_to_term(
                             goal,

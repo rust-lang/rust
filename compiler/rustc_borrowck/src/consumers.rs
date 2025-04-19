@@ -15,7 +15,7 @@ pub use super::polonius::legacy::{
     RichLocation, RustcFacts,
 };
 pub use super::region_infer::RegionInferenceContext;
-use crate::{BorrowCheckRootCtxt, do_mir_borrowck};
+use crate::BorrowCheckRootCtxt;
 
 /// Options determining the output behavior of [`get_body_with_borrowck_facts`].
 ///
@@ -101,6 +101,6 @@ pub fn get_body_with_borrowck_facts(
     def_id: LocalDefId,
     options: ConsumerOptions,
 ) -> BodyWithBorrowckFacts<'_> {
-    let mut root_cx = BorrowCheckRootCtxt::new(tcx, def_id);
-    *do_mir_borrowck(&mut root_cx, def_id, Some(options)).1.unwrap()
+    let root_cx = BorrowCheckRootCtxt::new(tcx, def_id);
+    *root_cx.borrowck_root(Some(options)).1.unwrap()
 }

@@ -13,7 +13,7 @@ use tracing::{instrument, trace};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};
-use crate::solve::assembly::{self, Candidate};
+use crate::solve::assembly::{self, AssembleCandidatesFrom, Candidate};
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
@@ -208,6 +208,21 @@ where
             }
         }
 
+        if let ty::CoroutineWitness(def_id, _) = goal.predicate.self_ty().kind() {
+            match ecx.typing_mode() {
+                TypingMode::Analysis { stalled_generators, defining_opaque_types: _ } => {
+                    if def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
+                    {
+                        return ecx.forced_ambiguity(MaybeCause::Ambiguity);
+                    }
+                }
+                TypingMode::Coherence
+                | TypingMode::Borrowck { defining_opaque_types: _ }
+                | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
+                | TypingMode::PostAnalysis => {}
+            }
+        }
+
         ecx.probe_and_evaluate_goal_for_constituent_tys(
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
@@ -257,6 +272,22 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         if goal.predicate.polarity != ty::PredicatePolarity::Positive {
             return Err(NoSolution);
+        }
+
+        // TODO:
+        if let ty::CoroutineWitness(def_id, _) = goal.predicate.self_ty().kind() {
+            match ecx.typing_mode() {
+                TypingMode::Analysis { stalled_generators, defining_opaque_types: _ } => {
+                    if def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
+                    {
+                        return ecx.forced_ambiguity(MaybeCause::Ambiguity);
+                    }
+                }
+                TypingMode::Coherence
+                | TypingMode::PostAnalysis
+                | TypingMode::Borrowck { defining_opaque_types: _ }
+                | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
+            }
         }
 
         ecx.probe_and_evaluate_goal_for_constituent_tys(
@@ -1365,7 +1396,7 @@ where
         &mut self,
         goal: Goal<I, TraitPredicate<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
-        let candidates = self.assemble_and_evaluate_candidates(goal);
+        let candidates = self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
         self.merge_trait_candidates(goal, candidates)
     }
 }

@@ -94,7 +94,7 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     /// Among all pending obligations, collect those are stalled on a inference variable which has
     /// changed since the last call to `select_where_possible`. Those obligations are marked as
     /// successful and returned.
-    fn drain_unstalled_obligations(
+    fn drain_stalled_obligations_for_coroutines(
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx>;
