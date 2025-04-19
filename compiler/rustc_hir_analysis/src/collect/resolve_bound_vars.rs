@@ -1076,8 +1076,6 @@ fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: LocalDefId) -> ObjectL
         hir::GenericParamSource::Generics => {
             let parent_def_id = tcx.local_parent(param_def_id);
             let generics = tcx.hir_get_generics(parent_def_id).unwrap();
-            let param_hir_id = tcx.local_def_id_to_hir_id(param_def_id);
-            let param = generics.params.iter().find(|p| p.hir_id == param_hir_id).unwrap();
 
             // Scan the bounds and where-clauses on parameters to extract bounds
             // of the form `T:'a` so as to determine the `ObjectLifetimeDefault`
@@ -1111,7 +1109,7 @@ fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: LocalDefId) -> ObjectL
                     }
                 }
                 _ => {
-                    bug!("object_lifetime_default_raw must only be called on a type parameter")
+                    bug!("object_lifetime_default must only be called on a type parameter")
                 }
             }
         }
