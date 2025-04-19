@@ -11,7 +11,6 @@ fn square(x: &f64) -> f64 {
     x * x
 }
 
-
 // CHECK: ; inline::d_square
 // CHECK-NEXT: ; Function Attrs: alwaysinline
 // CHECK-NOT: noinline

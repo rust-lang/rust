@@ -973,12 +973,11 @@ extern "C" LLVMMetadataRef LLVMRustDIGetInstMetadata(LLVMValueRef x) {
   return nullptr;
 }
 
-
-extern "C" void LLVMRustRemoveEnumAttributeAtIndex(LLVMValueRef F, size_t index,
-                                                   LLVMRustAttributeKind RustAttr) {
+extern "C" void
+LLVMRustRemoveEnumAttributeAtIndex(LLVMValueRef F, size_t index,
+                                   LLVMRustAttributeKind RustAttr) {
   LLVMRemoveEnumAttributeAtIndex(F, index, fromRust(RustAttr));
 }
-
 
 extern "C" bool LLVMRustHasFnAttribute(LLVMValueRef F, const char *Name) {
   if (auto *Fn = dyn_cast<Function>(unwrap<Value>(F))) {
@@ -987,7 +986,6 @@ extern "C" bool LLVMRustHasFnAttribute(LLVMValueRef F, const char *Name) {
   return false;
 }
 
-
 extern "C" void LLVMRustRemoveFnAttribute(LLVMValueRef Fn, const char *Name) {
   auto *F = dyn_cast<Function>(unwrap<Value>(Fn));
   assert(F);
@@ -995,7 +993,6 @@ extern "C" void LLVMRustRemoveFnAttribute(LLVMValueRef Fn, const char *Name) {
          "Function does not have the attribute to be removed");
   F->removeFnAttr(Name);
 }
-
 
 extern "C" void LLVMRustGlobalAddMetadata(LLVMValueRef Global, unsigned Kind,
                                           LLVMMetadataRef MD) {
