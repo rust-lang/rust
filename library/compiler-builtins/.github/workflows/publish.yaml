@@ -5,24 +5,19 @@ permissions:
   contents: write
 
 on:
-  push:
-    branches:
-      - master
+  push: { branches: [master] }
 
 jobs:
   release-plz:
     name: Release-plz
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: true
       - name: Install Rust (rustup)
         run: rustup update nightly --no-self-update && rustup default nightly
-      - name: Publish `libm` as part of builtins, rather than its own crate
-        run: rm compiler-builtins/libm/Cargo.toml
       - name: Run release-plz
         uses: MarcoIeni/release-plz-action@v0.5
         env:
