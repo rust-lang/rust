@@ -1,8 +1,13 @@
 // Tests the -Zembed-metadata compiler flag.
 // Tracking issue: https://github.com/rust-lang/rust/issues/139165
 
+//@ needs-dynamic-linking
+//@ needs-crate-type: dylib
+
 use run_make_support::rfs::{create_dir, remove_file, rename};
-use run_make_support::{Rustc, dynamic_lib_name, path, run_in_tmpdir, rust_lib_name, rustc};
+use run_make_support::{
+    Rustc, dynamic_lib_name, path, run_in_tmpdir, rust_lib_name, rustc, target,
+};
 
 #[derive(Debug, Copy, Clone)]
 enum LibraryKind {
@@ -42,7 +47,7 @@ fn main() {
 fn lookup_rmeta_in_lib_dir(kind: LibraryKind) {
     run_in_tmpdir(|| {
         build_dep_rustc(kind).run();
-        rustc().input("foo.rs").run();
+        rustc().target(target()).input("foo.rs").run();
     });
 }
 
@@ -54,6 +59,7 @@ fn lookup_rmeta_through_extern(kind: LibraryKind) {
         build_dep_rustc(kind).out_dir("deps").run();
 
         let mut rustc = rustc();
+        rustc.target(target());
         kind.add_extern(&mut rustc, "dep1", "deps");
         rustc.extern_("dep1", path("deps").join("libdep1.rmeta"));
         rustc.input("foo.rs").run();
@@ -67,6 +73,7 @@ fn lookup_rmeta_missing(kind: LibraryKind) {
         build_dep_rustc(kind).out_dir("deps").run();
 
         let mut rustc = rustc();
+        rustc.target(target());
         kind.add_extern(&mut rustc, "dep1", "deps");
         rustc.input("foo.rs").run_fail().assert_stderr_contains("only metadata stub found");
     });
@@ -74,6 +81,7 @@ fn lookup_rmeta_missing(kind: LibraryKind) {
 
 fn build_dep_rustc(kind: LibraryKind) -> Rustc {
     let mut dep_rustc = rustc();
+    dep_rustc.target(target());
     dep_rustc
         .arg("-Zembed-metadata=no")
         .crate_type(kind.crate_type())
