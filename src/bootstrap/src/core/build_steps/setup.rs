@@ -584,6 +584,7 @@ Select which editor you would like to set up [default: None]: ";
                 "51068d4747a13732440d1a8b8f432603badb1864fa431d83d0fd4f8fa57039e0",
                 "d29af4d949bbe2371eac928a3c31cf9496b1701aa1c45f11cd6c759865ad5c45",
                 "b5dd299b93dca3ceeb9b335f929293cb3d4bf4977866fbe7ceeac2a8a9f99088",
+                "631c837b0e98ae35fd48b0e5f743b1ca60adadf2d0a2b23566ba25df372cf1a9",
             ],
             EditorKind::Helix => &[
                 "2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233",
@@ -602,10 +603,12 @@ Select which editor you would like to set up [default: None]: ";
                 "4eecb58a2168b252077369da446c30ed0e658301efe69691979d1ef0443928f4",
                 "c394386e6133bbf29ffd32c8af0bb3d4aac354cba9ee051f29612aa9350f8f8d",
                 "e53e9129ca5ee5dcbd6ec8b68c2d87376474eb154992deba3c6d9ab1703e0717",
+                "f954316090936c7e590c253ca9d524008375882fa13c5b41d7e2547a896ff893",
             ],
             EditorKind::Zed => &[
                 "bbce727c269d1bd0c98afef4d612eb4ce27aea3c3a8968c5f10b31affbc40b6c",
                 "a5380cf5dd9328731aecc5dfb240d16dac46ed272126b9728006151ef42f5909",
+                "2e96bf0d443852b12f016c8fc9840ab3d0a2b4fe0b0fb3a157e8d74d5e7e0e26",
             ],
         }
     }
