@@ -223,7 +223,7 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
         // Since this optimization adds new basic blocks and invalidates others,
         // clean up the cfg to make it nicer for other passes
         if should_cleanup {
-            simplify_cfg(body);
+            simplify_cfg(tcx, body);
         }
     }
 
