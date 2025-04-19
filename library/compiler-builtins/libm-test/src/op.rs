@@ -16,12 +16,12 @@
 use std::fmt;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
-pub use shared::{ALL_OPERATIONS, FloatTy, MathOpInfo, Ty};
+pub use shared::{FloatTy, MathOpInfo, Ty, ALL_OPERATIONS};
 
 use crate::{CheckOutput, Float, TupleCall};
 
 mod shared {
-    include!("../../libm-macros/src/shared.rs");
+    include!("../../crates/libm-macros/src/shared.rs");
 }
 
 /// An enum representing each possible symbol name (`sin`, `sinf`, `sinl`, etc).

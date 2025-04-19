@@ -13,6 +13,6 @@ unstable-float = ["libm/unstable-float", "libm-test/unstable-float", "rug?/night
 [dependencies]
 libm = { path = "../../libm", default-features = false }
 libm-macros = { path = "../libm-macros" }
-libm-test = { path = "../libm-test", default-features = false }
+libm-test = { path = "../../libm-test", default-features = false }
 musl-math-sys = { path = "../musl-math-sys", optional = true }
 rug = { version = "1.27.0", optional = true, default-features = false, features = ["float", "std"] }
