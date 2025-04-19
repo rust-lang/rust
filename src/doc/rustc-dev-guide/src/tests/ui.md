@@ -303,7 +303,7 @@ It should be preferred to using `error-pattern`, which is imprecise and non-exha
 ### `error-pattern`
 
 The `error-pattern` [directive](directives.md) can be used for runtime messages, which don't
-have a specific span, or in exceptional cases for compile time messages.
+have a specific span, or in exceptional cases, for compile time messages.
 
 Let's think about this test:
 
@@ -316,7 +316,7 @@ fn main() {
 }
 ```
 
-We want to ensure this shows "index out of bounds" but we cannot use the `ERROR`
+We want to ensure this shows "index out of bounds", but we cannot use the `ERROR`
 annotation since the runtime error doesn't have any span. Then it's time to use the
 `error-pattern` directive:
 
@@ -340,12 +340,12 @@ If the compile time output is target dependent or too verbose, use directive
 non-exhaustive.
 Some of the compiler messages can stay uncovered by annotations in this mode.
 
-For checking runtime output `//@ check-run-results` may be preferable.
+For checking runtime output, `//@ check-run-results` may be preferable.
 
 Only use `error-pattern` if none of the above works.
 
 Line annotations `//~` are still checked in tests using `error-pattern`.
-In exceptional cases use `//@ compile-flags: --error-format=human` to opt out of these checks.
+In exceptional cases, use `//@ compile-flags: --error-format=human` to opt out of these checks.
 
 ### Diagnostic kinds (error levels)
 
