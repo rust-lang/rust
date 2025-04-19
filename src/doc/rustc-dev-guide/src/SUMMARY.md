@@ -81,6 +81,7 @@
 - [How Bootstrap does it](./building/bootstrapping/how-bootstrap-does-it.md)
 - [Writing tools in Bootstrap](./building/bootstrapping/writing-tools-in-bootstrap.md)
 - [Debugging bootstrap](./building/bootstrapping/debugging-bootstrap.md)
+- [cfg(bootstrap) in dependencies](./building/bootstrapping/bootstrap-in-dependencies.md)
 
 # High-level Compiler Architecture
 
