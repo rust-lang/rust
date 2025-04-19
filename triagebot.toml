@@ -659,6 +659,7 @@ message_on_add = [
     """\
 /poll Approve stable backport of #{number}?
 approve
+approve (but does not justify new dot release on its own)
 decline
 don't know
 """,
