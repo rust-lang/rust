@@ -29,7 +29,7 @@ use minicore::*;
 // CHECK-LABEL: blr:
 // CHECK: blr
 #[no_mangle]
-#[naked]
-unsafe extern "C" fn blr() {
+#[unsafe(naked)]
+extern "C" fn blr() {
     naked_asm!("blr")
 }

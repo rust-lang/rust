@@ -11,17 +11,17 @@
 
 use std::arch::{asm, naked_asm};
 
-#[naked]
-pub unsafe fn rust_implicit() {
+#[unsafe(naked)]
+pub fn rust_implicit() {
     naked_asm!("ret");
 }
 
-#[naked]
-pub unsafe extern "Rust" fn rust_explicit() {
+#[unsafe(naked)]
+pub extern "Rust" fn rust_explicit() {
     naked_asm!("ret");
 }
 
-#[naked]
-pub unsafe extern "rust-cold" fn rust_cold() {
+#[unsafe(naked)]
+pub extern "rust-cold" fn rust_cold() {
     naked_asm!("ret");
 }
