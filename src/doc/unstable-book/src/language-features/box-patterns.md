@@ -6,6 +6,8 @@ The tracking issue for this feature is: [#29641]
 
 ------------------------
 
+> **Note**: This feature will be superseded by [`deref_patterns`] in the future.
+
 Box patterns let you match on `Box<T>`s:
 
 
@@ -28,3 +30,5 @@ fn main() {
     }
 }
 ```
+
+[`deref_patterns`]: ./deref-patterns.md

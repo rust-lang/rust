@@ -1186,6 +1186,7 @@ symbols! {
         instruction_set,
         integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
         integral,
+        internal_features,
         into_async_iter_into_iter,
         into_future,
         into_iter,
@@ -1829,6 +1830,7 @@ symbols! {
         rustc_must_implement_one_of,
         rustc_never_returns_null_ptr,
         rustc_never_type_options,
+        rustc_no_implicit_autorefs,
         rustc_no_mir_inline,
         rustc_nonnull_optimization_guaranteed,
         rustc_nounwind,
