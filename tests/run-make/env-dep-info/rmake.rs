@@ -4,6 +4,8 @@
 // appear in the output dep-info files.
 // See https://github.com/rust-lang/rust/issues/40364
 
+//@ ignore-cross-compile (cross-compile targets can introduce complicated env differences)
+
 use run_make_support::{diff, rustc};
 
 fn main() {
