@@ -63,6 +63,7 @@
 #![feature(maybe_uninit_write_slice)]
 #![feature(min_specialization)]
 #![feature(never_type)]
+#![feature(next_index)]
 #![feature(numfmt)]
 #![feature(pattern)]
 #![feature(pointer_is_aligned_to)]
