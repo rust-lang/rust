@@ -307,6 +307,7 @@ mod llvm_enzyme {
         let (d_sig, new_args, idents, errored) = gen_enzyme_decl(ecx, &sig, &x, span);
         let d_body = gen_enzyme_body(
             ecx, &x, n_active, &sig, &d_sig, primal, &new_args, span, sig_span, idents, errored,
+            &generics,
         );
 
         // The first element of it is the name of the function to be generated
@@ -479,6 +480,7 @@ mod llvm_enzyme {
         new_decl_span: Span,
         idents: &[Ident],
         errored: bool,
+        generics: &Generics,
     ) -> (P<ast::Block>, P<ast::Expr>, P<ast::Expr>, P<ast::Expr>) {
         let blackbox_path = ecx.std_path(&[sym::hint, sym::black_box]);
         let noop = ast::InlineAsm {
@@ -501,7 +503,7 @@ mod llvm_enzyme {
         };
         let unsf_expr = ecx.expr_block(P(unsf_block));
         let blackbox_call_expr = ecx.expr_path(ecx.path(span, blackbox_path));
-        let primal_call = gen_primal_call(ecx, span, primal, idents);
+        let primal_call = gen_primal_call(ecx, span, primal, idents, generics);
         let black_box_primal_call = ecx.expr_call(
             new_decl_span,
             blackbox_call_expr.clone(),
@@ -550,6 +552,7 @@ mod llvm_enzyme {
         sig_span: Span,
         idents: Vec<Ident>,
         errored: bool,
+        generics: &Generics,
     ) -> P<ast::Block> {
         let new_decl_span = d_sig.span;
 
@@ -570,6 +573,7 @@ mod llvm_enzyme {
             new_decl_span,
             &idents,
             errored,
+            generics,
         );
 
         if !has_ret(&d_sig.decl.output) {
@@ -674,8 +678,10 @@ mod llvm_enzyme {
         span: Span,
         primal: Ident,
         idents: &[Ident],
+        generics: &Generics,
     ) -> P<ast::Expr> {
         let has_self = idents.len() > 0 && idents[0].name == kw::SelfLower;
+
         if has_self {
             let args: ThinVec<_> =
                 idents[1..].iter().map(|arg| ecx.expr_path(ecx.path_ident(span, *arg))).collect();
@@ -684,7 +690,46 @@ mod llvm_enzyme {
         } else {
             let args: ThinVec<_> =
                 idents.iter().map(|arg| ecx.expr_path(ecx.path_ident(span, *arg))).collect();
-            let primal_call_expr = ecx.expr_path(ecx.path_ident(span, primal));
+            let mut primal_path = ecx.path_ident(span, primal);
+
+            if let Some(function) = primal_path.segments.last_mut() {
+                let primal_generic_types = generics
+                    .params
+                    .iter()
+                    .filter(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }));
+
+                let generated_generic_types = primal_generic_types
+                    .map(|type_param| {
+                        let generic_param = TyKind::Path(
+                            None,
+                            ast::Path {
+                                span,
+                                segments: thin_vec![ast::PathSegment {
+                                    ident: type_param.ident,
+                                    args: None,
+                                    id: ast::DUMMY_NODE_ID,
+                                }],
+                                tokens: None,
+                            },
+                        );
+
+                        ast::AngleBracketedArg::Arg(ast::GenericArg::Type(P(ast::Ty {
+                            id: type_param.id,
+                            span,
+                            kind: generic_param,
+                            tokens: None,
+                        })))
+                    })
+                    .collect();
+
+                function.args =
+                    Some(P(ast::GenericArgs::AngleBracketed(ast::AngleBracketedArgs {
+                        span,
+                        args: generated_generic_types,
+                    })));
+            }
+
+            let primal_call_expr = ecx.expr_path(primal_path);
             ecx.expr_call(span, primal_call_expr, args)
         }
     }
