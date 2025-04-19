@@ -47,10 +47,10 @@ fn main() {
 
     out_object.run();
     rmeta_contains("/the/aux/lib.rs");
-    rmeta_not_contains("auxiliary");
+    rmeta_contains("auxiliary");
     out_macro.run();
     rmeta_contains("/the/aux/lib.rs");
-    rmeta_not_contains("auxiliary");
+    rmeta_contains("auxiliary");
     out_diagobj.run();
     rmeta_contains("/the/aux/lib.rs");
     rmeta_not_contains("auxiliary");
@@ -58,6 +58,7 @@ fn main() {
 
 //FIXME(Oneirical): These could be generalized into run_make_support
 // helper functions.
+#[track_caller]
 fn rmeta_contains(expected: &str) {
     // Normalize to account for path differences in Windows.
     if !bstr::BString::from(rfs::read("liblib.rmeta")).replace(b"\\", b"/").contains_str(expected) {
@@ -69,6 +70,7 @@ fn rmeta_contains(expected: &str) {
     }
 }
 
+#[track_caller]
 fn rmeta_not_contains(expected: &str) {
     // Normalize to account for path differences in Windows.
     if bstr::BString::from(rfs::read("liblib.rmeta")).replace(b"\\", b"/").contains_str(expected) {
