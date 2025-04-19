@@ -1262,6 +1262,18 @@ impl<T> [T] {
     /// Splits the slice into a slice of `N`-element arrays,
     /// assuming that there's no remainder.
     ///
+    /// This is the inverse operation to [`as_flattened`].
+    ///
+    /// [`as_flattened`]: slice::as_flattened
+    ///
+    /// As this is `unsafe`, consider whether you could use [`as_chunks`] or
+    /// [`as_rchunks`] instead, perhaps via something like
+    /// `if let (chunks, []) = slice.as_chunks()` or
+    /// `let (chunks, []) = slice.as_chunks() else { unreachable!() };`.
+    ///
+    /// [`as_chunks`]: slice::as_chunks
+    /// [`as_rchunks`]: slice::as_rchunks
+    ///
     /// # Safety
     ///
     /// This may only be called when
@@ -1306,10 +1318,23 @@ impl<T> [T] {
     /// starting at the beginning of the slice,
     /// and a remainder slice with length strictly less than `N`.
     ///
+    /// The remainder is meaningful in the division sense.  Given
+    /// `let (chunks, remainder) = slice.as_chunks()`, then:
+    /// - `chunks.len()` equals `slice.len() / N`,
+    /// - `remainder.len()` equals `slice.len() % N`, and
+    /// - `slice.len()` equals `chunks.len() * N + remainder.len()`.
+    ///
+    /// You can flatten the chunks back into a slice-of-`T` with [`as_flattened`].
+    ///
+    /// [`as_flattened`]: slice::as_flattened
+    ///
     /// # Panics
     ///
-    /// Panics if `N` is zero. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
+    /// Panics if `N` is zero.
+    ///
+    /// Note that this check is against a const generic parameter, not a runtime
+    /// value, and thus a particular monomorphization will either always panic
+    /// or it will never panic.
     ///
     /// # Examples
     ///
@@ -1350,10 +1375,23 @@ impl<T> [T] {
     /// starting at the end of the slice,
     /// and a remainder slice with length strictly less than `N`.
     ///
+    /// The remainder is meaningful in the division sense.  Given
+    /// `let (remainder, chunks) = slice.as_rchunks()`, then:
+    /// - `remainder.len()` equals `slice.len() % N`,
+    /// - `chunks.len()` equals `slice.len() / N`, and
+    /// - `slice.len()` equals `chunks.len() * N + remainder.len()`.
+    ///
+    /// You can flatten the chunks back into a slice-of-`T` with [`as_flattened`].
+    ///
+    /// [`as_flattened`]: slice::as_flattened
+    ///
     /// # Panics
     ///
-    /// Panics if `N` is zero. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
+    /// Panics if `N` is zero.
+    ///
+    /// Note that this check is against a const generic parameter, not a runtime
+    /// value, and thus a particular monomorphization will either always panic
+    /// or it will never panic.
     ///
     /// # Examples
     ///
@@ -1417,6 +1455,18 @@ impl<T> [T] {
     /// Splits the slice into a slice of `N`-element arrays,
     /// assuming that there's no remainder.
     ///
+    /// This is the inverse operation to [`as_flattened_mut`].
+    ///
+    /// [`as_flattened_mut`]: slice::as_flattened_mut
+    ///
+    /// As this is `unsafe`, consider whether you could use [`as_chunks_mut`] or
+    /// [`as_rchunks_mut`] instead, perhaps via something like
+    /// `if let (chunks, []) = slice.as_chunks_mut()` or
+    /// `let (chunks, []) = slice.as_chunks_mut() else { unreachable!() };`.
+    ///
+    /// [`as_chunks_mut`]: slice::as_chunks_mut
+    /// [`as_rchunks_mut`]: slice::as_rchunks_mut
+    ///
     /// # Safety
     ///
     /// This may only be called when
@@ -1463,10 +1513,23 @@ impl<T> [T] {
     /// starting at the beginning of the slice,
     /// and a remainder slice with length strictly less than `N`.
     ///
+    /// The remainder is meaningful in the division sense.  Given
+    /// `let (chunks, remainder) = slice.as_chunks_mut()`, then:
+    /// - `chunks.len()` equals `slice.len() / N`,
+    /// - `remainder.len()` equals `slice.len() % N`, and
+    /// - `slice.len()` equals `chunks.len() * N + remainder.len()`.
+    ///
+    /// You can flatten the chunks back into a slice-of-`T` with [`as_flattened_mut`].
+    ///
+    /// [`as_flattened_mut`]: slice::as_flattened_mut
+    ///
     /// # Panics
     ///
-    /// Panics if `N` is zero. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
+    /// Panics if `N` is zero.
+    ///
+    /// Note that this check is against a const generic parameter, not a runtime
+    /// value, and thus a particular monomorphization will either always panic
+    /// or it will never panic.
     ///
     /// # Examples
     ///
@@ -1503,10 +1566,23 @@ impl<T> [T] {
     /// starting at the end of the slice,
     /// and a remainder slice with length strictly less than `N`.
     ///
+    /// The remainder is meaningful in the division sense.  Given
+    /// `let (remainder, chunks) = slice.as_rchunks_mut()`, then:
+    /// - `remainder.len()` equals `slice.len() % N`,
+    /// - `chunks.len()` equals `slice.len() / N`, and
+    /// - `slice.len()` equals `chunks.len() * N + remainder.len()`.
+    ///
+    /// You can flatten the chunks back into a slice-of-`T` with [`as_flattened_mut`].
+    ///
+    /// [`as_flattened_mut`]: slice::as_flattened_mut
+    ///
     /// # Panics
     ///
-    /// Panics if `N` is zero. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
+    /// Panics if `N` is zero.
+    ///
+    /// Note that this check is against a const generic parameter, not a runtime
+    /// value, and thus a particular monomorphization will either always panic
+    /// or it will never panic.
     ///
     /// # Examples
     ///
@@ -4809,6 +4885,11 @@ impl<T> [MaybeUninit<T>] {
 impl<T, const N: usize> [[T; N]] {
     /// Takes a `&[[T; N]]`, and flattens it to a `&[T]`.
     ///
+    /// For the opposite operation, see [`as_chunks`] and [`as_rchunks`].
+    ///
+    /// [`as_chunks`]: slice::as_chunks
+    /// [`as_rchunks`]: slice::as_rchunks
+    ///
     /// # Panics
     ///
     /// This panics if the length of the resulting slice would overflow a `usize`.
@@ -4848,6 +4929,11 @@ impl<T, const N: usize> [[T; N]] {
     }
 
     /// Takes a `&mut [[T; N]]`, and flattens it to a `&mut [T]`.
+    ///
+    /// For the opposite operation, see [`as_chunks_mut`] and [`as_rchunks_mut`].
+    ///
+    /// [`as_chunks_mut`]: slice::as_chunks_mut
+    /// [`as_rchunks_mut`]: slice::as_rchunks_mut
     ///
     /// # Panics
     ///
