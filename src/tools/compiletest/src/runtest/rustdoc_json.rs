@@ -9,7 +9,9 @@ impl TestCx<'_> {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
         let out_dir = self.output_base_dir();
-        remove_and_create_dir_all(&out_dir);
+        remove_and_create_dir_all(&out_dir).unwrap_or_else(|e| {
+            panic!("failed to remove and recreate output directory `{out_dir}`: {e}")
+        });
 
         let proc_res = self.document(&out_dir, &self.testpaths);
         if !proc_res.status.success() {

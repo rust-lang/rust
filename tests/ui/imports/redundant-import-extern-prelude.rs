@@ -5,7 +5,8 @@
 
 // See also the discussion in <https://github.com/rust-lang/rust/pull/122954>.
 
-//@ compile-flags: --extern aux_issue_121915 --edition 2018
+//@ compile-flags: --extern aux_issue_121915
+//@ edition: 2018
 //@ aux-build: aux-issue-121915.rs
 
 #[deny(redundant_imports)]

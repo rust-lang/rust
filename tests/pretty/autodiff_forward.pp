@@ -29,6 +29,8 @@ pub fn f1(x: &[f64], y: f64) -> f64 {
     // Make sure, that we add the None for the default return.
 
 
+    // We want to make sure that we can use the macro for functions defined inside of functions
+
     ::core::panicking::panic("not implemented")
 }
 #[rustc_autodiff(Forward, 1, Dual, Const, Dual)]
@@ -157,5 +159,26 @@ fn f8_1(x: &f32, bx_0: &f32) -> f32 {
     ::core::hint::black_box(f8(x));
     ::core::hint::black_box((bx_0,));
     ::core::hint::black_box(<f32>::default())
+}
+pub fn f9() {
+    #[rustc_autodiff]
+    #[inline(never)]
+    fn inner(x: f32) -> f32 { x * x }
+    #[rustc_autodiff(Forward, 1, Dual, Dual)]
+    #[inline(never)]
+    fn d_inner_2(x: f32, bx_0: f32) -> (f32, f32) {
+        unsafe { asm!("NOP", options(pure, nomem)); };
+        ::core::hint::black_box(inner(x));
+        ::core::hint::black_box((bx_0,));
+        ::core::hint::black_box(<(f32, f32)>::default())
+    }
+    #[rustc_autodiff(Forward, 1, Dual, DualOnly)]
+    #[inline(never)]
+    fn d_inner_1(x: f32, bx_0: f32) -> f32 {
+        unsafe { asm!("NOP", options(pure, nomem)); };
+        ::core::hint::black_box(inner(x));
+        ::core::hint::black_box((bx_0,));
+        ::core::hint::black_box(<f32>::default())
+    }
 }
 fn main() {}

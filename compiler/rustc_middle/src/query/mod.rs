@@ -161,11 +161,11 @@ rustc_queries! {
 
     /// Represents crate as a whole (as distinct from the top-level crate module).
     ///
-    /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir_crate()`),
-    /// we will have to assume that any change means that you need to be recompiled.
-    /// This is because the `hir_crate` query gives you access to all other items.
-    /// To avoid this fate, do not call `tcx.hir_crate()`; instead,
-    /// prefer wrappers like [`TyCtxt::hir_visit_all_item_likes_in_crate`].
+    /// If you call `tcx.hir_crate(())` we will have to assume that any change
+    /// means that you need to be recompiled. This is because the `hir_crate`
+    /// query gives you access to all other items. To avoid this fate, do not
+    /// call `tcx.hir_crate(())`; instead, prefer wrappers like
+    /// [`TyCtxt::hir_visit_all_item_likes_in_crate`].
     query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
         arena_cache
         eval_always
@@ -197,7 +197,7 @@ rustc_queries! {
 
     /// Gives access to the HIR node's parent for the HIR owner `key`.
     ///
-    /// This can be conveniently accessed by methods on `tcx.hir()`.
+    /// This can be conveniently accessed by `tcx.hir_*` methods.
     /// Avoid calling this query directly.
     query hir_owner_parent(key: hir::OwnerId) -> hir::HirId {
         desc { |tcx| "getting HIR parent of `{}`", tcx.def_path_str(key) }
@@ -205,7 +205,7 @@ rustc_queries! {
 
     /// Gives access to the HIR nodes and bodies inside `key` if it's a HIR owner.
     ///
-    /// This can be conveniently accessed by methods on `tcx.hir()`.
+    /// This can be conveniently accessed by `tcx.hir_*` methods.
     /// Avoid calling this query directly.
     query opt_hir_owner_nodes(key: LocalDefId) -> Option<&'tcx hir::OwnerNodes<'tcx>> {
         desc { |tcx| "getting HIR owner items in `{}`", tcx.def_path_str(key) }
@@ -214,7 +214,7 @@ rustc_queries! {
 
     /// Gives access to the HIR attributes inside the HIR owner `key`.
     ///
-    /// This can be conveniently accessed by methods on `tcx.hir()`.
+    /// This can be conveniently accessed by `tcx.hir_*` methods.
     /// Avoid calling this query directly.
     query hir_attr_map(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
         desc { |tcx| "getting HIR owner attributes in `{}`", tcx.def_path_str(key) }
@@ -484,7 +484,7 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
-    query lints_that_dont_need_to_run(_: ()) -> &'tcx FxIndexSet<LintId> {
+    query lints_that_dont_need_to_run(_: ()) -> &'tcx UnordSet<LintId> {
         arena_cache
         desc { "Computing all lints that are explicitly enabled or with a default level greater than Allow" }
     }
@@ -1026,6 +1026,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Given an `impl_def_id`, return true if the self type is guaranteed to be unsized due
+    /// to either being one of the built-in unsized types (str/slice/dyn) or to be a struct
+    /// whose tail is one of those types.
+    query impl_self_is_guaranteed_unsized(impl_def_id: DefId) -> bool {
+        desc { |tcx| "computing whether `{}` has a guaranteed unsized self type", tcx.def_path_str(impl_def_id) }
+    }
+
     /// Maps a `DefId` of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
@@ -1153,11 +1160,10 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
-    /// Borrow-checks the function body. If this is a closure, returns
-    /// additional requirements that the closure's creator must verify.
-    query mir_borrowck(key: LocalDefId) -> &'tcx mir::BorrowCheckResult<'tcx> {
+    /// Borrow-checks the given typeck root, e.g. functions, const/static items,
+    /// and its children, e.g. closures, inline consts.
+    query mir_borrowck(key: LocalDefId) -> Result<&'tcx mir::ConcreteOpaqueTypes<'tcx>, ErrorGuaranteed> {
         desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if(tcx) { tcx.is_typeck_child(key.to_def_id()) }
     }
 
     /// Gets a complete map from all types to their inherent impls.
@@ -1436,8 +1442,8 @@ rustc_queries! {
         desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
     }
 
-    query fn_arg_names(def_id: DefId) -> &'tcx [Option<rustc_span::Ident>] {
-        desc { |tcx| "looking up function parameter names for `{}`", tcx.def_path_str(def_id) }
+    query fn_arg_idents(def_id: DefId) -> &'tcx [Option<rustc_span::Ident>] {
+        desc { |tcx| "looking up function parameter identifiers for `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
 
@@ -1894,6 +1900,11 @@ rustc_queries! {
 
     // The macro which defines `rustc_metadata::provide_extern` depends on this query's name.
     // Changing the name should cause a compiler error, but in case that changes, be aware.
+    //
+    // The hash should not be calculated before the `analysis` pass is complete, specifically
+    // until `tcx.untracked().definitions.freeze()` has been called, otherwise if incremental
+    // compilation is enabled calculating this hash can freeze this structure too early in
+    // compilation and cause subsequent crashes when attempting to write to `definitions`
     query crate_hash(_: CrateNum) -> Svh {
         eval_always
         desc { "looking up the hash a crate" }

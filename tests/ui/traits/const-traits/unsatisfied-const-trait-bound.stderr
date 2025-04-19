@@ -6,30 +6,134 @@ LL | #![feature(const_trait_impl, generic_const_exprs)]
    |
    = help: remove one of these features
 
-error[E0277]: the trait bound `T: const Trait` is not satisfied
-  --> $DIR/unsatisfied-const-trait-bound.rs:29:37
+error[E0391]: cycle detected when evaluating type-level constant
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:35
    |
 LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
-   |                                     ^
+   |                                   ^^^^^^^^^^^^^
+   |
+note: ...which requires const-evaluating + checking `accept0::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:35
+   |
+LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
+   |                                   ^^^^^^^^^^^^^
+note: ...which requires caching mir of `accept0::{constant#0}` for CTFE...
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:35
+   |
+LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
+   |                                   ^^^^^^^^^^^^^
+note: ...which requires elaborating drops for `accept0::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:35
+   |
+LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
+   |                                   ^^^^^^^^^^^^^
+note: ...which requires borrow-checking `accept0::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:35
+   |
+LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
+   |                                   ^^^^^^^^^^^^^
+note: ...which requires promoting constants in MIR for `accept0::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:35
+   |
+LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
+   |                                   ^^^^^^^^^^^^^
+note: ...which requires const checking `accept0::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:35
+   |
+LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
+   |                                   ^^^^^^^^^^^^^
+note: ...which requires building MIR for `accept0::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:35
+   |
+LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
+   |                                   ^^^^^^^^^^^^^
+note: ...which requires building an abstract representation for `accept0::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:35
+   |
+LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
+   |                                   ^^^^^^^^^^^^^
+note: ...which requires building THIR for `accept0::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:35
+   |
+LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
+   |                                   ^^^^^^^^^^^^^
+note: ...which requires type-checking `accept0::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:35
+   |
+LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
+   |                                   ^^^^^^^^^^^^^
+   = note: ...which again requires evaluating type-level constant, completing the cycle
+note: cycle used when checking that `accept0` is well-formed
+  --> $DIR/unsatisfied-const-trait-bound.rs:29:1
+   |
+LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0277]: the trait bound `T: const Trait` is not satisfied
-  --> $DIR/unsatisfied-const-trait-bound.rs:33:50
+error[E0391]: cycle detected when caching mir of `accept1::{constant#0}` for CTFE
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:48
    |
 LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
-   |                                                  ^
-
-error[E0277]: the trait bound `Ty: const Trait` is not satisfied
-  --> $DIR/unsatisfied-const-trait-bound.rs:22:15
+   |                                                ^^^^^^^^^^^^^
    |
-LL |     require::<Ty>();
-   |               ^^
+note: ...which requires elaborating drops for `accept1::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:48
    |
-note: required by a bound in `require`
-  --> $DIR/unsatisfied-const-trait-bound.rs:8:15
+LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
+   |                                                ^^^^^^^^^^^^^
+note: ...which requires borrow-checking `accept1::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:48
    |
-LL | fn require<T: const Trait>() {}
-   |               ^^^^^^^^^^^ required by this bound in `require`
+LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
+   |                                                ^^^^^^^^^^^^^
+note: ...which requires promoting constants in MIR for `accept1::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:48
+   |
+LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
+   |                                                ^^^^^^^^^^^^^
+note: ...which requires const checking `accept1::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:48
+   |
+LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
+   |                                                ^^^^^^^^^^^^^
+note: ...which requires building MIR for `accept1::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:48
+   |
+LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
+   |                                                ^^^^^^^^^^^^^
+note: ...which requires building an abstract representation for `accept1::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:48
+   |
+LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
+   |                                                ^^^^^^^^^^^^^
+note: ...which requires building THIR for `accept1::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:48
+   |
+LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
+   |                                                ^^^^^^^^^^^^^
+note: ...which requires type-checking `accept1::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:48
+   |
+LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
+   |                                                ^^^^^^^^^^^^^
+note: ...which requires evaluating type-level constant...
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:48
+   |
+LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
+   |                                                ^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `accept1::{constant#0}`...
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:48
+   |
+LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
+   |                                                ^^^^^^^^^^^^^
+   = note: ...which again requires caching mir of `accept1::{constant#0}` for CTFE, completing the cycle
+note: cycle used when const-evaluating + checking `accept1::{constant#0}`
+  --> $DIR/unsatisfied-const-trait-bound.rs:33:48
+   |
+LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
+   |                                                ^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0391`.

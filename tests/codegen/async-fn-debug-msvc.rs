@@ -4,7 +4,8 @@
 //  - Other fields are not marked artificial
 //
 //
-//@ compile-flags: -C debuginfo=2 --edition=2018
+//@ compile-flags: -C debuginfo=2
+//@ edition: 2018
 //@ only-msvc
 
 async fn foo() {}
@@ -19,23 +20,23 @@ async fn async_fn_test() {
 // CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<async_fn_debug_msvc::async_fn_test::async_fn_env$0>",
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "variant0", scope: [[GEN]],
 // For brevity, we only check the struct name and members of the last variant.
-// CHECK-SAME: file: [[FILE:![0-9]*]], line: 11,
+// CHECK-SAME: file: [[FILE:![0-9]*]], line: 12,
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "variant1", scope: [[GEN]],
-// CHECK-SAME: file: [[FILE]], line: 15,
+// CHECK-SAME: file: [[FILE]], line: 16,
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "variant2", scope: [[GEN]],
-// CHECK-SAME: file: [[FILE]], line: 15,
+// CHECK-SAME: file: [[FILE]], line: 16,
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "variant3", scope: [[GEN]],
-// CHECK-SAME: file: [[FILE]], line: 12,
+// CHECK-SAME: file: [[FILE]], line: 13,
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "variant4", scope: [[GEN]],
-// CHECK-SAME: file: [[FILE]], line: 14,
+// CHECK-SAME: file: [[FILE]], line: 15,
 // CHECK-SAME: baseType: [[VARIANT_WRAPPER:![0-9]*]]
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )

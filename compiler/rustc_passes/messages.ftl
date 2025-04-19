@@ -404,7 +404,7 @@ passes_invalid_attr_at_crate_level =
 passes_invalid_attr_at_crate_level_item =
     the inner attribute doesn't annotate this {$kind}
 
-passes_invalid_macro_export_arguments = `{$name}` isn't a valid `#[macro_export]` argument
+passes_invalid_macro_export_arguments = invalid `#[macro_export]` argument
 
 passes_invalid_macro_export_arguments_too_many_items = `#[macro_export]` can only take 1 or 0 arguments
 
@@ -742,9 +742,6 @@ passes_trait_impl_const_stable =
 passes_transparent_incompatible =
     transparent {$target} cannot have other repr hints
 
-passes_undefined_naked_function_abi =
-    Rust ABI is unsupported in naked functions
-
 passes_unknown_external_lang_item =
     unknown external lang item: `{$lang_item}`
 
@@ -774,8 +771,8 @@ passes_unreachable_due_to_uninhabited = unreachable {$descr}
     .label_orig = any code following this expression is unreachable
     .note = this expression has type `{$ty}`, which is uninhabited
 
-passes_unrecognized_field =
-    unrecognized field name `{$name}`
+passes_unrecognized_argument =
+    unrecognized argument
 
 passes_unstable_attr_for_already_stable_feature =
     can't mark as unstable using an already stable feature

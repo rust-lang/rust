@@ -3,5 +3,5 @@
 enum F {
 M (§& u8)}
 //~^ ERROR unknown start of token
-//~| missing lifetime specifier
+//~| ERROR missing lifetime specifier
 fn main() {}

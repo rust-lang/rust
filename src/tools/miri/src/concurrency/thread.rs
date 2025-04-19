@@ -347,7 +347,7 @@ enum Timeout {
 
 impl Timeout {
     /// How long do we have to wait from now until the specified time?
-    fn get_wait_time(&self, clock: &Clock) -> Duration {
+    fn get_wait_time(&self, clock: &MonotonicClock) -> Duration {
         match self {
             Timeout::Monotonic(instant) => instant.duration_since(clock.now()),
             Timeout::RealTime(time) =>
@@ -683,7 +683,7 @@ impl<'tcx> ThreadManager<'tcx> {
     }
 
     /// Get the wait time for the next timeout, or `None` if no timeout is pending.
-    fn next_callback_wait_time(&self, clock: &Clock) -> Option<Duration> {
+    fn next_callback_wait_time(&self, clock: &MonotonicClock) -> Option<Duration> {
         self.threads
             .iter()
             .filter_map(|t| {
@@ -702,7 +702,7 @@ impl<'tcx> ThreadManager<'tcx> {
     /// used in stateless model checkers such as Loom: run the active thread as
     /// long as we can and switch only when we have to (the active thread was
     /// blocked, terminated, or has explicitly asked to be preempted).
-    fn schedule(&mut self, clock: &Clock) -> InterpResult<'tcx, SchedulingAction> {
+    fn schedule(&mut self, clock: &MonotonicClock) -> InterpResult<'tcx, SchedulingAction> {
         // This thread and the program can keep going.
         if self.threads[self.active_thread].state.is_enabled() && !self.yield_active_thread {
             // The currently active thread is still enabled, just continue with it.
@@ -772,7 +772,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         for (id, thread) in this.machine.threads.threads.iter_enumerated_mut() {
             match &thread.state {
                 ThreadState::Blocked { timeout: Some(timeout), .. }
-                    if timeout.get_wait_time(&this.machine.clock) == Duration::ZERO =>
+                    if timeout.get_wait_time(&this.machine.monotonic_clock) == Duration::ZERO =>
                 {
                     let old_state = mem::replace(&mut thread.state, ThreadState::Enabled);
                     let ThreadState::Blocked { callback, .. } = old_state else { unreachable!() };
@@ -1006,8 +1006,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 TimeoutClock::Monotonic =>
                     Timeout::Monotonic(match anchor {
-                        TimeoutAnchor::Absolute => this.machine.clock.epoch(),
-                        TimeoutAnchor::Relative => this.machine.clock.now(),
+                        TimeoutAnchor::Absolute => this.machine.monotonic_clock.epoch(),
+                        TimeoutAnchor::Relative => this.machine.monotonic_clock.now(),
                     }),
             };
             anchor.add_lossy(duration)
@@ -1152,7 +1152,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.machine.handle_abnormal_termination();
                 throw_machine_stop!(TerminationInfo::Interrupted);
             }
-            match this.machine.threads.schedule(&this.machine.clock)? {
+            match this.machine.threads.schedule(&this.machine.monotonic_clock)? {
                 SchedulingAction::ExecuteStep => {
                     if !this.step()? {
                         // See if this thread can do something else.
@@ -1167,7 +1167,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.run_timeout_callback()?;
                 }
                 SchedulingAction::Sleep(duration) => {
-                    this.machine.clock.sleep(duration);
+                    this.machine.monotonic_clock.sleep(duration);
                 }
             }
         }

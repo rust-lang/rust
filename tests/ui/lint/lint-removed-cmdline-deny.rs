@@ -2,9 +2,7 @@
 // cc #30346
 
 //@ compile-flags:-D renamed-and-removed-lints -D raw_pointer_derive
-
-//@ error-pattern:requested on the command line with `-D raw_pointer_derive`
-//@ error-pattern:requested on the command line with `-D renamed-and-removed-lints`
+//@ dont-require-annotations: NOTE
 
 #![warn(unused)]
 
@@ -14,3 +12,5 @@ fn main() { let unused = (); } //~ ERROR unused variable: `unused`
 //~? ERROR lint `raw_pointer_derive` has been removed: using derive with raw pointers is ok
 //~? ERROR lint `raw_pointer_derive` has been removed: using derive with raw pointers is ok
 //~? ERROR lint `raw_pointer_derive` has been removed: using derive with raw pointers is ok
+//~? NOTE requested on the command line with `-D raw_pointer_derive`
+//~? NOTE requested on the command line with `-D renamed-and-removed-lints`

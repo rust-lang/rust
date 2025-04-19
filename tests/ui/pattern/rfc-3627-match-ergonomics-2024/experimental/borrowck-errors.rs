@@ -13,14 +13,14 @@
 /// to fail in HIR typeck on stable. As such, they need to be separate from the other tests.
 fn errors_caught_in_hir_typeck_on_stable() {
     let [&x] = &[&mut 0];
-    //[stable2021]~^ mismatched types
+    //[stable2021]~^ ERROR mismatched types
     //[stable2021]~| types differ in mutability
     //[classic2024]~^^^ ERROR: cannot move out of type
     #[cfg(any(classic2021, structural2021))] let _: u32 = x;
     #[cfg(structural2024)] let _: &u32 = x;
 
     let [&x] = &mut [&mut 0];
-    //[stable2021]~^ mismatched types
+    //[stable2021]~^ ERROR mismatched types
     //[stable2021]~| types differ in mutability
     //[classic2024]~^^^ ERROR: cannot move out of type
     #[cfg(any(classic2021, structural2021))] let _: u32 = x;
@@ -34,7 +34,7 @@ pub fn main() {
     }
 
     let &ref mut x = &0;
-    //~^ cannot borrow data in a `&` reference as mutable [E0596]
+    //~^ ERROR cannot borrow data in a `&` reference as mutable [E0596]
 
     // For 2021 edition, this is also a regression test for #136223
     // since the maximum mutability is downgraded during the pattern check process.

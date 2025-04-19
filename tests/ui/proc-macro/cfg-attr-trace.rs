@@ -3,7 +3,6 @@
 //@ check-pass
 //@ proc-macro: test-macros.rs
 
-#![feature(cfg_boolean_literals)]
 #![feature(cfg_eval)]
 
 #[macro_use]

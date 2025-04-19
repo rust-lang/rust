@@ -15,14 +15,14 @@
 #![feature(contracts)] // to access core::contracts
 //~^ WARN the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 #![feature(contracts_internals)] // to access check_requires lang item
-
+#![feature(core_intrinsics)]
 fn foo(x: Baz) -> i32 {
     let injected_checker = {
         core::contracts::build_check_ensures(|ret| *ret > 100)
     };
 
     let ret = x.baz + 50;
-    injected_checker(ret)
+    core::intrinsics::contract_check_ensures(injected_checker, ret)
 }
 
 struct Baz { baz: i32 }

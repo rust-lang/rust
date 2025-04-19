@@ -10,5 +10,5 @@ pub fn a() {
 
 #[export_name="fail"]
 pub fn b() {
-//~^ symbol `fail` is already defined
+//~^ ERROR symbol `fail` is already defined
 }

@@ -6,7 +6,6 @@ use crate::io::ErrorKind;
 #[macro_use]
 pub mod weak;
 
-pub mod args;
 pub mod env;
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
@@ -27,6 +26,7 @@ pub mod time;
 pub fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 
 #[cfg(not(target_os = "espidf"))]
+#[cfg_attr(target_os = "vita", allow(unused_variables))]
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 // See `fn init()` in `library/std/src/rt.rs` for docs on `sigpipe`.
@@ -47,7 +47,8 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     reset_sigpipe(sigpipe);
 
     stack_overflow::init();
-    args::init(argc, argv);
+    #[cfg(not(target_os = "vita"))]
+    crate::sys::args::init(argc, argv);
 
     // Normally, `thread::spawn` will call `Thread::set_name` but since this thread
     // already exists, we have to call it ourselves. We only do this on Apple targets
@@ -273,6 +274,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ETXTBSY => ExecutableFileBusy,
         libc::EXDEV => CrossesDevices,
         libc::EINPROGRESS => InProgress,
+        libc::EOPNOTSUPP => Unsupported,
 
         libc::EACCES | libc::EPERM => PermissionDenied,
 

@@ -117,7 +117,6 @@ pub mod cast;
 pub mod codec;
 pub mod error;
 pub mod fast_reject;
-pub mod flags;
 pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;
@@ -128,7 +127,6 @@ pub mod significant_drop_order;
 pub mod trait_def;
 pub mod util;
 pub mod vtable;
-pub mod walk;
 
 mod adt;
 mod assoc;
@@ -537,6 +535,13 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
         match self.unpack() {
             ty::TermKind::Ty(ty) => ty.try_fold_with(folder).map(Into::into),
             ty::TermKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
+        }
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        match self.unpack() {
+            ty::TermKind::Ty(ty) => ty.fold_with(folder).into(),
+            ty::TermKind::Const(ct) => ct.fold_with(folder).into(),
         }
     }
 }
@@ -1464,7 +1469,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
             .in_definition_order()
-            .filter(move |item| item.kind == AssocKind::Fn && item.defaultness(self).has_value())
+            .filter(move |item| item.is_fn() && item.defaultness(self).has_value())
     }
 
     pub fn repr_options_of_def(self, did: LocalDefId) -> ReprOptions {
@@ -1610,8 +1615,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// return-position `impl Trait` from a trait, then provide the source info
     /// about where that RPITIT came from.
     pub fn opt_rpitit_info(self, def_id: DefId) -> Option<ImplTraitInTraitData> {
-        if let DefKind::AssocTy = self.def_kind(def_id) {
-            self.associated_item(def_id).opt_rpitit_info
+        if let DefKind::AssocTy = self.def_kind(def_id)
+            && let AssocKind::Type { data: AssocTypeData::Rpitit(rpitit_info) } =
+                self.associated_item(def_id).kind
+        {
+            Some(rpitit_info)
         } else {
             None
         }
@@ -1939,15 +1947,15 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Hygienically compares a use-site name (`use_name`) for a field or an associated item with
     /// its supposed definition name (`def_name`). The method also needs `DefId` of the supposed
     /// definition's parent/scope to perform comparison.
-    pub fn hygienic_eq(self, use_name: Ident, def_name: Ident, def_parent_def_id: DefId) -> bool {
-        // We could use `Ident::eq` here, but we deliberately don't. The name
+    pub fn hygienic_eq(self, use_ident: Ident, def_ident: Ident, def_parent_def_id: DefId) -> bool {
+        // We could use `Ident::eq` here, but we deliberately don't. The identifier
         // comparison fails frequently, and we want to avoid the expensive
         // `normalize_to_macros_2_0()` calls required for the span comparison whenever possible.
-        use_name.name == def_name.name
-            && use_name
+        use_ident.name == def_ident.name
+            && use_ident
                 .span
                 .ctxt()
-                .hygienic_eq(def_name.span.ctxt(), self.expn_that_defined(def_parent_def_id))
+                .hygienic_eq(def_ident.span.ctxt(), self.expn_that_defined(def_parent_def_id))
     }
 
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId) -> Ident {

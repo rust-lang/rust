@@ -1,5 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -498,8 +497,11 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     }
 
     // We only need to borrowck non-synthetic MIR.
-    let tainted_by_errors =
-        if !tcx.is_synthetic_mir(def) { tcx.mir_borrowck(def).tainted_by_errors } else { None };
+    let tainted_by_errors = if !tcx.is_synthetic_mir(def) {
+        tcx.mir_borrowck(tcx.typeck_root_def_id(def.to_def_id()).expect_local()).err()
+    } else {
+        None
+    };
 
     let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
@@ -795,7 +797,7 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
     }
 
     if !tcx.is_synthetic_mir(def) {
-        tcx.ensure_done().mir_borrowck(def);
+        tcx.ensure_done().mir_borrowck(tcx.typeck_root_def_id(def.to_def_id()).expect_local());
     }
     let mut promoted = tcx.mir_promoted(def).1.steal();
 

@@ -15,7 +15,7 @@ fn pz(v: V3) {
     //~^ ERROR expected `..`
 
     let _ = V3 { z: 0.0, ... };
-    //~^ expected identifier
+    //~^ ERROR expected identifier
     //~| ERROR missing fields `x` and `y` in initializer of `V3`
 
     let V3 { z: val, ... } = v;

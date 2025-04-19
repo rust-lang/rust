@@ -15,6 +15,7 @@ pub struct Foo;
 
 pub fn consume_foo(_: Foo) {}
 //[cfail2]~^ NOTE function defined here
+//[cfail2]~| NOTE
 
 pub fn produce_foo() -> Foo {
     Foo

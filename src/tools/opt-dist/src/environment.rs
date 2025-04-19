@@ -25,6 +25,7 @@ pub struct Environment {
     prebuilt_rustc_perf: Option<Utf8PathBuf>,
     use_bolt: bool,
     shared_llvm: bool,
+    run_tests: bool,
 }
 
 impl Environment {
@@ -100,6 +101,10 @@ impl Environment {
 
     pub fn benchmark_cargo_config(&self) -> &[String] {
         &self.benchmark_cargo_config
+    }
+
+    pub fn run_tests(&self) -> bool {
+        self.run_tests
     }
 }
 

@@ -12,7 +12,7 @@ use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::{Applicability, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_lint_defs::BuiltinLintDiag;
@@ -27,19 +27,18 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, kw, sym};
 use tracing::{debug, instrument, trace, trace_span};
 
-use super::diagnostics;
 use super::macro_parser::{NamedMatches, NamedParseResult};
+use super::{SequenceRepetition, diagnostics};
 use crate::base::{
     DummyResult, ExpandResult, ExtCtxt, MacResult, MacroExpanderResult, SyntaxExtension,
     SyntaxExtensionKind, TTMacroExpander,
 };
 use crate::expand::{AstFragment, AstFragmentKind, ensure_complete_parse, parse_ast_fragment};
-use crate::mbe;
 use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
-use crate::mbe::macro_check;
 use crate::mbe::macro_parser::NamedMatch::*;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
 use crate::mbe::transcribe::transcribe;
+use crate::mbe::{self, KleeneOp, macro_check};
 
 pub(crate) struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -640,6 +639,37 @@ fn is_empty_token_tree(sess: &Session, seq: &mbe::SequenceRepetition) -> bool {
     }
 }
 
+/// Checks if a `vis` nonterminal fragment is unnecessarily wrapped in an optional repetition.
+///
+/// When a `vis` fragment (which can already be empty) is wrapped in `$(...)?`,
+/// this suggests removing the redundant repetition syntax since it provides no additional benefit.
+fn check_redundant_vis_repetition(
+    err: &mut Diag<'_>,
+    sess: &Session,
+    seq: &SequenceRepetition,
+    span: &DelimSpan,
+) {
+    let is_zero_or_one: bool = seq.kleene.op == KleeneOp::ZeroOrOne;
+    let is_vis = seq.tts.first().map_or(false, |tt| {
+        matches!(tt, mbe::TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Vis)))
+    });
+
+    if is_vis && is_zero_or_one {
+        err.note("a `vis` fragment can already be empty");
+        err.multipart_suggestion(
+            "remove the `$(` and `)?`",
+            vec![
+                (
+                    sess.source_map().span_extend_to_prev_char_before(span.open, '$', true),
+                    "".to_string(),
+                ),
+                (span.close.with_hi(seq.kleene.span.hi()), "".to_string()),
+            ],
+            Applicability::MaybeIncorrect,
+        );
+    }
+}
+
 /// Checks that the lhs contains no repetition which could match an empty token
 /// tree, because then the matcher would hang indefinitely.
 fn check_lhs_no_empty_seq(sess: &Session, tts: &[mbe::TokenTree]) -> Result<(), ErrorGuaranteed> {
@@ -654,8 +684,10 @@ fn check_lhs_no_empty_seq(sess: &Session, tts: &[mbe::TokenTree]) -> Result<(), 
             TokenTree::Sequence(span, seq) => {
                 if is_empty_token_tree(sess, seq) {
                     let sp = span.entire();
-                    let guar = sess.dcx().span_err(sp, "repetition matches empty token tree");
-                    return Err(guar);
+                    let mut err =
+                        sess.dcx().struct_span_err(sp, "repetition matches empty token tree");
+                    check_redundant_vis_repetition(&mut err, sess, seq, span);
+                    return Err(err.emit());
                 }
                 check_lhs_no_empty_seq(sess, &seq.tts)?
             }
@@ -778,7 +810,7 @@ impl<'tt> FirstSets<'tt> {
                         // token could be the separator token itself.
 
                         if let (Some(sep), true) = (&seq_rep.separator, subfirst.maybe_empty) {
-                            first.add_one_maybe(TtHandle::from_token(sep.clone()));
+                            first.add_one_maybe(TtHandle::from_token(*sep));
                         }
 
                         // Reverse scan: Sequence comes before `first`.
@@ -841,7 +873,7 @@ impl<'tt> FirstSets<'tt> {
                     // If the sequence contents can be empty, then the first
                     // token could be the separator token itself.
                     if let (Some(sep), true) = (&seq_rep.separator, subfirst.maybe_empty) {
-                        first.add_one_maybe(TtHandle::from_token(sep.clone()));
+                        first.add_one_maybe(TtHandle::from_token(*sep));
                     }
 
                     assert!(first.maybe_empty);
@@ -917,7 +949,7 @@ impl<'tt> Clone for TtHandle<'tt> {
             // This variant *must* contain a `mbe::TokenTree::Token`, and not
             // any other variant of `mbe::TokenTree`.
             TtHandle::Token(mbe::TokenTree::Token(tok)) => {
-                TtHandle::Token(mbe::TokenTree::Token(tok.clone()))
+                TtHandle::Token(mbe::TokenTree::Token(*tok))
             }
 
             _ => unreachable!(),
@@ -1093,7 +1125,7 @@ fn check_matcher_core<'tt>(
                 let mut new;
                 let my_suffix = if let Some(sep) = &seq_rep.separator {
                     new = suffix_first.clone();
-                    new.add_one_maybe(TtHandle::from_token(sep.clone()));
+                    new.add_one_maybe(TtHandle::from_token(*sep));
                     &new
                 } else {
                     &suffix_first

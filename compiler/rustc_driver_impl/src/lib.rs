@@ -7,7 +7,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(decl_macro)]
@@ -30,7 +29,7 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Instant, SystemTime};
+use std::time::Instant;
 use std::{env, str};
 
 use rustc_ast as ast;
@@ -66,8 +65,6 @@ use rustc_span::FileName;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
-use time::OffsetDateTime;
-use time::macros::format_description;
 use tracing::trace;
 
 #[allow(unused_macros)]
@@ -264,6 +261,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         hash_untracked_state: None,
         register_lints: None,
         override_queries: None,
+        extra_symbols: Vec::new(),
         make_codegen_backend: None,
         registry: diagnostics_registry(),
         using_internal_features: &USING_INTERNAL_FEATURES,
@@ -348,10 +346,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             // Make sure name resolution and macro expansion is run.
             let _ = tcx.resolver_for_lowering();
 
-            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
-                dump_feature_usage_metrics(tcx, metrics_dir);
-            }
-
             if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
                 return early_exit();
             }
@@ -369,6 +363,10 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             }
 
             tcx.ensure_ok().analysis(());
+
+            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
+                dump_feature_usage_metrics(tcx, metrics_dir);
+            }
 
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
                 return early_exit();
@@ -1300,13 +1298,8 @@ fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<Pat
                 .or_else(|| std::env::current_dir().ok())
                 .unwrap_or_default(),
         };
-        let now: OffsetDateTime = SystemTime::now().into();
-        let file_now = now
-            .format(
-                // Don't use a standard datetime format because Windows doesn't support `:` in paths
-                &format_description!("[year]-[month]-[day]T[hour]_[minute]_[second]"),
-            )
-            .unwrap_or_default();
+        // Don't use a standard datetime format because Windows doesn't support `:` in paths
+        let file_now = jiff::Zoned::now().strftime("%Y-%m-%dT%H_%M_%S");
         let pid = std::process::id();
         path.push(format!("rustc-ice-{file_now}-{pid}.txt"));
         Some(path)

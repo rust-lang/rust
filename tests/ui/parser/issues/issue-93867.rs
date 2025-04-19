@@ -5,6 +5,6 @@ pub struct Entry<'a, K, V> {
 
 pub fn entry<'a, K, V>() -> Entry<'a K, V> {
 //                                  ^ missing comma
-//~^^ expected one of `,` or `>`, found `K`
+//~^^ ERROR expected one of `,` or `>`, found `K`
     unimplemented!()
 }

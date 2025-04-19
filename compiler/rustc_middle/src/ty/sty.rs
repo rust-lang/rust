@@ -16,6 +16,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, extension};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_type_ir::TyKind::*;
+use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind, TypeVisitableExt, elaborate};
 use tracing::instrument;
 use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
@@ -734,7 +735,7 @@ impl<'tcx> Ty<'tcx> {
                     .map(|principal| {
                         tcx.associated_items(principal.def_id())
                             .in_definition_order()
-                            .filter(|item| item.kind == ty::AssocKind::Type)
+                            .filter(|item| item.is_type())
                             .filter(|item| !item.is_impl_trait_in_trait())
                             .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                             .count()
@@ -1872,14 +1873,14 @@ impl<'tcx> Ty<'tcx> {
 
     /// Fast path helper for testing if a type is `Sized`.
     ///
-    /// Returning true means the type is known to be sized. Returning
-    /// `false` means nothing -- could be sized, might not be.
+    /// Returning true means the type is known to implement `Sized`. Returning `false` means
+    /// nothing -- could be sized, might not be.
     ///
-    /// Note that we could never rely on the fact that a type such as `[_]` is
-    /// trivially `!Sized` because we could be in a type environment with a
-    /// bound such as `[_]: Copy`. A function with such a bound obviously never
-    /// can be called, but that doesn't mean it shouldn't typecheck. This is why
-    /// this method doesn't return `Option<bool>`.
+    /// Note that we could never rely on the fact that a type such as `[_]` is trivially `!Sized`
+    /// because we could be in a type environment with a bound such as `[_]: Copy`. A function with
+    /// such a bound obviously never can be called, but that doesn't mean it shouldn't typecheck.
+    /// This is why this method doesn't return `Option<bool>`.
+    #[instrument(skip(tcx), level = "debug")]
     pub fn is_trivially_sized(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -2028,6 +2029,20 @@ impl<'tcx> Ty<'tcx> {
     /// type constructor remains the same.
     pub fn is_known_rigid(self) -> bool {
         self.kind().is_known_rigid()
+    }
+
+    /// Iterator that walks `self` and any types reachable from
+    /// `self`, in depth-first order. Note that just walks the types
+    /// that appear in `self`, it does not descend into the fields of
+    /// structs or variants. For example:
+    ///
+    /// ```text
+    /// isize => { isize }
+    /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
+    /// [isize] => { [isize], isize }
+    /// ```
+    pub fn walk(self) -> TypeWalker<TyCtxt<'tcx>> {
+        TypeWalker::new(self.into())
     }
 }
 

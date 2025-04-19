@@ -22,7 +22,7 @@ impl<P> Trait<P> for () {
     const D<const N: u16>: u16 = N;
     //~^ ERROR const `D` has an incompatible generic parameter for trait `Trait`
     const E: &'static () = &();
-    //~^ ERROR lifetime parameters or bounds on const `E` do not match the trait declaration
+    //~^ ERROR lifetime parameters or bounds on associated const `E` do not match the trait declaration
 
     const F: usize = 1024
     where

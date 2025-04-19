@@ -6,7 +6,7 @@
 //! 1. **Shallow visit**: Get a simple callback for every item (or item-like thing) in the HIR.
 //!    - Example: find all items with a `#[foo]` attribute on them.
 //!    - How: Use the `hir_crate_items` or `hir_module_items` query to traverse over item-like ids
-//!       (ItemId, TraitItemId, etc.) and use tcx.def_kind and `tcx.hir().item*(id)` to filter and
+//!       (ItemId, TraitItemId, etc.) and use tcx.def_kind and `tcx.hir_item*(id)` to filter and
 //!       access actual item-like thing, respectively.
 //!    - Pro: Efficient; just walks the lists of item ids and gives users control whether to access
 //!       the hir_owners themselves or not.
@@ -652,10 +652,10 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_ident(foreign_item.ident));
 
     match foreign_item.kind {
-        ForeignItemKind::Fn(ref sig, param_names, ref generics) => {
+        ForeignItemKind::Fn(ref sig, param_idents, ref generics) => {
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_fn_decl(sig.decl));
-            for ident in param_names.iter().copied() {
+            for ident in param_idents.iter().copied() {
                 visit_opt!(visitor, visit_ident, ident);
             }
         }
@@ -744,7 +744,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) -> V:
             visit_opt!(visitor, visit_pat_expr, lower_bound);
             visit_opt!(visitor, visit_pat_expr, upper_bound);
         }
-        PatKind::Never | PatKind::Wild | PatKind::Err(_) => (),
+        PatKind::Missing | PatKind::Never | PatKind::Wild | PatKind::Err(_) => (),
         PatKind::Slice(prepatterns, ref slice_pattern, postpatterns) => {
             walk_list!(visitor, visit_pat, prepatterns);
             visit_opt!(visitor, visit_pat, slice_pattern);
@@ -1169,9 +1169,9 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
             try_visit!(visitor.visit_ty_unambig(ty));
             visit_opt!(visitor, visit_nested_body, default);
         }
-        TraitItemKind::Fn(ref sig, TraitFn::Required(param_names)) => {
+        TraitItemKind::Fn(ref sig, TraitFn::Required(param_idents)) => {
             try_visit!(visitor.visit_fn_decl(sig.decl));
-            for ident in param_names.iter().copied() {
+            for ident in param_idents.iter().copied() {
                 visit_opt!(visitor, visit_ident, ident);
             }
         }

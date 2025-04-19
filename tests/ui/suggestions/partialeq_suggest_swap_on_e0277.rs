@@ -7,5 +7,5 @@ impl PartialEq<String> for T {
 }
 
 fn main() {
-    String::from("Girls Band Cry") == T(String::from("Girls Band Cry")); //~ can't compare `String` with `T` [E0277]
+    String::from("Girls Band Cry") == T(String::from("Girls Band Cry")); //~ ERROR can't compare `String` with `T` [E0277]
 }

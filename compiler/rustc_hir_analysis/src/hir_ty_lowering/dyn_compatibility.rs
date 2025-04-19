@@ -16,6 +16,7 @@ use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
+use crate::errors::SelfInTypeAlias;
 use crate::hir_ty_lowering::{
     GenericArgCountMismatch, GenericArgCountResult, PredicateFilter, RegionInferReason,
 };
@@ -125,6 +126,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // ```
         let mut projection_bounds = FxIndexMap::default();
         for (proj, proj_span) in elaborated_projection_bounds {
+            let proj = proj.map_bound(|mut b| {
+                if let Some(term_ty) = &b.term.as_type() {
+                    let references_self = term_ty.walk().any(|arg| arg == dummy_self.into());
+                    if references_self {
+                        // With trait alias and type alias combined, type resolver
+                        // may not be able to catch all illegal `Self` usages (issue 139082)
+                        let guar = tcx.dcx().emit_err(SelfInTypeAlias { span });
+                        b.term = replace_dummy_self_with_error(tcx, b.term, guar);
+                    }
+                }
+                b
+            });
+
             let key = (
                 proj.skip_binder().projection_term.def_id,
                 tcx.anonymize_bound_vars(
@@ -187,7 +201,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             tcx.associated_items(pred.trait_ref.def_id)
                                 .in_definition_order()
                                 // We only care about associated types.
-                                .filter(|item| item.kind == ty::AssocKind::Type)
+                                .filter(|item| item.is_type())
                                 // No RPITITs -- they're not dyn-compatible for now.
                                 .filter(|item| !item.is_impl_trait_in_trait())
                                 // If the associated type has a `where Self: Sized` bound,
@@ -401,7 +415,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
                 } else {
                     let reason =
-                        if let hir::LifetimeName::ImplicitObjectLifetimeDefault = lifetime.res {
+                        if let hir::LifetimeKind::ImplicitObjectLifetimeDefault = lifetime.kind {
                             if let hir::Node::Ty(hir::Ty {
                                 kind: hir::TyKind::Ref(parent_lifetime, _),
                                 ..

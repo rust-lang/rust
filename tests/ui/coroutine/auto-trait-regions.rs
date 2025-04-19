@@ -43,8 +43,8 @@ fn main() {
     // Disallow impls which relates lifetimes in the coroutine interior
     let gen = #[coroutine] move || {
         let a = A(&mut true, &mut true, No);
-        //~^ temporary value dropped while borrowed
-        //~| temporary value dropped while borrowed
+        //~^ ERROR temporary value dropped while borrowed
+        //~| ERROR temporary value dropped while borrowed
         yield;
         assert_foo(a);
     };

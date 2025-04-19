@@ -2,7 +2,7 @@
 
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::slice::sort::shared::FreezeMarker;
-use crate::{intrinsics, ptr, slice};
+use crate::{hint, intrinsics, ptr, slice};
 
 // It's important to differentiate between SMALL_SORT_THRESHOLD performance for
 // small slices and small-sort performance sorting small sub-slices as part of
@@ -408,8 +408,8 @@ where
         // }
 
         // The goal is to generate cmov instructions here.
-        let v_a_swap = should_swap.select_unpredictable(v_b, v_a);
-        let v_b_swap = should_swap.select_unpredictable(v_a, v_b);
+        let v_a_swap = hint::select_unpredictable(should_swap, v_b, v_a);
+        let v_b_swap = hint::select_unpredictable(should_swap, v_a, v_b);
 
         let v_b_swap_tmp = ManuallyDrop::new(ptr::read(v_b_swap));
         ptr::copy(v_a_swap, v_a, 1);
@@ -640,15 +640,15 @@ pub unsafe fn sort4_stable<T, F: FnMut(&T, &T) -> bool>(
         //  1,  1 |  c   b    a         d
         let c3 = is_less(&*c, &*a);
         let c4 = is_less(&*d, &*b);
-        let min = c3.select_unpredictable(c, a);
-        let max = c4.select_unpredictable(b, d);
-        let unknown_left = c3.select_unpredictable(a, c4.select_unpredictable(c, b));
-        let unknown_right = c4.select_unpredictable(d, c3.select_unpredictable(b, c));
+        let min = hint::select_unpredictable(c3, c, a);
+        let max = hint::select_unpredictable(c4, b, d);
+        let unknown_left = hint::select_unpredictable(c3, a, hint::select_unpredictable(c4, c, b));
+        let unknown_right = hint::select_unpredictable(c4, d, hint::select_unpredictable(c3, b, c));
 
         // Sort the last two unknown elements.
         let c5 = is_less(&*unknown_right, &*unknown_left);
-        let lo = c5.select_unpredictable(unknown_right, unknown_left);
-        let hi = c5.select_unpredictable(unknown_left, unknown_right);
+        let lo = hint::select_unpredictable(c5, unknown_right, unknown_left);
+        let hi = hint::select_unpredictable(c5, unknown_left, unknown_right);
 
         ptr::copy_nonoverlapping(min, dst, 1);
         ptr::copy_nonoverlapping(lo, dst.add(1), 1);

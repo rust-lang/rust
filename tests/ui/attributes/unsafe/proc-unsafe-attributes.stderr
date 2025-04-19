@@ -114,6 +114,22 @@ LL | #[unsafe(allow(unsafe(dead_code)))]
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 15 previous errors
+error[E0452]: malformed lint attribute input
+  --> $DIR/proc-unsafe-attributes.rs:26:16
+   |
+LL | #[unsafe(allow(unsafe(dead_code)))]
+   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/proc-unsafe-attributes.rs:26:16
+   |
+LL | #[unsafe(allow(unsafe(dead_code)))]
+   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 17 previous errors
 
 For more information about this error, try `rustc --explain E0452`.

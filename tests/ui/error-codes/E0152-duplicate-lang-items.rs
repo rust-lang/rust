@@ -3,8 +3,9 @@
 //!
 //! Issue: <https://github.com/rust-lang/rust/issues/31788>
 
-//@ error-pattern: first defined in crate `std`
 //@ normalize-stderr: "loaded from .*libstd-.*.rlib" -> "loaded from SYSROOT/libstd-*.rlib"
+//@ dont-require-annotations: NOTE
+
 #![feature(lang_items)]
 
 extern crate core;
@@ -14,6 +15,7 @@ use core::panic::PanicInfo;
 #[lang = "panic_impl"]
 fn panic_impl(info: &PanicInfo) -> ! {
     //~^ ERROR: found duplicate lang item `panic_impl`
+    //~| NOTE first defined in crate `std`
     loop {}
 }
 

@@ -30,6 +30,7 @@ use super::{
     AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, err_ub, interp_ok,
 };
 use crate::const_eval;
+use crate::const_eval::DummyMachine;
 use crate::errors::NestedStaticInThreadLocal;
 
 pub trait CompileTimeMachine<'tcx, T> = Machine<
@@ -323,14 +324,17 @@ pub fn intern_const_alloc_for_constprop<'tcx, T, M: CompileTimeMachine<'tcx, T>>
     interp_ok(())
 }
 
-impl<'tcx, M: super::intern::CompileTimeMachine<'tcx, !>> InterpCx<'tcx, M> {
+impl<'tcx> InterpCx<'tcx, DummyMachine> {
     /// A helper function that allocates memory for the layout given and gives you access to mutate
     /// it. Once your own mutation code is done, the backing `Allocation` is removed from the
     /// current `Memory` and interned as read-only into the global memory.
     pub fn intern_with_temp_alloc(
         &mut self,
         layout: TyAndLayout<'tcx>,
-        f: impl FnOnce(&mut InterpCx<'tcx, M>, &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx, ()>,
+        f: impl FnOnce(
+            &mut InterpCx<'tcx, DummyMachine>,
+            &PlaceTy<'tcx, CtfeProvenance>,
+        ) -> InterpResult<'tcx, ()>,
     ) -> InterpResult<'tcx, AllocId> {
         // `allocate` picks a fresh AllocId that we will associate with its data below.
         let dest = self.allocate(layout, MemoryKind::Stack)?;

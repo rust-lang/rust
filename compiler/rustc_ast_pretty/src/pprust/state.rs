@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
@@ -876,14 +876,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn nonterminal_to_string(&self, nt: &Nonterminal) -> String {
-        // We extract the token stream from the AST fragment and pretty print
-        // it, rather than using AST pretty printing, because `Nonterminal` is
-        // slated for removal in #124141. (This method will also then be
-        // removed.)
-        self.tts_to_string(&TokenStream::from_nonterminal_ast(nt))
-    }
-
     /// Print the token kind precisely, without converting `$crate` into its respective crate name.
     fn token_kind_to_string(&self, tok: &TokenKind) -> Cow<'static, str> {
         self.token_kind_to_string_ext(tok, None)
@@ -976,8 +968,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 doc_comment_to_string(comment_kind, attr_style, data).into()
             }
             token::Eof => "<eof>".into(),
-
-            token::Interpolated(ref nt) => self.nonterminal_to_string(&nt).into(),
         }
     }
 
@@ -1336,6 +1326,9 @@ impl<'a> State<'a> {
                 self.print_outer_attributes(&loc.attrs);
                 self.space_if_not_bol();
                 self.ibox(INDENT_UNIT);
+                if loc.super_.is_some() {
+                    self.word_nbsp("super");
+                }
                 self.word_nbsp("let");
 
                 self.ibox(INDENT_UNIT);
@@ -1622,9 +1615,9 @@ impl<'a> State<'a> {
     fn print_pat(&mut self, pat: &ast::Pat) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
-        /* Pat isn't normalized, but the beauty of it
-        is that it doesn't matter */
+        /* Pat isn't normalized, but the beauty of it is that it doesn't matter */
         match &pat.kind {
+            PatKind::Missing => unreachable!(),
             PatKind::Wild => self.word("_"),
             PatKind::Never => self.word("!"),
             PatKind::Ident(BindingMode(by_ref, mutbl), ident, sub) => {
@@ -1946,12 +1939,7 @@ impl<'a> State<'a> {
                 if let Some(eself) = input.to_self() {
                     self.print_explicit_self(&eself);
                 } else {
-                    let invalid = if let PatKind::Ident(_, ident, _) = input.pat.kind {
-                        ident.name == kw::Empty
-                    } else {
-                        false
-                    };
-                    if !invalid {
+                    if !matches!(input.pat.kind, PatKind::Missing) {
                         self.print_pat(&input.pat);
                         self.word(":");
                         self.space();

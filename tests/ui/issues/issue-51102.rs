@@ -11,7 +11,7 @@ fn main() {
         match simple {
             SimpleStruct {
                 state: 0,
-                //~^ struct `SimpleStruct` does not have a field named `state` [E0026]
+                //~^ ERROR struct `SimpleStruct` does not have a field named `state` [E0026]
                 ..
             } => (),
         }

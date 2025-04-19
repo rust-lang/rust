@@ -290,7 +290,7 @@ pub(crate) fn prepare_session_directory(sess: &Session, crate_name: Symbol) {
 
             // Try to remove the session directory we just allocated. We don't
             // know if there's any garbage in it from the failed copy action.
-            if let Err(err) = safe_remove_dir_all(&session_dir) {
+            if let Err(err) = std_fs::remove_dir_all(&session_dir) {
                 sess.dcx().emit_warn(errors::DeletePartial { path: &session_dir, err });
             }
 
@@ -324,7 +324,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
             incr_comp_session_dir.display()
         );
 
-        if let Err(err) = safe_remove_dir_all(&*incr_comp_session_dir) {
+        if let Err(err) = std_fs::remove_dir_all(&*incr_comp_session_dir) {
             sess.dcx().emit_warn(errors::DeleteFull { path: &incr_comp_session_dir, err });
         }
 
@@ -715,7 +715,7 @@ pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<
     for directory_name in session_directories {
         if !lock_file_to_session_dir.items().any(|(_, dir)| *dir == directory_name) {
             let path = crate_directory.join(directory_name);
-            if let Err(err) = safe_remove_dir_all(&path) {
+            if let Err(err) = std_fs::remove_dir_all(&path) {
                 sess.dcx().emit_warn(errors::InvalidGcFailed { path: &path, err });
             }
         }
@@ -821,7 +821,7 @@ pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<
     all_except_most_recent(deletion_candidates).into_items().all(|(path, lock)| {
         debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
-        if let Err(err) = safe_remove_dir_all(&path) {
+        if let Err(err) = std_fs::remove_dir_all(&path) {
             sess.dcx().emit_warn(errors::FinalizedGcFailed { path: &path, err });
         } else {
             delete_session_dir_lock_file(sess, &lock_file_path(&path));
@@ -839,7 +839,7 @@ pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<
 fn delete_old(sess: &Session, path: &Path) {
     debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
-    if let Err(err) = safe_remove_dir_all(path) {
+    if let Err(err) = std_fs::remove_dir_all(path) {
         sess.dcx().emit_warn(errors::SessionGcFailed { path, err });
     } else {
         delete_session_dir_lock_file(sess, &lock_file_path(path));
@@ -862,30 +862,8 @@ fn all_except_most_recent(
     }
 }
 
-/// Since paths of artifacts within session directories can get quite long, we
-/// need to support deleting files with very long paths. The regular
-/// WinApi functions only support paths up to 260 characters, however. In order
-/// to circumvent this limitation, we canonicalize the path of the directory
-/// before passing it to std::fs::remove_dir_all(). This will convert the path
-/// into the '\\?\' format, which supports much longer paths.
-fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
-    let canonicalized = match try_canonicalize(p) {
-        Ok(canonicalized) => canonicalized,
-        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
-        Err(err) => return Err(err),
-    };
-
-    std_fs::remove_dir_all(canonicalized)
-}
-
 fn safe_remove_file(p: &Path) -> io::Result<()> {
-    let canonicalized = match try_canonicalize(p) {
-        Ok(canonicalized) => canonicalized,
-        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
-        Err(err) => return Err(err),
-    };
-
-    match std_fs::remove_file(canonicalized) {
+    match std_fs::remove_file(p) {
         Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
         result => result,
     }

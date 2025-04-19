@@ -602,6 +602,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // We want to not actually read from memory for this visit. So, before
                     // walking this value, we have to make sure it is not a
                     // `Variants::Multiple`.
+                    // FIXME: the current logic here is layout-dependent, so enums with
+                    // multiple variants where all but 1 are uninhabited will be recursed into.
+                    // Is that truly what we want?
                     match v.layout.variants {
                         Variants::Multiple { .. } => {
                             // A multi-variant enum, or coroutine, or so.

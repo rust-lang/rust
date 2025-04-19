@@ -34,7 +34,7 @@ trait Shuffle<const N: usize> {
         return simd_shuffle(a, b, Self::I);
         #[cfg(generic)]
         return simd_shuffle_const_generic::<_, _, { &Self::I.0 }>(a, b);
-        //[generic]~^ overly complex generic constant
+        //[generic]~^ ERROR overly complex generic constant
         #[cfg(generic_with_fn)]
         return simd_shuffle_const_generic::<_, _, { Self::J }>(a, b);
     }

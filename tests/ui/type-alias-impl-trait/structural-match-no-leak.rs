@@ -14,7 +14,7 @@ const LEAK_FREE: Bar = leak_free();
 fn leak_free_test() {
     match LEAK_FREE {
         LEAK_FREE => (),
-        //~^ `Bar` cannot be used in patterns
+        //~^ ERROR `Bar` cannot be used in patterns
         _ => (),
     }
 }

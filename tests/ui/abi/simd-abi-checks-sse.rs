@@ -18,6 +18,6 @@ pub struct SseVector([i64; 2]);
 
 #[no_mangle]
 pub unsafe extern "C" fn f(_: SseVector) {
-    //~^ this function definition uses SIMD vector type `SseVector` which (with the chosen ABI) requires the `sse` target feature, which is not enabled
+    //~^ WARN this function definition uses SIMD vector type `SseVector` which (with the chosen ABI) requires the `sse` target feature, which is not enabled
     //~| WARNING this was previously accepted by the compiler
 }

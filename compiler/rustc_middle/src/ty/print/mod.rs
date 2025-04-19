@@ -382,7 +382,7 @@ pub fn shrunk_instance_name<'tcx>(
             return (s, None);
         }
 
-        let path = tcx.output_filenames(()).temp_path_ext("long-type.txt", None);
+        let path = tcx.output_filenames(()).temp_path_for_diagnostic("long-type.txt");
         let written_to_path = std::fs::write(&path, s).ok().map(|_| path);
 
         (shrunk, written_to_path)

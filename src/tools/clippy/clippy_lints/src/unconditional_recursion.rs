@@ -10,7 +10,7 @@ use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Node, QPath
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, AssocKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::{Ident, kw};
 use rustc_span::{Span, sym};
@@ -322,7 +322,7 @@ impl UnconditionalRecursion {
                             .in_definition_order()
                             // We're not interested in foreign implementations of the `Default` trait.
                             .find(|item| {
-                                item.kind == AssocKind::Fn && item.def_id.is_local() && item.name == kw::Default
+                                item.is_fn() && item.def_id.is_local() && item.name() == kw::Default
                             })
                         && let Some(body_node) = cx.tcx.hir_get_if_local(assoc_item.def_id)
                         && let Some(body_id) = body_node.body_id()

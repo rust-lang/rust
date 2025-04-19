@@ -22,8 +22,8 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, item: &ImplItem<'_>, ignored
         && let Some(did) = trait_item_def_id_of_impl(items, item.owner_id)
         && !is_from_ignored_trait(trait_ref, ignored_traits)
     {
-        let mut param_idents_iter = cx.tcx.hir_body_param_names(body_id);
-        let mut default_param_idents_iter = cx.tcx.fn_arg_names(did).iter().copied();
+        let mut param_idents_iter = cx.tcx.hir_body_param_idents(body_id);
+        let mut default_param_idents_iter = cx.tcx.fn_arg_idents(did).iter().copied();
 
         let renames = RenamedFnArgs::new(&mut default_param_idents_iter, &mut param_idents_iter);
         if !renames.0.is_empty() {

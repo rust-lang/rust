@@ -1,7 +1,7 @@
 warning: trailing semicolon in macro used in expression position
   --> $DIR/lint-trailing-macro-call.rs:9:25
    |
-LL |         #[cfg(FALSE)] 25;
+LL |         #[cfg(false)] 25;
    |                         ^
 ...
 LL |     expand_it!()
@@ -20,7 +20,7 @@ Future incompatibility report: Future breakage diagnostic:
 warning: trailing semicolon in macro used in expression position
   --> $DIR/lint-trailing-macro-call.rs:9:25
    |
-LL |         #[cfg(FALSE)] 25;
+LL |         #[cfg(false)] 25;
    |                         ^
 ...
 LL |     expand_it!()

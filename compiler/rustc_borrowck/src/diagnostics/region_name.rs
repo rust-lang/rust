@@ -288,7 +288,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let tcx = self.infcx.tcx;
 
         debug!("give_region_a_name: error_region = {:?}", error_region);
-        match *error_region {
+        match error_region.kind() {
             ty::ReEarlyParam(ebr) => ebr.has_name().then(|| {
                 let def_id = tcx.generics_of(self.mir_def_id()).region_param(ebr, tcx).def_id;
                 let span = tcx.hir_span_if_local(def_id).unwrap_or(DUMMY_SP);
@@ -896,7 +896,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         &self,
         fr: RegionVid,
     ) -> Option<RegionName> {
-        let ty::ReEarlyParam(region) = *self.to_error_region(fr)? else {
+        let ty::ReEarlyParam(region) = self.to_error_region(fr)?.kind() else {
             return None;
         };
         if region.has_name() {
@@ -912,7 +912,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         let found = tcx
             .any_free_region_meets(&tcx.type_of(region_parent).instantiate_identity(), |r| {
-                *r == ty::ReEarlyParam(region)
+                r.kind() == ty::ReEarlyParam(region)
             });
 
         Some(RegionName {
@@ -931,7 +931,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         &self,
         fr: RegionVid,
     ) -> Option<RegionName> {
-        let ty::ReEarlyParam(region) = *self.to_error_region(fr)? else {
+        let ty::ReEarlyParam(region) = self.to_error_region(fr)?.kind() else {
             return None;
         };
         if region.has_name() {
@@ -1007,7 +1007,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             if data.projection_term.self_ty() == ty => {}
                         _ => return false,
                     }
-                    tcx.any_free_region_meets(pred, |r| *r == ty::ReEarlyParam(region))
+                    tcx.any_free_region_meets(pred, |r| r.kind() == ty::ReEarlyParam(region))
                 })
             } else {
                 false

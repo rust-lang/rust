@@ -70,6 +70,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf, linker: Option<&Path
         hash_untracked_state: None,
         register_lints: None,
         override_queries: None,
+        extra_symbols: Vec::new(),
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,

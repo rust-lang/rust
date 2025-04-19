@@ -15,9 +15,9 @@ where
 fn my_foo() -> impl std::fmt::Debug {
     if false {
         let x = my_foo();
-        //[next]~^ type annotations needed
+        //[next]~^ ERROR type annotations needed
         x.my_debug();
-        //[current]~^ no method named `my_debug` found
+        //[current]~^ ERROR no method named `my_debug` found
     }
     ()
 }
@@ -25,7 +25,7 @@ fn my_foo() -> impl std::fmt::Debug {
 fn my_bar() -> impl std::fmt::Debug {
     if false {
         let x = &my_bar();
-        //[next]~^ type annotations needed
+        //[next]~^ ERROR type annotations needed
         x.my_debug();
     }
     ()

@@ -6,7 +6,6 @@ use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::kw;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -129,39 +128,35 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AssocItem {
 
 fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty::AssocItem {
     let owner_id = trait_item_ref.id.owner_id;
-    let (kind, has_self) = match trait_item_ref.kind {
-        hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
-        hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
-        hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
+    let name = trait_item_ref.ident.name;
+    let kind = match trait_item_ref.kind {
+        hir::AssocItemKind::Const => ty::AssocKind::Const { name },
+        hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { name, has_self },
+        hir::AssocItemKind::Type => ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) },
     };
 
     ty::AssocItem {
-        name: trait_item_ref.ident.name,
         kind,
         def_id: owner_id.to_def_id(),
         trait_item_def_id: Some(owner_id.to_def_id()),
         container: ty::AssocItemContainer::Trait,
-        fn_has_self_parameter: has_self,
-        opt_rpitit_info: None,
     }
 }
 
 fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::AssocItem {
     let def_id = impl_item_ref.id.owner_id;
-    let (kind, has_self) = match impl_item_ref.kind {
-        hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
-        hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
-        hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
+    let name = impl_item_ref.ident.name;
+    let kind = match impl_item_ref.kind {
+        hir::AssocItemKind::Const => ty::AssocKind::Const { name },
+        hir::AssocItemKind::Fn { has_self } => ty::AssocKind::Fn { name, has_self },
+        hir::AssocItemKind::Type => ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) },
     };
 
     ty::AssocItem {
-        name: impl_item_ref.ident.name,
         kind,
         def_id: def_id.to_def_id(),
         trait_item_def_id: impl_item_ref.trait_item_def_id,
         container: ty::AssocItemContainer::Impl,
-        fn_has_self_parameter: has_self,
-        opt_rpitit_info: None,
     }
 }
 
@@ -252,7 +247,7 @@ fn associated_type_for_impl_trait_in_trait(
     assert_eq!(tcx.def_kind(trait_def_id), DefKind::Trait);
 
     let span = tcx.def_span(opaque_ty_def_id);
-    // No name because this is a synthetic associated type.
+    // No name because this is an anonymous associated type.
     let trait_assoc_ty = tcx.at(span).create_def(trait_def_id, None, DefKind::AssocTy);
 
     let local_def_id = trait_assoc_ty.def_id();
@@ -264,16 +259,15 @@ fn associated_type_for_impl_trait_in_trait(
     trait_assoc_ty.def_ident_span(Some(span));
 
     trait_assoc_ty.associated_item(ty::AssocItem {
-        name: kw::Empty,
-        kind: ty::AssocKind::Type,
+        kind: ty::AssocKind::Type {
+            data: ty::AssocTypeData::Rpitit(ImplTraitInTraitData::Trait {
+                fn_def_id: fn_def_id.to_def_id(),
+                opaque_def_id: opaque_ty_def_id.to_def_id(),
+            }),
+        },
         def_id,
         trait_item_def_id: None,
         container: ty::AssocItemContainer::Trait,
-        fn_has_self_parameter: false,
-        opt_rpitit_info: Some(ImplTraitInTraitData::Trait {
-            fn_def_id: fn_def_id.to_def_id(),
-            opaque_def_id: opaque_ty_def_id.to_def_id(),
-        }),
     });
 
     // Copy visility of the containing function.
@@ -305,7 +299,7 @@ fn associated_type_for_impl_trait_in_impl(
         hir::FnRetTy::DefaultReturn(_) => tcx.def_span(impl_fn_def_id),
         hir::FnRetTy::Return(ty) => ty.span,
     };
-    // No name because this is a synthetic associated type.
+    // No name because this is an anonymous associated type.
     let impl_assoc_ty = tcx.at(span).create_def(impl_local_def_id, None, DefKind::AssocTy);
 
     let local_def_id = impl_assoc_ty.def_id();
@@ -317,13 +311,14 @@ fn associated_type_for_impl_trait_in_impl(
     impl_assoc_ty.def_ident_span(Some(span));
 
     impl_assoc_ty.associated_item(ty::AssocItem {
-        name: kw::Empty,
-        kind: ty::AssocKind::Type,
+        kind: ty::AssocKind::Type {
+            data: ty::AssocTypeData::Rpitit(ImplTraitInTraitData::Impl {
+                fn_def_id: impl_fn_def_id.to_def_id(),
+            }),
+        },
         def_id,
         trait_item_def_id: Some(trait_assoc_def_id),
         container: ty::AssocItemContainer::Impl,
-        fn_has_self_parameter: false,
-        opt_rpitit_info: Some(ImplTraitInTraitData::Impl { fn_def_id: impl_fn_def_id.to_def_id() }),
     });
 
     // Copy visility of the containing function.

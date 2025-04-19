@@ -13,7 +13,6 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
-pub mod args;
 pub mod env;
 #[allow(unused)]
 #[path = "../wasm/atomics/futex.rs"]

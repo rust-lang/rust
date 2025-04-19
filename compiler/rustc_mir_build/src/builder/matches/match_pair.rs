@@ -101,24 +101,27 @@ impl<'tcx> MatchPairTree<'tcx> {
             place_builder = resolved;
         }
 
-        // Only add the OpaqueCast projection if the given place is an opaque type and the
-        // expected type from the pattern is not.
-        let may_need_cast = match place_builder.base() {
-            PlaceBase::Local(local) => {
-                let ty =
-                    Place::ty_from(local, place_builder.projection(), &cx.local_decls, cx.tcx).ty;
-                ty != pattern.ty && ty.has_opaque_types()
+        if !cx.tcx.next_trait_solver_globally() {
+            // Only add the OpaqueCast projection if the given place is an opaque type and the
+            // expected type from the pattern is not.
+            let may_need_cast = match place_builder.base() {
+                PlaceBase::Local(local) => {
+                    let ty =
+                        Place::ty_from(local, place_builder.projection(), &cx.local_decls, cx.tcx)
+                            .ty;
+                    ty != pattern.ty && ty.has_opaque_types()
+                }
+                _ => true,
+            };
+            if may_need_cast {
+                place_builder = place_builder.project(ProjectionElem::OpaqueCast(pattern.ty));
             }
-            _ => true,
-        };
-        if may_need_cast {
-            place_builder = place_builder.project(ProjectionElem::OpaqueCast(pattern.ty));
         }
 
         let place = place_builder.try_to_place(cx);
         let mut subpairs = Vec::new();
         let test_case = match pattern.kind {
-            PatKind::Wild | PatKind::Error(_) => None,
+            PatKind::Missing | PatKind::Wild | PatKind::Error(_) => None,
 
             PatKind::Or { ref pats } => Some(TestCase::Or {
                 pats: pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect(),
@@ -201,37 +204,8 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::ExpandedConstant { subpattern: ref pattern, def_id: _, is_inline: false } => {
+            PatKind::ExpandedConstant { subpattern: ref pattern, .. } => {
                 MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs, extra_data);
-                None
-            }
-            PatKind::ExpandedConstant { subpattern: ref pattern, def_id, is_inline: true } => {
-                MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs, extra_data);
-
-                // Apply a type ascription for the inline constant to the value at `match_pair.place`
-                if let Some(source) = place {
-                    let span = pattern.span;
-                    let parent_id = cx.tcx.typeck_root_def_id(cx.def_id.to_def_id());
-                    let args = ty::InlineConstArgs::new(
-                        cx.tcx,
-                        ty::InlineConstArgsParts {
-                            parent_args: ty::GenericArgs::identity_for_item(cx.tcx, parent_id),
-                            ty: cx.infcx.next_ty_var(span),
-                        },
-                    )
-                    .args;
-                    let user_ty = cx.infcx.canonicalize_user_type_annotation(ty::UserType::new(
-                        ty::UserTypeKind::TypeOf(def_id, ty::UserArgs { args, user_self_ty: None }),
-                    ));
-                    let annotation = ty::CanonicalUserTypeAnnotation {
-                        inferred_ty: pattern.ty,
-                        span,
-                        user_ty: Box::new(user_ty),
-                    };
-                    let variance = ty::Contravariant;
-                    extra_data.ascriptions.push(super::Ascription { annotation, source, variance });
-                }
-
                 None
             }
 

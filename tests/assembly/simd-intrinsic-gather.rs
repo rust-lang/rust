@@ -22,9 +22,8 @@ pub struct m64x4([i64; 4]);
 #[repr(simd)]
 pub struct pf64x4([*const f64; 4]);
 
-extern "rust-intrinsic" {
-    fn simd_gather<V, M, P>(values: V, mask: M, pointer: P) -> V;
-}
+#[rustc_intrinsic]
+unsafe fn simd_gather<V, M, P>(values: V, mask: M, pointer: P) -> V;
 
 // CHECK-LABEL: gather_f64x4
 #[no_mangle]

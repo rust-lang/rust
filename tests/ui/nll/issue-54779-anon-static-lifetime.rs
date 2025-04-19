@@ -29,7 +29,7 @@ impl DebugWith<dyn DebugContext> for Foo {
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         let Foo { bar } = self;
-        bar.debug_with(cx); //~ borrowed data escapes outside of method
+        bar.debug_with(cx); //~ ERROR borrowed data escapes outside of method
         Ok(())
     }
 }

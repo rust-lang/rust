@@ -20,10 +20,10 @@ use minicore::*;
 #[repr(simd)]
 pub struct mask8x16([i8; 16]);
 
-extern "rust-intrinsic" {
-    fn simd_reduce_all<T>(x: T) -> bool;
-    fn simd_reduce_any<T>(x: T) -> bool;
-}
+#[rustc_intrinsic]
+unsafe fn simd_reduce_all<T>(x: T) -> bool;
+#[rustc_intrinsic]
+unsafe fn simd_reduce_any<T>(x: T) -> bool;
 
 // CHECK-LABEL: mask_reduce_all:
 #[no_mangle]

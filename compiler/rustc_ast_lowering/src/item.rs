@@ -645,7 +645,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         (
                             // Disallow `impl Trait` in foreign items.
                             this.lower_fn_decl(fdec, i.id, sig.span, FnDeclKind::ExternFn, None),
-                            this.lower_fn_params_to_names(fdec),
+                            this.lower_fn_params_to_idents(fdec),
                         )
                     });
 
@@ -833,7 +833,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }) => {
                 // FIXME(contracts): Deny contract here since it won't apply to
                 // any impl method or callees.
-                let names = self.lower_fn_params_to_names(&sig.decl);
+                let idents = self.lower_fn_params_to_idents(&sig.decl);
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
@@ -851,7 +851,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (
                     *ident,
                     generics,
-                    hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)),
+                    hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(idents)),
                     false,
                 )
             }
@@ -1206,8 +1206,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let precond = if let Some(req) = &contract.requires {
                     // Lower the precondition check intrinsic.
                     let lowered_req = this.lower_expr_mut(&req);
+                    let req_span = this.mark_span_with_reason(
+                        DesugaringKind::Contract,
+                        lowered_req.span,
+                        None,
+                    );
                     let precond = this.expr_call_lang_item_fn_mut(
-                        req.span,
+                        req_span,
                         hir::LangItem::ContractCheckRequires,
                         &*arena_vec![this; lowered_req],
                     );
@@ -1217,6 +1222,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 };
                 let (postcond, body) = if let Some(ens) = &contract.ensures {
                     let ens_span = this.lower_span(ens.span);
+                    let ens_span =
+                        this.mark_span_with_reason(DesugaringKind::Contract, ens_span, None);
                     // Set up the postcondition `let` statement.
                     let check_ident: Ident =
                         Ident::from_str_and_span("__ensures_checker", ens_span);
@@ -1303,7 +1310,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // create a fake body so that the entire rest of the compiler doesn't have to deal with
             // this as a special case.
             return self.lower_fn_body(decl, contract, |this| {
-                if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic) {
+                if attrs.iter().any(|a| a.has_name(sym::rustc_intrinsic)) {
                     let span = this.lower_span(span);
                     let empty_block = hir::Block {
                         hir_id: this.next_id(),

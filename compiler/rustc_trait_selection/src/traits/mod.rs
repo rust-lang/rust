@@ -65,8 +65,8 @@ pub use self::specialize::{
 pub use self::structural_normalize::StructurallyNormalizeExt;
 pub use self::util::{
     BoundVarReplacer, PlaceholderReplacer, elaborate, expand_trait_aliases, impl_item_is_final,
-    supertrait_def_ids, supertraits, transitive_bounds_that_define_assoc_item, upcast_choices,
-    with_replaced_escaping_bound_vars,
+    sizedness_fast_path, supertrait_def_ids, supertraits, transitive_bounds_that_define_assoc_item,
+    upcast_choices, with_replaced_escaping_bound_vars,
 };
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::infer::outlives::env::OutlivesEnvironment;
@@ -643,7 +643,7 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 ) -> GenericArgsRef<'tcx> {
     struct ReplaceParamAndInferWithPlaceholder<'tcx> {
         tcx: TyCtxt<'tcx>,
-        idx: u32,
+        idx: ty::BoundVar,
     }
 
     impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceParamAndInferWithPlaceholder<'tcx> {
@@ -653,19 +653,13 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 
         fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
             if let ty::Infer(_) = t.kind() {
-                let idx = {
-                    let idx = self.idx;
-                    self.idx += 1;
-                    idx
-                };
+                let idx = self.idx;
+                self.idx += 1;
                 Ty::new_placeholder(
                     self.tcx,
                     ty::PlaceholderType {
                         universe: ty::UniverseIndex::ROOT,
-                        bound: ty::BoundTy {
-                            var: ty::BoundVar::from_u32(idx),
-                            kind: ty::BoundTyKind::Anon,
-                        },
+                        bound: ty::BoundTy { var: idx, kind: ty::BoundTyKind::Anon },
                     },
                 )
             } else {
@@ -675,16 +669,11 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 
         fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
             if let ty::ConstKind::Infer(_) = c.kind() {
+                let idx = self.idx;
+                self.idx += 1;
                 ty::Const::new_placeholder(
                     self.tcx,
-                    ty::PlaceholderConst {
-                        universe: ty::UniverseIndex::ROOT,
-                        bound: ty::BoundVar::from_u32({
-                            let idx = self.idx;
-                            self.idx += 1;
-                            idx
-                        }),
-                    },
+                    ty::PlaceholderConst { universe: ty::UniverseIndex::ROOT, bound: idx },
                 )
             } else {
                 c.super_fold_with(self)
@@ -692,7 +681,7 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
         }
     }
 
-    args.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: 0 })
+    args.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: ty::BoundVar::ZERO })
 }
 
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this

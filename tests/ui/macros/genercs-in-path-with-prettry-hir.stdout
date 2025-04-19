@@ -3,6 +3,7 @@ use ::std::prelude::rust_2015::*;
 #[macro_use]
 extern crate std;
 //@ compile-flags: -Zunpretty=hir
+//@ edition: 2015
 
 // issue#97006
 

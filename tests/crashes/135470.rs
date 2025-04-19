@@ -1,5 +1,6 @@
 //@ known-bug: #135470
-//@ compile-flags: --edition=2021 -Copt-level=0
+//@ compile-flags: -Copt-level=0
+//@ edition: 2021
 
 use std::future::Future;
 trait Access {

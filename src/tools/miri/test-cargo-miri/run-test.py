@@ -136,7 +136,7 @@ def test_cargo_miri_run():
         cargo_miri("run") + ["--target-dir=custom-run", "--", "--target-dir=target/custom-run"],
         "run.args.stdout.ref", "run.custom-target-dir.stderr.ref",
     )
-    test("`cargo miri run --package=test-local-crate-detection` (test local crate detection)",
+    test("`cargo miri run` (test local crate detection)",
          cargo_miri("run") + ["--package=test-local-crate-detection"],
          "run.local_crate.stdout.ref", "run.local_crate.stderr.ref",
     )
@@ -147,49 +147,46 @@ def test_cargo_miri_test():
     default_ref = "test.cross-target.stdout.ref" if is_foreign else "test.default.stdout.ref"
     filter_ref = "test.filter.cross-target.stdout.ref" if is_foreign else "test.filter.stdout.ref"
 
-    # macOS needs permissive provenance inside getrandom_1.
     test("`cargo miri test`",
         cargo_miri("test"),
-        default_ref, "test.stderr-empty.ref",
-        env={'MIRIFLAGS': "-Zmiri-permissive-provenance -Zmiri-seed=4242"},
+        default_ref, "test.empty.ref",
+        env={'MIRIFLAGS': "-Zmiri-seed=4242"},
     )
     test("`cargo miri test` (no isolation, no doctests)",
         cargo_miri("test") + ["--bins", "--tests"], # no `--lib`, we disabled that in `Cargo.toml`
-        "test.cross-target.stdout.ref", "test.stderr-empty.ref",
-        env={'MIRIFLAGS': "-Zmiri-permissive-provenance -Zmiri-disable-isolation"},
+        "test.cross-target.stdout.ref", "test.empty.ref",
+        env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
     test("`cargo miri test` (with filter)",
         cargo_miri("test") + ["--", "--format=pretty", "pl"],
-        filter_ref, "test.stderr-empty.ref",
+        filter_ref, "test.empty.ref",
     )
     test("`cargo miri test` (test target)",
         cargo_miri("test") + ["--test", "test", "--", "--format=pretty"],
-        "test.test-target.stdout.ref", "test.stderr-empty.ref",
-        env={'MIRIFLAGS': "-Zmiri-permissive-provenance"},
+        "test.test-target.stdout.ref", "test.empty.ref",
     )
     test("`cargo miri test` (bin target)",
         cargo_miri("test") + ["--bin", "cargo-miri-test", "--", "--format=pretty"],
-        "test.bin-target.stdout.ref", "test.stderr-empty.ref",
+        "test.bin-target.stdout.ref", "test.empty.ref",
     )
     test("`cargo miri t` (subcrate, no isolation)",
         cargo_miri("t") + ["-p", "subcrate"],
-        "test.subcrate.stdout.ref", "test.stderr-proc-macro.ref",
+        "test.subcrate.cross-target.stdout.ref" if is_foreign else "test.subcrate.stdout.ref",
+        "test.empty.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
-    test("`cargo miri test` (subcrate, doctests)",
-        cargo_miri("test") + ["-p", "subcrate", "--doc"],
-        "test.stdout-empty.ref", "test.stderr-proc-macro-doctest.ref",
+    test("`cargo miri test` (proc-macro crate)",
+        cargo_miri("test") + ["-p", "proc_macro_crate"],
+        "test.empty.ref", "test.proc-macro.stderr.ref",
     )
     test("`cargo miri test` (custom target dir)",
         cargo_miri("test") + ["--target-dir=custom-test"],
-        default_ref, "test.stderr-empty.ref",
-        env={'MIRIFLAGS': "-Zmiri-permissive-provenance"},
+        default_ref, "test.empty.ref",
     )
     del os.environ["CARGO_TARGET_DIR"] # this overrides `build.target-dir` passed by `--config`, so unset it
     test("`cargo miri test` (config-cli)",
         cargo_miri("test") + ["--config=build.target-dir=\"config-cli\""],
-        default_ref, "test.stderr-empty.ref",
-        env={'MIRIFLAGS': "-Zmiri-permissive-provenance"},
+        default_ref, "test.empty.ref",
     )
     if ARGS.multi_target:
         test_cargo_miri_multi_target()
@@ -198,8 +195,7 @@ def test_cargo_miri_test():
 def test_cargo_miri_multi_target():
     test("`cargo miri test` (multiple targets)",
         cargo_miri("test", targets = ["aarch64-unknown-linux-gnu", "s390x-unknown-linux-gnu"]),
-        "test.multiple_targets.stdout.ref", "test.stderr-empty.ref",
-        env={'MIRIFLAGS': "-Zmiri-permissive-provenance"},
+        "test.multiple_targets.stdout.ref", "test.empty.ref",
     )
 
 args_parser = argparse.ArgumentParser(description='`cargo miri` testing')

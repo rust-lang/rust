@@ -8,6 +8,7 @@
 
 use std::mem;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -44,6 +45,8 @@ struct ScopeResolutionVisitor<'tcx> {
     scope_tree: ScopeTree,
 
     cx: Context,
+
+    extended_super_lets: FxHashMap<hir::ItemLocalId, Option<Scope>>,
 }
 
 /// Records the lifetime of a local variable as `cx.var_parent`
@@ -214,18 +217,29 @@ fn resolve_stmt<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, stmt: &'tcx hi
     let stmt_id = stmt.hir_id.local_id;
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
-    // Every statement will clean up the temporaries created during
-    // execution of that statement. Therefore each statement has an
-    // associated destruction scope that represents the scope of the
-    // statement plus its destructors, and thus the scope for which
-    // regions referenced by the destructors need to survive.
+    if let hir::StmtKind::Let(LetStmt { super_: Some(_), .. }) = stmt.kind {
+        // `super let` statement does not start a new scope, such that
+        //
+        //     { super let x = identity(&temp()); &x }.method();
+        //
+        // behaves exactly as
+        //
+        //     (&identity(&temp()).method();
+        intravisit::walk_stmt(visitor, stmt);
+    } else {
+        // Every statement will clean up the temporaries created during
+        // execution of that statement. Therefore each statement has an
+        // associated destruction scope that represents the scope of the
+        // statement plus its destructors, and thus the scope for which
+        // regions referenced by the destructors need to survive.
 
-    let prev_parent = visitor.cx.parent;
-    visitor.enter_node_scope_with_dtor(stmt_id, true);
+        let prev_parent = visitor.cx.parent;
+        visitor.enter_node_scope_with_dtor(stmt_id, true);
 
-    intravisit::walk_stmt(visitor, stmt);
+        intravisit::walk_stmt(visitor, stmt);
 
-    visitor.cx.parent = prev_parent;
+        visitor.cx.parent = prev_parent;
+    }
 }
 
 fn resolve_expr<'tcx>(
@@ -446,14 +460,11 @@ fn resolve_expr<'tcx>(
         // Mark this expr's scope and all parent scopes as containing `yield`.
         let mut scope = Scope { local_id: expr.hir_id.local_id, data: ScopeData::Node };
         loop {
-            let span = match expr.kind {
-                hir::ExprKind::Yield(expr, hir::YieldSource::Await { .. }) => {
-                    expr.span.shrink_to_hi().to(expr.span)
-                }
-                _ => expr.span,
+            let data = YieldData {
+                span: expr.span,
+                expr_and_pat_count: visitor.expr_and_pat_count,
+                source: *source,
             };
-            let data =
-                YieldData { span, expr_and_pat_count: visitor.expr_and_pat_count, source: *source };
             match visitor.scope_tree.yield_in_scope.get_mut(&scope) {
                 Some(yields) => yields.push(data),
                 None => {
@@ -481,14 +492,19 @@ fn resolve_expr<'tcx>(
     visitor.cx = prev_cx;
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum LetKind {
+    Regular,
+    Super,
+}
+
 fn resolve_local<'tcx>(
     visitor: &mut ScopeResolutionVisitor<'tcx>,
     pat: Option<&'tcx hir::Pat<'tcx>>,
     init: Option<&'tcx hir::Expr<'tcx>>,
+    let_kind: LetKind,
 ) {
-    debug!("resolve_local(pat={:?}, init={:?})", pat, init);
-
-    let blk_scope = visitor.cx.var_parent;
+    debug!("resolve_local(pat={:?}, init={:?}, let_kind={:?})", pat, init, let_kind);
 
     // As an exception to the normal rules governing temporary
     // lifetimes, initializers in a let have a temporary lifetime
@@ -546,14 +562,50 @@ fn resolve_local<'tcx>(
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
 
+    if let_kind == LetKind::Super {
+        if let Some(scope) = visitor.extended_super_lets.remove(&pat.unwrap().hir_id.local_id) {
+            // This expression was lifetime-extended by a parent let binding. E.g.
+            //
+            //     let a = {
+            //         super let b = temp();
+            //         &b
+            //     };
+            //
+            // (Which needs to behave exactly as: let a = &temp();)
+            //
+            // Processing of `let a` will have already decided to extend the lifetime of this
+            // `super let` to its own var_scope. We use that scope.
+            visitor.cx.var_parent = scope;
+        } else {
+            // This `super let` is not subject to lifetime extension from a parent let binding. E.g.
+            //
+            //     identity({ super let x = temp(); &x }).method();
+            //
+            // (Which needs to behave exactly as: identity(&temp()).method();)
+            //
+            // Iterate up to the enclosing destruction scope to find the same scope that will also
+            // be used for the result of the block itself.
+            while let Some(s) = visitor.cx.var_parent {
+                let parent = visitor.scope_tree.parent_map.get(&s).cloned();
+                if let Some(Scope { data: ScopeData::Destruction, .. }) = parent {
+                    break;
+                }
+                visitor.cx.var_parent = parent;
+            }
+        }
+    }
+
     if let Some(expr) = init {
-        record_rvalue_scope_if_borrow_expr(visitor, expr, blk_scope);
+        record_rvalue_scope_if_borrow_expr(visitor, expr, visitor.cx.var_parent);
 
         if let Some(pat) = pat {
             if is_binding_pat(pat) {
                 visitor.scope_tree.record_rvalue_candidate(
                     expr.hir_id,
-                    RvalueCandidate { target: expr.hir_id.local_id, lifetime: blk_scope },
+                    RvalueCandidate {
+                        target: expr.hir_id.local_id,
+                        lifetime: visitor.cx.var_parent,
+                    },
                 );
             }
         }
@@ -565,6 +617,7 @@ fn resolve_local<'tcx>(
     if let Some(expr) = init {
         visitor.visit_expr(expr);
     }
+
     if let Some(pat) = pat {
         visitor.visit_pat(pat);
     }
@@ -626,6 +679,7 @@ fn resolve_local<'tcx>(
 
             PatKind::Ref(_, _)
             | PatKind::Binding(hir::BindingMode(hir::ByRef::No, _), ..)
+            | PatKind::Missing
             | PatKind::Wild
             | PatKind::Never
             | PatKind::Expr(_)
@@ -642,6 +696,7 @@ fn resolve_local<'tcx>(
     ///        | [ ..., E&, ... ]
     ///        | ( ..., E&, ... )
     ///        | {...; E&}
+    ///        | { super let ... = E&; ... }
     ///        | if _ { ...; E& } else { ...; E& }
     ///        | match _ { ..., _ => E&, ... }
     ///        | box E&
@@ -677,6 +732,13 @@ fn resolve_local<'tcx>(
             hir::ExprKind::Block(block, _) => {
                 if let Some(subexpr) = block.expr {
                     record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+                }
+                for stmt in block.stmts {
+                    if let hir::StmtKind::Let(local) = stmt.kind
+                        && let Some(_) = local.super_
+                    {
+                        visitor.extended_super_lets.insert(local.pat.hir_id.local_id, blk_id);
+                    }
                 }
             }
             hir::ExprKind::If(_, then_block, else_block) => {
@@ -803,7 +865,7 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
                     local_id: body.value.hir_id.local_id,
                     data: ScopeData::Destruction,
                 });
-                resolve_local(this, None, Some(body.value));
+                resolve_local(this, None, Some(body.value), LetKind::Regular);
             }
         })
     }
@@ -821,7 +883,11 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
         resolve_expr(self, ex, false);
     }
     fn visit_local(&mut self, l: &'tcx LetStmt<'tcx>) {
-        resolve_local(self, Some(l.pat), l.init)
+        let let_kind = match l.super_ {
+            Some(_) => LetKind::Super,
+            None => LetKind::Regular,
+        };
+        resolve_local(self, Some(l.pat), l.init, let_kind);
     }
     fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
         let body = self.tcx.hir_body(c.body);
@@ -850,6 +916,7 @@ pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
             cx: Context { parent: None, var_parent: None },
             pessimistic_yield: false,
             fixup_scopes: vec![],
+            extended_super_lets: Default::default(),
         };
 
         visitor.scope_tree.root_body = Some(body.value.hir_id);

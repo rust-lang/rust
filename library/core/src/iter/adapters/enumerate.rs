@@ -36,7 +36,7 @@ where
     ///
     /// The method does no guarding against overflows, so enumerating more than
     /// `usize::MAX` elements either produces the wrong result or panics. If
-    /// debug assertions are enabled, a panic is guaranteed.
+    /// overflow checks are enabled, a panic is guaranteed.
     ///
     /// # Panics
     ///

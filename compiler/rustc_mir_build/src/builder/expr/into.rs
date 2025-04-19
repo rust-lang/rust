@@ -328,7 +328,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             destination,
                             target: Some(success),
                             unwind: UnwindAction::Unreachable,
-                            call_source: CallSource::Misc,
+                            call_source: CallSource::Use,
                             fn_span: expr_span,
                         },
                     );

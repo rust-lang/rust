@@ -747,6 +747,9 @@ pub struct Ascription<'tcx> {
 
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub enum PatKind<'tcx> {
+    /// A missing pattern, e.g. for an anonymous param in a bare fn like `fn f(u32)`.
+    Missing,
+
     /// A wildcard pattern: `_`.
     Wild,
 
@@ -812,23 +815,17 @@ pub enum PatKind<'tcx> {
     },
 
     /// Pattern obtained by converting a constant (inline or named) to its pattern
-    /// representation using `const_to_pat`.
+    /// representation using `const_to_pat`. This is used for unsafety checking.
     ExpandedConstant {
-        /// [DefId] of the constant, we need this so that we have a
-        /// reference that can be used by unsafety checking to visit nested
-        /// unevaluated constants and for diagnostics. If the `DefId` doesn't
-        /// correspond to a local crate, it points at the `const` item.
+        /// [DefId] of the constant item.
         def_id: DefId,
-        /// If `false`, then `def_id` points at a `const` item, otherwise it
-        /// corresponds to a local inline const.
-        is_inline: bool,
-        /// If the inline constant is used in a range pattern, this subpattern
-        /// represents the range (if both ends are inline constants, there will
-        /// be multiple InlineConstant wrappers).
+        /// The pattern that the constant lowered to.
         ///
-        /// Otherwise, the actual pattern that the constant lowered to. As with
-        /// other constants, inline constants are matched structurally where
-        /// possible.
+        /// HACK: we need to keep the `DefId` of inline constants around for unsafety checking;
+        /// therefore when a range pattern contains inline constants, we re-wrap the range pattern
+        /// with the `ExpandedConstant` nodes that correspond to the range endpoints. Hence
+        /// `subpattern` may actually be a range pattern, and `def_id` be the constant for one of
+        /// its endpoints.
         subpattern: Box<Pat<'tcx>>,
     },
 

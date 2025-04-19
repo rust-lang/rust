@@ -30,7 +30,7 @@ fn main() {
             let mut out = Vec::with_capacity(1024);
 
             unsafe {
-                extern "Rust" {
+                unsafe extern "Rust" {
                     fn miri_host_to_target_path(
                         path: *const c_char,
                         out: *mut c_char,
@@ -81,7 +81,7 @@ mod test {
         // Test calling exported symbols in (transitive) dependencies.
         // Repeat calls to make sure the `Instance` cache is not broken.
         for _ in 0..3 {
-            extern "Rust" {
+            unsafe extern "Rust" {
                 fn exported_symbol() -> i32;
                 fn assoc_fn_as_exported_symbol() -> i32;
                 fn make_true() -> bool;

@@ -62,14 +62,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let handle = this.read_scalar(handle_op)?;
+        let handle = this.read_handle(handle_op, "WaitForSingleObject")?;
         let timeout = this.read_scalar(timeout_op)?.to_u32()?;
 
-        let thread = match Handle::try_from_scalar(handle, this)? {
-            Ok(Handle::Thread(thread)) => thread,
+        let thread = match handle {
+            Handle::Thread(thread) => thread,
             // Unlike on posix, the outcome of joining the current thread is not documented.
             // On current Windows, it just deadlocks.
-            Ok(Handle::Pseudo(PseudoHandle::CurrentThread)) => this.active_thread(),
+            Handle::Pseudo(PseudoHandle::CurrentThread) => this.active_thread(),
             _ => this.invalid_handle("WaitForSingleObject")?,
         };
 

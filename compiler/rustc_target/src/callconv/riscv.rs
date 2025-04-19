@@ -5,8 +5,8 @@
 // https://github.com/llvm/llvm-project/blob/8e780252a7284be45cf1ba224cabd884847e8e92/clang/lib/CodeGen/TargetInfo.cpp#L9311-L9773
 
 use rustc_abi::{
-    BackendRepr, ExternAbi, FieldsShape, HasDataLayout, Primitive, Reg, RegKind, Size,
-    TyAbiInterface, TyAndLayout, Variants,
+    BackendRepr, FieldsShape, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface,
+    TyAndLayout, Variants,
 };
 
 use crate::callconv::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
@@ -370,15 +370,11 @@ where
     }
 }
 
-pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: ExternAbi)
+pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if abi == ExternAbi::RustIntrinsic {
-        return;
-    }
-
     let xlen = cx.data_layout().pointer_size.bits();
 
     for arg in fn_abi.args.iter_mut() {
