@@ -1,5 +1,4 @@
 //@ needs-asm-support
-#![feature(fn_align)]
 #![crate_type = "lib"]
 use std::arch::naked_asm;
 

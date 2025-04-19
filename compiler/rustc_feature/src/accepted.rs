@@ -216,6 +216,8 @@ declare_features! (
     (accepted, f16c_target_feature, "1.68.0", Some(44839)),
     /// Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
     (accepted, field_init_shorthand, "1.17.0", Some(37340)),
+    /// Allows using `#[align(...)]` on function items
+    (accepted, fn_align, "CURRENT_RUSTC_VERSION", Some(82232)),
     /// Allows `#[must_use]` on functions, and introduces must-use operators (RFC 1940).
     (accepted, fn_must_use, "1.27.0", Some(43302)),
     /// Allows capturing variables in scope using format_args!
