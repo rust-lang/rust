@@ -1,9 +1,16 @@
 error[E0589]: invalid `repr(align)` attribute: `align` needs an argument
-  --> $DIR/malformed-fn-align.rs:5:12
+  --> $DIR/malformed-fn-align.rs:4:12
    |
 LL |     #[repr(align)]
    |            ^^^^^ help: supply an argument here: `align(...)`
 
-error: aborting due to 1 previous error
+error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
+  --> $DIR/malformed-fn-align.rs:7:12
+   |
+LL |     #[repr(align(1, 2))]
+   |            ^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0589`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0589, E0693.
+For more information about an error, try `rustc --explain E0589`.
