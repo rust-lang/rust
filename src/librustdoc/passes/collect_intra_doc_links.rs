@@ -988,7 +988,23 @@ fn preprocess_link(
 
     // If there's no backticks, be lenient revert to old behavior.
     // This is to prevent churn by linting on stuff that isn't meant to be a link.
-    if (can_be_url || !ori_link.link.contains('`')) && should_ignore_link(path_str) {
+    // only shortcut links have simple enough syntax that they
+    // are likely to be written accidentlly, collapsed and reference links
+    // need 4 metachars, and reference links will not usually use
+    // backticks in the reference name.
+    // therefore, only shortcut syntax gets the lenient behavior.
+    //
+    // here's a truth table for how link kinds that cannot be urls are handled:
+    //
+    // |-------------------------------------------------------|
+    // |              |  is shortcut link  | not shortcut link |
+    // |--------------|--------------------|-------------------|
+    // | has backtick |    never ignore    |    never ignore   |
+    // | no backtick  | ignore if url-like |    never ignore   |
+    // |-------------------------------------------------------|
+    let ignore_urllike =
+        can_be_url || (ori_link.kind == LinkType::ShortcutUnknown && !ori_link.link.contains('`'));
+    if ignore_urllike && should_ignore_link(path_str) {
         return None;
     }
 
