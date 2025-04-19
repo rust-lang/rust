@@ -1,4 +1,4 @@
-//@ compile-flags: -Zautodiff=Enable -Zautodiff=NoPostopt -C opt-level=3  -Clto=fat
+//@ compile-flags: -Zautodiff=Enable -C opt-level=3  -Clto=fat -Zautodiff=NoPostopt
 //@ no-prefer-dynamic
 //@ needs-enzyme
 
@@ -10,8 +10,12 @@ use std::autodiff::autodiff;
 fn square(x: &f64) -> f64 {
     x * x
 }
-// CHECK: ; Function Attrs: alwaysinline noinline
-// CHECK-NEXT: declare double @__enzyme_autodiff_ZN6inline8d_square17h021c74e92c259cdeE(...) local_unnamed_addr #8
+
+
+// CHECK: ; inline::d_square
+// CHECK-NEXT: ; Function Attrs: alwaysinline
+// CHECK-NOT: noinline
+// CHECK-NEXT: define internal fastcc void @_ZN6inline8d_square17h021c74e92c259cdeE
 fn main() {
     let x = std::hint::black_box(3.0);
     let mut dx1 = std::hint::black_box(1.0);

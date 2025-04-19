@@ -1160,7 +1160,7 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMGetFirstFunction(M: &Module) -> Option<&Value>;
     pub(crate) fn LLVMGetNextFunction(Fn: &Value) -> Option<&Value>;
-    pub(crate) fn LLVMRemoveEnumAttributeAtIndex(Fn: &Value, index: c_uint, kind: AttributeKind);
+    pub(crate) fn LLVMRustRemoveEnumAttributeAtIndex(Fn: &Value, index: c_uint, kind: AttributeKind);
 
     pub(crate) fn LLVMDeleteGlobal(GlobalVar: &Value);
     pub(crate) fn LLVMGetInitializer(GlobalVar: &Value) -> Option<&Value>;

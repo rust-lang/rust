@@ -677,11 +677,11 @@ pub(crate) fn run_pass_manager(
                 // This is not strictly necessary for correctness, but serves as a sanity check
                 // in case the autodiff pass stops injecting `noinline` in the future.
                 assert!(
-                    !attributes::has_attr(function, 0, llvm::AttributeKind::NoInline),
+                    !attributes::has_attr(function, Function, llvm::AttributeKind::NoInline),
                     "Expected __enzyme function to have 'noinline' before adding 'alwaysinline'"
                 );
 
-                // Removing no-inline from function.
+                // Removing inline from function.
                 attributes::remove_from_llfn(function, Function, llvm::AttributeKind::NoInline);
 
                 let attr = llvm::AttributeKind::AlwaysInline.create_attr(cx.llcx);

@@ -28,12 +28,12 @@ pub(crate) fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[
     }
 }
 
-pub(crate) fn has_attr(llfn: &Value, idx: u32, attr: AttributeKind) -> bool {
+pub(crate) fn has_attr(llfn: &Value, idx: AttributePlace, attr: AttributeKind) -> bool {
     llvm::HasAttributeAtIndex(llfn, idx, attr)
 }
 
 pub(crate) fn remove_from_llfn(llfn: &Value, place: AttributePlace, kind: AttributeKind) {
-    llvm::RemoveEnumAttributeAtIndex(llfn, place, kind);
+    llvm::RemoveRustEnumAttributeAtIndex(llfn, place, kind);
 }
 
 /// Get LLVM attribute for the provided inline heuristic.
