@@ -231,15 +231,22 @@ coverage measurement. Its use is not recommended.
 
 ## link-self-contained
 
-On `windows-gnu`, `linux-musl`, and `wasi` targets, this flag controls whether the
-linker will use libraries and objects shipped with Rust instead of those in the system.
-It takes one of the following values:
+This flag controls whether the linker will use libraries and objects shipped with Rust instead
+of those in the system. This allows overriding cases when detection fails or user wants to use shipped
+libraries.
+
+You can enable or disable the usage of any self-contained objects using one of the following values:
 
 * no value: rustc will use heuristic to disable self-contained mode if system has necessary tools.
 * `y`, `yes`, `on`, `true`: use only libraries/objects shipped with Rust.
 * `n`, `no`, `off` or `false`: rely on the user or the linker to provide non-Rust libraries/objects.
 
-This allows overriding cases when detection fails or user wants to use shipped libraries.
+It is also possible to enable or disable specific self-contained objects in a more granular way.
+You can pass a comma-separated list of self-contained objects, individually enabled (`+object`) or
+disabled (`-object`).
+
+Currently, only the `linker` granular option is stabilized:
+- `linker`: toggle the usage of self-contained linker objects (linker, dlltool, and their necessary libraries)
 
 ## linker
 
@@ -247,6 +254,25 @@ This flag controls which linker `rustc` invokes to link your code. It takes a
 path to the linker executable. If this flag is not specified, the linker will
 be inferred based on the target. See also the [linker-flavor](#linker-flavor)
 flag for another way to specify the linker.
+
+## linker-features
+
+The `-Clinker-features` flag allows enabling or disabling specific features used during linking.
+
+These feature flags are a flexible extension mechanism that is complementary to linker flavors,
+designed to avoid the combinatorial explosion of having to create a new set of flavors for each
+linker feature we'd want to use.
+
+The flag accepts a comma-separated list of features, individually enabled (`+feature`) or disabled
+(`-feature`).
+
+Currently only one is stable, and only on the `x86_64-unknown-linux-gnu` target:
+- `lld`: to toggle using the lld linker, either the system-installed binary, or the self-contained
+  `rust-lld` linker (via the `-Clink-self-contained=+linker` flag).
+
+For example, use:
+- `-Clinker-features=+lld` to opt in to using the `lld` linker
+- `-Clinker-features=-lld` to opt out instead, for targets where it is configured as the default linker
 
 ## linker-flavor
 
