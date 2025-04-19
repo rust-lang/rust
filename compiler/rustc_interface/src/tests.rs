@@ -624,6 +624,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(llvm_args, vec![String::from("1"), String::from("2")]);
     tracked!(lto, LtoCli::Fat);
     tracked!(metadata, vec![String::from("A"), String::from("B")]);
+    tracked!(min_function_alignment, Some(Align::EIGHT));
     tracked!(no_prepopulate_passes, true);
     tracked!(no_redzone, Some(true));
     tracked!(no_vectorize_loops, true);
@@ -818,7 +819,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(location_detail, LocationDetail { file: true, line: false, column: false });
     tracked!(maximal_hir_to_mir_coverage, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
-    tracked!(min_function_alignment, Some(Align::EIGHT));
     tracked!(mir_emit_retag, true);
     tracked!(mir_enable_passes, vec![("DestProp".to_string(), false)]);
     tracked!(mir_opt_level, Some(4));
