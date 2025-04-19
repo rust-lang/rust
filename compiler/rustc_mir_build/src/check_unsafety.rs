@@ -564,13 +564,17 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
             }
             ExprKind::InlineAsm(box InlineAsmExpr {
-                asm_macro: AsmMacro::Asm | AsmMacro::NakedAsm,
+                asm_macro: asm_macro @ (AsmMacro::Asm | AsmMacro::NakedAsm),
                 ref operands,
                 template: _,
                 options: _,
                 line_spans: _,
             }) => {
-                self.requires_unsafe(expr.span, UseOfInlineAssembly);
+                // The `naked` attribute and the `naked_asm!` block form one atomic unit of
+                // unsafety, and `naked_asm!` does not itself need to be wrapped in an unsafe block.
+                if let AsmMacro::Asm = asm_macro {
+                    self.requires_unsafe(expr.span, UseOfInlineAssembly);
+                }
 
                 // For inline asm, do not use `walk_expr`, since we want to handle the label block
                 // specially.

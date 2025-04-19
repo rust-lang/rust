@@ -387,11 +387,9 @@ global_asm! {
 }
 
 #[cfg(all(not(jit), target_arch = "x86_64"))]
-#[naked]
+#[unsafe(naked)]
 extern "C" fn naked_test() {
-    unsafe {
-        naked_asm!("ret");
-    }
+    naked_asm!("ret")
 }
 
 #[repr(C)]
