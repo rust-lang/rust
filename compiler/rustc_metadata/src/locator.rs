@@ -427,12 +427,21 @@ impl<'a> CrateLocator<'a> {
 
                         let (rlibs, rmetas, dylibs) =
                             candidates.entry(hash.to_string()).or_default();
-                        let path =
-                            try_canonicalize(&spf.path).unwrap_or_else(|_| spf.path.to_path_buf());
-                        if seen_paths.contains(&path) {
-                            continue;
-                        };
-                        seen_paths.insert(path.clone());
+                        {
+                            // As a perforamnce optimisation we canonicalize the path and skip
+                            // ones we've already seeen. This allows us to ignore crates
+                            // we know are exactual equal to ones we've already found.
+                            // Going to the same crate through different symlinks does not change the result.
+                            let path = try_canonicalize(&spf.path)
+                                .unwrap_or_else(|_| spf.path.to_path_buf());
+                            if seen_paths.contains(&path) {
+                                continue;
+                            };
+                            seen_paths.insert(path);
+                        }
+                        // Use the original path (potentially with unresolved symlinks),
+                        // filesystem code should not care, but this is nicer for diagnostics.
+                        let path = spf.path.to_path_buf();
                         match kind {
                             CrateFlavor::Rlib => rlibs.insert(path, search_path.kind),
                             CrateFlavor::Rmeta => rmetas.insert(path, search_path.kind),
