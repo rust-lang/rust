@@ -4,11 +4,14 @@
 // explains that the file exists, but that its metadata is incorrect.
 // See https://github.com/rust-lang/rust/pull/88368
 
-use run_make_support::{dynamic_lib_name, rfs, rustc};
+//@ needs-crate-type: dylib
+
+use run_make_support::{dynamic_lib_name, rfs, rustc, target};
 
 fn main() {
     rfs::create_file(dynamic_lib_name("foo"));
     rustc()
+        .target(target())
         .crate_type("lib")
         .extern_("foo", dynamic_lib_name("foo"))
         .input("bar.rs")
