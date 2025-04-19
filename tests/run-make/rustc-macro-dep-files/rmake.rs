@@ -4,6 +4,8 @@
 // that macro code is not falsely seen as coming from a different file in dep-info.
 // See https://github.com/rust-lang/rust/issues/36625
 
+//@ needs-crate-type: proc-macro
+
 use run_make_support::{diff, rustc, target};
 
 fn main() {
