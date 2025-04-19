@@ -333,7 +333,7 @@ fn main() {
 Use of `error-pattern` is not recommended in general.
 
 For strict testing of compile time output, try to use the line annotations `//~` as much as
-possible, including `//~?` annotations for diagnostics without span.
+possible, including `//~?` annotations for diagnostics without spans.
 
 If the compile time output is target dependent or too verbose, use directive
 `//@ dont-require-annotations: <diagnostic-kind>` to make the line annotation checking
