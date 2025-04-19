@@ -4,6 +4,8 @@
 // output successfully added the file as a dependency.
 // See https://github.com/rust-lang/rust/pull/84029
 
+//@ needs-crate-type: proc-macro
+
 use run_make_support::{rfs, rustc};
 
 fn main() {
