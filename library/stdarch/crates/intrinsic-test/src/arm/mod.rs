@@ -21,7 +21,7 @@ pub struct ArmArchitectureTest {
 }
 
 impl SupportedArchitectureTest for ArmArchitectureTest {
-    fn create(cli_options: ProcessedCli) -> Self {
+    fn create(cli_options: ProcessedCli) -> Box<Self> {
         let a32 = cli_options.target.contains("v7");
         let mut intrinsics = get_neon_intrinsics(&cli_options.filename, &cli_options.target)
             .expect("Error parsing input file");
@@ -43,10 +43,10 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .collect::<Vec<_>>();
         intrinsics.dedup();
 
-        Self {
+        Box::new(Self {
             intrinsics: intrinsics,
             cli_options: cli_options,
-        }
+        })
     }
 
     fn build_c_file(&self) -> bool {

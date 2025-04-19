@@ -14,15 +14,16 @@ fn main() {
     let args: Cli = clap::Parser::parse();
     let processed_cli_options = ProcessedCli::new(args);
 
-    let test_environment_result = match processed_cli_options.target.as_str() {
-        "aarch64-unknown-linux-gnu"
-        | "armv7-unknown-linux-gnueabihf"
-        | "aarch64_be-unknown-linux-gnu" => {
-            Some(ArmArchitectureTest::create(processed_cli_options))
-        }
+    let test_environment_result: Option<Box<dyn SupportedArchitectureTest>> =
+        match processed_cli_options.target.as_str() {
+            "aarch64-unknown-linux-gnu"
+            | "armv7-unknown-linux-gnueabihf"
+            | "aarch64_be-unknown-linux-gnu" => {
+                Some(ArmArchitectureTest::create(processed_cli_options))
+            }
 
-        _ => None,
-    };
+            _ => None,
+        };
 
     if test_environment_result.is_none() {
         std::process::exit(0);
