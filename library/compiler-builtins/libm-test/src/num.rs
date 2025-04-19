@@ -180,8 +180,17 @@ impl<F: FloatExt> Consts<F> {
             neg_max_snan,
         } = self;
 
-        [pos_nan, neg_nan, max_qnan, min_snan, max_snan, neg_max_qnan, neg_min_snan, neg_max_snan]
-            .into_iter()
+        [
+            pos_nan,
+            neg_nan,
+            max_qnan,
+            min_snan,
+            max_snan,
+            neg_max_qnan,
+            neg_min_snan,
+            neg_max_snan,
+        ]
+        .into_iter()
     }
 }
 
@@ -229,7 +238,9 @@ where
     assert!(!end.is_nan());
     assert!(end >= start);
 
-    let steps = steps.checked_sub(F::Int::ONE).expect("`steps` must be at least 2");
+    let steps = steps
+        .checked_sub(F::Int::ONE)
+        .expect("`steps` must be at least 2");
     let between = ulp_between(start, end).expect("`start` or `end` is NaN");
     let spacing = (between / steps).max(F::Int::ONE);
     let steps = steps.min(between); // At maximum, one step per ULP
@@ -283,15 +294,22 @@ mod tests {
             if i == 0 {
                 assert_eq!(down, f8::NEG_INFINITY.to_bits(), "{i} next_down({v:#010b})");
             } else {
-                let expected =
-                    if v == f8::ZERO { 1 | f8::SIGN_MASK } else { f8::ALL[i - 1].to_bits() };
+                let expected = if v == f8::ZERO {
+                    1 | f8::SIGN_MASK
+                } else {
+                    f8::ALL[i - 1].to_bits()
+                };
                 assert_eq!(down, expected, "{i} next_down({v:#010b})");
             }
 
             if i == f8::ALL_LEN - 1 {
                 assert_eq!(up, f8::INFINITY.to_bits(), "{i} next_up({v:#010b})");
             } else {
-                let expected = if v == f8::NEG_ZERO { 1 } else { f8::ALL[i + 1].to_bits() };
+                let expected = if v == f8::NEG_ZERO {
+                    1
+                } else {
+                    f8::ALL[i + 1].to_bits()
+                };
                 assert_eq!(up, expected, "{i} next_up({v:#010b})");
             }
         }
@@ -300,8 +318,14 @@ mod tests {
     #[test]
     fn test_next_up_down_inf_nan() {
         assert_eq!(f8::NEG_INFINITY.next_up().to_bits(), f8::ALL[0].to_bits(),);
-        assert_eq!(f8::NEG_INFINITY.next_down().to_bits(), f8::NEG_INFINITY.to_bits(),);
-        assert_eq!(f8::INFINITY.next_down().to_bits(), f8::ALL[f8::ALL_LEN - 1].to_bits(),);
+        assert_eq!(
+            f8::NEG_INFINITY.next_down().to_bits(),
+            f8::NEG_INFINITY.to_bits(),
+        );
+        assert_eq!(
+            f8::INFINITY.next_down().to_bits(),
+            f8::ALL[f8::ALL_LEN - 1].to_bits(),
+        );
         assert_eq!(f8::INFINITY.next_up().to_bits(), f8::INFINITY.to_bits(),);
         assert_eq!(f8::NAN.next_up().to_bits(), f8::NAN.to_bits(),);
         assert_eq!(f8::NAN.next_down().to_bits(), f8::NAN.to_bits(),);
@@ -321,7 +345,10 @@ mod tests {
 
         // Check across zero
         assert_eq!(f8::from_bits(0b1_0000_111).n_up(8).to_bits(), 0b0_0000_001);
-        assert_eq!(f8::from_bits(0b0_0000_111).n_down(8).to_bits(), 0b1_0000_001);
+        assert_eq!(
+            f8::from_bits(0b0_0000_111).n_down(8).to_bits(),
+            0b1_0000_001
+        );
     }
 
     #[test]
@@ -337,13 +364,25 @@ mod tests {
     #[test]
     fn test_n_up_down_inf_nan_zero() {
         assert_eq!(f8::NEG_INFINITY.n_up(1).to_bits(), f8::ALL[0].to_bits());
-        assert_eq!(f8::NEG_INFINITY.n_up(239).to_bits(), f8::ALL[f8::ALL_LEN - 1].to_bits());
+        assert_eq!(
+            f8::NEG_INFINITY.n_up(239).to_bits(),
+            f8::ALL[f8::ALL_LEN - 1].to_bits()
+        );
         assert_eq!(f8::NEG_INFINITY.n_up(240).to_bits(), f8::INFINITY.to_bits());
-        assert_eq!(f8::NEG_INFINITY.n_down(u8::MAX).to_bits(), f8::NEG_INFINITY.to_bits());
+        assert_eq!(
+            f8::NEG_INFINITY.n_down(u8::MAX).to_bits(),
+            f8::NEG_INFINITY.to_bits()
+        );
 
-        assert_eq!(f8::INFINITY.n_down(1).to_bits(), f8::ALL[f8::ALL_LEN - 1].to_bits());
+        assert_eq!(
+            f8::INFINITY.n_down(1).to_bits(),
+            f8::ALL[f8::ALL_LEN - 1].to_bits()
+        );
         assert_eq!(f8::INFINITY.n_down(239).to_bits(), f8::ALL[0].to_bits());
-        assert_eq!(f8::INFINITY.n_down(240).to_bits(), f8::NEG_INFINITY.to_bits());
+        assert_eq!(
+            f8::INFINITY.n_down(240).to_bits(),
+            f8::NEG_INFINITY.to_bits()
+        );
         assert_eq!(f8::INFINITY.n_up(u8::MAX).to_bits(), f8::INFINITY.to_bits());
 
         assert_eq!(f8::NAN.n_up(u8::MAX).to_bits(), f8::NAN.to_bits());
@@ -381,7 +420,11 @@ mod tests {
                     assert_eq!(down, expected, "{i} {n} n_down({v:#010b})");
                 } else {
                     // Overflow to -inf
-                    assert_eq!(down, f8::NEG_INFINITY.to_bits(), "{i} {n} n_down({v:#010b})");
+                    assert_eq!(
+                        down,
+                        f8::NEG_INFINITY.to_bits(),
+                        "{i} {n} n_down({v:#010b})"
+                    );
                 }
 
                 let mut up_exp_idx = i + n;
@@ -438,13 +481,22 @@ mod tests {
 
     #[test]
     fn test_ulp_between_inf_nan_zero() {
-        assert_eq!(ulp_between(f8::NEG_INFINITY, f8::INFINITY).unwrap(), f8::ALL_LEN as u8);
-        assert_eq!(ulp_between(f8::INFINITY, f8::NEG_INFINITY).unwrap(), f8::ALL_LEN as u8);
+        assert_eq!(
+            ulp_between(f8::NEG_INFINITY, f8::INFINITY).unwrap(),
+            f8::ALL_LEN as u8
+        );
+        assert_eq!(
+            ulp_between(f8::INFINITY, f8::NEG_INFINITY).unwrap(),
+            f8::ALL_LEN as u8
+        );
         assert_eq!(
             ulp_between(f8::NEG_INFINITY, f8::ALL[f8::ALL_LEN - 1]).unwrap(),
             f8::ALL_LEN as u8 - 1
         );
-        assert_eq!(ulp_between(f8::INFINITY, f8::ALL[0]).unwrap(), f8::ALL_LEN as u8 - 1);
+        assert_eq!(
+            ulp_between(f8::INFINITY, f8::ALL[0]).unwrap(),
+            f8::ALL_LEN as u8 - 1
+        );
 
         assert_eq!(ulp_between(f8::ZERO, f8::NEG_ZERO).unwrap(), 0);
         assert_eq!(ulp_between(f8::NAN, f8::ZERO), None);
@@ -469,7 +521,12 @@ mod tests {
         // of steps.
         let (ls, count) = logspace(f8::from_bits(0x0), f8::from_bits(0x3), 10);
         let ls: Vec<_> = ls.collect();
-        let exp = [f8::from_bits(0x0), f8::from_bits(0x1), f8::from_bits(0x2), f8::from_bits(0x3)];
+        let exp = [
+            f8::from_bits(0x0),
+            f8::from_bits(0x1),
+            f8::from_bits(0x2),
+            f8::from_bits(0x3),
+        ];
         assert_eq!(ls, exp);
         assert_eq!(ls.len(), usize::from(count));
     }

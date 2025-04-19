@@ -67,16 +67,25 @@ impl<F: fmt::Debug, I: fmt::Debug> EitherPrim<F, I> {
 /// Convenience 1-dimensional float domains.
 impl<F: Float> Domain<F> {
     /// x ∈ ℝ
-    const UNBOUNDED: Self =
-        Self { start: Bound::Unbounded, end: Bound::Unbounded, check_points: None };
+    const UNBOUNDED: Self = Self {
+        start: Bound::Unbounded,
+        end: Bound::Unbounded,
+        check_points: None,
+    };
 
     /// x ∈ ℝ >= 0
-    const POSITIVE: Self =
-        Self { start: Bound::Included(F::ZERO), end: Bound::Unbounded, check_points: None };
+    const POSITIVE: Self = Self {
+        start: Bound::Included(F::ZERO),
+        end: Bound::Unbounded,
+        check_points: None,
+    };
 
     /// x ∈ ℝ > 0
-    const STRICTLY_POSITIVE: Self =
-        Self { start: Bound::Excluded(F::ZERO), end: Bound::Unbounded, check_points: None };
+    const STRICTLY_POSITIVE: Self = Self {
+        start: Bound::Excluded(F::ZERO),
+        end: Bound::Unbounded,
+        check_points: None,
+    };
 
     /// Wrap in the float variant of [`EitherPrim`].
     const fn into_prim_float<I>(self) -> EitherPrim<Self, Domain<I>> {
@@ -87,8 +96,11 @@ impl<F: Float> Domain<F> {
 /// Convenience 1-dimensional integer domains.
 impl<I: Int> Domain<I> {
     /// x ∈ ℝ
-    const UNBOUNDED_INT: Self =
-        Self { start: Bound::Unbounded, end: Bound::Unbounded, check_points: None };
+    const UNBOUNDED_INT: Self = Self {
+        start: Bound::Unbounded,
+        end: Bound::Unbounded,
+        check_points: None,
+    };
 
     /// Wrap in the int variant of [`EitherPrim`].
     const fn into_prim_int<F>(self) -> EitherPrim<Domain<F>, Self> {
@@ -99,13 +111,18 @@ impl<I: Int> Domain<I> {
 /// Multidimensional domains, represented as an array of 1-D domains.
 impl<F: Float, I: Int> EitherPrim<Domain<F>, Domain<I>> {
     /// x ∈ ℝ
-    const UNBOUNDED1: [Self; 1] =
-        [Domain { start: Bound::Unbounded, end: Bound::Unbounded, check_points: None }
-            .into_prim_float()];
+    const UNBOUNDED1: [Self; 1] = [Domain {
+        start: Bound::Unbounded,
+        end: Bound::Unbounded,
+        check_points: None,
+    }
+    .into_prim_float()];
 
     /// {x1, x2} ∈ ℝ
-    const UNBOUNDED2: [Self; 2] =
-        [Domain::UNBOUNDED.into_prim_float(), Domain::UNBOUNDED.into_prim_float()];
+    const UNBOUNDED2: [Self; 2] = [
+        Domain::UNBOUNDED.into_prim_float(),
+        Domain::UNBOUNDED.into_prim_float(),
+    ];
 
     /// {x1, x2, x3} ∈ ℝ
     const UNBOUNDED3: [Self; 3] = [
@@ -115,8 +132,10 @@ impl<F: Float, I: Int> EitherPrim<Domain<F>, Domain<I>> {
     ];
 
     /// {x1, x2} ∈ ℝ, one float and one int
-    const UNBOUNDED_F_I: [Self; 2] =
-        [Domain::UNBOUNDED.into_prim_float(), Domain::UNBOUNDED_INT.into_prim_int()];
+    const UNBOUNDED_F_I: [Self; 2] = [
+        Domain::UNBOUNDED.into_prim_float(),
+        Domain::UNBOUNDED_INT.into_prim_int(),
+    ];
 
     /// x ∈ ℝ >= 0
     const POSITIVE: [Self; 1] = [Domain::POSITIVE.into_prim_float()];
@@ -133,9 +152,12 @@ impl<F: Float, I: Int> EitherPrim<Domain<F>, Domain<I>> {
     .into_prim_float()];
 
     /// Domain for `acosh`
-    const ACOSH: [Self; 1] =
-        [Domain { start: Bound::Included(F::ONE), end: Bound::Unbounded, check_points: None }
-            .into_prim_float()];
+    const ACOSH: [Self; 1] = [Domain {
+        start: Bound::Included(F::ONE),
+        end: Bound::Unbounded,
+        check_points: None,
+    }
+    .into_prim_float()];
 
     /// Domain for `atanh`
     const ATANH: [Self; 1] = [Domain {
@@ -157,9 +179,12 @@ impl<F: Float, I: Int> EitherPrim<Domain<F>, Domain<I>> {
     const LOG: [Self; 1] = Self::STRICTLY_POSITIVE;
 
     /// Domain for `log1p` i.e. `log(1 + x)`
-    const LOG1P: [Self; 1] =
-        [Domain { start: Bound::Excluded(F::NEG_ONE), end: Bound::Unbounded, check_points: None }
-            .into_prim_float()];
+    const LOG1P: [Self; 1] = [Domain {
+        start: Bound::Excluded(F::NEG_ONE),
+        end: Bound::Unbounded,
+        check_points: None,
+    }
+    .into_prim_float()];
 
     /// Domain for `sqrt`
     const SQRT: [Self; 1] = Self::POSITIVE;
@@ -187,8 +212,10 @@ impl<F: Float, I: Int> EitherPrim<Domain<F>, Domain<I>> {
     /// Domain for `jn` and `yn`.
     // FIXME: the domain should provide some sort of "reasonable range" so we don't actually test
     // the entire system unbounded.
-    const BESSEL_N: [Self; 2] =
-        [Domain::UNBOUNDED_INT.into_prim_int(), Domain::UNBOUNDED.into_prim_float()];
+    const BESSEL_N: [Self; 2] = [
+        Domain::UNBOUNDED_INT.into_prim_int(),
+        Domain::UNBOUNDED.into_prim_float(),
+    ];
 }
 
 /// Get the domain for a given function.

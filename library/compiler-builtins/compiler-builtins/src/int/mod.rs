@@ -12,9 +12,7 @@ mod traits;
 pub mod udiv;
 
 pub use big::{i256, u256};
-
 #[cfg(not(feature = "public-test-deps"))]
 pub(crate) use traits::{CastFrom, CastInto, DInt, HInt, Int, MinInt};
-
 #[cfg(feature = "public-test-deps")]
 pub use traits::{CastFrom, CastInto, DInt, HInt, Int, MinInt};

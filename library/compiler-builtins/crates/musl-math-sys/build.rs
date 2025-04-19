@@ -8,7 +8,10 @@ const LIB_NAME: &str = "musl_math_prefixed";
 
 /// Files that have more than one symbol. Map of file names to the symbols defined in that file.
 const MULTIPLE_SYMBOLS: &[(&str, &[&str])] = &[
-    ("__invtrigl", &["__invtrigl", "__invtrigl_R", "__pio2_hi", "__pio2_lo"]),
+    (
+        "__invtrigl",
+        &["__invtrigl", "__invtrigl_R", "__pio2_hi", "__pio2_lo"],
+    ),
     ("__polevll", &["__polevll", "__p1evll"]),
     ("erf", &["erf", "erfc"]),
     ("erff", &["erff", "erfcf"]),
@@ -82,9 +85,16 @@ impl Config {
         let musl_dir = manifest_dir.join("musl");
 
         let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-        let musl_arch = if target_arch == "x86" { "i386".to_owned() } else { target_arch.clone() };
+        let musl_arch = if target_arch == "x86" {
+            "i386".to_owned()
+        } else {
+            target_arch.clone()
+        };
 
-        println!("cargo::rerun-if-changed={}/c_patches", manifest_dir.display());
+        println!(
+            "cargo::rerun-if-changed={}/c_patches",
+            manifest_dir.display()
+        );
         println!("cargo::rerun-if-changed={}", musl_dir.display());
 
         Self {
@@ -108,7 +118,10 @@ fn build_musl_math(cfg: &Config) {
     let musl_dir = &cfg.musl_dir;
     let math = musl_dir.join("src/math");
     let arch_dir = musl_dir.join("arch").join(&cfg.musl_arch);
-    assert!(math.exists(), "musl source not found. Is the submodule up to date?");
+    assert!(
+        math.exists(),
+        "musl source not found. Is the submodule up to date?"
+    );
 
     let source_map = find_math_source(&math, cfg);
     let out_path = cfg.out_dir.join(format!("lib{LIB_NAME}.a"));
@@ -125,7 +138,11 @@ fn build_musl_math(cfg: &Config) {
         .stderr(Stdio::inherit())
         .output()
         .unwrap();
-    assert!(sed_stat.status.success(), "sed command failed: {:?}", sed_stat.status);
+    assert!(
+        sed_stat.status.success(),
+        "sed command failed: {:?}",
+        sed_stat.status
+    );
 
     fs::write(obj_include.join("bits/alltypes.h"), sed_stat.stdout).unwrap();
 
@@ -163,8 +180,9 @@ fn build_musl_math(cfg: &Config) {
 
         // Trickery! Redefine the symbol names to have the prefix `musl_`, which allows us to
         // differentiate these symbols from whatever we provide.
-        if let Some((_names, syms)) =
-            MULTIPLE_SYMBOLS.iter().find(|(name, _syms)| *name == sym_name)
+        if let Some((_names, syms)) = MULTIPLE_SYMBOLS
+            .iter()
+            .find(|(name, _syms)| *name == sym_name)
         {
             // Handle the occasional file that defines multiple symbols
             for sym in *syms {
@@ -291,21 +309,34 @@ fn validate_archive_symbols(out_path: &Path) {
     ];
 
     // List global undefined symbols
-    let out =
-        Command::new("nm").arg("-guj").arg(out_path).stderr(Stdio::inherit()).output().unwrap();
+    let out = Command::new("nm")
+        .arg("-guj")
+        .arg(out_path)
+        .stderr(Stdio::inherit())
+        .output()
+        .unwrap();
 
     let undef = str::from_utf8(&out.stdout).unwrap();
     let mut undef = undef.lines().collect::<Vec<_>>();
     undef.retain(|sym| {
         // Account for file formats that add a leading `_`
-        !ALLOWED_UNDEF_PFX.iter().any(|pfx| sym.starts_with(pfx) || sym[1..].starts_with(pfx))
+        !ALLOWED_UNDEF_PFX
+            .iter()
+            .any(|pfx| sym.starts_with(pfx) || sym[1..].starts_with(pfx))
     });
 
-    assert!(undef.is_empty(), "found disallowed undefined symbols: {undef:#?}");
+    assert!(
+        undef.is_empty(),
+        "found disallowed undefined symbols: {undef:#?}"
+    );
 
     // Find any symbols that are missing the `_musl_` prefix`
-    let out =
-        Command::new("nm").arg("-gUj").arg(out_path).stderr(Stdio::inherit()).output().unwrap();
+    let out = Command::new("nm")
+        .arg("-gUj")
+        .arg(out_path)
+        .stderr(Stdio::inherit())
+        .output()
+        .unwrap();
 
     let defined = str::from_utf8(&out.stdout).unwrap();
     let mut defined = defined.lines().collect::<Vec<_>>();

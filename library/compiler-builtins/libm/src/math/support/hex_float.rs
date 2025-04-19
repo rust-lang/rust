@@ -234,7 +234,9 @@ const fn parse_hex(mut b: &[u8]) -> Result<Parsed, HexFloatParseError> {
         match c {
             b'.' => {
                 if seen_point {
-                    return Err(HexFloatParseError("unexpected '.' parsing fractional digits"));
+                    return Err(HexFloatParseError(
+                        "unexpected '.' parsing fractional digits",
+                    ));
                 }
                 seen_point = true;
                 continue;
@@ -294,7 +296,9 @@ const fn parse_hex(mut b: &[u8]) -> Result<Parsed, HexFloatParseError> {
     }
 
     if !some_digits {
-        return Err(HexFloatParseError("at least one exponent digit is required"));
+        return Err(HexFloatParseError(
+            "at least one exponent digit is required",
+        ));
     };
 
     {
@@ -542,7 +546,11 @@ mod parse_tests {
         for k in -149..=127 {
             let s = format!("0x1p{k}");
             let x = hf32(&s);
-            let y = if k < 0 { 0.5f32.powi(-k) } else { 2.0f32.powi(k) };
+            let y = if k < 0 {
+                0.5f32.powi(-k)
+            } else {
+                2.0f32.powi(k)
+            };
             assert_eq!(x, y);
         }
 
@@ -613,9 +621,14 @@ mod parse_tests {
     fn rounding_extreme_underflow() {
         for k in 1..1000 {
             let s = format!("0x1p{}", -149 - k);
-            let Ok((bits, status)) = parse_any(&s, 32, 23, Round::Nearest) else { unreachable!() };
+            let Ok((bits, status)) = parse_any(&s, 32, 23, Round::Nearest) else {
+                unreachable!()
+            };
             assert_eq!(bits, 0, "{s} should round to zero, got bits={bits}");
-            assert!(status.underflow(), "should indicate underflow when parsing {s}");
+            assert!(
+                status.underflow(),
+                "should indicate underflow when parsing {s}"
+            );
             assert!(status.inexact(), "should indicate inexact when parsing {s}");
         }
     }
@@ -623,11 +636,15 @@ mod parse_tests {
     fn long_tail() {
         for k in 1..1000 {
             let s = format!("0x1.{}p0", "0".repeat(k));
-            let Ok(bits) = parse_hex_exact(&s, 32, 23) else { panic!("parsing {s} failed") };
+            let Ok(bits) = parse_hex_exact(&s, 32, 23) else {
+                panic!("parsing {s} failed")
+            };
             assert_eq!(f32::from_bits(bits as u32), 1.0);
 
             let s = format!("0x1.{}1p0", "0".repeat(k));
-            let Ok((bits, status)) = parse_any(&s, 32, 23, Round::Nearest) else { unreachable!() };
+            let Ok((bits, status)) = parse_any(&s, 32, 23, Round::Nearest) else {
+                unreachable!()
+            };
             if status.inexact() {
                 assert!(1.0 == f32::from_bits(bits as u32));
             } else {
@@ -839,7 +856,10 @@ mod parse_tests {
         assert_eq!(hf32!("0x1.ffep+8").to_bits(), 0x43fff000_u32);
         assert_eq!(hf64!("0x1.ffep+8").to_bits(), 0x407ffe0000000000_u64);
         #[cfg(f128_enabled)]
-        assert_eq!(hf128!("0x1.ffep+8").to_bits(), 0x4007ffe0000000000000000000000000_u128);
+        assert_eq!(
+            hf128!("0x1.ffep+8").to_bits(),
+            0x4007ffe0000000000000000000000000_u128
+        );
     }
 }
 
@@ -1143,8 +1163,14 @@ mod print_tests {
 
         #[cfg(f128_enabled)]
         {
-            assert_eq!(Hexf(f128::MAX).to_string(), "0x1.ffffffffffffffffffffffffffffp+16383");
-            assert_eq!(Hexf(f128::MIN).to_string(), "-0x1.ffffffffffffffffffffffffffffp+16383");
+            assert_eq!(
+                Hexf(f128::MAX).to_string(),
+                "0x1.ffffffffffffffffffffffffffffp+16383"
+            );
+            assert_eq!(
+                Hexf(f128::MIN).to_string(),
+                "-0x1.ffffffffffffffffffffffffffffp+16383"
+            );
             assert_eq!(Hexf(f128::ZERO).to_string(), "0x0p+0");
             assert_eq!(Hexf(f128::NEG_ZERO).to_string(), "-0x0p+0");
             assert_eq!(Hexf(f128::NAN).to_string(), "NaN");

@@ -42,7 +42,11 @@ pub fn sinf(x: f32) -> f32 {
         if ix < 0x39800000 {
             /* |x| < 2**-12 */
             /* raise inexact if x!=0 and underflow if subnormal */
-            force_eval!(if ix < 0x00800000 { x / x1p120 } else { x + x1p120 });
+            force_eval!(if ix < 0x00800000 {
+                x / x1p120
+            } else {
+                x + x1p120
+            });
             return x;
         }
         return k_sinf(x64);
@@ -57,7 +61,11 @@ pub fn sinf(x: f32) -> f32 {
                 return k_cosf(x64 - S1_PIO2);
             }
         }
-        return k_sinf(if sign { -(x64 + S2_PIO2) } else { -(x64 - S2_PIO2) });
+        return k_sinf(if sign {
+            -(x64 + S2_PIO2)
+        } else {
+            -(x64 - S2_PIO2)
+        });
     }
     if ix <= 0x40e231d5 {
         /* |x| ~<= 9*pi/4 */

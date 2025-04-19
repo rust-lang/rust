@@ -480,6 +480,7 @@ mod intrinsics {
 
 fn run() {
     use core::hint::black_box as bb;
+
     use intrinsics::*;
 
     // FIXME(f16_f128): some PPC f128 <-> int conversion functions have the wrong names

@@ -21,7 +21,6 @@ extern crate alloc;
 
 use compiler_builtins::float::Float;
 use compiler_builtins::int::{Int, MinInt};
-
 use rand_xoshiro::Xoshiro128StarStar;
 use rand_xoshiro::rand_core::{RngCore, SeedableRng};
 

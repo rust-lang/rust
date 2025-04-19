@@ -70,7 +70,9 @@ fn value_count<F: Float>() -> Option<u64>
 where
     u64: TryFrom<F::Int>,
 {
-    u64::try_from(F::Int::MAX).ok().and_then(|max| max.checked_add(1))
+    u64::try_from(F::Int::MAX)
+        .ok()
+        .and_then(|max| max.checked_add(1))
 }
 
 /// Returns an iterator of every possible value of type `F`.
@@ -162,8 +164,11 @@ macro_rules! impl_spaced_input {
                             .flat_map(move |(first, second)| {
                                 iter2.clone().map(move |third| (first, second, third))
                             });
-                        let count =
-                            steps0.checked_mul(steps1).unwrap().checked_mul(steps2).unwrap();
+                        let count = steps0
+                            .checked_mul(steps1)
+                            .unwrap()
+                            .checked_mul(steps2)
+                            .unwrap();
 
                         (EitherIter::B(iter), count)
                     }

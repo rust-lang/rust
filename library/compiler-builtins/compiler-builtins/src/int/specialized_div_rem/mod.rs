@@ -58,7 +58,6 @@ mod delegate;
 #[allow(unused_imports)]
 #[cfg(not(feature = "public-test-deps"))]
 pub(crate) use self::delegate::u128_divide_sparc;
-
 #[cfg(feature = "public-test-deps")]
 pub use self::delegate::u128_divide_sparc;
 

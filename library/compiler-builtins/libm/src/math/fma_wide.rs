@@ -75,11 +75,18 @@ where
             }
         }
 
-        return FpResult { val: result.narrow(), status };
+        return FpResult {
+            val: result.narrow(),
+            status,
+        };
     }
 
     let neg = ui >> (B::BITS - 1) != IntTy::<B>::ZERO;
-    let err = if neg == (zb > xy) { xy - result + zb } else { zb - result + xy };
+    let err = if neg == (zb > xy) {
+        xy - result + zb
+    } else {
+        zb - result + xy
+    };
     if neg == (err < B::ZERO) {
         ui += one;
     } else {

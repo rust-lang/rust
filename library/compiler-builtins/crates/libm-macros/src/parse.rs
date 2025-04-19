@@ -16,7 +16,9 @@ pub struct Invocation {
 
 impl Parse for Invocation {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        Ok(Self { fields: input.parse_terminated(Mapping::parse, Token![,])? })
+        Ok(Self {
+            fields: input.parse_terminated(Mapping::parse, Token![,])?,
+        })
     }
 }
 
@@ -30,7 +32,11 @@ struct Mapping {
 
 impl Parse for Mapping {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        Ok(Self { name: input.parse()?, _sep: input.parse()?, expr: input.parse()? })
+        Ok(Self {
+            name: input.parse()?,
+            _sep: input.parse()?,
+            expr: input.parse()?,
+        })
     }
 }
 
@@ -133,7 +139,13 @@ fn extract_fn_extra_field(expr: Expr) -> syn::Result<BTreeMap<Ident, Expr>> {
         return Err(e);
     };
 
-    let ExprMatch { attrs, match_token: _, expr, brace_token: _, arms } = mexpr;
+    let ExprMatch {
+        attrs,
+        match_token: _,
+        expr,
+        brace_token: _,
+        arms,
+    } = mexpr;
 
     expect_empty_attrs(&attrs)?;
 
@@ -146,7 +158,14 @@ fn extract_fn_extra_field(expr: Expr) -> syn::Result<BTreeMap<Ident, Expr>> {
     let mut res = BTreeMap::new();
 
     for arm in arms {
-        let Arm { attrs, pat, guard, fat_arrow_token: _, body, comma: _ } = arm;
+        let Arm {
+            attrs,
+            pat,
+            guard,
+            fat_arrow_token: _,
+            body,
+            comma: _,
+        } = arm;
 
         expect_empty_attrs(&attrs)?;
 
@@ -177,15 +196,20 @@ fn expect_empty_attrs(attrs: &[Attribute]) -> syn::Result<()> {
         return Ok(());
     }
 
-    let e =
-        syn::Error::new(attrs.first().unwrap().span(), "no attributes allowed in this position");
+    let e = syn::Error::new(
+        attrs.first().unwrap().span(),
+        "no attributes allowed in this position",
+    );
     Err(e)
 }
 
 /// Extract a named field from a map, raising an error if it doesn't exist.
 fn expect_field(v: &mut Vec<Mapping>, name: &str) -> syn::Result<Expr> {
     let pos = v.iter().position(|v| v.name == name).ok_or_else(|| {
-        syn::Error::new(Span::call_site(), format!("missing expected field `{name}`"))
+        syn::Error::new(
+            Span::call_site(),
+            format!("missing expected field `{name}`"),
+        )
     })?;
 
     Ok(v.remove(pos).expr)

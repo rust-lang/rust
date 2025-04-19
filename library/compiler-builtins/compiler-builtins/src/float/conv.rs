@@ -1,8 +1,7 @@
 use core::ops::Neg;
 
-use crate::int::{CastFrom, CastInto, Int, MinInt};
-
 use super::Float;
+use crate::int::{CastFrom, CastInto, Int, MinInt};
 
 /// Conversions from integers to floats.
 ///

@@ -239,10 +239,18 @@ pub fn pow(x: f64, y: f64) -> f64 {
 
         /* over/underflow if x is not close to one */
         if ix < 0x3fefffff {
-            return if hy < 0 { s * HUGE * HUGE } else { s * TINY * TINY };
+            return if hy < 0 {
+                s * HUGE * HUGE
+            } else {
+                s * TINY * TINY
+            };
         }
         if ix > 0x3ff00000 {
-            return if hy > 0 { s * HUGE * HUGE } else { s * TINY * TINY };
+            return if hy > 0 {
+                s * HUGE * HUGE
+            } else {
+                s * TINY * TINY
+            };
         }
 
         /* now |1-x| is TINY <= 2**-20, suffice to compute
@@ -439,7 +447,11 @@ mod tests {
     fn pow_test(base: f64, exponent: f64, expected: f64) {
         let res = pow(base, exponent);
         assert!(
-            if expected.is_nan() { res.is_nan() } else { pow(base, exponent) == expected },
+            if expected.is_nan() {
+                res.is_nan()
+            } else {
+                pow(base, exponent) == expected
+            },
             "{} ** {} was {} instead of {}",
             base,
             exponent,
@@ -449,11 +461,13 @@ mod tests {
     }
 
     fn test_sets_as_base(sets: &[&[f64]], exponent: f64, expected: f64) {
-        sets.iter().for_each(|s| s.iter().for_each(|val| pow_test(*val, exponent, expected)));
+        sets.iter()
+            .for_each(|s| s.iter().for_each(|val| pow_test(*val, exponent, expected)));
     }
 
     fn test_sets_as_exponent(base: f64, sets: &[&[f64]], expected: f64) {
-        sets.iter().for_each(|s| s.iter().for_each(|val| pow_test(base, *val, expected)));
+        sets.iter()
+            .for_each(|s| s.iter().for_each(|val| pow_test(base, *val, expected)));
     }
 
     fn test_sets(sets: &[&[f64]], computed: &dyn Fn(f64) -> f64, expected: &dyn Fn(f64) -> f64) {
@@ -467,7 +481,11 @@ mod tests {
                 #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
                 let res = force_eval!(res);
                 assert!(
-                    if exp.is_nan() { res.is_nan() } else { exp == res },
+                    if exp.is_nan() {
+                        res.is_nan()
+                    } else {
+                        exp == res
+                    },
                     "test for {} was {} instead of {}",
                     val,
                     res,
@@ -515,7 +533,9 @@ mod tests {
         // (-Infinity ^ anything but odd ints should be == -0 ^ (-anything))
         // We can lump in pos/neg odd ints here because they don't seem to
         // cause panics (div by zero) in release mode (I think).
-        test_sets(ALL, &|v: f64| pow(f64::NEG_INFINITY, v), &|v: f64| pow(-0.0, -v));
+        test_sets(ALL, &|v: f64| pow(f64::NEG_INFINITY, v), &|v: f64| {
+            pow(-0.0, -v)
+        });
     }
 
     #[test]
@@ -582,11 +602,15 @@ mod tests {
 
         // Factoring -1 out:
         // (negative anything ^ integer should be (-1 ^ integer) * (positive anything ^ integer))
-        [POS_ZERO, NEG_ZERO, POS_ONE, NEG_ONE, POS_EVENS, NEG_EVENS].iter().for_each(|int_set| {
-            int_set.iter().for_each(|int| {
-                test_sets(ALL, &|v: f64| pow(-v, *int), &|v: f64| pow(-1.0, *int) * pow(v, *int));
-            })
-        });
+        [POS_ZERO, NEG_ZERO, POS_ONE, NEG_ONE, POS_EVENS, NEG_EVENS]
+            .iter()
+            .for_each(|int_set| {
+                int_set.iter().for_each(|int| {
+                    test_sets(ALL, &|v: f64| pow(-v, *int), &|v: f64| {
+                        pow(-1.0, *int) * pow(v, *int)
+                    });
+                })
+            });
 
         // Negative base (imaginary results):
         // (-anything except 0 and Infinity ^ non-integer should be NAN)

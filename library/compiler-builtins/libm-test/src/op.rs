@@ -16,7 +16,7 @@
 use std::fmt;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
-pub use shared::{FloatTy, MathOpInfo, Ty, ALL_OPERATIONS};
+pub use shared::{ALL_OPERATIONS, FloatTy, MathOpInfo, Ty};
 
 use crate::{CheckOutput, Float, TupleCall};
 

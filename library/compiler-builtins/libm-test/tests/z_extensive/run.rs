@@ -28,8 +28,15 @@ pub fn run() {
 
     // With default parallelism, the CPU doesn't saturate. We don't need to be nice to
     // other processes, so do 1.5x to make sure we use all available resources.
-    let threads = std::thread::available_parallelism().map(Into::into).unwrap_or(0) * 3 / 2;
-    rayon::ThreadPoolBuilder::new().num_threads(threads).build_global().unwrap();
+    let threads = std::thread::available_parallelism()
+        .map(Into::into)
+        .unwrap_or(0)
+        * 3
+        / 2;
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(threads)
+        .build_global()
+        .unwrap();
 
     libtest_mimic::run(&args, tests).exit();
 }
@@ -134,7 +141,9 @@ where
     });
 
     // Run the actual tests
-    let res = chunks.par_bridge().try_for_each_init(Op::new_mp, test_single_chunk);
+    let res = chunks
+        .par_bridge()
+        .try_for_each_init(Op::new_mp, test_single_chunk);
 
     let real_total = completed.load(Ordering::Relaxed);
     pb.complete(real_total);
@@ -179,7 +188,12 @@ impl Progress {
         let pb = ProgressBar::new(total);
         pb.set_style(initial_style);
 
-        Self { pb, final_style, name_padded, is_tty }
+        Self {
+            pb,
+            final_style,
+            name_padded,
+            is_tty,
+        }
     }
 
     fn update(&self, completed: u64, input: impl fmt::Debug) {

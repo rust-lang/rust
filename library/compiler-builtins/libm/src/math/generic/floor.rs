@@ -75,7 +75,14 @@ mod tests {
 
     /// Test against https://en.cppreference.com/w/cpp/numeric/math/floor
     fn spec_test<F: Float>(cases: &[(F, F, Status)]) {
-        let roundtrip = [F::ZERO, F::ONE, F::NEG_ONE, F::NEG_ZERO, F::INFINITY, F::NEG_INFINITY];
+        let roundtrip = [
+            F::ZERO,
+            F::ONE,
+            F::NEG_ONE,
+            F::NEG_ZERO,
+            F::INFINITY,
+            F::NEG_INFINITY,
+        ];
 
         for x in roundtrip {
             let FpResult { val, status } = floor_status(x);

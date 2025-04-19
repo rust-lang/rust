@@ -1,6 +1,6 @@
+use alloc::vec::Vec;
 use core::cell::RefCell;
 
-use alloc::vec::Vec;
 use compiler_builtins::float::Float;
 
 /// Fuzz with these many items to ensure equal functions

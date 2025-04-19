@@ -15,7 +15,9 @@ pub const EXTENSIVE_ITER_ENV: &str = "LIBM_EXTENSIVE_ITERATIONS";
 
 /// The override value, if set by the above environment.
 static EXTENSIVE_ITER_OVERRIDE: LazyLock<Option<u64>> = LazyLock::new(|| {
-    env::var(EXTENSIVE_ITER_ENV).map(|v| v.parse().expect("failed to parse iteration count")).ok()
+    env::var(EXTENSIVE_ITER_ENV)
+        .map(|v| v.parse().expect("failed to parse iteration count"))
+        .ok()
 });
 
 /// Specific tests that need to have a reduced amount of iterations to complete in a reasonable
@@ -115,7 +117,10 @@ static EXTENSIVE: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
     let mut ret = Vec::new();
 
     let append_ty_ops = |ret: &mut Vec<_>, fty: FloatTy| {
-        let iter = Identifier::ALL.iter().filter(move |id| id.math_op().float_ty == fty).copied();
+        let iter = Identifier::ALL
+            .iter()
+            .filter(move |id| id.math_op().float_ty == fty)
+            .copied();
         ret.extend(iter);
     };
 
@@ -276,7 +281,10 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
     let seed_msg = match ctx.gen_kind {
         GeneratorKind::QuickSpaced | GeneratorKind::Extensive => String::new(),
         GeneratorKind::Random => {
-            format!(" using `{SEED_ENV}={}`", str::from_utf8(SEED.as_slice()).unwrap())
+            format!(
+                " using `{SEED_ENV}={}`",
+                str::from_utf8(SEED.as_slice()).unwrap()
+            )
         }
         GeneratorKind::EdgeCases | GeneratorKind::List => unimplemented!(),
     };
@@ -303,7 +311,10 @@ pub fn int_range(ctx: &CheckCtx, argnum: usize) -> RangeInclusive<i32> {
         return i32::MIN..=i32::MAX;
     }
 
-    assert_eq!(argnum, 0, "For `jn`/`yn`, only the first argument takes an integer");
+    assert_eq!(
+        argnum, 0,
+        "For `jn`/`yn`, only the first argument takes an integer"
+    );
 
     // The integer argument to `jn` is an iteration count. Limit this to ensure tests can be
     // completed in a reasonable amount of time.
@@ -331,7 +342,11 @@ pub fn check_point_count(ctx: &CheckCtx) -> usize {
         "check_point_count is intended for edge case tests"
     );
     let t_env = TestEnv::from_env(ctx);
-    if t_env.slow_platform || !cfg!(optimizations_enabled) { 4 } else { 10 }
+    if t_env.slow_platform || !cfg!(optimizations_enabled) {
+        4
+    } else {
+        10
+    }
 }
 
 /// When validating points of interest (e.g. asymptotes, inflection points, extremes), also check

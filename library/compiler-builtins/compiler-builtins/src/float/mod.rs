@@ -11,6 +11,5 @@ pub mod trunc;
 
 #[cfg(not(feature = "public-test-deps"))]
 pub(crate) use traits::{Float, HalfRep};
-
 #[cfg(feature = "public-test-deps")]
 pub use traits::{Float, HalfRep};

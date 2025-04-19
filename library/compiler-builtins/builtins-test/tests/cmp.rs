@@ -97,7 +97,6 @@ mod float_comparisons {
             __eqkf2 as __eqtf2, __gekf2 as __getf2, __gtkf2 as __gttf2, __lekf2 as __letf2,
             __ltkf2 as __lttf2, __nekf2 as __netf2, __unordkf2 as __unordtf2,
         };
-
         #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
         use compiler_builtins::float::cmp::{
             __eqtf2, __getf2, __gttf2, __letf2, __lttf2, __netf2, __unordtf2,

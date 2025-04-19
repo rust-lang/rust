@@ -306,5 +306,9 @@ pub fn erfc(x: f64) -> f64 {
     }
 
     let x1p_1022 = f64::from_bits(0x0010000000000000);
-    if sign != 0 { 2.0 - x1p_1022 } else { x1p_1022 * x1p_1022 }
+    if sign != 0 {
+        2.0 - x1p_1022
+    } else {
+        x1p_1022 * x1p_1022
+    }
 }

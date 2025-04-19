@@ -221,7 +221,11 @@ macro_rules! impl_parse_tuple_via_rug {
         impl ParseTuple for ($ty, $ty, $ty) {
             fn parse(input: &[&str]) -> Self {
                 assert_eq!(input.len(), 3, "expected three arguments, got {input:?}");
-                (parse_rug(input, 0), parse_rug(input, 1), parse_rug(input, 2))
+                (
+                    parse_rug(input, 0),
+                    parse_rug(input, 1),
+                    parse_rug(input, 2),
+                )
             }
         }
     };

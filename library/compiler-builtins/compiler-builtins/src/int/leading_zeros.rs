@@ -60,11 +60,7 @@ mod implementation {
         }
         // the last two bisections are combined into one conditional
         t = x >> 1;
-        if t != T::ZERO {
-            z - 2
-        } else {
-            z - x.cast()
-        }
+        if t != T::ZERO { z - 2 } else { z - x.cast() }
 
         // We could potentially save a few cycles by using the LUT trick from
         // "https://embeddedgurus.com/state-space/2014/09/

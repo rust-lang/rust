@@ -7,7 +7,10 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
     (
         // `fn(f16) -> f16`
         FloatTy::F16,
-        Signature { args: &[Ty::F16], returns: &[Ty::F16] },
+        Signature {
+            args: &[Ty::F16],
+            returns: &[Ty::F16],
+        },
         None,
         &[
             "ceilf16",
@@ -23,7 +26,10 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
     (
         // `fn(f32) -> f32`
         FloatTy::F32,
-        Signature { args: &[Ty::F32], returns: &[Ty::F32] },
+        Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::F32],
+        },
         None,
         &[
             "acosf",
@@ -68,7 +74,10 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
     (
         // `(f64) -> f64`
         FloatTy::F64,
-        Signature { args: &[Ty::F64], returns: &[Ty::F64] },
+        Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::F64],
+        },
         None,
         &[
             "acos",
@@ -113,7 +122,10 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
     (
         // `fn(f128) -> f128`
         FloatTy::F128,
-        Signature { args: &[Ty::F128], returns: &[Ty::F128] },
+        Signature {
+            args: &[Ty::F128],
+            returns: &[Ty::F128],
+        },
         None,
         &[
             "ceilf128",
@@ -129,7 +141,10 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
     (
         // `(f16, f16) -> f16`
         FloatTy::F16,
-        Signature { args: &[Ty::F16, Ty::F16], returns: &[Ty::F16] },
+        Signature {
+            args: &[Ty::F16, Ty::F16],
+            returns: &[Ty::F16],
+        },
         None,
         &[
             "copysignf16",
@@ -146,7 +161,10 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
     (
         // `(f32, f32) -> f32`
         FloatTy::F32,
-        Signature { args: &[Ty::F32, Ty::F32], returns: &[Ty::F32] },
+        Signature {
+            args: &[Ty::F32, Ty::F32],
+            returns: &[Ty::F32],
+        },
         None,
         &[
             "atan2f",
@@ -168,7 +186,10 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
     (
         // `(f64, f64) -> f64`
         FloatTy::F64,
-        Signature { args: &[Ty::F64, Ty::F64], returns: &[Ty::F64] },
+        Signature {
+            args: &[Ty::F64, Ty::F64],
+            returns: &[Ty::F64],
+        },
         None,
         &[
             "atan2",
@@ -190,7 +211,10 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
     (
         // `(f128, f128) -> f128`
         FloatTy::F128,
-        Signature { args: &[Ty::F128, Ty::F128], returns: &[Ty::F128] },
+        Signature {
+            args: &[Ty::F128, Ty::F128],
+            returns: &[Ty::F128],
+        },
         None,
         &[
             "copysignf128",
@@ -207,134 +231,215 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
     (
         // `(f32, f32, f32) -> f32`
         FloatTy::F32,
-        Signature { args: &[Ty::F32, Ty::F32, Ty::F32], returns: &[Ty::F32] },
+        Signature {
+            args: &[Ty::F32, Ty::F32, Ty::F32],
+            returns: &[Ty::F32],
+        },
         None,
         &["fmaf"],
     ),
     (
         // `(f64, f64, f64) -> f64`
         FloatTy::F64,
-        Signature { args: &[Ty::F64, Ty::F64, Ty::F64], returns: &[Ty::F64] },
+        Signature {
+            args: &[Ty::F64, Ty::F64, Ty::F64],
+            returns: &[Ty::F64],
+        },
         None,
         &["fma"],
     ),
     (
         // `(f128, f128, f128) -> f128`
         FloatTy::F128,
-        Signature { args: &[Ty::F128, Ty::F128, Ty::F128], returns: &[Ty::F128] },
+        Signature {
+            args: &[Ty::F128, Ty::F128, Ty::F128],
+            returns: &[Ty::F128],
+        },
         None,
         &["fmaf128"],
     ),
     (
         // `(f32) -> i32`
         FloatTy::F32,
-        Signature { args: &[Ty::F32], returns: &[Ty::I32] },
+        Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::I32],
+        },
         None,
         &["ilogbf"],
     ),
     (
         // `(f64) -> i32`
         FloatTy::F64,
-        Signature { args: &[Ty::F64], returns: &[Ty::I32] },
+        Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::I32],
+        },
         None,
         &["ilogb"],
     ),
     (
         // `(i32, f32) -> f32`
         FloatTy::F32,
-        Signature { args: &[Ty::I32, Ty::F32], returns: &[Ty::F32] },
+        Signature {
+            args: &[Ty::I32, Ty::F32],
+            returns: &[Ty::F32],
+        },
         None,
         &["jnf", "ynf"],
     ),
     (
         // `(i32, f64) -> f64`
         FloatTy::F64,
-        Signature { args: &[Ty::I32, Ty::F64], returns: &[Ty::F64] },
+        Signature {
+            args: &[Ty::I32, Ty::F64],
+            returns: &[Ty::F64],
+        },
         None,
         &["jn", "yn"],
     ),
     (
         // `(f16, i32) -> f16`
         FloatTy::F16,
-        Signature { args: &[Ty::F16, Ty::I32], returns: &[Ty::F16] },
+        Signature {
+            args: &[Ty::F16, Ty::I32],
+            returns: &[Ty::F16],
+        },
         None,
         &["ldexpf16", "scalbnf16"],
     ),
     (
         // `(f32, i32) -> f32`
         FloatTy::F32,
-        Signature { args: &[Ty::F32, Ty::I32], returns: &[Ty::F32] },
+        Signature {
+            args: &[Ty::F32, Ty::I32],
+            returns: &[Ty::F32],
+        },
         None,
         &["ldexpf", "scalbnf"],
     ),
     (
         // `(f64, i64) -> f64`
         FloatTy::F64,
-        Signature { args: &[Ty::F64, Ty::I32], returns: &[Ty::F64] },
+        Signature {
+            args: &[Ty::F64, Ty::I32],
+            returns: &[Ty::F64],
+        },
         None,
         &["ldexp", "scalbn"],
     ),
     (
         // `(f128, i32) -> f128`
         FloatTy::F128,
-        Signature { args: &[Ty::F128, Ty::I32], returns: &[Ty::F128] },
+        Signature {
+            args: &[Ty::F128, Ty::I32],
+            returns: &[Ty::F128],
+        },
         None,
         &["ldexpf128", "scalbnf128"],
     ),
     (
         // `(f32, &mut f32) -> f32` as `(f32) -> (f32, f32)`
         FloatTy::F32,
-        Signature { args: &[Ty::F32], returns: &[Ty::F32, Ty::F32] },
-        Some(Signature { args: &[Ty::F32, Ty::MutF32], returns: &[Ty::F32] }),
+        Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::F32, Ty::F32],
+        },
+        Some(Signature {
+            args: &[Ty::F32, Ty::MutF32],
+            returns: &[Ty::F32],
+        }),
         &["modff"],
     ),
     (
         // `(f64, &mut f64) -> f64` as  `(f64) -> (f64, f64)`
         FloatTy::F64,
-        Signature { args: &[Ty::F64], returns: &[Ty::F64, Ty::F64] },
-        Some(Signature { args: &[Ty::F64, Ty::MutF64], returns: &[Ty::F64] }),
+        Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::F64, Ty::F64],
+        },
+        Some(Signature {
+            args: &[Ty::F64, Ty::MutF64],
+            returns: &[Ty::F64],
+        }),
         &["modf"],
     ),
     (
         // `(f32, &mut c_int) -> f32` as `(f32) -> (f32, i32)`
         FloatTy::F32,
-        Signature { args: &[Ty::F32], returns: &[Ty::F32, Ty::I32] },
-        Some(Signature { args: &[Ty::F32, Ty::MutCInt], returns: &[Ty::F32] }),
+        Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::F32, Ty::I32],
+        },
+        Some(Signature {
+            args: &[Ty::F32, Ty::MutCInt],
+            returns: &[Ty::F32],
+        }),
         &["frexpf", "lgammaf_r"],
     ),
     (
         // `(f64, &mut c_int) -> f64` as `(f64) -> (f64, i32)`
         FloatTy::F64,
-        Signature { args: &[Ty::F64], returns: &[Ty::F64, Ty::I32] },
-        Some(Signature { args: &[Ty::F64, Ty::MutCInt], returns: &[Ty::F64] }),
+        Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::F64, Ty::I32],
+        },
+        Some(Signature {
+            args: &[Ty::F64, Ty::MutCInt],
+            returns: &[Ty::F64],
+        }),
         &["frexp", "lgamma_r"],
     ),
     (
         // `(f32, f32, &mut c_int) -> f32` as `(f32, f32) -> (f32, i32)`
         FloatTy::F32,
-        Signature { args: &[Ty::F32, Ty::F32], returns: &[Ty::F32, Ty::I32] },
-        Some(Signature { args: &[Ty::F32, Ty::F32, Ty::MutCInt], returns: &[Ty::F32] }),
+        Signature {
+            args: &[Ty::F32, Ty::F32],
+            returns: &[Ty::F32, Ty::I32],
+        },
+        Some(Signature {
+            args: &[Ty::F32, Ty::F32, Ty::MutCInt],
+            returns: &[Ty::F32],
+        }),
         &["remquof"],
     ),
     (
         // `(f64, f64, &mut c_int) -> f64` as `(f64, f64) -> (f64, i32)`
         FloatTy::F64,
-        Signature { args: &[Ty::F64, Ty::F64], returns: &[Ty::F64, Ty::I32] },
-        Some(Signature { args: &[Ty::F64, Ty::F64, Ty::MutCInt], returns: &[Ty::F64] }),
+        Signature {
+            args: &[Ty::F64, Ty::F64],
+            returns: &[Ty::F64, Ty::I32],
+        },
+        Some(Signature {
+            args: &[Ty::F64, Ty::F64, Ty::MutCInt],
+            returns: &[Ty::F64],
+        }),
         &["remquo"],
     ),
     (
         // `(f32, &mut f32, &mut f32)` as `(f32) -> (f32, f32)`
         FloatTy::F32,
-        Signature { args: &[Ty::F32], returns: &[Ty::F32, Ty::F32] },
-        Some(Signature { args: &[Ty::F32, Ty::MutF32, Ty::MutF32], returns: &[] }),
+        Signature {
+            args: &[Ty::F32],
+            returns: &[Ty::F32, Ty::F32],
+        },
+        Some(Signature {
+            args: &[Ty::F32, Ty::MutF32, Ty::MutF32],
+            returns: &[],
+        }),
         &["sincosf"],
     ),
     (
         // `(f64, &mut f64, &mut f64)` as `(f64) -> (f64, f64)`
         FloatTy::F64,
-        Signature { args: &[Ty::F64], returns: &[Ty::F64, Ty::F64] },
-        Some(Signature { args: &[Ty::F64, Ty::MutF64, Ty::MutF64], returns: &[] }),
+        Signature {
+            args: &[Ty::F64],
+            returns: &[Ty::F64, Ty::F64],
+        },
+        Some(Signature {
+            args: &[Ty::F64, Ty::MutF64, Ty::MutF64],
+            returns: &[],
+        }),
         &["sincos"],
     ),
 ];

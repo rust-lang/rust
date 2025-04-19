@@ -7,7 +7,11 @@ use libm_test::generate::random::RandomInput;
 use libm_test::{CheckBasis, CheckCtx, GeneratorKind, MathOp, TupleCall};
 
 /// Benchmark with this many items to get a variety
-const BENCH_ITER_ITEMS: usize = if cfg!(feature = "short-benchmarks") { 50 } else { 500 };
+const BENCH_ITER_ITEMS: usize = if cfg!(feature = "short-benchmarks") {
+    50
+} else {
+    500
+};
 
 /// Extra parameters we only care about if we are benchmarking against musl.
 #[allow(dead_code)]
@@ -53,8 +57,10 @@ where
     let name = Op::NAME;
 
     let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Musl, GeneratorKind::Random);
-    let benchvec: Vec<_> =
-        random::get_test_cases::<Op::RustArgs>(&ctx).0.take(BENCH_ITER_ITEMS).collect();
+    let benchvec: Vec<_> = random::get_test_cases::<Op::RustArgs>(&ctx)
+        .0
+        .take(BENCH_ITER_ITEMS)
+        .collect();
 
     // Perform a sanity check that we are benchmarking the same thing
     // Don't test against musl if it is not available
@@ -73,7 +79,10 @@ where
         let musl_res = input.call(musl_fn);
         let crate_res = input.call(Op::ROUTINE);
 
-        crate_res.validate(musl_res, input, &ctx).context(name).unwrap();
+        crate_res
+            .validate(musl_res, input, &ctx)
+            .context(name)
+            .unwrap();
     }
 
     #[cfg(not(feature = "build-musl"))]

@@ -171,7 +171,11 @@ pub fn cbrt_round(x: f64, round: Round) -> FpResult<f64> {
 
                 for (a, b) in wlist {
                     if azz == a {
-                        let tmp = if round as u64 + sign == 2 { hf64!("0x1p-52") } else { 0.0 };
+                        let tmp = if round as u64 + sign == 2 {
+                            hf64!("0x1p-52")
+                        } else {
+                            0.0
+                        };
                         y1 = (b + tmp).copysign(zz);
                     }
                 }

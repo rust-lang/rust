@@ -1,6 +1,5 @@
-use core::arch;
-use core::mem;
 use core::sync::atomic::{AtomicU32, Ordering};
+use core::{arch, mem};
 
 // Kernel-provided user-mode helper functions:
 // https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt

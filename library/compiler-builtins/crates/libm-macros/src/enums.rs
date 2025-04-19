@@ -26,7 +26,10 @@ pub fn function_enum(
     };
 
     if let Some(tt) = attr.next() {
-        return Err(syn::Error::new(tt.span(), "unexpected token after identifier"));
+        return Err(syn::Error::new(
+            tt.span(),
+            "unexpected token after identifier",
+        ));
     }
 
     let enum_name = &item.ident;
@@ -46,8 +49,12 @@ pub fn function_enum(
         // Match arm for `fn base_name(self)` matcher
         base_arms.push(quote! { Self::#ident => #base_enum::#bname_ident });
 
-        let variant =
-            Variant { attrs: Vec::new(), ident, fields: Fields::Unit, discriminant: None };
+        let variant = Variant {
+            attrs: Vec::new(),
+            ident,
+            fields: Fields::Unit,
+            discriminant: None,
+        };
 
         item.variants.push(variant);
     }
@@ -108,7 +115,10 @@ pub fn base_name_enum(
         return Err(syn::Error::new(sp.span(), "no attributes expected"));
     }
 
-    let mut base_names: Vec<_> = ALL_OPERATIONS.iter().map(|func| base_name(func.name)).collect();
+    let mut base_names: Vec<_> = ALL_OPERATIONS
+        .iter()
+        .map(|func| base_name(func.name))
+        .collect();
     base_names.sort_unstable();
     base_names.dedup();
 
@@ -121,8 +131,12 @@ pub fn base_name_enum(
         // Match arm for `fn as_str(self)` matcher
         as_str_arms.push(quote! { Self::#ident => #base_name });
 
-        let variant =
-            Variant { attrs: Vec::new(), ident, fields: Fields::Unit, discriminant: None };
+        let variant = Variant {
+            attrs: Vec::new(),
+            ident,
+            fields: Fields::Unit,
+            discriminant: None,
+        };
 
         item.variants.push(variant);
     }
@@ -147,7 +161,10 @@ pub fn base_name_enum(
 /// Verify that an enum is empty, otherwise return an error
 fn expect_empty_enum(item: &ItemEnum) -> syn::Result<()> {
     if !item.variants.is_empty() {
-        Err(syn::Error::new(item.variants.span(), "expected an empty enum"))
+        Err(syn::Error::new(
+            item.variants.span(),
+            "expected an empty enum",
+        ))
     } else {
         Ok(())
     }

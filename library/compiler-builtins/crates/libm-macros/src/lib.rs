@@ -11,7 +11,9 @@ use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
 use syn::{Ident, ItemEnum};
 
-const KNOWN_TYPES: &[&str] = &["FTy", "CFn", "CArgs", "CRet", "RustFn", "RustArgs", "RustRet"];
+const KNOWN_TYPES: &[&str] = &[
+    "FTy", "CFn", "CArgs", "CRet", "RustFn", "RustArgs", "RustRet",
+];
 
 /// Populate an enum with a variant representing function. Names are in upper camel case.
 ///
@@ -142,10 +144,17 @@ fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>
         .flat_map(|map_list| map_list.iter())
         .flat_map(|attr_map| attr_map.names.iter());
     let only_mentions = input.only.iter().flat_map(|only_list| only_list.iter());
-    let fn_extra_mentions =
-        input.fn_extra.iter().flat_map(|v| v.keys()).filter(|name| *name != "_");
-    let all_mentioned_fns =
-        input.skip.iter().chain(only_mentions).chain(attr_mentions).chain(fn_extra_mentions);
+    let fn_extra_mentions = input
+        .fn_extra
+        .iter()
+        .flat_map(|v| v.keys())
+        .filter(|name| *name != "_");
+    let all_mentioned_fns = input
+        .skip
+        .iter()
+        .chain(only_mentions)
+        .chain(attr_mentions)
+        .chain(fn_extra_mentions);
 
     // Make sure that every function mentioned is a real function
     for mentioned in all_mentioned_fns {
@@ -171,7 +180,11 @@ fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>
     for func in ALL_OPERATIONS.iter() {
         let fn_name = func.name;
         // If we have an `only` list and it does _not_ contain this function name, skip it
-        if input.only.as_ref().is_some_and(|only| !only.iter().any(|o| o == fn_name)) {
+        if input
+            .only
+            .as_ref()
+            .is_some_and(|only| !only.iter().any(|o| o == fn_name))
+        {
             continue;
         }
 
@@ -296,8 +309,11 @@ fn expand(input: StructuredInput, fn_list: &[&MathOpInfo]) -> syn::Result<pm2::T
         // Prepare function-specific extra in a `fn_extra: ...` field, running the replacer
         let fn_extra_field = match input.fn_extra {
             Some(ref map) => {
-                let mut fn_extra =
-                    map.get(&fn_name).or_else(|| map.get(&default_ident)).unwrap().clone();
+                let mut fn_extra = map
+                    .get(&fn_name)
+                    .or_else(|| map.get(&default_ident))
+                    .unwrap()
+                    .clone();
 
                 let mut v = MacroReplace::new(func.name);
                 v.visit_expr_mut(&mut fn_extra);
@@ -357,7 +373,11 @@ struct MacroReplace {
 impl MacroReplace {
     fn new(name: &'static str) -> Self {
         let norm_name = base_name(name);
-        Self { fn_name: name, norm_name: norm_name.to_owned(), error: None }
+        Self {
+            fn_name: name,
+            norm_name: norm_name.to_owned(),
+            error: None,
+        }
     }
 
     fn finish(self) -> syn::Result<()> {
@@ -377,8 +397,10 @@ impl MacroReplace {
             "MACRO_FN_NAME" => *i = Ident::new(self.fn_name, i.span()),
             "MACRO_FN_NAME_NORMALIZED" => *i = Ident::new(&self.norm_name, i.span()),
             _ => {
-                self.error =
-                    Some(syn::Error::new(i.span(), format!("unrecognized meta expression `{s}`")));
+                self.error = Some(syn::Error::new(
+                    i.span(),
+                    format!("unrecognized meta expression `{s}`"),
+                ));
             }
         }
     }

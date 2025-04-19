@@ -1,8 +1,11 @@
 mod configure;
 
-use std::{collections::BTreeMap, env, path::PathBuf, sync::atomic::Ordering};
+use std::collections::BTreeMap;
+use std::env;
+use std::path::PathBuf;
+use std::sync::atomic::Ordering;
 
-use configure::{configure_aliases, configure_f16_f128, Target};
+use configure::{Target, configure_aliases, configure_f16_f128};
 
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");

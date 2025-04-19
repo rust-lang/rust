@@ -107,9 +107,15 @@ fn emit_cfg_shorthands(cfg: &Config) {
 
 /// Reemit config that we make use of for test logging.
 fn emit_cfg_env(cfg: &Config) {
-    println!("cargo:rustc-env=CFG_CARGO_FEATURES={:?}", cfg.cargo_features);
+    println!(
+        "cargo:rustc-env=CFG_CARGO_FEATURES={:?}",
+        cfg.cargo_features
+    );
     println!("cargo:rustc-env=CFG_OPT_LEVEL={}", cfg.opt_level);
-    println!("cargo:rustc-env=CFG_TARGET_FEATURES={:?}", cfg.target_features);
+    println!(
+        "cargo:rustc-env=CFG_TARGET_FEATURES={:?}",
+        cfg.target_features
+    );
 }
 
 /// Configure whether or not `f16` and `f128` support should be enabled.

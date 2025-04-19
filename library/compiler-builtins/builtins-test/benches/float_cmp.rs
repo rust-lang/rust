@@ -1,9 +1,8 @@
 #![cfg_attr(f128_enabled, feature(f128))]
 
 use builtins_test::float_bench;
-use criterion::{Criterion, criterion_main};
-
 use compiler_builtins::float::cmp;
+use criterion::{Criterion, criterion_main};
 
 /// `gt` symbols are allowed to return differing results, they just get compared
 /// to 0.

@@ -117,7 +117,10 @@ impl_random_input!(f128);
 /// Create a test case iterator.
 pub fn get_test_cases<RustArgs: RandomInput>(
     ctx: &CheckCtx,
-) -> (impl Iterator<Item = RustArgs> + Send + use<'_, RustArgs>, u64) {
+) -> (
+    impl Iterator<Item = RustArgs> + Send + use<'_, RustArgs>,
+    u64,
+) {
     let (iter, count) = RustArgs::get_cases(ctx);
 
     // Wrap in `KnownSize` so we get an assertion if the cuunt is wrong.

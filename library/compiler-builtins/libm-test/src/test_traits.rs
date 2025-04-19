@@ -328,7 +328,10 @@ where
         // Check when both are NaNs
         if actual.is_nan() && expected.is_nan() {
             if require_biteq && ctx.basis == CheckBasis::None {
-                ensure!(actual.to_bits() == expected.to_bits(), "mismatched NaN bitpatterns");
+                ensure!(
+                    actual.to_bits() == expected.to_bits(),
+                    "mismatched NaN bitpatterns"
+                );
             }
             // By default, NaNs have nothing special to check.
             return Ok(());
@@ -340,7 +343,10 @@ where
         // Make sure that the signs are the same before checing ULP to avoid wraparound
         let act_sig = actual.signum();
         let exp_sig = expected.signum();
-        ensure!(act_sig == exp_sig, "mismatched signs {act_sig:?} {exp_sig:?}");
+        ensure!(
+            act_sig == exp_sig,
+            "mismatched signs {act_sig:?} {exp_sig:?}"
+        );
 
         if actual.is_infinite() ^ expected.is_infinite() {
             bail!("mismatched infinities");

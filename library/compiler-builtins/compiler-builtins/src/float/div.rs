@@ -79,11 +79,12 @@
 //!
 //! [Newton-Raphson method]: https://en.wikipedia.org/wiki/Newton%27s_method
 
+use core::mem::size_of;
+use core::ops;
+
 use super::HalfRep;
 use crate::float::Float;
 use crate::int::{CastFrom, CastInto, DInt, HInt, Int, MinInt};
-use core::mem::size_of;
-use core::ops;
 
 fn div<F: Float>(a: F, b: F) -> F
 where
@@ -487,7 +488,7 @@ where
     };
 
     residual_lo += abs_result & one; // tie to even
-                                     // conditionally turns the below LT comparison into LTE
+    // conditionally turns the below LT comparison into LTE
     abs_result += u8::from(residual_lo > b_significand).into();
 
     if F::BITS == 128 || (F::BITS == 32 && half_iterations > 0) {

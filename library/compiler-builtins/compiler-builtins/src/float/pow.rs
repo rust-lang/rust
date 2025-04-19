@@ -18,11 +18,7 @@ fn pow<F: Float>(a: F, b: i32) -> F {
         a *= a;
     }
 
-    if recip {
-        F::ONE / mul
-    } else {
-        mul
-    }
+    if recip { F::ONE / mul } else { mul }
 }
 
 intrinsics! {

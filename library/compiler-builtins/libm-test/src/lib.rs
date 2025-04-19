@@ -71,7 +71,12 @@ pub fn test_log(s: &str) {
                     return None;
                 };
 
-                PathBuf::from(x).parent().unwrap().parent().unwrap().join("target")
+                PathBuf::from(x)
+                    .parent()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .join("target")
             }
         };
         let outfile = target_dir.join("test-log.txt");
@@ -81,7 +86,9 @@ pub fn test_log(s: &str) {
             .append(true)
             .open(outfile)
             .expect("failed to open logfile");
-        let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap();
 
         writeln!(f, "\n\nTest run at {}", now.as_secs()).unwrap();
         writeln!(f, "arch: {}", env::consts::ARCH).unwrap();

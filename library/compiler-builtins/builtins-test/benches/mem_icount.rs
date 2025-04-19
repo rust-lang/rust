@@ -239,8 +239,9 @@ mod mcmp {
 }
 
 mod mmove {
-    use super::*;
     use Spread::{Aligned, Large, Medium, Small};
+
+    use super::*;
 
     struct Cfg {
         len: usize,

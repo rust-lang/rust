@@ -20,14 +20,21 @@ pub struct TestCase<Op: MathOp> {
 impl<Op: MathOp> TestCase<Op> {
     #[expect(dead_code)]
     fn append_inputs(v: &mut Vec<Self>, l: &[Op::RustArgs]) {
-        v.extend(l.iter().copied().map(|input| Self { input, output: None }));
+        v.extend(l.iter().copied().map(|input| Self {
+            input,
+            output: None,
+        }));
     }
 
     fn append_pairs(v: &mut Vec<Self>, l: &[(Op::RustArgs, Option<Op::RustRet>)])
     where
         Op::RustRet: Copy,
     {
-        v.extend(l.iter().copied().map(|(input, output)| Self { input, output }));
+        v.extend(
+            l.iter()
+                .copied()
+                .map(|(input, output)| Self { input, output }),
+        );
     }
 }
 
@@ -603,9 +610,15 @@ fn rint_cases() -> Vec<TestCase<op::rint::Routine>> {
         &[
             // Known failure on i586
             #[cfg(not(x86_no_sse))]
-            ((hf64!("-0x1.e3f13ff995ffcp+38"),), Some(hf64!("-0x1.e3f13ff994000p+38"))),
+            (
+                (hf64!("-0x1.e3f13ff995ffcp+38"),),
+                Some(hf64!("-0x1.e3f13ff994000p+38")),
+            ),
             #[cfg(x86_no_sse)]
-            ((hf64!("-0x1.e3f13ff995ffcp+38"),), Some(hf64!("-0x1.e3f13ff998000p+38"))),
+            (
+                (hf64!("-0x1.e3f13ff995ffcp+38"),),
+                Some(hf64!("-0x1.e3f13ff998000p+38")),
+            ),
         ],
     );
     v
@@ -655,9 +668,15 @@ fn roundeven_cases() -> Vec<TestCase<op::roundeven::Routine>> {
         &[
             // Known failure on i586
             #[cfg(not(x86_no_sse))]
-            ((hf64!("-0x1.e3f13ff995ffcp+38"),), Some(hf64!("-0x1.e3f13ff994000p+38"))),
+            (
+                (hf64!("-0x1.e3f13ff995ffcp+38"),),
+                Some(hf64!("-0x1.e3f13ff994000p+38")),
+            ),
             #[cfg(x86_no_sse)]
-            ((hf64!("-0x1.e3f13ff995ffcp+38"),), Some(hf64!("-0x1.e3f13ff998000p+38"))),
+            (
+                (hf64!("-0x1.e3f13ff995ffcp+38"),),
+                Some(hf64!("-0x1.e3f13ff998000p+38")),
+            ),
         ],
     );
     v
@@ -832,7 +851,9 @@ where
 {
     assert_eq!(ctx.basis, CheckBasis::None);
     assert_eq!(ctx.gen_kind, GeneratorKind::List);
-    Op::get_cases().into_iter().filter_map(|x| x.output.map(|o| (x.input, o)))
+    Op::get_cases()
+        .into_iter()
+        .filter_map(|x| x.output.map(|o| (x.input, o)))
 }
 
 /// Opposite of the above; extract only test cases that don't have a known output, to be run
@@ -847,7 +868,18 @@ where
     assert_eq!(ctx.gen_kind, GeneratorKind::List);
 
     let cases = Op::get_cases();
-    let count: u64 = cases.iter().filter(|case| case.output.is_none()).count().try_into().unwrap();
+    let count: u64 = cases
+        .iter()
+        .filter(|case| case.output.is_none())
+        .count()
+        .try_into()
+        .unwrap();
 
-    (cases.into_iter().filter(|x| x.output.is_none()).map(|x| x.input), count)
+    (
+        cases
+            .into_iter()
+            .filter(|x| x.output.is_none())
+            .map(|x| x.input),
+        count,
+    )
 }

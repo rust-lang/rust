@@ -498,6 +498,8 @@ impl fmt::LowerHex for f8 {
 }
 
 pub const fn hf8(s: &str) -> f8 {
-    let Ok(bits) = libm::support::hex_float::parse_hex_exact(s, 8, 3) else { panic!() };
+    let Ok(bits) = libm::support::hex_float::parse_hex_exact(s, 8, 3) else {
+        panic!()
+    };
     f8(bits as u8)
 }

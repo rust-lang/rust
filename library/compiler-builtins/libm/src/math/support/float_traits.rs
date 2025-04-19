@@ -105,7 +105,11 @@ pub trait Float:
     /// if `NaN` should not be treated separately.
     #[allow(dead_code)]
     fn eq_repr(self, rhs: Self) -> bool {
-        if self.is_nan() && rhs.is_nan() { true } else { self.biteq(rhs) }
+        if self.is_nan() && rhs.is_nan() {
+            true
+        } else {
+            self.biteq(rhs)
+        }
     }
 
     /// Returns true if the value is NaN.
@@ -149,7 +153,11 @@ pub trait Float:
 
     /// Constructs a `Self` from its parts. Inputs are treated as bits and shifted into position.
     fn from_parts(negative: bool, exponent: u32, significand: Self::Int) -> Self {
-        let sign = if negative { Self::Int::ONE } else { Self::Int::ZERO };
+        let sign = if negative {
+            Self::Int::ONE
+        } else {
+            Self::Int::ZERO
+        };
         Self::from_bits(
             (sign << (Self::BITS - 1))
                 | (Self::Int::cast_from(exponent & Self::EXP_SAT) << Self::SIG_BITS)
@@ -173,7 +181,11 @@ pub trait Float:
     /// Returns a number that represents the sign of self.
     #[allow(dead_code)]
     fn signum(self) -> Self {
-        if self.is_nan() { self } else { Self::ONE.copysign(self) }
+        if self.is_nan() {
+            self
+        } else {
+            Self::ONE.copysign(self)
+        }
     }
 }
 
@@ -273,18 +285,61 @@ macro_rules! float_impl {
             }
             fn normalize(significand: Self::Int) -> (i32, Self::Int) {
                 let shift = significand.leading_zeros().wrapping_sub(Self::EXP_BITS);
-                (1i32.wrapping_sub(shift as i32), significand << shift as Self::Int)
+                (
+                    1i32.wrapping_sub(shift as i32),
+                    significand << shift as Self::Int,
+                )
             }
         }
     };
 }
 
 #[cfg(f16_enabled)]
-float_impl!(f16, u16, i16, 16, 10, f16::from_bits, f16::to_bits, fmaf16, fmaf16);
-float_impl!(f32, u32, i32, 32, 23, f32_from_bits, f32_to_bits, fmaf, fmaf32);
-float_impl!(f64, u64, i64, 64, 52, f64_from_bits, f64_to_bits, fma, fmaf64);
+float_impl!(
+    f16,
+    u16,
+    i16,
+    16,
+    10,
+    f16::from_bits,
+    f16::to_bits,
+    fmaf16,
+    fmaf16
+);
+float_impl!(
+    f32,
+    u32,
+    i32,
+    32,
+    23,
+    f32_from_bits,
+    f32_to_bits,
+    fmaf,
+    fmaf32
+);
+float_impl!(
+    f64,
+    u64,
+    i64,
+    64,
+    52,
+    f64_from_bits,
+    f64_to_bits,
+    fma,
+    fmaf64
+);
 #[cfg(f128_enabled)]
-float_impl!(f128, u128, i128, 128, 112, f128::from_bits, f128::to_bits, fmaf128, fmaf128);
+float_impl!(
+    f128,
+    u128,
+    i128,
+    128,
+    112,
+    f128::from_bits,
+    f128::to_bits,
+    fmaf128,
+    fmaf128
+);
 
 /* FIXME(msrv): vendor some things that are not const stable at our MSRV */
 
@@ -424,7 +479,10 @@ mod tests {
 
         // `from_parts`
         assert_biteq!(f32::from_parts(true, f32::EXP_BIAS, 0), -1.0f32);
-        assert_biteq!(f32::from_parts(false, 10 + f32::EXP_BIAS, 0), hf32!("0x1p10"));
+        assert_biteq!(
+            f32::from_parts(false, 10 + f32::EXP_BIAS, 0),
+            hf32!("0x1p10")
+        );
         assert_biteq!(f32::from_parts(false, 0, 1), f32::from_bits(0x1));
     }
 
@@ -451,7 +509,10 @@ mod tests {
 
         // `from_parts`
         assert_biteq!(f64::from_parts(true, f64::EXP_BIAS, 0), -1.0f64);
-        assert_biteq!(f64::from_parts(false, 10 + f64::EXP_BIAS, 0), hf64!("0x1p10"));
+        assert_biteq!(
+            f64::from_parts(false, 10 + f64::EXP_BIAS, 0),
+            hf64!("0x1p10")
+        );
         assert_biteq!(f64::from_parts(false, 0, 1), f64::from_bits(0x1));
     }
 

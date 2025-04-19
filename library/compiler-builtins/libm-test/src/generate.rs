@@ -16,7 +16,11 @@ pub struct KnownSize<I> {
 
 impl<I> KnownSize<I> {
     pub fn new(iter: I, total: u64) -> Self {
-        Self { total, current: 0, iter }
+        Self {
+            total,
+            current: 0,
+            iter,
+        }
     }
 }
 
@@ -30,7 +34,10 @@ impl<I: Iterator> Iterator for KnownSize<I> {
             return next;
         }
 
-        assert_eq!(self.current, self.total, "total items did not match expected");
+        assert_eq!(
+            self.current, self.total,
+            "total items did not match expected"
+        );
         None
     }
 

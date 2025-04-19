@@ -249,7 +249,11 @@ macro_rules! impl_edge_case_input {
                     .flat_map(move |(first, second)| {
                         iter2.clone().map(move |third| (first, second, third))
                     });
-                let count = steps0.checked_mul(steps1).unwrap().checked_mul(steps2).unwrap();
+                let count = steps0
+                    .checked_mul(steps1)
+                    .unwrap()
+                    .checked_mul(steps2)
+                    .unwrap();
 
                 (iter, count)
             }

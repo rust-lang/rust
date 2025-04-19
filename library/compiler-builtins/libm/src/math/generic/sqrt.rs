@@ -521,7 +521,10 @@ mod tests {
                 f128::from_bits(0x400c3880000000000000000000000000),
                 0x40059000000000000000000000000000_u128,
             ),
-            (f128::from_bits(0x0000000f), 0x1fc9efbdeb14f4ed9b17ae807907e1e9_u128),
+            (
+                f128::from_bits(0x0000000f),
+                0x1fc9efbdeb14f4ed9b17ae807907e1e9_u128,
+            ),
             (f128::INFINITY, f128::INFINITY.to_bits()),
         ];
 

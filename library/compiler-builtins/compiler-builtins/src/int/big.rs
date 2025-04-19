@@ -2,8 +2,9 @@
 
 #![allow(unused)]
 
-use crate::int::{DInt, HInt, Int, MinInt};
 use core::{fmt, ops};
+
+use crate::int::{DInt, HInt, Int, MinInt};
 
 const WORD_LO_MASK: u64 = 0x00000000ffffffff;
 const WORD_HI_MASK: u64 = 0xffffffff00000000;

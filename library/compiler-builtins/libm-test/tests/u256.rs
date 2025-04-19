@@ -40,7 +40,10 @@ fn from_bigint(bx: &mut BigInt) -> u256 {
     let mut bres = [0u128, 0];
     bx.write_digits(&mut bres, Order::Lsf);
     bx.assign(0);
-    u256 { lo: bres[0], hi: bres[1] }
+    u256 {
+        lo: bres[0],
+        hi: bres[1],
+    }
 }
 
 fn check_one(
@@ -142,6 +145,11 @@ fn mp_u256_widen_mul() {
         by.assign(y);
         let actual = x.widen_mul(y);
         bx *= &by;
-        check_one(|| format!("{x:#034x}"), || Some(format!("{y:#034x}")), actual, &mut bx);
+        check_one(
+            || format!("{x:#034x}"),
+            || Some(format!("{y:#034x}")),
+            actual,
+            &mut bx,
+        );
     }
 }

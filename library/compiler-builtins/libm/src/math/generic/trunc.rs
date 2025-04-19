@@ -36,7 +36,11 @@ pub fn trunc_status<F: Float>(x: F) -> FpResult<F> {
     // C5: Otherwise the result is inexact and we will truncate. Raise `FE_INEXACT`, mask the
     // result, and return.
 
-    let status = if xi & F::SIG_MASK == F::Int::ZERO { Status::OK } else { Status::INEXACT };
+    let status = if xi & F::SIG_MASK == F::Int::ZERO {
+        Status::OK
+    } else {
+        Status::INEXACT
+    };
     xi &= mask;
     FpResult::new(F::from_bits(xi), status)
 }
@@ -47,7 +51,14 @@ mod tests {
     use crate::support::Hexf;
 
     fn spec_test<F: Float>(cases: &[(F, F, Status)]) {
-        let roundtrip = [F::ZERO, F::ONE, F::NEG_ONE, F::NEG_ZERO, F::INFINITY, F::NEG_INFINITY];
+        let roundtrip = [
+            F::ZERO,
+            F::ONE,
+            F::NEG_ONE,
+            F::NEG_ZERO,
+            F::INFINITY,
+            F::NEG_INFINITY,
+        ];
 
         for x in roundtrip {
             let FpResult { val, status } = trunc_status(x);
