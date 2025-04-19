@@ -1322,7 +1322,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
             MetaItemKind::List(list) => {
                 for item in list {
-                    let attr_name = item.name_or_empty();
+                    let Some(attr_name) = item.name() else { continue };
                     if attr_name != sym::hide && attr_name != sym::show {
                         self.tcx.emit_node_span_lint(
                             INVALID_DOC_ATTRIBUTES,
