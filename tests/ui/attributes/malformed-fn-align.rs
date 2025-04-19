@@ -1,9 +1,11 @@
-#![feature(fn_align)]
 #![crate_type = "lib"]
 
 trait MyTrait {
     #[align] //~ ERROR malformed `align` attribute input
-    fn myfun();
+    fn myfun1();
+
+    #[align(1, 2)] //~ ERROR malformed `align` attribute input
+    fn myfun2();
 }
 
 #[align = 16] //~ ERROR malformed `align` attribute input
