@@ -62,7 +62,7 @@ error: autodiff must be applied to function
 LL |     let add_one_v2 = |x: u32| -> u32 { x + 1 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: autodiff must be applied to function
+error: autodiff requires at least a name and mode
   --> $DIR/autodiff_illegal.rs:65:1
    |
 LL | / pub fn f7(x: f64) {
@@ -80,7 +80,7 @@ LL | |     unimplemented!()
 LL | | }
    | |_^
 
-error: autodiff must be applied to function
+error: autodiff requires at least a name and mode
   --> $DIR/autodiff_illegal.rs:79:1
    |
 LL | / pub fn f9(x: f64) {

@@ -6,7 +6,7 @@ LL |         #[cfg()]
 LL |         $foo
    |             ^ expected `;` here
 LL |
-LL |         #[cfg(FALSE)]
+LL |         #[cfg(false)]
    |         - unexpected token
 ...
 LL |     the_macro!( (); (); );

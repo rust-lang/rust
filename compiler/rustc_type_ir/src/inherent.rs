@@ -155,6 +155,39 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn is_known_rigid(self) -> bool {
         self.kind().is_known_rigid()
     }
+
+    fn is_guaranteed_unsized_raw(self) -> bool {
+        match self.kind() {
+            ty::Dynamic(_, _, ty::Dyn) | ty::Slice(_) | ty::Str => true,
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Array(_, _)
+            | ty::Pat(_, _)
+            | ty::RawPtr(_, _)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_, _)
+            | ty::UnsafeBinder(_)
+            | ty::Closure(_, _)
+            | ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(_, _)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Alias(_, _)
+            | ty::Param(_)
+            | ty::Bound(_, _)
+            | ty::Placeholder(_)
+            | ty::Infer(_)
+            | ty::Error(_)
+            | ty::Dynamic(_, _, ty::DynStar) => false,
+        }
+    }
 }
 
 pub trait Tys<I: Interner<Tys = Self>>:
@@ -550,7 +583,7 @@ pub trait Span<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 
 pub trait SliceLike: Sized + Copy {
     type Item: Copy;
-    type IntoIter: Iterator<Item = Self::Item>;
+    type IntoIter: Iterator<Item = Self::Item> + DoubleEndedIterator;
 
     fn iter(self) -> Self::IntoIter;
 

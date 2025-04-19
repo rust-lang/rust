@@ -216,7 +216,7 @@ pub macro Clone($item:item) {
 /// Use closures allow captured values to be automatically used.
 /// This is similar to have a closure that you would call `.use` over each captured value.
 #[unstable(feature = "ergonomic_clones", issue = "132290")]
-#[cfg_attr(not(bootstrap), lang = "use_cloned")]
+#[lang = "use_cloned"]
 pub trait UseCloned: Clone {
     // Empty.
 }
@@ -427,7 +427,7 @@ pub unsafe trait CloneToUninit {
     /// read or dropped, because even if it was previously valid, it may have been partially
     /// overwritten.
     ///
-    /// The caller may wish to to take care to deallocate the allocation pointed to by `dest`,
+    /// The caller may wish to take care to deallocate the allocation pointed to by `dest`,
     /// if applicable, to avoid a memory leak (but this is not a requirement).
     ///
     /// Implementors should avoid leaking values by, upon unwinding, dropping all component values

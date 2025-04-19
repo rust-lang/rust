@@ -704,7 +704,8 @@ fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut Pare
 }
 
 fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut P<Local>) {
-    let Local { id, pat, ty, kind, span, colon_sp, attrs, tokens } = local.deref_mut();
+    let Local { id, super_, pat, ty, kind, span, colon_sp, attrs, tokens } = local.deref_mut();
+    visit_opt(super_, |sp| vis.visit_span(sp));
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_pat(pat);
@@ -843,9 +844,9 @@ fn visit_lazy_tts<T: MutVisitor>(vis: &mut T, lazy_tts: &mut Option<LazyAttrToke
     visit_lazy_tts_opt_mut(vis, lazy_tts.as_mut());
 }
 
-/// Applies ident visitor if it's an ident; applies other visits to interpolated nodes.
-/// In practice the ident part is not actually used by specific visitors right now,
-/// but there's a test below checking that it works.
+/// Applies ident visitor if it's an ident. In practice this is not actually
+/// used by specific visitors right now, but there's a test below checking that
+/// it works.
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_token<T: MutVisitor>(vis: &mut T, t: &mut Token) {
     let Token { kind, span } = t;
@@ -863,43 +864,9 @@ pub fn visit_token<T: MutVisitor>(vis: &mut T, t: &mut Token) {
         token::NtLifetime(ident, _is_raw) => {
             vis.visit_ident(ident);
         }
-        token::Interpolated(nt) => {
-            let nt = Arc::make_mut(nt);
-            visit_nonterminal(vis, nt);
-        }
         _ => {}
     }
     vis.visit_span(span);
-}
-
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-/// Applies the visitor to elements of interpolated nodes.
-//
-// N.B., this can occur only when applying a visitor to partially expanded
-// code, where parsed pieces have gotten implanted ito *other* macro
-// invocations. This is relevant for macro hygiene, but possibly not elsewhere.
-//
-// One problem here occurs because the types for flat_map_item, flat_map_stmt,
-// etc., allow the visitor to return *multiple* items; this is a problem for the
-// nodes here, because they insist on having exactly one piece. One solution
-// would be to mangle the MutVisitor trait to include one-to-many and
-// one-to-one versions of these entry points, but that would probably confuse a
-// lot of people and help very few. Instead, I'm just going to put in dynamic
-// checks. I think the performance impact of this will be pretty much
-// nonexistent. The danger is that someone will apply a `MutVisitor` to a
-// partially expanded node, and will be confused by the fact that their
-// `flat_map_item` or `flat_map_stmt` isn't getting called on `NtItem` or `NtStmt`
-// nodes. Hopefully they'll wind up reading this comment, and doing something
-// appropriate.
-//
-// BTW, design choice: I considered just changing the type of, e.g., `NtItem` to
-// contain multiple items, but decided against it when I looked at
-// `parse_item_or_view_item` and tried to figure out what I would do with
-// multiple items there....
-fn visit_nonterminal<T: MutVisitor>(vis: &mut T, nt: &mut token::Nonterminal) {
-    match nt {
-        token::NtBlock(block) => vis.visit_block(block),
-    }
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
@@ -1587,7 +1554,7 @@ pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut P<Pat>) {
     vis.visit_id(id);
     match kind {
         PatKind::Err(_guar) => {}
-        PatKind::Wild | PatKind::Rest | PatKind::Never => {}
+        PatKind::Missing | PatKind::Wild | PatKind::Rest | PatKind::Never => {}
         PatKind::Ident(_binding_mode, ident, sub) => {
             vis.visit_ident(ident);
             visit_opt(sub, |sub| vis.visit_pat(sub));

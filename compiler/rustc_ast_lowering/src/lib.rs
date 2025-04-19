@@ -32,7 +32,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -917,7 +916,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_delim_args(&self, args: &DelimArgs) -> DelimArgs {
-        DelimArgs { dspan: args.dspan, delim: args.delim, tokens: args.tokens.flattened() }
+        DelimArgs { dspan: args.dspan, delim: args.delim, tokens: args.tokens.clone() }
     }
 
     /// Lower an associated item constraint.
@@ -1247,7 +1246,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     safety: self.lower_safety(f.safety, hir::Safety::Safe),
                     abi: self.lower_extern(f.ext),
                     decl: self.lower_fn_decl(&f.decl, t.id, t.span, FnDeclKind::Pointer, None),
-                    param_names: self.lower_fn_params_to_names(&f.decl),
+                    param_idents: self.lower_fn_params_to_idents(&f.decl),
                 }))
             }
             TyKind::UnsafeBinder(f) => {
@@ -1494,20 +1493,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }))
     }
 
-    fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Option<Ident>] {
+    fn lower_fn_params_to_idents(&mut self, decl: &FnDecl) -> &'hir [Option<Ident>] {
         self.arena.alloc_from_iter(decl.inputs.iter().map(|param| match param.pat.kind {
-            PatKind::Ident(_, ident, _) => {
-                if ident.name != kw::Empty {
-                    Some(self.lower_ident(ident))
-                } else {
-                    None
-                }
-            }
+            PatKind::Missing => None,
+            PatKind::Ident(_, ident, _) => Some(self.lower_ident(ident)),
             PatKind::Wild => Some(Ident::new(kw::Underscore, self.lower_span(param.pat.span))),
             _ => {
                 self.dcx().span_delayed_bug(
                     param.pat.span,
-                    "non-ident/wild param pat must trigger an error",
+                    "non-missing/ident/wild param pat must trigger an error",
                 );
                 None
             }
@@ -1771,24 +1765,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ident: Ident,
         is_anon_in_path: IsAnonInPath,
     ) -> &'hir hir::Lifetime {
-        debug_assert_ne!(ident.name, kw::Empty);
         let res = self.resolver.get_lifetime_res(id).unwrap_or(LifetimeRes::Error);
         let res = match res {
-            LifetimeRes::Param { param, .. } => hir::LifetimeName::Param(param),
+            LifetimeRes::Param { param, .. } => hir::LifetimeKind::Param(param),
             LifetimeRes::Fresh { param, .. } => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
                 let param = self.local_def_id(param);
-                hir::LifetimeName::Param(param)
+                hir::LifetimeKind::Param(param)
             }
             LifetimeRes::Infer => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
-                hir::LifetimeName::Infer
+                hir::LifetimeKind::Infer
             }
             LifetimeRes::Static { .. } => {
                 debug_assert!(matches!(ident.name, kw::StaticLifetime | kw::UnderscoreLifetime));
-                hir::LifetimeName::Static
+                hir::LifetimeKind::Static
             }
-            LifetimeRes::Error => hir::LifetimeName::Error,
+            LifetimeRes::Error => hir::LifetimeKind::Error,
             LifetimeRes::ElidedAnchor { .. } => {
                 panic!("Unexpected `ElidedAnchar` {:?} at {:?}", ident, ident.span);
             }
@@ -2039,7 +2032,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_array_length_to_const_arg(&mut self, c: &AnonConst) -> &'hir hir::ConstArg<'hir> {
-        match c.value.kind {
+        // We cannot just match on `ExprKind::Underscore` as `(_)` is represented as
+        // `ExprKind::Paren(ExprKind::Underscore)` and should also be lowered to `GenericArg::Infer`
+        match c.value.peel_parens().kind {
             ExprKind::Underscore => {
                 if !self.tcx.features().generic_arg_infer() {
                     feature_err(
@@ -2223,6 +2218,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.attrs.insert(hir_id.local_id, a);
         }
         let local = hir::LetStmt {
+            super_: None,
             hir_id,
             init,
             pat,
@@ -2392,7 +2388,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let r = hir::Lifetime::new(
             self.next_id(),
             Ident::new(kw::UnderscoreLifetime, self.lower_span(span)),
-            hir::LifetimeName::ImplicitObjectLifetimeDefault,
+            hir::LifetimeKind::ImplicitObjectLifetimeDefault,
             IsAnonInPath::No,
         );
         debug!("elided_dyn_bound: r={:?}", r);

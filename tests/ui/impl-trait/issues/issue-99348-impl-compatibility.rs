@@ -6,7 +6,7 @@ type Tait = impl Sized;
 
 impl Foo for Concrete {
     type Item = Concrete;
-    //~^ type mismatch resolving
+    //~^ ERROR type mismatch resolving
 }
 
 impl Bar for Concrete {

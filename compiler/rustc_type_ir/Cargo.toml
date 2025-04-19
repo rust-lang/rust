@@ -7,6 +7,7 @@ edition = "2024"
 # tidy-alphabetical-start
 bitflags = "2.4.1"
 derive-where = "1.2.7"
+ena = "0.14.3"
 indexmap = "2.0.0"
 rustc-hash = "1.1.0"
 rustc_ast_ir = { path = "../rustc_ast_ir", default-features = false }

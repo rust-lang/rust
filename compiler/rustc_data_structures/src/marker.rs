@@ -1,13 +1,13 @@
 use std::alloc::Allocator;
 
-#[rustc_on_unimplemented(message = "`{Self}` doesn't implement `DynSend`. \
+#[diagnostic::on_unimplemented(message = "`{Self}` doesn't implement `DynSend`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Send`")]
 // This is an auto trait for types which can be sent across threads if `sync::is_dyn_thread_safe()`
 // is true. These types can be wrapped in a `FromDyn` to get a `Send` type. Wrapping a
 // `Send` type in `IntoDynSyncSend` will create a `DynSend` type.
 pub unsafe auto trait DynSend {}
 
-#[rustc_on_unimplemented(message = "`{Self}` doesn't implement `DynSync`. \
+#[diagnostic::on_unimplemented(message = "`{Self}` doesn't implement `DynSync`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Sync`")]
 // This is an auto trait for types which can be shared across threads if `sync::is_dyn_thread_safe()`
 // is true. These types can be wrapped in a `FromDyn` to get a `Sync` type. Wrapping a
@@ -180,6 +180,12 @@ impl<T> FromDyn<T> {
     }
 
     #[inline(always)]
+    pub fn derive<O>(&self, val: O) -> FromDyn<O> {
+        // We already did the check for `sync::is_dyn_thread_safe()` when creating `Self`
+        FromDyn(val)
+    }
+
+    #[inline(always)]
     pub fn into_inner(self) -> T {
         self.0
     }
@@ -197,6 +203,13 @@ impl<T> std::ops::Deref for FromDyn<T> {
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<T> std::ops::DerefMut for FromDyn<T> {
+    #[inline(always)]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

@@ -5,7 +5,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, channel};
 
-use rinja::Template;
+use askama::Template;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
@@ -521,23 +521,23 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // Crawl the crate attributes looking for attributes which control how we're
         // going to emit HTML
         for attr in krate.module.attrs.lists(sym::doc) {
-            match (attr.name_or_empty(), attr.value_str()) {
-                (sym::html_favicon_url, Some(s)) => {
+            match (attr.name(), attr.value_str()) {
+                (Some(sym::html_favicon_url), Some(s)) => {
                     layout.favicon = s.to_string();
                 }
-                (sym::html_logo_url, Some(s)) => {
+                (Some(sym::html_logo_url), Some(s)) => {
                     layout.logo = s.to_string();
                 }
-                (sym::html_playground_url, Some(s)) => {
+                (Some(sym::html_playground_url), Some(s)) => {
                     playground = Some(markdown::Playground {
                         crate_name: Some(krate.name(tcx)),
                         url: s.to_string(),
                     });
                 }
-                (sym::issue_tracker_base_url, Some(s)) => {
+                (Some(sym::issue_tracker_base_url), Some(s)) => {
                     issue_tracker_base_url = Some(s.to_string());
                 }
-                (sym::html_no_source, None) if attr.is_word() => {
+                (Some(sym::html_no_source), None) if attr.is_word() => {
                     include_sources = false;
                 }
                 _ => {}
@@ -650,15 +650,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         bar.render_into(&mut sidebar).unwrap();
 
-        let v = layout::render(
-            &shared.layout,
-            &page,
-            sidebar,
-            BufDisplay(|buf: &mut String| {
-                all.print(buf);
-            }),
-            &shared.style_files,
-        );
+        let v = layout::render(&shared.layout, &page, sidebar, all.print(), &shared.style_files);
         shared.fs.write(final_file, v)?;
 
         // if to avoid writing help, settings files to doc root unless we're on the final invocation

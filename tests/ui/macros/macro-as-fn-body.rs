@@ -1,7 +1,7 @@
 //
 //@ run-pass
 //
-// Description - ensure Interpolated blocks can act as valid function bodies
+// Description - ensure block metavariables can act as valid function bodies
 // Covered cases: free functions, struct methods, and default trait functions
 
 macro_rules! def_fn {

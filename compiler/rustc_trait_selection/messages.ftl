@@ -268,8 +268,8 @@ trait_selection_oc_type_compat = type not compatible with trait
 trait_selection_opaque_captures_lifetime = hidden type for `{$opaque_ty}` captures lifetime that does not appear in bounds
     .label = opaque type defined here
 trait_selection_opaque_type_non_generic_param =
-    expected generic {$kind} parameter, found `{$ty}`
-    .label = {STREQ($ty, "'static") ->
+    expected generic {$kind} parameter, found `{$arg}`
+    .label = {STREQ($arg, "'static") ->
         [true] cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
         *[other] this generic parameter must be used with a generic {$kind} parameter
     }

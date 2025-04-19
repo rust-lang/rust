@@ -76,7 +76,7 @@ enum EnvironmentCmd {
         rustc_perf_checkout_dir: Option<Utf8PathBuf>,
 
         /// Is LLVM for `rustc` built in shared library mode?
-        #[arg(long, default_value_t = true)]
+        #[arg(long, default_value_t = true, action(clap::ArgAction::Set))]
         llvm_shared: bool,
 
         /// Should BOLT optimization be used? If yes, host LLVM must have BOLT binaries
@@ -94,6 +94,10 @@ enum EnvironmentCmd {
         /// Arguments passed to `rustc-perf --cargo-config <value>` when running benchmarks.
         #[arg(long)]
         benchmark_cargo_config: Vec<String>,
+
+        /// Perform tests after final build if it's not a try build
+        #[arg(long)]
+        run_tests: bool,
     },
     /// Perform an optimized build on Linux CI, from inside Docker.
     LinuxCi {
@@ -125,6 +129,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             skipped_tests,
             benchmark_cargo_config,
             shared,
+            run_tests,
         } => {
             let env = EnvironmentBuilder::default()
                 .host_tuple(target_triple)
@@ -138,6 +143,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .use_bolt(use_bolt)
                 .skipped_tests(skipped_tests)
                 .benchmark_cargo_config(benchmark_cargo_config)
+                .run_tests(run_tests)
                 .build()?;
 
             (env, shared.build_args)
@@ -160,6 +166,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 // FIXME: Enable bolt for aarch64 once it's fixed upstream. Broken as of December 2024.
                 .use_bolt(!is_aarch64)
                 .skipped_tests(vec![])
+                .run_tests(true)
                 .build()?;
 
             (env, shared.build_args)
@@ -179,6 +186,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .shared_llvm(false)
                 .use_bolt(false)
                 .skipped_tests(vec![])
+                .run_tests(true)
                 .build()?;
 
             (env, shared.build_args)
@@ -344,7 +352,7 @@ fn execute_pipeline(
     // possible regressions.
     // The tests are not executed for try builds, which can be in various broken states, so we don't
     // want to gatekeep them with tests.
-    if !is_try_build() {
+    if !is_try_build() && env.run_tests() {
         timer.section("Run tests", |_| run_tests(env))?;
     }
 

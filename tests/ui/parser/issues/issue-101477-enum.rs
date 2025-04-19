@@ -4,7 +4,7 @@
 enum Demo {
     A = 1,
     B == 2 //~ ERROR unexpected `==`
-    //~^ expected item, found `==`
+    //~^ ERROR expected item, found `==`
 }
 
 fn main() {}

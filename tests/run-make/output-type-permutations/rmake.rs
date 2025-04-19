@@ -4,6 +4,9 @@
 // files are exactly what is expected, no more, no less.
 // See https://github.com/rust-lang/rust/pull/12020
 
+//@ ignore-cross-compile
+// Reason: some cross-compiled targets don't support various crate types and fail to link.
+
 use std::path::PathBuf;
 
 use run_make_support::{
@@ -17,6 +20,7 @@ use run_make_support::{
 // `dir`: the name of the directory where the test happens
 // `rustc_invocation`: the rustc command being tested
 // Any unexpected output files not listed in `must_exist` or `can_exist` will cause a failure.
+#[track_caller]
 fn assert_expected_output_files(expectations: Expectations, rustc_invocation: impl Fn()) {
     let Expectations { expected_files: must_exist, allowed_files: can_exist, test_dir: dir } =
         expectations;

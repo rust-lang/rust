@@ -5,7 +5,7 @@ use rustc_ast::Label;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, SubdiagMessageOp, Subdiagnostic,
+    MultiSpan, Subdiagnostic,
 };
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -756,7 +756,7 @@ pub(crate) enum MacroExport {
     OnDeclMacro,
 
     #[diag(passes_invalid_macro_export_arguments)]
-    UnknownItem { name: Symbol },
+    InvalidArgument,
 
     #[diag(passes_invalid_macro_export_arguments_too_many_items)]
     TooManyItems,
@@ -1045,11 +1045,10 @@ pub(crate) struct AbiInvalidAttribute {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_unrecognized_field)]
-pub(crate) struct UnrecognizedField {
+#[diag(passes_unrecognized_argument)]
+pub(crate) struct UnrecognizedArgument {
     #[primary_span]
     pub span: Span,
-    pub name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -1196,10 +1195,6 @@ pub(crate) struct UnlabeledCfInWhileCondition<'a> {
     pub span: Span,
     pub cf_type: &'a str,
 }
-
-#[derive(LintDiagnostic)]
-#[diag(passes_undefined_naked_function_abi)]
-pub(crate) struct UndefinedNakedFunctionAbi;
 
 #[derive(Diagnostic)]
 #[diag(passes_no_patterns)]
@@ -1437,7 +1432,7 @@ pub(crate) struct UselessAssignment<'a> {
 #[derive(LintDiagnostic)]
 #[diag(passes_only_has_effect_on)]
 pub(crate) struct OnlyHasEffectOn {
-    pub attr_name: Symbol,
+    pub attr_name: String,
     pub target_name: String,
 }
 
@@ -1856,11 +1851,7 @@ pub(crate) struct UnusedVariableStringInterp {
 }
 
 impl Subdiagnostic for UnusedVariableStringInterp {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.span_label(self.lit, crate::fluent_generated::passes_maybe_string_interpolation);
         diag.multipart_suggestion(
             crate::fluent_generated::passes_string_interpolation_only_works,

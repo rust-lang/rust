@@ -454,6 +454,7 @@ symbols! {
         and_then,
         anon,
         anon_adt,
+        anon_assoc,
         anonymous_lifetime_in_impl_trait,
         any,
         append_const_msg,
@@ -915,6 +916,7 @@ symbols! {
         expf16,
         expf32,
         expf64,
+        explicit_extern_abis,
         explicit_generic_args_with_impl_trait,
         explicit_tail_calls,
         export_name,
@@ -1067,7 +1069,6 @@ symbols! {
         ge,
         gen_blocks,
         gen_future,
-        gen_kill,
         generator_clone,
         generators,
         generic_arg_infer,
@@ -1185,6 +1186,7 @@ symbols! {
         instruction_set,
         integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
         integral,
+        internal_features,
         into_async_iter_into_iter,
         into_future,
         into_iter,
@@ -1399,6 +1401,7 @@ symbols! {
         naked,
         naked_asm,
         naked_functions,
+        naked_functions_rustic_abi,
         naked_functions_target_feature,
         name,
         names,
@@ -1881,6 +1884,7 @@ symbols! {
         select_unpredictable,
         self_in_typedefs,
         self_struct_ctor,
+        semiopaque,
         semitransparent,
         sha2,
         sha3,
@@ -1913,6 +1917,7 @@ symbols! {
         simd_eq,
         simd_expose_provenance,
         simd_extract,
+        simd_extract_dyn,
         simd_fabs,
         simd_fcos,
         simd_fexp,
@@ -1931,6 +1936,7 @@ symbols! {
         simd_ge,
         simd_gt,
         simd_insert,
+        simd_insert_dyn,
         simd_le,
         simd_lt,
         simd_masked_load,
@@ -2211,7 +2217,8 @@ symbols! {
         unsafe_extern_blocks,
         unsafe_fields,
         unsafe_no_drop_flag,
-        unsafe_pin_internals,
+        unsafe_pinned,
+        unsafe_unpin,
         unsize,
         unsized_const_param_ty,
         unsized_const_params,
@@ -2538,13 +2545,8 @@ rustc_index::newtype_index! {
 }
 
 impl Symbol {
-    const fn new(n: u32) -> Self {
+    pub const fn new(n: u32) -> Self {
         Symbol(SymbolIndex::from_u32(n))
-    }
-
-    /// for use in Decoder only
-    pub fn new_from_decoded(n: u32) -> Self {
-        Self::new(n)
     }
 
     /// Maps a string to its interned representation.
@@ -2632,11 +2634,14 @@ struct InternerInner {
 }
 
 impl Interner {
-    fn prefill(init: &[&'static str]) -> Self {
-        Interner(Lock::new(InternerInner {
-            arena: Default::default(),
-            strings: init.iter().copied().collect(),
-        }))
+    fn prefill(init: &[&'static str], extra: &[&'static str]) -> Self {
+        let strings = FxIndexSet::from_iter(init.iter().copied().chain(extra.iter().copied()));
+        assert_eq!(
+            strings.len(),
+            init.len() + extra.len(),
+            "`init` or `extra` contain duplicate symbols",
+        );
+        Interner(Lock::new(InternerInner { arena: Default::default(), strings }))
     }
 
     #[inline]
@@ -2760,9 +2765,9 @@ impl Symbol {
         self != kw::Empty && self != kw::Underscore && !self.is_path_segment_keyword()
     }
 
-    /// Is this symbol was interned in compiler's `symbols!` macro
-    pub fn is_preinterned(self) -> bool {
-        self.as_u32() < PREINTERNED_SYMBOLS_COUNT
+    /// Was this symbol predefined in the compiler's `symbols!` macro
+    pub fn is_predefined(self) -> bool {
+        self.as_u32() < PREDEFINED_SYMBOLS_COUNT
     }
 }
 

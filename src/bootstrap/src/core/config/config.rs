@@ -189,7 +189,7 @@ pub enum GccCiMode {
 ///
 /// Note that this structure is not decoded directly into, but rather it is
 /// filled out from the decoded forms of the structs below. For documentation
-/// each field, see the corresponding fields in
+/// on each field, see the corresponding fields in
 /// `bootstrap.example.toml`.
 #[derive(Default, Clone)]
 pub struct Config {
@@ -416,6 +416,9 @@ pub struct Config {
 
     /// Command for visual diff display, e.g. `diff-tool --color=always`.
     pub compiletest_diff_tool: Option<String>,
+
+    /// Whether to use the precompiled stage0 libtest with compiletest.
+    pub compiletest_use_stage0_libtest: bool,
 
     pub is_running_on_ci: bool,
 }
@@ -983,6 +986,7 @@ define_config! {
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
         jobs: Option<u32> = "jobs",
         compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
+        compiletest_use_stage0_libtest: Option<bool> = "compiletest-use-stage0-libtest",
         ccache: Option<StringOrBool> = "ccache",
         exclude: Option<Vec<PathBuf>> = "exclude",
     }
@@ -1540,9 +1544,6 @@ impl Config {
             }
         }
 
-        let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
-        let ci_channel = file_content.trim_end();
-
         // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
         // but not if `bootstrap.toml` hasn't been created.
         let mut toml = if !using_default_path || toml_path.exists() {
@@ -1682,6 +1683,7 @@ impl Config {
             optimized_compiler_builtins,
             jobs,
             compiletest_diff_tool,
+            compiletest_use_stage0_libtest,
             mut ccache,
             exclude,
         } = toml.build.unwrap_or_default();
@@ -1847,17 +1849,21 @@ impl Config {
         let mut lld_enabled = None;
         let mut std_features = None;
 
-        let is_user_configured_rust_channel =
-            if let Some(channel) = toml.rust.as_ref().and_then(|r| r.channel.clone()) {
-                if channel == "auto-detect" {
-                    config.channel = ci_channel.into();
-                } else {
-                    config.channel = channel;
-                }
+        let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
+        let ci_channel = file_content.trim_end();
+
+        let toml_channel = toml.rust.as_ref().and_then(|r| r.channel.clone());
+        let is_user_configured_rust_channel = match toml_channel {
+            Some(channel) if channel == "auto-detect" => {
+                config.channel = ci_channel.into();
                 true
-            } else {
-                false
-            };
+            }
+            Some(channel) => {
+                config.channel = channel;
+                true
+            }
+            None => false,
+        };
 
         let default = config.channel == "dev";
         config.omit_git_hash = toml.rust.as_ref().and_then(|r| r.omit_git_hash).unwrap_or(default);
@@ -1881,6 +1887,10 @@ impl Config {
                 && config.src.join("vendor").exists()
                 && config.src.join(".cargo/config.toml").exists(),
         );
+
+        if !is_user_configured_rust_channel && config.rust_info.is_from_tarball() {
+            config.channel = ci_channel.into();
+        }
 
         if let Some(rust) = toml.rust {
             let Rust {
@@ -2085,8 +2095,6 @@ impl Config {
 
                 config.channel = channel;
             }
-        } else if config.rust_info.is_from_tarball() && !is_user_configured_rust_channel {
-            ci_channel.clone_into(&mut config.channel);
         }
 
         if let Some(llvm) = toml.llvm {
@@ -2389,6 +2397,12 @@ impl Config {
             );
         }
 
+        if config.lld_enabled && config.is_system_llvm(config.build) {
+            eprintln!(
+                "Warning: LLD is enabled when using external llvm-config. LLD will not be built and copied to the sysroot."
+            );
+        }
+
         let default_std_features = BTreeSet::from([String::from("panic-unwind")]);
         config.rust_std_features = std_features.unwrap_or(default_std_features);
 
@@ -2415,6 +2429,7 @@ impl Config {
         config.optimized_compiler_builtins =
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
         config.compiletest_diff_tool = compiletest_diff_tool;
+        config.compiletest_use_stage0_libtest = compiletest_use_stage0_libtest.unwrap_or(true);
 
         let download_rustc = config.download_rustc_commit.is_some();
         config.explicit_stage_from_cli = flags.stage.is_some();
@@ -2879,6 +2894,13 @@ impl Config {
 
         let absolute_path = self.src.join(relative_path);
 
+        // NOTE: This check is required because `jj git clone` doesn't create directories for
+        // submodules, they are completely ignored. The code below assumes this directory exists,
+        // so create it here.
+        if !absolute_path.exists() {
+            t!(fs::create_dir_all(&absolute_path));
+        }
+
         // NOTE: The check for the empty directory is here because when running x.py the first time,
         // the submodule won't be checked out. Check it out now so we can build it.
         if !GitInfo::new(false, &absolute_path).is_managed_git_subrepository()
@@ -3223,6 +3245,42 @@ impl Config {
         }
 
         Some(commit.to_string())
+    }
+
+    /// Checks if the given target is the same as the host target.
+    pub fn is_host_target(&self, target: TargetSelection) -> bool {
+        self.build == target
+    }
+
+    /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
+    /// In particular, we expect llvm sources to be available when this is false.
+    ///
+    /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
+    pub fn is_system_llvm(&self, target: TargetSelection) -> bool {
+        match self.target_config.get(&target) {
+            Some(Target { llvm_config: Some(_), .. }) => {
+                let ci_llvm = self.llvm_from_ci && self.is_host_target(target);
+                !ci_llvm
+            }
+            // We're building from the in-tree src/llvm-project sources.
+            Some(Target { llvm_config: None, .. }) => false,
+            None => false,
+        }
+    }
+
+    /// Returns `true` if this is our custom, patched, version of LLVM.
+    ///
+    /// This does not necessarily imply that we're managing the `llvm-project` submodule.
+    pub fn is_rust_llvm(&self, target: TargetSelection) -> bool {
+        match self.target_config.get(&target) {
+            // We're using a user-controlled version of LLVM. The user has explicitly told us whether the version has our patches.
+            // (They might be wrong, but that's not a supported use-case.)
+            // In particular, this tries to support `submodules = false` and `patches = false`, for using a newer version of LLVM that's not through `rust-lang/llvm-project`.
+            Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
+            // The user hasn't promised the patches match.
+            // This only has our patches if it's downloaded from CI or built from source.
+            _ => !self.is_system_llvm(target),
+        }
     }
 }
 

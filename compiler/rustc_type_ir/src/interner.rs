@@ -31,6 +31,7 @@ pub trait Interner:
     + IrPrint<ty::SubtypePredicate<Self>>
     + IrPrint<ty::CoercePredicate<Self>>
     + IrPrint<ty::FnSig<Self>>
+    + IrPrint<ty::PatternKind<Self>>
 {
     type DefId: DefId<Self>;
     type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
@@ -104,7 +105,14 @@ pub trait Interner:
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
     type BoundExistentialPredicates: BoundExistentialPredicates<Self>;
     type AllocId: Copy + Debug + Hash + Eq;
-    type Pat: Copy + Debug + Hash + Eq + Debug + Relate<Self>;
+    type Pat: Copy
+        + Debug
+        + Hash
+        + Eq
+        + Debug
+        + Relate<Self>
+        + Flags
+        + IntoKind<Kind = ty::PatternKind<Self>>;
     type Safety: Safety<Self>;
     type Abi: Abi<Self>;
 
@@ -254,6 +262,8 @@ pub trait Interner:
         self,
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = ty::Binder<Self, ty::TraitRef<Self>>>>;
+
+    fn impl_self_is_guaranteed_unsized(self, def_id: Self::DefId) -> bool;
 
     fn has_target_features(self, def_id: Self::DefId) -> bool;
 

@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/unclosed-delims.rs:12:48
+  --> $DIR/unclosed-delims.rs:12:54
    |
 LL | mod tests {
    |           - unclosed delimiter
@@ -8,7 +8,7 @@ LL |     fn test1() {
    |                - this delimiter might not be properly closed...
 ...
 LL | }
-   | -                                             ^
+   | -                                                   ^
    | |
    | ...as it matches this but it has different indentation
 

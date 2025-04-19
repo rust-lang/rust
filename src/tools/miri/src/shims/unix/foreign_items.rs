@@ -231,6 +231,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "flock" => {
+                // Currently this function does not exist on all Unixes, e.g. on Solaris.
+                this.check_target_os(&["linux", "freebsd", "macos", "illumos"], link_name)?;
                 let [fd, op] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let op = this.read_scalar(op)?.to_i32()?;

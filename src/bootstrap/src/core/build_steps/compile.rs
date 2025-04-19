@@ -155,7 +155,7 @@ impl Step for Std {
 
         // When using `download-rustc`, we already have artifacts for the host available. Don't
         // recompile them.
-        if builder.download_rustc() && builder.is_builder_target(target)
+        if builder.download_rustc() && builder.config.is_host_target(target)
             // NOTE: the beta compiler may generate different artifacts than the downloaded compiler, so
             // its artifacts can't be reused.
             && compiler.stage != 0
@@ -229,7 +229,7 @@ impl Step for Std {
         // The LLD wrappers and `rust-lld` are self-contained linking components that can be
         // necessary to link the stdlib on some targets. We'll also need to copy these binaries to
         // the `stage0-sysroot` to ensure the linker is found when bootstrapping on such a target.
-        if compiler.stage == 0 && builder.is_builder_target(compiler.host) {
+        if compiler.stage == 0 && builder.config.is_host_target(compiler.host) {
             trace!(
                 "(build == host) copying linking components to `stage0-sysroot` for bootstrapping"
             );
@@ -1374,7 +1374,7 @@ pub fn rustc_cargo_env(
 /// Pass down configuration from the LLVM build into the build of
 /// rustc_llvm and rustc_codegen_llvm.
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
-    if builder.is_rust_llvm(target) {
+    if builder.config.is_rust_llvm(target) {
         cargo.env("LLVM_RUSTLLVM", "1");
     }
     if builder.config.llvm_enzyme {
@@ -2182,7 +2182,7 @@ impl Step for Assemble {
         debug!("copying codegen backends to sysroot");
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
-        if builder.config.lld_enabled {
+        if builder.config.lld_enabled && !builder.config.is_system_llvm(target_compiler.host) {
             builder.ensure(crate::core::build_steps::tool::LldWrapper {
                 build_compiler,
                 target_compiler,
@@ -2398,7 +2398,9 @@ pub fn run_cargo(
     // Ok now we need to actually find all the files listed in `toplevel`. We've
     // got a list of prefix/extensions and we basically just need to find the
     // most recent file in the `deps` folder corresponding to each one.
-    let contents = t!(target_deps_dir.read_dir())
+    let contents = target_deps_dir
+        .read_dir()
+        .unwrap_or_else(|e| panic!("Couldn't read {}: {}", target_deps_dir.display(), e))
         .map(|e| t!(e))
         .map(|e| (e.path(), e.file_name().into_string().unwrap(), t!(e.metadata())))
         .collect::<Vec<_>>();
@@ -2530,7 +2532,9 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     // FIXME: to make things simpler for now, limit this to the host and target where we know
     // `strip -g` is both available and will fix the issue, i.e. on a x64 linux host that is not
     // cross-compiling. Expand this to other appropriate targets in the future.
-    if target != "x86_64-unknown-linux-gnu" || !builder.is_builder_target(target) || !path.exists()
+    if target != "x86_64-unknown-linux-gnu"
+        || !builder.config.is_host_target(target)
+        || !path.exists()
     {
         return;
     }

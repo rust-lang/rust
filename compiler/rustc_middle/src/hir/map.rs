@@ -1,3 +1,7 @@
+//! This module used to contain a type called `Map`. That type has since been
+//! eliminated, and all its methods are now on `TyCtxt`. But the module name
+//! stays as `map` because there isn't an obviously better name for it.
+
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -17,16 +21,6 @@ use crate::hir::{ModuleItems, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::LocalCrate;
 use crate::ty::TyCtxt;
-
-// FIXME: the structure was necessary in the past but now it
-// only serves as "namespace" for HIR-related methods, and can be
-// removed if all the methods are reasonably renamed and moved to tcx
-// (https://github.com/rust-lang/rust/pull/118256#issuecomment-1826442834).
-#[allow(unused)] // FIXME: temporary
-#[derive(Copy, Clone)]
-pub struct Map<'hir> {
-    pub(super) tcx: TyCtxt<'hir>,
-}
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
 /// Constructed using `tcx.hir_parent_iter(hir_id)`.
@@ -281,7 +275,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn hir_body_param_names(self, id: BodyId) -> impl Iterator<Item = Option<Ident>> {
+    pub fn hir_body_param_idents(self, id: BodyId) -> impl Iterator<Item = Option<Ident>> {
         self.hir_body(id).params.iter().map(|param| match param.pat.kind {
             PatKind::Binding(_, _, ident, _) => Some(ident),
             PatKind::Wild => Some(Ident::new(kw::Underscore, param.pat.span)),
@@ -335,7 +329,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns an iterator of the `DefId`s for all body-owners in this
     /// crate. If you would prefer to iterate over the bodies
-    /// themselves, you can do `self.hir().krate().body_ids.iter()`.
+    /// themselves, you can do `self.hir_crate(()).body_ids.iter()`.
     #[inline]
     pub fn hir_body_owners(self) -> impl Iterator<Item = LocalDefId> {
         self.hir_crate_items(()).body_owners.iter().copied()
@@ -343,7 +337,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn par_hir_body_owners(self, f: impl Fn(LocalDefId) + DynSend + DynSync) {
-        par_for_each_in(&self.hir_crate_items(()).body_owners[..], |&def_id| f(def_id));
+        par_for_each_in(&self.hir_crate_items(()).body_owners[..], |&&def_id| f(def_id));
     }
 
     pub fn hir_ty_param_owner(self, def_id: LocalDefId) -> LocalDefId {

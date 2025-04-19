@@ -15,7 +15,7 @@
           _4 = copy _1;
           StorageLive(_5);
           _5 = copy _2;
--         _3 = three_way_compare::<i16>(move _4, move _5) -> [return: bb1, unwind continue];
+-         _3 = three_way_compare::<i16>(move _4, move _5) -> [return: bb1, unwind unreachable];
 +         _3 = Cmp(move _4, move _5);
 +         goto -> bb1;
       }

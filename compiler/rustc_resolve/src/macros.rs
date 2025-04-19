@@ -323,8 +323,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn record_macro_rule_usage(&mut self, id: NodeId, rule_i: usize) {
-        let did = self.local_def_id(id);
-        if let Some(rules) = self.unused_macro_rules.get_mut(&did) {
+        if let Some(rules) = self.unused_macro_rules.get_mut(&id) {
             rules.remove(&rule_i);
         }
     }
@@ -337,15 +336,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                 ident.span,
                 BuiltinLintDiag::UnusedMacroDefinition(ident.name),
             );
+            // Do not report unused individual rules if the entire macro is unused
+            self.unused_macro_rules.swap_remove(&node_id);
         }
 
-        for (&def_id, unused_arms) in self.unused_macro_rules.iter() {
+        for (&node_id, unused_arms) in self.unused_macro_rules.iter() {
             for (&arm_i, &(ident, rule_span)) in unused_arms.to_sorted_stable_ord() {
-                if self.unused_macros.contains_key(&def_id) {
-                    // We already lint the entire macro as unused
-                    continue;
-                }
-                let node_id = self.def_id_to_node_id[def_id];
                 self.lint_buffer.buffer_lint(
                     UNUSED_MACRO_RULES,
                     node_id,
@@ -466,11 +462,11 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn declare_proc_macro(&mut self, id: NodeId) {
-        self.proc_macros.push(id)
+        self.proc_macros.push(self.local_def_id(id))
     }
 
-    fn append_stripped_cfg_item(&mut self, parent_node: NodeId, name: Ident, cfg: ast::MetaItem) {
-        self.stripped_cfg_items.push(StrippedCfgItem { parent_module: parent_node, name, cfg });
+    fn append_stripped_cfg_item(&mut self, parent_node: NodeId, ident: Ident, cfg: ast::MetaItem) {
+        self.stripped_cfg_items.push(StrippedCfgItem { parent_module: parent_node, ident, cfg });
     }
 
     fn registered_tools(&self) -> &RegisteredTools {
@@ -932,7 +928,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             .invocation_parents
                             .get(&parent_scope.expansion)
                             .map_or(ast::CRATE_NODE_ID, |parent| {
-                                self.def_id_to_node_id[parent.parent_def]
+                                self.def_id_to_node_id(parent.parent_def)
                             });
                         self.lint_buffer.buffer_lint(
                             LEGACY_DERIVE_HELPERS,

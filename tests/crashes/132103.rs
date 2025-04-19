@@ -1,5 +1,6 @@
 //@ known-bug: #132103
-//@compile-flags: -Zvalidate-mir --edition=2018 -Zinline-mir=yes
+//@ compile-flags: -Zvalidate-mir -Zinline-mir=yes
+//@ edition: 2018
 use core::future::{async_drop_in_place, Future};
 use core::mem::{self};
 use core::pin::pin;

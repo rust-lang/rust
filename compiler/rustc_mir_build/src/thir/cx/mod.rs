@@ -113,7 +113,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             apply_adjustments: tcx
                 .hir_attrs(hir_id)
                 .iter()
-                .all(|attr| attr.name_or_empty() != rustc_span::sym::custom_mir),
+                .all(|attr| !attr.has_name(rustc_span::sym::custom_mir)),
         }
     }
 

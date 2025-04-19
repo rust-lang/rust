@@ -53,7 +53,7 @@ where
         checksum_hash_kind,
     });
 
-    rustc_span::create_session_globals_then(DEFAULT_EDITION, sm_inputs, || {
+    rustc_span::create_session_globals_then(DEFAULT_EDITION, &[], sm_inputs, || {
         let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
         let io = CompilerIO {
             input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
@@ -614,6 +614,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(control_flow_guard, CFGuard::Checks);
     tracked!(debug_assertions, Some(true));
     tracked!(debuginfo, DebugInfo::Limited);
+    tracked!(dwarf_version, Some(5));
     tracked!(embed_bitcode, false);
     tracked!(force_frame_pointers, FramePointer::Always);
     tracked!(force_unwind_tables, Some(true));

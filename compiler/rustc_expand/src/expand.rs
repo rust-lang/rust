@@ -1169,9 +1169,9 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
         collector.cx.dcx().emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
     }
 
-    /// All of the names (items) declared by this node.
+    /// All of the identifiers (items) declared by this node.
     /// This is an approximation and should only be used for diagnostics.
-    fn declared_names(&self) -> Vec<Ident> {
+    fn declared_idents(&self) -> Vec<Ident> {
         vec![]
     }
 }
@@ -1306,7 +1306,7 @@ impl InvocationCollectorNode for P<ast::Item> {
         res
     }
 
-    fn declared_names(&self) -> Vec<Ident> {
+    fn declared_idents(&self) -> Vec<Ident> {
         if let ItemKind::Use(ut) = &self.kind {
             fn collect_use_tree_leaves(ut: &ast::UseTree, idents: &mut Vec<Ident>) {
                 match &ut.kind {
@@ -2053,25 +2053,25 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     ) -> Node::OutputTy {
         loop {
             return match self.take_first_attr(&mut node) {
-                Some((attr, pos, derives)) => match attr.name_or_empty() {
-                    sym::cfg => {
+                Some((attr, pos, derives)) => match attr.name() {
+                    Some(sym::cfg) => {
                         let (res, meta_item) = self.expand_cfg_true(&mut node, attr, pos);
                         if res {
                             continue;
                         }
 
                         if let Some(meta_item) = meta_item {
-                            for name in node.declared_names() {
+                            for ident in node.declared_idents() {
                                 self.cx.resolver.append_stripped_cfg_item(
                                     self.cx.current_expansion.lint_node_id,
-                                    name,
+                                    ident,
                                     meta_item.clone(),
                                 )
                             }
                         }
                         Default::default()
                     }
-                    sym::cfg_attr => {
+                    Some(sym::cfg_attr) => {
                         self.expand_cfg_attr(&mut node, &attr, pos);
                         continue;
                     }
@@ -2144,8 +2144,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     ) {
         loop {
             return match self.take_first_attr(node) {
-                Some((attr, pos, derives)) => match attr.name_or_empty() {
-                    sym::cfg => {
+                Some((attr, pos, derives)) => match attr.name() {
+                    Some(sym::cfg) => {
                         let span = attr.span;
                         if self.expand_cfg_true(node, attr, pos).0 {
                             continue;
@@ -2154,7 +2154,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         node.expand_cfg_false(self, pos, span);
                         continue;
                     }
-                    sym::cfg_attr => {
+                    Some(sym::cfg_attr) => {
                         self.expand_cfg_attr(node, &attr, pos);
                         continue;
                     }

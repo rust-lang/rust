@@ -1,19 +1,19 @@
 error: removing an expression is not supported in this position
   --> $DIR/cfg-stmt-recovery.rs:9:13
    |
-LL |     let _ = #[cfg(FALSE)] 0;
+LL |     let _ = #[cfg(false)] 0;
    |             ^^^^^^^^^^^^^
 
 error: expected expression, found `;`
   --> $DIR/cfg-stmt-recovery.rs:9:28
    |
-LL |     let _ = #[cfg(FALSE)] 0;
+LL |     let _ = #[cfg(false)] 0;
    |                            ^ expected expression
 
 error: removing an expression is not supported in this position
   --> $DIR/cfg-stmt-recovery.rs:9:13
    |
-LL |     let _ = #[cfg(FALSE)] 0;
+LL |     let _ = #[cfg(false)] 0;
    |             ^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors

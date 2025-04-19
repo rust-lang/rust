@@ -1447,7 +1447,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	cursor: pointer;
 }
 .setting-check input {
-	flex-shrink: 0,
+	flex-shrink: 0;
 }
 
 .setting-radio input:checked {

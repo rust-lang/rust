@@ -486,7 +486,7 @@ pub struct MiriMachine<'tcx> {
     pub(crate) epoll_interests: shims::EpollInterestTable,
 
     /// This machine's monotone clock.
-    pub(crate) clock: Clock,
+    pub(crate) monotonic_clock: MonotonicClock,
 
     /// The set of threads.
     pub(crate) threads: ThreadManager<'tcx>,
@@ -713,7 +713,7 @@ impl<'tcx> MiriMachine<'tcx> {
             preemption_rate: config.preemption_rate,
             report_progress: config.report_progress,
             basic_block_count: 0,
-            clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
+            monotonic_clock: MonotonicClock::new(config.isolated_op == IsolatedOp::Allow),
             #[cfg(unix)]
             native_lib: config.native_lib.as_ref().map(|lib_file_path| {
                 let host_triple = rustc_session::config::host_tuple();
@@ -896,7 +896,7 @@ impl VisitProvenance for MiriMachine<'_> {
             tcx: _,
             isolated_op: _,
             validation: _,
-            clock: _,
+            monotonic_clock: _,
             layouts: _,
             static_roots: _,
             profiler: _,
@@ -1568,7 +1568,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx.maybe_preempt_active_thread();
 
         // Make sure some time passes.
-        ecx.machine.clock.tick();
+        ecx.machine.monotonic_clock.tick();
 
         interp_ok(())
     }

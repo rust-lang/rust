@@ -10,8 +10,8 @@ fn main() {
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
-    //~^ First Pass analysis includes:
-    //~| Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         println!("{}", t.0);
         //~^ NOTE: Capturing t[(0, 0)] -> Immutable
         //~| NOTE: Min Capture t[(0, 0)] -> Immutable

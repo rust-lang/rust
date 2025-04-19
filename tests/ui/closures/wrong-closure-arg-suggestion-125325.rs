@@ -21,9 +21,9 @@ fn func(_f: impl Fn()) -> usize {
 fn test_func(s: &S) -> usize {
     let mut x = ();
     s.assoc_func(|| x = ());
-    //~^ cannot assign to `x`, as it is a captured variable in a `Fn` closure
+    //~^ ERROR cannot assign to `x`, as it is a captured variable in a `Fn` closure
     func(|| x = ())
-    //~^ cannot assign to `x`, as it is a captured variable in a `Fn` closure
+    //~^ ERROR cannot assign to `x`, as it is a captured variable in a `Fn` closure
 }
 
 fn main() {}

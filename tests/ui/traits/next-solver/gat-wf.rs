@@ -10,7 +10,7 @@ trait Foo {
 }
 
 impl Foo for &() {
-    type T<'a> = (); //~ the type `&()` does not fulfill the required lifetime
+    type T<'a> = (); //~ ERROR the type `&()` does not fulfill the required lifetime
 }
 
 fn main() {}

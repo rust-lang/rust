@@ -8,7 +8,7 @@ use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr, ExprField,
-    ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeName,
+    ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeKind,
     Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, StructTailExpr,
     TraitBoundModifiers, Ty, TyKind, TyPat, TyPatKind,
 };
@@ -483,7 +483,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     }
 
     fn eq_lifetime(left: &Lifetime, right: &Lifetime) -> bool {
-        left.res == right.res
+        left.kind == right.kind
     }
 
     fn eq_pat_field(&mut self, left: &PatField<'_>, right: &PatField<'_>) -> bool {
@@ -1124,6 +1124,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_pat(&mut self, pat: &Pat<'_>) {
         std::mem::discriminant(&pat.kind).hash(&mut self.s);
         match pat.kind {
+            PatKind::Missing => unreachable!(),
             PatKind::Binding(BindingMode(by_ref, mutability), _, _, pat) => {
                 std::mem::discriminant(&by_ref).hash(&mut self.s);
                 std::mem::discriminant(&mutability).hash(&mut self.s);
@@ -1244,8 +1245,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_lifetime(&mut self, lifetime: &Lifetime) {
         lifetime.ident.name.hash(&mut self.s);
-        std::mem::discriminant(&lifetime.res).hash(&mut self.s);
-        if let LifetimeName::Param(param_id) = lifetime.res {
+        std::mem::discriminant(&lifetime.kind).hash(&mut self.s);
+        if let LifetimeKind::Param(param_id) = lifetime.kind {
             param_id.hash(&mut self.s);
         }
     }

@@ -9,7 +9,6 @@
 #![deny(unsafe_code)]
 // proc_macros anyway don't work on wasm hosts so while both sides of this bridge can
 // be built with different versions of rustc, the wasm ABI changes don't really matter.
-#![cfg_attr(bootstrap, allow(unknown_lints))]
 #![allow(wasm_c_abi)]
 
 use std::hash::Hash;
@@ -82,16 +81,8 @@ macro_rules! with_api {
                     $self: $S::TokenStream
                 ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>;
             },
-            SourceFile {
-                fn drop($self: $S::SourceFile);
-                fn clone($self: &$S::SourceFile) -> $S::SourceFile;
-                fn eq($self: &$S::SourceFile, other: &$S::SourceFile) -> bool;
-                fn path($self: &$S::SourceFile) -> String;
-                fn is_real($self: &$S::SourceFile) -> bool;
-            },
             Span {
                 fn debug($self: $S::Span) -> String;
-                fn source_file($self: $S::Span) -> $S::SourceFile;
                 fn parent($self: $S::Span) -> Option<$S::Span>;
                 fn source($self: $S::Span) -> $S::Span;
                 fn byte_range($self: $S::Span) -> Range<usize>;
@@ -99,6 +90,8 @@ macro_rules! with_api {
                 fn end($self: $S::Span) -> $S::Span;
                 fn line($self: $S::Span) -> usize;
                 fn column($self: $S::Span) -> usize;
+                fn file($self: $S::Span) -> String;
+                fn local_file($self: $S::Span) -> Option<String>;
                 fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
                 fn subspan($self: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
                 fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
@@ -121,7 +114,6 @@ macro_rules! with_api_handle_types {
             'owned:
             FreeFunctions,
             TokenStream,
-            SourceFile,
 
             'interned:
             Span,

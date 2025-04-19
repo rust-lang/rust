@@ -2,7 +2,8 @@
 //! `--print=lints` (which is not a valid print request).
 
 //@ compile-flags: --print lints
-//@ error-pattern: help: use `-Whelp` to print a list of lints
-//@ error-pattern: help: for more information, see the rustc book
 
 //~? ERROR unknown print request: `lints`
+//~? HELP use `-Whelp` to print a list of lints
+//~? HELP for more information, see the rustc book
+//~? HELP valid print requests are

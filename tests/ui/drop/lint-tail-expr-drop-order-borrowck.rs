@@ -10,7 +10,7 @@ fn should_lint_with_potential_borrowck_err() {
     //~^ ERROR: relative drop order changing
     //~| WARN: this changes meaning in Rust 2024
     //~| NOTE: this temporary value will be dropped at the end of the block
-    //~| borrow later used by call
+    //~| NOTE: borrow later used by call
     //~| NOTE: for more information, see
 }
 
@@ -20,7 +20,7 @@ fn should_lint_with_unsafe_block() {
     //~^ ERROR: relative drop order changing
     //~| WARN: this changes meaning in Rust 2024
     //~| NOTE: this temporary value will be dropped at the end of the block
-    //~| borrow later used by call
+    //~| NOTE: borrow later used by call
     //~| NOTE: for more information, see
 }
 
@@ -32,7 +32,7 @@ fn should_lint_with_big_block() {
         //~^ ERROR: relative drop order changing
         //~| WARN: this changes meaning in Rust 2024
         //~| NOTE: this temporary value will be dropped at the end of the block
-        //~| borrow later used here
+        //~| NOTE: borrow later used here
         //~| NOTE: for more information, see
     })
 }
@@ -44,7 +44,7 @@ fn another_temp_that_is_copy_in_arg() {
     //~^ ERROR: relative drop order changing
     //~| WARN: this changes meaning in Rust 2024
     //~| NOTE: this temporary value will be dropped at the end of the block
-    //~| borrow later used by call
+    //~| NOTE: borrow later used by call
     //~| NOTE: for more information, see
 }
 

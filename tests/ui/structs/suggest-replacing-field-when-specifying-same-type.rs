@@ -22,7 +22,7 @@ fn main() {
         //~| ERROR pattern does not mention field `b` [E0027]
         Foo::Baz { bb: "" } => (),
         //~^ ERROR variant `Foo::Baz` does not have a field named `bb` [E0026]
-        //~| pattern does not mention field `a` [E0027]
+        //~| ERROR pattern does not mention field `a` [E0027]
         _ => (),
     }
 }

@@ -79,10 +79,6 @@ pub fn extern_abi_stability(abi: ExternAbi) -> Result<(), UnstableAbi> {
         | ExternAbi::SysV64 { .. }
         | ExternAbi::System { .. }
         | ExternAbi::EfiApi => Ok(()),
-        // implementation details
-        ExternAbi::RustIntrinsic => {
-            Err(UnstableAbi { abi, feature: sym::intrinsics, explain: GateReason::ImplDetail })
-        }
         ExternAbi::Unadjusted => {
             Err(UnstableAbi { abi, feature: sym::abi_unadjusted, explain: GateReason::ImplDetail })
         }

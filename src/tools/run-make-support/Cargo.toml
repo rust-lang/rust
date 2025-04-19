@@ -14,9 +14,5 @@ build_helper = { path = "../../build_helper" }
 serde_json = "1.0"
 libc = "0.2"
 
-# FIXME(#137532): replace `os_pipe` with `anonymous_pipe` once it stabilizes and
-# reaches beta.
-os_pipe = "1.2.1"
-
 [lib]
 crate-type = ["lib", "dylib"]

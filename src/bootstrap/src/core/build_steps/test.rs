@@ -15,7 +15,7 @@ use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
-use crate::core::build_steps::tool::{self, SourceType, Tool};
+use crate::core::build_steps::tool::{self, COMPILETEST_ALLOW_FEATURES, SourceType, Tool};
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
 use crate::core::builder::{
@@ -261,13 +261,7 @@ impl Step for Cargotest {
             .args(builder.config.test_args())
             .env("RUSTC", builder.rustc(compiler))
             .env("RUSTDOC", builder.rustdoc(compiler));
-        add_rustdoc_cargo_linker_args(
-            &mut cmd,
-            builder,
-            compiler.host,
-            LldThreads::No,
-            compiler.stage,
-        );
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, compiler.host, LldThreads::No);
         cmd.delay_failure().run(builder);
     }
 }
@@ -727,7 +721,7 @@ impl Step for CompiletestTest {
             SourceType::InTree,
             &[],
         );
-        cargo.allow_features("test");
+        cargo.allow_features(COMPILETEST_ALLOW_FEATURES);
         run_cargo_test(cargo, &[], &[], "compiletest self test", host, builder);
     }
 }
@@ -845,7 +839,7 @@ impl Step for RustdocTheme {
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTC_BOOTSTRAP", "1");
-        cmd.args(linker_args(builder, self.compiler.host, LldThreads::No, self.compiler.stage));
+        cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
 
         cmd.delay_failure().run(builder);
     }
@@ -1021,13 +1015,7 @@ impl Step for RustdocGUI {
         cmd.env("RUSTDOC", builder.rustdoc(self.compiler))
             .env("RUSTC", builder.rustc(self.compiler));
 
-        add_rustdoc_cargo_linker_args(
-            &mut cmd,
-            builder,
-            self.compiler.host,
-            LldThreads::No,
-            self.compiler.stage,
-        );
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, self.compiler.host, LldThreads::No);
 
         for path in &builder.paths {
             if let Some(p) = helpers::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {
@@ -1796,7 +1784,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         let mut hostflags = flags.clone();
-        hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No, compiler.stage));
+        hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
 
         let mut targetflags = flags;
 
@@ -1906,7 +1894,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                     .arg(llvm_components.trim());
                 llvm_components_passed = true;
             }
-            if !builder.is_rust_llvm(target) {
+            if !builder.config.is_rust_llvm(target) {
                 cmd.arg("--system-llvm");
             }
 
@@ -2680,7 +2668,7 @@ impl Step for Crate {
             cargo
         } else {
             // Also prepare a sysroot for the target.
-            if !builder.is_builder_target(target) {
+            if !builder.config.is_host_target(target) {
                 builder.ensure(compile::Std::new(compiler, target).force_recompile(true));
                 builder.ensure(RemoteCopyLibs { compiler, target });
             }

@@ -24,5 +24,5 @@ crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt:
 
 SyntaxContexts:
 #0: parent: #0, outer_mark: (crate0::{{expn0}}, Opaque)
-#1: parent: #0, outer_mark: (crate0::{{expn1}}, SemiTransparent)
+#1: parent: #0, outer_mark: (crate0::{{expn1}}, SemiOpaque)
 */

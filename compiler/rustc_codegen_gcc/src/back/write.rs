@@ -24,19 +24,23 @@ pub(crate) unsafe fn codegen(
     {
         let context = &module.module_llvm.context;
 
-        let module_name = module.name.clone();
-
         let should_combine_object_files = module.module_llvm.should_combine_object_files;
-
-        let module_name = Some(&module_name[..]);
 
         // NOTE: Only generate object files with GIMPLE when this environment variable is set for
         // now because this requires a particular setup (same gcc/lto1/lto-wrapper commit as libgccjit).
         // TODO(antoyo): remove this environment variable.
         let fat_lto = env::var("EMBED_LTO_BITCODE").as_deref() == Ok("1");
 
-        let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
-        let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
+        let bc_out = cgcx.output_filenames.temp_path_for_cgu(
+            OutputType::Bitcode,
+            &module.name,
+            cgcx.invocation_temp.as_deref(),
+        );
+        let obj_out = cgcx.output_filenames.temp_path_for_cgu(
+            OutputType::Object,
+            &module.name,
+            cgcx.invocation_temp.as_deref(),
+        );
 
         if config.bitcode_needed() {
             if fat_lto {
@@ -117,14 +121,22 @@ pub(crate) unsafe fn codegen(
         }
 
         if config.emit_ir {
-            let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
+            let out = cgcx.output_filenames.temp_path_for_cgu(
+                OutputType::LlvmAssembly,
+                &module.name,
+                cgcx.invocation_temp.as_deref(),
+            );
             std::fs::write(out, "").expect("write file");
         }
 
         if config.emit_asm {
             let _timer =
                 cgcx.prof.generic_activity_with_arg("GCC_module_codegen_emit_asm", &*module.name);
-            let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
+            let path = cgcx.output_filenames.temp_path_for_cgu(
+                OutputType::Assembly,
+                &module.name,
+                cgcx.invocation_temp.as_deref(),
+            );
             context.compile_to_file(OutputKind::Assembler, path.to_str().expect("path to str"));
         }
 
@@ -238,6 +250,7 @@ pub(crate) unsafe fn codegen(
         config.emit_asm,
         config.emit_ir,
         &cgcx.output_filenames,
+        cgcx.invocation_temp.as_deref(),
     ))
 }
 

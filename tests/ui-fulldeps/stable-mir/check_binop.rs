@@ -15,7 +15,6 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_smir::rustc_internal;
 use stable_mir::mir::mono::Instance;
 use stable_mir::mir::visit::{Location, MirVisitor};
 use stable_mir::mir::{LocalDecl, Rvalue, Statement, StatementKind, Terminator, TerminatorKind};

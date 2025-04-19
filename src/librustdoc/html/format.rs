@@ -11,6 +11,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
+use std::slice;
 
 use itertools::Either;
 use rustc_abi::ExternAbi;
@@ -650,33 +651,35 @@ pub(crate) fn href_relative_parts<'fqp>(
     }
 }
 
-pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Context<'_>) -> String {
-    let cache = cx.cache();
-    let Some((fqp, shortty)) = cache.paths.get(&did).or_else(|| cache.external_paths.get(&did))
-    else {
-        return String::new();
-    };
-    let mut buf = String::new();
-    let fqp = if *shortty == ItemType::Primitive {
-        // primitives are documented in a crate, but not actually part of it
-        &fqp[fqp.len() - 1..]
-    } else {
-        fqp
-    };
-    if let &Some(UrlFragment::Item(id)) = fragment {
-        write_str(&mut buf, format_args!("{} ", cx.tcx().def_descr(id)));
-        for component in fqp {
-            write_str(&mut buf, format_args!("{component}::"));
+pub(crate) fn link_tooltip(
+    did: DefId,
+    fragment: &Option<UrlFragment>,
+    cx: &Context<'_>,
+) -> impl fmt::Display {
+    fmt::from_fn(move |f| {
+        let cache = cx.cache();
+        let Some((fqp, shortty)) = cache.paths.get(&did).or_else(|| cache.external_paths.get(&did))
+        else {
+            return Ok(());
+        };
+        let fqp = if *shortty == ItemType::Primitive {
+            // primitives are documented in a crate, but not actually part of it
+            slice::from_ref(fqp.last().unwrap())
+        } else {
+            fqp
+        };
+        if let &Some(UrlFragment::Item(id)) = fragment {
+            write!(f, "{} ", cx.tcx().def_descr(id))?;
+            for component in fqp {
+                write!(f, "{component}::")?;
+            }
+            write!(f, "{}", cx.tcx().item_name(id))?;
+        } else if !fqp.is_empty() {
+            write!(f, "{shortty} ")?;
+            fqp.iter().joined("::", f)?;
         }
-        write_str(&mut buf, format_args!("{}", cx.tcx().item_name(id)));
-    } else if !fqp.is_empty() {
-        let mut fqp_it = fqp.iter();
-        write_str(&mut buf, format_args!("{shortty} {}", fqp_it.next().unwrap()));
-        for component in fqp_it {
-            write_str(&mut buf, format_args!("::{component}"));
-        }
-    }
-    buf
+        Ok(())
+    })
 }
 
 /// Used to render a [`clean::Path`].
@@ -1183,8 +1186,8 @@ impl clean::Impl {
         {
             primitive_link(f, PrimitiveType::Array, format_args!("[{name}; N]"), cx)?;
         } else if let clean::BareFunction(bare_fn) = &type_
-            && let [clean::Argument { type_: clean::Type::Generic(name), .. }] =
-                &bare_fn.decl.inputs.values[..]
+            && let [clean::Parameter { type_: clean::Type::Generic(name), .. }] =
+                &bare_fn.decl.inputs[..]
             && (self.kind.is_fake_variadic() || self.kind.is_auto())
         {
             // Hardcoded anchor library/core/src/primitive_docs.rs
@@ -1231,22 +1234,20 @@ impl clean::Impl {
     }
 }
 
-impl clean::Arguments {
-    pub(crate) fn print(&self, cx: &Context<'_>) -> impl Display {
-        fmt::from_fn(move |f| {
-            self.values
-                .iter()
-                .map(|input| {
-                    fmt::from_fn(|f| {
-                        if !input.name.is_empty() {
-                            write!(f, "{}: ", input.name)?;
-                        }
-                        input.type_.print(cx).fmt(f)
-                    })
+pub(crate) fn print_params(params: &[clean::Parameter], cx: &Context<'_>) -> impl Display {
+    fmt::from_fn(move |f| {
+        params
+            .iter()
+            .map(|param| {
+                fmt::from_fn(|f| {
+                    if let Some(name) = param.name {
+                        write!(f, "{}: ", name)?;
+                    }
+                    param.type_.print(cx).fmt(f)
                 })
-                .joined(", ", f)
-        })
-    }
+            })
+            .joined(", ", f)
+    })
 }
 
 // Implements Write but only counts the bytes "written".
@@ -1278,16 +1279,16 @@ impl clean::FnDecl {
             if f.alternate() {
                 write!(
                     f,
-                    "({args:#}{ellipsis}){arrow:#}",
-                    args = self.inputs.print(cx),
+                    "({params:#}{ellipsis}){arrow:#}",
+                    params = print_params(&self.inputs, cx),
                     ellipsis = ellipsis,
                     arrow = self.print_output(cx)
                 )
             } else {
                 write!(
                     f,
-                    "({args}{ellipsis}){arrow}",
-                    args = self.inputs.print(cx),
+                    "({params}{ellipsis}){arrow}",
+                    params = print_params(&self.inputs, cx),
                     ellipsis = ellipsis,
                     arrow = self.print_output(cx)
                 )
@@ -1333,14 +1334,14 @@ impl clean::FnDecl {
 
         write!(f, "(")?;
         if let Some(n) = line_wrapping_indent
-            && !self.inputs.values.is_empty()
+            && !self.inputs.is_empty()
         {
             write!(f, "\n{}", Indent(n + 4))?;
         }
 
-        let last_input_index = self.inputs.values.len().checked_sub(1);
-        for (i, input) in self.inputs.values.iter().enumerate() {
-            if let Some(selfty) = input.to_receiver() {
+        let last_input_index = self.inputs.len().checked_sub(1);
+        for (i, param) in self.inputs.iter().enumerate() {
+            if let Some(selfty) = param.to_receiver() {
                 match selfty {
                     clean::SelfTy => {
                         write!(f, "self")?;
@@ -1358,11 +1359,13 @@ impl clean::FnDecl {
                     }
                 }
             } else {
-                if input.is_const {
+                if param.is_const {
                     write!(f, "const ")?;
                 }
-                write!(f, "{}: ", input.name)?;
-                input.type_.print(cx).fmt(f)?;
+                if let Some(name) = param.name {
+                    write!(f, "{}: ", name)?;
+                }
+                param.type_.print(cx).fmt(f)?;
             }
             match (line_wrapping_indent, last_input_index) {
                 (_, None) => (),

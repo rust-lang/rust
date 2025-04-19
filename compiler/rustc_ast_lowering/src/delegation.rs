@@ -47,7 +47,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{Asyncness, ResolverAstLowering};
-use rustc_span::{Ident, Span};
+use rustc_span::{Ident, Span, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode};
@@ -85,7 +85,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .delegation_fn_sigs
                     .get(&local_def_id)
                     .is_some_and(|sig| sig.has_self),
-                None => self.tcx.associated_item(def_id).fn_has_self_parameter,
+                None => self.tcx.associated_item(def_id).is_method(),
             },
             _ => span_bug!(span, "unexpected DefKind for delegation item"),
         }
@@ -234,12 +234,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::FnSig { decl, header, span }
     }
 
-    fn generate_param(&mut self, span: Span) -> (hir::Param<'hir>, NodeId) {
+    fn generate_param(&mut self, idx: usize, span: Span) -> (hir::Param<'hir>, NodeId) {
         let pat_node_id = self.next_node_id();
         let pat_id = self.lower_node_id(pat_node_id);
+        let ident = Ident::with_dummy_span(Symbol::intern(&format!("arg{idx}")));
         let pat = self.arena.alloc(hir::Pat {
             hir_id: pat_id,
-            kind: hir::PatKind::Binding(hir::BindingMode::NONE, pat_id, Ident::empty(), None),
+            kind: hir::PatKind::Binding(hir::BindingMode::NONE, pat_id, ident, None),
             span,
             default_binding_modes: false,
         });
@@ -247,9 +248,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         (hir::Param { hir_id: self.next_id(), pat, ty_span: span, span }, pat_node_id)
     }
 
-    fn generate_arg(&mut self, param_id: HirId, span: Span) -> hir::Expr<'hir> {
+    fn generate_arg(&mut self, idx: usize, param_id: HirId, span: Span) -> hir::Expr<'hir> {
         let segments = self.arena.alloc_from_iter(iter::once(hir::PathSegment {
-            ident: Ident::empty(),
+            ident: Ident::with_dummy_span(Symbol::intern(&format!("arg{idx}"))),
             hir_id: self.next_id(),
             res: Res::Local(param_id),
             args: None,
@@ -273,7 +274,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let mut args: Vec<hir::Expr<'_>> = Vec::with_capacity(param_count);
 
             for idx in 0..param_count {
-                let (param, pat_node_id) = this.generate_param(span);
+                let (param, pat_node_id) = this.generate_param(idx, span);
                 parameters.push(param);
 
                 let arg = if let Some(block) = block
@@ -289,7 +290,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     this.ident_and_label_to_local_id.insert(pat_node_id, param.pat.hir_id.local_id);
                     this.lower_target_expr(&block)
                 } else {
-                    this.generate_arg(param.pat.hir_id, span)
+                    this.generate_arg(idx, param.pat.hir_id, span)
                 };
                 args.push(arg);
             }

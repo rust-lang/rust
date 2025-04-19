@@ -1,4 +1,4 @@
-//@compile-flags: --edition 2021
+//@ edition: 2021
 
 fn f<'a>(x: Box<dyn Fn() -> Option<usize + 'a>>) -> usize {
     //~^ ERROR expected trait, found builtin type `usize`

@@ -10,7 +10,7 @@ use rustc_trait_selection::opaque_types::check_opaque_type_parameter_valid;
 use tracing::{debug, instrument};
 
 use super::RegionInferenceContext;
-use crate::opaque_types::ConcreteOpaqueTypes;
+use crate::BorrowCheckRootCtxt;
 use crate::session_diagnostics::LifetimeMismatchOpaqueParam;
 use crate::universal_regions::RegionClassification;
 
@@ -58,12 +58,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// [rustc-dev-guide chapter]:
     /// https://rustc-dev-guide.rust-lang.org/opaque-types-region-infer-restrictions.html
-    #[instrument(level = "debug", skip(self, infcx), ret)]
+    #[instrument(level = "debug", skip(self, root_cx, infcx), ret)]
     pub(crate) fn infer_opaque_types(
         &self,
+        root_cx: &mut BorrowCheckRootCtxt<'tcx>,
         infcx: &InferCtxt<'tcx>,
         opaque_ty_decls: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
-        concrete_opaque_types: &mut ConcreteOpaqueTypes<'tcx>,
     ) {
         let mut decls_modulo_regions: FxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueTypeKey<'tcx>, Span)> =
             FxIndexMap::default();
@@ -140,11 +140,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
             }
 
-            concrete_opaque_types.insert(
-                infcx.tcx,
+            root_cx.add_concrete_opaque_type(
                 opaque_type_key.def_id,
-                OpaqueHiddenType { ty, span: concrete_type.span },
+                OpaqueHiddenType { span: concrete_type.span, ty },
             );
+
             // Check that all opaque types have the same region parameters if they have the same
             // non-region parameters. This is necessary because within the new solver we perform
             // various query operations modulo regions, and thus could unsoundly select some impls
@@ -186,7 +186,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        fold_regions(tcx, ty, |region, _| match *region {
+        fold_regions(tcx, ty, |region, _| match region.kind() {
             ty::ReVar(vid) => {
                 let scc = self.constraint_sccs.scc(vid);
 

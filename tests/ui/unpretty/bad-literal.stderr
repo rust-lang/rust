@@ -1,5 +1,5 @@
 error: invalid suffix `u` for number literal
-  --> $DIR/bad-literal.rs:6:5
+  --> $DIR/bad-literal.rs:7:5
    |
 LL |     1u;
    |     ^^ invalid suffix `u`

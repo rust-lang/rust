@@ -137,15 +137,6 @@ fn get_owner_return_paths(
     })
 }
 
-/// Forbid defining intrinsics in Rust code,
-/// as they must always be defined by the compiler.
-// FIXME: Move this to a more appropriate place.
-pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: ExternAbi) {
-    if let ExternAbi::RustIntrinsic = abi {
-        tcx.dcx().span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
-    }
-}
-
 pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     // Only restricted on wasm target for now
     if !tcx.sess.target.is_like_wasm {
@@ -214,7 +205,7 @@ fn missing_items_err(
 
     let missing_items_msg = missing_items
         .clone()
-        .map(|trait_item| trait_item.name.to_string())
+        .map(|trait_item| trait_item.name().to_string())
         .collect::<Vec<_>>()
         .join("`, `");
 
@@ -245,7 +236,7 @@ fn missing_items_err(
         let code = format!("{padding}{snippet}\n{padding}");
         if let Some(span) = tcx.hir_span_if_local(trait_item.def_id) {
             missing_trait_item_label
-                .push(errors::MissingTraitItemLabel { span, item: trait_item.name });
+                .push(errors::MissingTraitItemLabel { span, item: trait_item.name() });
             missing_trait_item.push(errors::MissingTraitItemSuggestion {
                 span: sugg_sp,
                 code,
@@ -416,14 +407,14 @@ fn fn_sig_suggestion<'tcx>(
         .enumerate()
         .map(|(i, ty)| {
             Some(match ty.kind() {
-                ty::Param(_) if assoc.fn_has_self_parameter && i == 0 => "self".to_string(),
+                ty::Param(_) if assoc.is_method() && i == 0 => "self".to_string(),
                 ty::Ref(reg, ref_ty, mutability) if i == 0 => {
                     let reg = format!("{reg} ");
                     let reg = match &reg[..] {
                         "'_ " | " " => "",
                         reg => reg,
                     };
-                    if assoc.fn_has_self_parameter {
+                    if assoc.is_method() {
                         match ref_ty.kind() {
                             ty::Param(param) if param.name == kw::SelfUpper => {
                                 format!("&{}{}self", reg, mutability.prefix_str())
@@ -436,7 +427,7 @@ fn fn_sig_suggestion<'tcx>(
                     }
                 }
                 _ => {
-                    if assoc.fn_has_self_parameter && i == 0 {
+                    if assoc.is_method() && i == 0 {
                         format!("self: {ty}")
                     } else {
                         format!("_: {ty}")
@@ -498,7 +489,7 @@ fn suggestion_signature<'tcx>(
     );
 
     match assoc.kind {
-        ty::AssocKind::Fn => fn_sig_suggestion(
+        ty::AssocKind::Fn { .. } => fn_sig_suggestion(
             tcx,
             tcx.liberate_late_bound_regions(
                 assoc.def_id,
@@ -508,14 +499,14 @@ fn suggestion_signature<'tcx>(
             tcx.predicates_of(assoc.def_id).instantiate_own(tcx, args),
             assoc,
         ),
-        ty::AssocKind::Type => {
+        ty::AssocKind::Type { .. } => {
             let (generics, where_clauses) = bounds_from_generic_predicates(
                 tcx,
                 tcx.predicates_of(assoc.def_id).instantiate_own(tcx, args),
             );
-            format!("type {}{generics} = /* Type */{where_clauses};", assoc.name)
+            format!("type {}{generics} = /* Type */{where_clauses};", assoc.name())
         }
-        ty::AssocKind::Const => {
+        ty::AssocKind::Const { name } => {
             let ty = tcx.type_of(assoc.def_id).instantiate_identity();
             let val = tcx
                 .infer_ctxt()
@@ -523,7 +514,7 @@ fn suggestion_signature<'tcx>(
                 .err_ctxt()
                 .ty_kind_suggestion(tcx.param_env(assoc.def_id), ty)
                 .unwrap_or_else(|| "value".to_string());
-            format!("const {}: {} = {};", assoc.name, ty, val)
+            format!("const {}: {} = {};", name, ty, val)
         }
     }
 }

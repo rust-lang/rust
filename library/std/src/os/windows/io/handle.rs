@@ -661,42 +661,42 @@ impl<T> From<crate::thread::JoinHandle<T>> for OwnedHandle {
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl AsHandle for io::PipeReader {
     fn as_handle(&self) -> BorrowedHandle<'_> {
         self.0.as_handle()
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl From<io::PipeReader> for OwnedHandle {
     fn from(pipe: io::PipeReader) -> Self {
         pipe.into_inner().into_inner()
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl AsHandle for io::PipeWriter {
     fn as_handle(&self) -> BorrowedHandle<'_> {
         self.0.as_handle()
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl From<io::PipeWriter> for OwnedHandle {
     fn from(pipe: io::PipeWriter) -> Self {
         pipe.into_inner().into_inner()
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl From<OwnedHandle> for io::PipeReader {
     fn from(owned_handle: OwnedHandle) -> Self {
         Self::from_inner(FromInner::from_inner(owned_handle))
     }
 }
 
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl From<OwnedHandle> for io::PipeWriter {
     fn from(owned_handle: OwnedHandle) -> Self {
         Self::from_inner(FromInner::from_inner(owned_handle))

@@ -16,8 +16,6 @@ pub mod itron {
     use super::unsupported;
 }
 
-#[path = "../unsupported/args.rs"]
-pub mod args;
 pub mod env;
 // `error` is `pub(crate)` so that it can be accessed by `itron/error.rs` as
 // `crate::sys::error`

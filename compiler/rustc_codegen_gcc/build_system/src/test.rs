@@ -529,20 +529,21 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
 
     env.insert("COMPILETEST_FORCE_STAGE0".to_string(), "1".to_string());
 
-    let extra =
-        if args.is_using_gcc_master_branch() { "" } else { " -Csymbol-mangling-version=v0" };
-
-    let rustc_args = &format!(
-        r#"-Zpanic-abort-tests \
-            -Zcodegen-backend="{pwd}/target/{channel}/librustc_codegen_gcc.{dylib_ext}" \
-            --sysroot "{sysroot_dir}" -Cpanic=abort{extra}"#,
+    let codegen_backend_path = format!(
+        "{pwd}/target/{channel}/librustc_codegen_gcc.{dylib_ext}",
         pwd = std::env::current_dir()
             .map_err(|error| format!("`current_dir` failed: {:?}", error))?
             .display(),
         channel = args.config_info.channel.as_str(),
         dylib_ext = args.config_info.dylib_ext,
-        sysroot_dir = args.config_info.sysroot_path,
-        extra = extra,
+    );
+
+    let extra =
+        if args.is_using_gcc_master_branch() { "" } else { " -Csymbol-mangling-version=v0" };
+
+    let rustc_args = format!(
+        "-Zpanic-abort-tests -Zcodegen-backend={codegen_backend_path} --sysroot {} -Cpanic=abort{extra}",
+        args.config_info.sysroot_path
     );
 
     run_command_with_env(
@@ -677,7 +678,7 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
 fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] libcore");
-    let path = get_sysroot_dir().join("sysroot_src/library/core/tests");
+    let path = get_sysroot_dir().join("sysroot_src/library/coretests");
     let _ = remove_dir_all(path.join("target"));
     run_cargo_command(&[&"test"], Some(&path), env, args)?;
     Ok(())

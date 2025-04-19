@@ -71,7 +71,7 @@ pub enum InstanceKind<'tcx> {
     /// - coroutines
     Item(DefId),
 
-    /// An intrinsic `fn` item (with `"rust-intrinsic"` ABI).
+    /// An intrinsic `fn` item (with`#[rustc_instrinsic]`).
     ///
     /// Alongside `Virtual`, this is the only `InstanceKind` that does not have its own callable MIR.
     /// Instead, codegen and const eval "magically" evaluate calls to intrinsics purely in the
@@ -746,7 +746,7 @@ impl<'tcx> Instance<'tcx> {
         let call_once = tcx
             .associated_items(fn_once)
             .in_definition_order()
-            .find(|it| it.kind == ty::AssocKind::Fn)
+            .find(|it| it.is_fn())
             .unwrap()
             .def_id;
         let track_caller =

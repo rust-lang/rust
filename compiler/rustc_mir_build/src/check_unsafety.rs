@@ -315,6 +315,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
     fn visit_pat(&mut self, pat: &'a Pat<'tcx>) {
         if self.in_union_destructure {
             match pat.kind {
+                PatKind::Missing => unreachable!(),
                 // binding to a variable allows getting stuff out of variable
                 PatKind::Binding { .. }
                 // match is conditional on having this value
@@ -403,9 +404,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 visit::walk_pat(self, pat);
                 self.inside_adt = old_inside_adt;
             }
-            PatKind::ExpandedConstant { def_id, is_inline, .. } => {
+            PatKind::ExpandedConstant { def_id, .. } => {
                 if let Some(def) = def_id.as_local()
-                    && *is_inline
+                    && matches!(self.tcx.def_kind(def_id), DefKind::InlineConst)
                 {
                     self.visit_inner_body(def);
                 }

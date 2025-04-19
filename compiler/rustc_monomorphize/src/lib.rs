@@ -1,5 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![feature(array_windows)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]

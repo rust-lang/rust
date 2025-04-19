@@ -4,7 +4,7 @@
 fn main() {
     match 1 {
         const { 1 + 7 } => {}
-        //~^ `inline_const_pat` has been removed
+        //~^ ERROR `inline_const_pat` has been removed
         2 => {}
         _ => {}
     }

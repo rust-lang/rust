@@ -1,4 +1,4 @@
-use crate::common::{Config, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer};
+use crate::common::{Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer};
 use crate::header::{IgnoreDecision, llvm_has_libzstd};
 
 pub(super) fn handle_needs(
@@ -6,7 +6,7 @@ pub(super) fn handle_needs(
     config: &Config,
     ln: &str,
 ) -> IgnoreDecision {
-    // Note thet we intentionally still put the needs- prefix here to make the file show up when
+    // Note that we intentionally still put the needs- prefix here to make the file show up when
     // grepping for a directive name, even though we could technically strip that.
     let needs = &[
         Need {
@@ -219,6 +219,50 @@ pub(super) fn handle_needs(
                 reason: format!(
                     "skipping test as target does not support all of the required `target_has_atomic` widths `{:?}`",
                     specified_widths
+                ),
+            };
+        }
+    }
+
+    // FIXME(jieyouxu): share multi-value directive logic with `needs-target-has-atomic` above.
+    if name == "needs-crate-type" {
+        let Some(rest) = rest else {
+            return IgnoreDecision::Error {
+                message:
+                    "expected `needs-crate-type` to have a comma-separated list of crate types"
+                        .to_string(),
+            };
+        };
+
+        // Expect directive value to be a list of comma-separated crate-types.
+        let specified_crate_types = rest
+            .split(',')
+            .map(|crate_type| crate_type.trim())
+            .map(ToString::to_string)
+            .collect::<Vec<String>>();
+
+        for crate_type in &specified_crate_types {
+            if !KNOWN_CRATE_TYPES.contains(&crate_type.as_str()) {
+                return IgnoreDecision::Error {
+                    message: format!(
+                        "unknown crate type specified in `needs-crate-type`: `{crate_type}` is not \
+                        a known crate type, known values are `{:?}`",
+                        KNOWN_CRATE_TYPES
+                    ),
+                };
+            }
+        }
+
+        let satisfies_all_crate_types = specified_crate_types
+            .iter()
+            .all(|specified| config.supported_crate_types().contains(specified));
+        if satisfies_all_crate_types {
+            return IgnoreDecision::Continue;
+        } else {
+            return IgnoreDecision::Ignore {
+                reason: format!(
+                    "skipping test as target does not support all of the crate types `{:?}`",
+                    specified_crate_types
                 ),
             };
         }

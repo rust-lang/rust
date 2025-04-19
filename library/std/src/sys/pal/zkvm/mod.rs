@@ -8,11 +8,9 @@
 //! will likely change over time.
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-const WORD_SIZE: usize = size_of::<u32>();
+pub const WORD_SIZE: usize = size_of::<u32>();
 
 pub mod abi;
-#[path = "../zkvm/args.rs"]
-pub mod args;
 pub mod env;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]

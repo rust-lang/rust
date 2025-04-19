@@ -1331,7 +1331,7 @@ def bootstrap(args):
     build.check_vendored_status()
 
     if not os.path.exists(build.build_dir):
-        os.makedirs(build.build_dir)
+        os.makedirs(os.path.realpath(build.build_dir))
 
     # Fetch/build the bootstrap
     build.download_toolchain()

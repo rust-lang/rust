@@ -71,9 +71,11 @@ const fn max_iov() -> usize {
     target_os = "android",
     target_os = "dragonfly",
     target_os = "emscripten",
+    target_os = "espidf",
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "nuttx",
     target_os = "nto",
     target_os = "openbsd",
     target_os = "horizon",
@@ -257,9 +259,6 @@ impl FileDesc {
     }
 
     #[cfg(all(target_os = "android", target_pointer_width = "32"))]
-    // FIXME(#115199): Rust currently omits weak function definitions
-    // and its metadata from LLVM IR.
-    #[no_sanitize(cfi)]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn preadv64(

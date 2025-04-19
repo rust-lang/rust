@@ -3,7 +3,7 @@ use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core};
-use hir::LifetimeName;
+use hir::LifetimeKind;
 use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::hir_id::{HirId, HirIdMap};
@@ -432,7 +432,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                             }
                             None
                         }) {
-                            if let LifetimeName::Param(param_def_id) = lifetime.res
+                            if let LifetimeKind::Param(param_def_id) = lifetime.kind
                                 && !lifetime.is_anonymous()
                                 && fn_sig
                                     .output()

@@ -11,7 +11,7 @@ fn main() {
     offset_of!((u8, u8), +1); //~ ERROR no rules expected
     offset_of!((u8, u8), -1); //~ ERROR offset_of expects dot-separated field and variant names
     offset_of!((u8, u8), 1.); //~ ERROR offset_of expects dot-separated field and variant names
-    offset_of!((u8, u8), 1 .); //~ unexpected token: `)`
+    offset_of!((u8, u8), 1 .); //~ ERROR unexpected token: `)`
     builtin # offset_of((u8, u8), 1e2); //~ ERROR no field `1e2`
     builtin # offset_of((u8, u8), _0); //~ ERROR no field `_0`
     builtin # offset_of((u8, u8), 01); //~ ERROR no field `01`

@@ -602,21 +602,13 @@ impl<'a> Parser<'a> {
         let polarity = self.parse_polarity();
 
         // Parse both types and traits as a type, then reinterpret if necessary.
-        let err_path = |span| ast::Path::from_ident(Ident::new(kw::Empty, span));
         let ty_first = if self.token.is_keyword(kw::For) && self.look_ahead(1, |t| t != &token::Lt)
         {
             let span = self.prev_token.span.between(self.token.span);
-            self.dcx().emit_err(errors::MissingTraitInTraitImpl {
+            return Err(self.dcx().create_err(errors::MissingTraitInTraitImpl {
                 span,
                 for_span: span.to(self.token.span),
-            });
-
-            P(Ty {
-                kind: TyKind::Path(None, err_path(span)),
-                span,
-                id: DUMMY_NODE_ID,
-                tokens: None,
-            })
+            }));
         } else {
             self.parse_ty_with_generics_recovery(&generics)?
         };
@@ -657,6 +649,7 @@ impl<'a> Parser<'a> {
                     other => {
                         if let TyKind::ImplTrait(_, bounds) = other
                             && let [bound] = bounds.as_slice()
+                            && let GenericBound::Trait(poly_trait_ref) = bound
                         {
                             // Suggest removing extra `impl` keyword:
                             // `impl<T: Default> impl Default for Wrapper<T>`
@@ -666,12 +659,12 @@ impl<'a> Parser<'a> {
                                 extra_impl_kw,
                                 impl_trait_span: ty_first.span,
                             });
+                            poly_trait_ref.trait_ref.path.clone()
                         } else {
-                            self.dcx().emit_err(errors::ExpectedTraitInTraitImplFoundType {
-                                span: ty_first.span,
-                            });
+                            return Err(self.dcx().create_err(
+                                errors::ExpectedTraitInTraitImplFoundType { span: ty_first.span },
+                            ));
                         }
-                        err_path(ty_first.span)
                     }
                 };
                 let trait_ref = TraitRef { path, ref_id: ty_first.id };
@@ -1739,8 +1732,7 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
             body
         } else {
-            let err =
-                errors::UnexpectedTokenAfterStructName::new(self.token.span, self.token.clone());
+            let err = errors::UnexpectedTokenAfterStructName::new(self.token.span, self.token);
             return Err(self.dcx().create_err(err));
         };
 
@@ -2310,7 +2302,7 @@ impl<'a> Parser<'a> {
             || self.token.is_keyword(kw::Union))
             && self.look_ahead(1, |t| t.is_ident())
         {
-            let kw_token = self.token.clone();
+            let kw_token = self.token;
             let kw_str = pprust::token_to_string(&kw_token);
             let item = self.parse_item(ForceCollect::No)?;
             let mut item = item.unwrap().span;
@@ -2543,7 +2535,7 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
             *sig_hi = self.prev_token.span;
             (AttrVec::new(), None)
-        } else if self.check(exp!(OpenBrace)) || self.token.is_whole_block() {
+        } else if self.check(exp!(OpenBrace)) || self.token.is_metavar_block() {
             self.parse_block_common(self.token.span, BlockCheckMode::Default, None)
                 .map(|(attrs, body)| (attrs, Some(body)))?
         } else if self.token == token::Eq {
@@ -2987,9 +2979,7 @@ impl<'a> Parser<'a> {
                 }
                 match ty {
                     Ok(ty) => {
-                        let ident = Ident::new(kw::Empty, this.prev_token.span);
-                        let bm = BindingMode::NONE;
-                        let pat = this.mk_pat_ident(ty.span, bm, ident);
+                        let pat = this.mk_pat(ty.span, PatKind::Missing);
                         (pat, ty)
                     }
                     // If this is a C-variadic argument and we hit an error, return the error.

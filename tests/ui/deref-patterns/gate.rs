@@ -2,6 +2,6 @@
 fn main() {
     match String::new() {
         "" | _ => {}
-        //~^ mismatched types
+        //~^ ERROR mismatched types
     }
 }

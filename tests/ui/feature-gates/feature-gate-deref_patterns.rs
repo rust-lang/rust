@@ -4,6 +4,6 @@ fn main() {
     println!("x: {}", x);
 
     // `box` syntax is allowed to be cfg-ed out for historical reasons (#65742).
-    #[cfg(FALSE)]
+    #[cfg(false)]
     let box _x = Box::new('c');
 }

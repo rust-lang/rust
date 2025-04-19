@@ -17,7 +17,6 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_smir::rustc_internal;
 use stable_mir::ItemKind;
 use stable_mir::crate_def::CrateDef;
 use stable_mir::mir::{ProjectionElem, Rvalue, StatementKind};

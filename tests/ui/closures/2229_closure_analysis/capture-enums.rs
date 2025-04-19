@@ -18,8 +18,8 @@ fn multi_variant_enum() {
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
-    //~^ First Pass analysis includes:
-    //~| Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         if let Info::Point(_, _, str) = point {
             //~^ NOTE: Capturing point[] -> Immutable
             //~| NOTE: Capturing point[(2, 0)] -> ByValue
@@ -50,8 +50,8 @@ fn single_variant_enum() {
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
-    //~^ First Pass analysis includes:
-    //~| Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         let SingleVariant::Point(_, _, str) = point;
         //~^ NOTE: Capturing point[(2, 0)] -> ByValue
         //~| NOTE: Min Capture point[(2, 0)] -> ByValue

@@ -63,14 +63,14 @@ fn main() {
     }
 
     match non_enum {
-        //~^ some variants are not matched explicitly
+        //~^ ERROR some variants are not matched explicitly
         NonExhaustiveEnum::Unit => {}
         NonExhaustiveEnum::Tuple(_) => {}
         _ => {}
     }
 
     match non_enum {
-        //~^ some variants are not matched explicitly
+        //~^ ERROR some variants are not matched explicitly
         NonExhaustiveEnum::Unit | NonExhaustiveEnum::Struct { .. } => {}
         _ => {}
     }
@@ -91,7 +91,7 @@ fn main() {
         _ => {}
     }
     match (non_enum, true) {
-        //~^ some variants are not matched explicitly
+        //~^ ERROR some variants are not matched explicitly
         (NonExhaustiveEnum::Unit, true) => {}
         (NonExhaustiveEnum::Tuple(_), false) => {}
         _ => {}
@@ -104,14 +104,14 @@ fn main() {
         _ => {}
     }
     match (true, non_enum) {
-        //~^ some variants are not matched explicitly
+        //~^ ERROR some variants are not matched explicitly
         (true, NonExhaustiveEnum::Unit) => {}
         (false, NonExhaustiveEnum::Tuple(_)) => {}
         _ => {}
     }
 
     match Some(non_enum) {
-        //~^ some variants are not matched explicitly
+        //~^ ERROR some variants are not matched explicitly
         Some(NonExhaustiveEnum::Unit) => {}
         Some(NonExhaustiveEnum::Tuple(_)) => {}
         _ => {}
@@ -127,7 +127,7 @@ fn main() {
     }
 
     match NestedNonExhaustive::B {
-        //~^ some variants are not matched explicitly
+        //~^ ERROR some variants are not matched explicitly
         NestedNonExhaustive::A(NonExhaustiveEnum::Unit) => {}
         NestedNonExhaustive::A(_) => {}
         NestedNonExhaustive::B => {}
@@ -138,17 +138,17 @@ fn main() {
         VariantNonExhaustive::Baz(_, _) => {}
         VariantNonExhaustive::Bar { x, .. } => {}
     }
-    //~^^ some fields are not explicitly listed
+    //~^^ ERROR some fields are not explicitly listed
 
     let FunctionalRecord { first_field, second_field, .. } = FunctionalRecord::default();
-    //~^ some fields are not explicitly listed
+    //~^ ERROR some fields are not explicitly listed
 
     // Ok: this is local
     let Foo { a, b, .. } = Foo::default();
 
     let NestedStruct { bar: NormalStruct { first_field, .. }, .. } = NestedStruct::default();
-    //~^ some fields are not explicitly listed
-    //~^^ some fields are not explicitly listed
+    //~^ ERROR some fields are not explicitly listed
+    //~^^ ERROR some fields are not explicitly listed
 
     // Ok: this tests https://github.com/rust-lang/rust/issues/89382
     let MixedVisFields { a, b, .. } = MixedVisFields::default();
@@ -182,7 +182,7 @@ fn main() {
     if let NonExhaustiveEnum::Tuple(_) = non_enum {}
 
     match UnstableEnum::Stable {
-        //~^ some variants are not matched explicitly
+        //~^ ERROR some variants are not matched explicitly
         UnstableEnum::Stable => {}
         UnstableEnum::Stable2 => {}
         _ => {}
@@ -204,19 +204,19 @@ fn main() {
     }
 
     match OnlyUnstableEnum::Unstable {
-        //~^ some variants are not matched explicitly
+        //~^ ERROR some variants are not matched explicitly
         OnlyUnstableEnum::Unstable => {}
         _ => {}
     }
 
     let OnlyUnstableStruct { unstable, .. } = OnlyUnstableStruct::new();
-    //~^ some fields are not explicitly listed
+    //~^ ERROR some fields are not explicitly listed
 
     // OK: both unstable fields are matched with feature on
     let OnlyUnstableStruct { unstable, unstable2, .. } = OnlyUnstableStruct::new();
 
     let UnstableStruct { stable, stable2, .. } = UnstableStruct::default();
-    //~^ some fields are not explicitly listed
+    //~^ ERROR some fields are not explicitly listed
 
     // OK: both unstable and stable fields are matched with feature on
     let UnstableStruct { stable, stable2, unstable, .. } = UnstableStruct::default();
@@ -226,11 +226,11 @@ fn main() {
 
     // Ok: missing patterns will be blocked by the pattern being refutable
     let local_refutable @ NonExhaustiveEnum::Unit = NonExhaustiveEnum::Unit;
-    //~^ refutable pattern in local binding
+    //~^ ERROR refutable pattern in local binding
 
     // Check that matching on a reference results in a correct diagnostic
     match &non_enum {
-        //~^ some variants are not matched explicitly
+        //~^ ERROR some variants are not matched explicitly
         //~| pattern `&NonExhaustiveEnum::Struct { .. }` not covered
         NonExhaustiveEnum::Unit => {}
         NonExhaustiveEnum::Tuple(_) => {}
@@ -238,21 +238,21 @@ fn main() {
     }
 
     match (true, &non_enum) {
-        //~^ some variants are not matched explicitly
+        //~^ ERROR some variants are not matched explicitly
         //~| patterns `(_, &NonExhaustiveEnum::Tuple(_))` and `(_, &NonExhaustiveEnum::Struct { .. })` not covered
         (true, NonExhaustiveEnum::Unit) => {}
         _ => {}
     }
 
     match (&non_enum, true) {
-        //~^ some variants are not matched explicitly
+        //~^ ERROR some variants are not matched explicitly
         //~| patterns `(&NonExhaustiveEnum::Tuple(_), _)` and `(&NonExhaustiveEnum::Struct { .. }, _)` not covered
         (NonExhaustiveEnum::Unit, true) => {}
         _ => {}
     }
 
     match Some(&non_enum) {
-        //~^ some variants are not matched explicitly
+        //~^ ERROR some variants are not matched explicitly
         //~| pattern `Some(&NonExhaustiveEnum::Struct { .. })` not covered
         Some(NonExhaustiveEnum::Unit | NonExhaustiveEnum::Tuple(_)) => {}
         _ => {}

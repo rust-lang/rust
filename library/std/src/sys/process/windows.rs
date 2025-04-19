@@ -19,7 +19,7 @@ use crate::sys::args::{self, Arg};
 use crate::sys::c::{self, EXIT_FAILURE, EXIT_SUCCESS};
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
-use crate::sys::pal::api::{self, WinError};
+use crate::sys::pal::api::{self, WinError, utf16};
 use crate::sys::pal::{ensure_no_nuls, fill_utf16_buf};
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::{cvt, path, stdio};
@@ -880,9 +880,33 @@ fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>) -> io::Result<(*mut 
 fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
     match d {
         Some(dir) => {
-            let mut dir_str: Vec<u16> = ensure_no_nuls(dir)?.encode_wide().collect();
-            dir_str.push(0);
-            Ok((dir_str.as_ptr(), dir_str))
+            let mut dir_str: Vec<u16> = ensure_no_nuls(dir)?.encode_wide().chain([0]).collect();
+            // Try to remove the `\\?\` prefix, if any.
+            // This is necessary because the current directory does not support verbatim paths.
+            // However. this can only be done if it doesn't change how the path will be resolved.
+            let ptr = if dir_str.starts_with(utf16!(r"\\?\UNC")) {
+                // Turn the `C` in `UNC` into a `\` so we can then use `\\rest\of\path`.
+                let start = r"\\?\UN".len();
+                dir_str[start] = b'\\' as u16;
+                if path::is_absolute_exact(&dir_str[start..]) {
+                    dir_str[start..].as_ptr()
+                } else {
+                    // Revert the above change.
+                    dir_str[start] = b'C' as u16;
+                    dir_str.as_ptr()
+                }
+            } else if dir_str.starts_with(utf16!(r"\\?\")) {
+                // Strip the leading `\\?\`
+                let start = r"\\?\".len();
+                if path::is_absolute_exact(&dir_str[start..]) {
+                    dir_str[start..].as_ptr()
+                } else {
+                    dir_str.as_ptr()
+                }
+            } else {
+                dir_str.as_ptr()
+            };
+            Ok((ptr, dir_str))
         }
         None => Ok((ptr::null(), Vec::new())),
     }

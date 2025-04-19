@@ -34,7 +34,7 @@ pub struct Finder {
 // Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
-    "wasm32-wali-linux-musl",
+    "x86_64-lynx-lynxos178",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
@@ -326,7 +326,7 @@ than building it.
         if target.contains("musl") && !target.contains("unikraft") {
             // If this is a native target (host is also musl) and no musl-root is given,
             // fall back to the system toolchain in /usr before giving up
-            if build.musl_root(*target).is_none() && build.is_builder_target(*target) {
+            if build.musl_root(*target).is_none() && build.config.is_host_target(*target) {
                 let target = build.config.target_config.entry(*target).or_default();
                 target.musl_root = Some("/usr".into());
             }

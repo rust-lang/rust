@@ -221,12 +221,11 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
 
         // Check for cycles
         let mut stack = FxHashSet::default();
-        for i in 0..parent.len() {
-            let mut bb = BasicBlock::from_usize(i);
+        for (mut bb, parent) in parent.iter_enumerated_mut() {
             stack.clear();
             stack.insert(bb);
             loop {
-                let Some(parent) = parent[bb].take() else { break };
+                let Some(parent) = parent.take() else { break };
                 let no_cycle = stack.insert(parent);
                 if !no_cycle {
                     self.fail(

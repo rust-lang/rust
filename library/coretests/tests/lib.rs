@@ -68,6 +68,7 @@
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
+#![feature(select_unpredictable)]
 #![feature(slice_from_ptr_range)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
@@ -147,6 +148,7 @@ mod ffi;
 mod fmt;
 mod future;
 mod hash;
+mod hint;
 mod intrinsics;
 mod io;
 mod iter;

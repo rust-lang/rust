@@ -7,7 +7,8 @@
 //@[MSVC] only-msvc
 //@[NONMSVC] ignore-msvc
 
-//@ compile-flags: -C debuginfo=2 --edition=2018 -Copt-level=0
+//@ compile-flags: -C debuginfo=2 -Copt-level=0
+//@ edition: 2018
 
 #![crate_type = "lib"]
 

@@ -18,7 +18,7 @@ use either::{Left, Right};
 use rustc_const_eval::check_consts::{ConstCx, qualifs};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, GenericArgs, List, Ty, TyCtxt, TypeVisitableExt};
@@ -864,17 +864,21 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         new_temp
     }
 
-    fn promote_candidate(mut self, candidate: Candidate, next_promoted_id: usize) -> Body<'tcx> {
+    fn promote_candidate(
+        mut self,
+        candidate: Candidate,
+        next_promoted_index: Promoted,
+    ) -> Body<'tcx> {
         let def = self.source.source.def_id();
         let (mut rvalue, promoted_op) = {
             let promoted = &mut self.promoted;
-            let promoted_id = Promoted::new(next_promoted_id);
             let tcx = self.tcx;
             let mut promoted_operand = |ty, span| {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
                 let args = tcx.erase_regions(GenericArgs::identity_for_item(tcx, def));
-                let uneval = mir::UnevaluatedConst { def, args, promoted: Some(promoted_id) };
+                let uneval =
+                    mir::UnevaluatedConst { def, args, promoted: Some(next_promoted_index) };
 
                 ConstOperand { span, user_ty: None, const_: Const::Unevaluated(uneval, ty) }
             };
@@ -1034,7 +1038,7 @@ fn promote_candidates<'tcx>(
             required_consts: Vec::new(),
         };
 
-        let mut promoted = promoter.promote_candidate(candidate, promotions.len());
+        let mut promoted = promoter.promote_candidate(candidate, promotions.next_index());
         promoted.source.promoted = Some(promotions.next_index());
         promotions.push(promoted);
     }

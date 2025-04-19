@@ -114,7 +114,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 AttributeKind::Repr(reprs) => {
                     codegen_fn_attrs.alignment = reprs
                         .iter()
-                        .find_map(|(r, _)| if let ReprAlign(x) = r { Some(*x) } else { None });
+                        .filter_map(|(r, _)| if let ReprAlign(x) = r { Some(*x) } else { None })
+                        .max();
                 }
 
                 _ => {}
@@ -345,20 +346,26 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 no_sanitize_span = Some(attr.span());
                 if let Some(list) = attr.meta_item_list() {
                     for item in list.iter() {
-                        match item.name_or_empty() {
-                            sym::address => {
+                        match item.name() {
+                            Some(sym::address) => {
                                 codegen_fn_attrs.no_sanitize |=
                                     SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS
                             }
-                            sym::cfi => codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI,
-                            sym::kcfi => codegen_fn_attrs.no_sanitize |= SanitizerSet::KCFI,
-                            sym::memory => codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY,
-                            sym::memtag => codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG,
-                            sym::shadow_call_stack => {
+                            Some(sym::cfi) => codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI,
+                            Some(sym::kcfi) => codegen_fn_attrs.no_sanitize |= SanitizerSet::KCFI,
+                            Some(sym::memory) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY
+                            }
+                            Some(sym::memtag) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG
+                            }
+                            Some(sym::shadow_call_stack) => {
                                 codegen_fn_attrs.no_sanitize |= SanitizerSet::SHADOWCALLSTACK
                             }
-                            sym::thread => codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD,
-                            sym::hwaddress => {
+                            Some(sym::thread) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD
+                            }
+                            Some(sym::hwaddress) => {
                                 codegen_fn_attrs.no_sanitize |= SanitizerSet::HWADDRESS
                             }
                             _ => {
@@ -419,9 +426,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                             continue;
                         };
 
-                        let attrib_to_write = match meta_item.name_or_empty() {
-                            sym::prefix_nops => &mut prefix,
-                            sym::entry_nops => &mut entry,
+                        let attrib_to_write = match meta_item.name() {
+                            Some(sym::prefix_nops) => &mut prefix,
+                            Some(sym::entry_nops) => &mut entry,
                             _ => {
                                 tcx.dcx().emit_err(errors::UnexpectedParameterName {
                                     span: item.span(),
@@ -785,8 +792,7 @@ impl<'a> MixedExportNameAndNoMangleState<'a> {
 fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     let attrs = tcx.get_attrs(id, sym::rustc_autodiff);
 
-    let attrs =
-        attrs.filter(|attr| attr.name_or_empty() == sym::rustc_autodiff).collect::<Vec<_>>();
+    let attrs = attrs.filter(|attr| attr.has_name(sym::rustc_autodiff)).collect::<Vec<_>>();
 
     // check for exactly one autodiff attribute on placeholder functions.
     // There should only be one, since we generate a new placeholder per ad macro.

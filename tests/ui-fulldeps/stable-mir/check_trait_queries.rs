@@ -16,7 +16,6 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_smir::rustc_internal;
 use stable_mir::CrateDef;
 use std::collections::HashSet;
 use std::io::Write;

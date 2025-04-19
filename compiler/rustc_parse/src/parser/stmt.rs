@@ -23,8 +23,8 @@ use super::{
     AttrWrapper, BlockMode, FnParseMode, ForceCollect, Parser, Restrictions, SemiColonMode,
     Trailing, UsePreAttrPos,
 };
-use crate::errors::MalformedLoopLabel;
-use crate::{errors, exp, maybe_whole};
+use crate::errors::{self, MalformedLoopLabel};
+use crate::exp;
 
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
@@ -75,10 +75,11 @@ impl<'a> Parser<'a> {
 
         let stmt = if self.token.is_keyword(kw::Super) && self.is_keyword_ahead(1, &[kw::Let]) {
             self.collect_tokens(None, attrs, force_collect, |this, attrs| {
+                let super_span = this.token.span;
                 this.expect_keyword(exp!(Super))?;
-                this.psess.gated_spans.gate(sym::super_let, this.prev_token.span);
                 this.expect_keyword(exp!(Let))?;
-                let local = this.parse_local(attrs)?; // FIXME(mara): implement super let
+                this.psess.gated_spans.gate(sym::super_let, super_span);
+                let local = this.parse_local(Some(super_span), attrs)?;
                 let trailing = Trailing::from(capture_semi && this.token == token::Semi);
                 Ok((
                     this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
@@ -89,7 +90,7 @@ impl<'a> Parser<'a> {
         } else if self.token.is_keyword(kw::Let) {
             self.collect_tokens(None, attrs, force_collect, |this, attrs| {
                 this.expect_keyword(exp!(Let))?;
-                let local = this.parse_local(attrs)?;
+                let local = this.parse_local(None, attrs)?;
                 let trailing = Trailing::from(capture_semi && this.token == token::Semi);
                 Ok((
                     this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
@@ -294,7 +295,7 @@ impl<'a> Parser<'a> {
         force_collect: ForceCollect,
     ) -> PResult<'a, Stmt> {
         let stmt = self.collect_tokens(None, attrs, force_collect, |this, attrs| {
-            let local = this.parse_local(attrs)?;
+            let local = this.parse_local(None, attrs)?;
             // FIXME - maybe capture semicolon in recovery?
             Ok((
                 this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)),
@@ -308,8 +309,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a local variable declaration.
-    fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
-        let lo = self.prev_token.span;
+    fn parse_local(&mut self, super_: Option<Span>, attrs: AttrVec) -> PResult<'a, P<Local>> {
+        let lo = super_.unwrap_or(self.prev_token.span);
 
         if self.token.is_keyword(kw::Const) && self.look_ahead(1, |t| t.is_ident()) {
             self.dcx().emit_err(errors::ConstLetMutuallyExclusive { span: lo.to(self.token.span) });
@@ -411,6 +412,7 @@ impl<'a> Parser<'a> {
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
         Ok(P(ast::Local {
+            super_,
             ty,
             pat,
             kind,
@@ -516,7 +518,11 @@ impl<'a> Parser<'a> {
         let prev = self.prev_token.span;
         let sp = self.token.span;
         let mut e = self.dcx().struct_span_err(sp, msg);
-        let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
+        self.label_expected_raw_ref(&mut e);
+
+        let do_not_suggest_help = self.token.is_keyword(kw::In)
+            || self.token == token::Colon
+            || self.prev_token.is_keyword(kw::Raw);
 
         // Check to see if the user has written something like
         //
@@ -694,9 +700,11 @@ impl<'a> Parser<'a> {
         blk_mode: BlockCheckMode,
         loop_header: Option<Span>,
     ) -> PResult<'a, (AttrVec, P<Block>)> {
-        maybe_whole!(self, NtBlock, |block| (AttrVec::new(), block));
+        if let Some(block) = self.eat_metavar_seq(MetaVarKind::Block, |this| this.parse_block()) {
+            return Ok((AttrVec::new(), block));
+        }
 
-        let maybe_ident = self.prev_token.clone();
+        let maybe_ident = self.prev_token;
         self.maybe_recover_unexpected_block_label(loop_header);
         if !self.eat(exp!(OpenBrace)) {
             return self.error_block_no_opening_brace();
@@ -762,10 +770,6 @@ impl<'a> Parser<'a> {
                                     "::",
                                     Applicability::MaybeIncorrect,
                                 );
-                            }
-                            if self.psess.unstable_features.is_nightly_build() {
-                                // FIXME(Nilstrieb): Remove this again after a few months.
-                                err.note("type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>");
                             }
                         }
                     }
@@ -909,7 +913,7 @@ impl<'a> Parser<'a> {
                                 {
                                     if self.token == token::Colon
                                         && self.look_ahead(1, |token| {
-                                            token.is_whole_block()
+                                            token.is_metavar_block()
                                                 || matches!(
                                                     token.kind,
                                                     token::Ident(

@@ -79,7 +79,7 @@ fn check_useful_span(token: TokenTree, expected_filename: &str) {
     let span = token.span();
     assert!(span.column() < span.end().column());
 
-    let source_path = span.source_file().path();
+    let source_path = span.local_file().unwrap();
     let filename = source_path.components().last().unwrap();
     assert_eq!(filename, Component::Normal(expected_filename.as_ref()));
 }

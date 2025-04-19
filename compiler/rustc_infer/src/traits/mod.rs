@@ -12,6 +12,7 @@ use std::hash::{Hash, Hasher};
 
 use hir::def_id::LocalDefId;
 use rustc_hir as hir;
+use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 pub use rustc_middle::traits::*;
@@ -35,9 +36,11 @@ use crate::infer::InferCtxt;
 /// either identifying an `impl` (e.g., `impl Eq for i32`) that
 /// satisfies the obligation, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
-#[derive(Clone)]
+#[derive(Clone, TypeFoldable, TypeVisitable)]
 pub struct Obligation<'tcx, T> {
     /// The reason we have to prove this thing.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub cause: ObligationCause<'tcx>,
 
     /// The environment in which we should prove this thing.
@@ -51,6 +54,8 @@ pub struct Obligation<'tcx, T> {
     /// If this goes over a certain threshold, we abort compilation --
     /// in such cases, we can not say whether or not the predicate
     /// holds for certain. Stupid halting problem; such a drag.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub recursion_depth: usize,
 }
 

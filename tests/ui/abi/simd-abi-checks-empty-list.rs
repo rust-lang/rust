@@ -14,5 +14,5 @@ use minicore::*;
 pub struct SimdVec([i32; 4]);
 
 pub extern "C" fn pass_by_vec(_: SimdVec) {}
-//~^ this function definition uses SIMD vector type `SimdVec` which is not currently supported with the chosen ABI
+//~^ WARN this function definition uses SIMD vector type `SimdVec` which is not currently supported with the chosen ABI
 //~| WARNING this was previously accepted by the compiler

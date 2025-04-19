@@ -146,7 +146,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
 
 fn is_free_region(region: Region<'_>) -> bool {
     // First, screen for regions that might appear in a type header.
-    match *region {
+    match region.kind() {
         // These correspond to `T: 'a` relationships:
         //
         //     struct Foo<'a, T> {

@@ -1,1 +1,1 @@
-//@ ignore-test not a test. aux file
+//@ ignore-auxiliary (used by `../mod_file_disambig.rs`)

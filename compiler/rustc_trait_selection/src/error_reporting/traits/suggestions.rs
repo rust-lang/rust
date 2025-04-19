@@ -1988,7 +1988,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             let closure: Vec<_> = self
                 .tcx
-                .fn_arg_names(fn_def_id)
+                .fn_arg_idents(fn_def_id)
                 .iter()
                 .enumerate()
                 .map(|(i, ident)| {
@@ -2112,16 +2112,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_ref: DefId,
     ) {
         if let Some(assoc_item) = self.tcx.opt_associated_item(item_def_id) {
-            if let ty::AssocKind::Const | ty::AssocKind::Type = assoc_item.kind {
+            if let ty::AssocKind::Const { .. } | ty::AssocKind::Type { .. } = assoc_item.kind {
                 err.note(format!(
                     "{}s cannot be accessed directly on a `trait`, they can only be \
                         accessed through a specific `impl`",
-                    self.tcx.def_kind_descr(assoc_item.kind.as_def_kind(), item_def_id)
+                    self.tcx.def_kind_descr(assoc_item.as_def_kind(), item_def_id)
                 ));
                 err.span_suggestion(
                     span,
                     "use the fully qualified path to an implementation",
-                    format!("<Type as {}>::{}", self.tcx.def_path_str(trait_ref), assoc_item.name),
+                    format!(
+                        "<Type as {}>::{}",
+                        self.tcx.def_path_str(trait_ref),
+                        assoc_item.name()
+                    ),
                     Applicability::HasPlaceholders,
                 );
             }
@@ -3018,12 +3022,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 [] => span_bug!(ty.span, "trait object with no traits: {ty:?}"),
                             };
                             let needs_parens = traits.len() != 1;
-                            err.span_suggestion_verbose(
-                                span,
-                                "you can use `impl Trait` as the argument type",
-                                "impl ",
-                                Applicability::MaybeIncorrect,
-                            );
+                            // Don't recommend impl Trait as a closure argument
+                            if let Some(hir_id) = hir_id
+                                && matches!(
+                                    self.tcx.parent_hir_node(hir_id),
+                                    hir::Node::Item(hir::Item {
+                                        kind: hir::ItemKind::Fn { .. },
+                                        ..
+                                    })
+                                )
+                            {
+                                err.span_suggestion_verbose(
+                                    span,
+                                    "you can use `impl Trait` as the argument type",
+                                    "impl ",
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                             let sugg = if !needs_parens {
                                 vec![(span.shrink_to_lo(), format!("&{kw}"))]
                             } else {
@@ -5397,10 +5412,10 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
                 );
             }
             if let Some(new) =
-                tcx.associated_items(data.impl_or_alias_def_id).find_by_name_and_kind(
+                tcx.associated_items(data.impl_or_alias_def_id).find_by_ident_and_kind(
                     tcx,
                     Ident::with_dummy_span(name),
-                    ty::AssocKind::Type,
+                    ty::AssocTag::Type,
                     data.impl_or_alias_def_id,
                 )
             {

@@ -170,10 +170,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn report_with_use_injections(&mut self, krate: &Crate) {
         for UseError { mut err, candidates, def_id, instead, suggestion, path, is_call } in
-            self.use_injections.drain(..)
+            std::mem::take(&mut self.use_injections)
         {
             let (span, found_use) = if let Some(def_id) = def_id.as_local() {
-                UsePlacementFinder::check(krate, self.def_id_to_node_id[def_id])
+                UsePlacementFinder::check(krate, self.def_id_to_node_id(def_id))
             } else {
                 (None, FoundUse::No)
             };
@@ -1435,7 +1435,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let import_suggestions =
             self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, is_expected);
         let (span, found_use) = match parent_scope.module.nearest_parent_mod().as_local() {
-            Some(def_id) => UsePlacementFinder::check(krate, self.def_id_to_node_id[def_id]),
+            Some(def_id) => UsePlacementFinder::check(krate, self.def_id_to_node_id(def_id)),
             None => (None, FoundUse::No),
         };
         show_candidates(
@@ -2550,7 +2550,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .iter()
                 .filter_map(|item| {
                     let parent_module = self.opt_local_def_id(item.parent_module)?.to_def_id();
-                    Some(StrippedCfgItem { parent_module, name: item.name, cfg: item.cfg.clone() })
+                    Some(StrippedCfgItem {
+                        parent_module,
+                        ident: item.ident,
+                        cfg: item.cfg.clone(),
+                    })
                 })
                 .collect::<Vec<_>>();
             local_items.as_slice()
@@ -2558,12 +2562,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.tcx.stripped_cfg_items(module.krate)
         };
 
-        for &StrippedCfgItem { parent_module, name, ref cfg } in symbols {
-            if parent_module != module || name.name != *segment {
+        for &StrippedCfgItem { parent_module, ident, ref cfg } in symbols {
+            if parent_module != module || ident.name != *segment {
                 continue;
             }
 
-            let note = errors::FoundItemConfigureOut { span: name.span };
+            let note = errors::FoundItemConfigureOut { span: ident.span };
             err.subdiagnostic(note);
 
             if let MetaItemKind::List(nested) = &cfg.kind
