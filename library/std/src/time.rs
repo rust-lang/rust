@@ -205,8 +205,8 @@ pub struct Instant(time::Instant);
 ///            println!("{}", elapsed.as_secs());
 ///        }
 ///        Err(e) => {
-///            // an error occurred!
-///            println!("Error: {e:?}");
+///            // the system clock went backwards!
+///            println!("Great Scott! {e:?}");
 ///        }
 ///    }
 /// }
@@ -245,6 +245,7 @@ pub struct Instant(time::Instant);
 /// > structure cannot represent the new point in time.
 ///
 /// [`add`]: SystemTime::add
+/// [`UNIX_EPOCH`]: SystemTime::UNIX_EPOCH
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct SystemTime(time::SystemTime);
