@@ -63,6 +63,9 @@ pub mod aarch64_linux;
 ))]
 pub mod arm_linux;
 
+#[cfg(target_arch = "avr")]
+pub mod avr;
+
 #[cfg(target_arch = "hexagon")]
 pub mod hexagon;
 
