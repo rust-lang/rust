@@ -3323,7 +3323,6 @@ pub(crate) struct AsyncImpl {
 #[help]
 pub(crate) struct ExprRArrowCall {
     #[primary_span]
-    #[suggestion(style = "verbose", applicability = "machine-applicable", code = ".")]
     pub span: Span,
 }
 
