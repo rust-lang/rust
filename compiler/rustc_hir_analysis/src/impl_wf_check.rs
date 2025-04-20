@@ -13,9 +13,11 @@ use std::assert_matches::debug_assert_matches;
 use min_specialization::check_min_specialization;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
+use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_hir::{Path, QPath, Ty, TyKind};
+use rustc_middle::ty::{self, GenericParamDef, TyCtxt, TypeVisitableExt};
 use rustc_span::ErrorGuaranteed;
 
 use crate::constrained_generic_params as cgp;
@@ -128,6 +130,21 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
     for param in &impl_generics.own_params {
         match param.kind {
             ty::GenericParamDefKind::Lifetime => {
+                let param_lt = cgp::Parameter::from(param.to_early_bound_region_data());
+                if lifetimes_in_associated_types.contains(&param_lt) // (*)
+                    && !input_parameters.contains(&param_lt)
+                {
+                    let mut diag = tcx.dcx().create_err(UnconstrainedGenericParameter {
+                        span: tcx.def_span(param.def_id),
+                        param_name: param.name,
+                        param_def_kind: tcx.def_descr(param.def_id),
+                        const_param_note: false,
+                        const_param_note2: false,
+                    });
+                    diag.code(E0207);
+                    suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, param);
+                    res = Err(diag.emit());
+                }
                 // This is a horrible concession to reality. I think it'd be
                 // better to just ban unconstrained lifetimes outright, but in
                 // practice people do non-hygienic macros like:
@@ -158,6 +175,7 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
                         const_param_note2: false,
                     });
                     diag.code(E0207);
+                    suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, param);
                     res = Err(diag.emit());
                 }
             }
@@ -229,8 +247,60 @@ pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
                 const_param_note2: const_param_note,
             });
             diag.code(E0207);
+            suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, &param);
             res = Err(diag.emit());
         }
     }
     res
+}
+
+fn suggest_to_remove_or_use_generic(
+    tcx: TyCtxt<'_>,
+    diag: &mut Diag<'_>,
+    impl_def_id: LocalDefId,
+    param: &GenericParamDef,
+) {
+    let node = tcx.hir_node_by_def_id(impl_def_id);
+    let hir_impl = node.expect_item().expect_impl();
+
+    let Some((index, _)) = hir_impl
+        .generics
+        .params
+        .iter()
+        .enumerate()
+        .find(|(_, par)| par.def_id.to_def_id() == param.def_id)
+    else {
+        return;
+    };
+
+    let mut suggestions = vec![];
+
+    // Suggestion for removing the type parameter.
+    suggestions.push(vec![(hir_impl.generics.span_for_param_removal(index), String::new())]);
+
+    // Suggestion for making use of the type parameter.
+    if let Some(path) = extract_ty_as_path(hir_impl.self_ty) {
+        let seg = path.segments.last().unwrap();
+        if let Some(args) = seg.args {
+            suggestions
+                .push(vec![(args.span().unwrap().shrink_to_hi(), format!(", {}", param.name))]);
+        } else {
+            suggestions.push(vec![(seg.ident.span.shrink_to_hi(), format!("<{}>", param.name))]);
+        }
+    }
+
+    diag.multipart_suggestions(
+        format!("either remove the type parameter {}, or make use of it, for example", param.name),
+        suggestions,
+        Applicability::MaybeIncorrect,
+    );
+}
+
+fn extract_ty_as_path<'hir>(ty: &Ty<'hir>) -> Option<&'hir Path<'hir>> {
+    match ty.kind {
+        TyKind::Path(QPath::Resolved(_, path)) => Some(path),
+        TyKind::Slice(ty) | TyKind::Array(ty, _) => extract_ty_as_path(ty),
+        TyKind::Ptr(ty) | TyKind::Ref(_, ty) => extract_ty_as_path(ty.ty),
+        _ => None,
+    }
 }
