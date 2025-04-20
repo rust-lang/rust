@@ -340,6 +340,7 @@ fn powerpc64_linux_or_freebsd() {
     println!("altivec: {}", is_powerpc64_feature_detected!("altivec"));
     println!("vsx: {}", is_powerpc64_feature_detected!("vsx"));
     println!("power8: {}", is_powerpc64_feature_detected!("power8"));
+    println!("power9: {}", is_powerpc64_feature_detected!("power9"));
 }
 
 #[test]

@@ -14,4 +14,17 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] power8: "power8";
     without cfg check: true;
     /// Power8
+    @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] power8_altivec: "power8-altivec";
+    /// Power8 altivec
+    @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] power8_vector: "power8-vector";
+    /// Power8 vector
+    @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] power8_crypto: "power8-crypto";
+    /// Power8 crypto
+    @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] power9: "power9";
+    without cfg check: true;
+    /// Power9
+    @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] power9_altivec: "power9-altivec";
+    /// Power9 altivec
+    @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] power9_vector: "power9-vector";
+    /// Power9 vector
 }
