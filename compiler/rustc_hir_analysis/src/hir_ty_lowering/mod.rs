@@ -29,7 +29,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, struct_span_code_err,
 };
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -1731,9 +1731,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 tcx.associated_items(*trait_def_id)
                         .in_definition_order()
                         .any(|i| {
-                            i.namespace() == Namespace::TypeNS
+                            i.is_type()
+                                && !i.is_impl_trait_in_trait()
                                 && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
-                                && i.is_type()
                         })
                     // Consider only accessible traits
                     && tcx.visibility(*trait_def_id)
