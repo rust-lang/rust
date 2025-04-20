@@ -382,28 +382,6 @@ fn main() {
 }
 
 #[test]
-fn check_split_args() {
-    fn compare(input: &str, expected: &[&str]) {
-        let output = super::split_args(input);
-        let expected = expected.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        assert_eq!(expected, output, "test failed for {input:?}");
-    }
-
-    compare("'a' \"b\"c", &["a", "bc"]);
-    compare("'a' \"b \"c d", &["a", "b c", "d"]);
-    compare("'a' \"b\\\"c\"", &["a", "b\"c"]);
-    compare("'a\"'", &["a\""]);
-    compare("\"a'\"", &["a'"]);
-    compare("\\ a", &[" a"]);
-    compare("\\\\", &["\\"]);
-    compare("a'", &["a"]);
-    compare("a          ", &["a"]);
-    compare("a          b", &["a", "b"]);
-    compare("a\n\t \rb", &["a", "b"]);
-    compare("a\n\t1 \rb", &["a", "1", "b"]);
-}
-
-#[test]
 fn comment_in_attrs() {
     // If there is an inline code comment after attributes, we need to ensure that
     // a backline will be added to prevent generating code "inside" it (and thus generating)

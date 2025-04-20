@@ -1,9 +1,8 @@
-// This test checks that the test behave when `--doctest-compilation-args` is passed
-// multiple times.
+// This test checks that the test behave when `--doctest-build-arg` is passed multiple times.
 
 //@ check-pass
-//@ compile-flags: --test -Zunstable-options --doctest-compilation-args=--cfg=testcase_must_be_present
-//@ compile-flags: --doctest-compilation-args=--cfg=another
+//@ compile-flags: --test -Zunstable-options --doctest-build-arg=--cfg=testcase_must_be_present
+//@ compile-flags: --doctest-build-arg=--cfg=another
 //@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 

@@ -646,9 +646,9 @@ fn opts() -> Vec<RustcOptGroup> {
             Unstable,
             Multi,
             "",
-            "doctest-compilation-args",
-            "",
-            "add arguments to be used when compiling doctests",
+            "doctest-build-arg",
+            "One argument (of possibly many) to be used when compiling doctests",
+            "ARG",
         ),
         opt(
             Unstable,
