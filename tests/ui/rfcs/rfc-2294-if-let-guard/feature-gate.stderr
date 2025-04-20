@@ -25,98 +25,98 @@ LL |         () if (((let 0 = 1))) => {}
    |                  ^^^^^^^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:24:16
+  --> $DIR/feature-gate.rs:22:16
    |
 LL |         () if (let 0 = 1) && true => {}
    |                ^^^^^^^^^
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
-  --> $DIR/feature-gate.rs:24:16
+  --> $DIR/feature-gate.rs:22:16
    |
 LL |         () if (let 0 = 1) && true => {}
    |                ^^^^^^^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:27:24
+  --> $DIR/feature-gate.rs:25:24
    |
 LL |         () if true && (let 0 = 1) => {}
    |                        ^^^^^^^^^
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
-  --> $DIR/feature-gate.rs:27:24
+  --> $DIR/feature-gate.rs:25:24
    |
 LL |         () if true && (let 0 = 1) => {}
    |                        ^^^^^^^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:30:16
+  --> $DIR/feature-gate.rs:28:16
    |
 LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    |                ^^^^^^^^^
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
-  --> $DIR/feature-gate.rs:30:16
+  --> $DIR/feature-gate.rs:28:16
    |
 LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    |                ^^^^^^^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:30:31
+  --> $DIR/feature-gate.rs:28:31
    |
 LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    |                               ^^^^^^^^^
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
-  --> $DIR/feature-gate.rs:30:31
+  --> $DIR/feature-gate.rs:28:31
    |
 LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    |                               ^^^^^^^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:34:42
+  --> $DIR/feature-gate.rs:32:42
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                          ^^^^^^^^^
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
-  --> $DIR/feature-gate.rs:34:42
+  --> $DIR/feature-gate.rs:32:42
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:34:55
+  --> $DIR/feature-gate.rs:32:55
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                                       ^^^^^^^^^
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
-  --> $DIR/feature-gate.rs:34:42
+  --> $DIR/feature-gate.rs:32:42
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:34:68
+  --> $DIR/feature-gate.rs:32:68
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                                                    ^^^^^^^^^
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 note: `let`s wrapped in parentheses are not supported in a context with let chains
-  --> $DIR/feature-gate.rs:34:42
+  --> $DIR/feature-gate.rs:32:42
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:60:16
+  --> $DIR/feature-gate.rs:55:16
    |
 LL |     use_expr!((let 0 = 1 && 0 == 0));
    |                ^^^
@@ -124,7 +124,7 @@ LL |     use_expr!((let 0 = 1 && 0 == 0));
    = note: only supported directly in conditions of `if` and `while` expressions
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:60:16
+  --> $DIR/feature-gate.rs:55:16
    |
 LL |     use_expr!((let 0 = 1 && 0 == 0));
    |                ^^^
@@ -133,7 +133,7 @@ LL |     use_expr!((let 0 = 1 && 0 == 0));
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:63:16
+  --> $DIR/feature-gate.rs:58:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^
@@ -141,7 +141,7 @@ LL |     use_expr!((let 0 = 1));
    = note: only supported directly in conditions of `if` and `while` expressions
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:63:16
+  --> $DIR/feature-gate.rs:58:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^
@@ -150,7 +150,7 @@ LL |     use_expr!((let 0 = 1));
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: no rules expected keyword `let`
-  --> $DIR/feature-gate.rs:72:15
+  --> $DIR/feature-gate.rs:67:15
    |
 LL |     macro_rules! use_expr {
    |     --------------------- when calling this macro
@@ -159,7 +159,7 @@ LL |     use_expr!(let 0 = 1);
    |               ^^^ no rules expected this token in macro call
    |
 note: while trying to match meta-variable `$e:expr`
-  --> $DIR/feature-gate.rs:53:10
+  --> $DIR/feature-gate.rs:48:10
    |
 LL |         ($e:expr) => {
    |          ^^^^^^^
@@ -187,7 +187,7 @@ LL |         () if true && let 0 = 1 => {}
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `if let` guards are experimental
-  --> $DIR/feature-gate.rs:20:12
+  --> $DIR/feature-gate.rs:19:12
    |
 LL |         () if let 0 = 1 && true => {}
    |            ^^^^^^^^^^^^^^^^^^^^
@@ -198,7 +198,7 @@ LL |         () if let 0 = 1 && true => {}
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `if let` guards are experimental
-  --> $DIR/feature-gate.rs:34:12
+  --> $DIR/feature-gate.rs:32:12
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -209,7 +209,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `if let` guards are experimental
-  --> $DIR/feature-gate.rs:43:12
+  --> $DIR/feature-gate.rs:39:12
    |
 LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -220,7 +220,7 @@ LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `if let` guards are experimental
-  --> $DIR/feature-gate.rs:68:12
+  --> $DIR/feature-gate.rs:63:12
    |
 LL |         () if let 0 = 1 => {}
    |            ^^^^^^^^^^^^
@@ -230,56 +230,6 @@ LL |         () if let 0 = 1 => {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are unstable
-  --> $DIR/feature-gate.rs:16:23
-   |
-LL |         () if true && let 0 = 1 => {}
-   |                       ^^^^^^^^^
-   |
-   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
-   = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `let` expressions in this position are unstable
-  --> $DIR/feature-gate.rs:20:15
-   |
-LL |         () if let 0 = 1 && true => {}
-   |               ^^^^^^^^^
-   |
-   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
-   = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `let` expressions in this position are unstable
-  --> $DIR/feature-gate.rs:34:15
-   |
-LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
-   |               ^^^^^^^^^
-   |
-   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
-   = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `let` expressions in this position are unstable
-  --> $DIR/feature-gate.rs:34:28
-   |
-LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
-   |                            ^^^^^^^^^
-   |
-   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
-   = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `let` expressions in this position are unstable
-  --> $DIR/feature-gate.rs:43:15
-   |
-LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
-   = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error: aborting due to 25 previous errors
+error: aborting due to 20 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
