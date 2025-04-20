@@ -12,30 +12,30 @@ trait Specialize {}
 
 #[const_trait]
 trait Foo {
-    fn foo();
+    (const) fn foo();
 }
 
 impl<T> const Foo for T {
-    default fn foo() {}
+    default (const) fn foo() {}
 }
 
 impl<T> const Foo for T
 where
     T: ~const Specialize,
 {
-    fn foo() {}
+    (const) fn foo() {}
 }
 
 #[const_trait]
 trait Bar {
-    fn bar() {}
+    (const) fn bar() {}
 }
 
 impl<T> const Bar for T
 where
     T: ~const Foo,
 {
-    default fn bar() {}
+    default (const) fn bar() {}
 }
 
 impl<T> const Bar for T
@@ -43,7 +43,7 @@ where
     T: ~const Foo,
     T: ~const Specialize,
 {
-    fn bar() {}
+    (const) fn bar() {}
 }
 
 fn main() {}

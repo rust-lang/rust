@@ -566,6 +566,13 @@ pub(crate) struct NestedLifetimes {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_const_in_trait)]
+pub(crate) struct ConstInTrait {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_optional_trait_supertrait)]
 #[note]
 pub(crate) struct OptionalTraitSupertrait {

@@ -5,7 +5,7 @@
 
 #[const_trait]
 pub trait Tr {
-    fn f();
+    (const) fn f();
 }
 
 //@ has foo/fn.g.html

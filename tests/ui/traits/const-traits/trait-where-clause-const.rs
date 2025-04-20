@@ -11,9 +11,9 @@ trait Bar {}
 
 #[const_trait]
 trait Foo {
-    fn a();
-    fn b() where Self: ~const Bar;
-    fn c<T: ~const Bar>();
+    (const) fn a();
+    (const) fn b() where Self: ~const Bar;
+    (const) fn c<T: ~const Bar>();
 }
 
 const fn test1<T: ~const Foo + Bar>() {

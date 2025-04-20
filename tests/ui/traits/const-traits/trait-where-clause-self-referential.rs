@@ -4,7 +4,7 @@
 
 #[const_trait]
 trait Foo {
-    fn bar() where Self: ~const Foo;
+    (const) fn bar() where Self: ~const Foo;
 }
 
 struct S;

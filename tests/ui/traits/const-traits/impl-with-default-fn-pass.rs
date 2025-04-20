@@ -4,19 +4,19 @@
 
 #[const_trait]
 trait Tr {
-    fn req(&self);
+    (const) fn req(&self);
 
-    fn default() {}
+    (const) fn default() {}
 }
 
 impl const Tr for u8 {
-    fn req(&self) {}
+    (const) fn req(&self) {}
 }
 
 macro_rules! impl_tr {
     ($ty: ty) => {
         impl const Tr for $ty {
-            fn req(&self) {}
+            (const) fn req(&self) {}
         }
     }
 }

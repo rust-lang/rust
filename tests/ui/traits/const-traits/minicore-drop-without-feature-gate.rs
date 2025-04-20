@@ -14,7 +14,7 @@ use minicore::*;
 
 struct ConstDrop;
 impl const Drop for ConstDrop {
-    fn drop(&mut self) {}
+    (const) fn drop(&mut self) {}
 }
 
 // Make sure that `ConstDrop` can only be dropped when the `const_drop`

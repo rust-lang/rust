@@ -1,7 +1,7 @@
 #![feature(const_trait_impl, const_destruct)]
 
 struct Panic;
-impl const Drop for Panic { fn drop(&mut self) { panic!(); } }
+impl const Drop for Panic { (const) fn drop(&mut self) { panic!(); } }
 
 pub const fn id<T>(x: T) -> T { x }
 pub const C: () = {

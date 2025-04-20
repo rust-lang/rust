@@ -20,7 +20,7 @@ impl Foo for () {}
 
 struct Conditional<T: Foo>(T);
 impl<T> const Drop for Conditional<T> where T: ~const Foo {
-    fn drop(&mut self) {}
+    (const) fn drop(&mut self) {}
 }
 
 const fn test() {

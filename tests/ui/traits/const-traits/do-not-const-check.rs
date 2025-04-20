@@ -3,13 +3,13 @@
 
 #[const_trait]
 trait IntoIter {
-    fn into_iter(self);
+    (const) fn into_iter(self);
 }
 
 #[const_trait]
 trait Hmm: Sized {
     #[rustc_do_not_const_check]
-    fn chain<U>(self, other: U) where U: IntoIter,
+    (const) fn chain<U>(self, other: U) where U: IntoIter,
     {
         other.into_iter()
     }

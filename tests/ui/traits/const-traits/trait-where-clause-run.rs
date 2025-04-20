@@ -5,12 +5,12 @@
 
 #[const_trait]
 trait Bar {
-    fn bar() -> u8;
+    (const) fn bar() -> u8;
 }
 
 #[const_trait]
 trait Foo {
-    fn foo() -> u8 where Self: ~const Bar {
+    (const) fn foo() -> u8 where Self: ~const Bar {
         <Self as Bar>::bar() * 6
     }
 }
@@ -27,7 +27,7 @@ impl Bar for NonConst {
 impl Foo for NonConst {}
 
 impl const Bar for Const {
-    fn bar() -> u8 {
+    (const) fn bar() -> u8 {
         4
     }
 }

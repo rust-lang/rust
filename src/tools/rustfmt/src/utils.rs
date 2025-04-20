@@ -84,10 +84,11 @@ pub(crate) fn format_coro(coroutine_kind: &ast::CoroutineKind) -> &'static str {
 }
 
 #[inline]
-pub(crate) fn format_constness(constness: ast::Const) -> &'static str {
+pub(crate) fn format_constness(constness: ast::BoundConstness) -> &'static str {
     match constness {
-        ast::Const::Yes(..) => "const ",
-        ast::Const::No => "",
+        ast::BoundConstness::Always(..) => "const ",
+        ast::BoundConstness::Never => "",
+        ast::BoundConstness::Maybe(..) => "(const) ",
     }
 }
 

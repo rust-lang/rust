@@ -4,7 +4,7 @@
 #![feature(const_trait_impl)]
 
 #[const_trait] trait Trait {
-    fn method();
+    (const) fn method();
 }
 
 const fn foo<T: Trait>() {

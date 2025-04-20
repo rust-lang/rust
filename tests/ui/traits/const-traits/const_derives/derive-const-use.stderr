@@ -1,3 +1,15 @@
+error: non-const fn in const traits are not supported yet
+  --> $DIR/derive-const-use.rs:8:5
+   |
+LL |     fn default() -> A { A }
+   |     ^ help: mark the function as const: `const`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/derive-const-use.rs:12:5
+   |
+LL |     fn eq(&self, _: &A) -> bool { true }
+   |     ^ help: mark the function as const: `const`
+
 error[E0635]: unknown feature `const_cmp`
   --> $DIR/derive-const-use.rs:3:30
    |
@@ -102,7 +114,7 @@ LL | pub struct S((), A);
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to 12 previous errors
+error: aborting due to 14 previous errors
 
 Some errors have detailed explanations: E0015, E0635.
 For more information about an error, try `rustc --explain E0015`.
