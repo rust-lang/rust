@@ -125,9 +125,6 @@ jobs:
           # which then uses log commands to actually set them.
           EXTRA_VARIABLES: ${{ toJson(matrix.env) }}
 
-      - name: setup upstream remote
-        run: src/ci/scripts/setup-upstream-remote.sh
-
       - name: ensure the channel matches the target branch
         run: src/ci/scripts/verify-channel.sh
 
