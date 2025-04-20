@@ -921,10 +921,9 @@ impl Config {
             tracing::info!("updating config from JSON: {:#}", json);
 
             if !(json.is_null() || json.as_object().is_some_and(|it| it.is_empty())) {
-                let mut json_errors = vec![];
                 let detached_files = get_field_json::<Vec<Utf8PathBuf>>(
                     &mut json,
-                    &mut json_errors,
+                    &mut Vec::new(),
                     "detachedFiles",
                     None,
                 )
@@ -936,17 +935,19 @@ impl Config {
                 patch_old_style::patch_json_for_outdated_configs(&mut json);
 
                 let mut json_errors = vec![];
-                let snips = get_field_json::<FxIndexMap<String, SnippetDef>>(
-                    &mut json,
-                    &mut json_errors,
-                    "completion_snippets_custom",
-                    None,
-                )
-                .unwrap_or(self.completion_snippets_custom().to_owned());
+
+                let input = FullConfigInput::from_json(json, &mut json_errors);
 
                 // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
                 config.snippets.clear();
 
+                let snips = input
+                    .global
+                    .completion_snippets_custom
+                    .as_ref()
+                    .unwrap_or(&self.default_config.global.completion_snippets_custom);
+                #[allow(dead_code)]
+                let _ = Self::completion_snippets_custom;
                 for (name, def) in snips.iter() {
                     if def.prefix.is_empty() && def.postfix.is_empty() {
                         continue;
@@ -973,8 +974,9 @@ impl Config {
                         )),
                     }
                 }
+
                 config.client_config = (
-                    FullConfigInput::from_json(json, &mut json_errors),
+                    input,
                     ConfigErrors(
                         json_errors
                             .into_iter()
