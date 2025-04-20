@@ -1,52 +1,11 @@
-use std::fmt;
-use std::sync::atomic::{AtomicU32, Ordering};
-
+use super::automaton::{Automaton, State, Transition};
 use super::{Byte, Ref, Tree, Uninhabited};
 use crate::{Map, Set};
 
 /// A non-deterministic finite automaton (NFA) that represents the layout of a type.
 /// The transmutability of two given types is computed by comparing their `Nfa`s.
 #[derive(PartialEq, Debug)]
-pub(crate) struct Nfa<R>
-where
-    R: Ref,
-{
-    pub(crate) transitions: Map<State, Map<Transition<R>, Set<State>>>,
-    pub(crate) start: State,
-    pub(crate) accepting: State,
-}
-
-/// The states in a `Nfa` represent byte offsets.
-#[derive(Hash, Eq, PartialEq, PartialOrd, Ord, Copy, Clone)]
-pub(crate) struct State(u32);
-
-/// The transitions between states in a `Nfa` reflect bit validity.
-#[derive(Hash, Eq, PartialEq, Clone, Copy)]
-pub(crate) enum Transition<R>
-where
-    R: Ref,
-{
-    Byte(Byte),
-    Ref(R),
-}
-
-impl fmt::Debug for State {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "S_{}", self.0)
-    }
-}
-
-impl<R> fmt::Debug for Transition<R>
-where
-    R: Ref,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self {
-            Self::Byte(b) => b.fmt(f),
-            Self::Ref(r) => r.fmt(f),
-        }
-    }
-}
+pub(crate) struct Nfa<R: Ref>(pub(crate) Automaton<R>);
 
 impl<R> Nfa<R>
 where
@@ -55,33 +14,33 @@ where
     pub(crate) fn unit() -> Self {
         let transitions: Map<State, Map<Transition<R>, Set<State>>> = Map::default();
         let start = State::new();
-        let accepting = start;
+        let accept = start;
 
-        Nfa { transitions, start, accepting }
+        Nfa(Automaton { transitions, start, accept })
     }
 
     pub(crate) fn from_byte(byte: Byte) -> Self {
         let mut transitions: Map<State, Map<Transition<R>, Set<State>>> = Map::default();
         let start = State::new();
-        let accepting = State::new();
+        let accept = State::new();
 
         let source = transitions.entry(start).or_default();
         let edge = source.entry(Transition::Byte(byte)).or_default();
-        edge.insert(accepting);
+        edge.insert(accept);
 
-        Nfa { transitions, start, accepting }
+        Nfa(Automaton { transitions, start, accept })
     }
 
     pub(crate) fn from_ref(r: R) -> Self {
         let mut transitions: Map<State, Map<Transition<R>, Set<State>>> = Map::default();
         let start = State::new();
-        let accepting = State::new();
+        let accept = State::new();
 
         let source = transitions.entry(start).or_default();
         let edge = source.entry(Transition::Ref(r)).or_default();
-        edge.insert(accepting);
+        edge.insert(accept);
 
-        Nfa { transitions, start, accepting }
+        Nfa(Automaton { transitions, start, accept })
     }
 
     pub(crate) fn from_tree(tree: Tree<!, R>) -> Result<Self, Uninhabited> {
@@ -108,19 +67,19 @@ where
 
     /// Concatenate two `Nfa`s.
     pub(crate) fn concat(self, other: Self) -> Self {
-        if self.start == self.accepting {
+        if self.0.start == self.0.accept {
             return other;
-        } else if other.start == other.accepting {
+        } else if other.0.start == other.0.accept {
             return self;
         }
 
-        let start = self.start;
-        let accepting = other.accepting;
+        let start = self.0.start;
+        let accept = other.0.accept;
 
-        let mut transitions: Map<State, Map<Transition<R>, Set<State>>> = self.transitions;
+        let mut transitions: Map<State, Map<Transition<R>, Set<State>>> = self.0.transitions;
 
-        for (source, transition) in other.transitions {
-            let fix_state = |state| if state == other.start { self.accepting } else { state };
+        for (source, transition) in other.0.transitions {
+            let fix_state = |state| if state == other.0.start { self.0.accept } else { state };
             let entry = transitions.entry(fix_state(source)).or_default();
             for (edge, destinations) in transition {
                 let entry = entry.entry(edge).or_default();
@@ -130,40 +89,34 @@ where
             }
         }
 
-        Self { transitions, start, accepting }
+        Nfa(Automaton { transitions, start, accept })
     }
 
     /// Compute the union of two `Nfa`s.
     pub(crate) fn union(self, other: Self) -> Self {
-        let start = self.start;
-        let accepting = self.accepting;
+        let start = self.0.start;
+        let accept = self.0.accept;
 
-        let mut transitions: Map<State, Map<Transition<R>, Set<State>>> = self.transitions.clone();
+        let mut transitions: Map<State, Map<Transition<R>, Set<State>>> =
+            self.0.transitions.clone();
 
-        for (&(mut source), transition) in other.transitions.iter() {
+        for (&(mut source), transition) in other.0.transitions.iter() {
             // if source is starting state of `other`, replace with starting state of `self`
-            if source == other.start {
-                source = self.start;
+            if source == other.0.start {
+                source = self.0.start;
             }
             let entry = transitions.entry(source).or_default();
             for (edge, destinations) in transition {
                 let entry = entry.entry(*edge).or_default();
                 for &(mut destination) in destinations {
-                    // if dest is accepting state of `other`, replace with accepting state of `self`
-                    if destination == other.accepting {
-                        destination = self.accepting;
+                    // if dest is accept state of `other`, replace with accept state of `self`
+                    if destination == other.0.accept {
+                        destination = self.0.accept;
                     }
                     entry.insert(destination);
                 }
             }
         }
-        Self { transitions, start, accepting }
-    }
-}
-
-impl State {
-    pub(crate) fn new() -> Self {
-        static COUNTER: AtomicU32 = AtomicU32::new(0);
-        Self(COUNTER.fetch_add(1, Ordering::SeqCst))
+        Nfa(Automaton { transitions, start, accept })
     }
 }

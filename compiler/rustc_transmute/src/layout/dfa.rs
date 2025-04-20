@@ -1,88 +1,17 @@
-use std::fmt;
-use std::sync::atomic::{AtomicU32, Ordering};
-
+use itertools::Itertools;
 use tracing::instrument;
 
-use super::{Byte, Nfa, Ref, nfa};
-use crate::Map;
+use super::automaton::{Automaton, State, Transition};
+use super::{Byte, Nfa, Ref};
+use crate::{Map, Set};
 
 #[derive(PartialEq, Clone, Debug)]
-pub(crate) struct Dfa<R>
-where
-    R: Ref,
-{
-    pub(crate) transitions: Map<State, Transitions<R>>,
-    pub(crate) start: State,
-    pub(crate) accepting: State,
-}
-
-#[derive(PartialEq, Clone, Debug)]
-pub(crate) struct Transitions<R>
-where
-    R: Ref,
-{
-    byte_transitions: Map<Byte, State>,
-    ref_transitions: Map<R, State>,
-}
-
-impl<R> Default for Transitions<R>
-where
-    R: Ref,
-{
-    fn default() -> Self {
-        Self { byte_transitions: Map::default(), ref_transitions: Map::default() }
-    }
-}
-
-impl<R> Transitions<R>
-where
-    R: Ref,
-{
-    #[cfg(test)]
-    fn insert(&mut self, transition: Transition<R>, state: State) {
-        match transition {
-            Transition::Byte(b) => {
-                self.byte_transitions.insert(b, state);
-            }
-            Transition::Ref(r) => {
-                self.ref_transitions.insert(r, state);
-            }
-        }
-    }
-}
-
-/// The states in a `Nfa` represent byte offsets.
-#[derive(Hash, Eq, PartialEq, PartialOrd, Ord, Copy, Clone)]
-pub(crate) struct State(u32);
-
-#[cfg(test)]
-#[derive(Hash, Eq, PartialEq, Clone, Copy)]
-pub(crate) enum Transition<R>
-where
-    R: Ref,
-{
-    Byte(Byte),
-    Ref(R),
-}
-
-impl fmt::Debug for State {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "S_{}", self.0)
-    }
-}
-
-#[cfg(test)]
-impl<R> fmt::Debug for Transition<R>
-where
-    R: Ref,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self {
-            Self::Byte(b) => b.fmt(f),
-            Self::Ref(r) => r.fmt(f),
-        }
-    }
-}
+pub(crate) struct Dfa<R: Ref>(
+    // INVARIANT: `Automaton` is a DFA, which means that, for any `state`, each
+    // transition in `self.0.transitions[state]` contains exactly one
+    // destination state.
+    pub(crate) Automaton<R>,
+);
 
 impl<R> Dfa<R>
 where
@@ -90,49 +19,64 @@ where
 {
     #[cfg(test)]
     pub(crate) fn bool() -> Self {
-        let mut transitions: Map<State, Transitions<R>> = Map::default();
+        let mut transitions: Map<State, Map<Transition<R>, Set<State>>> = Map::default();
         let start = State::new();
-        let accepting = State::new();
+        let accept = State::new();
 
-        transitions.entry(start).or_default().insert(Transition::Byte(Byte::Init(0x00)), accepting);
+        transitions
+            .entry(start)
+            .or_default()
+            .insert(Transition::Byte(Byte::Init(0x00)), [accept].into_iter().collect());
 
-        transitions.entry(start).or_default().insert(Transition::Byte(Byte::Init(0x01)), accepting);
+        transitions
+            .entry(start)
+            .or_default()
+            .insert(Transition::Byte(Byte::Init(0x01)), [accept].into_iter().collect());
 
-        Self { transitions, start, accepting }
+        Dfa(Automaton { transitions, start, accept })
     }
 
     #[instrument(level = "debug")]
     pub(crate) fn from_nfa(nfa: Nfa<R>) -> Self {
-        let Nfa { transitions: nfa_transitions, start: nfa_start, accepting: nfa_accepting } = nfa;
+        // It might already be the case that `nfa` is a DFA. If that's the case,
+        // we can avoid reconstructing the DFA.
+        let is_dfa = nfa
+            .0
+            .transitions
+            .iter()
+            .flat_map(|(_, transitions)| transitions.iter())
+            .all(|(_, dsts)| dsts.len() <= 1);
+        if is_dfa {
+            return Dfa(nfa.0);
+        }
 
-        let mut dfa_transitions: Map<State, Transitions<R>> = Map::default();
-        let mut nfa_to_dfa: Map<nfa::State, State> = Map::default();
+        let Nfa(Automaton { transitions: nfa_transitions, start: nfa_start, accept: nfa_accept }) =
+            nfa;
+
+        let mut dfa_transitions: Map<State, Map<Transition<R>, Set<State>>> = Map::default();
+        let mut nfa_to_dfa: Map<State, State> = Map::default();
         let dfa_start = State::new();
         nfa_to_dfa.insert(nfa_start, dfa_start);
 
         let mut queue = vec![(nfa_start, dfa_start)];
 
         while let Some((nfa_state, dfa_state)) = queue.pop() {
-            if nfa_state == nfa_accepting {
+            if nfa_state == nfa_accept {
                 continue;
             }
 
             for (nfa_transition, next_nfa_states) in nfa_transitions[&nfa_state].iter() {
+                use itertools::Itertools as _;
+
                 let dfa_transitions =
                     dfa_transitions.entry(dfa_state).or_insert_with(Default::default);
 
                 let mapped_state = next_nfa_states.iter().find_map(|x| nfa_to_dfa.get(x).copied());
 
-                let next_dfa_state = match nfa_transition {
-                    &nfa::Transition::Byte(b) => *dfa_transitions
-                        .byte_transitions
-                        .entry(b)
-                        .or_insert_with(|| mapped_state.unwrap_or_else(State::new)),
-                    &nfa::Transition::Ref(r) => *dfa_transitions
-                        .ref_transitions
-                        .entry(r)
-                        .or_insert_with(|| mapped_state.unwrap_or_else(State::new)),
-                };
+                let next_dfa_state = dfa_transitions.entry(*nfa_transition).or_insert_with(|| {
+                    [mapped_state.unwrap_or_else(State::new)].into_iter().collect()
+                });
+                let next_dfa_state = *next_dfa_state.iter().exactly_one().unwrap();
 
                 for &next_nfa_state in next_nfa_states {
                     nfa_to_dfa.entry(next_nfa_state).or_insert_with(|| {
@@ -143,40 +87,38 @@ where
             }
         }
 
-        let dfa_accepting = nfa_to_dfa[&nfa_accepting];
-
-        Self { transitions: dfa_transitions, start: dfa_start, accepting: dfa_accepting }
-    }
-
-    pub(crate) fn bytes_from(&self, start: State) -> Option<&Map<Byte, State>> {
-        Some(&self.transitions.get(&start)?.byte_transitions)
+        let dfa_accept = nfa_to_dfa[&nfa_accept];
+        Dfa(Automaton { transitions: dfa_transitions, start: dfa_start, accept: dfa_accept })
     }
 
     pub(crate) fn byte_from(&self, start: State, byte: Byte) -> Option<State> {
-        self.transitions.get(&start)?.byte_transitions.get(&byte).copied()
+        Some(
+            self.0
+                .transitions
+                .get(&start)?
+                .get(&Transition::Byte(byte))?
+                .iter()
+                .copied()
+                .exactly_one()
+                .unwrap(),
+        )
     }
 
-    pub(crate) fn refs_from(&self, start: State) -> Option<&Map<R, State>> {
-        Some(&self.transitions.get(&start)?.ref_transitions)
+    pub(crate) fn iter_bytes_from(&self, start: State) -> impl Iterator<Item = (Byte, State)> {
+        self.0.transitions.get(&start).into_iter().flat_map(|transitions| {
+            transitions.iter().filter_map(|(t, s)| {
+                let s = s.iter().copied().exactly_one().unwrap();
+                if let Transition::Byte(b) = t { Some((*b, s)) } else { None }
+            })
+        })
     }
-}
 
-impl State {
-    pub(crate) fn new() -> Self {
-        static COUNTER: AtomicU32 = AtomicU32::new(0);
-        Self(COUNTER.fetch_add(1, Ordering::SeqCst))
-    }
-}
-
-#[cfg(test)]
-impl<R> From<nfa::Transition<R>> for Transition<R>
-where
-    R: Ref,
-{
-    fn from(nfa_transition: nfa::Transition<R>) -> Self {
-        match nfa_transition {
-            nfa::Transition::Byte(byte) => Transition::Byte(byte),
-            nfa::Transition::Ref(r) => Transition::Ref(r),
-        }
+    pub(crate) fn iter_refs_from(&self, start: State) -> impl Iterator<Item = (R, State)> {
+        self.0.transitions.get(&start).into_iter().flat_map(|transitions| {
+            transitions.iter().filter_map(|(t, s)| {
+                let s = s.iter().copied().exactly_one().unwrap();
+                if let Transition::Ref(r) = t { Some((*r, s)) } else { None }
+            })
+        })
     }
 }
