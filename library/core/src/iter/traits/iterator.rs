@@ -1340,6 +1340,24 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), None);
     /// ```
+    ///
+    /// Use [`by_ref`] to take from the iterator without consuming it, and then
+    /// continue using the original iterator:
+    ///
+    /// ```
+    /// let mut words = ["hello", "world", "of", "Rust"].into_iter();
+    ///
+    /// // Take the first two words.
+    /// let hello_world: Vec<_> = words.by_ref().take(2).collect();
+    /// assert_eq!(hello_world, vec!["hello", "world"]);
+    ///
+    /// // Collect the rest of the words.
+    /// // We can only do this because we used `by_ref` earlier.
+    /// let of_rust: Vec<_> = words.collect();
+    /// assert_eq!(of_rust, vec!["of", "Rust"]);
+    /// ```
+    ///
+    /// [`by_ref`]: Iterator::by_ref
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn take(self, n: usize) -> Take<Self>
