@@ -1532,7 +1532,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let Some(name) = tcx.intrinsic(def_id) {
                 record!(self.tables.intrinsic[def_id] <- name);
             }
-            if let DefKind::TyParam = def_kind {
+            if let DefKind::TyParam | DefKind::Trait = def_kind {
                 let default = self.tcx.object_lifetime_default(def_id);
                 record!(self.tables.object_lifetime_default[def_id] <- default);
             }
