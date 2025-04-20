@@ -376,3 +376,44 @@ fn parent() {
     let p = relation.postdom_parent(3);
     assert_eq!(p, Some(0));
 }
+
+#[test]
+fn minimal_scc_representative_1() {
+    //      +---------+
+    //      v         |
+    // a -> c -> d -> e
+    //           ^    ^
+    //           |    |
+    //           b ---+
+
+    // "digraph { a -> c -> d -> e -> c; b -> d; b -> e; }",
+    let mut relation = TransitiveRelationBuilder::default();
+    relation.add("a", "c");
+    relation.add("c", "d");
+    relation.add("d", "e");
+    relation.add("e", "c");
+    relation.add("b", "d");
+    relation.add("b", "e");
+    let relation = relation.freeze();
+
+    assert_eq!(relation.minimal_scc_representative("a"), "a");
+    assert_eq!(relation.minimal_scc_representative("b"), "b");
+    assert_eq!(relation.minimal_scc_representative("c"), "c");
+    assert_eq!(relation.minimal_scc_representative("d"), "c");
+    assert_eq!(relation.minimal_scc_representative("e"), "c");
+}
+
+#[test]
+fn minimal_scc_representative_2() {
+    // "digraph { a -> b; a -> a; b -> a; c -> c}",
+    let mut relation = TransitiveRelationBuilder::default();
+    relation.add("a", "b");
+    relation.add("b", "a");
+    relation.add("a", "a");
+    relation.add("c", "c");
+    let relation = relation.freeze();
+
+    assert_eq!(relation.minimal_scc_representative("a"), "a");
+    assert_eq!(relation.minimal_scc_representative("b"), "a");
+    assert_eq!(relation.minimal_scc_representative("c"), "c");
+}
