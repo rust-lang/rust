@@ -19,6 +19,14 @@
 # Note that this has no default value (x.py uses the defaults in `bootstrap.example.toml`).
 #profile = <none>
 
+# Inherits configuration values from different configuration files (a.k.a. config extensions).
+# Supports absolute paths, and uses the current directory (where the bootstrap was invoked)
+# as the base if the given path is not absolute.
+#
+# The overriding logic follows a right-to-left order. For example, in `include = ["a.toml", "b.toml"]`,
+# extension `b.toml` overrides `a.toml`. Also, parent extensions always overrides the inner ones.
+#include = []
+
 # Keeps track of major changes made to this configuration.
 #
 # This value also represents ID of the PR that caused major changes. Meaning,
