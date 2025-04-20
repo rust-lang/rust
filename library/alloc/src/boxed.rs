@@ -1011,6 +1011,8 @@ impl<T: ?Sized> Box<T> {
     /// function is called twice on the same raw pointer.
     ///
     /// The raw pointer must point to a block of memory allocated by the global allocator.
+    /// And you should enforce the aliasing rule by ensuring nothing else uses the
+    /// raw pointer after calling this function.
     ///
     /// The safety conditions are described in the [memory layout] section.
     ///
@@ -1060,6 +1062,8 @@ impl<T: ?Sized> Box<T> {
     /// function is called twice on the same `NonNull` pointer.
     ///
     /// The non-null pointer must point to a block of memory allocated by the global allocator.
+    /// And you should enforce the aliasing rule by ensuring nothing else uses the
+    /// non-null pointer after calling this function.
     ///
     /// The safety conditions are described in the [memory layout] section.
     ///
@@ -1116,6 +1120,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// function is called twice on the same raw pointer.
     ///
     /// The raw pointer must point to a block of memory allocated by `alloc`.
+    /// If the `alloc` is a global allocator, you should enforce the aliasing rule
+    /// by ensuring nothing else uses the raw pointer after calling this function.
     ///
     /// # Examples
     ///
@@ -1169,6 +1175,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// function is called twice on the same raw pointer.
     ///
     /// The non-null pointer must point to a block of memory allocated by `alloc`.
+    /// If the `alloc` is a global allocator, you should enforce the aliasing rule
+    /// by ensuring nothing else uses the non-null pointer after calling this function.
     ///
     /// # Examples
     ///
