@@ -8,15 +8,16 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{CanonicalUserTypeAnnotation, Ty};
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_span::source_map::Spanned;
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
 use crate::builder::expr::category::{Category, RvalueFunc};
-use crate::builder::matches::DeclareLetBindings;
+use crate::builder::matches::{DeclareLetBindings, HasMatchGuard};
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
+use crate::errors::{LoopMatchArmWithGuard, LoopMatchUnsupportedType};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -239,6 +240,122 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Execute the body, branching back to the test.
                     let body_block_end = this.expr_into_dest(tmp, body_block, body).into_block();
                     this.cfg.goto(body_block_end, source_info, loop_block);
+
+                    // Loops are only exited by `break` expressions.
+                    None
+                })
+            }
+            ExprKind::LoopMatch { state, region_scope, match_span, ref arms } => {
+                // Intuitively, this is a combination of a loop containing a labeled block
+                // containing a match.
+                //
+                // The only new bit here is that the lowering of the match is wrapped in a
+                // `in_const_continuable_scope`, which makes the match arms and their target basic
+                // block available to the lowering of `#[const_continue]`.
+
+                fn is_supported_loop_match_type(ty: Ty<'_>) -> bool {
+                    match ty.kind() {
+                        ty::Uint(_) | ty::Int(_) | ty::Float(_) | ty::Bool | ty::Char => true,
+                        ty::Adt(adt_def, _) => match adt_def.adt_kind() {
+                            ty::AdtKind::Struct | ty::AdtKind::Union => false,
+                            ty::AdtKind::Enum => {
+                                adt_def.variants().iter().all(|v| v.fields.is_empty())
+                            }
+                        },
+                        _ => false,
+                    }
+                }
+
+                let state_ty = this.thir.exprs[state].ty;
+                if !is_supported_loop_match_type(state_ty) {
+                    let span = this.thir.exprs[state].span;
+                    this.tcx.dcx().emit_fatal(LoopMatchUnsupportedType { span, ty: state_ty })
+                }
+
+                let loop_block = this.cfg.start_new_block();
+
+                // Start the loop.
+                this.cfg.goto(block, source_info, loop_block);
+
+                this.in_breakable_scope(Some(loop_block), destination, expr_span, |this| {
+                    // Logic for `loop`.
+                    let mut body_block = this.cfg.start_new_block();
+                    this.cfg.terminate(
+                        loop_block,
+                        source_info,
+                        TerminatorKind::FalseUnwind {
+                            real_target: body_block,
+                            unwind: UnwindAction::Continue,
+                        },
+                    );
+                    this.diverge_from(loop_block);
+
+                    // Logic for `match`.
+                    let scrutinee_place_builder =
+                        unpack!(body_block = this.as_place_builder(body_block, state));
+                    let scrutinee_span = this.thir.exprs[state].span;
+                    let match_start_span = match_span.shrink_to_lo().to(scrutinee_span);
+
+                    let mut patterns = Vec::with_capacity(arms.len());
+                    for &arm_id in arms.iter() {
+                        let arm = &this.thir[arm_id];
+
+                        if let Some(guard) = arm.guard {
+                            let span = this.thir.exprs[guard].span;
+                            this.tcx.dcx().emit_fatal(LoopMatchArmWithGuard { span })
+                        }
+
+                        patterns.push((&*arm.pattern, HasMatchGuard::No));
+                    }
+
+                    // The `built_tree` maps match arms to their basic block (where control flow
+                    // jumps to when a value matches the arm). This structure is stored so that a
+                    // `#[const_continue]` can figure out what basic block to jump to.
+                    let built_tree = this.lower_match_tree(
+                        body_block,
+                        scrutinee_span,
+                        &scrutinee_place_builder,
+                        match_start_span,
+                        patterns,
+                        false,
+                    );
+
+                    let state_place = scrutinee_place_builder.to_place(this);
+
+                    // This is logic for the labeled block: a block is a drop scope, hence
+                    // `in_scope`, and a labeled block can be broken out of with a `break 'label`,
+                    // hence the `in_breakable_scope`.
+                    //
+                    // Then `in_const_continuable_scope` stores information for the lowering of
+                    // `#[const_continue]`, and finally the match is lowered in the standard way.
+                    unpack!(
+                        body_block = this.in_scope(
+                            (region_scope, source_info),
+                            LintLevel::Inherited,
+                            move |this| {
+                                this.in_breakable_scope(None, state_place, expr_span, |this| {
+                                    Some(this.in_const_continuable_scope(
+                                        arms.clone(),
+                                        built_tree.clone(),
+                                        state_place,
+                                        expr_span,
+                                        |this| {
+                                            this.lower_match_arms(
+                                                destination,
+                                                scrutinee_place_builder,
+                                                scrutinee_span,
+                                                arms,
+                                                built_tree,
+                                                this.source_info(match_span),
+                                            )
+                                        },
+                                    ))
+                                })
+                            }
+                        )
+                    );
+
+                    this.cfg.goto(body_block, source_info, loop_block);
 
                     // Loops are only exited by `break` expressions.
                     None
@@ -601,6 +718,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             ExprKind::Continue { .. }
+            | ExprKind::ConstContinue { .. }
             | ExprKind::Break { .. }
             | ExprKind::Return { .. }
             | ExprKind::Become { .. } => {

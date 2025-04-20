@@ -1149,3 +1149,80 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
         }
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_invalid_update)]
+pub(crate) struct LoopMatchInvalidUpdate {
+    #[primary_span]
+    pub lhs: Span,
+    #[label]
+    pub scrutinee: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_invalid_match)]
+#[note]
+pub(crate) struct LoopMatchInvalidMatch {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_unsupported_type)]
+#[note]
+pub(crate) struct LoopMatchUnsupportedType<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_bad_statements)]
+pub(crate) struct LoopMatchBadStatements {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_bad_rhs)]
+pub(crate) struct LoopMatchBadRhs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_missing_assignment)]
+pub(crate) struct LoopMatchMissingAssignment {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_arm_with_guard)]
+pub(crate) struct LoopMatchArmWithGuard {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_const_continue_bad_const)]
+pub(crate) struct ConstContinueBadConst {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_const_continue_missing_value)]
+pub(crate) struct ConstContinueMissingValue {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_const_continue_unknown_jump_target)]
+#[note]
+pub(crate) struct ConstContinueUnknownJumpTarget {
+    #[primary_span]
+    pub span: Span,
+}
