@@ -75,6 +75,7 @@ use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, st
 
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt::{self, Write as _};
+use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
 use crate::os::unix::prelude::*;
@@ -1310,15 +1311,17 @@ impl File {
         target_os = "netbsd",
         target_vendor = "apple",
     ))]
-    pub fn try_lock(&self) -> io::Result<bool> {
+    pub fn try_lock(&self) -> Result<(), TryLockError> {
         let result = cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) });
-        if let Err(ref err) = result {
+        if let Err(err) = result {
             if err.kind() == io::ErrorKind::WouldBlock {
-                return Ok(false);
+                Err(TryLockError::WouldBlock)
+            } else {
+                Err(TryLockError::Error(err))
             }
+        } else {
+            Ok(())
         }
-        result?;
-        return Ok(true);
     }
 
     #[cfg(not(any(
@@ -1328,8 +1331,11 @@ impl File {
         target_os = "netbsd",
         target_vendor = "apple",
     )))]
-    pub fn try_lock(&self) -> io::Result<bool> {
-        Err(io::const_error!(io::ErrorKind::Unsupported, "try_lock() not supported"))
+    pub fn try_lock(&self) -> Result<(), TryLockError> {
+        Err(TryLockError::Error(io::const_error!(
+            io::ErrorKind::Unsupported,
+            "try_lock() not supported"
+        )))
     }
 
     #[cfg(any(
@@ -1339,15 +1345,17 @@ impl File {
         target_os = "netbsd",
         target_vendor = "apple",
     ))]
-    pub fn try_lock_shared(&self) -> io::Result<bool> {
+    pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
         let result = cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH | libc::LOCK_NB) });
-        if let Err(ref err) = result {
+        if let Err(err) = result {
             if err.kind() == io::ErrorKind::WouldBlock {
-                return Ok(false);
+                Err(TryLockError::WouldBlock)
+            } else {
+                Err(TryLockError::Error(err))
             }
+        } else {
+            Ok(())
         }
-        result?;
-        return Ok(true);
     }
 
     #[cfg(not(any(
@@ -1357,8 +1365,11 @@ impl File {
         target_os = "netbsd",
         target_vendor = "apple",
     )))]
-    pub fn try_lock_shared(&self) -> io::Result<bool> {
-        Err(io::const_error!(io::ErrorKind::Unsupported, "try_lock_shared() not supported"))
+    pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
+        Err(TryLockError::Error(io::const_error!(
+            io::ErrorKind::Unsupported,
+            "try_lock_shared() not supported"
+        )))
     }
 
     #[cfg(any(

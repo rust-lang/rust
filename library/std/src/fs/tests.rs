@@ -1,7 +1,7 @@
 use rand::RngCore;
 
 use crate::char::MAX_LEN_UTF8;
-use crate::fs::{self, File, FileTimes, OpenOptions};
+use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
 use crate::mem::MaybeUninit;
@@ -23,6 +23,16 @@ macro_rules! check {
     ($e:expr) => {
         match $e {
             Ok(t) => t,
+            Err(e) => panic!("{} failed with: {e}", stringify!($e)),
+        }
+    };
+}
+
+macro_rules! check_would_block {
+    ($e:expr) => {
+        match $e {
+            Ok(_) => panic!("{} acquired lock when it should have failed", stringify!($e)),
+            Err(TryLockError::WouldBlock) => (),
             Err(e) => panic!("{} failed with: {e}", stringify!($e)),
         }
     };
@@ -223,8 +233,8 @@ fn file_lock_multiple_shared() {
     check!(f2.lock_shared());
     check!(f1.unlock());
     check!(f2.unlock());
-    assert!(check!(f1.try_lock_shared()));
-    assert!(check!(f2.try_lock_shared()));
+    check!(f1.try_lock_shared());
+    check!(f2.try_lock_shared());
 }
 
 #[test]
@@ -243,12 +253,12 @@ fn file_lock_blocking() {
 
     // Check that shared locks block exclusive locks
     check!(f1.lock_shared());
-    assert!(!check!(f2.try_lock()));
+    check_would_block!(f2.try_lock());
     check!(f1.unlock());
 
     // Check that exclusive locks block shared locks
     check!(f1.lock());
-    assert!(!check!(f2.try_lock_shared()));
+    check_would_block!(f2.try_lock_shared());
 }
 
 #[test]
@@ -267,9 +277,9 @@ fn file_lock_drop() {
 
     // Check that locks are released when the File is dropped
     check!(f1.lock_shared());
-    assert!(!check!(f2.try_lock()));
+    check_would_block!(f2.try_lock());
     drop(f1);
-    assert!(check!(f2.try_lock()));
+    check!(f2.try_lock());
 }
 
 #[test]
@@ -288,10 +298,10 @@ fn file_lock_dup() {
 
     // Check that locks are not dropped if the File has been cloned
     check!(f1.lock_shared());
-    assert!(!check!(f2.try_lock()));
+    check_would_block!(f2.try_lock());
     let cloned = check!(f1.try_clone());
     drop(f1);
-    assert!(!check!(f2.try_lock()));
+    check_would_block!(f2.try_lock());
     drop(cloned)
 }
 
@@ -307,9 +317,9 @@ fn file_lock_double_unlock() {
     // Check that both are released by unlock()
     check!(f1.lock());
     check!(f1.lock_shared());
-    assert!(!check!(f2.try_lock()));
+    check_would_block!(f2.try_lock());
     check!(f1.unlock());
-    assert!(check!(f2.try_lock()));
+    check!(f2.try_lock());
 }
 
 #[test]
